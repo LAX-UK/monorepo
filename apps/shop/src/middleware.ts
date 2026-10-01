@@ -9,6 +9,7 @@ import { readRequestCookieJar } from "@/lib/silent-sign-in/cookie-jar";
 import {
   createSilentSignInCookieSpec,
   evaluateSilentSignInEligibility,
+  isBackgroundAuthRequest,
   selectSilentSignInStrategy,
 } from "@auction/identity-rp/silent-sign-in";
 import type { NextRequest } from "next/server";
@@ -20,6 +21,7 @@ const SKIP_PREFIXES = [
   "/auth/",
   "/session-expired",
   "/account/disabled",
+  "/account/post-sign-in",
   "/api/",
 ];
 
@@ -72,6 +74,9 @@ export async function middleware(request: NextRequest) {
       tokenUpgradeRequired?: boolean;
     } | null;
     if (response.ok && body?.tokenUpgradeRequired) {
+      if (isBackgroundAuthRequest((name) => request.headers.get(name))) {
+        return NextResponse.next();
+      }
       const returnTo = `${pathname}${request.nextUrl.search}`;
       const upgradeUrl = new URL("/auth/upgrade", shopIdentityBaseUrl());
       upgradeUrl.searchParams.set("returnTo", returnTo);

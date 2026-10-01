@@ -160,6 +160,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       completeShopCheckoutSession(db, {
         eventId: `evt-a-${suffix}`,
         orderId: orderA.id,
+        sessionId: "cs_test_attribution",
         amountTotalPence: 5_000,
         paidAt: new Date(),
       }),
@@ -243,5 +244,88 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       .where(eq(shopEdition.id, reservedEdition.id));
     expect(after?.status).toBe("reserved");
     expect(after?.reservedByOrderId).toBe(orderB.id);
+  });
+
+  it("marks order lines released when checkout expires so the edition can be sold again", async () => {
+    const db = createDbFromPool(shopPool);
+    const importWriter = createDrizzleArtworkImportRepository(db);
+    const suffix = Date.now();
+    const imported = await importWriter.importArtwork({
+      importKey: `integration:release-line:${suffix}`,
+      slug: `integration-release-line-${suffix}`,
+      title: "Release line test",
+      description: null,
+      primaryImageUrl: null,
+      artistSlug: `integration-release-artist-${suffix}`,
+      artistDisplayName: "Release Artist",
+      eligibleForEditionAllocation: true,
+      printPricePence: 5_000,
+    });
+    const reservedEdition = await selectLaxEdition(db, imported.artworkId);
+    const ownerPartyId = requireDefined(reservedEdition.ownerPartyId, "owner party");
+
+    const [orderRow] = await db
+      .insert(shopOrder)
+      .values({
+        identitySubjectId: `subject-release-${suffix}`,
+        fulfilment: "collect_brunswick",
+        merchandiseSubtotalPence: 5_000,
+        fulfilmentSurchargePence: 0,
+        totalPence: 5_000,
+        idempotencyKey: `idem-release-${suffix}`,
+        status: "pending_payment",
+      })
+      .returning();
+    const order = requireDefined(orderRow, "order");
+
+    await db.insert(shopOrderLine).values({
+      orderId: order.id,
+      editionId: reservedEdition.id,
+      artworkId: imported.artworkId,
+      sellerPartyId: ownerPartyId,
+      editionNumber: reservedEdition.editionNumber,
+      unitPricePence: 5_000,
+    });
+
+    await db
+      .update(shopEdition)
+      .set({
+        status: "reserved",
+        reservedUntil: new Date(Date.now() + 60_000),
+        reservedByOrderId: order.id,
+      })
+      .where(eq(shopEdition.id, reservedEdition.id));
+
+    await expireShopCheckoutSession(db, {
+      eventId: `evt-release-line-${suffix}`,
+      orderId: order.id,
+    });
+
+    const [line] = await db.select().from(shopOrderLine).where(eq(shopOrderLine.orderId, order.id));
+    expect(line?.releasedAt).not.toBeNull();
+
+    const [orderB] = await db
+      .insert(shopOrder)
+      .values({
+        identitySubjectId: `subject-release-b-${suffix}`,
+        fulfilment: "collect_brunswick",
+        merchandiseSubtotalPence: 5_000,
+        fulfilmentSurchargePence: 0,
+        totalPence: 5_000,
+        idempotencyKey: `idem-release-b-${suffix}`,
+        status: "pending_payment",
+      })
+      .returning();
+
+    await expect(
+      db.insert(shopOrderLine).values({
+        orderId: requireDefined(orderB?.id, "order B"),
+        editionId: reservedEdition.id,
+        artworkId: imported.artworkId,
+        sellerPartyId: ownerPartyId,
+        editionNumber: reservedEdition.editionNumber,
+        unitPricePence: 5_000,
+      }),
+    ).resolves.toBeDefined();
   });
 });

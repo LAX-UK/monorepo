@@ -14,8 +14,10 @@ export {
 } from "./eligibility.js";
 export type { CookieJar, CookieSetOptions } from "./ports/cookie-jar.js";
 export {
+  isBackgroundAuthRequest,
   isDocumentNavigation,
   isLikelyCrawler,
+  isNextRscRequest,
   isPrefetch,
   type HeaderGetter,
 } from "./request-signals.js";

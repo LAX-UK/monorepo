@@ -10,7 +10,7 @@ import {
 } from "@/lib/presenters/artwork-commerce.presenter";
 import { fetchPublicArtworkBySlug } from "@/lib/shop-api.server";
 import { fetchArtworkInterestStatus } from "@/lib/shop-artwork-interest.server";
-import { formatGbpPence } from "@/lib/shop-commerce.server";
+import { fetchShopBasket, formatGbpPence } from "@/lib/shop-commerce.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { FOCUS_RING } from "@auction/branding";
 import { MarketingDetailShell } from "@auction/marketing-ui";
@@ -51,10 +51,15 @@ export async function generateMetadata({ params }: ArtworkPageProps): Promise<Me
 
 export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
   const { slug } = await params;
-  const [artwork, viewer] = await Promise.all([
+  const [artwork, viewer, basketResult] = await Promise.all([
     fetchPublicArtworkBySlug(slug),
     loadShopViewerState(),
+    fetchShopBasket(),
   ]);
+  const basketLine =
+    basketResult.status === "ok"
+      ? basketResult.data.lines.find((line) => line.artworkSlug === slug)
+      : undefined;
   if (!artwork) {
     notFound();
   }
@@ -148,7 +153,11 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                 <h2 id="price-heading">Print price</h2>
                 <p>{formatGbpPence(printPricePence)} (tax inclusive)</p>
               </section>
-              <AddToBasketButton slug={artwork.slug} />
+              <AddToBasketButton
+                slug={artwork.slug}
+                inBasket={Boolean(basketLine)}
+                basketLineId={basketLine?.lineId ?? null}
+              />
             </>
           ) : unavailableReason ? (
             <ArtworkUnavailablePanel
@@ -156,6 +165,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
               artworkSlug={artwork.slug}
               reason={unavailableReason}
               interestRead={interestRead}
+              isEdition={artwork.eligibleForEditionAllocation}
             />
           ) : null}
         </div>

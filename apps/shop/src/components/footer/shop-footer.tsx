@@ -1,4 +1,5 @@
 import { ShopLaxLogo } from "@/components/layout/shop-lax-logo";
+import { ShopAuthLink } from "@/components/shop-auth-link";
 import { buildShopPolicyLinks, shopFooterCopyright } from "@/content/footer-nav.config";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
@@ -106,9 +107,9 @@ export function ShopFooter({
               </li>
               {accountState.kind === "guest" ? (
                 <li>
-                  <Link href="/register" className={linkClass}>
+                  <ShopAuthLink href="/register" className={linkClass}>
                     Join us
-                  </Link>
+                  </ShopAuthLink>
                 </li>
               ) : accountState.kind === "authenticated" ? (
                 <li>

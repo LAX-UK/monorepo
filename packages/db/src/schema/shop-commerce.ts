@@ -319,10 +319,13 @@ export const shopOrderLine = pgTable(
       .references(() => shopParty.id, { onDelete: "restrict" }),
     editionNumber: integer("edition_number").notNull(),
     unitPricePence: integer("unit_price_pence").notNull(),
+    releasedAt: timestamp("released_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("shop_order_line_edition_uid").on(table.editionId),
+    uniqueIndex("shop_order_line_edition_active_uid")
+      .on(table.editionId)
+      .where(sql`${table.releasedAt} is null`),
     index("shop_order_line_order_idx").on(table.orderId),
     check("shop_order_line_price_nonnegative", sql`${table.unitPricePence} >= 0`),
   ],

@@ -5,7 +5,7 @@ import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-s
 import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import { listShopOrders } from "@/lib/shop-commerce.server";
-import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
@@ -14,7 +14,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-export const metadata = shopPrivatePageMetadata;
+export const metadata = shopPrivatePageTitle("Orders");
 
 function OrdersRouteShell({ children }: { children: ReactNode }) {
   return (

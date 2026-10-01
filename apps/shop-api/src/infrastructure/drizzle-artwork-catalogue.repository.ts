@@ -23,6 +23,7 @@ import {
   isNotNull,
   lt,
   lte,
+  ne,
   or,
   sql,
 } from "drizzle-orm";
@@ -279,6 +280,12 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
               publishedHomePlacementForSlot(placement),
               ...(placement === "featured_prints"
                 ? [eq(shopArtwork.eligibleForEditionAllocation, true)]
+                : []),
+              ...(placement === "featured_originals"
+                ? [
+                    eq(shopArtwork.eligibleForEditionAllocation, false),
+                    ne(shopArtwork.saleState, "sold"),
+                  ]
                 : []),
               ...conditions,
             ),

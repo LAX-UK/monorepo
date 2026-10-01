@@ -26,6 +26,7 @@ export function presentBasket(record: BasketRecord): BasketView {
       sellableCount: line.sellableCount,
       priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
       outOfStock: line.quantity > line.sellableCount,
+      imageUrl: line.imageUrl,
     })),
   };
 }

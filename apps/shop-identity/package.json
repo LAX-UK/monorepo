@@ -15,6 +15,7 @@
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-rp": "workspace:*",
     "@auction/identity-db": "workspace:*",
+    "@auction/validators": "workspace:*",
     "@hono/node-server": "^1.13.7",
     "hono": "^4.12.25",
     "jose": "^6.2.3",

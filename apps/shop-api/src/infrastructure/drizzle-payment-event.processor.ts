@@ -9,17 +9,62 @@ import {
   shopProcessedPaymentEvent,
 } from "@auction/db/schema";
 import { computePayoutDueAt, computeRefundPeriodEndsAt } from "@auction/shop-domain";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
+import {
+  assertCheckoutNotAlreadyPaid,
+  expireHostedCheckoutSession,
+} from "./shop-checkout-stripe-expiry.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
+import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
 type CheckoutTransitionOptions = {
   notifications?: ShopNotificationPublisher;
   storefrontUrl?: string;
   fallbackCustomerEmail?: string | null;
+  paymentGateway?: PaymentCheckoutGateway;
 };
+
+function assertStripeSessionMatchesOrder(
+  order: { stripeCheckoutSessionId: string | null },
+  sessionId: string,
+): void {
+  if (!order.stripeCheckoutSessionId) {
+    return;
+  }
+  if (order.stripeCheckoutSessionId !== sessionId) {
+    throw new ShopPaymentWebhookError("session_mismatch", { retryable: false });
+  }
+}
+
+async function expireStripeBeforeLocalTransition(
+  db: Database,
+  orderId: string,
+  paymentGateway: PaymentCheckoutGateway | undefined,
+): Promise<void> {
+  if (!paymentGateway) {
+    return;
+  }
+  const [preview] = await db
+    .select({
+      status: shopOrder.status,
+      stripeCheckoutSessionId: shopOrder.stripeCheckoutSessionId,
+    })
+    .from(shopOrder)
+    .where(eq(shopOrder.id, orderId))
+    .limit(1);
+  if (!preview || preview.status !== "pending_payment") {
+    return;
+  }
+  const outcome = await expireHostedCheckoutSession(paymentGateway, {
+    orderId,
+    sessionId: preview.stripeCheckoutSessionId,
+  });
+  assertCheckoutNotAlreadyPaid(outcome);
+}
 
 export function createDrizzlePaymentEventProcessor(
   db: Database,
@@ -32,9 +77,9 @@ export function createDrizzlePaymentEventProcessor(
         fallbackCustomerEmail: input.customerEmail ?? options.fallbackCustomerEmail ?? null,
       }),
     expireCheckout: (input) =>
-      expireShopCheckoutSession(db, { ...input, source: input.source ?? "stripe" }),
+      expireShopCheckoutSession(db, { ...input, source: input.source ?? "stripe" }, options),
     failCheckout: (input) =>
-      failShopCheckoutSession(db, { ...input, source: input.source ?? "stripe" }),
+      failShopCheckoutSession(db, { ...input, source: input.source ?? "stripe" }, options),
   };
 }
 
@@ -44,6 +89,7 @@ async function releaseReservedEditionsForOrder(tx: Database, orderId: string): P
   if (editionIds.length === 0) {
     return;
   }
+  const releasedAt = new Date();
   await tx
     .update(shopEdition)
     .set({ status: "available", reservedUntil: null, reservedByOrderId: null })
@@ -54,6 +100,10 @@ async function releaseReservedEditionsForOrder(tx: Database, orderId: string): P
         eq(shopEdition.reservedByOrderId, orderId),
       ),
     );
+  await tx
+    .update(shopOrderLine)
+    .set({ releasedAt })
+    .where(and(eq(shopOrderLine.orderId, orderId), isNull(shopOrderLine.releasedAt)));
   for (const line of lines) {
     await tx.insert(domainEvent).values({
       aggregateType: "shop_edition",
@@ -70,6 +120,7 @@ export async function completeShopCheckoutSession(
   input: {
     eventId: string;
     orderId: string;
+    sessionId: string;
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
@@ -101,6 +152,7 @@ export async function completeShopCheckoutSession(
     if (order.status !== "pending_payment") {
       throw new ShopPaymentWebhookError("payment_state_invalid", { retryable: true });
     }
+    assertStripeSessionMatchesOrder(order, input.sessionId);
 
     const buyerPartyId = await findOrCreateBuyerParty(
       tx as Database,
@@ -212,8 +264,10 @@ export async function completeShopCheckoutSession(
 export async function cancelShopCheckoutSession(
   db: Database,
   input: { eventId: string; orderId: string; source?: string },
+  options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate"> {
   const source = input.source ?? "buyer";
+  await expireStripeBeforeLocalTransition(db, input.orderId, options.paymentGateway);
   return db.transaction(async (tx) => {
     const [claim] = await tx
       .insert(shopProcessedPaymentEvent)
@@ -237,15 +291,18 @@ export async function cancelShopCheckoutSession(
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId);
+    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
     return "processed";
   });
 }
 
 export async function expireShopCheckoutSession(
   db: Database,
-  input: { eventId: string; orderId: string; source?: string },
+  input: { eventId: string; orderId: string; source?: string; sessionId?: string },
+  options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate"> {
   const source = input.source ?? "stripe";
+  await expireStripeBeforeLocalTransition(db, input.orderId, options.paymentGateway);
   return db.transaction(async (tx) => {
     const [claim] = await tx
       .insert(shopProcessedPaymentEvent)
@@ -263,19 +320,24 @@ export async function expireShopCheckoutSession(
     const order = locked[0];
     if (!order || order.status !== "pending_payment") {
       return "processed";
+    }
+    if (input.sessionId) {
+      assertStripeSessionMatchesOrder(order, input.sessionId);
     }
     await tx
       .update(shopOrder)
       .set({ status: "expired", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId);
+    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
     return "processed";
   });
 }
 
 export async function failShopCheckoutSession(
   db: Database,
-  input: { eventId: string; orderId: string; source?: string },
+  input: { eventId: string; orderId: string; source?: string; sessionId?: string },
+  _options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate"> {
   const source = input.source ?? "stripe";
   return db.transaction(async (tx) => {
@@ -296,11 +358,15 @@ export async function failShopCheckoutSession(
     if (!order || order.status !== "pending_payment") {
       return "processed";
     }
+    if (input.sessionId) {
+      assertStripeSessionMatchesOrder(order, input.sessionId);
+    }
     await tx
       .update(shopOrder)
       .set({ status: "payment_failed", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId);
+    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
     return "processed";
   });
 }

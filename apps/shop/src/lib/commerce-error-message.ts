@@ -46,8 +46,9 @@ export function commerceErrorMessage(body: unknown, fallback: string): string {
     case SHOP_API_ERROR_CODES.PAYMENT_FAILED:
       return "Payment could not be completed. Try again or use another method.";
     case SHOP_API_ERROR_CODES.UNAUTHORIZED:
-    case SHOP_API_ERROR_CODES.FORBIDDEN:
       return "Sign in to continue.";
+    case SHOP_API_ERROR_CODES.FORBIDDEN:
+      return "This basket can't be checked out. Refresh and try again.";
     default:
       if (typeof record.message === "string" && record.message.trim().length > 0) {
         return record.message;

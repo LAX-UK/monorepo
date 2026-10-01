@@ -6,6 +6,7 @@ import {
   pendingIntentForStorage,
   resolveHostedAuthEntry,
 } from "@/lib/bff/auth-entry-intent.server";
+import { isBackgroundNextAuthRequest } from "@/lib/bff/is-background-next-request";
 import { buildAuthorizationUrl, createLoginProof } from "@/lib/bff/oidc.server";
 import { getBffRedis } from "@/lib/bff/redis.server";
 import { readBidSessionId, setBidSessionCookie } from "@/lib/bff/session-cookie.server";
@@ -23,6 +24,9 @@ export type StartBidAuthorizationInput = {
 export async function startBidAuthorization(
   input: StartBidAuthorizationInput,
 ): Promise<NextResponse> {
+  if (isBackgroundNextAuthRequest(input.request)) {
+    return new NextResponse(null, { status: 204, headers: { "cache-control": "no-store" } });
+  }
   const entry = input.nextPath
     ? {
         ...resolveHostedAuthEntry(input.request.nextUrl.searchParams),

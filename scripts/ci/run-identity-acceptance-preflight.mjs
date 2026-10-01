@@ -160,7 +160,7 @@ async function main() {
         OIDC_CLIENT_ID: "lax-shop-web",
         OIDC_CLIENT_SECRET: env.OIDC_CLIENT_SECRET_LAX_SHOP_WEB,
         OIDC_REDIRECT_URI: "http://localhost:3010/auth/callback",
-        OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3020/",
+        OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3020/signed-out",
         SHOP_STOREFRONT_URL: "http://localhost:3020",
         SESSION_SECRET: "ci-shop-identity-session-secret-at-least-32",
         DATABASE_URL_SHOP: shopUrl.toString(),

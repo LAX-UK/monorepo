@@ -6,6 +6,7 @@ import type {
   ReplaceHomePlacementsCommand,
   StorefrontCurationWriter,
 } from "../application/ports/storefront-curation.writer.js";
+import { assertHomePlacementsArtworkRules } from "./validate-home-placements.js";
 
 function rowForPlacement(placement: PlannedPlacement, publishedAt: Date) {
   const base = {
@@ -27,6 +28,7 @@ export function createDrizzleStorefrontCurationWriter(db: Database): StorefrontC
   return {
     async replaceHomePlacements(command: ReplaceHomePlacementsCommand): Promise<void> {
       assertValidPlacementSet(command.placements);
+      await assertHomePlacementsArtworkRules(db, command.placements);
       const slots = [...new Set(command.slots)];
       if (command.placements.some((placement) => !slots.includes(placement.slot))) {
         throw new Error("Every placement must belong to a replaced slot");

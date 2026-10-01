@@ -11,7 +11,9 @@ type ShopIdentityHealth = {
 
 export async function GET() {
   try {
-    const response = await fetch(shopIdentityServerUrl("/api/health/deps"), {
+    // Use shop-identity readiness (database), not /api/health/deps (OIDC probe), so App
+    // Platform rollouts do not fail while auth is restarting in the same deployment.
+    const response = await fetch(shopIdentityServerUrl("/health/ready"), {
       cache: "no-store",
       signal: AbortSignal.timeout(SHOP_IDENTITY_FETCH_TIMEOUT_MS),
     });

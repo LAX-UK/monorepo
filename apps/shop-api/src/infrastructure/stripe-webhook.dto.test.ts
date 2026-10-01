@@ -14,6 +14,7 @@ describe("stripe webhook DTO", () => {
       created: 1_700_000_000,
       data: {
         object: {
+          id: "cs_test_completed",
           metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
           amount_total: 4200,
           currency: "gbp",
@@ -25,6 +26,7 @@ describe("stripe webhook DTO", () => {
       eventId: "evt_1",
       paidAt: new Date(1_700_000_000 * 1000),
       orderId: "11111111-1111-4111-8111-111111111111",
+      sessionId: "cs_test_completed",
       amountTotalPence: 4200,
       customerEmail: null,
     });
@@ -37,6 +39,7 @@ describe("stripe webhook DTO", () => {
       created: 1_700_000_001,
       data: {
         object: {
+          id: "cs_test_async_ok",
           metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
           amount_total: 4200,
           currency: "gbp",
@@ -58,6 +61,7 @@ describe("stripe webhook DTO", () => {
       created: 1,
       data: {
         object: {
+          id: "cs_test_async_fail",
           metadata: { app: "shop", orderId: "33333333-3333-4333-8333-333333333333" },
         },
       },
@@ -65,6 +69,7 @@ describe("stripe webhook DTO", () => {
     expect(parseCheckoutSessionAsyncPaymentFailed(event)).toEqual({
       eventId: "evt_async_fail",
       orderId: "33333333-3333-4333-8333-333333333333",
+      sessionId: "cs_test_async_fail",
     });
   });
 
@@ -119,6 +124,7 @@ describe("stripe webhook DTO", () => {
       created: 1,
       data: {
         object: {
+          id: "cs_test_expired",
           metadata: { app: "shop", orderId: "22222222-2222-4222-8222-222222222222" },
         },
       },
@@ -126,6 +132,25 @@ describe("stripe webhook DTO", () => {
     expect(parseCheckoutSessionExpired(event)).toEqual({
       eventId: "evt_3",
       orderId: "22222222-2222-4222-8222-222222222222",
+      sessionId: "cs_test_expired",
     });
+  });
+
+  it("ignores legacy shop sessions without app metadata", () => {
+    const event = {
+      id: "evt_legacy",
+      type: "checkout.session.completed",
+      created: 1,
+      data: {
+        object: {
+          id: "cs_legacy",
+          metadata: { orderId: "11111111-1111-4111-8111-111111111111" },
+          amount_total: 4200,
+          currency: "gbp",
+          payment_status: "paid",
+        },
+      },
+    } as unknown as Stripe.Event;
+    expect(parseCheckoutSessionCompleted(event)).toBeNull();
   });
 });

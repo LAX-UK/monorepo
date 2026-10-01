@@ -1,5 +1,7 @@
+import { ShopAuthLink } from "@/components/shop-auth-link";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import type { ShopBreadcrumbItem } from "@/components/shop-page-header";
+import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -70,7 +72,11 @@ export function ShopAccountLinkButton({
 }: ShopAccountLinkButtonProps) {
   return (
     <Button asChild variant={variant} className="min-h-11 w-full">
-      <Link href={href}>{label}</Link>
+      {isShopAuthHref(href) ? (
+        <ShopAuthLink href={href}>{label}</ShopAuthLink>
+      ) : (
+        <Link href={href}>{label}</Link>
+      )}
     </Button>
   );
 }

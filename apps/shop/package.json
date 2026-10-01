@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3020 --turbopack",
-    "build": "next build",
+    "build": "node ./scripts/run-build-with-retry.mjs",
     "start": "next start --port 3020",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -20,6 +20,7 @@
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/marketing-ui": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
+    "@auction/shop-domain": "workspace:*",
     "@auction/ui": "workspace:*",
     "zod": "^3.24.1",
     "next": "15.5.9",

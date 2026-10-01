@@ -21,6 +21,10 @@ export {
   type PlacementTarget,
   type PlacementTargetKind,
 } from "./placement-slot.js";
+export {
+  assertFeaturedOriginalArtwork,
+  type FeaturedOriginalArtworkCandidate,
+} from "./featured-originals-placement.js";
 export { ShopDomainError } from "./shop-domain-error.js";
 export {
   assertQuantityWithinSellable,
@@ -54,3 +58,4 @@ export {
   computeRefundPeriodEndsAt,
 } from "./payout-due.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
+export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";

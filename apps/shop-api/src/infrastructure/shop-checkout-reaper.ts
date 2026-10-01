@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
 import { and, eq, isNotNull, lt } from "drizzle-orm";
+import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 
 const REAPER_BATCH_SIZE = 25;
@@ -10,7 +11,11 @@ export function reaperEventIdForOrder(orderId: string): string {
   return `reaper:order:${orderId}`;
 }
 
-export async function reapStaleShopCheckouts(db: Database, now: Date): Promise<number> {
+export async function reapStaleShopCheckouts(
+  db: Database,
+  now: Date,
+  paymentGateway?: PaymentCheckoutGateway,
+): Promise<number> {
   const stale = await db
     .select({ id: shopOrder.id })
     .from(shopOrder)
@@ -25,11 +30,15 @@ export async function reapStaleShopCheckouts(db: Database, now: Date): Promise<n
 
   let processed = 0;
   for (const row of stale) {
-    await expireShopCheckoutSession(db, {
-      eventId: reaperEventIdForOrder(row.id),
-      orderId: row.id,
-      source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
-    });
+    await expireShopCheckoutSession(
+      db,
+      {
+        eventId: reaperEventIdForOrder(row.id),
+        orderId: row.id,
+        source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+      },
+      paymentGateway ? { paymentGateway } : {},
+    );
     processed += 1;
   }
   return processed;

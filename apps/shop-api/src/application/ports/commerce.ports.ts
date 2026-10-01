@@ -14,6 +14,7 @@ export type BasketLineRecord = {
   livePricePence: number | null;
   quantity: number;
   sellableCount: number;
+  imageUrl: string | null;
 };
 
 export type BasketRecord = {
@@ -103,6 +104,12 @@ export interface BasketRepository {
 
 export interface CheckoutWriter {
   createCheckoutOrder(input: CheckoutOrderInput): Promise<CheckoutOrderResult>;
+  resumeCheckoutOrder(input: {
+    subject: string;
+    orderId: string;
+    successUrl: string;
+    cancelUrl: string;
+  }): Promise<CheckoutOrderResult>;
   cancelCheckoutOrder(input: { subject: string; orderId: string }): Promise<void>;
 }
 
@@ -113,6 +120,14 @@ export interface OrderReader {
 
 export type CommerceRepository = BasketRepository & CheckoutWriter & OrderReader;
 
+export type HostedCheckoutLineItem = {
+  title: string;
+  description: string;
+  quantity: number;
+  unitAmountPence: number;
+  imageUrl?: string | null;
+};
+
 export interface PaymentCheckoutGateway {
   createHostedCheckout(input: {
     orderId: string;
@@ -120,9 +135,16 @@ export interface PaymentCheckoutGateway {
     successUrl: string;
     cancelUrl: string;
     expiresAt: Date;
+    lines: HostedCheckoutLineItem[];
+    fulfilmentSurchargePence: number;
+    customerEmail?: string | null;
   }): Promise<{ checkoutUrl: string; sessionId: string; paymentIntentId: string | null }>;
   resolveHostedCheckout(input: {
     orderId: string;
     sessionId: string;
   }): Promise<{ checkoutUrl: string }>;
+  expireHostedCheckout(input: {
+    orderId: string;
+    sessionId: string;
+  }): Promise<{ kind: "expired" } | { kind: "already_complete" } | { kind: "not_expirable" }>;
 }

@@ -9,6 +9,7 @@ type MockOrder = {
   totalPence: number;
   status: string;
   identitySubjectId: string;
+  stripeCheckoutSessionId?: string | null;
 };
 
 function createDbMock(options: { claim: boolean; order: MockOrder | null }) {
@@ -52,6 +53,7 @@ describe("completeShopCheckoutSession", () => {
       completeShopCheckoutSession(db as never, {
         eventId: "evt-dup",
         orderId: "order-1",
+        sessionId: "cs_test",
         amountTotalPence: 1000,
         paidAt: new Date(),
       }),
@@ -73,6 +75,7 @@ describe("completeShopCheckoutSession", () => {
       completeShopCheckoutSession(db as never, {
         eventId: "evt-1",
         orderId: "order-1",
+        sessionId: "cs_test",
         amountTotalPence: 999,
         paidAt: new Date(),
       }),
@@ -97,6 +100,7 @@ describe("completeShopCheckoutSession", () => {
       completeShopCheckoutSession(db as never, {
         eventId: "evt-1",
         orderId: "order-1",
+        sessionId: "cs_test",
         amountTotalPence: 1000,
         paidAt: new Date(),
       }),
@@ -123,6 +127,7 @@ describe("failShopCheckoutSession", () => {
       failShopCheckoutSession(db as never, {
         eventId: "evt-fail",
         orderId: "order-1",
+        sessionId: "cs_test",
       }),
     ).resolves.toBe("processed");
   });

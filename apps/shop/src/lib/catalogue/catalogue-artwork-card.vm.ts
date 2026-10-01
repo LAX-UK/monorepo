@@ -1,3 +1,4 @@
+import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { ShopStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import { resolveArtworkSaleStatePresentation } from "@/lib/presenters/shop-status-presentation";
 import { formatEditionAvailabilitySummary } from "@/lib/public-artwork-presenters";
@@ -36,6 +37,14 @@ export function resolveCatalogueArtworkCardBadge(
   return null;
 }
 
+function formatCatalogueCardMetaLine(item: PublicArtworkSummary): string {
+  const availability = formatEditionAvailabilitySummary(item);
+  if (item.saleState === "for_sale" && item.printPricePence !== null) {
+    return `${formatGbpPence(item.printPricePence)} · ${availability}`;
+  }
+  return availability;
+}
+
 export function toCatalogueArtworkCardVm(item: PublicArtworkSummary): CatalogueArtworkCardVm {
   return {
     slug: item.slug,
@@ -45,7 +54,7 @@ export function toCatalogueArtworkCardVm(item: PublicArtworkSummary): CatalogueA
     imageAlt: `${item.title} by ${item.artistName}`,
     dimensions: item.dimensions,
     status: resolveCatalogueArtworkCardBadge(item),
-    metaLine: formatEditionAvailabilitySummary(item),
+    metaLine: formatCatalogueCardMetaLine(item),
     href: `/artworks/${item.slug}`,
   };
 }

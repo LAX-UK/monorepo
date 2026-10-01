@@ -9,20 +9,32 @@ import {
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
-import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export const metadata = shopPrivatePageMetadata;
+export const metadata = shopPrivatePageTitle("Checkout");
 
-export default async function CheckoutPage() {
+type CheckoutPageProps = {
+  searchParams: Promise<{ basketMerge?: string }>;
+};
+
+export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
+  const params = await searchParams;
   const [basketResult, viewer] = await Promise.all([fetchShopBasket(), loadShopViewerState()]);
+
+  if (viewer.kind === "authenticated" && basketResult.status === "unauthorized") {
+    redirect(shopStorefrontLoginHref("/checkout"));
+  }
 
   const gate = gateShopAuthenticatedRoute(viewer, "/checkout");
   if (!gate.allowed) {
+    if (viewer.kind === "guest" && params.basketMerge) {
+      redirect(shopStorefrontLoginHref("/checkout"));
+    }
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
       <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
@@ -41,30 +53,6 @@ export default async function CheckoutPage() {
                 : "We could not verify your session. Try again shortly."
             }
             actions={<ShopCatalogueStateRetryButton />}
-          />
-        </ShopCommercePageShell>
-      </MarketingDetailShell>
-    );
-  }
-
-  if (basketResult.status === "unauthorized") {
-    return (
-      <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
-        <ShopCommercePageShell
-          header={shopPageWayfinding.checkout}
-          contentClassName="shop-checkout"
-        >
-          <ShopStatusState
-            layout="page"
-            variant="error"
-            title="Sign in again"
-            titleAs="h2"
-            description="Your session ended before we could load checkout."
-            actions={
-              <ShopStatusStateLink href={shopStorefrontLoginHref("/checkout")} priority="primary">
-                Sign in
-              </ShopStatusStateLink>
-            }
           />
         </ShopCommercePageShell>
       </MarketingDetailShell>
@@ -133,7 +121,12 @@ export default async function CheckoutPage() {
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
       <ShopCommercePageShell header={shopPageWayfinding.checkout} contentClassName="shop-checkout">
-        <CheckoutForm basketId={basket.basketId} />
+        <CheckoutForm
+          basket={basket}
+          {...(viewer.kind === "authenticated" && viewer.email
+            ? { customerEmail: viewer.email }
+            : {})}
+        />
         <Link href="/basket" className="shop-detail__cta shop-focus-ring">
           Back to basket
         </Link>

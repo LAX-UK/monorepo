@@ -51,7 +51,7 @@ pnpm shop:auth:test
 ```
 
 Set `OIDC_CLIENT_SECRET`, the canonical Auth app's `SESSION_SECRET` (≥32
-chars), `OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3020/`, and
+chars), `OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3020/signed-out`, and
 `SHOP_STOREFRONT_URL=http://localhost:3020` in `.env` before preflight. Shop
 Identity sessions are opaque PostgreSQL records and do not use a separate
 session-signing secret.

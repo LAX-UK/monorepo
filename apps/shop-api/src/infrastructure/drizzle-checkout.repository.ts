@@ -9,21 +9,25 @@ import {
   pence,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
+import { isUkPostcode, normalizeUkPostcode } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type {
   CheckoutWriter,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
-import { isPgUniqueViolation } from "../lib/pg-errors.js";
+import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 import {
   assertBasketStock,
   assertStorefrontRedirectUrl,
   loadBasketRecord,
   repriceBasketLinesIfNeeded,
 } from "./shop-basket.persistence.js";
+import { assertReplayableCheckoutOrder } from "./shop-checkout-order-validation.js";
 import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
+import { loadCheckoutStripePresentation } from "./shop-checkout-stripe-presentation.js";
 import { resolveOrCreateStripeCheckoutSession } from "./shop-checkout-stripe-session.js";
 
 const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
@@ -35,6 +39,7 @@ export function createDrizzleCheckoutRepository(
 ): CheckoutWriter {
   return {
     async createCheckoutOrder(input) {
+      let deliveryAddress = input.deliveryAddress;
       if (!isOnlineCheckoutFulfilment(input.fulfilment)) {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.VALIDATION,
@@ -43,7 +48,7 @@ export function createDrizzleCheckoutRepository(
         );
       }
       if (input.fulfilment === "uk_insured_delivery") {
-        const address = input.deliveryAddress;
+        const address = deliveryAddress;
         if (
           !address?.line1?.trim() ||
           !address.city?.trim() ||
@@ -56,6 +61,13 @@ export function createDrizzleCheckoutRepository(
             400,
           );
         }
+        if (!isUkPostcode(address.postcode)) {
+          throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Enter a valid UK postcode", 400);
+        }
+        deliveryAddress = {
+          ...address,
+          postcode: normalizeUkPostcode(address.postcode),
+        };
       }
       assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
       assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
@@ -106,30 +118,10 @@ export function createDrizzleCheckoutRepository(
             .limit(1);
           const existing = locked[0];
           if (existing) {
-            if (existing.identitySubjectId !== input.subject) {
-              throw new ShopApiError(
-                SHOP_API_ERROR_CODES.FORBIDDEN,
-                "Order ownership mismatch",
-                403,
-              );
-            }
-            if (existing.fulfilment !== input.fulfilment) {
-              throw new ShopApiError(
-                SHOP_API_ERROR_CODES.CONFLICT,
-                "Checkout fulfilment mismatch",
-                409,
-              );
-            }
-            if (existing.status === "paid") {
-              throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Order already paid", 409);
-            }
-            if (existing.status !== "pending_payment") {
-              throw new ShopApiError(
-                SHOP_API_ERROR_CODES.CONFLICT,
-                "Order is no longer checkoutable",
-                409,
-              );
-            }
+            assertReplayableCheckoutOrder(existing, {
+              subject: input.subject,
+              fulfilment: input.fulfilment,
+            });
             return {
               orderId: existing.id,
               totalPence: existing.totalPence,
@@ -148,11 +140,11 @@ export function createDrizzleCheckoutRepository(
               totalPence: total,
               idempotencyKey: input.idempotencyKey,
               checkoutExpiresAt,
-              deliveryLine1: input.deliveryAddress?.line1 ?? null,
-              deliveryLine2: input.deliveryAddress?.line2 ?? null,
-              deliveryCity: input.deliveryAddress?.city ?? null,
-              deliveryPostcode: input.deliveryAddress?.postcode ?? null,
-              deliveryCountry: input.deliveryAddress?.country ?? null,
+              deliveryLine1: deliveryAddress?.line1 ?? null,
+              deliveryLine2: deliveryAddress?.line2 ?? null,
+              deliveryCity: deliveryAddress?.city ?? null,
+              deliveryPostcode: deliveryAddress?.postcode ?? null,
+              deliveryCountry: deliveryAddress?.country ?? null,
             })
             .returning({ id: shopOrder.id });
           if (!order) {
@@ -189,14 +181,28 @@ export function createDrizzleCheckoutRepository(
         });
       } catch (error) {
         if (isPgUniqueViolation(error)) {
+          const constraint = pgUniqueViolationConstraint(error);
+          if (
+            constraint === "shop_order_line_edition_active_uid" ||
+            constraint === "shop_order_line_edition_uid"
+          ) {
+            throw new ShopApiError(SHOP_API_ERROR_CODES.OUT_OF_STOCK, "Edition unavailable", 409);
+          }
+          if (constraint !== "shop_order_idempotency_key_uid" && constraint !== null) {
+            throw error;
+          }
           const [existing] = await db
             .select()
             .from(shopOrder)
             .where(eq(shopOrder.idempotencyKey, input.idempotencyKey))
             .limit(1);
-          if (!existing || existing.identitySubjectId !== input.subject) {
-            throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
+          if (!existing) {
+            throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Checkout idempotency race", 500);
           }
+          assertReplayableCheckoutOrder(existing, {
+            subject: input.subject,
+            fulfilment: input.fulfilment,
+          });
           pending = {
             orderId: existing.id,
             totalPence: existing.totalPence,
@@ -214,6 +220,11 @@ export function createDrizzleCheckoutRepository(
         .where(eq(shopOrder.id, pending.orderId))
         .limit(1);
 
+      const [stripeLines, customerEmail] = await Promise.all([
+        loadCheckoutStripePresentation(db, pending.orderId),
+        resolveShopUserEmail(db, input.subject),
+      ]);
+
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: pending.orderId,
         totalPence: pending.totalPence,
@@ -223,8 +234,57 @@ export function createDrizzleCheckoutRepository(
         needsStripeSession: pending.needsStripeSession,
         existingSessionId: orderRow?.stripeCheckoutSessionId ?? null,
         existingCheckoutExpiresAt: orderRow?.checkoutExpiresAt ?? null,
+        lines: stripeLines,
+        fulfilmentSurchargePence: orderRow?.fulfilmentSurchargePence ?? fulfilmentSurcharge,
+        customerEmail,
       });
     },
+    async resumeCheckoutOrder(input) {
+      const [order] = await db
+        .select()
+        .from(shopOrder)
+        .where(eq(shopOrder.id, input.orderId))
+        .limit(1);
+      if (!order) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Order not found", 404);
+      }
+      if (order.identitySubjectId !== input.subject) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
+      }
+      if (order.status !== "pending_payment") {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.CONFLICT,
+          "Order is no longer checkoutable",
+          409,
+        );
+      }
+      if (order.checkoutExpiresAt && order.checkoutExpiresAt < new Date()) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Checkout session expired", 409);
+      }
+      assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
+      assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
+
+      const [stripeLines, customerEmail] = await Promise.all([
+        loadCheckoutStripePresentation(db, order.id),
+        resolveShopUserEmail(db, input.subject),
+      ]);
+
+      return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
+        orderId: order.id,
+        totalPence: order.totalPence,
+        successUrl: input.successUrl,
+        cancelUrl: input.cancelUrl,
+        checkoutExpiresAt:
+          order.checkoutExpiresAt ?? new Date(Date.now() + CHECKOUT_SESSION_TTL_MS),
+        needsStripeSession: !order.stripeCheckoutSessionId,
+        existingSessionId: order.stripeCheckoutSessionId,
+        existingCheckoutExpiresAt: order.checkoutExpiresAt,
+        lines: stripeLines,
+        fulfilmentSurchargePence: order.fulfilmentSurchargePence,
+        customerEmail,
+      });
+    },
+
     async cancelCheckoutOrder(input) {
       const locked = await db
         .select({ id: shopOrder.id, identitySubjectId: shopOrder.identitySubjectId })
@@ -238,11 +298,15 @@ export function createDrizzleCheckoutRepository(
       if (order.identitySubjectId !== input.subject) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
       }
-      await cancelShopCheckoutSession(db, {
-        eventId: `buyer-cancel:${input.orderId}`,
-        orderId: input.orderId,
-        source: "buyer",
-      });
+      await cancelShopCheckoutSession(
+        db,
+        {
+          eventId: `buyer-cancel:${input.orderId}`,
+          orderId: input.orderId,
+          source: "buyer",
+        },
+        { paymentGateway },
+      );
     },
   };
 }

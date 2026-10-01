@@ -31,6 +31,23 @@ describe("catalogue card view models", () => {
     });
   });
 
+  it("shows listed price on cards when the work is for sale", () => {
+    expect(
+      toCatalogueArtworkCardVm({
+        slug: "harbor-print",
+        title: "Harbor Print",
+        artistName: "Flora Powers",
+        imageUrl: null,
+        saleState: "for_sale",
+        dimensions: null,
+        yearCreated: null,
+        eligibleForEditionAllocation: true,
+        printPricePence: 85000,
+        availability: { totalEditions: 12, editionsAvailable: 8 },
+      }).metaLine,
+    ).toMatch(/^£850/);
+  });
+
   it("prefers sold out over price on request when editions are claimed", () => {
     expect(
       toCatalogueArtworkCardVm({

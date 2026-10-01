@@ -40,6 +40,7 @@ describe("createShopApiApp", () => {
               livePricePence: 100,
               quantity,
               sellableCount: 3,
+              imageUrl: null,
             },
           ],
         }),

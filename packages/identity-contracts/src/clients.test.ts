@@ -44,8 +44,11 @@ describe("registered OIDC clients", () => {
     expect(shop.postLogoutRedirectUris).toEqual([
       "http://localhost:3010/",
       "http://localhost:3020/",
+      "http://localhost:3020/signed-out",
       "https://shop.lax.art/",
+      "https://shop.lax.art/signed-out",
       "https://test-shop.lax.bid/",
+      "https://test-shop.lax.bid/signed-out",
     ]);
     expect(shop.testBackchannelLogoutUri).toBe(
       "https://test-shop.lax.bid/api/auth/backchannel-logout",

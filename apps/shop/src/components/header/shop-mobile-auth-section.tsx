@@ -1,6 +1,7 @@
 "use client";
 
 import { ShopAccountStatus } from "@/components/header/shop-account-status";
+import { ShopAuthLink } from "@/components/shop-auth-link";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
@@ -30,15 +31,15 @@ function MobileGuestAuthSection({
   return (
     <div className="flex w-full flex-col items-center gap-3">
       <Button variant="cta" size="lg" className="w-full" asChild>
-        <Link
+        <ShopAuthLink
           href={registerHref}
           className="w-full justify-center"
           {...(onNavigate ? { onClick: onNavigate } : {})}
         >
           Create account
-        </Link>
+        </ShopAuthLink>
       </Button>
-      <Link
+      <ShopAuthLink
         href={loginHref}
         className={cn(
           "inline-flex min-h-11 w-full items-center justify-center rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
@@ -47,7 +48,7 @@ function MobileGuestAuthSection({
         {...(onNavigate ? { onClick: onNavigate } : {})}
       >
         Sign in
-      </Link>
+      </ShopAuthLink>
     </div>
   );
 }

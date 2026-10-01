@@ -1,3 +1,5 @@
+import { ShopAuthLink } from "@/components/shop-auth-link";
+import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import {
   MarketingStatusAction,
   MarketingStatusState,
@@ -105,11 +107,18 @@ export function ShopStatusStateLink({
   children,
   priority = "secondary",
 }: ShopStatusStateLinkProps) {
+  const linkClass = "shop-focus-ring";
   return (
     <MarketingStatusAction priority={priority} asChild>
-      <Link href={href} className="shop-focus-ring">
-        {children}
-      </Link>
+      {isShopAuthHref(href) ? (
+        <ShopAuthLink href={href} className={linkClass}>
+          {children}
+        </ShopAuthLink>
+      ) : (
+        <Link href={href} className={linkClass}>
+          {children}
+        </Link>
+      )}
     </MarketingStatusAction>
   );
 }

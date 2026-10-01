@@ -48,6 +48,7 @@ export async function registerStripeWebhookRoutes(
             const outcome = await deps.completeCheckout({
               eventId: completed.eventId,
               orderId: completed.orderId,
+              sessionId: completed.sessionId,
               amountTotalPence: completed.amountTotalPence,
               paidAt: completed.paidAt,
               customerEmail: completed.customerEmail ?? null,
@@ -71,6 +72,7 @@ export async function registerStripeWebhookRoutes(
             const outcome = await deps.failCheckout({
               eventId: asyncFailed.eventId,
               orderId: asyncFailed.orderId,
+              sessionId: asyncFailed.sessionId,
             });
             if (outcome === "duplicate") {
               return reply.status(200).send({ received: true, duplicate: true });
@@ -91,6 +93,7 @@ export async function registerStripeWebhookRoutes(
             const outcome = await deps.expireCheckout({
               eventId: expired.eventId,
               orderId: expired.orderId,
+              sessionId: expired.sessionId,
             });
             if (outcome === "duplicate") {
               return reply.status(200).send({ received: true, duplicate: true });

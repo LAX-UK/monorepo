@@ -5,13 +5,13 @@ import {
 } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
-import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { Button } from "@auction/ui/components/button";
 import { redirect } from "next/navigation";
 
-export const metadata = shopPrivatePageMetadata;
+export const metadata = shopPrivatePageTitle("Account");
 
 type ShopAccountPageProps = {
   searchParams: Promise<{ returnTo?: string; merged?: string; basketMerge?: string }>;
