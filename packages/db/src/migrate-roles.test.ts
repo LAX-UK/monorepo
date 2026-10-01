@@ -346,6 +346,11 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("grants public sequence usage to shop_app (sale authority grant revision)", async () => {
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(/\["auth_app", "api_app", "shop_app", "worker_app"\].*grantSequences/s);
+  });
+
   it("models the post-0160 Identity directory cutover", () => {
     expect([...API_READ_TABLES]).toContain("bid_identity_directory");
     expect([...WORKER_PRODUCT_PROFILE_TABLES]).toContain("bid_identity_directory");

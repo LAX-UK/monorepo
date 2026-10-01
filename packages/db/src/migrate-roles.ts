@@ -609,7 +609,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         if (restoreApiUserSelect) {
           await grantIfExists(client, "api_app", "user", "SELECT");
         }
-        for (const role of ["auth_app", "api_app", "worker_app"] as const) {
+        for (const role of ["auth_app", "api_app", "shop_app", "worker_app"] as const) {
           await grantSequences(client, role, "public");
         }
 
