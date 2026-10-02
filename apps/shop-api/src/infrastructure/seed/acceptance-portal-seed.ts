@@ -99,15 +99,6 @@ export async function seedAcceptancePortalFixtures(
     })
     .where(eq(shopEdition.id, ownedEdition.id));
 
-  await db
-    .update(shopEdition)
-    .set({
-      ownerPartyId,
-      listingStatus: "authorised",
-      custodyStatus: "with_owner",
-    })
-    .where(eq(shopEdition.id, authorityEdition.id));
-
   const [existingGrant] = await db
     .select({ id: shopSaleAuthorityGrant.id })
     .from(shopSaleAuthorityGrant)
@@ -120,12 +111,26 @@ export async function seedAcceptancePortalFixtures(
     .limit(1);
 
   if (!existingGrant) {
+    await db
+      .update(shopEdition)
+      .set({
+        ownerPartyId,
+        listingStatus: "not_authorised",
+        custodyStatus: "unprinted",
+      })
+      .where(eq(shopEdition.id, authorityEdition.id));
+
     await grantSaleAuthority({
       artworkId,
       ownerPartyId,
-      authorisedCount: 2,
+      authorisedCount: 1,
       recordedBySubjectId: SEED_OPERATOR,
       evidenceNote: "Shop acceptance portal seed",
     });
+  } else {
+    await db
+      .update(shopEdition)
+      .set({ ownerPartyId })
+      .where(eq(shopEdition.id, authorityEdition.id));
   }
 }
