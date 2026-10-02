@@ -24,7 +24,9 @@ test.describe("Shop theme audit @a11y", () => {
         await applyShopThemeForE2e(page, theme);
         const res = await page.goto(route);
         expect(res?.ok()).toBeTruthy();
-        await expect(page.locator("#main-content")).toBeVisible();
+        const mainContent = page.locator("#main-content");
+        await expect(mainContent).toHaveCount(1);
+        await expect(mainContent).toBeVisible();
 
         const axe = await new AxeBuilder({ page })
           .include("#main-content")

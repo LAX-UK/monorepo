@@ -5,6 +5,7 @@ import {
 } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
+import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
@@ -84,7 +85,7 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
     redirect(q.size > 0 ? `/account/post-sign-in?${q.toString()}` : "/account/post-sign-in");
   }
 
-  const portalOwnershipEnabled = process.env.SHOP_PORTAL_OWNERSHIP_ENABLED === "true";
+  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
 
   return (
     <ShopAccountShell
