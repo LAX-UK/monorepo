@@ -17,6 +17,9 @@ export const SHOP_SEED_IMPORT_KEYS = {
 /** Slug with sellable print editions after foundation seed (not depleted). */
 export const SHOP_SEED_BUYER_FIXTURE_SLUG = "harbor-print";
 
+/** Dedicated Stripe checkout acceptance fixture (reset between staging runs). */
+export const SHOP_SEED_STRIPE_CHECKOUT_SLUG = "acceptance-stripe-print";
+
 async function depleteEditionStockForSlug(db: Database, slug: string): Promise<void> {
   const artwork = await db
     .select({ id: shopArtwork.id })
@@ -131,6 +134,21 @@ export async function seedShopFoundationCatalogue(
     printPricePence: 8_500,
   });
   await importArtwork({
+    importKey: "seed:shop:foundation:stripe-checkout-artwork",
+    slug: SHOP_SEED_STRIPE_CHECKOUT_SLUG,
+    title: "Acceptance Stripe Print",
+    description: "Isolated print stock for staging Stripe checkout acceptance.",
+    primaryImageUrl: "/shop/home/artwork-warm-basket.webp",
+    dimensions: "50 × 40 cm",
+    yearCreated: 2018,
+    saleState: "for_sale",
+    artistSlug: "foundation-artist",
+    artistDisplayName: "Flora Powers",
+    artistDiscipline: "Contemporary painter",
+    eligibleForEditionAllocation: true,
+    printPricePence: 4_200,
+  });
+  await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.secondEligible,
     slug: "reed-study",
     title: "Reed Study",
@@ -146,7 +164,12 @@ export async function seedShopFoundationCatalogue(
     printPricePence: 9_500,
   });
   if (db && grantSaleAuthority) {
-    for (const slug of ["vessel-study", SHOP_SEED_BUYER_FIXTURE_SLUG, "reed-study"]) {
+    for (const slug of [
+      "vessel-study",
+      SHOP_SEED_BUYER_FIXTURE_SLUG,
+      SHOP_SEED_STRIPE_CHECKOUT_SLUG,
+      "reed-study",
+    ]) {
       const row = await db
         .select({ id: shopArtwork.id })
         .from(shopArtwork)

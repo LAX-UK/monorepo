@@ -143,6 +143,12 @@ jobs:
           test -n "$database_url_shop"
           echo "::add-mask::$database_url_shop"
           echo "DATABASE_URL_SHOP=$database_url_shop" >> "$GITHUB_ENV"
+          database_url_owner="$(
+            terraform -chdir=.infra-config/terraform/ephemeral/test output -raw postgres_owner_uri
+          )"
+          test -n "$database_url_owner"
+          echo "::add-mask::$database_url_owner"
+          echo "DATABASE_URL_OWNER=$database_url_owner" >> "$GITHUB_ENV"
           database_ca_cert="$(
             terraform -chdir=.infra-config/terraform/ephemeral/test \
               output -raw database_ca_certificate
@@ -159,6 +165,18 @@ jobs:
           echo "::warning::Catalogue seed may mark reed-study editions sold; use only on disposable staging data."
           pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api seed:catalogue
+      - name: Seed acceptance portal fixtures (opt-in)
+        if: inputs.seed_catalogue
+        env:
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+        run: |
+          set -euo pipefail
+          subject="$(node scripts/ci/resolve-shop-acceptance-portal-subject.mjs)"
+          test -n "$subject"
+          echo "SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID=$subject" >> "$GITHUB_ENV"
+          SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID="$subject" pnpm --filter @auction/shop-api seed:acceptance-portal
+          pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Install pinned Chromium
         run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
       - name: Require acceptance credentials for portal smoke
@@ -178,10 +196,22 @@ jobs:
             e2e/theme-audit.spec.ts \
             e2e/shop-viewport-audit.spec.ts \
             e2e/home.spec.ts --grep "visible without JavaScript|theme"
+      - name: Shop browser tier 1 (auth contracts)
+        env:
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+        run: |
+          pnpm --filter @auction/shop exec playwright test \
+            e2e/first-login.spec.ts \
+            e2e/hosted-auth.spec.ts \
+            --project=chromium-desktop
       - name: Shop V1 phase 1 portal smoke
         env:
           SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
-          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE }}
+          SHOP_ACCEPTANCE_PORTAL_SEEDED: ${{ inputs.seed_catalogue && 'true' || '' }}
+          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE || 'Vessel Study' }}
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
       - name: Phase flags (manual enable on staging)
         run: |
@@ -190,13 +220,48 @@ jobs:
           echo "docs/runbooks/shop-v1-phase-gates.md before running phase 2+ acceptance."
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
+        env:
+          SHOP_STAGING_ACCEPTANCE_STRICT: "1"
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: |
+          set -euo pipefail
           pnpm --filter @auction/shop exec playwright test \
             e2e/home-catalogue.spec.ts \
             e2e/artwork-detail.spec.ts \
             e2e/catalogue-routes.spec.ts \
+            e2e/artworks-filters.spec.ts \
+            e2e/shop-basket-guest.spec.ts \
             e2e/buyer-flow.spec.ts \
-            e2e/unavailable-notify-me.spec.ts
+            e2e/unavailable-notify-me.spec.ts \
+            --project=chromium-desktop \
+            --grep-invert "complete Stripe test checkout"
+          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+      - name: Shop browser tier 2 mobile (a11y and catalogue)
+        if: inputs.seed_catalogue
+        env:
+          SHOP_STAGING_ACCEPTANCE_STRICT: "1"
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/shop exec playwright test \
+            e2e/home-catalogue.spec.ts \
+            e2e/artwork-detail.spec.ts \
+            --project=chromium-mobile
+          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+      - name: Shop Stripe test checkout (staging)
+        if: inputs.seed_catalogue
+        env:
+          SHOP_STAGING_ACCEPTANCE_STRICT: "1"
+          SHOP_E2E_STRIPE_CHECKOUT: "1"
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/shop-api seed:acceptance-commerce
+          pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
+            --project=chromium-desktop \
+            --grep "signed-in buyer can complete Stripe test checkout"
+          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Retain Shop acceptance evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

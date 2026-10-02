@@ -34,6 +34,7 @@ import {
 import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop-readiness.adapter.js";
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
+import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
 import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
@@ -65,6 +66,7 @@ export type ShopApiContainer = {
   app: ShopApiAppDeps;
   importArtwork: ReturnType<typeof createImportArtworkHandler>;
   seedCatalogue(): Promise<void>;
+  seedAcceptancePortal(identitySubjectId: string, displayName?: string): Promise<void>;
   close(): Promise<void>;
 };
 
@@ -148,6 +150,16 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         saleAuthorityWriter.grantSaleAuthority(command),
       );
       await seedShopStorefrontCuration(db, createDrizzleStorefrontCurationWriter);
+    },
+    async seedAcceptancePortal(identitySubjectId: string, displayName?: string): Promise<void> {
+      await seedAcceptancePortalFixtures(
+        db,
+        (command) => saleAuthorityWriter.grantSaleAuthority(command),
+        {
+          identitySubjectId,
+          ...(displayName ? { displayName } : {}),
+        },
+      );
     },
     close: () => closeDb(db),
   };
