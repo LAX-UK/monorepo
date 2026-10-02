@@ -237,6 +237,17 @@ jobs:
             --project=chromium-desktop \
             --grep-invert "complete Stripe test checkout"
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+      - name: Shop browser tier 2 mobile (a11y and catalogue)
+        if: inputs.seed_catalogue
+        env:
+          SHOP_STAGING_ACCEPTANCE_STRICT: "1"
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/shop exec playwright test \
+            e2e/home-catalogue.spec.ts \
+            e2e/artwork-detail.spec.ts \
+            --project=chromium-mobile
+          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Shop Stripe test checkout (staging)
         if: inputs.seed_catalogue
         env:

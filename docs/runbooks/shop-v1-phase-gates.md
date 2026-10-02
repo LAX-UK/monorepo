@@ -147,7 +147,7 @@ Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINA
 
 ## CI
 
-- Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml) (foundation browser tiers; optional `seed:catalogue` with explicit sale-authority grants). Requires acceptance credentials; runs `e2e/shop-v1-phase1.spec.ts` with `SHOP_PORTAL_OWNERSHIP_ENABLED=true`.
+- Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml). Tier 1 on every deploy (`seed_catalogue=false`): health pin, auth contracts, portal smoke. Full Phase 1 matrix with `seed_catalogue=true`: catalogue seeds, portal/commerce fixtures, guest basket, filters, POA interest, desktop + mobile a11y, Stripe test checkout on `acceptance-stripe-print`, and strict Playwright skip audit. Phase 2–4 flags remain disabled and are out of scope for Phase 1 sign-off.
 - PR Postgres smoke: [ci.yml](../../.github/workflows/ci.yml) job **`shop-v1-phase-smoke`** (shop-domain + migration contract tests, shop-api Postgres integration, shop build) when Shop-related paths change.
 - PR browser gates: [e2e-pr.yml](../../.github/workflows/e2e-pr.yml) (Shop buyer flow + phase 1 portal smoke with portal flag on shop-api and storefront).
 
@@ -156,5 +156,5 @@ Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINA
 1. Merge [auction-infra](https://github.com/LAX-UK/auction-infra) shop flag Terraform (maps `SHOP_*_ENABLED` and `SHOP_OPS_ALERT_EMAIL` on test `shop-api`).
 2. On the monorepo **test** environment, confirm repo variables: `AUTO_DEPLOY_SHOP_TEST=true`, `USE_PREBUILT_IMAGES_TEST=true`, `APP_DEPLOY_SOURCE_TEST=image`, `SHOP_PORTAL_OWNERSHIP_ENABLED=true` (Phase 2–4 shop flags stay `false` until their gates). Confirm secrets: `OPS_ALERT_EMAIL`, `IDENTITY_ACCEPTANCE_EMAIL`, `IDENTITY_ACCEPTANCE_PASSWORD`.
 3. Merge the Phase 1 monorepo PR; run **App deploy test** on that commit (immutable Shop path applies migrations **0182–0194** and rolls shop-api / shop / shop-identity). Or dispatch with `deploy_shop=true` when forcing a Shop cutover.
-4. Run **Shop staging acceptance** with the deployed 40-char `shop_sha` from `/health/ready`. Use `seed_catalogue=true` only on disposable staging data. Phase 1 portal smoke: `e2e/shop-v1-phase1.spec.ts` (signed-in `/account/editions`, `/account/sale-limits`, hub “My editions”).
-5. Do not declare Phase 1 ready on test until acceptance is green with zero failures/skips and release SHA matches.
+4. Run **Shop staging acceptance** twice consecutively with the same deployed 40-char `shop_sha` from `/health/ready` and `seed_catalogue=true` (disposable staging only). Retain workflow artifacts (Playwright HTML report + traces). Populated portal requires portal seed (`SHOP_ACCEPTANCE_PORTAL_SEEDED=true` in workflow when seeding).
+5. Do not declare Phase 1 ready on test until both acceptance runs are green with zero failures and zero unexpected skips, release SHA matches `/health/ready`, and Stripe confirmation + paid order are proven in the seeded run.
