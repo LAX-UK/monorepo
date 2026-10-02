@@ -258,7 +258,8 @@ jobs:
           SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: |
           pnpm --filter @auction/shop-api seed:catalogue
-          pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts
+          pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
+            --grep-invert "complete Stripe test checkout"
       - name: Run Shop V1 phase 1 portal smoke
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3020

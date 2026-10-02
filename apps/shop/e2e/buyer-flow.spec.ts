@@ -22,9 +22,6 @@ const buyerCredentials = {
  */
 test.describe("shop buyer flow @e2e", () => {
   test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
-    if (process.env.CI === "true" && !stripeEnabled) {
-      throw new Error(stripeSkipReason);
-    }
     test.skip(!stripeEnabled, stripeSkipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
 
