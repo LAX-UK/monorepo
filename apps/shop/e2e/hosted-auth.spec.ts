@@ -45,7 +45,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     await page.locator("#email").focus();
     await expect(page.locator("#email")).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Continue" })).toBeFocused();
+    await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeFocused();
     await expectNoBlockingAxe(page);
 
     await page.locator("#email").fill("buyer@example.com");
