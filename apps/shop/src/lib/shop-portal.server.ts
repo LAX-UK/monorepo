@@ -1,6 +1,10 @@
+import { shopApiServerUrl } from "@/lib/shop-api.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
 import type { ShopPortalFetchResult } from "@/lib/shop-fetch-result";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { cache } from "react";
+
+const PORTAL_OWNERSHIP_PROBE_TIMEOUT_MS = 2500;
 
 export type PortalEditionItem = {
   editionId: string;
@@ -36,6 +40,31 @@ function isPortalOwnershipDisabled(_response: Response, body: unknown): boolean 
   const code = readUpstreamErrorCode(body);
   return code === SHOP_API_ERROR_CODES.FEATURE_DISABLED;
 }
+
+/** Storefront hub links follow shop-api when the storefront env flag is unset. */
+export const resolveShopPortalOwnershipEnabled = cache(async (): Promise<boolean> => {
+  const envFlag = process.env.SHOP_PORTAL_OWNERSHIP_ENABLED?.trim();
+  if (envFlag === "true") return true;
+  if (envFlag === "false") return false;
+
+  try {
+    const response = await fetch(shopApiServerUrl("/v1/me/editions"), {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(PORTAL_OWNERSHIP_PROBE_TIMEOUT_MS),
+    });
+    if (response.status === 401) return true;
+    if (response.status === 404) {
+      const body = await response.json().catch(() => null);
+      if (readUpstreamErrorCode(body) === SHOP_API_ERROR_CODES.FEATURE_DISABLED) {
+        return false;
+      }
+    }
+  } catch {
+    // Conservative default when shop-api is unreachable.
+  }
+  return false;
+});
 
 function parsePortalEditionItems(body: unknown): PortalEditionItem[] | null {
   if (!body || typeof body !== "object" || !("items" in body)) return null;
