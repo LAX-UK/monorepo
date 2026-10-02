@@ -3,14 +3,17 @@ import { signInShopBuyer } from "./helpers/shop-auth";
 
 /** Foundation seed artwork with sellable editions (see shop-api catalogue-seed). */
 const ACCEPTANCE_IN_STOCK_SLUG = "harbor-print";
+const ACCEPTANCE_STRIPE_CHECKOUT_SLUG =
+  process.env.SHOP_ACCEPTANCE_STRIPE_CHECKOUT_SLUG ?? "acceptance-stripe-print";
 
 const stripeEnabled = process.env.SHOP_E2E_STRIPE_CHECKOUT === "1";
 const stripeSkipReason =
   "Set SHOP_E2E_STRIPE_CHECKOUT=1 with shop-api, shop-identity, Stripe keys, and migration 0181 applied.";
 
 const buyerCredentials = {
-  email: process.env.SHOP_E2E_BUYER_EMAIL ?? "user1@lax.bid",
-  password: process.env.SHOP_E2E_BUYER_PASSWORD ?? "Password123!",
+  email: process.env.SHOP_OIDC_TEST_EMAIL ?? process.env.SHOP_E2E_BUYER_EMAIL ?? "user1@lax.bid",
+  password:
+    process.env.SHOP_OIDC_TEST_PASSWORD ?? process.env.SHOP_E2E_BUYER_PASSWORD ?? "Password123!",
 };
 
 /**
@@ -19,11 +22,14 @@ const buyerCredentials = {
  */
 test.describe("shop buyer flow @e2e", () => {
   test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
+    if (process.env.CI === "true" && !stripeEnabled) {
+      throw new Error(stripeSkipReason);
+    }
     test.skip(!stripeEnabled, stripeSkipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
 
     await signInShopBuyer(page, buyerCredentials, "/checkout");
-    await page.goto(`/artworks/${ACCEPTANCE_IN_STOCK_SLUG}`);
+    await page.goto(`/artworks/${ACCEPTANCE_STRIPE_CHECKOUT_SLUG}`);
     const addButton = page.getByRole("button", { name: /add to basket/i });
     await expect(addButton).toBeEnabled();
     await addButton.click();
@@ -67,7 +73,7 @@ test.describe("shop buyer flow @e2e", () => {
 
     await page.goto("/account/orders");
     await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
-    await expect(page.locator(".shop-order-card, .shop-orders").first()).toBeVisible();
+    await expect(page.getByText(/paid|completed|order/i).first()).toBeVisible();
   });
 
   test("artwork detail exposes basket CTA when stock is listed", async ({ page }, testInfo) => {

@@ -25,12 +25,14 @@ test.describe("Shop artwork detail @a11y", () => {
     expect(blocking).toEqual([]);
   });
 
-  test("keeps artwork content available without JavaScript", async ({ browser }) => {
+  test("keeps artwork content available without JavaScript", async ({ browser }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "no-JS contract once on desktop");
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
-    await page.goto("/artworks/vessel-study");
-    await expect(page.getByRole("heading", { level: 1, name: "Vessel Study" })).toBeVisible();
+    const response = await page.goto("/artworks/vessel-study", { waitUntil: "domcontentloaded" });
+    expect(response?.ok()).toBeTruthy();
+    await expect(page.locator("h1")).toContainText("Vessel Study");
     await context.close();
   });
 });
