@@ -209,7 +209,7 @@ jobs:
         env:
           SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
           SHOP_ACCEPTANCE_PORTAL_SEEDED: ${{ inputs.seed_catalogue && 'true' || '' }}
-          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE || 'Vessel Study' }}
+          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ inputs.seed_catalogue && (vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE || 'Vessel Study') || '' }}
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts

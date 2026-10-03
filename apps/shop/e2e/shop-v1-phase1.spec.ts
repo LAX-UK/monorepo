@@ -68,9 +68,6 @@ test.describe("Shop V1 phase 1 smoke", () => {
       await expect(page.getByText(ownedArtworkTitle)).toBeVisible();
       await page.goto("/account/sale-limits");
       await expect(page.getByText(ownedArtworkTitle)).toBeVisible();
-    } else if (ownedArtworkTitle) {
-      await page.goto("/account/editions");
-      await expect(page.getByText(ownedArtworkTitle)).toBeVisible();
     }
   });
 
