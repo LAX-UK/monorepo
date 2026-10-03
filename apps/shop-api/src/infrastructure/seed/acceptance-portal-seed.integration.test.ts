@@ -1,4 +1,9 @@
-import { shopArtwork, shopEdition, shopSaleAuthorityGrant } from "@auction/db/schema";
+import {
+  shopArtwork,
+  shopArtworkInterest,
+  shopEdition,
+  shopSaleAuthorityGrant,
+} from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,7 +14,11 @@ import {
 } from "../../test-support/shop-integration-setup.js";
 import { createDrizzleArtworkImportRepository } from "../drizzle-artwork-import.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "../drizzle-sale-authority.writer.js";
-import { resetAcceptanceStripeCheckoutFixture } from "./acceptance-commerce-seed.js";
+import {
+  SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG,
+  resetAcceptanceEnquiryInterestFixture,
+  resetAcceptanceStripeCheckoutFixture,
+} from "./acceptance-commerce-seed.js";
 import {
   SHOP_ACCEPTANCE_OWNED_ARTWORK_SLUG,
   seedAcceptancePortalFixtures,
@@ -68,5 +77,41 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance portal seed", () => {
       .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
       .where(eq(shopArtwork.slug, SHOP_SEED_STRIPE_CHECKOUT_SLUG));
     expect(stripeEditions.every((row) => row.listingStatus === "authorised")).toBe(true);
+  });
+
+  it("resets acceptance enquiry interest for string-study idempotently", async () => {
+    const db = createShopDb(shopPool);
+    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
+    await seedShopFoundationCatalogue(
+      importWriter.importArtwork.bind(importWriter),
+      db,
+      authorityWriter.grantSaleAuthority.bind(authorityWriter),
+    );
+
+    const artworkRows = await db
+      .select({ id: shopArtwork.id })
+      .from(shopArtwork)
+      .where(eq(shopArtwork.slug, SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG))
+      .limit(1);
+    const artworkId = artworkRows[0]?.id;
+    if (!artworkId) {
+      throw new Error("string-study missing after catalogue seed");
+    }
+
+    await db.insert(shopArtworkInterest).values({
+      artworkId,
+      identitySubjectId: subjectId,
+      intent: "enquiry",
+    });
+
+    await resetAcceptanceEnquiryInterestFixture(db, subjectId);
+    await resetAcceptanceEnquiryInterestFixture(db, subjectId);
+
+    const remaining = await db
+      .select({ id: shopArtworkInterest.id })
+      .from(shopArtworkInterest)
+      .where(eq(shopArtworkInterest.identitySubjectId, subjectId));
+    expect(remaining).toHaveLength(0);
   });
 });
