@@ -71,6 +71,8 @@ test.describe("Shop guest basket @e2e", () => {
     const addButton = page.getByRole("button", { name: /add to basket/i });
     await expect(addButton).toBeEnabled();
     await addButton.click();
+    await expect(page.getByRole("link", { name: /view basket/i })).toBeVisible({ timeout: 15_000 });
+
     await page.goto("/basket");
     await expect(page.locator(".shop-basket__line").first()).toBeVisible();
 

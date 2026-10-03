@@ -47,6 +47,7 @@
   --color-live-red: #e83030;
   --color-success: #2ea043;
   --color-success-container: oklch(0.94 0.06 145);
+  --color-on-success-container: #0b3d1a;
   --color-info: #3a70e2;
   --color-info-container: #e4f2ff;
   --color-warning: oklch(0.48 0.14 55);
@@ -210,6 +211,7 @@ html.dark {
   --color-live-red: #ff6b6b;
   --color-success: #56d364;
   --color-success-container: oklch(0.28 0.06 145);
+  --color-on-success-container: #c8efd4;
   --color-accent-blue: #2b7fff;
   --color-info: color-mix(in srgb, var(--color-accent-blue) 72%, white);
   --color-info-container: color-mix(

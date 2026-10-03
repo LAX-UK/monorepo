@@ -48,7 +48,7 @@ export const LOT_AUCTION_TYPE_TAG_VARIANT: Record<LotAuctionTypeTagKey, LotAucti
       glyph: "lock",
     },
     buy_it_now: {
-      shell: iconShell("bg-success-container", "text-success"),
+      shell: iconShell("bg-success-container", "text-on-success-container"),
       iconColor: "text-success",
       iconBg: "bg-success",
       glyph: "tag",
