@@ -29,10 +29,12 @@ async function expectNoBlockingAxe(page: Page): Promise<void> {
   expect(blocking).toEqual([]);
 }
 
+const magicLinkEnabled = process.env.SHOP_E2E_MAGIC_LINK === "1";
+const magicLinkSkipReason =
+  "Set SHOP_E2E_MAGIC_LINK=1 when test-auth allows magic-link sends from CI (no captcha block).";
+
 test.describe("Shop hosted authentication @a11y", () => {
-  test("email, credentials, and magic-link-sent steps are keyboard operable and axe-clean", async ({
-    page,
-  }) => {
+  test("email and credentials steps are keyboard operable and axe-clean", async ({ page }) => {
     test.skip(!enabled, skipReason);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openHostedLogin(page);
@@ -54,9 +56,21 @@ test.describe("Shop hosted authentication @a11y", () => {
     await expect(page.locator('[data-login-step="credentials"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Authorize LAX Shop Web" })).toHaveCount(0);
     await expectNoBlockingAxe(page);
+  });
+
+  test("magic-link-sent step is keyboard operable and axe-clean", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(!magicLinkEnabled, magicLinkSkipReason);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openHostedLogin(page);
+    await page.locator("#email").fill("buyer@example.com");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(page.locator('[data-login-step="credentials"]')).toBeVisible();
 
     await page.getByRole("button", { name: "Email me a sign-in link instead" }).click();
-    await expect(page.locator('[data-login-step="magic-link-sent"]')).toBeVisible();
+    await expect(page.locator('[data-login-step="magic-link-sent"]')).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(
       page.getByRole("button", { name: /Resend sign-in link|Wait 30s to resend/ }),
     ).toBeVisible();
