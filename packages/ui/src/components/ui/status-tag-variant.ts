@@ -39,8 +39,8 @@ function iconShell(bg: string, text: string): string {
 }
 
 const SUCCESS_VARIANT: StatusTagVariant = {
-  shell: iconShell("bg-success-container", "text-success"),
-  iconColor: "text-success",
+  shell: iconShell("bg-success-container", "text-on-success-container"),
+  iconColor: "text-on-success-container",
   iconBg: "bg-success",
   glyph: "check",
   useIcon: true,
