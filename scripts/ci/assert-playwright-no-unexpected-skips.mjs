@@ -14,6 +14,8 @@ const allowedReasonPatterns = [
   /^authenticated journey on desktop only$/,
   /^desktop basket controls only$/,
   /^no-JS contract once on desktop$/,
+  /^Set SHOP_E2E_MAGIC_LINK=1/,
+  /^harbor-print has a single sellable edition in this environment$/,
 ];
 
 /** @typedef {{ status?: string, title?: string, results?: Suite[] }} Suite */
