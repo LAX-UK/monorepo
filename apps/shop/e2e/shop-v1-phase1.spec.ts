@@ -65,9 +65,13 @@ test.describe("Shop V1 phase 1 smoke", () => {
         throw new Error("SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE is required when portal seed ran");
       }
       await page.goto("/account/editions");
-      await expect(page.getByText(ownedArtworkTitle)).toBeVisible();
+      await expect(
+        page.locator("#main-content").getByText(ownedArtworkTitle).first(),
+      ).toBeVisible();
       await page.goto("/account/sale-limits");
-      await expect(page.getByText(ownedArtworkTitle)).toBeVisible();
+      await expect(
+        page.locator("#main-content").getByText(ownedArtworkTitle).first(),
+      ).toBeVisible();
     }
   });
 
