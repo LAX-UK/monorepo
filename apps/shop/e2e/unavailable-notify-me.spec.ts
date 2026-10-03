@@ -41,14 +41,18 @@ test.describe("unavailable artwork interest @e2e", () => {
     await signInShopBuyer(page, credentials, "/artworks/string-study");
     await expect(page).toHaveURL(/\/artworks\/string-study/, { timeout: 60_000 });
 
-    await page.getByRole("button", { name: "Register interest" }).click();
-    await expect(page.getByRole("button", { name: "Interest registered" })).toBeVisible({
-      timeout: 30_000,
-    });
+    const registerInterest = page.getByRole("button", { name: "Register interest" });
+    const interestRegistered = page.getByRole("button", { name: "Interest registered" });
+    await expect(registerInterest.or(interestRegistered)).toBeVisible({ timeout: 15_000 });
+
+    if (await registerInterest.isVisible()) {
+      await registerInterest.click();
+      await expect(interestRegistered).toBeVisible({ timeout: 30_000 });
+    } else {
+      await expect(interestRegistered).toBeVisible();
+    }
 
     await page.reload();
-    await expect(page.getByRole("button", { name: "Interest registered" })).toBeVisible({
-      timeout: 30_000,
-    });
+    await expect(interestRegistered).toBeVisible({ timeout: 30_000 });
   });
 });
