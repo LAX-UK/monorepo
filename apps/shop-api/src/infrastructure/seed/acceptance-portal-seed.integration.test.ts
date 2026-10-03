@@ -82,10 +82,11 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance portal seed", () => {
   it("resets acceptance enquiry interest for string-study idempotently", async () => {
     const db = createShopDb(shopPool);
     const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     await seedShopFoundationCatalogue(
       importWriter.importArtwork.bind(importWriter),
       db,
-      async () => ({ grantedCount: 0, authorisedEditionIds: [] }),
+      authorityWriter.grantSaleAuthority.bind(authorityWriter),
     );
 
     const artworkRows = await db
