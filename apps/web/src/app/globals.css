@@ -117,6 +117,7 @@
   --color-on-danger: oklch(0.98 0.01 25);
   --color-danger-container: oklch(0.94 0.04 25);
   --color-success-container: oklch(0.94 0.06 145);
+  --color-on-success-container: #0b3d1a;
   --color-positive: oklch(0.55 0.14 145);
   --color-on-positive: oklch(0.98 0.01 145);
   --color-negative: oklch(0.55 0.2 25);

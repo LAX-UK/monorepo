@@ -24,7 +24,7 @@ describe("DotStatusPill", () => {
     const { container: sold } = render(<DotStatusPill label="Sold" tone="sold" />);
     const soldShell = sold.firstChild as HTMLElement;
     expect(soldShell.className).toMatch(/bg-success-container/);
-    expect(soldShell.className).toMatch(/text-success/);
+    expect(soldShell.className).toMatch(/text-on-success-container/);
     expect(soldShell.querySelector("svg.lucide-check")).not.toBeNull();
 
     const { container: live } = render(<DotStatusPill label="Live" tone="live" />);
