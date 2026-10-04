@@ -14,7 +14,8 @@
     "seed:acceptance-portal": "tsx src/scripts/seed-acceptance-portal.ts",
     "seed:acceptance-commerce": "tsx src/scripts/seed-acceptance-commerce.ts",
     "staff:grant": "tsx src/scripts/staff-grant.ts",
-    "sale-authority": "tsx src/scripts/sale-authority.ts"
+    "sale-authority": "tsx src/scripts/sale-authority.ts",
+    "shop-ops": "tsx src/scripts/shop-ops.ts"
   },
   "dependencies": {
     "@auction/db": "workspace:*",

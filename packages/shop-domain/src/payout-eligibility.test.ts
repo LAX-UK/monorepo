@@ -11,7 +11,7 @@ describe("evaluatePayoutEligibility", () => {
         blockedReason: null,
         cancellationPeriodEndsAt: new Date("2026-09-01T00:00:00.000Z"),
         fundsAvailableAt: new Date("2026-09-15T00:00:00.000Z"),
-        payeeComplianceBlocked: false,
+        payeeCompliance: "verified",
         now,
       }),
     ).toEqual({ eligible: true, nextStatus: "due" });
@@ -24,7 +24,7 @@ describe("evaluatePayoutEligibility", () => {
         blockedReason: null,
         cancellationPeriodEndsAt: new Date("2026-11-01T00:00:00.000Z"),
         fundsAvailableAt: null,
-        payeeComplianceBlocked: false,
+        payeeCompliance: "verified",
         now,
       }),
     ).toEqual({ eligible: false, reason: "cancellation_period_open" });

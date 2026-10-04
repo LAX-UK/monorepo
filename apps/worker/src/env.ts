@@ -86,6 +86,9 @@ const envSchema = z
     SHOP_ZOHO_CATALOGUE_SYNC_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
+    SHOP_ZOHO_FINANCIALS_ENABLED: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
     ZOHO_CRM_LEAD_CONVERSION_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

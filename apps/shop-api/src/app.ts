@@ -8,7 +8,7 @@ import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client
 import type { ShopApiAppDeps } from "./container.js";
 import { registerPublicCatalogueCaching } from "./plugins/cache-control.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
-import { registerShopAdminAuthPlugin } from "./plugins/shop-admin-auth.js";
+import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
@@ -62,13 +62,6 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
 
   registerErrorHandler(app);
   registerShopAuthPlugin(app, options.deps.auth);
-  if (options.deps.env.SHOP_ADMIN_ENABLED) {
-    registerShopAdminAuthPlugin(app, {
-      jwksUrl: options.deps.auth.jwksUrl,
-      issuer: options.deps.auth.issuer,
-      staffReader: options.deps.staffReader,
-    });
-  }
   void app.register(etag);
   void app.register(rateLimit, {
     max: 120,
@@ -119,20 +112,30 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerArtistRoutes(app, options.deps.catalogue);
 
   if (options.deps.env.SHOP_ADMIN_ENABLED) {
-    void registerAdminHealthRoutes(app, options.deps.admin.health);
-    void registerAdminArtworkRoutes(app, options.deps.admin);
-    if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
-      void registerAdminOperationsRoutes(app, options.deps.admin);
-    }
-    if (options.deps.env.SHOP_THIRD_PARTY_ENABLED) {
-      void registerAdminThirdPartyRoutes(app, options.deps.admin);
-    }
-    if (options.deps.env.SHOP_ORIGINALS_ENABLED) {
-      void registerAdminOriginalSaleRoutes(app, options.deps.admin);
-    }
-    if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
-      void registerAdminMerchandiseRoutes(app);
-    }
+    void registerShopAdminScope(
+      app,
+      {
+        jwksUrl: options.deps.auth.jwksUrl,
+        issuer: options.deps.auth.issuer,
+        staffReader: options.deps.staffReader,
+      },
+      async (adminScope) => {
+        await registerAdminHealthRoutes(adminScope, options.deps.admin.health);
+        void registerAdminArtworkRoutes(adminScope, options.deps.admin);
+        if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
+          void registerAdminOperationsRoutes(adminScope, options.deps.admin);
+        }
+        if (options.deps.env.SHOP_THIRD_PARTY_ENABLED) {
+          void registerAdminThirdPartyRoutes(adminScope, options.deps.admin);
+        }
+        if (options.deps.env.SHOP_ORIGINALS_ENABLED) {
+          void registerAdminOriginalSaleRoutes(adminScope, options.deps.admin);
+        }
+        if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
+          void registerAdminMerchandiseRoutes(adminScope);
+        }
+      },
+    );
   }
   if (options.deps.env.SHOP_PORTAL_OWNERSHIP_ENABLED) {
     void registerPortalMeRoutes(app, {

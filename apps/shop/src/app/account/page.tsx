@@ -7,6 +7,7 @@ import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
+import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { Button } from "@auction/ui/components/button";
@@ -86,6 +87,7 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
   }
 
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const payoutsEnabled = isShopPayoutsEnabled();
 
   return (
     <ShopAccountShell
@@ -111,6 +113,12 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
             label="Sale limits"
             variant="outline"
           />
+        </>
+      ) : null}
+      {payoutsEnabled ? (
+        <>
+          <ShopAccountLinkButton href="/account/payouts" label="Payouts" variant="outline" />
+          <ShopAccountLinkButton href="/account/documents" label="Documents" variant="outline" />
         </>
       ) : null}
       <form action={shopIdentityUrl("/logout")} method="post" className="pt-2">

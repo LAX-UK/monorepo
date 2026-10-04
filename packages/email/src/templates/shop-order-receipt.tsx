@@ -7,6 +7,7 @@ export const subject = "Your LAX Shop order confirmation";
 
 export default function ShopOrderReceiptEmail({
   totalAmount,
+  vatAmount,
   orderUrl,
   lineSummary,
 }: TemplateVarsByName["shop-order-receipt"]) {
@@ -17,7 +18,9 @@ export default function ShopOrderReceiptEmail({
       preview={`Thank you for your order (${totalAmount}).`}
       title="Thank you for your order"
     >
-      <TextBlock>We received your payment of {totalAmount}.</TextBlock>
+      <TextBlock>
+        We received your payment of {totalAmount} (including {vatAmount} VAT).
+      </TextBlock>
       <TextBlock>{lineSummary}</TextBlock>
       <Button href={orderUrl}>View your order</Button>
     </Layout>

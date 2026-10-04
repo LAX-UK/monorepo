@@ -210,7 +210,10 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
     },
 
     async listPayouts(identitySubjectId: string) {
-      const ownerPartyId = await resolveOwnerPartyId(db, identitySubjectId);
+      const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
+      if (!ownerPartyId) {
+        return [];
+      }
       const rows = await db
         .select({
           payoutId: shopPayoutLedger.id,
@@ -236,7 +239,10 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
     },
 
     async listDocuments(identitySubjectId: string) {
-      const ownerPartyId = await resolveOwnerPartyId(db, identitySubjectId);
+      const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
+      if (!ownerPartyId) {
+        return [];
+      }
       const rows = await db
         .select({
           documentId: shopDocument.id,

@@ -109,7 +109,7 @@ jobs:
         run: pnpm lint:deps
 
       - name: Package layer direction
-        run: node scripts/check-layers.mjs
+        run: node scripts/check-layers.mjs && node scripts/check-shop-api-layers.mjs
 
       - name: Shop architecture and asset budgets
         run: pnpm ci:shop-architecture
@@ -282,7 +282,8 @@ jobs:
         run: pnpm ci:identity-boundary
 
       - name: Test affected packages (excluding web and api)
-        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --summarize
+        # One package at a time: shared auction_ci Postgres (migrations, role grants, shop integration).
+        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --summarize --concurrency=1
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
@@ -479,6 +480,13 @@ jobs:
       DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       SHOP_APP_DB_PASSWORD: postgres
       SHOP_V1_INTEGRATION_REQUIRED: "true"
+      SHOP_ADMIN_ENABLED: "true"
+      SHOP_PAYOUTS_ENABLED: "true"
+      SHOP_THIRD_PARTY_ENABLED: "true"
+      SHOP_ORIGINALS_ENABLED: "true"
+      SHOP_MERCHANDISE_ENABLED: "true"
+      SHOP_CANCELLATION_DAYS_AFTER_POSSESSION: "14"
+      DOMAIN_EVENT_PUBLISH_VALIDATE: "enforce"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -504,6 +512,8 @@ jobs:
         run: pnpm --filter @auction/shop-api... build
       - name: Shop-api Postgres integration (no skips)
         run: node scripts/ci/run-shop-v1-postgres-integration.mjs
+      - name: Shop-api admin auth route tests (phase flags on)
+        run: pnpm --filter @auction/shop-api exec vitest run src/routes/admin --reporter=verbose
       - name: Shop package build (includes phase1 e2e spec)
         run: pnpm --filter @auction/shop... build
 

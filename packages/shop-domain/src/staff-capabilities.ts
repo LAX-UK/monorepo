@@ -14,6 +14,9 @@ export const SHOP_STAFF_CAPABILITIES = [
   "purchase_price.read_assigned",
   "settings.write",
   "audit.read",
+  "merchandise.read",
+  "merchandise.write",
+  "stock_hold.override",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -32,6 +35,7 @@ const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> =
     "sale_authority.write",
     "original_sale.write",
     "stock_hold.write",
+    "stock_hold.override",
     "client.read_all",
   ],
   broker: ["stock_hold.write", "client.read_assigned", "purchase_price.read_assigned"],

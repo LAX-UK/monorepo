@@ -11,7 +11,7 @@ secret key, Shop still requires its **own webhook endpoint** and signing secret 
 `whsec_…` per endpoint, not per account.
 
 Shop checkout metadata must remain Shop-scoped (`metadata.app = "shop"`). Bid Connect, transfers,
-refunds, and dispute webhooks stay on Bid endpoints only.
+refunds and disputes are recorded on the Shop webhook (with PI ownership filter); Connect transfers and payout execution stay on Bid endpoints.
 
 When moving to the dedicated Shop test account, rotate `STRIPE_SHOP_SECRET_KEY` and
 `STRIPE_SHOP_WEBHOOK_SECRET` in the GitHub `test` environment and re-apply ephemeral Terraform;
@@ -21,7 +21,7 @@ no Bid webhook URLs change.
 
 ### 1. Stripe Dashboard (test mode)
 
-1. Create a **restricted key** with **Checkout Sessions: Write** only (no Connect, transfers, refunds, disputes, or payouts). During the shared-account test phase, this may be the same restricted key Bid already uses; prefer a Shop-only restricted key when the Shop account exists.
+1. Create a **restricted key** with **Checkout Sessions: Write** and **Refunds: Write** (Phase 2+). Add **Disputes: Read** for chargeback handling. During the shared-account test phase, this may be the same restricted key Bid already uses; prefer a Shop-only restricted key when the Shop account exists.
 2. Create a webhook endpoint:
    - URL: `https://test-shop.lax.bid/webhooks/stripe`
    - Events:
@@ -29,6 +29,12 @@ no Bid webhook URLs change.
      - `checkout.session.async_payment_succeeded`
      - `checkout.session.async_payment_failed`
      - `checkout.session.expired`
+     - `charge.refunded`
+     - `refund.updated`
+     - `charge.dispute.created`
+     - `charge.dispute.updated`
+     - `charge.dispute.closed`
+3. **Shared Stripe account:** Shop ignores money events unless the PaymentIntent is owned by Shop (`metadata.app = "shop"` on the PI, or a matching `shop_order.stripe_payment_intent_id`). Bid-shaped events must return **200** without mutation.
 3. Copy `sk_test_…` and `whsec_…`. Do not change Bid’s existing webhook endpoints.
 
 ### 2. GitHub environment secrets (`test`)

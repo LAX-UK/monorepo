@@ -16,6 +16,9 @@ import type { ShopApiEnv } from "./env.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
+import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
+import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
+import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
 import {
   parseVerifiedCheckoutSessionAsyncPaymentFailed,
@@ -23,6 +26,7 @@ import {
   parseVerifiedCheckoutSessionExpired,
   parseVerifiedShopCheckoutCurrencyViolation,
 } from "./infrastructure/stripe-webhook-adapters.js";
+import { dispatchStripeWebhookEvent } from "./infrastructure/stripe-webhook-registry.js";
 import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
 
 export function createCommerceServices(
@@ -38,6 +42,7 @@ export function createCommerceServices(
   const repository = createDrizzleCommerceRepository(db, paymentGateway, {
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     domainEventMode,
+    vatPolicy: loadShopVatPolicy(env),
   });
 
   const notifications = createDrizzleShopNotificationPublisher();
@@ -48,6 +53,16 @@ export function createCommerceServices(
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     paymentGateway,
     domainEventMode,
+  });
+
+  const fetchPaymentIntentMetadata = createStripePaymentIntentMetadataFetcher({
+    secretKey: env.STRIPE_SECRET_KEY,
+  });
+  const moneyWebhook = createDrizzleStripeMoneyWebhookProcessor(db, {
+    domainEventMode,
+    notifications,
+    opsAlertEmail,
+    ...(fetchPaymentIntentMetadata ? { fetchPaymentIntentMetadata } : {}),
   });
 
   return {
@@ -78,6 +93,11 @@ export function createCommerceServices(
       expireCheckout: paymentEvents.expireCheckout,
       failCheckout: paymentEvents.failCheckout,
       recordCurrencyViolation: paymentEvents.recordCurrencyViolation,
+      dispatchWebhook: (event) =>
+        dispatchStripeWebhookEvent(event as Parameters<typeof dispatchStripeWebhookEvent>[0], {
+          checkout: paymentEvents,
+          money: moneyWebhook,
+        }),
     },
   };
 }

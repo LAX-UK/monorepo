@@ -1,7 +1,10 @@
+import { isShopMerchandiseEnabled } from "@/lib/shop-runtime-flags";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default function ShopMerchandisePage() {
-  if (process.env.SHOP_MERCHANDISE_ENABLED !== "true") {
+  if (!isShopMerchandiseEnabled()) {
     notFound();
   }
 

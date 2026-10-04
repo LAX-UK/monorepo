@@ -14,8 +14,12 @@ export default defineConfig({
     // Parallel forks (not threads): Radix popover/cmdk + jsdom can hang under pool:threads.
     ...(ci
       ? {
-          fileParallelism: true,
-          maxWorkers: 2,
+          // jsdom + Radix are heavy; one fork at a time in CI to reduce worker RPC timeouts.
+          // Do not use singleFork here — web tests call vi.unstubAllGlobals() and reuse jsdom.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+          fileParallelism: false,
+          maxWorkers: 1,
           teardownTimeout: 30_000,
           pool: "forks" as const,
         }

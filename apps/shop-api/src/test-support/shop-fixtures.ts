@@ -1,5 +1,13 @@
 import type { Database } from "@auction/db";
-import { shopBasket, shopEdition, shopOrder, shopOrderLine } from "@auction/db/schema";
+import {
+  shopBasket,
+  shopEdition,
+  shopOrder,
+  shopOrderLine,
+  shopParty,
+  shopStaffMember,
+} from "@auction/db/schema";
+import type { ShopStaffRole } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import { createDrizzleArtworkImportRepository } from "../infrastructure/drizzle-artwork-import.repository.js";
 import { completeShopCheckoutSession } from "../infrastructure/drizzle-payment-event.processor.js";
@@ -151,6 +159,40 @@ export async function completeFixtureOrderPayment(
     { domainEventMode: "off" },
   );
   return fixture.orderId;
+}
+
+export async function insertTestStaffMember(
+  db: Database,
+  input: { identitySubjectId: string; role: ShopStaffRole },
+) {
+  const [row] = await db
+    .insert(shopStaffMember)
+    .values({
+      identitySubjectId: input.identitySubjectId,
+      role: input.role,
+    })
+    .onConflictDoUpdate({
+      target: shopStaffMember.identitySubjectId,
+      set: { role: input.role, disabledAt: null },
+    })
+    .returning({ id: shopStaffMember.id });
+  return requireDefined(row?.id, "staff member id");
+}
+
+export async function insertTestOwnerParty(
+  db: Database,
+  input: { identitySubjectId: string; displayName?: string },
+) {
+  const suffix = integrationSuffix("party");
+  const [row] = await db
+    .insert(shopParty)
+    .values({
+      identitySubjectId: input.identitySubjectId,
+      displayName: input.displayName ?? `Test party ${suffix}`,
+      kind: "person",
+    })
+    .returning({ id: shopParty.id });
+  return requireDefined(row?.id, "party id");
 }
 
 export async function insertExpiredOpenBasket(

@@ -1,14 +1,17 @@
 import type { ImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
-import type { FulfilmentWriter } from "./application/ports/fulfilment.writer.js";
 import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
-import type { PayoutWriter } from "./application/ports/payout.writer.js";
-import type { ProductionWriter } from "./application/ports/production.writer.js";
-import type { RefundWriter } from "./application/ports/refund.writer.js";
 import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
 import type { SaleFeeWriter } from "./application/ports/sale-fee.writer.js";
 import type { ShopStaffMemberReader } from "./application/ports/staff-member.reader.js";
 import type { StockHoldWriter } from "./application/ports/stock-hold.writer.js";
 import type { ThirdPartySaleWriter } from "./application/ports/third-party-sale.writer.js";
+import type { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
+import type { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
+import type { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
+import type { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mark-payout-paid.handler.js";
+import type { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
+import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
+import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import type { HealthDeps } from "./routes/health.routes.js";
 
 export type AdminRoutesDeps = {
@@ -17,12 +20,15 @@ export type AdminRoutesDeps = {
   importArtwork: ImportArtworkHandler;
   grantSaleAuthority: SaleAuthorityWriter["grantSaleAuthority"];
   staffReader: ShopStaffMemberReader;
-  production: ProductionWriter;
-  fulfilment: FulfilmentWriter;
-  refunds: RefundWriter;
-  payouts: PayoutWriter;
+  createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
+  updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;
+  recordPossession: ReturnType<typeof createRecordPossessionHandler>;
+  cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
+  requestRefund: ReturnType<typeof createRequestRefundHandler>;
+  markPayoutPaid: ReturnType<typeof createMarkPayoutPaidHandler>;
   saleFees: SaleFeeWriter;
   stockHolds: StockHoldWriter;
+  createStockHold: ReturnType<typeof createCreateStockHoldHandler>;
   thirdPartySales: ThirdPartySaleWriter;
   originalSales: OriginalSaleWriter;
 };

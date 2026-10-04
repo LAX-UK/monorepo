@@ -61,6 +61,17 @@ export {
   type ShopStaffRole,
 } from "./staff-capabilities.js";
 export {
+  isPayeeComplianceEligible,
+  resolvePayeeComplianceStatus,
+  type PayeeComplianceStatus,
+} from "./payee-compliance-policy.js";
+export {
+  remainingRefundablePence,
+  sumRefundedOrPendingPence,
+  type RefundLineInput,
+} from "./refundable-balance.js";
+export { validatePossessionTimestamp, type PossessionBoundsResult } from "./possession-bounds.js";
+export {
   FULFILMENT_SURCHARGE_PENCE,
   SHOP_FULFILMENT_OPTIONS,
   fulfilmentSurchargePence,
@@ -98,3 +109,4 @@ export {
 } from "./fulfilment-state.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
+export { computeLineVat, type LineVatResult, type VatPolicy } from "./vat-policy.js";

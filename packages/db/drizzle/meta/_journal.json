@@ -1359,6 +1359,55 @@
       "when": 1792137600000,
       "tag": "0194_shop_phase1_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1792224000000,
+      "tag": "0195_shop_order_refunded_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1792310400000,
+      "tag": "0196_shop_payout_ledger_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1792396800000,
+      "tag": "0197_shop_refund_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 197,
+      "version": "7",
+      "when": 1792483200000,
+      "tag": "0198_shop_admin_command",
+      "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1792569600000,
+      "tag": "0199_shop_phase_uniqueness",
+      "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1792656000000,
+      "tag": "0200_shop_identity_merge_inbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1792742400000,
+      "tag": "0201_shop_admin_command_actor_scope",
+      "breakpoints": true
     }
   ]
 }

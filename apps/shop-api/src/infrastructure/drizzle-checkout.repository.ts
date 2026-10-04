@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { shopBasket, shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
+  type VatPolicy,
   computeMerchandiseSubtotal,
   computeOrderTotal,
   fulfilmentSurchargePence,
@@ -39,6 +40,7 @@ export function createDrizzleCheckoutRepository(
   options: {
     storefrontUrl: string;
     domainEventMode: "off" | "observe" | "enforce";
+    vatPolicy?: VatPolicy | null;
   },
 ): CheckoutWriter {
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
@@ -181,6 +183,7 @@ export function createDrizzleCheckoutRepository(
               orderId: order.id,
               reservedUntil,
               expandedLines,
+              vatPolicy: options.vatPolicy ?? null,
             },
             domainEvents,
           );

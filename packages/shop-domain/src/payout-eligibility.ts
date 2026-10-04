@@ -1,9 +1,16 @@
+export type PayeeComplianceEligibility =
+  | "verified"
+  | "not_required"
+  | "pending"
+  | "blocked"
+  | "missing";
+
 export type PayoutLedgerEligibilityInput = {
   status: "pending_refund_period" | "due" | "paid" | "cancelled";
   blockedReason: string | null;
   cancellationPeriodEndsAt: Date | null;
   fundsAvailableAt: Date | null;
-  payeeComplianceBlocked: boolean;
+  payeeCompliance: PayeeComplianceEligibility;
   now: Date;
 };
 
@@ -27,7 +34,11 @@ export function evaluatePayoutEligibility(
   if (input.blockedReason) {
     return { eligible: false, reason: "blocked" };
   }
-  if (input.payeeComplianceBlocked) {
+  if (
+    input.payeeCompliance === "blocked" ||
+    input.payeeCompliance === "pending" ||
+    input.payeeCompliance === "missing"
+  ) {
     return { eligible: false, reason: "payee_compliance" };
   }
   if (input.cancellationPeriodEndsAt !== null && input.now < input.cancellationPeriodEndsAt) {

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { StripeWebhookDeps } from "../../commerce-route-deps.js";
 import { ShopPaymentWebhookError } from "../../errors/shop-payment-webhook.error.js";
+
 function webhookFailureStatus(error: unknown): number {
   if (error instanceof ShopPaymentWebhookError) {
     return error.retryable ? 500 : 400;
@@ -42,95 +43,32 @@ export async function registerStripeWebhookRoutes(
           return reply.status(400).send("Invalid signature");
         }
 
-        const currencyViolation = deps.parseShopCheckoutCurrencyViolation?.(event);
-        if (currencyViolation) {
-          request.log.error(
-            { orderId: currencyViolation.orderId, currency: currencyViolation.currency },
-            "stripe checkout currency mismatch for shop order",
-          );
-          await deps.recordCurrencyViolation({
-            eventId: currencyViolation.eventId,
-            orderId: currencyViolation.orderId,
-            currency: currencyViolation.currency,
-            sessionId: currencyViolation.sessionId,
-          });
-          return reply.status(200).send({ received: true, currencyViolation: true });
-        }
-
-        const completed = deps.parseCheckoutSessionCompleted(event);
-        if (completed) {
-          try {
-            const outcome = await deps.completeCheckout({
-              eventId: completed.eventId,
-              orderId: completed.orderId,
-              sessionId: completed.sessionId,
-              amountTotalPence: completed.amountTotalPence,
-              paidAt: completed.paidAt,
-              customerEmail: completed.customerEmail ?? null,
-            });
-            if (outcome === "duplicate") {
+        try {
+          const result = await deps.dispatchWebhook(event);
+          if (result.kind === "checkout") {
+            if (result.outcome === "duplicate") {
               return reply.status(200).send({ received: true, duplicate: true });
             }
-            if (outcome === "terminal_acknowledged") {
-              request.log.error(
-                { orderId: completed.orderId },
-                "stripe paid webhook for terminal shop order; manual refund may be required",
-              );
+            if (result.outcome === "terminal_acknowledged") {
+              request.log.error("stripe paid webhook for terminal shop order");
               return reply.status(200).send({ received: true, terminal: true });
             }
             return reply.status(200).send({ received: true });
-          } catch (error) {
-            request.log.error(
-              { err: error, orderId: completed.orderId },
-              "stripe checkout completion failed",
-            );
-            return reply.status(webhookFailureStatus(error)).send("Processing failed");
           }
-        }
-
-        const asyncFailed = deps.parseCheckoutSessionAsyncPaymentFailed(event);
-        if (asyncFailed) {
-          try {
-            const outcome = await deps.failCheckout({
-              eventId: asyncFailed.eventId,
-              orderId: asyncFailed.orderId,
-              sessionId: asyncFailed.sessionId,
-            });
-            if (outcome === "duplicate") {
+          if (result.kind === "money") {
+            if (result.outcome === "duplicate") {
               return reply.status(200).send({ received: true, duplicate: true });
             }
-            return reply.status(200).send({ received: true });
-          } catch (error) {
-            request.log.error(
-              { err: error, orderId: asyncFailed.orderId },
-              "stripe checkout async payment failure failed",
-            );
-            return reply.status(webhookFailureStatus(error)).send("Processing failed");
-          }
-        }
-
-        const expired = deps.parseCheckoutSessionExpired(event);
-        if (expired) {
-          try {
-            const outcome = await deps.expireCheckout({
-              eventId: expired.eventId,
-              orderId: expired.orderId,
-              sessionId: expired.sessionId,
-            });
-            if (outcome === "duplicate") {
-              return reply.status(200).send({ received: true, duplicate: true });
+            if (result.outcome === "ignored") {
+              return reply.status(200).send({ received: true, ignored: true });
             }
             return reply.status(200).send({ received: true });
-          } catch (error) {
-            request.log.error(
-              { err: error, orderId: expired.orderId },
-              "stripe checkout expiry failed",
-            );
-            return reply.status(webhookFailureStatus(error)).send("Processing failed");
           }
+          return reply.status(200).send({ received: true, ignored: true });
+        } catch (error) {
+          request.log.error({ err: error }, "stripe webhook dispatch failed");
+          return reply.status(webhookFailureStatus(error)).send("Processing failed");
         }
-
-        return reply.status(200).send({ received: true, ignored: true });
       },
     );
   });
