@@ -81,7 +81,7 @@ export function createAuthRequestHandler(options: {
     ) {
       await stampMfaCompletedFromResponse(options.sessionStampStore, response);
     }
-    if (await readAuthorizationCodeFromResponse(response)) {
+    if (await readAuthorizationCodeFromResponse(response, request.url)) {
       const sessionHeaders = new Headers(request.headers);
       const setCookies =
         typeof response.headers.getSetCookie === "function"
@@ -99,7 +99,7 @@ export function createAuthRequestHandler(options: {
       }
       const codeSession = await options.auth.api.getSession({ headers: sessionHeaders });
       const identitySessionId = codeSession?.session?.id;
-      if (!identitySessionId) return createAuthorizationServerErrorResponse(response);
+      if (!identitySessionId) return createAuthorizationServerErrorResponse(response, request.url);
       await options.oidcSessions.captureAuthorizationSession(response, identitySessionId);
     }
     return response;

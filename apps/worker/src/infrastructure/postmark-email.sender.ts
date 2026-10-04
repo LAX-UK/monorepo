@@ -32,6 +32,7 @@ export class PostmarkEmailSender implements IEmailSender {
   }): Promise<{ messageId: string }> {
     const rendered = await renderEmail(payload.template, payload.vars);
     const unsubscribeUrl = unsubscribeUrlFromVars(payload.vars);
+    const unsubscribeToken = postmarkMetadataUnsubscribeToken(unsubscribeUrl);
     const message: postmark.Message = {
       From: this.opts.from,
       To: payload.to,
@@ -46,7 +47,7 @@ export class PostmarkEmailSender implements IEmailSender {
         template: payload.template,
         ...(payload.userId ? { userId: payload.userId } : {}),
         ...(payload.flaggedAddress ? { flagged_address: "true" } : {}),
-        ...(unsubscribeUrl ? { unsubscribe_token: tokenFromUrl(unsubscribeUrl) ?? "" } : {}),
+        ...(unsubscribeToken ? { unsubscribe_token: unsubscribeToken } : {}),
       },
     };
     if (this.opts.replyTo) message.ReplyTo = this.opts.replyTo;
@@ -67,12 +68,22 @@ function unsubscribeUrlFromVars(vars: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+const POSTMARK_METADATA_VALUE_MAX_LEN = 80;
+
 function tokenFromUrl(url: string): string | null {
   try {
     return new URL(url).searchParams.get("t");
   } catch {
     return null;
   }
+}
+
+/** Postmark metadata values are limited to 80 characters. */
+export function postmarkMetadataUnsubscribeToken(unsubscribeUrl: string | null): string | null {
+  if (!unsubscribeUrl) return null;
+  const token = tokenFromUrl(unsubscribeUrl);
+  if (!token || token.length > POSTMARK_METADATA_VALUE_MAX_LEN) return null;
+  return token;
 }
 
 export class ConsoleEmailSender implements IEmailSender {

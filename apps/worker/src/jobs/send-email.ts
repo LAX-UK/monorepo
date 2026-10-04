@@ -19,7 +19,7 @@ export async function enqueueStaleEmailOutboxRows({
       "send-email",
       { outboxId: row.id },
       {
-        jobId: `${row.id}:${row.dispatchGeneration}`,
+        jobId: `${row.id}-${row.dispatchGeneration}`,
         attempts: 5,
         backoff: { type: "exponential", delay: 30_000 },
         removeOnComplete: 1000,

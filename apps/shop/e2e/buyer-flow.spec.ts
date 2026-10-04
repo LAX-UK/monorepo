@@ -24,6 +24,7 @@ test.describe("shop buyer flow @e2e", () => {
   test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
     test.skip(!stripeEnabled, stripeSkipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
+    test.setTimeout(90_000);
 
     await signInShopBuyer(page, buyerCredentials, "/checkout");
     await page.goto(`/artworks/${ACCEPTANCE_STRIPE_CHECKOUT_SLUG}`);
@@ -37,7 +38,19 @@ test.describe("shop buyer flow @e2e", () => {
     await page.getByLabel(/address line 1/i).fill("1 Test Street");
     await page.getByLabel(/city/i).fill("London");
     await page.getByLabel(/postcode/i).fill("W1A 1AA");
+    const checkoutStarted = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/commerce/checkout") &&
+        response.status() !== 0,
+      { timeout: 60_000 },
+    );
     await page.getByRole("button", { name: /continue to payment/i }).click();
+    const checkoutResponse = await checkoutStarted;
+    if (!checkoutResponse.ok()) {
+      const body = await checkoutResponse.text().catch(() => "");
+      throw new Error(`Checkout failed (${checkoutResponse.status()}): ${body.slice(0, 500)}`);
+    }
 
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
     const cardNumber = page

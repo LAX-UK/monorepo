@@ -27,4 +27,17 @@ describe("general API rate limit", () => {
 
     expect(increment).toHaveBeenCalledWith("rl:unknown:/health", 120, 60);
   });
+
+  it("allows the request when Redis is unavailable", async () => {
+    const increment = vi.fn(async () => {
+      throw new Error("Stream isn't writeable and enableOfflineQueue options is false");
+    });
+    const app = new Hono();
+    app.use("*", createRateLimitMiddleware({ increment }));
+    app.get("/artists/public", (c) => c.json({ ok: true }));
+
+    const response = await app.request("/artists/public");
+
+    expect(response.status).toBe(200);
+  });
 });

@@ -84,11 +84,20 @@ export class PostmarkWebhookService {
 function extractUnsubscribeToken(payload: PostmarkWebhookPayload): string | null {
   const metadata = payload.Metadata;
   if (metadata && typeof metadata === "object") {
-    const token = (metadata as Record<string, unknown>).unsubscribe_token;
-    if (typeof token === "string") return token;
+    const record = metadata as Record<string, unknown>;
+    const token = record.unsubscribe_token;
+    if (typeof token === "string" && token.length > 0 && token.length <= 80) return token;
   }
   const token = payload.unsubscribe_token ?? payload.UnsubscribeToken;
-  return typeof token === "string" ? token : null;
+  if (typeof token === "string" && token.length > 0 && token.length <= 80) return token;
+  return null;
+}
+
+export function extractPostmarkOutboxId(payload: PostmarkWebhookPayload): string | null {
+  const metadata = payload.Metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+  const outboxId = (metadata as Record<string, unknown>).outboxId;
+  return typeof outboxId === "string" && outboxId.length > 0 ? outboxId : null;
 }
 
 function recipientEmailFromPostmarkPayload(payload: PostmarkWebhookPayload): string | null {

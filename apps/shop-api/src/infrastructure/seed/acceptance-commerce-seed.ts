@@ -1,6 +1,13 @@
 import type { Database } from "@auction/db";
-import { shopArtwork, shopArtworkInterest, shopEdition } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import {
+  shopArtwork,
+  shopArtworkInterest,
+  shopBasketLine,
+  shopEdition,
+  shopOrder,
+  shopOrderLine,
+} from "@auction/db/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { ensureLaxShopParty } from "../ensure-lax-party.js";
 import { authoriseAllOwnedEditionsForTests } from "../shop-test-authority.js";
 import { SHOP_SEED_STRIPE_CHECKOUT_SLUG } from "./catalogue-seed.js";
@@ -64,17 +71,64 @@ export async function resetAcceptanceStripeCheckoutFixture(db: Database): Promis
   const laxPartyId = await ensureLaxShopParty(db);
   const now = new Date();
 
-  await db
-    .update(shopEdition)
-    .set({
-      ownerPartyId: laxPartyId,
-      listingStatus: "authorised",
-      custodyStatus: "unprinted",
-      saleAuthorisedAt: now,
-      reservedUntil: null,
-      reservedByOrderId: null,
-    })
-    .where(eq(shopEdition.artworkId, artworkId));
+  await db.transaction(async (tx) => {
+    const editionRows = await tx
+      .select({ id: shopEdition.id })
+      .from(shopEdition)
+      .where(eq(shopEdition.artworkId, artworkId));
+    const editionIds = editionRows.map((row) => row.id);
+
+    if (editionIds.length > 0) {
+      const staleLines = await tx
+        .select({ orderId: shopOrderLine.orderId })
+        .from(shopOrderLine)
+        .innerJoin(shopOrder, eq(shopOrderLine.orderId, shopOrder.id))
+        .where(
+          and(
+            inArray(shopOrderLine.editionId, editionIds),
+            isNull(shopOrderLine.releasedAt),
+            inArray(shopOrder.status, ["pending_payment", "payment_failed"]),
+          ),
+        );
+
+      const staleOrderIds = [...new Set(staleLines.map((row) => row.orderId))];
+      if (staleOrderIds.length > 0) {
+        await tx
+          .update(shopOrderLine)
+          .set({ releasedAt: now })
+          .where(
+            and(
+              inArray(shopOrderLine.orderId, staleOrderIds),
+              inArray(shopOrderLine.editionId, editionIds),
+              isNull(shopOrderLine.releasedAt),
+            ),
+          );
+        await tx
+          .update(shopOrder)
+          .set({ status: "expired", updatedAt: now })
+          .where(
+            and(
+              inArray(shopOrder.id, staleOrderIds),
+              inArray(shopOrder.status, ["pending_payment", "payment_failed"]),
+            ),
+          );
+      }
+    }
+
+    await tx.delete(shopBasketLine).where(eq(shopBasketLine.artworkId, artworkId));
+
+    await tx
+      .update(shopEdition)
+      .set({
+        ownerPartyId: laxPartyId,
+        listingStatus: "authorised",
+        custodyStatus: "unprinted",
+        saleAuthorisedAt: now,
+        reservedUntil: null,
+        reservedByOrderId: null,
+      })
+      .where(eq(shopEdition.artworkId, artworkId));
+  });
 
   await authoriseAllOwnedEditionsForTests(db, artworkId);
 }
