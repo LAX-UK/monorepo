@@ -18,12 +18,23 @@ on:
         type: boolean
         required: false
         default: false
+      monorepo_ref:
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       shop_sha:
         description: Deployed Shop storefront commit SHA (must match /health/ready release)
         required: true
         type: string
+      monorepo_ref:
+        description: >-
+          Optional git ref to checkout for tests/scripts (default shop_sha). Use when
+          acceptance tooling on main is ahead of the pinned deploy SHA.
+        required: false
+        type: string
+        default: ""
       seed_catalogue:
         description: >-
           Run foundation catalogue seed (destructive: re-sold-outs reed-study editions).
@@ -62,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.shop_sha }}
+          ref: ${{ inputs.monorepo_ref != '' && inputs.monorepo_ref || inputs.shop_sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.4

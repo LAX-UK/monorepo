@@ -8,8 +8,15 @@ export type WsContainer = {
   redisSub: Redis;
 };
 
+function attachRedisErrorLogger(client: Redis, label: string): Redis {
+  client.on("error", (err) => {
+    console.error(`[ws-redis:${label}]`, err instanceof Error ? err.message : err);
+  });
+  return client;
+}
+
 export function createWsContainer(env: WsEnv): WsContainer {
-  const redis = new Redis(env.REDIS_URL);
-  const redisSub = new Redis(env.REDIS_URL);
+  const redis = attachRedisErrorLogger(new Redis(env.REDIS_URL), "command");
+  const redisSub = attachRedisErrorLogger(new Redis(env.REDIS_URL), "subscribe");
   return { env, redis, redisSub };
 }

@@ -45,4 +45,37 @@ describe("sendEmailUseCase claim handling", () => {
     );
     expect(send).not.toHaveBeenCalled();
   });
+
+  it("suppresses inactive Postmark recipients without retrying", async () => {
+    const inactive = Object.assign(new Error("Found inactive addresses"), {
+      name: "InactiveRecipientsError",
+    });
+    const sender: IEmailSender = {
+      send: vi.fn(async () => {
+        throw inactive;
+      }),
+    };
+    const markFailedOrPending = vi.fn();
+    const insertSuppression = vi.fn();
+    const outboxRepo: IEmailOutboxRepository = {
+      claimForSend: vi.fn(async () => ({
+        row: { ...baseRow, status: "sending" as const },
+        claimed: true,
+      })),
+      findSuppression: vi.fn(async () => false),
+      markSuppressed: vi.fn(),
+      markSent: vi.fn(),
+      markFailedOrPending,
+      markSentPersistenceFailed: vi.fn(),
+      resolveUserEmail: vi.fn(),
+      insertSuppression,
+      recoverStaleForDispatch: vi.fn(async () => []),
+    };
+    await sendEmailUseCase(
+      { outboxRepo, sender, log: pino({ level: "silent" }) },
+      { outboxId: "outbox-1" },
+    );
+    expect(insertSuppression).toHaveBeenCalledWith("hash", "hard_bounce");
+    expect(markFailedOrPending).toHaveBeenCalledWith("outbox-1", inactive.message, true);
+  });
 });

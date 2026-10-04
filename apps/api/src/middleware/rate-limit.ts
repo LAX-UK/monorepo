@@ -20,7 +20,17 @@ export function createRateLimitMiddleware(store: IRateLimitStore) {
       c.req.method === "GET" && c.req.path === "/users/me"
         ? SESSION_READ_MAX_REQUESTS
         : MAX_REQUESTS;
-    const result = await store.increment(key, max, WINDOW_SEC);
+    let result: Awaited<ReturnType<IRateLimitStore["increment"]>>;
+    try {
+      result = await store.increment(key, max, WINDOW_SEC);
+    } catch (err) {
+      console.warn("[rate-limit] redis unavailable; allowing request", {
+        path: c.req.path,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      await next();
+      return;
+    }
     if (!result.allowed) {
       if (result.retryAfterSec !== undefined) {
         c.header("Retry-After", String(result.retryAfterSec));

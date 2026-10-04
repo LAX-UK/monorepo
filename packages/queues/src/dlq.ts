@@ -16,6 +16,15 @@ export function dlqJobId(queueName: QueueName, originalJobId: string): string {
   return `dlq:${queueName}:${originalJobId}`;
 }
 
+/** BullMQ rejects custom job ids containing `:`. */
+export function bullMqSafeJobId(raw: string): string {
+  return raw.replaceAll(":", "-");
+}
+
+export function dlqRedisJobId(_queueName: QueueName, auditId: string, atMs = Date.now()): string {
+  return `${bullMqSafeJobId(auditId)}-${atMs}`;
+}
+
 export function jobAttemptsExhausted(
   job: { attemptsMade: number; opts: { attempts?: number } },
   def: QueueDefinition,
@@ -43,7 +52,7 @@ export function attachDlq(
 
       const originalJobId = job.id != null ? String(job.id) : "unknown";
       const auditId = dlqJobId(queueName, originalJobId);
-      const redisJobId = `${auditId}:${Date.now()}`;
+      const redisJobId = dlqRedisJobId(queueName, auditId);
       const payloadJson = serializePayload(job.data);
 
       try {

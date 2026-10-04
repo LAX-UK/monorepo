@@ -80,10 +80,25 @@ export async function sendEmailUseCase(
       throw err;
     }
     const message = err instanceof Error ? err.message : String(err);
+    if (isInactivePostmarkRecipient(err)) {
+      await outboxRepo.insertSuppression(row.toEmailHash, "hard_bounce");
+      await outboxRepo.markFailedOrPending(row.id, message, true);
+      log.warn(
+        { outboxId: row.id, toEmailHash: row.toEmailHash },
+        "email send: inactive recipient",
+      );
+      return;
+    }
     const terminal = row.attempts >= 5;
     await outboxRepo.markFailedOrPending(row.id, message, terminal);
     throw err;
   }
+}
+
+function isInactivePostmarkRecipient(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (err.name === "InactiveRecipientsError") return true;
+  return /inactive recipients/i.test(err.message);
 }
 
 async function resolveRecipient(

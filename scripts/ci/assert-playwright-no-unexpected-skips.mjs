@@ -21,16 +21,30 @@ const allowedReasonPatterns = [
   /^desktop rail affordance only$/,
 ];
 
+/** Playwright JSON reporter often echoes the test title instead of test.skip() text. */
+const TITLE_TO_SKIP_REASON = {
+  "shows forward rail affordance when a home row overflows":
+    "Prints rail has no overflow in this viewport",
+  "keeps artwork content available without JavaScript": "no-JS contract once on desktop",
+  "renders seeded, navigable cards for every catalogue section":
+    "home catalogue cards once on desktop",
+};
+
+function normalizeSkipReason(reason) {
+  return TITLE_TO_SKIP_REASON[reason] ?? reason;
+}
+
 function resolveSkipReason(result, spec, test) {
   const message = (result.error?.message ?? "").trim();
   if (message) {
     const explicit = message.match(/(?:Test )?skipped:\s*(.+)/i);
     if (explicit?.[1]) {
-      return explicit[1].trim();
+      return normalizeSkipReason(explicit[1].trim());
     }
-    return message;
+    return normalizeSkipReason(message);
   }
-  return (spec.title ?? test.title ?? "unknown").trim();
+  const title = (spec.title ?? test.title ?? "unknown").trim();
+  return normalizeSkipReason(title);
 }
 
 /** @typedef {{ status?: string, title?: string, results?: Suite[] }} Suite */

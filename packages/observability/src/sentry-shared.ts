@@ -12,6 +12,7 @@ const BODY_SCRUB_PATHS = ["/webhooks/", "/internal/jobs"];
 
 const AUTH_USER_ERROR_PATTERNS = [
   /Invalid password/i,
+  /Invalid origin/i,
   /User not found/i,
   /State mismatch/i,
   /state_mismatch/i,

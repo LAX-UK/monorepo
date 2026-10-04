@@ -64,10 +64,11 @@ export async function readAuthorizationCode(request: Request): Promise<string | 
 
 export async function readAuthorizationCodeFromResponse(
   response: Response,
+  responseUrl?: string,
 ): Promise<string | null> {
   if (response.status < 200 || response.status >= 400) return null;
   const location = response.headers.get("location");
-  if (location) return new URL(location).searchParams.get("code");
+  if (location) return new URL(location, responseUrl).searchParams.get("code");
   if (!(response.headers.get("content-type") ?? "").includes("application/json")) return null;
   try {
     const body = (await response.clone().json()) as Record<string, unknown>;
@@ -90,10 +91,11 @@ export async function readAuthorizationCodeFromResponse(
  */
 export async function createAuthorizationServerErrorResponse(
   response: Response,
+  responseUrl?: string,
 ): Promise<Response> {
   const location = response.headers.get("location");
   if (location) {
-    const redirect = new URL(location);
+    const redirect = new URL(location, responseUrl);
     redirect.searchParams.delete("code");
     redirect.searchParams.set("error", "server_error");
     redirect.searchParams.set("error_description", OAUTH_SERVER_ERROR_DESCRIPTION);

@@ -11,6 +11,10 @@ function isValidationError(error: unknown): error is { validation: unknown } {
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ShopApiError) {
+      request.log.warn(
+        { code: error.code, statusCode: error.statusCode, msg: error.message },
+        "shop_api_client_error",
+      );
       return reply.status(error.statusCode).send({
         code: error.code,
         message: error.message,
@@ -18,9 +22,14 @@ export function registerErrorHandler(app: FastifyInstance): void {
       });
     }
     if (error instanceof ShopDomainError) {
+      const message = error instanceof Error ? error.message : "Request conflict";
+      request.log.warn(
+        { code: SHOP_API_ERROR_CODES.CONFLICT, statusCode: 409, msg: message },
+        "shop_api_client_error",
+      );
       return reply.status(409).send({
         code: SHOP_API_ERROR_CODES.CONFLICT,
-        message: error instanceof Error ? error.message : "Request conflict",
+        message,
         requestId: request.id,
       });
     }

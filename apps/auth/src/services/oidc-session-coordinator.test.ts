@@ -55,6 +55,15 @@ describe("OIDC authorization-session coordination", () => {
         }),
       ),
     ).toBe("redirect-code");
+    expect(
+      await readAuthorizationCodeFromResponse(
+        new Response(null, {
+          status: 302,
+          headers: { location: "/callback?code=relative-code" },
+        }),
+        "https://test-auth.lax.bid/api/auth/verify-email",
+      ),
+    ).toBe("relative-code");
   });
 
   it("stores only a hash, consumes once, and emits truthful bronze claims", async () => {
