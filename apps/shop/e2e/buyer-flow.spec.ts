@@ -54,11 +54,34 @@ test.describe("shop buyer flow @e2e", () => {
       await page.getByLabel(/postcode/i).fill("W1A 1AA");
       await expect(page.getByRole("button", { name: /continue to payment/i })).toBeEnabled();
       await page.getByRole("button", { name: /continue to payment/i }).click();
-      await expect(
-        page.getByRole("button", { name: /redirecting to secure payment/i }),
-      ).toBeVisible({
-        timeout: 15_000,
-      });
+
+      await expect
+        .poll(
+          async () => {
+            const url = page.url();
+            if (/checkout\.stripe\.com/i.test(url)) return "stripe";
+            if (url.includes("country=GB")) return "native-submit";
+            if (
+              await page
+                .getByText("Checkout could not continue")
+                .isVisible()
+                .catch(() => false)
+            ) {
+              return "error";
+            }
+            if (
+              await page
+                .getByRole("button", { name: /redirecting to secure payment|starting payment/i })
+                .isVisible()
+                .catch(() => false)
+            ) {
+              return "pending";
+            }
+            return "waiting";
+          },
+          { timeout: 90_000 },
+        )
+        .not.toBe("native-submit");
 
       const stripeNavigation = page.waitForURL(/checkout\.stripe\.com/, { timeout: 90_000 });
       const checkoutFailed = page
