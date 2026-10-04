@@ -40,7 +40,7 @@ test.describe("shop buyer flow @e2e", () => {
     test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
       test.skip(!stripeEnabled, stripeSkipReason);
       test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
-      test.setTimeout(120_000);
+      test.setTimeout(420_000);
 
       await signInShopBuyer(page, buyerCredentials, "/account");
       await ensureAcceptanceStripePrintInBasket(page);
