@@ -164,6 +164,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop phase 2–4 money and merge integra
       identitySubjectId: retiredSubjectId,
     });
 
+    const mergedAt = new Date().toISOString();
     const [event] = await db
       .insert(domainEvent)
       .values({
@@ -174,6 +175,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop phase 2–4 money and merge integra
           schemaVersion: 1,
           subjectId: canonicalSubjectId,
           retiredSubjectId,
+          mergedAt,
         },
         schemaVersion: 1,
         producer: "identity-api",
