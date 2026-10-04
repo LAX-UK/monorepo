@@ -33,7 +33,8 @@ test.describe("Shop home catalogue fixtures @e2e", () => {
   test("shows forward rail affordance when a home row overflows", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "desktop rail affordance only");
-    await page.setViewportSize({ width: 1280, height: 900 });
+    // Narrow viewport so the seeded prints rail overflows on CI runners (1280 often does not).
+    await page.setViewportSize({ width: 960, height: 900 });
     await page.goto("/");
     const printsRail = page.locator("#prints-rail");
     await expect(printsRail).toBeVisible();

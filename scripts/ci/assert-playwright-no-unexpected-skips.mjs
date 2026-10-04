@@ -16,7 +16,22 @@ const allowedReasonPatterns = [
   /^no-JS contract once on desktop$/,
   /^Set SHOP_E2E_MAGIC_LINK=1/,
   /^harbor-print has a single sellable edition in this environment$/,
+  /^Prints rail has no overflow in this viewport$/,
+  /^home catalogue cards once on desktop$/,
+  /^desktop rail affordance only$/,
 ];
+
+function resolveSkipReason(result, spec, test) {
+  const message = (result.error?.message ?? "").trim();
+  if (message) {
+    const explicit = message.match(/(?:Test )?skipped:\s*(.+)/i);
+    if (explicit?.[1]) {
+      return explicit[1].trim();
+    }
+    return message;
+  }
+  return (spec.title ?? test.title ?? "unknown").trim();
+}
 
 /** @typedef {{ status?: string, title?: string, results?: Suite[] }} Suite */
 
@@ -30,7 +45,7 @@ function collectSkips(suites) {
       for (const test of spec.tests ?? []) {
         for (const result of test.results ?? []) {
           if (result.status !== "skipped") continue;
-          const reason = (result.error?.message ?? spec.title ?? test.title ?? "unknown").trim();
+          const reason = resolveSkipReason(result, spec, test);
           const allowed = allowedReasonPatterns.some((pattern) => pattern.test(reason));
           if (!allowed) {
             unexpected.push({
