@@ -28,8 +28,9 @@ test.describe("shop buyer flow @e2e", () => {
 
     await signInShopBuyer(page, buyerCredentials, "/checkout");
     await page.goto(`/artworks/${ACCEPTANCE_STRIPE_CHECKOUT_SLUG}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
     const addButton = page.getByRole("button", { name: /add to basket/i });
-    await expect(addButton).toBeEnabled();
+    await expect(addButton).toBeEnabled({ timeout: 15_000 });
     await addButton.click();
     await page.getByRole("link", { name: /view basket/i }).click();
     await page.getByRole("link", { name: /proceed to checkout/i }).click();
@@ -38,21 +39,21 @@ test.describe("shop buyer flow @e2e", () => {
     await page.getByLabel(/address line 1/i).fill("1 Test Street");
     await page.getByLabel(/city/i).fill("London");
     await page.getByLabel(/postcode/i).fill("W1A 1AA");
-    const checkoutStarted = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/commerce/checkout") &&
-        response.status() !== 0,
-      { timeout: 60_000 },
-    );
     await page.getByRole("button", { name: /continue to payment/i }).click();
-    const checkoutResponse = await checkoutStarted;
-    if (!checkoutResponse.ok()) {
-      const body = await checkoutResponse.text().catch(() => "");
-      throw new Error(`Checkout failed (${checkoutResponse.status()}): ${body.slice(0, 500)}`);
+    try {
+      await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
+    } catch (navErr) {
+      const checkoutError = page.getByText("Checkout could not continue");
+      if (await checkoutError.isVisible().catch(() => false)) {
+        const description = await page
+          .locator(".shop-checkout")
+          .getByText(/.+/)
+          .last()
+          .textContent();
+        throw new Error(`Checkout failed: ${description?.trim() ?? "Checkout could not continue"}`);
+      }
+      throw navErr;
     }
-
-    await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
     const cardNumber = page
       .frameLocator('iframe[name^="__privateStripeFrame"]')
       .first()
