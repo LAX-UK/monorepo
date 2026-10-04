@@ -21,11 +21,17 @@ const allowedReasonPatterns = [
   /^desktop rail affordance only$/,
 ];
 
+/** Playwright JSON reporter often echoes the test title instead of test.skip() text. */
+const TITLE_TO_SKIP_REASON = {
+  "shows forward rail affordance when a home row overflows":
+    "Prints rail has no overflow in this viewport",
+  "keeps artwork content available without JavaScript": "no-JS contract once on desktop",
+  "renders seeded, navigable cards for every catalogue section":
+    "home catalogue cards once on desktop",
+};
+
 function normalizeSkipReason(reason) {
-  if (reason === "shows forward rail affordance when a home row overflows") {
-    return "Prints rail has no overflow in this viewport";
-  }
-  return reason;
+  return TITLE_TO_SKIP_REASON[reason] ?? reason;
 }
 
 function resolveSkipReason(result, spec, test) {
