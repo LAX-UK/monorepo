@@ -7,11 +7,17 @@ import type { createMergeBasketsHandler } from "./application/handlers/commerce-
 import type { createRemoveBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type { createResumeCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createUpsertBasketLineHandler } from "./application/handlers/commerce-handlers.js";
+import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
 import type {
   StripeCheckoutAsyncFailedDto,
   StripeCheckoutCompletedDto,
   StripeCheckoutExpiredDto,
 } from "./application/ports/stripe-webhook.types.js";
+
+export type StripeWebhookDispatchResult =
+  | { kind: "checkout"; outcome: string }
+  | { kind: "money"; outcome: StripeMoneyWebhookOutcome }
+  | { kind: "ignored" };
 
 export type CommerceRoutesDeps = {
   getBasket: ReturnType<typeof createGetBasketHandler>;
@@ -63,4 +69,5 @@ export type StripeWebhookDeps = {
     currency: string;
     sessionId: string;
   }): Promise<"processed" | "duplicate">;
+  dispatchWebhook(event: unknown): Promise<StripeWebhookDispatchResult>;
 };

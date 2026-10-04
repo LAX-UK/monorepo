@@ -3,6 +3,7 @@ import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import type { ImportArtworkCommand } from "../../../application/ports/artwork-import.writer.js";
+import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
@@ -55,7 +56,7 @@ const GrantSaleAuthorityResponseSchema = Type.Object({
 
 export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
   app.post(
-    "/admin/v1/artworks/import",
+    "/artworks/import",
     {
       config: { rawBody: false },
       bodyLimit: 65_536,
@@ -72,13 +73,14 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
     },
     async (request) => {
       requireShopStaffCapability(request, "catalogue.write");
+      requireIdempotencyKey(request);
       const body = request.body as ImportArtworkCommand;
       return deps.importArtwork(body);
     },
   );
 
   app.post(
-    "/admin/v1/artworks/:id/sale-authority",
+    "/artworks/:id/sale-authority",
     {
       schema: {
         tags: ["shop-admin"],
@@ -95,6 +97,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
     },
     async (request) => {
       requireShopStaffCapability(request, "sale_authority.write");
+      requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const { id: artworkId } = request.params as { id: string };
       const body = request.body as {

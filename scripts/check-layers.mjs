@@ -104,6 +104,13 @@ const rules = [
   },
 ];
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", "coverage"]);
+
+/** Scratch / clone dirs at repo root must not affect layer scans. */
+function shouldSkipDirEntry(entry) {
+  if (SKIP_DIRS.has(entry)) return true;
+  if (entry.startsWith(".tmp")) return true;
+  return false;
+}
 const SOURCE_RE = /\.(ts|tsx)$/;
 const TEST_RE = /\.(test|spec|integration\.test)\.(ts|tsx)$/;
 // import ... from "x" | export ... from "x" | import("x") | require("x")
@@ -116,7 +123,7 @@ function listSources(dir) {
   const out = [];
   if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
   for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry)) continue;
+    if (shouldSkipDirEntry(entry)) continue;
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {
@@ -306,7 +313,7 @@ function listAllSources(dir) {
   const out = [];
   if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
   for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry)) continue;
+    if (shouldSkipDirEntry(entry)) continue;
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {
@@ -819,6 +826,83 @@ if (identityExtractabilityViolations.length > 0) {
   console.error(
     "\nSee scripts/check-layers.mjs (Identity extractability) and docs/architecture/09-lax-identity-boundary.md.",
   );
+  process.exit(1);
+}
+
+// ─── Shop API route / scheduler / script boundaries ─────────────────────────
+
+const SHOP_API_DB_IMPORT_RE = /^@auction\/db(\/|$)/;
+const SHOP_API_DRIZZLE_RE = /^drizzle-orm(\/|$)/;
+
+/** @type {string[]} */
+const shopApiRouteViolations = [];
+for (const file of listAllSources(join(root, "apps/shop-api/src/routes"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (SHOP_API_DB_IMPORT_RE.test(specifier) || SHOP_API_DRIZZLE_RE.test(specifier)) {
+      shopApiRouteViolations.push(
+        `${rel}: imports "${specifier}" — shop-api routes must use container ports only`,
+      );
+    }
+    if (specifier.includes("infrastructure")) {
+      shopApiRouteViolations.push(
+        `${rel}: imports "${specifier}" — shop-api routes must not import infrastructure`,
+      );
+    }
+  }
+}
+
+/** @type {string[]} */
+const shopApiSchedulerViolations = [];
+for (const file of listAllSources(join(root, "apps/shop-api/src/scheduler/tasks"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  if (SHOP_API_DRIZZLE_RE.test(text) || /from\s+["']@auction\/db\/schema["']/.test(text)) {
+    shopApiSchedulerViolations.push(
+      `${rel}: scheduler task must delegate to an application handler (no direct schema access)`,
+    );
+  }
+}
+
+/** @type {string[]} */
+const shopApiScriptViolations = [];
+const shopOpsScript = join(root, "apps/shop-api/src/scripts/shop-ops.ts");
+if (statSync(shopOpsScript, { throwIfNoEntry: false })?.isFile()) {
+  const rel = relative(root, shopOpsScript).replace(/\\/g, "/");
+  const text = readFileSync(shopOpsScript, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (
+      SHOP_API_DB_IMPORT_RE.test(specifier) ||
+      SHOP_API_DRIZZLE_RE.test(specifier) ||
+      specifier.includes("infrastructure")
+    ) {
+      shopApiScriptViolations.push(
+        `${rel}: imports "${specifier}" — shop-ops must use container/handlers only`,
+      );
+    }
+  }
+}
+
+if (shopApiRouteViolations.length > 0) {
+  console.error("Shop API route boundary violations detected:\n");
+  for (const v of shopApiRouteViolations) console.error(`  ${v}`);
+  process.exit(1);
+}
+if (shopApiSchedulerViolations.length > 0) {
+  console.error("Shop API scheduler boundary violations detected:\n");
+  for (const v of shopApiSchedulerViolations) console.error(`  ${v}`);
+  process.exit(1);
+}
+if (shopApiScriptViolations.length > 0) {
+  console.error("Shop API script boundary violations detected:\n");
+  for (const v of shopApiScriptViolations) console.error(`  ${v}`);
   process.exit(1);
 }
 

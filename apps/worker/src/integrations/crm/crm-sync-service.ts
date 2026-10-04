@@ -54,6 +54,7 @@ export class CrmSyncService {
     this.shopRecordHandler = new CrmShopRecordSyncHandler({
       gateway: deps.gateway,
       catalogueSyncEnabled: deps.env.SHOP_ZOHO_CATALOGUE_SYNC_ENABLED,
+      financialsSyncEnabled: deps.env.SHOP_ZOHO_FINANCIALS_ENABLED,
     });
   }
 
@@ -106,12 +107,15 @@ export class CrmSyncService {
           payload.totalPence !== undefined &&
           payload.paidAt
         ) {
-          await this.shopRecordHandler.syncOrderPaidFinancials({
+          const financials = await this.shopRecordHandler.syncOrderPaidFinancials({
             orderId: payload.orderId,
             identitySubjectId: payload.identitySubjectId,
             totalPence: payload.totalPence,
             paidAt: payload.paidAt,
           });
+          if (financials.outcome === "retry" || financials.outcome === "fatal") {
+            return financials;
+          }
         }
       }
       return primary;

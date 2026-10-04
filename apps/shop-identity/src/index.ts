@@ -1,5 +1,6 @@
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
 import { buildPgConnectionConfig } from "@auction/identity-db/pg";
+import { createShopAppsSentryInitOptions } from "@auction/observability";
 import { serve } from "@hono/node-server";
 import pg from "pg";
 import { completeOAuthCallback } from "./application/complete-oauth-callback.handler.js";
@@ -29,6 +30,10 @@ import {
 import { startShopRetentionSchedule } from "./retention.schedule.js";
 
 const env = loadShopIdentityEnv();
+if (process.env.SENTRY_DSN_SHOP_IDENTITY) {
+  const Sentry = await import("@sentry/node");
+  Sentry.init(createShopAppsSentryInitOptions(process.env.SENTRY_DSN_SHOP_IDENTITY));
+}
 const release = process.env.SENTRY_RELEASE ?? "unknown";
 const databaseUrl = env.DATABASE_URL_SHOP ?? env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL_SHOP is required");

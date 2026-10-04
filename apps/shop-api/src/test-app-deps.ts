@@ -24,6 +24,8 @@ export function createMinimalShopApiTestDeps(
       SHOP_MERCHANDISE_ENABLED: false,
       SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,
       SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: 900,
+      SHOP_OPS_FINANCE_CLI_ENABLED: false,
+      SHOP_OPS_DUAL_CONTROL_PENCE: 500_000,
     },
     auth: {
       jwksUrl: "http://localhost:3001/.well-known/jwks.json",
@@ -42,6 +44,7 @@ export function createMinimalShopApiTestDeps(
       expireCheckout: async () => "processed" as const,
       failCheckout: async () => "processed" as const,
       recordCurrencyViolation: async () => "processed" as const,
+      dispatchWebhook: async () => ({ kind: "ignored" as const }),
     },
     commerce: {
       getBasket: async () => null,
@@ -107,30 +110,35 @@ export function createMinimalShopApiTestDeps(
         findActiveByIdentitySubject: async () => null,
         brokerCanAccessClientParty: async () => false,
       },
-      production: {
-        createTask: async () => ({
-          taskId: "00000000-0000-4000-8000-000000000010",
-          status: "queued",
-        }),
-      },
-      fulfilment: {
-        updateStatus: async () => ({
-          fulfilmentId: "00000000-0000-4000-8000-000000000011",
-          status: "pending_production",
-        }),
-      },
-      refunds: {
-        requestRefund: async () => ({
-          refundId: "00000000-0000-4000-8000-000000000012",
-          status: "pending",
-        }),
-      },
-      payouts: {
-        markPaid: async () => ({
-          payoutId: "00000000-0000-4000-8000-000000000016",
-          status: "paid" as const,
-        }),
-      },
+      createProductionTask: async () => ({
+        taskId: "00000000-0000-4000-8000-000000000010",
+        status: "queued" as const,
+      }),
+      updateFulfilment: async () => ({
+        fulfilmentId: "00000000-0000-4000-8000-000000000011",
+        status: "pending_production",
+      }),
+      recordPossession: async () => ({
+        fulfilmentId: "00000000-0000-4000-8000-000000000011",
+        status: "delivered",
+      }),
+      cancelAfterPossession: async () => ({
+        returnId: "00000000-0000-4000-8000-000000000013",
+        refundId: "00000000-0000-4000-8000-000000000014",
+        status: "requested" as const,
+      }),
+      createStockHold: async () => ({
+        holdId: "00000000-0000-4000-8000-000000000014",
+        status: "active" as const,
+      }),
+      requestRefund: async () => ({
+        refundId: "00000000-0000-4000-8000-000000000012",
+        status: "pending" as const,
+      }),
+      markPayoutPaid: async () => ({
+        payoutId: "00000000-0000-4000-8000-000000000016",
+        status: "paid" as const,
+      }),
       saleFees: {
         approveFee: async () => ({
           feeId: "00000000-0000-4000-8000-000000000017",

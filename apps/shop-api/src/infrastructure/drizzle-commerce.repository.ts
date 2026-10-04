@@ -19,6 +19,7 @@ export function createDrizzleCommerceRepository(
   options: {
     storefrontUrl: string;
     domainEventMode: "off" | "observe" | "enforce";
+    vatPolicy?: import("@auction/shop-domain").VatPolicy | null;
   },
 ): CommerceRepository {
   const basket = createDrizzleBasketRepository(db);

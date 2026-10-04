@@ -8,6 +8,8 @@ const names = [
   "shop-production-started",
   "shop-dispatch-notice",
   "shop-checkout-ops-alert",
+  "shop-refund-issued",
+  "shop-cancellation-confirmed",
 ] as const;
 
 type ShopTemplateName = (typeof names)[number];
@@ -16,6 +18,7 @@ type ShopTemplateVars = {
   "shop-order-receipt": {
     orderId: string;
     totalAmount: string;
+    vatAmount: string;
     orderUrl: string;
     lineSummary: string;
   };
@@ -48,6 +51,15 @@ type ShopTemplateVars = {
     orderId: string;
     detail: string;
   };
+  "shop-refund-issued": {
+    orderId: string;
+    amountPence: number;
+    buyerEmail: string;
+  };
+  "shop-cancellation-confirmed": {
+    orderId: string;
+    refundPeriodEndsAt: string;
+  };
 };
 
 export const shopTemplates = {
@@ -61,6 +73,8 @@ export const shopTemplates = {
     "shop-production-started": "snapshot",
     "shop-dispatch-notice": "snapshot",
     "shop-checkout-ops-alert": "snapshot",
+    "shop-refund-issued": "snapshot",
+    "shop-cancellation-confirmed": "snapshot",
   },
 } satisfies TemplateDomainSlice<ShopTemplateName, ShopTemplateVars>;
 

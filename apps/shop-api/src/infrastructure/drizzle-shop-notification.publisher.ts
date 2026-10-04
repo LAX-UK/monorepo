@@ -78,6 +78,7 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
         vars: {
           orderId: input.orderId,
           totalAmount: formatPence(input.totalPence),
+          vatAmount: formatPence(input.vatAmountPence),
           orderUrl,
           lineSummary,
         },

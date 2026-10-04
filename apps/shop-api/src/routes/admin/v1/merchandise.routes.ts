@@ -1,6 +1,7 @@
 import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { requireShopStaffCapability } from "../../../plugins/shop-admin-auth.js";
 
 const MerchandiseListResponseSchema = Type.Object({
   items: Type.Array(
@@ -15,11 +16,14 @@ const MerchandiseListResponseSchema = Type.Object({
 /** Stub list until merchandise admin CRUD is implemented. */
 export async function registerAdminMerchandiseRoutes(app: FastifyInstance): Promise<void> {
   app.get(
-    "/admin/v1/merchandise/products",
+    "/merchandise/products",
     {
       schema: {
         tags: ["shop-admin"],
         response: { 200: MerchandiseListResponseSchema, 403: ShopApiErrorBodySchema },
+      },
+      preHandler: async (request: FastifyRequest) => {
+        requireShopStaffCapability(request, "merchandise.read");
       },
     },
     async () => ({ items: [] }),

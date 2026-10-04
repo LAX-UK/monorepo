@@ -19,6 +19,7 @@ export const SHOP_API_ERROR_CODES = {
   REFUND_FAILED: "shop.refund_failed",
   STAFF_FORBIDDEN: "shop.staff_forbidden",
   FEATURE_DISABLED: "shop.feature_disabled",
+  IDEMPOTENCY_CONFLICT: "shop.idempotency_conflict",
 } as const;
 
 export type ShopApiErrorCode = (typeof SHOP_API_ERROR_CODES)[keyof typeof SHOP_API_ERROR_CODES];

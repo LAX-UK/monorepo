@@ -123,6 +123,22 @@ Deploy order on test: merge infra Terraform shop flags → migrate on deploy →
 
 **Identity closure:** when `compare-lax-identity` fails, sync the seven drifted paths listed by `node scripts/ci/verify-identity-closure-sync.mjs` into [lax-identity](https://github.com/LAX-UK/lax-identity) via `./scripts/identity/repo-split.sh <empty-destination>` and merge that PR before pinning staging recovery.
 
+## Phase 2–4 remediation gates (post-remediation sign-off)
+
+Use this checklist after the Phase 2–4 remediation workstreams land. All items must pass before enabling the corresponding flags on test, then production.
+
+| Gate | Check |
+| --- | --- |
+| Migrations | **`0195`–`0201`** applied on Shop DB; contract tests `migration-0195-0198-contract.test.ts` (and journal entries for 0199–0201) green in CI |
+| Feature flags | With `SHOP_ADMIN_ENABLED=true`, Phase 2–4 admin routes return **404** when `SHOP_PAYOUTS_ENABLED`, `SHOP_THIRD_PARTY_ENABLED`, `SHOP_ORIGINALS_ENABLED`, and `SHOP_MERCHANDISE_ENABLED` are false (`phase-flags.routes.test.ts`) |
+| Refund webhooks | `parseStripeRefundEvent` accepts `refund.created` with `metadata.shop_refund_id`; `complete-refund.handler` unit tests cover metadata match and succeeded-only order status |
+| Refund submission | Pending refund outbox submits via scheduler; terminal failures emit `shop_refund_submit_terminal_failure` (see [shop-phase2-4-alerts.md](./shop-phase2-4-alerts.md)) |
+| Admin idempotency | Mutating admin commands use `shop_admin_command` replay/conflict semantics (`with-admin-idempotency.ts`) |
+| Security review | [shop-phase2-4-security-review.md](../engineering/shop-phase2-4-security-review.md) reviewed; residual risks accepted or tracked |
+| Staging acceptance | Run **Shop staging acceptance** twice consecutively with the same deployed `shop_api_sha` / `shop_sha` and **acceptance tests #3–#6 green on both runs** (hold, direct sale payout path, third-party fees, original sale, merchandise smoke) before enabling Phase 2–4 flags on test |
+
+Phase 2 enables `SHOP_PAYOUTS_ENABLED` only after its row passes. Phase 3 adds `SHOP_THIRD_PARTY_ENABLED`; Phase 4 adds `SHOP_ORIGINALS_ENABLED` and `SHOP_MERCHANDISE_ENABLED` (storefront merchandise remains build-time gated — see blockers below).
+
 ## Phase 2+ gate blockers (recorded; not Phase 1 scope)
 
 Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINALS_ENABLED`**, **`SHOP_MERCHANDISE_ENABLED`**, and **`SHOP_ADMIN_ENABLED`** off until these are resolved:
@@ -137,6 +153,7 @@ Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINA
 - Hold `createHold` role-aware broker resolution; possession date bounds (`paidAt` ≤ `possessionAt` ≤ now) and finance recency on possession.
 - Missing audit on production/third-party/original writers and hold-expiry scheduler.
 - VAT computation on checkout lines.
+- **`isPersonalisedGoods` on possession/cancellation:** no product/variant column yet; shop-api defaults to `false` until catalogue schema adds it (documented gap for legal personalised-goods exemption).
 - Dispatch/production/refund/cancellation customer emails (templates exist; not all wired).
 - Zoho order financials stub (`crm-shop-record-sync-handler` Phase 2 path).
 - Stock reconciliation job registration.

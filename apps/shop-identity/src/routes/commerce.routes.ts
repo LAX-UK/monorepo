@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import { SHOP_BASKET_COOKIE_NAME } from "../basket-cookie.js";
 import { ensureCommerceCsrfCookie } from "../commerce-csrf.js";
+import { commerceRateLimitMiddleware } from "../commerce-rate-limit.js";
 import { shopStorefrontBaseUrl } from "../storefront-routes.js";
 import { registerCommerceBasketRoutes } from "./commerce/basket.routes.js";
 import { registerCommerceCheckoutRoutes } from "./commerce/checkout.routes.js";
@@ -13,6 +14,8 @@ export type { CommerceRoutesDeps } from "./commerce/commerce-route-types.js";
 
 export function registerCommerceRoutes(app: Hono, deps: CommerceRoutesDeps): void {
   const storefrontOrigin = shopStorefrontBaseUrl(deps.env);
+
+  app.use("/commerce/*", commerceRateLimitMiddleware);
 
   app.get("/commerce/csrf", (c) => {
     const token = ensureCommerceCsrfCookie(c, deps.secureCookies);

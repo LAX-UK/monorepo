@@ -149,3 +149,62 @@ export async function fetchPortalSaleAuthority(): Promise<
 > {
   return fetchPortalList("/commerce/me/sale-authority", parsePortalSaleAuthorityItems);
 }
+
+export type PortalPayoutItem = {
+  payoutId: string;
+  status: string;
+  netPence: number;
+  payoutDueAt: string | null;
+};
+
+export type PortalDocumentItem = {
+  documentId: string;
+  kind: string;
+  createdAt: string;
+  downloadUrl: string | null;
+};
+
+function parsePortalPayoutItems(body: unknown): PortalPayoutItem[] | null {
+  if (!body || typeof body !== "object") return null;
+  const items = (body as { items?: unknown }).items;
+  if (!Array.isArray(items)) return null;
+  for (const row of items) {
+    if (!row || typeof row !== "object") return null;
+    const payout = row as Record<string, unknown>;
+    if (
+      typeof payout.payoutId !== "string" ||
+      typeof payout.status !== "string" ||
+      typeof payout.netPence !== "number"
+    ) {
+      return null;
+    }
+  }
+  return items as PortalPayoutItem[];
+}
+
+function parsePortalDocumentItems(body: unknown): PortalDocumentItem[] | null {
+  if (!body || typeof body !== "object") return null;
+  const items = (body as { items?: unknown }).items;
+  if (!Array.isArray(items)) return null;
+  for (const row of items) {
+    if (!row || typeof row !== "object") return null;
+    const doc = row as Record<string, unknown>;
+    if (
+      typeof doc.documentId !== "string" ||
+      typeof doc.kind !== "string" ||
+      typeof doc.createdAt !== "string" ||
+      (doc.downloadUrl !== null && typeof doc.downloadUrl !== "string")
+    ) {
+      return null;
+    }
+  }
+  return items as PortalDocumentItem[];
+}
+
+export async function fetchPortalPayouts(): Promise<ShopPortalFetchResult<PortalPayoutItem[]>> {
+  return fetchPortalList("/commerce/me/payouts", parsePortalPayoutItems);
+}
+
+export async function fetchPortalDocuments(): Promise<ShopPortalFetchResult<PortalDocumentItem[]>> {
+  return fetchPortalList("/commerce/me/documents", parsePortalDocumentItems);
+}

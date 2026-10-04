@@ -117,3 +117,151 @@ export function parseCheckoutSessionAsyncPaymentFailed(
   if (!orderId) return null;
   return { eventId: event.id, orderId, sessionId: session.id };
 }
+
+const SHOP_APP_METADATA = "shop";
+
+function paymentIntentIdFromCharge(charge: Stripe.Charge): string | null {
+  const pi = charge.payment_intent;
+  if (typeof pi === "string") return pi;
+  if (pi && typeof pi === "object" && "id" in pi) {
+    return typeof pi.id === "string" ? pi.id : null;
+  }
+  return null;
+}
+
+function mapRefundStatus(
+  status: Stripe.Refund["status"],
+): "succeeded" | "failed" | "pending" | "cancelled" {
+  if (status === "succeeded") return "succeeded";
+  if (status === "failed") return "failed";
+  if (status === "canceled") return "cancelled";
+  return "pending";
+}
+
+export function parseChargeRefunded(event: Stripe.Event): {
+  eventId: string;
+  stripeRefundId: string;
+  paymentIntentId: string;
+  amountPence: number;
+  status: "succeeded" | "failed" | "pending" | "cancelled";
+} | null {
+  if (event.type !== "charge.refunded") return null;
+  const charge = event.data.object as Stripe.Charge;
+  const paymentIntentId = paymentIntentIdFromCharge(charge);
+  if (!paymentIntentId) return null;
+  const refunds = charge.refunds?.data ?? [];
+  const latest = refunds[refunds.length - 1];
+  if (!latest?.id) return null;
+  return {
+    eventId: event.id,
+    stripeRefundId: latest.id,
+    paymentIntentId,
+    amountPence: latest.amount ?? charge.amount_refunded ?? 0,
+    status: mapRefundStatus(latest.status ?? "succeeded"),
+  };
+}
+
+export function parseRefundUpdated(event: Stripe.Event): {
+  eventId: string;
+  stripeRefundId: string;
+  paymentIntentId: string;
+  amountPence: number;
+  status: "succeeded" | "failed" | "pending" | "cancelled";
+  shopRefundId?: string;
+} | null {
+  if (event.type !== "refund.updated") return null;
+  return parseStripeRefundObject(event.id, event.data.object as Stripe.Refund);
+}
+
+export function parseStripeRefundEvent(event: Stripe.Event): {
+  eventId: string;
+  stripeRefundId: string;
+  paymentIntentId: string;
+  amountPence: number;
+  status: "succeeded" | "failed" | "pending" | "cancelled";
+  shopRefundId?: string;
+  source: "refund.created" | "refund.updated" | "refund.failed";
+} | null {
+  if (
+    event.type !== "refund.created" &&
+    event.type !== "refund.updated" &&
+    event.type !== "refund.failed"
+  ) {
+    return null;
+  }
+  const parsed = parseStripeRefundObject(event.id, event.data.object as Stripe.Refund);
+  if (!parsed) return null;
+  return {
+    ...parsed,
+    source: event.type,
+  };
+}
+
+function parseStripeRefundObject(
+  eventId: string,
+  refund: Stripe.Refund,
+): {
+  eventId: string;
+  stripeRefundId: string;
+  paymentIntentId: string;
+  amountPence: number;
+  status: "succeeded" | "failed" | "pending" | "cancelled";
+  shopRefundId?: string;
+} | null {
+  const paymentIntentId =
+    typeof refund.payment_intent === "string"
+      ? refund.payment_intent
+      : (refund.payment_intent?.id ?? null);
+  if (!refund.id || !paymentIntentId) return null;
+  const shopRefundId = refund.metadata?.shop_refund_id?.trim() || undefined;
+  return {
+    eventId,
+    stripeRefundId: refund.id,
+    paymentIntentId,
+    amountPence: refund.amount ?? 0,
+    status: mapRefundStatus(refund.status ?? "pending"),
+    ...(shopRefundId ? { shopRefundId } : {}),
+  };
+}
+
+export function parseDisputeEvent(event: Stripe.Event): {
+  eventId: string;
+  stripeDisputeId: string;
+  paymentIntentId: string;
+  amountPence: number;
+  status: "opened" | "closed";
+  outcome?: "won" | "lost";
+} | null {
+  if (
+    event.type !== "charge.dispute.created" &&
+    event.type !== "charge.dispute.updated" &&
+    event.type !== "charge.dispute.closed"
+  ) {
+    return null;
+  }
+  const dispute = event.data.object as Stripe.Dispute;
+  const paymentIntentId =
+    typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : (dispute.payment_intent?.id ?? null);
+  if (!dispute.id || !paymentIntentId) return null;
+  const closed =
+    event.type === "charge.dispute.closed" || dispute.status === "lost" || dispute.status === "won";
+  let outcome: "won" | "lost" | undefined;
+  if (dispute.status === "won") outcome = "won";
+  if (dispute.status === "lost") outcome = "lost";
+  return {
+    eventId: event.id,
+    stripeDisputeId: dispute.id,
+    paymentIntentId,
+    amountPence: dispute.amount,
+    status: closed ? "closed" : "opened",
+    ...(outcome ? { outcome } : {}),
+  };
+}
+
+export function isShopOwnedPaymentIntentMetadata(
+  metadata: Stripe.Metadata | null | undefined,
+): boolean {
+  return metadata?.app === SHOP_APP_METADATA;
+}

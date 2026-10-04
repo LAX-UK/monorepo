@@ -31,6 +31,7 @@ export {
   createSharedSentryInitOptions,
   type SharedSentryInitDefaults,
 } from "./sentry-init-options.js";
+export { createShopAppsSentryInitOptions } from "./shop-apps-sentry-init.js";
 export {
   captureBackgroundError,
   probeSentryConnectivity,

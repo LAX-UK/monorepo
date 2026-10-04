@@ -1,8 +1,8 @@
-import { SHOP_API_ERROR_CODES, ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
-import { ShopApiError } from "../../../errors/shop-api-error.js";
+import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireRecentFinanceAuthentication,
   requireShopAdminSubject,
@@ -34,7 +34,7 @@ const ApproveFeeBodySchema = Type.Object({
 
 export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
   app.post(
-    "/admin/v1/holds",
+    "/holds",
     {
       schema: {
         tags: ["shop-admin"],
@@ -48,6 +48,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "stock_hold.write");
+      requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         editionId: string;
@@ -55,24 +56,13 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
         expiresAt: string;
         note?: string;
       };
-      if (request.shopAdminAuth?.role === "broker") {
-        const allowed = await deps.staffReader.brokerCanAccessClientParty(
-          subject,
-          body.clientPartyId,
-        );
-        if (!allowed) {
-          throw new ShopApiError(
-            SHOP_API_ERROR_CODES.STAFF_FORBIDDEN,
-            "Broker is not assigned to this client",
-            403,
-          );
-        }
-      }
-      const result = await deps.stockHolds.createHold({
+      const role = request.shopAdminAuth?.role ?? "broker";
+      const result = await deps.createStockHold({
         editionId: body.editionId,
         clientPartyId: body.clientPartyId,
         expiresAt: body.expiresAt,
         actorSubjectId: subject,
+        actorRole: role,
         ...(body.note !== undefined ? { note: body.note } : {}),
       });
       return { id: result.holdId, status: result.status };
@@ -80,7 +70,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
   );
 
   app.post(
-    "/admin/v1/holds/:holdId/release",
+    "/holds/:holdId/release",
     {
       schema: {
         tags: ["shop-admin"],
@@ -94,18 +84,21 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "stock_hold.write");
+      requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const params = request.params as { holdId: string };
+      const auth = request.shopAdminAuth;
       const result = await deps.stockHolds.releaseHold({
         holdId: params.holdId,
         actorSubjectId: subject,
+        actorRole: auth?.role ?? "broker",
       });
       return { id: result.holdId, status: result.status };
     },
   );
 
   app.post(
-    "/admin/v1/third-party-sales",
+    "/third-party-sales",
     {
       schema: {
         tags: ["shop-admin"],
@@ -119,6 +112,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "third_party_sale.write");
+      requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         editionId: string;
@@ -135,7 +129,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
   );
 
   app.post(
-    "/admin/v1/sale-fees/:feeId/approve",
+    "/sale-fees/:feeId/approve",
     {
       schema: {
         tags: ["shop-admin"],
@@ -151,6 +145,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     async (request) => {
       requireShopStaffCapability(request, "fee.approve");
       requireRecentFinanceAuthentication(request, deps.financeMaxAuthAgeSeconds);
+      requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const params = request.params as { feeId: string };
       const result = await deps.saleFees.approveFee({

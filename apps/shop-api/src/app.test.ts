@@ -24,6 +24,7 @@ describe("createShopApiApp", () => {
         expireCheckout: async () => "processed" as const,
         failCheckout: async () => "processed" as const,
         recordCurrencyViolation: async () => "processed" as const,
+        dispatchWebhook: async () => ({ kind: "ignored" as const }),
       },
       commerce: {
         ...createMinimalShopApiTestDeps().commerce,
@@ -137,6 +138,7 @@ describe("createShopApiApp", () => {
     await app.ready();
     const routes: Array<{ method: "GET" | "POST"; url: string }> = [
       { method: "POST", url: "/admin/v1/production/tasks" },
+      { method: "POST", url: "/admin/v1/cancellations" },
       { method: "POST", url: "/admin/v1/holds" },
       { method: "POST", url: "/admin/v1/original-sales" },
       { method: "GET", url: "/admin/v1/merchandise/products" },

@@ -1,0 +1,1 @@
+-- Irreversible: enum values cannot be removed from shop_order_status.

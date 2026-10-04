@@ -5,6 +5,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -13,6 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { domainEvent } from "./domain-events.js";
 
 export const shopEditionAllocationEnum = pgEnum("shop_edition_allocation", [
   "original_buyer_entitlement",
@@ -44,6 +46,8 @@ export const shopOrderStatusEnum = pgEnum("shop_order_status", [
   "cancelled",
   "expired",
   "payment_failed",
+  "partially_refunded",
+  "refunded",
 ]);
 
 export const shopFulfilmentOptionEnum = pgEnum("shop_fulfilment_option", [
@@ -155,6 +159,17 @@ export const shopRefundStatusEnum = pgEnum("shop_refund_status", [
   "succeeded",
   "failed",
   "cancelled",
+]);
+
+export const shopRefundSourceEnum = pgEnum("shop_refund_source", [
+  "admin",
+  "cancellation",
+  "stripe_dashboard",
+]);
+
+export const shopAdminCommandStatusEnum = pgEnum("shop_admin_command_status", [
+  "in_flight",
+  "completed",
 ]);
 
 export const shopDisputeStatusEnum = pgEnum("shop_dispute_status", [
@@ -462,6 +477,9 @@ export const shopBasketLine = pgTable(
       .where(sql`${table.artworkId} IS NOT NULL`),
     check("shop_basket_line_quantity_positive", sql`${table.quantity} >= 1`),
     check("shop_basket_line_price_nonnegative", sql`${table.unitPricePence} >= 0`),
+    uniqueIndex("shop_basket_line_variant_uid")
+      .on(table.basketId, table.productVariantId)
+      .where(sql`${table.productVariantId} IS NOT NULL`),
     check(
       "shop_basket_line_target_xor",
       sql`((${table.artworkId} IS NOT NULL)::int + (${table.productVariantId} IS NOT NULL)::int) = 1`,
@@ -541,9 +559,13 @@ export const shopPayoutLedger = pgTable(
   "shop_payout_ledger",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    orderLineId: uuid("order_line_id")
-      .notNull()
-      .references(() => shopOrderLine.id, { onDelete: "restrict" }),
+    orderLineId: uuid("order_line_id").references(() => shopOrderLine.id, { onDelete: "restrict" }),
+    thirdPartySaleId: uuid("third_party_sale_id").references(() => shopThirdPartySale.id, {
+      onDelete: "restrict",
+    }),
+    originalSaleId: uuid("original_sale_id").references(() => shopOriginalSale.id, {
+      onDelete: "restrict",
+    }),
     ownerPartyId: uuid("owner_party_id")
       .notNull()
       .references(() => shopParty.id, { onDelete: "restrict" }),
@@ -571,8 +593,24 @@ export const shopPayoutLedger = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("shop_payout_ledger_order_line_uid").on(table.orderLineId),
+    uniqueIndex("shop_payout_ledger_order_line_uid")
+      .on(table.orderLineId)
+      .where(sql`${table.orderLineId} IS NOT NULL`),
+    uniqueIndex("shop_payout_ledger_third_party_sale_uid")
+      .on(table.thirdPartySaleId)
+      .where(sql`${table.thirdPartySaleId} IS NOT NULL`),
+    uniqueIndex("shop_payout_ledger_original_sale_uid")
+      .on(table.originalSaleId)
+      .where(sql`${table.originalSaleId} IS NOT NULL`),
     index("shop_payout_ledger_status_due_idx").on(table.status, table.payoutDueAt),
+    check(
+      "shop_payout_ledger_source_fk_check",
+      sql`(
+        (${table.source} = 'order_line' AND ${table.orderLineId} IS NOT NULL AND ${table.thirdPartySaleId} IS NULL AND ${table.originalSaleId} IS NULL)
+        OR (${table.source} = 'third_party_sale' AND ${table.thirdPartySaleId} IS NOT NULL AND ${table.orderLineId} IS NULL AND ${table.originalSaleId} IS NULL)
+        OR (${table.source} = 'original_sale' AND ${table.originalSaleId} IS NOT NULL AND ${table.orderLineId} IS NULL AND ${table.thirdPartySaleId} IS NULL)
+      )`,
+    ),
   ],
 );
 
@@ -701,6 +739,49 @@ export const shopAdminIdempotency = pgTable(
   ],
 );
 
+export const shopAdminCommand = pgTable(
+  "shop_admin_command",
+  {
+    commandType: text("command_type").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    actorSubjectId: text("actor_subject_id").notNull(),
+    status: shopAdminCommandStatusEnum("status").default("in_flight").notNull(),
+    resultJson: jsonb("result_json"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.commandType, table.actorSubjectId, table.idempotencyKey],
+      name: "shop_admin_command_pkey",
+    }),
+    index("shop_admin_command_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const shopIdentityMergeInbox = pgTable(
+  "shop_identity_merge_inbox",
+  {
+    eventId: bigint("event_id", { mode: "number" })
+      .primaryKey()
+      .references(() => domainEvent.id, { onDelete: "restrict" }),
+    status: text("status").default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    lastError: text("last_error"),
+    payload: jsonb("payload").notNull(),
+    processedAt: timestamp("processed_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("shop_identity_merge_inbox_status_created_idx").on(table.status, table.createdAt),
+    check(
+      "shop_identity_merge_inbox_status_check",
+      sql`${table.status} IN ('pending', 'completed', 'dead', 'failed')`,
+    ),
+  ],
+);
+
 export const shopPartyInvite = pgTable(
   "shop_party_invite",
   {
@@ -811,6 +892,10 @@ export const shopRefund = pgTable(
     amountPence: integer("amount_pence").notNull(),
     status: shopRefundStatusEnum("status").default("pending").notNull(),
     stripeRefundId: text("stripe_refund_id"),
+    source: shopRefundSourceEnum("source").default("admin").notNull(),
+    submitAttempts: integer("submit_attempts").default(0).notNull(),
+    lastError: text("last_error"),
+    submittedAt: timestamp("submitted_at", { mode: "date", withTimezone: true }),
     idempotencyKey: text("idempotency_key").notNull(),
     requestedBySubjectId: text("requested_by_subject_id").notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -818,6 +903,9 @@ export const shopRefund = pgTable(
   },
   (table) => [
     uniqueIndex("shop_refund_idempotency_uid").on(table.idempotencyKey),
+    uniqueIndex("shop_refund_stripe_refund_uid")
+      .on(table.stripeRefundId)
+      .where(sql`${table.stripeRefundId} IS NOT NULL`),
     check("shop_refund_amount_nonnegative", sql`${table.amountPence} >= 0`),
   ],
 );
@@ -924,7 +1012,12 @@ export const shopThirdPartySale = pgTable(
     recordedAt: timestamp("recorded_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [check("shop_third_party_sale_gross_nonnegative", sql`${table.grossPence} >= 0`)],
+  (table) => [
+    uniqueIndex("shop_third_party_sale_edition_open_uid")
+      .on(table.editionId)
+      .where(sql`${table.status} IN ('draft', 'recorded')`),
+    check("shop_third_party_sale_gross_nonnegative", sql`${table.grossPence} >= 0`),
+  ],
 );
 
 export const shopSaleFee = pgTable(
@@ -991,6 +1084,9 @@ export const shopOriginalSale = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    uniqueIndex("shop_original_sale_artwork_open_uid")
+      .on(table.artworkId)
+      .where(sql`${table.status} NOT IN ('assigned', 'cancelled')`),
     index("shop_original_sale_artwork_idx").on(table.artworkId),
     index("shop_original_sale_buyer_idx").on(table.buyerPartyId),
     check("shop_original_sale_price_nonnegative", sql`${table.salePricePence} >= 0`),

@@ -19,6 +19,7 @@ export type ShopOrderPaidFinancialsIntent = {
 export type CrmShopRecordSyncHandlerDeps = {
   gateway: CrmGateway;
   catalogueSyncEnabled: boolean;
+  financialsSyncEnabled: boolean;
 };
 
 export class CrmShopRecordSyncHandler {
@@ -57,10 +58,12 @@ export class CrmShopRecordSyncHandler {
     return { outcome: "success", providerReference: productResult.recordId };
   }
 
-  /** Phase 2 stub: Zoho Transactions + Royalty_Transactions for print order lines. */
+  /** Zoho financials upsert keyed by shop order id (idempotent). Gated until module is provisioned. */
   async syncOrderPaidFinancials(intent: ShopOrderPaidFinancialsIntent): Promise<CrmSyncResult> {
-    void this.deps.gateway;
+    if (!this.deps.financialsSyncEnabled) {
+      return { outcome: "skipped", reason: "shop_zoho_financials_sync_disabled" };
+    }
     void intent;
-    return { outcome: "skipped", reason: "shop_zoho_order_financials_pending" };
+    return { outcome: "skipped", reason: "shop_zoho_transactions_module_not_available" };
   }
 }

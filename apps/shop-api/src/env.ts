@@ -65,6 +65,10 @@ export const shopApiEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  SHOP_VAT_STANDARD_RATE_BP: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : Number(val)),
+    z.number().int().min(0).max(10_000).optional(),
+  ),
   SHOP_CANCELLATION_DAYS_AFTER_POSSESSION: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : Number(val)),
     z.number().int().min(0).max(365).optional(),
@@ -75,6 +79,11 @@ export const shopApiEnvSchema = z.object({
     .transform((value) => value === "true"),
   /** Max seconds since OIDC `auth_time` for finance admin mutations (D31). */
   SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
+  SHOP_OPS_FINANCE_CLI_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_OPS_DUAL_CONTROL_PENCE: z.coerce.number().int().min(0).default(500_000),
 });
 
 export type ShopApiEnv = z.infer<typeof shopApiEnvSchema>;

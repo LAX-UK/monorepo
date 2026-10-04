@@ -10,7 +10,7 @@ import {
   shopProcessedPaymentEvent,
 } from "@auction/db/schema";
 import { computePayoutDueAt } from "@auction/shop-domain";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
@@ -362,12 +362,20 @@ export async function completeShopCheckoutSession(
         (line): line is typeof line & { editionNumber: number } => line.editionNumber !== null,
       );
 
+      const [vatRow] = await tx
+        .select({
+          vatAmountPence: sql<number>`coalesce(sum(${shopOrderLine.vatPence}), 0)::int`,
+        })
+        .from(shopOrderLine)
+        .where(eq(shopOrderLine.orderId, order.id));
+
       await options.notifications.queueOrderReceipt(tx, {
         idempotencyKey: `order-receipt:${order.id}`,
         identitySubjectId: order.identitySubjectId,
         fallbackEmail: options.fallbackCustomerEmail ?? null,
         orderId: order.id,
         totalPence: order.totalPence,
+        vatAmountPence: vatRow?.vatAmountPence ?? 0,
         storefrontUrl: options.storefrontUrl,
         lines: receiptLines.map((line) => ({
           artworkTitle: line.title,

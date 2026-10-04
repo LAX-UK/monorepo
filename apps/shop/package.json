@@ -17,11 +17,13 @@
   "dependencies": {
     "@auction/identity-rp": "workspace:*",
     "@auction/branding": "workspace:*",
+    "@auction/observability": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/marketing-ui": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
     "@auction/shop-domain": "workspace:*",
     "@auction/ui": "workspace:*",
+    "@sentry/nextjs": "10.51.0",
     "zod": "^3.24.1",
     "next": "15.5.9",
     "react": "^19.1.1",

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopEdition, shopOrderLine } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { type VatPolicy, computeLineVat } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import type { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
@@ -12,6 +13,7 @@ export async function reserveEditionsForCheckoutOrder(
     orderId: string;
     reservedUntil: Date;
     expandedLines: Array<{ artworkId: string; unitPricePence: number }>;
+    vatPolicy?: VatPolicy | null;
   },
   events: ReturnType<typeof createShopDomainEventPublisher>,
 ): Promise<void> {
@@ -39,6 +41,7 @@ export async function reserveEditionsForCheckoutOrder(
         reservedByOrderId: input.orderId,
       })
       .where(eq(shopEdition.id, edition.id));
+    const vat = computeLineVat(input.vatPolicy ?? null, { unitPricePence: line.unitPricePence });
     await tx.insert(shopOrderLine).values({
       orderId: input.orderId,
       editionId: edition.id,
@@ -46,6 +49,13 @@ export async function reserveEditionsForCheckoutOrder(
       sellerPartyId: edition.ownerPartyId,
       editionNumber: edition.editionNumber,
       unitPricePence: line.unitPricePence,
+      ...(vat.ok
+        ? {
+            vatTreatment: vat.vatTreatment,
+            vatRateBp: vat.vatRateBp,
+            vatPence: vat.vatPence,
+          }
+        : {}),
     });
     await events.insertInTransaction(tx, {
       aggregateType: "shop_edition",

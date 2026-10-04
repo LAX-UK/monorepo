@@ -1,0 +1,1 @@
+-- Irreversible: refund outbox columns and stripe_refund_id uniqueness.

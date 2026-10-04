@@ -9,6 +9,7 @@ import {
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
+  SHOP_COMMERCE_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
@@ -344,6 +345,11 @@ describe("migrate-roles invariants", () => {
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
     }
+  });
+
+  it("grants shop_app full DML on shop commerce tables including identity merge inbox", () => {
+    expect([...SHOP_COMMERCE_TABLES]).toContain("shop_identity_merge_inbox");
+    expect([...SHOP_COMMERCE_TABLES]).toContain("shop_admin_command");
   });
 
   it("grants public sequence usage to shop_app (sale authority grant revision)", async () => {

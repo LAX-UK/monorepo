@@ -7,6 +7,7 @@ describe("CrmShopRecordSyncHandler", () => {
     const handler = new CrmShopRecordSyncHandler({
       gateway: {} as CrmGateway,
       catalogueSyncEnabled: false,
+      financialsSyncEnabled: false,
     });
     const result = await handler.syncArtworkCreated({
       aggregateId: "00000000-0000-4000-8000-000000000001",
@@ -27,6 +28,7 @@ describe("CrmShopRecordSyncHandler", () => {
     const handler = new CrmShopRecordSyncHandler({
       gateway: { upsert } as unknown as CrmGateway,
       catalogueSyncEnabled: true,
+      financialsSyncEnabled: false,
     });
     const result = await handler.syncArtworkCreated({
       aggregateId: "00000000-0000-4000-8000-000000000001",
@@ -43,6 +45,23 @@ describe("CrmShopRecordSyncHandler", () => {
     );
   });
 
+  it("skips financial sync when disabled", async () => {
+    const upsert = vi.fn();
+    const handler = new CrmShopRecordSyncHandler({
+      gateway: { upsert } as unknown as CrmGateway,
+      catalogueSyncEnabled: false,
+      financialsSyncEnabled: false,
+    });
+    const result = await handler.syncOrderPaidFinancials({
+      orderId: "00000000-0000-4000-8000-000000000099",
+      identitySubjectId: "subject-1",
+      totalPence: 12_500,
+      paidAt: "2026-01-01T12:00:00.000Z",
+    });
+    expect(result).toEqual({ outcome: "skipped", reason: "shop_zoho_financials_sync_disabled" });
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
   it("returns retryable CrmGatewayError when product upsert fails", async () => {
     const upsert = vi.fn().mockResolvedValue({
       module: "Products",
@@ -54,6 +73,7 @@ describe("CrmShopRecordSyncHandler", () => {
     const handler = new CrmShopRecordSyncHandler({
       gateway: { upsert } as unknown as CrmGateway,
       catalogueSyncEnabled: true,
+      financialsSyncEnabled: false,
     });
     const result = await handler.syncArtworkCreated({
       aggregateId: "00000000-0000-4000-8000-000000000001",

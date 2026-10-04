@@ -1,0 +1,1 @@
+-- Irreversible: nullable order_line_id and multi-source payout rows cannot be safely reverted.

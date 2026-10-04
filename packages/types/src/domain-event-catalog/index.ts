@@ -67,6 +67,23 @@ export { assertDomainEventConsumerContract } from "./consumer-guard.js";
 export { listDomainEventTypesForConsumer } from "./consumer-routing.js";
 export { shopOrderPaidPayloadSchemaV1 } from "./shop-payload-schemas.js";
 export {
+  shopCancellationRequestedPayloadSchemaV1,
+  shopDisputeClosedPayloadSchemaV1,
+  shopDisputeOpenedPayloadSchemaV1,
+  shopFulfilmentDispatchedPayloadSchemaV1,
+  shopOriginalSaleReservedPayloadSchemaV1,
+  shopPayoutPaidPayloadSchemaV1,
+  shopPossessionRecordedPayloadSchemaV1,
+  shopProductionStartedPayloadSchemaV1,
+  shopRefundCompletedPayloadSchemaV1,
+  shopRefundRequestedPayloadSchemaV1,
+  shopSaleFeeApprovedPayloadSchemaV1,
+  shopStockHoldCreatedPayloadSchemaV1,
+  shopStockHoldExpiredPayloadSchemaV1,
+  shopStockHoldReleasedPayloadSchemaV1,
+  shopThirdPartySaleRecordedPayloadSchemaV1,
+} from "./shop-phase-payload-schemas.js";
+export {
   paymentCapturedPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,

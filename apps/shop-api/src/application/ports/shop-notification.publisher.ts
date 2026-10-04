@@ -10,6 +10,7 @@ export type ShopNotificationPublisher = {
       fallbackEmail: string | null;
       orderId: string;
       totalPence: number;
+      vatAmountPence: number;
       storefrontUrl: string;
       lines: Array<{
         artworkTitle: string;

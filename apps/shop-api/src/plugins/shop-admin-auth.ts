@@ -34,21 +34,26 @@ function readAuthTime(payload: import("jose").JWTPayload): number | undefined {
   return undefined;
 }
 
-export function registerShopAdminAuthPlugin(
+export type ShopAdminAuthPluginOptions = {
+  jwksUrl: string;
+  issuer: string;
+  staffReader: ShopStaffMemberReader;
+};
+
+/** Auth hooks for routes registered under the `/admin/v1` Fastify scope (no global URL prefix check). */
+export function registerShopAdminAuthHooks(
   app: FastifyInstance,
-  options: {
-    jwksUrl: string;
-    issuer: string;
-    staffReader: ShopStaffMemberReader;
-  },
+  options: ShopAdminAuthPluginOptions,
 ): void {
   app.decorateRequest("shopAdminAuth", undefined);
   app.addHook("onRequest", async (request) => {
     const path = request.url.split("?")[0] ?? request.url;
-    if (!path.startsWith("/admin/v1/")) {
-      return;
-    }
-    if (path === "/admin/v1/health/live" || path === "/admin/v1/health/ready") {
+    if (
+      path === "/admin/v1/health/live" ||
+      path === "/admin/v1/health/ready" ||
+      path === "/health/live" ||
+      path === "/health/ready"
+    ) {
       return;
     }
     const header = request.headers.authorization;
@@ -94,6 +99,28 @@ export function registerShopAdminAuthPlugin(
       authTime: readAuthTime(verified.payload),
     };
   });
+}
+
+/** @deprecated Use {@link registerShopAdminScope} so auth applies only under `/admin/v1`. */
+export function registerShopAdminAuthPlugin(
+  app: FastifyInstance,
+  options: ShopAdminAuthPluginOptions,
+): void {
+  registerShopAdminAuthHooks(app, options);
+}
+
+export async function registerShopAdminScope(
+  app: FastifyInstance,
+  options: ShopAdminAuthPluginOptions,
+  registerRoutes: (scoped: FastifyInstance) => Promise<void> | void,
+): Promise<void> {
+  await app.register(
+    async (scoped) => {
+      registerShopAdminAuthHooks(scoped, options);
+      await registerRoutes(scoped);
+    },
+    { prefix: "/admin/v1" },
+  );
 }
 
 export function requireShopStaffCapability(

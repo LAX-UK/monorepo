@@ -2,6 +2,7 @@ import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
+import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
@@ -21,7 +22,7 @@ const CreateOriginalSaleBodySchema = Type.Object({
 
 export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
   app.post(
-    "/admin/v1/original-sales",
+    "/original-sales",
     {
       schema: {
         tags: ["shop-admin"],
@@ -35,6 +36,7 @@ export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps
     },
     async (request) => {
       requireShopStaffCapability(request, "original_sale.write");
+      requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         artworkId: string;

@@ -479,6 +479,13 @@ jobs:
       DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       SHOP_APP_DB_PASSWORD: postgres
       SHOP_V1_INTEGRATION_REQUIRED: "true"
+      SHOP_ADMIN_ENABLED: "true"
+      SHOP_PAYOUTS_ENABLED: "true"
+      SHOP_THIRD_PARTY_ENABLED: "true"
+      SHOP_ORIGINALS_ENABLED: "true"
+      SHOP_MERCHANDISE_ENABLED: "true"
+      SHOP_CANCELLATION_DAYS_AFTER_POSSESSION: "14"
+      DOMAIN_EVENT_PUBLISH_VALIDATE: "enforce"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -504,6 +511,8 @@ jobs:
         run: pnpm --filter @auction/shop-api... build
       - name: Shop-api Postgres integration (no skips)
         run: node scripts/ci/run-shop-v1-postgres-integration.mjs
+      - name: Shop-api admin auth route tests (phase flags on)
+        run: pnpm --filter @auction/shop-api exec vitest run src/routes/admin --reporter=verbose
       - name: Shop package build (includes phase1 e2e spec)
         run: pnpm --filter @auction/shop... build
 
