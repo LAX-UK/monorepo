@@ -35,6 +35,17 @@ for env_name in "${!outputs[@]}"; do
   export "$env_name=$value"
 done
 
+shop_admin_secret=""
+if shop_admin_secret="$(terraform -chdir="$tf_dir" output -raw oidc_shop_admin_client_secret 2>/dev/null)" &&
+  [[ -n "$shop_admin_secret" ]]; then
+  export OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN="$shop_admin_secret"
+elif [[ -n "${OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK:-}" ]]; then
+  export OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN="$OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK"
+else
+  echo "::error::Missing Terraform output oidc_shop_admin_client_secret and OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK for OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN"
+  exit 1
+fi
+
 export DATABASE_URL="$DATABASE_URL_OWNER"
 
 shop_url="$(tf_output database_url_shop)"
@@ -74,6 +85,7 @@ docker run --rm \
   -e WORKER_APP_DB_PASSWORD \
   -e OIDC_CLIENT_SECRET_LAX_BID_WEB \
   -e OIDC_CLIENT_SECRET_LAX_SHOP_WEB \
+  -e OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN \
   -e NODE_ENV=production \
   -e APP_ENV=test \
   "$migrate_image" \
