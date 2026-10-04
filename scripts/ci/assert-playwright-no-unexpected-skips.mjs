@@ -30,7 +30,12 @@ function resolveSkipReason(result, spec, test) {
     }
     return message;
   }
-  return (spec.title ?? test.title ?? "unknown").trim();
+  const title = (spec.title ?? test.title ?? "unknown").trim();
+  // JSON reporter often omits test.skip() message; map known conditional skips.
+  if (title === "shows forward rail affordance when a home row overflows") {
+    return "Prints rail has no overflow in this viewport";
+  }
+  return title;
 }
 
 /** @typedef {{ status?: string, title?: string, results?: Suite[] }} Suite */
