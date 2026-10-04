@@ -52,11 +52,12 @@ test.describe("Shop V1 phase 1 smoke", () => {
       await page.goto(path);
       await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}(\\?.*)?$`));
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      await expect(page.locator("#main-content")).toBeVisible();
+      const main = page.getByRole("main").first();
+      await expect(main).toBeVisible();
       for (const title of portalFailureTitles) {
         await expect(page.getByText(title, { exact: true })).not.toBeVisible();
       }
-      await expect(page.locator("#main-content")).not.toBeEmpty();
+      await expect(main).not.toBeEmpty();
     }
 
     const ownedArtworkTitle = process.env.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE?.trim();
@@ -83,7 +84,7 @@ test.describe("Shop V1 phase 1 smoke", () => {
     await signInShopBuyer(page, { email, password }, "/account");
     await expect(page).toHaveURL(/\/account(\?.*)?$/);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(page.getByRole("main").first()).toBeVisible();
     await expect(page.getByRole("link", { name: /my editions/i })).toBeVisible();
   });
 });
