@@ -33,6 +33,57 @@ async function ensureAcceptanceStripePrintInBasket(page: Page): Promise<void> {
   await expect(viewBasket).toBeVisible({ timeout: 15_000 });
 }
 
+/** Stripe Hosted Checkout (redirect) — card fields vary by layout (iframe vs direct). */
+async function submitStripeHostedTestPayment(page: Page): Promise<void> {
+  await page.waitForURL(/checkout\.stripe\.com/i, { timeout: 90_000 });
+
+  const payWithCard = page.getByRole("button", { name: /pay with card|card/i });
+  if (await payWithCard.isVisible().catch(() => false)) {
+    await payWithCard.click();
+  }
+
+  const directCard = page
+    .locator('input[autocomplete="cc-number"], input[name="cardnumber"]')
+    .first();
+  if (await directCard.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await directCard.fill("4242424242424242");
+    await page
+      .locator('input[autocomplete="cc-exp"], input[name="exp-date"]')
+      .first()
+      .fill("12/34");
+    await page.locator('input[autocomplete="cc-csc"], input[name="cvc"]').first().fill("123");
+  } else {
+    const cardFrame = page.frameLocator('iframe[name^="__privateStripeFrame"]').first();
+    const cardNumber = cardFrame.getByPlaceholder(/card number|1234/i);
+    if (await cardNumber.isVisible().catch(() => false)) {
+      await cardNumber.fill("4242424242424242");
+    } else {
+      await page
+        .getByPlaceholder(/card number|1234/i)
+        .first()
+        .fill("4242424242424242");
+    }
+    await page
+      .getByPlaceholder(/MM \/ YY|expir/i)
+      .first()
+      .fill("12/34");
+    await page
+      .getByPlaceholder(/CVC|CVV/i)
+      .first()
+      .fill("123");
+  }
+
+  const payButton = page.getByRole("button", { name: /^pay$/i });
+  if (await payButton.isVisible().catch(() => false)) {
+    await payButton.click();
+  } else {
+    await page
+      .getByRole("button", { name: /pay|submit/i })
+      .first()
+      .click();
+  }
+}
+
 test.describe("shop buyer flow @e2e", () => {
   test.describe("Stripe checkout (staging)", () => {
     test.describe.configure({ retries: 0 });
@@ -40,7 +91,7 @@ test.describe("shop buyer flow @e2e", () => {
     test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
       test.skip(!stripeEnabled, stripeSkipReason);
       test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
-      test.setTimeout(120_000);
+      test.setTimeout(420_000);
 
       await signInShopBuyer(page, buyerCredentials, "/account");
       await ensureAcceptanceStripePrintInBasket(page);
@@ -100,30 +151,7 @@ test.describe("shop buyer flow @e2e", () => {
         });
       await Promise.race([stripeNavigation, checkoutFailed]);
 
-      const cardNumber = page
-        .frameLocator('iframe[name^="__privateStripeFrame"]')
-        .first()
-        .getByPlaceholder(/card number|1234/i);
-      if (await cardNumber.isVisible().catch(() => false)) {
-        await cardNumber.fill("4242424242424242");
-      } else {
-        await page
-          .getByPlaceholder(/card number|1234/i)
-          .first()
-          .fill("4242424242424242");
-      }
-      await page
-        .getByPlaceholder(/MM \/ YY|expir/i)
-        .first()
-        .fill("12/34");
-      await page
-        .getByPlaceholder(/CVC|CVV/i)
-        .first()
-        .fill("123");
-      await page
-        .getByRole("button", { name: /pay|submit/i })
-        .first()
-        .click();
+      await submitStripeHostedTestPayment(page);
 
       await page.waitForURL(/test-shop\.lax\.bid\/checkout\/confirmation/i, { timeout: 180_000 });
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
