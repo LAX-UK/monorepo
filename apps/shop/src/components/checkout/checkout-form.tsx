@@ -50,44 +50,6 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
         className="shop-checkout__form"
         onSubmit={(event) => {
           event.preventDefault();
-          setError(null);
-          setPostcodeError(null);
-          if (fulfilment === "uk_insured_delivery" && !isValidUkPostcode(delivery.postcode)) {
-            const message = "Enter a valid UK postcode (for example SW1A 1AA).";
-            setPostcodeError(message);
-            document.getElementById("checkout-postcode")?.focus();
-            return;
-          }
-          startTransition(async () => {
-            const deliveryAddress =
-              fulfilment === "uk_insured_delivery"
-                ? {
-                    line1: delivery.line1.trim(),
-                    city: delivery.city.trim(),
-                    postcode: delivery.postcode.trim(),
-                    country: delivery.country.trim(),
-                    ...(delivery.line2?.trim() ? { line2: delivery.line2.trim() } : {}),
-                  }
-                : undefined;
-            const result = await startCheckout({
-              basketId: basket.basketId,
-              fulfilment,
-              ...(deliveryAddress ? { deliveryAddress } : {}),
-            });
-            if (result.kind === "enquiry") {
-              window.open(
-                `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("International delivery quotation")}`,
-                "_self",
-              );
-              return;
-            }
-            if (result.kind === "error") {
-              setError(result.message);
-              return;
-            }
-            setRedirecting(true);
-            window.location.href = result.checkoutUrl;
-          });
         }}
       >
         {customerEmail ? (
@@ -184,9 +146,49 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
           />
         ) : null}
         <button
-          type="submit"
+          type="button"
           className="shop-detail__cta shop-focus-ring"
           disabled={fieldsDisabled}
+          onClick={() => {
+            setError(null);
+            setPostcodeError(null);
+            if (fulfilment === "uk_insured_delivery" && !isValidUkPostcode(delivery.postcode)) {
+              const message = "Enter a valid UK postcode (for example SW1A 1AA).";
+              setPostcodeError(message);
+              document.getElementById("checkout-postcode")?.focus();
+              return;
+            }
+            startTransition(async () => {
+              const deliveryAddress =
+                fulfilment === "uk_insured_delivery"
+                  ? {
+                      line1: delivery.line1.trim(),
+                      city: delivery.city.trim(),
+                      postcode: delivery.postcode.trim(),
+                      country: delivery.country.trim(),
+                      ...(delivery.line2?.trim() ? { line2: delivery.line2.trim() } : {}),
+                    }
+                  : undefined;
+              const result = await startCheckout({
+                basketId: basket.basketId,
+                fulfilment,
+                ...(deliveryAddress ? { deliveryAddress } : {}),
+              });
+              if (result.kind === "enquiry") {
+                window.open(
+                  `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("International delivery quotation")}`,
+                  "_self",
+                );
+                return;
+              }
+              if (result.kind === "error") {
+                setError(result.message);
+                return;
+              }
+              setRedirecting(true);
+              window.location.href = result.checkoutUrl;
+            });
+          }}
         >
           {redirecting
             ? "Redirecting to secure payment…"
