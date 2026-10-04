@@ -15,6 +15,7 @@ import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/merchandise.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
+import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
 import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
@@ -121,6 +122,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
       },
       async (adminScope) => {
         await registerAdminHealthRoutes(adminScope, options.deps.admin.health);
+        void registerAdminSessionRoutes(adminScope, {
+          featureFlags: options.deps.admin.featureFlags,
+        });
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
           void registerAdminOperationsRoutes(adminScope, options.deps.admin);

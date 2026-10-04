@@ -392,9 +392,18 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/identity-contracts
+      '@auction/identity-rp':
+        specifier: workspace:*
+        version: link:../../packages/identity-rp
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
       next:
         specifier: 15.5.9
         version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -404,10 +413,16 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.2.5(react@19.2.5)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts
+      '@playwright/test':
+        specifier: ^1.55.0
+        version: 1.55.1
       '@tailwindcss/postcss':
         specifier: ^4.1.13
         version: 4.2.2
@@ -420,12 +435,18 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.9
         version: 19.2.3(@types/react@19.2.14)
+      otpauth:
+        specifier: ^9.4.0
+        version: 9.5.2
       tailwindcss:
         specifier: ^4.1.13
         version: 4.2.2
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   apps/shop-api:
     dependencies:
@@ -7643,6 +7664,9 @@ packages:
   os-tmpdir@1.0.2:
     resolution: {integrity: sha512-D2FR03Vir7FIu45XBY20mTb+/ZSWB00sjU9jdQXt83gDrI4Ztz5Fs7/yy74g2N5SVQY4xY1qDr4rNddwYRVX0g==}
     engines: {node: '>=0.10.0'}
+
+  otpauth@9.5.2:
+    resolution: {integrity: sha512-GQ5emWR/x1tcExT62IBT0UfO95wZzJZyxYOJOGVeQF47SYEN9vmh0vISvDZaNMuFJRG+IaWCKtfm+t9Bfoal6w==}
 
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
@@ -15231,6 +15255,10 @@ snapshots:
       wcwidth: 1.0.1
 
   os-tmpdir@1.0.2: {}
+
+  otpauth@9.5.2:
+    dependencies:
+      '@noble/hashes': 2.4.0
 
   p-limit@2.3.0:
     dependencies:

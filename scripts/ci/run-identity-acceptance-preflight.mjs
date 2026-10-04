@@ -38,6 +38,8 @@ const env = {
     process.env.OIDC_CLIENT_SECRET_LAX_BID_WEB ?? "ci-bid-web-client-secret-at-least-32",
   OIDC_CLIENT_SECRET_LAX_SHOP_WEB:
     process.env.OIDC_CLIENT_SECRET_LAX_SHOP_WEB ?? "ci-shop-identity-client-secret-at-least-32",
+  OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN:
+    process.env.OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN ?? "ci-shop-admin-client-secret-at-least-32",
   AUTH_APP_DB_PASSWORD: process.env.AUTH_APP_DB_PASSWORD ?? "postgres",
   API_APP_DB_PASSWORD: process.env.API_APP_DB_PASSWORD ?? "postgres",
   SHOP_APP_DB_PASSWORD: process.env.SHOP_APP_DB_PASSWORD ?? "postgres",

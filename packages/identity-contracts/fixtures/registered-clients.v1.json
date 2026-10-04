@@ -1,5 +1,5 @@
 {
-  "clientIds": ["lax-bid-web", "lax-shop-web", "ws-mobile"],
+  "clientIds": ["lax-bid-web", "lax-shop-web", "lax-shop-admin", "ws-mobile"],
   "bidWeb": {
     "allowedResources": ["lax-bid-api", "lax-ws"],
     "allowedScopes": ["openid", "profile", "email", "offline_access", "bid.read", "bid.write"],

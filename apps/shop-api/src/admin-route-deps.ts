@@ -2,6 +2,7 @@ import type { ImportArtworkHandler } from "./application/handlers/import-artwork
 import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
 import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
 import type { SaleFeeWriter } from "./application/ports/sale-fee.writer.js";
+import type { ShopFeatureFlagsReader } from "./application/ports/shop-feature-flags.js";
 import type { ShopStaffMemberReader } from "./application/ports/staff-member.reader.js";
 import type { StockHoldWriter } from "./application/ports/stock-hold.writer.js";
 import type { ThirdPartySaleWriter } from "./application/ports/third-party-sale.writer.js";
@@ -15,6 +16,7 @@ import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/ad
 import type { HealthDeps } from "./routes/health.routes.js";
 
 export type AdminRoutesDeps = {
+  featureFlags: ShopFeatureFlagsReader;
   financeMaxAuthAgeSeconds: number;
   health: HealthDeps;
   importArtwork: ImportArtworkHandler;

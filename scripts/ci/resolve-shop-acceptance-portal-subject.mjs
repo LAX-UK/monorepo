@@ -3,9 +3,19 @@ import pg from "pg";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
 const databaseUrl = process.env.DATABASE_URL_OWNER?.trim();
+
+function readCliEmail(argv) {
+  const flagIndex = argv.indexOf("--email");
+  if (flagIndex >= 0 && argv[flagIndex + 1]) {
+    return argv[flagIndex + 1].trim();
+  }
+  return "";
+}
+
 const email = (
-  process.env.SHOP_OIDC_TEST_EMAIL ??
-  process.env.IDENTITY_ACCEPTANCE_EMAIL ??
+  readCliEmail(process.argv) ||
+  process.env.SHOP_OIDC_TEST_EMAIL ||
+  process.env.IDENTITY_ACCEPTANCE_EMAIL ||
   ""
 ).trim();
 

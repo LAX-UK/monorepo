@@ -9,6 +9,7 @@ export enum OidcClientKind {
 export const REGISTERED_OIDC_CLIENT_IDS = {
   LAX_BID_WEB: "lax-bid-web",
   LAX_SHOP_WEB: "lax-shop-web",
+  LAX_SHOP_ADMIN: "lax-shop-admin",
   WS_MOBILE: "ws-mobile",
 } as const;
 
@@ -66,6 +67,28 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       consentPolicy: "implicit",
       backchannelLogoutUri: "https://lax.bid/api/auth/backchannel-logout",
       testBackchannelLogoutUri: "https://test.lax.bid/api/auth/backchannel-logout",
+      backchannelLogoutSessionRequired: true,
+    },
+    [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN]: {
+      clientId: REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN,
+      kind: OidcClientKind.Confidential,
+      displayName: "LAX Shop Admin",
+      redirectUris: [
+        "http://localhost:3030/api/auth/callback",
+        "https://test-shop-admin.lax.bid/api/auth/callback",
+        "https://admin.shop.lax.art/api/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "http://localhost:3030/",
+        "https://test-shop-admin.lax.bid/",
+        "https://admin.shop.lax.art/",
+      ],
+      allowedScopes: ["openid", "profile", "email", "offline_access", "shop.admin"],
+      allowedResources: [LAX_RESOURCE_IDS.LAX_SHOP_API],
+      pkceRequired: true,
+      consentPolicy: "implicit",
+      backchannelLogoutUri: "https://admin.shop.lax.art/api/auth/backchannel-logout",
+      testBackchannelLogoutUri: "https://test-shop-admin.lax.bid/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     },
     [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB]: {

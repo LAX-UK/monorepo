@@ -115,6 +115,7 @@ async function main() {
   process.env.REDIS_URL = redisUrl;
   process.env.OIDC_CLIENT_SECRET_LAX_BID_WEB ??= "ci-bid-web-client-secret-at-least-32";
   process.env.OIDC_CLIENT_SECRET_LAX_SHOP_WEB ??= "ci-shop-web-client-secret-at-least-32";
+  process.env.OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN ??= "ci-shop-admin-client-secret-at-least-32";
   process.env.AUTH_APP_DB_PASSWORD ??= "postgres";
   process.env.API_APP_DB_PASSWORD ??= "postgres";
   process.env.SHOP_APP_DB_PASSWORD ??= "postgres";

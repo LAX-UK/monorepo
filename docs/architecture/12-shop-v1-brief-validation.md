@@ -84,10 +84,10 @@ Feature flags (representative): `SHOP_PORTAL_OWNERSHIP_ENABLED`, `SHOP_ADMIN_ENA
 | --- | --- | --- |
 | 1 | Eligible original → 24 editions 10/10/4 via admin | 1 |
 | 2 | Ineligible → zero editions | 1 |
-| 3 | Owner limit + broker hold, no double sale | 1 (limit); 3 (hold) |
-| 4 | Direct sale → production → fulfilment → cancellation → manual payout | 2 |
-| 5 | Third-party sale gross/fees/net match shop, Zoho, portal | 3 |
-| 6 | Original sale reservation → invoice → assign original + buyer editions | 4 |
+| 3 | Owner limit + broker hold, no double sale | 1 (limit); 3 (hold) — [stock-holds.spec.ts](../../apps/shop-admin/e2e/stock-holds.spec.ts) (BFF → shop-api over HTTP) |
+| 4 | Direct sale → production → fulfilment → cancellation → manual payout | 2 — [direct-sale-payout.spec.ts](../../apps/shop-admin/e2e/direct-sale-payout.spec.ts) |
+| 5 | Third-party sale gross/fees/net match shop, Zoho, portal | 3 — [third-party-sales.spec.ts](../../apps/shop-admin/e2e/third-party-sales.spec.ts) |
+| 6 | Original sale reservation → invoice → assign original + buyer editions | 4 — [original-sales.spec.ts](../../apps/shop-admin/e2e/original-sales.spec.ts) + [merchandise.spec.ts](../../apps/shop/e2e/merchandise.spec.ts) |
 | 7 | Zoho failure alerts; stock correct; safe retry | 1 (catalogue); 3 (full sync) |
 
 ## Architecture rules (SOLID)

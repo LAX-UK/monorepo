@@ -44,6 +44,7 @@ import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-p
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
 import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
+import { createShopFeatureFlagsReader } from "./infrastructure/shop-feature-flags-env.js";
 import { assertShopVatPolicyWhenPayoutsEnabled } from "./infrastructure/shop-vat-policy.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
@@ -153,6 +154,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       health: healthDeps,
       staffReader,
       admin: {
+        featureFlags: createShopFeatureFlagsReader(env),
         financeMaxAuthAgeSeconds: env.SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS,
         health: healthDeps,
         importArtwork,

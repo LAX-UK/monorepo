@@ -50,7 +50,7 @@ jobs:
             changed=true
           elif test "${{ github.event_name }}" = "push" &&
             git diff --quiet "$BEFORE_SHA" "$CURRENT_SHA" -- \
-              apps/shop apps/shop-identity apps/shop-api; then
+              apps/shop apps/shop-identity apps/shop-api apps/shop-admin; then
             changed=false
           elif test "${{ github.event_name }}" = "push"; then
             changed=true
@@ -118,6 +118,8 @@ jobs:
       shop_digest: ${{ steps.pins.outputs.shop_digest }}
       shop_api_sha: ${{ steps.pins.outputs.shop_api_sha }}
       shop_api_digest: ${{ steps.pins.outputs.shop_api_digest }}
+      shop_admin_sha: ${{ steps.pins.outputs.shop_admin_sha }}
+      shop_admin_digest: ${{ steps.pins.outputs.shop_admin_digest }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -158,6 +160,8 @@ jobs:
       shop_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_digest }}
       shop_api_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_api_sha }}
       shop_api_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_api_digest }}
+      shop_admin_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_admin_sha }}
+      shop_admin_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_admin_digest }}
       app_image_tag: ${{ needs.resolve-shop-immutable-pins.outputs.shop_sha }}
     secrets: inherit
 
