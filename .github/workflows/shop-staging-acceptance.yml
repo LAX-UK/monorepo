@@ -238,7 +238,7 @@ jobs:
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
-      - name: Shop Stripe test checkout (staging)
+      - name: Shop Stripe hosted checkout smoke (staging)
         if: inputs.seed_catalogue
         env:
           SHOP_STAGING_ACCEPTANCE_STRICT: "1"
@@ -251,8 +251,18 @@ jobs:
           pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
             --project=chromium-desktop \
             --retries=0 \
-            --grep "signed-in buyer can complete Stripe test checkout"
+            --grep "reaches Stripe hosted checkout"
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+      - name: Shop Stripe webhook payment rehearsal (staging)
+        if: inputs.seed_catalogue
+        env:
+          SHOP_STOREFRONT_URL: https://test-shop.lax.bid
+          STRIPE_SHOP_WEBHOOK_SECRET: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/shop-api... build
+          pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook
+          pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
         env:
@@ -270,7 +280,7 @@ jobs:
             e2e/buyer-flow.spec.ts \
             e2e/unavailable-notify-me.spec.ts \
             --project=chromium-desktop \
-            --grep-invert "complete Stripe test checkout"
+            --grep-invert "reaches Stripe hosted checkout"
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Shop browser tier 2 mobile (a11y and catalogue)
         if: inputs.seed_catalogue

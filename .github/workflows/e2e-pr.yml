@@ -259,7 +259,7 @@ jobs:
         run: |
           pnpm --filter @auction/shop-api seed:catalogue
           pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
-            --grep-invert "complete Stripe test checkout"
+            --grep-invert "reaches Stripe hosted checkout"
       - name: Run Shop V1 phase 1 portal smoke
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3020

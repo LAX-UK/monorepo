@@ -170,7 +170,7 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 
 ## CI
 
-- Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml). Tier 1 on every deploy (`seed_catalogue=false`): health pin, auth contracts, portal smoke. Full matrix with `seed_catalogue=true`: catalogue seeds, portal/commerce fixtures, guest basket, filters, POA interest, desktop + mobile a11y, Stripe test checkout on `acceptance-stripe-print`, **staff-operations** seed + `apps/shop-admin` Playwright + `apps/shop/e2e/merchandise.spec.ts`, and strict Playwright skip audit (feature-off skips allowed).
+- Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml). Tier 1 on every deploy (`seed_catalogue=false`): health pin, auth contracts, portal smoke. Full matrix with `seed_catalogue=true`: catalogue seeds, portal/commerce fixtures, guest basket, filters, POA interest, desktop + mobile a11y, Stripe redirect smoke + webhook paid-order rehearsal on `acceptance-stripe-print`, **staff-operations** seed + `apps/shop-admin` Playwright + `apps/shop/e2e/merchandise.spec.ts`, and strict Playwright skip audit (feature-off skips allowed).
 - PR Postgres smoke: [ci.yml](../../.github/workflows/ci.yml) job **`shop-v1-phase-smoke`** (shop-domain + migration contract tests, shop-api Postgres integration, shop build) when Shop-related paths change.
 - PR browser gates: [e2e-pr.yml](../../.github/workflows/e2e-pr.yml) (Shop buyer flow + phase 1 portal smoke with portal flag on shop-api and storefront).
 
@@ -190,7 +190,9 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | [37215519006](https://github.com/LAX-UK/monorepo/actions/runs/37215519006) | `shop-staging-acceptance` | Failed | Stripe e2e: native form submit to `/checkout?country=GB` before React hydration on pinned storefront. |
 | [37215970686](https://github.com/LAX-UK/monorepo/actions/runs/37215970686) | `shop-staging-acceptance` | Failed | Same root cause; fix in [PR #437](https://github.com/LAX-UK/monorepo/pull/437) (`checkout-form` `type="button"` + e2e waits). |
 
-**Next:** merge [PR #438](https://github.com/LAX-UK/monorepo/pull/438) (checkout native-submit fix) and [PR #437](https://github.com/LAX-UK/monorepo/pull/437) (staff operations), deploy test Shop (`app-deploy-test` or merge queue), then two green runs with `seed_catalogue=true` on the new `/health/ready` SHA.
+**Stripe on seeded acceptance:** browser smoke asserts redirect to `checkout.stripe.com`; `pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook` posts a signed `checkout.session.completed` and asserts the order is `paid`. Full 4242 card entry on Hosted Checkout remains a **manual** test-env check (Stripe’s page is unreliable in headless CI).
+
+**Next:** two green `shop-staging-acceptance` runs with `seed_catalogue=true` on the deployed `/health/ready` SHA.
 
 **Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
 

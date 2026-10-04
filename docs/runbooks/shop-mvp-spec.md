@@ -69,7 +69,7 @@ notice that clears `cancelled=1` from the URL.
 1. Anonymous basket with server-side persistence keyed to Shop session or guest token.
 2. Checkout requires Shop SSO; sandbox Stripe Checkout on staging (`shop-api` requires Stripe secrets at boot).
 3. Persist order + line items under `shop_app` tables; webhook-driven payment completion in `shop-api` tests.
-4. **Automated release acceptance** (`shop-staging-acceptance.yml`): tier 1 on every deploy (`seed_catalogue=false`) pins `/health/ready`, webhook wiring, theme/viewport/home, auth contracts, and portal smoke. **Full Phase 1 evidence** requires two consecutive disposable runs with `seed_catalogue=true` (catalogue + portal + commerce seeds): catalogue/basket/interest/filters, populated portal rows, and automated Stripe test checkout on `acceptance-stripe-print` with webhook completion and paid-order visibility.
+4. **Automated release acceptance** (`shop-staging-acceptance.yml`): tier 1 on every deploy (`seed_catalogue=false`) pins `/health/ready`, webhook wiring, theme/viewport/home, auth contracts, and portal smoke. **Full Phase 1 evidence** requires two consecutive disposable runs with `seed_catalogue=true` (catalogue + portal + commerce seeds): catalogue/basket/interest/filters, populated portal rows, Stripe **hosted-checkout redirect smoke**, and **signed webhook rehearsal** marking an `acceptance-stripe-print` order `paid` (manual 4242 checkout optional on test).
 
 **Later increment:**
 

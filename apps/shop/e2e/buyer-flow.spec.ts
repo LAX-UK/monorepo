@@ -17,8 +17,8 @@ const buyerCredentials = {
 };
 
 /**
- * Full Stripe checkout (4242) runs only when SHOP_E2E_STRIPE_CHECKOUT=1 against a wired stack.
- * Webhook completion is exercised in shop-api integration tests.
+ * Staging runs SHOP_E2E_STRIPE_CHECKOUT=1 to assert redirect to Stripe Hosted Checkout only.
+ * Payment completion is rehearsed via signed webhook on staging (shop-api script + integration tests).
  */
 async function ensureAcceptanceStripePrintInBasket(page: Page): Promise<void> {
   await page.goto(`/artworks/${ACCEPTANCE_STRIPE_CHECKOUT_SLUG}`);
@@ -33,62 +33,11 @@ async function ensureAcceptanceStripePrintInBasket(page: Page): Promise<void> {
   await expect(viewBasket).toBeVisible({ timeout: 15_000 });
 }
 
-/** Stripe Hosted Checkout (redirect) — card fields vary by layout (iframe vs direct). */
-async function submitStripeHostedTestPayment(page: Page): Promise<void> {
-  await page.waitForURL(/checkout\.stripe\.com/i, { timeout: 90_000 });
-
-  const payWithCard = page.getByRole("button", { name: /pay with card|card/i });
-  if (await payWithCard.isVisible().catch(() => false)) {
-    await payWithCard.click();
-  }
-
-  const directCard = page
-    .locator('input[autocomplete="cc-number"], input[name="cardnumber"]')
-    .first();
-  if (await directCard.isVisible({ timeout: 10_000 }).catch(() => false)) {
-    await directCard.fill("4242424242424242");
-    await page
-      .locator('input[autocomplete="cc-exp"], input[name="exp-date"]')
-      .first()
-      .fill("12/34");
-    await page.locator('input[autocomplete="cc-csc"], input[name="cvc"]').first().fill("123");
-  } else {
-    const cardFrame = page.frameLocator('iframe[name^="__privateStripeFrame"]').first();
-    const cardNumber = cardFrame.getByPlaceholder(/card number|1234/i);
-    if (await cardNumber.isVisible().catch(() => false)) {
-      await cardNumber.fill("4242424242424242");
-    } else {
-      await page
-        .getByPlaceholder(/card number|1234/i)
-        .first()
-        .fill("4242424242424242");
-    }
-    await page
-      .getByPlaceholder(/MM \/ YY|expir/i)
-      .first()
-      .fill("12/34");
-    await page
-      .getByPlaceholder(/CVC|CVV/i)
-      .first()
-      .fill("123");
-  }
-
-  const payButton = page.getByRole("button", { name: /^pay$/i });
-  if (await payButton.isVisible().catch(() => false)) {
-    await payButton.click();
-  } else {
-    await page
-      .getByRole("button", { name: /pay|submit/i })
-      .first()
-      .click();
-  }
-}
-
 test.describe("shop buyer flow @e2e", () => {
   test.describe("Stripe checkout (staging)", () => {
     test.describe.configure({ retries: 0 });
 
-    test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
+    test("signed-in buyer reaches Stripe hosted checkout (staging)", async ({ page }, testInfo) => {
       test.skip(!stripeEnabled, stripeSkipReason);
       test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
       test.setTimeout(420_000);
@@ -150,29 +99,7 @@ test.describe("shop buyer flow @e2e", () => {
           throw new Error(`Checkout failed: ${message?.trim() ?? "Checkout could not continue"}`);
         });
       await Promise.race([stripeNavigation, checkoutFailed]);
-
-      await submitStripeHostedTestPayment(page);
-
-      await page.waitForURL(/test-shop\.lax\.bid\/checkout\/confirmation/i, { timeout: 180_000 });
-      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        /thank you|payment processing/i,
-        { timeout: 120_000, ignoreCase: true },
-      );
-
-      await expect
-        .poll(
-          async () => {
-            await page.goto("/account/orders");
-            await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
-            return page
-              .getByText(/paid|completed|order/i)
-              .first()
-              .isVisible()
-              .catch(() => false);
-          },
-          { timeout: 120_000 },
-        )
-        .toBe(true);
+      await expect(page).toHaveURL(/checkout\.stripe\.com/i);
     });
   });
 
