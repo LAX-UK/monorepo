@@ -218,6 +218,7 @@ jobs:
           inputs.app_image_tag != ''
         env:
           OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
+          OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN }}
           MIGRATE_IMAGE: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}/lax-test-migrate:${{ inputs.app_image_tag }}
         run: |
           chmod +x scripts/ci/run-test-ephemeral-predeploy-migrate.sh
