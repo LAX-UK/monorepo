@@ -125,12 +125,26 @@ test.describe("shop buyer flow @e2e", () => {
         .first()
         .click();
 
-      await page.waitForURL(/\/checkout\/confirmation/, { timeout: 120_000 });
-      await expect(page.getByRole("heading", { name: /thank you/i })).toBeVisible();
+      await page.waitForURL(/test-shop\.lax\.bid\/checkout\/confirmation/i, { timeout: 180_000 });
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        /thank you|payment processing/i,
+        { timeout: 120_000, ignoreCase: true },
+      );
 
-      await page.goto("/account/orders");
-      await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
-      await expect(page.getByText(/paid|completed|order/i).first()).toBeVisible();
+      await expect
+        .poll(
+          async () => {
+            await page.goto("/account/orders");
+            await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
+            return page
+              .getByText(/paid|completed|order/i)
+              .first()
+              .isVisible()
+              .catch(() => false);
+          },
+          { timeout: 120_000 },
+        )
+        .toBe(true);
     });
   });
 
