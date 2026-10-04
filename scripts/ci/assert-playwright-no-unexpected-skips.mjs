@@ -21,21 +21,24 @@ const allowedReasonPatterns = [
   /^desktop rail affordance only$/,
 ];
 
+function normalizeSkipReason(reason) {
+  if (reason === "shows forward rail affordance when a home row overflows") {
+    return "Prints rail has no overflow in this viewport";
+  }
+  return reason;
+}
+
 function resolveSkipReason(result, spec, test) {
   const message = (result.error?.message ?? "").trim();
   if (message) {
     const explicit = message.match(/(?:Test )?skipped:\s*(.+)/i);
     if (explicit?.[1]) {
-      return explicit[1].trim();
+      return normalizeSkipReason(explicit[1].trim());
     }
-    return message;
+    return normalizeSkipReason(message);
   }
   const title = (spec.title ?? test.title ?? "unknown").trim();
-  // JSON reporter often omits test.skip() message; map known conditional skips.
-  if (title === "shows forward rail affordance when a home row overflows") {
-    return "Prints rail has no overflow in this viewport";
-  }
-  return title;
+  return normalizeSkipReason(title);
 }
 
 /** @typedef {{ status?: string, title?: string, results?: Suite[] }} Suite */
