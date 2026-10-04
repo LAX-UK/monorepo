@@ -310,9 +310,10 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
           AUTH_BASE_URL: https://test-auth.lax.bid
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
-          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
-          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL || secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD || secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
           SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
+          SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
         run: |
           set -euo pipefail
           pnpm --filter @auction/shop-admin exec playwright install chromium --with-deps

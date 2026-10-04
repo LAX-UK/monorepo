@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { loadStaffOperationsFixtures } from "./support/acceptance-fixtures.js";
 import { createAdminApiClient } from "./support/admin-api.js";
 import { featureDisabledReason, readAdminSessionFeatures } from "./support/feature-gate.js";
+import { requireStaffAcceptanceCredentials } from "./support/staff-credentials.js";
 import { openStaffBrowserSession } from "./support/staff-session.js";
 import { printAppearsUnavailable, storefrontBaseUrl } from "./support/storefront.js";
 
@@ -15,10 +16,6 @@ test.describe("stock holds @e2e", () => {
   }) => {
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
-    const email = process.env.SHOP_OIDC_TEST_EMAIL ?? "";
-    const password = process.env.SHOP_OIDC_TEST_PASSWORD ?? "";
-    test.skip(!email || !password, "Staff acceptance credentials required");
-
     try {
       const features = await readAdminSessionFeatures(request, baseUrl, "");
       test.skip(!features.thirdPartySales, featureDisabledReason("thirdPartySales"));
@@ -26,14 +23,15 @@ test.describe("stock holds @e2e", () => {
       test.skip(true, "shop-admin session unavailable");
     }
 
+    const credentials = requireStaffAcceptanceCredentials();
     const fixtures = loadStaffOperationsFixtures();
     const session = await openStaffBrowserSession({
       page,
       baseUrl,
       authBaseUrl,
-      email,
-      password,
-      totpSecret: process.env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET,
+      email: credentials.email,
+      password: credentials.password,
+      totpSecret: credentials.totpSecret,
     });
     const admin = createAdminApiClient(request, session.baseUrl);
 

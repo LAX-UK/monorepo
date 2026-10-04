@@ -2,9 +2,12 @@ import type { Database } from "@auction/db";
 import {
   shopArtwork,
   shopEdition,
+  shopFulfilment,
   shopOrder,
   shopOrderLine,
   shopParty,
+  shopPayeeCompliance,
+  shopPayoutLedger,
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
@@ -12,6 +15,7 @@ import { and, asc, eq } from "drizzle-orm";
 import {
   completeFixtureOrderPayment,
   createPendingPaymentOrderWithReservedEdition,
+  selectLaxEdition,
 } from "../../test-support/shop-fixtures.js";
 import { grantShopStaffRole } from "../grant-staff-role.js";
 import { SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG } from "./acceptance-commerce-seed.js";
@@ -133,6 +137,8 @@ export type AcceptanceStaffOperationsSeedResult = {
   paidOrderId: string;
   paidOrderLineId: string;
   paidOrderEditionId: string;
+  paidOrderFulfilmentId: string;
+  paidOrderPayoutId: string;
 };
 
 export async function seedAcceptanceStaffGrant(
@@ -169,8 +175,14 @@ export async function seedAcceptanceMerchandiseFixture(
 
 async function seedPaidOrderAwaitingProduction(
   db: Database,
-  input: { artworkId: string; buyerSubjectId: string },
-): Promise<{ orderId: string; orderLineId: string; editionId: string }> {
+  input: { artworkId: string; buyerSubjectId: string; sellerPartyId: string },
+): Promise<{
+  orderId: string;
+  orderLineId: string;
+  editionId: string;
+  fulfilmentId: string;
+  payoutId: string;
+}> {
   const idempotencyKey = "acceptance-staff-ops-paid-order";
   const existing = await db
     .select({ id: shopOrder.id })
@@ -196,8 +208,43 @@ async function seedPaidOrderAwaitingProduction(
     if (!paidOrderEditionId) {
       throw new Error("Existing paid order fixture missing edition");
     }
-    return { orderId: existing[0].id, orderLineId, editionId: paidOrderEditionId };
+    const fulfilmentRow = await db
+      .select({ id: shopFulfilment.id })
+      .from(shopFulfilment)
+      .where(eq(shopFulfilment.orderId, existing[0].id))
+      .limit(1);
+    const payoutRow = await db
+      .select({ id: shopPayoutLedger.id })
+      .from(shopPayoutLedger)
+      .where(eq(shopPayoutLedger.orderLineId, orderLineId))
+      .limit(1);
+    const fulfilmentId = fulfilmentRow[0]?.id;
+    const payoutId = payoutRow[0]?.id;
+    if (!fulfilmentId || !payoutId) {
+      throw new Error("Existing paid order fixture missing fulfilment or payout ledger");
+    }
+    return {
+      orderId: existing[0].id,
+      orderLineId,
+      editionId: paidOrderEditionId,
+      fulfilmentId,
+      payoutId,
+    };
   }
+
+  const edition = await selectLaxEdition(db, input.artworkId);
+  await db
+    .update(shopEdition)
+    .set({ ownerPartyId: input.sellerPartyId, listingStatus: "authorised" })
+    .where(eq(shopEdition.id, edition.id));
+  await db
+    .insert(shopPayeeCompliance)
+    .values({ partyId: input.sellerPartyId, status: "verified" })
+    .onConflictDoUpdate({
+      target: shopPayeeCompliance.partyId,
+      set: { status: "verified" },
+    });
+
   const suffix = "acceptance-staff-ops-paid";
   const pending = await createPendingPaymentOrderWithReservedEdition(db, {
     artworkId: input.artworkId,
@@ -216,7 +263,28 @@ async function seedPaidOrderAwaitingProduction(
   if (!orderLineId) {
     throw new Error("Paid order fixture missing order line");
   }
-  return { orderId: pending.orderId, orderLineId, editionId: pending.editionId };
+  const fulfilmentRow = await db
+    .select({ id: shopFulfilment.id })
+    .from(shopFulfilment)
+    .where(eq(shopFulfilment.orderId, pending.orderId))
+    .limit(1);
+  const payoutRow = await db
+    .select({ id: shopPayoutLedger.id })
+    .from(shopPayoutLedger)
+    .where(eq(shopPayoutLedger.orderLineId, orderLineId))
+    .limit(1);
+  const fulfilmentId = fulfilmentRow[0]?.id;
+  const payoutId = payoutRow[0]?.id;
+  if (!fulfilmentId || !payoutId) {
+    throw new Error("Paid order fixture missing fulfilment or consignor payout ledger");
+  }
+  return {
+    orderId: pending.orderId,
+    orderLineId,
+    editionId: pending.editionId,
+    fulfilmentId,
+    payoutId,
+  };
 }
 
 /**
@@ -296,6 +364,7 @@ export async function seedAcceptanceStaffOperationsFixtures(
   const paid = await seedPaidOrderAwaitingProduction(db, {
     artworkId: payoutArtworkId,
     buyerSubjectId: buyerSubject,
+    sellerPartyId: consignorPartyId,
   });
 
   return {
@@ -309,5 +378,7 @@ export async function seedAcceptanceStaffOperationsFixtures(
     paidOrderId: paid.orderId,
     paidOrderLineId: paid.orderLineId,
     paidOrderEditionId: paid.editionId,
+    paidOrderFulfilmentId: paid.fulfilmentId,
+    paidOrderPayoutId: paid.payoutId,
   };
 }

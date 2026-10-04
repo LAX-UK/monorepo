@@ -13,6 +13,8 @@ const fixturesSchema = z.object({
   paidOrderId: z.string(),
   paidOrderLineId: z.string(),
   paidOrderEditionId: z.string(),
+  paidOrderFulfilmentId: z.string(),
+  paidOrderPayoutId: z.string(),
 });
 
 export type StaffOperationsFixtures = z.infer<typeof fixturesSchema>;
