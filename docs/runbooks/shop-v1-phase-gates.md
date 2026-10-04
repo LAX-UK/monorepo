@@ -182,6 +182,18 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 4. Run **Shop staging acceptance** twice consecutively with the same deployed 40-char `shop_sha` from `/health/ready` and `seed_catalogue=true` (disposable staging only). Retain workflow artifacts (Playwright HTML report + traces). **App deploy test** tier 1 (`seed_catalogue=false`) only checks portal routes load without error notices; populated `Vessel Study` rows require `seed_catalogue=true` and portal seed.
 5. Do not declare Phase 1 ready on test until both acceptance runs are green with zero failures and zero unexpected skips, release SHA matches `/health/ready`, and Stripe confirmation + paid order are proven in the seeded run.
 
+**Phase 1 seeded acceptance evidence (test, deploy pin `01a985fc`):**
+
+| Run | Workflow | Result | Notes |
+| --- | --- | --- | --- |
+| [37214910907](https://github.com/LAX-UK/monorepo/actions/runs/37214910907) | `shop-staging-acceptance` | Failed | Stripe e2e: checkout did not reach Stripe (Playwright retries left basket in a bad state). |
+| [37215519006](https://github.com/LAX-UK/monorepo/actions/runs/37215519006) | `shop-staging-acceptance` | Failed | Stripe e2e: native form submit to `/checkout?country=GB` before React hydration on pinned storefront. |
+| [37215970686](https://github.com/LAX-UK/monorepo/actions/runs/37215970686) | `shop-staging-acceptance` | Failed | Same root cause; fix in [PR #437](https://github.com/LAX-UK/monorepo/pull/437) (`checkout-form` `type="button"` + e2e waits). |
+
+**Next:** merge [PR #437](https://github.com/LAX-UK/monorepo/pull/437), deploy test Shop (`app-deploy-test` or merge queue), then two green runs with `seed_catalogue=true` on the new `/health/ready` SHA.
+
+**Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
+
 ## Test environment configuration (staff operations)
 
 Terraform on test (**auction-infra**) is the single source of truth for flags and policy placeholders. CI reads enabled features from `GET /admin/v1/session` via the shop-admin BFF (`/api/admin/session`); workflow env must not duplicate flag values.
