@@ -87,7 +87,7 @@ export async function resetAcceptanceStripeCheckoutFixture(db: Database): Promis
           and(
             inArray(shopOrderLine.editionId, editionIds),
             isNull(shopOrderLine.releasedAt),
-            inArray(shopOrder.status, ["pending_payment", "payment_failed"]),
+            inArray(shopOrder.status, ["pending_payment", "payment_failed", "paid"]),
           ),
         );
 
@@ -109,7 +109,7 @@ export async function resetAcceptanceStripeCheckoutFixture(db: Database): Promis
           .where(
             and(
               inArray(shopOrder.id, staleOrderIds),
-              inArray(shopOrder.status, ["pending_payment", "payment_failed"]),
+              inArray(shopOrder.status, ["pending_payment", "payment_failed", "paid"]),
             ),
           );
       }
