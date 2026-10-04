@@ -43,16 +43,15 @@ import {
 } from "./stripe-webhook.dto.js";
 
 describe.skipIf(!hasShopIntegrationDb)("shop v1 phase 1 invariants", () => {
-  let shopPool: pg.Pool | undefined;
-  let ownerPool: pg.Pool | undefined;
+  let shopPool!: pg.Pool;
+  let ownerPool!: pg.Pool;
 
   beforeAll(async () => {
     ({ ownerPool, shopPool } = await setupShopIntegrationPools());
   });
 
   afterAll(async () => {
-    await ownerPool?.end();
-    await shopPool?.end();
+    await Promise.allSettled([ownerPool.end(), shopPool.end()]);
   });
 
   it("does not sell the same edition twice", async () => {
