@@ -190,7 +190,7 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | [37215519006](https://github.com/LAX-UK/monorepo/actions/runs/37215519006) | `shop-staging-acceptance` | Failed | Stripe e2e: native form submit to `/checkout?country=GB` before React hydration on pinned storefront. |
 | [37215970686](https://github.com/LAX-UK/monorepo/actions/runs/37215970686) | `shop-staging-acceptance` | Failed | Same root cause; fix in [PR #437](https://github.com/LAX-UK/monorepo/pull/437) (`checkout-form` `type="button"` + e2e waits). |
 
-**Next:** merge [PR #437](https://github.com/LAX-UK/monorepo/pull/437), deploy test Shop (`app-deploy-test` or merge queue), then two green runs with `seed_catalogue=true` on the new `/health/ready` SHA.
+**Next:** merge [PR #438](https://github.com/LAX-UK/monorepo/pull/438) (checkout native-submit fix) and [PR #437](https://github.com/LAX-UK/monorepo/pull/437) (staff operations), deploy test Shop (`app-deploy-test` or merge queue), then two green runs with `seed_catalogue=true` on the new `/health/ready` SHA.
 
 **Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
 
@@ -227,3 +227,5 @@ Terraform on test (**auction-infra**) is the single source of truth for flags an
 | Payouts | `SHOP_PAYOUTS_ENABLED` | _pending_ |
 | Third-party | `SHOP_THIRD_PARTY_ENABLED` | _pending_ |
 | Originals + merchandise | `SHOP_ORIGINALS_ENABLED`, `SHOP_MERCHANDISE_ENABLED` | _pending_ |
+
+After [auction-infra #29](https://github.com/LAX-UK/auction-infra/pull/29) is applied, flip each flag via the monorepo **test** environment variable (wired to `TF_VAR_*` in [terraform-apply-test.yml](../../.github/workflows/terraform-apply-test.yml)), run **Terraform apply test**, deploy Shop if needed, then two seeded acceptance runs before the next flag.
