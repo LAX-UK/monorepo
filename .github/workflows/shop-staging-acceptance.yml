@@ -63,6 +63,7 @@ jobs:
       SHOP_SHA: ${{ inputs.shop_sha }}
       SHOP_API_SHA: ${{ inputs.shop_api_sha != '' && inputs.shop_api_sha || inputs.shop_sha }}
       SHOP_STOREFRONT_URL: https://test-shop.lax.bid
+      SHOP_ADMIN_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
       AUTH_BASE_URL: https://test-auth.lax.bid
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
       PLAYWRIGHT_BASE_URL: https://test-shop.lax.bid
@@ -114,6 +115,19 @@ jobs:
           done
           echo "::error::Shop /health/ready never reported release $SHOP_SHA"
           exit 1
+      - name: Validate deployed shop-admin release (when host exists)
+        run: |
+          set -euo pipefail
+          if ! body="$(curl --fail --silent --max-time 20 "$SHOP_ADMIN_URL/health/ready" 2>/dev/null)"; then
+            echo "::warning::shop-admin health/ready unreachable at $SHOP_ADMIN_URL; staff BFF acceptance will skip until auction-infra ships the component"
+            exit 0
+          fi
+          release="$(echo "$body" | jq -r '.release // empty')"
+          if test "$release" = "$SHOP_SHA"; then
+            echo "shop-admin release pinned: $release"
+          else
+            echo "::warning::shop-admin release ${release:-unknown} != $SHOP_SHA"
+          fi
       - name: Shop Stripe webhook route is wired
         run: |
           set -euo pipefail
@@ -224,11 +238,6 @@ jobs:
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
-      - name: Phase flags (manual enable on staging)
-        run: |
-          echo "Shop V1 later phases: set SHOP_PAYOUTS_ENABLED, SHOP_THIRD_PARTY_ENABLED,"
-          echo "SHOP_ORIGINALS_ENABLED, SHOP_MERCHANDISE_ENABLED on shop-api per"
-          echo "docs/runbooks/shop-v1-phase-gates.md before running phase 2+ acceptance."
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
         env:
@@ -271,7 +280,44 @@ jobs:
           pnpm --filter @auction/shop-api seed:acceptance-commerce
           pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
             --project=chromium-desktop \
+            --retries=0 \
             --grep "signed-in buyer can complete Stripe test checkout"
+          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+      - name: Seed staff operations fixtures
+        if: inputs.seed_catalogue
+        env:
+          SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
+        run: |
+          set -euo pipefail
+          admin_email="${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}"
+          if test -z "$admin_email"; then
+            admin_email="${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}"
+          fi
+          test -n "$admin_email"
+          admin_subject="$(
+            SHOP_OIDC_TEST_EMAIL="$admin_email" \
+              node scripts/ci/resolve-shop-acceptance-portal-subject.mjs --email "$admin_email"
+          )"
+          test -n "$admin_subject"
+          SHOP_ACCEPTANCE_ADMIN_SUBJECT_ID="$admin_subject" \
+            SHOP_ACCEPTANCE_CONSIGNOR_SUBJECT_ID="acceptance:consignor" \
+            SHOP_ACCEPTANCE_BUYER_SUBJECT_ID="acceptance:buyer" \
+            pnpm --filter @auction/shop-api seed:acceptance-staff-operations
+      - name: Shop staff operations acceptance
+        if: inputs.seed_catalogue
+        env:
+          PLAYWRIGHT_E2E: "1"
+          PLAYWRIGHT_BASE_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
+          AUTH_BASE_URL: https://test-auth.lax.bid
+          SHOP_STOREFRONT_URL: https://test-shop.lax.bid
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+          SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/shop-admin exec playwright install chromium --with-deps
+          pnpm --filter @auction/shop-admin exec playwright test e2e/
+          pnpm --filter @auction/shop exec playwright test e2e/merchandise.spec.ts --project=chromium-desktop
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Retain Shop acceptance evidence
         if: ${{ !cancelled() }}

@@ -178,6 +178,60 @@ describe("admin auth and authz", () => {
     await app.close();
   });
 
+  it("returns staff session with role, capabilities, and feature flags", async () => {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "admin-subject",
+      payload: {
+        scope: "shop.admin",
+        acr: OIDC_ACR_SILVER,
+        auth_time: Math.floor(Date.now() / 1000),
+      },
+    } as never);
+    const base = createMinimalShopApiTestDeps();
+    const app = createShopApiApp({
+      deps: adminDeps({
+        staffReader: {
+          findActiveByIdentitySubject: async (subject) =>
+            subject === "admin-subject"
+              ? { role: "shop_admin" as const, identitySubjectId: subject }
+              : null,
+          brokerCanAccessClientParty: async () => false,
+        },
+        admin: {
+          ...base.admin,
+          featureFlags: {
+            read: () => ({
+              payouts: true,
+              thirdPartySales: false,
+              originalSales: true,
+              merchandise: false,
+            }),
+          },
+        },
+      }),
+      logger: false,
+    });
+    await app.ready();
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/v1/session",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      subject: "admin-subject",
+      role: "shop_admin",
+      features: {
+        payouts: true,
+        thirdPartySales: false,
+        originalSales: true,
+        merchandise: false,
+      },
+    });
+    expect(response.json().capabilities).toContain("production.write");
+    await app.close();
+  });
+
   it("returns 400 when Idempotency-Key header is missing", async () => {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
       subject: "admin-subject",

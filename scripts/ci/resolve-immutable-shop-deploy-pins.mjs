@@ -57,6 +57,7 @@ async function main() {
   const shopIdentity = componentEntry(manifest, "shop-identity");
   const shop = componentEntry(manifest, "shop");
   const shopApi = componentEntry(manifest, "shop-api");
+  const shopAdmin = componentEntry(manifest, "shop-admin");
 
   const identitySha = await resolveLiveIdentitySha();
   const identityDigest = digestForRepository(`lax-${environment}-identity`, identitySha);
@@ -70,6 +71,8 @@ async function main() {
     shop_digest: shop.digest,
     shop_api_sha: shopApi.commitSha,
     shop_api_digest: shopApi.digest,
+    shop_admin_sha: shopAdmin.commitSha,
+    shop_admin_digest: shopAdmin.digest,
   };
 
   const outputPath = process.env.GITHUB_OUTPUT;

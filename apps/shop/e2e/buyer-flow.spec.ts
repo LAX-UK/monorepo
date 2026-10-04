@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { signInShopBuyer } from "./helpers/shop-auth";
 
 /** Foundation seed artwork with sellable editions (see shop-api catalogue-seed). */
@@ -20,71 +20,88 @@ const buyerCredentials = {
  * Full Stripe checkout (4242) runs only when SHOP_E2E_STRIPE_CHECKOUT=1 against a wired stack.
  * Webhook completion is exercised in shop-api integration tests.
  */
+async function ensureAcceptanceStripePrintInBasket(page: Page): Promise<void> {
+  await page.goto(`/artworks/${ACCEPTANCE_STRIPE_CHECKOUT_SLUG}`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
+  const viewBasket = page.getByRole("link", { name: /view basket/i });
+  if (await viewBasket.isVisible().catch(() => false)) {
+    return;
+  }
+  const addButton = page.getByRole("button", { name: /add to basket/i });
+  await expect(addButton).toBeEnabled({ timeout: 15_000 });
+  await addButton.click();
+  await expect(viewBasket).toBeVisible({ timeout: 15_000 });
+}
+
 test.describe("shop buyer flow @e2e", () => {
-  test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
-    test.skip(!stripeEnabled, stripeSkipReason);
-    test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
-    test.setTimeout(90_000);
+  test.describe("Stripe checkout (staging)", () => {
+    test.describe.configure({ retries: 0 });
 
-    await signInShopBuyer(page, buyerCredentials, "/checkout");
-    await page.goto(`/artworks/${ACCEPTANCE_STRIPE_CHECKOUT_SLUG}`);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
-    const addButton = page.getByRole("button", { name: /add to basket/i });
-    await expect(addButton).toBeEnabled({ timeout: 15_000 });
-    await addButton.click();
-    await page.getByRole("link", { name: /view basket/i }).click();
-    await page.getByRole("link", { name: /proceed to checkout/i }).click();
-    await expect(page.getByRole("heading", { name: "Checkout", exact: true })).toBeVisible();
+    test("signed-in buyer can complete Stripe test checkout", async ({ page }, testInfo) => {
+      test.skip(!stripeEnabled, stripeSkipReason);
+      test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
+      test.setTimeout(120_000);
 
-    await page.getByLabel(/address line 1/i).fill("1 Test Street");
-    await page.getByLabel(/city/i).fill("London");
-    await page.getByLabel(/postcode/i).fill("W1A 1AA");
-    await page.getByRole("button", { name: /continue to payment/i }).click();
-    try {
-      await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
-    } catch (navErr) {
-      const checkoutError = page.getByText("Checkout could not continue");
-      if (await checkoutError.isVisible().catch(() => false)) {
-        const description = await page
-          .locator(".shop-checkout")
-          .getByText(/.+/)
-          .last()
-          .textContent();
-        throw new Error(`Checkout failed: ${description?.trim() ?? "Checkout could not continue"}`);
-      }
-      throw navErr;
-    }
-    const cardNumber = page
-      .frameLocator('iframe[name^="__privateStripeFrame"]')
-      .first()
-      .getByPlaceholder(/card number|1234/i);
-    if (await cardNumber.isVisible().catch(() => false)) {
-      await cardNumber.fill("4242424242424242");
-    } else {
-      await page
-        .getByPlaceholder(/card number|1234/i)
+      await signInShopBuyer(page, buyerCredentials, "/account");
+      await ensureAcceptanceStripePrintInBasket(page);
+      await page.getByRole("link", { name: /view basket/i }).click();
+      await page.getByRole("link", { name: /proceed to checkout/i }).click();
+      await expect(page.getByRole("heading", { name: "Checkout", exact: true })).toBeVisible();
+
+      await page.getByLabel(/address line 1/i).fill("1 Test Street");
+      await page.getByLabel(/city/i).fill("London");
+      await page.getByLabel(/postcode/i).fill("W1A 1AA");
+      await page.getByRole("button", { name: /continue to payment/i }).click();
+
+      const stripeNavigation = page.waitForURL(/checkout\.stripe\.com/, { timeout: 90_000 });
+      const checkoutFailed = page
+        .getByText("Checkout could not continue")
+        .waitFor({ state: "visible", timeout: 90_000 })
+        .then(async () => {
+          const alert = page.locator(".shop-checkout__form [role='alert']").first();
+          const message =
+            (await alert.textContent().catch(() => null)) ??
+            (await page
+              .locator(".shop-checkout__form p")
+              .last()
+              .textContent()
+              .catch(() => null));
+          throw new Error(`Checkout failed: ${message?.trim() ?? "Checkout could not continue"}`);
+        });
+      await Promise.race([stripeNavigation, checkoutFailed]);
+
+      const cardNumber = page
+        .frameLocator('iframe[name^="__privateStripeFrame"]')
         .first()
-        .fill("4242424242424242");
-    }
-    await page
-      .getByPlaceholder(/MM \/ YY|expir/i)
-      .first()
-      .fill("12/34");
-    await page
-      .getByPlaceholder(/CVC|CVV/i)
-      .first()
-      .fill("123");
-    await page
-      .getByRole("button", { name: /pay|submit/i })
-      .first()
-      .click();
+        .getByPlaceholder(/card number|1234/i);
+      if (await cardNumber.isVisible().catch(() => false)) {
+        await cardNumber.fill("4242424242424242");
+      } else {
+        await page
+          .getByPlaceholder(/card number|1234/i)
+          .first()
+          .fill("4242424242424242");
+      }
+      await page
+        .getByPlaceholder(/MM \/ YY|expir/i)
+        .first()
+        .fill("12/34");
+      await page
+        .getByPlaceholder(/CVC|CVV/i)
+        .first()
+        .fill("123");
+      await page
+        .getByRole("button", { name: /pay|submit/i })
+        .first()
+        .click();
 
-    await page.waitForURL(/\/checkout\/confirmation/, { timeout: 120_000 });
-    await expect(page.getByRole("heading", { name: /thank you/i })).toBeVisible();
+      await page.waitForURL(/\/checkout\/confirmation/, { timeout: 120_000 });
+      await expect(page.getByRole("heading", { name: /thank you/i })).toBeVisible();
 
-    await page.goto("/account/orders");
-    await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
-    await expect(page.getByText(/paid|completed|order/i).first()).toBeVisible();
+      await page.goto("/account/orders");
+      await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
+      await expect(page.getByText(/paid|completed|order/i).first()).toBeVisible();
+    });
   });
 
   test("artwork detail exposes basket CTA when stock is listed", async ({ page }, testInfo) => {

@@ -88,6 +88,14 @@ export function createMinimalShopApiTestDeps(
       brokerCanAccessClientParty: async () => false,
     },
     admin: {
+      featureFlags: {
+        read: () => ({
+          payouts: false,
+          thirdPartySales: false,
+          originalSales: false,
+          merchandise: false,
+        }),
+      },
       financeMaxAuthAgeSeconds: 900,
       health: {
         checkConnectivity: async () => undefined,

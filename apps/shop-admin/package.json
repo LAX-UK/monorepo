@@ -2,29 +2,38 @@
   "name": "@auction/shop-admin",
   "version": "0.0.0",
   "private": true,
-  "description": "LAX Shop staff admin (Phase 1 minimum)",
+  "description": "LAX Shop staff admin BFF",
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3030 --turbopack",
     "build": "next build",
     "start": "next start --port 3030",
     "lint": "biome check .",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test"
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
+    "@auction/identity-contracts": "workspace:*",
+    "@auction/identity-rp": "workspace:*",
     "@auction/ui": "workspace:*",
+    "ioredis": "^5.6.1",
     "next": "15.5.9",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.10.5",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "otpauth": "^9.4.0",
     "tailwindcss": "^4.1.13",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }

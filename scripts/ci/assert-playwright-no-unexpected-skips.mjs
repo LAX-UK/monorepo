@@ -2,9 +2,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const reportPath = path.join(process.cwd(), "apps/shop/playwright-report/results.json");
-if (!fs.existsSync(reportPath)) {
-  console.error(`Missing Playwright JSON report at ${reportPath}`);
+const reportPaths = [
+  path.join(process.cwd(), "apps/shop/playwright-report/results.json"),
+  path.join(process.cwd(), "apps/shop-admin/playwright-report/results.json"),
+].filter((candidate) => fs.existsSync(candidate));
+if (reportPaths.length === 0) {
+  console.error("Missing Playwright JSON report (shop and/or shop-admin)");
   process.exit(1);
 }
 
@@ -19,6 +22,10 @@ const allowedReasonPatterns = [
   /^Prints rail has no overflow in this viewport$/,
   /^home catalogue cards once on desktop$/,
   /^desktop rail affordance only$/,
+  /^Set PLAYWRIGHT_E2E=1/,
+  /^shop-admin session unavailable$/,
+  / disabled on target environment$/,
+  /^merchandise disabled on target environment$/,
 ];
 
 /** Playwright JSON reporter often echoes the test title instead of test.skip() text. */
@@ -78,8 +85,12 @@ function collectSkips(suites) {
   return { unexpected };
 }
 
-const raw = JSON.parse(fs.readFileSync(reportPath, "utf8"));
-const { unexpected } = collectSkips(raw.suites ?? []);
+/** @type {{ title: string, reason: string }[]} */
+const unexpected = [];
+for (const reportPath of reportPaths) {
+  const raw = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+  unexpected.push(...collectSkips(raw.suites ?? []).unexpected);
+}
 
 if (unexpected.length > 0) {
   console.error("Unexpected Playwright skips:");

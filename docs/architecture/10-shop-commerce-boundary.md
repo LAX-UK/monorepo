@@ -16,6 +16,7 @@ Shop is a first-party LAX product at `shop.lax.art` (staging: `test-shop.lax.bid
 |---|---|---|
 | `apps/shop` | Next.js storefront (SSR catalogue reads) | none |
 | `apps/shop-identity` | Confidential OIDC BFF (`lax-shop-web`) | `shop_app` on identity/profile tables only |
+| `apps/shop-admin` | Staff admin BFF (`lax-shop-admin`): OIDC (silver MFA), Redis session, `/api/admin/*` → `shop-api` `/admin/v1/*` | none |
 | `apps/shop-api` | Shop commerce API (`lax-shop-api` resource) | `shop_app` on Shop catalogue tables (`shop_artwork`, `shop_edition`, …), commerce tables, and append-only `domain_events` |
 
 Bid auction tables, lot inventory, and `bid_user_profile` are never imported or joined from Shop code paths in this slice.
@@ -67,6 +68,7 @@ Legacy `docker-compose.prod.yml` still lists `shop-identity` for the single-drop
 - **Public reads:** `apps/shop` → `apps/shop-api` server-to-server on `SHOP_API_BASE_URL` (internal App Platform URL in production).
 - **Catalogue pagination:** artwork and artist cursors encode `(created_at, id)` and are backed by matching composite indexes; categories are capped at 50 and support direct slug lookup.
 - **Commerce writes:** browser/server action → `apps/shop` (`shopCommerceRequest`) → `apps/shop-identity` `/commerce/*` → `apps/shop-api` `/v1/basket` and `/v1/orders` with either the BFF bearer + `X-Shop-Basket-Token` (guest) or a `lax-shop-api` access token from RFC 8693 exchange (signed-in).
+- **Staff admin (test):** browser or Playwright → `apps/shop-admin` (`/api/auth/*`, `/api/admin/*`) → `apps/shop-api` `/admin/v1/*` with the staff OIDC access token held server-side. `GET /admin/v1/session` exposes role, capabilities, and feature flags for navigation and acceptance gating.
 - **Payments:** `shop-api` creates Stripe Checkout sessions after reservations commit; `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, and `checkout.session.expired` webhooks require signature verification, event-id idempotency, order row locks, and per-edition state checks before marking sold, `payment_failed`, or releasing reservations.
 - Resource indicator remains `https://shop.lax.art/api` per [09-lax-identity-boundary.md](./09-lax-identity-boundary.md).
 

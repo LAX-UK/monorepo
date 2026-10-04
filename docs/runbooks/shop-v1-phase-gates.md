@@ -137,34 +137,40 @@ Use this checklist after the Phase 2–4 remediation workstreams land. All items
 | Security review | [shop-phase2-4-security-review.md](../engineering/shop-phase2-4-security-review.md) reviewed; residual risks accepted or tracked |
 | Staging acceptance | Run **Shop staging acceptance** twice consecutively with the same deployed `shop_api_sha` / `shop_sha` and **acceptance tests #3–#6 green on both runs** (hold, direct sale payout path, third-party fees, original sale, merchandise smoke) before enabling Phase 2–4 flags on test |
 
-Phase 2 enables `SHOP_PAYOUTS_ENABLED` only after its row passes. Phase 3 adds `SHOP_THIRD_PARTY_ENABLED`; Phase 4 adds `SHOP_ORIGINALS_ENABLED` and `SHOP_MERCHANDISE_ENABLED` (storefront merchandise remains build-time gated — see blockers below).
+Phase 2 enables `SHOP_PAYOUTS_ENABLED` only after its row passes. Phase 3 adds `SHOP_THIRD_PARTY_ENABLED`; Phase 4 adds `SHOP_ORIGINALS_ENABLED` and `SHOP_MERCHANDISE_ENABLED` on shop-api and the storefront.
 
-## Phase 2+ gate blockers (recorded; not Phase 1 scope)
+## Phase 2+ gate blockers
 
-Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINALS_ENABLED`**, **`SHOP_MERCHANDISE_ENABLED`**, and **`SHOP_ADMIN_ENABLED`** off until these are resolved:
+Enable staff-operations flags on test **one at a time** (payouts → third-party → originals + merchandise). After each flip, deploy and run **Shop staging acceptance** twice with `seed_catalogue=true`; roll back the flag on any failure.
 
-- Payout eligibility accepts missing/pending compliance and has a read/update race.
-- Refund amount, cumulative balance, paid status, line ownership, and idempotency payload are not validated end-to-end.
-- Brokers can release another broker’s hold (hold release IDOR).
-- No registered OIDC client can obtain `shop.admin`; admin UI remains deferred.
-- **`SHOP_MERCHANDISE_ENABLED`** is build-time baked on the storefront static merchandise page — runtime enable is unsafe without a follow-up release.
-- Payouts/documents portal routes have inconsistent no-party behaviour when payouts are enabled.
-- Admin audit gaps, finance step-up, URL-prefix auth, identity merge, refunded status, and fulfilment-price issues listed in prior gate reviews.
-- Hold `createHold` role-aware broker resolution; possession date bounds (`paidAt` ≤ `possessionAt` ≤ now) and finance recency on possession.
-- Missing audit on production/third-party/original writers and hold-expiry scheduler.
-- VAT computation on checkout lines.
-- **`isPersonalisedGoods` on possession/cancellation:** no product/variant column yet; shop-api defaults to `false` until catalogue schema adds it (documented gap for legal personalised-goods exemption).
-- Dispatch/production/refund/cancellation customer emails (templates exist; not all wired).
-- Zoho order financials stub (`crm-shop-record-sync-handler` Phase 2 path).
-- Stock reconciliation job registration.
-- DB uniqueness: merchandise basket lines, open original sales, third-party sale per edition.
-- Payout ledger nullable `order_line_id` for non-order sources.
-- Merchandise admin capability check when real data exists.
-- `lax-shop-admin` OIDC client + `apps/shop-admin` BFF UI (deferred).
+### Resolved (evidence on `main`)
+
+| Item | Evidence |
+| --- | --- |
+| Hold release IDOR | `drizzle-stock-hold.writer.ts` broker party check + admin override path |
+| Refund cumulative validation | `request-refund.handler.ts` + `shop-phase2-4.integration.test.ts` |
+| Payout eligibility row lock | `run-payout-eligibility.handler.ts` `for ("update", { skipLocked: true })` |
+| DB uniqueness (third-party, original, merch basket) | migration `0199_shop_phase_uniqueness.sql` |
+| `lax-shop-admin` OIDC client | `packages/identity-contracts/src/clients.ts` (`shop.admin`, shop-admin redirect URIs only) |
+| Storefront merchandise runtime flag | `apps/shop/src/app/merchandise/page.tsx` `force-dynamic` + `shop-runtime-flags.ts` |
+| Stock reconciliation registration | **Open** — skeleton job exists; not registered until real reconciliation ships |
+| Staff operations acceptance #3–#6 | `seed:acceptance-staff-operations`, `apps/shop-admin/e2e/*`, `apps/shop/e2e/merchandise.spec.ts`, [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml) |
+
+### Open — test-accepted with documented production follow-up
+
+| Item | Test stance | Production follow-up |
+| --- | --- | --- |
+| Real cancellation / VAT / fulfilment prices | TEST placeholders on test `shop-api` only (see **Test environment configuration** below) | Legal, accountant, operations |
+| `isPersonalisedGoods` column | defaults `false` | Catalogue schema + legal exemption config |
+| Zoho order financials | stub path; enquiry deal optional | Wire `crm-shop-record-sync-handler` financials |
+| Customer dispatch/refund emails | partial wiring | Wire remaining templates |
+| `apps/shop-admin` screens | BFF + acceptance only; no product UI yet | Build admin UI when prioritised |
+| Payout ledger nullable `order_line_id` | non-order sources tracked | Confirm accounting before prod payouts |
+| Portal no-party edge cases | monitor on test enable | UX polish before prod |
 
 ## CI
 
-- Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml). Tier 1 on every deploy (`seed_catalogue=false`): health pin, auth contracts, portal smoke. Full Phase 1 matrix with `seed_catalogue=true`: catalogue seeds, portal/commerce fixtures, guest basket, filters, POA interest, desktop + mobile a11y, Stripe test checkout on `acceptance-stripe-print`, and strict Playwright skip audit. Phase 2–4 flags remain disabled and are out of scope for Phase 1 sign-off.
+- Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml). Tier 1 on every deploy (`seed_catalogue=false`): health pin, auth contracts, portal smoke. Full matrix with `seed_catalogue=true`: catalogue seeds, portal/commerce fixtures, guest basket, filters, POA interest, desktop + mobile a11y, Stripe test checkout on `acceptance-stripe-print`, **staff-operations** seed + `apps/shop-admin` Playwright + `apps/shop/e2e/merchandise.spec.ts`, and strict Playwright skip audit (feature-off skips allowed).
 - PR Postgres smoke: [ci.yml](../../.github/workflows/ci.yml) job **`shop-v1-phase-smoke`** (shop-domain + migration contract tests, shop-api Postgres integration, shop build) when Shop-related paths change.
 - PR browser gates: [e2e-pr.yml](../../.github/workflows/e2e-pr.yml) (Shop buyer flow + phase 1 portal smoke with portal flag on shop-api and storefront).
 
@@ -175,3 +181,37 @@ Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINA
 3. Merge the Phase 1 monorepo PR; run **App deploy test** on that commit (immutable Shop path applies migrations **0182–0194** and rolls shop-api / shop / shop-identity). Or dispatch with `deploy_shop=true` when forcing a Shop cutover.
 4. Run **Shop staging acceptance** twice consecutively with the same deployed 40-char `shop_sha` from `/health/ready` and `seed_catalogue=true` (disposable staging only). Retain workflow artifacts (Playwright HTML report + traces). **App deploy test** tier 1 (`seed_catalogue=false`) only checks portal routes load without error notices; populated `Vessel Study` rows require `seed_catalogue=true` and portal seed.
 5. Do not declare Phase 1 ready on test until both acceptance runs are green with zero failures and zero unexpected skips, release SHA matches `/health/ready`, and Stripe confirmation + paid order are proven in the seeded run.
+
+## Test environment configuration (staff operations)
+
+Terraform on test (**auction-infra**) is the single source of truth for flags and policy placeholders. CI reads enabled features from `GET /admin/v1/session` via the shop-admin BFF (`/api/admin/session`); workflow env must not duplicate flag values.
+
+| Component | Host / wiring |
+| --- | --- |
+| Shop storefront | `https://test-shop.lax.bid` |
+| Shop admin BFF | `https://test-shop-admin.lax.bid` (`apps/shop-admin`, OIDC `lax-shop-admin`) |
+| Shop API (internal) | App Platform service `shop-api`; `SHOP_ADMIN_ENABLED=true` on test |
+
+**shop-api test placeholders** (comment each as TEST in Terraform):
+
+- `SHOP_VAT_STANDARD_RATE_BP=2000`
+- `SHOP_CANCELLATION_DAYS_AFTER_POSSESSION=0`
+- `SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT=false`
+- `SHOP_OPS_ALERT_EMAIL`, `SHOP_OPS_FINANCE_CLI_ENABLED=true`
+
+**shop-admin env:** `OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN`, `REDIS_URL`, internal `SHOP_API_BASE_URL`, `SHOP_ADMIN_SESSION_ENCRYPTION_KEY`, public origin.
+
+**GitHub test environment secrets:**
+
+- `SHOP_ADMIN_ACCEPTANCE_EMAIL`, `SHOP_ADMIN_ACCEPTANCE_PASSWORD`, `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` (dedicated staff identity with silver TOTP)
+- Phase 1 buyer acceptance continues to use `IDENTITY_ACCEPTANCE_EMAIL` / `IDENTITY_ACCEPTANCE_PASSWORD`
+
+**Identity:** sync `packages/identity-contracts` closure to [lax-identity](https://github.com/LAX-UK/lax-identity), merge, then run `configure-oidc-clients` on test so `lax-shop-admin` redirect URIs match shop-admin only.
+
+**Staff-operations rollout run IDs** (record after two green seeded runs per flag flip):
+
+| Step | Flag(s) | Acceptance run IDs |
+| --- | --- | --- |
+| Payouts | `SHOP_PAYOUTS_ENABLED` | _pending_ |
+| Third-party | `SHOP_THIRD_PARTY_ENABLED` | _pending_ |
+| Originals + merchandise | `SHOP_ORIGINALS_ENABLED`, `SHOP_MERCHANDISE_ENABLED` | _pending_ |
