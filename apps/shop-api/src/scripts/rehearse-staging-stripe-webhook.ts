@@ -5,9 +5,9 @@
 import { closeDb, createDb } from "@auction/db";
 import { shopArtwork, shopOrder } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
-import Stripe from "stripe";
 import { resetAcceptanceStripeCheckoutFixture } from "../infrastructure/seed/acceptance-commerce-seed.js";
 import { SHOP_SEED_STRIPE_CHECKOUT_SLUG } from "../infrastructure/seed/catalogue-seed.js";
+import { stripeWebhookTestSignature } from "../infrastructure/stripe-webhook-verifier.js";
 import { createPendingPaymentOrderWithReservedEdition } from "../test-support/shop-fixtures.js";
 
 const webhookSecret = process.env.STRIPE_SHOP_WEBHOOK_SECRET?.trim();
@@ -70,10 +70,7 @@ try {
   };
 
   const payload = JSON.stringify(event);
-  const signature = Stripe.webhooks.generateTestHeaderString({
-    payload,
-    secret: webhookSecret,
-  });
+  const signature = stripeWebhookTestSignature(payload, webhookSecret);
 
   const response = await fetch(`${storefrontUrl}/webhooks/stripe`, {
     method: "POST",
