@@ -24,7 +24,10 @@ export async function setupShopIntegrationPools(): Promise<{
   const { default: pgModule } = await import("pg");
   const ownerPool = new pgModule.Pool({ connectionString: ownerUrl });
   const shopPool = new pgModule.Pool({ connectionString: shopUrl });
-  await applyApplicationRoleGrants(ownerUrl);
+  // CI applies grants once via db:roles before turbo test; avoid racing applyApplicationRoleGrants.
+  if (process.env.CI !== "true" && process.env.CI !== "1") {
+    await applyApplicationRoleGrants(ownerUrl);
+  }
   return { ownerPool, shopPool };
 }
 

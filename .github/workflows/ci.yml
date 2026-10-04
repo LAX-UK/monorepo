@@ -282,7 +282,8 @@ jobs:
         run: pnpm ci:identity-boundary
 
       - name: Test affected packages (excluding web and api)
-        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --summarize
+        # One package at a time: shared auction_ci Postgres (migrations, role grants, shop integration).
+        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --summarize --concurrency=1
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs

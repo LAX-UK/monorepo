@@ -30,16 +30,16 @@ import { createRequestRefundHandler } from "./handlers/admin/request-refund.hand
 import { createProcessIdentityMergeInboxRunner } from "./scheduler/process-identity-merge-inbox.runner.js";
 
 describe.skipIf(!hasShopIntegrationDb)("shop phase 2–4 money and merge integration", () => {
-  let shopPool: pg.Pool;
-  let ownerPool: pg.Pool;
+  let shopPool: pg.Pool | undefined;
+  let ownerPool: pg.Pool | undefined;
 
   beforeAll(async () => {
     ({ ownerPool, shopPool } = await setupShopIntegrationPools());
   });
 
   afterAll(async () => {
-    await ownerPool.end();
-    await shopPool.end();
+    await ownerPool?.end();
+    await shopPool?.end();
   });
 
   it("two concurrent requestRefund calls on one order never exceed the order total", async () => {
