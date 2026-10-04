@@ -109,7 +109,7 @@ jobs:
         run: pnpm lint:deps
 
       - name: Package layer direction
-        run: node scripts/check-layers.mjs
+        run: node scripts/check-layers.mjs && node scripts/check-shop-api-layers.mjs
 
       - name: Shop architecture and asset budgets
         run: pnpm ci:shop-architecture

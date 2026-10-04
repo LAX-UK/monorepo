@@ -19,10 +19,6 @@
     "./next-error-digest": {
       "types": "./dist/next-error-digest.d.ts",
       "default": "./dist/next-error-digest.js"
-    },
-    "./shop-apps-sentry-init": {
-      "types": "./dist/shop-apps-sentry-init.d.ts",
-      "default": "./dist/shop-apps-sentry-init.js"
     }
   },
   "scripts": {

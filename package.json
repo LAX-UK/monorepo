@@ -12,7 +12,7 @@
     "lint:ui-guardrails": "bash ./scripts/check-ui-guardrails.sh",
     "lint:admin-capability-drift": "node scripts/check-admin-capability-drift.mjs",
     "lint:deps": "node scripts/check-circular-deps.mjs && node scripts/ci/check-circular-deps-freeze.mjs",
-    "lint:layers": "node scripts/check-layers.mjs",
+    "lint:layers": "node scripts/check-layers.mjs && node scripts/check-shop-api-layers.mjs",
     "lint:web-guardrails": "node scripts/check-web-guardrails.mjs",
     "lint:lib-admin-boundaries": "node scripts/check-lib-admin-boundaries.mjs",
     "lint:staff-legacy-shell": "node scripts/check-staff-legacy-shell.mjs",
