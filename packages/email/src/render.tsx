@@ -102,6 +102,9 @@ import ResetPassword, { subject as resetPasswordSubject } from "./templates/rese
 import ShopArtworkEnquiryAlertEmail, {
   subject as shopArtworkEnquiryAlertSubject,
 } from "./templates/shop-artwork-enquiry-alert.js";
+import ShopCancellationConfirmedEmail, {
+  subject as shopCancellationConfirmedSubject,
+} from "./templates/shop-cancellation-confirmed.js";
 import ShopCheckoutOpsAlertEmail, {
   subject as shopCheckoutOpsAlertSubject,
 } from "./templates/shop-checkout-ops-alert.js";
@@ -117,6 +120,9 @@ import ShopOrderReceiptEmail, {
 import ShopProductionStartedEmail, {
   subject as shopProductionStartedSubject,
 } from "./templates/shop-production-started.js";
+import ShopRefundIssuedEmail, {
+  subject as shopRefundIssuedSubject,
+} from "./templates/shop-refund-issued.js";
 import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
@@ -373,6 +379,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-dispatch-notice": {
     subject: shopDispatchNoticeSubject,
     component: (vars) => <ShopDispatchNoticeEmail {...vars} />,
+  },
+  "shop-refund-issued": {
+    subject: shopRefundIssuedSubject,
+    component: (vars) => <ShopRefundIssuedEmail {...vars} />,
+  },
+  "shop-cancellation-confirmed": {
+    subject: shopCancellationConfirmedSubject,
+    component: (vars) => <ShopCancellationConfirmedEmail {...vars} />,
   },
 };
 
