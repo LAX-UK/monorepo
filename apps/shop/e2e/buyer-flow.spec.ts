@@ -47,11 +47,18 @@ test.describe("shop buyer flow @e2e", () => {
       await page.getByRole("link", { name: /view basket/i }).click();
       await page.getByRole("link", { name: /proceed to checkout/i }).click();
       await expect(page.getByRole("heading", { name: "Checkout", exact: true })).toBeVisible();
+      await page.waitForLoadState("networkidle");
 
       await page.getByLabel(/address line 1/i).fill("1 Test Street");
       await page.getByLabel(/city/i).fill("London");
       await page.getByLabel(/postcode/i).fill("W1A 1AA");
+      await expect(page.getByRole("button", { name: /continue to payment/i })).toBeEnabled();
       await page.getByRole("button", { name: /continue to payment/i }).click();
+      await expect(
+        page.getByRole("button", { name: /redirecting to secure payment/i }),
+      ).toBeVisible({
+        timeout: 15_000,
+      });
 
       const stripeNavigation = page.waitForURL(/checkout\.stripe\.com/, { timeout: 90_000 });
       const checkoutFailed = page
