@@ -238,6 +238,21 @@ jobs:
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
+      - name: Shop Stripe test checkout (staging)
+        if: inputs.seed_catalogue
+        env:
+          SHOP_STAGING_ACCEPTANCE_STRICT: "1"
+          SHOP_E2E_STRIPE_CHECKOUT: "1"
+          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/shop-api seed:acceptance-commerce
+          pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
+            --project=chromium-desktop \
+            --retries=0 \
+            --grep "signed-in buyer can complete Stripe test checkout"
+          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
         env:
@@ -267,21 +282,6 @@ jobs:
             e2e/home-catalogue.spec.ts \
             e2e/artwork-detail.spec.ts \
             --project=chromium-mobile
-          node scripts/ci/assert-playwright-no-unexpected-skips.mjs
-      - name: Shop Stripe test checkout (staging)
-        if: inputs.seed_catalogue
-        env:
-          SHOP_STAGING_ACCEPTANCE_STRICT: "1"
-          SHOP_E2E_STRIPE_CHECKOUT: "1"
-          SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
-          SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          pnpm --filter @auction/shop-api seed:acceptance-commerce
-          pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
-            --project=chromium-desktop \
-            --retries=0 \
-            --grep "signed-in buyer can complete Stripe test checkout"
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Seed staff operations fixtures
         if: inputs.seed_catalogue
