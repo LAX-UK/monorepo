@@ -18,10 +18,7 @@ import {
   selectLaxEdition,
 } from "../../test-support/shop-fixtures.js";
 import { grantShopStaffRole } from "../grant-staff-role.js";
-import {
-  SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG,
-  resetAcceptanceHarborPrintFixture,
-} from "./acceptance-commerce-seed.js";
+import { SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG } from "./acceptance-commerce-seed.js";
 import { SHOP_SEED_BUYER_FIXTURE_SLUG } from "./catalogue-seed.js";
 
 /** Paid-order payout fixture — not the isolated Stripe checkout artwork. */
@@ -307,7 +304,6 @@ export async function seedAcceptanceStaffOperationsFixtures(
   }
 
   await seedAcceptanceStaffGrant(db, adminStaffSubjectId);
-  await resetAcceptanceHarborPrintFixture(db);
 
   const consignorSubject =
     options.consignorSubjectId?.trim() || SHOP_ACCEPTANCE_STAFF_CONSIGNOR_SUBJECT;

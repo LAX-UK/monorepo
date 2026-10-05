@@ -180,6 +180,8 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 2. On the monorepo **test** environment, confirm repo variables: `AUTO_DEPLOY_SHOP_TEST=true`, `USE_PREBUILT_IMAGES_TEST=true`, `APP_DEPLOY_SOURCE_TEST=image`, `SHOP_PORTAL_OWNERSHIP_ENABLED=true` (Phase 2–4 shop flags stay `false` until their gates). Confirm secrets: `OPS_ALERT_EMAIL`, `IDENTITY_ACCEPTANCE_EMAIL`, `IDENTITY_ACCEPTANCE_PASSWORD`.
 3. Merge the Phase 1 monorepo PR; run **App deploy test** on that commit (immutable Shop path applies migrations **0182–0194** and rolls shop-api / shop / shop-identity). Or dispatch with `deploy_shop=true` when forcing a Shop cutover.
 4. Run **Shop staging acceptance** twice consecutively with the same deployed 40-char `shop_sha` from `/health/ready` and `seed_catalogue=true` (disposable staging only). Retain workflow artifacts (Playwright HTML report + traces). **App deploy test** tier 1 (`seed_catalogue=false`) only checks portal routes load without error notices; populated `Vessel Study` rows require `seed_catalogue=true` and portal seed.
+
+**Dispatch rule:** `shop_sha` must equal the live `/health/ready` `release` on test (storefront, shop-identity, and shop-api when pinned). Use `monorepo_ref` only when acceptance scripts or Playwright specs on `main` are ahead of the deployed commit (tooling-only fixes); otherwise checkout follows `shop_sha` and the workflow YAML on `main`.
 5. Do not declare Phase 1 ready on test until both acceptance runs are green with zero failures and zero unexpected skips, release SHA matches `/health/ready`, and Stripe confirmation + paid order are proven in the seeded run.
 
 **Phase 1 seeded acceptance evidence (test, deploy pin `01a985fc`):**
@@ -190,9 +192,11 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | [37215519006](https://github.com/LAX-UK/monorepo/actions/runs/37215519006) | `shop-staging-acceptance` | Failed | Stripe e2e: native form submit to `/checkout?country=GB` before React hydration on pinned storefront. |
 | [37215970686](https://github.com/LAX-UK/monorepo/actions/runs/37215970686) | `shop-staging-acceptance` | Failed | Same root cause; fix in [PR #437](https://github.com/LAX-UK/monorepo/pull/437) (`checkout-form` `type="button"` + e2e waits). |
 
-**Stripe on seeded acceptance:** browser smoke asserts redirect to `checkout.stripe.com`; `pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook` posts a signed `checkout.session.completed` and asserts the order is `paid`. Full 4242 card entry on Hosted Checkout remains a **manual** test-env check (Stripe’s page is unreliable in headless CI).
+**Stripe on seeded acceptance:** browser smoke asserts redirect to `checkout.stripe.com`; `pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook` posts a signed `checkout.session.completed` for the acceptance buyer subject and asserts the order is `paid`; `e2e/paid-order.spec.ts` asserts the buyer sees the order on confirmation and `/account/orders`. Full 4242 card entry on Hosted Checkout remains a **manual** test-env check (Stripe’s page is unreliable in headless CI).
 
-**Next:** two green `shop-staging-acceptance` runs with `seed_catalogue=true` on the deployed `/health/ready` SHA.
+**OIDC `lax-shop-admin` secret:** predeploy reads Terraform output `oidc_shop_admin_client_secret` (fallback GitHub secret only when output is missing). Keep a single source after Terraform apply.
+
+**Next:** two green `shop-staging-acceptance` runs with `seed_catalogue=true` on the deployed `/health/ready` SHA; record run IDs below after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) lands.
 
 **Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
 

@@ -2,6 +2,7 @@
  * Posts a signed checkout.session.completed webhook to staging shop-api ingress.
  * Used by shop-staging-acceptance instead of driving checkout.stripe.com payment UI in CI.
  */
+import { appendFile } from "node:fs/promises";
 import { closeDb, createDb } from "@auction/db";
 import { shopArtwork, shopOrder } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
@@ -43,10 +44,12 @@ try {
   }
 
   const suffix = `staging-wh-${Date.now()}`;
+  const buyerSubjectId = process.env.SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID?.trim();
   const pending = await createPendingPaymentOrderWithReservedEdition(db, {
     artworkId: artwork.id,
     suffix,
     totalPence: 4_200,
+    ...(buyerSubjectId ? { identitySubjectId: buyerSubjectId } : {}),
   });
 
   const created = Math.floor(Date.now() / 1000);
@@ -99,6 +102,11 @@ try {
   console.log(
     `shop-api: staging Stripe webhook rehearsal ok (order ${pending.orderId} marked paid)`,
   );
+  console.log(`SHOP_ACCEPTANCE_PAID_ORDER_ID=${pending.orderId}`);
+  const githubOutput = process.env.GITHUB_OUTPUT?.trim();
+  if (githubOutput) {
+    await appendFile(githubOutput, `acceptance_paid_order_id=${pending.orderId}\n`);
+  }
 } finally {
   await closeDb(db);
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { loadStaffOperationsFixtures } from "./support/acceptance-fixtures.js";
 import { createAdminApiClient } from "./support/admin-api.js";
-import { featureDisabledReason, readAdminSessionFeatures } from "./support/feature-gate.js";
+import { requireFeatureOrSkip } from "./support/feature-gate.js";
 import { requireStaffAcceptanceCredentials } from "./support/staff-credentials.js";
 import { openStaffBrowserSession } from "./support/staff-session.js";
 
@@ -12,15 +12,8 @@ test.describe("third-party sales @e2e", () => {
   test("records a third-party sale for acceptance parties", async ({ page, request }) => {
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
-    try {
-      const features = await readAdminSessionFeatures(request, baseUrl, "");
-      test.skip(!features.thirdPartySales, featureDisabledReason("thirdPartySales"));
-    } catch {
-      test.skip(true, "shop-admin session unavailable");
-    }
 
     const credentials = requireStaffAcceptanceCredentials();
-    const fixtures = loadStaffOperationsFixtures();
     const session = await openStaffBrowserSession({
       page,
       baseUrl,
@@ -29,6 +22,9 @@ test.describe("third-party sales @e2e", () => {
       password: credentials.password,
       totpSecret: credentials.totpSecret,
     });
+    await requireFeatureOrSkip(request, session, "thirdPartySales");
+
+    const fixtures = loadStaffOperationsFixtures();
     const admin = createAdminApiClient(request, session.baseUrl);
 
     const saleRes = await admin.post("third-party-sales", session.cookieHeader, session.csrfToken, {

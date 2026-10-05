@@ -202,6 +202,20 @@ jobs:
           echo "SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID=$subject" >> "$GITHUB_ENV"
           SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID="$subject" pnpm --filter @auction/shop-api seed:acceptance-portal
           pnpm --filter @auction/shop-api seed:acceptance-commerce
+      - name: Acceptance preflight (commerce reset + shop-admin probe)
+        id: acceptance_preflight
+        if: inputs.seed_catalogue
+        run: |
+          set -euo pipefail
+          SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID="${SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID:-}" \
+            pnpm --filter @auction/shop-api seed:acceptance-commerce
+          if body="$(curl --fail --silent --max-time 20 "$SHOP_ADMIN_URL/health/ready" 2>/dev/null)"; then
+            echo "shop_admin_live=true" >> "$GITHUB_OUTPUT"
+            echo "shop-admin reachable at $SHOP_ADMIN_URL"
+          else
+            echo "shop_admin_live=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::shop-admin not reachable; staff operations steps will be skipped"
+          fi
       - name: Install pinned Chromium
         run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
       - name: Require acceptance credentials for portal smoke
@@ -255,21 +269,31 @@ jobs:
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
           pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Shop Stripe webhook payment rehearsal (staging)
+        id: stripe_webhook
         if: inputs.seed_catalogue
         env:
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
           STRIPE_SHOP_WEBHOOK_SECRET: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
+          SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID: ${{ env.SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID }}
         run: |
           set -euo pipefail
           pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook
           pnpm --filter @auction/shop-api seed:acceptance-commerce
+      - name: Export paid order id for buyer e2e
+        if: inputs.seed_catalogue
+        run: |
+          set -euo pipefail
+          order_id="${{ steps.stripe_webhook.outputs.acceptance_paid_order_id }}"
+          test -n "$order_id"
+          echo "SHOP_ACCEPTANCE_PAID_ORDER_ID=$order_id" >> "$GITHUB_ENV"
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
         env:
           SHOP_STAGING_ACCEPTANCE_STRICT: "1"
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+          SHOP_ACCEPTANCE_PAID_ORDER_ID: ${{ env.SHOP_ACCEPTANCE_PAID_ORDER_ID }}
         run: |
           set -euo pipefail
           pnpm --filter @auction/shop exec playwright test \
@@ -279,6 +303,7 @@ jobs:
             e2e/artworks-filters.spec.ts \
             e2e/shop-basket-guest.spec.ts \
             e2e/buyer-flow.spec.ts \
+            e2e/paid-order.spec.ts \
             e2e/unavailable-notify-me.spec.ts \
             --project=chromium-desktop \
             --grep-invert "reaches Stripe hosted checkout"
@@ -295,34 +320,33 @@ jobs:
             --project=chromium-mobile
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Seed staff operations fixtures
-        if: inputs.seed_catalogue
+        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
         run: |
           set -euo pipefail
           admin_email="${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}"
-          if test -z "$admin_email"; then
-            admin_email="${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}"
-          fi
           test -n "$admin_email"
           admin_subject="$(
             SHOP_OIDC_TEST_EMAIL="$admin_email" \
               node scripts/ci/resolve-shop-acceptance-portal-subject.mjs --email "$admin_email"
           )"
           test -n "$admin_subject"
+          SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID="${SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID:-}" \
+            pnpm --filter @auction/shop-api seed:acceptance-commerce
           SHOP_ACCEPTANCE_ADMIN_SUBJECT_ID="$admin_subject" \
             SHOP_ACCEPTANCE_CONSIGNOR_SUBJECT_ID="acceptance:consignor" \
             SHOP_ACCEPTANCE_BUYER_SUBJECT_ID="acceptance:buyer" \
             pnpm --filter @auction/shop-api seed:acceptance-staff-operations
       - name: Shop staff operations acceptance
-        if: inputs.seed_catalogue
+        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           PLAYWRIGHT_E2E: "1"
           PLAYWRIGHT_BASE_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
           AUTH_BASE_URL: https://test-auth.lax.bid
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
-          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL || secrets.IDENTITY_ACCEPTANCE_EMAIL }}
-          SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD || secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
+          SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
           SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
           SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
         run: |
