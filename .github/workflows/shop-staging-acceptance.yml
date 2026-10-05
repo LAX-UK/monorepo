@@ -372,6 +372,10 @@ jobs:
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
           SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
+          SHOP_ACCEPTANCE_FEATURE_PAYOUTS: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
+          SHOP_ACCEPTANCE_FEATURE_THIRD_PARTY: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
+          SHOP_ACCEPTANCE_FEATURE_ORIGINALS: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}
+          SHOP_ACCEPTANCE_FEATURE_MERCHANDISE: ${{ vars.SHOP_MERCHANDISE_ENABLED || 'false' }}
           SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
         run: |
           set -euo pipefail

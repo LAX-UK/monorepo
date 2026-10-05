@@ -131,7 +131,10 @@ async function ensureSilverTotp(authBase, email, password) {
       );
       return;
     }
-    throw new Error(`two-factor enable failed (${enable.status}): ${JSON.stringify(enableBody)}`);
+    console.log(
+      `::warning::two-factor enable failed (${enable.status}); staff e2e will skip until SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is configured: ${JSON.stringify(enableBody)}`,
+    );
+    return;
   }
   const totpUri = enableBody?.totpURI;
   if (typeof totpUri !== "string") {

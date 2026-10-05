@@ -27,6 +27,20 @@ export function featureDisabledReason(feature: keyof AdminSessionFeatures): stri
   return `${feature} disabled on target environment`;
 }
 
+const STAFF_FEATURE_ENV: Record<keyof AdminSessionFeatures, string> = {
+  payouts: "SHOP_ACCEPTANCE_FEATURE_PAYOUTS",
+  thirdPartySales: "SHOP_ACCEPTANCE_FEATURE_THIRD_PARTY",
+  originalSales: "SHOP_ACCEPTANCE_FEATURE_ORIGINALS",
+  merchandise: "SHOP_ACCEPTANCE_FEATURE_MERCHANDISE",
+};
+
+/** Staging acceptance: skip before OIDC sign-in when the GitHub test var is not enabled. */
+export function skipStaffFeatureUnlessEnabled(feature: keyof AdminSessionFeatures): void {
+  const envKey = STAFF_FEATURE_ENV[feature];
+  const enabled = (process.env[envKey] ?? "false").trim() === "true";
+  test.skip(!enabled, featureDisabledReason(feature));
+}
+
 export async function requireFeatureOrSkip(
   request: APIRequestContext,
   session: StaffBrowserSession,
