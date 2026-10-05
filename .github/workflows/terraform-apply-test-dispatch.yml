@@ -1,5 +1,9 @@
 name: Terraform apply test (manual)
 
+permissions:
+  contents: read
+  actions: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -21,11 +25,130 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require APPLY-TEST confirmation
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirmation }}" = "APPLY-TEST" || {
+            echo "::error::Confirmation must be exactly APPLY-TEST"
+            exit 1
+          }
+
+  reject-ephemeral:
+    needs: confirm
+    if: inputs.layer == 'ephemeral'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ephemeral applies use App deploy test
+        run: |
+          echo "::error::Ephemeral test applies require immutable image pins and predeploy migrate. Use App deploy test or staging-recovery-test.yml."
+          exit 1
+
   apply:
-    if: inputs.confirmation == 'APPLY-TEST'
-    uses: ./.github/workflows/terraform-apply-test.yml
-    with:
-      layer: ${{ inputs.layer }}
-      infra_ref: ${{ inputs.infra_ref }}
-      run_ephemeral_predeploy_migrate: false
-    secrets: inherit
+    needs: confirm
+    if: inputs.layer != 'ephemeral'
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_sentry_auth_token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      TF_VAR_github_integration_id: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
+      SENTRY_GITHUB_INTEGRATION_ID: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
+      TF_VAR_better_auth_secret: ${{ secrets.BETTER_AUTH_SECRET }}
+      TF_VAR_check_in_token_secret: ${{ secrets.CHECK_IN_TOKEN_SECRET }}
+      TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+      TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      TF_VAR_spaces_access_key_id: ${{ secrets.MEDIA_SPACES_ACCESS_KEY_ID }}
+      TF_VAR_spaces_secret_access_key: ${{ secrets.MEDIA_SPACES_SECRET_ACCESS_KEY }}
+      TF_VAR_postmark_server_token: ${{ secrets.POSTMARK_SERVER_TOKEN }}
+      TF_VAR_postmark_webhook_basic_auth: ${{ secrets.POSTMARK_WEBHOOK_BASIC_AUTH }}
+      TF_VAR_email_unsubscribe_secret: ${{ secrets.EMAIL_UNSUBSCRIBE_SECRET }}
+      TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
+      TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
+      TF_VAR_zoho_client_id: ${{ secrets.ZOHO_CLIENT_ID }}
+      TF_VAR_zoho_client_secret: ${{ secrets.ZOHO_CLIENT_SECRET }}
+      TF_VAR_zoho_refresh_token: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      TF_VAR_zoho_crm_sync_mode: ${{ vars.ZOHO_CRM_SYNC_MODE || 'dry_run' }}
+      TF_VAR_zoho_crm_enabled_event_types: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || 'user.registered' }}
+      TF_VAR_zoho_crm_auction_pipeline: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
+      TF_VAR_zoho_crm_deal_stage_lot_won: ${{ vars.ZOHO_CRM_DEAL_STAGE_LOT_WON || '' }}
+      TF_VAR_zoho_crm_deal_stage_payment_captured: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED || '' }}
+      TF_VAR_zoho_crm_deal_stage_payment_refunded: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
+      TF_VAR_zoho_crm_deal_stage_shop_paid: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
+      TF_VAR_zoho_crm_lead_conversion_enabled: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
+      TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+      TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+      TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+      TF_VAR_vapid_public_key: ${{ secrets.VAPID_PUBLIC_KEY }}
+      TF_VAR_vapid_private_key: ${{ secrets.VAPID_PRIVATE_KEY }}
+      TF_VAR_veriff_api_key: ${{ secrets.VERIFF_API_KEY }}
+      TF_VAR_veriff_shared_secret: ${{ secrets.VERIFF_SHARED_SECRET }}
+      TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TF_VAR_twilio_verify_service_sid: ${{ secrets.TWILIO_VERIFY_SERVICE_SID }}
+      TF_VAR_twilio_api_key_sid: ${{ secrets.TWILIO_API_KEY_SID }}
+      TF_VAR_twilio_api_key_secret: ${{ secrets.TWILIO_API_KEY_SECRET }}
+      TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_stripe_transfers_webhook_secret: ${{ secrets.STRIPE_TRANSFERS_WEBHOOK_SECRET }}
+      TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}
+      TF_VAR_stripe_shop_secret_key: ${{ secrets.STRIPE_SHOP_SECRET_KEY }}
+      TF_VAR_stripe_shop_webhook_secret: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
+      TF_VAR_cron_internal_secret: ${{ secrets.CRON_INTERNAL_SECRET }}
+      TF_VAR_ops_support_email: ${{ secrets.OPS_SUPPORT_EMAIL }}
+      TF_VAR_ops_oncall_email: ${{ secrets.OPS_ONCALL_EMAIL }}
+      TF_VAR_admin_email_address: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
+      TF_VAR_xero_client_id: ${{ secrets.XERO_CLIENT_ID }}
+      TF_VAR_xero_client_secret: ${{ secrets.XERO_CLIENT_SECRET }}
+      TF_VAR_xero_redirect_uri: ${{ secrets.XERO_REDIRECT_URI }}
+      TF_VAR_xero_webhook_key: ${{ secrets.XERO_WEBHOOK_KEY }}
+      TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}
+      TF_VAR_auth_dek_key: ${{ secrets.AUTH_DEK_KEY }}
+      TF_VAR_turnstile_secret_key: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      TF_VAR_turnstile_site_key: ${{ secrets.TURNSTILE_SITE_KEY }}
+      TF_VAR_verify_origin: "true"
+      TF_VAR_csp_enforce: "0"
+      TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
+      TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
+      TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+      TF_VAR_strict_bid_eligibility_enabled: ${{ vars.STRICT_BID_ELIGIBILITY_ENABLED || 'true' }}
+      TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'false' }}
+      TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
+      TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
+      TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
+      TF_VAR_enable_auth_ssf_delivery: "false"
+      TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || 'true' }}
+      TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
+      TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
+      TF_VAR_shop_third_party_enabled: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
+      TF_VAR_shop_originals_enabled: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}
+      TF_VAR_shop_merchandise_enabled: ${{ vars.SHOP_MERCHANDISE_ENABLED || 'false' }}
+      TF_VAR_shop_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: ${{ inputs.infra_ref }}
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/sentry-auth-preflight
+        if: inputs.layer == 'sentry'
+        with:
+          organization-slug: lax-bid
+          team-slug: lax-engineering
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/${{ inputs.layer }}/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - uses: ./.github/actions/terraform-apply
+        with:
+          working-directory: .infra-config/terraform/${{ inputs.layer }}/test
+          state-key: ${{ inputs.layer }}-test
+          verify-plan-safe: "false"
+          app-id: ""
+          allowed-delete-addresses: "[]"
