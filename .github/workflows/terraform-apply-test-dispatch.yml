@@ -1,5 +1,9 @@
 name: Terraform apply test (manual)
 
+permissions:
+  contents: read
+  actions: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -32,11 +36,8 @@ jobs:
             exit 1
           }
 
-  apply:
+  call-terraform:
     needs: confirm
-    permissions:
-      contents: read
-      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ${{ inputs.layer }}
