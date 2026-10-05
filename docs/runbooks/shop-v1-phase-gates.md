@@ -196,7 +196,13 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 
 **OIDC `lax-shop-admin` secret:** predeploy reads Terraform output `oidc_shop_admin_client_secret` (fallback GitHub secret only when output is missing). Keep a single source after Terraform apply.
 
-**Next:** two green `shop-staging-acceptance` runs with `seed_catalogue=true` on the deployed `/health/ready` SHA; record run IDs below after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) lands.
+**Seeded acceptance (validation on deploy pin `f82f8e797`, branch tooling `fix/staff-ops-harbor-reset`):**
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| [37304753342](https://github.com/LAX-UK/monorepo/actions/runs/37304753342) | Green | Full tier 2 incl. `paid-order.spec.ts` after commerce-reset ordering fix. |
+
+**Next:** second consecutive green on same SHA after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) merges and deploy pins the merge commit; then shop-admin live + flag rollouts.
 
 **Infra follow-ups (test):**
 
