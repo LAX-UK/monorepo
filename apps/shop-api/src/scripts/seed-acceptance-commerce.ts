@@ -1,9 +1,6 @@
 import { createShopApiContainer } from "../container.js";
 import { loadShopApiEnv } from "../env.js";
-import {
-  resetAcceptanceEnquiryInterestFixture,
-  resetAcceptanceStripeCheckoutFixture,
-} from "../infrastructure/seed/acceptance-commerce-seed.js";
+import { resetAcceptanceCommerceState } from "../infrastructure/seed/acceptance-commerce-seed.js";
 
 const env = loadShopApiEnv();
 if (env.NODE_ENV === "production" && !process.argv.includes("--force")) {
@@ -14,13 +11,11 @@ if (env.NODE_ENV === "production" && !process.argv.includes("--force")) {
 const container = createShopApiContainer(env);
 
 try {
-  await resetAcceptanceStripeCheckoutFixture(container.db);
-  const subjectId = process.env.SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID?.trim();
-  if (subjectId) {
-    await resetAcceptanceEnquiryInterestFixture(container.db, subjectId);
-    console.log("shop-api: acceptance enquiry interest reset for string-study");
-  }
-  console.log("shop-api: acceptance commerce fixtures reset (Stripe checkout stock restored)");
+  const identitySubjectId = process.env.SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID?.trim();
+  await resetAcceptanceCommerceState(container.db, identitySubjectId ? { identitySubjectId } : {});
+  console.log(
+    "shop-api: acceptance commerce fixtures reset (sellable stock + buyer state restored)",
+  );
 } finally {
   await container.close();
 }

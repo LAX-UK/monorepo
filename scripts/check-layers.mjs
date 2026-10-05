@@ -104,6 +104,14 @@ const rules = [
   },
 ];
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", "coverage"]);
+
+/** @param {string} entry */
+function shouldSkipDirEntry(entry) {
+  if (SKIP_DIRS.has(entry)) return true;
+  if (entry.startsWith(".tmp")) return true;
+  return false;
+}
+
 const SOURCE_RE = /\.(ts|tsx)$/;
 const TEST_RE = /\.(test|spec|integration\.test)\.(ts|tsx)$/;
 // import ... from "x" | export ... from "x" | import("x") | require("x")
@@ -116,7 +124,7 @@ function listSources(dir) {
   const out = [];
   if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
   for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry)) continue;
+    if (shouldSkipDirEntry(entry)) continue;
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {
@@ -306,7 +314,7 @@ function listAllSources(dir) {
   const out = [];
   if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
   for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry)) continue;
+    if (shouldSkipDirEntry(entry)) continue;
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {

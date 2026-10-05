@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { loadStaffOperationsFixtures } from "./support/acceptance-fixtures.js";
 import { createAdminApiClient } from "./support/admin-api.js";
-import { featureDisabledReason, readAdminSessionFeatures } from "./support/feature-gate.js";
+import { requireFeatureOrSkip } from "./support/feature-gate.js";
 import { requireStaffAcceptanceCredentials } from "./support/staff-credentials.js";
 import { openStaffBrowserSession } from "./support/staff-session.js";
 
@@ -12,15 +12,8 @@ test.describe("original sales @e2e", () => {
   test("creates an original sale reservation", async ({ page, request }) => {
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
-    try {
-      const features = await readAdminSessionFeatures(request, baseUrl, "");
-      test.skip(!features.originalSales, featureDisabledReason("originalSales"));
-    } catch {
-      test.skip(true, "shop-admin session unavailable");
-    }
 
     const credentials = requireStaffAcceptanceCredentials();
-    const fixtures = loadStaffOperationsFixtures();
     const session = await openStaffBrowserSession({
       page,
       baseUrl,
@@ -29,6 +22,9 @@ test.describe("original sales @e2e", () => {
       password: credentials.password,
       totpSecret: credentials.totpSecret,
     });
+    await requireFeatureOrSkip(request, session, "originalSales");
+
+    const fixtures = loadStaffOperationsFixtures();
     const admin = createAdminApiClient(request, session.baseUrl);
 
     const reservationRes = await admin.post(

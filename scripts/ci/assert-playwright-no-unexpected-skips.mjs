@@ -13,6 +13,7 @@ if (reportPaths.length === 0) {
 
 const allowedReasonPatterns = [
   /^Set SHOP_E2E_STRIPE_CHECKOUT=1/,
+  /^Set SHOP_ACCEPTANCE_PAID_ORDER_ID from staging Stripe webhook rehearsal$/,
   /^buyer journey on desktop only$/,
   /^authenticated journey on desktop only$/,
   /^desktop basket controls only$/,
@@ -23,7 +24,6 @@ const allowedReasonPatterns = [
   /^home catalogue cards once on desktop$/,
   /^desktop rail affordance only$/,
   /^Set PLAYWRIGHT_E2E=1/,
-  /^shop-admin session unavailable$/,
   / disabled on target environment$/,
   /^merchandise disabled on target environment$/,
 ];

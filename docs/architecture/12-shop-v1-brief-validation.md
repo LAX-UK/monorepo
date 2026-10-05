@@ -1,6 +1,6 @@
 # Shop V1 brief validation and build SSOT
 
-> **Implementation status (last reviewed 2026-10-01)**
+> **Implementation status (last reviewed 2026-10-05)**
 >
 > - **Phase 0:** decisions D28–D32 recorded; this document and [10-shop-commerce-boundary.md](./10-shop-commerce-boundary.md) updated.
 > - **Phases 1–4:** in progress per the delivery plan below. Treat code and migrations as SSOT once merged; this doc tracks intent and acceptance mapping.
@@ -89,6 +89,8 @@ Feature flags (representative): `SHOP_PORTAL_OWNERSHIP_ENABLED`, `SHOP_ADMIN_ENA
 | 5 | Third-party sale gross/fees/net match shop, Zoho, portal | 3 — [third-party-sales.spec.ts](../../apps/shop-admin/e2e/third-party-sales.spec.ts) |
 | 6 | Original sale reservation → invoice → assign original + buyer editions | 4 — [original-sales.spec.ts](../../apps/shop-admin/e2e/original-sales.spec.ts) + [merchandise.spec.ts](../../apps/shop/e2e/merchandise.spec.ts) |
 | 7 | Zoho failure alerts; stock correct; safe retry | 1 (catalogue); 3 (full sync) |
+
+**Buyer checkout (cross-phase):** tier-2 staging acceptance covers browse → basket → sign-in → Stripe redirect, webhook-paid order for the acceptance buyer (`rehearse:staging-stripe-webhook`), and buyer-visible paid order on confirmation + `/account/orders` ([paid-order.spec.ts](../../apps/shop/e2e/paid-order.spec.ts)). Commerce seed reset clears all sellable fixtures and buyer basket/pending orders before each seeded run ([acceptance-commerce-seed.ts](../../apps/shop-api/src/infrastructure/seed/acceptance-commerce-seed.ts)).
 
 ## Architecture rules (SOLID)
 
