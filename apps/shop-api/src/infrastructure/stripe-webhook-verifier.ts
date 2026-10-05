@@ -7,3 +7,10 @@ export function constructStripeWebhookEvent(
 ): Stripe.Event {
   return Stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 }
+
+export function stripeWebhookTestSignature(payload: string, webhookSecret: string): string {
+  return Stripe.webhooks.generateTestHeaderString({
+    payload,
+    secret: webhookSecret,
+  });
+}

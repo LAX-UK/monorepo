@@ -13,6 +13,7 @@
     "seed:catalogue": "tsx src/scripts/seed-catalogue.ts",
     "seed:acceptance-portal": "tsx src/scripts/seed-acceptance-portal.ts",
     "seed:acceptance-commerce": "tsx src/scripts/seed-acceptance-commerce.ts",
+    "rehearse:staging-stripe-webhook": "tsx src/scripts/rehearse-staging-stripe-webhook.ts",
     "seed:acceptance-staff-operations": "tsx src/scripts/seed-acceptance-staff-operations.ts",
     "staff:grant": "tsx src/scripts/staff-grant.ts",
     "sale-authority": "tsx src/scripts/sale-authority.ts",
