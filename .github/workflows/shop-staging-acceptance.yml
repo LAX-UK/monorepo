@@ -279,7 +279,6 @@ jobs:
           set -euo pipefail
           pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook
-          pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Export paid order id for buyer e2e
         if: inputs.seed_catalogue
         run: |
@@ -308,6 +307,7 @@ jobs:
             --project=chromium-desktop \
             --grep-invert "reaches Stripe hosted checkout"
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+          pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Shop browser tier 2 mobile (a11y and catalogue)
         if: inputs.seed_catalogue
         env:
