@@ -219,7 +219,8 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | OIDC shop-admin secret TF output | [auction-infra #30](https://github.com/LAX-UK/auction-infra/pull/30) → merge → **Terraform apply test** |
 | `SHOP_ADMIN_ENABLED=true` on monorepo **test** environment | GitHub var → **Terraform apply test** (shop-admin DNS + shop-api flag) |
 | Identity closure sync for #444 | [lax-identity #33](https://github.com/LAX-UK/lax-identity/pull/33) merge → re-run monorepo CI |
-| Staff acceptance secrets | `SHOP_ADMIN_ACCEPTANCE_EMAIL`, `PASSWORD`, `TOTP_SECRET` on test env; run `scripts/ci/provision-shop-admin-staff-identity.mjs` |
+| Staff acceptance secrets | `SHOP_ADMIN_ACCEPTANCE_PASSWORD` (required); optional `SHOP_ADMIN_ACCEPTANCE_EMAIL` + `TOTP_SECRET` (email defaults from `IDENTITY_ACCEPTANCE_EMAIL` via `resolve-shop-admin-acceptance-email.mjs`; provision runs in acceptance when shop-admin is live) |
+| Persistent DNS (shop-admin CNAME) | **Terraform apply test (manual)** `layer=persistent`, confirmation `APPLY-TEST`, after [auction-infra #31](https://github.com/LAX-UK/auction-infra/pull/31) |
 
 **Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
 

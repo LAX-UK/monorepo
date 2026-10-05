@@ -1,0 +1,31 @@
+name: Terraform apply test (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      layer:
+        type: choice
+        required: true
+        options: [persistent, sentry, ephemeral]
+      confirmation:
+        required: true
+        description: Type APPLY-TEST
+      infra_ref:
+        description: auction-infra branch, tag, or commit
+        type: string
+        required: false
+        default: main
+
+concurrency:
+  group: terraform-test-${{ inputs.layer }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: inputs.confirmation == 'APPLY-TEST'
+    uses: ./.github/workflows/terraform-apply-test.yml
+    with:
+      layer: ${{ inputs.layer }}
+      infra_ref: ${{ inputs.infra_ref }}
+      run_ephemeral_predeploy_migrate: false
+    secrets: inherit

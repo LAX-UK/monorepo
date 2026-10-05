@@ -10,6 +10,7 @@ const repository = process.env.GITHUB_REPOSITORY ?? "LAX-UK/monorepo";
 const workflows = [
   "terraform-test-up.yml",
   "terraform-apply-test.yml",
+  "terraform-apply-test-dispatch.yml",
   "staging-recovery-test.yml",
   "app-deploy-test.yml",
   "identity-staging-deploy.yml",

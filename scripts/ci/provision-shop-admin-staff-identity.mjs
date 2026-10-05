@@ -8,6 +8,7 @@
  */
 import pg from "pg";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
+import { deriveAcceptanceEmail } from "./provision-identity-acceptance-users.mjs";
 
 async function ensureUser(authBase, email, password) {
   const client = new pg.Client(buildPgConnectionConfig(process.env.DATABASE_URL_OWNER ?? ""));
@@ -61,8 +62,20 @@ async function ensureUser(authBase, email, password) {
   }
 }
 
+function resolveStaffAcceptanceEmail() {
+  const explicit = process.env.SHOP_ADMIN_ACCEPTANCE_EMAIL?.trim();
+  if (explicit) return explicit;
+  const source = process.env.IDENTITY_ACCEPTANCE_EMAIL?.trim();
+  if (!source) {
+    throw new Error(
+      "SHOP_ADMIN_ACCEPTANCE_EMAIL or IDENTITY_ACCEPTANCE_EMAIL is required to derive staff acceptance email",
+    );
+  }
+  return deriveAcceptanceEmail(source, "shop-admin", "");
+}
+
 async function main() {
-  const email = process.env.SHOP_ADMIN_ACCEPTANCE_EMAIL?.trim();
+  const email = resolveStaffAcceptanceEmail();
   const password = process.env.SHOP_ADMIN_ACCEPTANCE_PASSWORD?.trim();
   const databaseUrl = process.env.DATABASE_URL_OWNER?.trim();
   if (!email || !password || !databaseUrl) {
