@@ -84,6 +84,17 @@ async function ensureSilverTotp(authBase, email, password) {
   captureCookies(enable, jar);
   const enableBody = await enable.json().catch(() => ({}));
   if (!enable.ok) {
+    if (await isTwoFactorEnabled(email)) {
+      console.log("shop-admin staff TOTP already enabled (enable returned error)");
+      return;
+    }
+    const configured = process.env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET?.trim();
+    if (configured) {
+      console.log(
+        "::warning::two-factor enable failed but SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is set; assuming manual enrolment",
+      );
+      return;
+    }
     throw new Error(`two-factor enable failed (${enable.status}): ${JSON.stringify(enableBody)}`);
   }
   const totpUri = enableBody?.totpURI;
@@ -148,6 +159,18 @@ async function ensureSilverTotp(authBase, email, password) {
   }
 }
 
+async function markEmailVerified(email) {
+  const client = new pg.Client(buildPgConnectionConfig(process.env.DATABASE_URL_OWNER ?? ""));
+  await client.connect();
+  try {
+    await client.query('update public."user" set email_verified = true where lower(email) = $1', [
+      email.toLowerCase(),
+    ]);
+  } finally {
+    await client.end();
+  }
+}
+
 async function ensureUser(authBase, email, password) {
   const client = new pg.Client(buildPgConnectionConfig(process.env.DATABASE_URL_OWNER ?? ""));
   await client.connect();
@@ -157,6 +180,7 @@ async function ensureUser(authBase, email, password) {
     ]);
     if (existing.rowCount) {
       console.log(`shop-admin staff identity already exists (${email})`);
+      await markEmailVerified(email);
       return existing.rows[0].id;
     }
   } finally {
@@ -190,6 +214,7 @@ async function ensureUser(authBase, email, password) {
       );
       if (created.rowCount) {
         console.log(`shop-admin staff identity created (${email}) subject=${created.rows[0].id}`);
+        await markEmailVerified(email);
         return created.rows[0].id;
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
