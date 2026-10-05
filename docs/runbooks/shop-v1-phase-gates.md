@@ -196,14 +196,21 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 
 **OIDC `lax-shop-admin` secret:** predeploy reads Terraform output `oidc_shop_admin_client_secret` (fallback GitHub secret only when output is missing). Keep a single source after Terraform apply.
 
-**Seeded acceptance (validation on deploy pin `f82f8e797`, branch tooling `fix/staff-ops-harbor-reset`):**
+**Seeded acceptance (pre-merge validation, deploy pin `f82f8e797`, `monorepo_ref=fix/staff-ops-harbor-reset`):**
 
 | Run | Result | Notes |
 | --- | --- | --- |
-| [37304753342](https://github.com/LAX-UK/monorepo/actions/runs/37304753342) | Green | Full tier 2 incl. `paid-order.spec.ts` after commerce-reset ordering fix. |
-| [37305667602](https://github.com/LAX-UK/monorepo/actions/runs/37305667602) | Green | Second consecutive run on same deploy pin. |
+| [37304753342](https://github.com/LAX-UK/monorepo/actions/runs/37304753342) | Green | Full tier 2 incl. `paid-order.spec.ts`. |
+| [37305667602](https://github.com/LAX-UK/monorepo/actions/runs/37305667602) | Green | Second consecutive validation run. |
 
-**Next:** second consecutive green on same SHA after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) merges and deploy pins the merge commit; then shop-admin live + flag rollouts.
+**Seeded acceptance (live `/health/ready` pin `dee2d794` after #444 + deploy [37316817185](https://github.com/LAX-UK/monorepo/actions/runs/37316817185)):**
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| [37323230356](https://github.com/LAX-UK/monorepo/actions/runs/37323230356) | Green | `seed_catalogue=true`; staff-ops skipped (`test-shop-admin.lax.bid` DNS missing). |
+| [37323260748](https://github.com/LAX-UK/monorepo/actions/runs/37323260748) | Green | Second consecutive run on live SHA. |
+
+**Next:** shop-admin DNS (auction-infra persistent test) + staff secrets → staff-ops gate; then flag rollouts one at a time.
 
 **Infra follow-ups (test):**
 
