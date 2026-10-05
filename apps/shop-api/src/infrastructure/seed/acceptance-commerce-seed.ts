@@ -10,7 +10,7 @@ import {
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { ensureLaxShopParty } from "../ensure-lax-party.js";
 import { authoriseAllOwnedEditionsForTests } from "../shop-test-authority.js";
-import { SHOP_SEED_STRIPE_CHECKOUT_SLUG } from "./catalogue-seed.js";
+import { SHOP_SEED_BUYER_FIXTURE_SLUG, SHOP_SEED_STRIPE_CHECKOUT_SLUG } from "./catalogue-seed.js";
 
 /** POA original used by unavailable-notify-me staging acceptance. */
 export const SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG = "string-study";
@@ -51,21 +51,18 @@ export async function resetAcceptanceEnquiryInterestFixture(
     );
 }
 
-/**
- * Idempotent reset of the isolated Stripe checkout fixture so repeated acceptance runs
- * do not depend on harbor-print stock.
- */
-export async function resetAcceptanceStripeCheckoutFixture(db: Database): Promise<void> {
+async function resetAcceptanceSellableArtworkFixture(
+  db: Database,
+  artworkSlug: string,
+): Promise<void> {
   const artworkRows = await db
     .select({ id: shopArtwork.id })
     .from(shopArtwork)
-    .where(eq(shopArtwork.slug, SHOP_SEED_STRIPE_CHECKOUT_SLUG))
+    .where(eq(shopArtwork.slug, artworkSlug))
     .limit(1);
   const artworkId = artworkRows[0]?.id;
   if (!artworkId) {
-    throw new Error(
-      `Stripe checkout reset requires artwork ${SHOP_SEED_STRIPE_CHECKOUT_SLUG}; run catalogue seed first`,
-    );
+    throw new Error(`Acceptance reset requires artwork ${artworkSlug}; run catalogue seed first`);
   }
 
   const laxPartyId = await ensureLaxShopParty(db);
@@ -131,4 +128,17 @@ export async function resetAcceptanceStripeCheckoutFixture(db: Database): Promis
   });
 
   await authoriseAllOwnedEditionsForTests(db, artworkId);
+}
+
+/**
+ * Idempotent reset of the isolated Stripe checkout fixture so repeated acceptance runs
+ * do not depend on harbor-print stock.
+ */
+export async function resetAcceptanceStripeCheckoutFixture(db: Database): Promise<void> {
+  await resetAcceptanceSellableArtworkFixture(db, SHOP_SEED_STRIPE_CHECKOUT_SLUG);
+}
+
+/** Restore harbour-print stock after buyer-flow e2e before staff hold fixtures. */
+export async function resetAcceptanceHarborPrintFixture(db: Database): Promise<void> {
+  await resetAcceptanceSellableArtworkFixture(db, SHOP_SEED_BUYER_FIXTURE_SLUG);
 }
