@@ -198,6 +198,15 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 
 **Next:** two green `shop-staging-acceptance` runs with `seed_catalogue=true` on the deployed `/health/ready` SHA; record run IDs below after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) lands.
 
+**Infra follow-ups (test):**
+
+| Item | PR / action |
+| --- | --- |
+| OIDC shop-admin secret TF output | [auction-infra #30](https://github.com/LAX-UK/auction-infra/pull/30) → merge → **Terraform apply test** |
+| `SHOP_ADMIN_ENABLED=true` on monorepo **test** environment | GitHub var → **Terraform apply test** (shop-admin DNS + shop-api flag) |
+| Identity closure sync for #444 | [lax-identity #33](https://github.com/LAX-UK/lax-identity/pull/33) merge → re-run monorepo CI |
+| Staff acceptance secrets | `SHOP_ADMIN_ACCEPTANCE_EMAIL`, `PASSWORD`, `TOTP_SECRET` on test env; run `scripts/ci/provision-shop-admin-staff-identity.mjs` |
+
 **Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
 
 ## Test environment configuration (staff operations)
