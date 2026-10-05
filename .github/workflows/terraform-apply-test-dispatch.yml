@@ -21,8 +21,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require APPLY-TEST confirmation
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirmation }}" = "APPLY-TEST" || {
+            echo "::error::Confirmation must be exactly APPLY-TEST"
+            exit 1
+          }
+
   apply:
-    if: inputs.confirmation == 'APPLY-TEST'
+    needs: confirm
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ${{ inputs.layer }}
