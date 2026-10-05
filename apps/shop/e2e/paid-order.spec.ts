@@ -29,7 +29,11 @@ test.describe("shop paid order @e2e", () => {
     );
 
     await page.goto("/account/orders");
-    await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
-    await expect(page.getByText(/paid|completed|order/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/your orders/i);
+    await expect(
+      page.getByRole("link", { name: new RegExp(paidOrderId.slice(0, 8), "i") }),
+    ).toBeVisible({
+      timeout: 30_000,
+    });
   });
 });
