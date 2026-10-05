@@ -201,6 +201,7 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | Run | Result | Notes |
 | --- | --- | --- |
 | [37304753342](https://github.com/LAX-UK/monorepo/actions/runs/37304753342) | Green | Full tier 2 incl. `paid-order.spec.ts` after commerce-reset ordering fix. |
+| [37305667602](https://github.com/LAX-UK/monorepo/actions/runs/37305667602) | Green | Second consecutive run on same deploy pin. |
 
 **Next:** second consecutive green on same SHA after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) merges and deploy pins the merge commit; then shop-admin live + flag rollouts.
 

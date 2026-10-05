@@ -107,9 +107,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance commerce reset", () => {
     const authorised = await db
       .select({ id: shopEdition.id })
       .from(shopEdition)
-      .where(
-        and(eq(shopEdition.artworkId, harbor!.id), eq(shopEdition.listingStatus, "authorised")),
-      );
+      .where(and(eq(shopEdition.artworkId, harborId), eq(shopEdition.listingStatus, "authorised")));
     expect(authorised.length).toBeGreaterThanOrEqual(1);
   });
 });
