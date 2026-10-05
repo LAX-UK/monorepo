@@ -9,6 +9,7 @@ import {
 } from "@auction/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { ensureLaxShopParty } from "../ensure-lax-party.js";
+import { countSellableForArtwork } from "../shop-edition-availability.js";
 import { authoriseAllOwnedEditionsForTests } from "../shop-test-authority.js";
 import { SHOP_SEED_BUYER_FIXTURE_SLUG, SHOP_SEED_STRIPE_CHECKOUT_SLUG } from "./catalogue-seed.js";
 
@@ -128,6 +129,11 @@ async function resetAcceptanceSellableArtworkFixture(
   });
 
   await authoriseAllOwnedEditionsForTests(db, artworkId);
+
+  const sellable = await countSellableForArtwork(db, artworkId);
+  if (sellable === 0) {
+    throw new Error(`Acceptance reset for ${artworkSlug} left zero sellable editions`);
+  }
 }
 
 /**

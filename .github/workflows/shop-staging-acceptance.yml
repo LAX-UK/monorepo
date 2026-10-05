@@ -253,6 +253,7 @@ jobs:
             --retries=0 \
             --grep "reaches Stripe hosted checkout"
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+          pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Shop Stripe webhook payment rehearsal (staging)
         if: inputs.seed_catalogue
         env:
