@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { loadStaffOperationsFixtures } from "./support/acceptance-fixtures.js";
 import { createAdminApiClient } from "./support/admin-api.js";
-import { requireFeatureOrSkip } from "./support/feature-gate.js";
+import { requireFeatureOrSkip, skipStaffFeatureUnlessEnabled } from "./support/feature-gate.js";
 import { requireStaffAcceptanceCredentials } from "./support/staff-credentials.js";
 import { openStaffBrowserSession } from "./support/staff-session.js";
 
@@ -11,6 +11,7 @@ const authBaseUrl = process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid";
 test.describe("original sales @e2e", () => {
   test("creates an original sale reservation", async ({ page, request }) => {
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
+    skipStaffFeatureUnlessEnabled("originalSales");
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
 
     const credentials = requireStaffAcceptanceCredentials();

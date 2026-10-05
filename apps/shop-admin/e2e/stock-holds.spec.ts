@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { loadStaffOperationsFixtures } from "./support/acceptance-fixtures.js";
 import { createAdminApiClient } from "./support/admin-api.js";
-import { requireFeatureOrSkip } from "./support/feature-gate.js";
+import { requireFeatureOrSkip, skipStaffFeatureUnlessEnabled } from "./support/feature-gate.js";
 import { requireStaffAcceptanceCredentials } from "./support/staff-credentials.js";
 import { openStaffBrowserSession } from "./support/staff-session.js";
 import { printAppearsUnavailable, storefrontBaseUrl } from "./support/storefront.js";
@@ -15,6 +15,7 @@ test.describe("stock holds @e2e", () => {
     request,
   }) => {
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
+    skipStaffFeatureUnlessEnabled("thirdPartySales");
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
 
     const credentials = requireStaffAcceptanceCredentials();

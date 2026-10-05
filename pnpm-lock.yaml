@@ -43,6 +43,9 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.9.3)
+      otpauth:
+        specifier: ^9.4.0
+        version: 9.5.2
       pg:
         specifier: ^8.13.1
         version: 8.20.0
