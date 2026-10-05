@@ -54,7 +54,10 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance commerce reset", () => {
       .from(shopArtwork)
       .where(eq(shopArtwork.slug, SHOP_SEED_BUYER_FIXTURE_SLUG))
       .limit(1);
-    expect(harbor?.id).toBeTruthy();
+    if (!harbor?.id) {
+      throw new Error(`Missing seed artwork ${SHOP_SEED_BUYER_FIXTURE_SLUG}`);
+    }
+    const harborId = harbor.id;
 
     const suffix = integrationSuffix("commerce-reset");
     const [basket] = await db
@@ -64,16 +67,19 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance commerce reset", () => {
         expiresAt: new Date(Date.now() + 86_400_000),
       })
       .returning({ id: shopBasket.id });
+    if (!basket?.id) {
+      throw new Error("Failed to create test basket");
+    }
 
     await db.insert(shopBasketLine).values({
-      basketId: basket!.id,
-      artworkId: harbor!.id,
+      basketId: basket.id,
+      artworkId: harborId,
       unitPricePence: 8_500,
       quantity: 1,
     });
 
     await createPendingPaymentOrderWithReservedEdition(db, {
-      artworkId: harbor!.id,
+      artworkId: harborId,
       suffix,
       identitySubjectId: subjectId,
     });
@@ -95,7 +101,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance commerce reset", () => {
       );
     expect(pending).toHaveLength(0);
 
-    const sellable = await countSellableForArtwork(db, harbor!.id);
+    const sellable = await countSellableForArtwork(db, harborId);
     expect(sellable).toBeGreaterThanOrEqual(1);
 
     const authorised = await db

@@ -14,12 +14,15 @@ test.describe("shop paid order @e2e", () => {
   test("acceptance buyer sees webhook-paid order on confirmation and orders list", async ({
     page,
   }, testInfo) => {
-    test.skip(!paidOrderId, skipReason);
+    if (!paidOrderId) {
+      test.skip(true, skipReason);
+      return;
+    }
     test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
 
     await signInShopBuyer(page, buyerCredentials, "/account");
 
-    await page.goto(`/checkout/confirmation?orderId=${encodeURIComponent(paidOrderId!)}`);
+    await page.goto(`/checkout/confirmation?orderId=${encodeURIComponent(paidOrderId)}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       /thank you|payment processing|order confirmed/i,
       { timeout: 60_000, ignoreCase: true },
