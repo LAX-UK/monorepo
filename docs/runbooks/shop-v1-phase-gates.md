@@ -196,14 +196,21 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 
 **OIDC `lax-shop-admin` secret:** predeploy reads Terraform output `oidc_shop_admin_client_secret` (fallback GitHub secret only when output is missing). Keep a single source after Terraform apply.
 
-**Seeded acceptance (validation on deploy pin `f82f8e797`, branch tooling `fix/staff-ops-harbor-reset`):**
+**Seeded acceptance (pre-merge validation, deploy pin `f82f8e797`, `monorepo_ref=fix/staff-ops-harbor-reset`):**
 
 | Run | Result | Notes |
 | --- | --- | --- |
-| [37304753342](https://github.com/LAX-UK/monorepo/actions/runs/37304753342) | Green | Full tier 2 incl. `paid-order.spec.ts` after commerce-reset ordering fix. |
-| [37305667602](https://github.com/LAX-UK/monorepo/actions/runs/37305667602) | Green | Second consecutive run on same deploy pin. |
+| [37304753342](https://github.com/LAX-UK/monorepo/actions/runs/37304753342) | Green | Full tier 2 incl. `paid-order.spec.ts`. |
+| [37305667602](https://github.com/LAX-UK/monorepo/actions/runs/37305667602) | Green | Second consecutive validation run. |
 
-**Next:** second consecutive green on same SHA after [PR #444](https://github.com/LAX-UK/monorepo/pull/444) merges and deploy pins the merge commit; then shop-admin live + flag rollouts.
+**Seeded acceptance (live `/health/ready` pin `dee2d794` after #444 + deploy [37316817185](https://github.com/LAX-UK/monorepo/actions/runs/37316817185)):**
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| [37323230356](https://github.com/LAX-UK/monorepo/actions/runs/37323230356) | Green | `seed_catalogue=true`; staff-ops skipped (`test-shop-admin.lax.bid` DNS missing). |
+| [37323260748](https://github.com/LAX-UK/monorepo/actions/runs/37323260748) | Green | Second consecutive run on live SHA. |
+
+**Next:** shop-admin DNS (auction-infra persistent test) + staff secrets → staff-ops gate; then flag rollouts one at a time.
 
 **Infra follow-ups (test):**
 
@@ -212,7 +219,8 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | OIDC shop-admin secret TF output | [auction-infra #30](https://github.com/LAX-UK/auction-infra/pull/30) → merge → **Terraform apply test** |
 | `SHOP_ADMIN_ENABLED=true` on monorepo **test** environment | GitHub var → **Terraform apply test** (shop-admin DNS + shop-api flag) |
 | Identity closure sync for #444 | [lax-identity #33](https://github.com/LAX-UK/lax-identity/pull/33) merge → re-run monorepo CI |
-| Staff acceptance secrets | `SHOP_ADMIN_ACCEPTANCE_EMAIL`, `PASSWORD`, `TOTP_SECRET` on test env; run `scripts/ci/provision-shop-admin-staff-identity.mjs` |
+| Staff acceptance secrets | `SHOP_ADMIN_ACCEPTANCE_PASSWORD` (required); optional `SHOP_ADMIN_ACCEPTANCE_EMAIL` + `TOTP_SECRET` (email defaults from `IDENTITY_ACCEPTANCE_EMAIL` via `resolve-shop-admin-acceptance-email.mjs`; provision runs in acceptance when shop-admin is live) |
+| Persistent DNS (shop-admin CNAME) | **Terraform apply test (manual)** `layer=persistent`, confirmation `APPLY-TEST`, after [auction-infra #31](https://github.com/LAX-UK/auction-infra/pull/31) |
 
 **Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
 

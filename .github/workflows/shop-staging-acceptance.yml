@@ -319,13 +319,37 @@ jobs:
             e2e/artwork-detail.spec.ts \
             --project=chromium-mobile
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
+      - name: Resolve shop-admin acceptance email
+        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        env:
+          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
+          IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+        run: |
+          set -euo pipefail
+          admin_email="$(node scripts/ci/resolve-shop-admin-acceptance-email.mjs)"
+          test -n "$admin_email"
+          echo "::add-mask::$admin_email"
+          echo "SHOP_ADMIN_ACCEPTANCE_EMAIL=$admin_email" >> "$GITHUB_ENV"
+      - name: Provision shop-admin staff identity
+        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        env:
+          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
+          SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
+          IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+        run: |
+          set -euo pipefail
+          test -n "$SHOP_ADMIN_ACCEPTANCE_PASSWORD" || {
+            echo "::error::SHOP_ADMIN_ACCEPTANCE_PASSWORD must be configured on the test environment"
+            exit 1
+          }
+          node scripts/ci/provision-shop-admin-staff-identity.mjs
       - name: Seed staff operations fixtures
         if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
         run: |
           set -euo pipefail
-          admin_email="${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}"
+          admin_email="$SHOP_ADMIN_ACCEPTANCE_EMAIL"
           test -n "$admin_email"
           admin_subject="$(
             SHOP_OIDC_TEST_EMAIL="$admin_email" \
@@ -345,7 +369,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
           AUTH_BASE_URL: https://test-auth.lax.bid
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
-          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
+          SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
           SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
           SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
