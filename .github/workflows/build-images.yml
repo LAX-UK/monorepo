@@ -43,6 +43,7 @@ jobs:
     environment: ${{ inputs.environment }}
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
         include:
           - component: api
@@ -116,10 +117,18 @@ jobs:
       - name: Log in to DOCR
         run: doctl registry login --expiry-seconds 1200
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx (Public ECR)
+        id: buildx_ecr
+        continue-on-error: true
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: image=public.ecr.aws/vend/moby/buildkit:buildx-stable-1
+
+      - name: Set up Docker Buildx (Docker Hub fallback)
+        if: steps.buildx_ecr.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1
 
       # Web build compiles Next.js + Sentry source maps; add swap so BuildKit does not OOM (exit 137).
       - name: Add swap for web build
@@ -226,10 +235,18 @@ jobs:
       - name: Log in to DOCR
         run: doctl registry login --expiry-seconds 1200
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx (Public ECR)
+        id: buildx_ecr_event
+        continue-on-error: true
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: image=public.ecr.aws/vend/moby/buildkit:buildx-stable-1
+
+      - name: Set up Docker Buildx (Docker Hub fallback)
+        if: steps.buildx_ecr_event.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1
 
       - name: Build and push event
         uses: docker/build-push-action@v6
