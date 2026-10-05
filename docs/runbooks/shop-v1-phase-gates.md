@@ -219,7 +219,14 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 
 **Live pin after [#448](https://github.com/LAX-UK/monorepo/pull/448):** deploy [37351548933](https://github.com/LAX-UK/monorepo/actions/runs/37351548933) → **`51fdc38bf`** on `/health/ready`.
 
-**Next:** merge merchandise acceptance skip → **2×** seeded acceptance on live SHA without `monorepo_ref`; set `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` before flag-on staff specs; flag rollouts (payouts → third-party → originals + merchandise).
+**Staff-ops gate (pin `51fdc38bf`, `monorepo_ref=fix/merchandise-staff-ops-gate`, [#449](https://github.com/LAX-UK/monorepo/pull/449)):**
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| [37362704069](https://github.com/LAX-UK/monorepo/actions/runs/37362704069) | Green | Merchandise + staff specs skip with flags off; skip audit passes. |
+| [37364124249](https://github.com/LAX-UK/monorepo/actions/runs/37364124249) | Green | Second consecutive gate run. |
+
+**Next:** merge [#449](https://github.com/LAX-UK/monorepo/pull/449); repeat 2× on `main` without `monorepo_ref`; `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` before flag-on staff specs; flag rollouts (payouts → third-party → originals + merchandise).
 
 **Infra follow-ups (test):**
 
