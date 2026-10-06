@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const drizzle = resolve(import.meta.dirname, "../drizzle");
 
-describe("migration 0195-0201 contracts", () => {
+describe("migration 0195-0204 contracts", () => {
   it("0195 adds refunded order statuses alone", async () => {
     const forward = await readFile(resolve(drizzle, "0195_shop_order_refunded_status.sql"), "utf8");
     expect(forward).toContain("partially_refunded");
@@ -56,5 +56,32 @@ describe("migration 0195-0201 contracts", () => {
     );
     expect(forward).toContain("actor_subject_id");
     expect(forward).toContain("shop_admin_command_pkey");
+  });
+
+  it("0202 adds pending sale authority request uniqueness", async () => {
+    const forward = await readFile(
+      resolve(drizzle, "0202_shop_sale_authority_request_pending_uid.sql"),
+      "utf8",
+    );
+    expect(forward).toContain("shop_sale_authority_request_pending_uid");
+    expect(forward).toContain("0202_shop_sale_authority_request_pending_uid");
+  });
+
+  it("0203 adds shop artist identity link column", async () => {
+    const forward = await readFile(
+      resolve(drizzle, "0203_shop_artist_identity_subject.sql"),
+      "utf8",
+    );
+    expect(forward).toContain("identity_subject_id");
+    expect(forward).toContain("shop_artist_identity_subject_uid");
+  });
+
+  it("0204 enforces variant reserved <= on_hand", async () => {
+    const forward = await readFile(
+      resolve(drizzle, "0204_shop_product_variant_reserved_lte_on_hand.sql"),
+      "utf8",
+    );
+    expect(forward).toContain("shop_product_variant_reserved_lte_on_hand");
+    expect(forward).toContain("0204_shop_product_variant_reserved_lte_on_hand");
   });
 });

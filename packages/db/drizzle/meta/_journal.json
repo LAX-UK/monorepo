@@ -1408,6 +1408,27 @@
       "when": 1792742400000,
       "tag": "0201_shop_admin_command_actor_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1792828800000,
+      "tag": "0202_shop_sale_authority_request_pending_uid",
+      "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1792915200000,
+      "tag": "0203_shop_artist_identity_subject",
+      "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1793001600000,
+      "tag": "0204_shop_product_variant_reserved_lte_on_hand",
+      "breakpoints": true
     }
   ]
 }
