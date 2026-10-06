@@ -49,6 +49,15 @@ export default async function ShopAccountSalesPage() {
             </ShopStatusStateLink>
           }
         />
+      ) : result.status === "commerce_unavailable" ? (
+        <ShopStatusState
+          layout="page"
+          variant="error"
+          title="Ownership portal not enabled"
+          titleAs="h2"
+          description="This environment has not turned on the owner portal yet."
+          actions={<ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>}
+        />
       ) : result.status === "failed" ? (
         <ShopStatusState
           layout="page"
