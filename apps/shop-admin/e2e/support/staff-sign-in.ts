@@ -134,7 +134,7 @@ async function completeStaffLoginReturn(
   authBaseUrl: string,
   destination: RegExp,
 ): Promise<void> {
-  const deadline = Date.now() + 180_000;
+  const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
     const url = page.url();
     if (reachedShopAdmin(url, destination)) return;
@@ -196,7 +196,7 @@ async function resumeIfAlreadySignedIn(
   return true;
 }
 
-async function submitStaffTotp(page: Page, totpSecret: string): Promise<void> {
+async function submitStaffTotp(page: Page, authBaseUrl: string, totpSecret: string): Promise<void> {
   const totpField = page.locator("#totp-code");
   await totpField.waitFor({ state: "visible", timeout: 45_000 });
   const totp = new TOTP({ secret: totpSecret });
@@ -204,15 +204,37 @@ async function submitStaffTotp(page: Page, totpSecret: string): Promise<void> {
   const verify = page
     .locator("#totp-form")
     .getByRole("button", { name: /verify|continue|submit/i });
-  await Promise.all([
-    page
-      .waitForURL((url) => reachedPostAuthHop(url.toString(), SHOP_ADMIN_DESTINATION), {
-        timeout: 90_000,
-        waitUntil: "domcontentloaded",
-      })
-      .catch(() => {}),
-    verify.click(),
-  ]);
+  const verifyResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/auth/two-factor/verify-totp") &&
+      response.request().method() === "POST",
+    { timeout: 60_000 },
+  );
+  await verify.click();
+  const response = await verifyResponse;
+  if (!response.ok()) {
+    throw new Error(`staff TOTP verify failed (${response.status()})`);
+  }
+  const payload = (await response.json().catch(() => null)) as {
+    url?: string;
+    redirectURI?: string;
+  } | null;
+  const next =
+    typeof payload?.url === "string"
+      ? payload.url
+      : typeof payload?.redirectURI === "string"
+        ? payload.redirectURI
+        : null;
+  if (next) {
+    await page.goto(new URL(next, authBaseUrl).toString(), { waitUntil: "domcontentloaded" });
+    return;
+  }
+  await page
+    .waitForURL((url) => reachedPostAuthHop(url.toString(), SHOP_ADMIN_DESTINATION), {
+      timeout: 60_000,
+      waitUntil: "domcontentloaded",
+    })
+    .catch(() => {});
 }
 
 export async function signInStaffThroughIdentity(input: {
@@ -275,7 +297,7 @@ export async function signInStaffThroughIdentity(input: {
     if (!input.totpSecret) {
       throw new Error("SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is required for silver staff sign-in");
     }
-    await submitStaffTotp(input.page, input.totpSecret);
+    await submitStaffTotp(input.page, authBase, input.totpSecret);
     await completeStaffLoginReturn(input.page, authBase, destination);
     return;
   }
@@ -314,7 +336,7 @@ export async function signInStaffThroughIdentity(input: {
         .then(() => true)
         .catch(() => false));
     if (needsTotp) {
-      await submitStaffTotp(input.page, input.totpSecret);
+      await submitStaffTotp(input.page, authBase, input.totpSecret);
     }
   }
 
