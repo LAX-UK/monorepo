@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ArtworkCatalogueDraft,
   ArtworkCatalogueFilterBody,
   type CatalogueFilterOption,
   artworkDraftFromState,
@@ -75,9 +76,14 @@ export function ArtworkCatalogueBrowse({
   );
 
   const countLabel = `${resultCount} artwork${resultCount === 1 ? "" : "s"}`;
-  const applyLabel = resultCount === 1 ? "Show 1 artwork" : `Show ${resultCount} artworks`;
+  const applyLabel = "Apply filters";
   const activeCount = countActiveArtworkCatalogueFilters(state);
   const chips = buildArtworkCatalogueActiveChips(state, { categories, artists });
+
+  function applyDraft(next: ArtworkCatalogueDraft) {
+    setDraft(next);
+    navigate(artworkCatalogueFilterHref(state, draftToPartialState(next)));
+  }
 
   function onSearchSubmit(event: FormEvent) {
     event.preventDefault();
@@ -116,10 +122,11 @@ export function ArtworkCatalogueBrowse({
     <form className="hidden min-w-0 flex-1 lg:flex" onSubmit={onSearchSubmit}>
       <input
         type="search"
+        aria-label="Search title or artist"
         value={searchDraft}
         onChange={(event) => setSearchDraft(event.target.value)}
         placeholder="Search title or artist"
-        className="min-h-11 w-full max-w-md rounded-full border border-outline-variant/50 bg-surface-container-lowest px-4 font-body text-sm"
+        className="min-h-11 w-full max-w-md rounded-full border border-outline-variant/50 bg-surface-container-lowest px-4 font-body text-sm shop-focus-ring"
       />
     </form>
   );
@@ -147,6 +154,17 @@ export function ArtworkCatalogueBrowse({
                 setSheetOpen(false);
               }}
             >
+              <label className="mb-4 flex flex-col gap-1 font-body text-sm lg:hidden">
+                <span>Search</span>
+                <input
+                  type="search"
+                  aria-label="Search title or artist"
+                  value={draft.q}
+                  onChange={(event) => setDraft({ ...draft, q: event.target.value })}
+                  placeholder="Search title or artist"
+                  className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3 shop-focus-ring"
+                />
+              </label>
               <ArtworkCatalogueFilterBody
                 draft={draft}
                 onDraftChange={setDraft}
@@ -174,13 +192,11 @@ export function ArtworkCatalogueBrowse({
         <div className={MARKETING_CATALOG_FILTER_RAIL_SLOT}>
           <ArtworkCatalogueFilterBody
             draft={draft}
-            onDraftChange={(next) => {
-              setDraft(next);
-              navigate(artworkCatalogueFilterHref(state, draftToPartialState(next)));
-            }}
+            onDraftChange={setDraft}
+            onFilterCommit={applyDraft}
             categories={categories}
             artists={artists}
-            resultCount={resultCount}
+            showResultCount={false}
             className={MARKETING_FILTER_RAIL_STICKY}
           />
         </div>

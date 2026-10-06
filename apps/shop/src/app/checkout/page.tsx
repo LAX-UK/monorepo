@@ -1,5 +1,7 @@
 import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
+import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
@@ -13,7 +15,6 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("Checkout");
@@ -121,15 +122,16 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
       <ShopCommercePageShell header={shopPageWayfinding.checkout} contentClassName="shop-checkout">
+        <ShopCheckoutSteps current="Details" />
         <CheckoutForm
           basket={basket}
           {...(viewer.kind === "authenticated" && viewer.email
             ? { customerEmail: viewer.email }
             : {})}
         />
-        <Link href="/basket" className="shop-detail__cta shop-focus-ring">
+        <ShopCommerceButton href="/basket" variant="outline" className="mt-4">
           Back to basket
-        </Link>
+        </ShopCommerceButton>
       </ShopCommercePageShell>
     </MarketingDetailShell>
   );

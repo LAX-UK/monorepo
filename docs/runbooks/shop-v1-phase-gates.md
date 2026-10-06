@@ -226,9 +226,9 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | [37362704069](https://github.com/LAX-UK/monorepo/actions/runs/37362704069) | Green | Merchandise + staff specs skip with flags off; skip audit passes. |
 | [37364124249](https://github.com/LAX-UK/monorepo/actions/runs/37364124249) | Green | Second consecutive gate run. |
 
-**Staff silver TOTP (test acceptance):** when `POST /api/auth/two-factor/enable` returns 5xx, CI provision bootstraps a sealed `two_factor` row using `AUTH_DEK_KEY`, exports `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` to `GITHUB_ENV` for the same job, and attempts `gh secret set` on the **test** environment. Dispatch **Shop staging acceptance** from a ref whose workflow passes `AUTH_DEK_KEY` (merge [#451](https://github.com/LAX-UK/monorepo/pull/451) or `--ref fix/staff-acceptance-totp-reconcile-v2`); `monorepo_ref` alone does not change the workflow file on `main`.
+**Staff silver TOTP (test acceptance):** when `POST /api/auth/two-factor/enable` returns 5xx, CI provision bootstraps `two_factor` with Better Auth `symmetricEncrypt(BETTER_AUTH_SECRET)` then DEK seal (`AUTH_DEK_KEY`), exports `SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET` to `GITHUB_ENV` for the same job, and attempts `gh secret set` on the **test** environment. Dispatch **Shop staging acceptance** from a ref whose workflow passes `AUTH_DEK_KEY` and `BETTER_AUTH_SECRET` (merge [#451](https://github.com/LAX-UK/monorepo/pull/451) or `--ref fix/staff-acceptance-totp-reconcile-v2`); `monorepo_ref` alone does not change the workflow file on `main`.
 
-**Next:** merge staff TOTP + OIDC e2e fix; 2× seeded acceptance per flag flip (payouts → third-party → originals + merchandise); record run IDs below.
+**Next:** merge staff TOTP + platform push; 2× seeded acceptance per flag flip (payouts → third-party → originals + merchandise); record run IDs below.
 
 **Infra follow-ups (test):**
 

@@ -26,6 +26,7 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
     slug: model.slug,
     title: model.title,
     artistName: model.artistName,
+    artistSlug: model.artistSlug,
     imageUrl: model.imageUrl,
     saleState: model.saleState,
     dimensions: model.dimensions,

@@ -1,16 +1,10 @@
+import { formatShopDateTime } from "@/lib/presenters/shop-date.presenter";
 import { resolveShopFulfilmentLabel } from "@/lib/presenters/shop-fulfilment.presenter";
 import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import type { OrderSummary } from "@auction/shop-contracts";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
-
-function formatOrderDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
 
 type Props = {
   order: OrderSummary;
@@ -27,8 +21,8 @@ export function ShopOrderSummary({ order, heading, showLineLinks = true }: Props
         {heading ? <h2 className="shop-order-card__title">{heading}</h2> : null}
         <p className="shop-order-card__meta">
           <DotStatusPill label={status.label} tone={status.tone} />
-          <span>Placed {formatOrderDate(order.createdAt)}</span>
-          {order.paidAt ? <span>Paid {formatOrderDate(order.paidAt)}</span> : null}
+          <span>Placed {formatShopDateTime(order.createdAt)}</span>
+          {order.paidAt ? <span>Paid {formatShopDateTime(order.paidAt)}</span> : null}
         </p>
         {status.hint ? <p className="shop-order-card__status-hint">{status.hint}</p> : null}
       </header>

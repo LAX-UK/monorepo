@@ -28,7 +28,7 @@ export const ARTWORK_TYPE_OPTIONS: ReadonlyArray<{
 export const ARTWORK_SALE_STATE_OPTIONS = [
   { value: "", label: "Any availability" },
   { value: "for_sale", label: "For sale" },
-  { value: "price_on_application", label: "Price on application" },
+  { value: "price_on_application", label: "Price on request" },
   { value: "sold", label: "Sold" },
 ] as const;
 

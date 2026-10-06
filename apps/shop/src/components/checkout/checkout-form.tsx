@@ -2,26 +2,46 @@
 
 import { startCheckout } from "@/app/actions/checkout.actions";
 import { CheckoutBasketSummary } from "@/components/checkout/checkout-basket-summary";
+import { ShopCommerceButton } from "@/components/shop-commerce-button";
+import { ShopNotice } from "@/components/shop-notice";
 import { ShopStatusState } from "@/components/shop-status-state";
+import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
 import { isValidUkPostcode } from "@/lib/uk-postcode";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
 import type { BasketView } from "@auction/shop-contracts";
+import { fulfilmentSurchargePence } from "@auction/shop-domain";
 import { Input, Label, RadioCardGroup } from "@auction/ui";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
-const FULFILMENT_OPTIONS: Array<{ id: ShopFulfilmentOption; label: string; description?: string }> =
-  [
-    { id: "uk_insured_delivery", label: "UK insured delivery" },
-    { id: "collect_new_cavendish", label: "Collect — New Cavendish Street" },
-    { id: "collect_brunswick", label: "Collect — Brunswick" },
-    { id: "lax_storage", label: "LAX storage" },
-    {
-      id: "international_quotation",
-      label: "International delivery (quotation)",
-      description: "We will email you a delivery quote before payment.",
-    },
-  ];
+const FULFILMENT_OPTION_META: Array<{
+  id: ShopFulfilmentOption;
+  label: string;
+  descriptionBase?: string;
+}> = [
+  { id: "uk_insured_delivery", label: "UK insured delivery" },
+  { id: "collect_new_cavendish", label: "Collect — New Cavendish Street" },
+  { id: "collect_brunswick", label: "Collect — Brunswick" },
+  { id: "lax_storage", label: "LAX storage" },
+  {
+    id: "international_quotation",
+    label: "International delivery (quotation)",
+    descriptionBase: "We will email you a delivery quote before payment.",
+  },
+];
+
+function fulfilmentOptionDescription(option: ShopFulfilmentOption): string | undefined {
+  const meta = FULFILMENT_OPTION_META.find((entry) => entry.id === option);
+  if (option === "international_quotation") {
+    return meta?.descriptionBase;
+  }
+  const surcharge = fulfilmentSurchargePence(option);
+  const priceLine =
+    surcharge === 0
+      ? "No fulfilment surcharge"
+      : `${formatGbpPence(surcharge)} fulfilment surcharge`;
+  return priceLine;
+}
 
 type Props = {
   basket: BasketView;
@@ -43,6 +63,29 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
   const [postcodeError, setPostcodeError] = useState<string | null>(null);
   const fieldsDisabled = pending || redirecting;
 
+  const fulfilmentOptions = useMemo(
+    () =>
+      FULFILMENT_OPTION_META.map((option) => {
+        const description = fulfilmentOptionDescription(option.id);
+        return {
+          value: option.id,
+          label: option.label,
+          disabled: fieldsDisabled,
+          ...(description ? { description } : {}),
+        };
+      }),
+    [fieldsDisabled],
+  );
+
+  const paymentButtonLabel =
+    fulfilment === "international_quotation"
+      ? "Request delivery quote"
+      : redirecting
+        ? "Redirecting to secure payment…"
+        : pending
+          ? "Starting payment…"
+          : "Continue to payment";
+
   return (
     <div className="shop-checkout__layout">
       <CheckoutBasketSummary basket={basket} fulfilment={fulfilment} />
@@ -62,12 +105,7 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
             legend="Fulfilment"
             value={fulfilment}
             onValueChange={(value) => setFulfilment(value as ShopFulfilmentOption)}
-            options={FULFILMENT_OPTIONS.map((option) => ({
-              value: option.id,
-              label: option.label,
-              disabled: fieldsDisabled,
-              ...(option.description ? { description: option.description } : {}),
-            }))}
+            options={fulfilmentOptions}
           />
         </div>
         {fulfilment === "uk_insured_delivery" ? (
@@ -122,9 +160,9 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
                   autoComplete="postal-code"
                 />
                 {postcodeError ? (
-                  <p id="checkout-postcode-error" className="shop-basket__alert" role="alert">
+                  <ShopNotice tone="error" title="Invalid postcode" className="mt-2">
                     {postcodeError}
-                  </p>
+                  </ShopNotice>
                 ) : null}
               </div>
               <div className="shop-checkout__field shop-checkout__field--full">
@@ -145,9 +183,8 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
             announcement="assertive"
           />
         ) : null}
-        <button
+        <ShopCommerceButton
           type="button"
-          className="shop-detail__cta shop-focus-ring"
           disabled={fieldsDisabled}
           onClick={() => {
             setError(null);
@@ -190,12 +227,8 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
             });
           }}
         >
-          {redirecting
-            ? "Redirecting to secure payment…"
-            : pending
-              ? "Starting payment…"
-              : "Continue to payment"}
-        </button>
+          {paymentButtonLabel}
+        </ShopCommerceButton>
       </form>
     </div>
   );

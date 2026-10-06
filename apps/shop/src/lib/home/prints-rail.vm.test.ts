@@ -13,6 +13,7 @@ const item = (
   slug,
   title: `Title ${slug}`,
   artistName: "Artist",
+  artistSlug: "artist",
   imageUrl: null,
   saleState: "for_sale",
   dimensions: null,

@@ -400,6 +400,13 @@
   object-fit: cover;
 }
 
+.shop-home__print-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .shop-home__print-title {
   margin: 0;
   font-size: 1rem;

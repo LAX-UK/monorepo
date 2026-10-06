@@ -9,6 +9,7 @@ export type ArtworkSummaryReadModel = {
   slug: string;
   title: string;
   artistName: string;
+  artistSlug: string;
   imageUrl: string | null;
   saleState: ArtworkSaleState;
   dimensions: string | null;

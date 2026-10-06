@@ -107,4 +107,12 @@ export const shopPageWayfinding = {
     title: "Sale limits",
     breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sale limits" }],
   },
+  accountPayouts: {
+    title: "Payouts",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Payouts" }],
+  },
+  accountDocuments: {
+    title: "Documents",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Documents" }],
+  },
 } as const;

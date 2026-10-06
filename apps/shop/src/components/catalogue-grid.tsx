@@ -35,26 +35,30 @@ export function CatalogueGrid({ items }: CatalogueGridProps) {
       {cards.map((card) => (
         <li key={card.slug}>
           <MarketingCardShell interactive className="shop-catalogue__card">
+            <Link href={card.href} className="shop-catalogue__card-link">
+              <span className="sr-only">
+                {card.title} by {card.artistName}
+              </span>
+            </Link>
             <MarketingCardMedia className="shop-catalogue__media">
               <ShopMediaImage
                 src={card.imageUrl}
                 alt={card.imageAlt}
                 label={SHOP_MEDIA_LABELS.artwork}
-                aspect={[4, 5]}
                 sizes="(min-width: 64rem) 25vw, (min-width: 40rem) 50vw, 100vw"
                 className="absolute inset-0 size-full"
               />
             </MarketingCardMedia>
             <div className="shop-catalogue__body">
-              <h3 className="shop-catalogue__title">
-                <Link href={card.href}>{card.title}</Link>
-              </h3>
+              <h2 className="shop-catalogue__title">{card.title}</h2>
               {card.status ? (
                 <div className="shop-catalogue__status">
                   <DotStatusPill label={card.status.label} tone={card.status.tone} />
                 </div>
               ) : null}
-              <p className="shop-catalogue__artist">{card.artistName}</p>
+              <Link href={`/artists/${card.artistSlug}`} className="shop-catalogue__artist-link">
+                {card.artistName}
+              </Link>
               {card.dimensions ? (
                 <p className="shop-catalogue__dimensions">{card.dimensions}</p>
               ) : null}

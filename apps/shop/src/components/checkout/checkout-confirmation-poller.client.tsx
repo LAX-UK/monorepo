@@ -1,14 +1,16 @@
 "use client";
 
+import { ShopCommerceButton, ShopCommerceOutlineLink } from "@/components/shop-commerce-button";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Props = {
   active: boolean;
+  orderId?: string;
 };
 
 /** Refreshes confirmation while payment processes; offers manual refresh after 30s. */
-export function CheckoutConfirmationPoller({ active }: Props) {
+export function CheckoutConfirmationPoller({ active, orderId }: Props) {
   const router = useRouter();
   const [pollingEnded, setPollingEnded] = useState(false);
 
@@ -37,17 +39,21 @@ export function CheckoutConfirmationPoller({ active }: Props) {
     <div className="shop-checkout__processing-status">
       <output className="shop-basket__alert" aria-live="polite">
         {pollingEnded
-          ? "Payment is still processing. You can check again or view order history below."
+          ? "Payment is still processing. Check again, open your order, or browse order history."
           : "Payment is processing. This page updates automatically."}
       </output>
       {pollingEnded ? (
-        <button
-          type="button"
-          className="shop-detail__cta shop-focus-ring"
-          onClick={() => router.refresh()}
-        >
-          Check payment status
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <ShopCommerceButton type="button" onClick={() => router.refresh()}>
+            Check payment status
+          </ShopCommerceButton>
+          {orderId ? (
+            <ShopCommerceOutlineLink href={`/account/orders/${orderId}`}>
+              View order
+            </ShopCommerceOutlineLink>
+          ) : null}
+          <ShopCommerceOutlineLink href="/account/orders">Order history</ShopCommerceOutlineLink>
+        </div>
       ) : null}
     </div>
   );

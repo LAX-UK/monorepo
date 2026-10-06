@@ -8,6 +8,7 @@ export type CatalogueArtworkCardVm = {
   slug: string;
   title: string;
   artistName: string;
+  artistSlug: string;
   imageUrl: string | null;
   imageAlt: string;
   dimensions: string | null;
@@ -50,6 +51,7 @@ export function toCatalogueArtworkCardVm(item: PublicArtworkSummary): CatalogueA
     slug: item.slug,
     title: item.title,
     artistName: item.artistName,
+    artistSlug: item.artistSlug,
     imageUrl: item.imageUrl,
     imageAlt: `${item.title} by ${item.artistName}`,
     dimensions: item.dimensions,

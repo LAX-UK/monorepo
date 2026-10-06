@@ -127,10 +127,11 @@ export function artworkCatalogueHref(
   return qs ? `/artworks?${qs}` : "/artworks";
 }
 
-type ArtworkCatalogueFilterPatch = {
+export type ArtworkCatalogueFilterPatch = {
   [K in keyof Omit<ArtworkCatalogueUrlState, "cursor" | "back">]?:
     | Omit<ArtworkCatalogueUrlState, "cursor" | "back">[K]
-    | null;
+    | null
+    | undefined;
 };
 
 /** Filter/sort changes clear cursor history. */
@@ -169,7 +170,7 @@ export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlSta
 
 const SALE_STATE_LABELS: Record<NonNullable<ArtworkCatalogueUrlState["saleState"]>, string> = {
   for_sale: "For sale",
-  price_on_application: "Price on application",
+  price_on_application: "Price on request",
   sold: "Sold",
 };
 

@@ -6,6 +6,7 @@ const artwork = (overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDet
   slug: "warm-basket",
   title: "Warm Basket",
   artistName: "Flora Powers",
+  artistSlug: "flora-powers",
   description: null,
   imageUrl: null,
   saleState: "for_sale",

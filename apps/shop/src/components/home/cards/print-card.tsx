@@ -2,6 +2,7 @@ import { ShopMediaImage } from "@/components/media/shop-media-image";
 import type { HomePrintCard } from "@/content/home-marketing";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import { MarketingCardMedia, MarketingCardShell } from "@auction/marketing-ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 
 type PrintCardProps = {
@@ -22,7 +23,10 @@ export function PrintCard({ card }: PrintCardProps) {
         />
       </MarketingCardMedia>
       <div className="shop-home__print-copy">
-        <h3 className="shop-home__print-title">{card.title}</h3>
+        <div className="shop-home__print-meta">
+          <h3 className="shop-home__print-title">{card.title}</h3>
+          {card.status ? <DotStatusPill label={card.status.label} tone={card.status.tone} /> : null}
+        </div>
         <p className="shop-home__print-artist">{card.artist}</p>
         <p className="shop-home__print-medium">{card.medium}</p>
       </div>

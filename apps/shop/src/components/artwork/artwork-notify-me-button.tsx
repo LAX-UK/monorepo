@@ -1,11 +1,12 @@
 "use client";
 
 import { registerArtworkInterest } from "@/app/actions/artwork-interest.actions";
+import { ShopNotice } from "@/components/shop-notice";
 import { MarketingBellIcon, MarketingBellRingIcon, MarketingInfoIcon } from "@auction/marketing-ui";
 import type { ArtworkInterestIntent } from "@auction/shop-contracts";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 type Props = {
   slug: string;
@@ -26,6 +27,7 @@ export function ArtworkNotifyMeButton({
   const [message, setMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const successRef = useRef<HTMLDivElement>(null);
 
   const defaultCta = intent === "enquiry" ? "Register interest" : "Notify me";
   const defaultActiveLabel = intent === "enquiry" ? "Interest registered" : "On the list";
@@ -47,6 +49,12 @@ export function ArtworkNotifyMeButton({
       <MarketingBellRingIcon className="size-4" />
     );
 
+  useEffect(() => {
+    if (subscribed) {
+      successRef.current?.focus();
+    }
+  }, [subscribed]);
+
   if (subscribed) {
     return (
       <div className="shop-detail__interest-actions">
@@ -60,8 +68,14 @@ export function ArtworkNotifyMeButton({
           {activeIcon}
           {defaultActiveLabel}
         </Button>
-        <p className="shop-detail__interest-feedback">{subscribedMessage ?? defaultSubscribed}</p>
-        {infoMessage ? <p className="shop-detail__interest-feedback">{infoMessage}</p> : null}
+        <div ref={successRef} tabIndex={-1} aria-live="polite" className="outline-none">
+          <ShopNotice tone="success">{subscribedMessage ?? defaultSubscribed}</ShopNotice>
+          {infoMessage ? (
+            <ShopNotice tone="info" className="mt-2">
+              {infoMessage}
+            </ShopNotice>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -97,9 +111,9 @@ export function ArtworkNotifyMeButton({
         {pending ? "Saving…" : (ctaLabel ?? defaultCta)}
       </Button>
       {message ? (
-        <p className="shop-detail__interest-feedback shop-detail__notice--alert" role="alert">
+        <ShopNotice tone="error" title="Could not save preference">
           {message}
-        </p>
+        </ShopNotice>
       ) : null}
     </div>
   );
