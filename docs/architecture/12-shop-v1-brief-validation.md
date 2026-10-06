@@ -1,6 +1,6 @@
 # Shop V1 brief validation and build SSOT
 
-> **Implementation status (last reviewed 2026-10-05)**
+> **Implementation status (last reviewed 2026-10-06)**
 >
 > - **Phase 0:** decisions D28–D32 recorded; this document and [10-shop-commerce-boundary.md](./10-shop-commerce-boundary.md) updated.
 > - **Phases 1–4:** in progress per the delivery plan below. Treat code and migrations as SSOT once merged; this doc tracks intent and acceptance mapping.
@@ -22,7 +22,8 @@ RBAC), **D31** (acr/auth_time on exchanged tokens), **D32** (no international ch
 | Next edition sold | First **authorised**, then lowest edition number (`sale_authorised_at`, `edition_number`) |
 | LAX editions | Require explicit sale authority like buyer/artist editions — no auto-listing |
 | Checkout account | Sign-in required before checkout (current behaviour) |
-| Staff admin | `apps/shop-admin` operational MVP: admin read APIs, overview/clients/artists/requests/staff/orders/payouts lists, sale-authority decisions and staff grants via BFF; CLI remains for break-glass |
+| Staff admin | `apps/shop-admin` operational MVP: admin read APIs, detail pages (client/artist/order), overview/clients/artists/requests/staff/orders/payouts lists, sale-authority decisions and staff grants via BFF; CLI remains for break-glass |
+| Artist portal | Staff links a shop login to an artist record via `shop_artist.identity_subject_id` (email → `shop_user_profile`); portal `/v1/me/artist/*` and account artworks/artist-sales pages when linked — separate from buyer party (no party merge) |
 | Sale limits | Portal change requests + history; staff queue in admin; grants with evidence |
 | Merchandise | V1 simple LAX-owned SKUs with stock counts (Phase 4) |
 | lax.bid auction originals | V1 manual buyer-edition assignment in admin; auto event deferred |

@@ -615,3 +615,15 @@ before production go-live.
 
 **Status.** *Planned (Shop V1).* Domain gate already exists:
 `packages/shop-domain/src/basket-totals.ts` (`International quotation fulfilment cannot be checked out online`).
+
+## D33. Shop artist portal login is staff-linked, audited, and merge-aware
+
+**Supersedes none; extends D17 / Shop portal ownership.**
+
+**Chosen.** A `shop_artist` row may reference at most one `identity_subject_id` (partial unique index). Staff with `catalogue.write` link or unlink a login by verified shop profile email via `/admin/v1/artists/:artistId/identity-link`. Mutations run inside the Shop unit of work with admin idempotency, `FOR UPDATE` on the artist row, and audit append (before/after subject). Conflicts return 409 when the artist or login is already linked elsewhere. Email lookup excludes disabled or merged profiles; ambiguous email matches return 409. Identity merge inbox processing remaps or clears artist links when subjects merge. The linked subject is separate from buyer `shop_party` ownership used for editions and sale authority.
+
+**Alternatives considered.** Auto-linking artists on first sign-in by email (rejected — no staff control, weak audit). Reusing buyer party as artist identity (rejected — conflates collector and artist roles).
+
+**Why this wins.** Artist portal routes (`/v1/me/artist/*`) need a deliberate, reversible binding with the same admin safety model as finance mutations, without breaking multi-party ownership.
+
+**Status.** *Implemented.* Handler: [apps/shop-api/src/infrastructure/handlers/admin/link-artist-identity.handler.ts](../../apps/shop-api/src/infrastructure/handlers/admin/link-artist-identity.handler.ts); merge remap: [apps/shop-api/src/infrastructure/scheduler/process-identity-merge-inbox.runner.ts](../../apps/shop-api/src/infrastructure/scheduler/process-identity-merge-inbox.runner.ts); migration **0203** `shop_artist.identity_subject_id`.
