@@ -157,19 +157,23 @@ export async function signInStaffThroughIdentity(input: {
       .click();
   }
 
-  if (input.page.url().includes("/two-factor") && input.totpSecret) {
-    const totp = new TOTP({ secret: input.totpSecret });
-    await input.page.locator("#totp-code").fill(totp.generate());
-    await input.page
-      .locator("#totp-form")
-      .getByRole("button", { name: /verify|continue|submit/i })
-      .click();
-  } else if (input.totpSecret) {
-    const totp = new TOTP({ secret: input.totpSecret });
-    const otpField = input.page.getByLabel(/authenticator|verification|code/i);
-    await otpField.waitFor({ timeout: 30_000 });
-    await otpField.fill(totp.generate());
-    await input.page.getByRole("button", { name: /verify|continue|submit/i }).click();
+  if (input.totpSecret) {
+    const totpField = input.page.locator("#totp-code");
+    const needsTotp =
+      input.page.url().includes("/two-factor") ||
+      (await totpField.isVisible().catch(() => false)) ||
+      (await totpField
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => true)
+        .catch(() => false));
+    if (needsTotp) {
+      const totp = new TOTP({ secret: input.totpSecret });
+      await totpField.fill(totp.generate());
+      await input.page
+        .locator("#totp-form")
+        .getByRole("button", { name: /verify|continue|submit/i })
+        .click();
+    }
   }
 
   if (isOidcAuthorizeUrl(input.page.url())) {
