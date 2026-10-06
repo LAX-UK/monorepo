@@ -79,6 +79,9 @@ export function createMinimalShopApiTestDeps(
       listPublicArtists: async () => ({ items: [] }),
       getPublicArtist: async () => null,
     },
+    merchandise: {
+      listPublicMerchandiseProducts: async () => ({ items: [] }),
+    },
     interest: {
       registerArtworkInterest: async () => "registered" as const,
       getArtworkInterest: async () => ({ subscribed: false }),

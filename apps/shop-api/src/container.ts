@@ -9,6 +9,7 @@ import { createImportArtworkHandler } from "./application/handlers/import-artwor
 import { createListPublicArtistsHandler } from "./application/handlers/list-public-artists.handler.js";
 import { createListPublicArtworksHandler } from "./application/handlers/list-public-artworks.handler.js";
 import { createListPublicCategoriesHandler } from "./application/handlers/list-public-categories.handler.js";
+import { createListPublicMerchandiseProductsHandler } from "./application/handlers/list-public-merchandise-products.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
@@ -19,6 +20,7 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
@@ -47,6 +49,7 @@ import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-p
 import { createShopFeatureFlagsReader } from "./infrastructure/shop-feature-flags-env.js";
 import { assertShopVatPolicyWhenPayoutsEnabled } from "./infrastructure/shop-vat-policy.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
+import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
 
 export type ShopApiAppDeps = {
@@ -56,6 +59,7 @@ export type ShopApiAppDeps = {
     checkCatalogueSchema(): Promise<void>;
   };
   catalogue: CatalogueRoutesDeps;
+  merchandise: MerchandiseRoutesDeps;
   interest: InterestRoutesDeps;
   commerce: CommerceRoutesDeps;
   stripeWebhook: StripeWebhookDeps;
@@ -100,6 +104,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const notifications = createDrizzleShopNotificationPublisher();
   const catalogueReader = createDrizzleArtworkCatalogueRepository(db);
   const categoryReader = createDrizzleCategoryCatalogueRepository(db);
+  const merchandiseReader = createDrizzleMerchandiseCatalogueRepository(db);
   const artistReader = createDrizzleArtistDirectoryRepository(db);
   const artworkImportWriter = createDrizzleArtworkImportRepository(
     db,
@@ -180,6 +185,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),
         getPublicArtist: createGetPublicArtistHandler(artistReader),
+      },
+      merchandise: {
+        listPublicMerchandiseProducts:
+          createListPublicMerchandiseProductsHandler(merchandiseReader),
       },
       interest: {
         registerArtworkInterest: createRegisterArtworkInterestHandler(artworkInterestWriter),
