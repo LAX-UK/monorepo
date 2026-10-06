@@ -1,5 +1,6 @@
 import { fetchPublicMerchandiseProducts } from "@/lib/shop-api.server";
 import { isShopMerchandiseEnabled } from "@/lib/shop-runtime-flags";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function ShopMerchandisePage() {
         <ul>
           {catalogue.items.map((item) => (
             <li key={item.slug}>
-              <span>{item.title}</span>
+              <Link href={`/merchandise/${item.slug}`}>{item.title}</Link>
               <span>{formatPricePence(item.fromPricePence)}</span>
             </li>
           ))}

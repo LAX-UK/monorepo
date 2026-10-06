@@ -1,6 +1,6 @@
 "use client";
 
-import { shopMegaMenuSections } from "@/components/header/header-nav.config";
+import { buildShopMegaMenuSections } from "@/components/header/header-nav.config";
 import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-active";
 import { ShopMobileAuthSection } from "@/components/header/shop-mobile-auth-section";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
@@ -17,6 +17,7 @@ type ShopMobileNavDrawerProps = {
   pathname: string;
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
+  merchandiseEnabled: boolean;
 };
 
 export function ShopMobileNavDrawer({
@@ -25,6 +26,7 @@ export function ShopMobileNavDrawer({
   pathname,
   account,
   productLinks,
+  merchandiseEnabled,
 }: ShopMobileNavDrawerProps) {
   const close = () => onOpenChange(false);
 
@@ -33,7 +35,7 @@ export function ShopMobileNavDrawer({
       open={open}
       onOpenChange={onOpenChange}
       resetKey={pathname}
-      sections={shopMegaMenuSections}
+      sections={buildShopMegaMenuSections(merchandiseEnabled)}
       isSectionActive={(section) => shopMegaMenuSectionActive(pathname, section)}
       isLinkCurrent={(href) => pathname === href || pathname.startsWith(`${href}/`)}
       logo={

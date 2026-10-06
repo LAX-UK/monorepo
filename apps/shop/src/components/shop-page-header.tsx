@@ -17,9 +17,11 @@ export type ShopBreadcrumbItem = {
 export type ShopPageHeaderProps = {
   title: string;
   breadcrumbs: readonly ShopBreadcrumbItem[];
+  /** PDP and similar layouts render the primary h1 in page content. */
+  suppressTitle?: boolean;
 };
 
-export function ShopPageHeader({ title, breadcrumbs }: ShopPageHeaderProps) {
+export function ShopPageHeader({ title, breadcrumbs, suppressTitle }: ShopPageHeaderProps) {
   return (
     <header className="shop-page-header">
       <Breadcrumb className="shop-page-header__breadcrumb">
@@ -50,7 +52,7 @@ export function ShopPageHeader({ title, breadcrumbs }: ShopPageHeaderProps) {
           })}
         </BreadcrumbList>
       </Breadcrumb>
-      <h1 className="shop-page-header__title">{title}</h1>
+      {suppressTitle ? null : <h1 className="shop-page-header__title">{title}</h1>}
     </header>
   );
 }
@@ -65,6 +67,10 @@ export const shopPageWayfinding = {
   checkout: {
     title: "Checkout",
     breadcrumbs: [shopRoot, { label: "Checkout" }],
+  },
+  checkoutCancel: {
+    title: "Checkout cancelled",
+    breadcrumbs: [shopRoot, { label: "Checkout", href: "/checkout" }, { label: "Cancelled" }],
   },
   confirmation: {
     title: "Order confirmation",
@@ -106,5 +112,17 @@ export const shopPageWayfinding = {
   accountSaleLimits: {
     title: "Sale limits",
     breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sale limits" }],
+  },
+  accountSales: {
+    title: "Sales statement",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sales" }],
+  },
+  accountPayouts: {
+    title: "Payouts",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Payouts" }],
+  },
+  accountDocuments: {
+    title: "Documents",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Documents" }],
   },
 } as const;

@@ -1,3 +1,4 @@
+import { ShopAccountOverviewCards } from "@/components/account/shop-account-overview-cards";
 import {
   ShopAccountBodyText,
   ShopAccountLinkButton,
@@ -5,7 +6,10 @@ import {
 } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
-import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -87,12 +91,20 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
   }
 
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
+  const shellNav = {
+    activeNavHref: "/account",
+    portalOwnershipEnabled,
+    payoutsEnabled,
+    artistPortalEnabled,
+  };
 
   return (
     <ShopAccountShell
       title={shopPageWayfinding.account.title}
       breadcrumbs={shopPageWayfinding.account.breadcrumbs}
+      {...shellNav}
     >
       <dl className="grid gap-3 text-sm">
         <div>
@@ -104,23 +116,12 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
           <dd className="font-medium text-on-surface">{viewer.displayName || "—"}</dd>
         </div>
       </dl>
-      <ShopAccountLinkButton href="/account/orders" label="View orders" variant="outline" />
-      {portalOwnershipEnabled ? (
-        <>
-          <ShopAccountLinkButton href="/account/editions" label="My editions" variant="outline" />
-          <ShopAccountLinkButton
-            href="/account/sale-limits"
-            label="Sale limits"
-            variant="outline"
-          />
-        </>
-      ) : null}
-      {payoutsEnabled ? (
-        <>
-          <ShopAccountLinkButton href="/account/payouts" label="Payouts" variant="outline" />
-          <ShopAccountLinkButton href="/account/documents" label="Documents" variant="outline" />
-        </>
-      ) : null}
+      <ShopAccountOverviewCards
+        portalOwnershipEnabled={portalOwnershipEnabled}
+        payoutsEnabled={payoutsEnabled}
+        artistPortalEnabled={artistPortalEnabled}
+        activeHref="/account"
+      />
       <form action={shopIdentityUrl("/logout")} method="post" className="pt-2">
         <Button type="submit" variant="secondaryOutline" className="min-h-11 w-full">
           Sign out

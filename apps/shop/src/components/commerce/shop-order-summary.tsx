@@ -1,16 +1,10 @@
+import { formatShopDateTime } from "@/lib/presenters/shop-date.presenter";
 import { resolveShopFulfilmentLabel } from "@/lib/presenters/shop-fulfilment.presenter";
 import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import type { OrderSummary } from "@auction/shop-contracts";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
-
-function formatOrderDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
 
 type Props = {
   order: OrderSummary;
@@ -27,8 +21,8 @@ export function ShopOrderSummary({ order, heading, showLineLinks = true }: Props
         {heading ? <h2 className="shop-order-card__title">{heading}</h2> : null}
         <p className="shop-order-card__meta">
           <DotStatusPill label={status.label} tone={status.tone} />
-          <span>Placed {formatOrderDate(order.createdAt)}</span>
-          {order.paidAt ? <span>Paid {formatOrderDate(order.paidAt)}</span> : null}
+          <span>Placed {formatShopDateTime(order.createdAt)}</span>
+          {order.paidAt ? <span>Paid {formatShopDateTime(order.paidAt)}</span> : null}
         </p>
         {status.hint ? <p className="shop-order-card__status-hint">{status.hint}</p> : null}
       </header>
@@ -59,26 +53,35 @@ export function ShopOrderSummary({ order, heading, showLineLinks = true }: Props
       </dl>
 
       <ul className="shop-order-card__lines">
-        {order.lines.map((line) => (
-          <li key={line.orderLineId} className="shop-order-card__line">
-            <div>
-              {showLineLinks ? (
-                <Link
-                  href={`/artworks/${line.artworkSlug}`}
-                  className="shop-order-card__line-title"
-                >
-                  {line.artworkTitle}
-                </Link>
-              ) : (
-                <span className="shop-order-card__line-title">{line.artworkTitle}</span>
-              )}
-              <span className="shop-order-card__line-meta">Edition #{line.editionNumber}</span>
-            </div>
-            <span className="shop-order-card__line-price">
-              {formatGbpPence(line.unitPricePence)}
-            </span>
-          </li>
-        ))}
+        {order.lines.map((line) => {
+          const title = line.productTitle ?? line.artworkTitle ?? "Item";
+          const href = line.productSlug
+            ? `/merchandise/${line.productSlug}`
+            : line.artworkSlug
+              ? `/artworks/${line.artworkSlug}`
+              : null;
+          return (
+            <li key={line.orderLineId} className="shop-order-card__line">
+              <div>
+                {showLineLinks && href ? (
+                  <Link href={href} className="shop-order-card__line-title">
+                    {title}
+                  </Link>
+                ) : (
+                  <span className="shop-order-card__line-title">{title}</span>
+                )}
+                {line.editionNumber ? (
+                  <span className="shop-order-card__line-meta">Edition #{line.editionNumber}</span>
+                ) : line.variantSku ? (
+                  <span className="shop-order-card__line-meta">SKU {line.variantSku}</span>
+                ) : null}
+              </div>
+              <span className="shop-order-card__line-price">
+                {formatGbpPence(line.unitPricePence)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
 
       <dl className="shop-order-card__totals">

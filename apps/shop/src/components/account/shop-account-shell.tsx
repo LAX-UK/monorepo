@@ -1,10 +1,11 @@
+import { ShopAccountNav } from "@/components/account/shop-account-nav";
 import { ShopAuthLink } from "@/components/shop-auth-link";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
+import { ShopNotice, type ShopNoticeTone } from "@/components/shop-notice";
 import type { ShopBreadcrumbItem } from "@/components/shop-page-header";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -15,6 +16,10 @@ export type ShopAccountShellProps = {
   title: string;
   breadcrumbs?: readonly ShopBreadcrumbItem[];
   children: ReactNode;
+  activeNavHref?: string;
+  portalOwnershipEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  artistPortalEnabled?: boolean;
   /** When set, renders a shadcn Alert above the body copy. */
   notice?: {
     variant: ShopAccountNoticeVariant;
@@ -23,14 +28,24 @@ export type ShopAccountShellProps = {
   };
 };
 
-const noticeClass: Record<ShopAccountNoticeVariant, string> = {
-  default: "border-outline-variant/30 bg-surface-container-low text-on-surface",
-  destructive: "border-error/30 bg-error-container/10 text-on-surface ring-1 ring-error/15",
-  warning: "border-lot-orange/40 bg-lot-orange/5 text-on-surface ring-1 ring-lot-orange/20",
+const noticeTone: Record<ShopAccountNoticeVariant, ShopNoticeTone> = {
+  default: "info",
+  destructive: "error",
+  warning: "warning",
 };
 
-export function ShopAccountShell({ title, breadcrumbs, children, notice }: ShopAccountShellProps) {
+export function ShopAccountShell({
+  title,
+  breadcrumbs,
+  children,
+  notice,
+  activeNavHref,
+  portalOwnershipEnabled = false,
+  payoutsEnabled = false,
+  artistPortalEnabled = false,
+}: ShopAccountShellProps) {
   const trail = breadcrumbs ?? [{ label: "Shop", href: "/" }, { label: "Account" }];
+  const showNav = activeNavHref !== undefined;
 
   return (
     <main
@@ -43,13 +58,18 @@ export function ShopAccountShell({ title, breadcrumbs, children, notice }: ShopA
           contentClassName="shop-account-route"
         >
           <div className="shop-panel flex w-full flex-col gap-4">
+            {showNav ? (
+              <ShopAccountNav
+                activeHref={activeNavHref}
+                portalOwnershipEnabled={portalOwnershipEnabled}
+                payoutsEnabled={payoutsEnabled}
+                artistPortalEnabled={artistPortalEnabled}
+              />
+            ) : null}
             {notice ? (
-              <Alert className={cn(noticeClass[notice.variant])}>
-                <AlertTitle>{notice.title}</AlertTitle>
-                <AlertDescription className="text-on-surface-variant">
-                  {notice.description}
-                </AlertDescription>
-              </Alert>
+              <ShopNotice tone={noticeTone[notice.variant]} title={notice.title}>
+                <div className="text-on-surface-variant">{notice.description}</div>
+              </ShopNotice>
             ) : null}
             {children}
           </div>
