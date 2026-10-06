@@ -103,6 +103,38 @@ export const PortalSalesResponseSchema = Type.Object({
   items: Type.Array(PortalSaleStatementSchema),
 });
 
+export const PortalArtistProfileSchema = Type.Object({
+  artistId: Type.String({ format: "uuid" }),
+  slug: Type.String(),
+  displayName: Type.String(),
+});
+
+export const PortalArtistArtworkSchema = Type.Object({
+  artworkId: Type.String({ format: "uuid" }),
+  slug: Type.String(),
+  title: Type.String(),
+  saleState: Type.String(),
+});
+
+export const PortalArtistArtworksResponseSchema = Type.Object({
+  artist: Type.Union([PortalArtistProfileSchema, Type.Null()]),
+  items: Type.Array(PortalArtistArtworkSchema),
+});
+
+export const PortalArtistSaleSchema = Type.Object({
+  saleId: Type.String({ format: "uuid" }),
+  channel: Type.String(),
+  artworkTitle: Type.String(),
+  editionNumber: Type.Union([Type.Integer(), Type.Null()]),
+  grossPence: Type.Integer(),
+  occurredAt: Type.Union([Type.String(), Type.Null()]),
+});
+
+export const PortalArtistSalesResponseSchema = Type.Object({
+  artist: Type.Union([PortalArtistProfileSchema, Type.Null()]),
+  items: Type.Array(PortalArtistSaleSchema),
+});
+
 export type PortalEdition = Static<typeof PortalEditionSchema>;
 export type PortalSaleAuthority = Static<typeof PortalSaleAuthoritySchema>;
 export type PortalSaleAuthorityRequest = Static<typeof PortalSaleAuthorityRequestSchema>;

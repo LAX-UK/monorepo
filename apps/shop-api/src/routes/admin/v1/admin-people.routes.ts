@@ -22,7 +22,14 @@ const SaleAuthorityDecisionResponseSchema = Type.Object({
 
 const StaffGrantBodySchema = Type.Object({
   identitySubjectId: Type.String({ minLength: 1 }),
-  role: Type.String({ minLength: 1 }),
+  role: Type.Union([
+    Type.Literal("shop_admin"),
+    Type.Literal("account_manager"),
+    Type.Literal("broker"),
+    Type.Literal("operations"),
+    Type.Literal("finance"),
+    Type.Literal("catalogue_editor"),
+  ]),
 });
 
 const StaffGrantResponseSchema = Type.Object({
@@ -49,7 +56,6 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
     async (request) => {
       requireShopStaffCapability(request, "sale_authority.write");
       const subject = requireShopAdminSubject(request);
-      requireIdempotencyKey(request);
       const { requestId } = request.params as { requestId: string };
       const body = request.body as {
         decision: "approve" | "decline";
@@ -57,13 +63,14 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
         evidenceNote?: string;
         declineReason?: string;
       };
+      const idempotencyKey = requireIdempotencyKey(request);
       if (body.decision === "decline") {
-        const result = await deps.rejectSaleAuthorityRequest({
+        return deps.rejectSaleAuthorityRequest({
           requestId,
           reason: body.declineReason ?? "Declined by staff",
           operatorSubjectId: subject,
+          idempotencyKey,
         });
-        return result;
       }
       const requestRow = await deps.getSaleAuthorityRequest(requestId);
       const authorisedCount = body.authorisedCount ?? requestRow.requestedCount;
@@ -91,12 +98,16 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
     async (request) => {
       requireShopStaffCapability(request, "settings.write");
       const subject = requireShopAdminSubject(request);
-      requireIdempotencyKey(request);
-      const body = request.body as { identitySubjectId: string; role: string };
+      const idempotencyKey = requireIdempotencyKey(request);
+      const body = request.body as {
+        identitySubjectId: string;
+        role: import("@auction/shop-domain").ShopStaffRole;
+      };
       await deps.grantStaffRole({
         subject: body.identitySubjectId,
-        role: body.role as import("@auction/shop-domain").ShopStaffRole,
+        role: body.role,
         operatorSubjectId: subject,
+        idempotencyKey,
       });
       return {
         identitySubjectId: body.identitySubjectId,
@@ -118,11 +129,12 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
     async (request, reply) => {
       requireShopStaffCapability(request, "settings.write");
       const subject = requireShopAdminSubject(request);
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const { identitySubjectId } = request.params as { identitySubjectId: string };
       await deps.revokeStaffRole({
         subject: identitySubjectId,
         operatorSubjectId: subject,
+        idempotencyKey,
       });
       return reply.status(204).send();
     },

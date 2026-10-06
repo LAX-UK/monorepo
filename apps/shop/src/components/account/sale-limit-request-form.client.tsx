@@ -7,15 +7,23 @@ import {
 } from "@/lib/shop-portal-actions.server";
 import type { PortalSaleAuthorityItem } from "@/lib/shop-portal.server";
 import { Button } from "@auction/ui/components/button";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 const initialState: SaleAuthorityRequestFormState = { ok: false, message: "" };
 
 export function SaleLimitRequestForm({ artworks }: { artworks: PortalSaleAuthorityItem[] }) {
   const [state, action, pending] = useActionState(submitSaleAuthorityRequest, initialState);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+
+  useEffect(() => {
+    if (state.ok) {
+      setIdempotencyKey(crypto.randomUUID());
+    }
+  }, [state.ok]);
 
   return (
     <form action={action} className="space-y-3 rounded-md border border-outline-variant p-4">
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} readOnly />
       <h2 className="text-sm font-semibold text-on-surface">Request a limit change</h2>
       <label className="block text-sm">
         <span className="text-on-surface-variant">Artwork</span>

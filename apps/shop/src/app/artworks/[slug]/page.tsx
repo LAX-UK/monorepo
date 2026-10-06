@@ -26,11 +26,18 @@ type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-const WHAT_YOU_GET_BULLETS = [
+const EDITION_WHAT_YOU_GET_BULLETS = [
   "Certificate of authenticity for your edition",
   "Professional packaging and insured UK delivery options at checkout",
   "Edition number assigned when your order is fulfilled",
   "Order updates and documents in your LAX account",
+] as const;
+
+const ORIGINAL_WHAT_YOU_GET_BULLETS = [
+  "Certificate of authenticity for the original work",
+  "Provenance and sale handled by LAX",
+  "Insured delivery or collection arranged after purchase",
+  "Documents in your LAX account when applicable",
 ] as const;
 
 function artworkTypeEyebrow(artwork: { eligibleForEditionAllocation: boolean }): string {
@@ -197,7 +204,10 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
             <section className="shop-detail__section" aria-labelledby="what-you-get-heading">
               <h2 id="what-you-get-heading">What you get</h2>
               <ul className="shop-detail__bullets">
-                {WHAT_YOU_GET_BULLETS.map((line) => (
+                {(artwork.eligibleForEditionAllocation
+                  ? EDITION_WHAT_YOU_GET_BULLETS
+                  : ORIGINAL_WHAT_YOU_GET_BULLETS
+                ).map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>

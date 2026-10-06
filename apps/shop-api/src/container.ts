@@ -5,6 +5,7 @@ import { createGetArtworkInterestHandler } from "./application/handlers/get-artw
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
 import { createGetPublicArtworkHandler } from "./application/handlers/get-public-artwork.handler.js";
 import { createGetPublicCategoryHandler } from "./application/handlers/get-public-category.handler.js";
+import { createGetPublicMerchandiseProductHandler } from "./application/handlers/get-public-merchandise-product.handler.js";
 import { createImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
 import { createListPublicArtistsHandler } from "./application/handlers/list-public-artists.handler.js";
 import { createListPublicArtworksHandler } from "./application/handlers/list-public-artworks.handler.js";
@@ -22,6 +23,8 @@ import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-a
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
+import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
+import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
@@ -36,15 +39,24 @@ import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
-import { grantShopStaffRole, revokeShopStaffRole } from "./infrastructure/grant-staff-role.js";
+import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
+import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
 import { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
+import {
+  createGrantStaffRoleHandler,
+  createRevokeStaffRoleHandler,
+} from "./infrastructure/handlers/admin/grant-staff-role.handler.js";
+import {
+  createLinkArtistIdentityHandler,
+  createUnlinkArtistIdentityHandler,
+} from "./infrastructure/handlers/admin/link-artist-identity.handler.js";
 import { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mark-payout-paid.handler.js";
 import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
+import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
-import { rejectSaleAuthorityRequest } from "./infrastructure/reject-sale-authority-request.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
@@ -132,6 +144,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   );
   const portalOwnership = createDrizzlePortalOwnershipRepository(db);
   const portalSales = createDrizzlePortalSalesRepository(db);
+  const portalArtist = createDrizzlePortalArtistRepository(db);
   const adminRead = createDrizzleAdminReadRepository(db);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
@@ -144,8 +157,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     policy: cancellationPolicy,
   });
   const cancelAfterPossession = createCancelAfterPossessionHandler({ uow: shopUow });
+  const rejectSaleAuthorityRequest = createRejectSaleAuthorityRequestHandler({ uow: shopUow });
+  const grantStaffRoleHandler = createGrantStaffRoleHandler({ uow: shopUow });
+  const revokeStaffRoleHandler = createRevokeStaffRoleHandler({ uow: shopUow });
+  const linkArtistIdentity = createLinkArtistIdentityHandler({ uow: shopUow });
+  const unlinkArtistIdentity = createUnlinkArtistIdentityHandler({ uow: shopUow });
   const stockHolds = createDrizzleStockHoldWriter(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const createStockHold = createCreateStockHoldHandler({ stockHolds, staffReader });
+  const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
+  const adjustMerchandiseStock = createAdjustMerchandiseStockHandler({ merchandiseStock });
   const healthDeps = {
     checkConnectivity: () => readiness.checkConnectivity(),
     checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
@@ -171,9 +191,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),
         getSaleAuthorityRequest: (requestId) =>
           adminRead.saleAuthorityRequests.getRequestById(requestId),
-        rejectSaleAuthorityRequest: (input) => rejectSaleAuthorityRequest(db, input),
-        grantStaffRole: (input) => grantShopStaffRole(db, input),
-        revokeStaffRole: (input) => revokeShopStaffRole(db, input),
+        rejectSaleAuthorityRequest,
+        grantStaffRole: grantStaffRoleHandler,
+        revokeStaffRole: revokeStaffRoleHandler,
         adminRead,
         staffReader,
         createProductionTask,
@@ -185,10 +205,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         saleFees: createDrizzleSaleFeeWriter(db),
         stockHolds,
         createStockHold,
+        adjustMerchandiseStock,
         thirdPartySales: createDrizzleThirdPartySaleWriter(db),
         originalSales: createDrizzleOriginalSaleWriter(db),
+        linkArtistIdentity,
+        unlinkArtistIdentity,
       },
-      portal: { portalOwnership, portalSales },
+      portal: { portalOwnership, portalSales, portalArtist },
       catalogue: {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),
@@ -200,6 +223,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       merchandise: {
         listPublicMerchandiseProducts:
           createListPublicMerchandiseProductsHandler(merchandiseReader),
+        getPublicMerchandiseProduct: createGetPublicMerchandiseProductHandler(merchandiseReader),
       },
       interest: {
         registerArtworkInterest: createRegisterArtworkInterestHandler(artworkInterestWriter),

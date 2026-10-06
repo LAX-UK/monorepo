@@ -1,6 +1,9 @@
 "use client";
 
-import { shopMegaMenuSections } from "@/components/header/header-nav.config";
+import {
+  type ShopMegaMenuSection,
+  buildShopMegaMenuSections,
+} from "@/components/header/header-nav.config";
 import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-active";
 import { MarketingHeaderMegaNav, type MarketingHeaderTone } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
@@ -9,6 +12,7 @@ const MEGAMENU_PANEL_ID = "shop-header-megamenu";
 
 type ShopMegaMenuProps = {
   pathname: string;
+  merchandiseEnabled?: boolean;
   headerTone?: MarketingHeaderTone;
   megaMenuResetKey?: string;
   onOpenChange?: (open: boolean) => void;
@@ -19,6 +23,7 @@ type ShopMegaMenuProps = {
 
 export function ShopMegaMenu({
   pathname,
+  merchandiseEnabled = false,
   headerTone = "on-light",
   megaMenuResetKey,
   onOpenChange,
@@ -26,9 +31,10 @@ export function ShopMegaMenu({
   leading,
   trailing,
 }: ShopMegaMenuProps) {
+  const sections: ShopMegaMenuSection[] = buildShopMegaMenuSections(merchandiseEnabled);
   return (
     <MarketingHeaderMegaNav
-      sections={shopMegaMenuSections}
+      sections={sections}
       isSectionActive={(section) => shopMegaMenuSectionActive(pathname, section)}
       resetKey={megaMenuResetKey ?? pathname}
       logo={leading}

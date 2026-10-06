@@ -4,7 +4,10 @@ import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import { fetchShopOrder } from "@/lib/shop-commerce.server";
-import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -22,11 +25,13 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
   const orderShortLabel = `${orderId.slice(0, 8)}…`;
   const wayfinding = shopPageWayfinding.orderDetail(orderShortLabel);
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
   const shellNav = {
     activeNavHref: "/account/orders",
     portalOwnershipEnabled,
     payoutsEnabled,
+    artistPortalEnabled,
   };
 
   const viewer = await loadShopViewerState();

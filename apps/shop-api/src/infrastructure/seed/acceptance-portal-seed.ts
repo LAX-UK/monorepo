@@ -1,5 +1,12 @@
 import type { Database } from "@auction/db";
-import { shopArtwork, shopEdition, shopParty, shopSaleAuthorityGrant } from "@auction/db/schema";
+import {
+  shopArtist,
+  shopArtwork,
+  shopEdition,
+  shopParty,
+  shopSaleAuthorityGrant,
+  shopUserProfile,
+} from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type {
   GrantSaleAuthorityCommand,
@@ -132,5 +139,24 @@ export async function seedAcceptancePortalFixtures(
       .update(shopEdition)
       .set({ ownerPartyId })
       .where(eq(shopEdition.id, authorityEdition.id));
+  }
+
+  const [artist] = await db
+    .select({ id: shopArtist.id })
+    .from(shopArtist)
+    .where(eq(shopArtist.slug, "foundation-artist"))
+    .limit(1);
+  if (artist) {
+    const [profile] = await db
+      .select({ identitySubjectId: shopUserProfile.identitySubjectId })
+      .from(shopUserProfile)
+      .where(eq(shopUserProfile.identitySubjectId, identitySubjectId))
+      .limit(1);
+    if (profile) {
+      await db
+        .update(shopArtist)
+        .set({ identitySubjectId: profile.identitySubjectId })
+        .where(eq(shopArtist.id, artist.id));
+    }
   }
 }

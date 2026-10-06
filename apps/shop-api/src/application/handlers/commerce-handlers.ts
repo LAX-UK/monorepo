@@ -4,6 +4,7 @@ import type {
   CheckoutWriter,
   ListOrdersInput,
   OrderReader,
+  UpsertBasketLineInput,
 } from "../ports/commerce.ports.js";
 
 export function createGetBasketHandler(repo: BasketRepository) {
@@ -11,8 +12,7 @@ export function createGetBasketHandler(repo: BasketRepository) {
 }
 
 export function createUpsertBasketLineHandler(repo: BasketRepository) {
-  return (input: { owner: BasketOwner; artworkSlug: string; quantity: number }) =>
-    repo.addOrUpdateLine(input);
+  return (input: UpsertBasketLineInput) => repo.addOrUpdateLine(input);
 }
 
 export function createRemoveBasketLineHandler(repo: BasketRepository) {

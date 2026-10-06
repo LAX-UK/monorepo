@@ -1,5 +1,7 @@
 import {
   domainEvent,
+  shopArtist,
+  shopArtwork,
   shopIdentityMergeInbox,
   shopOrderLine,
   shopParty,
@@ -191,5 +193,110 @@ describe.skipIf(!hasShopIntegrationDb)("shop phase 2–4 money and merge integra
       .where(eq(shopIdentityMergeInbox.eventId, eventId))
       .limit(1);
     expect(inboxRow?.status).toBe("dead");
+  });
+
+  it("remaps shop_artist.identity_subject_id to the canonical subject on identity merge", async () => {
+    const db = createShopDb(shopPool);
+    const runMerge = createProcessIdentityMergeInboxRunner(db, null);
+    const suffix = integrationSuffix("merge-artist-remap");
+    const canonicalSubjectId = `merge-artist-canonical-${suffix}`;
+    const retiredSubjectId = `merge-artist-retired-${suffix}`;
+    const imported = await importTestArtwork(db, "merge-artist-remap");
+    const [artworkRow] = await db
+      .select({ artistId: shopArtwork.artistId })
+      .from(shopArtwork)
+      .where(eq(shopArtwork.id, imported.artworkId))
+      .limit(1);
+    const artistId = requireDefined(artworkRow?.artistId, "artist id");
+    await db
+      .update(shopArtist)
+      .set({ identitySubjectId: retiredSubjectId })
+      .where(eq(shopArtist.id, artistId));
+
+    const mergedAt = new Date().toISOString();
+    await db.insert(domainEvent).values({
+      aggregateType: "user",
+      aggregateId: canonicalSubjectId,
+      eventType: "user.identity_merged",
+      payload: {
+        schemaVersion: 1,
+        subjectId: canonicalSubjectId,
+        retiredSubjectId,
+        mergedAt,
+      },
+      schemaVersion: 1,
+      producer: "identity-api",
+      occurredAt: new Date(),
+    });
+
+    await runMerge();
+
+    const [artistAfter] = await db
+      .select({ identitySubjectId: shopArtist.identitySubjectId })
+      .from(shopArtist)
+      .where(eq(shopArtist.id, artistId))
+      .limit(1);
+    expect(artistAfter?.identitySubjectId).toBe(canonicalSubjectId);
+  });
+
+  it("clears retired artist link when both subjects were linked to different artists", async () => {
+    const db = createShopDb(shopPool);
+    const runMerge = createProcessIdentityMergeInboxRunner(db, null);
+    const suffix = integrationSuffix("merge-artist-both");
+    const canonicalSubjectId = `merge-artist-both-canonical-${suffix}`;
+    const retiredSubjectId = `merge-artist-both-retired-${suffix}`;
+    const importedRetired = await importTestArtwork(db, "merge-artist-both-retired");
+    const importedCanonical = await importTestArtwork(db, "merge-artist-both-canonical");
+    const [retiredArtRow] = await db
+      .select({ artistId: shopArtwork.artistId })
+      .from(shopArtwork)
+      .where(eq(shopArtwork.id, importedRetired.artworkId))
+      .limit(1);
+    const [canonicalArtRow] = await db
+      .select({ artistId: shopArtwork.artistId })
+      .from(shopArtwork)
+      .where(eq(shopArtwork.id, importedCanonical.artworkId))
+      .limit(1);
+    const retiredArtistId = requireDefined(retiredArtRow?.artistId, "retired artist id");
+    const canonicalArtistId = requireDefined(canonicalArtRow?.artistId, "canonical artist id");
+    await db
+      .update(shopArtist)
+      .set({ identitySubjectId: retiredSubjectId })
+      .where(eq(shopArtist.id, retiredArtistId));
+    await db
+      .update(shopArtist)
+      .set({ identitySubjectId: canonicalSubjectId })
+      .where(eq(shopArtist.id, canonicalArtistId));
+
+    const mergedAt = new Date().toISOString();
+    await db.insert(domainEvent).values({
+      aggregateType: "user",
+      aggregateId: canonicalSubjectId,
+      eventType: "user.identity_merged",
+      payload: {
+        schemaVersion: 1,
+        subjectId: canonicalSubjectId,
+        retiredSubjectId,
+        mergedAt,
+      },
+      schemaVersion: 1,
+      producer: "identity-api",
+      occurredAt: new Date(),
+    });
+
+    await runMerge();
+
+    const [retiredArtistAfter] = await db
+      .select({ identitySubjectId: shopArtist.identitySubjectId })
+      .from(shopArtist)
+      .where(eq(shopArtist.id, retiredArtistId))
+      .limit(1);
+    const [canonicalArtistAfter] = await db
+      .select({ identitySubjectId: shopArtist.identitySubjectId })
+      .from(shopArtist)
+      .where(eq(shopArtist.id, canonicalArtistId))
+      .limit(1);
+    expect(retiredArtistAfter?.identitySubjectId).toBeNull();
+    expect(canonicalArtistAfter?.identitySubjectId).toBe(canonicalSubjectId);
   });
 });

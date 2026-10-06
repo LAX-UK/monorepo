@@ -43,6 +43,7 @@ export function createCommerceServices(
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     domainEventMode,
     vatPolicy: loadShopVatPolicy(env),
+    merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
   });
 
   const notifications = createDrizzleShopNotificationPublisher();
@@ -67,6 +68,7 @@ export function createCommerceServices(
 
   return {
     commerce: {
+      merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
       getBasket: createGetBasketHandler(repository),
       upsertBasketLine: createUpsertBasketLineHandler(repository),
       removeBasketLine: createRemoveBasketLineHandler(repository),

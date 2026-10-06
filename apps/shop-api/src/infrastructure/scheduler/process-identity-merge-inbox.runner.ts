@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   domainEvent,
+  shopArtist,
   shopArtworkInterest,
   shopBasket,
   shopBasketLine,
@@ -204,6 +205,28 @@ async function applyIdentityMerge(
       .update(shopStaffMember)
       .set({ identitySubjectId: canonicalSubjectId })
       .where(eq(shopStaffMember.id, retiredStaff.id));
+  }
+
+  const [retiredArtist] = await tx
+    .select({ id: shopArtist.id })
+    .from(shopArtist)
+    .where(eq(shopArtist.identitySubjectId, retiredSubjectId))
+    .limit(1);
+  const [canonicalArtist] = await tx
+    .select({ id: shopArtist.id })
+    .from(shopArtist)
+    .where(eq(shopArtist.identitySubjectId, canonicalSubjectId))
+    .limit(1);
+  if (retiredArtist && canonicalArtist) {
+    await tx
+      .update(shopArtist)
+      .set({ identitySubjectId: null })
+      .where(eq(shopArtist.id, retiredArtist.id));
+  } else if (retiredArtist) {
+    await tx
+      .update(shopArtist)
+      .set({ identitySubjectId: canonicalSubjectId })
+      .where(eq(shopArtist.id, retiredArtist.id));
   }
 
   await tx

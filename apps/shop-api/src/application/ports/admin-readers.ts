@@ -1,4 +1,9 @@
-import type { AdminOverviewKpis } from "@auction/shop-contracts";
+import type {
+  AdminArtistDetail,
+  AdminClientDetail,
+  AdminOrderDetail,
+  AdminOverviewKpis,
+} from "@auction/shop-contracts";
 
 export type CursorListInput = {
   cursor?: string | undefined;
@@ -127,6 +132,7 @@ export type AdminMerchandiseProductListItem = {
 
 export interface AdminOrderReader {
   listOrders(input: CursorListInput): Promise<CursorListResult<AdminOrderListItem>>;
+  getOrderDetail(orderId: string): Promise<AdminOrderDetail>;
 }
 
 export interface AdminFulfilmentReader {
@@ -143,8 +149,13 @@ export interface AdminPayoutReader {
   listPayouts(input: CursorListInput): Promise<CursorListResult<AdminPayoutListItem>>;
 }
 
+export type StockHoldListInput = CursorListInput & {
+  /** When set, only holds for clients assigned to this broker subject are returned. */
+  brokerSubjectId?: string;
+};
+
 export interface AdminSalesReader {
-  listStockHolds(input: CursorListInput): Promise<CursorListResult<AdminStockHoldListItem>>;
+  listStockHolds(input: StockHoldListInput): Promise<CursorListResult<AdminStockHoldListItem>>;
   listThirdPartySales(
     input: CursorListInput,
   ): Promise<CursorListResult<AdminThirdPartySaleListItem>>;
@@ -154,6 +165,8 @@ export interface AdminSalesReader {
 export interface AdminPartyReader {
   listClientParties(input: CursorListInput): Promise<CursorListResult<AdminPartyListItem>>;
   listArtists(input: CursorListInput): Promise<CursorListResult<AdminArtistListItem>>;
+  getClientDetail(partyId: string): Promise<AdminClientDetail>;
+  getArtistDetail(artistId: string): Promise<AdminArtistDetail>;
 }
 
 export type SaleAuthorityRequestDetail = {

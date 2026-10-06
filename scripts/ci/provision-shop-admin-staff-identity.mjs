@@ -115,6 +115,7 @@ function generateBackupCodesLikeBetterAuth() {
 async function bootstrapStaffTotpAtRest(email) {
   const { authSecret, envelope } = requireBootstrapCryptoMaterial();
   const totpSecret = generateRandomString(32);
+  console.log(`::add-mask::${totpSecret}`);
   const backupCodes = generateBackupCodesLikeBetterAuth();
   const sealedSecret = await sealTwoFactorField(authSecret, envelope, totpSecret);
   const sealedBackup = await sealTwoFactorField(authSecret, envelope, JSON.stringify(backupCodes));

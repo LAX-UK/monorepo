@@ -6,7 +6,11 @@ import {
   resolvePortalCustodyStatusPresentation,
   resolvePortalListingStatusPresentation,
 } from "@/lib/presenters/shop-status-presentation";
-import { fetchPortalEditions, resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  fetchPortalEditions,
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -22,11 +26,13 @@ export const metadata = shopPrivatePageTitle("My editions");
 export default async function ShopAccountEditionsPage() {
   const viewer = await loadShopViewerState();
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
   const shellNav = {
     activeNavHref: "/account/editions",
     portalOwnershipEnabled,
     payoutsEnabled,
+    artistPortalEnabled,
   };
 
   const gate = gateShopAuthenticatedRoute(viewer, "/account/editions");

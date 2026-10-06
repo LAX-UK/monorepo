@@ -27,7 +27,10 @@ import {
   repriceBasketLinesIfNeeded,
 } from "./shop-basket.persistence.js";
 import { assertReplayableCheckoutOrder } from "./shop-checkout-order-validation.js";
-import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
+import {
+  reserveEditionsForCheckoutOrder,
+  reserveProductVariantsForCheckoutOrder,
+} from "./shop-checkout-reservation.js";
 import { loadCheckoutStripePresentation } from "./shop-checkout-stripe-presentation.js";
 import { resolveOrCreateStripeCheckoutSession } from "./shop-checkout-stripe-session.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
@@ -41,8 +44,10 @@ export function createDrizzleCheckoutRepository(
     storefrontUrl: string;
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: VatPolicy | null;
+    merchandiseEnabled?: boolean;
   },
 ): CheckoutWriter {
+  const merchandiseEnabled = options.merchandiseEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
   return {
     async createCheckoutOrder(input) {
@@ -94,6 +99,13 @@ export function createDrizzleCheckoutRepository(
       }
       if (basket.lines.length === 0) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Basket is empty", 400);
+      }
+      if (!merchandiseEnabled && basket.lines.some((line) => line.productVariantId != null)) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.FEATURE_DISABLED,
+          "Merchandise is disabled",
+          404,
+        );
       }
       const repriced = await repriceBasketLinesIfNeeded(db, input.basketId);
       if (repriced) {
@@ -167,22 +179,37 @@ export function createDrizzleCheckoutRepository(
             throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Failed to create order", 500);
           }
 
-          const expandedLines: Array<{ artworkId: string; unitPricePence: number }> = [];
+          const expandedEditionLines: Array<{ artworkId: string; unitPricePence: number }> = [];
+          const expandedVariantLines: Array<{ productVariantId: string; unitPricePence: number }> =
+            [];
           for (const line of freshBasket.lines) {
             for (let i = 0; i < line.quantity; i++) {
-              expandedLines.push({
-                artworkId: line.artworkId,
-                unitPricePence: line.unitPricePence,
-              });
+              if (line.productVariantId) {
+                expandedVariantLines.push({
+                  productVariantId: line.productVariantId,
+                  unitPricePence: line.unitPricePence,
+                });
+              } else if (line.artworkId) {
+                expandedEditionLines.push({
+                  artworkId: line.artworkId,
+                  unitPricePence: line.unitPricePence,
+                });
+              }
             }
           }
+
+          await reserveProductVariantsForCheckoutOrder(tx as Database, {
+            orderId: order.id,
+            expandedLines: expandedVariantLines,
+            vatPolicy: options.vatPolicy ?? null,
+          });
 
           await reserveEditionsForCheckoutOrder(
             tx as Database,
             {
               orderId: order.id,
               reservedUntil,
-              expandedLines,
+              expandedLines: expandedEditionLines,
               vatPolicy: options.vatPolicy ?? null,
             },
             domainEvents,

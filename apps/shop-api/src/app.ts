@@ -10,6 +10,8 @@ import { registerPublicCatalogueCaching } from "./plugins/cache-control.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
+import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
+import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
@@ -137,6 +139,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
           merchandiseEnabled: options.deps.env.SHOP_MERCHANDISE_ENABLED,
         });
         void registerAdminPeopleRoutes(adminScope, options.deps.admin);
+        void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
           void registerAdminOperationsRoutes(adminScope, options.deps.admin);
@@ -146,6 +149,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         }
         if (options.deps.env.SHOP_ORIGINALS_ENABLED) {
           void registerAdminOriginalSaleRoutes(adminScope, options.deps.admin);
+        }
+        if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
+          void registerAdminMerchandiseRoutes(adminScope, options.deps.admin);
         }
       },
     );

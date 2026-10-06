@@ -18,7 +18,20 @@ describe("buildShopAccountNavItems", () => {
       payoutsEnabled: true,
       activeHref: "/account/payouts",
     });
+    expect(items.some((i) => i.href === "/account/sales")).toBe(true);
     expect(items.some((i) => i.href === "/account/payouts")).toBe(true);
     expect(items.some((i) => i.href === "/account/documents")).toBe(true);
+  });
+
+  it("includes artist portal links when artist portal is enabled", () => {
+    const items = buildShopAccountNavItems({
+      portalOwnershipEnabled: true,
+      payoutsEnabled: false,
+      artistPortalEnabled: true,
+      activeHref: "/account/artworks",
+    });
+    expect(items.map((i) => i.href)).toContain("/account/artworks");
+    expect(items.map((i) => i.href)).toContain("/account/artist-sales");
+    expect(items.find((i) => i.href === "/account/artworks")?.active).toBe(true);
   });
 });

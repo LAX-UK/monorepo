@@ -1,7 +1,10 @@
 import {
+  AdminArtistDetailSchema,
   AdminArtistListSchema,
+  AdminClientDetailSchema,
   AdminFulfilmentListSchema,
   AdminMerchandiseProductListSchema,
+  AdminOrderDetailSchema,
   AdminOrderListSchema,
   AdminOriginalSaleListSchema,
   AdminOverviewKpisSchema,
@@ -18,12 +21,18 @@ import {
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
-import { requireShopStaffCapability } from "../../../plugins/shop-admin-auth.js";
+import {
+  requireShopAdminSubject,
+  requireShopStaffCapability,
+} from "../../../plugins/shop-admin-auth.js";
+import { requireClientPartyReadAccess } from "./admin-client-access.js";
 
 const SaleAuthorityRequestListQuerySchema = Type.Intersect([
   CursorListQuerySchema,
   Type.Object({
-    status: Type.Optional(Type.String()),
+    status: Type.Optional(
+      Type.Union([Type.Literal("pending"), Type.Literal("approved"), Type.Literal("rejected")]),
+    ),
   }),
 ]);
 
@@ -66,6 +75,26 @@ export async function registerAdminReadRoutes(
       requireShopStaffCapability(request, "audit.read");
       const query = request.query as { cursor?: string; limit?: number };
       return deps.adminRead.orders.listOrders(query);
+    },
+  );
+
+  app.get(
+    "/orders/:orderId",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        response: {
+          200: AdminOrderDetailSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "audit.read");
+      const { orderId } = request.params as { orderId: string };
+      return deps.adminRead.orders.getOrderDetail(orderId);
     },
   );
 
@@ -131,8 +160,13 @@ export async function registerAdminReadRoutes(
       },
       async (request) => {
         requireShopStaffCapability(request, "stock_hold.write");
+        const subject = requireShopAdminSubject(request);
+        const role = request.shopAdminAuth?.role;
         const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.sales.listStockHolds(query);
+        return deps.adminRead.sales.listStockHolds({
+          ...query,
+          ...(role === "broker" ? { brokerSubjectId: subject } : {}),
+        });
       },
     );
 
@@ -204,6 +238,26 @@ export async function registerAdminReadRoutes(
   );
 
   app.get(
+    "/clients/:partyId",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: Type.Object({ partyId: Type.String({ format: "uuid" }) }),
+        response: {
+          200: AdminClientDetailSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      const { partyId } = request.params as { partyId: string };
+      await requireClientPartyReadAccess(request, deps, partyId);
+      return deps.adminRead.parties.getClientDetail(partyId);
+    },
+  );
+
+  app.get(
     "/artists",
     {
       schema: {
@@ -216,6 +270,26 @@ export async function registerAdminReadRoutes(
       requireShopStaffCapability(request, "catalogue.write");
       const query = request.query as { cursor?: string; limit?: number };
       return deps.adminRead.parties.listArtists(query);
+    },
+  );
+
+  app.get(
+    "/artists/:artistId",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: Type.Object({ artistId: Type.String({ format: "uuid" }) }),
+        response: {
+          200: AdminArtistDetailSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "catalogue.write");
+      const { artistId } = request.params as { artistId: string };
+      return deps.adminRead.parties.getArtistDetail(artistId);
     },
   );
 

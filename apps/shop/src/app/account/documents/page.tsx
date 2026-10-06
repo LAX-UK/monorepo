@@ -4,7 +4,11 @@ import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import { resolvePortalDocumentKindLabel } from "@/lib/presenters/portal-document-kind.presenter";
 import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
-import { fetchPortalDocuments, resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  fetchPortalDocuments,
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -23,11 +27,13 @@ export default async function ShopAccountDocumentsPage() {
 
   const viewer = await loadShopViewerState();
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
   const shellNav = {
     activeNavHref: "/account/documents",
     portalOwnershipEnabled,
     payoutsEnabled,
+    artistPortalEnabled,
   };
 
   const gate = gateShopAuthenticatedRoute(viewer, "/account/documents");

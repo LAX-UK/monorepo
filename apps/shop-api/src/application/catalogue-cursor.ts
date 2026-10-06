@@ -10,9 +10,14 @@ export class InvalidCatalogueCursorError extends Error {
   }
 }
 
+export function truncateCatalogueCursorDate(date: Date): Date {
+  return new Date(date.getTime());
+}
+
 export function encodeCatalogueCursor(cursor: CatalogueCursor): string {
+  const createdAt = truncateCatalogueCursorDate(cursor.createdAt);
   return Buffer.from(
-    JSON.stringify({ createdAt: cursor.createdAt.toISOString(), id: cursor.id }),
+    JSON.stringify({ createdAt: createdAt.toISOString(), id: cursor.id }),
   ).toString("base64url");
 }
 
@@ -64,7 +69,7 @@ export function decodeCatalogueCursor(value: string | undefined): CatalogueCurso
     if (Number.isNaN(createdAt.getTime())) {
       throw new InvalidCatalogueCursorError();
     }
-    return { createdAt, id: parsed.id };
+    return { createdAt: truncateCatalogueCursorDate(createdAt), id: parsed.id };
   } catch (error) {
     if (error instanceof InvalidCatalogueCursorError) throw error;
     throw new InvalidCatalogueCursorError();

@@ -47,6 +47,7 @@ export function createMinimalShopApiTestDeps(
       dispatchWebhook: async () => ({ kind: "ignored" as const }),
     },
     commerce: {
+      merchandiseEnabled: false,
       getBasket: async () => null,
       upsertBasketLine: async () => {
         throw new Error("not implemented");
@@ -81,6 +82,7 @@ export function createMinimalShopApiTestDeps(
     },
     merchandise: {
       listPublicMerchandiseProducts: async () => ({ items: [] }),
+      getPublicMerchandiseProduct: async () => null,
     },
     interest: {
       registerArtworkInterest: async () => "registered" as const,
@@ -131,7 +133,12 @@ export function createMinimalShopApiTestDeps(
       grantStaffRole: async () => undefined,
       revokeStaffRole: async () => undefined,
       adminRead: {
-        orders: { listOrders: async () => ({ items: [], nextCursor: null }) },
+        orders: {
+          listOrders: async () => ({ items: [], nextCursor: null }),
+          getOrderDetail: async () => {
+            throw new Error("not implemented in test deps");
+          },
+        },
         fulfilment: { listFulfilment: async () => ({ items: [], nextCursor: null }) },
         production: { listProductionTasks: async () => ({ items: [], nextCursor: null }) },
         payouts: { listPayouts: async () => ({ items: [], nextCursor: null }) },
@@ -143,6 +150,12 @@ export function createMinimalShopApiTestDeps(
         parties: {
           listClientParties: async () => ({ items: [], nextCursor: null }),
           listArtists: async () => ({ items: [], nextCursor: null }),
+          getClientDetail: async () => {
+            throw new Error("not implemented in test deps");
+          },
+          getArtistDetail: async () => {
+            throw new Error("not implemented in test deps");
+          },
         },
         saleAuthorityRequests: {
           listRequests: async () => ({ items: [], nextCursor: null }),
@@ -190,6 +203,10 @@ export function createMinimalShopApiTestDeps(
         holdId: "00000000-0000-4000-8000-000000000014",
         status: "active" as const,
       }),
+      adjustMerchandiseStock: async () => ({
+        variantId: "00000000-0000-4000-8000-000000000018",
+        onHand: 10,
+      }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
@@ -226,6 +243,13 @@ export function createMinimalShopApiTestDeps(
           status: "reserved",
         }),
       },
+      linkArtistIdentity: async () => ({
+        artistId: "00000000-0000-4000-8000-000000000020",
+        identitySubjectId: "artist-subject",
+      }),
+      unlinkArtistIdentity: async () => ({
+        artistId: "00000000-0000-4000-8000-000000000020",
+      }),
     },
     portal: {
       portalOwnership: {
@@ -240,6 +264,11 @@ export function createMinimalShopApiTestDeps(
         listDocuments: async () => [],
       },
       portalSales: {
+        listSales: async () => [],
+      },
+      portalArtist: {
+        getLinkedArtist: async () => null,
+        listArtworks: async () => [],
         listSales: async () => [],
       },
     },

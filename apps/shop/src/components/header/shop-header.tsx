@@ -2,6 +2,7 @@ import { ShopHeaderClient } from "@/components/header/shop-header.client";
 import { loadShopProductDirectoryLinks } from "@/lib/ecosystem/product-directory.server";
 import { loadShopAccountChromeState } from "@/lib/ecosystem/shop-account-chrome.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
+import { isShopMerchandiseEnabled } from "@/lib/shop-runtime-flags";
 
 /** Server composition root — session + product directory VMs, client island for mobile nav. */
 export async function ShopHeader() {
@@ -16,6 +17,11 @@ export async function ShopHeader() {
       : 0;
 
   return (
-    <ShopHeaderClient account={account} productLinks={productLinks} basketCount={basketCount} />
+    <ShopHeaderClient
+      account={account}
+      productLinks={productLinks}
+      basketCount={basketCount}
+      merchandiseEnabled={isShopMerchandiseEnabled()}
+    />
   );
 }

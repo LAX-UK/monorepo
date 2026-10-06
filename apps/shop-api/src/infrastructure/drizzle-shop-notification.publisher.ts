@@ -65,10 +65,11 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
 
       const orderUrl = `${input.storefrontUrl.replace(/\/+$/, "")}/account/orders/${input.orderId}`;
       const lineSummary = input.lines
-        .map(
-          (line) =>
-            `${line.artworkTitle} (edition ${line.editionNumber}) — ${formatPence(line.unitPricePence)}`,
-        )
+        .map((line) => {
+          const editionSuffix =
+            line.editionNumber != null ? ` (edition ${line.editionNumber})` : "";
+          return `${line.artworkTitle}${editionSuffix} — ${formatPence(line.unitPricePence)}`;
+        })
         .join("\n");
 
       await insertShopEmailOutbox(db, {

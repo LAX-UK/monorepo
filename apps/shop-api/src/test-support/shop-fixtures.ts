@@ -5,6 +5,8 @@ import {
   shopOrder,
   shopOrderLine,
   shopParty,
+  shopProduct,
+  shopProductVariant,
   shopStaffMember,
 } from "@auction/db/schema";
 import type { ShopStaffRole } from "@auction/shop-domain";
@@ -193,6 +195,41 @@ export async function insertTestOwnerParty(
     })
     .returning({ id: shopParty.id });
   return requireDefined(row?.id, "party id");
+}
+
+export async function insertTestMerchandise(
+  db: Database,
+  label: string,
+  options?: { onHand?: number; pricePence?: number },
+) {
+  const suffix = integrationSuffix(label);
+  const slug = `integration-merch-${label}-${suffix}`;
+  const [product] = await db
+    .insert(shopProduct)
+    .values({
+      slug,
+      title: `Integration merch ${label}`,
+      description: "Test merchandise fixture",
+    })
+    .returning({ id: shopProduct.id, slug: shopProduct.slug });
+  const productId = requireDefined(product?.id, "product id");
+  const productSlug = requireDefined(product?.slug, "product slug");
+  const [variant] = await db
+    .insert(shopProductVariant)
+    .values({
+      productId,
+      sku: `SKU-${suffix}`,
+      pricePence: options?.pricePence ?? 1_500,
+      onHand: options?.onHand ?? 10,
+    })
+    .returning({ id: shopProductVariant.id, sku: shopProductVariant.sku });
+  return {
+    productId,
+    variantId: requireDefined(variant?.id, "variant id"),
+    slug: productSlug,
+    sku: requireDefined(variant?.sku, "variant sku"),
+    pricePence: options?.pricePence ?? 1_500,
+  };
 }
 
 export async function insertExpiredOpenBasket(

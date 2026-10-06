@@ -8,9 +8,11 @@ import {
   shopParty,
   shopPayoutLedger,
   shopProcessedPaymentEvent,
+  shopProduct,
+  shopProductVariant,
 } from "@auction/db/schema";
 import { computePayoutDueAt } from "@auction/shop-domain";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
@@ -129,20 +131,84 @@ export function createDrizzlePaymentEventProcessor(
   };
 }
 
+async function releaseReservedVariantsForOrder(tx: Database, orderId: string): Promise<void> {
+  const releasedAt = new Date();
+  const lines = await tx
+    .select({
+      productVariantId: shopOrderLine.productVariantId,
+      releasedAt: shopOrderLine.releasedAt,
+    })
+    .from(shopOrderLine)
+    .where(and(eq(shopOrderLine.orderId, orderId), isNull(shopOrderLine.releasedAt)));
+  const counts = new Map<string, number>();
+  for (const line of lines) {
+    if (!line.productVariantId) {
+      continue;
+    }
+    counts.set(line.productVariantId, (counts.get(line.productVariantId) ?? 0) + 1);
+  }
+  for (const [variantId, count] of counts) {
+    await tx
+      .update(shopProductVariant)
+      .set({
+        reserved: sql`${shopProductVariant.reserved} - ${count}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(shopProductVariant.id, variantId));
+  }
+  if (counts.size > 0) {
+    await tx
+      .update(shopOrderLine)
+      .set({ releasedAt })
+      .where(
+        and(
+          eq(shopOrderLine.orderId, orderId),
+          isNull(shopOrderLine.releasedAt),
+          isNotNull(shopOrderLine.productVariantId),
+        ),
+      );
+  }
+}
+
+async function finalizePaidVariantStockForOrder(tx: Database, orderId: string): Promise<void> {
+  const lines = await tx
+    .select({ productVariantId: shopOrderLine.productVariantId })
+    .from(shopOrderLine)
+    .where(eq(shopOrderLine.orderId, orderId));
+  const counts = new Map<string, number>();
+  for (const line of lines) {
+    if (!line.productVariantId) {
+      continue;
+    }
+    counts.set(line.productVariantId, (counts.get(line.productVariantId) ?? 0) + 1);
+  }
+  for (const [variantId, count] of counts) {
+    await tx
+      .update(shopProductVariant)
+      .set({
+        onHand: sql`${shopProductVariant.onHand} - ${count}`,
+        reserved: sql`${shopProductVariant.reserved} - ${count}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(shopProductVariant.id, variantId));
+  }
+}
+
 async function releaseReservedEditionsForOrder(
   tx: Database,
   orderId: string,
   events: ReturnType<typeof createShopDomainEventPublisher>,
 ): Promise<void> {
+  await releaseReservedVariantsForOrder(tx, orderId);
   const lines = await tx.select().from(shopOrderLine).where(eq(shopOrderLine.orderId, orderId));
   const editionLines = lines.filter(
     (line): line is typeof line & { editionId: string } => line.editionId !== null,
   );
   const editionIds = editionLines.map((line) => line.editionId);
+  const releasedAt = new Date();
   if (editionIds.length === 0) {
     return;
   }
-  const releasedAt = new Date();
   const candidates = await tx
     .select({
       id: shopEdition.id,
@@ -254,20 +320,24 @@ export async function completeShopCheckoutSession(
       })
       .where(eq(shopOrder.id, order.id));
 
-    await tx
-      .insert(shopFulfilment)
-      .values({
-        orderId: order.id,
-        option: order.fulfilment,
-        status: "pending_production",
-      })
-      .onConflictDoNothing({ target: shopFulfilment.orderId });
-
     const lines = await tx.select().from(shopOrderLine).where(eq(shopOrderLine.orderId, order.id));
     const editionLines = lines.filter(
       (line): line is typeof line & { editionId: string; sellerPartyId: string } =>
         line.editionId !== null && line.sellerPartyId !== null,
     );
+    const initialFulfilmentStatus =
+      editionLines.length > 0 ? "pending_production" : "awaiting_dispatch";
+
+    await tx
+      .insert(shopFulfilment)
+      .values({
+        orderId: order.id,
+        option: order.fulfilment,
+        status: initialFulfilmentStatus,
+      })
+      .onConflictDoNothing({ target: shopFulfilment.orderId });
+
+    await finalizePaidVariantStockForOrder(tx as Database, order.id);
     for (const line of editionLines) {
       const updated = await tx
         .update(shopEdition)
@@ -349,18 +419,29 @@ export async function completeShopCheckoutSession(
     if (options.notifications && options.storefrontUrl) {
       const lineDetails = await tx
         .select({
-          title: shopArtwork.title,
-          slug: shopArtwork.slug,
+          artworkTitle: shopArtwork.title,
+          artworkSlug: shopArtwork.slug,
+          productTitle: shopProduct.title,
+          productSlug: shopProduct.slug,
+          variantSku: shopProductVariant.sku,
           editionNumber: shopOrderLine.editionNumber,
+          productVariantId: shopOrderLine.productVariantId,
           unitPricePence: shopOrderLine.unitPricePence,
         })
         .from(shopOrderLine)
-        .innerJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
+        .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
+        .leftJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
+        .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
         .where(eq(shopOrderLine.orderId, order.id));
 
-      const receiptLines = lineDetails.filter(
-        (line): line is typeof line & { editionNumber: number } => line.editionNumber !== null,
-      );
+      const receiptLines = lineDetails.map((line) => ({
+        artworkTitle: line.productVariantId
+          ? (line.productTitle ?? "Merchandise")
+          : (line.artworkTitle ?? "Artwork"),
+        artworkSlug: line.productVariantId ? (line.productSlug ?? "") : (line.artworkSlug ?? ""),
+        editionNumber: line.editionNumber,
+        unitPricePence: line.unitPricePence,
+      }));
 
       const [vatRow] = await tx
         .select({
@@ -378,8 +459,8 @@ export async function completeShopCheckoutSession(
         vatAmountPence: vatRow?.vatAmountPence ?? 0,
         storefrontUrl: options.storefrontUrl,
         lines: receiptLines.map((line) => ({
-          artworkTitle: line.title,
-          artworkSlug: line.slug,
+          artworkTitle: line.artworkTitle,
+          artworkSlug: line.artworkSlug,
           editionNumber: line.editionNumber,
           unitPricePence: line.unitPricePence,
         })),

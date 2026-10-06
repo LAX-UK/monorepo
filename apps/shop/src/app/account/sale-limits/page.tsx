@@ -3,9 +3,12 @@ import { ShopAccountBodyText, ShopAccountShell } from "@/components/account/shop
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import { formatPortalSaleAuthorityRequestStatus } from "@/lib/presenters/portal-sale-authority-request-status.presenter";
+import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
 import {
   fetchPortalSaleAuthority,
   fetchPortalSaleAuthorityRequests,
+  resolveShopArtistPortalLinked,
   resolveShopPortalOwnershipEnabled,
 } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
@@ -19,11 +22,13 @@ export const metadata = shopPrivatePageTitle("Sale limits");
 export default async function ShopAccountSaleLimitsPage() {
   const viewer = await loadShopViewerState();
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
   const shellNav = {
     activeNavHref: "/account/sale-limits",
     portalOwnershipEnabled,
     payoutsEnabled,
+    artistPortalEnabled,
   };
 
   const gate = gateShopAuthenticatedRoute(viewer, "/account/sale-limits");
@@ -125,27 +130,60 @@ export default async function ShopAccountSaleLimitsPage() {
                     <dt>Committed</dt>
                     <dd>{row.committedCount}</dd>
                   </div>
+                  {row.lastGrantAt ? (
+                    <div>
+                      <dt>Last grant</dt>
+                      <dd>{formatShopDate(row.lastGrantAt)}</dd>
+                    </div>
+                  ) : null}
                 </dl>
               </li>
             ))}
           </ul>
           <SaleLimitRequestForm artworks={result.data} />
-          {requests.status === "ok" && requests.data.length > 0 ? (
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-on-surface">Your requests</h2>
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-on-surface">Your requests</h2>
+            {requests.status === "unauthorized" ? (
+              <ShopStatusState
+                layout="inline"
+                variant="error"
+                title="Sign in again"
+                titleAs="p"
+                description="We could not load your request history."
+              />
+            ) : requests.status === "failed" || requests.status === "commerce_unavailable" ? (
+              <ShopStatusState
+                layout="inline"
+                variant="error"
+                title="Could not load requests"
+                titleAs="p"
+                description="Try again later."
+                actions={<ShopCatalogueStateRetryButton />}
+              />
+            ) : requests.status === "empty" ||
+              (requests.status === "ok" && requests.data.length === 0) ? (
+              <ShopStatusState
+                layout="inline"
+                variant="empty"
+                title="No requests yet"
+                titleAs="p"
+                description="Submitted limit change requests will appear here."
+              />
+            ) : (
               <ul className="shop-account-list">
                 {requests.data.map((row) => (
                   <li key={row.requestId} className="shop-account-list__row">
                     <p className="font-medium text-on-surface">{row.artworkTitle}</p>
                     <p className="text-on-surface-variant">
-                      {row.requestedCount} requested · {row.status} ·{" "}
-                      {new Date(row.createdAt).toLocaleDateString("en-GB")}
+                      {row.requestedCount} requested ·{" "}
+                      {formatPortalSaleAuthorityRequestStatus(row.status)} ·{" "}
+                      {formatShopDate(row.createdAt)}
                     </p>
                   </li>
                 ))}
               </ul>
-            </div>
-          ) : null}
+            )}
+          </div>
         </>
       )}
     </ShopAccountShell>

@@ -19,6 +19,7 @@ export type ShopAccountShellProps = {
   activeNavHref?: string;
   portalOwnershipEnabled?: boolean;
   payoutsEnabled?: boolean;
+  artistPortalEnabled?: boolean;
   /** When set, renders a shadcn Alert above the body copy. */
   notice?: {
     variant: ShopAccountNoticeVariant;
@@ -41,6 +42,7 @@ export function ShopAccountShell({
   activeNavHref,
   portalOwnershipEnabled = false,
   payoutsEnabled = false,
+  artistPortalEnabled = false,
 }: ShopAccountShellProps) {
   const trail = breadcrumbs ?? [{ label: "Shop", href: "/" }, { label: "Account" }];
   const showNav = activeNavHref !== undefined;
@@ -61,6 +63,7 @@ export function ShopAccountShell({
                 activeHref={activeNavHref}
                 portalOwnershipEnabled={portalOwnershipEnabled}
                 payoutsEnabled={payoutsEnabled}
+                artistPortalEnabled={artistPortalEnabled}
               />
             ) : null}
             {notice ? (

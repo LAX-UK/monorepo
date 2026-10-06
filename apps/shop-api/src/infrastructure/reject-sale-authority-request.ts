@@ -43,5 +43,5 @@ export async function rejectSaleAuthorityRequest(
     targetId: input.requestId,
     afterJson: JSON.stringify({ status: "rejected", reason: input.reason }),
   });
-  return { requestId: input.requestId, status: "rejected" };
+  return { requestId: input.requestId, status: "rejected" as const };
 }

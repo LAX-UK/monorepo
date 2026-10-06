@@ -11,7 +11,7 @@ import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import { redirect } from "next/navigation";
 
-export const metadata = shopPrivatePageTitle("Cancel checkout");
+export const metadata = shopPrivatePageTitle("Checkout cancelled");
 
 type CancelCheckoutPageProps = {
   searchParams: Promise<{ orderId?: string; error?: string }>;
@@ -78,7 +78,10 @@ export default async function CancelCheckoutPage({ searchParams }: CancelCheckou
 
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--checkout-cancel">
-      <ShopCommercePageShell header={shopPageWayfinding.checkout} contentClassName="shop-checkout">
+      <ShopCommercePageShell
+        header={shopPageWayfinding.checkoutCancel}
+        contentClassName="shop-checkout"
+      >
         <ShopCheckoutCancelEnhancer orderId={orderId} />
         <h2 className="shop-checkout__legend">Cancel secure payment</h2>
         <p className="shop-detail__notice">

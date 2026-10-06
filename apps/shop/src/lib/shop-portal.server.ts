@@ -10,6 +10,8 @@ import {
   type PortalSaleStatement,
   SHOP_API_ERROR_CODES,
   ShopContractParseError,
+  parsePortalArtistArtworks,
+  parsePortalArtistSales,
   parsePortalDocuments,
   parsePortalEditions,
   parsePortalPayouts,
@@ -38,9 +40,8 @@ function readUpstreamErrorCode(body: unknown): string | undefined {
   return undefined;
 }
 
-function isPortalOwnershipDisabled(_response: Response, body: unknown): boolean {
-  const code = readUpstreamErrorCode(body);
-  return code === SHOP_API_ERROR_CODES.FEATURE_DISABLED;
+function isPortalFeatureDisabled(body: unknown): boolean {
+  return readUpstreamErrorCode(body) === SHOP_API_ERROR_CODES.FEATURE_DISABLED;
 }
 
 /** Storefront hub links follow shop-api when the storefront env flag is unset. */
@@ -58,7 +59,7 @@ export const resolveShopPortalOwnershipEnabled = cache(async (): Promise<boolean
     if (response.status === 401) return true;
     if (response.status === 404) {
       const body = await response.json().catch(() => null);
-      if (readUpstreamErrorCode(body) === SHOP_API_ERROR_CODES.FEATURE_DISABLED) {
+      if (isPortalFeatureDisabled(body)) {
         return false;
       }
     }
@@ -84,7 +85,7 @@ async function fetchPortalList<T>(
       return { status: "failed" };
     }
     if (!response.ok) {
-      if (isPortalOwnershipDisabled(response, body)) {
+      if (isPortalFeatureDisabled(body)) {
         return { status: "commerce_unavailable" };
       }
       return { status: "failed" };
@@ -133,3 +134,40 @@ export async function fetchPortalSales(): Promise<
 export async function fetchPortalDocuments(): Promise<ShopPortalFetchResult<PortalDocumentItem[]>> {
   return fetchPortalList("/commerce/me/documents", parsePortalDocuments);
 }
+
+async function fetchPortalArtistPayload<T>(
+  path: string,
+  parse: (body: unknown) => T,
+): Promise<ShopPortalFetchResult<T>> {
+  try {
+    const response = await shopCommerceRequest(path, {
+      headers: { accept: "application/json" },
+    });
+    if (response.status === 401) return { status: "unauthorized" };
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      if (isPortalFeatureDisabled(body)) {
+        return { status: "commerce_unavailable" };
+      }
+      return { status: "failed" };
+    }
+    return { status: "ok", data: parse(body) };
+  } catch {
+    return { status: "failed" };
+  }
+}
+
+export async function fetchPortalArtistArtworks() {
+  return fetchPortalArtistPayload("/commerce/me/artist/artworks", parsePortalArtistArtworks);
+}
+
+export async function fetchPortalArtistSales() {
+  return fetchPortalArtistPayload("/commerce/me/artist/sales", parsePortalArtistSales);
+}
+
+/** Whether the signed-in subject is linked to an artist profile (for account nav). */
+export const resolveShopArtistPortalLinked = cache(async (): Promise<boolean> => {
+  const result = await fetchPortalArtistArtworks();
+  if (result.status === "ok") return result.data.artist != null;
+  return false;
+});

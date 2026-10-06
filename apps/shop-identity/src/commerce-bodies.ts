@@ -1,10 +1,22 @@
 import { isUkPostcode, normalizeUkPostcode } from "@auction/validators";
 import { z } from "zod";
 
-export const upsertBasketLineBodySchema = z.object({
-  artworkSlug: z.string().min(1),
-  quantity: z.number().int().min(1).max(24),
-});
+const upsertBasketLineQuantitySchema = z.number().int().min(1).max(24);
+
+export const upsertBasketLineBodySchema = z.union([
+  z
+    .object({
+      artworkSlug: z.string().min(1),
+      quantity: upsertBasketLineQuantitySchema,
+    })
+    .strict(),
+  z
+    .object({
+      productVariantId: z.string().uuid(),
+      quantity: upsertBasketLineQuantitySchema,
+    })
+    .strict(),
+]);
 
 const deliveryAddressSchema = z.object({
   line1: z.string().min(1).max(200),
