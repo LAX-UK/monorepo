@@ -226,7 +226,9 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | [37362704069](https://github.com/LAX-UK/monorepo/actions/runs/37362704069) | Green | Merchandise + staff specs skip with flags off; skip audit passes. |
 | [37364124249](https://github.com/LAX-UK/monorepo/actions/runs/37364124249) | Green | Second consecutive gate run. |
 
-**Next:** merge [#449](https://github.com/LAX-UK/monorepo/pull/449); repeat 2× on `main` without `monorepo_ref`; `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` before flag-on staff specs; flag rollouts (payouts → third-party → originals + merchandise).
+**Staff silver TOTP (test acceptance):** when `POST /api/auth/two-factor/enable` returns 5xx, CI provision bootstraps a sealed `two_factor` row using `AUTH_DEK_KEY`, exports `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` to `GITHUB_ENV` for the same job, and attempts `gh secret set` on the **test** environment. Dispatch **Shop staging acceptance** from a ref whose workflow passes `AUTH_DEK_KEY` (merge [#451](https://github.com/LAX-UK/monorepo/pull/451) or `--ref fix/staff-acceptance-totp-reconcile-v2`); `monorepo_ref` alone does not change the workflow file on `main`.
+
+**Next:** merge staff TOTP + OIDC e2e fix; 2× seeded acceptance per flag flip (payouts → third-party → originals + merchandise); record run IDs below.
 
 **Infra follow-ups (test):**
 
@@ -261,7 +263,7 @@ Terraform on test (**auction-infra**) is the single source of truth for flags an
 
 **GitHub test environment secrets:**
 
-- `SHOP_ADMIN_ACCEPTANCE_EMAIL`, `SHOP_ADMIN_ACCEPTANCE_PASSWORD`, `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` (dedicated staff identity with silver TOTP)
+- `SHOP_ADMIN_ACCEPTANCE_EMAIL`, `SHOP_ADMIN_ACCEPTANCE_PASSWORD`; `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` (optional if provision bootstrap + persist succeeds; required for stable reruns without provision write)
 - Phase 1 buyer acceptance continues to use `IDENTITY_ACCEPTANCE_EMAIL` / `IDENTITY_ACCEPTANCE_PASSWORD`
 
 **Identity:** sync `packages/identity-contracts` closure to [lax-identity](https://github.com/LAX-UK/lax-identity), merge, then run `configure-oidc-clients` on test so `lax-shop-admin` redirect URIs match shop-admin only.

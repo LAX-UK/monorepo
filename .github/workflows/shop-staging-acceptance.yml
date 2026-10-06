@@ -174,6 +174,12 @@ jobs:
           test -n "$database_url_owner"
           echo "::add-mask::$database_url_owner"
           echo "DATABASE_URL_OWNER=$database_url_owner" >> "$GITHUB_ENV"
+          database_url_auth="$(
+            terraform -chdir=.infra-config/terraform/ephemeral/test output -raw database_url_auth
+          )"
+          test -n "$database_url_auth"
+          echo "::add-mask::$database_url_auth"
+          echo "DATABASE_URL_AUTH=$database_url_auth" >> "$GITHUB_ENV"
           database_ca_cert="$(
             terraform -chdir=.infra-config/terraform/ephemeral/test \
               output -raw database_ca_certificate
@@ -334,8 +340,12 @@ jobs:
         if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+          DATABASE_URL_AUTH: ${{ env.DATABASE_URL_AUTH }}
+          DATABASE_URL_OWNER: ${{ env.DATABASE_URL_OWNER }}
+          GITHUB_TOKEN: ${{ github.token }}
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
+          SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
           IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
         run: |
           set -euo pipefail

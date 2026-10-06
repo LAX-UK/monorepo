@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 /**
  * Idempotent staff acceptance identity on test auth (email/password + silver TOTP).
  *
- * Required: DATABASE_URL_OWNER, SHOP_ADMIN_ACCEPTANCE_PASSWORD, and either
+ * Required: DATABASE_URL_AUTH (or DATABASE_URL_OWNER), SHOP_ADMIN_ACCEPTANCE_PASSWORD, and either
  * SHOP_ADMIN_ACCEPTANCE_EMAIL or IDENTITY_ACCEPTANCE_EMAIL (derive).
  * After first enrolment, set SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET on the GitHub test env
  * (script attempts `gh secret set` when GITHUB_TOKEN can write environment secrets).
@@ -43,8 +43,16 @@ function parseTotpSecretFromUri(totpUri) {
   return secret;
 }
 
+function authDatabaseUrl() {
+  const auth = process.env.DATABASE_URL_AUTH?.trim();
+  if (auth) return auth;
+  const owner = process.env.DATABASE_URL_OWNER?.trim();
+  if (owner) return owner;
+  return "";
+}
+
 async function withOwnerClient(fn) {
-  const client = new pg.Client(buildPgConnectionConfig(process.env.DATABASE_URL_OWNER ?? ""));
+  const client = new pg.Client(buildPgConnectionConfig(authDatabaseUrl()));
   await client.connect();
   try {
     return await fn(client);

@@ -9,6 +9,8 @@ const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const authBaseUrl = process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid";
 
 test.describe("direct sale payout @e2e", () => {
+  test.setTimeout(180_000);
+
   test("production through fulfilment, possession, eligibility, and mark-paid", async ({
     page,
     request,
