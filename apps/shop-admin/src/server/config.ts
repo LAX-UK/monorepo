@@ -4,6 +4,8 @@ import { z } from "zod";
 const configSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   publicOrigin: z.string().url(),
+  /** Self-fetch base for server components calling the staff BFF API route. */
+  bffInternalOrigin: z.string().url(),
   oidcIssuer: z.string().url(),
   oidcInternalIssuer: z.string().url(),
   oidcClientId: z.string().default(REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN),
@@ -29,6 +31,11 @@ export function loadShopAdminConfig(source: NodeJS.ProcessEnv = process.env): Sh
   const parsed = configSchema.safeParse({
     NODE_ENV: source.NODE_ENV ?? "development",
     publicOrigin,
+    bffInternalOrigin: (
+      source.SHOP_ADMIN_INTERNAL_URL ??
+      publicOrigin ??
+      "http://127.0.0.1:3030"
+    ).replace(/\/+$/, ""),
     oidcIssuer,
     oidcInternalIssuer: (source.OIDC_INTERNAL_BASE_URL ?? oidcIssuer).replace(/\/+$/, ""),
     oidcClientId: source.OIDC_CLIENT_ID ?? REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN,
