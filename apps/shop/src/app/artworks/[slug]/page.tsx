@@ -99,6 +99,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
       <ShopCommercePageShell
         header={{
           title: artwork.title,
+          suppressTitle: true,
           breadcrumbs: [
             { label: "Shop", href: "/" },
             { label: "Artworks", href: "/artworks" },

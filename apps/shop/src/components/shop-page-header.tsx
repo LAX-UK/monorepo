@@ -17,9 +17,11 @@ export type ShopBreadcrumbItem = {
 export type ShopPageHeaderProps = {
   title: string;
   breadcrumbs: readonly ShopBreadcrumbItem[];
+  /** PDP and similar layouts render the primary h1 in page content. */
+  suppressTitle?: boolean;
 };
 
-export function ShopPageHeader({ title, breadcrumbs }: ShopPageHeaderProps) {
+export function ShopPageHeader({ title, breadcrumbs, suppressTitle }: ShopPageHeaderProps) {
   return (
     <header className="shop-page-header">
       <Breadcrumb className="shop-page-header__breadcrumb">
@@ -50,7 +52,7 @@ export function ShopPageHeader({ title, breadcrumbs }: ShopPageHeaderProps) {
           })}
         </BreadcrumbList>
       </Breadcrumb>
-      <h1 className="shop-page-header__title">{title}</h1>
+      {suppressTitle ? null : <h1 className="shop-page-header__title">{title}</h1>}
     </header>
   );
 }
