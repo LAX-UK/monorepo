@@ -333,6 +333,7 @@ jobs:
       - name: Provision shop-admin staff identity
         if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
+          AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
           IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
@@ -371,7 +372,7 @@ jobs:
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
-          SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
+          SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET || secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
           SHOP_ACCEPTANCE_FEATURE_PAYOUTS: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
           SHOP_ACCEPTANCE_FEATURE_THIRD_PARTY: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
           SHOP_ACCEPTANCE_FEATURE_ORIGINALS: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}
