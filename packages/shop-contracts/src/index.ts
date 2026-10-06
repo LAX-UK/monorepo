@@ -39,6 +39,12 @@ export {
   type PublicCategorySummary,
 } from "./category-public.js";
 export {
+  PublicMerchandiseProductListSchema,
+  PublicMerchandiseProductSchema,
+  type PublicMerchandiseProduct,
+  type PublicMerchandiseProductList,
+} from "./merchandise-public.js";
+export {
   BasketLineSchema,
   BasketResponseSchema,
   BasketViewSchema,
@@ -72,4 +78,5 @@ export {
   parsePublicArtworkList,
   parsePublicCategoryList,
   parsePublicCategorySummary,
+  parsePublicMerchandiseProductList,
 } from "./parse-public.js";

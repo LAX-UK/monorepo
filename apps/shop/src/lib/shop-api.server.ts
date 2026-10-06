@@ -7,6 +7,7 @@ import {
   type PublicArtworkList,
   type PublicCategoryList,
   type PublicCategorySummary,
+  type PublicMerchandiseProductList,
   ShopContractParseError,
   parsePublicArtistDetail,
   parsePublicArtistList,
@@ -14,6 +15,7 @@ import {
   parsePublicArtworkList,
   parsePublicCategoryList,
   parsePublicCategorySummary,
+  parsePublicMerchandiseProductList,
 } from "@auction/shop-contracts";
 
 const DEFAULT_SHOP_API_BASE_URL = "http://localhost:3011";
@@ -172,4 +174,15 @@ export async function fetchPublicArtistBySlug(slug: string): Promise<PublicArtis
     throw new ShopApiBffError("upstream", `Shop artist request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicArtistDetail, "artist detail");
+}
+
+export async function fetchPublicMerchandiseProducts(): Promise<PublicMerchandiseProductList> {
+  const response = await shopApiFetch("/v1/merchandise/products");
+  if (response.status === 404) {
+    return { items: [] };
+  }
+  if (!response.ok) {
+    throw new ShopApiBffError("upstream", `Shop merchandise request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicMerchandiseProductList, "merchandise list");
 }

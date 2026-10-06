@@ -23,6 +23,7 @@ import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.rout
 import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
 import { registerBasketRoutes } from "./routes/v1/basket.routes.js";
 import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
+import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
 import { registerPortalMeDisabledRoutes } from "./routes/v1/portal-me-disabled.routes.js";
 import { registerPortalMeRoutes } from "./routes/v1/portal-me.routes.js";
@@ -111,6 +112,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerOrderRoutes(app, options.deps.commerce);
   void registerCategoryRoutes(app, options.deps.catalogue);
   void registerArtistRoutes(app, options.deps.catalogue);
+  if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
+    void registerMerchandiseRoutes(app, options.deps.merchandise);
+  }
 
   if (options.deps.env.SHOP_ADMIN_ENABLED) {
     void registerShopAdminScope(

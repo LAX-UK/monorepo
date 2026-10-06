@@ -36,6 +36,10 @@ import {
   type OrderSummary,
   OrderSummarySchema,
 } from "./commerce-public.js";
+import {
+  type PublicMerchandiseProductList,
+  PublicMerchandiseProductListSchema,
+} from "./merchandise-public.js";
 
 export class ShopContractParseError extends Error {
   constructor(message: string) {
@@ -68,6 +72,13 @@ export function parsePublicCategoryList(value: unknown): PublicCategoryList {
 export function parsePublicCategorySummary(value: unknown): PublicCategorySummary {
   if (!Value.Check(PublicCategorySummarySchema, value)) {
     throw new ShopContractParseError("Invalid public category payload");
+  }
+  return value;
+}
+
+export function parsePublicMerchandiseProductList(value: unknown): PublicMerchandiseProductList {
+  if (!Value.Check(PublicMerchandiseProductListSchema, value)) {
+    throw new ShopContractParseError("Invalid public merchandise product list payload");
   }
   return value;
 }
