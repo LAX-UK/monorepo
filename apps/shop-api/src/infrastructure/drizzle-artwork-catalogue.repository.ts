@@ -81,6 +81,7 @@ type SelectedArtworkRow = {
   dimensions: string | null;
   yearCreated: number | null;
   artistName: string;
+  artistSlug: string;
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
   createdAt: Date;
@@ -98,6 +99,7 @@ function mapRow(
     description: row.description,
     primaryImageUrl: row.primaryImageUrl,
     artistName: row.artistName,
+    artistSlug: row.artistSlug,
     saleState: row.saleState,
     dimensions: row.dimensions,
     yearCreated: row.yearCreated,
@@ -248,6 +250,7 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
         dimensions: shopArtwork.dimensions,
         yearCreated: shopArtwork.yearCreated,
         artistName: shopParty.displayName,
+        artistSlug: shopArtist.slug,
         eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
         printPricePence: shopArtwork.printPricePence,
         createdAt: shopArtwork.createdAt,
@@ -364,6 +367,7 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
           dimensions: shopArtwork.dimensions,
           yearCreated: shopArtwork.yearCreated,
           artistName: shopParty.displayName,
+          artistSlug: shopArtist.slug,
           eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
           printPricePence: shopArtwork.printPricePence,
         })

@@ -117,6 +117,54 @@ export function createMinimalShopApiTestDeps(
         editionNumbersAuthorised: [],
         editionNumbersRevoked: [],
       }),
+      getSaleAuthorityRequest: async () => ({
+        requestId: "00000000-0000-4000-8000-000000000004",
+        artworkId: "00000000-0000-4000-8000-000000000001",
+        ownerPartyId: "00000000-0000-4000-8000-000000000003",
+        requestedCount: 1,
+        status: "pending",
+      }),
+      rejectSaleAuthorityRequest: async () => ({
+        requestId: "00000000-0000-4000-8000-000000000004",
+        status: "rejected" as const,
+      }),
+      grantStaffRole: async () => undefined,
+      revokeStaffRole: async () => undefined,
+      adminRead: {
+        orders: { listOrders: async () => ({ items: [], nextCursor: null }) },
+        fulfilment: { listFulfilment: async () => ({ items: [], nextCursor: null }) },
+        production: { listProductionTasks: async () => ({ items: [], nextCursor: null }) },
+        payouts: { listPayouts: async () => ({ items: [], nextCursor: null }) },
+        sales: {
+          listStockHolds: async () => ({ items: [], nextCursor: null }),
+          listThirdPartySales: async () => ({ items: [], nextCursor: null }),
+          listOriginalSales: async () => ({ items: [], nextCursor: null }),
+        },
+        parties: {
+          listClientParties: async () => ({ items: [], nextCursor: null }),
+          listArtists: async () => ({ items: [], nextCursor: null }),
+        },
+        saleAuthorityRequests: {
+          listRequests: async () => ({ items: [], nextCursor: null }),
+          getRequestById: async () => ({
+            requestId: "00000000-0000-4000-8000-000000000004",
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            ownerPartyId: "00000000-0000-4000-8000-000000000003",
+            requestedCount: 1,
+            status: "pending",
+          }),
+        },
+        staff: { listStaffMembers: async () => ({ items: [], nextCursor: null }) },
+        catalogue: { listMerchandiseProducts: async () => ({ items: [], nextCursor: null }) },
+        overview: {
+          readOverviewKpis: async () => ({
+            fulfilmentOpenCount: 0,
+            payoutsDueCount: 0,
+            activeHoldsCount: 0,
+            pendingAuthorityRequestsCount: 0,
+          }),
+        },
+      },
       staffReader: {
         findActiveByIdentitySubject: async () => null,
         brokerCanAccessClientParty: async () => false,
@@ -187,8 +235,12 @@ export function createMinimalShopApiTestDeps(
           requestId: "00000000-0000-4000-8000-000000000004",
           status: "pending" as const,
         }),
+        listSaleAuthorityRequests: async () => [],
         listPayouts: async () => [],
         listDocuments: async () => [],
+      },
+      portalSales: {
+        listSales: async () => [],
       },
     },
     ...overrides,

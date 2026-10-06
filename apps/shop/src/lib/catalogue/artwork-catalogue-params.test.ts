@@ -1,3 +1,4 @@
+import { draftToPartialState } from "@/components/catalogue/artwork-catalogue-filter-body";
 import { describe, expect, it } from "vitest";
 import {
   artworkCatalogueFetchQuery,
@@ -25,5 +26,32 @@ describe("artwork catalogue params", () => {
       minPrice: 12000,
       maxPrice: 50000,
     });
+  });
+
+  it("clears facets when draft fields are emptied", () => {
+    const state = parseArtworkCatalogueParams({
+      q: "vessel",
+      categorySlug: "painting",
+      artistSlug: "flora-powers",
+      saleState: "for_sale",
+      minPrice: "100",
+      maxPrice: "500",
+    });
+    const cleared = draftToPartialState({
+      q: "",
+      type: "all",
+      saleState: "",
+      categorySlug: "",
+      artistSlug: "",
+      minPrice: "",
+      maxPrice: "",
+    });
+    const href = artworkCatalogueFilterHref(state, cleared);
+    expect(href).not.toContain("q=");
+    expect(href).not.toContain("categorySlug=");
+    expect(href).not.toContain("artistSlug=");
+    expect(href).not.toContain("saleState=");
+    expect(href).not.toContain("minPrice=");
+    expect(href).not.toContain("maxPrice=");
   });
 });

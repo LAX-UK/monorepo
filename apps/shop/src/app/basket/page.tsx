@@ -1,9 +1,12 @@
 import { BasketLinesClient } from "@/components/basket/basket-lines.client";
 import { ShopBasketCancelNotice } from "@/components/basket/shop-basket-cancel-notice.client";
 import { ShopBasketResumePayment } from "@/components/basket/shop-basket-resume-payment.client";
+import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopAuthLink } from "@/components/shop-auth-link";
+import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
+import { ShopNotice } from "@/components/shop-notice";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import {
@@ -11,11 +14,14 @@ import {
   basketCheckoutBlockReasons,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
+import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { fetchShopBasket, listShopOrders } from "@/lib/shop-commerce.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Suspense } from "react";
 
 export const metadata = shopPrivatePageTitle("Basket");
@@ -32,9 +38,39 @@ export default async function BasketPage() {
       ? (ordersResult.data.find((order) => order.status === "pending_payment") ?? null)
       : null;
 
+  const checkoutEligible =
+    basketResult.status === "ok" &&
+    canProceedToCheckout(basketResult.data) &&
+    !pendingCheckoutOrder;
+
+  const summaryPanel =
+    basketResult.status === "ok" && basketResult.data.lines.length > 0 ? (
+      <>
+        <p className="shop-basket__total">
+          Subtotal <strong>{formatGbpPence(basketResult.data.merchandiseSubtotalPence)}</strong>
+        </p>
+        {checkoutEligible ? (
+          viewer.kind === "authenticated" ? (
+            <ShopCommerceButton href="/checkout" className="w-full">
+              Proceed to checkout
+            </ShopCommerceButton>
+          ) : (
+            <Button asChild variant="cta" size="md" className={cn("shop-focus-ring", "w-full")}>
+              <ShopAuthLink href={shopStorefrontLoginHref("/checkout")}>
+                Sign in to check out
+              </ShopAuthLink>
+            </Button>
+          )
+        ) : !pendingCheckoutOrder ? (
+          <ShopNotice tone="info">Update your basket before proceeding to checkout.</ShopNotice>
+        ) : null}
+      </>
+    ) : null;
+
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--basket">
       <ShopCommercePageShell header={shopPageWayfinding.basket} contentClassName="shop-basket">
+        <ShopCheckoutSteps current="Basket" />
         <Suspense fallback={null}>
           <ShopBasketCancelNotice />
         </Suspense>
@@ -88,29 +124,11 @@ export default async function BasketPage() {
         ) : basketResult.status === "ok" ? (
           <>
             {!canProceedToCheckout(basketResult.data) ? (
-              <p className="shop-basket__alert" role="alert">
+              <ShopNotice tone="warning" title="Basket needs attention">
                 {basketCheckoutBlockMessage(basketCheckoutBlockReasons(basketResult.data))}
-              </p>
+              </ShopNotice>
             ) : null}
-            <BasketLinesClient basket={basketResult.data} />
-            {canProceedToCheckout(basketResult.data) && !pendingCheckoutOrder ? (
-              viewer.kind === "authenticated" ? (
-                <a href="/checkout" className="shop-detail__cta shop-focus-ring">
-                  Proceed to checkout
-                </a>
-              ) : (
-                <ShopAuthLink
-                  href={shopStorefrontLoginHref("/checkout")}
-                  className="shop-detail__cta shop-focus-ring"
-                >
-                  Sign in to check out
-                </ShopAuthLink>
-              )
-            ) : (
-              <p className="shop-detail__notice">
-                Update your basket before proceeding to checkout.
-              </p>
-            )}
+            <BasketLinesClient basket={basketResult.data} summary={summaryPanel} />
           </>
         ) : null}
       </ShopCommercePageShell>

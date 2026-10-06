@@ -1,20 +1,20 @@
-import { ShopAccountLinkButton, ShopAccountShell } from "@/components/account/shop-account-shell";
+import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
+import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { fetchPortalDocuments } from "@/lib/shop-portal.server";
+import { resolvePortalDocumentKindLabel } from "@/lib/presenters/portal-document-kind.presenter";
+import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
+import { fetchPortalDocuments, resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = shopPrivatePageTitle("Documents");
-
-function formatDocumentKind(kind: string): string {
-  return kind.replace(/_/g, " ");
-}
 
 export default async function ShopAccountDocumentsPage() {
   if (!isShopPayoutsEnabled()) {
@@ -22,16 +22,24 @@ export default async function ShopAccountDocumentsPage() {
   }
 
   const viewer = await loadShopViewerState();
+  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const payoutsEnabled = isShopPayoutsEnabled();
+  const shellNav = {
+    activeNavHref: "/account/documents",
+    portalOwnershipEnabled,
+    payoutsEnabled,
+  };
+
   const gate = gateShopAuthenticatedRoute(viewer, "/account/documents");
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
       <ShopAccountShell
-        title="Documents"
-        breadcrumbs={[{ label: "Account", href: "/account" }, { label: "Documents" }]}
+        title={shopPageWayfinding.accountDocuments.title}
+        breadcrumbs={shopPageWayfinding.accountDocuments.breadcrumbs}
+        {...shellNav}
       >
         <ShopCatalogueStateRetryButton />
-        <ShopAccountLinkButton href="/account" label="Back to account" variant="outline" />
       </ShopAccountShell>
     );
   }
@@ -40,8 +48,9 @@ export default async function ShopAccountDocumentsPage() {
 
   return (
     <ShopAccountShell
-      title="Documents"
-      breadcrumbs={[{ label: "Account", href: "/account" }, { label: "Documents" }]}
+      title={shopPageWayfinding.accountDocuments.title}
+      breadcrumbs={shopPageWayfinding.accountDocuments.breadcrumbs}
+      {...shellNav}
     >
       {result.status === "unauthorized" ? (
         <ShopStatusState
@@ -70,15 +79,23 @@ export default async function ShopAccountDocumentsPage() {
       ) : result.status === "ok" ? (
         <ul className="shop-account-list">
           {result.data.map((doc) => (
-            <li key={doc.documentId}>
-              {doc.downloadUrl ? (
-                <a href={doc.downloadUrl}>{formatDocumentKind(doc.kind)}</a>
-              ) : (
-                <span>{formatDocumentKind(doc.kind)} — available on request</span>
-              )}{" "}
-              <span className="text-on-surface-variant">
-                ({new Date(doc.createdAt).toLocaleDateString()})
-              </span>
+            <li key={doc.documentId} className="shop-account-list__row">
+              <div className="shop-account-list__header">
+                <span className="font-medium">{resolvePortalDocumentKindLabel(doc.kind)}</span>
+                {doc.downloadUrl ? (
+                  <a href={doc.downloadUrl} className="text-link shop-focus-ring">
+                    Download
+                  </a>
+                ) : (
+                  <DotStatusPill label="On request" tone="neutral" />
+                )}
+              </div>
+              <dl className="shop-account-list__facts">
+                <div>
+                  <dt>Added</dt>
+                  <dd>{formatShopDate(doc.createdAt)}</dd>
+                </div>
+              </dl>
             </li>
           ))}
         </ul>
@@ -91,7 +108,6 @@ export default async function ShopAccountDocumentsPage() {
           description="We could not load documents. Try again shortly."
         />
       )}
-      <ShopAccountLinkButton href="/account" label="Back to account" variant="outline" />
     </ShopAccountShell>
   );
 }

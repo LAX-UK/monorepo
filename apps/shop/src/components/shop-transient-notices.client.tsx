@@ -1,5 +1,6 @@
 "use client";
 
+import { ShopNotice } from "@/components/shop-notice";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const MERGE_PARAM = "basketMerge";
@@ -33,16 +34,12 @@ export function ShopTransientNotices() {
   }
 
   return (
-    <div
-      className="shop-transient-notice shop-basket__alert mx-auto max-w-[var(--container-max,90rem)] px-4 py-3"
-      role={basketMerge === "failed" ? "alert" : "status"}
+    <ShopNotice
+      tone={basketMerge === "failed" ? "error" : "success"}
+      className="shop-transient-notice mx-auto max-w-[var(--container-max,90rem)] rounded-none border-x-0 border-t-0"
+      onDismiss={dismiss}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm">{message}</p>
-        <button type="button" className="shop-focus-ring text-sm underline" onClick={dismiss}>
-          Dismiss
-        </button>
-      </div>
-    </div>
+      <p className="m-0 text-sm">{message}</p>
+    </ShopNotice>
   );
 }

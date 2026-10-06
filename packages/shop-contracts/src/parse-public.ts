@@ -40,6 +40,20 @@ import {
   type PublicMerchandiseProductList,
   PublicMerchandiseProductListSchema,
 } from "./merchandise-public.js";
+import {
+  type PortalDocument,
+  PortalDocumentsResponseSchema,
+  type PortalEdition,
+  PortalEditionsResponseSchema,
+  type PortalPayout,
+  PortalPayoutsResponseSchema,
+  type PortalSaleAuthority,
+  type PortalSaleAuthorityRequest,
+  PortalSaleAuthorityRequestsResponseSchema,
+  PortalSaleAuthorityResponseSchema,
+  type PortalSaleStatement,
+  PortalSalesResponseSchema,
+} from "./portal-me.js";
 
 export class ShopContractParseError extends Error {
   constructor(message: string) {
@@ -146,4 +160,46 @@ export function parseRegisterArtworkInterestResponse(
     throw new ShopContractParseError("Invalid register artwork interest payload");
   }
   return value;
+}
+
+export function parsePortalEditions(value: unknown): PortalEdition[] {
+  if (!Value.Check(PortalEditionsResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal editions payload");
+  }
+  return value.items;
+}
+
+export function parsePortalSaleAuthority(value: unknown): PortalSaleAuthority[] {
+  if (!Value.Check(PortalSaleAuthorityResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal sale authority payload");
+  }
+  return value.items;
+}
+
+export function parsePortalSaleAuthorityRequests(value: unknown): PortalSaleAuthorityRequest[] {
+  if (!Value.Check(PortalSaleAuthorityRequestsResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal sale authority requests payload");
+  }
+  return value.items;
+}
+
+export function parsePortalPayouts(value: unknown): PortalPayout[] {
+  if (!Value.Check(PortalPayoutsResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal payouts payload");
+  }
+  return value.items;
+}
+
+export function parsePortalDocuments(value: unknown): PortalDocument[] {
+  if (!Value.Check(PortalDocumentsResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal documents payload");
+  }
+  return value.items;
+}
+
+export function parsePortalSales(value: unknown): PortalSaleStatement[] {
+  if (!Value.Check(PortalSalesResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal sales payload");
+  }
+  return value.items;
 }

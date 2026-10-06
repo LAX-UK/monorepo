@@ -161,6 +161,23 @@
   font-size: 0.9375rem;
 }
 
+.shop-detail__price-lead {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-detail__bullets {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--color-on-surface);
+  line-height: 1.6;
+}
+
 .shop-detail__section p,
 .shop-detail__notice {
   color: var(--color-on-surface);
@@ -223,10 +240,10 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1.25rem;
-  border: 1px solid var(--color-brand-obsidian);
+  border: 1px solid var(--color-outline);
   border-radius: 0.25rem;
   background: transparent;
-  color: var(--color-brand-obsidian);
+  color: var(--color-on-surface);
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 600;
@@ -277,7 +294,7 @@
   .shop-detail__media {
     min-height: 38rem;
     position: sticky;
-    top: 1rem;
+    top: calc(var(--header-height, 4rem) + 1rem);
   }
 }
 

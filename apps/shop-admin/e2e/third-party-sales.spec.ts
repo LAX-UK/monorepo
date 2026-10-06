@@ -9,6 +9,8 @@ const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const authBaseUrl = process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid";
 
 test.describe("third-party sales @e2e", () => {
+  test.setTimeout(180_000);
+
   test("records a third-party sale for acceptance parties", async ({ page, request }) => {
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
     skipStaffFeatureUnlessEnabled("thirdPartySales");

@@ -10,6 +10,7 @@ export type ArtworkCatalogueRow = {
   description: string | null;
   primaryImageUrl: string | null;
   artistName: string;
+  artistSlug: string;
   saleState: "for_sale" | "price_on_application" | "sold";
   dimensions: string | null;
   yearCreated: number | null;
@@ -24,6 +25,7 @@ export function toPublicArtworkSummary(row: ArtworkCatalogueRow): ArtworkSummary
     slug: row.slug,
     title: row.title,
     artistName: row.artistName,
+    artistSlug: row.artistSlug,
     imageUrl: row.primaryImageUrl,
     saleState: row.saleState,
     dimensions: row.dimensions,

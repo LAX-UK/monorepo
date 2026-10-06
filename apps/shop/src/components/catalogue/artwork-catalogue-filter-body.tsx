@@ -7,7 +7,10 @@ import {
   ARTWORK_TYPE_OPTIONS,
   type ArtworkFilterGroupValue,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
-import type { ArtworkCatalogueUrlState } from "@/lib/catalogue/artwork-catalogue-params";
+import type {
+  ArtworkCatalogueFilterPatch,
+  ArtworkCatalogueUrlState,
+} from "@/lib/catalogue/artwork-catalogue-params";
 import {
   MARKETING_FILTER_ACCORDION_TRIGGER,
   MARKETING_FILTER_RESULT_COUNT,
@@ -44,25 +47,25 @@ export function artworkDraftFromState(state: ArtworkCatalogueUrlState): ArtworkC
   };
 }
 
-export function draftToPartialState(
-  draft: ArtworkCatalogueDraft,
-): Partial<ArtworkCatalogueUrlState> {
+export function draftToPartialState(draft: ArtworkCatalogueDraft): ArtworkCatalogueFilterPatch {
   const minParsed = draft.minPrice.trim() ? Number.parseInt(draft.minPrice, 10) : undefined;
   const maxParsed = draft.maxPrice.trim() ? Number.parseInt(draft.maxPrice, 10) : undefined;
   return {
-    ...(draft.q.trim() ? { q: draft.q.trim() } : {}),
+    q: draft.q.trim() ? draft.q.trim() : null,
     type: draft.type,
-    ...(draft.saleState ? { saleState: draft.saleState } : {}),
-    ...(draft.categorySlug ? { categorySlug: draft.categorySlug } : {}),
-    ...(draft.artistSlug ? { artistSlug: draft.artistSlug } : {}),
-    ...(minParsed !== undefined && !Number.isNaN(minParsed) ? { minPrice: minParsed } : {}),
-    ...(maxParsed !== undefined && !Number.isNaN(maxParsed) ? { maxPrice: maxParsed } : {}),
+    saleState: draft.saleState ? draft.saleState : null,
+    categorySlug: draft.categorySlug ? draft.categorySlug : null,
+    artistSlug: draft.artistSlug ? draft.artistSlug : null,
+    minPrice: minParsed !== undefined && !Number.isNaN(minParsed) ? minParsed : null,
+    maxPrice: maxParsed !== undefined && !Number.isNaN(maxParsed) ? maxParsed : null,
   };
 }
 
 type Props = {
   draft: ArtworkCatalogueDraft;
   onDraftChange: (next: ArtworkCatalogueDraft) => void;
+  /** Applies draft to the URL (rail selections and price blur). */
+  onFilterCommit?: (next: ArtworkCatalogueDraft) => void;
   categories: CatalogueFilterOption[];
   artists: CatalogueFilterOption[];
   resultCount?: number | undefined;
@@ -88,6 +91,11 @@ function RailOption({
   );
 }
 
+function commitDraft(props: Props, next: ArtworkCatalogueDraft) {
+  props.onDraftChange(next);
+  props.onFilterCommit?.(next);
+}
+
 function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
   const { draft, onDraftChange, categories, artists } = props;
   switch (group) {
@@ -99,7 +107,7 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               key={option.value}
               active={draft.type === option.value}
               label={option.label}
-              onSelect={() => onDraftChange({ ...draft, type: option.value })}
+              onSelect={() => commitDraft(props, { ...draft, type: option.value })}
             />
           ))}
         </div>
@@ -113,7 +121,7 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               active={draft.saleState === option.value}
               label={option.label}
               onSelect={() =>
-                onDraftChange({
+                commitDraft(props, {
                   ...draft,
                   saleState: option.value as ArtworkCatalogueDraft["saleState"],
                 })
@@ -128,14 +136,14 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
           <RailOption
             active={!draft.categorySlug}
             label="Any category"
-            onSelect={() => onDraftChange({ ...draft, categorySlug: "" })}
+            onSelect={() => commitDraft(props, { ...draft, categorySlug: "" })}
           />
           {categories.map((category) => (
             <RailOption
               key={category.slug}
               active={draft.categorySlug === category.slug}
               label={category.label}
-              onSelect={() => onDraftChange({ ...draft, categorySlug: category.slug })}
+              onSelect={() => commitDraft(props, { ...draft, categorySlug: category.slug })}
             />
           ))}
         </div>
@@ -146,14 +154,14 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
           <RailOption
             active={!draft.artistSlug}
             label="Any artist"
-            onSelect={() => onDraftChange({ ...draft, artistSlug: "" })}
+            onSelect={() => commitDraft(props, { ...draft, artistSlug: "" })}
           />
           {artists.map((artist) => (
             <RailOption
               key={artist.slug}
               active={draft.artistSlug === artist.slug}
               label={artist.label}
-              onSelect={() => onDraftChange({ ...draft, artistSlug: artist.slug })}
+              onSelect={() => commitDraft(props, { ...draft, artistSlug: artist.slug })}
             />
           ))}
         </div>
@@ -174,6 +182,17 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3"
               value={draft.minPrice}
               onChange={(event) => onDraftChange({ ...draft, minPrice: event.target.value })}
+              onBlur={(event) =>
+                commitDraft(props, { ...draft, minPrice: event.currentTarget.value })
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  commitDraft(props, {
+                    ...draft,
+                    minPrice: (event.target as HTMLInputElement).value,
+                  });
+                }
+              }}
             />
           </label>
           <label className="flex flex-col gap-1 font-body text-sm">
@@ -182,9 +201,20 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               type="number"
               min={0}
               inputMode="numeric"
-              className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3"
+              className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3 shop-focus-ring"
               value={draft.maxPrice}
               onChange={(event) => onDraftChange({ ...draft, maxPrice: event.target.value })}
+              onBlur={(event) =>
+                commitDraft(props, { ...draft, maxPrice: event.currentTarget.value })
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  commitDraft(props, {
+                    ...draft,
+                    maxPrice: (event.target as HTMLInputElement).value,
+                  });
+                }
+              }}
             />
           </label>
         </div>

@@ -238,6 +238,40 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
       }));
     },
 
+    async listSaleAuthorityRequests(identitySubjectId: string) {
+      const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
+      if (!ownerPartyId) {
+        return [];
+      }
+      const rows = await db
+        .select({
+          requestId: shopSaleAuthorityRequest.id,
+          artworkId: shopArtwork.id,
+          artworkSlug: shopArtwork.slug,
+          artworkTitle: shopArtwork.title,
+          requestedCount: shopSaleAuthorityRequest.requestedCount,
+          note: shopSaleAuthorityRequest.note,
+          status: shopSaleAuthorityRequest.status,
+          createdAt: shopSaleAuthorityRequest.createdAt,
+          handledAt: shopSaleAuthorityRequest.handledAt,
+        })
+        .from(shopSaleAuthorityRequest)
+        .innerJoin(shopArtwork, eq(shopSaleAuthorityRequest.artworkId, shopArtwork.id))
+        .where(eq(shopSaleAuthorityRequest.ownerPartyId, ownerPartyId))
+        .orderBy(desc(shopSaleAuthorityRequest.createdAt));
+      return rows.map((row) => ({
+        requestId: row.requestId,
+        artworkId: row.artworkId,
+        artworkSlug: row.artworkSlug,
+        artworkTitle: row.artworkTitle,
+        requestedCount: row.requestedCount,
+        note: row.note,
+        status: row.status,
+        createdAt: row.createdAt.toISOString(),
+        handledAt: row.handledAt?.toISOString() ?? null,
+      }));
+    },
+
     async listDocuments(identitySubjectId: string) {
       const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
       if (!ownerPartyId) {

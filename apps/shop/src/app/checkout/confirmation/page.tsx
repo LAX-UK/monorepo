@@ -1,6 +1,8 @@
 import { CheckoutConfirmationPoller } from "@/components/checkout/checkout-confirmation-poller.client";
+import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopOrderSummary } from "@/components/commerce/shop-order-summary";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
+import { ShopCommerceButton, ShopCommerceOutlineLink } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
@@ -10,7 +12,6 @@ import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -27,6 +28,7 @@ function ConfirmationRouteShell({ title, children }: { title: string; children: 
         header={{ title, breadcrumbs: shopPageWayfinding.confirmation.breadcrumbs }}
         contentClassName="shop-confirmation"
       >
+        <ShopCheckoutSteps current="Confirmation" />
         {children}
       </ShopCommercePageShell>
     </MarketingDetailShell>
@@ -146,23 +148,21 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
 
   return (
     <ConfirmationRouteShell title={view.heading}>
-      <CheckoutConfirmationPoller active={view.order.status === "pending_payment"} />
+      <CheckoutConfirmationPoller
+        active={view.order.status === "pending_payment"}
+        orderId={view.order.orderId}
+      />
       {view.statusMessage ? <output className="block">{view.statusMessage}</output> : null}
       {view.order.status === "payment_failed" ? (
-        <ShopStatusStateLink href="/basket" priority="primary">
-          Return to basket
-        </ShopStatusStateLink>
+        <ShopCommerceButton href="/basket">Return to basket</ShopCommerceButton>
       ) : null}
       <ShopOrderSummary order={view.order} heading={`Order ${view.order.orderId.slice(0, 8)}…`} />
-      <Link
-        href={`/account/orders/${view.order.orderId}`}
-        className="shop-detail__cta shop-focus-ring"
-      >
-        View full order
-      </Link>
-      <Link href="/account/orders" className="shop-detail__cta shop-focus-ring">
-        View order history
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <ShopCommerceButton href={`/account/orders/${view.order.orderId}`}>
+          View order
+        </ShopCommerceButton>
+        <ShopCommerceOutlineLink href="/account/orders">Order history</ShopCommerceOutlineLink>
+      </div>
     </ConfirmationRouteShell>
   );
 }

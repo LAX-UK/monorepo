@@ -22,8 +22,8 @@ RBAC), **D31** (acr/auth_time on exchanged tokens), **D32** (no international ch
 | Next edition sold | First **authorised**, then lowest edition number (`sale_authorised_at`, `edition_number`) |
 | LAX editions | Require explicit sale authority like buyer/artist editions — no auto-listing |
 | Checkout account | Sign-in required before checkout (current behaviour) |
-| Staff admin | Phase 1 ops via CLI (`sale-authority`, `staff-grant`); `apps/shop-admin` UI deferred (D30); MFA silver + recent auth for finance when admin API is enabled |
-| Sale limits | Owner instructs account manager; staff record grants with evidence; portal read-only + change requests |
+| Staff admin | `apps/shop-admin` operational MVP: admin read APIs, overview/clients/artists/requests/staff/orders/payouts lists, sale-authority decisions and staff grants via BFF; CLI remains for break-glass |
+| Sale limits | Portal change requests + history; staff queue in admin; grants with evidence |
 | Merchandise | V1 simple LAX-owned SKUs with stock counts (Phase 4) |
 | lax.bid auction originals | V1 manual buyer-edition assignment in admin; auto event deferred |
 | Zoho | CRM only in V1; Inventory/Books out of scope |

@@ -1,38 +1,40 @@
+import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
-import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
+import { formatShopDateTime } from "@/lib/presenters/shop-date.presenter";
 import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import { listShopOrders } from "@/lib/shop-commerce.server";
+import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
+import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
-import { MarketingDetailShell } from "@auction/marketing-ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
 
 export const metadata = shopPrivatePageTitle("Orders");
 
-function OrdersRouteShell({ children }: { children: ReactNode }) {
-  return (
-    <MarketingDetailShell shellClassName="shop-page shop-page--orders">
-      <ShopCommercePageShell header={shopPageWayfinding.orders} contentClassName="shop-orders">
-        {children}
-      </ShopCommercePageShell>
-    </MarketingDetailShell>
-  );
-}
-
 export default async function AccountOrdersPage() {
   const viewer = await loadShopViewerState();
+  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const payoutsEnabled = isShopPayoutsEnabled();
+  const shellNav = {
+    activeNavHref: "/account/orders",
+    portalOwnershipEnabled,
+    payoutsEnabled,
+  };
+
   const gate = gateShopAuthenticatedRoute(viewer, "/account/orders");
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
-      <OrdersRouteShell>
+      <ShopAccountShell
+        title={shopPageWayfinding.orders.title}
+        breadcrumbs={shopPageWayfinding.orders.breadcrumbs}
+        {...shellNav}
+      >
         <ShopStatusState
           layout="page"
           variant="error"
@@ -45,14 +47,18 @@ export default async function AccountOrdersPage() {
           }
           actions={<ShopCatalogueStateRetryButton />}
         />
-      </OrdersRouteShell>
+      </ShopAccountShell>
     );
   }
 
   const ordersResult = await listShopOrders();
 
   return (
-    <OrdersRouteShell>
+    <ShopAccountShell
+      title={shopPageWayfinding.orders.title}
+      breadcrumbs={shopPageWayfinding.orders.breadcrumbs}
+      {...shellNav}
+    >
       {ordersResult.status === "unauthorized" ? (
         <ShopStatusState
           layout="page"
@@ -76,12 +82,7 @@ export default async function AccountOrdersPage() {
           title="Orders temporarily unavailable"
           titleAs="h2"
           description="We could not load your order history. Try again in a moment."
-          actions={
-            <>
-              <ShopCatalogueStateRetryButton />
-              <ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>
-            </>
-          }
+          actions={<ShopCatalogueStateRetryButton />}
         />
       ) : ordersResult.status === "empty" ? (
         <ShopStatusState
@@ -91,46 +92,37 @@ export default async function AccountOrdersPage() {
           titleAs="h2"
           description="When you purchase an artwork, order details and progress will appear here."
           actions={
-            <>
-              <ShopStatusStateLink href="/artworks" priority="primary">
-                Explore artworks
-              </ShopStatusStateLink>
-              <ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>
-            </>
+            <ShopStatusStateLink href="/artworks" priority="primary">
+              Explore artworks
+            </ShopStatusStateLink>
           }
         />
       ) : (
-        <>
-          <ul className="shop-orders__list">
-            {ordersResult.data.map((order) => {
-              const status = resolveShopOrderStatusPresentation(order.status);
-              return (
-                <li key={order.orderId} className="shop-orders__list-item">
-                  <Link
-                    href={`/account/orders/${order.orderId}`}
-                    className="shop-orders__list-link"
-                  >
-                    <span className="shop-orders__list-copy">
-                      <span>
-                        Order {order.orderId.slice(0, 8)}… · {formatGbpPence(order.totalPence)}
-                      </span>
-                      {status.hint ? (
-                        <span className="shop-orders__status-hint">{status.hint}</span>
-                      ) : null}
+        <ul className="shop-orders__list">
+          {ordersResult.data.map((order) => {
+            const status = resolveShopOrderStatusPresentation(order.status);
+            const firstLine = order.lines[0];
+            const titleLine = firstLine?.artworkTitle ?? "Order";
+            return (
+              <li key={order.orderId} className="shop-orders__list-item">
+                <Link href={`/account/orders/${order.orderId}`} className="shop-orders__list-link">
+                  <span className="shop-orders__list-copy">
+                    <span>
+                      Order {order.orderId.slice(0, 8)}… · {titleLine}
                     </span>
-                    <span className="shop-orders__list-status">
-                      <DotStatusPill label={status.label} tone={status.tone} />
+                    <span className="shop-orders__status-hint">
+                      {formatShopDateTime(order.createdAt)}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-          <Link href="/account" className="shop-detail__cta shop-focus-ring">
-            Back to account
-          </Link>
-        </>
+                  </span>
+                  <span className="shop-orders__list-status">
+                    <DotStatusPill label={status.label} tone={status.tone} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </OrdersRouteShell>
+    </ShopAccountShell>
   );
 }

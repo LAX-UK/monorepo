@@ -27,6 +27,7 @@ export type HomePrintCard = {
   title: string;
   artist: string;
   medium: string;
+  status?: ShopStatusPresentation;
   href?: string;
 };
 
@@ -63,7 +64,7 @@ export const homeSections = {
     title: "Originals",
     subtitle: "One-of-a-kind works available to enquire",
     actionLabel: "View all",
-    actionHref: "/artworks",
+    actionHref: "/artworks?type=original",
   } satisfies HomeSectionLink,
   categories: {
     title: "Shop by Category",

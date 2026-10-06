@@ -5,7 +5,7 @@
   "description": "LAX Shop storefront for staging OIDC flows",
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3020 --turbopack",
+    "dev": "node ./scripts/run-shop-next-dev.mjs",
     "build": "node ./scripts/run-build-with-retry.mjs",
     "start": "next start --port 3020",
     "lint": "biome check .",

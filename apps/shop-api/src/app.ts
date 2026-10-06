@@ -10,9 +10,10 @@ import { registerPublicCatalogueCaching } from "./plugins/cache-control.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
+import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
+import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
-import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/merchandise.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
@@ -129,6 +130,13 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSessionRoutes(adminScope, {
           featureFlags: options.deps.admin.featureFlags,
         });
+        void registerAdminReadRoutes(adminScope, options.deps.admin, {
+          payoutsEnabled: options.deps.env.SHOP_PAYOUTS_ENABLED,
+          thirdPartyEnabled: options.deps.env.SHOP_THIRD_PARTY_ENABLED,
+          originalsEnabled: options.deps.env.SHOP_ORIGINALS_ENABLED,
+          merchandiseEnabled: options.deps.env.SHOP_MERCHANDISE_ENABLED,
+        });
+        void registerAdminPeopleRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
           void registerAdminOperationsRoutes(adminScope, options.deps.admin);
@@ -138,9 +146,6 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         }
         if (options.deps.env.SHOP_ORIGINALS_ENABLED) {
           void registerAdminOriginalSaleRoutes(adminScope, options.deps.admin);
-        }
-        if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
-          void registerAdminMerchandiseRoutes(adminScope);
         }
       },
     );

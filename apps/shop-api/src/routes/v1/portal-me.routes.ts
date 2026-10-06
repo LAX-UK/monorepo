@@ -1,76 +1,21 @@
-import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
-import { Type } from "@sinclair/typebox";
+import {
+  PortalDocumentsResponseSchema,
+  PortalEditionsResponseSchema,
+  PortalPayoutsResponseSchema,
+  PortalSaleAuthorityRequestsResponseSchema,
+  PortalSaleAuthorityResponseSchema,
+  PortalSalesResponseSchema,
+  SaleAuthorityRequestBodySchema,
+  SaleAuthorityRequestResponseSchema,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
 import type { FastifyInstance } from "fastify";
+import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
 import type { PortalRoutesDeps } from "../../portal-route-deps.js";
 
 export type PortalMeRoutesDeps = PortalRoutesDeps & {
   payoutsEnabled: boolean;
 };
-import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
-
-const PortalEditionSchema = Type.Object({
-  editionId: Type.String({ format: "uuid" }),
-  artworkId: Type.String({ format: "uuid" }),
-  artworkSlug: Type.String(),
-  artworkTitle: Type.String(),
-  editionNumber: Type.Integer(),
-  listingStatus: Type.String(),
-  custodyStatus: Type.String(),
-});
-
-const PortalEditionsResponseSchema = Type.Object({
-  items: Type.Array(PortalEditionSchema),
-});
-
-const PortalSaleAuthoritySchema = Type.Object({
-  artworkId: Type.String({ format: "uuid" }),
-  artworkSlug: Type.String(),
-  artworkTitle: Type.String(),
-  ownerPartyId: Type.String({ format: "uuid" }),
-  authorisedCount: Type.Integer(),
-  committedCount: Type.Integer(),
-  lastGrantAt: Type.Union([Type.String(), Type.Null()]),
-});
-
-const PortalSaleAuthorityResponseSchema = Type.Object({
-  items: Type.Array(PortalSaleAuthoritySchema),
-});
-
-const SaleAuthorityRequestBodySchema = Type.Object({
-  artworkId: Type.String({ format: "uuid" }),
-  requestedCount: Type.Integer({ minimum: 0, maximum: 10 }),
-  note: Type.Optional(Type.String()),
-});
-
-const SaleAuthorityRequestResponseSchema = Type.Object({
-  requestId: Type.String({ format: "uuid" }),
-  status: Type.Literal("pending"),
-});
-
-const PortalPayoutSchema = Type.Object({
-  payoutId: Type.String({ format: "uuid" }),
-  grossPence: Type.Integer(),
-  deductionsPence: Type.Integer(),
-  netPence: Type.Integer(),
-  status: Type.String(),
-  payoutDueAt: Type.String(),
-  paidAt: Type.Union([Type.String(), Type.Null()]),
-});
-
-const PortalPayoutsResponseSchema = Type.Object({
-  items: Type.Array(PortalPayoutSchema),
-});
-
-const PortalDocumentSchema = Type.Object({
-  documentId: Type.String({ format: "uuid" }),
-  kind: Type.String(),
-  createdAt: Type.String(),
-  downloadUrl: Type.Union([Type.String(), Type.Null()]),
-});
-
-const PortalDocumentsResponseSchema = Type.Object({
-  items: Type.Array(PortalDocumentSchema),
-});
 
 export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalMeRoutesDeps) {
   app.get(
@@ -101,6 +46,25 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       requireShopScope(request, "shop.read");
       const subject = requireShopSubject(request);
       const items = await deps.portalOwnership.listSaleAuthority(subject);
+      return { items };
+    },
+  );
+
+  app.get(
+    "/v1/me/sale-authority-requests",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        response: {
+          200: PortalSaleAuthorityRequestsResponseSchema,
+          401: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const items = await deps.portalOwnership.listSaleAuthorityRequests(subject);
       return { items };
     },
   );
@@ -150,6 +114,22 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
         requireShopScope(request, "shop.read");
         const subject = requireShopSubject(request);
         const items = await deps.portalOwnership.listPayouts(subject);
+        return { items };
+      },
+    );
+
+    app.get(
+      "/v1/me/sales",
+      {
+        schema: {
+          tags: ["shop-portal"],
+          response: { 200: PortalSalesResponseSchema, 401: ShopApiErrorBodySchema },
+        },
+      },
+      async (request) => {
+        requireShopScope(request, "shop.read");
+        const subject = requireShopSubject(request);
+        const items = await deps.portalSales.listSales(subject);
         return { items };
       },
     );

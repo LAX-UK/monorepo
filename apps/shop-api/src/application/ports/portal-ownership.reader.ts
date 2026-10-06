@@ -47,12 +47,44 @@ export type PortalDocumentRow = {
   downloadUrl: string | null;
 };
 
+export type PortalSaleAuthorityRequestRow = {
+  requestId: string;
+  artworkId: string;
+  artworkSlug: string;
+  artworkTitle: string;
+  requestedCount: number;
+  note: string | null;
+  status: string;
+  createdAt: string;
+  handledAt: string | null;
+};
+
+export type PortalSaleStatementRow = {
+  saleId: string;
+  channel: "direct" | "third_party" | "original";
+  artworkId: string;
+  artworkSlug: string;
+  artworkTitle: string;
+  editionNumber: number | null;
+  soldAt: string;
+  grossPence: number;
+  feesPence: number;
+  netPence: number;
+  payoutId: string;
+  payoutStatus: string;
+};
+
 export interface PortalOwnershipReader {
   listOwnedEditions(identitySubjectId: string): Promise<PortalOwnedEditionRow[]>;
   listSaleAuthority(identitySubjectId: string): Promise<PortalSaleAuthorityRow[]>;
   createSaleAuthorityRequest(
     command: CreateSaleAuthorityRequestCommand,
   ): Promise<CreateSaleAuthorityRequestResult>;
+  listSaleAuthorityRequests(identitySubjectId: string): Promise<PortalSaleAuthorityRequestRow[]>;
   listPayouts(identitySubjectId: string): Promise<PortalPayoutRow[]>;
   listDocuments(identitySubjectId: string): Promise<PortalDocumentRow[]>;
+}
+
+export interface PortalSalesReader {
+  listSales(identitySubjectId: string): Promise<PortalSaleStatementRow[]>;
 }

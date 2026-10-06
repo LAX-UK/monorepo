@@ -1,8 +1,9 @@
 "use client";
 
 import { addArtworkToBasket, removeBasketLine } from "@/app/actions/basket.actions";
+import { ShopCommerceButton } from "@/components/shop-commerce-button";
+import { ShopNotice } from "@/components/shop-notice";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -24,15 +25,13 @@ export function AddToBasketButton({ slug, disabled, inBasket = false, basketLine
   }, [inBasket]);
 
   return (
-    <div className="shop-detail__purchase">
+    <div className="shop-detail__purchase-actions">
       {added ? (
-        <div className="shop-detail__purchase-actions">
-          <Link href="/basket" className="shop-detail__cta shop-focus-ring">
-            View basket
-          </Link>
-          <button
+        <>
+          <ShopCommerceButton href="/basket">View basket</ShopCommerceButton>
+          <ShopCommerceButton
             type="button"
-            className="shop-detail__cta shop-detail__cta--secondary shop-focus-ring"
+            variant="outline"
             disabled={pending || !basketLineId}
             onClick={() => {
               if (!basketLineId) return;
@@ -49,12 +48,11 @@ export function AddToBasketButton({ slug, disabled, inBasket = false, basketLine
             }}
           >
             {pending ? "Updating…" : "Remove from basket"}
-          </button>
-        </div>
+          </ShopCommerceButton>
+        </>
       ) : (
-        <button
+        <ShopCommerceButton
           type="button"
-          className="shop-detail__cta shop-focus-ring"
           disabled={disabled || pending}
           onClick={() => {
             setError(null);
@@ -75,12 +73,12 @@ export function AddToBasketButton({ slug, disabled, inBasket = false, basketLine
           }}
         >
           {pending ? "Adding…" : "Add to basket"}
-        </button>
+        </ShopCommerceButton>
       )}
       {error ? (
-        <p className="shop-detail__notice shop-detail__notice--alert" role="alert">
+        <ShopNotice tone="error" title="Could not update basket">
           {error}
-        </p>
+        </ShopNotice>
       ) : null}
     </div>
   );

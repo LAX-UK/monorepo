@@ -60,3 +60,48 @@ export async function grantShopStaffRole(
     }
   });
 }
+
+export async function revokeShopStaffRole(
+  db: Database,
+  input: {
+    subject: string;
+    operatorSubjectId: string;
+  },
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const existing = await tx
+      .select({
+        id: shopStaffMember.id,
+        role: shopStaffMember.role,
+        disabledAt: shopStaffMember.disabledAt,
+      })
+      .from(shopStaffMember)
+      .where(eq(shopStaffMember.identitySubjectId, input.subject))
+      .limit(1);
+    if (!existing[0]) {
+      return;
+    }
+    const disabledAt = new Date();
+    await tx
+      .update(shopStaffMember)
+      .set({ disabledAt })
+      .where(eq(shopStaffMember.id, existing[0].id));
+    await insertShopAdminAudit(tx, {
+      actorSubjectId: input.operatorSubjectId,
+      capability: "settings.write",
+      action: "staff_grant_revoke",
+      targetType: "shop_staff_member",
+      targetId: existing[0].id,
+      beforeJson: {
+        identitySubjectId: input.subject,
+        role: existing[0].role,
+        disabledAt: existing[0].disabledAt?.toISOString() ?? null,
+      },
+      afterJson: {
+        identitySubjectId: input.subject,
+        role: existing[0].role,
+        disabledAt: disabledAt.toISOString(),
+      },
+    });
+  });
+}

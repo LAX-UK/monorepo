@@ -1,5 +1,7 @@
 import { cancelCheckoutOrderFormAction } from "@/app/actions/cancel-checkout.actions";
 import { ShopCheckoutCancelEnhancer } from "@/components/checkout/shop-checkout-cancel-enhancer.client";
+import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
+import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
@@ -27,6 +29,27 @@ export default async function CancelCheckoutPage({ searchParams }: CancelCheckou
   const gate = gateShopAuthenticatedRoute(viewer, returnTo);
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
+    return (
+      <MarketingDetailShell shellClassName="shop-page shop-page--checkout-cancel">
+        <ShopCommercePageShell
+          header={shopPageWayfinding.checkout}
+          contentClassName="shop-checkout"
+        >
+          <ShopStatusState
+            layout="page"
+            variant="error"
+            title="Sign-in required"
+            titleAs="h2"
+            description={
+              viewer.kind === "unavailable"
+                ? viewer.message
+                : "Sign in to cancel checkout for your account."
+            }
+            actions={<ShopCatalogueStateRetryButton />}
+          />
+        </ShopCommercePageShell>
+      </MarketingDetailShell>
+    );
   }
 
   if (!orderId) {
@@ -74,9 +97,9 @@ export default async function CancelCheckoutPage({ searchParams }: CancelCheckou
         ) : null}
         <form action={cancelCheckoutOrderFormAction} className="shop-checkout__form">
           <input type="hidden" name="orderId" value={orderId} />
-          <button type="submit" className="shop-detail__cta shop-focus-ring">
+          <ShopCommerceButton type="submit">
             Release reservation and return to basket
-          </button>
+          </ShopCommerceButton>
         </form>
         {viewer.kind !== "authenticated" ? (
           <p className="shop-detail__notice">
