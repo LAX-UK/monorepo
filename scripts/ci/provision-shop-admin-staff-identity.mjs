@@ -12,10 +12,6 @@ import { randomBytes } from "node:crypto";
 import { appendFileSync, writeFileSync } from "node:fs";
 import { Secret, TOTP } from "otpauth";
 import pg from "pg";
-import {
-  createEnvelopeCrypto,
-  parseAuthDekKey,
-} from "../../packages/identity-contracts/src/auth-at-rest.ts";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 import { deriveAcceptanceEmail } from "./provision-identity-acceptance-users.mjs";
 
@@ -85,13 +81,11 @@ async function clearTwoFactorState(email) {
   });
 }
 
-/** Test-only fallback when Better Auth enable returns 5xx; writes at-rest sealed TOTP like auth adapter. */
-async function bootstrapStaffTotpAtRest(email, dekKeyRaw) {
-  const crypto = createEnvelopeCrypto(parseAuthDekKey(dekKeyRaw));
+/** Test-only fallback when Better Auth enable returns 5xx. Plaintext matches pre-backfill rows; auth adapter seals on later writes. */
+async function bootstrapStaffTotpAtRest(email) {
   const totpSecret = new Secret({ size: 20 }).base32;
   const backupCodes = Array.from({ length: 10 }, () => randomBytes(5).toString("hex"));
-  const sealedSecret = crypto.seal(totpSecret);
-  const sealedBackup = crypto.seal(JSON.stringify(backupCodes));
+  const backupPayload = JSON.stringify(backupCodes);
   await withOwnerClient(async (client) => {
     const userRes = await client.query('select id from public."user" where lower(email) = $1', [
       email.toLowerCase(),
@@ -104,7 +98,7 @@ async function bootstrapStaffTotpAtRest(email, dekKeyRaw) {
     await client.query(
       `insert into public.two_factor (id, secret, backup_codes, user_id, verified)
        values ($1, $2, $3, $4, true)`,
-      [randomBytes(16).toString("hex"), sealedSecret, sealedBackup, userId],
+      [randomBytes(16).toString("hex"), totpSecret, backupPayload, userId],
     );
     await client.query('update public."user" set two_factor_enabled = true where id = $1', [
       userId,
@@ -293,7 +287,7 @@ async function ensureSilverTotp(authBase, email, password) {
       console.log(
         `::warning::two-factor enable failed (${enable.status}); bootstrapping staff TOTP via auth at-rest`,
       );
-      const bootstrapped = await bootstrapStaffTotpAtRest(email, dek);
+      const bootstrapped = await bootstrapStaffTotpAtRest(email);
       await assertTotpAcceptedByAuth(authBase, email, password, bootstrapped);
       console.log(`::add-mask::${bootstrapped}`);
       console.log("shop-admin staff silver TOTP bootstrapped for acceptance");
