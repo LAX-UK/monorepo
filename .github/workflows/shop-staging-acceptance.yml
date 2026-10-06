@@ -340,6 +340,7 @@ jobs:
         if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           DATABASE_URL_AUTH: ${{ env.DATABASE_URL_AUTH }}
           DATABASE_URL_OWNER: ${{ env.DATABASE_URL_OWNER }}
           GITHUB_TOKEN: ${{ github.token }}

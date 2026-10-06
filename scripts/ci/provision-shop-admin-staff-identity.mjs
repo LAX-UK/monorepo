@@ -10,8 +10,10 @@ import { spawnSync } from "node:child_process";
  */
 import { randomBytes } from "node:crypto";
 import { appendFileSync, writeFileSync } from "node:fs";
-import { Secret, TOTP } from "otpauth";
+import { generateRandomString, symmetricEncrypt } from "better-auth/crypto";
+import { TOTP } from "otpauth";
 import pg from "pg";
+import { createEnvelopeCrypto, parseAuthDekKey } from "../../packages/auth/src/index.ts";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 import { deriveAcceptanceEmail } from "./provision-identity-acceptance-users.mjs";
 
@@ -81,11 +83,41 @@ async function clearTwoFactorState(email) {
   });
 }
 
-/** Test-only fallback when Better Auth enable returns 5xx. Plaintext matches pre-backfill rows; auth adapter seals on later writes. */
+function requireBootstrapCryptoMaterial() {
+  const authSecret = process.env.BETTER_AUTH_SECRET?.trim();
+  const dekRaw = process.env.AUTH_DEK_KEY?.trim();
+  if (!authSecret || authSecret.length < 16) {
+    throw new Error("BETTER_AUTH_SECRET (≥16 chars) is required for staff TOTP bootstrap");
+  }
+  if (!dekRaw) {
+    throw new Error("AUTH_DEK_KEY is required for staff TOTP bootstrap");
+  }
+  return {
+    authSecret,
+    envelope: createEnvelopeCrypto(parseAuthDekKey(dekRaw)),
+  };
+}
+
+/** Matches Better Auth enable + at-rest adapter: symmetricEncrypt(BETTER_AUTH_SECRET) then DEK seal. */
+async function sealTwoFactorField(authSecret, envelope, plaintext) {
+  const inner = await symmetricEncrypt({ key: authSecret, data: plaintext });
+  return envelope.seal(inner);
+}
+
+function generateBackupCodesLikeBetterAuth() {
+  return Array.from({ length: 10 })
+    .fill(null)
+    .map(() => generateRandomString(10, "a-z", "0-9", "A-Z"))
+    .map((code) => `${code.slice(0, 5)}-${code.slice(5)}`);
+}
+
+/** Test-only fallback when Better Auth enable returns 5xx. */
 async function bootstrapStaffTotpAtRest(email) {
-  const totpSecret = new Secret({ size: 20 }).base32;
-  const backupCodes = Array.from({ length: 10 }, () => randomBytes(5).toString("hex"));
-  const backupPayload = JSON.stringify(backupCodes);
+  const { authSecret, envelope } = requireBootstrapCryptoMaterial();
+  const totpSecret = generateRandomString(32);
+  const backupCodes = generateBackupCodesLikeBetterAuth();
+  const sealedSecret = await sealTwoFactorField(authSecret, envelope, totpSecret);
+  const sealedBackup = await sealTwoFactorField(authSecret, envelope, JSON.stringify(backupCodes));
   await withOwnerClient(async (client) => {
     const userRes = await client.query('select id from public."user" where lower(email) = $1', [
       email.toLowerCase(),
@@ -98,7 +130,7 @@ async function bootstrapStaffTotpAtRest(email) {
     await client.query(
       `insert into public.two_factor (id, secret, backup_codes, user_id, verified)
        values ($1, $2, $3, $4, true)`,
-      [randomBytes(16).toString("hex"), totpSecret, backupPayload, userId],
+      [randomBytes(16).toString("hex"), sealedSecret, sealedBackup, userId],
     );
     await client.query('update public."user" set two_factor_enabled = true where id = $1', [
       userId,
@@ -202,12 +234,6 @@ async function assertTotpAcceptedByAuth(authBase, email, password, totpSecret) {
   captureCookies(verify, jar);
   if (!verify.ok) {
     const body = await verify.text();
-    if (verify.status >= 500) {
-      console.log(
-        `::warning::staff TOTP API verify returned ${verify.status} (continuing; browser e2e verifies): ${body}`,
-      );
-      return;
-    }
     throw new Error(`staff TOTP verification failed against test-auth (${verify.status}): ${body}`);
   }
 }
