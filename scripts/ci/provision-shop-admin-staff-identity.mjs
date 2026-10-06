@@ -83,10 +83,17 @@ async function signInStaff(authBase, email, password) {
     body: JSON.stringify({ email, password }),
   });
   captureCookies(signIn, jar);
-  if (!signIn.ok) {
-    throw new Error(`staff sign-in failed (${signIn.status}): ${await signIn.text()}`);
+  const raw = await signIn.text();
+  let body = {};
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = {};
   }
-  return jar;
+  if (!signIn.ok) {
+    throw new Error(`staff sign-in failed (${signIn.status}): ${raw}`);
+  }
+  return { jar, twoFactorRedirect: Boolean(body.twoFactorRedirect) };
 }
 
 async function ensureSilverTotp(authBase, email, password) {
@@ -102,7 +109,19 @@ async function ensureSilverTotp(authBase, email, password) {
     await clearTwoFactorState(email);
   }
 
-  let jar = await signInStaff(authBase, email, password);
+  let { jar, twoFactorRedirect } = await signInStaff(authBase, email, password);
+  if (twoFactorRedirect) {
+    console.log(
+      "::warning::staff sign-in returned twoFactorRedirect before enable; clearing 2FA state and retrying sign-in",
+    );
+    await clearTwoFactorState(email);
+    ({ jar, twoFactorRedirect } = await signInStaff(authBase, email, password));
+    if (twoFactorRedirect) {
+      throw new Error(
+        "staff sign-in still requires two-factor after clearing state; set SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET or fix auth DB",
+      );
+    }
+  }
 
   async function callEnable() {
     const response = await fetch(`${authBase}/api/auth/two-factor/enable`, {
@@ -127,7 +146,7 @@ async function ensureSilverTotp(authBase, email, password) {
     }
     console.log("::warning::two-factor enable failed; clearing partial state and retrying once");
     await clearTwoFactorState(email);
-    jar = await signInStaff(authBase, email, password);
+    ({ jar } = await signInStaff(authBase, email, password));
     ({ response: enable, body: enableBody } = await callEnable());
   }
   if (!enable.ok) {
@@ -138,10 +157,16 @@ async function ensureSilverTotp(authBase, email, password) {
       );
       return;
     }
-    console.log(
-      `::warning::two-factor enable failed (${enable.status}); staff e2e will skip until SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is configured: ${JSON.stringify(enableBody)}`,
+    const detail = JSON.stringify(enableBody);
+    if (configuredSecret) {
+      console.log(
+        `::warning::two-factor enable failed (${enable.status}) but SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is set: ${detail}`,
+      );
+      return;
+    }
+    throw new Error(
+      `two-factor enable failed (${enable.status}); set SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET after manual enrolment: ${detail}`,
     );
-    return;
   }
   const totpUri = enableBody?.totpURI;
   if (typeof totpUri !== "string") {

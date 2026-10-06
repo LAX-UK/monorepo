@@ -71,7 +71,13 @@ export async function signInStaffThroughIdentity(input: {
     return;
   }
 
-  await passwordField.waitFor({ state: "visible", timeout: 45_000 });
+  try {
+    await passwordField.waitFor({ state: "visible", timeout: 45_000 });
+  } catch (error) {
+    throw new Error(
+      `staff hosted login did not reach password step (url=${input.page.url()}): ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   await passwordField.fill(input.password);
 
   const signIn = input.page.getByRole("button", { name: /^sign in$/i });
