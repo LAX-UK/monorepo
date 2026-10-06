@@ -343,9 +343,9 @@ jobs:
           DATABASE_URL_AUTH: ${{ env.DATABASE_URL_AUTH }}
           DATABASE_URL_OWNER: ${{ env.DATABASE_URL_OWNER }}
           GITHUB_TOKEN: ${{ github.token }}
+          SHOP_ACCEPTANCE_STAFF_TOTP_FILE: ${{ runner.temp }}/shop-acceptance-staff-totp.secret
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
-          SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
           IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
         run: |
           set -euo pipefail
@@ -354,6 +354,15 @@ jobs:
             exit 1
           }
           node scripts/ci/provision-shop-admin-staff-identity.mjs
+          test -n "${SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET:-}" || test -s "$SHOP_ACCEPTANCE_STAFF_TOTP_FILE"
+      - name: Assert staff TOTP handoff for e2e
+        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        run: |
+          set -euo pipefail
+          test -n "${SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET:-}" || {
+            echo "::error::Provision did not export SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET"
+            exit 1
+          }
       - name: Seed staff operations fixtures
         if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
@@ -382,7 +391,8 @@ jobs:
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ env.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           SHOP_ADMIN_ACCEPTANCE_PASSWORD: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_PASSWORD }}
-          SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET: ${{ env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET || secrets.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET }}
+          SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET: ${{ env.SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET }}
+          SHOP_ACCEPTANCE_STAFF_TOTP_FILE: ${{ runner.temp }}/shop-acceptance-staff-totp.secret
           SHOP_ACCEPTANCE_FEATURE_PAYOUTS: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
           SHOP_ACCEPTANCE_FEATURE_THIRD_PARTY: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
           SHOP_ACCEPTANCE_FEATURE_ORIGINALS: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}

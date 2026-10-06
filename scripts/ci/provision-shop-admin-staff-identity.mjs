@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
  * (script attempts `gh secret set` when GITHUB_TOKEN can write environment secrets).
  */
 import { randomBytes } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { Secret, TOTP } from "otpauth";
 import pg from "pg";
 import {
@@ -116,20 +116,23 @@ async function bootstrapStaffTotpAtRest(email, dekKeyRaw) {
 function exportTotpSecretForWorkflowJob(secret) {
   const envFile = process.env.GITHUB_ENV?.trim();
   if (envFile) {
-    appendFileSync(envFile, `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET=${secret}\n`);
+    appendFileSync(envFile, `SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET=${secret}\n`);
+  }
+  const totpFile = process.env.SHOP_ACCEPTANCE_STAFF_TOTP_FILE?.trim();
+  if (totpFile) {
+    writeFileSync(totpFile, `${secret}\n`, { mode: 0o600 });
   }
 }
 
 function persistTotpSecretOnGithub(secret) {
   exportTotpSecretForWorkflowJob(secret);
-  const configured = process.env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET?.trim();
-  if (configured) {
-    if (configured !== secret) {
-      console.log(
-        "::warning::SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET does not match enrolled secret; update the GitHub test secret",
-      );
-    }
-    return;
+  const configured =
+    process.env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET?.trim() ||
+    process.env.SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET?.trim();
+  if (configured && configured !== secret) {
+    console.log(
+      "::warning::replacing staff acceptance TOTP secret for this run (auth DB was re-enrolled)",
+    );
   }
   if (!process.env.GITHUB_TOKEN?.trim()) {
     console.log(
@@ -187,17 +190,50 @@ async function signInStaff(authBase, email, password) {
   return { jar, twoFactorRedirect: Boolean(body.twoFactorRedirect) };
 }
 
+async function assertTotpAcceptedByAuth(authBase, email, password, totpSecret) {
+  const { jar, twoFactorRedirect } = await signInStaff(authBase, email, password);
+  if (!twoFactorRedirect) {
+    throw new Error("expected twoFactorRedirect when verifying staff TOTP enrolment");
+  }
+  const code = new TOTP({ secret: totpSecret }).generate();
+  const verify = await fetch(`${authBase}/api/auth/two-factor/verify-totp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: authBase,
+      cookie: cookieHeader(jar),
+    },
+    body: JSON.stringify({ code, trustDevice: true }),
+  });
+  captureCookies(verify, jar);
+  if (!verify.ok) {
+    throw new Error(
+      `staff TOTP verification failed against test-auth (${verify.status}): ${await verify.text()}`,
+    );
+  }
+}
+
 async function ensureSilverTotp(authBase, email, password) {
   const configuredSecret = process.env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET?.trim();
   if (await isTwoFactorEnabled(email)) {
     if (configuredSecret) {
-      console.log("shop-admin staff TOTP already enabled");
-      return;
+      try {
+        await assertTotpAcceptedByAuth(authBase, email, password, configuredSecret);
+        console.log("shop-admin staff TOTP already enabled and verified");
+        persistTotpSecretOnGithub(configuredSecret);
+        return;
+      } catch (error) {
+        console.log(
+          `::warning::stored SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET did not verify; re-enrolling (${error instanceof Error ? error.message : String(error)})`,
+        );
+        await clearTwoFactorState(email);
+      }
+    } else {
+      console.log(
+        "::warning::shop-admin staff has TOTP enabled in auth DB without a verified secret; clearing for re-enrolment",
+      );
+      await clearTwoFactorState(email);
     }
-    console.log(
-      "::warning::shop-admin staff has TOTP enabled in auth DB but SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is unset; clearing for re-enrolment",
-    );
-    await clearTwoFactorState(email);
   }
 
   let { jar, twoFactorRedirect } = await signInStaff(authBase, email, password);
@@ -232,27 +268,28 @@ async function ensureSilverTotp(authBase, email, password) {
   let { response: enable, body: enableBody } = await callEnable();
   if (!enable.ok) {
     if (await isTwoFactorEnabled(email)) {
-      console.log("shop-admin staff TOTP already enabled (enable returned error)");
-      return;
+      console.log(
+        "::warning::two-factor enable failed but DB shows enabled; clearing partial enrolment",
+      );
+      await clearTwoFactorState(email);
+      ({ jar } = await signInStaff(authBase, email, password));
+      ({ response: enable, body: enableBody } = await callEnable());
     }
+  }
+  if (!enable.ok) {
     console.log("::warning::two-factor enable failed; clearing partial state and retrying once");
     await clearTwoFactorState(email);
     ({ jar } = await signInStaff(authBase, email, password));
     ({ response: enable, body: enableBody } = await callEnable());
   }
   if (!enable.ok) {
-    if (configuredSecret) {
-      console.log(
-        `::warning::two-factor enable failed (${enable.status}) but SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is set; assuming manual enrolment`,
-      );
-      return;
-    }
     const dek = process.env.AUTH_DEK_KEY?.trim();
     if (dek) {
       console.log(
         `::warning::two-factor enable failed (${enable.status}); bootstrapping staff TOTP via auth at-rest`,
       );
       const bootstrapped = await bootstrapStaffTotpAtRest(email, dek);
+      await assertTotpAcceptedByAuth(authBase, email, password, bootstrapped);
       console.log(`::add-mask::${bootstrapped}`);
       console.log("shop-admin staff silver TOTP bootstrapped for acceptance");
       persistTotpSecretOnGithub(bootstrapped);
@@ -285,6 +322,7 @@ async function ensureSilverTotp(authBase, email, password) {
   if (!(await isTwoFactorEnabled(email))) {
     throw new Error("two-factor verify succeeded but user.two_factor_enabled is still false");
   }
+  await assertTotpAcceptedByAuth(authBase, email, password, secret);
   console.log("shop-admin staff silver TOTP enrolled");
   persistTotpSecretOnGithub(secret);
 }
