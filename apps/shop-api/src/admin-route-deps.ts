@@ -1,4 +1,6 @@
+import type { ShopStaffRole } from "@auction/shop-domain";
 import type { ImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
+import type { AdminReadPorts } from "./application/ports/admin-readers.js";
 import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
 import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
 import type { SaleFeeWriter } from "./application/ports/sale-fee.writer.js";
@@ -21,6 +23,19 @@ export type AdminRoutesDeps = {
   health: HealthDeps;
   importArtwork: ImportArtworkHandler;
   grantSaleAuthority: SaleAuthorityWriter["grantSaleAuthority"];
+  getSaleAuthorityRequest: AdminReadPorts["saleAuthorityRequests"]["getRequestById"];
+  rejectSaleAuthorityRequest(input: {
+    requestId: string;
+    reason: string;
+    operatorSubjectId: string;
+  }): Promise<{ requestId: string; status: "rejected" }>;
+  grantStaffRole(input: {
+    subject: string;
+    role: ShopStaffRole;
+    operatorSubjectId: string;
+  }): Promise<void>;
+  revokeStaffRole(input: { subject: string; operatorSubjectId: string }): Promise<void>;
+  adminRead: AdminReadPorts;
   staffReader: ShopStaffMemberReader;
   createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
   updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;

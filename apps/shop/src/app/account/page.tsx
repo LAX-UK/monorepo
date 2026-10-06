@@ -117,6 +117,7 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
       ) : null}
       {payoutsEnabled ? (
         <>
+          <ShopAccountLinkButton href="/account/sales" label="Sales statement" variant="outline" />
           <ShopAccountLinkButton href="/account/payouts" label="Payouts" variant="outline" />
           <ShopAccountLinkButton href="/account/documents" label="Documents" variant="outline" />
         </>

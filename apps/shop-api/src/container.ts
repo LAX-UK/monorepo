@@ -15,6 +15,7 @@ import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
 import type { ShopApiEnv } from "./env.js";
+import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
 import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
@@ -22,6 +23,7 @@ import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
+import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import {
@@ -34,7 +36,7 @@ import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
-import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
+import { grantShopStaffRole, revokeShopStaffRole } from "./infrastructure/grant-staff-role.js";
 import { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
 import { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
@@ -42,6 +44,7 @@ import { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mar
 import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
+import { rejectSaleAuthorityRequest } from "./infrastructure/reject-sale-authority-request.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
@@ -128,6 +131,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     env.DOMAIN_EVENT_PUBLISH_VALIDATE,
   );
   const portalOwnership = createDrizzlePortalOwnershipRepository(db);
+  const portalSales = createDrizzlePortalSalesRepository(db);
+  const adminRead = createDrizzleAdminReadRepository(db);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
@@ -164,6 +169,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         health: healthDeps,
         importArtwork,
         grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),
+        getSaleAuthorityRequest: (requestId) =>
+          adminRead.saleAuthorityRequests.getRequestById(requestId),
+        rejectSaleAuthorityRequest: (input) => rejectSaleAuthorityRequest(db, input),
+        grantStaffRole: (input) => grantShopStaffRole(db, input),
+        revokeStaffRole: (input) => revokeShopStaffRole(db, input),
+        adminRead,
         staffReader,
         createProductionTask,
         updateFulfilment,
@@ -177,7 +188,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         thirdPartySales: createDrizzleThirdPartySaleWriter(db),
         originalSales: createDrizzleOriginalSaleWriter(db),
       },
-      portal: { portalOwnership },
+      portal: { portalOwnership, portalSales },
       catalogue: {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),

@@ -1,3 +1,4 @@
+import { SaleLimitRequestForm } from "@/components/account/sale-limit-request-form.client";
 import {
   ShopAccountBodyText,
   ShopAccountLinkButton,
@@ -6,7 +7,10 @@ import {
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { fetchPortalSaleAuthority } from "@/lib/shop-portal.server";
+import {
+  fetchPortalSaleAuthority,
+  fetchPortalSaleAuthorityRequests,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
@@ -38,7 +42,10 @@ export default async function ShopAccountSaleLimitsPage() {
     );
   }
 
-  const result = await fetchPortalSaleAuthority();
+  const [result, requests] = await Promise.all([
+    fetchPortalSaleAuthority(),
+    fetchPortalSaleAuthorityRequests(),
+  ]);
 
   return (
     <ShopAccountShell
@@ -103,8 +110,8 @@ export default async function ShopAccountSaleLimitsPage() {
       ) : (
         <>
           <ShopAccountBodyText>
-            These limits show how many of your editions are authorised for sale. Contact your
-            account manager to request changes.
+            These limits show how many of your editions are authorised for sale. Submit a change
+            request below and staff will review it.
           </ShopAccountBodyText>
           <ul className="space-y-3 text-sm">
             {result.data.map((row) => (
@@ -116,6 +123,23 @@ export default async function ShopAccountSaleLimitsPage() {
               </li>
             ))}
           </ul>
+          <SaleLimitRequestForm artworks={result.data} />
+          {requests.status === "ok" && requests.data.length > 0 ? (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-on-surface">Your requests</h2>
+              <ul className="space-y-2 text-sm">
+                {requests.data.map((row) => (
+                  <li key={row.requestId} className="rounded-md border border-outline-variant p-3">
+                    <p className="font-medium text-on-surface">{row.artworkTitle}</p>
+                    <p className="text-on-surface-variant">
+                      {row.requestedCount} requested · {row.status} ·{" "}
+                      {new Date(row.createdAt).toLocaleDateString("en-GB")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <ShopAccountLinkButton href="/account/editions" label="My editions" variant="outline" />
           <ShopAccountLinkButton href="/account" label="Back to account" variant="outline" />
         </>
