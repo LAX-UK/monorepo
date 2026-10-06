@@ -1,6 +1,61 @@
 import type { Page } from "@playwright/test";
 import { TOTP } from "otpauth";
 
+function isOidcAuthorizeUrl(url: string): boolean {
+  try {
+    return new URL(url).pathname.endsWith("/oauth2/authorize");
+  } catch {
+    return /\/oauth2\/authorize(?:\?|$)/.test(url);
+  }
+}
+
+/** Authorize often 302s to hosted login; Playwright can land on the bare authorize URL without UI. */
+async function followAuthorizeToHostedLogin(page: Page, authBaseUrl: string): Promise<void> {
+  if (!isOidcAuthorizeUrl(page.url())) return;
+
+  const authorizeUrl = page.url();
+  const authorizeRes = await page.request.get(authorizeUrl, { maxRedirects: 0 });
+  const location = authorizeRes.headers().location;
+  if (location && authorizeRes.status() >= 300 && authorizeRes.status() < 400) {
+    await page.goto(new URL(location, authBaseUrl).toString(), { waitUntil: "domcontentloaded" });
+    return;
+  }
+
+  await page
+    .waitForURL((url) => !isOidcAuthorizeUrl(url.toString()), {
+      timeout: 45_000,
+      waitUntil: "domcontentloaded",
+    })
+    .catch(() => {});
+
+  if (isOidcAuthorizeUrl(page.url())) {
+    const parsed = new URL(authorizeUrl);
+    const loginUrl = new URL("/login", authBaseUrl);
+    for (const [key, value] of parsed.searchParams.entries()) {
+      loginUrl.searchParams.set(key, value);
+    }
+    await page.goto(loginUrl.toString(), { waitUntil: "domcontentloaded" });
+  }
+}
+
+async function resumeIfAlreadySignedIn(
+  page: Page,
+  authBaseUrl: string,
+  destination: RegExp,
+): Promise<boolean> {
+  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+  if (!(await continueLink.isVisible().catch(() => false))) return false;
+  await continueLink.click();
+  await page.waitForURL(
+    (url) => destination.test(url.toString()) || isOidcAuthorizeUrl(url.toString()),
+    { timeout: 60_000, waitUntil: "domcontentloaded" },
+  );
+  if (isOidcAuthorizeUrl(page.url())) {
+    await followAuthorizeToHostedLogin(page, authBaseUrl);
+  }
+  return destination.test(page.url());
+}
+
 export async function signInStaffThroughIdentity(input: {
   page: Page;
   authBaseUrl: string;
@@ -14,6 +69,7 @@ export async function signInStaffThroughIdentity(input: {
     waitUntil: "domcontentloaded",
   });
   await input.page.waitForURL(/\/auth\/|test-auth\.lax\.bid/, { timeout: 60_000 });
+  await followAuthorizeToHostedLogin(input.page, input.authBaseUrl.replace(/\/+$/, ""));
 
   const continueToCredentials = input.page.getByRole("button", { name: /^continue$/i });
   const passwordField = input.page
@@ -49,6 +105,12 @@ export async function signInStaffThroughIdentity(input: {
     await continueToCredentials.click();
   }
 
+  const authBase = input.authBaseUrl.replace(/\/+$/, "");
+  const shopAdminDestination = /test-shop-admin\.lax\.bid|localhost:3030/;
+  if (await resumeIfAlreadySignedIn(input.page, authBase, shopAdminDestination)) {
+    return;
+  }
+
   if (input.page.url().includes("/two-factor")) {
     if (!input.totpSecret) {
       throw new Error("SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is required for silver staff sign-in");
@@ -74,9 +136,14 @@ export async function signInStaffThroughIdentity(input: {
   try {
     await passwordField.waitFor({ state: "visible", timeout: 45_000 });
   } catch (error) {
-    throw new Error(
-      `staff hosted login did not reach password step (url=${input.page.url()}): ${error instanceof Error ? error.message : String(error)}`,
-    );
+    if (isOidcAuthorizeUrl(input.page.url())) {
+      await followAuthorizeToHostedLogin(input.page, input.authBaseUrl.replace(/\/+$/, ""));
+      await passwordField.waitFor({ state: "visible", timeout: 45_000 });
+    } else {
+      throw new Error(
+        `staff hosted login did not reach password step (url=${input.page.url()}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
   await passwordField.fill(input.password);
 
@@ -105,10 +172,24 @@ export async function signInStaffThroughIdentity(input: {
     await input.page.getByRole("button", { name: /verify|continue|submit/i }).click();
   }
 
+  if (isOidcAuthorizeUrl(input.page.url())) {
+    const allow = input.page.getByRole("button", { name: /^allow$/i });
+    if (await allow.isVisible().catch(() => false)) {
+      await Promise.all([
+        input.page.waitForURL(shopAdminDestination, {
+          timeout: 120_000,
+          waitUntil: "domcontentloaded",
+        }),
+        allow.click(),
+      ]);
+      return;
+    }
+  }
+
   const authorize = input.page.getByRole("button", { name: /authorize|allow|continue/i });
   if (await authorize.isVisible().catch(() => false)) {
     await authorize.click();
   }
 
-  await input.page.waitForURL(/test-shop-admin\.lax\.bid|localhost:3030/, { timeout: 120_000 });
+  await input.page.waitForURL(shopAdminDestination, { timeout: 120_000 });
 }
