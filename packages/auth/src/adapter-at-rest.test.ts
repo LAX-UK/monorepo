@@ -51,29 +51,4 @@ describe("auth adapter at-rest protection", () => {
     });
     expect(create.mock.calls[1]?.[0].data.accessToken).toMatch(/^v1:/);
   });
-
-  it("seals twoFactor secret and backupCodes for at-rest storage", async () => {
-    const create = vi.fn(async (args) => args.data);
-    const base = {
-      create,
-      findOne: vi.fn(async () => null),
-      findMany: vi.fn(async () => []),
-      update: vi.fn(async () => null),
-      updateMany: vi.fn(async () => 0),
-      delete: vi.fn(async () => undefined),
-      deleteMany: vi.fn(async () => 0),
-      transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({}),
-    };
-    const adapter = wrapAuthDatabaseAdapter(
-      base as never,
-      createEnvelopeCrypto(Buffer.alloc(32, 7)),
-    );
-
-    await adapter.create({
-      model: "twoFactor",
-      data: { secret: "inner-encrypted-secret", backupCodes: "inner-encrypted-backups" },
-    });
-    expect(create.mock.calls[0]?.[0].data.secret).toMatch(/^v1:/);
-    expect(create.mock.calls[0]?.[0].data.backupCodes).toMatch(/^v1:/);
-  });
 });

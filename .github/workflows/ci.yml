@@ -121,7 +121,7 @@ jobs:
         run: pnpm ci:identity-exit-criteria
 
       - name: CI script unit tests
-        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs
+        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs
 
       - name: Actionlint workflow contracts
         run: |
