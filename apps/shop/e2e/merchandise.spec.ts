@@ -3,6 +3,10 @@ import { expect, test } from "@playwright/test";
 test.describe("merchandise catalogue @e2e", () => {
   test("lists acceptance merchandise when enabled", async ({ page }) => {
     test.skip(process.env.PLAYWRIGHT_E2E !== "1", "Set PLAYWRIGHT_E2E=1 for staging catalogue");
+    test.skip(
+      (process.env.SHOP_ACCEPTANCE_FEATURE_MERCHANDISE ?? "false").trim() !== "true",
+      "merchandise disabled on target environment",
+    );
     await page.goto("/merchandise");
     const disabled = page.getByText(/not available|coming soon|disabled/i);
     if (

@@ -11,6 +11,25 @@ if (reportPaths.length === 0) {
   process.exit(1);
 }
 
+/** When flags are off, shop-admin early skips may appear as bare test titles in JSON reports. */
+const STAFF_SUITE_FEATURE_ENV = [
+  { suiteIncludes: "direct sale payout", env: "SHOP_ACCEPTANCE_FEATURE_PAYOUTS" },
+  { suiteIncludes: "stock holds", env: "SHOP_ACCEPTANCE_FEATURE_THIRD_PARTY" },
+  { suiteIncludes: "third-party sales", env: "SHOP_ACCEPTANCE_FEATURE_THIRD_PARTY" },
+  { suiteIncludes: "original sales", env: "SHOP_ACCEPTANCE_FEATURE_ORIGINALS" },
+];
+
+function isStaffFeatureOffSkip(suiteTitle) {
+  const suite = (suiteTitle ?? "").toLowerCase();
+  for (const { suiteIncludes, env } of STAFF_SUITE_FEATURE_ENV) {
+    if (!suite.includes(suiteIncludes)) continue;
+    if ((process.env[env] ?? "false").trim() !== "true") {
+      return true;
+    }
+  }
+  return false;
+}
+
 const allowedReasonPatterns = [
   /^Set SHOP_E2E_STRIPE_CHECKOUT=1/,
   /^Set SHOP_ACCEPTANCE_PAID_ORDER_ID from staging Stripe webhook rehearsal$/,
@@ -67,7 +86,9 @@ function collectSkips(suites) {
         for (const result of test.results ?? []) {
           if (result.status !== "skipped") continue;
           const reason = resolveSkipReason(result, spec, test);
-          const allowed = allowedReasonPatterns.some((pattern) => pattern.test(reason));
+          const allowed =
+            allowedReasonPatterns.some((pattern) => pattern.test(reason)) ||
+            isStaffFeatureOffSkip(suite.title);
           if (!allowed) {
             unexpected.push({
               title: `${suite.title ?? ""} › ${spec.title ?? test.title ?? "test"}`,

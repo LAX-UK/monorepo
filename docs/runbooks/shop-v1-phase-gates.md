@@ -210,7 +210,23 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | [37323230356](https://github.com/LAX-UK/monorepo/actions/runs/37323230356) | Green | `seed_catalogue=true`; staff-ops skipped (`test-shop-admin.lax.bid` DNS missing). |
 | [37323260748](https://github.com/LAX-UK/monorepo/actions/runs/37323260748) | Green | Second consecutive run on live SHA. |
 
-**Next:** shop-admin DNS (auction-infra persistent test) + staff secrets → staff-ops gate; then flag rollouts one at a time.
+**Seeded acceptance (live pin `edf9da24`, shop-admin live; validation via `monorepo_ref=fix/shop-admin-staff-sign-in-e2e`):**
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| [37347381467](https://github.com/LAX-UK/monorepo/actions/runs/37347381467) | Failed | Staff shop-admin specs skipped as expected; **`merchandise.spec.ts`** failed (cap not visible with `SHOP_MERCHANDISE_ENABLED` off). |
+| [37348440470](https://github.com/LAX-UK/monorepo/actions/runs/37348440470) | Failed | Same merchandise failure. |
+
+**Live pin after [#448](https://github.com/LAX-UK/monorepo/pull/448):** deploy [37351548933](https://github.com/LAX-UK/monorepo/actions/runs/37351548933) → **`51fdc38bf`** on `/health/ready`.
+
+**Staff-ops gate (pin `51fdc38bf`, `monorepo_ref=fix/merchandise-staff-ops-gate`, [#449](https://github.com/LAX-UK/monorepo/pull/449)):**
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| [37362704069](https://github.com/LAX-UK/monorepo/actions/runs/37362704069) | Green | Merchandise + staff specs skip with flags off; skip audit passes. |
+| [37364124249](https://github.com/LAX-UK/monorepo/actions/runs/37364124249) | Green | Second consecutive gate run. |
+
+**Next:** merge [#449](https://github.com/LAX-UK/monorepo/pull/449); repeat 2× on `main` without `monorepo_ref`; `SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET` before flag-on staff specs; flag rollouts (payouts → third-party → originals + merchandise).
 
 **Infra follow-ups (test):**
 
