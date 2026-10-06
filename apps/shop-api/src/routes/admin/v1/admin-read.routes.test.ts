@@ -23,7 +23,11 @@ describe("admin read routes", () => {
     } as never);
     const app = createShopApiApp({
       deps: createMinimalShopApiTestDeps({
-        env: { SHOP_ADMIN_ENABLED: true, SHOP_PAYOUTS_ENABLED: true },
+        env: {
+          ...createMinimalShopApiTestDeps().env,
+          SHOP_ADMIN_ENABLED: true,
+          SHOP_PAYOUTS_ENABLED: true,
+        },
         staffReader: {
           findActiveByIdentitySubject: async (subject) =>
             subject === "finance-subject"

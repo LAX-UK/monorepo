@@ -8,7 +8,7 @@ import { createEnvelopeCrypto } from "../../packages/auth/src/crypto/envelope.ts
 test("staff TOTP bootstrap round-trips Better Auth + DEK layers", async () => {
   const authSecret = "ci-auth-secret-at-least-sixteen-characters";
   const envelope = createEnvelopeCrypto(parseAuthDekKey(randomBytes(32).toString("hex")));
-  const totpSecret = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+  const totpSecret = randomBytes(20).toString("hex");
   const sealed = envelope.seal(await symmetricEncrypt({ key: authSecret, data: totpSecret }));
   const opened = await symmetricDecrypt({
     key: authSecret,
