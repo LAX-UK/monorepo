@@ -76,3 +76,11 @@ export async function PATCH(
   const { path } = await context.params;
   return handle(request, path);
 }
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ path: string[] }> },
+): Promise<Response> {
+  const { path } = await context.params;
+  return handle(request, path);
+}

@@ -1,30 +1,42 @@
-import { AdminTable } from "@/components/shop-admin-shell";
-import { loadAdminList } from "@/lib/admin-data.server";
+import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
+import { OrdersStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { adminListPath } from "@/server/application/admin-list-path";
+import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { redirect } from "next/navigation";
 
-export default async function OrdersPage() {
-  const data = await loadAdminList<{
-    items: Array<{
-      orderId: string;
-      status: string;
-      totalPence: number;
-      createdAt: string;
-    }>;
-  }>("orders?limit=50");
+type OrderList = {
+  items: Array<{
+    orderId: string;
+    status: string;
+    totalPence: number;
+    createdAt: string;
+  }>;
+  nextCursor: string | null;
+};
+
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
+  const { cursor } = await searchParams;
+  const result = await fetchAdminJson<OrderList>(adminListPath("orders", { cursor }));
+  if (result.status === "unauthorized") redirect("/login");
+  if (result.status !== "ok") {
+    return (
+      <div>
+        <h1 className="mb-6 text-2xl font-semibold">Orders</h1>
+        <AdminFetchState status={result.status} />
+      </div>
+    );
+  }
 
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Orders</h1>
-      <AdminTable
-        columns={["Order", "Status", "Total", "Created"]}
-        rows={
-          data?.items.map((row) => [
-            row.orderId.slice(0, 8),
-            row.status,
-            `£${(row.totalPence / 100).toFixed(2)}`,
-            new Date(row.createdAt).toLocaleDateString("en-GB"),
-          ]) ?? []
-        }
-      />
+      <OrdersStaffListTable items={result.data.items} />
+      <AdminListCursorNav pathname="/orders" nextCursor={result.data.nextCursor} />
     </div>
   );
 }
