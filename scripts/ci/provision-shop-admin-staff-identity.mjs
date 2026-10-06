@@ -90,9 +90,16 @@ async function signInStaff(authBase, email, password) {
 }
 
 async function ensureSilverTotp(authBase, email, password) {
+  const configuredSecret = process.env.SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET?.trim();
   if (await isTwoFactorEnabled(email)) {
-    console.log("shop-admin staff TOTP already enabled");
-    return;
+    if (configuredSecret) {
+      console.log("shop-admin staff TOTP already enabled");
+      return;
+    }
+    console.log(
+      "::warning::shop-admin staff has TOTP enabled in auth DB but SHOP_ADMIN_ACCEPTANCE_TOTP_SECRET is unset; clearing for re-enrolment",
+    );
+    await clearTwoFactorState(email);
   }
 
   let jar = await signInStaff(authBase, email, password);

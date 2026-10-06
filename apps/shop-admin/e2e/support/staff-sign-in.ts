@@ -30,7 +30,22 @@ export async function signInStaffThroughIdentity(input: {
   if (await emailField.isVisible().catch(() => false)) {
     await emailField.fill(input.email);
   }
-  if (await continueToCredentials.isVisible().catch(() => false)) {
+  const emailFirstRoot = input.page.locator('#login-root[data-email-first="true"]');
+  if (await emailFirstRoot.isVisible().catch(() => false)) {
+    const emailStepContinue = emailFirstRoot
+      .locator('[data-login-step="email"]')
+      .getByRole("button", { name: /^continue$/i });
+    if (await emailStepContinue.isVisible().catch(() => false)) {
+      await emailStepContinue.click();
+    } else {
+      await input.page.locator("#login-form").evaluate((form) => {
+        if (form instanceof HTMLFormElement) form.requestSubmit();
+      });
+    }
+    await input.page
+      .locator('[data-login-step="credentials"]:not([hidden])')
+      .waitFor({ state: "attached", timeout: 45_000 });
+  } else if (await continueToCredentials.isVisible().catch(() => false)) {
     await continueToCredentials.click();
   }
 
