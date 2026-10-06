@@ -27,7 +27,18 @@ const SaleAuthorityRequestListQuerySchema = Type.Intersect([
   }),
 ]);
 
-export async function registerAdminReadRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
+export type AdminReadPhaseFlags = {
+  payoutsEnabled: boolean;
+  thirdPartyEnabled: boolean;
+  originalsEnabled: boolean;
+  merchandiseEnabled: boolean;
+};
+
+export async function registerAdminReadRoutes(
+  app: FastifyInstance,
+  deps: AdminRoutesDeps,
+  phaseFlags: AdminReadPhaseFlags,
+) {
   app.get(
     "/overview/kpis",
     {
@@ -58,101 +69,107 @@ export async function registerAdminReadRoutes(app: FastifyInstance, deps: AdminR
     },
   );
 
-  app.get(
-    "/fulfilment",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminFulfilmentListSchema, 403: ShopApiErrorBodySchema },
+  if (phaseFlags.payoutsEnabled) {
+    app.get(
+      "/fulfilment",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminFulfilmentListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "fulfilment.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.fulfilment.listFulfilment(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "fulfilment.write");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.fulfilment.listFulfilment(query);
+      },
+    );
 
-  app.get(
-    "/production/tasks",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminProductionTaskListSchema, 403: ShopApiErrorBodySchema },
+    app.get(
+      "/production/tasks",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminProductionTaskListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "production.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.production.listProductionTasks(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "production.write");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.production.listProductionTasks(query);
+      },
+    );
 
-  app.get(
-    "/payouts",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminPayoutListSchema, 403: ShopApiErrorBodySchema },
+    app.get(
+      "/payouts",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminPayoutListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "payout.mark_paid");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.payouts.listPayouts(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "payout.mark_paid");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.payouts.listPayouts(query);
+      },
+    );
+  }
 
-  app.get(
-    "/stock-holds",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminStockHoldListSchema, 403: ShopApiErrorBodySchema },
+  if (phaseFlags.thirdPartyEnabled) {
+    app.get(
+      "/stock-holds",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminStockHoldListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "stock_hold.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.sales.listStockHolds(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "stock_hold.write");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.sales.listStockHolds(query);
+      },
+    );
 
-  app.get(
-    "/third-party-sales",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminThirdPartySaleListSchema, 403: ShopApiErrorBodySchema },
+    app.get(
+      "/third-party-sales",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminThirdPartySaleListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "third_party_sale.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.sales.listThirdPartySales(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "third_party_sale.write");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.sales.listThirdPartySales(query);
+      },
+    );
+  }
 
-  app.get(
-    "/original-sales",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminOriginalSaleListSchema, 403: ShopApiErrorBodySchema },
+  if (phaseFlags.originalsEnabled) {
+    app.get(
+      "/original-sales",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminOriginalSaleListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "original_sale.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.sales.listOriginalSales(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "original_sale.write");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.sales.listOriginalSales(query);
+      },
+    );
+  }
 
   app.get(
     "/sale-authority-requests",
@@ -218,19 +235,21 @@ export async function registerAdminReadRoutes(app: FastifyInstance, deps: AdminR
     },
   );
 
-  app.get(
-    "/merchandise/products",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminMerchandiseProductListSchema, 403: ShopApiErrorBodySchema },
+  if (phaseFlags.merchandiseEnabled) {
+    app.get(
+      "/merchandise/products",
+      {
+        schema: {
+          tags: ["shop-admin"],
+          querystring: CursorListQuerySchema,
+          response: { 200: AdminMerchandiseProductListSchema, 403: ShopApiErrorBodySchema },
+        },
       },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "merchandise.read");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.catalogue.listMerchandiseProducts(query);
-    },
-  );
+      async (request) => {
+        requireShopStaffCapability(request, "merchandise.read");
+        const query = request.query as { cursor?: string; limit?: number };
+        return deps.adminRead.catalogue.listMerchandiseProducts(query);
+      },
+    );
+  }
 }

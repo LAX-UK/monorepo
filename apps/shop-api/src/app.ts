@@ -130,7 +130,12 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSessionRoutes(adminScope, {
           featureFlags: options.deps.admin.featureFlags,
         });
-        void registerAdminReadRoutes(adminScope, options.deps.admin);
+        void registerAdminReadRoutes(adminScope, options.deps.admin, {
+          payoutsEnabled: options.deps.env.SHOP_PAYOUTS_ENABLED,
+          thirdPartyEnabled: options.deps.env.SHOP_THIRD_PARTY_ENABLED,
+          originalsEnabled: options.deps.env.SHOP_ORIGINALS_ENABLED,
+          merchandiseEnabled: options.deps.env.SHOP_MERCHANDISE_ENABLED,
+        });
         void registerAdminPeopleRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
