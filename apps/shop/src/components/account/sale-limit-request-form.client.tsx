@@ -1,5 +1,6 @@
 "use client";
 
+import { ShopNotice } from "@/components/shop-notice";
 import {
   type SaleAuthorityRequestFormState,
   submitSaleAuthorityRequest,
@@ -51,9 +52,9 @@ export function SaleLimitRequestForm({ artworks }: { artworks: PortalSaleAuthori
         />
       </label>
       {state.message ? (
-        <p className={state.ok ? "text-sm text-green-700" : "text-sm text-error"}>
+        <ShopNotice tone={state.ok ? "success" : "error"} className="text-sm">
           {state.message}
-        </p>
+        </ShopNotice>
       ) : null}
       <Button type="submit" disabled={pending} className="min-h-11">
         {pending ? "Submitting…" : "Submit request"}
