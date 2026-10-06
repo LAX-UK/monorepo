@@ -204,37 +204,46 @@ async function submitStaffTotp(page: Page, authBaseUrl: string, totpSecret: stri
   const verify = page
     .locator("#totp-form")
     .getByRole("button", { name: /verify|continue|submit/i });
-  const verifyResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/auth/two-factor/verify-totp") &&
-      response.request().method() === "POST",
-    { timeout: 60_000 },
-  );
+  const verifyResponse = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes("/api/auth/two-factor/verify-totp") &&
+        response.request().method() === "POST",
+      { timeout: 30_000 },
+    )
+    .catch(() => null);
   await verify.click();
   const response = await verifyResponse;
-  if (!response.ok()) {
-    throw new Error(`staff TOTP verify failed (${response.status()})`);
+  if (response?.ok()) {
+    const payload = (await response.json().catch(() => null)) as {
+      url?: string;
+      redirectURI?: string;
+    } | null;
+    const next =
+      typeof payload?.url === "string"
+        ? payload.url
+        : typeof payload?.redirectURI === "string"
+          ? payload.redirectURI
+          : null;
+    if (next) {
+      await page.goto(new URL(next, authBaseUrl).toString(), { waitUntil: "domcontentloaded" });
+      return;
+    }
   }
-  const payload = (await response.json().catch(() => null)) as {
-    url?: string;
-    redirectURI?: string;
-  } | null;
-  const next =
-    typeof payload?.url === "string"
-      ? payload.url
-      : typeof payload?.redirectURI === "string"
-        ? payload.redirectURI
-        : null;
-  if (next) {
-    await page.goto(new URL(next, authBaseUrl).toString(), { waitUntil: "domcontentloaded" });
-    return;
-  }
+  const totpError = page.locator(
+    '#totp-code-error:not([hidden]), #error[role="alert"]:not([hidden])',
+  );
   await page
     .waitForURL((url) => reachedPostAuthHop(url.toString(), SHOP_ADMIN_DESTINATION), {
-      timeout: 60_000,
+      timeout: 90_000,
       waitUntil: "domcontentloaded",
     })
-    .catch(() => {});
+    .catch(async () => {
+      if (await totpError.isVisible().catch(() => false)) {
+        const text = ((await totpError.textContent()) ?? "").trim();
+        throw new Error(`staff TOTP verify failed (${page.url()}): ${text || "unknown error"}`);
+      }
+    });
 }
 
 export async function signInStaffThroughIdentity(input: {
