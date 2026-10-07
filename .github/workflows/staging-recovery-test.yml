@@ -127,6 +127,9 @@ jobs:
 
   deploy:
     needs: [qualify_identity, validate_inputs]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -156,6 +159,9 @@ jobs:
   enable_ssf:
     if: inputs.run_acceptance
     needs: [acceptance_disabled, validate_inputs]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -206,6 +212,9 @@ jobs:
   rollback_rehearsal:
     if: inputs.rollback_rehearsal
     needs: [acceptance_enabled, shop_acceptance]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -232,6 +241,9 @@ jobs:
       inputs.rollback_rehearsal &&
       needs.rollback_rehearsal.result != 'skipped'
     needs: [rollback_rehearsal, validate_inputs]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
