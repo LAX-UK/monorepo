@@ -106,10 +106,7 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
     expect(html).toContain("Sign in to continue to LAX Shop.");
     expect(html).toContain("Continue with Google");
-    expect(html).toContain('class="btn-mark"');
-    expect(html).toContain('class="btn-label"');
     expect(html).not.toContain("Continue with Apple");
-    expect(html).not.toMatch(/style=/);
     expect(html).toContain('data-email-first="true"');
     expect(html).toContain('data-login-step="email"');
     expect(html).toContain('data-login-step="credentials"');
@@ -130,14 +127,6 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).not.toContain("challenges.cloudflare.com");
     expect(view.config.authorizeResumePath).toContain("code_challenge=");
     expect(view.config.loginPath).toBe("/login?client_id=lax-shop-web");
-  });
-
-  it("renders social sign-up actions when providers are enabled", () => {
-    const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
-    const html = buildHostedSignUpHtml(view);
-    expect(html).toContain("Continue with Google");
-    expect(html).toContain('data-social-provider="google"');
-    expect(html).not.toMatch(/style=/);
   });
 
   it("keeps the combined email/password mode behind issuer configuration", () => {

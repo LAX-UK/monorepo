@@ -8,7 +8,6 @@ import {
   turnstileHost,
 } from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
-import { socialActions } from "../social-actions.js";
 import {
   type HostedAuthView,
   hostedAuthViewFromSearch,
@@ -24,9 +23,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
     description: `Create an account to continue to ${view.brand.productName}.`,
     brand: view.brand,
     config: view.config,
-    body: `<div id="signup-root" class="auth-stack">
-      ${socialActions(view)}
-      <form id="signup-form" class="auth-form" novalidate>
+    body: `<form id="signup-form" class="auth-form" novalidate>
       ${floatingInput({ id: "name", label: "Full name", autocomplete: "name" })}
       ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
       ${passwordField({
@@ -40,7 +37,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
       ${turnstileHost()}
       ${statusRegions()}
       <div class="links">${continuationAnchor("Already have an account?", "/login", view.flow)}</div>
-    </form></div>`,
+    </form>`,
     scriptSrc: "/hosted-sign-up.js",
     ...(productBack ? { productBack } : {}),
   });

@@ -1,4 +1,5 @@
 import {
+  authDivider,
   buildHostedAuthHtml,
   continuationAnchor,
   floatingInput,
@@ -7,7 +8,6 @@ import {
   statusRegions,
   turnstileHost,
 } from "../html.js";
-import { socialActions } from "../social-actions.js";
 import {
   type HostedAuthView,
   hostedAuthViewFromSearch,
@@ -15,6 +15,32 @@ import {
 } from "../view.js";
 
 export { HOSTED_LOGIN_SCRIPT } from "../scripts.js";
+
+function socialActions(view: HostedAuthView): string {
+  const social = [
+    view.capabilities.googleEnabled
+      ? hostedButton({
+          label: "Continue with Google",
+          type: "button",
+          kind: "secondary",
+          extraAttrs: { "data-social-provider": "google" },
+        })
+      : "",
+    view.capabilities.appleEnabled
+      ? hostedButton({
+          label: "Continue with Apple",
+          type: "button",
+          kind: "secondary",
+          extraAttrs: { "data-social-provider": "apple" },
+        })
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+  return social
+    ? `<div class="social-actions" data-login-chrome="methods">${social}${authDivider()}</div>`
+    : "";
+}
 
 function phoneAndSignUp(view: HostedAuthView): string {
   const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;

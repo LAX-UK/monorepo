@@ -156,15 +156,7 @@ export function installHostedAuthRuntime(): HostedAuthApi {
     button.setAttribute("aria-busy", busy ? "true" : "false");
     const loading = button.getAttribute("data-loading-label");
     if (loading) {
-      const labelEl = button.querySelector(".btn-label");
-      if (labelEl) {
-        if (busy) {
-          if (!button.dataset.label) button.dataset.label = labelEl.textContent || "";
-          labelEl.textContent = loading;
-        } else if (button.dataset.label) {
-          labelEl.textContent = button.dataset.label;
-        }
-      } else if (busy) {
+      if (busy) {
         if (!button.dataset.label) button.dataset.label = button.textContent || "";
         button.textContent = loading;
       } else if (button.dataset.label) {
