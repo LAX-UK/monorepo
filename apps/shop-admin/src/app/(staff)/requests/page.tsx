@@ -1,31 +1,48 @@
-import { AdminTable } from "@/components/shop-admin-shell";
-import { loadAdminList } from "@/lib/admin-data.server";
+import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
+import { SaleAuthorityRequestsStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { adminListPath } from "@/server/application/admin-list-path";
+import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { redirect } from "next/navigation";
 
-export default async function RequestsPage() {
-  const data = await loadAdminList<{
-    items: Array<{
-      requestId: string;
-      artworkTitle: string;
-      ownerDisplayName: string;
-      requestedCount: number;
-      status: string;
-    }>;
-  }>("sale-authority-requests?status=pending&limit=50");
+type RequestList = {
+  items: Array<{
+    requestId: string;
+    artworkTitle: string;
+    ownerDisplayName: string;
+    requestedCount: number;
+    status: string;
+  }>;
+  nextCursor: string | null;
+};
+
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
+  const { cursor } = await searchParams;
+  const result = await fetchAdminJson<RequestList>(
+    adminListPath("sale-authority-requests", {
+      cursor,
+      query: { status: "pending" },
+    }),
+  );
+  if (result.status === "unauthorized") redirect("/login");
+  if (result.status !== "ok") {
+    return (
+      <div>
+        <h1 className="mb-6 text-2xl font-semibold">Sale limit requests</h1>
+        <AdminFetchState status={result.status} />
+      </div>
+    );
+  }
 
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Sale limit requests</h1>
-      <AdminTable
-        columns={["Artwork", "Owner", "Requested", "Status"]}
-        rows={
-          data?.items.map((row) => [
-            row.artworkTitle,
-            row.ownerDisplayName,
-            String(row.requestedCount),
-            row.status,
-          ]) ?? []
-        }
-      />
+      <SaleAuthorityRequestsStaffListTable items={result.data.items} />
+      <AdminListCursorNav pathname="/requests" nextCursor={result.data.nextCursor} />
     </div>
   );
 }

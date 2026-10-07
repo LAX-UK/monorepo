@@ -34,6 +34,7 @@ export async function forwardAdminRequest(input: {
   const target = resolveAdminProxyTarget({
     bffPath: input.bffPath,
     shopApiBaseUrl: input.config.shopApiBaseUrl,
+    method: input.method,
   });
   if (!target) {
     throw new Error("Not found");
