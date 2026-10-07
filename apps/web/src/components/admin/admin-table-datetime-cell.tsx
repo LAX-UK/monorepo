@@ -54,14 +54,16 @@ export function AdminTableDateTimeCell({
   );
 
   if (!isoValue) {
-    return <span className={cn("font-label text-sm text-on-surface-variant", className)}>—</span>;
+    return (
+      <span className={cn("font-label text-sm text-on-secondary-fixed-variant", className)}>—</span>
+    );
   }
 
   const primaryClass =
     presentation.urgency === "soon"
       ? "text-warning-on-surface"
       : presentation.urgency === "past"
-        ? "text-on-surface-variant"
+        ? "text-on-secondary-fixed-variant"
         : "text-on-surface";
 
   return (
@@ -77,7 +79,7 @@ export function AdminTableDateTimeCell({
         {presentation.primary}
       </span>
       {presentation.secondary ? (
-        <span className="block whitespace-nowrap font-label text-[11px] tabular-nums text-on-surface-variant">
+        <span className="block whitespace-nowrap font-label text-[11px] tabular-nums text-on-secondary-fixed-variant">
           {presentation.secondary}
         </span>
       ) : null}
