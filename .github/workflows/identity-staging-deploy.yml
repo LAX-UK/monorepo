@@ -17,6 +17,10 @@ on:
       stage_only:
         type: boolean
         required: true
+      parent_holds_deploy_lock:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       identity_sha:
@@ -29,7 +33,10 @@ on:
         description: Successful lax-identity publish workflow run
         required: true
       stage_only:
-        description: Qualify and stage the digest without changing traffic
+        description: >-
+          When true, validate images and evidence only (no DB/OIDC writes, no App Platform
+          traffic change). When false, run DB migrate and OIDC configure; traffic cutover
+          still requires Terraform/staging recovery.
         required: true
         type: boolean
         default: false
@@ -40,9 +47,10 @@ permissions:
 
 concurrency:
   group: >-
-    identity-staging-${{
-      github.event_name == 'workflow_dispatch' && inputs.stage_only &&
-      'qualification' || 'db-preparation-test'
+    ${{
+      (github.event_name == 'workflow_call' && inputs.parent_holds_deploy_lock &&
+        format('staging-recovery-child-{0}-identity-db', github.run_id)) ||
+      'app-deploy-test'
     }}
   cancel-in-progress: false
 
@@ -354,6 +362,7 @@ jobs:
         if: env.STAGE_ONLY != 'true'
         run: |
           set -euo pipefail
+          node scripts/ci/verify-identity-closure-sync.mjs --ref "$IDENTITY_SHA"
           pnpm --filter @auction/db... build
           DATABASE_URL_AUTH="$DATABASE_URL_AUTH" \
             OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
@@ -387,4 +396,14 @@ jobs:
             echo "- Database and OIDC preparation complete"
             echo "- Traffic and registry aliases unchanged"
             echo "- Cut over only through a reviewed Terraform apply that pins this immutable SHA"
+            echo ""
+            echo "Staging recovery (test) example (replace SHAs/digests with registry evidence):"
+            echo '```'
+            echo "gh workflow run \"Staging recovery (test)\" --ref main \\"
+            echo "  -f identity_sha=$IDENTITY_SHA \\"
+            echo "  -f identity_digest=$IDENTITY_DIGEST \\"
+            echo "  -f publish_run_id=$PUBLISH_RUN_ID \\"
+            echo "  -f run_acceptance=false -f rollback_rehearsal=false \\"
+            echo "  ... shop_image / shop_api_image / shop_identity pins ..."
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

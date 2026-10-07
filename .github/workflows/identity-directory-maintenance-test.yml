@@ -9,6 +9,10 @@ on:
       confirm_backup:
         type: boolean
         required: true
+      parent_holds_deploy_lock:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       mode:
@@ -25,7 +29,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: identity-directory-maintenance-test
+  group: >-
+    ${{
+      (github.event_name == 'workflow_call' && inputs.parent_holds_deploy_lock &&
+        format('staging-recovery-child-{0}-identity-directory', github.run_id)) ||
+      'app-deploy-test'
+    }}
   cancel-in-progress: false
 
 jobs:

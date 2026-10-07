@@ -1,13 +1,20 @@
 import { SHOP_ADMIN_SESSION_COOKIE } from "@/lib/session-cookie";
+import type { ShopApiErrorCode } from "@auction/shop-contracts";
 import { cookies } from "next/headers";
 import { getShopAdminContainer } from "../container";
 
 export type AdminFetchResult<T> =
   | { status: "ok"; data: T }
   | { status: "unauthorized" }
-  | { status: "forbidden" }
+  | { status: "forbidden"; code?: ShopApiErrorCode | string }
   | { status: "not_found" }
   | { status: "failed" };
+
+function readShopApiErrorCode(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const code = (body as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
 
 function encodeAdminResourcePath(path: string): string {
   return path
@@ -46,7 +53,16 @@ export async function fetchAdminJson<T>(path: string): Promise<AdminFetchResult<
   try {
     const { status, body } = await forwardAdminGet(path);
     if (status === 401) return { status: "unauthorized" };
-    if (status === 403) return { status: "forbidden" };
+    if (status === 403) {
+      const text = new TextDecoder().decode(body);
+      let parsed: unknown;
+      try {
+        parsed = text.trim() ? JSON.parse(text) : undefined;
+      } catch {
+        parsed = undefined;
+      }
+      return { status: "forbidden", code: readShopApiErrorCode(parsed) };
+    }
     if (status === 404) return { status: "not_found" };
     if (status < 200 || status >= 300) return { status: "failed" };
     const text = new TextDecoder().decode(body);
