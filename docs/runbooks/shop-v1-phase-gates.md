@@ -12,7 +12,7 @@ Phased delivery uses feature flags on `shop-api` (and related deployables). Do n
 | `SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS` | 1+ | Max age of OIDC `auth_time` for refund, fee approve, and mark-paid (default 900) |
 | `SHOP_THIRD_PARTY_ENABLED` | 3 | Holds, third-party sales, fees; broker assignment enforcement |
 | `SHOP_ORIGINALS_ENABLED` | 4 | Original sale admin workflow |
-| `SHOP_MERCHANDISE_ENABLED` | 4 | Merchandise admin + storefront stub |
+| `SHOP_MERCHANDISE_ENABLED` | 4 | Merchandise catalogue, basket/checkout for variants, admin stock adjust |
 | `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` (worker) | 1 | `shop.artwork.created` → Zoho Products |
 | `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` (worker) | 4 | Enquiry deals stage (do not reuse shop-paid stage) |
 
@@ -75,10 +75,11 @@ Then on shop-api (local dev uses `tsx`; production image uses built CLI under `d
 - Dev: `pnpm --filter @auction/shop-api sale-authority grant --operator ops:<you> --request-id …`
 - Prod container: `node dist/scripts/sale-authority.js grant --operator ops:<you> …`
 
-### Phase 1 ops (no admin UI)
+### Phase 1 ops
 
-- Staff: `pnpm --filter @auction/shop-api staff:grant --subject <id> --role catalogue_editor` (prod: `node dist/scripts/staff-grant.js …`)
-- Sale authority: `pnpm --filter @auction/shop-api sale-authority list-pending` / `grant …` (prod: `node dist/scripts/sale-authority.js …`)
+- Staff: `apps/shop-admin` **Staff** page (grant/revoke) or CLI `pnpm --filter @auction/shop-api staff:grant --subject <id> --role catalogue_editor` (prod: `node dist/scripts/staff-grant.js …`)
+- Sale authority: admin **Requests** approve/decline UI or `pnpm --filter @auction/shop-api sale-authority list-pending` / `grant …` (prod: `node dist/scripts/sale-authority.js …`)
+- Artist portal login: admin **Artists → detail** link/unlink by email (audited, idempotent; see **D33**). Requires migration **0203**.
 - Catalogue seed (non-prod or `--force`): `pnpm --filter @auction/shop-api seed:catalogue` (prod: `node dist/scripts/seed-catalogue.js …`)
 
 ## Phase 1 Zoho catalogue
@@ -102,7 +103,8 @@ Then on shop-api (local dev uses `tsx`; production image uses built CLI under `d
 
 ## Phase 4 gate (originals + merchandise)
 
-- Migrations `0190`–`0191` applied with the rest of the Phase 1 chain (`0182`–`0194`).
+- Migrations `0190`–`0191` applied with the rest of the Phase 1 chain (`0182`–`0194`); post-audit **`0202`** (pending sale-authority request uniqueness), **`0203`** (artist identity subject), **`0204`** (`shop_product_variant` `reserved <= on_hand` CHECK).
+- Shop-api integration gate (no skips): `node scripts/ci/run-shop-v1-postgres-integration.mjs` with Postgres 16 and `MIGRATION_TEST_DATABASE_URL` + `DATABASE_URL_SHOP` set (see CI job `shop-v1-postgres-integration`).
 - Enquiry → Zoho Deal mapping enabled for `shop.artwork.interest_registered` with `intent=enquiry` and `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` configured.
 - Acceptance tests **#6** (original sale) and merchandise smoke.
 
