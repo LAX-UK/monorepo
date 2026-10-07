@@ -123,7 +123,13 @@ Do not enable Phase 1 portal or run portal acceptance until all of the following
 
 Deploy order on test: merge infra Terraform shop flags → migrate on deploy → **`auth`** ready → **`shop-api`** → **`shop-identity`** → **`shop`** storefront → run **Shop staging acceptance** with matching `shop_sha`, **`shop_api_sha`**, and identity release SHAs from `/health/ready`.
 
-**Identity closure:** when `compare-lax-identity` fails, sync the seven drifted paths listed by `node scripts/ci/verify-identity-closure-sync.mjs` into [lax-identity](https://github.com/LAX-UK/lax-identity) via `./scripts/identity/repo-split.sh <empty-destination>` and merge that PR before pinning staging recovery.
+**Identity closure:** when `compare-lax-identity` fails, sync the drifted paths listed by `node scripts/ci/verify-identity-closure-sync.mjs` into [lax-identity](https://github.com/LAX-UK/lax-identity) via `./scripts/identity/repo-split.sh <empty-destination>` and merge that PR before pinning staging recovery.
+
+**Monorepo checklist (same PR, before merge):**
+
+1. Run `node scripts/ci/verify-identity-closure-sync.mjs` locally (must pass against lax-identity@main).
+2. If root `package.json` `pnpm.overrides` or any path in `scripts/identity/list-closure-sync-paths.mjs` changes, run `pnpm install` and commit **`pnpm-lock.yaml` in the same PR** (CI uses `pnpm install --frozen-lockfile`).
+3. After lax-identity merges, re-run step 1 on the monorepo branch before enqueueing the merge queue.
 
 ## Phase 2–4 remediation gates (post-remediation sign-off)
 

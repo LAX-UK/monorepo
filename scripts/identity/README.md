@@ -13,6 +13,10 @@ and merge lax-identity before pinning `identity_sha` in staging recovery.
 and nightly); staging recovery runs the same check against the pinned
 `identity_sha` in `validate_inputs`.
 
+**GitHub review policy:** if `require_last_push_approval` is enabled on
+lax-identity `main`, the PR author cannot approve their own push — use a second
+account (or temporarily disable the rule for emergency merges, then re-enable).
+
 Run a local rehearsal with:
 
 ```sh
