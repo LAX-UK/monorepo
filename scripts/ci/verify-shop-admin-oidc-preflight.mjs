@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Tier-1 smoke: shop-admin must redirect into auth without invalid_client.
- * No credentials required — follows redirects until authorize or login UI.
+ * Tier-1 smoke: shop-admin must reach auth authorize without invalid_client.
+ * No credentials required — follows redirects from the login route.
  */
 const shopAdminUrl = (process.env.SHOP_ADMIN_URL ?? "https://test-shop-admin.lax.bid").replace(
   /\/+$/,
@@ -28,13 +28,13 @@ async function follow(url, depth = 0) {
   }
   const onAuth =
     url.startsWith(authBaseUrl) ||
-    contentType.includes("text/html") ||
-    url.includes("/oauth2/authorize");
+    url.includes("/oauth2/authorize") ||
+    (contentType.includes("text/html") && url.startsWith(`${authBaseUrl}/login`));
   if (!onAuth) {
     throw new Error(`expected auth boundary after shop-admin redirect; landed on ${url}`);
   }
 }
 
-const entry = `${shopAdminUrl}/orders`;
+const entry = `${shopAdminUrl}/api/auth/login?returnTo=${encodeURIComponent("/overview")}`;
 await follow(entry);
 console.log(`shop-admin OIDC preflight ok (${entry})`);
