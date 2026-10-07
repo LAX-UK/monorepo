@@ -9,6 +9,10 @@ const THROUGH_0181 = 1791014400000;
 const THROUGH_0192 = 1791964800000;
 const THROUGH_0194 = 1792137600000;
 
+function isExpectedTeardownPoolError(error: unknown): boolean {
+  return (error as Error & { code?: string }).code === "57P01";
+}
+
 async function withScratchDatabase(run: (pool: pg.Pool) => Promise<void>): Promise<void> {
   if (!migrationUrl) throw new Error("MIGRATION_TEST_DATABASE_URL is required");
   const databaseName = `auction_shop_legacy_${randomUUID().replaceAll("-", "")}`;
@@ -17,23 +21,60 @@ async function withScratchDatabase(run: (pool: pg.Pool) => Promise<void>): Promi
   const databaseUrl = new URL(migrationUrl);
   databaseUrl.pathname = `/${databaseName}`;
   const admin = new pg.Client(buildPgConnectionConfig(adminUrl.toString()));
+  const errors: unknown[] = [];
+  let databaseCreated = false;
   await admin.connect();
   try {
     await admin.query(`CREATE DATABASE "${databaseName}"`);
+    databaseCreated = true;
     const pool = new pg.Pool(buildPgConnectionConfig(databaseUrl.toString()));
+    const unexpectedPoolErrors: Error[] = [];
+    let teardownStarted = false;
+    pool.on("error", (error) => {
+      if (!teardownStarted || !isExpectedTeardownPoolError(error)) {
+        unexpectedPoolErrors.push(error);
+      }
+    });
     try {
       await run(pool);
+    } catch (error) {
+      errors.push(error);
     } finally {
-      await pool.end();
-      await admin.query(
-        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
-        [databaseName],
-      );
-      await admin.query(`DROP DATABASE "${databaseName}"`);
+      teardownStarted = true;
+      try {
+        await pool.end();
+      } catch (error) {
+        if (!isExpectedTeardownPoolError(error)) errors.push(error);
+      }
+      try {
+        await admin.query(
+          "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
+          [databaseName],
+        );
+      } catch (error) {
+        if (!isExpectedTeardownPoolError(error)) errors.push(error);
+      }
+      errors.push(...unexpectedPoolErrors);
     }
+  } catch (error) {
+    errors.push(error);
   } finally {
-    await admin.end();
+    if (databaseCreated) {
+      try {
+        await admin.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
+      } catch (error) {
+        if (!isExpectedTeardownPoolError(error)) errors.push(error);
+      }
+    }
+    try {
+      await admin.end();
+    } catch (error) {
+      if (!isExpectedTeardownPoolError(error)) errors.push(error);
+    }
   }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1)
+    throw new AggregateError(errors, "Temporary legacy migration database failed");
 }
 
 describe.skipIf(!migrationUrl)("migrations 0182–0194 legacy fixtures", () => {

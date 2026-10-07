@@ -249,11 +249,15 @@ export const shopArtist = pgTable(
     discipline: text("discipline"),
     bio: text("bio"),
     zohoArtistCode: text("zoho_artist_code"),
+    identitySubjectId: text("identity_subject_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("shop_artist_slug_uid").on(table.slug),
     uniqueIndex("shop_artist_zoho_code_uid").on(table.zohoArtistCode),
+    uniqueIndex("shop_artist_identity_subject_uid")
+      .on(table.identitySubjectId)
+      .where(sql`${table.identitySubjectId} IS NOT NULL`),
     index("shop_artist_created_id_idx").on(table.createdAt, table.id),
   ],
 );
@@ -431,6 +435,7 @@ export const shopProductVariant = pgTable(
     uniqueIndex("shop_product_variant_sku_uid").on(table.sku),
     check("shop_product_variant_stock_nonnegative", sql`${table.onHand} >= 0`),
     check("shop_product_variant_reserved_nonnegative", sql`${table.reserved} >= 0`),
+    check("shop_product_variant_reserved_lte_on_hand", sql`${table.reserved} <= ${table.onHand}`),
   ],
 );
 
@@ -672,6 +677,9 @@ export const shopSaleAuthorityRequest = pgTable(
       "shop_sale_authority_request_count_range",
       sql`${table.requestedCount} >= 0 AND ${table.requestedCount} <= 10`,
     ),
+    uniqueIndex("shop_sale_authority_request_pending_uid")
+      .on(table.artworkId, table.ownerPartyId)
+      .where(sql`${table.status} = 'pending'`),
   ],
 );
 
