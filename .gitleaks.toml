@@ -18,8 +18,6 @@ paths = [
   # Shop Identity Vitest fixtures (synthetic JWTs and idempotency keys).
   '''apps/shop-identity/src/.*\.test\.ts''',
   '''apps/shop-identity/src/db/.*integration\.test\.ts''',
-  # Shop admin Vitest fixtures (idempotency header values in mutation tests).
-  '''apps/shop-admin/src/.*\.test\.ts''',
   # Documented local/dev env template — not deployed secrets.
   '''\.env\.example''',
   # Runbook uses sk_test_YOUR_KEY placeholder in curl examples.
