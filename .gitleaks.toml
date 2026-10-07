@@ -15,15 +15,9 @@ paths = [
   # Server-side fetch fixtures use synthetic internal base URLs, not secrets.
   '''apps/web/src/lib/data/http/.*\.server\.test\.ts''',
   '''apps/web/src/app/api/display/.*\.test\.ts''',
-  # CI TOTP bootstrap round-trip (synthetic secrets generated at runtime).
-  '''scripts/ci/staff-totp-at-rest-bootstrap\.test\.mjs''',
-  # Removed after identity-closure fix; historical PR commits may still reference it.
-  '''packages/auth/src/two-factor-at-rest-bootstrap\.test\.ts''',
   # Shop Identity Vitest fixtures (synthetic JWTs and idempotency keys).
   '''apps/shop-identity/src/.*\.test\.ts''',
   '''apps/shop-identity/src/db/.*integration\.test\.ts''',
-  # Shop admin Vitest fixtures (idempotency header values in mutation tests).
-  '''apps/shop-admin/src/.*\.test\.ts''',
   # Documented local/dev env template — not deployed secrets.
   '''\.env\.example''',
   # Runbook uses sk_test_YOUR_KEY placeholder in curl examples.
