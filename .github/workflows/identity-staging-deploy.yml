@@ -156,6 +156,10 @@ jobs:
                select(test("^[0-9a-f]{40}$"))][0] // empty
             ' "$RUNNER_TEMP/migrate-tags.json"
           )"
+          if [[ ! "$migrate_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            migrate_sha="$(jq -r .monorepoCommit "$RUNNER_TEMP/schema-contract.json")"
+            echo "Using schema-contract monorepoCommit for migrate lineage (${migrate_sha})"
+          fi
           [[ "$migrate_sha" =~ ^[0-9a-f]{40}$ ]]
           echo "migrate_sha=$migrate_sha" >> "$GITHUB_OUTPUT"
           echo "migrate_image=$(jq -r .migrateImage "$RUNNER_TEMP/schema-contract.json")" \
