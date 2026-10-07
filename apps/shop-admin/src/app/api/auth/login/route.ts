@@ -1,3 +1,4 @@
+import { safeReturnTo } from "@/lib/safe-return-to";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SHOP_ADMIN_LOGIN_COOKIE } from "../../../../lib/session-cookie";
@@ -5,7 +6,7 @@ import { getShopAdminContainer } from "../../../../server/container";
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const returnTo = url.searchParams.get("returnTo")?.trim() || "/";
+  const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
   const container = getShopAdminContainer();
   const { authorizeUrl, pending } = container.startStaffLogin({
     config: container.config,

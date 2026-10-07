@@ -1,9 +1,5 @@
 import { ShopAccountOverviewCards } from "@/components/account/shop-account-overview-cards";
-import {
-  ShopAccountBodyText,
-  ShopAccountLinkButton,
-  ShopAccountShell,
-} from "@/components/account/shop-account-shell";
+import { ShopAccountLinkButton, ShopAccountShell } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import {
@@ -54,25 +50,7 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
       !params.returnTo.startsWith("//")
         ? params.returnTo
         : "/account";
-    return (
-      <ShopAccountShell
-        title={shopPageWayfinding.accountSignIn.title}
-        breadcrumbs={shopPageWayfinding.accountSignIn.breadcrumbs}
-        notice={{
-          variant: "default",
-          title: "Shop account",
-          description: "Start sign-in through the Shop Identity boundary.",
-        }}
-      >
-        <ShopAccountBodyText>
-          Use your LAX credentials to view orders and manage your shop account.
-        </ShopAccountBodyText>
-        <ShopAccountLinkButton
-          href={shopStorefrontLoginHref(returnTo)}
-          label="Continue to sign in"
-        />
-      </ShopAccountShell>
-    );
+    redirect(shopStorefrontLoginHref(returnTo));
   }
 
   const mergeComplete =

@@ -228,6 +228,7 @@ jobs:
         if: env.STAGE_ONLY != 'true'
         env:
           OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
+          OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN }}
         run: |
           set -euo pipefail
           tf_output() {
@@ -265,6 +266,17 @@ jobs:
           fi
           echo "::add-mask::$shop_url"
           echo "DATABASE_URL_SHOP=$shop_url" >> "$GITHUB_ENV"
+
+          shop_admin_secret="$(tf_output oidc_shop_admin_client_secret)"
+          if [ -z "$shop_admin_secret" ]; then
+            shop_admin_secret="${OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK:-}"
+          fi
+          if [ -z "$shop_admin_secret" ]; then
+            echo "::error::Missing Terraform output oidc_shop_admin_client_secret and OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN_FALLBACK for OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN"
+            exit 1
+          fi
+          echo "::add-mask::$shop_admin_secret"
+          echo "OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN=$shop_admin_secret" >> "$GITHUB_ENV"
 
       - name: Derive masked role passwords from application URLs
         if: env.STAGE_ONLY != 'true'
@@ -317,6 +329,7 @@ jobs:
             -e WORKER_APP_DB_PASSWORD \
             -e OIDC_CLIENT_SECRET_LAX_BID_WEB \
             -e OIDC_CLIENT_SECRET_LAX_SHOP_WEB \
+            -e OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN \
             -e NODE_ENV=production \
             -e APP_ENV=test \
             "$MIGRATE_IMAGE" \
