@@ -61,7 +61,8 @@ export async function fetchAdminJson<T>(path: string): Promise<AdminFetchResult<
       } catch {
         parsed = undefined;
       }
-      return { status: "forbidden", code: readShopApiErrorCode(parsed) };
+      const code = readShopApiErrorCode(parsed);
+      return code !== undefined ? { status: "forbidden", code } : { status: "forbidden" };
     }
     if (status === 404) return { status: "not_found" };
     if (status < 200 || status >= 300) return { status: "failed" };
