@@ -62,9 +62,11 @@ export function WorkInboxTable({
                 {row.original.title}
               </div>
               {row.original.subtitle ? (
-                <div className="text-xs text-on-surface-variant">{row.original.subtitle}</div>
+                <div className="text-xs text-on-secondary-fixed-variant">
+                  {row.original.subtitle}
+                </div>
               ) : null}
-              <div className="mt-0.5 font-body text-xs text-on-surface-variant">
+              <div className="mt-0.5 font-body text-xs text-on-secondary-fixed-variant">
                 {itemMetaLine(row.original, actorUserId)}
               </div>
             </Button>

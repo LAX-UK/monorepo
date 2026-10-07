@@ -23,7 +23,7 @@ env:
   TURBO_SCM_BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_CACHE: ${{ vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw' }}
+  TURBO_CACHE: ${{ github.event_name == 'merge_group' && 'local:rw' || (vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw') }}
   TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
 jobs:
@@ -45,7 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
-        if: vars.TURBO_TEAM != ''
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
         uses: ./.github/actions/setup-turbo-remote-cache
         with:
           team: ${{ vars.TURBO_TEAM }}
@@ -119,6 +119,9 @@ jobs:
 
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
+
+      - name: Build identity-contracts for CI script imports
+        run: pnpm --filter @auction/identity-contracts build
 
       - name: CI script unit tests
         run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs
@@ -263,7 +266,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
-        if: vars.TURBO_TEAM != ''
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
         uses: ./.github/actions/setup-turbo-remote-cache
         with:
           team: ${{ vars.TURBO_TEAM }}
@@ -328,7 +331,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
-        if: vars.TURBO_TEAM != ''
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
         uses: ./.github/actions/setup-turbo-remote-cache
         with:
           team: ${{ vars.TURBO_TEAM }}
@@ -406,7 +409,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
-        if: vars.TURBO_TEAM != ''
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
         uses: ./.github/actions/setup-turbo-remote-cache
         with:
           team: ${{ vars.TURBO_TEAM }}
@@ -647,7 +650,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
-        if: vars.TURBO_TEAM != ''
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
         uses: ./.github/actions/setup-turbo-remote-cache
         with:
           team: ${{ vars.TURBO_TEAM }}

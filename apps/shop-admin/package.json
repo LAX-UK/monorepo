@@ -20,6 +20,7 @@
     "@auction/shop-contracts": "workspace:*",
     "@auction/shop-domain": "workspace:*",
     "@auction/ui": "workspace:*",
+    "@tanstack/react-table": "^8.21.3",
     "ioredis": "^5.6.1",
     "next": "15.5.9",
     "react": "^19.1.1",
