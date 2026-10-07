@@ -1,8 +1,10 @@
 import { randomBytes } from "node:crypto";
+import { safeReturnTo } from "@/lib/safe-return-to";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   SHOP_ADMIN_CSRF_COOKIE,
+  SHOP_ADMIN_LOGIN_ATTEMPT_COOKIE,
   SHOP_ADMIN_LOGIN_COOKIE,
   SHOP_ADMIN_SESSION_COOKIE,
 } from "../../../../lib/session-cookie";
@@ -47,7 +49,15 @@ export async function GET(request: Request): Promise<Response> {
       path: "/",
       maxAge: container.config.sessionTtlSeconds,
     });
-    return NextResponse.redirect(new URL(result.returnTo, container.config.publicOrigin));
+    cookieStore.set(SHOP_ADMIN_LOGIN_ATTEMPT_COOKIE, "1", {
+      httpOnly: true,
+      secure: container.config.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60,
+    });
+    const destination = safeReturnTo(result.returnTo);
+    return NextResponse.redirect(new URL(destination, container.config.publicOrigin));
   } catch {
     return NextResponse.redirect(new URL("/login?error=auth_failed", request.url));
   }

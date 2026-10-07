@@ -74,6 +74,8 @@ export type HostedButtonOptions = {
   name?: string;
   value?: string;
   loadingLabel?: string;
+  /** Trusted inline SVG/HTML placed before the visible label. */
+  leadingMark?: string;
   extraAttrs?: Readonly<Record<string, string>>;
 };
 
@@ -203,7 +205,10 @@ export function hostedButton(input: HostedButtonOptions): string {
   ]
     .filter(Boolean)
     .join(" ");
-  return `<button ${attrs}>${escapeHostedHtml(input.label)}</button>`;
+  const labelHtml = input.leadingMark
+    ? `${input.leadingMark}<span class="btn-label">${escapeHostedHtml(input.label)}</span>`
+    : escapeHostedHtml(input.label);
+  return `<button ${attrs}>${labelHtml}</button>`;
 }
 
 export function authDivider(label = "or"): string {

@@ -1,8 +1,11 @@
 import { signUpOutcome } from "./sign-up-outcome.js";
+import { bindSocialCallbackError, bindSocialSignIn } from "./social-sign-in.js";
 import { submitEnabled } from "./turnstile.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
+bindSocialCallbackError(auth);
+bindSocialSignIn(auth);
 const form = document.getElementById("signup-form");
 if (!(form instanceof HTMLFormElement)) {
   throw new Error("hosted sign-up form missing");
