@@ -5,7 +5,10 @@ import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-s
 import { formatShopDateTime } from "@/lib/presenters/shop-date.presenter";
 import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import { listShopOrders } from "@/lib/shop-commerce.server";
-import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -19,11 +22,13 @@ export const metadata = shopPrivatePageTitle("Orders");
 export default async function AccountOrdersPage() {
   const viewer = await loadShopViewerState();
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
   const shellNav = {
     activeNavHref: "/account/orders",
     portalOwnershipEnabled,
     payoutsEnabled,
+    artistPortalEnabled,
   };
 
   const gate = gateShopAuthenticatedRoute(viewer, "/account/orders");

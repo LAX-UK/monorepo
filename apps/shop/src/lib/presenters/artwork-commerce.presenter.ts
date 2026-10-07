@@ -13,6 +13,9 @@ export function isArtworkPurchasable(artwork: PublicArtworkDetail): boolean {
 }
 
 export function isArtworkPriceEnquiryAvailable(artwork: PublicArtworkDetail): boolean {
+  if (!artwork.eligibleForEditionAllocation && artwork.saleState === "for_sale") {
+    return true;
+  }
   if (artwork.saleState !== "price_on_application") return false;
   if (artwork.eligibleForEditionAllocation && artwork.availability.editionsAvailable <= 0) {
     return false;

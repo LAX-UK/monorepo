@@ -31,6 +31,38 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
     }),
   );
 
+  app.get("/commerce/me/sales", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/sales",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.get("/commerce/me/sale-authority-requests", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/sale-authority-requests",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.get("/commerce/me/artist/artworks", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/artist/artworks",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.get("/commerce/me/artist/sales", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/artist/sales",
+      scopes: "shop.read",
+    }),
+  );
+
   app.get("/commerce/me/documents", async (c) => {
     let auth: Awaited<ReturnType<typeof resolveAuthenticatedCommerceContext>>;
     try {
@@ -69,12 +101,14 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
 
   app.post("/commerce/me/sale-authority-requests", async (c) => {
     const body = await c.req.json().catch(() => ({}));
+    const idempotencyKey = c.req.header("idempotency-key") ?? undefined;
     return proxyAuthenticatedCommerce(c, deps, {
       method: "POST",
       path: "/v1/me/sale-authority-requests",
       scopes: "shop.write",
       requireCsrf: true,
       body,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     });
   });
 }

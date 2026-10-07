@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   shopArtist,
   shopArtwork,
+  shopClientAssignment,
   shopEdition,
   shopFulfilment,
   shopOrder,
@@ -16,10 +17,16 @@ import {
   shopStockHold,
   shopThirdPartySale,
 } from "@auction/db/schema";
-import { and, desc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
-import { decodeCatalogueCursor, encodeCatalogueCursor } from "../application/catalogue-cursor.js";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import {
+  decodeCatalogueCursor,
+  encodeCatalogueCursor,
+  truncateCatalogueCursorDate,
+} from "../application/catalogue-cursor.js";
 import type { AdminReadPorts } from "../application/ports/admin-readers.js";
 import { notFound } from "../errors/shop-api-error.js";
+import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
+import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -39,11 +46,17 @@ function paginateByCreatedAtId<T extends { createdAt: Date; id: string }, R>(
   return {
     items: page.map(mapRow),
     nextCursor:
-      hasMore && last ? encodeCatalogueCursor({ createdAt: last.createdAt, id: last.id }) : null,
+      hasMore && last
+        ? encodeCatalogueCursor({
+            createdAt: truncateCatalogueCursorDate(last.createdAt),
+            id: last.id,
+          })
+        : null,
   };
 }
 
 export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
+  const detail = createDrizzleAdminDetailReaders(db);
   return {
     orders: {
       async listOrders(input) {
@@ -53,14 +66,9 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .select()
           .from(shopOrder)
           .where(
-            cursor
-              ? or(
-                  lt(shopOrder.createdAt, cursor.createdAt),
-                  and(eq(shopOrder.createdAt, cursor.createdAt), lt(shopOrder.id, cursor.id)),
-                )
-              : undefined,
+            cursor ? keysetBeforeCreatedAtId(shopOrder.createdAt, shopOrder.id, cursor) : undefined,
           )
-          .orderBy(desc(shopOrder.createdAt), desc(shopOrder.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopOrder.createdAt, shopOrder.id))
           .limit(limit + 1);
         return paginateByCreatedAtId(
           rows.map((row) => ({ ...row, id: row.id })),
@@ -76,6 +84,7 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           }),
         );
       },
+      getOrderDetail: detail.getOrderDetail,
     },
     fulfilment: {
       async listFulfilment(input) {
@@ -86,16 +95,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .from(shopFulfilment)
           .where(
             cursor
-              ? or(
-                  lt(shopFulfilment.updatedAt, cursor.createdAt),
-                  and(
-                    eq(shopFulfilment.updatedAt, cursor.createdAt),
-                    lt(shopFulfilment.id, cursor.id),
-                  ),
-                )
+              ? keysetBeforeCreatedAtId(shopFulfilment.updatedAt, shopFulfilment.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopFulfilment.updatedAt), desc(shopFulfilment.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopFulfilment.updatedAt, shopFulfilment.id))
           .limit(limit + 1);
         return paginateByCreatedAtId(
           rows.map((row) => ({ createdAt: row.updatedAt, id: row.id, row })),
@@ -121,16 +124,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .from(shopProductionTask)
           .where(
             cursor
-              ? or(
-                  lt(shopProductionTask.createdAt, cursor.createdAt),
-                  and(
-                    eq(shopProductionTask.createdAt, cursor.createdAt),
-                    lt(shopProductionTask.id, cursor.id),
-                  ),
-                )
+              ? keysetBeforeCreatedAtId(shopProductionTask.createdAt, shopProductionTask.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopProductionTask.createdAt), desc(shopProductionTask.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopProductionTask.createdAt, shopProductionTask.id))
           .limit(limit + 1);
         return paginateByCreatedAtId(rows, limit, (row) => ({
           taskId: row.id,
@@ -154,16 +151,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .innerJoin(shopParty, eq(shopPayoutLedger.ownerPartyId, shopParty.id))
           .where(
             cursor
-              ? or(
-                  lt(shopPayoutLedger.createdAt, cursor.createdAt),
-                  and(
-                    eq(shopPayoutLedger.createdAt, cursor.createdAt),
-                    lt(shopPayoutLedger.id, cursor.id),
-                  ),
-                )
+              ? keysetBeforeCreatedAtId(shopPayoutLedger.createdAt, shopPayoutLedger.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopPayoutLedger.createdAt), desc(shopPayoutLedger.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopPayoutLedger.createdAt, shopPayoutLedger.id))
           .limit(limit + 1);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
@@ -184,7 +175,7 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           nextCursor:
             hasMore && last
               ? encodeCatalogueCursor({
-                  createdAt: last.payout.createdAt,
+                  createdAt: truncateCatalogueCursorDate(last.payout.createdAt),
                   id: last.payout.id,
                 })
               : null,
@@ -195,7 +186,8 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
       async listStockHolds(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
+        const brokerSubjectId = input.brokerSubjectId?.trim();
+        const baseQuery = db
           .select({
             hold: shopStockHold,
             artworkTitle: shopArtwork.title,
@@ -203,19 +195,29 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           })
           .from(shopStockHold)
           .innerJoin(shopEdition, eq(shopStockHold.editionId, shopEdition.id))
-          .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
-          .where(
-            cursor
-              ? or(
-                  lt(shopStockHold.createdAt, cursor.createdAt),
-                  and(
-                    eq(shopStockHold.createdAt, cursor.createdAt),
-                    lt(shopStockHold.id, cursor.id),
-                  ),
-                )
-              : undefined,
-          )
-          .orderBy(desc(shopStockHold.createdAt), desc(shopStockHold.id))
+          .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id));
+
+        const rows = await (brokerSubjectId
+          ? baseQuery
+              .innerJoin(
+                shopClientAssignment,
+                eq(shopStockHold.clientPartyId, shopClientAssignment.clientPartyId),
+              )
+              .where(
+                and(
+                  eq(shopClientAssignment.brokerSubjectId, brokerSubjectId),
+                  cursor
+                    ? keysetBeforeCreatedAtId(shopStockHold.createdAt, shopStockHold.id, cursor)
+                    : undefined,
+                ),
+              )
+          : baseQuery.where(
+              cursor
+                ? keysetBeforeCreatedAtId(shopStockHold.createdAt, shopStockHold.id, cursor)
+                : undefined,
+            )
+        )
+          .orderBy(...orderByMsTimestampIdDesc(shopStockHold.createdAt, shopStockHold.id))
           .limit(limit + 1);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
@@ -233,7 +235,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           })),
           nextCursor:
             hasMore && last
-              ? encodeCatalogueCursor({ createdAt: last.hold.createdAt, id: last.hold.id })
+              ? encodeCatalogueCursor({
+                  createdAt: truncateCatalogueCursorDate(last.hold.createdAt),
+                  id: last.hold.id,
+                })
               : null,
         };
       },
@@ -251,16 +256,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
           .where(
             cursor
-              ? or(
-                  lt(shopThirdPartySale.createdAt, cursor.createdAt),
-                  and(
-                    eq(shopThirdPartySale.createdAt, cursor.createdAt),
-                    lt(shopThirdPartySale.id, cursor.id),
-                  ),
-                )
+              ? keysetBeforeCreatedAtId(shopThirdPartySale.createdAt, shopThirdPartySale.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopThirdPartySale.createdAt), desc(shopThirdPartySale.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopThirdPartySale.createdAt, shopThirdPartySale.id))
           .limit(limit + 1);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
@@ -277,7 +276,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           })),
           nextCursor:
             hasMore && last
-              ? encodeCatalogueCursor({ createdAt: last.sale.createdAt, id: last.sale.id })
+              ? encodeCatalogueCursor({
+                  createdAt: truncateCatalogueCursorDate(last.sale.createdAt),
+                  id: last.sale.id,
+                })
               : null,
         };
       },
@@ -293,16 +295,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .innerJoin(shopArtwork, eq(shopOriginalSale.artworkId, shopArtwork.id))
           .where(
             cursor
-              ? or(
-                  lt(shopOriginalSale.createdAt, cursor.createdAt),
-                  and(
-                    eq(shopOriginalSale.createdAt, cursor.createdAt),
-                    lt(shopOriginalSale.id, cursor.id),
-                  ),
-                )
+              ? keysetBeforeCreatedAtId(shopOriginalSale.createdAt, shopOriginalSale.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopOriginalSale.createdAt), desc(shopOriginalSale.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopOriginalSale.createdAt, shopOriginalSale.id))
           .limit(limit + 1);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
@@ -318,7 +314,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           })),
           nextCursor:
             hasMore && last
-              ? encodeCatalogueCursor({ createdAt: last.sale.createdAt, id: last.sale.id })
+              ? encodeCatalogueCursor({
+                  createdAt: truncateCatalogueCursorDate(last.sale.createdAt),
+                  id: last.sale.id,
+                })
               : null,
         };
       },
@@ -332,16 +331,13 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .from(shopParty)
           .where(
             and(
-              ne(shopParty.kind, "lax"),
+              inArray(shopParty.kind, ["person", "gallery"]),
               cursor
-                ? or(
-                    lt(shopParty.createdAt, cursor.createdAt),
-                    and(eq(shopParty.createdAt, cursor.createdAt), lt(shopParty.id, cursor.id)),
-                  )
+                ? keysetBeforeCreatedAtId(shopParty.createdAt, shopParty.id, cursor)
                 : undefined,
             ),
           )
-          .orderBy(desc(shopParty.createdAt), desc(shopParty.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopParty.createdAt, shopParty.id))
           .limit(limit + 1);
         return paginateByCreatedAtId(rows, limit, (row) => ({
           partyId: row.id,
@@ -363,13 +359,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
           .where(
             cursor
-              ? or(
-                  lt(shopArtist.createdAt, cursor.createdAt),
-                  and(eq(shopArtist.createdAt, cursor.createdAt), lt(shopArtist.id, cursor.id)),
-                )
+              ? keysetBeforeCreatedAtId(shopArtist.createdAt, shopArtist.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopArtist.createdAt), desc(shopArtist.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopArtist.createdAt, shopArtist.id))
           .limit(limit + 1);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
@@ -384,10 +377,15 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           })),
           nextCursor:
             hasMore && last
-              ? encodeCatalogueCursor({ createdAt: last.artist.createdAt, id: last.artist.id })
+              ? encodeCatalogueCursor({
+                  createdAt: truncateCatalogueCursorDate(last.artist.createdAt),
+                  id: last.artist.id,
+                })
               : null,
         };
       },
+      getClientDetail: detail.getClientDetail,
+      getArtistDetail: detail.getArtistDetail,
     },
     saleAuthorityRequests: {
       async listRequests(input) {
@@ -411,17 +409,20 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
                   )
                 : undefined,
               cursor
-                ? or(
-                    lt(shopSaleAuthorityRequest.createdAt, cursor.createdAt),
-                    and(
-                      eq(shopSaleAuthorityRequest.createdAt, cursor.createdAt),
-                      lt(shopSaleAuthorityRequest.id, cursor.id),
-                    ),
+                ? keysetBeforeCreatedAtId(
+                    shopSaleAuthorityRequest.createdAt,
+                    shopSaleAuthorityRequest.id,
+                    cursor,
                   )
                 : undefined,
             ),
           )
-          .orderBy(desc(shopSaleAuthorityRequest.createdAt), desc(shopSaleAuthorityRequest.id))
+          .orderBy(
+            ...orderByMsTimestampIdDesc(
+              shopSaleAuthorityRequest.createdAt,
+              shopSaleAuthorityRequest.id,
+            ),
+          )
           .limit(limit + 1);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
@@ -440,7 +441,7 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           nextCursor:
             hasMore && last
               ? encodeCatalogueCursor({
-                  createdAt: last.request.createdAt,
+                  createdAt: truncateCatalogueCursorDate(last.request.createdAt),
                   id: last.request.id,
                 })
               : null,
@@ -473,16 +474,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .from(shopStaffMember)
           .where(
             cursor
-              ? or(
-                  lt(shopStaffMember.createdAt, cursor.createdAt),
-                  and(
-                    eq(shopStaffMember.createdAt, cursor.createdAt),
-                    lt(shopStaffMember.id, cursor.id),
-                  ),
-                )
+              ? keysetBeforeCreatedAtId(shopStaffMember.createdAt, shopStaffMember.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopStaffMember.createdAt), desc(shopStaffMember.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopStaffMember.createdAt, shopStaffMember.id))
           .limit(limit + 1);
         return paginateByCreatedAtId(rows, limit, (row) => ({
           staffMemberId: row.id,
@@ -502,13 +497,10 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           .from(shopProduct)
           .where(
             cursor
-              ? or(
-                  lt(shopProduct.createdAt, cursor.createdAt),
-                  and(eq(shopProduct.createdAt, cursor.createdAt), lt(shopProduct.id, cursor.id)),
-                )
+              ? keysetBeforeCreatedAtId(shopProduct.createdAt, shopProduct.id, cursor)
               : undefined,
           )
-          .orderBy(desc(shopProduct.createdAt), desc(shopProduct.id))
+          .orderBy(...orderByMsTimestampIdDesc(shopProduct.createdAt, shopProduct.id))
           .limit(limit + 1);
         const hasMore = products.length > limit;
         const page = hasMore ? products.slice(0, limit) : products;

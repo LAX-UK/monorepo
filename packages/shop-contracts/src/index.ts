@@ -39,10 +39,14 @@ export {
   type PublicCategorySummary,
 } from "./category-public.js";
 export {
+  PublicMerchandiseProductDetailSchema,
   PublicMerchandiseProductListSchema,
   PublicMerchandiseProductSchema,
+  PublicMerchandiseVariantSchema,
   type PublicMerchandiseProduct,
+  type PublicMerchandiseProductDetail,
   type PublicMerchandiseProductList,
+  type PublicMerchandiseVariant,
 } from "./merchandise-public.js";
 export {
   AdminArtistListSchema,
@@ -60,6 +64,14 @@ export {
   AdminThirdPartySaleListSchema,
   type AdminOverviewKpis,
 } from "./admin-list.js";
+export {
+  AdminArtistDetailSchema,
+  AdminClientDetailSchema,
+  AdminOrderDetailSchema,
+  type AdminArtistDetail,
+  type AdminClientDetail,
+  type AdminOrderDetail,
+} from "./admin-detail.js";
 export { CursorListQuerySchema, type CursorListQuery } from "./cursor-list.js";
 export {
   PortalDocumentsResponseSchema,
@@ -74,6 +86,9 @@ export {
   PortalSaleAuthoritySchema,
   PortalSaleStatementSchema,
   PortalSalesResponseSchema,
+  PortalArtistArtworksResponseSchema,
+  PortalArtistSalesResponseSchema,
+  PortalArtistProfileSchema,
   SaleAuthorityRequestBodySchema,
   SaleAuthorityRequestResponseSchema,
   type PortalDocument,
@@ -117,6 +132,7 @@ export {
   parsePublicArtworkList,
   parsePublicCategoryList,
   parsePublicCategorySummary,
+  parsePublicMerchandiseProductDetail,
   parsePublicMerchandiseProductList,
   parsePortalDocuments,
   parsePortalEditions,
@@ -124,4 +140,6 @@ export {
   parsePortalSaleAuthority,
   parsePortalSaleAuthorityRequests,
   parsePortalSales,
+  parsePortalArtistArtworks,
+  parsePortalArtistSales,
 } from "./parse-public.js";

@@ -2,12 +2,18 @@ import { ShopAccountLinkButton, ShopAccountShell } from "@/components/account/sh
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { fetchPortalSales } from "@/lib/shop-portal.server";
+import { formatPortalSaleChannel } from "@/lib/presenters/portal-sale-channel.presenter";
+import {
+  fetchPortalSales,
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("Sales statement");
 
@@ -17,9 +23,19 @@ function formatPence(pence: number): string {
 
 export default async function ShopAccountSalesPage() {
   if (!isShopPayoutsEnabled()) {
-    redirect("/account/disabled");
+    notFound();
   }
   const viewer = await loadShopViewerState();
+  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
+  const payoutsEnabled = isShopPayoutsEnabled();
+  const shellNav = {
+    activeNavHref: "/account/sales",
+    portalOwnershipEnabled,
+    payoutsEnabled,
+    artistPortalEnabled,
+  };
+
   const gate = gateShopAuthenticatedRoute(viewer, "/account/sales");
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
@@ -30,8 +46,9 @@ export default async function ShopAccountSalesPage() {
 
   return (
     <ShopAccountShell
-      title="Sales statement"
-      breadcrumbs={[...(shopPageWayfinding.account.breadcrumbs ?? []), { label: "Sales" }]}
+      title={shopPageWayfinding.accountSales.title}
+      breadcrumbs={shopPageWayfinding.accountSales.breadcrumbs}
+      {...shellNav}
     >
       {result.status === "unauthorized" ? (
         <ShopStatusState
@@ -85,7 +102,8 @@ export default async function ShopAccountSalesPage() {
                 {row.editionNumber != null ? ` · Edition ${row.editionNumber}` : ""}
               </p>
               <p className="text-on-surface-variant capitalize">
-                {row.channel.replace("_", " ")} · {new Date(row.soldAt).toLocaleDateString("en-GB")}
+                {formatPortalSaleChannel(row.channel)} ·{" "}
+                {new Date(row.soldAt).toLocaleDateString("en-GB")}
               </p>
               <p className="text-on-surface">
                 Gross {formatPence(row.grossPence)} · Fees {formatPence(row.feesPence)} · Net{" "}
@@ -93,9 +111,12 @@ export default async function ShopAccountSalesPage() {
               </p>
               <p className="text-on-surface-variant">
                 Payout {row.payoutStatus} ·{" "}
-                <a className="underline" href="/account/payouts">
-                  View payouts
-                </a>
+                <Link
+                  href={`/account/payouts#payout-${row.payoutId}`}
+                  className="shop-focus-ring underline"
+                >
+                  View payout
+                </Link>
               </p>
             </li>
           ))}

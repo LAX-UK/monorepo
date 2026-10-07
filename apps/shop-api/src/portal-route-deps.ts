@@ -1,3 +1,4 @@
+import type { PortalArtistReader } from "./application/ports/portal-artist.reader.js";
 import type {
   PortalOwnershipReader,
   PortalSalesReader,
@@ -6,4 +7,5 @@ import type {
 export type PortalRoutesDeps = {
   portalOwnership: PortalOwnershipReader;
   portalSales: PortalSalesReader;
+  portalArtist: PortalArtistReader;
 };

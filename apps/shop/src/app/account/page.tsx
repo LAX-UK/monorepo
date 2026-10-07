@@ -6,7 +6,10 @@ import {
 } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
-import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -88,14 +91,20 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
   }
 
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
-  const navFlags = { portalOwnershipEnabled, payoutsEnabled, activeHref: "/account" };
+  const shellNav = {
+    activeNavHref: "/account",
+    portalOwnershipEnabled,
+    payoutsEnabled,
+    artistPortalEnabled,
+  };
 
   return (
     <ShopAccountShell
       title={shopPageWayfinding.account.title}
       breadcrumbs={shopPageWayfinding.account.breadcrumbs}
-      {...navFlags}
+      {...shellNav}
     >
       <dl className="grid gap-3 text-sm">
         <div>
@@ -107,7 +116,12 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
           <dd className="font-medium text-on-surface">{viewer.displayName || "—"}</dd>
         </div>
       </dl>
-      <ShopAccountOverviewCards {...navFlags} />
+      <ShopAccountOverviewCards
+        portalOwnershipEnabled={portalOwnershipEnabled}
+        payoutsEnabled={payoutsEnabled}
+        artistPortalEnabled={artistPortalEnabled}
+        activeHref="/account"
+      />
       <form action={shopIdentityUrl("/logout")} method="post" className="pt-2">
         <Button type="submit" variant="secondaryOutline" className="min-h-11 w-full">
           Sign out

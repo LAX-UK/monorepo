@@ -3,7 +3,7 @@ import { BasketViewSchema, ShopApiErrorBodySchema } from "@auction/shop-contract
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import type { BasketOwner } from "../../application/ports/commerce.ports.js";
+import type { BasketOwner, UpsertBasketLineInput } from "../../application/ports/commerce.ports.js";
 import type { CommerceRoutesDeps } from "../../commerce-route-deps.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import {
@@ -14,6 +14,23 @@ import {
 import { presentBasket } from "../../presenters/commerce.presenter.js";
 
 const ANON_HEADER = "x-shop-basket-token";
+
+const UpsertBasketLineBodySchema = Type.Union([
+  Type.Object(
+    {
+      artworkSlug: Type.String({ minLength: 1 }),
+      quantity: Type.Integer({ minimum: 1, maximum: 24 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      productVariantId: Type.String({ format: "uuid" }),
+      quantity: Type.Integer({ minimum: 1, maximum: 24 }),
+    },
+    { additionalProperties: false },
+  ),
+]);
 
 function hashBasketToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
@@ -33,6 +50,47 @@ function resolveBasketOwner(request: FastifyRequest): BasketOwner {
     throw new ShopApiError(SHOP_API_ERROR_CODES.UNAUTHORIZED, "Unauthorized", 401);
   }
   return { kind: "anonymous", tokenHash: hashBasketToken(token) };
+}
+
+function assertBasketLineBodyNotAmbiguous(body: unknown): void {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return;
+  }
+  const record = body as Record<string, unknown>;
+  const hasArtwork = typeof record.artworkSlug === "string" && record.artworkSlug.length > 0;
+  const hasVariant =
+    typeof record.productVariantId === "string" && record.productVariantId.length > 0;
+  if (hasArtwork && hasVariant) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid basket line body", 400);
+  }
+}
+
+export function parseUpsertBasketLineBody(
+  body: unknown,
+  owner: BasketOwner,
+  merchandiseEnabled: boolean,
+): UpsertBasketLineInput {
+  const record = body as Record<string, unknown>;
+  const quantity = record.quantity;
+  if (typeof quantity !== "number" || !Number.isInteger(quantity)) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid quantity", 400);
+  }
+  const hasArtwork = typeof record.artworkSlug === "string" && record.artworkSlug.length > 0;
+  const hasVariant =
+    typeof record.productVariantId === "string" && record.productVariantId.length > 0;
+  if (hasArtwork && hasVariant) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid basket line body", 400);
+  }
+  if (hasArtwork) {
+    return { owner, artworkSlug: record.artworkSlug as string, quantity };
+  }
+  if (hasVariant) {
+    if (!merchandiseEnabled) {
+      throw new ShopApiError(SHOP_API_ERROR_CODES.FEATURE_DISABLED, "Merchandise is disabled", 404);
+    }
+    return { owner, productVariantId: record.productVariantId as string, quantity };
+  }
+  throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid basket line body", 400);
 }
 
 export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceRoutesDeps) {
@@ -58,12 +116,12 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
   app.put(
     "/v1/basket/lines",
     {
+      preValidation: async (request) => {
+        assertBasketLineBodyNotAmbiguous(request.body);
+      },
       schema: {
         tags: ["commerce"],
-        body: Type.Object({
-          artworkSlug: Type.String({ minLength: 1 }),
-          quantity: Type.Integer({ minimum: 1, maximum: 24 }),
-        }),
+        body: UpsertBasketLineBodySchema,
         response: {
           200: BasketViewSchema,
           400: ShopApiErrorBodySchema,
@@ -73,12 +131,9 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
     },
     async (request) => {
       requireShopScope(request, "shop.write");
-      const body = request.body as { artworkSlug: string; quantity: number };
-      const basket = await deps.upsertBasketLine({
-        owner: resolveBasketOwner(request),
-        artworkSlug: body.artworkSlug,
-        quantity: body.quantity,
-      });
+      const owner = resolveBasketOwner(request);
+      const input = parseUpsertBasketLineBody(request.body, owner, deps.merchandiseEnabled);
+      const basket = await deps.upsertBasketLine(input);
       return presentBasket(basket);
     },
   );

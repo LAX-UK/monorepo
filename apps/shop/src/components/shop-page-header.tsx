@@ -68,6 +68,10 @@ export const shopPageWayfinding = {
     title: "Checkout",
     breadcrumbs: [shopRoot, { label: "Checkout" }],
   },
+  checkoutCancel: {
+    title: "Checkout cancelled",
+    breadcrumbs: [shopRoot, { label: "Checkout", href: "/checkout" }, { label: "Cancelled" }],
+  },
   confirmation: {
     title: "Order confirmation",
     breadcrumbs: [shopRoot, { label: "Checkout", href: "/checkout" }, { label: "Confirmation" }],
@@ -108,6 +112,10 @@ export const shopPageWayfinding = {
   accountSaleLimits: {
     title: "Sale limits",
     breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sale limits" }],
+  },
+  accountSales: {
+    title: "Sales statement",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sales" }],
   },
   accountPayouts: {
     title: "Payouts",

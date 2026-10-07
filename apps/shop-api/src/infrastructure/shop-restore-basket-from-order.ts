@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import type { BasketOwner } from "../application/ports/commerce.ports.js";
 import { ensureOpenBasket } from "./shop-basket.persistence.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
+import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
 type OrderHeader = {
   identitySubjectId: string;
@@ -18,6 +19,7 @@ export async function restoreBasketLinesFromOrder(
   const lines = await tx
     .select({
       artworkId: shopOrderLine.artworkId,
+      productVariantId: shopOrderLine.productVariantId,
       unitPricePence: shopOrderLine.unitPricePence,
     })
     .from(shopOrderLine)
@@ -28,25 +30,41 @@ export async function restoreBasketLinesFromOrder(
   }
 
   const quantityByArtwork = new Map<string, { quantity: number; unitPricePence: number }>();
+  const quantityByVariant = new Map<string, { quantity: number; unitPricePence: number }>();
   for (const line of lines) {
-    if (line.artworkId === null) {
+    if (line.artworkId) {
+      const existing = quantityByArtwork.get(line.artworkId);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        quantityByArtwork.set(line.artworkId, {
+          quantity: 1,
+          unitPricePence: line.unitPricePence,
+        });
+      }
       continue;
     }
-    const existing = quantityByArtwork.get(line.artworkId);
-    if (existing) {
-      existing.quantity += 1;
-    } else {
-      quantityByArtwork.set(line.artworkId, {
-        quantity: 1,
-        unitPricePence: line.unitPricePence,
-      });
+    if (line.productVariantId) {
+      const existing = quantityByVariant.get(line.productVariantId);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        quantityByVariant.set(line.productVariantId, {
+          quantity: 1,
+          unitPricePence: line.unitPricePence,
+        });
+      }
     }
   }
 
   const owner: BasketOwner = { kind: "subject", identitySubjectId: order.identitySubjectId };
   const basketId = await ensureOpenBasket(tx, owner);
   const artworkIds = [...quantityByArtwork.keys()];
-  const sellableByArtwork = await sellableCountsByArtworkIds(tx, artworkIds);
+  const variantIds = [...quantityByVariant.keys()];
+  const [sellableByArtwork, sellableByVariant] = await Promise.all([
+    sellableCountsByArtworkIds(tx, artworkIds),
+    sellableCountsByVariantIds(tx, variantIds),
+  ]);
 
   for (const [artworkId, { quantity, unitPricePence }] of quantityByArtwork) {
     const sellable = sellableByArtwork.get(artworkId) ?? 0;
@@ -76,6 +94,50 @@ export async function restoreBasketLinesFromOrder(
       await tx.insert(shopBasketLine).values({
         basketId,
         artworkId,
+        unitPricePence,
+        quantity: mergedQuantity,
+      });
+    }
+  }
+
+  for (const [productVariantId, { quantity, unitPricePence }] of quantityByVariant) {
+    const sellable = sellableByVariant.get(productVariantId) ?? 0;
+    if (sellable < 1) {
+      continue;
+    }
+    const restoreQuantity = Math.min(quantity, sellable);
+    const [existingLine] = await tx
+      .select({ quantity: shopBasketLine.quantity })
+      .from(shopBasketLine)
+      .where(
+        and(
+          eq(shopBasketLine.basketId, basketId),
+          eq(shopBasketLine.productVariantId, productVariantId),
+        ),
+      )
+      .limit(1);
+    const mergedQuantity = Math.min((existingLine?.quantity ?? 0) + restoreQuantity, sellable);
+    if (mergedQuantity < 1) {
+      continue;
+    }
+    if (existingLine) {
+      await tx
+        .update(shopBasketLine)
+        .set({
+          quantity: mergedQuantity,
+          unitPricePence,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(shopBasketLine.basketId, basketId),
+            eq(shopBasketLine.productVariantId, productVariantId),
+          ),
+        );
+    } else {
+      await tx.insert(shopBasketLine).values({
+        basketId,
+        productVariantId,
         unitPricePence,
         quantity: mergedQuantity,
       });

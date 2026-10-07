@@ -1,5 +1,12 @@
 import type { Database } from "@auction/db";
-import { shopArtist, shopArtwork, shopOrderLine, shopParty } from "@auction/db/schema";
+import {
+  shopArtist,
+  shopArtwork,
+  shopOrderLine,
+  shopParty,
+  shopProduct,
+  shopProductVariant,
+} from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 
 export type CheckoutStripeLine = {
@@ -14,7 +21,7 @@ export async function loadCheckoutStripePresentation(
   db: Database,
   orderId: string,
 ): Promise<CheckoutStripeLine[]> {
-  const rows = await db
+  const editionRows = await db
     .select({
       artworkId: shopOrderLine.artworkId,
       editionNumber: shopOrderLine.editionNumber,
@@ -29,7 +36,19 @@ export async function loadCheckoutStripePresentation(
     .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
     .where(eq(shopOrderLine.orderId, orderId));
 
-  const grouped = new Map<
+  const variantRows = await db
+    .select({
+      productVariantId: shopOrderLine.productVariantId,
+      unitPricePence: shopOrderLine.unitPricePence,
+      productTitle: shopProduct.title,
+      variantSku: shopProductVariant.sku,
+    })
+    .from(shopOrderLine)
+    .innerJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
+    .innerJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
+    .where(eq(shopOrderLine.orderId, orderId));
+
+  const groupedEditions = new Map<
     string,
     {
       title: string;
@@ -41,16 +60,16 @@ export async function loadCheckoutStripePresentation(
     }
   >();
 
-  for (const row of rows) {
+  for (const row of editionRows) {
     if (row.artworkId === null || row.editionNumber === null) {
       continue;
     }
-    const existing = grouped.get(row.artworkId);
+    const existing = groupedEditions.get(row.artworkId);
     if (existing) {
       existing.quantity += 1;
       existing.editionNumbers.push(row.editionNumber);
     } else {
-      grouped.set(row.artworkId, {
+      groupedEditions.set(row.artworkId, {
         title: row.title,
         artistName: row.artistName,
         imageUrl: row.imageUrl,
@@ -61,7 +80,7 @@ export async function loadCheckoutStripePresentation(
     }
   }
 
-  return [...grouped.values()].map((line) => {
+  const editionLines = [...groupedEditions.values()].map((line) => {
     const sortedEditions = [...line.editionNumbers].sort((a, b) => a - b);
     const editionLabel =
       sortedEditions.length > 1
@@ -75,4 +94,41 @@ export async function loadCheckoutStripePresentation(
       imageUrl: line.imageUrl,
     };
   });
+
+  const groupedVariants = new Map<
+    string,
+    {
+      productTitle: string;
+      variantSku: string;
+      unitAmountPence: number;
+      quantity: number;
+    }
+  >();
+
+  for (const row of variantRows) {
+    if (!row.productVariantId) {
+      continue;
+    }
+    const existing = groupedVariants.get(row.productVariantId);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      groupedVariants.set(row.productVariantId, {
+        productTitle: row.productTitle,
+        variantSku: row.variantSku,
+        unitAmountPence: row.unitPricePence,
+        quantity: 1,
+      });
+    }
+  }
+
+  const variantLines = [...groupedVariants.values()].map((line) => ({
+    title: line.productTitle,
+    description: `SKU ${line.variantSku}`,
+    quantity: line.quantity,
+    unitAmountPence: line.unitAmountPence,
+    imageUrl: null,
+  }));
+
+  return [...editionLines, ...variantLines];
 }

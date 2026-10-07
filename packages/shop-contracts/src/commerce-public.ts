@@ -26,8 +26,12 @@ export type ShopDeliveryAddress = Static<typeof ShopDeliveryAddressSchema>;
 export const BasketLineSchema = Type.Object(
   {
     lineId: Type.String({ format: "uuid" }),
-    artworkSlug: Type.String({ minLength: 1 }),
-    artworkTitle: Type.String({ minLength: 1 }),
+    artworkSlug: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    artworkTitle: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    productVariantId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
+    productSlug: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    productTitle: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    variantSku: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     unitPricePence: Type.Integer({ minimum: 0 }),
     quantity: Type.Integer({ minimum: 1 }),
     sellableCount: Type.Integer({ minimum: 0 }),
@@ -63,9 +67,13 @@ export const BasketResponseSchema = Type.Union([BasketViewSchema, EmptyBasketVie
 export const OrderLineSchema = Type.Object(
   {
     orderLineId: Type.String({ format: "uuid" }),
-    artworkSlug: Type.String({ minLength: 1 }),
-    artworkTitle: Type.String({ minLength: 1 }),
-    editionNumber: Type.Integer({ minimum: 1, maximum: 24 }),
+    artworkSlug: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    artworkTitle: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    productVariantId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
+    productSlug: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    productTitle: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    variantSku: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    editionNumber: Type.Union([Type.Integer({ minimum: 1, maximum: 24 }), Type.Null()]),
     unitPricePence: Type.Integer({ minimum: 0 }),
   },
   { additionalProperties: false },

@@ -6,12 +6,14 @@ export type ShopAccountNavItem = {
 export type BuildShopAccountNavItemsInput = {
   portalOwnershipEnabled: boolean;
   payoutsEnabled: boolean;
+  artistPortalEnabled?: boolean;
   activeHref: string;
 };
 
 export function buildShopAccountNavItems({
   portalOwnershipEnabled,
   payoutsEnabled,
+  artistPortalEnabled = false,
   activeHref,
 }: BuildShopAccountNavItemsInput): Array<ShopAccountNavItem & { active: boolean }> {
   const items: ShopAccountNavItem[] = [
@@ -26,8 +28,15 @@ export function buildShopAccountNavItems({
   }
   if (payoutsEnabled) {
     items.push(
+      { href: "/account/sales", label: "Sales" },
       { href: "/account/payouts", label: "Payouts" },
       { href: "/account/documents", label: "Documents" },
+    );
+  }
+  if (artistPortalEnabled) {
+    items.push(
+      { href: "/account/artworks", label: "My artworks" },
+      { href: "/account/artist-sales", label: "Artist sales" },
     );
   }
 

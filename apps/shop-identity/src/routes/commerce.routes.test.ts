@@ -154,6 +154,46 @@ describe("commerce routes Set-Cookie", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "validation_failed" });
   });
+
+  it("accepts merchandise variant basket line body", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({
+        basketId: "b1",
+        expiresAt: new Date().toISOString(),
+        merchandiseSubtotalPence: 100,
+        lines: [],
+      }),
+    );
+    const app = createGuestCommerceApp(shopApiFetch);
+    const csrf = await app.request("/commerce/csrf");
+    const csrfBody = (await csrf.json()) as { csrfToken: string };
+    const csrfCookie = csrf.headers.get("set-cookie") ?? "";
+
+    const response = await app.request("/commerce/basket/lines", {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        cookie: csrfCookie,
+        "x-shop-csrf": csrfBody.csrfToken,
+      },
+      body: JSON.stringify({
+        productVariantId: "550e8400-e29b-41d4-a716-446655440000",
+        quantity: 1,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/basket/lines",
+        body: {
+          productVariantId: "550e8400-e29b-41d4-a716-446655440000",
+          quantity: 1,
+        },
+      }),
+    );
+  });
 });
 
 describe("commerce artwork interest routes", () => {
@@ -199,6 +239,79 @@ describe("commerce artwork interest routes", () => {
     );
   });
 
+  it("proxies authenticated GET portal sales with shop.read scope", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ items: [] }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/sales", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/sales",
+        method: "GET",
+        scopes: "shop.read",
+      }),
+    );
+  });
+
+  it("proxies authenticated GET artist artworks with shop.read scope", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({
+        artist: { artistId: "a1", slug: "artist", displayName: "Artist" },
+        items: [],
+      }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/artist/artworks", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/artist/artworks",
+        method: "GET",
+        scopes: "shop.read",
+      }),
+    );
+  });
+
+  it("proxies authenticated GET artist sales with shop.read scope", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ artist: null, items: [] }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/artist/sales", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/artist/sales",
+        method: "GET",
+        scopes: "shop.read",
+      }),
+    );
+  });
+
+  it("proxies authenticated GET sale authority requests with shop.read scope", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ items: [] }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/sale-authority-requests", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/sale-authority-requests",
+        method: "GET",
+        scopes: "shop.read",
+      }),
+    );
+  });
+
   it("proxies authenticated POST interest with shop.write scope", async () => {
     const shopApiFetch = vi.fn(async () => Response.json({ status: "registered" }));
     const { app } = createCommerceApp(shopApiFetch);
@@ -220,6 +333,37 @@ describe("commerce artwork interest routes", () => {
         path: "/v1/artworks/reed-study/interest",
         method: "POST",
         scopes: "shop.write",
+      }),
+    );
+  });
+
+  it("forwards idempotency-key on POST sale authority requests", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ requestId: "req-1", status: "pending" }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const csrf = await app.request("/commerce/csrf");
+    const csrfBody = (await csrf.json()) as { csrfToken: string };
+    const csrfCookie = csrf.headers.get("set-cookie") ?? "";
+
+    const response = await app.request("/commerce/me/sale-authority-requests", {
+      method: "POST",
+      headers: {
+        cookie: `${AUTH_COOKIE}; ${csrfCookie}`,
+        "x-shop-csrf": csrfBody.csrfToken,
+        "content-type": "application/json",
+        "idempotency-key": "idem-key-12345678",
+      },
+      body: JSON.stringify({ artworkId: "art-1", requestedCount: 2 }),
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/sale-authority-requests",
+        method: "POST",
+        scopes: "shop.write",
+        idempotencyKey: "idem-key-12345678",
       }),
     );
   });

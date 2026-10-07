@@ -1,6 +1,10 @@
 "use client";
 
-import { removeBasketLine, setBasketLineQuantity } from "@/app/actions/basket.actions";
+import {
+  removeBasketLine,
+  setBasketLineQuantity,
+  setMerchandiseBasketLineQuantity,
+} from "@/app/actions/basket.actions";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
@@ -42,7 +46,7 @@ export function BasketLinesClient({ basket, summary }: Props) {
 
   function commitQuantity(
     lineId: string,
-    artworkSlug: string,
+    line: BasketView["lines"][number],
     next: number,
     previous: number,
     maxQuantity: number,
@@ -50,7 +54,11 @@ export function BasketLinesClient({ basket, summary }: Props) {
     if (!Number.isInteger(next) || next < 1 || next > maxQuantity || next === previous) return;
     setMessage(null);
     startTransition(async () => {
-      const result = await setBasketLineQuantity(artworkSlug, next);
+      const result = line.productVariantId
+        ? await setMerchandiseBasketLineQuantity(line.productVariantId, next)
+        : line.artworkSlug
+          ? await setBasketLineQuantity(line.artworkSlug, next)
+          : { ok: false as const, error: {} };
       if (!result.ok) {
         setQuantities((current) => ({ ...current, [lineId]: previous }));
         setMessage(errorMessage(result.error));
@@ -72,13 +80,22 @@ export function BasketLinesClient({ basket, summary }: Props) {
           {basket.lines.map((line) => {
             const quantity = quantities[line.lineId] ?? line.quantity;
             const maxQuantity = Math.min(24, line.sellableCount);
+            const lineTitle = line.productTitle ?? line.artworkTitle ?? "Item";
+            const lineHref = line.productSlug
+              ? `/merchandise/${line.productSlug}`
+              : line.artworkSlug
+                ? `/artworks/${line.artworkSlug}`
+                : null;
             return (
               <li key={line.lineId} className="shop-basket__line">
                 <BasketLineThumbnail imageUrl={line.imageUrl} />
                 <div className="shop-basket__line-body">
                   <p className="shop-basket__line-title">
-                    <Link href={`/artworks/${line.artworkSlug}`}>{line.artworkTitle}</Link>
+                    {lineHref ? <Link href={lineHref}>{lineTitle}</Link> : lineTitle}
                   </p>
+                  {line.variantSku ? (
+                    <p className="shop-basket__line-meta">SKU {line.variantSku}</p>
+                  ) : null}
                   <p className="shop-basket__line-price">
                     {formatGbpPence(line.unitPricePence)} each
                   </p>
@@ -109,13 +126,7 @@ export function BasketLinesClient({ basket, summary }: Props) {
                         onClick={() => {
                           const next = Math.max(1, line.sellableCount);
                           setQuantities((current) => ({ ...current, [line.lineId]: next }));
-                          commitQuantity(
-                            line.lineId,
-                            line.artworkSlug,
-                            next,
-                            quantity,
-                            maxQuantity,
-                          );
+                          commitQuantity(line.lineId, line, next, quantity, maxQuantity);
                         }}
                       >
                         Set quantity to {Math.max(1, line.sellableCount)}
@@ -132,17 +143,11 @@ export function BasketLinesClient({ basket, summary }: Props) {
                         type="button"
                         className="shop-basket__stepper-btn shop-focus-ring"
                         disabled={pending || quantity <= 1}
-                        aria-label={`Decrease quantity for ${line.artworkTitle}`}
+                        aria-label={`Decrease quantity for ${lineTitle}`}
                         onClick={() => {
                           const next = quantity - 1;
                           setQuantities((current) => ({ ...current, [line.lineId]: next }));
-                          commitQuantity(
-                            line.lineId,
-                            line.artworkSlug,
-                            next,
-                            quantity,
-                            maxQuantity,
-                          );
+                          commitQuantity(line.lineId, line, next, quantity, maxQuantity);
                         }}
                       >
                         −
@@ -154,17 +159,11 @@ export function BasketLinesClient({ basket, summary }: Props) {
                         type="button"
                         className="shop-basket__stepper-btn shop-focus-ring"
                         disabled={pending || quantity >= maxQuantity}
-                        aria-label={`Increase quantity for ${line.artworkTitle}`}
+                        aria-label={`Increase quantity for ${lineTitle}`}
                         onClick={() => {
                           const next = quantity + 1;
                           setQuantities((current) => ({ ...current, [line.lineId]: next }));
-                          commitQuantity(
-                            line.lineId,
-                            line.artworkSlug,
-                            next,
-                            quantity,
-                            maxQuantity,
-                          );
+                          commitQuantity(line.lineId, line, next, quantity, maxQuantity);
                         }}
                       >
                         +

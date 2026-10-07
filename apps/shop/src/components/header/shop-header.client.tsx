@@ -28,9 +28,15 @@ type ShopHeaderClientProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
   basketCount: number;
+  merchandiseEnabled: boolean;
 };
 
-export function ShopHeaderClient({ account, productLinks, basketCount }: ShopHeaderClientProps) {
+export function ShopHeaderClient({
+  account,
+  productLinks,
+  basketCount,
+  merchandiseEnabled,
+}: ShopHeaderClientProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
@@ -122,6 +128,7 @@ export function ShopHeaderClient({ account, productLinks, basketCount }: ShopHea
 
           <ShopMegaMenu
             pathname={pathname}
+            merchandiseEnabled={merchandiseEnabled}
             headerTone={headerTone}
             megaMenuResetKey={`${pathname}:${megaMenuResetNonce}`}
             onOpenChange={(open) => {
@@ -186,6 +193,7 @@ export function ShopHeaderClient({ account, productLinks, basketCount }: ShopHea
             pathname={pathname}
             account={account}
             productLinks={productLinks}
+            merchandiseEnabled={merchandiseEnabled}
           />
         </div>
       </header>

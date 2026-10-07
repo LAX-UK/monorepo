@@ -1,5 +1,11 @@
 import type { Database } from "@auction/db";
-import { shopArtwork, shopOrder, shopOrderLine } from "@auction/db/schema";
+import {
+  shopArtwork,
+  shopOrder,
+  shopOrderLine,
+  shopProduct,
+  shopProductVariant,
+} from "@auction/db/schema";
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import type {
   ListOrdersResult,
@@ -57,24 +63,31 @@ async function fetchLinesByOrderIds(
     .select({
       orderId: shopOrderLine.orderId,
       orderLineId: shopOrderLine.id,
-      slug: shopArtwork.slug,
-      title: shopArtwork.title,
+      artworkSlug: shopArtwork.slug,
+      artworkTitle: shopArtwork.title,
+      productVariantId: shopOrderLine.productVariantId,
+      productSlug: shopProduct.slug,
+      productTitle: shopProduct.title,
+      variantSku: shopProductVariant.sku,
       editionNumber: shopOrderLine.editionNumber,
       unitPricePence: shopOrderLine.unitPricePence,
     })
     .from(shopOrderLine)
-    .innerJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
+    .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
+    .leftJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
+    .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
     .where(inArray(shopOrderLine.orderId, orderIds));
   const linesByOrder = new Map<string, OrderRecord["lines"]>();
   for (const line of lineRows) {
-    if (line.editionNumber === null) {
-      continue;
-    }
     const bucket = linesByOrder.get(line.orderId) ?? [];
     bucket.push({
       orderLineId: line.orderLineId,
-      artworkSlug: line.slug,
-      artworkTitle: line.title,
+      artworkSlug: line.artworkSlug,
+      artworkTitle: line.artworkTitle,
+      productVariantId: line.productVariantId,
+      productSlug: line.productSlug,
+      productTitle: line.productTitle,
+      variantSku: line.variantSku,
       editionNumber: line.editionNumber,
       unitPricePence: line.unitPricePence,
     });

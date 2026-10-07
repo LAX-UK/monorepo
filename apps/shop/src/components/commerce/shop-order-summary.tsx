@@ -53,26 +53,35 @@ export function ShopOrderSummary({ order, heading, showLineLinks = true }: Props
       </dl>
 
       <ul className="shop-order-card__lines">
-        {order.lines.map((line) => (
-          <li key={line.orderLineId} className="shop-order-card__line">
-            <div>
-              {showLineLinks ? (
-                <Link
-                  href={`/artworks/${line.artworkSlug}`}
-                  className="shop-order-card__line-title"
-                >
-                  {line.artworkTitle}
-                </Link>
-              ) : (
-                <span className="shop-order-card__line-title">{line.artworkTitle}</span>
-              )}
-              <span className="shop-order-card__line-meta">Edition #{line.editionNumber}</span>
-            </div>
-            <span className="shop-order-card__line-price">
-              {formatGbpPence(line.unitPricePence)}
-            </span>
-          </li>
-        ))}
+        {order.lines.map((line) => {
+          const title = line.productTitle ?? line.artworkTitle ?? "Item";
+          const href = line.productSlug
+            ? `/merchandise/${line.productSlug}`
+            : line.artworkSlug
+              ? `/artworks/${line.artworkSlug}`
+              : null;
+          return (
+            <li key={line.orderLineId} className="shop-order-card__line">
+              <div>
+                {showLineLinks && href ? (
+                  <Link href={href} className="shop-order-card__line-title">
+                    {title}
+                  </Link>
+                ) : (
+                  <span className="shop-order-card__line-title">{title}</span>
+                )}
+                {line.editionNumber ? (
+                  <span className="shop-order-card__line-meta">Edition #{line.editionNumber}</span>
+                ) : line.variantSku ? (
+                  <span className="shop-order-card__line-meta">SKU {line.variantSku}</span>
+                ) : null}
+              </div>
+              <span className="shop-order-card__line-price">
+                {formatGbpPence(line.unitPricePence)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
 
       <dl className="shop-order-card__totals">

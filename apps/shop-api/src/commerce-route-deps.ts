@@ -20,6 +20,7 @@ export type StripeWebhookDispatchResult =
   | { kind: "ignored" };
 
 export type CommerceRoutesDeps = {
+  merchandiseEnabled: boolean;
   getBasket: ReturnType<typeof createGetBasketHandler>;
   upsertBasketLine: ReturnType<typeof createUpsertBasketLineHandler>;
   removeBasketLine: ReturnType<typeof createRemoveBasketLineHandler>;

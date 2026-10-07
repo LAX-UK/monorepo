@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
+import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { grantLaxSaleAuthority, importTestArtwork } from "../test-support/shop-fixtures.js";
+import {
+  grantLaxSaleAuthority,
+  importTestArtwork,
+  insertTestMerchandise,
+  integrationSuffix,
+} from "../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
@@ -30,10 +36,10 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     const db = createShopDb(shopPool);
     const imported = await importTestArtwork(db, "basket-upsert");
     await grantLaxSaleAuthority(db, imported.artworkId, 4);
-    const repo = createDrizzleBasketRepository(db);
+    const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
     const owner = {
       kind: "anonymous" as const,
-      tokenHash: hashBasketToken("guest-basket-token-value01234567890123456789012"),
+      tokenHash: hashBasketToken(`guest-basket-upsert-${integrationSuffix("upsert")}`),
     };
 
     await repo.addOrUpdateLine({ owner, artworkSlug: imported.slug, quantity: 1 });
@@ -48,7 +54,7 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     const db = createShopDb(shopPool);
     const imported = await importTestArtwork(db, "basket-merge");
     await grantLaxSaleAuthority(db, imported.artworkId, 4);
-    const repo = createDrizzleBasketRepository(db);
+    const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
     const fromOwner = {
       kind: "anonymous" as const,
       tokenHash: hashBasketToken("guest-basket-merge-from-token012345678901234567890"),
@@ -65,5 +71,61 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     expect(merged.lines).toHaveLength(1);
     expect(merged.lines[0]?.quantity).toBe(3);
     expect(merged.lines[0]?.artworkSlug).toBe(imported.slug);
+  });
+
+  it("merges anonymous variant lines into a subject basket", async () => {
+    const db = createShopDb(shopPool);
+    const merch = await insertTestMerchandise(db, "basket-variant-merge", { onHand: 6 });
+    const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
+    const fromOwner = {
+      kind: "anonymous" as const,
+      tokenHash: hashBasketToken("guest-variant-merge-from-token012345678901234567890"),
+    };
+    const toOwner = {
+      kind: "subject" as const,
+      identitySubjectId: `integration-subject-variant-merge-${integrationSuffix("merge")}`,
+    };
+
+    await repo.addOrUpdateLine({
+      owner: fromOwner,
+      productVariantId: merch.variantId,
+      quantity: 1,
+    });
+    await repo.addOrUpdateLine({
+      owner: toOwner,
+      productVariantId: merch.variantId,
+      quantity: 2,
+    });
+    const merged = await repo.mergeBaskets({ from: fromOwner, to: toOwner });
+
+    expect(merged.lines).toHaveLength(1);
+    expect(merged.lines[0]?.productVariantId).toBe(merch.variantId);
+    expect(merged.lines[0]?.quantity).toBe(3);
+  });
+
+  it("refuses variant upsert when available stock is insufficient", async () => {
+    const db = createShopDb(shopPool);
+    const merch = await insertTestMerchandise(db, "basket-oversell", { onHand: 1 });
+    const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
+    const owner = {
+      kind: "subject" as const,
+      identitySubjectId: `integration-subject-oversell-${integrationSuffix("oversell")}`,
+    };
+
+    await repo.addOrUpdateLine({
+      owner,
+      productVariantId: merch.variantId,
+      quantity: 1,
+    });
+
+    await expect(
+      repo.addOrUpdateLine({
+        owner,
+        productVariantId: merch.variantId,
+        quantity: 2,
+      }),
+    ).rejects.toMatchObject({
+      code: SHOP_API_ERROR_CODES.OUT_OF_STOCK,
+    });
   });
 });

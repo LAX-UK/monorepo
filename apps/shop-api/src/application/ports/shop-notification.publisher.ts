@@ -15,7 +15,7 @@ export type ShopNotificationPublisher = {
       lines: Array<{
         artworkTitle: string;
         artworkSlug: string;
-        editionNumber: number;
+        editionNumber: number | null;
         unitPricePence: number;
       }>;
     },

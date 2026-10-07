@@ -1,4 +1,6 @@
 import {
+  PortalArtistArtworksResponseSchema,
+  PortalArtistSalesResponseSchema,
   PortalDocumentsResponseSchema,
   PortalEditionsResponseSchema,
   PortalPayoutsResponseSchema,
@@ -81,6 +83,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
           401: ShopApiErrorBodySchema,
           403: ShopApiErrorBodySchema,
           404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
         },
       },
     },
@@ -98,6 +101,40 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
         requestedCount: body.requestedCount,
         ...(body.note !== undefined ? { note: body.note } : {}),
       });
+    },
+  );
+
+  app.get(
+    "/v1/me/artist/artworks",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        response: { 200: PortalArtistArtworksResponseSchema, 401: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const artist = await deps.portalArtist.getLinkedArtist(subject);
+      const items = await deps.portalArtist.listArtworks(subject);
+      return { artist, items };
+    },
+  );
+
+  app.get(
+    "/v1/me/artist/sales",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        response: { 200: PortalArtistSalesResponseSchema, 401: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const artist = await deps.portalArtist.getLinkedArtist(subject);
+      const items = await deps.portalArtist.listSales(subject);
+      return { artist, items };
     },
   );
 

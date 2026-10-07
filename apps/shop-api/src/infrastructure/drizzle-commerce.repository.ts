@@ -20,9 +20,12 @@ export function createDrizzleCommerceRepository(
     storefrontUrl: string;
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: import("@auction/shop-domain").VatPolicy | null;
+    merchandiseEnabled?: boolean;
   },
 ): CommerceRepository {
-  const basket = createDrizzleBasketRepository(db);
+  const basket = createDrizzleBasketRepository(db, {
+    merchandiseEnabled: options.merchandiseEnabled ?? false,
+  });
   const checkout = createDrizzleCheckoutRepository(db, paymentGateway, options);
   const orders = createDrizzleOrderRepository(db);
   return { ...basket, ...checkout, ...orders };

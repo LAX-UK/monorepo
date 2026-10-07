@@ -17,7 +17,10 @@ export async function registerPortalMeDisabledRoutes(app: FastifyInstance): Prom
     "/v1/me/sale-authority",
     "/v1/me/sale-authority-requests",
     "/v1/me/payouts",
+    "/v1/me/sales",
     "/v1/me/documents",
+    "/v1/me/artist/artworks",
+    "/v1/me/artist/sales",
   ] as const;
 
   for (const url of routes) {

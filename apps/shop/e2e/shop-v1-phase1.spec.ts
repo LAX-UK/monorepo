@@ -85,6 +85,8 @@ test.describe("Shop V1 phase 1 smoke", () => {
     await expect(page).toHaveURL(/\/account(\?.*)?$/);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("main").first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /my editions/i })).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Account" }).getByRole("link", { name: /my editions/i }),
+    ).toBeVisible();
   });
 });

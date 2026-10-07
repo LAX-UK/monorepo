@@ -119,12 +119,51 @@ if (shopApiScriptViolations.length > 0) {
   process.exit(1);
 }
 
+/** @type {string[]} */
+const shopApiDomainApplicationViolations = [];
+const SHOP_API_LAYER_DIRS = [
+  join(root, "apps/shop-api/src/domain"),
+  join(root, "apps/shop-api/src/application"),
+];
+for (const dir of SHOP_API_LAYER_DIRS) {
+  for (const file of listAllSources(dir)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    if (isTestSource(rel)) continue;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SPECIFIER_RE)) {
+      const specifier = match[1] ?? match[2] ?? match[3];
+      if (!specifier) continue;
+      if (SHOP_API_DB_IMPORT_RE.test(specifier) || SHOP_API_DRIZZLE_RE.test(specifier)) {
+        shopApiDomainApplicationViolations.push(
+          `${rel}: imports "${specifier}" — shop-api domain/application must not import db or drizzle`,
+        );
+      }
+    }
+  }
+}
+
+if (shopApiDomainApplicationViolations.length > 0) {
+  console.error("Shop API domain/application boundary violations detected:\n");
+  for (const v of shopApiDomainApplicationViolations) console.error(`  ${v}`);
+  process.exit(1);
+}
+
 const SHOP_ADMIN_FORBIDDEN = [/^ioredis(\/|$)/, /^@auction\/db(\/|$)/, /^drizzle-orm(\/|$)/];
 const SHOP_ADMIN_LAYER_DIRS = [
   join(root, "apps/shop-admin/src/app"),
+  join(root, "apps/shop-admin/src/lib"),
   join(root, "apps/shop-admin/src/server/domain"),
   join(root, "apps/shop-admin/src/server/application"),
 ];
+
+function isShopAdminLayerFile(rel) {
+  return (
+    rel.startsWith("apps/shop-admin/src/app/") ||
+    rel.startsWith("apps/shop-admin/src/lib/") ||
+    rel.startsWith("apps/shop-admin/src/server/domain/") ||
+    rel.startsWith("apps/shop-admin/src/server/application/")
+  );
+}
 
 /** @type {string[]} */
 const shopAdminLayerViolations = [];
@@ -141,23 +180,13 @@ for (const dir of SHOP_ADMIN_LAYER_DIRS) {
           `${rel}: imports "${specifier}" — shop-admin routes/domain/application must use ports only`,
         );
       }
-      if (
-        (rel.startsWith("apps/shop-admin/src/app/") ||
-          rel.startsWith("apps/shop-admin/src/server/domain/") ||
-          rel.startsWith("apps/shop-admin/src/server/application/")) &&
-        specifier.includes("/infrastructure/")
-      ) {
+      if (isShopAdminLayerFile(rel) && specifier.includes("/infrastructure/")) {
         shopAdminLayerViolations.push(
           `${rel}: imports "${specifier}" — shop-admin handlers must call container use cases only`,
         );
       }
     }
-    if (
-      (rel.startsWith("apps/shop-admin/src/app/") ||
-        rel.startsWith("apps/shop-admin/src/server/domain/") ||
-        rel.startsWith("apps/shop-admin/src/server/application/")) &&
-      /\bprocess\.env\b/.test(text)
-    ) {
+    if (isShopAdminLayerFile(rel) && /\bprocess\.env\b/.test(text)) {
       shopAdminLayerViolations.push(
         `${rel}: reads process.env — shop-admin env belongs in config.ts composition root only`,
       );

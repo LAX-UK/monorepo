@@ -7,9 +7,13 @@ export type BasketOwner =
 
 export type BasketLineRecord = {
   lineId: string;
-  artworkId: string;
-  artworkSlug: string;
-  artworkTitle: string;
+  artworkId: string | null;
+  artworkSlug: string | null;
+  artworkTitle: string | null;
+  productVariantId: string | null;
+  productSlug: string | null;
+  productTitle: string | null;
+  variantSku: string | null;
   unitPricePence: number;
   livePricePence: number | null;
   quantity: number;
@@ -65,9 +69,13 @@ export type OrderRecord = {
   totalPence: number;
   lines: Array<{
     orderLineId: string;
-    artworkSlug: string;
-    artworkTitle: string;
-    editionNumber: number;
+    artworkSlug: string | null;
+    artworkTitle: string | null;
+    productVariantId: string | null;
+    productSlug: string | null;
+    productTitle: string | null;
+    variantSku: string | null;
+    editionNumber: number | null;
     unitPricePence: number;
   }>;
   createdAt: Date;
@@ -88,13 +96,13 @@ export type ListOrdersResult = {
   nextCursor?: CatalogueCursor;
 };
 
+export type UpsertBasketLineInput =
+  | { owner: BasketOwner; artworkSlug: string; quantity: number }
+  | { owner: BasketOwner; productVariantId: string; quantity: number };
+
 export interface BasketRepository {
   getBasket(owner: BasketOwner): Promise<BasketRecord | null>;
-  addOrUpdateLine(input: {
-    owner: BasketOwner;
-    artworkSlug: string;
-    quantity: number;
-  }): Promise<BasketRecord>;
+  addOrUpdateLine(input: UpsertBasketLineInput): Promise<BasketRecord>;
   removeLine(input: { owner: BasketOwner; lineId: string }): Promise<BasketRecord>;
   mergeBaskets(input: {
     from: BasketOwner;

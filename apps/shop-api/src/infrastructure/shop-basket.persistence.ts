@@ -1,11 +1,18 @@
 import type { Database } from "@auction/db";
-import { shopArtwork, shopBasket, shopBasketLine } from "@auction/db/schema";
+import {
+  shopArtwork,
+  shopBasket,
+  shopBasketLine,
+  shopProduct,
+  shopProductVariant,
+} from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { BasketOwner, BasketRecord } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
+import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
 export const BASKET_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -29,7 +36,7 @@ export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string):
 
 export async function repriceBasketLinesIfNeeded(db: Database, basketId: string): Promise<boolean> {
   const now = new Date();
-  const updated = await db.execute(sql`
+  const artworkUpdated = await db.execute(sql`
     UPDATE shop_basket_line AS bl
     SET unit_price_pence = a.print_price_pence, updated_at = ${now}
     FROM shop_artwork AS a
@@ -38,11 +45,23 @@ export async function repriceBasketLinesIfNeeded(db: Database, basketId: string)
       AND a.print_price_pence IS NOT NULL
       AND bl.unit_price_pence IS DISTINCT FROM a.print_price_pence
   `);
-  const rowCount =
-    typeof updated === "object" && updated !== null && "rowCount" in updated
-      ? Number(updated.rowCount)
+  const variantUpdated = await db.execute(sql`
+    UPDATE shop_basket_line AS bl
+    SET unit_price_pence = v.price_pence, updated_at = ${now}
+    FROM shop_product_variant AS v
+    WHERE bl.product_variant_id = v.id
+      AND bl.basket_id = ${basketId}
+      AND bl.unit_price_pence IS DISTINCT FROM v.price_pence
+  `);
+  const artworkRows =
+    typeof artworkUpdated === "object" && artworkUpdated !== null && "rowCount" in artworkUpdated
+      ? Number(artworkUpdated.rowCount)
       : 0;
-  return rowCount > 0;
+  const variantRows =
+    typeof variantUpdated === "object" && variantUpdated !== null && "rowCount" in variantUpdated
+      ? Number(variantUpdated.rowCount)
+      : 0;
+  return artworkRows + variantRows > 0;
 }
 
 export async function assertBasketStock(db: Database, basketId: string): Promise<void> {
@@ -79,35 +98,72 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
     .select({
       lineId: shopBasketLine.id,
       artworkId: shopBasketLine.artworkId,
-      slug: shopArtwork.slug,
-      title: shopArtwork.title,
+      productVariantId: shopBasketLine.productVariantId,
+      artworkSlug: shopArtwork.slug,
+      artworkTitle: shopArtwork.title,
       primaryImageUrl: shopArtwork.primaryImageUrl,
+      productSlug: shopProduct.slug,
+      productTitle: shopProduct.title,
+      variantSku: shopProductVariant.sku,
       unitPricePence: shopBasketLine.unitPricePence,
-      livePricePence: shopArtwork.printPricePence,
+      liveArtworkPricePence: shopArtwork.printPricePence,
+      liveVariantPricePence: shopProductVariant.pricePence,
       quantity: shopBasketLine.quantity,
     })
     .from(shopBasketLine)
-    .innerJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
-    .where(eq(shopBasketLine.basketId, basketId));
+    .leftJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
+    .leftJoin(shopProductVariant, eq(shopBasketLine.productVariantId, shopProductVariant.id))
+    .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
+    .where(eq(shopBasketLine.basketId, basketId))
+    .orderBy(shopBasketLine.id);
 
-  const artworkLines = lines.filter(
-    (line): line is typeof line & { artworkId: string } => line.artworkId !== null,
-  );
-  const sellableByArtwork = await sellableCountsByArtworkIds(
-    db,
-    artworkLines.map((line) => line.artworkId),
-  );
-  const enriched = artworkLines.map((line) => ({
-    lineId: line.lineId,
-    artworkId: line.artworkId,
-    artworkSlug: line.slug,
-    artworkTitle: line.title,
-    imageUrl: line.primaryImageUrl,
-    unitPricePence: line.unitPricePence,
-    livePricePence: line.livePricePence,
-    quantity: line.quantity,
-    sellableCount: sellableByArtwork.get(line.artworkId) ?? 0,
-  }));
+  const artworkIds = lines.map((line) => line.artworkId).filter((id): id is string => id !== null);
+  const variantIds = lines
+    .map((line) => line.productVariantId)
+    .filter((id): id is string => id !== null);
+  const [sellableByArtwork, sellableByVariant] = await Promise.all([
+    sellableCountsByArtworkIds(db, artworkIds),
+    sellableCountsByVariantIds(db, variantIds),
+  ]);
+
+  const enriched = lines.map((line) => {
+    if (line.artworkId) {
+      return {
+        lineId: line.lineId,
+        artworkId: line.artworkId,
+        artworkSlug: line.artworkSlug,
+        artworkTitle: line.artworkTitle,
+        productVariantId: null,
+        productSlug: null,
+        productTitle: null,
+        variantSku: null,
+        unitPricePence: line.unitPricePence,
+        livePricePence: line.liveArtworkPricePence,
+        quantity: line.quantity,
+        sellableCount: sellableByArtwork.get(line.artworkId) ?? 0,
+        imageUrl: line.primaryImageUrl,
+      };
+    }
+    const variantId = line.productVariantId;
+    if (!variantId) {
+      throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Basket line has no target", 500);
+    }
+    return {
+      lineId: line.lineId,
+      artworkId: null,
+      artworkSlug: null,
+      artworkTitle: null,
+      productVariantId: variantId,
+      productSlug: line.productSlug,
+      productTitle: line.productTitle,
+      variantSku: line.variantSku,
+      unitPricePence: line.unitPricePence,
+      livePricePence: line.liveVariantPricePence,
+      quantity: line.quantity,
+      sellableCount: sellableByVariant.get(variantId) ?? 0,
+      imageUrl: null,
+    };
+  });
 
   const basketOwner: BasketOwner = header.identitySubjectId
     ? { kind: "subject", identitySubjectId: header.identitySubjectId }

@@ -49,6 +49,20 @@ function buildCards(input: BuildShopAccountNavItemsInput): Card[] {
       },
     );
   }
+  if (input.artistPortalEnabled) {
+    cards.push(
+      {
+        href: "/account/artworks",
+        title: "My artworks",
+        description: "Artworks linked to your artist profile.",
+      },
+      {
+        href: "/account/artist-sales",
+        title: "Artist sales",
+        description: "Sales attributed to your artist account.",
+      },
+    );
+  }
   return cards;
 }
 

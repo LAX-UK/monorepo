@@ -5,8 +5,11 @@ import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-s
 import { resolvePortalPayoutStatusPresentation } from "@/lib/presenters/portal-payout-status.presenter";
 import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
 import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
-import { fetchPortalPayouts } from "@/lib/shop-portal.server";
-import { resolveShopPortalOwnershipEnabled } from "@/lib/shop-portal.server";
+import {
+  fetchPortalPayouts,
+  resolveShopArtistPortalLinked,
+  resolveShopPortalOwnershipEnabled,
+} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -26,11 +29,13 @@ export default async function ShopAccountPayoutsPage() {
   const viewer = await loadShopViewerState();
   const gate = gateShopAuthenticatedRoute(viewer, "/account/payouts");
   const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
+  const artistPortalEnabled = await resolveShopArtistPortalLinked();
   const payoutsEnabled = isShopPayoutsEnabled();
   const shellNav = {
     activeNavHref: "/account/payouts",
     portalOwnershipEnabled,
     payoutsEnabled,
+    artistPortalEnabled,
   };
 
   if (!gate.allowed) {
@@ -83,7 +88,11 @@ export default async function ShopAccountPayoutsPage() {
           {result.data.map((row) => {
             const status = resolvePortalPayoutStatusPresentation(row.status);
             return (
-              <li key={row.payoutId} className="shop-account-list__row">
+              <li
+                key={row.payoutId}
+                id={`payout-${row.payoutId}`}
+                className="shop-account-list__row scroll-mt-24"
+              >
                 <div className="shop-account-list__header">
                   <span className="font-medium">Payout</span>
                   <DotStatusPill label={status.label} tone={status.tone} />

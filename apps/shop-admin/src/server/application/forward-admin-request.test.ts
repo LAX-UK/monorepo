@@ -9,6 +9,7 @@ describe("forwardAdminRequest", () => {
         config: {
           NODE_ENV: "test",
           publicOrigin: "http://localhost:3030",
+          bffInternalOrigin: "http://localhost:3030",
           oidcIssuer: "http://localhost:3001",
           oidcInternalIssuer: "http://localhost:3001",
           oidcClientId: "lax-shop-admin",

@@ -37,10 +37,14 @@ import {
   OrderSummarySchema,
 } from "./commerce-public.js";
 import {
+  type PublicMerchandiseProductDetail,
+  PublicMerchandiseProductDetailSchema,
   type PublicMerchandiseProductList,
   PublicMerchandiseProductListSchema,
 } from "./merchandise-public.js";
 import {
+  PortalArtistArtworksResponseSchema,
+  PortalArtistSalesResponseSchema,
   type PortalDocument,
   PortalDocumentsResponseSchema,
   type PortalEdition,
@@ -93,6 +97,15 @@ export function parsePublicCategorySummary(value: unknown): PublicCategorySummar
 export function parsePublicMerchandiseProductList(value: unknown): PublicMerchandiseProductList {
   if (!Value.Check(PublicMerchandiseProductListSchema, value)) {
     throw new ShopContractParseError("Invalid public merchandise product list payload");
+  }
+  return value;
+}
+
+export function parsePublicMerchandiseProductDetail(
+  value: unknown,
+): PublicMerchandiseProductDetail {
+  if (!Value.Check(PublicMerchandiseProductDetailSchema, value)) {
+    throw new ShopContractParseError("Invalid public merchandise product detail payload");
   }
   return value;
 }
@@ -202,4 +215,31 @@ export function parsePortalSales(value: unknown): PortalSaleStatement[] {
     throw new ShopContractParseError("Invalid portal sales payload");
   }
   return value.items;
+}
+
+export function parsePortalArtistArtworks(value: unknown): {
+  artist: { artistId: string; slug: string; displayName: string } | null;
+  items: Array<{ artworkId: string; slug: string; title: string; saleState: string }>;
+} {
+  if (!Value.Check(PortalArtistArtworksResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal artist artworks payload");
+  }
+  return { artist: value.artist, items: value.items };
+}
+
+export function parsePortalArtistSales(value: unknown): {
+  artist: { artistId: string; slug: string; displayName: string } | null;
+  items: Array<{
+    saleId: string;
+    channel: string;
+    artworkTitle: string;
+    editionNumber: number | null;
+    grossPence: number;
+    occurredAt: string | null;
+  }>;
+} {
+  if (!Value.Check(PortalArtistSalesResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal artist sales payload");
+  }
+  return { artist: value.artist, items: value.items };
 }

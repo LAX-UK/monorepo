@@ -28,24 +28,32 @@ describe("createShopApiApp", () => {
       },
       commerce: {
         ...createMinimalShopApiTestDeps().commerce,
-        upsertBasketLine: async ({ artworkSlug, quantity }) => ({
-          basketId: "b1",
-          owner: { kind: "anonymous", tokenHash: "h" },
-          expiresAt: new Date("2030-01-01T00:00:00.000Z"),
-          lines: [
-            {
-              lineId: "l1",
-              artworkId: "a1",
-              artworkSlug,
-              artworkTitle: "Title",
-              unitPricePence: 100,
-              livePricePence: 100,
-              quantity,
-              sellableCount: 3,
-              imageUrl: null,
-            },
-          ],
-        }),
+        upsertBasketLine: async (input) => {
+          const artworkSlug = "artworkSlug" in input ? input.artworkSlug : "demo-slug";
+          const quantity = input.quantity;
+          return {
+            basketId: "b1",
+            owner: { kind: "anonymous", tokenHash: "h" },
+            expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+            lines: [
+              {
+                lineId: "l1",
+                artworkId: "a1",
+                artworkSlug,
+                artworkTitle: "Title",
+                productVariantId: null,
+                productSlug: null,
+                productTitle: null,
+                variantSku: null,
+                unitPricePence: 100,
+                livePricePence: 100,
+                quantity,
+                sellableCount: 3,
+                imageUrl: null,
+              },
+            ],
+          };
+        },
       },
     });
     const app = createShopApiApp({ deps, logger: false });
