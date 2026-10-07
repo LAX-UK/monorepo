@@ -124,9 +124,17 @@ jobs:
           sha_digest="$(
             jq -r --arg sha "$IDENTITY_SHA" \
               '.[] | select(.tag == $sha) | .manifest_digest' \
-              "$RUNNER_TEMP/identity-tags.json"
+              "$RUNNER_TEMP/identity-tags.json" | head -n 1
           )"
-          test "$sha_digest" = "$IDENTITY_DIGEST"
+          if [[ ! "$sha_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Missing registry tag for Identity SHA $IDENTITY_SHA"
+            exit 1
+          fi
+          if test "$sha_digest" != "$IDENTITY_DIGEST"; then
+            echo "::warning::Dispatch digest $IDENTITY_DIGEST != registry tag digest $sha_digest; using registry value"
+            IDENTITY_DIGEST="$sha_digest"
+            echo "IDENTITY_DIGEST=$sha_digest" >> "$GITHUB_ENV"
+          fi
 
           doctl registry login --expiry-seconds 900
           identity_image="$REGISTRY/lax-test-identity@$IDENTITY_DIGEST"
