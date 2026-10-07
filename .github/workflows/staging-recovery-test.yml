@@ -21,6 +21,10 @@ on:
       shop_api_image:
         description: Approved lax-test-shop-api as `<40-char-sha>@<digest>`
         required: true
+      shop_admin_image:
+        description: Approved lax-test-shop-admin as `<40-char-sha>@<digest>` (defaults to shop_image)
+        required: false
+        default: ""
       publish_run_id:
         description: Successful lax-identity publish workflow run
         required: true
@@ -60,6 +64,8 @@ jobs:
       shop_digest: ${{ steps.parse.outputs.shop_digest }}
       shop_api_sha: ${{ steps.parse.outputs.shop_api_sha }}
       shop_api_digest: ${{ steps.parse.outputs.shop_api_digest }}
+      shop_admin_sha: ${{ steps.parse.outputs.shop_admin_sha }}
+      shop_admin_digest: ${{ steps.parse.outputs.shop_admin_digest }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -76,6 +82,7 @@ jobs:
           ROLLBACK_MANIFEST: ${{ inputs.rollback_manifest }}
           SHOP_IMAGE: ${{ inputs.shop_image }}
           SHOP_API_IMAGE: ${{ inputs.shop_api_image }}
+          SHOP_ADMIN_IMAGE: ${{ inputs.shop_admin_image != '' && inputs.shop_admin_image || inputs.shop_image }}
           INFRA_REF: ${{ inputs.infra_ref }}
         run: |
           set -euo pipefail
@@ -90,6 +97,7 @@ jobs:
           for (const [label, envName] of [
             ["shop", "SHOP_IMAGE"],
             ["shop_api", "SHOP_API_IMAGE"],
+            ["shop_admin", "SHOP_ADMIN_IMAGE"],
           ]) {
             const { sha, digest } = parseDockerImagePin(process.env[envName], label);
             appendFileSync(out, `${label}_sha=${sha}\n`);
@@ -113,6 +121,7 @@ jobs:
     with:
       mode: inventory
       confirm_backup: false
+      parent_holds_deploy_lock: true
     secrets: inherit
 
   qualify_identity:
@@ -123,10 +132,14 @@ jobs:
       identity_digest: ${{ inputs.identity_digest }}
       publish_run_id: ${{ inputs.publish_run_id }}
       stage_only: true
+      parent_holds_deploy_lock: true
     secrets: inherit
 
   deploy:
     needs: [qualify_identity, validate_inputs]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -140,6 +153,8 @@ jobs:
       shop_digest: ${{ needs.validate_inputs.outputs.shop_digest }}
       shop_api_sha: ${{ needs.validate_inputs.outputs.shop_api_sha }}
       shop_api_digest: ${{ needs.validate_inputs.outputs.shop_api_digest }}
+      shop_admin_sha: ${{ needs.validate_inputs.outputs.shop_admin_sha }}
+      shop_admin_digest: ${{ needs.validate_inputs.outputs.shop_admin_digest }}
       app_image_tag: ${{ needs.validate_inputs.outputs.shop_sha }}
     secrets: inherit
 
@@ -156,6 +171,9 @@ jobs:
   enable_ssf:
     if: inputs.run_acceptance
     needs: [acceptance_disabled, validate_inputs]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -206,6 +224,9 @@ jobs:
   rollback_rehearsal:
     if: inputs.rollback_rehearsal
     needs: [acceptance_enabled, shop_acceptance]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -232,6 +253,9 @@ jobs:
       inputs.rollback_rehearsal &&
       needs.rollback_rehearsal.result != 'skipped'
     needs: [rollback_rehearsal, validate_inputs]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral

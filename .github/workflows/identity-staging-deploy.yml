@@ -17,6 +17,10 @@ on:
       stage_only:
         type: boolean
         required: true
+      parent_holds_deploy_lock:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       identity_sha:
@@ -29,7 +33,10 @@ on:
         description: Successful lax-identity publish workflow run
         required: true
       stage_only:
-        description: Qualify and stage the digest without changing traffic
+        description: >-
+          When true, validate images and evidence only (no DB/OIDC writes, no App Platform
+          traffic change). When false, run DB migrate and OIDC configure; traffic cutover
+          still requires Terraform/staging recovery.
         required: true
         type: boolean
         default: false
@@ -40,9 +47,10 @@ permissions:
 
 concurrency:
   group: >-
-    identity-staging-${{
-      github.event_name == 'workflow_dispatch' && inputs.stage_only &&
-      'qualification' || 'db-preparation-test'
+    ${{
+      (github.event_name == 'workflow_call' && inputs.parent_holds_deploy_lock &&
+        format('staging-recovery-child-{0}-identity-db', github.run_id)) ||
+      'app-deploy-test'
     }}
   cancel-in-progress: false
 
@@ -124,9 +132,17 @@ jobs:
           sha_digest="$(
             jq -r --arg sha "$IDENTITY_SHA" \
               '.[] | select(.tag == $sha) | .manifest_digest' \
-              "$RUNNER_TEMP/identity-tags.json"
+              "$RUNNER_TEMP/identity-tags.json" | head -n 1
           )"
-          test "$sha_digest" = "$IDENTITY_DIGEST"
+          if [[ ! "$sha_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Missing registry tag for Identity SHA $IDENTITY_SHA"
+            exit 1
+          fi
+          if test "$sha_digest" != "$IDENTITY_DIGEST"; then
+            echo "::warning::Dispatch digest $IDENTITY_DIGEST != registry tag digest $sha_digest; using registry value"
+            IDENTITY_DIGEST="$sha_digest"
+            echo "IDENTITY_DIGEST=$sha_digest" >> "$GITHUB_ENV"
+          fi
 
           doctl registry login --expiry-seconds 900
           identity_image="$REGISTRY/lax-test-identity@$IDENTITY_DIGEST"
@@ -323,6 +339,9 @@ jobs:
             echo "$database_ca_cert"
             echo "EOF"
           } >> "$GITHUB_ENV"
+          database_ca_path="$RUNNER_TEMP/postgres-ca.crt"
+          printf '%s\n' "$database_ca_cert" > "$database_ca_path"
+          echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
           docker pull "$MIGRATE_IMAGE"
           docker run --rm \
             -e DATABASE_URL_OWNER \
@@ -331,17 +350,27 @@ jobs:
             -e API_APP_DB_PASSWORD \
             -e SHOP_APP_DB_PASSWORD \
             -e WORKER_APP_DB_PASSWORD \
-            -e OIDC_CLIENT_SECRET_LAX_BID_WEB \
-            -e OIDC_CLIENT_SECRET_LAX_SHOP_WEB \
-            -e OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN \
             -e NODE_ENV=production \
             -e APP_ENV=test \
             "$MIGRATE_IMAGE" \
             sh -ceu '
               node packages/db/dist/migrate-prod.js
               node packages/db/dist/migrate-roles.js
-              node packages/db/dist/scripts/configure-oidc-clients.js
             '
+
+      - name: Configure OIDC registry from monorepo closure
+        if: env.STAGE_ONLY != 'true'
+        run: |
+          set -euo pipefail
+          node scripts/ci/verify-identity-closure-sync.mjs --ref "$IDENTITY_SHA"
+          pnpm --filter @auction/db... build
+          DATABASE_URL_AUTH="$DATABASE_URL_AUTH" \
+            OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
+            OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET_LAX_SHOP_WEB" \
+            OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN="$OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN" \
+            NODE_ENV=production \
+            APP_ENV=test \
+            node packages/db/dist/scripts/configure-oidc-clients.js
 
       - name: Capture encrypted pre-deploy JWKS snapshot
         if: env.STAGE_ONLY != 'true'
@@ -367,4 +396,14 @@ jobs:
             echo "- Database and OIDC preparation complete"
             echo "- Traffic and registry aliases unchanged"
             echo "- Cut over only through a reviewed Terraform apply that pins this immutable SHA"
+            echo ""
+            echo "Staging recovery (test) example (replace SHAs/digests with registry evidence):"
+            echo '```'
+            echo "gh workflow run \"Staging recovery (test)\" --ref main \\"
+            echo "  -f identity_sha=$IDENTITY_SHA \\"
+            echo "  -f identity_digest=$IDENTITY_DIGEST \\"
+            echo "  -f publish_run_id=$PUBLISH_RUN_ID \\"
+            echo "  -f run_acceptance=false -f rollback_rehearsal=false \\"
+            echo "  ... shop_image / shop_api_image / shop_identity pins ..."
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

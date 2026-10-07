@@ -106,6 +106,17 @@ runs:
         if test -n "$deployment_id"; then
           doctl apps get-deployment "$APP_ID" "$deployment_id" --output json \
             > "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json" || true
+          if test -n "${GITHUB_STEP_SUMMARY:-}" && test -f "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json"; then
+            {
+              echo "### App Platform deployment ${deployment_id}"
+              jq -r '
+                [.progress.steps[]?.steps[]? | select(.status == "ERROR") |
+                  "- **\(.component_name // "unknown")**: \(.reason.message // .message_base // "ERROR")"]
+                | if length == 0 then ["- (no ERROR steps in deployment JSON)"] else . end
+                | .[]
+              ' "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json" 2>/dev/null || echo "- (could not parse deployment JSON)"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
           for component in auth shop shop-identity shop-api api ws worker web; do
             for log_type in run run_restarted; do
               doctl apps logs "$APP_ID" "$component" --type "$log_type" --tail 200 \

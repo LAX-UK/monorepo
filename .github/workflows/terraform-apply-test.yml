@@ -210,6 +210,29 @@ jobs:
           working-directory: .infra-config/terraform/${{ inputs.layer }}/test
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - uses: pnpm/action-setup@v4
+        if: inputs.layer == 'ephemeral'
+      - uses: actions/setup-node@v4
+        if: inputs.layer == 'ephemeral'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: inputs.layer == 'ephemeral'
+      - name: Build DB maintenance scripts for deploy preflight
+        if: inputs.layer == 'ephemeral'
+        run: pnpm --filter @auction/db... build
+      - name: Require auth-at-rest and identity directory ready before mutate
+        if: inputs.layer == 'ephemeral'
+        env:
+          AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          export DATABASE_URL_OWNER="$(terraform -chdir="$tf_dir" output -raw postgres_owner_uri)"
+          export DATABASE_URL_AUTH="$(terraform -chdir="$tf_dir" output -raw database_url_auth)"
+          node scripts/ci/assert-auth-at-rest-clear.mjs
+          node scripts/ci/verify-identity-directory-drift.mjs
       - name: Apply full test migrations and role grants before App Platform rollout
         if: >-
           inputs.layer == 'ephemeral' &&
@@ -242,11 +265,16 @@ jobs:
           EXPECTED_SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
         run: |
           set -euo pipefail
+          attempt=0
+          last_body=""
           for _ in $(seq 1 60); do
-            body="$(
-              curl --fail --silent --show-error --max-time 10 \
-                https://test-shop.lax.bid/health/ready || true
+            attempt=$((attempt + 1))
+            http_code="$(
+              curl --silent --show-error --max-time 10 -o "$RUNNER_TEMP/shop-ready.json" \
+                -w '%{http_code}' https://test-shop.lax.bid/health/ready || echo "000"
             )"
+            body="$(cat "$RUNNER_TEMP/shop-ready.json" 2>/dev/null || true)"
+            last_body="http=${http_code} body=${body}"
             status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
             shop_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
             identity_release="$(
@@ -258,9 +286,14 @@ jobs:
                 test "$identity_release" = "$EXPECTED_SHOP_IDENTITY_SHA"; }; then
               exit 0
             fi
+            if test $((attempt % 6)) -eq 0; then
+              echo "Shop readiness poll ${attempt}/60: ${last_body}"
+            fi
             sleep 10
           done
-          echo "::error::Shop readiness/release contract did not converge"
+          echo "::error::Shop readiness/release contract did not converge (${last_body})"
+          echo "### Shop readiness did not converge" >> "$GITHUB_STEP_SUMMARY"
+          echo "Last probe: \`${last_body}\`" >> "$GITHUB_STEP_SUMMARY"
           exit 1
       - name: Prove Identity readiness after ephemeral traffic change
         if: inputs.layer == 'ephemeral' && inputs.identity_sha != ''
