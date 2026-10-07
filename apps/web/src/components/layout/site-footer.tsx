@@ -15,16 +15,13 @@ import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type SiteFooterProps = {
-  /** Tagline rendered next to the wordmark. Defaults to the brand strapline. */
+  /** Optional tagline rendered next to the wordmark. */
   tagline?: ReactNode;
   /** Cities/regions strapline appended to the bottom row. */
   regionsLine?: ReactNode;
 };
 
-export function SiteFooter({
-  tagline = "Fine art auctions since 2018.",
-  regionsLine = "London",
-}: SiteFooterProps = {}) {
+export function SiteFooter({ tagline, regionsLine = "London" }: SiteFooterProps = {}) {
   const linkClass = cn(
     "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
     FOCUS_RING,
