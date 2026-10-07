@@ -331,6 +331,9 @@ jobs:
             echo "$database_ca_cert"
             echo "EOF"
           } >> "$GITHUB_ENV"
+          database_ca_path="$RUNNER_TEMP/postgres-ca.crt"
+          printf '%s\n' "$database_ca_cert" > "$database_ca_path"
+          echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
           docker pull "$MIGRATE_IMAGE"
           docker run --rm \
             -e DATABASE_URL_OWNER \
@@ -339,17 +342,26 @@ jobs:
             -e API_APP_DB_PASSWORD \
             -e SHOP_APP_DB_PASSWORD \
             -e WORKER_APP_DB_PASSWORD \
-            -e OIDC_CLIENT_SECRET_LAX_BID_WEB \
-            -e OIDC_CLIENT_SECRET_LAX_SHOP_WEB \
-            -e OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN \
             -e NODE_ENV=production \
             -e APP_ENV=test \
             "$MIGRATE_IMAGE" \
             sh -ceu '
               node packages/db/dist/migrate-prod.js
               node packages/db/dist/migrate-roles.js
-              node packages/db/dist/scripts/configure-oidc-clients.js
             '
+
+      - name: Configure OIDC registry from monorepo closure
+        if: env.STAGE_ONLY != 'true'
+        run: |
+          set -euo pipefail
+          pnpm --filter @auction/db... build
+          DATABASE_URL_AUTH="$DATABASE_URL_AUTH" \
+            OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
+            OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET_LAX_SHOP_WEB" \
+            OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN="$OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN" \
+            NODE_ENV=production \
+            APP_ENV=test \
+            node packages/db/dist/scripts/configure-oidc-clients.js
 
       - name: Capture encrypted pre-deploy JWKS snapshot
         if: env.STAGE_ONLY != 'true'
