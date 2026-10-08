@@ -174,11 +174,16 @@ jobs:
           INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
         run: |
           set -euo pipefail
-          tag="$(node scripts/ci/resolve-app-image-tag.mjs \
-            --app-id "$APP_ID" \
-            --input-tag "$INPUT_APP_IMAGE_TAG")"
-          echo "APP_IMAGE_TAG=$tag" >> "$GITHUB_ENV"
-          echo "TF_VAR_app_image_tag=$tag" >> "$GITHUB_ENV"
+          while IFS= read -r line; do
+            echo "$line" >> "$GITHUB_ENV"
+            if [[ "$line" == TF_VAR_app_image_tag=* ]]; then
+              echo "APP_IMAGE_TAG=${line#TF_VAR_app_image_tag=}" >> "$GITHUB_ENV"
+            fi
+          done < <(
+            node scripts/ci/resolve-live-app-image-tags.mjs \
+              --app-id "$APP_ID" \
+              --input-app-image-tag "$INPUT_APP_IMAGE_TAG"
+          )
       - name: Verify prebuilt web image exists for app pin
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:

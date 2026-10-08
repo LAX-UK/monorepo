@@ -114,8 +114,7 @@ jobs:
           if test "$deploy_source" != "image"; then
             exit 0
           fi
-          tag="$(node scripts/ci/resolve-app-image-tag.mjs --app-id "$APP_ID")"
-          echo "TF_VAR_app_image_tag=$tag" >> "$GITHUB_ENV"
+          node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" >> "$GITHUB_ENV"
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}
