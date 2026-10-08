@@ -117,6 +117,9 @@ jobs:
 
   inventory_auth_at_rest:
     needs: validate_inputs
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/auth-at-rest-maintenance-test.yml
     with:
       mode: inventory
@@ -125,8 +128,11 @@ jobs:
     secrets: inherit
 
   qualify_identity:
-    needs: inventory_auth_at_rest
+    needs: validate_inputs
     uses: ./.github/workflows/identity-staging-deploy.yml
+    permissions:
+      contents: read
+      actions: read
     with:
       identity_sha: ${{ inputs.identity_sha }}
       identity_digest: ${{ inputs.identity_digest }}
