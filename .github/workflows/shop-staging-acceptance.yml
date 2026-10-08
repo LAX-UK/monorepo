@@ -1,6 +1,8 @@
 name: Shop staging acceptance
 
 on:
+  schedule:
+    - cron: "0 3 * * *"
   workflow_call:
     inputs:
       shop_sha:
@@ -25,8 +27,8 @@ on:
   workflow_dispatch:
     inputs:
       shop_sha:
-        description: Deployed Shop storefront commit SHA (must match /health/ready release)
-        required: true
+        description: Deployed Shop storefront commit SHA (defaults to live /health/ready release)
+        required: false
         type: string
       monorepo_ref:
         description: >-
@@ -56,12 +58,63 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-context:
+    runs-on: ubuntu-latest
+    outputs:
+      shop_sha: ${{ steps.coalesce.outputs.shop_sha }}
+      shop_api_sha: ${{ steps.coalesce.outputs.shop_api_sha }}
+      monorepo_ref: ${{ steps.coalesce.outputs.monorepo_ref }}
+      seed_catalogue: ${{ steps.coalesce.outputs.seed_catalogue }}
+    steps:
+      - id: coalesce
+        env:
+          INPUT_SHOP_SHA: ${{ inputs.shop_sha || '' }}
+          INPUT_SHOP_API_SHA: ${{ inputs.shop_api_sha || '' }}
+          INPUT_MONOREPO_REF: ${{ inputs.monorepo_ref || '' }}
+          SEED: ${{ inputs.seed_catalogue == true && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            shop_sha="${{ inputs.shop_sha }}"
+            shop_api_sha="${{ inputs.shop_api_sha != '' && inputs.shop_api_sha || inputs.shop_sha }}"
+            echo "shop_sha=$shop_sha" >> "$GITHUB_OUTPUT"
+            echo "shop_api_sha=$shop_api_sha" >> "$GITHUB_OUTPUT"
+            echo "monorepo_ref=${{ inputs.monorepo_ref || '' }}" >> "$GITHUB_OUTPUT"
+            echo "seed_catalogue=${{ inputs.seed_catalogue == true && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sha="$INPUT_SHOP_SHA"
+          if [[ -z "$sha" || ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            for _ in $(seq 1 30); do
+              if body="$(curl --fail --silent --max-time 15 https://test-shop.lax.bid/health/ready)"; then
+                sha="$(jq -r '.release // empty' <<<"$body")"
+                if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+                  break
+                fi
+              fi
+              sleep 10
+            done
+          fi
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve live Shop release SHA"
+            exit 1
+          fi
+          api_sha="$INPUT_SHOP_API_SHA"
+          if [[ -z "$api_sha" ]]; then
+            api_sha="$sha"
+          fi
+          echo "shop_sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "shop_api_sha=$api_sha" >> "$GITHUB_OUTPUT"
+          echo "monorepo_ref=$INPUT_MONOREPO_REF" >> "$GITHUB_OUTPUT"
+          echo "seed_catalogue=$SEED" >> "$GITHUB_OUTPUT"
+
   commerce-contracts:
+    needs: resolve-context
     runs-on: ubuntu-latest
     environment: test
     env:
-      SHOP_SHA: ${{ inputs.shop_sha }}
-      SHOP_API_SHA: ${{ inputs.shop_api_sha != '' && inputs.shop_api_sha || inputs.shop_sha }}
+      SHOP_SHA: ${{ needs.resolve-context.outputs.shop_sha }}
+      SHOP_API_SHA: ${{ needs.resolve-context.outputs.shop_api_sha }}
       SHOP_STOREFRONT_URL: https://test-shop.lax.bid
       SHOP_ADMIN_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
       AUTH_BASE_URL: https://test-auth.lax.bid
@@ -74,7 +127,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.monorepo_ref != '' && inputs.monorepo_ref || inputs.shop_sha }}
+          ref: >-
+            ${{
+              needs.resolve-context.outputs.monorepo_ref != '' &&
+              needs.resolve-context.outputs.monorepo_ref ||
+              needs.resolve-context.outputs.shop_sha
+            }}
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.4
@@ -129,7 +187,7 @@ jobs:
             echo "::warning::shop-admin release ${release:-unknown} != $SHOP_SHA"
           fi
       - name: Shop-admin OIDC client preflight (tier-1)
-        if: ${{ !inputs.seed_catalogue }}
+        if: ${{ needs.resolve-context.outputs.seed_catalogue != 'true' }}
         run: |
           set -euo pipefail
           if ! curl --fail --silent --max-time 20 "$SHOP_ADMIN_URL/health/ready" >/dev/null; then
@@ -144,7 +202,7 @@ jobs:
           test "$code" != "404"
           test "$code" = "400"
       - name: Require acceptance credentials for catalogue fixtures
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         run: |
           set -euo pipefail
           test -n "${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}" || {
@@ -156,19 +214,19 @@ jobs:
             exit 1
           }
       - uses: ./.github/actions/checkout-infra
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         with:
           ref: main
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - uses: ./.github/actions/terraform-setup
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         with:
           working-directory: .infra-config/terraform/ephemeral/test
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - name: Load Shop database contract from Terraform state
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         run: |
           set -euo pipefail
           database_url_shop="$(
@@ -199,14 +257,14 @@ jobs:
           chmod 0600 "$database_ca_path"
           echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
       - name: Seed foundation catalogue (opt-in)
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         run: |
           set -euo pipefail
           echo "::warning::Catalogue seed may mark reed-study editions sold; use only on disposable staging data."
           pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api seed:catalogue
       - name: Seed acceptance portal fixtures (opt-in)
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         env:
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
@@ -219,7 +277,7 @@ jobs:
           pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Acceptance preflight (commerce reset + shop-admin probe)
         id: acceptance_preflight
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         run: |
           set -euo pipefail
           SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID="${SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID:-}" \
@@ -262,13 +320,13 @@ jobs:
       - name: Shop V1 phase 1 portal smoke
         env:
           SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
-          SHOP_ACCEPTANCE_PORTAL_SEEDED: ${{ inputs.seed_catalogue && 'true' || '' }}
-          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ inputs.seed_catalogue && (vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE || 'Vessel Study') || '' }}
+          SHOP_ACCEPTANCE_PORTAL_SEEDED: ${{ needs.resolve-context.outputs.seed_catalogue == 'true' && 'true' || '' }}
+          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ needs.resolve-context.outputs.seed_catalogue == 'true' && (vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE || 'Vessel Study') || '' }}
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
         run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
       - name: Shop Stripe hosted checkout smoke (staging)
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         env:
           SHOP_STAGING_ACCEPTANCE_STRICT: "1"
           SHOP_E2E_STRIPE_CHECKOUT: "1"
@@ -285,7 +343,7 @@ jobs:
           pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Shop Stripe webhook payment rehearsal (staging)
         id: stripe_webhook
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         env:
           SHOP_STOREFRONT_URL: https://test-shop.lax.bid
           STRIPE_SHOP_WEBHOOK_SECRET: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
@@ -295,14 +353,14 @@ jobs:
           pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api rehearse:staging-stripe-webhook
       - name: Export paid order id for buyer e2e
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         run: |
           set -euo pipefail
           order_id="${{ steps.stripe_webhook.outputs.acceptance_paid_order_id }}"
           test -n "$order_id"
           echo "SHOP_ACCEPTANCE_PAID_ORDER_ID=$order_id" >> "$GITHUB_ENV"
       - name: Shop browser tier 2 (foundation catalogue fixtures)
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         env:
           SHOP_STAGING_ACCEPTANCE_STRICT: "1"
           SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
@@ -324,7 +382,7 @@ jobs:
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
           pnpm --filter @auction/shop-api seed:acceptance-commerce
       - name: Shop browser tier 2 mobile (a11y and catalogue)
-        if: inputs.seed_catalogue
+        if: needs.resolve-context.outputs.seed_catalogue == 'true'
         env:
           SHOP_STAGING_ACCEPTANCE_STRICT: "1"
         run: |
@@ -335,7 +393,7 @@ jobs:
             --project=chromium-mobile
           node scripts/ci/assert-playwright-no-unexpected-skips.mjs
       - name: Resolve shop-admin acceptance email
-        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        if: needs.resolve-context.outputs.seed_catalogue == 'true' && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           SHOP_ADMIN_ACCEPTANCE_EMAIL: ${{ secrets.SHOP_ADMIN_ACCEPTANCE_EMAIL }}
           IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
@@ -346,7 +404,7 @@ jobs:
           echo "::add-mask::$admin_email"
           echo "SHOP_ADMIN_ACCEPTANCE_EMAIL=$admin_email" >> "$GITHUB_ENV"
       - name: Provision shop-admin staff identity
-        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        if: needs.resolve-context.outputs.seed_catalogue == 'true' && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
@@ -366,7 +424,7 @@ jobs:
           node scripts/ci/provision-shop-admin-staff-identity.mjs
           test -n "${SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET:-}" || test -s "$SHOP_ACCEPTANCE_STAFF_TOTP_FILE"
       - name: Assert staff TOTP handoff for e2e
-        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        if: needs.resolve-context.outputs.seed_catalogue == 'true' && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         run: |
           set -euo pipefail
           test -n "${SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET:-}" || {
@@ -374,7 +432,7 @@ jobs:
             exit 1
           }
       - name: Seed staff operations fixtures
-        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        if: needs.resolve-context.outputs.seed_catalogue == 'true' && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           SHOP_ACCEPTANCE_FIXTURES_PATH: ${{ runner.temp }}/staff-operations-fixtures.json
         run: |
@@ -393,7 +451,7 @@ jobs:
             SHOP_ACCEPTANCE_BUYER_SUBJECT_ID="acceptance:buyer" \
             pnpm --filter @auction/shop-api seed:acceptance-staff-operations
       - name: Shop staff operations acceptance
-        if: inputs.seed_catalogue && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
+        if: needs.resolve-context.outputs.seed_catalogue == 'true' && steps.acceptance_preflight.outputs.shop_admin_live == 'true'
         env:
           PLAYWRIGHT_E2E: "1"
           PLAYWRIGHT_BASE_URL: ${{ vars.SHOP_ADMIN_PUBLIC_URL || 'https://test-shop-admin.lax.bid' }}
