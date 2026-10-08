@@ -119,7 +119,7 @@ function verifyFileContract(path, required, forbidden) {
 const RETIRED_VENDOR_SCAN_PREFIXES = ["apps/", "packages/", "scripts/", ".github/"];
 
 const RETIRED_VENDOR_DOC_ALLOWLIST = new Set([
-  "docs/runbooks/identity-boundary-cutover.md",
+  "docs/archive/runbooks/identity-boundary-cutover.md",
   "docs/runbooks/shop-mvp-spec.md",
 ]);
 
