@@ -124,7 +124,6 @@ jobs:
     with:
       mode: inventory
       confirm_backup: false
-      parent_holds_deploy_lock: true
     secrets: inherit
 
   qualify_identity:
@@ -138,7 +137,6 @@ jobs:
       identity_digest: ${{ inputs.identity_digest }}
       publish_run_id: ${{ inputs.publish_run_id }}
       stage_only: true
-      parent_holds_deploy_lock: true
     secrets: inherit
 
   deploy:
