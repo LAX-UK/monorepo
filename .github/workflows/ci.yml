@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master, release]
+    branches: [release]
   pull_request:
     branches: [main, master]
   merge_group:
@@ -23,7 +23,7 @@ env:
   TURBO_SCM_BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_CACHE: ${{ github.event_name == 'merge_group' && 'local:rw' || (vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw') }}
+  TURBO_CACHE: ${{ vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw' }}
   TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
 jobs:
@@ -124,7 +124,7 @@ jobs:
         run: pnpm --filter @auction/identity-contracts build
 
       - name: CI script unit tests
-        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/pipeline-stats.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs scripts/ci/verify-reusable-workflow-permissions.test.mjs
+        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/pipeline-stats.test.mjs scripts/ci/deploy-component-paths.test.mjs scripts/ci/resolve-affected-deploy-components.test.mjs scripts/ci/build-expected-releases.test.mjs scripts/ci/patch-app-platform-image-tags.test.mjs scripts/ci/resolve-live-app-image-tags.test.mjs scripts/ci/digitalocean-app-rollback-api.test.mjs scripts/ci/staging-deploy-smoke.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs scripts/ci/verify-reusable-workflow-permissions.test.mjs
 
       - name: Reusable workflow permission contracts
         run: node scripts/ci/verify-reusable-workflow-permissions.mjs

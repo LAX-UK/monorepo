@@ -130,8 +130,10 @@ function collectViolations(target) {
   }
 
   if (tier === "test") {
-    if (!/image_repository\s*=\s*"lax-test-identity"/.test(auth)) {
-      violations.push("[test] auth does not use lax-test-identity");
+    if (/image_repository\s*=\s*"lax-test-identity"/.test(auth)) {
+      console.warn(
+        "[test] auth still pins lax-test-identity; merge auction-infra test-auth cutover before enabling lax-test-auth",
+      );
     }
     if (!/deploy_source\s*=\s*"image"/.test(auth)) {
       violations.push("[test] auth does not override deploy_source to image");

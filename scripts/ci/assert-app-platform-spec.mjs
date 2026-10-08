@@ -5,11 +5,25 @@
  */
 import { spawnSync } from "node:child_process";
 
-const PINNED_COMPONENTS = ["api", "ws", "worker", "web", "migrate", "clamav"];
+export const PINNED_COMPONENTS = [
+  "api",
+  "auth",
+  "ws",
+  "worker",
+  "web",
+  "migrate",
+  "clamav",
+  "shop",
+  "shop-identity",
+  "shop-api",
+  "shop-admin",
+];
 
 function parseArgs(argv) {
   let appId;
   let expectedTag;
+  /** @type {Record<string, string> | undefined} */
+  let expectedTagMap;
   let mode = "post";
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -23,19 +37,33 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (arg === "--expected-tag-map") {
+      expectedTagMap = JSON.parse(argv[index + 1] ?? "{}");
+      index += 1;
+      continue;
+    }
     if (arg === "--mode") {
       mode = argv[index + 1] ?? "post";
       index += 1;
     }
   }
   if (!appId) throw new Error("--app-id is required");
-  if (mode === "post" && (!expectedTag || !/^[0-9a-f]{40}$|^test$|^prod$/.test(expectedTag))) {
-    throw new Error("--expected-tag must be a git SHA or rolling env tag when --mode post");
+  if (mode === "post" && expectedTagMap) {
+    for (const [name, tag] of Object.entries(expectedTagMap)) {
+      if (!/^[0-9a-f]{40}$|^test$|^prod$/.test(tag)) {
+        throw new Error(`expected tag map entry ${name} must be a git SHA or rolling env tag`);
+      }
+    }
+  } else if (
+    mode === "post" &&
+    (!expectedTag || !/^[0-9a-f]{40}$|^test$|^prod$/.test(expectedTag))
+  ) {
+    throw new Error("--expected-tag or --expected-tag-map is required when --mode post");
   }
   if (mode !== "pre" && mode !== "post") {
     throw new Error("--mode must be pre or post");
   }
-  return { appId, expectedTag, mode };
+  return { appId, expectedTag, expectedTagMap, mode };
 }
 
 export function readAppSpec(appId) {
@@ -92,7 +120,37 @@ export function assertPinnedImageTags(spec, expectedTag) {
   return mismatches;
 }
 
-export function assertAppPlatformSpec({ spec, expectedTag, mode }) {
+export function assertPinnedImageTagMap(spec, expectedTagMap) {
+  const mismatches = [];
+  for (const [name, expected] of Object.entries(expectedTagMap)) {
+    const service = spec?.services?.find((entry) => entry.name === name);
+    const worker = spec?.workers?.find((entry) => entry.name === name);
+    const job = spec?.jobs?.find((entry) => entry.name === name);
+    const component = service ?? worker ?? job;
+    if (!component?.image?.tag) {
+      mismatches.push({
+        name,
+        tag: "(missing)",
+        registry: component?.image?.registry ?? "unknown",
+        repository: component?.image?.repository ?? "unknown",
+        expected,
+      });
+      continue;
+    }
+    if (component.image.tag !== expected) {
+      mismatches.push({
+        name,
+        tag: component.image.tag,
+        registry: component.image.registry ?? "unknown",
+        repository: component.image.repository ?? "unknown",
+        expected,
+      });
+    }
+  }
+  return mismatches;
+}
+
+export function assertAppPlatformSpec({ spec, expectedTag, expectedTagMap, mode }) {
   const releaseOverrides = collectReleaseEnvOverrides(spec);
   if (releaseOverrides.length > 0) {
     const details = releaseOverrides
@@ -104,13 +162,15 @@ export function assertAppPlatformSpec({ spec, expectedTag, mode }) {
     throw new Error(details);
   }
   if (mode === "post") {
-    const mismatches = assertPinnedImageTags(spec, expectedTag);
+    const mismatches = expectedTagMap
+      ? assertPinnedImageTagMap(spec, expectedTagMap)
+      : assertPinnedImageTags(spec, expectedTag);
     if (mismatches.length > 0) {
       const details = mismatches
-        .map(
-          (entry) =>
-            `${entry.name}.image.tag is ${entry.tag}, expected ${expectedTag} (${entry.registry}/${entry.repository})`,
-        )
+        .map((entry) => {
+          const want = entry.expected ?? expectedTag;
+          return `${entry.name}.image.tag is ${entry.tag}, expected ${want} (${entry.registry}/${entry.repository})`;
+        })
         .join("; ");
       throw new Error(details);
     }
@@ -118,11 +178,15 @@ export function assertAppPlatformSpec({ spec, expectedTag, mode }) {
 }
 
 function main() {
-  const { appId, expectedTag, mode } = parseArgs(process.argv.slice(2));
+  const { appId, expectedTag, expectedTagMap, mode } = parseArgs(process.argv.slice(2));
   const spec = readAppSpec(appId);
-  assertAppPlatformSpec({ spec, expectedTag, mode });
+  assertAppPlatformSpec({ spec, expectedTag, expectedTagMap, mode });
   if (mode === "pre") {
     console.log("App Platform spec has no SENTRY_RELEASE env overrides");
+    return;
+  }
+  if (expectedTagMap) {
+    console.log("App Platform pinned component tags match expected tag map");
     return;
   }
   console.log(`App Platform pinned component tags match ${expectedTag}`);
