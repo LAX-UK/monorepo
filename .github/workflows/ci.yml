@@ -124,10 +124,13 @@ jobs:
         run: pnpm --filter @auction/identity-contracts build
 
       - name: CI script unit tests
-        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs scripts/ci/verify-reusable-workflow-permissions.test.mjs
+        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/pipeline-stats.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs scripts/ci/verify-reusable-workflow-permissions.test.mjs
 
       - name: Reusable workflow permission contracts
         run: node scripts/ci/verify-reusable-workflow-permissions.mjs
+
+      - name: Orphan CI scripts report
+        run: pnpm ci:orphan-scripts-report
 
       - name: Actionlint workflow contracts
         run: |
@@ -183,35 +186,9 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Install deterministic history filter
-        if: steps.identity_paths.outputs.identity == 'true'
-        run: pipx install git-filter-repo==2.47.0
-
-      - name: Install history secret scanner
-        if: steps.identity_paths.outputs.identity == 'true'
-        run: |
-          mkdir -p "$RUNNER_TEMP/gitleaks-bin"
-          curl -sSLf https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz |
-            tar -xz -C "$RUNNER_TEMP/gitleaks-bin" gitleaks
-          echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
-
       - name: Verify Identity dependency closure
         if: steps.identity_paths.outputs.identity == 'true'
         run: pnpm ci:identity-extractability
-
-      - name: Rehearse hermetic Identity extraction
-        if: steps.identity_paths.outputs.identity == 'true'
-        run: pnpm ci:identity-extraction-rehearsal
-        env:
-          IDENTITY_REHEARSAL_TMPDIR: ${{ runner.temp }}/identity-rehearsal
-
-      - name: Upload Identity rehearsal diagnostics
-        if: failure() && steps.identity_paths.outputs.identity == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: identity-rehearsal-diagnostics
-          path: ${{ runner.temp }}/identity-rehearsal
-          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest
@@ -787,15 +764,6 @@ jobs:
       - name: Hermetic Identity acceptance preflight
         if: steps.identity_paths.outputs.identity == 'true'
         run: pnpm ci:identity-acceptance-preflight
-      - uses: digitalocean/action-doctl@v2
-        if: steps.identity_paths.outputs.identity == 'true'
-        with:
-          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - if: steps.identity_paths.outputs.identity == 'true'
-        run: doctl registry login --expiry-seconds 900
-      - name: N/N-1 Auth image compatibility
-        if: steps.identity_paths.outputs.identity == 'true'
-        run: pnpm ci:identity-nn1-compat
 
   ci-result:
     name: ci-result

@@ -1,0 +1,52 @@
+name: Test platform monitoring
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @auction/db... build
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Auth-at-rest and identity directory drift
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          export DATABASE_URL_OWNER="$(terraform -chdir="$tf_dir" output -raw postgres_owner_uri)"
+          export DATABASE_URL_AUTH="$(terraform -chdir="$tf_dir" output -raw database_url_auth)"
+          database_ca_cert="$(terraform -chdir="$tf_dir" output -raw database_ca_certificate)"
+          database_ca_path="$RUNNER_TEMP/staging-postgres-ca.crt"
+          printf '%s\n' "$database_ca_cert" > "$database_ca_path"
+          chmod 0600 "$database_ca_path"
+          export NODE_EXTRA_CA_CERTS="$database_ca_path"
+          export DATABASE_CA_CERT="$database_ca_cert"
+          node scripts/ci/assert-auth-at-rest-clear.mjs
+          node scripts/ci/verify-identity-directory-drift.mjs

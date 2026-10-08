@@ -1,0 +1,40 @@
+name: Shop staging acceptance (scheduled)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-live-shop:
+    runs-on: ubuntu-latest
+    outputs:
+      shop_sha: ${{ steps.live.outputs.shop_sha }}
+    steps:
+      - name: Read live Shop release SHA
+        id: live
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            if body="$(curl --fail --silent --max-time 15 https://test-shop.lax.bid/health/ready)"; then
+              sha="$(jq -r '.release // empty' <<<"$body")"
+              if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "shop_sha=$sha" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "::error::Could not resolve live Shop release SHA"
+          exit 1
+
+  acceptance:
+    needs: resolve-live-shop
+    uses: ./.github/workflows/shop-staging-acceptance.yml
+    with:
+      shop_sha: ${{ needs.resolve-live-shop.outputs.shop_sha }}
+      seed_catalogue: false
+    secrets: inherit
