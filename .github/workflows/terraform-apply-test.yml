@@ -17,10 +17,10 @@ on:
         type: boolean
         required: false
         default: false
-      identity_sha:
+      auth_sha:
         type: string
         required: false
-      identity_digest:
+      auth_digest:
         type: string
         required: false
       shop_identity_sha:
@@ -184,11 +184,11 @@ jobs:
         if: inputs.layer == 'ephemeral'
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - name: Require approved Identity and Shop image contracts before ephemeral apply
+      - name: Require approved Auth and Shop image contracts before ephemeral apply
         if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
-          IDENTITY_SHA: ${{ inputs.identity_sha }}
-          IDENTITY_DIGEST: ${{ inputs.identity_digest }}
+          AUTH_SHA: ${{ inputs.auth_sha }}
+          AUTH_DIGEST: ${{ inputs.auth_digest }}
           SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
           SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
           SHOP_SHA: ${{ inputs.shop_sha }}
@@ -301,19 +301,19 @@ jobs:
           echo "### Shop readiness did not converge" >> "$GITHUB_STEP_SUMMARY"
           echo "Last probe: \`${last_body}\`" >> "$GITHUB_STEP_SUMMARY"
           exit 1
-      - name: Prove Identity readiness after ephemeral traffic change
-        if: inputs.layer == 'ephemeral' && inputs.identity_sha != ''
+      - name: Prove Auth readiness after ephemeral traffic change
+        if: inputs.layer == 'ephemeral' && inputs.auth_sha != ''
         env:
-          EXPECTED_IDENTITY_SHA: ${{ inputs.identity_sha }}
+          EXPECTED_AUTH_SHA: ${{ inputs.auth_sha }}
         run: |
           set -euo pipefail
-          [[ "$EXPECTED_IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_AUTH_SHA" =~ ^[0-9a-f]{40}$ ]]
           for _ in $(seq 1 30); do
             body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
-            if test "$(jq -r '.release // empty' <<<"$body")" = "$EXPECTED_IDENTITY_SHA"; then
+            if test "$(jq -r '.release // empty' <<<"$body")" = "$EXPECTED_AUTH_SHA"; then
               exit 0
             fi
             sleep 10
           done
-          echo "::error::Auth readiness did not report the approved Identity release"
+          echo "::error::Auth readiness did not report the approved release"
           exit 1
