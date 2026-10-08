@@ -81,6 +81,7 @@ jobs:
         env:
           APP_ID: ${{ env.APP_ID }}
           TARGET_SHA: ${{ inputs.git_sha || github.sha }}
+          ROLLBACK_REHEARSAL: ${{ inputs.rollback_rehearsal == true && 'true' || 'false' }}
         run: node scripts/ci/resolve-affected-deploy-components.mjs
 
   sentry-release:

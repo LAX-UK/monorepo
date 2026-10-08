@@ -14,8 +14,10 @@ Use this runbook once when moving test Auth from `lax-test-identity` to monorepo
    before monorepo PR3).
 3. Run **Terraform apply test** (ephemeral) after merge; live image tags are
    hydrated via `scripts/ci/resolve-live-app-image-tags.mjs`.
-4. Run **App deploy test** with `rollback_rehearsal=true` once; confirm rollback
-   reaches `ACTIVE` and readiness passes.
+4. Run **App deploy test** with `rollback_rehearsal=true` once (optionally set
+   `git_sha` to the commit under test). The workflow forces a redeploy even when
+   live tags already match that SHA. Confirm rollback reaches `ACTIVE` and
+   readiness passes.
 5. Merge monorepo PR2 (`chore/pipeline-pr2-deploy`) then, after the rehearsal
    above, PR3 (`chore/pipeline-pr3-auth-activate`) on `main`.
 
