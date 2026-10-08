@@ -168,10 +168,15 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     try {
       await container.db.execute(sql`select 1`);
       await container.redis.ping();
-      return c.json({ status: "ok", database: "ok", redis: "ok" });
+      return c.json({
+        status: "ok",
+        database: "ok",
+        redis: "ok",
+        release: process.env.SENTRY_RELEASE ?? "unknown",
+      });
     } catch (e) {
       appLogger.error({ err: String(e) }, "health_check_failed");
-      return c.json({ status: "degraded" }, 503);
+      return c.json({ status: "degraded", release: process.env.SENTRY_RELEASE ?? "unknown" }, 503);
     }
   });
 

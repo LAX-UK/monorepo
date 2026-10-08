@@ -12,23 +12,11 @@ on:
       - .github/actions/app-platform-deploy/**
       - .github/workflows/app-deploy-test.yml
       - .github/workflows/build-images.yml
-      - scripts/ci/resolve-affected-deploy-components.mjs
-      - scripts/ci/deploy-component-paths.mjs
-      - scripts/ci/deploy-tag-map.mjs
-      - scripts/ci/build-expected-releases.mjs
-      - scripts/ci/staging-deploy-smoke.mjs
-      - scripts/ci/patch-app-platform-image-tags.mjs
-      - scripts/ci/digitalocean-app-rollback-api.mjs
-      - scripts/ci/verify-prebuilt-images-for-deploy.mjs
-      - scripts/ci/write-deploy-artifact.mjs
-      - scripts/ci/write-image-tag-env.mjs
-      - scripts/ci/build-images-matrix.mjs
-      - scripts/ci/assert-app-platform-spec.mjs
-      - scripts/ci/resolve-live-app-image-tags.mjs
+      - scripts/ci/**
   workflow_dispatch:
     inputs:
       git_sha:
-        description: Redeploy this commit SHA to test (must exist in DOCR for built components)
+        description: Full 40-character commit SHA to redeploy (must exist in DOCR for built components)
         type: string
         required: false
       rollback_rehearsal:
@@ -62,7 +50,7 @@ jobs:
       tag_map: ${{ steps.plan.outputs.tag_map || steps.skip_plan.outputs.tag_map }}
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
-      AUTH_TAG_MAP_ENABLED: "false"
+      AUTH_TAG_MAP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,6 +67,14 @@ jobs:
         if: env.APP_ID != ''
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Validate redeploy SHA
+        if: env.APP_ID != '' && inputs.git_sha != ''
+        run: |
+          set -euo pipefail
+          [[ "${{ inputs.git_sha }}" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::git_sha must be a full 40-character commit SHA"
+            exit 1
+          }
       - id: plan
         if: env.APP_ID != ''
         name: Resolve affected components
@@ -126,7 +122,7 @@ jobs:
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       TARGET_SHA: ${{ inputs.git_sha || github.sha }}
-      AUTH_TAG_MAP_ENABLED: "false"
+      AUTH_TAG_MAP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: digitalocean/action-doctl@v2
@@ -193,11 +189,15 @@ jobs:
       - name: Shop admin OIDC preflight
         if: >-
           contains(fromJSON(needs.plan.outputs.affected_components), 'shop') ||
-          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-admin')
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-admin') ||
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-api') ||
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-identity')
         run: node scripts/ci/verify-shop-admin-oidc-preflight.mjs
       - name: Roll back on smoke failure after ACTIVE
+        id: rollback_smoke
         if: >-
           failure() &&
+          steps.smoke.outcome == 'failure' &&
           steps.app_deploy.outputs.phase == 'ACTIVE' &&
           steps.prior.outputs.deployment_id != ''
         env:
@@ -210,7 +210,16 @@ jobs:
             --app-id "$APP_ID" \
             --deployment-id "${{ steps.prior.outputs.deployment_id }}" \
             | tee "$RUNNER_TEMP/rollback-result.json"
-          echo "ROLLBACK_RESULT=success" >> "$GITHUB_ENV"
+      - name: Record rollback outcome
+        if: always() && steps.prior.outputs.deployment_id != ''
+        run: |
+          if test "${{ steps.rollback_smoke.outcome || 'skipped' }}" = "success"; then
+            echo "ROLLBACK_RESULT=success" >> "$GITHUB_ENV"
+          elif test "${{ steps.rollback_smoke.outcome || 'skipped' }}" = "failure"; then
+            echo "ROLLBACK_RESULT=failed" >> "$GITHUB_ENV"
+          else
+            echo "ROLLBACK_RESULT=skipped" >> "$GITHUB_ENV"
+          fi
       - name: Rollback rehearsal (manual)
         if: >-
           success() &&

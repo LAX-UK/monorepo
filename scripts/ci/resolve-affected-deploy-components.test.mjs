@@ -13,4 +13,8 @@ describe("resolveBuildComponents", () => {
   it("adds migrate when any image component changes", () => {
     assert.deepEqual(resolveBuildComponents(["api"]), ["api", "migrate"]);
   });
+
+  it("builds migrate when migrate is the only affected component", () => {
+    assert.deepEqual(resolveBuildComponents(["migrate"]), ["migrate"]);
+  });
 });

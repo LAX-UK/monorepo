@@ -528,7 +528,7 @@ role-script rerun as a migration rollback.
 See [new-platform onboarding](../runbooks/onboard-lax-platform.md),
 [SSF operations](../runbooks/ssf-stream-operations.md),
 [back-channel logout triage](../runbooks/backchannel-logout-triage.md), and
-[identity cutover](../runbooks/identity-boundary-cutover.md).
+[identity cutover (archived)](../archive/runbooks/identity-boundary-cutover.md).
 
 ## Ecosystem account and wayfinding
 

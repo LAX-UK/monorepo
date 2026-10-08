@@ -9,10 +9,10 @@ const registry = (process.env.DOCR_REGISTRY ?? "registry.digitalocean.com/lax-bi
 
 const contracts = [
   {
-    repository: "lax-test-identity",
-    sha: process.env.IDENTITY_SHA,
-    digest: process.env.IDENTITY_DIGEST,
-    releaseEnv: process.env.IDENTITY_SHA,
+    repository: "lax-test-auth",
+    sha: process.env.AUTH_SHA,
+    digest: process.env.AUTH_DIGEST,
+    releaseEnv: process.env.AUTH_SHA,
     rollingTag: "test",
   },
   {
@@ -39,8 +39,8 @@ const contracts = [
 ];
 
 const requiredInputs = [
-  ["IDENTITY_SHA", process.env.IDENTITY_SHA],
-  ["IDENTITY_DIGEST", process.env.IDENTITY_DIGEST],
+  ["AUTH_SHA", process.env.AUTH_SHA],
+  ["AUTH_DIGEST", process.env.AUTH_DIGEST],
   ["SHOP_IDENTITY_SHA", process.env.SHOP_IDENTITY_SHA],
   ["SHOP_IDENTITY_DIGEST", process.env.SHOP_IDENTITY_DIGEST],
   ["SHOP_SHA", process.env.SHOP_SHA],
@@ -101,4 +101,4 @@ if (outputPath) {
   );
 }
 
-console.log("Staging image contracts verified for Identity, Shop Identity, Shop, and Shop API");
+console.log("Staging image contracts verified for Auth, Shop Identity, Shop, and Shop API");

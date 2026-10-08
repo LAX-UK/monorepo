@@ -7,12 +7,12 @@ on:
         type: string
         required: false
         default: main
-      identity_sha:
-        description: Approved standalone Identity commit for ephemeral image deploys
+      auth_sha:
+        description: Approved monorepo Auth commit for lax-test-auth image deploys
         type: string
         required: false
-      identity_digest:
-        description: Approved lax-test-identity digest for ephemeral image deploys
+      auth_digest:
+        description: Approved lax-test-auth digest for ephemeral image deploys
         type: string
         required: false
       shop_identity_sha:
@@ -123,7 +123,6 @@ jobs:
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
       TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || 'false' }}
-      TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
       TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
@@ -193,20 +192,18 @@ jobs:
           node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
             --environment test \
             --sha "$APP_IMAGE_TAG"
-      - name: Require approved Identity and Shop image contracts before ephemeral apply
+      - name: Require approved Auth and Shop image contracts before ephemeral apply
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
-          IDENTITY_SHA: ${{ inputs.identity_sha }}
-          IDENTITY_DIGEST: ${{ inputs.identity_digest }}
-          SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
-          SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
-          SHOP_SHA: ${{ inputs.shop_sha }}
-          SHOP_DIGEST: ${{ inputs.shop_digest }}
-          SHOP_API_SHA: ${{ inputs.shop_api_sha }}
-          SHOP_API_DIGEST: ${{ inputs.shop_api_digest }}
+          APP_ID: ${{ env.APP_ID }}
+          INPUT_AUTH_SHA: ${{ inputs.auth_sha }}
+          INPUT_SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
+          INPUT_SHOP_SHA: ${{ inputs.shop_sha }}
+          INPUT_SHOP_API_SHA: ${{ inputs.shop_api_sha }}
           DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
         run: |
           doctl registry login --expiry-seconds 900
+          node scripts/ci/prepare-staging-image-contract-env.mjs
           node scripts/ci/verify-staging-image-contract.mjs
       - uses: ./.github/actions/terraform-setup
         with:
@@ -249,21 +246,21 @@ jobs:
           done
           echo "::error::Shop readiness/release contract did not converge"
           exit 1
-      - name: Prove Identity readiness after ephemeral traffic change
-        if: inputs.identity_sha != ''
+      - name: Prove Auth readiness after ephemeral traffic change
+        if: inputs.auth_sha != ''
         env:
-          EXPECTED_IDENTITY_SHA: ${{ inputs.identity_sha }}
+          EXPECTED_AUTH_SHA: ${{ inputs.auth_sha }}
         run: |
           set -euo pipefail
-          [[ "$EXPECTED_IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_AUTH_SHA" =~ ^[0-9a-f]{40}$ ]]
           for _ in $(seq 1 30); do
             body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
-            if test "$(jq -r '.release // empty' <<<"$body")" = "$EXPECTED_IDENTITY_SHA"; then
+            if test "$(jq -r '.release // empty' <<<"$body")" = "$EXPECTED_AUTH_SHA"; then
               exit 0
             fi
             sleep 10
           done
-          echo "::error::Identity release did not match the pinned immutable tag"
+          echo "::error::Auth release did not match the pinned immutable tag"
           exit 1
       - name: Load staging database contract for post-apply scripts
         run: |

@@ -1,6 +1,8 @@
 name: Identity staging acceptance
 
 on:
+  schedule:
+    - cron: "0 4 * * *"
   workflow_call:
     inputs:
       identity_sha:
@@ -15,17 +17,19 @@ on:
   workflow_dispatch:
     inputs:
       identity_sha:
-        description: Standalone Identity commit under test
-        required: true
+        description: Auth commit under test (defaults to live /health/ready release)
+        required: false
         type: string
       outbox_max_age_ms:
         description: Approved lifecycle-outbox lag threshold in milliseconds
-        required: true
+        required: false
         type: number
+        default: 900000
       ssf_mode:
         description: Acceptance phase — core behavior first, then SSF delivery
-        required: true
+        required: false
         type: choice
+        default: ssf_disabled
         options:
           - ssf_disabled
           - ssf_enabled
@@ -38,7 +42,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-context:
+    runs-on: ubuntu-latest
+    outputs:
+      identity_sha: ${{ steps.coalesce.outputs.identity_sha }}
+      outbox_max_age_ms: ${{ steps.coalesce.outputs.outbox_max_age_ms }}
+      ssf_mode: ${{ steps.coalesce.outputs.ssf_mode }}
+    steps:
+      - id: coalesce
+        env:
+          INPUT_SHA: ${{ inputs.identity_sha || '' }}
+          INPUT_OUTBOX: ${{ inputs.outbox_max_age_ms || '900000' }}
+          INPUT_SSF: ${{ inputs.ssf_mode || 'ssf_disabled' }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "identity_sha=${{ inputs.identity_sha }}" >> "$GITHUB_OUTPUT"
+            echo "outbox_max_age_ms=${{ inputs.outbox_max_age_ms }}" >> "$GITHUB_OUTPUT"
+            echo "ssf_mode=${{ inputs.ssf_mode }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sha="$INPUT_SHA"
+          if [[ -n "$sha" && "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "identity_sha=$sha" >> "$GITHUB_OUTPUT"
+            echo "outbox_max_age_ms=$INPUT_OUTBOX" >> "$GITHUB_OUTPUT"
+            echo "ssf_mode=$INPUT_SSF" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for _ in $(seq 1 30); do
+            if body="$(curl --fail --silent --max-time 15 https://test-auth.lax.bid/health/ready)"; then
+              sha="$(jq -r '.release // empty' <<<"$body")"
+              if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "identity_sha=$sha" >> "$GITHUB_OUTPUT"
+                echo "outbox_max_age_ms=$INPUT_OUTBOX" >> "$GITHUB_OUTPUT"
+                echo "ssf_mode=$INPUT_SSF" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "::error::Could not resolve live Auth release SHA"
+          exit 1
+
   live-contracts:
+    needs: resolve-context
     runs-on: ubuntu-latest
     environment: test
     env:
@@ -57,7 +104,7 @@ jobs:
       IDENTITY_MACHINE_CLIENT_ID: auth-service
       IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID: identity-acceptance-rate-limit-probe
       IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
-      IDENTITY_OUTBOX_MAX_AGE_MS: ${{ inputs.outbox_max_age_ms }}
+      IDENTITY_OUTBOX_MAX_AGE_MS: ${{ needs.resolve-context.outputs.outbox_max_age_ms }}
       IDENTITY_RECONCILIATION_ATTEMPTS: "12"
       IDENTITY_RECONCILIATION_RETRY_DELAY_SEC: "5"
       IDENTITY_PROBE_RETRY_ATTEMPTS: "2"
@@ -65,8 +112,8 @@ jobs:
       BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"
       SSF_TEST_TIMEOUT_MS: "120000"
       SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
-      SSF_DELIVERY_ENABLED: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
-      SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
+      SSF_DELIVERY_ENABLED: ${{ needs.resolve-context.outputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
+      SSF_FAILURE_REHEARSAL: ${{ needs.resolve-context.outputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       ACCEPTANCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
     steps:
@@ -162,13 +209,13 @@ jobs:
           done
       - name: Validate requested Identity release
         run: |
-          [[ "${{ inputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${{ needs.resolve-context.outputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
           test "$(
             curl --fail --silent https://test-auth.lax.bid/health/ready |
               jq -r '.release // .version // empty'
-          )" = "${{ inputs.identity_sha }}"
+          )" = "${{ needs.resolve-context.outputs.identity_sha }}"
           echo "ACCEPTANCE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-          echo "ACCEPTANCE_SSF_MODE=${{ inputs.ssf_mode }}" >> "$GITHUB_ENV"
+          echo "ACCEPTANCE_SSF_MODE=${{ needs.resolve-context.outputs.ssf_mode }}" >> "$GITHUB_ENV"
       - name: Discovery, JWKS, HTTPS, headers, and retired API routes
         id: probe_boundary
         continue-on-error: true
@@ -198,7 +245,7 @@ jobs:
         continue-on-error: true
         run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-backchannel-logout-live.mjs
       - name: SSF durable delivery and replay contract (Bid receiver)
-        if: inputs.ssf_mode == 'ssf_enabled'
+        if: needs.resolve-context.outputs.ssf_mode == 'ssf_enabled'
         id: probe_ssf_bid
         continue-on-error: true
         env:
@@ -207,7 +254,7 @@ jobs:
           SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
         run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
       - name: SSF durable delivery and replay contract (Shop receiver)
-        if: inputs.ssf_mode == 'ssf_enabled'
+        if: needs.resolve-context.outputs.ssf_mode == 'ssf_enabled'
         id: probe_ssf_shop
         continue-on-error: true
         env:
@@ -270,7 +317,7 @@ jobs:
             writeRecoveryEvidence(process.env.ACCEPTANCE_EVIDENCE_PATH, payload);
           '
         env:
-          IDENTITY_SHA: ${{ inputs.identity_sha }}
+          IDENTITY_SHA: ${{ needs.resolve-context.outputs.identity_sha }}
           ACCEPTANCE_EVIDENCE_PATH: ${{ runner.temp }}/identity-acceptance-phase.json
       - name: Retain acceptance phase evidence
         if: always()

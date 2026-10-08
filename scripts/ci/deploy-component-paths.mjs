@@ -43,10 +43,8 @@ export const GLOBAL_PATH_PREFIXES = [
 export const CI_ONLY_PATH_PREFIXES = [
   "docs/",
   ".github/workflows/ci.yml",
-  ".github/workflows/identity-extraction-rehearsal.yml",
-  ".github/workflows/identity-nn1-compat-scheduled.yml",
-  ".github/workflows/identity-staging-acceptance-scheduled.yml",
-  ".github/workflows/shop-staging-acceptance-scheduled.yml",
+  ".github/workflows/identity-staging-acceptance.yml",
+  ".github/workflows/shop-staging-acceptance.yml",
   ".github/workflows/test-platform-monitoring.yml",
   "scripts/ci/pipeline-stats.mjs",
   "scripts/ci/pipeline-stats.test.mjs",

@@ -6,26 +6,49 @@ const URL_COMPONENT = {
   "https://test.lax.bid/api/health/ready": "web",
   "https://test-auth.lax.bid/health/ready": "auth",
   "https://test-shop.lax.bid/health/ready": "shop",
+  "https://test-shop-admin.lax.bid/health/ready": "shop-admin",
 };
 
+const SHOP_STACK_COMPONENTS = ["shop", "shop-api", "shop-identity"];
+
+export function shopStackPinned(tagMap, targetSha) {
+  return SHOP_STACK_COMPONENTS.some((component) => tagMap[component] === targetSha);
+}
+
 export function buildReadinessUrls({ tagMap, targetSha }) {
-  const urls = [];
+  const urls = new Set();
   for (const [url, component] of Object.entries(URL_COMPONENT)) {
     if (tagMap[component] === targetSha) {
-      urls.push(url);
+      urls.add(url);
     }
   }
-  return urls;
+  if (shopStackPinned(tagMap, targetSha)) {
+    urls.add("https://test-shop.lax.bid/health/ready");
+  }
+  if (tagMap["shop-admin"] === targetSha) {
+    urls.add("https://test-shop-admin.lax.bid/health/ready");
+  }
+  return [...urls];
 }
 
 export function buildExpectedReleases({ tagMap, targetSha, readinessUrls }) {
-  const urls = readinessUrls ?? Object.keys(URL_COMPONENT);
+  const urls = readinessUrls ?? buildReadinessUrls({ tagMap, targetSha });
   /** @type {Record<string, string>} */
   const expected = {};
   for (const url of urls) {
     const component = URL_COMPONENT[url];
-    if (!component) continue;
-    if (tagMap[component] === targetSha) {
+    if (component && tagMap[component] === targetSha) {
+      expected[url] = targetSha;
+      continue;
+    }
+    if (url === "https://test-shop.lax.bid/health/ready" && shopStackPinned(tagMap, targetSha)) {
+      expected[url] = targetSha;
+      continue;
+    }
+    if (
+      url === "https://test-shop-admin.lax.bid/health/ready" &&
+      tagMap["shop-admin"] === targetSha
+    ) {
       expected[url] = targetSha;
     }
   }

@@ -89,7 +89,7 @@ jobs:
     needs: changes
     if: github.event_name == 'merge_group' || needs.changes.outputs.browser == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:16
@@ -193,6 +193,11 @@ jobs:
         run: |
           node scripts/ci/require-node-version.mjs
           pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@roles"
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install pinned Chromium
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
       - name: Migrate and seed
@@ -208,7 +213,14 @@ jobs:
             OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN="ci-shop-admin-client-secret-at-least-32-chars" \
             pnpm --filter @auction/db db:configure-oidc-clients
       - name: Build product applications
-        run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build && pnpm --filter @auction/shop-api... build && pnpm --filter @auction/shop... build
+        run: >-
+          pnpm turbo run build
+          --filter=@auction/api
+          --filter=@auction/auth-app
+          --filter=@auction/shop-identity
+          --filter=@auction/web
+          --filter=@auction/shop-api
+          --filter=@auction/shop
       - name: Start stack
         run: |
           mkdir -p /tmp/e2e-logs

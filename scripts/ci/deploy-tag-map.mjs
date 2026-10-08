@@ -18,7 +18,8 @@ const AUTH_EXCLUDED = process.env.AUTH_TAG_MAP_ENABLED !== "true";
  * Desired App Platform image tag per component: changed components pin to targetSha,
  * unchanged components keep their live tag. Auth is excluded until infra cutover.
  */
-export function buildDeployTagMap({ liveTags, affected, targetSha }) {
+export function buildDeployTagMap({ liveTags, affected, buildComponents, targetSha }) {
+  const built = new Set(buildComponents ?? []);
   /** @type {Record<string, string>} */
   const map = {};
   for (const component of PINNED_COMPONENTS) {
@@ -28,7 +29,9 @@ export function buildDeployTagMap({ liveTags, affected, targetSha }) {
       map[component] = live;
       continue;
     }
-    map[component] = affected.includes(component) ? targetSha : live;
+    const pinToTarget =
+      affected.includes(component) || (component === "migrate" && built.has("migrate"));
+    map[component] = pinToTarget ? targetSha : live;
   }
   return map;
 }
