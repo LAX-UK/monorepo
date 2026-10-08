@@ -231,13 +231,14 @@ jobs:
         env:
           APP_ID: ${{ env.APP_ID }}
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          READINESS_URLS: ${{ steps.readiness.outputs.urls }}
         run: |
           set -euo pipefail
           node scripts/ci/digitalocean-app-rollback-api.mjs \
             --app-id "$APP_ID" \
             --deployment-id "${{ steps.prior.outputs.deployment_id }}"
           node scripts/ci/verify-readiness-contract.mjs \
-            --urls "${{ steps.readiness.outputs.urls }}" \
+            --urls "$READINESS_URLS" \
             --expected-releases '{}' \
             --app-id "$APP_ID" \
             --attempts 30 \
