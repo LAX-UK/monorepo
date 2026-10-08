@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Web production build wrapper. next/font/google can fail when fonts.googleapis.com
- * returns a non-CSS body (see apps/web/Dockerfile). Retry in CI; fail fast locally.
+ * returns a non-CSS body (see apps/web/Dockerfile). Retry only on font-fetch errors in CI.
  */
 import { spawnSync } from "node:child_process";
 
@@ -13,24 +13,45 @@ if (!Number.isFinite(attempts) || attempts < 1) {
   throw new Error("WEB_BUILD_RETRY_ATTEMPTS must be a positive integer");
 }
 
+const FONT_FETCH_PATTERNS = [
+  /fonts\.googleapis\.com/i,
+  /next\/font\/google/i,
+  /Failed to fetch font/i,
+  /Failed to download font/i,
+];
+
 function sleep(seconds) {
   spawnSync("sleep", [String(seconds)], { stdio: "inherit" });
 }
 
+function looksLikeFontFetchFailure(output) {
+  return FONT_FETCH_PATTERNS.some((pattern) => pattern.test(output));
+}
+
 let lastStatus = 1;
+let lastOutput = "";
 for (let attempt = 1; attempt <= attempts; attempt += 1) {
   const result = spawnSync("pnpm", ["exec", "next", "build"], {
-    stdio: "inherit",
+    encoding: "utf8",
     env: process.env,
   });
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+  if (stdout) process.stdout.write(stdout);
+  if (stderr) process.stderr.write(stderr);
+  lastOutput = `${stdout}\n${stderr}`;
   lastStatus = result.status ?? 1;
   if (lastStatus === 0) {
     process.exit(0);
   }
-  if (attempt < attempts) {
-    console.warn(`Web build failed (attempt ${attempt}/${attempts}); retrying in ${delaySec}s...`);
-    sleep(delaySec);
+  const retryable = process.env.CI && looksLikeFontFetchFailure(lastOutput);
+  if (!retryable || attempt >= attempts) {
+    break;
   }
+  console.warn(
+    `Web build failed with a font fetch error (attempt ${attempt}/${attempts}); retrying in ${delaySec}s...`,
+  );
+  sleep(delaySec);
 }
 
 process.exit(lastStatus);
