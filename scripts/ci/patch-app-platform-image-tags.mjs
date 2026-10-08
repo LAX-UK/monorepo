@@ -45,8 +45,8 @@ function main() {
   const spec = readAppSpec(appId);
   const patched = applyTagMapToSpec(spec, tagMap);
   const dir = mkdtempSync(join(tmpdir(), "do-app-spec-"));
-  const specPath = join(dir, "spec.yaml");
-  writeFileSync(specPath, JSON.stringify(patched));
+  const specPath = join(dir, "spec.json");
+  writeFileSync(specPath, JSON.stringify(patched, null, 2));
 
   const update = spawnSync(
     "doctl",

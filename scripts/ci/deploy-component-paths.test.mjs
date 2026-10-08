@@ -22,4 +22,13 @@ describe("componentsForChangedPaths", () => {
     assert.ok(hits.includes("web"));
     assert.ok(hits.includes("worker"));
   });
+
+  it("returns empty for root package.json script-only changes", () => {
+    assert.deepEqual(componentsForChangedPaths(["package.json"]), []);
+  });
+
+  it("returns empty for CI-only path changes", () => {
+    assert.deepEqual(componentsForChangedPaths(["scripts/ci/pipeline-stats.mjs"]), []);
+    assert.deepEqual(componentsForChangedPaths(["docs/architecture/06-deployment.md"]), []);
+  });
 });

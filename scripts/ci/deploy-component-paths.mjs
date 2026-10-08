@@ -31,13 +31,31 @@ export const COMPONENT_APP_ROOT = {
   migrate: "packages/db",
 };
 
+/** Lockfile/workspace changes rebuild every deploy component. Root package.json alone does not. */
 export const GLOBAL_PATH_PREFIXES = [
-  "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "turbo.json",
   ".nvmrc",
 ];
+
+/** Paths that must not trigger a staging deploy when they are the only changes. */
+export const CI_ONLY_PATH_PREFIXES = [
+  "docs/",
+  ".github/workflows/ci.yml",
+  ".github/workflows/identity-extraction-rehearsal.yml",
+  ".github/workflows/identity-nn1-compat-scheduled.yml",
+  ".github/workflows/identity-staging-acceptance-scheduled.yml",
+  ".github/workflows/shop-staging-acceptance-scheduled.yml",
+  ".github/workflows/test-platform-monitoring.yml",
+  "scripts/ci/pipeline-stats.mjs",
+  "scripts/ci/pipeline-stats.test.mjs",
+  "scripts/ci/report-orphan-scripts.mjs",
+];
+
+export function isCiOnlyPath(path) {
+  return CI_ONLY_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
+}
 
 const ROOT = process.cwd();
 
@@ -167,13 +185,18 @@ export function componentsForPath(path) {
 }
 
 export function componentsForChangedPaths(changedPaths) {
-  if (
-    changedPaths.some((p) => GLOBAL_PATH_PREFIXES.some((g) => p === g || p.startsWith(`${g}/`)))
-  ) {
+  const deployPaths = changedPaths.filter((p) => !isCiOnlyPath(p));
+  if (deployPaths.length === 0) {
+    return [];
+  }
+  if (deployPaths.length === 1 && deployPaths[0] === "package.json") {
+    return [];
+  }
+  if (deployPaths.some((p) => GLOBAL_PATH_PREFIXES.some((g) => p === g || p.startsWith(`${g}/`)))) {
     return [...DEPLOY_COMPONENTS];
   }
   const selected = new Set();
-  for (const path of changedPaths) {
+  for (const path of deployPaths) {
     if (path.startsWith("packages/")) {
       const pkgDir = packageDirForPath(path);
       const nameToDir = loadPackageDirByName();

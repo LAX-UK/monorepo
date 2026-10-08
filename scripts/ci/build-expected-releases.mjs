@@ -8,6 +8,16 @@ const URL_COMPONENT = {
   "https://test-shop.lax.bid/health/ready": "shop",
 };
 
+export function buildReadinessUrls({ tagMap, targetSha }) {
+  const urls = [];
+  for (const [url, component] of Object.entries(URL_COMPONENT)) {
+    if (tagMap[component] === targetSha) {
+      urls.push(url);
+    }
+  }
+  return urls;
+}
+
 export function buildExpectedReleases({ tagMap, targetSha, readinessUrls }) {
   const urls = readinessUrls ?? Object.keys(URL_COMPONENT);
   /** @type {Record<string, string>} */
@@ -25,9 +35,19 @@ export function buildExpectedReleases({ tagMap, targetSha, readinessUrls }) {
 function main() {
   const targetSha = process.env.TARGET_SHA ?? "";
   const tagMap = JSON.parse(process.env.TAG_MAP ?? "{}");
+  const mode = process.env.MODE ?? "expected-releases";
+  if (mode === "readiness-urls") {
+    const urls = buildReadinessUrls({ tagMap, targetSha });
+    const json = JSON.stringify(urls);
+    process.stdout.write(`${json}\n`);
+    if (process.env.GITHUB_OUTPUT) {
+      appendFileSync(process.env.GITHUB_OUTPUT, `urls=${json}\n`);
+    }
+    return;
+  }
   const readinessUrls = process.env.READINESS_URLS
     ? JSON.parse(process.env.READINESS_URLS)
-    : undefined;
+    : buildReadinessUrls({ tagMap, targetSha });
   const expected = buildExpectedReleases({ tagMap, targetSha, readinessUrls });
   const json = JSON.stringify(expected);
   process.stdout.write(`${json}\n`);

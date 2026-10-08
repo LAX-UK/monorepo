@@ -5,12 +5,26 @@ on:
     paths:
       - apps/**
       - packages/**
-      - package.json
       - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docker/migrate.Dockerfile
+      - patches/**
       - .github/actions/app-platform-deploy/**
       - .github/workflows/app-deploy-test.yml
       - .github/workflows/build-images.yml
-      - scripts/ci/**
+      - scripts/ci/resolve-affected-deploy-components.mjs
+      - scripts/ci/deploy-component-paths.mjs
+      - scripts/ci/deploy-tag-map.mjs
+      - scripts/ci/build-expected-releases.mjs
+      - scripts/ci/staging-deploy-smoke.mjs
+      - scripts/ci/patch-app-platform-image-tags.mjs
+      - scripts/ci/digitalocean-app-rollback-api.mjs
+      - scripts/ci/verify-prebuilt-images-for-deploy.mjs
+      - scripts/ci/write-deploy-artifact.mjs
+      - scripts/ci/write-image-tag-env.mjs
+      - scripts/ci/build-images-matrix.mjs
+      - scripts/ci/assert-app-platform-spec.mjs
+      - scripts/ci/resolve-live-app-image-tags.mjs
   workflow_dispatch:
     inputs:
       git_sha:
@@ -28,7 +42,17 @@ concurrency:
   group: app-deploy-test
   cancel-in-progress: false
 jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require green CI on this commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/require-ci-success-for-sha.mjs
+
   plan:
+    needs: ci-gate
     runs-on: ubuntu-latest
     environment: test
     outputs:
@@ -64,6 +88,7 @@ jobs:
         run: node scripts/ci/resolve-affected-deploy-components.mjs
 
   sentry-release:
+    needs: ci-gate
     uses: ./.github/workflows/sentry-release.yml
     with:
       environment: test
@@ -71,7 +96,7 @@ jobs:
     secrets: inherit
 
   build-images:
-    needs: plan
+    needs: [ci-gate, plan]
     if: >-
       ${{
         needs.plan.outputs.deploy == 'true' &&
@@ -87,11 +112,12 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [plan, sentry-release, build-images]
+    needs: [ci-gate, plan, sentry-release, build-images]
     if: >-
       ${{
         always() &&
         !cancelled() &&
+        needs.ci-gate.result == 'success' &&
         needs.plan.outputs.deploy == 'true' &&
         needs.build-images.result != 'failure' &&
         needs.build-images.result != 'cancelled'
@@ -120,15 +146,10 @@ jobs:
       - name: Build post-deploy readiness URL list
         id: readiness
         env:
-          APP_ID: ${{ env.APP_ID }}
-        run: |
-          set -euo pipefail
-          urls='["https://test-api.lax.bid/health/ready","https://test.lax.bid/api/health/ready"]'
-          app_json="$(doctl apps get "$APP_ID" --output json)"
-          if jq -e '.[0].spec.services[]? | select(.name == "shop")' <<<"$app_json" >/dev/null; then
-            urls='["https://test-api.lax.bid/health/ready","https://test.lax.bid/api/health/ready","https://test-shop.lax.bid/health/ready"]'
-          fi
-          echo "urls=$urls" >> "$GITHUB_OUTPUT"
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          TAG_MAP: ${{ needs.plan.outputs.tag_map }}
+          MODE: readiness-urls
+        run: node scripts/ci/build-expected-releases.mjs
       - name: Build expected release map
         id: expected_releases
         env:
