@@ -91,7 +91,7 @@ session remains valid, Identity can authorize without prompting. Shop verifies
 the ID token and creates its own opaque host-only session; it never reads Bid's
 cookie.
 
-Shop then verifies the JWT locally via JWKS, upserts its local `shop_user_profile`, and keeps product authorization separate from Identity. See [Shop identity boundary runbook](../runbooks/identity-boundary-cutover.md) and `scripts/ci/verify-shop-oidc-roundtrip.mjs`.
+Shop then verifies the JWT locally via JWKS, upserts its local `shop_user_profile`, and keeps product authorization separate from Identity. See [Shop identity boundary runbook (archived)](../archive/runbooks/identity-boundary-cutover.md) and `scripts/ci/verify-shop-oidc-roundtrip.mjs`.
 
 ## Flow 3: Apple "Hide My Email" — why F6 exists
 

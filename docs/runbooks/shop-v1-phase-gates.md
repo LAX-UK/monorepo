@@ -123,7 +123,7 @@ Do not enable Phase 1 portal or run portal acceptance until all of the following
 
 Deploy order on test: merge infra Terraform shop flags → migrate on deploy → **`auth`** ready → **`shop-api`** → **`shop-identity`** → **`shop`** storefront → run **Shop staging acceptance** with matching `shop_sha`, **`shop_api_sha`**, and identity release SHAs from `/health/ready`.
 
-**Identity closure:** when `compare-lax-identity` fails, sync the seven drifted paths listed by `node scripts/ci/verify-identity-closure-sync.mjs` into [lax-identity](https://github.com/LAX-UK/lax-identity) via `./scripts/identity/repo-split.sh <empty-destination>` and merge that PR before pinning staging recovery.
+**Identity closure (historical):** split-era lax-identity sync is retired; Auth ships from this monorepo (`apps/auth`) and test deploys pin `lax-test-auth` via App deploy test.
 
 ## Phase 2–4 remediation gates (post-remediation sign-off)
 
