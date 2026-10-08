@@ -5,10 +5,13 @@ import {
   focusTargetForLoginStep,
   nextLoginStep,
 } from "./login-state.js";
+import { bindSocialCallbackError, bindSocialSignIn } from "./social-sign-in.js";
 import { submitEnabled } from "./turnstile.js";
 import { asButton, hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
+bindSocialCallbackError(auth);
+bindSocialSignIn(auth);
 const root = document.getElementById("login-root");
 const form = document.getElementById("login-form");
 const emailFirst = root?.getAttribute("data-email-first") === "true";
@@ -161,31 +164,5 @@ if (differentEmail) {
   differentEmail.addEventListener("click", () => {
     auth.hideStatus();
     setStep("email");
-  });
-}
-
-for (const node of document.querySelectorAll("[data-social-provider]")) {
-  const button = asButton(node);
-  if (!button) continue;
-  button.addEventListener("click", async () => {
-    auth.hideStatus();
-    auth.setBusy(button, true);
-    try {
-      const callbackURL = auth.productHintLoginUrl();
-      const { response, data } = await auth.postJson("/api/auth/sign-in/social", {
-        provider: button.getAttribute("data-social-provider"),
-        callbackURL,
-        errorCallbackURL: callbackURL,
-      });
-      if (!response.ok) {
-        auth.showError(auth.GENERIC_NETWORK);
-        return;
-      }
-      auth.continueAfterAuth(data);
-    } catch {
-      auth.showError(auth.GENERIC_NETWORK);
-    } finally {
-      auth.setBusy(button, false);
-    }
   });
 }
