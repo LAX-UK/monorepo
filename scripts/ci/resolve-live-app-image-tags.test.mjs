@@ -26,7 +26,13 @@ describe("resolveLiveTerraformImageTags", () => {
   it("allows shop-admin override when infra health path needs a newer image", () => {
     const tags = resolveLiveTerraformImageTags(
       {
-        services: [{ name: "shop-admin", image: { tag: sha("f") } }],
+        services: [
+          { name: "web", image: { tag: sha("a") } },
+          { name: "shop", image: { tag: sha("c") } },
+          { name: "shop-identity", image: { tag: sha("d") } },
+          { name: "shop-api", image: { tag: sha("e") } },
+          { name: "shop-admin", image: { tag: sha("f") } },
+        ],
       },
       { inputShopAdminImageTag: sha("9") },
     );
