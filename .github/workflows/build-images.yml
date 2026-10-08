@@ -185,6 +185,7 @@ jobs:
       REGISTRY: ${{ vars.DOCR_REGISTRY }}
       ENVIRONMENT: ${{ inputs.environment }}
       GIT_SHA: ${{ inputs.git_sha || github.sha }}
+      COMPONENTS_JSON: ${{ inputs.components }}
       RELEASE_COMPONENTS: api,auth,shop-identity,shop,shop-api,shop-admin,ws,worker,migrate,web,clamav
     steps:
       - uses: actions/checkout@v4
@@ -196,6 +197,19 @@ jobs:
       - run: doctl registry login --expiry-seconds 1200
       - name: Write release manifest
         run: |
+          set -euo pipefail
+          if [ -n "${COMPONENTS_JSON}" ]; then
+            export RELEASE_COMPONENTS="$(
+              node -e '
+                const raw = process.env.COMPONENTS_JSON ?? "";
+                const list = JSON.parse(raw);
+                if (!Array.isArray(list) || list.length === 0) {
+                  throw new Error("COMPONENTS_JSON must be a non-empty JSON array");
+                }
+                process.stdout.write(list.join(","));
+              '
+            )"
+          fi
           node scripts/ci/write-release-manifest.mjs
       - uses: actions/upload-artifact@v4
         with:
