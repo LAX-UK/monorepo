@@ -4,6 +4,7 @@ import {
   assertAppPlatformSpec,
   assertPinnedImageTags,
   collectReleaseEnvOverrides,
+  imageRepositoryForComponent,
 } from "./assert-app-platform-spec.mjs";
 
 test("collectReleaseEnvOverrides finds spec env that overrides image release", () => {
@@ -37,6 +38,18 @@ test("assertAppPlatformSpec pre mode rejects release override", () => {
       }),
     /spec overrides image-owned release/,
   );
+});
+
+test("imageRepositoryForComponent reads repository from services workers jobs", () => {
+  const spec = {
+    services: [{ name: "auth", image: { repository: "lax-test-auth" } }],
+    workers: [{ name: "worker", image: { repository: "lax-test-worker" } }],
+    jobs: [{ name: "migrate", image: { repository: "lax-test-migrate" } }],
+  };
+  assert.equal(imageRepositoryForComponent(spec, "auth"), "lax-test-auth");
+  assert.equal(imageRepositoryForComponent(spec, "worker"), "lax-test-worker");
+  assert.equal(imageRepositoryForComponent(spec, "migrate"), "lax-test-migrate");
+  assert.equal(imageRepositoryForComponent(spec, "missing"), null);
 });
 
 test("assertPinnedImageTags reports tag mismatches", () => {

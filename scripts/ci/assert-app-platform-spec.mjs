@@ -77,6 +77,15 @@ export function readAppSpec(appId) {
   return Array.isArray(parsed) ? parsed[0]?.spec : parsed.spec;
 }
 
+export function imageRepositoryForComponent(spec, componentName) {
+  for (const kind of ["services", "workers", "jobs"]) {
+    const entry = spec?.[kind]?.find((component) => component.name === componentName);
+    const repository = entry?.image?.repository?.trim();
+    if (repository) return repository;
+  }
+  return null;
+}
+
 export function collectReleaseEnvOverrides(spec) {
   const violations = [];
   const kinds = [

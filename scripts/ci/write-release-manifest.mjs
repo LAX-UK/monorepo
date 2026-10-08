@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { appendFileSync, writeFileSync } from "node:fs";
-import { digestForTag, listTags } from "./registry-tag-poll.mjs";
+import { waitForShaTag } from "./registry-tag-poll.mjs";
 
 const environment = process.env.ENVIRONMENT;
 const gitSha = process.env.GIT_SHA;
@@ -25,34 +25,40 @@ if (components.length === 0) {
   throw new Error("Set RELEASE_COMPONENTS to a comma-separated component list");
 }
 
-const manifest = {
-  repository: sourceRepository,
-  environment,
-  commitSha: gitSha,
-  buildRun: buildRunId,
-  registry,
-  components: [],
-};
-
-for (const component of components) {
-  const repository = `lax-${environment}-${component}`;
-  const tags = listTags(repository);
-  const digest = digestForTag(tags, gitSha);
-  if (!digest) {
-    throw new Error(`Missing immutable tag ${gitSha} for ${repository}`);
-  }
-  manifest.components.push({
-    component,
-    repository,
+async function main() {
+  const manifest = {
+    repository: sourceRepository,
+    environment,
     commitSha: gitSha,
-    digest,
-    sentryRelease: gitSha,
     buildRun: buildRunId,
-  });
+    registry,
+    components: [],
+  };
+
+  for (const component of components) {
+    const repository = `lax-${environment}-${component}`;
+    const digest = await waitForShaTag(repository, gitSha, {
+      maxAttempts: 12,
+      initialDelayMs: 5_000,
+    });
+    manifest.components.push({
+      component,
+      repository,
+      commitSha: gitSha,
+      digest,
+      sentryRelease: gitSha,
+      buildRun: buildRunId,
+    });
+  }
+
+  writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  console.log(`Wrote ${outputPath} with ${manifest.components.length} components`);
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `manifest_path=${outputPath}\n`);
+  }
 }
 
-writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
-console.log(`Wrote ${outputPath} with ${manifest.components.length} components`);
-if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `manifest_path=${outputPath}\n`);
-}
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});

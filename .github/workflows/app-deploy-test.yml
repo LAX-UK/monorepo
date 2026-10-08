@@ -156,13 +156,15 @@ jobs:
       - name: Verify DOCR tags for built components
         if: vars.USE_PREBUILT_IMAGES_TEST == 'true'
         env:
+          APP_ID: ${{ env.APP_ID }}
           TARGET_SHA: ${{ env.TARGET_SHA }}
           TAG_MAP: ${{ needs.plan.outputs.tag_map }}
         run: |
           node scripts/ci/verify-prebuilt-images-for-deploy.mjs \
             --environment test \
             --deploy-sha "$TARGET_SHA" \
-            --tag-map "$TAG_MAP"
+            --tag-map "$TAG_MAP" \
+            --app-id "$APP_ID"
       - uses: ./.github/actions/app-platform-deploy
         id: app_deploy
         with:
