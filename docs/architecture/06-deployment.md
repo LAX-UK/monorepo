@@ -357,6 +357,21 @@ prebuilt in GitHub Actions and pulled from DOCR when prebuilt images are enabled
 
 The defer triggers above are the explicit conditions under which any of these become candidates for the next architectural iteration.
 
+## Pipeline baseline (2026-10-08)
+
+Measured with `pnpm ci:pipeline-stats` (last 30 completed runs on `LAX-UK/monorepo`). Re-run after pipeline phases land and compare p50/p90 here.
+
+| Workflow | Failure rate | p50 | p90 |
+| --- | --- | --- | --- |
+| CI | 3.3% | 6m | 8m |
+| Web PR browser gates | 0% | 13m | 18m |
+| App deploy test | 36.7% | 40m | 60m |
+| Terraform apply test | 26.7% | 4m | 27m |
+| Shop staging acceptance | 80.0% | 8m | 12m |
+| Identity closure sync | 63.3% | 16s | 30s |
+
+CI job install/build dominates PR feedback. Deploy latency was dominated by duplicate image builds, Shop Terraform cutover, and post-deploy acceptance—not App Platform rollout alone.
+
 ## Change to test
 
 1. Open a PR against `main`. Wait for required checks **`ci-result`** (aggregates all CI jobs in `.github/workflows/ci.yml`) and **`browser-gates`** (`.github/workflows/e2e-pr.yml`).

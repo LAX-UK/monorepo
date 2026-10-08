@@ -1,0 +1,56 @@
+name: Staging acceptance (scheduled)
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      identity_sha:
+        description: Override Auth release SHA (defaults to live /health/ready)
+        type: string
+        required: false
+      ssf_mode:
+        type: choice
+        options: [ssf_disabled, ssf_enabled]
+        default: ssf_disabled
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-live-auth:
+    runs-on: ubuntu-latest
+    outputs:
+      identity_sha: ${{ steps.live.outputs.identity_sha }}
+    steps:
+      - name: Read live Auth release SHA
+        id: live
+        env:
+          INPUT_SHA: ${{ inputs.identity_sha }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$INPUT_SHA" && "$INPUT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "identity_sha=$INPUT_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for _ in $(seq 1 30); do
+            if body="$(curl --fail --silent --max-time 15 https://test-auth.lax.bid/health/ready)"; then
+              sha="$(jq -r '.release // empty' <<<"$body")"
+              if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "identity_sha=$sha" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "::error::Could not resolve live Auth release SHA"
+          exit 1
+
+  acceptance:
+    needs: resolve-live-auth
+    uses: ./.github/workflows/identity-staging-acceptance.yml
+    with:
+      identity_sha: ${{ needs.resolve-live-auth.outputs.identity_sha }}
+      outbox_max_age_ms: 900000
+      ssf_mode: ${{ inputs.ssf_mode || 'ssf_disabled' }}
+    secrets: inherit
