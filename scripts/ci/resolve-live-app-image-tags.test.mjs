@@ -22,4 +22,14 @@ describe("resolveLiveTerraformImageTags", () => {
     assert.equal(tags.shop_api_image_tag, sha("e"));
     assert.equal(tags.shop_admin_image_tag, sha("f"));
   });
+
+  it("allows shop-admin override when infra health path needs a newer image", () => {
+    const tags = resolveLiveTerraformImageTags(
+      {
+        services: [{ name: "shop-admin", image: { tag: sha("f") } }],
+      },
+      { inputShopAdminImageTag: sha("9") },
+    );
+    assert.equal(tags.shop_admin_image_tag, sha("9"));
+  });
 });

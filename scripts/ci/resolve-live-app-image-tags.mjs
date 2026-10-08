@@ -12,16 +12,23 @@ function parseArgs(argv) {
   let appId = "";
   let format = "github-env";
   let inputAppImageTag = "";
+  let inputShopAdminImageTag = "";
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--app-id") appId = argv[++i] ?? "";
     if (argv[i] === "--format") format = argv[++i] ?? "github-env";
     if (argv[i] === "--input-app-image-tag") inputAppImageTag = argv[++i] ?? "";
+    if (argv[i] === "--input-shop-admin-image-tag") inputShopAdminImageTag = argv[++i] ?? "";
   }
   if (!appId) throw new Error("--app-id is required");
   if (format !== "github-env" && format !== "json") {
     throw new Error("--format must be github-env or json");
   }
-  return { appId, format, inputAppImageTag: inputAppImageTag.trim() };
+  return {
+    appId,
+    format,
+    inputAppImageTag: inputAppImageTag.trim(),
+    inputShopAdminImageTag: inputShopAdminImageTag.trim(),
+  };
 }
 
 function requireSha(label, tag) {
@@ -33,25 +40,36 @@ function requireSha(label, tag) {
   return tag;
 }
 
-export function resolveLiveTerraformImageTags(spec, { inputAppImageTag = "" } = {}) {
+export function resolveLiveTerraformImageTags(
+  spec,
+  { inputAppImageTag = "", inputShopAdminImageTag = "" } = {},
+) {
   const live = readComponentImageTags(spec);
   const appImageTag = resolveAppImageTag({
     inputTag: inputAppImageTag,
     liveTag: live.web ?? "",
   });
+  const shopAdminTag = SHA.test(inputShopAdminImageTag)
+    ? inputShopAdminImageTag
+    : requireSha("shop-admin", live["shop-admin"]);
   return {
     app_image_tag: appImageTag,
     shop_identity_image_tag: requireSha("shop-identity", live["shop-identity"]),
     shop_image_tag: requireSha("shop", live.shop),
     shop_api_image_tag: requireSha("shop-api", live["shop-api"]),
-    shop_admin_image_tag: requireSha("shop-admin", live["shop-admin"]),
+    shop_admin_image_tag: shopAdminTag,
   };
 }
 
 function main() {
-  const { appId, format, inputAppImageTag } = parseArgs(process.argv.slice(2));
+  const { appId, format, inputAppImageTag, inputShopAdminImageTag } = parseArgs(
+    process.argv.slice(2),
+  );
   const spec = readAppSpec(appId);
-  const tags = resolveLiveTerraformImageTags(spec, { inputAppImageTag });
+  const tags = resolveLiveTerraformImageTags(spec, {
+    inputAppImageTag,
+    inputShopAdminImageTag,
+  });
   if (format === "json") {
     process.stdout.write(`${JSON.stringify(tags, null, 2)}\n`);
     return;

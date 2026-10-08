@@ -48,6 +48,10 @@ on:
         description: Immutable monorepo SHA for web/api/ws/worker/migrate/clamav (defaults to live pinned web tag)
         type: string
         required: false
+      shop_admin_sha:
+        description: Shop Admin image SHA when infra uses /health/live (must include that route)
+        type: string
+        required: false
 concurrency:
   group: app-deploy-test
   cancel-in-progress: false
@@ -171,6 +175,7 @@ jobs:
         env:
           APP_ID: ${{ env.APP_ID }}
           INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
+          INPUT_SHOP_ADMIN_IMAGE_TAG: ${{ inputs.shop_admin_sha }}
         run: |
           set -euo pipefail
           while IFS= read -r line; do
@@ -181,7 +186,8 @@ jobs:
           done < <(
             node scripts/ci/resolve-live-app-image-tags.mjs \
               --app-id "$APP_ID" \
-              --input-app-image-tag "$INPUT_APP_IMAGE_TAG"
+              --input-app-image-tag "$INPUT_APP_IMAGE_TAG" \
+              --input-shop-admin-image-tag "$INPUT_SHOP_ADMIN_IMAGE_TAG"
           )
       - name: Verify prebuilt web image exists for app pin
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
