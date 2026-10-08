@@ -38,7 +38,7 @@ jobs:
       tag_map: ${{ steps.plan.outputs.tag_map || steps.skip_plan.outputs.tag_map }}
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
-      AUTH_TAG_MAP_ENABLED: "false"
+      AUTH_TAG_MAP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -100,7 +100,7 @@ jobs:
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       TARGET_SHA: ${{ inputs.git_sha || github.sha }}
-      AUTH_TAG_MAP_ENABLED: "false"
+      AUTH_TAG_MAP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: digitalocean/action-doctl@v2
