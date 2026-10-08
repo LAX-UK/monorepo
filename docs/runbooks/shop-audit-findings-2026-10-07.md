@@ -13,3 +13,17 @@
 | Deferred | Two consecutive seeded acceptance runs on test | Dispatch shop staging acceptance `seed_catalogue=true` ×2 after auth fix | Track in CI after merge + auth redeploy |
 
 Blockers marked fixed in-repo still require **Identity staging deploy** on test before staff sign-in is verified live.
+
+## Cutover status (2026-10-08)
+
+| Check | Result |
+| --- | --- |
+| test-auth `/health/ready` | `23b6e0b9374aba064b51d74cc232192b50b07026` (shop-admin OIDC authorize OK) |
+| test-shop / test-shop-admin | `b338a8d7791645a3cdf64278a7944bdf2462e179` via [app deploy 37695136626](https://github.com/LAX-UK/monorepo/actions/runs/37695136626) (`deploy_shop=true`) |
+| Identity directory + acceptance | Directory apply [37690830769](https://github.com/LAX-UK/monorepo/actions/runs/37690830769); acceptance [37691001587](https://github.com/LAX-UK/monorepo/actions/runs/37691001587) green |
+| Monorepo #464 | Merged 2026-10-07 (identity deploy + staging-recovery hardening) |
+| shop-admin layout cookie blocker | Fixed in deployed SHA (`/api/auth/reauth`, layout redirect-only) |
+| `verify-shop-admin-oidc-preflight.mjs` | Green against test-shop-admin |
+| Shop staging acceptance `seed_catalogue=true` ×2 | [37751185117](https://github.com/LAX-UK/monorepo/actions/runs/37751185117), [37753353611](https://github.com/LAX-UK/monorepo/actions/runs/37753353611) — both fail `first-login.spec.ts` sign-out → sign-in with `sign-in-error?reason=token_exchange_failed` (Shop Identity token exchange; separate from shop-admin staff callback) |
+| Hosted auth social (#462) | [lax-identity PR #36](https://github.com/LAX-UK/lax-identity/pull/36) opened; needs approving review → publish → identity deploy |
+| Deploy preflight Postgres CA | [#466](https://github.com/LAX-UK/monorepo/pull/466) in merge queue (unblocks future `terraform-apply-test` DB preflights on `main`) |
