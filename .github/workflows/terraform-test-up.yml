@@ -192,7 +192,7 @@ jobs:
           node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
             --environment test \
             --sha "$APP_IMAGE_TAG"
-      - name: Require approved Auth and Shop image contracts before ephemeral apply
+      - name: Prepare staging image contract env
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
           APP_ID: ${{ env.APP_ID }}
@@ -204,7 +204,11 @@ jobs:
         run: |
           doctl registry login --expiry-seconds 900
           node scripts/ci/prepare-staging-image-contract-env.mjs
-          node scripts/ci/verify-staging-image-contract.mjs
+      - name: Verify Auth and Shop image contracts before ephemeral apply
+        if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
+        env:
+          DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
+        run: node scripts/ci/verify-staging-image-contract.mjs
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/ephemeral/test
