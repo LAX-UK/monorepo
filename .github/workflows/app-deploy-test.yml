@@ -12,19 +12,7 @@ on:
       - .github/actions/app-platform-deploy/**
       - .github/workflows/app-deploy-test.yml
       - .github/workflows/build-images.yml
-      - scripts/ci/resolve-affected-deploy-components.mjs
-      - scripts/ci/deploy-component-paths.mjs
-      - scripts/ci/deploy-tag-map.mjs
-      - scripts/ci/build-expected-releases.mjs
-      - scripts/ci/staging-deploy-smoke.mjs
-      - scripts/ci/patch-app-platform-image-tags.mjs
-      - scripts/ci/digitalocean-app-rollback-api.mjs
-      - scripts/ci/verify-prebuilt-images-for-deploy.mjs
-      - scripts/ci/write-deploy-artifact.mjs
-      - scripts/ci/write-image-tag-env.mjs
-      - scripts/ci/build-images-matrix.mjs
-      - scripts/ci/assert-app-platform-spec.mjs
-      - scripts/ci/resolve-live-app-image-tags.mjs
+      - scripts/ci/**
   workflow_dispatch:
     inputs:
       git_sha:
@@ -62,7 +50,7 @@ jobs:
       tag_map: ${{ steps.plan.outputs.tag_map || steps.skip_plan.outputs.tag_map }}
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
-      AUTH_TAG_MAP_ENABLED: "false"
+      AUTH_TAG_MAP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -126,7 +114,7 @@ jobs:
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       TARGET_SHA: ${{ inputs.git_sha || github.sha }}
-      AUTH_TAG_MAP_ENABLED: "false"
+      AUTH_TAG_MAP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: digitalocean/action-doctl@v2

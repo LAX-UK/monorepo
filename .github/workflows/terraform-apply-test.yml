@@ -146,7 +146,6 @@ jobs:
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
       TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || 'false' }}
       TF_VAR_app_image_tag: ${{ inputs.app_image_tag }}
-      TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
       TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
