@@ -36,6 +36,12 @@ export async function rollbackAppPlatform({
   if (!validate.ok) {
     throw new Error(`rollback validate failed: ${validate.status} ${await validate.text()}`);
   }
+  const validateBody = await validate.json();
+  if (validateBody?.valid === false) {
+    throw new Error(
+      `rollback validate rejected: ${validateBody.error ?? validateBody.message ?? "invalid"}`,
+    );
+  }
   const rollback = await fetchImpl(`https://api.digitalocean.com/v2/apps/${appId}/rollback`, {
     method: "POST",
     headers,
@@ -59,7 +65,7 @@ export async function rollbackAppPlatform({
     const body = await dep.json();
     phase = body?.deployment?.phase ?? "";
     if (phase === "ACTIVE") break;
-    if (phase === "ERROR" || phase === "CANCELED") {
+    if (phase === "ERROR" || phase === "CANCELED" || phase === "SUPERSEDED") {
       throw new Error(`rollback deployment ended in ${phase}`);
     }
     await new Promise((r) => setTimeout(r, POLL_MS));
@@ -70,8 +76,7 @@ export async function rollbackAppPlatform({
 
   const commit = await fetchImpl(`https://api.digitalocean.com/v2/apps/${appId}/rollback/commit`, {
     method: "POST",
-    headers,
-    body: JSON.stringify({ deployment_id: newId }),
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!commit.ok) {
     throw new Error(`rollback commit failed: ${commit.status} ${await commit.text()}`);

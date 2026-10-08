@@ -144,7 +144,13 @@ runs:
         elif test "$PINNED_ROLLING" = "true"; then
           deployment_id="$(
             doctl apps list-deployments "$APP_ID" --output json |
-              jq -r 'if type == "array" then .[0].id else .id end // empty'
+              jq -r '
+                if type == "array" then
+                  (sort_by(.created_at) | reverse | .[0].id)
+                else
+                  .id
+                end // empty
+              '
           )"
         else
           deployment_id="$CREATE_DEPLOYMENT_ID"

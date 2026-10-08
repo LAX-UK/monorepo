@@ -50,6 +50,16 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function releaseMatches(result, expectedRelease, url) {
+  if (!expectedRelease) return true;
+  if (result.release === expectedRelease) return true;
+  if (url.includes("test-shop.lax.bid") || url.includes("test-shop-admin.lax.bid")) {
+    const apiRelease = result.body?.dependencies?.shopApi?.release;
+    if (apiRelease === expectedRelease) return true;
+  }
+  return false;
+}
+
 async function fetchReady(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
@@ -127,11 +137,13 @@ async function main() {
     const expectedRelease = expected[url] ?? "";
     let actualRelease = "";
     let status = "";
+    let matched = false;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const result = await fetchReady(url);
       actualRelease = result.release;
       status = result.status;
-      if (status === "ok" && (!expectedRelease || actualRelease === expectedRelease)) {
+      if (status === "ok" && releaseMatches(result, expectedRelease, url)) {
+        matched = true;
         console.log(`Readiness ok for ${url}${expectedRelease ? ` release ${actualRelease}` : ""}`);
         break;
       }
@@ -139,7 +151,7 @@ async function main() {
         await sleep(intervalSeconds * 1_000);
       }
     }
-    if (status !== "ok" || (expectedRelease && actualRelease !== expectedRelease)) {
+    if (!matched) {
       console.error(
         `Readiness contract failed for ${url}: expected release ${expectedRelease || "any"}, actual ${actualRelease || "missing"}`,
       );

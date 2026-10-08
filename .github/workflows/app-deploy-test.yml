@@ -193,11 +193,25 @@ jobs:
       - name: Shop admin OIDC preflight
         if: >-
           contains(fromJSON(needs.plan.outputs.affected_components), 'shop') ||
-          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-admin')
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-admin') ||
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-api') ||
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-identity')
         run: node scripts/ci/verify-shop-admin-oidc-preflight.mjs
+      - name: Record rollback outcome
+        if: always() && steps.prior.outputs.deployment_id != ''
+        run: |
+          if test "${{ steps.rollback_smoke.outcome || 'skipped' }}" = "success"; then
+            echo "ROLLBACK_RESULT=success" >> "$GITHUB_ENV"
+          elif test "${{ steps.rollback_smoke.outcome || 'skipped' }}" = "failure"; then
+            echo "ROLLBACK_RESULT=failed" >> "$GITHUB_ENV"
+          else
+            echo "ROLLBACK_RESULT=skipped" >> "$GITHUB_ENV"
+          fi
       - name: Roll back on smoke failure after ACTIVE
+        id: rollback_smoke
         if: >-
           failure() &&
+          steps.smoke.outcome == 'failure' &&
           steps.app_deploy.outputs.phase == 'ACTIVE' &&
           steps.prior.outputs.deployment_id != ''
         env:
@@ -210,7 +224,6 @@ jobs:
             --app-id "$APP_ID" \
             --deployment-id "${{ steps.prior.outputs.deployment_id }}" \
             | tee "$RUNNER_TEMP/rollback-result.json"
-          echo "ROLLBACK_RESULT=success" >> "$GITHUB_ENV"
       - name: Rollback rehearsal (manual)
         if: >-
           success() &&

@@ -29,9 +29,20 @@ export function pinsForTargetSha(tagMap, targetSha) {
   return {
     pinApi: pin("api"),
     pinWeb: pin("web"),
-    pinShop: pin("shop"),
+    pinShop: pin("shop") || pin("shop-api") || pin("shop-identity") || pin("shop-admin"),
     pinAuth: pin("auth"),
   };
+}
+
+export function releaseMatchesExpected(body, expectedRelease, url) {
+  if (!expectedRelease) return true;
+  const top = String(body?.release ?? body?.version ?? "").trim();
+  if (top === expectedRelease) return true;
+  if (url.includes("test-shop.lax.bid") || url.includes("test-shop-admin.lax.bid")) {
+    const apiRelease = body?.dependencies?.shopApi?.release;
+    if (apiRelease === expectedRelease) return true;
+  }
+  return false;
 }
 
 async function fetchJson(url, init, fetchImpl = fetch) {
@@ -53,7 +64,7 @@ async function waitForReady(url, expectedRelease, fetchImpl) {
     if (
       result.ok &&
       result.body?.status === "ok" &&
-      (!expectedRelease || release === expectedRelease)
+      releaseMatchesExpected(result.body, expectedRelease, url)
     ) {
       return;
     }
@@ -101,6 +112,17 @@ export async function runStagingDeploySmoke(env, fetchImpl = fetch) {
     const jwks = await fetchJson(String(discovery.body.jwks_uri), {}, fetchImpl);
     if (!jwks.ok || !Array.isArray(jwks.body?.keys) || jwks.body.keys.length === 0) {
       throw new Error("Auth JWKS fetch failed");
+    }
+  }
+
+  if (probes.shopAdminOidc) {
+    const { spawnSync } = await import("node:child_process");
+    const oidc = spawnSync("node", ["scripts/ci/verify-shop-admin-oidc-preflight.mjs"], {
+      encoding: "utf8",
+      env: process.env,
+    });
+    if (oidc.status !== 0) {
+      throw new Error(oidc.stderr || oidc.stdout || "Shop admin OIDC preflight failed");
     }
   }
 

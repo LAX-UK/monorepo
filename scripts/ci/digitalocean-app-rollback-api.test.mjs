@@ -21,7 +21,7 @@ describe("rollbackAppPlatform", () => {
     const fetchImpl = async (url, init) => {
       const u = String(url);
       if (u.includes("/rollback/validate")) {
-        return { ok: true, json: async () => ({}) };
+        return { ok: true, json: async () => ({ valid: true }) };
       }
       if (u.endsWith("/rollback") && init?.method === "POST") {
         return { ok: true, json: async () => ({ deployment: { id: "new-dep" } }) };
@@ -47,5 +47,18 @@ describe("rollbackAppPlatform", () => {
     });
     assert.equal(result.rollbackDeploymentId, "new-dep");
     assert.equal(result.phase, "ACTIVE");
+  });
+
+  it("fails when validate returns valid false", async () => {
+    const fetchImpl = async (url) => {
+      if (String(url).includes("/rollback/validate")) {
+        return { ok: true, json: async () => ({ valid: false, error: "nope" }) };
+      }
+      throw new Error(`unexpected ${url}`);
+    };
+    await assert.rejects(
+      () => rollbackAppPlatform({ token: "t", appId: "a", deploymentId: "d", fetchImpl }),
+      /validate rejected/,
+    );
   });
 });

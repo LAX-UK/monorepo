@@ -23,4 +23,12 @@ describe("buildExpectedReleases", () => {
     assert.equal(expected["https://test-api.lax.bid/health/ready"], sha);
     assert.equal(expected["https://test.lax.bid/api/health/ready"], undefined);
   });
+
+  it("includes shop readiness when only shop-api is pinned", () => {
+    const urls = buildReadinessUrls({
+      targetSha: sha,
+      tagMap: { "shop-api": sha, shop: old },
+    });
+    assert.ok(urls.includes("https://test-shop.lax.bid/health/ready"));
+  });
 });

@@ -73,8 +73,9 @@ export function resolveAffectedComponents({ targetSha, liveTags }) {
 }
 
 export function resolveBuildComponents(affected) {
-  const builds = new Set(affected.filter((name) => name !== "migrate"));
-  if (builds.size > 0) {
+  const withoutMigrate = affected.filter((name) => name !== "migrate");
+  const builds = new Set(withoutMigrate);
+  if (builds.size > 0 || affected.includes("migrate")) {
     builds.add("migrate");
   }
   return filterBuildComponents([...builds].sort());
@@ -90,7 +91,7 @@ function main() {
   const liveTags = readComponentImageTags(spec);
   const affected = resolveAffectedComponents({ targetSha, liveTags });
   const buildComponents = resolveBuildComponents(affected);
-  const tagMap = buildDeployTagMap({ liveTags, affected, targetSha });
+  const tagMap = buildDeployTagMap({ liveTags, affected, buildComponents, targetSha });
 
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `deploy=${affected.length > 0 ? "true" : "false"}\n`);

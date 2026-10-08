@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Update image tags on selected App Platform components and create a deployment.
+ * Update image tags on selected App Platform components (App Platform starts one deployment).
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -40,6 +40,18 @@ export function applyTagMapToSpec(spec, tagMap) {
   return next;
 }
 
+/** @param {string} stdout doctl apps update --output json */
+export function deploymentIdFromAppsUpdate(stdout) {
+  const payload = JSON.parse(stdout);
+  const app = Array.isArray(payload) ? payload[0] : payload;
+  const id =
+    app?.pending_deployment?.id ?? app?.in_progress_deployment?.id ?? app?.active_deployment?.id;
+  if (!id) {
+    throw new Error("Missing deployment id from apps update response");
+  }
+  return id;
+}
+
 function main() {
   const { appId, tagMap } = parseArgs(process.argv.slice(2));
   const spec = readAppSpec(appId);
@@ -58,16 +70,7 @@ function main() {
   if (update.status !== 0) {
     throw new Error(update.stderr || update.stdout || "doctl apps update failed");
   }
-  const deploy = spawnSync("doctl", ["apps", "create-deployment", appId, "--output", "json"], {
-    encoding: "utf8",
-  });
-  if (deploy.status !== 0) {
-    throw new Error(deploy.stderr || deploy.stdout || "doctl apps create-deployment failed");
-  }
-  const payload = JSON.parse(deploy.stdout);
-  const deploymentId = Array.isArray(payload) ? payload[0]?.id : payload.id;
-  if (!deploymentId) throw new Error("Missing deployment id from create-deployment");
-  process.stdout.write(`${deploymentId}\n`);
+  process.stdout.write(`${deploymentIdFromAppsUpdate(update.stdout)}\n`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
