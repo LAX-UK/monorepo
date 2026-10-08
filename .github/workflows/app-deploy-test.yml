@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       git_sha:
-        description: Redeploy this commit SHA to test (must exist in DOCR for built components)
+        description: Full 40-character commit SHA to redeploy (must exist in DOCR for built components)
         type: string
         required: false
       rollback_rehearsal:
@@ -67,6 +67,14 @@ jobs:
         if: env.APP_ID != ''
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Validate redeploy SHA
+        if: env.APP_ID != '' && inputs.git_sha != ''
+        run: |
+          set -euo pipefail
+          [[ "${{ inputs.git_sha }}" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::git_sha must be a full 40-character commit SHA"
+            exit 1
+          }
       - id: plan
         if: env.APP_ID != ''
         name: Resolve affected components

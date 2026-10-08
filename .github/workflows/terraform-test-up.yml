@@ -195,17 +195,15 @@ jobs:
       - name: Require approved Auth and Shop image contracts before ephemeral apply
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
-          AUTH_SHA: ${{ inputs.auth_sha }}
-          AUTH_DIGEST: ${{ inputs.auth_digest }}
-          SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
-          SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
-          SHOP_SHA: ${{ inputs.shop_sha }}
-          SHOP_DIGEST: ${{ inputs.shop_digest }}
-          SHOP_API_SHA: ${{ inputs.shop_api_sha }}
-          SHOP_API_DIGEST: ${{ inputs.shop_api_digest }}
+          APP_ID: ${{ env.APP_ID }}
+          INPUT_AUTH_SHA: ${{ inputs.auth_sha }}
+          INPUT_SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
+          INPUT_SHOP_SHA: ${{ inputs.shop_sha }}
+          INPUT_SHOP_API_SHA: ${{ inputs.shop_api_sha }}
           DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
         run: |
           doctl registry login --expiry-seconds 900
+          node scripts/ci/prepare-staging-image-contract-env.mjs
           node scripts/ci/verify-staging-image-contract.mjs
       - uses: ./.github/actions/terraform-setup
         with:
