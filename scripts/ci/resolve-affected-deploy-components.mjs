@@ -81,6 +81,22 @@ export function resolveBuildComponents(affected) {
   return filterBuildComponents([...builds].sort());
 }
 
+/** Components to redeploy when rollback_rehearsal forces a deploy despite no path diffs. */
+export function rollbackRehearsalAffected(liveTags) {
+  const components = [...new Set([...DEPLOY_COMPONENTS, "clamav"])];
+  return filterAffectedForDeploy(
+    components.filter((c) => SHA.test(liveTags[c]?.trim() ?? "")).sort(),
+  );
+}
+
+/** Build only images whose live tag differs from the rehearsal target (skip full matrix when already pinned). */
+export function resolveBuildComponentsWhenTagsLag(affected, liveTags, targetSha) {
+  const withoutMigrate = affected.filter(
+    (name) => name !== "migrate" && (liveTags[name]?.trim() ?? "") !== targetSha,
+  );
+  return resolveBuildComponents(withoutMigrate);
+}
+
 function main() {
   const appId = process.env.APP_ID;
   const targetSha = process.env.TARGET_SHA ?? process.env.GITHUB_SHA;
@@ -89,8 +105,15 @@ function main() {
   }
   const spec = readAppSpec(appId);
   const liveTags = readComponentImageTags(spec);
-  const affected = resolveAffectedComponents({ targetSha, liveTags });
-  const buildComponents = resolveBuildComponents(affected);
+  let affected = resolveAffectedComponents({ targetSha, liveTags });
+  const rollbackRehearsal = process.env.ROLLBACK_REHEARSAL === "true";
+  let buildComponents;
+  if (rollbackRehearsal && affected.length === 0) {
+    affected = rollbackRehearsalAffected(liveTags);
+    buildComponents = resolveBuildComponentsWhenTagsLag(affected, liveTags, targetSha);
+  } else {
+    buildComponents = resolveBuildComponents(affected);
+  }
   const tagMap = buildDeployTagMap({ liveTags, affected, buildComponents, targetSha });
 
   if (process.env.GITHUB_OUTPUT) {
