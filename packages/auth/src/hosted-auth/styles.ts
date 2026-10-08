@@ -338,10 +338,20 @@ h1 {
 }
 
 .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
   width: 100%;
   background: transparent;
   color: var(--color-on-surface);
   border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+}
+
+.btn-mark {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .btn-secondary:hover:not(:disabled) {
