@@ -54,10 +54,19 @@ const pairs = [
 
 for (const [shaKey, inputKey, tfKey, repository, liveFallback] of pairs) {
   let sha = pickSha(inputKey, tfKey);
-  if (!sha && liveFallback) sha = liveFallback;
+  if (!sha && liveFallback) {
+    const liveDigest = digestForTag(listTags(repository), liveFallback);
+    if (liveDigest) {
+      sha = liveFallback;
+    } else if (shaKey === "AUTH_SHA") {
+      console.warn(
+        `Live auth pin ${liveFallback} has no ${repository} immutable tag; pass workflow auth_sha or deploy lax-test-auth first`,
+      );
+    }
+  }
   if (!sha) {
     throw new Error(
-      `${shaKey} is required (workflow input, ${tfKey || "live auth tag"}, or live App Platform pin)`,
+      `${shaKey} is required (workflow input, ${tfKey || "live auth tag with DOCR digest"}, or live App Platform pin)`,
     );
   }
   const digestKey = shaKey.replace("_SHA", "_DIGEST");
