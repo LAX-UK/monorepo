@@ -5,21 +5,34 @@ on:
     paths:
       - apps/**
       - packages/**
-      - package.json
       - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docker/migrate.Dockerfile
+      - patches/**
       - .github/actions/app-platform-deploy/**
       - .github/workflows/app-deploy-test.yml
-      - scripts/ci/verify-prebuilt-web-for-deploy.mjs
+      - .github/workflows/build-images.yml
+      - scripts/ci/resolve-affected-deploy-components.mjs
+      - scripts/ci/deploy-component-paths.mjs
+      - scripts/ci/deploy-tag-map.mjs
+      - scripts/ci/build-expected-releases.mjs
+      - scripts/ci/staging-deploy-smoke.mjs
+      - scripts/ci/patch-app-platform-image-tags.mjs
+      - scripts/ci/digitalocean-app-rollback-api.mjs
+      - scripts/ci/verify-prebuilt-images-for-deploy.mjs
+      - scripts/ci/write-deploy-artifact.mjs
+      - scripts/ci/write-image-tag-env.mjs
+      - scripts/ci/build-images-matrix.mjs
       - scripts/ci/assert-app-platform-spec.mjs
-      - scripts/ci/assert-app-platform-spec.test.mjs
-      - scripts/ci/verify-readiness-contract.mjs
-      - scripts/ci/parse-docker-image-pin.mjs
-      - scripts/ci/resolve-immutable-shop-deploy-pins.mjs
-      - scripts/ci/registry-tag-poll.mjs
+      - scripts/ci/resolve-live-app-image-tags.mjs
   workflow_dispatch:
     inputs:
-      deploy_shop:
-        description: Force immutable Shop deploy on this commit (requires AUTO_DEPLOY_SHOP_TEST)
+      git_sha:
+        description: Redeploy this commit SHA to test (must exist in DOCR for built components)
+        type: string
+        required: false
+      rollback_rehearsal:
+        description: After a successful deploy, roll back to the prior deployment and re-run readiness
         type: boolean
         default: false
 permissions:
@@ -29,47 +42,6 @@ concurrency:
   group: app-deploy-test
   cancel-in-progress: false
 jobs:
-  classify:
-    runs-on: ubuntu-latest
-    outputs:
-      immutable_boundary_changed: ${{ steps.changes.outputs.immutable_boundary_changed }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: changes
-        name: Detect changes requiring immutable staging cutover
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          CURRENT_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          changed=false
-          if test "${{ github.event_name }}" = "workflow_dispatch" &&
-            test "${{ inputs.deploy_shop }}" = "true"; then
-            changed=true
-          elif test "${{ github.event_name }}" = "push" &&
-            git diff --quiet "$BEFORE_SHA" "$CURRENT_SHA" -- \
-              apps/shop apps/shop-identity apps/shop-api apps/shop-admin; then
-            changed=false
-          elif test "${{ github.event_name }}" = "push"; then
-            changed=true
-          fi
-          echo "immutable_boundary_changed=$changed" >> "$GITHUB_OUTPUT"
-          if test "$changed" = "true"; then
-            {
-              echo "Shop boundary changed on this commit."
-              if test "${{ vars.AUTO_DEPLOY_SHOP_TEST }}" = "true"; then
-                echo "AUTO_DEPLOY_SHOP_TEST is enabled; immutable Shop deploy runs after build-images."
-              else
-                echo "Bid-only App Platform deploy runs; enable repo variable AUTO_DEPLOY_SHOP_TEST or use staging-recovery-test.yml for Shop."
-              fi
-            } >> "$GITHUB_STEP_SUMMARY"
-            if test "${{ vars.AUTO_DEPLOY_SHOP_TEST }}" != "true"; then
-              echo "::warning::Shop boundary changed but AUTO_DEPLOY_SHOP_TEST is not enabled; Bid App Platform deploy runs and test-shop stays on the previous Shop release."
-            fi
-          fi
-
   ci-gate:
     runs-on: ubuntu-latest
     steps:
@@ -78,157 +50,200 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/ci/require-ci-success-for-sha.mjs
+
+  plan:
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    environment: test
+    outputs:
+      build_components: ${{ steps.plan.outputs.build_components || steps.skip_plan.outputs.build_components }}
+      affected_components: ${{ steps.plan.outputs.affected_components || steps.skip_plan.outputs.affected_components }}
+      deploy: ${{ steps.plan.outputs.deploy || steps.skip_plan.outputs.deploy }}
+      tag_map: ${{ steps.plan.outputs.tag_map || steps.skip_plan.outputs.tag_map }}
+    env:
+      APP_ID: ${{ secrets.DO_TEST_APP_ID }}
+      AUTH_TAG_MAP_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Skip until App Platform app exists
+        id: skip_plan
+        if: env.APP_ID == ''
+        run: |
+          echo "deploy=false" >> "$GITHUB_OUTPUT"
+          echo "build_components=[]" >> "$GITHUB_OUTPUT"
+          echo "affected_components=[]" >> "$GITHUB_OUTPUT"
+          echo "tag_map={}" >> "$GITHUB_OUTPUT"
+      - uses: digitalocean/action-doctl@v2
+        if: env.APP_ID != ''
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - id: plan
+        if: env.APP_ID != ''
+        name: Resolve affected components
+        env:
+          APP_ID: ${{ env.APP_ID }}
+          TARGET_SHA: ${{ inputs.git_sha || github.sha }}
+        run: node scripts/ci/resolve-affected-deploy-components.mjs
+
   sentry-release:
+    needs: ci-gate
     uses: ./.github/workflows/sentry-release.yml
     with:
       environment: test
-      git_sha: ${{ github.sha }}
+      git_sha: ${{ inputs.git_sha || github.sha }}
     secrets: inherit
-  # Prebuilt images (api, auth, ws, worker, migrate, web) pushed to DOCR so App
-  # Platform only pulls. Runs in parallel with sentry-release. Gated on the
-  # repository variable USE_PREBUILT_IMAGES_TEST (caller jobs cannot bind an
-  # environment, so only repo/org vars are visible in the `if:`).
+
   build-images:
-    needs: ci-gate
-    if: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' }}
+    needs: [ci-gate, plan]
+    if: >-
+      ${{
+        needs.plan.outputs.deploy == 'true' &&
+        vars.USE_PREBUILT_IMAGES_TEST == 'true' &&
+        needs.plan.outputs.build_components != '[]'
+      }}
     uses: ./.github/workflows/build-images.yml
     with:
       environment: test
-      git_sha: ${{ github.sha }}
-    secrets: inherit
-
-  resolve-shop-immutable-pins:
-    runs-on: ubuntu-latest
-    needs: [classify, ci-gate, build-images]
-    if: >-
-      ${{
-        always() &&
-        needs.classify.outputs.immutable_boundary_changed == 'true' &&
-        vars.AUTO_DEPLOY_SHOP_TEST == 'true' &&
-        needs.ci-gate.result == 'success' &&
-        needs.build-images.result == 'success'
-      }}
-    environment: test
-    outputs:
-      identity_sha: ${{ steps.pins.outputs.identity_sha }}
-      identity_digest: ${{ steps.pins.outputs.identity_digest }}
-      shop_identity_sha: ${{ steps.pins.outputs.shop_identity_sha }}
-      shop_identity_digest: ${{ steps.pins.outputs.shop_identity_digest }}
-      shop_sha: ${{ steps.pins.outputs.shop_sha }}
-      shop_digest: ${{ steps.pins.outputs.shop_digest }}
-      shop_api_sha: ${{ steps.pins.outputs.shop_api_sha }}
-      shop_api_digest: ${{ steps.pins.outputs.shop_api_digest }}
-      shop_admin_sha: ${{ steps.pins.outputs.shop_admin_sha }}
-      shop_admin_digest: ${{ steps.pins.outputs.shop_admin_digest }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-manifest-test-${{ github.sha }}
-          path: .
-      - uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - run: doctl registry login --expiry-seconds 1200
-      - id: pins
-        name: Resolve immutable Shop deploy pins
-        env:
-          ENVIRONMENT: test
-          RELEASE_MANIFEST: release-manifest.json
-          MONOREPO_SHA: ${{ github.sha }}
-        run: node scripts/ci/resolve-immutable-shop-deploy-pins.mjs
-
-  deploy-shop-immutable:
-    needs: resolve-shop-immutable-pins
-    if: >-
-      ${{
-        always() &&
-        needs.resolve-shop-immutable-pins.result == 'success'
-      }}
-    permissions:
-      contents: read
-      actions: write
-    uses: ./.github/workflows/terraform-apply-test.yml
-    with:
-      layer: ephemeral
-      parent_holds_deploy_lock: true
-      identity_sha: ${{ needs.resolve-shop-immutable-pins.outputs.identity_sha }}
-      identity_digest: ${{ needs.resolve-shop-immutable-pins.outputs.identity_digest }}
-      shop_identity_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_identity_sha }}
-      shop_identity_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_identity_digest }}
-      shop_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_sha }}
-      shop_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_digest }}
-      shop_api_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_api_sha }}
-      shop_api_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_api_digest }}
-      shop_admin_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_admin_sha }}
-      shop_admin_digest: ${{ needs.resolve-shop-immutable-pins.outputs.shop_admin_digest }}
-      app_image_tag: ${{ needs.resolve-shop-immutable-pins.outputs.shop_sha }}
-    secrets: inherit
-
-  shop-immutable-smoke:
-    needs: [deploy-shop-immutable, resolve-shop-immutable-pins]
-    if: >-
-      ${{
-        always() &&
-        needs.deploy-shop-immutable.result == 'success'
-      }}
-    uses: ./.github/workflows/shop-staging-acceptance.yml
-    with:
-      shop_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_sha }}
-      shop_api_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_api_sha }}
-      seed_catalogue: false
-      parent_holds_deploy_lock: true
+      git_sha: ${{ inputs.git_sha || github.sha }}
+      components: ${{ needs.plan.outputs.build_components }}
     secrets: inherit
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [classify, ci-gate, sentry-release, build-images]
-    # Deploy unless the image build failed/was cancelled. Sentry release/sourcemap
-    # failures must NOT block shipping, so we deliberately do not gate on its result.
-    # When build-images is skipped (USE_PREBUILT_IMAGES != true) its result is 'skipped' => allowed.
+    needs: [ci-gate, plan, sentry-release, build-images]
     if: >-
       ${{
         always() &&
         !cancelled() &&
-        (needs.classify.outputs.immutable_boundary_changed != 'true' ||
-          vars.AUTO_DEPLOY_SHOP_TEST != 'true') &&
+        needs.ci-gate.result == 'success' &&
+        needs.plan.outputs.deploy == 'true' &&
         needs.build-images.result != 'failure' &&
         needs.build-images.result != 'cancelled'
       }}
     environment: test
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
+      TARGET_SHA: ${{ inputs.git_sha || github.sha }}
+      AUTH_TAG_MAP_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
-      - name: Skip until App Platform app exists
-        if: env.APP_ID == ''
-        run: echo "DO_TEST_APP_ID is not set yet; skipping app deployment until Terraform creates the app."
       - uses: digitalocean/action-doctl@v2
-        if: env.APP_ID != ''
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - name: Build post-deploy readiness URL list
-        if: env.APP_ID != ''
-        id: readiness
+      - name: Record active deployment for rollback
+        id: prior
         env:
           APP_ID: ${{ env.APP_ID }}
         run: |
           set -euo pipefail
-          urls='["https://test-api.lax.bid/health/ready","https://test.lax.bid/api/health/ready"]'
-          app_json="$(doctl apps get "$APP_ID" --output json)"
-          if jq -e '
-            .[0].spec.services[]? | select(.name == "shop")
-          ' <<<"$app_json" >/dev/null; then
-            urls='["https://test-api.lax.bid/health/ready","https://test.lax.bid/api/health/ready","https://test-shop.lax.bid/health/ready"]'
-          fi
-          echo "urls=$urls" >> "$GITHUB_OUTPUT"
-      - if: env.APP_ID != ''
-        uses: ./.github/actions/app-platform-deploy
+          prior="$(
+            doctl apps get "$APP_ID" --output json |
+              jq -r '.[0].active_deployment.id // empty'
+          )"
+          echo "deployment_id=$prior" >> "$GITHUB_OUTPUT"
+      - name: Build post-deploy readiness URL list
+        id: readiness
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          TAG_MAP: ${{ needs.plan.outputs.tag_map }}
+          MODE: readiness-urls
+        run: node scripts/ci/build-expected-releases.mjs
+      - name: Build expected release map
+        id: expected_releases
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          TAG_MAP: ${{ needs.plan.outputs.tag_map }}
+          READINESS_URLS: ${{ steps.readiness.outputs.urls }}
+        run: node scripts/ci/build-expected-releases.mjs
+      - name: Verify DOCR tags for built components
+        if: vars.USE_PREBUILT_IMAGES_TEST == 'true'
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          TAG_MAP: ${{ needs.plan.outputs.tag_map }}
+        run: |
+          node scripts/ci/verify-prebuilt-images-for-deploy.mjs \
+            --environment test \
+            --deploy-sha "$TARGET_SHA" \
+            --tag-map "$TAG_MAP"
+      - uses: ./.github/actions/app-platform-deploy
+        id: app_deploy
         with:
           app-id: ${{ env.APP_ID }}
           readiness-urls: ${{ steps.readiness.outputs.urls }}
-          expected-releases: >-
-            {"https://test.lax.bid/api/health/ready":"${{ github.sha }}"}
-          rolling-image-tag: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' && github.sha || '' }}
+          expected-releases: ${{ steps.expected_releases.outputs.json }}
+          image-tag-map: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' && needs.plan.outputs.tag_map || '' }}
           prebuilt-environment: test
           do-token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Fast staging smoke
+        id: smoke
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          TAG_MAP: ${{ needs.plan.outputs.tag_map }}
+          SMOKE_AUTH: ${{ contains(fromJSON(needs.plan.outputs.affected_components), 'auth') }}
+          SMOKE_SHOP: >-
+            ${{
+              contains(fromJSON(needs.plan.outputs.affected_components), 'shop') ||
+              contains(fromJSON(needs.plan.outputs.affected_components), 'shop-api') ||
+              contains(fromJSON(needs.plan.outputs.affected_components), 'shop-admin') ||
+              contains(fromJSON(needs.plan.outputs.affected_components), 'shop-identity')
+            }}
+        run: node scripts/ci/staging-deploy-smoke.mjs
+      - name: Shop admin OIDC preflight
+        if: >-
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop') ||
+          contains(fromJSON(needs.plan.outputs.affected_components), 'shop-admin')
+        run: node scripts/ci/verify-shop-admin-oidc-preflight.mjs
+      - name: Roll back on smoke failure after ACTIVE
+        if: >-
+          failure() &&
+          steps.app_deploy.outputs.phase == 'ACTIVE' &&
+          steps.prior.outputs.deployment_id != ''
+        env:
+          APP_ID: ${{ env.APP_ID }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          ROLLBACK_RESULT: pending
+        run: |
+          set -euo pipefail
+          node scripts/ci/digitalocean-app-rollback-api.mjs \
+            --app-id "$APP_ID" \
+            --deployment-id "${{ steps.prior.outputs.deployment_id }}" \
+            | tee "$RUNNER_TEMP/rollback-result.json"
+          echo "ROLLBACK_RESULT=success" >> "$GITHUB_ENV"
+      - name: Rollback rehearsal (manual)
+        if: >-
+          success() &&
+          inputs.rollback_rehearsal == true &&
+          steps.prior.outputs.deployment_id != ''
+        env:
+          APP_ID: ${{ env.APP_ID }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/digitalocean-app-rollback-api.mjs \
+            --app-id "$APP_ID" \
+            --deployment-id "${{ steps.prior.outputs.deployment_id }}"
+          node scripts/ci/verify-readiness-contract.mjs \
+            --urls "${{ steps.readiness.outputs.urls }}" \
+            --expected-releases '{}' \
+            --app-id "$APP_ID" \
+            --attempts 30 \
+            --interval-seconds 10
+      - name: Write deploy artifact
+        if: always()
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA }}
+          PRIOR_DEPLOYMENT_ID: ${{ steps.prior.outputs.deployment_id }}
+          DEPLOYMENT_ID: ${{ steps.app_deploy.outputs.deployment_id }}
+          AFFECTED_COMPONENTS: ${{ needs.plan.outputs.affected_components }}
+          TAG_MAP: ${{ needs.plan.outputs.tag_map }}
+          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+          ROLLBACK_RESULT: ${{ env.ROLLBACK_RESULT || 'skipped' }}
+        run: node scripts/ci/write-deploy-artifact.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: app-deploy-test-${{ github.run_id }}
+          path: deploy-artifact.json
+          if-no-files-found: warn

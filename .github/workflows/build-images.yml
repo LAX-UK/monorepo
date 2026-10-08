@@ -23,6 +23,11 @@ on:
       git_sha:
         type: string
         required: true
+      components:
+        description: JSON array of component names; empty builds all
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       environment:
@@ -38,36 +43,28 @@ permissions:
   contents: read
 
 jobs:
+  resolve-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        env:
+          COMPONENTS_JSON: ${{ inputs.components }}
+        run: |
+          set -euo pipefail
+          matrix="$(node scripts/ci/build-images-matrix.mjs)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   build-push:
+    needs: resolve-matrix
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix:
-        include:
-          - component: api
-            dockerfile: apps/api/Dockerfile
-          - component: auth
-            dockerfile: apps/auth/Dockerfile
-          - component: shop-identity
-            dockerfile: apps/shop-identity/Dockerfile
-          - component: shop
-            dockerfile: apps/shop/Dockerfile
-          - component: shop-api
-            dockerfile: apps/shop-api/Dockerfile
-          - component: shop-admin
-            dockerfile: apps/shop-admin/Dockerfile
-          - component: ws
-            dockerfile: apps/ws/Dockerfile
-          - component: worker
-            dockerfile: apps/worker/Dockerfile
-          - component: migrate
-            dockerfile: docker/migrate.Dockerfile
-          - component: web
-            dockerfile: apps/web/Dockerfile
-          - component: clamav
-            dockerfile: apps/clamav/Dockerfile
+      matrix: ${{ fromJSON(needs.resolve-matrix.outputs.matrix) }}
     env:
       # Account-level DOCR registry name (registry.digitalocean.com/<name>).
       # Set as a repository or environment variable. Terraform output:
