@@ -1,5 +1,6 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import type { Redis } from "ioredis";
+import type pino from "pino";
 import { createIdentityJwtSigner } from "../infrastructure/create-identity-jwt-signer.js";
 import type { JwksProvider } from "../infrastructure/jwks-provider.js";
 import { createTokenExchangePorts } from "../infrastructure/token-exchange-adapters.js";
@@ -18,6 +19,7 @@ export function createOidcRouteServices(options: {
   recentStepUpMaxAgeSec: number;
   environment: "development" | "test" | "production";
   onBackchannelOutcome?: (outcome: "delivered" | "retry_scheduled" | "failed") => void;
+  log?: pino.Logger;
 }): AuthRouteServicesSlice {
   const identityJwtSigner = createIdentityJwtSigner({
     jwks: options.jwks,
@@ -31,6 +33,13 @@ export function createOidcRouteServices(options: {
     identityJwtSigner,
     recentStepUpMaxAgeSec: options.recentStepUpMaxAgeSec,
     ...(options.onBackchannelOutcome ? { onBackchannelOutcome: options.onBackchannelOutcome } : {}),
+    ...(options.log
+      ? {
+          onCorrelationFailure: (reason) => {
+            options.log!.warn({ reason }, "oidc_authorization_code_correlation_failed");
+          },
+        }
+      : {}),
   });
   return {
     oidc: {

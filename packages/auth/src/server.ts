@@ -109,7 +109,10 @@ export type Auth = {
   handler: (request: Request) => Promise<Response>;
   api: {
     getJwks(): Promise<{ keys: unknown[] }>;
-    getSession(input: { headers: Headers }): Promise<{
+    getSession(input: {
+      headers: Headers;
+      query?: { disableCookieCache?: boolean };
+    }): Promise<{
       session?: { id?: string } | null;
       user?: { id?: string } | null;
     } | null>;

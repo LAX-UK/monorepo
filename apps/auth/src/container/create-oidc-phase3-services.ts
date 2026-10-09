@@ -19,7 +19,10 @@ import {
 import { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { BackchannelLogoutRevocationCoordinator } from "../services/backchannel-logout-revocation.service.js";
 import { OauthTokenManagementService } from "../services/oauth-token-management.service.js";
-import { OidcSessionCoordinator } from "../services/oidc-session-coordinator.js";
+import {
+  type OidcCorrelationFailureReason,
+  OidcSessionCoordinator,
+} from "../services/oidc-session-coordinator.js";
 
 export function createOidcPhase3Services(options: {
   db: IdentityDatabase;
@@ -29,6 +32,7 @@ export function createOidcPhase3Services(options: {
   identityJwtSigner: IdentityJwtSigner;
   recentStepUpMaxAgeSec: number;
   onBackchannelOutcome?: (outcome: "delivered" | "retry_scheduled" | "failed") => void;
+  onCorrelationFailure?: (reason: OidcCorrelationFailureReason) => void;
 }) {
   const signer = createLogoutTokenSigner(options.identityJwtSigner);
   const logout = new BackchannelLogoutRevocationCoordinator(
@@ -38,6 +42,8 @@ export function createOidcPhase3Services(options: {
     sessions: new OidcSessionCoordinator(
       new RedisOidcCodeCorrelationStore(options.redis),
       new DrizzleOidcRpSessionRepository(options.db),
+      () => new Date(),
+      options.onCorrelationFailure,
     ),
     confidentialClients: new DrizzleConfidentialClientAuthenticator(options.db),
     tokenManagement: new OauthTokenManagementService(
