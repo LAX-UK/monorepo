@@ -31,7 +31,7 @@ export async function forwardAdminRequest(input: {
     expectedOrigin: input.config.publicOrigin,
     csrfHeader: input.csrfHeader,
     csrfCookie: input.csrfCookie,
-    fromServerAction: input.fromServerAction,
+    fromServerAction: input.fromServerAction === true,
   });
   const target = resolveAdminProxyTarget({
     bffPath: input.bffPath,
