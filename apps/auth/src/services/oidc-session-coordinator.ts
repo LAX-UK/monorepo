@@ -5,10 +5,18 @@ import { OIDC_ACR_BRONZE, OIDC_ACR_SILVER } from "@auction/identity-contracts";
 const AUTHORIZATION_CODE_TTL_SEC = 10 * 60;
 const OAUTH_SERVER_ERROR_DESCRIPTION = "Authorization request could not be completed";
 
+export type OidcCorrelationFailureReason =
+  | "correlation_missing"
+  | "session_not_found"
+  | "subject_mismatch";
+
 export class OidcAuthorizationCodeCorrelationError extends Error {
-  constructor() {
+  readonly reason: OidcCorrelationFailureReason;
+
+  constructor(reason: OidcCorrelationFailureReason) {
     super("OIDC authorization-code correlation is missing, invalid, or already consumed");
     this.name = "OidcAuthorizationCodeCorrelationError";
+    this.reason = reason;
   }
 }
 
@@ -155,7 +163,13 @@ export class OidcSessionCoordinator {
     private readonly correlations: OidcCodeCorrelationStore,
     private readonly sessions: OidcRpSessionRepository,
     private readonly now: () => Date = () => new Date(),
+    private readonly onCorrelationFailure?: (reason: OidcCorrelationFailureReason) => void,
   ) {}
+
+  #failCorrelation(reason: OidcCorrelationFailureReason): never {
+    this.onCorrelationFailure?.(reason);
+    throw new OidcAuthorizationCodeCorrelationError(reason);
+  }
 
   async captureAuthorizationSession(response: Response, identitySessionId: string): Promise<void> {
     const code = await readAuthorizationCodeFromResponse(response);
@@ -185,9 +199,9 @@ export class OidcSessionCoordinator {
   ): Promise<OidcIdentitySessionEvidence> {
     requestContext.identitySession ??= (async () => {
       const identitySessionId = await this.correlations.peek(requestContext.codeHash);
-      if (!identitySessionId) throw new OidcAuthorizationCodeCorrelationError();
+      if (!identitySessionId) this.#failCorrelation("correlation_missing");
       const identitySession = await this.sessions.findIdentitySession(identitySessionId);
-      if (!identitySession) throw new OidcAuthorizationCodeCorrelationError();
+      if (!identitySession) this.#failCorrelation("session_not_found");
       return identitySession;
     })();
     return requestContext.identitySession;
@@ -204,7 +218,7 @@ export class OidcSessionCoordinator {
 
     const identitySession = await this.#identitySessionForAuthorizationCode(requestContext);
     if (identitySession.subjectId !== input.subjectId) {
-      throw new OidcAuthorizationCodeCorrelationError();
+      this.#failCorrelation("subject_mismatch");
     }
 
     const now = this.now();

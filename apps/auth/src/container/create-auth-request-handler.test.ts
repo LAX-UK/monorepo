@@ -54,4 +54,104 @@ describe("auth request lifecycle ordering", () => {
     ).rejects.toThrow("outbox unavailable");
     expect(logout.revokeIdentitySessions).toHaveBeenCalledWith(["session-1"]);
   });
+
+  it("binds authorization codes using the response session and bypasses cookie cache", async () => {
+    const captureAuthorizationSession = vi.fn(async () => undefined);
+    const getSession = vi.fn(async () => ({
+      user: { id: "subject-2" },
+      session: { id: "session-2" },
+    }));
+    const auth = {
+      handler: vi.fn(async () =>
+        Response.json(
+          { redirectURI: "https://shop.example/auth/callback?code=issued-code" },
+          {
+            headers: {
+              "set-cookie":
+                "better-auth.session_token=new-token; Path=/; HttpOnly, better-auth.session_data=stale; Path=/",
+            },
+          },
+        ),
+      ),
+      api: { getSession },
+    };
+    const handler = createAuthRequestHandler({
+      events: { publish: vi.fn(async () => undefined) },
+      sessionStampStore: {} as never,
+      auth: auth as never,
+      oidcSessions: {
+        runTokenRequest: vi.fn(async (_code, action) => action()),
+        captureAuthorizationSession,
+      } as never,
+      logout: {
+        revokeClientSubject: vi.fn(),
+        revokeIdentitySessions: vi.fn(),
+        revokeSubject: vi.fn(),
+      },
+    });
+
+    await handler(
+      new Request("https://auth.test/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          cookie:
+            "better-auth.session_token=old-token; better-auth.session_data=deleted-session-cache",
+        },
+      }),
+    );
+
+    expect(getSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: { disableCookieCache: true },
+        headers: expect.any(Headers),
+      }),
+    );
+    type GetSessionInput = { headers: Headers; query?: { disableCookieCache?: boolean } };
+    const getSessionInput = (getSession.mock.calls as unknown as [GetSessionInput][])[0]?.[0];
+    expect(getSessionInput).toBeDefined();
+    const headers = getSessionInput!.headers;
+    expect(headers.get("cookie")).toContain("better-auth.session_token=new-token");
+    expect(headers.get("cookie")).not.toContain("session_data");
+    expect(captureAuthorizationSession).toHaveBeenCalledWith(expect.any(Response), "session-2");
+  });
+
+  it("expires session_data when sign-out clears session_token", async () => {
+    const auth = {
+      handler: vi.fn(
+        async () =>
+          new Response(null, {
+            status: 200,
+            headers: {
+              "set-cookie": "better-auth.session_token=; Max-Age=0; Path=/; HttpOnly",
+            },
+          }),
+      ),
+      api: {
+        getSession: vi.fn(async () => ({
+          user: { id: "subject-1" },
+          session: { id: "session-1" },
+        })),
+      },
+    };
+    const handler = createAuthRequestHandler({
+      events: { publish: vi.fn(async () => undefined) },
+      sessionStampStore: {} as never,
+      auth: auth as never,
+      oidcSessions: {
+        runTokenRequest: vi.fn(async (_code, action) => action()),
+        captureAuthorizationSession: vi.fn(),
+      } as never,
+      logout: {
+        revokeClientSubject: vi.fn(),
+        revokeIdentitySessions: vi.fn(async () => 1),
+        revokeSubject: vi.fn(),
+      },
+    });
+
+    const response = await handler(
+      new Request("https://auth.test/api/auth/sign-out", { method: "POST" }),
+    );
+    const cookies = response.headers.getSetCookie?.() ?? [];
+    expect(cookies.some((c) => c.startsWith("better-auth.session_data=; Max-Age=0"))).toBe(true);
+  });
 });

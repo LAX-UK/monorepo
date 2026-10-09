@@ -56,6 +56,7 @@ const services = createOidcRouteServices({
   authSecret: env.BETTER_AUTH_SECRET,
   recentStepUpMaxAgeSec: AUTH_TIMINGS.recentPasswordProofMaxAgeSec,
   environment: env.APP_ENV,
+  log,
   onBackchannelOutcome: (outcome) => {
     metrics.backchannelDeliveryOutcomes.inc({ outcome });
     if (outcome !== "delivered") log.warn({ outcome }, "backchannel_logout_delivery_outcome");

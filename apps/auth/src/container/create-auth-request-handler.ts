@@ -10,6 +10,11 @@ import {
   createAuthorizationServerErrorResponse,
   readAuthorizationCodeFromResponse,
 } from "../services/oidc-session-coordinator.js";
+import {
+  readResponseSetCookies,
+  stripBetterAuthSessionCookies,
+  withSessionDataClearedOnLogout,
+} from "./better-auth-session-cookies.js";
 
 export type AuthRequestHandler = (
   request: Request,
@@ -35,9 +40,10 @@ export function createAuthRequestHandler(options: {
     const priorSession = logoutSensitive
       ? await options.auth.api.getSession({ headers: request.headers })
       : null;
-    const response = await options.oidcSessions.runTokenRequest(authorizationCode, () =>
+    let response = await options.oidcSessions.runTokenRequest(authorizationCode, () =>
       options.auth.handler(request),
     );
+    response = withSessionDataClearedOnLogout(response, path);
     const priorSubjectId = priorSession?.user?.id;
     const priorSessionId = priorSession?.session?.id;
     if (response.ok && priorSubjectId) {
@@ -83,21 +89,23 @@ export function createAuthRequestHandler(options: {
     }
     if (await readAuthorizationCodeFromResponse(response, request.url)) {
       const sessionHeaders = new Headers(request.headers);
-      const setCookies =
-        typeof response.headers.getSetCookie === "function"
-          ? response.headers.getSetCookie()
-          : [response.headers.get("set-cookie") ?? ""];
+      const setCookies = readResponseSetCookies(response);
       const responseSessionCookie = setCookies
         .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
         .find(Boolean);
-      if (responseSessionCookie) {
-        const existingCookie = sessionHeaders.get("cookie");
-        sessionHeaders.set(
-          "cookie",
-          existingCookie ? `${existingCookie}; ${responseSessionCookie}` : responseSessionCookie,
-        );
-      }
-      const codeSession = await options.auth.api.getSession({ headers: sessionHeaders });
+      const stripped = stripBetterAuthSessionCookies(sessionHeaders.get("cookie"));
+      sessionHeaders.set(
+        "cookie",
+        responseSessionCookie
+          ? stripped
+            ? `${stripped}; ${responseSessionCookie}`
+            : responseSessionCookie
+          : stripped,
+      );
+      const codeSession = await options.auth.api.getSession({
+        headers: sessionHeaders,
+        query: { disableCookieCache: true },
+      });
       const identitySessionId = codeSession?.session?.id;
       if (!identitySessionId) return createAuthorizationServerErrorResponse(response, request.url);
       await options.oidcSessions.captureAuthorizationSession(response, identitySessionId);
