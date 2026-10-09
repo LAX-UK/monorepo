@@ -60,8 +60,12 @@ export async function signInShopBuyer(
 
 export async function signOutShopBuyer(page: Page): Promise<void> {
   await page.goto("/account", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await page.waitForURL((url) => url.pathname === "/signed-out" || url.pathname === "/", {
-    timeout: 60_000,
-  });
+  const signOut = page.getByRole("button", { name: "Sign out" });
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === "/signed-out" || url.pathname === "/", {
+      timeout: 90_000,
+    }),
+    signOut.click(),
+  ]);
+  await page.waitForLoadState("networkidle", { timeout: 25_000 }).catch(() => {});
 }

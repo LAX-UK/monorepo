@@ -1,6 +1,6 @@
 # Auth audit — signed-in test evidence (test environment)
 
-Automated probes and unit tests validate the fixes in branch `fix/auth-audit`. Live test hosts still run the previous deploy until this branch merges and app deploy completes.
+Auth audit fixes merged in #480; deploy unblock in auction-infra #34 and monorepo #481. App deploy test green on main (2026-10-09 UTC).
 
 ## Automated (pre-fix baseline, 2026-10-08 UTC)
 
@@ -21,18 +21,17 @@ Automated probes and unit tests validate the fixes in branch `fix/auth-audit`. L
 | `@auction/shop-admin` | callback/reauth `publicOrigin` redirects, pending retry cookie, logout 303, end-session public issuer |
 | `@auction/shop-identity` | `/me` preserves pending OAuth (`pendingLogin: true`, no cookie wipe) |
 
-## Live reverify (still on old deploy, 2026-10-09 UTC)
+## Live reverify (post deploy, 2026-10-09 UTC)
 
-| Check | Current test result | Expected after deploy |
-|-------|---------------------|------------------------|
-| Shop Admin callback, no pending | `https://0.0.0.0:3030/login?error=missing_pending` | `https://test-shop-admin.lax.bid/api/auth/login?returnTo=/` (first hit) or public-origin error |
-| Forgot password API | 404 on `/forget-password` | Hosted page uses `/request-password-reset` (200) |
-
-Re-run after deploy:
+| Check | Result |
+|-------|--------|
+| `test-auth` `/health/ready` | `status: ok`, release `2b5164d63b91d279003371ef2c4ced67d0d53168` |
+| Shop Admin callback, no pending | `Location: https://test-shop-admin.lax.bid/api/auth/login?returnTo=/` |
+| Forgot password API | 404 on `/forget-password` (hosted UI uses `/request-password-reset`) |
 
 ```bash
 curl -sI "https://test-shop-admin.lax.bid/api/auth/callback?code=x&state=y" | grep -i location
-curl -sI -X POST "https://test-auth.lax.bid/api/auth/forget-password" | head -1
+curl -sS "https://test-auth.lax.bid/health/ready"
 ```
 
 ## Manual signed-in rows (credentials not in chat)

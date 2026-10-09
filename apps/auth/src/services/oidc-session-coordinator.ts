@@ -37,7 +37,11 @@ export type OidcRpSessionRepository = {
   }): Promise<void>;
 };
 
-type TokenRequestContext = { codeHash: string };
+type TokenRequestContext = {
+  codeHash: string;
+  /** Cached for the lifetime of one authorization_code token request (Better Auth may resolve claims more than once). */
+  identitySession?: Promise<OidcIdentitySessionEvidence>;
+};
 
 export function hashAuthorizationCode(code: string): string {
   return createHash("sha256").update(code).digest("base64url");
@@ -166,6 +170,19 @@ export class OidcSessionCoordinator {
     return this.#requestContext.run({ codeHash: hashAuthorizationCode(code) }, operation);
   }
 
+  async #identitySessionForAuthorizationCode(
+    requestContext: TokenRequestContext,
+  ): Promise<OidcIdentitySessionEvidence> {
+    requestContext.identitySession ??= (async () => {
+      const identitySessionId = await this.correlations.consume(requestContext.codeHash);
+      if (!identitySessionId) throw new OidcAuthorizationCodeCorrelationError();
+      const identitySession = await this.sessions.findIdentitySession(identitySessionId);
+      if (!identitySession) throw new OidcAuthorizationCodeCorrelationError();
+      return identitySession;
+    })();
+    return requestContext.identitySession;
+  }
+
   async resolveIdTokenClaims(input: {
     subjectId: string;
     clientId: string;
@@ -175,10 +192,8 @@ export class OidcSessionCoordinator {
     // to authorization-code id_token issuance.
     if (!requestContext) return {};
 
-    const identitySessionId = await this.correlations.consume(requestContext.codeHash);
-    if (!identitySessionId) throw new OidcAuthorizationCodeCorrelationError();
-    const identitySession = await this.sessions.findIdentitySession(identitySessionId);
-    if (!identitySession || identitySession.subjectId !== input.subjectId) {
+    const identitySession = await this.#identitySessionForAuthorizationCode(requestContext);
+    if (identitySession.subjectId !== input.subjectId) {
       throw new OidcAuthorizationCodeCorrelationError();
     }
 

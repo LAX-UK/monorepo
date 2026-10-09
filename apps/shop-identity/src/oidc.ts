@@ -145,12 +145,17 @@ export type IdTokenClaims = {
   sid?: string;
 };
 
+function idTokenAudienceMatches(aud: string | string[], clientId: string): boolean {
+  if (typeof aud === "string") return aud === clientId;
+  return aud.includes(clientId);
+}
+
 export function validateIdTokenClaims(
   claims: IdTokenClaims,
   expected: { issuer: string; clientId: string; nonce: string },
 ): boolean {
   if (claims.iss !== normalizeIssuerUrl(expected.issuer)) return false;
-  if (claims.aud !== expected.clientId) return false;
+  if (!idTokenAudienceMatches(claims.aud, expected.clientId)) return false;
   if (claims.nonce !== expected.nonce) return false;
   if (!claims.sub) return false;
   return true;
