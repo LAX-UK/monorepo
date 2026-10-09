@@ -6,7 +6,7 @@ export const ISSUER_CONTINUE_PATHS = [
   "/magic-link",
 ] as const;
 
-export const RELYING_PARTY_CONTINUE_PATHS = ["/auth/callback"] as const;
+export const RELYING_PARTY_CONTINUE_PATHS = ["/auth/callback", "/api/auth/callback"] as const;
 export const RELYING_PARTY_CONTINUE_PREFIXES = ["/api/auth/callback/"] as const;
 
 export function isAllowedContinueUrl(

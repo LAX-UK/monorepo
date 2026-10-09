@@ -55,6 +55,37 @@ function createTestApp(overrides: {
 }
 
 describe("GET /me", () => {
+  it("returns 401 without clearing cookies when OAuth login is pending", async () => {
+    const session: ShopIdentitySession = {
+      id: "sess-pending",
+      subject: null,
+      sid: null,
+      oauth: { state: "st", nonce: "n", codeVerifier: "v" },
+    };
+    const sessionRepository: ShopSessionRepository = {
+      findActive: vi.fn(async () => session),
+      createPendingOAuth: vi.fn(),
+      attachPendingOAuthToAuthenticatedSession: vi.fn(async () => true),
+      createGuestSession: vi.fn(),
+      authenticate: vi.fn(),
+      invalidate: vi.fn(),
+      consumeLogoutToken: vi.fn(),
+    };
+    const app = createTestApp({
+      sessionRepository,
+      findShopProfile: vi.fn(),
+    });
+    const response = await app.request("/me", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_ID}` },
+    });
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      authenticated: false,
+      pendingLogin: true,
+    });
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
   it("returns 401 for guests", async () => {
     const sessionRepository: ShopSessionRepository = {
       findActive: vi.fn(async () => null),

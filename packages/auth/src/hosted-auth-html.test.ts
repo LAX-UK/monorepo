@@ -31,6 +31,7 @@ const shopCapabilities = {
   phoneEnabled: true,
   turnstileSiteKey: "site-key",
   shopOrigin: "http://localhost:3020",
+  shopAdminOrigin: "http://localhost:3030",
   bidOrigin: "http://localhost:3000",
   emailFirst: true,
   requireEmailVerification: true,
@@ -52,7 +53,7 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain('class="panel"');
     expect(html).toContain('href="/hosted-auth.css');
     expect(html).toContain("fonts.googleapis.com");
-    expect(html).toContain("London Art Exchange");
+    expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
     expect(html).toContain('class="skip-link"');
     expect(html).toContain("/hosted-auth-runtime.js");
     expect(html).toContain("Enable JavaScript to continue signing in.");
@@ -195,7 +196,29 @@ describe("selectHostedBrand", () => {
     expect(selectHostedBrand("lax-bid-web").logoSrc).toBe(HOSTED_BID_LOGO_PATH);
     expect(selectHostedBrand("lax-bid-web").logoDarkSrc).toBe(HOSTED_BID_LOGO_LIGHT_PATH);
     expect(selectHostedBrand("lax-shop-web").logoDarkSrc).toBeNull();
-    expect(selectHostedBrand("unknown").theme).toBe("default");
+    expect(selectHostedBrand("lax-shop-admin").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
+    expect(selectHostedBrand("lax-shop-admin").tagline).toBe("Shop Admin");
+    expect(selectHostedBrand("unknown").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
+  });
+});
+
+const shopAdminSearch =
+  "response_type=code&client_id=lax-shop-admin&redirect_uri=http://localhost:3030/api/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
+
+describe("Shop Admin hosted login", () => {
+  it("renders staff-only login chrome with logo and tagline", () => {
+    const view = hostedAuthViewFromSearch(shopAdminSearch, shopCapabilities);
+    const html = buildHostedLoginHtml(view);
+    expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
+    expect(html).toContain("brand-tagline");
+    expect(html).toContain("Shop Admin");
+    expect(html).toContain("Staff sign-in for the LAX Shop admin dashboard.");
+    expect(html).toContain("staff-access-note");
+    expect(html).not.toContain("Continue with Google");
+    expect(html).not.toContain("Email me a sign-in link instead");
+    expect(html).not.toContain("Sign in with phone number");
+    expect(html).not.toContain("Don't have an account?");
+    expect(html).toContain("<title>Sign in · LAX Shop Admin</title>");
   });
 });
 

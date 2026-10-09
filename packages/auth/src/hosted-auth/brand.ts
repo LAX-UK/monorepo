@@ -12,17 +12,29 @@ export type HostedBrandProfile = {
   logoSrc: string | null;
   logoDarkSrc: string | null;
   logoAlt: string | null;
+  tagline: string | null;
 };
 
 const DEFAULT_BRAND: HostedBrandProfile = {
-  theme: "default",
+  theme: "shop",
   productName: "LAX",
-  logoSrc: null,
+  logoSrc: HOSTED_SHOP_LOGO_PATH,
   logoDarkSrc: null,
-  logoAlt: null,
+  logoAlt: "LAX",
+  tagline: null,
 };
 
 export function selectHostedBrand(clientId: string | null | undefined): HostedBrandProfile {
+  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) {
+    return {
+      theme: "shop",
+      productName: "LAX Shop Admin",
+      logoSrc: HOSTED_SHOP_LOGO_PATH,
+      logoDarkSrc: null,
+      logoAlt: "LAX Shop Admin",
+      tagline: "Shop Admin",
+    };
+  }
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB) {
     return {
       theme: "shop",
@@ -30,6 +42,7 @@ export function selectHostedBrand(clientId: string | null | undefined): HostedBr
       logoSrc: HOSTED_SHOP_LOGO_PATH,
       logoDarkSrc: null,
       logoAlt: "LAX Shop",
+      tagline: null,
     };
   }
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) {
@@ -39,6 +52,7 @@ export function selectHostedBrand(clientId: string | null | undefined): HostedBr
       logoSrc: HOSTED_BID_LOGO_PATH,
       logoDarkSrc: HOSTED_BID_LOGO_LIGHT_PATH,
       logoAlt: "LAX Bid",
+      tagline: null,
     };
   }
   return DEFAULT_BRAND;

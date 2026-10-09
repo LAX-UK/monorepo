@@ -185,10 +185,7 @@ export class OidcSessionCoordinator {
 
     const now = this.now();
     const passwordAt = identitySession.lastPasswordAuthAt;
-    const stepUpAt = identitySession.lastStepUpAt;
-    const isRecentStepUp =
-      stepUpAt !== null && now.getTime() - stepUpAt.getTime() <= this.recentStepUpMaxAgeSec * 1_000;
-    const isSilver = identitySession.mfaCompletedAt !== null || isRecentStepUp;
+    const isSilver = identitySession.mfaCompletedAt !== null;
     const sid = identitySession.id;
 
     await this.sessions.upsertRpSession({

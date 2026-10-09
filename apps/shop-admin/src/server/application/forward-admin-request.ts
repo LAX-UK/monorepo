@@ -18,6 +18,7 @@ export async function forwardAdminRequest(input: {
   origin: string | null;
   csrfHeader: string | null;
   csrfCookie: string | null;
+  fromServerAction?: boolean;
   body: ArrayBuffer | undefined;
   forwardHeaders: Record<string, string>;
 }): Promise<{ status: number; headers: Record<string, string>; body: ArrayBuffer }> {
@@ -30,6 +31,7 @@ export async function forwardAdminRequest(input: {
     expectedOrigin: input.config.publicOrigin,
     csrfHeader: input.csrfHeader,
     csrfCookie: input.csrfCookie,
+    fromServerAction: input.fromServerAction,
   });
   const target = resolveAdminProxyTarget({
     bffPath: input.bffPath,

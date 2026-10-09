@@ -148,7 +148,7 @@ h1 {
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 600;
   letter-spacing: -0.02em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .lead {
@@ -514,23 +514,36 @@ a:focus-visible {
 }
 
 .brand-logo {
-  display: none;
+  display: block;
   height: 2.75rem;
   width: auto;
 }
 
-html.theme-shop .brand-mark {
+.brand-tagline {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-supporting);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-link);
+}
+
+html.theme-shop .brand-mark,
+html.theme-bid .brand-mark,
+html.theme-default .brand-mark {
   display: none;
 }
 
-html.theme-shop .brand-logo,
-html.theme-bid .brand-logo {
-  display: block;
+.staff-access-note {
+  max-width: 28rem;
+  line-height: 1.5;
 }
 
-html.theme-shop .brand-sub,
-html.theme-bid .brand-sub {
-  display: none;
+@media (prefers-color-scheme: dark) {
+  .brand-logo.brand-logo--invert-dark {
+    filter: invert(1);
+  }
 }
 
 html.theme-bid .brand-logo {

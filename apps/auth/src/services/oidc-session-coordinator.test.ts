@@ -223,7 +223,7 @@ describe("OIDC authorization-session coordination", () => {
     });
   });
 
-  it("reports silver for a recognized recent step-up but not account capability", async () => {
+  it("reports bronze when only a recent password step-up occurred without MFA", async () => {
     const correlations = new MemoryCorrelationStore();
     const repository = makeRepository({
       id: "identity-session-step-up",
@@ -248,7 +248,7 @@ describe("OIDC authorization-session coordination", () => {
         coordinator.resolveIdTokenClaims({ subjectId: "subject-1", clientId: "lax-bid-web" }),
       ),
     ).resolves.toMatchObject({
-      acr: "urn:mace:incommon:iap:silver",
+      acr: "urn:mace:incommon:iap:bronze",
       amr: ["pwd"],
     });
   });

@@ -5,6 +5,7 @@ import type pino from "pino";
 import { registerFedcmRoutes } from "../http/fedcm.routes.js";
 import { createLoginStatusMiddleware } from "../http/login-status.middleware.js";
 import { createClientIpResolver } from "../infrastructure/client-ip.js";
+import { createOidcPromptCookieHardeningMiddleware } from "../middleware/oidc-prompt-cookie-hardening.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
 import {
   type AuthOperationalRoutes,
@@ -38,6 +39,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     }),
   );
   app.use("*", createLoginStatusMiddleware());
+  app.use("*", createOidcPromptCookieHardeningMiddleware());
   registerFedcmRoutes(app, {
     issuerOrigin: options.oidc.env.OIDC_ISSUER_URL.replace(/\/+$/, ""),
     enabled: options.oidc.env.FEDCM_ENABLED,
@@ -69,6 +71,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     phoneEnabled: options.oidc.env.ENABLE_PHONE_VERIFICATION,
     turnstileSiteKey: options.oidc.env.TURNSTILE_SITE_KEY ?? null,
     shopOrigin: options.oidc.env.SHOP_ORIGIN,
+    shopAdminOrigin: options.oidc.env.SHOP_ADMIN_ORIGIN,
     bidOrigin: options.oidc.env.WEB_ORIGIN,
     emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
     requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,

@@ -26,10 +26,14 @@ form.addEventListener("submit", async (event) => {
       "client_id",
     );
     if (clientId) redirectTo.searchParams.set("client_id", clientId);
-    const { data } = await auth.postJson("/api/auth/forget-password", {
+    const { response, data } = await auth.postJson("/api/auth/request-password-reset", {
       email: inputValue("email").trim(),
       redirectTo: redirectTo.toString(),
     });
+    if (!response.ok) {
+      auth.showError(auth.GENERIC_NETWORK);
+      return;
+    }
     if (auth.isCaptchaRequired(data)) {
       bindCaptchaGate(submit);
       await auth.ensureTurnstile([submit]);

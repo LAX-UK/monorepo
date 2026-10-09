@@ -9,6 +9,7 @@ export type HostedAuthCapabilities = {
   phoneEnabled: boolean;
   turnstileSiteKey: string | null;
   shopOrigin: string;
+  shopAdminOrigin: string;
   bidOrigin: string;
   emailFirst: boolean;
   requireEmailVerification: boolean;
@@ -42,9 +43,11 @@ export function buildHostedAuthPageConfig(
   const restartUrl =
     flow.product === "shop"
       ? `${trimOrigin(capabilities.shopOrigin)}/login`
-      : flow.product === "bid"
-        ? `${trimOrigin(capabilities.bidOrigin)}/login`
-        : "/login";
+      : flow.product === "shop-admin"
+        ? `${trimOrigin(capabilities.shopAdminOrigin)}/`
+        : flow.product === "bid"
+          ? `${trimOrigin(capabilities.bidOrigin)}/login`
+          : "/login";
   return {
     authorizeResumePath: flow.authorizeResumePath,
     loginPath: flow.loginPath,
@@ -75,6 +78,7 @@ export const EMPTY_HOSTED_AUTH_CAPABILITIES: HostedAuthCapabilities = {
   phoneEnabled: false,
   turnstileSiteKey: null,
   shopOrigin: "http://localhost:3020",
+  shopAdminOrigin: "http://localhost:3030",
   bidOrigin: "http://localhost:3000",
   emailFirst: true,
   requireEmailVerification: true,
@@ -97,11 +101,18 @@ export function resolveHostedProductBackLink(view: HostedAuthView): HostedProduc
   const origin =
     view.flow.product === "shop"
       ? view.capabilities.shopOrigin
-      : view.flow.product === "bid"
-        ? view.capabilities.bidOrigin
-        : null;
+      : view.flow.product === "shop-admin"
+        ? view.capabilities.shopAdminOrigin
+        : view.flow.product === "bid"
+          ? view.capabilities.bidOrigin
+          : null;
   if (!origin) return null;
   const href = origin.replace(/\/$/, "");
-  const label = view.flow.product === "shop" ? "Back to LAX Shop" : "Back to LAX Bid";
+  const label =
+    view.flow.product === "shop"
+      ? "Back to LAX Shop"
+      : view.flow.product === "shop-admin"
+        ? "Back to Shop Admin"
+        : "Back to LAX Bid";
   return { href, label };
 }

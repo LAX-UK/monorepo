@@ -17,13 +17,16 @@ const ALLOWED_AUTHORIZE_PARAMS = [
   "code_challenge_method",
   "prompt",
   "max_age",
+  "acr_values",
 ] as const;
 
-export type HostedAuthProduct = "shop" | "bid" | "unknown";
+export type HostedAuthProduct = "shop" | "bid" | "shop-admin" | "unknown";
+export type HostedAuthAudience = "customer" | "staff";
 
 export type HostedAuthFlow = {
   clientId: RegisteredOidcClientId | null;
   product: HostedAuthProduct;
+  audience: HostedAuthAudience;
   continuationQuery: string;
   authorizeResumePath: string | null;
   loginPath: string;
@@ -31,9 +34,15 @@ export type HostedAuthFlow = {
 };
 
 function productForClient(clientId: RegisteredOidcClientId): HostedAuthProduct {
+  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) return "shop-admin";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB) return "shop";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) return "bid";
   return "unknown";
+}
+
+function audienceForClient(clientId: RegisteredOidcClientId): HostedAuthAudience {
+  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) return "staff";
+  return "customer";
 }
 
 function uniqueOrigins(uris: readonly string[]): string[] {
@@ -52,6 +61,7 @@ function emptyFlow(): HostedAuthFlow {
   return {
     clientId: null,
     product: "unknown",
+    audience: "customer",
     continuationQuery: "",
     authorizeResumePath: null,
     loginPath: "/login",
@@ -93,6 +103,7 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
   return {
     clientId,
     product,
+    audience: audienceForClient(clientId),
     continuationQuery,
     authorizeResumePath: canResume ? `${AUTHORIZE_PATH}?${continuationQuery}` : null,
     loginPath: `/login?${productHintQuery}`,
