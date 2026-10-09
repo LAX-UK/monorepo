@@ -37,6 +37,12 @@ on:
         required: false
         type: string
         default: ""
+      shop_api_sha:
+        description: >-
+          Deployed shop-api commit SHA (defaults to live shopApi.release from /health/ready,
+          then storefront SHA when unset)
+        required: false
+        type: string
       seed_catalogue:
         description: >-
           Run foundation catalogue seed (destructive: re-sold-outs reed-study editions).
@@ -84,10 +90,12 @@ jobs:
             exit 0
           fi
           sha="$INPUT_SHOP_SHA"
+          live_api_sha=""
           if [[ -z "$sha" || ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
             for _ in $(seq 1 30); do
               if body="$(curl --fail --silent --max-time 15 https://test-shop.lax.bid/health/ready)"; then
                 sha="$(jq -r '.release // empty' <<<"$body")"
+                live_api_sha="$(jq -r '.dependencies.shopApi.release // empty' <<<"$body")"
                 if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
                   break
                 fi
@@ -100,7 +108,23 @@ jobs:
             exit 1
           fi
           api_sha="$INPUT_SHOP_API_SHA"
-          if [[ -z "$api_sha" ]]; then
+          if [[ -z "$api_sha" || ! "$api_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            if [[ ! "$live_api_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              for _ in $(seq 1 10); do
+                if body="$(curl --fail --silent --max-time 15 https://test-shop.lax.bid/health/ready)"; then
+                  live_api_sha="$(jq -r '.dependencies.shopApi.release // empty' <<<"$body")"
+                  if [[ "$live_api_sha" =~ ^[0-9a-f]{40}$ ]]; then
+                    break
+                  fi
+                fi
+                sleep 5
+              done
+            fi
+            if [[ "$live_api_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              api_sha="$live_api_sha"
+            fi
+          fi
+          if [[ -z "$api_sha" || ! "$api_sha" =~ ^[0-9a-f]{40}$ ]]; then
             api_sha="$sha"
           fi
           echo "shop_sha=$sha" >> "$GITHUB_OUTPUT"
