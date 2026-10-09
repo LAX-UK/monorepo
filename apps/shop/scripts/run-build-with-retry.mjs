@@ -16,8 +16,10 @@ if (!Number.isFinite(attempts) || attempts < 1) {
 const FONT_FETCH_PATTERNS = [
   /fonts\.googleapis\.com/i,
   /next\/font\/google/i,
+  /An error occurred in `next\/font`/i,
   /Failed to fetch font/i,
   /Failed to download font/i,
+  /Cannot read properties of null \(reading '1'\)/,
 ];
 
 function sleep(seconds) {
