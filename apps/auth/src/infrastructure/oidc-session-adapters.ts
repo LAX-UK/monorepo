@@ -24,8 +24,12 @@ export class RedisOidcCodeCorrelationStore implements OidcCodeCorrelationStore {
     );
   }
 
-  async consume(codeHash: string): Promise<string | null> {
-    return this.redis.getdel(`${CORRELATION_KEY_PREFIX}${codeHash}`);
+  async peek(codeHash: string): Promise<string | null> {
+    return this.redis.get(`${CORRELATION_KEY_PREFIX}${codeHash}`);
+  }
+
+  async finalize(codeHash: string): Promise<void> {
+    await this.redis.del(`${CORRELATION_KEY_PREFIX}${codeHash}`);
   }
 }
 
