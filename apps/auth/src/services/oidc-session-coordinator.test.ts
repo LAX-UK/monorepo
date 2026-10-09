@@ -248,6 +248,36 @@ describe("OIDC authorization-session coordination", () => {
     });
   });
 
+  it("reuses the same correlation within one token request when claims resolve twice", async () => {
+    const correlations = new MemoryCorrelationStore();
+    const repository = makeRepository({
+      id: "identity-session-double",
+      subjectId: "subject-1",
+      createdAt: new Date("2026-08-13T05:00:00Z"),
+      lastPasswordAuthAt: new Date("2026-08-13T05:00:00Z"),
+      mfaCompletedAt: null,
+      lastStepUpAt: null,
+    });
+    const coordinator = new OidcSessionCoordinator(correlations, repository);
+    await coordinator.captureAuthorizationSession(
+      Response.json({ redirectURI: "https://lax.bid/callback?code=double-resolve-code" }),
+      "identity-session-double",
+    );
+
+    await coordinator.runTokenRequest("double-resolve-code", async () => {
+      const first = await coordinator.resolveIdTokenClaims({
+        subjectId: "subject-1",
+        clientId: "lax-shop-web",
+      });
+      const second = await coordinator.resolveIdTokenClaims({
+        subjectId: "subject-1",
+        clientId: "lax-shop-web",
+      });
+      expect(second).toEqual(first);
+    });
+    expect(repository.upsertRpSession).toHaveBeenCalledTimes(2);
+  });
+
   it("allows only one concurrent exchange to consume a correlation", async () => {
     const correlations = new MemoryCorrelationStore();
     const repository = makeRepository({
