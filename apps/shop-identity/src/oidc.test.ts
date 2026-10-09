@@ -160,8 +160,9 @@ describe("validateIdTokenClaims", () => {
 
     expect(validateIdTokenClaims(valid, expected)).toBe(true);
     expect(validateIdTokenClaims({ ...valid, aud: ["other", "lax-shop-web"] }, expected)).toBe(
-      false,
+      true,
     );
+    expect(validateIdTokenClaims({ ...valid, aud: ["other-client"] }, expected)).toBe(false);
     expect(validateIdTokenClaims({ ...valid, nonce: "wrong" }, expected)).toBe(false);
     expect(validateIdTokenClaims({ ...valid, aud: "other" }, expected)).toBe(false);
     expect(validateIdTokenClaims({ ...valid, iss: "https://evil.example" }, expected)).toBe(false);
