@@ -16,6 +16,7 @@ import type { Redis } from "ioredis";
 import type { AuthAppEnv } from "../env.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
+import { createSilverAcrAuthorizeGateMiddleware } from "../infrastructure/silver-acr-authorize-gate.middleware.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
@@ -31,7 +32,6 @@ import {
   type RefreshReplayRedis,
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
-import { createSilverAcrAuthorizeGateMiddleware } from "../middleware/silver-acr-authorize-gate.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";

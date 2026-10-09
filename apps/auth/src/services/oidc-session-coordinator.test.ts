@@ -80,7 +80,6 @@ describe("OIDC authorization-session coordination", () => {
     const coordinator = new OidcSessionCoordinator(
       correlations,
       repository,
-      600,
       () => new Date("2026-08-13T05:05:00Z"),
     );
     await coordinator.captureAuthorizationSession(
@@ -124,7 +123,6 @@ describe("OIDC authorization-session coordination", () => {
         mfaCompletedAt: null,
         lastStepUpAt: null,
       }),
-      600,
     );
     await expect(
       missing.runTokenRequest("never-captured", () =>
@@ -143,7 +141,6 @@ describe("OIDC authorization-session coordination", () => {
         mfaCompletedAt: null,
         lastStepUpAt: null,
       }),
-      600,
     );
     await invalid.captureAuthorizationSession(
       Response.json({ redirectURI: "https://lax.bid/callback?code=invalid-correlation" }),
@@ -206,7 +203,6 @@ describe("OIDC authorization-session coordination", () => {
     const coordinator = new OidcSessionCoordinator(
       correlations,
       repository,
-      600,
       () => new Date("2026-08-13T05:05:00Z"),
     );
     await coordinator.captureAuthorizationSession(
@@ -236,7 +232,6 @@ describe("OIDC authorization-session coordination", () => {
     const coordinator = new OidcSessionCoordinator(
       correlations,
       repository,
-      600,
       () => new Date("2026-08-13T05:05:00Z"),
     );
     await coordinator.captureAuthorizationSession(
@@ -263,7 +258,7 @@ describe("OIDC authorization-session coordination", () => {
       mfaCompletedAt: null,
       lastStepUpAt: null,
     });
-    const coordinator = new OidcSessionCoordinator(correlations, repository, 600);
+    const coordinator = new OidcSessionCoordinator(correlations, repository);
     await coordinator.captureAuthorizationSession(
       Response.json({ redirectURI: "https://lax.bid/callback?code=concurrent-code" }),
       "identity-session-3",

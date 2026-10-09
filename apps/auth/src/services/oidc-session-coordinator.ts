@@ -147,7 +147,6 @@ export class OidcSessionCoordinator {
   constructor(
     private readonly correlations: OidcCodeCorrelationStore,
     private readonly sessions: OidcRpSessionRepository,
-    private readonly recentStepUpMaxAgeSec: number,
     private readonly now: () => Date = () => new Date(),
   ) {}
 

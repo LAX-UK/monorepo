@@ -38,7 +38,6 @@ export function createOidcPhase3Services(options: {
     sessions: new OidcSessionCoordinator(
       new RedisOidcCodeCorrelationStore(options.redis),
       new DrizzleOidcRpSessionRepository(options.db),
-      options.recentStepUpMaxAgeSec,
     ),
     confidentialClients: new DrizzleConfidentialClientAuthenticator(options.db),
     tokenManagement: new OauthTokenManagementService(
