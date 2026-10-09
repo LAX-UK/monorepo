@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCookieHeaderForAuthorizationCodeCapture,
   buildSessionDataClearSetCookies,
   stripBetterAuthSessionCookies,
   withSessionDataClearedOnLogout,
@@ -10,6 +11,15 @@ describe("better-auth session cookies", () => {
     const raw =
       "better-auth.session_token=old; better-auth.session_data=cache; better-auth.session_data.0=chunk; shop=keep";
     expect(stripBetterAuthSessionCookies(raw)).toBe("shop=keep");
+  });
+
+  it("keeps request session_token when authorize response does not rotate it", () => {
+    const header = buildCookieHeaderForAuthorizationCodeCapture(
+      "better-auth.session_token=keep-me; better-auth.session_data=stale",
+      null,
+    );
+    expect(header).toContain("better-auth.session_token=keep-me");
+    expect(header).not.toContain("session_data");
   });
 
   it("appends session_data expiry when session_token is cleared on logout", () => {

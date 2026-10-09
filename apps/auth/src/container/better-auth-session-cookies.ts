@@ -1,6 +1,7 @@
-const BETTER_AUTH_SESSION_COOKIE = /^(?:__Secure-)?better-auth\.session_(?:token|data)(?:\.\d+)?$/;
+const BETTER_AUTH_SESSION_DATA_COOKIE = /^(?:__Secure-)?better-auth\.session_data(?:\.\d+)?$/;
+const BETTER_AUTH_SESSION_TOKEN_COOKIE = /^(?:__Secure-)?better-auth\.session_token$/;
 
-export function stripBetterAuthSessionCookies(rawCookie: string | null | undefined): string {
+function stripCookieNames(rawCookie: string | null | undefined, namePattern: RegExp): string {
   if (!rawCookie?.trim()) return "";
   return rawCookie
     .split(";")
@@ -9,9 +10,33 @@ export function stripBetterAuthSessionCookies(rawCookie: string | null | undefin
       const separator = part.indexOf("=");
       if (separator <= 0) return Boolean(part);
       const name = part.slice(0, separator);
-      return !BETTER_AUTH_SESSION_COOKIE.test(name);
+      return !namePattern.test(name);
     })
     .join("; ");
+}
+
+/** Removes session_token and session_data (used in tests). */
+export function stripBetterAuthSessionCookies(rawCookie: string | null | undefined): string {
+  return stripCookieNames(
+    stripCookieNames(rawCookie, BETTER_AUTH_SESSION_DATA_COOKIE),
+    BETTER_AUTH_SESSION_TOKEN_COOKIE,
+  );
+}
+
+export function stripBetterAuthSessionDataCookies(rawCookie: string | null | undefined): string {
+  return stripCookieNames(rawCookie, BETTER_AUTH_SESSION_DATA_COOKIE);
+}
+
+export function buildCookieHeaderForAuthorizationCodeCapture(
+  requestCookie: string | null | undefined,
+  responseSessionTokenPair: string | null | undefined,
+): string {
+  let cookie = stripBetterAuthSessionDataCookies(requestCookie);
+  if (responseSessionTokenPair) {
+    cookie = stripCookieNames(cookie, BETTER_AUTH_SESSION_TOKEN_COOKIE);
+    return cookie ? `${cookie}; ${responseSessionTokenPair}` : responseSessionTokenPair;
+  }
+  return cookie;
 }
 
 export function readResponseSetCookies(response: Response): string[] {

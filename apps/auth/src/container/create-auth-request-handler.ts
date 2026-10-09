@@ -11,8 +11,8 @@ import {
   readAuthorizationCodeFromResponse,
 } from "../services/oidc-session-coordinator.js";
 import {
+  buildCookieHeaderForAuthorizationCodeCapture,
   readResponseSetCookies,
-  stripBetterAuthSessionCookies,
   withSessionDataClearedOnLogout,
 } from "./better-auth-session-cookies.js";
 
@@ -93,14 +93,12 @@ export function createAuthRequestHandler(options: {
       const responseSessionCookie = setCookies
         .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
         .find(Boolean);
-      const stripped = stripBetterAuthSessionCookies(sessionHeaders.get("cookie"));
       sessionHeaders.set(
         "cookie",
-        responseSessionCookie
-          ? stripped
-            ? `${stripped}; ${responseSessionCookie}`
-            : responseSessionCookie
-          : stripped,
+        buildCookieHeaderForAuthorizationCodeCapture(
+          sessionHeaders.get("cookie"),
+          responseSessionCookie ?? null,
+        ),
       );
       const codeSession = await options.auth.api.getSession({
         headers: sessionHeaders,
