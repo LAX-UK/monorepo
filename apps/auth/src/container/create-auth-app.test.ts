@@ -148,6 +148,20 @@ describe("auth HTTP app composition", () => {
     expect(light.headers.get("content-type")).toContain("image/svg+xml");
   });
 
+  it("redirects bare root to hosted login preserving query", async () => {
+    const app = buildApp();
+    const response = await app.request("https://auth.test/?client_id=lax-shop-admin");
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?client_id=lax-shop-admin");
+  });
+
+  it("redirects staff sign-up to staff login", async () => {
+    const app = buildApp();
+    const response = await app.request("https://auth.test/sign-up?client_id=lax-shop-admin");
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?client_id=lax-shop-admin");
+  });
+
   it("redirects prompt=create login requests to hosted sign-up", async () => {
     const app = buildApp();
     const response = await app.request(

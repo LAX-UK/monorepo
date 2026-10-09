@@ -14,12 +14,22 @@ describe("isAllowedContinueUrl", () => {
   });
 
   it("accepts registered relying-party callbacks only", () => {
+    const shopAdmin = "http://localhost:3030";
     expect(
       isAllowedContinueUrl(`${shopIdentity}/auth/callback?code=x`, origin, [shopIdentity]),
     ).toBe(true);
+    expect(isAllowedContinueUrl(`${shopAdmin}/api/auth/callback?code=x`, origin, [shopAdmin])).toBe(
+      true,
+    );
+    expect(isAllowedContinueUrl(`${shopAdmin}/api/auth/callbackx`, origin, [shopAdmin])).toBe(
+      false,
+    );
     expect(isAllowedContinueUrl("https://evil.example/auth/callback", origin, [shopIdentity])).toBe(
       false,
     );
+    expect(
+      isAllowedContinueUrl("https://evil.example/api/auth/callback", origin, [shopAdmin]),
+    ).toBe(false);
     expect(isAllowedContinueUrl(`${shopIdentity}/steal`, origin, [shopIdentity])).toBe(false);
   });
 

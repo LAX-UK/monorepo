@@ -42,7 +42,7 @@ async function ShopAdminLoginContent({
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 px-6 py-12">
       <h1 className="text-2xl font-semibold">Shop admin sign-in</h1>
       <p className="text-sm text-on-surface-variant">
-        Staff sign-in uses the confidential <code>lax-shop-admin</code> OIDC client with silver MFA.
+        Sign in with your LAX staff email and password. You may be asked for an authenticator code.
       </p>
       <p className="text-sm text-error" role="alert">
         {errorMessage}

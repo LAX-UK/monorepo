@@ -15,6 +15,8 @@ import { cors } from "hono/cors";
 import type { Redis } from "ioredis";
 import type { AuthAppEnv } from "../env.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
+import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
+import { createSilverAcrAuthorizeGateMiddleware } from "../infrastructure/silver-acr-authorize-gate.middleware.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
@@ -64,6 +66,15 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
   const issuer = env.OIDC_ISSUER_URL.replace(/\/+$/, "");
   app.use("/.well-known/*", cors({ origin: "*", maxAge: 60 }));
   app.use("/api/auth/*", createOidcClientPolicyMiddleware());
+  app.use(
+    "/api/auth/*",
+    createSilverAcrAuthorizeGateMiddleware({
+      auth: options.auth,
+      db: options.db,
+      sessions: new DrizzleOidcRpSessionRepository(options.db),
+      issuerOrigin: issuer,
+    }),
+  );
   app.use("/api/auth/*", createAuthRouteCorsMiddleware(options.webOrigins));
   app.use("/api/auth/oauth2/token", createOAuthTokenRequestContextMiddleware());
   app.use(

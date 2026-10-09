@@ -39,6 +39,7 @@ const envSchema = z
       .default(false),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     SHOP_ORIGIN: z.string().url().default("http://localhost:3020"),
+    SHOP_ADMIN_ORIGIN: z.string().url().default("http://localhost:3030"),
     WEB_ORIGINS: z.preprocess((val) => {
       let source = val;
       if (source === undefined || source === "" || source == null) {
@@ -148,6 +149,7 @@ const envSchema = z
         ["OIDC_ISSUER_URL", e.OIDC_ISSUER_URL],
         ["WEB_ORIGIN", e.WEB_ORIGIN],
         ["SHOP_ORIGIN", e.SHOP_ORIGIN],
+        ["SHOP_ADMIN_ORIGIN", e.SHOP_ADMIN_ORIGIN],
         ...(e.WEB_ORIGINS ?? []).map((url): [field: string, url: string] => ["WEB_ORIGINS", url]),
         ...(e.SSR_TRUSTED_ORIGINS ?? []).map((url): [field: string, url: string] => [
           "SSR_TRUSTED_ORIGINS",

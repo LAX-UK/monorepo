@@ -237,20 +237,28 @@ function hostedBrandLogoMarkup(brand: HostedBrandProfile, assetSuffix: string): 
   }
   const alt = escapeHostedHtml(brand.logoAlt ?? brand.productName);
   const src = escapeHostedHtml(`${brand.logoSrc}${assetSuffix}`);
+  const invertClass = brand.logoDarkSrc ? "" : " brand-logo--invert-dark";
   if (brand.logoDarkSrc) {
     const darkSrc = escapeHostedHtml(`${brand.logoDarkSrc}${assetSuffix}`);
     return `<picture class="brand-logo-picture">
       <source srcset="${darkSrc}" media="(prefers-color-scheme: dark)">
-      <img class="brand-logo" src="${src}" alt="${alt}" width="240" height="62">
+      <img class="brand-logo${invertClass}" src="${src}" alt="${alt}" width="240" height="62">
     </picture>`;
   }
-  return `<img class="brand-logo" src="${src}" alt="${alt}" width="201" height="44">`;
+  return `<img class="brand-logo${invertClass}" src="${src}" alt="${alt}" width="201" height="44">`;
 }
 
 export function buildHostedAuthHtml(page: HostedAuthPage): string {
   const themeClass = `theme-${page.brand.theme}`;
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
   const logo = hostedBrandLogoMarkup(page.brand, asset);
+  const brandSub = page.brand.logoSrc
+    ? ""
+    : `<p class="brand-sub">${escapeHostedHtml(HOSTED_AUTH_TOKENS.companyName)}</p>`;
+  const brandTagline = page.brand.tagline
+    ? `<p class="brand-tagline">${escapeHostedHtml(page.brand.tagline)}</p>`
+    : "";
+  const documentTitle = `${page.title} · ${page.brand.productName}`;
   const productBack = page.productBack
     ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
@@ -259,7 +267,7 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHostedHtml(page.title)}</title>
+  <title>${escapeHostedHtml(documentTitle)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="${FONT_HREF}">
@@ -271,7 +279,8 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
     ${productBack}
     <div class="brand">
       ${logo}
-      <p class="brand-sub">${escapeHostedHtml(HOSTED_AUTH_TOKENS.companyName)}</p>
+      ${brandTagline}
+      ${brandSub}
     </div>
     <div class="heading">
       <h1>${escapeHostedHtml(page.title)}</h1>

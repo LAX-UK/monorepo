@@ -91,6 +91,16 @@ describe("parseHostedAuthFlow", () => {
     expect(normalized?.searchParams.get("hosted_chrome")).toBe("sign-up");
   });
 
+  it("keeps acr_values in the authorize resume query", () => {
+    const flow = parseHostedAuthFlow(
+      new URLSearchParams({
+        ...shopAuthorize,
+        acr_values: "urn:mace:incommon:iap:silver",
+      }),
+    );
+    expect(flow.authorizeResumePath).toContain("acr_values=");
+  });
+
   it("keeps the full authorize query for cookie-backed resume only", () => {
     const flow = parseHostedAuthFlow(new URLSearchParams(shopAuthorize));
     expect(flow.loginPath).toBe("/login?client_id=lax-shop-web");

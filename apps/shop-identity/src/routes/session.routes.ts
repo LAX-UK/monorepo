@@ -14,6 +14,9 @@ export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): voi
   app.get("/me", async (c) => {
     const session = await readSession(sessionRepository, c);
     if (!session?.subject) {
+      if (session?.oauth) {
+        return c.json({ authenticated: false, pendingLogin: true }, 401);
+      }
       clearShopAuthCookies(c);
       return c.json({ authenticated: false }, 401);
     }

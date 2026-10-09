@@ -16,6 +16,19 @@ describe("assertMutationCsrf", () => {
     ).not.toThrow();
   });
 
+  it("allows server actions with origin only", () => {
+    expect(() =>
+      assertMutationCsrf({
+        method: "POST",
+        origin: "https://admin.example.com",
+        expectedOrigin: "https://admin.example.com",
+        csrfHeader: null,
+        csrfCookie: "abc",
+        fromServerAction: true,
+      }),
+    ).not.toThrow();
+  });
+
   it("requires matching origin and csrf for POST", () => {
     expect(() =>
       assertMutationCsrf({

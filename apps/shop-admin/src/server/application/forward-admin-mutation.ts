@@ -5,14 +5,9 @@ import { cookies, headers } from "next/headers";
 import { getShopAdminContainer } from "../container";
 import { type AdminMutationResult, mapAdminMutationErrorBody } from "./admin-mutation-result";
 
-async function resolveMutationOrigin(fallbackOrigin: string): Promise<string> {
+async function resolveMutationOrigin(): Promise<string | null> {
   const headerStore = await headers();
-  const originHeader = headerStore.get("origin")?.trim();
-  if (originHeader) return originHeader;
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-  if (!host) return fallbackOrigin;
-  const proto = headerStore.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
+  return headerStore.get("origin")?.trim() ?? null;
 }
 
 export type ForwardAdminMutationInput = {
@@ -52,7 +47,10 @@ export async function forwardAdminMutation<T = unknown>(
   };
 
   try {
-    const origin = await resolveMutationOrigin(container.config.publicOrigin);
+    const headerStore = await headers();
+    const origin = await resolveMutationOrigin();
+    const csrfHeader = headerStore.get("x-csrf-token")?.trim() ?? null;
+    const fromServerAction = Boolean(headerStore.get("next-action"));
     const result = await container.forwardAdminRequest({
       config: container.config,
       sessions: container.sessions,
@@ -64,8 +62,9 @@ export async function forwardAdminMutation<T = unknown>(
         : `/api/admin/${input.bffPath.replace(/^\//, "")}`,
       method: input.method,
       origin,
-      csrfHeader: csrfCookie,
+      csrfHeader,
       csrfCookie,
+      fromServerAction,
       body: input.body,
       forwardHeaders,
     });

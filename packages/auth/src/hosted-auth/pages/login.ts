@@ -17,11 +17,25 @@ import {
 export { HOSTED_LOGIN_SCRIPT } from "../scripts.js";
 
 function phoneAndSignUp(view: HostedAuthView): string {
+  if (view.flow.audience === "staff") {
+    return `<p class="links-secondary staff-access-note">Access is limited to LAX staff accounts. Ask a Shop administrator if you need access.</p>`;
+  }
   const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
   const phone = view.capabilities.phoneEnabled
     ? `<p class="links-secondary">${continuationAnchor("Sign in with phone number", "/phone", view.flow)}</p>`
     : "";
   return `<div class="links links--stacked" data-login-chrome="footer">${signUp}${phone}</div>`;
+}
+
+function magicLinkInsteadButton(view: HostedAuthView): string {
+  if (view.flow.audience === "staff") return "";
+  return hostedButton({
+    label: "Email me a sign-in link instead",
+    type: "button",
+    kind: "secondary",
+    id: "magic-link-instead",
+    loadingLabel: "Sending…",
+  });
 }
 
 function emailFirstBody(view: HostedAuthView): string {
@@ -43,13 +57,7 @@ function emailFirstBody(view: HostedAuthView): string {
         ${passwordField({ id: "password", label: "Password", autocomplete: "current-password" })}
         <div class="field-row-end">${continuationAnchor("Forgot password?", "/forgot-password", view.flow)}</div>
         ${hostedButton({ label: "Sign In", loadingLabel: "Signing in…" })}
-        ${hostedButton({
-          label: "Email me a sign-in link instead",
-          type: "button",
-          kind: "secondary",
-          id: "magic-link-instead",
-          loadingLabel: "Sending…",
-        })}
+        ${magicLinkInsteadButton(view)}
       </div>
       <div class="auth-step" data-login-step="magic-link-sent" hidden>
         <p id="magic-link-confirmation" class="lead"></p>
@@ -93,9 +101,13 @@ function combinedBody(view: HostedAuthView): string {
 
 export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
   const productBack = resolveHostedProductBackLink(view);
+  const description =
+    view.flow.audience === "staff"
+      ? "Staff sign-in for the LAX Shop admin dashboard."
+      : `Sign in to continue to ${view.brand.productName}.`;
   return buildHostedAuthHtml({
     title: "Sign in",
-    description: `Sign in to continue to ${view.brand.productName}.`,
+    description,
     brand: view.brand,
     config: view.config,
     body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),

@@ -15,6 +15,7 @@ export function socialProviderButton(provider: SocialProviderId): string {
 }
 
 export function socialActions(view: HostedAuthView): string {
+  if (view.flow.audience === "staff") return "";
   const social = (
     [
       view.capabilities.googleEnabled ? socialProviderButton("google") : "",

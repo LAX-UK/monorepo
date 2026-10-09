@@ -49,9 +49,29 @@ async function redirectSignedInIfNeeded(
   }
 }
 
+const STAFF_CUSTOMER_ONLY_PATHS = new Set(["/sign-up", "/phone", "/magic-link"]);
+
+function redirectStaffCustomerPaths(
+  c: Context,
+  capabilities: HostedAuthCapabilities,
+): Response | null {
+  const path = new URL(c.req.url).pathname;
+  if (!STAFF_CUSTOMER_ONLY_PATHS.has(path)) return null;
+  const view = viewFromRequest(c.req.url, capabilities);
+  if (view.flow.audience !== "staff") return null;
+  return c.redirect(view.flow.loginPath, 302);
+}
+
 export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMountOptions): void {
+  app.get("/", (c) => {
+    const url = new URL(c.req.url);
+    return c.redirect(`/login${url.search}`, 302);
+  });
+
   const html = (path: string, render: typeof buildHostedLoginHtml, signedInRedirect = false) => {
     app.get(path, async (c) => {
+      const staffRedirect = redirectStaffCustomerPaths(c, capabilities);
+      if (staffRedirect) return staffRedirect;
       if (signedInRedirect) {
         const redirected = await redirectSignedInIfNeeded(c, capabilities);
         if (redirected) return redirected;

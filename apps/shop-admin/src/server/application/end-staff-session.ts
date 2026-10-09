@@ -15,7 +15,7 @@ export async function endStaffSession(input: {
   if (session?.idToken) {
     return {
       redirectTo: buildEndSessionUrl({
-        endSessionEndpoint: `${input.config.oidcInternalIssuer}/api/auth/oauth2/end-session`,
+        endSessionEndpoint: `${input.config.oidcIssuer}/api/auth/oauth2/end-session`,
         clientId: input.config.oidcClientId,
         idTokenHint: session.idToken,
         postLogoutRedirectUri: `${input.config.publicOrigin}/`,

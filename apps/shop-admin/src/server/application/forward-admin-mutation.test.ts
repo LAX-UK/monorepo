@@ -21,8 +21,8 @@ vi.mock("next/headers", () => ({
   }),
   headers: async () => ({
     get: (name: string) => {
-      if (name === "x-forwarded-host") return "admin.example.com";
-      if (name === "x-forwarded-proto") return "https";
+      if (name === "origin") return "http://localhost:3030";
+      if (name === "next-action") return "1";
       return null;
     },
   }),
@@ -46,8 +46,9 @@ describe("forwardAdminMutation", () => {
     });
     expect(forwardAdminRequest).toHaveBeenCalledWith(
       expect.objectContaining({
-        origin: "https://admin.example.com",
-        csrfHeader: "csrf-1",
+        origin: "http://localhost:3030",
+        csrfHeader: null,
+        fromServerAction: true,
       }),
     );
   });
