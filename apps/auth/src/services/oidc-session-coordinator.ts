@@ -23,7 +23,10 @@ export type OidcIdentitySessionEvidence = {
 
 export type OidcCodeCorrelationStore = {
   putIfAbsent(codeHash: string, identitySessionId: string, ttlSec: number): Promise<boolean>;
-  consume(codeHash: string): Promise<string | null>;
+  /** Read the correlated identity session without consuming the authorization code. */
+  peek(codeHash: string): Promise<string | null>;
+  /** Remove the correlation after a successful authorization_code token response. */
+  finalize(codeHash: string): Promise<void>;
 };
 
 export type OidcRpSessionRepository = {
@@ -167,14 +170,21 @@ export class OidcSessionCoordinator {
 
   async runTokenRequest<T>(code: string | null, operation: () => Promise<T>): Promise<T> {
     if (!code) return operation();
-    return this.#requestContext.run({ codeHash: hashAuthorizationCode(code) }, operation);
+    const codeHash = hashAuthorizationCode(code);
+    return this.#requestContext.run({ codeHash }, async () => {
+      const result = await operation();
+      if (result instanceof Response && result.ok) {
+        await this.correlations.finalize(codeHash);
+      }
+      return result;
+    });
   }
 
   async #identitySessionForAuthorizationCode(
     requestContext: TokenRequestContext,
   ): Promise<OidcIdentitySessionEvidence> {
     requestContext.identitySession ??= (async () => {
-      const identitySessionId = await this.correlations.consume(requestContext.codeHash);
+      const identitySessionId = await this.correlations.peek(requestContext.codeHash);
       if (!identitySessionId) throw new OidcAuthorizationCodeCorrelationError();
       const identitySession = await this.sessions.findIdentitySession(identitySessionId);
       if (!identitySession) throw new OidcAuthorizationCodeCorrelationError();

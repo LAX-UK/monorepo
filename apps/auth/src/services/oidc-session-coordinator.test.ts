@@ -19,10 +19,12 @@ class MemoryCorrelationStore implements OidcCodeCorrelationStore {
     return true;
   }
 
-  async consume(codeHash: string): Promise<string | null> {
-    const value = this.values.get(codeHash) ?? null;
+  async peek(codeHash: string): Promise<string | null> {
+    return this.values.get(codeHash) ?? null;
+  }
+
+  async finalize(codeHash: string): Promise<void> {
     this.values.delete(codeHash);
-    return value;
   }
 }
 
@@ -89,9 +91,15 @@ describe("OIDC authorization-session coordination", () => {
     expect(correlations.values.has("raw-secret-code")).toBe(false);
     expect(correlations.values.has(hashAuthorizationCode("raw-secret-code"))).toBe(true);
 
-    const claims = await coordinator.runTokenRequest("raw-secret-code", () =>
-      coordinator.resolveIdTokenClaims({ subjectId: "subject-1", clientId: "lax-bid-web" }),
-    );
+    const claims = await coordinator
+      .runTokenRequest("raw-secret-code", async () => {
+        const resolved = await coordinator.resolveIdTokenClaims({
+          subjectId: "subject-1",
+          clientId: "lax-bid-web",
+        });
+        return Response.json(resolved);
+      })
+      .then(async (response) => response.json());
     expect(claims).toEqual({
       sid: "identity-session-1",
       auth_time: Math.floor(createdAt.getTime() / 1_000),
@@ -274,11 +282,45 @@ describe("OIDC authorization-session coordination", () => {
         clientId: "lax-shop-web",
       });
       expect(second).toEqual(first);
+      return Response.json(first);
     });
     expect(repository.upsertRpSession).toHaveBeenCalledTimes(2);
   });
 
-  it("allows only one concurrent exchange to consume a correlation", async () => {
+  it("allows a failed token response to retry claim resolution with the same code", async () => {
+    const correlations = new MemoryCorrelationStore();
+    const repository = makeRepository({
+      id: "identity-session-retry",
+      subjectId: "subject-1",
+      createdAt: new Date("2026-08-13T05:00:00Z"),
+      lastPasswordAuthAt: new Date("2026-08-13T05:00:00Z"),
+      mfaCompletedAt: null,
+      lastStepUpAt: null,
+    });
+    const coordinator = new OidcSessionCoordinator(correlations, repository);
+    await coordinator.captureAuthorizationSession(
+      Response.json({ redirectURI: "https://lax.bid/callback?code=retry-code" }),
+      "identity-session-retry",
+    );
+
+    await coordinator.runTokenRequest("retry-code", async () =>
+      Response.json({ error: "server_error" }, { status: 500 }),
+    );
+    expect(correlations.values.has(hashAuthorizationCode("retry-code"))).toBe(true);
+
+    await expect(
+      coordinator.runTokenRequest("retry-code", async () => {
+        const claims = await coordinator.resolveIdTokenClaims({
+          subjectId: "subject-1",
+          clientId: "lax-bid-web",
+        });
+        return Response.json(claims);
+      }),
+    ).resolves.toMatchObject({ status: 200 });
+    expect(correlations.values.has(hashAuthorizationCode("retry-code"))).toBe(false);
+  });
+
+  it("allows only one concurrent exchange to finalize a correlation", async () => {
     const correlations = new MemoryCorrelationStore();
     const repository = makeRepository({
       id: "identity-session-3",
@@ -296,12 +338,16 @@ describe("OIDC authorization-session coordination", () => {
 
     const results = await Promise.allSettled(
       [1, 2].map(() =>
-        coordinator.runTokenRequest("concurrent-code", () =>
-          coordinator.resolveIdTokenClaims({ subjectId: "subject-1", clientId: "lax-bid-web" }),
-        ),
+        coordinator.runTokenRequest("concurrent-code", async () => {
+          await coordinator.resolveIdTokenClaims({
+            subjectId: "subject-1",
+            clientId: "lax-bid-web",
+          });
+          return Response.json({ access_token: "token" });
+        }),
       ),
     );
-    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(2);
+    expect(correlations.values.has(hashAuthorizationCode("concurrent-code"))).toBe(false);
   });
 });
