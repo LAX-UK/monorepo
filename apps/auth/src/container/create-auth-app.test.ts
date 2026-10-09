@@ -104,6 +104,7 @@ describe("auth HTTP app composition", () => {
     expect(paths).toContain("/hosted-auth/lax-shop-logo.svg");
     expect(paths).toContain("/hosted-auth/lax-bid-logo.svg");
     expect(paths).toContain("/hosted-auth/lax-bid-logo-light.svg");
+    expect(paths).toContain("/hosted-auth/favicons/favicon-32x32.png");
   });
 
   it("renders Shop branding for a validated Shop authorization query", async () => {
@@ -115,6 +116,7 @@ describe("auth HTTP app composition", () => {
     const html = await response.text();
     expect(html).toContain("theme-shop");
     expect(html).toContain("/hosted-auth/lax-shop-logo.svg");
+    expect(html).toContain("/hosted-auth/favicons/favicon.ico");
     expect(html).toContain("Sign in");
     expect(html).toContain("field-control");
     expect(html).toContain("btn btn-primary");
@@ -146,6 +148,15 @@ describe("auth HTTP app composition", () => {
     const light = await app.request("https://auth.test/hosted-auth/lax-bid-logo-light.svg");
     expect(light.status).toBe(200);
     expect(light.headers.get("content-type")).toContain("image/svg+xml");
+  });
+
+  it("serves vendored LAX favicons for hosted auth HTML", async () => {
+    const app = buildApp();
+    const response = await app.request("https://auth.test/hosted-auth/favicons/favicon-32x32.png");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(bytes.byteLength).toBeGreaterThan(100);
   });
 
   it("redirects bare root to hosted login preserving query", async () => {

@@ -57,6 +57,7 @@ export {
   readHostedBidLogoSvg,
   readHostedShopLogoSvg,
   readHostedAsset,
+  readHostedFaviconBytes,
   type HostedAuthCapabilities,
   type HostedAuthView,
 } from "./hosted-auth/index.js";

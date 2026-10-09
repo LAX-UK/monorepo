@@ -30,6 +30,7 @@ export {
   HOSTED_BID_LOGO_LIGHT_FILENAME,
   HOSTED_BID_LOGO_FILENAME,
   HOSTED_SHOP_LOGO_FILENAME,
+  readHostedFaviconBytes,
 } from "./assets.js";
 export {
   createHostedAuthView,

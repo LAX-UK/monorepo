@@ -13,6 +13,7 @@ import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { SHOP_THEME_COOKIE, parseShopTheme } from "@/lib/theme/shop-theme";
+import { laxFaviconMetadataIcons } from "@auction/branding";
 import type { Metadata } from "next";
 import { Montserrat, Outfit } from "next/font/google";
 import { cookies } from "next/headers";
@@ -44,6 +45,7 @@ export const metadata: Metadata = {
   metadataBase: loadShopStorefrontBaseUrl(),
   title: "LAX Shop",
   description: "London Art Exchange — collect contemporary art editions.",
+  icons: laxFaviconMetadataIcons(),
   openGraph: {
     type: "website",
     title: "LAX Shop",

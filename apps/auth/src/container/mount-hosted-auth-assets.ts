@@ -13,8 +13,14 @@ import {
   OIDC_CONSENT_SCRIPT,
   readHostedBidLogoLightSvg,
   readHostedBidLogoSvg,
+  readHostedFaviconBytes,
   readHostedShopLogoSvg,
 } from "@auction/auth";
+import {
+  LAX_FAVICON_ASSET_NAMES,
+  LAX_HOSTED_AUTH_FAVICON_BASE_PATH,
+  laxFaviconContentType,
+} from "@auction/branding";
 import type { Hono } from "hono";
 
 export function mountHostedAuthAssets(app: Hono): void {
@@ -56,6 +62,16 @@ export function mountHostedAuthAssets(app: Hono): void {
       "Content-Type": "image/svg+xml; charset=utf-8",
     });
   });
+  for (const name of LAX_FAVICON_ASSET_NAMES) {
+    const path = `${LAX_HOSTED_AUTH_FAVICON_BASE_PATH}/${name}`;
+    app.get(path, (c) => {
+      c.header("Cache-Control", cache);
+      const body = readHostedFaviconBytes(name);
+      return c.body(body, 200, {
+        "Content-Type": laxFaviconContentType(name),
+      });
+    });
+  }
   for (const [path, body] of scripts) {
     app.get(path, (c) => {
       c.header("Cache-Control", cache);
