@@ -1,9 +1,11 @@
+import { laxFaviconMetadataIcons } from "@auction/branding";
 import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "LAX Shop Admin",
   description: "Staff administration for shop.lax.art",
+  icons: laxFaviconMetadataIcons(),
 };
 
 export default function ShopAdminRootLayout({ children }: { children: React.ReactNode }) {

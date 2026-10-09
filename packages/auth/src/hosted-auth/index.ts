@@ -30,7 +30,15 @@ export {
   HOSTED_BID_LOGO_LIGHT_FILENAME,
   HOSTED_BID_LOGO_FILENAME,
   HOSTED_SHOP_LOGO_FILENAME,
+  readHostedFaviconBytes,
 } from "./assets.js";
+export {
+  HOSTED_AUTH_FAVICON_BASE_PATH,
+  HOSTED_FAVICON_ASSET_NAMES,
+  hostedFaviconContentType,
+  hostedFaviconLinkTags,
+  type HostedFaviconAssetName,
+} from "./favicons.js";
 export {
   createHostedAuthView,
   hostedAuthViewFromSearch,
