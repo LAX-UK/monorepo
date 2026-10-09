@@ -1,6 +1,6 @@
-import { laxFaviconLinkTags } from "@auction/branding";
 import type { HostedBrandProfile } from "./brand.js";
 import type { HostedFieldKind } from "./browser/constraints.js";
+import { hostedFaviconLinkTags } from "./favicons.js";
 import type { HostedAuthFlow } from "./flow-context.js";
 import { productHintHref } from "./flow-context.js";
 import { HOSTED_AUTH_ASSET_VERSION, HOSTED_AUTH_POLICY } from "./policy.js";
@@ -269,7 +269,7 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHostedHtml(documentTitle)}</title>
-${laxFaviconLinkTags()}
+${hostedFaviconLinkTags()}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="${FONT_HREF}">

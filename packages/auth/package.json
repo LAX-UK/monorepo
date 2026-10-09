@@ -45,7 +45,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@auction/branding": "workspace:^",
     "@auction/identity-contracts": "workspace:^",
     "@better-auth/utils": "0.4.2",
     "better-auth": "1.6.22",

@@ -220,9 +220,6 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@auction/branding':
-        specifier: workspace:*
-        version: link:../../packages/branding
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
@@ -1004,9 +1001,6 @@ importers:
 
   packages/auth:
     dependencies:
-      '@auction/branding':
-        specifier: workspace:^
-        version: link:../branding
       '@auction/identity-contracts':
         specifier: workspace:^
         version: link:../identity-contracts

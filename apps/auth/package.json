@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@auction/auth": "workspace:*",
-    "@auction/branding": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
     "@auction/observability": "workspace:*",

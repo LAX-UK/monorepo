@@ -58,6 +58,10 @@ export {
   readHostedShopLogoSvg,
   readHostedAsset,
   readHostedFaviconBytes,
+  HOSTED_AUTH_FAVICON_BASE_PATH,
+  HOSTED_FAVICON_ASSET_NAMES,
+  hostedFaviconContentType,
+  type HostedFaviconAssetName,
   type HostedAuthCapabilities,
   type HostedAuthView,
 } from "./hosted-auth/index.js";

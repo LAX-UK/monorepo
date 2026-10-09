@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { LaxFaviconAssetName } from "@auction/branding";
+import type { HostedFaviconAssetName } from "./favicons.js";
 
 export const HOSTED_SHOP_LOGO_FILENAME = "lax-shop-logo.svg";
 export const HOSTED_BID_LOGO_FILENAME = "lax-bid-logo.svg";
@@ -39,7 +39,7 @@ export function readHostedAsset(name: string): string {
   return readFileSync(path, "utf8");
 }
 
-export function readHostedFaviconBytes(name: LaxFaviconAssetName): Buffer {
+export function readHostedFaviconBytes(name: HostedFaviconAssetName): Buffer {
   const { path } = resolveHostedAssetPath(join(HOSTED_FAVICONS_DIR, name));
   return readFileSync(path);
 }

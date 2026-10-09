@@ -33,6 +33,13 @@ export {
   readHostedFaviconBytes,
 } from "./assets.js";
 export {
+  HOSTED_AUTH_FAVICON_BASE_PATH,
+  HOSTED_FAVICON_ASSET_NAMES,
+  hostedFaviconContentType,
+  hostedFaviconLinkTags,
+  type HostedFaviconAssetName,
+} from "./favicons.js";
+export {
   createHostedAuthView,
   hostedAuthViewFromSearch,
   buildHostedAuthPageConfig,
