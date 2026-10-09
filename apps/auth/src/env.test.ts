@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAuthEnv } from "./env.js";
+import { deriveShopAdminOriginFromShopOrigin, parseAuthEnv } from "./env.js";
 
 const base = {
   NODE_ENV: "development",
@@ -82,5 +82,22 @@ describe("auth app environment contract", () => {
   it("reports SHOP_ORIGIN when production env omits it", () => {
     const { SHOP_ORIGIN: _shopOrigin, ...withoutShopOrigin } = production;
     expect(() => parseAuthEnv(withoutShopOrigin)).toThrow(/SHOP_ORIGIN/);
+  });
+
+  it("derives SHOP_ADMIN_ORIGIN from test SHOP_ORIGIN when unset", () => {
+    const env = parseAuthEnv({
+      ...production,
+      SHOP_ORIGIN: "https://test-shop.lax.bid",
+    });
+    expect(env.SHOP_ADMIN_ORIGIN).toBe("https://test-shop-admin.lax.bid");
+  });
+
+  it("maps known shop hosts to shop-admin origins", () => {
+    expect(deriveShopAdminOriginFromShopOrigin("https://test-shop.lax.bid")).toBe(
+      "https://test-shop-admin.lax.bid",
+    );
+    expect(deriveShopAdminOriginFromShopOrigin("https://shop.lax.bid")).toBe(
+      "https://shop-admin.lax.bid",
+    );
   });
 });

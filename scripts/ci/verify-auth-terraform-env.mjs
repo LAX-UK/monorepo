@@ -38,6 +38,7 @@ const testRequiredAuthKeys = [
   "OIDC_ISSUER_URL",
   "WEB_ORIGIN",
   "SHOP_ORIGIN",
+  "SHOP_ADMIN_ORIGIN",
   "WEB_ORIGINS",
   "AUTH_DEK_KEY",
   "IDENTITY_MACHINE_CLIENT_ID",
@@ -56,6 +57,7 @@ const prodRequiredAuthKeys = [
   "OIDC_ISSUER_URL",
   "WEB_ORIGIN",
   "SHOP_ORIGIN",
+  "SHOP_ADMIN_ORIGIN",
   "WEB_ORIGINS",
   "AUTH_DEK_KEY",
 ];
@@ -183,8 +185,11 @@ function collectViolations(target) {
     }
   }
 
-  if (tier === "prod" && !/local\.domain\.shop/.test(auth)) {
+  if (tier === "prod" && !/local\.domain\.shop[^_]/.test(auth)) {
     violations.push("[prod] SHOP_ORIGIN must bind to local.domain.shop");
+  }
+  if (tier === "prod" && !/local\.domain\.shop_admin/.test(auth)) {
+    violations.push("[prod] SHOP_ADMIN_ORIGIN must bind to local.domain.shop_admin");
   }
 
   for (const key of ["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"]) {

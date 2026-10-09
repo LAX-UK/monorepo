@@ -179,7 +179,13 @@ const envSchema = z
           path: ["BETTER_AUTH_SECRET"],
         });
       }
-      for (const u of [e.WEB_ORIGIN, e.SHOP_ORIGIN, e.OIDC_ISSUER_URL, e.API_INTERNAL_BASE_URL]) {
+      for (const u of [
+        e.WEB_ORIGIN,
+        e.SHOP_ORIGIN,
+        e.SHOP_ADMIN_ORIGIN,
+        e.OIDC_ISSUER_URL,
+        e.API_INTERNAL_BASE_URL,
+      ]) {
         if (u.includes("localhost") || u.includes("127.0.0.1")) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -254,6 +260,33 @@ const envSchema = z
 
 export type AuthAppEnv = z.infer<typeof envSchema>;
 
+/** Known shop → shop-admin public hosts when Terraform has not set SHOP_ADMIN_ORIGIN yet. */
+export function deriveShopAdminOriginFromShopOrigin(shopOrigin: string): string | undefined {
+  try {
+    const host = new URL(shopOrigin).hostname;
+    if (host === "test-shop.lax.bid") return "https://test-shop-admin.lax.bid";
+    if (host === "shop.lax.bid") return "https://shop-admin.lax.bid";
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function withDerivedShopAdminOrigin(input: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const raw = input.SHOP_ADMIN_ORIGIN?.trim();
+  const needsDerive =
+    raw === undefined ||
+    raw === "" ||
+    raw === "http://localhost:3030" ||
+    raw.startsWith("http://127.0.0.1");
+  if (!needsDerive) return input;
+  const shopOrigin = input.SHOP_ORIGIN?.trim();
+  if (!shopOrigin) return input;
+  const derived = deriveShopAdminOriginFromShopOrigin(shopOrigin);
+  if (!derived) return input;
+  return { ...input, SHOP_ADMIN_ORIGIN: derived };
+}
+
 function formatAuthEnvIssues(error: z.ZodError): string {
   return error.issues
     .map((issue) => {
@@ -264,7 +297,7 @@ function formatAuthEnvIssues(error: z.ZodError): string {
 }
 
 export function parseAuthEnv(input: NodeJS.ProcessEnv): AuthAppEnv {
-  const parsed = envSchema.safeParse(input);
+  const parsed = envSchema.safeParse(withDerivedShopAdminOrigin(input));
   if (!parsed.success) {
     throw new Error(`Invalid auth app environment variables: ${formatAuthEnvIssues(parsed.error)}`);
   }
