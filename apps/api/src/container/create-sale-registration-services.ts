@@ -4,7 +4,7 @@ import {
   DrizzleSaleRegistrationCheckInReader,
   DrizzleTelephoneBidBookingDetailReader,
 } from "@auction/persistence/repositories";
-import type { Env } from "../env.js";
+import { type Env, resolveStrictBidEligibilityEnabled } from "../env.js";
 import { IdentityTelephoneBookingUserPhoneReader } from "../infrastructure/identity-telephone-booking-user-phone.reader.js";
 import type { IIdentitySecurityClient } from "../services/interfaces/identity-issuer-client.js";
 import type { TelephoneBidBookingServicePort } from "../services/interfaces/telephone-bid-booking-service.js";
@@ -14,6 +14,7 @@ import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-
 import { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
 import { buildTelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
 import { TelephoneBookingNotifier } from "../services/telephone-booking-notifier.js";
+import { createBidIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -69,7 +70,11 @@ export function createSaleRegistrationServices(
     lotRepo,
     userPhoneReader: new IdentityTelephoneBookingUserPhoneReader(identitySecurity),
     legalEntityRepository,
-    kycService,
+    identityEligibilityGate: createBidIdentityEligibilityGate(
+      db,
+      kycService,
+      resolveStrictBidEligibilityEnabled(env),
+    ),
     amlHoldStore,
     domainEventSink,
     notifier: telephoneBookingNotifier,

@@ -18,7 +18,7 @@ export function StaleStaffSessionBanner() {
       role="alert"
       className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 font-body text-sm text-on-surface"
     >
-      <p className="font-medium text-warning">Staff permissions may be out of date</p>
+      <p className="font-medium text-warning-on-surface">Staff permissions may be out of date</p>
       <p className="mt-1 text-on-surface-variant">
         Your session does not include a staff role. Sign out and sign back in after your account was
         granted catalogue access.

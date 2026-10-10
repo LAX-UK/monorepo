@@ -15,6 +15,9 @@ export function commerceErrorMessage(body: unknown, fallback: string): string {
   if (record.error === "sign_in_required") {
     return "Sign in to continue.";
   }
+  if (record.error === "email_not_verified") {
+    return "Verify your email address before checking out. Check your inbox for the link.";
+  }
   if (record.error === "identity_token_unavailable") {
     return "Sign-in services are temporarily unavailable. Try again shortly.";
   }

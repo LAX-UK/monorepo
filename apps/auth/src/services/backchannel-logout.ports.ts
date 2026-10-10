@@ -39,6 +39,12 @@ export type RpLogoutRepository = {
     now: Date,
   ): Promise<number>;
   revokeSubjectAndEnqueue(subjectId: string, now: Date): Promise<number>;
+  /** Keeps RP sessions bound to `keepIdentitySessionId` by FK or by retained `sid`. */
+  revokeSubjectExceptIdentitySessionAndEnqueue(
+    subjectId: string,
+    keepIdentitySessionId: string,
+    now: Date,
+  ): Promise<number>;
   revokeClientSubjectAndEnqueue(clientId: string, subjectId: string, now: Date): Promise<number>;
 };
 

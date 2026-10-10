@@ -90,6 +90,20 @@ describe("gateShopAuthenticatedRoute", () => {
     });
   });
 
+  it("drops unsafe returnTo values from the storefront login link", () => {
+    expect(shopStorefrontLoginHref("/checkout?step=2")).toBe(
+      "/login?returnTo=%2Fcheckout%3Fstep%3D2",
+    );
+    for (const unsafe of [
+      "//evil.example",
+      "/\\evil.example",
+      "https://evil.example",
+      "checkout",
+    ]) {
+      expect(shopStorefrontLoginHref(unsafe)).toBe("/login");
+    }
+  });
+
   it("redirects disabled viewers to account status", () => {
     expect(
       gateShopAuthenticatedRoute(

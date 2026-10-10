@@ -21,6 +21,8 @@ describe("SessionStore contract (memory)", () => {
     expect(await store.get("sess-1")).toBeNull();
     expect(await store.claimBackchannelLogoutJti("jti-1", 60)).toBe(true);
     expect(await store.claimBackchannelLogoutJti("jti-1", 60)).toBe(false);
+    await store.releaseBackchannelLogoutJti("jti-1");
+    expect(await store.claimBackchannelLogoutJti("jti-1", 60)).toBe(true);
   });
 
   it("scopes a sid logout to that session and a subject logout to every session", async () => {

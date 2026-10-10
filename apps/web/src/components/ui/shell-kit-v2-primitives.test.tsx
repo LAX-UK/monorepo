@@ -44,7 +44,7 @@ describe("DotStatusPill", () => {
     const { container: warning } = render(<DotStatusPill label="Withdrawn" tone="warning" />);
     const warningShell = warning.firstChild as HTMLElement;
     expect(warningShell.className).toMatch(/bg-warning-container/);
-    expect(warningShell.className).toMatch(/text-warning/);
+    expect(warningShell.className).toMatch(/text-warning-on-surface/);
     const warningPath = warning.querySelector("path")?.getAttribute("d") ?? "";
 
     expect(pendingPath).not.toEqual(warningPath);

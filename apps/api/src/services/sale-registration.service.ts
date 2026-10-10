@@ -1,3 +1,4 @@
+import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ISaleRegistrationRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ISaleRepository } from "@auction/persistence/interfaces";
@@ -20,11 +21,13 @@ export class SaleRegistrationService implements ISaleRegistrationService {
     legalEntityRepository: ILegalEntityRepository,
     saleRepo: ISaleRepository,
     registrationRepo: ISaleRegistrationRepository,
+    identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
   ) {
     const ctx = createSaleRegistrationContext({
       registrationRepo,
       saleRepo,
       legalEntityRepository,
+      identityEligibilityGate,
     });
     this.buyer = new SaleRegistrationBuyerService(ctx);
     this.admin = new SaleRegistrationAdminService(ctx);

@@ -1,8 +1,10 @@
+import type { TokenEndpoint } from "@auction/identity-rp";
 import { type AccountCookiePolicy, accountCookiePolicy } from "../lib/session-cookie";
 import { completeAccountLogin } from "./application/complete-account-login";
 import { startAccountLogin } from "./application/start-account-login";
 import type { LaxAccountConfig } from "./config";
 import { loadLaxAccountConfig } from "./config";
+import { createAccountTokenEndpoint } from "./infrastructure/account-token-endpoint";
 import { createMemorySessionStore } from "./infrastructure/memory-session-store";
 import { createRedisSessionStore } from "./infrastructure/redis-session-store";
 import type { SessionStore } from "./ports/session-store";
@@ -11,6 +13,7 @@ export type LaxAccountContainer = {
   config: LaxAccountConfig;
   cookies: AccountCookiePolicy;
   sessions: SessionStore;
+  tokenEndpoint: TokenEndpoint;
   startAccountLogin: typeof startAccountLogin;
   completeAccountLogin: typeof completeAccountLogin;
 };
@@ -30,6 +33,7 @@ export function createLaxAccountContainer(config: LaxAccountConfig): LaxAccountC
     config,
     cookies: accountCookiePolicy(config.publicOrigin),
     sessions: createSessionStore(config),
+    tokenEndpoint: createAccountTokenEndpoint(config),
     startAccountLogin,
     completeAccountLogin,
   };

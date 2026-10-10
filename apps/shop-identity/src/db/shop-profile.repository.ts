@@ -21,8 +21,8 @@ export async function upsertShopUserProfile(
       insert into shop_user_profile (identity_subject_id, email, name, updated_at)
       values ($1, $2, $3, now())
       on conflict (identity_subject_id) do update
-      set email = excluded.email,
-          name = excluded.name,
+      set email = coalesce(excluded.email, shop_user_profile.email),
+          name = coalesce(excluded.name, shop_user_profile.name),
           updated_at = now()
       returning identity_subject_id, email, name, disabled_at
     `,

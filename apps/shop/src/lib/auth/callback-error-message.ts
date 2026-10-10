@@ -9,6 +9,7 @@ export function callbackErrorMessage(error: string): string {
     case "invalid_id_token":
       return "We could not verify your identity token. Please try again.";
     case "missing_sid":
+    case "missing_refresh_token":
       return "Your session could not be established. Please try again.";
     case "server_error":
     case "temporarily_unavailable":

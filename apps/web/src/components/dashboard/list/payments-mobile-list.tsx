@@ -26,7 +26,7 @@ function PrimaryAction({ row }: { row: PaymentDisplayRow }) {
     return (
       <Link
         href={action.href}
-        className="inline-flex min-h-11 items-center text-xs font-semibold text-warning underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="inline-flex min-h-11 items-center text-xs font-semibold text-warning-on-surface underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         title={`${isComplianceManualReviewReason(action.reason) ? "Compliance" : "Finance"} review required`}
       >
         {manualReviewQueueEyebrow(action.reason)}

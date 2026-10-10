@@ -5,6 +5,7 @@ import {
 } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { SITE_SUPPORT_EMAIL } from "@auction/branding";
 
 export const metadata = shopPrivatePageMetadata;
 
@@ -23,6 +24,10 @@ export default function ShopDisabledAccountPage() {
       <ShopAccountBodyText>
         You can still browse the storefront while signed out.
       </ShopAccountBodyText>
+      <ShopAccountLinkButton
+        href={`mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("Disabled LAX account")}`}
+        label="Contact support"
+      />
       <ShopAccountLinkButton href="/" label="Return home" variant="outline" />
     </ShopAccountShell>
   );

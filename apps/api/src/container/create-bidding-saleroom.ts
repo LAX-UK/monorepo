@@ -112,16 +112,17 @@ function composeRegistrationAndBidding(
   const { kycService } = complianceMedia;
   const { lotJobScheduler, telephoneBidBookingService } = catalog;
 
-  const saleRegistrationService = new SaleRegistrationService(
-    legalEntityRepository,
-    saleRepo,
-    repos.saleRegistrationRepository,
-  );
   const strictBidEligibilityEnabled = resolveStrictBidEligibilityEnabled(env);
   const identityEligibilityGate = createBidIdentityEligibilityGate(
     db,
     kycService,
     strictBidEligibilityEnabled,
+  );
+  const saleRegistrationService = new SaleRegistrationService(
+    legalEntityRepository,
+    saleRepo,
+    repos.saleRegistrationRepository,
+    identityEligibilityGate,
   );
   if (strictBidEligibilityEnabled && !kycService.isConfigured()) {
     console.warn(

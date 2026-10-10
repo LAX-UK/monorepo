@@ -1,3 +1,4 @@
+import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingDetailReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
@@ -6,7 +7,6 @@ import type { ILotRepository, ISaleRepository } from "@auction/persistence/inter
 import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/types";
 import type { IAmlHoldStore } from "./aml/ports.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { IKycService } from "./interfaces/kyc-service.js";
 import type {
   ITelephoneBidBookingBidPolicy,
   ITelephoneBidBookingBuyerService,
@@ -31,7 +31,7 @@ export type TelephoneBidBookingServiceDeps = {
   lotRepo: ILotRepository;
   userPhoneReader: ITelephoneBookingUserPhoneReader;
   legalEntityRepository: ILegalEntityRepository;
-  kycService?: IKycService | null;
+  identityEligibilityGate?: IBidIdentityEligibilityGate | null;
   amlHoldStore?: IAmlHoldStore | null;
   domainEventSink?: IDomainEventSink | null;
   notifier?: ITelephoneBookingNotifier | null;
@@ -48,7 +48,7 @@ export function buildTelephoneBidBookingService(
     lotRepo: deps.lotRepo,
     userPhoneReader: deps.userPhoneReader,
     legalEntityRepository: deps.legalEntityRepository,
-    kycService: deps.kycService ?? null,
+    identityEligibilityGate: deps.identityEligibilityGate ?? null,
     amlHoldStore: deps.amlHoldStore ?? null,
     domainEventSink: deps.domainEventSink ?? null,
     notifier: deps.notifier ?? null,

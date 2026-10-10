@@ -1,5 +1,6 @@
 "use client";
 
+import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
 import { preventFedcmSilentAccess } from "@/lib/auth/fedcm/prevent-silent-access.client";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { requestBffLogout } from "@/lib/data/http/auth-session.client";
@@ -32,6 +33,7 @@ export function useLogout(options?: UseLogoutOptions) {
         notify.error("Could not sign out");
         return;
       }
+      postAuthBroadcast({ type: "signed-out" });
       await refetchSession();
       clearClientActingLegalEntityId();
       await clearPendingEntityInviteAction();

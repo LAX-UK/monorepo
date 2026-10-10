@@ -101,6 +101,9 @@ export function createRedisSessionStore(input: {
       const accepted = await redis.set(`${jtiPrefix}${jti}`, "1", "EX", ttlSeconds, "NX");
       return accepted === "OK";
     },
+    async releaseBackchannelLogoutJti(jti) {
+      await redis.del(`${jtiPrefix}${jti}`);
+    },
     async withRefreshLock(sessionId, fn) {
       const prior = locks.get(sessionId) ?? Promise.resolve();
       const next = prior.then(fn, fn);

@@ -27,8 +27,11 @@ test.describe("marketing pages smoke @a11y", () => {
       page,
     }) => {
       test.skip(!enabled, skipReason);
+      // Scroll reveals fade from opacity 0; axe would sample mid-fade colours.
+      await page.emulateMedia({ reducedMotion: "reduce" });
       const res = await page.goto(path);
       expect(res?.ok()).toBeTruthy();
+      await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
       await expect(page.locator("#main-content")).toBeVisible();
 
       const axe = await new AxeBuilder({ page })

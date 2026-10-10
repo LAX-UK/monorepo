@@ -55,11 +55,12 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
     })
     .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.unapproved));
 
-  // Keep signupPersona unset so the admin clients snapshot stays "Not set".
-  // Login resume still requires individual + FULL_BUYER_ONBOARDING_ENABLED.
+  // Login resume requires an individual persona; this row sits below the rows the
+  // admin clients visual baselines capture.
   await db
     .update(schema.bidUserProfile)
     .set({
+      signupPersona: "individual",
       categoryInterestsOnboardingCompletedAt: null,
       updatedAt: stamp,
     })

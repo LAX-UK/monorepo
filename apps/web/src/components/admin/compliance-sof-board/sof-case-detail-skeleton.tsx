@@ -4,12 +4,12 @@ import { Skeleton } from "@auction/ui/components/skeleton";
 
 function MainColumnSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading case detail">
+    <output className="block space-y-6" aria-busy="true" aria-label="Loading case detail">
       <Skeleton className="h-24 w-full rounded-lg" />
       <Skeleton className="h-48 w-full rounded-lg" />
       <Skeleton className="h-32 w-full rounded-lg" />
       <Skeleton className="h-32 w-full rounded-lg" />
-    </div>
+    </output>
   );
 }
 

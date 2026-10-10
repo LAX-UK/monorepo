@@ -135,18 +135,22 @@ async function gotoStrictBidLot(page: Page, path: string) {
 }
 
 test.describe("strict bid eligibility @journey", () => {
-  test("email-unverified sign-in ends at verify-pending before lot access", async ({ page }) => {
+  test("email-unverified sign-in ends at hosted resend-verification before lot access", async ({
+    page,
+  }) => {
     test.skip(!enabled, skipReason);
 
     // Seeded unverified users are intentionally rejected by auth. Stale authenticated
     // email sessions are covered at component/API level instead of fabricated here.
     await loginWithCredentials(page, unverifiedCredentials, {
-      destination: /\/register\/verify-pending(?:[/?#]|$)/,
+      destination: /\/resend-verification\?/,
     });
 
-    await expect(page).toHaveURL(/\/register\/verify-pending(?:[/?#]|$)/);
-    await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /send again/i })).toBeVisible();
+    const params = new URL(page.url()).searchParams;
+    expect(params.get("client_id")).toBe("lax-bid-web");
+    expect(params.get("email")).toBe(unverifiedCredentials.email);
+    await expect(page.getByRole("heading", { name: "Resend verification" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /send verification email/i })).toBeVisible();
     await expect(page.locator("#lot-bid-entry")).toHaveCount(0);
   });
 

@@ -12,6 +12,7 @@ describe("back-channel logout services", () => {
     const repository = {
       revokeIdentitySessionsAndEnqueue,
       revokeSubjectAndEnqueue: vi.fn(),
+      revokeSubjectExceptIdentitySessionAndEnqueue: vi.fn(),
       revokeClientSubjectAndEnqueue: vi.fn(),
     } satisfies RpLogoutRepository;
     const now = new Date("2026-08-13T06:00:00Z");
@@ -30,6 +31,7 @@ describe("back-channel logout services", () => {
     const repository = {
       revokeIdentitySessionsAndEnqueue: vi.fn(),
       revokeSubjectAndEnqueue: vi.fn().mockResolvedValue(3),
+      revokeSubjectExceptIdentitySessionAndEnqueue: vi.fn(),
       revokeClientSubjectAndEnqueue: vi.fn().mockResolvedValue(1),
     } satisfies RpLogoutRepository;
     const service = new BackchannelLogoutRevocationCoordinator(repository, () => now);

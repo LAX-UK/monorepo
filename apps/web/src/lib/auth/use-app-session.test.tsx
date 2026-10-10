@@ -157,6 +157,19 @@ describe("useAppSession", () => {
     });
   });
 
+  it("drops the signed-in user when a lax-auth signed-out broadcast is received", async () => {
+    const { result } = renderWithProvider(serverUser);
+    refetchMock.mockResolvedValue(null);
+
+    act(() => {
+      MockBroadcastChannel.instances[0]?.postMessage({ type: "signed-out" });
+    });
+
+    await waitFor(() => {
+      expect(result.current.user).toBeNull();
+    });
+  });
+
   it("refetches when Better Auth storage event is received", async () => {
     renderWithProvider(null);
 

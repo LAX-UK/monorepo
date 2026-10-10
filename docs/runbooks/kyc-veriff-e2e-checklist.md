@@ -76,6 +76,8 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] **Send verification email** reports success/failure and returns to the same lot after verification
 - [ ] An email-verified user with KYC `unverified`, `pending`, or `rejected` sees copy stating identity approval is required before bidding
 - [ ] Identity links preserve `next`, `source=bid_gate`, and the lot id
+- [ ] Sale registration and telephone-line requests return `403 email_not_verified` / `402 kyc_required` for the same users, and create no rows
+- [ ] Production release: confirm `STRICT_BID_ELIGIBILITY_ENABLED=true` is set in the prod environment (code default is off in production)
 - [ ] Manual, auto-bid, full/compact mobile sticky, and video-compact surfaces expose no enabled Bid, Review, Confirm, or auto-bid save action while blocked
 - [ ] API fallbacks for `email_not_verified` and `kyc_required` show the same actionable recovery controls
 - [ ] An email-verified user with KYC `approved` can bid

@@ -46,11 +46,23 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       REDIS_URL: redis://127.0.0.1:6379
       BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707"
+      CHECK_IN_TOKEN_SECRET: ci-api-token-secret-at-least-sixteen-characters
+      IDENTITY_MACHINE_CLIENT_ID: api-service
+      IDENTITY_MACHINE_CLIENT_SECRET: ci-identity-machine-secret-at-least-32
       API_PUBLIC_URL: http://localhost:3001
       OIDC_ISSUER_URL: http://localhost:3003
+      OIDC_INTERNAL_BASE_URL: http://localhost:3003
+      OIDC_CLIENT_SECRET_LAX_BID_WEB: ci-bid-web-client-secret-at-least-32
+      BID_BFF_SESSION_ENCRYPTION_KEY: "0808080808080808080808080808080808080808080808080808080808080808"
+      LAX_BID_PUBLIC_URL: http://localhost:3000
+      AUTH_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      WORKER_APP_DB_PASSWORD: postgres
       WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3001
       NEXT_PUBLIC_AUTH_URL: http://localhost:3003
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
       ALLOW_HTTP_COOKIES: "true"
       REQUIRE_EMAIL_VERIFICATION: "false"
       APP_ENV: development
@@ -98,6 +110,11 @@ jobs:
           pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
+          DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
+          DATABASE_URL_AUTH="$DATABASE_URL" \
+            OIDC_CLIENT_IDS=lax-bid-web \
+            OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
+            pnpm --filter @auction/db db:configure-oidc-clients
       - name: Build web, API, and auth issuer
         run: pnpm turbo run build --filter=@auction/api --filter=@auction/auth-app --filter=@auction/web
       - name: Start stack
@@ -110,7 +127,7 @@ jobs:
       - name: Prepare auth sessions
         run: pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs
       - name: Playwright stabilization suite
-        run: pnpm --filter @auction/web test:e2e:stabilization -- --no-deps --shard=${{ matrix.shard }}/2
+        run: pnpm --filter @auction/web test:e2e:stabilization --no-deps --shard=${{ matrix.shard }}/2
         env:
           PLAYWRIGHT_AUTH_PREPARED: "1"
       - name: Upload blob report

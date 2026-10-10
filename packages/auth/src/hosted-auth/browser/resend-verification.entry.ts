@@ -1,3 +1,4 @@
+import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
@@ -23,10 +24,18 @@ form.addEventListener("submit", async (event) => {
       "client_id",
     );
     if (clientId) verifyCallback.searchParams.set("client_id", clientId);
-    await auth.postJson("/api/auth/send-verification-email", {
+    const { response } = await auth.postJson("/api/auth/send-verification-email", {
       email,
       callbackURL: verifyCallback.toString(),
     });
+    if (response.status === 429) {
+      auth.showError(msg.RATE_LIMITED);
+      return;
+    }
+    if (!response.ok) {
+      auth.showError(auth.GENERIC_NETWORK);
+      return;
+    }
     auth.showSuccess(auth.GENERIC_VERIFICATION);
   } catch {
     auth.showError(auth.GENERIC_NETWORK);

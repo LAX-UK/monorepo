@@ -21,7 +21,7 @@ export function OnboardingIssueAgeCell({ iso, className }: Props) {
     urgency === "stale"
       ? "text-destructive"
       : urgency === "attention"
-        ? "text-warning"
+        ? "text-warning-on-surface"
         : "text-on-surface";
 
   return (

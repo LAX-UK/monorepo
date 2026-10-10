@@ -25,6 +25,11 @@ export function resolveIdentitySkipLabel(source: IdentityOnboardingSource): stri
   return isContextualHardGate(source) ? null : "Verify later";
 }
 
+/** Label for leaving the page while verification cannot be started (e.g. under review). */
+export function resolveIdentityWaitingExitLabel(source: IdentityOnboardingSource): string {
+  return isContextualHardGate(source) ? "Keep browsing" : "Continue";
+}
+
 export function resolveIdentityVerifySkipLabel(source: IdentityOnboardingSource): string | null {
   return isContextualHardGate(source) ? null : "Finish later";
 }

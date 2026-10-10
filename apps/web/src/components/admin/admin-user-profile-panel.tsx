@@ -120,7 +120,9 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                 Deletion requested
               </dt>
-              <dd className="text-warning">{formatAdminUserDate(user.deletionRequestedAt)}</dd>
+              <dd className="text-warning-on-surface">
+                {formatAdminUserDate(user.deletionRequestedAt)}
+              </dd>
             </div>
           ) : null}
         </dl>

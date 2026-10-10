@@ -3,6 +3,7 @@ import {
   type OidcAuthorizePrompt,
   classifySilentCallback,
   createSilentSignInCookieSpec,
+  safeRelativeReturnPath,
 } from "@auction/identity-rp";
 import type { Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
@@ -15,7 +16,7 @@ import { isBackgroundShopAuthRequest, isDocumentShopAuthRequest } from "../auth-
 import { logShopIdentityAuth } from "../auth-telemetry.js";
 import { clearBasketToken } from "../basket-cookie.js";
 import { clearShopAuthCookies } from "../clear-shop-auth-cookies.js";
-import { assertStorefrontOrigin, clearCommerceCsrfCookie } from "../commerce-csrf.js";
+import { assertStorefrontOriginStrict, clearCommerceCsrfCookie } from "../commerce-csrf.js";
 import { clearResourceTokenCacheForSession } from "../infrastructure/shop-api.client.js";
 import { buildAuthorizeUrl, buildEndSessionUrl, generateOAuthLoginParams } from "../oidc.js";
 import {
@@ -57,18 +58,13 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   const silentCookieNames = createSilentSignInCookieSpec(SHOP_SILENT_COOKIE_PREFIX);
 
   function safeReturnToFromQuery(c: Context): string {
-    const returnTo = c.req.query("returnTo");
-    return typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
-      ? returnTo
-      : "/";
+    return safeRelativeReturnPath(c.req.query("returnTo")) ?? "/";
   }
 
   function safeReturnToFromCookie(c: Context): string {
     const returnTo = getCookie(c, "shop_return_to");
     deleteCookie(c, "shop_return_to", { path: "/" });
-    return typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
-      ? returnTo
-      : "/";
+    return safeRelativeReturnPath(returnTo) ?? "/";
   }
 
   function parseAuthAttempt(raw: string | undefined): { returnTo: string; count: number } | null {
@@ -77,7 +73,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     if (separator <= 0) return null;
     const returnTo = raw.slice(0, separator);
     const count = Number(raw.slice(separator + 1));
-    if (!returnTo.startsWith("/") || returnTo.startsWith("//") || !Number.isFinite(count)) {
+    if (!safeRelativeReturnPath(returnTo) || !Number.isFinite(count)) {
       return null;
     }
     return { returnTo, count };
@@ -95,19 +91,10 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   }
 
   function safeReturnToFromRequest(c: Context): string | null {
-    const fromQuery = c.req.query("returnTo");
-    if (typeof fromQuery === "string" && fromQuery.startsWith("/") && !fromQuery.startsWith("//")) {
-      return fromQuery;
-    }
-    const fromCookie = getCookie(c, "shop_return_to");
-    if (
-      typeof fromCookie === "string" &&
-      fromCookie.startsWith("/") &&
-      !fromCookie.startsWith("//")
-    ) {
-      return fromCookie;
-    }
-    return null;
+    return (
+      safeRelativeReturnPath(c.req.query("returnTo")) ??
+      safeRelativeReturnPath(getCookie(c, "shop_return_to"))
+    );
   }
 
   function redirectStorefrontInteractiveLogin(c: Context, returnTo?: string | null) {
@@ -139,11 +126,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     if (isBackgroundShopAuthRequest(c)) {
       return skipBackgroundAuthStart(c);
     }
-    const returnTo = c.req.query("returnTo");
-    const safeReturnTo =
-      typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
-        ? returnTo
-        : null;
+    const safeReturnTo = safeRelativeReturnPath(c.req.query("returnTo"));
     const isInteractiveLogin = !options?.prompt || options.prompt === "create";
     if (
       isInteractiveLogin &&
@@ -378,12 +361,8 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       refreshToken: result.refreshToken,
       refreshExpiresAt: refreshExpiresAtFromNow(Date.now()),
     });
-    const returnTo = getCookie(c, "shop_return_to");
+    const safeReturnTo = safeRelativeReturnPath(getCookie(c, "shop_return_to"));
     deleteCookie(c, "shop_return_to", { path: "/" });
-    const safeReturnTo =
-      typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
-        ? returnTo
-        : null;
     const postSignInParams = new URLSearchParams();
     if (safeReturnTo) {
       postSignInParams.set("returnTo", safeReturnTo);
@@ -402,7 +381,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
 
   app.post("/logout", async (c) => {
     try {
-      assertStorefrontOrigin(c, shopStorefrontBaseUrl(env));
+      assertStorefrontOriginStrict(c, shopStorefrontBaseUrl(env));
     } catch {
       return c.json({ error: "csrf_failed" }, 403);
     }

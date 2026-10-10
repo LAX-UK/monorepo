@@ -35,7 +35,7 @@ export function ExportManagerSheet({ open, onOpenChange }: Props) {
           {jobsLoading ? (
             <p className="font-body text-sm text-on-surface-variant">Loading export history…</p>
           ) : jobsLoadError ? (
-            <p className="font-body text-sm text-warning">{jobsLoadError}</p>
+            <p className="font-body text-sm text-warning-on-surface">{jobsLoadError}</p>
           ) : jobs.length === 0 ? (
             <p className="font-body text-sm text-on-surface-variant">
               No exports yet — use Export on any list page.

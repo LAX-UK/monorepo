@@ -10,6 +10,7 @@
  * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/submission-wizard-mobile.spec.ts
  */
 import { expect, test } from "@playwright/test";
+import { clientSession } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -17,14 +18,6 @@ const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
 const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "";
 const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "";
 const draftId = process.env.PLAYWRIGHT_DRAFT_SUBMISSION_ID ?? "";
-
-async function clientLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(clientEmail);
-  await page.getByLabel(/password/i).fill(clientPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
 
 test.describe("submission wizard mobile @journey", () => {
   test.use({
@@ -40,7 +33,7 @@ test.describe("submission wizard mobile @journey", () => {
       "Set PLAYWRIGHT_CLIENT_EMAIL and PLAYWRIGHT_CLIENT_PASSWORD",
     );
 
-    await clientLogin(page);
+    await clientSession(page);
 
     if (draftId) {
       await page.goto(`/dashboard/submissions/${draftId}`);

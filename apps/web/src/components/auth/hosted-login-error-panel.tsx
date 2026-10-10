@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthLayout } from "@/components/auth/auth-layout";
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import Link from "next/link";
 
 const ERROR_COPY: Record<string, { title: string; description: string }> = {
@@ -43,14 +44,15 @@ export function HostedLoginErrorPanel({
           title: "Sign-in failed",
           description: "Something went wrong while signing you in. Please try again.",
         });
-  const continueHref = next?.startsWith("/") ? next : "/dashboard";
+  const safeNext = next && isSafeNextPath(next) ? next : null;
+  const continueHref = safeNext ?? "/dashboard";
   const retryParams = new URLSearchParams();
-  if (next) retryParams.set("next", next);
+  if (safeNext) retryParams.set("next", safeNext);
   const reauth = retryIntent === "reauth" || errorCode === "reauth_subject_mismatch";
   if (reauth) retryParams.set("intent", "reauth");
   const retryQuery = retryParams.toString();
   const retryHref = retryQuery ? `/api/auth/login?${retryQuery}` : "/api/auth/login";
-  const backHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
+  const backHref = safeNext ? `/login?next=${encodeURIComponent(safeNext)}` : "/login";
 
   return (
     <main id="main-content">

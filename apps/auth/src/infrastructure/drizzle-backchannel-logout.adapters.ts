@@ -5,7 +5,7 @@ import {
   oidcBackchannelLogoutDelivery,
   oidcRpSession,
 } from "@auction/identity-db/schema";
-import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import type {
   BackchannelLogoutDeliveryRepository,
   BackchannelLogoutFinalization,
@@ -43,6 +43,24 @@ export class DrizzleRpLogoutRepository implements RpLogoutRepository {
 
   revokeSubjectAndEnqueue(subjectId: string, now: Date): Promise<number> {
     const condition = and(eq(oidcRpSession.subjectId, subjectId), isNull(oidcRpSession.revokedAt));
+    if (!condition) throw new Error("Subject revocation condition is empty");
+    return this.revokeAndEnqueue(condition, now);
+  }
+
+  revokeSubjectExceptIdentitySessionAndEnqueue(
+    subjectId: string,
+    keepIdentitySessionId: string,
+    now: Date,
+  ): Promise<number> {
+    const condition = and(
+      eq(oidcRpSession.subjectId, subjectId),
+      ne(oidcRpSession.sid, keepIdentitySessionId),
+      or(
+        isNull(oidcRpSession.identitySessionId),
+        ne(oidcRpSession.identitySessionId, keepIdentitySessionId),
+      ),
+      isNull(oidcRpSession.revokedAt),
+    );
     if (!condition) throw new Error("Subject revocation condition is empty");
     return this.revokeAndEnqueue(condition, now);
   }

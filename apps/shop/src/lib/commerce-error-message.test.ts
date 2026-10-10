@@ -36,6 +36,9 @@ describe("commerceErrorMessage", () => {
     );
     expect(commerceErrorMessage({ error: "csrf_failed" }, "x")).toMatch(/session expired/i);
     expect(commerceErrorMessage({ error: "sign_in_required" }, "x")).toMatch(/sign in/i);
+    expect(commerceErrorMessage({ error: "email_not_verified" }, "x")).toMatch(
+      /verify your email/i,
+    );
   });
 
   it("unwraps commerce_upstream_failed wrappers", () => {

@@ -16,7 +16,9 @@ function VerifiedMark({ verified }: { verified: boolean }) {
     <span
       className={cn(
         "inline-flex size-5 shrink-0 items-center justify-center rounded-full",
-        verified ? "bg-positive-container text-positive" : "bg-warning-container text-warning",
+        verified
+          ? "bg-positive-container text-positive"
+          : "bg-warning-container text-warning-on-surface",
       )}
       aria-hidden
     >
@@ -50,7 +52,9 @@ export function DetailStatValue({ row, className, showVerified = false }: Props)
         {valueNode}
       </div>
       {row.gapMessage ? (
-        <p className="max-w-[16rem] text-right font-body text-xs text-warning">{row.gapMessage}</p>
+        <p className="max-w-[16rem] text-right font-body text-xs text-warning-on-surface">
+          {row.gapMessage}
+        </p>
       ) : null}
     </div>
   );

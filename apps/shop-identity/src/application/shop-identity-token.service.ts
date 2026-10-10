@@ -8,7 +8,11 @@ import type {
 import { isIdTokenFresh } from "./token-expiry.js";
 
 export type ShopIdentityTokenService = {
-  resolveIdToken(sessionId: string, options?: SessionTokenReadOptions): Promise<string>;
+  /** `maxAgeMs` also rotates tokens issued earlier, so claims reflect recent identity changes. */
+  resolveIdToken(
+    sessionId: string,
+    options?: SessionTokenReadOptions & { maxAgeMs?: number },
+  ): Promise<string>;
   persist(sessionId: string, tokens: SessionTokens): Promise<void>;
   clear(sessionId: string): Promise<void>;
   hasStoredRefreshToken(sessionId: string): Promise<boolean>;
@@ -24,12 +28,14 @@ export function createShopIdentityTokenService(deps: {
   const now = deps.now ?? (() => Date.now());
 
   return {
-    async resolveIdToken(sessionId, options) {
+    async resolveIdToken(sessionId, resolveOptions) {
+      const { maxAgeMs, ...options } = resolveOptions ?? {};
+      const usable = (idToken: string) => isIdTokenFresh(idToken, now(), undefined, maxAgeMs);
       const current = await deps.store.read(sessionId, options);
       if (!current) {
         throw new ShopIdentityReauthRequiredError("no_session");
       }
-      if (isIdTokenFresh(current.idToken, now())) {
+      if (usable(current.idToken)) {
         return current.idToken;
       }
       if (!current.refreshToken) {
@@ -38,7 +44,7 @@ export function createShopIdentityTokenService(deps: {
 
       return deps.store.withLock(sessionId, async (ctx) => {
         const locked = ctx.current ?? (await deps.store.read(sessionId, options));
-        if (locked && isIdTokenFresh(locked.idToken, now())) {
+        if (locked && usable(locked.idToken)) {
           return locked.idToken;
         }
         const refreshToken = locked?.refreshToken;

@@ -1,5 +1,9 @@
 import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import {
+  ShopArtistNotLinkedActions,
+  shopArtistNotLinkedNotice,
+} from "@/components/account/shop-artist-not-linked";
+import {
   fetchPortalArtistArtworks,
   resolveShopArtistPortalLinked,
   resolveShopPortalOwnershipEnabled,
@@ -8,7 +12,7 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("My artworks");
 
@@ -24,10 +28,7 @@ export default async function ShopAccountArtworksPage() {
   }
 
   const result = await fetchPortalArtistArtworks();
-  if (result.status === "commerce_unavailable") notFound();
-  if (result.status === "ok" && !result.data.artist) {
-    notFound();
-  }
+  const notLinked = result.status === "ok" && !result.data.artist;
 
   return (
     <ShopAccountShell
@@ -41,8 +42,11 @@ export default async function ShopAccountArtworksPage() {
       portalOwnershipEnabled={portalOwnershipEnabled}
       payoutsEnabled={payoutsEnabled}
       artistPortalEnabled={artistPortalEnabled}
+      {...(notLinked ? { notice: shopArtistNotLinkedNotice } : {})}
     >
-      {result.status === "unauthorized" ? (
+      {notLinked ? (
+        <ShopArtistNotLinkedActions />
+      ) : result.status === "unauthorized" ? (
         <p>
           <a href={shopStorefrontLoginHref("/account/artworks")}>Sign in</a> to view your artworks.
         </p>

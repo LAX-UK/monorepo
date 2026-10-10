@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import { createCheckoutBodySchema } from "../../commerce-bodies.js";
 import { assertCommerceCsrf } from "../../commerce-csrf.js";
 import { resolveAuthenticatedCommerceContext } from "../../commerce-session.js";
+import { hasVerifiedEmail } from "../../verified-email.js";
 import type { CommerceRoutesDeps } from "./commerce-route-types.js";
 import { proxyJson } from "./proxy-json.js";
 
@@ -21,6 +22,9 @@ export function registerCommerceCheckoutRoutes(
     const auth = await resolveAuthenticatedCommerceContext(c, deps);
     if (!auth) {
       return c.json({ error: "sign_in_required" }, 401);
+    }
+    if (!(await hasVerifiedEmail(deps.tokenService, auth.sessionId, auth.idToken))) {
+      return c.json({ error: "email_not_verified" }, 403);
     }
     const parsed = checkoutBodySchema.safeParse(await c.req.json());
     if (!parsed.success) {

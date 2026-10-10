@@ -1,6 +1,8 @@
+import { existsSync, readFileSync } from "node:fs";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import AxeBuilder from "@axe-core/playwright";
-import { type Page, type Response, expect } from "@playwright/test";
+import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
+import { roleAuthState } from "./auth-state";
 
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
@@ -120,7 +122,7 @@ export async function dismissStaffPaletteIfOpen(page: Page): Promise<void> {
   }
 }
 
-async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
+export async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
   try {
     const webOrigin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
     if (!page.url().startsWith(webOrigin)) return;
@@ -707,6 +709,22 @@ export async function buyerLogin(page: Page): Promise<void> {
 export async function clientLogin(page: Page): Promise<void> {
   await login(page, clientCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
   await assertNotStaffShell(page, "Client");
+}
+
+/** Reuses the prepared client storage state so specs do not trip the Identity sign-in rate limit. */
+export async function clientSession(page: Page): Promise<void> {
+  if (existsSync(roleAuthState.client)) {
+    const state = JSON.parse(readFileSync(roleAuthState.client, "utf8")) as {
+      cookies: Parameters<BrowserContext["addCookies"]>[0];
+    };
+    await page.context().addCookies(state.cookies);
+    await page.goto("/dashboard");
+    if (!isLoginUrl(page.url())) {
+      await assertNotStaffShell(page, "Client");
+      return;
+    }
+  }
+  await clientLogin(page);
 }
 
 export async function unapprovedLogin(page: Page): Promise<void> {

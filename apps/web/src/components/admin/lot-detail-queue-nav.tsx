@@ -109,7 +109,7 @@ export async function LotDetailQueueNav({ lotId, saleId, saleTitle, lotNumber }:
           )}
 
           {queue.partial ? (
-            <span className="w-full font-body text-[10px] text-warning sm:w-auto">
+            <span className="w-full font-body text-[10px] text-warning-on-surface sm:w-auto">
               Partial queue — only first {QUEUE_LIMIT} lots loaded.
             </span>
           ) : null}

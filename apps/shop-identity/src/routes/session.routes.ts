@@ -4,6 +4,7 @@ import { clearShopAuthCookies } from "../clear-shop-auth-cookies.js";
 import { readSession } from "../session.js";
 import type { ShopIdentityAppDeps } from "../shop-identity-app-deps.js";
 import { shopStorefrontPath } from "../storefront-routes.js";
+import { readRecentIdTokenClaims } from "../verified-email.js";
 
 async function readIdTokenClaims(
   tokenService: ShopIdentityAppDeps["tokenService"],
@@ -16,7 +17,6 @@ async function readIdTokenClaims(
     return null;
   }
 }
-
 export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): void {
   const { sessionRepository, tokenService, env } = deps;
 
@@ -43,7 +43,10 @@ export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): voi
     }
     const hasRefresh = await tokenService.hasStoredRefreshToken(session.id);
     const tokenUpgradeRequired = !hasRefresh;
-    const claims = await readIdTokenClaims(tokenService, session.id);
+    let claims = await readIdTokenClaims(tokenService, session.id);
+    if (claims?.email_verified === false && hasRefresh) {
+      claims = await readRecentIdTokenClaims(tokenService, session.id, claims);
+    }
     const verifiedPhone =
       claims?.phone_number_verified === true && typeof claims.phone_number === "string"
         ? claims.phone_number

@@ -161,6 +161,8 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     createRpInitiatedLogoutRoutes({
       authHandler: options.authHandler,
       verifier: services.oidc.rpInitiatedLogout,
+      revokeIdentitySession: (sessionId) =>
+        services.oidc.logout.revokeIdentitySessions([sessionId]),
       currentSession: async (headers) => {
         const session = await options.auth.api.getSession({ headers });
         const subjectId = session?.user?.id;

@@ -16,6 +16,8 @@ export type SessionStore = {
   invalidateBySidOrSubject(input: { sid?: string; sub?: string }): Promise<void>;
   /** Returns false when the logout token jti was already consumed. */
   claimBackchannelLogoutJti(jti: string, ttlSeconds: number): Promise<boolean>;
+  /** Frees a claimed jti so the issuer can retry after a failed invalidation. */
+  releaseBackchannelLogoutJti(jti: string): Promise<void>;
   withRefreshLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T>;
   /** Readiness probe for the backing store. */
   isReachable(): Promise<boolean>;

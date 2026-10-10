@@ -19,7 +19,10 @@ export function SubmissionQualityGapCards({ gaps }: Props) {
             key={gap.id}
             className="flex gap-3 rounded border border-warning-container bg-warning-container/30 p-4 pl-4"
           >
-            <AlertTriangle className="mt-0.5 size-[18px] shrink-0 text-warning" aria-hidden />
+            <AlertTriangle
+              className="mt-0.5 size-[18px] shrink-0 text-warning-on-surface"
+              aria-hidden
+            />
             <div className="min-w-0 space-y-1">
               <p className="font-body text-sm font-medium text-on-surface">{gap.label}</p>
               <p className="font-body text-sm text-on-surface-variant">{gap.description}</p>

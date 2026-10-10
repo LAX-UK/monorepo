@@ -203,7 +203,7 @@ export function StreamUrlVerifyControl({
           ) : null}
           {result.status === "unverified" ? (
             <>
-              <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+              <Info className="mt-0.5 size-4 shrink-0 text-warning-on-surface" aria-hidden />
               <p>
                 Could not confirm embeddability (provider may be temporarily unavailable). You can
                 still save if the URL looks correct.
@@ -212,7 +212,7 @@ export function StreamUrlVerifyControl({
           ) : null}
           {result.status === "live_check_unavailable" ? (
             <>
-              <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+              <Info className="mt-0.5 size-4 shrink-0 text-warning-on-surface" aria-hidden />
               <p>Format accepted. Live embed check is not available for this provider.</p>
             </>
           ) : null}

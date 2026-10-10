@@ -10,7 +10,7 @@ test.describe("admin export flow @journey", () => {
   test("lots export opens confirm sheet and starts download or async job", async ({ page }) => {
     await page.goto("/admin/lots");
 
-    await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^lots$/i, level: 1 }).first()).toBeVisible();
 
     const exportResponse = page.waitForResponse(
       (res) =>

@@ -80,6 +80,8 @@ function FileUploadTrigger({
         multiple={multiple}
         {...(capture !== undefined ? { capture } : {})}
         className="sr-only"
+        aria-label={dropzoneAriaLabel}
+        tabIndex={-1}
         disabled={disabled || busy}
         onChange={onInputChange}
         {...(describedById ? { "aria-describedby": describedById } : {})}

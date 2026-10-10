@@ -1,7 +1,9 @@
+import { BidError, type IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ISaleRegistrationRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
+import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { SaleRegistrationBuyerService } from "./sale-registration/sale-registration-buyer.service.js";
 import { createSaleRegistrationContext } from "./sale-registration/sale-registration-context.js";
@@ -41,16 +43,54 @@ function createBuyerService(input: {
   saleRepo: ISaleRepository;
   registrationRepo: ISaleRegistrationRepository;
   legalEntityRepository: ILegalEntityRepository;
+  identityEligibilityGate?: IBidIdentityEligibilityGate;
 }) {
   const ctx = createSaleRegistrationContext({
     saleRepo: input.saleRepo,
     registrationRepo: input.registrationRepo,
     legalEntityRepository: input.legalEntityRepository,
+    identityEligibilityGate: input.identityEligibilityGate ?? null,
   });
   return new SaleRegistrationBuyerService(ctx);
 }
 
 describe("SaleRegistrationBuyerService.requestRegistration", () => {
+  it("rejects before membership lookup when identity eligibility fails", async () => {
+    const repo = {
+      findActiveMembership: vi.fn(),
+      findById: vi.fn(),
+    } as unknown as ILegalEntityRepository;
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue({ id: saleId, status: "active" }),
+    } as unknown as ISaleRepository;
+    const registrationRepo = {
+      findBySaleUserEntity: vi.fn(),
+      insert: vi.fn(),
+    } as unknown as ISaleRegistrationRepository;
+    const identityEligibilityGate: IBidIdentityEligibilityGate = {
+      assertSelfServiceEligible: vi
+        .fn()
+        .mockResolvedValue(
+          err(new BidError("Complete identity verification before bidding", 402, "kyc_required")),
+        ),
+      assertValidatedOperatorEligible: vi.fn(),
+    };
+    const svc = createBuyerService({
+      saleRepo,
+      registrationRepo,
+      legalEntityRepository: repo,
+      identityEligibilityGate,
+    });
+    const r = await svc.requestRegistration({ userId, saleId, buyerLegalEntityId: leId });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error).toMatchObject({ status: 402, code: "kyc_required" });
+    }
+    expect(identityEligibilityGate.assertSelfServiceEligible).toHaveBeenCalledWith(userId);
+    expect(repo.findActiveMembership).not.toHaveBeenCalled();
+    expect(registrationRepo.insert).not.toHaveBeenCalled();
+  });
+
   it("returns no_registration_required for non-buyer_agent membership", async () => {
     const repo = {
       findActiveMembership: vi.fn().mockResolvedValue({

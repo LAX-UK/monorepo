@@ -239,7 +239,7 @@ export function SofComplianceClient({ initial }: Props) {
                             {activeDoc.statusLabel === "under_review" ? "Under review" : "Uploaded"}
                           </span>
                         ) : needsUpload ? (
-                          <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 font-label text-[10px] uppercase tracking-wider text-warning">
+                          <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 font-label text-[10px] uppercase tracking-wider text-warning-on-surface">
                             Still needed
                           </span>
                         ) : null}

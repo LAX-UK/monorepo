@@ -27,12 +27,11 @@ export function AdminSortableColumnHeader({
 }: AdminSortableColumnHeaderProps) {
   const isActive = currentSort === sortValue;
   const resolvedDirection = direction ?? sortDirectionForValue(sortValue);
-  const ariaSort = isActive ? (resolvedDirection === "asc" ? "ascending" : "descending") : "none";
   const SortIcon = isActive ? (resolvedDirection === "asc" ? ArrowUp : ArrowDown) : ChevronsUpDown;
   const labelText = typeof label === "string" ? label : "column";
 
   return (
-    <span aria-sort={ariaSort} className="inline-flex">
+    <span className="inline-flex">
       <Link
         href={href}
         className={cn(

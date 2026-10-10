@@ -141,7 +141,7 @@ function ReadinessIcon({
     <Circle
       className={cn(
         "mt-0.5 size-4 shrink-0",
-        severity === "required" ? "text-danger" : "text-warning",
+        severity === "required" ? "text-danger" : "text-warning-on-surface",
       )}
       aria-hidden
     />

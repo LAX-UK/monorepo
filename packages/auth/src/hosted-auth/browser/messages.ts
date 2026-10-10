@@ -9,6 +9,7 @@ export const HOSTED_AUTH_MESSAGES = {
   GENERIC_MAGIC_LINK: "If an account exists for that email, a sign-in link was sent.",
   GENERIC_VERIFICATION: "If an account exists for that email, a verification link was sent.",
   CAPTCHA_REQUIRED: "For your security, complete the check below and try again.",
+  RATE_LIMITED: "Too many requests. Wait a few minutes, then try again.",
   RESET_INVALID: "Reset link is invalid or expired.",
   RESET_FAILED: "Unable to reset password. Request a new link.",
   VERIFY_FAILED: "Verification link is invalid or expired.",

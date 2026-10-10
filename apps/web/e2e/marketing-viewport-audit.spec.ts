@@ -87,10 +87,16 @@ test.describe("marketing viewport audit @a11y", () => {
     const naturalWidth = await heroImg.evaluate((el) => (el as HTMLImageElement).naturalWidth);
     expect(naturalWidth).toBeGreaterThan(0);
 
+    // Hero bleeds under the fixed header: one viewport tall below the header (HOME_HERO_MIN_H).
     const heroBox = await heroShell.boundingBox();
+    const headerHeight = await page.evaluate(() =>
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--header-height"),
+      ),
+    );
     expect(heroBox?.height).toBeDefined();
     if (heroBox?.height) {
-      expect(heroBox.height).toBeLessThanOrEqual(820);
+      expect(heroBox.height).toBeLessThanOrEqual(1080 + headerHeight + 1);
     }
 
     const cta = page.getByRole("link", { name: "Open saleroom" }).first();

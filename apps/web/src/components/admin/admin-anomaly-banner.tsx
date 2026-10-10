@@ -16,7 +16,7 @@ type Props = {
 
 function severityIcon(severity: AdminAnomaly["severity"]) {
   if (severity === "critical" || severity === "warning") {
-    return <AlertTriangle className="size-4 shrink-0 text-warning" aria-hidden />;
+    return <AlertTriangle className="size-4 shrink-0 text-warning-on-surface" aria-hidden />;
   }
   return <Info className="size-4 shrink-0 text-primary" aria-hidden />;
 }

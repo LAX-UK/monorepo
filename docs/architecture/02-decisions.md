@@ -360,8 +360,10 @@ and `packages/identity-contracts/src/discovery.ts` advertise public subjects.
 auto, proxy, or absentee bid requires the acting user's email to be verified and
 personal KYC status to be `approved`. The bidding runtime is authoritative and
 returns `403 email_not_verified` before `402 kyc_required`. UI policies mirror
-the rule but are not trusted for enforcement. Validated telephone and saleroom
-operator placements retain threshold KYC behavior.
+the rule but are not trusted for enforcement. Buyer sale-registration requests
+and telephone-line booking requests run the same self-service gate before any
+write, so a blocked user cannot queue work for staff approval. Validated
+telephone and saleroom operator placements retain threshold KYC behavior.
 
 Organisation bidding evaluates independent dimensions: acting-user identity,
 buyer-entity status, active membership, and—when acting as `buyer_agent`—sale
