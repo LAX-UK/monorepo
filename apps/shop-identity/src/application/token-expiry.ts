@@ -5,15 +5,27 @@ export function refreshExpiresAtFromNow(nowMs: number): Date {
   return new Date(nowMs + OIDC_REFRESH_TOKEN_TTL_MS);
 }
 
-export function isIdTokenFresh(idToken: string, nowMs: number, skewMs = 30_000): boolean {
+export function isIdTokenFresh(
+  idToken: string,
+  nowMs: number,
+  skewMs = 30_000,
+  maxAgeMs?: number,
+): boolean {
   try {
     const parts = idToken.split(".");
     const payloadPart = parts[1];
     if (!payloadPart) return false;
     const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8")) as {
       exp?: number;
+      iat?: number;
     };
     if (typeof payload.exp !== "number") return false;
+    if (
+      maxAgeMs !== undefined &&
+      (typeof payload.iat !== "number" || payload.iat * 1_000 < nowMs - maxAgeMs)
+    ) {
+      return false;
+    }
     return payload.exp * 1_000 > nowMs + skewMs;
   } catch {
     return false;

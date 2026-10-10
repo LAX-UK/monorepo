@@ -33,6 +33,16 @@ export class SaleRegistrationBuyerService implements ISaleRegistrationBuyerServi
       });
     }
 
+    if (this.ctx.identityEligibilityGate) {
+      const identity = await this.ctx.identityEligibilityGate.assertSelfServiceEligible(
+        input.userId,
+      );
+      if (identity.isErr()) {
+        const { message, status, code } = identity.error;
+        return err({ message, status, ...(code ? { code } : {}) });
+      }
+    }
+
     const membership = await this.ctx.legalEntityRepository.findActiveMembership(
       input.userId,
       input.buyerLegalEntityId,

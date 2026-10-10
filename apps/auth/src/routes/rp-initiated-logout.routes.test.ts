@@ -30,15 +30,18 @@ function setup(options?: {
     ),
   };
   const currentSession = vi.fn(async () => options?.currentSession ?? null);
+  const revokeIdentitySession = vi.fn(async () => 1);
   return {
     app: createRpInitiatedLogoutRoutes({
       authHandler,
       verifier,
       currentSession,
+      revokeIdentitySession,
     }),
     authHandler,
     verifier,
     currentSession,
+    revokeIdentitySession,
   };
 }
 
@@ -143,7 +146,7 @@ describe("RP-initiated logout routes", () => {
   });
 
   it("redirects without upstream delegation when no OP session exists", async () => {
-    const { app, authHandler } = setup({
+    const { app, authHandler, revokeIdentitySession } = setup({
       verified: {
         subjectId: "subject-1",
         sessionId: "session-1",
@@ -162,10 +165,11 @@ describe("RP-initiated logout routes", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("http://localhost:3010/?state=logout-state");
     expect(authHandler).not.toHaveBeenCalled();
+    expect(revokeIdentitySession).toHaveBeenCalledWith("session-1");
   });
 
   it("rejects an expired hint when no current OP session can bind it", async () => {
-    const { app, authHandler } = setup({
+    const { app, authHandler, revokeIdentitySession } = setup({
       verified: {
         subjectId: "subject-1",
         sessionId: "session-1",
@@ -187,6 +191,7 @@ describe("RP-initiated logout routes", () => {
       error_description: expect.stringContaining("current OP session"),
     });
     expect(authHandler).not.toHaveBeenCalled();
+    expect(revokeIdentitySession).not.toHaveBeenCalled();
   });
 
   it("accepts form-encoded POST parameters and infers the client from the verified audience", async () => {

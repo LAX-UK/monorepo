@@ -5,6 +5,7 @@ import {
   resolveIdentityStartButtonLabel,
   resolveIdentityVerifyDescription,
   resolveIdentityVerifySkipLabel,
+  resolveIdentityWaitingExitLabel,
 } from "./identity-onboarding-presentation";
 
 const summary = {
@@ -26,6 +27,14 @@ describe("resolveIdentityOnboardingPresentation", () => {
     expect(resolveIdentitySkipLabel("registration")).toBeNull();
     expect(resolveIdentitySkipLabel("telephone")).toBeNull();
     expect(resolveIdentitySkipLabel("condition_report")).toBeNull();
+  });
+
+  it("does not promise the gated action while verification is under review", () => {
+    expect(resolveIdentityWaitingExitLabel("post_verify")).toBe("Continue");
+    expect(resolveIdentityWaitingExitLabel("dashboard")).toBe("Continue");
+    for (const source of ["bid_gate", "registration", "telephone", "condition_report"] as const) {
+      expect(resolveIdentityWaitingExitLabel(source)).toBe("Keep browsing");
+    }
   });
 
   it("hides Finish later on every hard-gate verify source", () => {

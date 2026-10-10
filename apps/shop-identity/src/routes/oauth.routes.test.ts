@@ -344,6 +344,16 @@ describe("OAuth routes", () => {
     }
   });
 
+  it("keeps a safe returnTo on register and drops backslash-prefixed ones", async () => {
+    const { app } = createRoute();
+    const safe = await app.request("/register?returnTo=%2Fcheckout", documentNavigation);
+    expect(safe.headers.get("set-cookie")).toContain("shop_return_to=%2Fcheckout");
+
+    const unsafe = await app.request("/register?returnTo=%2F%5Cevil.example", documentNavigation);
+    expect(unsafe.status).toBe(302);
+    expect(unsafe.headers.get("set-cookie") ?? "").not.toContain("shop_return_to=");
+  });
+
   it("starts sso-probe with prompt=none and sets probe cookie", async () => {
     const { app } = createRoute();
     const response = await app.request("/auth/sso-probe?returnTo=%2Fcatalog");
@@ -547,5 +557,17 @@ describe("OAuth routes", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: "csrf_failed" });
     expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{}, 403],
+    [{ "Sec-Fetch-Site": "cross-site" }, 403],
+    [{ "Sec-Fetch-Site": "same-site" }, 303],
+  ] as const)("requires same-site proof when Origin is absent (%o)", async (headers, status) => {
+    const { app, invalidate } = createRoute();
+    const response = await app.request("/logout", { method: "POST", headers });
+
+    expect(response.status).toBe(status);
+    if (status === 403) expect(invalidate).not.toHaveBeenCalled();
   });
 });

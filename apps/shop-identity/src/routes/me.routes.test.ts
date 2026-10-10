@@ -240,6 +240,29 @@ describe("GET /me", () => {
     });
     await expect(response.json()).resolves.toMatchObject({ emailVerified: false });
   });
+
+  it("re-reads a recent ID token when the stored one says unverified", async () => {
+    const session: ShopIdentitySession = { id: "sess-5", subject: "sub-5", sid: null, oauth: null };
+    const resolveIdToken = vi.fn(async () => unsignedIdToken({ email_verified: true }));
+    const app = createTestApp({
+      sessionRepository: activeSessionRepository(session),
+      findShopProfile: vi.fn(async () => ({
+        identitySubjectId: "sub-5",
+        email: "just-verified@example.com",
+        name: null,
+        disabledAt: null,
+      })),
+      tokenService: createTestTokenService({
+        readIdTokenForLogout: vi.fn(async () => unsignedIdToken({ email_verified: false })),
+        resolveIdToken,
+      }),
+    });
+    const response = await app.request("/me", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_ID}` },
+    });
+    await expect(response.json()).resolves.toMatchObject({ emailVerified: true });
+    expect(resolveIdToken).toHaveBeenCalledWith("sess-5", { maxAgeMs: 60_000 });
+  });
 });
 
 function activeSessionRepository(session: ShopIdentitySession | null): ShopSessionRepository {

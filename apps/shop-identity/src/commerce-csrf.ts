@@ -31,6 +31,19 @@ export function assertStorefrontOrigin(c: Context, storefrontOrigin: string): vo
   }
 }
 
+/** Logout clears cookies, so an absent Origin must be proven same-site by Fetch Metadata. */
+export function assertStorefrontOriginStrict(c: Context, storefrontOrigin: string): void {
+  const origin = c.req.header("origin");
+  if (origin) {
+    if (origin !== storefrontOrigin) throw new Error("invalid_origin");
+    return;
+  }
+  const fetchSite = c.req.header("sec-fetch-site");
+  if (fetchSite !== "same-origin" && fetchSite !== "same-site") {
+    throw new Error("origin_required");
+  }
+}
+
 export function assertCommerceCsrf(c: Context, storefrontOrigin: string): void {
   assertStorefrontOrigin(c, storefrontOrigin);
   const cookie = getCookie(c, SHOP_COMMERCE_CSRF_COOKIE);

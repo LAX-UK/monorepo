@@ -21,6 +21,7 @@ export { assertRecentAuthentication } from "./auth-time.js";
 export type { AssertRecentAuthenticationInput } from "./auth-time.js";
 export { buildAuthorizeUrl } from "./authorize-url.js";
 export { buildEndSessionUrl } from "./end-session-url.js";
+export { safeRelativeReturnPath } from "./safe-return-path.js";
 export {
   mergeRefreshTokens,
   parseBearerTokenResponse,

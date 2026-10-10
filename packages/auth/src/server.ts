@@ -116,8 +116,9 @@ export type Auth = {
       query?: { disableCookieCache?: boolean };
     }): Promise<{
       session?: { id?: string } | null;
-      user?: { id?: string } | null;
+      user?: { id?: string; twoFactorEnabled?: boolean | null } | null;
     } | null>;
+    revokeOtherSessions(input: { headers: Headers }): Promise<unknown>;
     signUpEmail(input: {
       body: { name: string; email: string; password: string; callbackURL?: string };
     }): Promise<{

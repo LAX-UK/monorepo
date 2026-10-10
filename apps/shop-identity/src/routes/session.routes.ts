@@ -17,6 +17,23 @@ async function readIdTokenClaims(
   }
 }
 
+/** Lets a just-verified email show up within a minute instead of at ID token expiry. */
+const UNVERIFIED_CLAIMS_MAX_AGE_MS = 60_000;
+
+async function readRecentIdTokenClaims(
+  tokenService: ShopIdentityAppDeps["tokenService"],
+  sessionId: string,
+  fallback: JWTPayload,
+): Promise<JWTPayload> {
+  try {
+    return decodeJwt(
+      await tokenService.resolveIdToken(sessionId, { maxAgeMs: UNVERIFIED_CLAIMS_MAX_AGE_MS }),
+    );
+  } catch {
+    return fallback;
+  }
+}
+
 export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): void {
   const { sessionRepository, tokenService, env } = deps;
 
@@ -43,7 +60,10 @@ export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): voi
     }
     const hasRefresh = await tokenService.hasStoredRefreshToken(session.id);
     const tokenUpgradeRequired = !hasRefresh;
-    const claims = await readIdTokenClaims(tokenService, session.id);
+    let claims = await readIdTokenClaims(tokenService, session.id);
+    if (claims?.email_verified === false && hasRefresh) {
+      claims = await readRecentIdTokenClaims(tokenService, session.id, claims);
+    }
     const verifiedPhone =
       claims?.phone_number_verified === true && typeof claims.phone_number === "string"
         ? claims.phone_number

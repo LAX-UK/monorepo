@@ -1,24 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAuthRequestHandler } from "./create-auth-request-handler.js";
 
-function setup(publish = vi.fn(async () => undefined)) {
+function setup(
+  publish = vi.fn(async () => undefined),
+  opts: { twoFactorEnabled?: boolean; response?: () => Response } = {},
+) {
   const logout = {
     revokeClientSubject: vi.fn(async () => 1),
     revokeIdentitySessions: vi.fn(async () => 1),
     revokeSubject: vi.fn(async () => 1),
+    revokeSubjectExceptIdentitySession: vi.fn(async () => 1),
   };
+  const revokeOtherSessions = vi.fn(async (_input: { headers: Headers }) => ({ status: true }));
   const auth = {
-    handler: vi.fn(async () => Response.json({ ok: true })),
+    handler: vi.fn(async () => opts.response?.() ?? Response.json({ ok: true })),
     api: {
       getSession: vi.fn(async () => ({
-        user: { id: "subject-1" },
+        user: { id: "subject-1", twoFactorEnabled: opts.twoFactorEnabled ?? false },
         session: { id: "session-1" },
       })),
+      revokeOtherSessions,
     },
   };
   const handler = createAuthRequestHandler({
     events: { publish },
-    sessionStampStore: {} as never,
+    sessionStampStore: { stampMfaCompleted: vi.fn(async () => undefined) } as never,
     auth: auth as never,
     oidcSessions: {
       runTokenRequest: vi.fn(async (_code, action) => action()),
@@ -26,8 +32,67 @@ function setup(publish = vi.fn(async () => undefined)) {
     } as never,
     logout,
   });
-  return { handler, logout, publish };
+  return { handler, logout, publish, revokeOtherSessions };
 }
+
+const rotatedSessionResponse = () =>
+  Response.json(
+    { status: true },
+    { headers: { "set-cookie": "better-auth.session_token=rotated-token; Path=/; HttpOnly" } },
+  );
+
+describe("two-factor state changes", () => {
+  it.each([
+    ["disable", "/api/auth/two-factor/disable", true],
+    ["first TOTP verification", "/api/auth/two-factor/verify-totp", false],
+  ] as const)("revokes other sessions after %s", async (_label, path, twoFactorEnabled) => {
+    const { handler, logout, publish, revokeOtherSessions } = setup(undefined, {
+      twoFactorEnabled,
+      response: rotatedSessionResponse,
+    });
+
+    await handler(new Request(`https://auth.test${path}`, { method: "POST" }));
+
+    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledWith(
+      "subject-1",
+      "session-1",
+    );
+    expect(logout.revokeSubject).not.toHaveBeenCalled();
+    expect(publish).toHaveBeenCalledWith({
+      type: "user.credential_changed",
+      userId: "subject-1",
+      changeType: "update",
+    });
+    const headers = revokeOtherSessions.mock.calls[0]?.[0].headers;
+    expect(headers?.get("cookie")).toContain("better-auth.session_token=rotated-token");
+  });
+
+  it("leaves sessions alone for step-up TOTP when 2FA is already enabled", async () => {
+    const { handler, logout, revokeOtherSessions } = setup(undefined, {
+      twoFactorEnabled: true,
+      response: rotatedSessionResponse,
+    });
+
+    await handler(
+      new Request("https://auth.test/api/auth/two-factor/verify-totp", { method: "POST" }),
+    );
+
+    expect(logout.revokeSubjectExceptIdentitySession).not.toHaveBeenCalled();
+    expect(revokeOtherSessions).not.toHaveBeenCalled();
+  });
+
+  it("does not revoke when verification fails", async () => {
+    const { handler, logout } = setup(undefined, {
+      response: () => Response.json({ code: "INVALID_CODE" }, { status: 401 }),
+    });
+
+    await handler(
+      new Request("https://auth.test/api/auth/two-factor/verify-totp", { method: "POST" }),
+    );
+
+    expect(logout.revokeSubjectExceptIdentitySession).not.toHaveBeenCalled();
+  });
+});
 
 describe("auth request lifecycle ordering", () => {
   it("records password changes and dispatches logout", async () => {
@@ -87,6 +152,7 @@ describe("auth request lifecycle ordering", () => {
         revokeClientSubject: vi.fn(),
         revokeIdentitySessions: vi.fn(),
         revokeSubject: vi.fn(),
+        revokeSubjectExceptIdentitySession: vi.fn(),
       },
     });
 
@@ -146,6 +212,7 @@ describe("auth request lifecycle ordering", () => {
         revokeClientSubject: vi.fn(),
         revokeIdentitySessions: vi.fn(async () => 1),
         revokeSubject: vi.fn(),
+        revokeSubjectExceptIdentitySession: vi.fn(),
       },
     });
 

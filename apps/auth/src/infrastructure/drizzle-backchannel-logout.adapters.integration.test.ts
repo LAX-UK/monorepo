@@ -94,4 +94,40 @@ describe.skipIf(!DATABASE_URL)("drizzle back-channel logout repository", () => {
       status: "pending",
     });
   });
+
+  it("revokes other RP sessions while keeping the rotated current session", async () => {
+    if (!db || !repository) return;
+    await db.insert(user).values({
+      id: SUBJECT_ID,
+      name: "Backchannel FK regression",
+      email: "backchannel-fk-regression@example.test",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    await db.insert(oauthApplication).values({
+      id: APPLICATION_ID,
+      name: "Backchannel FK regression",
+      clientId: CLIENT_ID,
+      redirectUrls: "https://client.example.test/callback",
+      type: "web",
+      backchannelLogoutUri: "https://client.example.test/backchannel-logout",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    const rpRow = { clientId: CLIENT_ID, subjectId: SUBJECT_ID, createdAt: NOW, updatedAt: NOW };
+    await db.insert(oidcRpSession).values([
+      { ...rpRow, sid: SESSION_ID, identitySessionId: null, lastSeenAt: NOW },
+      { ...rpRow, sid: "backchannel-other-device", identitySessionId: null, lastSeenAt: NOW },
+    ]);
+
+    await expect(
+      repository.revokeSubjectExceptIdentitySessionAndEnqueue(SUBJECT_ID, SESSION_ID, NOW),
+    ).resolves.toBe(1);
+    const rows = await db
+      .select({ sid: oidcRpSession.sid, revokedAt: oidcRpSession.revokedAt })
+      .from(oidcRpSession)
+      .where(eq(oidcRpSession.clientId, CLIENT_ID));
+    expect(rows.find((row) => row.sid === SESSION_ID)?.revokedAt).toBeNull();
+    expect(rows.find((row) => row.sid === "backchannel-other-device")?.revokedAt).toEqual(NOW);
+  });
 });

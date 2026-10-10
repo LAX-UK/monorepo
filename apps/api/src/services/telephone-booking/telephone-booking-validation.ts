@@ -1,3 +1,4 @@
+import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
@@ -7,8 +8,6 @@ import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
-import type { IKycService } from "../interfaces/kyc-service.js";
-import { KycRequiredError } from "../interfaces/kyc-service.js";
 import type { TelephoneBidBookingServiceError } from "../interfaces/telephone-bid-booking-service-errors.js";
 
 export const EDITABLE_LOT_STATUSES = ["requested", "confirmed"] as const;
@@ -28,7 +27,7 @@ export function telephoneBookingErr(
 export type TelephoneBookingValidationDeps = {
   repo: ITelephoneBidBookingRepository;
   legalEntityRepository: ILegalEntityRepository;
-  kycService: IKycService | null;
+  identityEligibilityGate: IBidIdentityEligibilityGate | null;
   amlHoldStore: IAmlHoldStore | null;
   saleRepo: ISaleRepository;
   lotRepo: ILotRepository;
@@ -39,18 +38,17 @@ export async function assertBuyerEligible(
   deps: TelephoneBookingValidationDeps,
   userId: string,
 ): Promise<Result<void, TelephoneBidBookingServiceError>> {
-  if (deps.kycService?.isConfigured()) {
-    try {
-      await deps.kycService.enforceThreshold(userId);
-    } catch (caught) {
-      if (caught instanceof KycRequiredError) {
-        return telephoneBookingErr(
-          "Complete identity verification before requesting a telephone line",
-          402,
-          "kyc_required",
-        );
-      }
-      throw caught;
+  if (deps.identityEligibilityGate) {
+    const identity = await deps.identityEligibilityGate.assertSelfServiceEligible(userId);
+    if (identity.isErr()) {
+      const { status, code } = identity.error;
+      return telephoneBookingErr(
+        code === "email_not_verified"
+          ? "Verify your email before requesting a telephone line"
+          : "Complete identity verification before requesting a telephone line",
+        status,
+        code,
+      );
     }
   }
   if (deps.amlHoldStore) {

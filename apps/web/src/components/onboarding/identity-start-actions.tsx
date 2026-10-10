@@ -18,6 +18,7 @@ import {
 import {
   resolveIdentitySkipLabel,
   resolveIdentityStartButtonLabel,
+  resolveIdentityWaitingExitLabel,
 } from "@/lib/kyc/identity-onboarding-presentation";
 import Link from "next/link";
 
@@ -40,7 +41,7 @@ export function IdentityStartActions({ summary, next, source }: Props) {
     return (
       <div className="flex w-full justify-end">
         <Link href={next} className={`${onboardingPrimaryButton} w-full sm:w-auto`}>
-          Continue
+          {resolveIdentityWaitingExitLabel(source)}
         </Link>
       </div>
     );

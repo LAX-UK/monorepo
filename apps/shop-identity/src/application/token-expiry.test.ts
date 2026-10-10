@@ -20,4 +20,15 @@ describe("isIdTokenFresh", () => {
   it("returns false for malformed tokens", () => {
     expect(isIdTokenFresh("not-a-jwt", Date.now())).toBe(false);
   });
+
+  it("treats tokens issued before maxAgeMs as stale", () => {
+    const now = 1_700_000_000_000;
+    const nowSec = Math.floor(now / 1_000);
+    const token = (iat?: number) =>
+      `h.${Buffer.from(JSON.stringify({ exp: nowSec + 3600, iat }), "utf8").toString("base64url")}.s`;
+    expect(isIdTokenFresh(token(nowSec - 30), now, undefined, 60_000)).toBe(true);
+    expect(isIdTokenFresh(token(nowSec - 120), now, undefined, 60_000)).toBe(false);
+    expect(isIdTokenFresh(token(), now, undefined, 60_000)).toBe(false);
+    expect(isIdTokenFresh(token(nowSec - 120), now)).toBe(true);
+  });
 });

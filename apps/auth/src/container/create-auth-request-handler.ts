@@ -37,9 +37,12 @@ export function createAuthRequestHandler(options: {
       path.endsWith("/change-password") ||
       path.endsWith("/reset-password") ||
       path.endsWith("/oauth2/endsession");
-    const priorSession = logoutSensitive
-      ? await options.auth.api.getSession({ headers: request.headers })
-      : null;
+    const twoFactorSensitive =
+      path.endsWith("/two-factor/disable") || path.endsWith("/two-factor/verify-totp");
+    const priorSession =
+      logoutSensitive || twoFactorSensitive
+        ? await options.auth.api.getSession({ headers: request.headers })
+        : null;
     let response = await options.oidcSessions.runTokenRequest(authorizationCode, () =>
       options.auth.handler(request),
     );
@@ -79,6 +82,18 @@ export function createAuthRequestHandler(options: {
         }
         effects.push(options.logout.revokeSubject(priorSubjectId).then(() => undefined));
         await completeSecuritySideEffects(effects);
+      } else if (priorSessionId && changesTwoFactorState(path, priorSession)) {
+        await completeSecuritySideEffects([
+          revokeOtherIdentitySessions(options.auth, request, response),
+          options.events.publish({
+            type: "user.credential_changed",
+            userId: priorSubjectId,
+            changeType: "update",
+          }),
+          options.logout
+            .revokeSubjectExceptIdentitySession(priorSubjectId, priorSessionId)
+            .then(() => undefined),
+        ]);
       }
     }
     if (
@@ -88,20 +103,8 @@ export function createAuthRequestHandler(options: {
       await stampMfaCompletedFromResponse(options.sessionStampStore, response);
     }
     if (await readAuthorizationCodeFromResponse(response, request.url)) {
-      const sessionHeaders = new Headers(request.headers);
-      const setCookies = readResponseSetCookies(response);
-      const responseSessionCookie = setCookies
-        .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
-        .find(Boolean);
-      sessionHeaders.set(
-        "cookie",
-        buildCookieHeaderForAuthorizationCodeCapture(
-          sessionHeaders.get("cookie"),
-          responseSessionCookie ?? null,
-        ),
-      );
       const codeSession = await options.auth.api.getSession({
-        headers: sessionHeaders,
+        headers: headersWithResponseSessionCookie(request, response),
         query: { disableCookieCache: true },
       });
       const identitySessionId = codeSession?.session?.id;
@@ -110,6 +113,43 @@ export function createAuthRequestHandler(options: {
     }
     return response;
   };
+}
+
+/**
+ * Disabling 2FA, or the first TOTP verification that enables it, rotates the
+ * current session; sign-in and step-up verifications leave 2FA state alone.
+ */
+function changesTwoFactorState(
+  path: string,
+  priorSession: { user?: { twoFactorEnabled?: boolean | null | undefined } | null } | null,
+): boolean {
+  if (path.endsWith("/two-factor/disable")) return true;
+  return path.endsWith("/two-factor/verify-totp") && priorSession?.user?.twoFactorEnabled !== true;
+}
+
+function headersWithResponseSessionCookie(request: Request, response: Response): Headers {
+  const headers = new Headers(request.headers);
+  const responseSessionCookie = readResponseSetCookies(response)
+    .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
+    .find(Boolean);
+  headers.set(
+    "cookie",
+    buildCookieHeaderForAuthorizationCodeCapture(
+      headers.get("cookie"),
+      responseSessionCookie ?? null,
+    ),
+  );
+  return headers;
+}
+
+async function revokeOtherIdentitySessions(
+  auth: ReturnType<typeof createAuth>,
+  request: Request,
+  response: Response,
+): Promise<void> {
+  await auth.api.revokeOtherSessions({
+    headers: headersWithResponseSessionCookie(request, response),
+  });
 }
 
 async function completeSecuritySideEffects(effects: Promise<void>[]): Promise<void> {

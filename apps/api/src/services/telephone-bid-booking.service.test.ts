@@ -1,8 +1,10 @@
+import { BidError, type IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingDetailReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { TelephoneBidBooking } from "@auction/types";
+import { err } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildTelephoneBidBookingService } from "./telephone-bid-booking.service.js";
 
@@ -125,6 +127,7 @@ function createService(input: {
     phoneNumber?: string | null;
     phoneNumberVerified?: boolean;
   };
+  identityEligibilityGate?: IBidIdentityEligibilityGate;
 }) {
   return buildTelephoneBidBookingService({
     repo: input.repo ?? mockRepo(),
@@ -133,7 +136,15 @@ function createService(input: {
     lotRepo: mockLotRepo(input.lots),
     userPhoneReader: mockUserPhoneReader(input.phone),
     legalEntityRepository: input.legalEntity ?? mockLegalEntity(),
+    identityEligibilityGate: input.identityEligibilityGate ?? null,
   });
+}
+
+function rejectingIdentityGate(error: BidError): IBidIdentityEligibilityGate {
+  return {
+    assertSelfServiceEligible: vi.fn().mockResolvedValue(err(error)),
+    assertValidatedOperatorEligible: vi.fn(),
+  };
 }
 
 describe("TelephoneBidBookingService", () => {
@@ -173,6 +184,28 @@ describe("TelephoneBidBookingService", () => {
     });
     expect(result.isOk()).toBe(true);
     expect(repo.insert).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["email_not_verified", 403, /verify your email/i],
+    ["kyc_required", 402, /complete identity verification/i],
+  ] as const)("rejects request when identity gate fails with %s", async (code, status, message) => {
+    const service = createService({
+      repo,
+      sale: { deliveryMode: "hybrid", status: "scheduled" },
+      identityEligibilityGate: rejectingIdentityGate(new BidError("blocked", status, code)),
+    });
+    const result = await service.requestBooking({
+      userId: "user-1",
+      saleId: "sale-1",
+      buyerLegalEntityId: "le-1",
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({ status, code });
+      expect(result.error.message).toMatch(message);
+    }
+    expect(repo.insert).not.toHaveBeenCalled();
   });
 
   it("rejects request without profile phone", async () => {

@@ -15,6 +15,17 @@ export class BackchannelLogoutRevocationCoordinator {
     return this.repository.revokeSubjectAndEnqueue(subjectId, this.now());
   }
 
+  revokeSubjectExceptIdentitySession(
+    subjectId: string,
+    keepIdentitySessionId: string,
+  ): Promise<number> {
+    return this.repository.revokeSubjectExceptIdentitySessionAndEnqueue(
+      subjectId,
+      keepIdentitySessionId,
+      this.now(),
+    );
+  }
+
   revokeClientSubject(clientId: string, subjectId: string): Promise<number> {
     return this.repository.revokeClientSubjectAndEnqueue(clientId, subjectId, this.now());
   }
@@ -22,5 +33,8 @@ export class BackchannelLogoutRevocationCoordinator {
 
 export type BackchannelLogoutRevoker = Pick<
   BackchannelLogoutRevocationCoordinator,
-  "revokeIdentitySessions" | "revokeSubject" | "revokeClientSubject"
+  | "revokeIdentitySessions"
+  | "revokeSubject"
+  | "revokeSubjectExceptIdentitySession"
+  | "revokeClientSubject"
 >;

@@ -14,6 +14,8 @@ type RpInitiatedLogoutRoutesOptions = {
   authHandler(request: Request): Promise<Response>;
   currentSession(headers: Headers): Promise<CurrentOpSession | null>;
   verifier: Pick<RpInitiatedLogoutVerifier, "verify">;
+  /** Revokes RP sessions bound to a verified `sid` when the OP cookie is absent. */
+  revokeIdentitySession(sessionId: string): Promise<unknown>;
 };
 
 type EndSessionParams = {
@@ -65,6 +67,7 @@ export function createRpInitiatedLogoutRoutes(options: RpInitiatedLogoutRoutesOp
       if (verified.expired) {
         return invalidRequest("an expired id_token_hint requires a current OP session");
       }
+      await options.revokeIdentitySession(verified.sessionId);
       return redirectOnly(params.postLogoutRedirectUri, params.state);
     }
 
