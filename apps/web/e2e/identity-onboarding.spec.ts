@@ -7,6 +7,7 @@ const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
 const onboardingVisual = process.env.PLAYWRIGHT_ONBOARDING_VISUAL === "1";
 const fullBuyerOnboarding = process.env.FULL_BUYER_ONBOARDING_ENABLED === "true";
+const kycOnboarding = process.env.KYC_ONBOARDING_ENABLED === "true";
 
 function skipUnlessPrepared(statePath: string, setupName: string): void {
   test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
@@ -47,6 +48,7 @@ test.describe("identity onboarding @journey", () => {
 
   test.beforeEach(() => {
     skipUnlessPrepared(roleAuthState.unapproved, "setup-unapproved");
+    test.skip(!kycOnboarding, "Requires KYC_ONBOARDING_ENABLED=true.");
   });
 
   test("preserves intent through KYC and allows skip/resume", async ({ page }) => {
@@ -118,6 +120,7 @@ test.describe("full post-verification buyer onboarding @journey", () => {
 
     test("explains empty recommendations and continues to identity", async ({ page }) => {
       skipUnlessPrepared(roleAuthState.zeroLot, "setup-zero-lot");
+      test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
       await page.goto("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist");
       await expect(
         page.getByText(/don.t have live lots in your selected categories/i),

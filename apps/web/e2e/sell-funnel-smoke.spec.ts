@@ -9,7 +9,7 @@
  * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/sell-funnel-smoke.spec.ts
  */
 import { expect, test } from "@playwright/test";
-import { clientLogin } from "./helpers/auth";
+import { clientSession } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -79,7 +79,7 @@ test.describe("sell funnel smoke @journey", () => {
     test.skip(!enabled, skipReason);
 
     await page.goto("/login?next=/dashboard/submissions/new&intent=sell");
-    await page.waitForURL(/\/sign-up\?/, { timeout: 30_000 });
+    await page.waitForURL(/\/sign-up\?/, { timeout: 30_000, waitUntil: "domcontentloaded" });
     expect(new URL(page.url()).searchParams.get("client_id")).toBe("lax-bid-web");
   });
 
@@ -90,7 +90,7 @@ test.describe("sell funnel smoke @journey", () => {
       "Set PLAYWRIGHT_CLIENT_EMAIL and PLAYWRIGHT_CLIENT_PASSWORD",
     );
 
-    await clientLogin(page);
+    await clientSession(page);
     await page.goto("/dashboard/submissions/new");
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({

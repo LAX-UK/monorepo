@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { clientLogin } from "./helpers/auth";
+import { clientSession } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -17,7 +17,7 @@ test.describe("org onboarding wizard @journey", () => {
       "Set PLAYWRIGHT_ORG_ONBOARDING_ENTITY_ID to an in-progress organisation",
     );
 
-    await clientLogin(page);
+    await clientSession(page);
     await page.goto(
       `/onboarding/organisation/step/type?entityId=${encodeURIComponent(orgOnboardingEntityId)}`,
     );
@@ -39,7 +39,7 @@ test.describe("org onboarding wizard @journey", () => {
       "Set PLAYWRIGHT_ORG_ONBOARDING_ENTITY_ID to an in-progress organisation",
     );
 
-    await clientLogin(page);
+    await clientSession(page);
     await page.goto(
       `/onboarding/organisation/step/identity?entityId=${encodeURIComponent(orgOnboardingEntityId)}`,
     );
@@ -52,7 +52,7 @@ test.describe("org onboarding wizard @journey", () => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
-    await clientLogin(page);
+    await clientSession(page);
     await page.goto("/onboarding/organisation/step/type?fresh=1");
 
     await expect(page.getByRole("heading", { name: /organisation type/i })).toBeVisible({

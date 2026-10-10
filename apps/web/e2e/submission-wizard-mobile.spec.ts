@@ -10,7 +10,7 @@
  * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/submission-wizard-mobile.spec.ts
  */
 import { expect, test } from "@playwright/test";
-import { clientLogin } from "./helpers/auth";
+import { clientSession } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -33,7 +33,7 @@ test.describe("submission wizard mobile @journey", () => {
       "Set PLAYWRIGHT_CLIENT_EMAIL and PLAYWRIGHT_CLIENT_PASSWORD",
     );
 
-    await clientLogin(page);
+    await clientSession(page);
 
     if (draftId) {
       await page.goto(`/dashboard/submissions/${draftId}`);

@@ -82,7 +82,7 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
             {alertCount} account alert{alertCount === 1 ? "" : "s"}
           </span>
         </span>
-        <span className="shrink-0 font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary">
+        <span className="shrink-0 font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary dark:text-link">
           View
         </span>
       </Button>

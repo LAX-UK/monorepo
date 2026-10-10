@@ -5,6 +5,7 @@ import { roleAuthState } from "./helpers/auth-state";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const fullBuyerOnboarding = process.env.FULL_BUYER_ONBOARDING_ENABLED === "true";
+const kycOnboarding = process.env.KYC_ONBOARDING_ENABLED === "true";
 
 test.describe("buyer onboarding a11y @a11y", () => {
   test.use({ storageState: roleAuthState.unapproved });
@@ -15,6 +16,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
       !existsSync(roleAuthState.unapproved),
       "Mint setup-unapproved via prepare-e2e-auth-states.mjs",
     );
+    test.skip(!kycOnboarding, "Requires KYC_ONBOARDING_ENABLED=true.");
   });
 
   test("identity why page has no serious axe violations and is keyboard reachable", async ({
@@ -24,8 +26,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
 
-    // KYC off renders "Continue" instead of the skip link; both go to `next`.
-    const skip = page.getByRole("link", { name: /^(verify later|finish later|continue)$/i });
+    const skip = page.getByRole("link", { name: /verify later|finish later/i });
     await skip.focus();
     await expect(skip).toBeFocused();
     await page.keyboard.press("Enter");
