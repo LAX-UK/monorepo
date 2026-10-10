@@ -1,6 +1,6 @@
-import { and, countDistinct, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, countDistinct, eq, inArray, isNull, max, or, sql } from "drizzle-orm";
 import { identityAccessMarker, identityMfaPolicy } from "../schema/access-policy.js";
-import { user } from "../schema/auth.js";
+import { session, user } from "../schema/auth.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";
 
 type PolicyScope = { scope: "staff" } | { scope: "org"; legalEntityId: string };
@@ -146,6 +146,16 @@ export function createDrizzleTwoFactorPolicyStore(db: IdentityDatabase) {
         .from(user)
         .where(inArray(user.id, [...subjectIds]));
       return new Map(rows.map((row) => [row.id, row.twoFactorEnabled === true]));
+    },
+
+    async readLastSignIn(subjectIds: readonly string[]) {
+      if (subjectIds.length === 0) return new Map<string, Date>();
+      const rows = await db
+        .select({ userId: session.userId, at: max(session.createdAt) })
+        .from(session)
+        .where(inArray(session.userId, [...subjectIds]))
+        .groupBy(session.userId);
+      return new Map(rows.flatMap((row) => (row.at ? [[row.userId, row.at] as const] : [])));
     },
   };
 }

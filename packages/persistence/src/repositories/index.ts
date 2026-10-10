@@ -95,6 +95,10 @@ export { DrizzleKycRepository } from "./drizzle-kyc.repository.js";
 export { DrizzleAntiShillingRepository } from "./drizzle-anti-shilling.repository.js";
 export { DrizzlePendingInvitationsReader } from "./drizzle-pending-invitations.reader.js";
 export { DrizzleUserInvitationRepository } from "./drizzle-invitation.repository.js";
+export {
+  DrizzleLaxStaffAccessRepository,
+  insertLaxStaffAccessEvents,
+} from "./drizzle-lax-staff-access.repository.js";
 export { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";

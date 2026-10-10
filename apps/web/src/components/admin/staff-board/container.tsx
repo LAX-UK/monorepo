@@ -5,11 +5,13 @@ import { AdminStaffBoard } from "@/components/admin/admin-staff-board";
 import { resolveAdminUserForPickerAction } from "@/lib/actions/admin-users-browse";
 import { buildStaffDrawerHref } from "@/lib/admin/people/staff-list-href";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import type { StaffAccessSummary } from "@/lib/data/http/staff-access.server";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Props = {
   rows: AdminUserRow[];
+  access: Record<string, StaffAccessSummary>;
   totalMatches: number;
   hasActiveFilters: boolean;
   selectedStaffId?: string | undefined;
@@ -20,6 +22,7 @@ type Props = {
 
 export function AdminStaffBoardContainer({
   rows,
+  access,
   totalMatches,
   hasActiveFilters,
   selectedStaffId,
@@ -81,6 +84,7 @@ export function AdminStaffBoardContainer({
       ) : null}
       <AdminStaffBoard
         rows={rows}
+        access={access}
         totalMatches={totalMatches}
         hasActiveFilters={hasActiveFilters}
         externalMobileCards={externalMobileCards}

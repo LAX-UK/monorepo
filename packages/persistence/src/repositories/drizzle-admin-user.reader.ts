@@ -17,6 +17,7 @@ import {
   buildAdminUserListWhere,
   mapAdminUserListRow,
 } from "./admin-user-list-sql.js";
+import { insertLaxStaffAccessEvents } from "./drizzle-lax-staff-access.repository.js";
 
 export class DrizzleAdminUserReader implements IAdminUserReader {
   constructor(private readonly db: Database) {}
@@ -127,20 +128,57 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 }
 
 export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly producer = "apps/api",
+  ) {}
 
-  async setRoleAndStaff(userId: string, role: string, staffRole: string | null): Promise<void> {
-    if (role === "client") {
-      await writeBidUserProfile(this.db, userId, { role: "client", staffRole: null });
-      return;
-    }
-    const value =
-      staffRole === null || staffRole === ""
+  async setRoleAndStaff(
+    userId: string,
+    role: string,
+    staffRole: string | null,
+    actorUserId: string,
+  ): Promise<void> {
+    const nextStaffRole =
+      role === "client" || staffRole === null || staffRole === ""
         ? null
         : (staffRole as (typeof userStaffRoleEnum.enumValues)[number]);
-    await writeBidUserProfile(this.db, userId, {
-      role: "staff",
-      staffRole: value,
+    await this.db.transaction(async (tx) => {
+      const [previous] = await tx
+        .select({ role: bidUserProfile.role, staffRole: bidUserProfile.staffRole })
+        .from(bidUserProfile)
+        .where(eq(bidUserProfile.userId, userId))
+        .for("update");
+      await writeBidUserProfile(tx, userId, {
+        role: role === "client" ? "client" : "staff",
+        staffRole: nextStaffRole,
+      });
+      const before = previous?.role === "staff" ? (previous.staffRole ?? "staff") : null;
+      const after = role === "client" ? null : (nextStaffRole ?? "staff");
+      if (before === after) return;
+      await insertLaxStaffAccessEvents(tx, this.producer, [
+        after === null
+          ? {
+              type: "lax.staff_access.revoked",
+              payload: {
+                schemaVersion: 1,
+                subjectId: userId,
+                product: "bid",
+                revokedBySubjectId: actorUserId,
+              },
+            }
+          : {
+              type: "lax.staff_access.granted",
+              payload: {
+                schemaVersion: 1,
+                subjectId: userId,
+                product: "bid",
+                role: after,
+                grantedBySubjectId: actorUserId,
+                invitationId: null,
+              },
+            },
+      ]);
     });
   }
 }

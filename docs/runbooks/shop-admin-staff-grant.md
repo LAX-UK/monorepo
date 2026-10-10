@@ -19,6 +19,20 @@ LIMIT 20;
 - `failed` — transient failure; it retries until 8 attempts, then becomes `dead`.
 - `dead` — not retried; ops got a `staff_access_dead` alert. Typical causes: last-admin protection on a revoke, or a role Shop doesn't know. Fix the roster by hand in Shop Admin (or with the CLI below), then leave the row as the record of what happened.
 
+Changes made later from Bid (**Admin → Staff → person → LAX access**) take the same path. Until Shop applies a change, Bid shows it as pending. A change that stays pending for more than a few minutes usually means its inbox row is `failed` or `dead`.
+
+Compare what Bid shows with what Shop applied:
+
+```sql
+SELECT subject_id, product, role, updated_at
+FROM lax_staff_access_directory
+WHERE subject_id = '<identity-subject-id>';
+```
+
+## Grants from Shop Admin
+
+Shop admins can grant a role directly at **Staff → Add staff by email**. The email must match an active LAX login that Shop knows (`shop_user_profile`). If it doesn't, invite the person from Bid instead. The page links to Bid's staff screen when `LAX_BID_PUBLIC_URL` is set for `shop-admin`.
+
 ## Confirm grant for a subject (break-glass)
 
 ```bash

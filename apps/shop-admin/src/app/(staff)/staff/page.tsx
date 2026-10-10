@@ -4,6 +4,7 @@ import { GrantStaffRoleForm } from "@/components/admin-staff-action-forms.client
 import { StaffMembersListTable } from "@/components/admin-staff-list-tables.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { getShopAdminContainer } from "@/server/container";
 import { redirect } from "next/navigation";
 
 type StaffList = {
@@ -33,11 +34,14 @@ export default async function StaffPage({
     );
   }
 
+  const { bidPublicUrl } = getShopAdminContainer().config;
+  const bidStaffUrl = bidPublicUrl ? `${bidPublicUrl}/admin/staff` : undefined;
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold">Staff</h1>
       <div className="mb-6">
-        <GrantStaffRoleForm />
+        <GrantStaffRoleForm bidStaffUrl={bidStaffUrl} />
       </div>
       <StaffMembersListTable items={result.data.items} />
       <AdminListCursorNav pathname="/staff" nextCursor={result.data.nextCursor} />
