@@ -1,6 +1,6 @@
 import { OIDC_ACR_BRONZE, OIDC_ACR_SILVER } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
-import { buildAccountLinks } from "./account-links";
+import { buildAccountLinks, buildStaffPlatformLinks } from "./account-links";
 import { buildAccountOverview } from "./account-overview.vm";
 import { signInNotice } from "./sign-in-notice.vm";
 
@@ -26,6 +26,7 @@ describe("buildAccountOverview", () => {
       phone: "+201000000000",
       phoneVerified: true,
       signedInWithAuthenticator: true,
+      staffPlatforms: [],
     });
   });
 
@@ -88,5 +89,29 @@ describe("signInNotice", () => {
     expect(signInNotice("access_denied")?.title).toBe("Sign-in cancelled");
     expect(signInNotice("mfa_required")?.tone).toBe("error");
     expect(signInNotice("invalid_state")?.title).toBe("We couldn't sign you in");
+  });
+});
+
+describe("staff platforms", () => {
+  it("reads platforms from the ID token and ignores malformed values", () => {
+    expect(
+      buildAccountOverview({ lax_staff_platforms: ["bid", "shop"] }, OIDC_ACR_BRONZE)
+        .staffPlatforms,
+    ).toEqual(["bid", "shop"]);
+    expect(
+      buildAccountOverview({ lax_staff_platforms: ["admin"] }, OIDC_ACR_BRONZE).staffPlatforms,
+    ).toEqual([]);
+    expect(
+      buildAccountOverview({ lax_staff_platforms: "bid" }, OIDC_ACR_BRONZE).staffPlatforms,
+    ).toEqual([]);
+  });
+
+  it("links each platform to its admin and skips platforms without a configured URL", () => {
+    expect(
+      buildStaffPlatformLinks({ bidPublicUrl: "https://lax.bid", shopAdminUrl: undefined }, [
+        "bid",
+        "shop",
+      ]),
+    ).toEqual([{ product: "bid", label: "LAX Bid admin", href: "https://lax.bid/admin" }]);
   });
 });

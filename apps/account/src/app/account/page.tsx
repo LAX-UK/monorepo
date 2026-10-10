@@ -8,7 +8,7 @@ import {
 } from "@/components/account-ui";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
-import { buildAccountLinks } from "@/server/domain/account-links";
+import { buildAccountLinks, buildStaffPlatformLinks } from "@/server/domain/account-links";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,9 @@ export default async function AccountPage() {
   const session = await loadAccountSession();
   if (session.status !== "ok") redirect("/api/auth/login?returnTo=/account");
   const { overview } = session;
-  const links = buildAccountLinks(getLaxAccountContainer().config, { email: overview.email });
+  const { config } = getLaxAccountContainer();
+  const links = buildAccountLinks(config, { email: overview.email });
+  const staffPlatforms = buildStaffPlatformLinks(config, overview.staffPlatforms);
   const editProfile = links.editProfile ? (
     <a href={links.editProfile} className={textLink}>
       Edit in LAX Bid
@@ -119,6 +121,30 @@ export default async function AccountPage() {
           </Row>
         </dl>
       </Card>
+
+      {staffPlatforms.length > 0 ? (
+        <Card
+          id="lax-access"
+          title="Your LAX access"
+          description="LAX team tools you can use with this account. Your role on each one is managed by a LAX admin."
+        >
+          <dl>
+            {staffPlatforms.map((platform) => (
+              <Row
+                key={platform.product}
+                label={platform.label}
+                action={
+                  <a href={platform.href} className={secondaryButton}>
+                    Open
+                  </a>
+                }
+              >
+                <StatusPill tone="ok">Staff access</StatusPill>
+              </Row>
+            ))}
+          </dl>
+        </Card>
+      ) : null}
     </AccountShell>
   );
 }

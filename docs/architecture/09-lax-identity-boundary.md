@@ -179,6 +179,11 @@ Per-platform staff grants from invitations (D36) reach Identity only through the
 the `shop_staff_member` trigger marks the subject as staff and the staff policy applies
 from the next sign-in.
 
+LAX Account's ID token (and only Account's) carries `lax_staff_platforms`, for example
+`["bid", "shop"]`. It comes from the same markers and lists the platforms where the person
+has staff access, never their role, so Account can show **Your LAX access** with launch
+links. It is current as of the sign-in that issued the token.
+
 ## Logout, revocation, and introspection
 
 RP-initiated logout uses `/api/auth/oauth2/endsession` with an ID-token hint and

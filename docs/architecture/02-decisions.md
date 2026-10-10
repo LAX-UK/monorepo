@@ -684,6 +684,7 @@ Both paths accept in one transaction. Bid applies its grant directly (`bid_user_
 - Changing someone's Shop role from Bid emits an event and nothing else. The change shows as **pending** until Shop applies it and the directory row matches. A failed delivery stays pending, and ops is alerted through the dead-letter path above.
 - The staff list adds a role badge per platform, the 2FA status, and the last sign-in time (the newest session Identity holds). It reads these from Identity's internal two-factor-policy endpoint, in batches of 100.
 - Reads need the users directory capability; changes need `user.invite`, and nobody can remove their own access.
+- LAX Account shows **Your LAX access**, with a launch link for each platform where the person is staff. It reads this from the `lax_staff_platforms` claim, which Identity builds from its access markers and adds only to Account's ID token. The claim names platforms, never roles (D13).
 - Shop Admin can still grant Shop roles directly, now by email. The email is matched against `shop_user_profile`, and if no LAX login uses it, Shop Admin points to the Bid invitation.
 
 All invitation emails, including organisation invitations, use the `access-invite` template. Its subject reads "You've been given access to …" for existing accounts and "You're invited to join …" otherwise, and it lists one row per platform and role.
