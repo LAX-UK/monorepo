@@ -6,6 +6,7 @@ export type OidcClaims = {
   auth_time?: number;
   acr?: string;
   amr?: string[];
+  lax_staff_platforms?: ("bid" | "shop")[];
 };
 
 type OidcClaimsResolver = (input: {

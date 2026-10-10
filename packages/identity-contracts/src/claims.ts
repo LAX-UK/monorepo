@@ -50,6 +50,14 @@ const numericDateSchema = z.number().int().nonnegative().max(32_503_680_000);
 export const OIDC_ACR_BRONZE = "urn:mace:incommon:iap:bronze";
 export const OIDC_ACR_SILVER = "urn:mace:incommon:iap:silver";
 
+/**
+ * Platforms where the subject holds staff access, issued only to LAX Account so it can show
+ * launch links. Names presence only, never roles: roles stay product-owned (D13).
+ */
+export const LAX_STAFF_PLATFORMS_CLAIM = "lax_staff_platforms";
+export const laxStaffPlatformsClaimSchema = z.array(z.enum(["bid", "shop"]));
+export type LaxStaffPlatformsClaim = z.infer<typeof laxStaffPlatformsClaimSchema>;
+
 export const crossPlatformIdTokenPayloadSchemaV1 = z.object({
   sub: z.string(),
   iss: z.string(),

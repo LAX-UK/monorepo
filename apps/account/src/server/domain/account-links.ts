@@ -1,3 +1,4 @@
+import type { LaxStaffPlatformsClaim } from "@auction/identity-contracts";
 import type { LaxAccountConfig } from "../config";
 
 export type AccountLinksVm = {
@@ -26,4 +27,24 @@ export function buildAccountLinks(
       ? new URL("/dashboard/settings/profile", config.bidPublicUrl).toString()
       : null,
   };
+}
+
+export type StaffPlatformLinkVm = { product: "bid" | "shop"; label: string; href: string };
+
+/** Admin launch links for the platforms in the ID token; platforms without a configured URL are skipped. */
+export function buildStaffPlatformLinks(
+  config: Pick<LaxAccountConfig, "bidPublicUrl" | "shopAdminUrl">,
+  platforms: LaxStaffPlatformsClaim,
+): StaffPlatformLinkVm[] {
+  const targets = {
+    bid: {
+      label: "LAX Bid admin",
+      href: config.bidPublicUrl ? `${config.bidPublicUrl}/admin` : null,
+    },
+    shop: { label: "LAX Shop Admin", href: config.shopAdminUrl ?? null },
+  };
+  return platforms.flatMap((product) => {
+    const { label, href } = targets[product];
+    return href ? [{ product, label, href }] : [];
+  });
 }

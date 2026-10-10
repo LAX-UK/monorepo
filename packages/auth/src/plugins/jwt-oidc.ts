@@ -54,6 +54,7 @@ export function buildJwtAndOidcPlugins(options: {
         auth_time?: number;
         acr?: string;
         amr?: string[];
+        lax_staff_platforms?: ("bid" | "shop")[];
       }>)
     | undefined;
   breachedPasswordChecker?: BreachedPasswordChecker | undefined;
