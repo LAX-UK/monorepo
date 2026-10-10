@@ -63,6 +63,7 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
         email: string;
         name: string;
         phoneNumber?: string | null;
+        phoneNumberVerified?: boolean | null;
         image?: string | null | undefined;
       }) => {
         if (!deps.onUserUpdated) return;
@@ -71,6 +72,7 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
           email: authUser.email,
           name: authUser.name,
           phoneNumber: authUser.phoneNumber ?? null,
+          phoneNumberVerified: authUser.phoneNumberVerified ?? false,
           image: authUser.image ?? null,
         });
       },

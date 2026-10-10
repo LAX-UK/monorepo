@@ -10,6 +10,7 @@ const PINNED_COMPONENTS = [
   "shop-identity",
   "shop-api",
   "shop-admin",
+  "account",
 ];
 
 const AUTH_EXCLUDED = process.env.AUTH_TAG_MAP_ENABLED !== "true";
@@ -59,6 +60,7 @@ export const COMPONENT_TO_IMAGE_TAG_ENV = {
   "shop-identity": "IMAGE_TAG_SHOP_IDENTITY",
   "shop-api": "IMAGE_TAG_SHOP_API",
   "shop-admin": "IMAGE_TAG_SHOP_ADMIN",
+  account: "IMAGE_TAG_ACCOUNT",
 };
 
 export function componentRepository(environment, component) {

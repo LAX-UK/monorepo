@@ -46,9 +46,10 @@ function fulfilmentOptionDescription(option: ShopFulfilmentOption): string | und
 type Props = {
   basket: BasketView;
   customerEmail?: string;
+  defaultDeliveryPhone?: string;
 };
 
-export function CheckoutForm({ basket, customerEmail }: Props) {
+export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Props) {
   const [fulfilment, setFulfilment] = useState<ShopFulfilmentOption>("uk_insured_delivery");
   const [delivery, setDelivery] = useState<ShopDeliveryAddressInput>({
     line1: "",
@@ -61,6 +62,7 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postcodeError, setPostcodeError] = useState<string | null>(null);
+  const [deliveryPhone, setDeliveryPhone] = useState(defaultDeliveryPhone ?? "");
   const fieldsDisabled = pending || redirecting;
 
   const fulfilmentOptions = useMemo(
@@ -170,6 +172,23 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
                 <Input id="checkout-country" readOnly value="United Kingdom (GB)" />
                 <input type="hidden" name="country" value={delivery.country} />
               </div>
+              <div className="shop-checkout__field shop-checkout__field--full">
+                <Label htmlFor="checkout-phone">Delivery phone</Label>
+                <Input
+                  id="checkout-phone"
+                  type="tel"
+                  required
+                  disabled={fieldsDisabled}
+                  value={deliveryPhone}
+                  onChange={(event) => setDeliveryPhone(event.target.value)}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  aria-describedby="checkout-phone-hint"
+                />
+                <p id="checkout-phone-hint" className="text-xs text-on-surface-variant">
+                  Our courier uses this only to arrange delivery.
+                </p>
+              </div>
             </div>
           </fieldset>
         ) : null}
@@ -195,6 +214,19 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
               document.getElementById("checkout-postcode")?.focus();
               return;
             }
+            if (fulfilment === "uk_insured_delivery") {
+              const phone = deliveryPhone.trim();
+              if (!phone) {
+                setError("Enter a delivery phone number.");
+                document.getElementById("checkout-phone")?.focus();
+                return;
+              }
+              if (!/^\+?[0-9][0-9 ()-]{6,19}$/.test(phone)) {
+                setError("Enter a valid delivery phone number.");
+                document.getElementById("checkout-phone")?.focus();
+                return;
+              }
+            }
             startTransition(async () => {
               const deliveryAddress =
                 fulfilment === "uk_insured_delivery"
@@ -210,6 +242,9 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
                 basketId: basket.basketId,
                 fulfilment,
                 ...(deliveryAddress ? { deliveryAddress } : {}),
+                ...(fulfilment === "uk_insured_delivery"
+                  ? { deliveryPhone: deliveryPhone.trim() }
+                  : {}),
               });
               if (result.kind === "enquiry") {
                 window.open(

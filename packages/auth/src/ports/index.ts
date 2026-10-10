@@ -14,6 +14,10 @@ export type {
 } from "./identity-event-publisher.js";
 export type { ProductSubjectUsageProbe } from "./product-subject-usage-probe.js";
 export type { PhoneNumberStore } from "./phone-number-store.js";
+export type {
+  BreachedPasswordChecker,
+  BreachedPasswordCheckResult,
+} from "./breached-password-checker.js";
 
 export type AuthPorts = {
   consentStore: import("./consent-store.js").ConsentStore;

@@ -318,7 +318,10 @@ same product restart URL. Turnstile is rendered only after `captcha_required`,
 and submit stays disabled until a token is present. Default Shop/Bid login is
 email-first; `HOSTED_AUTH_EMAIL_FIRST=false` restores a combined email/password
 form. When `REQUIRE_EMAIL_VERIFICATION` is on, sign-up success and existing-
-account 4xx responses both show “Check your email to continue.” Better Auth
+account 4xx responses both show “Check your email to continue.” The one
+exception is `PASSWORD_BREACHED`: the breach check runs before any account
+lookup, so sign-up and reset show it as a password field error without
+revealing whether the email exists. Breach lookups fail open. Better Auth
 remains the credential authority — hosted pages do not add React or client-side
 schema libraries.
 
@@ -538,3 +541,9 @@ owned outside Identity — see [LAX ecosystem boundary](./11-lax-ecosystem-bound
 the responsibility matrix, settings classification, and `@auction/lax-ecosystem`
 contracts. Identity still owns credentials and sessions; products still own roles and
 domain data.
+
+## Passkeys (planned)
+
+WebAuthn passkeys are not implemented yet. When added, ceremonies stay on the auth
+origin (`auth.lax.bid`), satisfy silver ACR alongside TOTP, and are managed from the LAX
+Account portal (`apps/account`).

@@ -8,12 +8,14 @@ import { magicLink, twoFactor } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
 import { AUTH_TIMINGS } from "../auth-timings.js";
+import { buildBreachedPasswordPlugin } from "../breached-password-plugin.js";
 import type { EnvelopeCrypto } from "../crypto/envelope.js";
 import { resolveMagicLinkUrl } from "../hosted-auth/magic-link-url.js";
 import { pickMagicLinkTemplate } from "../magic-link-email.js";
 import { buildMagicLinkVerifyPlugin } from "../magic-link-verify-hooks.js";
 import { buildOidcConsentHtml } from "../oidc-consent-html.js";
 import { buildPhoneNumberGuardPlugin, buildPhoneNumberPlugin } from "../phone-number-plugin.js";
+import type { BreachedPasswordChecker } from "../ports/breached-password-checker.js";
 import type {
   AccountLinkReader,
   EmailSender,
@@ -22,6 +24,12 @@ import type {
   SmsSender,
 } from "../ports/index.js";
 import { buildTwoFactorEnforcementPlugin } from "../two-factor-enforcement.js";
+
+function normalizeOidcScopes(scopes: unknown): string[] {
+  if (Array.isArray(scopes)) return scopes.map(String);
+  if (typeof scopes === "string") return scopes.split(/\s+/).filter(Boolean);
+  return [];
+}
 
 export function buildJwtAndOidcPlugins(options: {
   jwksStore: JwksStore;
@@ -48,6 +56,7 @@ export function buildJwtAndOidcPlugins(options: {
         amr?: string[];
       }>)
     | undefined;
+  breachedPasswordChecker?: BreachedPasswordChecker | undefined;
 }): BetterAuthPlugin[] {
   const jwksAdapter = options.jwksStore;
   const { issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
@@ -94,15 +103,37 @@ export function buildJwtAndOidcPlugins(options: {
         issuer,
         jwks_uri: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
       },
-      getAdditionalUserInfoClaim: async (sessionUser, _scopes, client) => ({
-        email_verified: sessionUser.emailVerified,
-        ...(options.resolveOidcIdTokenClaims
-          ? await options.resolveOidcIdTokenClaims({
-              subjectId: sessionUser.id,
-              clientId: client.clientId,
-            })
-          : {}),
-      }),
+      getAdditionalUserInfoClaim: async (sessionUser, scopes, client) => {
+        const scopeSet = new Set(normalizeOidcScopes(scopes));
+        const profileClaims = scopeSet.has("profile")
+          ? {
+              ...(sessionUser.image ? { picture: sessionUser.image } : {}),
+            }
+          : {};
+        const phoneClaims =
+          scopeSet.has("phone") && sessionUser.phoneNumber && sessionUser.phoneNumberVerified
+            ? {
+                phone_number: sessionUser.phoneNumber,
+                phone_number_verified: true,
+              }
+            : scopeSet.has("phone")
+              ? {
+                  phone_number: sessionUser.phoneNumber ?? undefined,
+                  phone_number_verified: sessionUser.phoneNumberVerified ?? false,
+                }
+              : {};
+        return {
+          email_verified: sessionUser.emailVerified,
+          ...profileClaims,
+          ...phoneClaims,
+          ...(options.resolveOidcIdTokenClaims
+            ? await options.resolveOidcIdTokenClaims({
+                subjectId: sessionUser.id,
+                clientId: client.clientId,
+              })
+            : {}),
+        };
+      },
     }),
     twoFactor({ issuer: options.totpIssuer ?? "LAX", allowPasswordless: true }),
     magicLink({
@@ -166,5 +197,6 @@ export function buildJwtAndOidcPlugins(options: {
       email,
     }),
     buildPhoneNumberGuardPlugin(options.phoneNumberStore),
+    buildBreachedPasswordPlugin(options.breachedPasswordChecker),
   ];
 }

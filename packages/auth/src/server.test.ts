@@ -62,6 +62,28 @@ function mockAuthPorts(overrides?: Partial<AuthPorts>): AuthPorts {
 }
 
 describe("createAuth", () => {
+  it("returns 404 for disabled phone sign-in endpoints", async () => {
+    const auth = createAuth({
+      database: mockAuthDatabase(),
+      ports: mockAuthPorts(),
+      secret: "test-secret-that-is-long-enough",
+      baseURL: "http://localhost:3001",
+      issuerURL: "http://localhost:3001",
+      trustedOrigins: ["http://localhost:3001"],
+    });
+    const response = await auth.handler(
+      new Request("http://localhost:3001/api/auth/sign-in/phone-number", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3001",
+        },
+        body: JSON.stringify({ phoneNumber: "+14155550100", password: "x" }),
+      }),
+    );
+    expect(response.status).toBe(404);
+  });
+
   it("boots when Apple Sign-In is feature-flagged off", () => {
     expect(() =>
       createAuth({

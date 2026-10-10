@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { AUTH_RATE_LIMIT_POLICY, slidingWindowRetryAfterSec } from "@auction/auth";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -56,6 +56,25 @@ async function enforceSlidingLimit(
   if (count <= max) return null;
   const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, count, max);
   return rateLimited(c, retryAfterSec);
+}
+
+function normalizePhoneForRateLimit(raw: string): string {
+  return raw.replace(/[\s()-]/g, "");
+}
+
+function phoneRateLimitRedisKey(normalized: string): string {
+  return createHash("sha256").update(normalized, "utf8").digest("hex");
+}
+
+async function phoneFromJsonBody(req: Request): Promise<string | null> {
+  try {
+    const body = (await req.clone().json()) as { phoneNumber?: unknown };
+    if (typeof body.phoneNumber !== "string") return null;
+    const normalized = normalizePhoneForRateLimit(body.phoneNumber.trim());
+    return normalized.length >= 8 && normalized.length <= 20 ? normalized : null;
+  } catch {
+    return null;
+  }
 }
 
 async function emailFromJsonBody(req: Request): Promise<string | null> {
@@ -160,7 +179,13 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis, clientIp:
   });
 }
 
-export function createAuthIssuerRateLimitMiddleware(redis: Redis, clientIp: ClientIpResolver) {
+export function createAuthIssuerRateLimitMiddleware(
+  redis: Redis,
+  clientIp: ClientIpResolver,
+  options?: {
+    resolveSubjectId?: (headers: Headers) => Promise<string | null>;
+  },
+) {
   return createMiddleware(async (c, next) => {
     const ip = clientIp(c);
     const path = c.req.path;
@@ -269,6 +294,48 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis, clientIp: Clie
         RL.phoneSendOtpMax,
       );
       if (limited) return limited;
+      const subjectId = options?.resolveSubjectId
+        ? await options.resolveSubjectId(c.req.raw.headers)
+        : null;
+      if (subjectId) {
+        const bySubject = await enforceSlidingLimit(
+          c,
+          redis,
+          `rl:auth-issuer:phone-send-otp:subject:${subjectId}`,
+          RL.phoneSendOtpSubjectWindowSec,
+          RL.phoneSendOtpSubjectMax,
+        );
+        if (bySubject) return bySubject;
+      }
+      const phone = await phoneFromJsonBody(c.req.raw);
+      if (phone) {
+        const byNumber = await enforceSlidingLimit(
+          c,
+          redis,
+          `rl:auth-issuer:phone-send-otp:number:${phoneRateLimitRedisKey(phone)}`,
+          RL.phoneSendOtpNumberWindowSec,
+          RL.phoneSendOtpNumberMax,
+        );
+        if (byNumber) return byNumber;
+      }
+      await next();
+      return;
+    }
+
+    if (isPost && path.endsWith("/phone-number/verify")) {
+      const subjectId = options?.resolveSubjectId
+        ? await options.resolveSubjectId(c.req.raw.headers)
+        : null;
+      if (subjectId) {
+        const limited = await enforceSlidingLimit(
+          c,
+          redis,
+          `rl:auth-issuer:phone-verify:subject:${subjectId}`,
+          RL.phoneVerifySubjectWindowSec,
+          RL.phoneVerifySubjectMax,
+        );
+        if (limited) return limited;
+      }
       await next();
       return;
     }

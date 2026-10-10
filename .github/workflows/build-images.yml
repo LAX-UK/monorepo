@@ -173,7 +173,7 @@ jobs:
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
-            ${{ !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
+            ${{ !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin","account"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
 
@@ -186,7 +186,7 @@ jobs:
       ENVIRONMENT: ${{ inputs.environment }}
       GIT_SHA: ${{ inputs.git_sha || github.sha }}
       COMPONENTS_JSON: ${{ inputs.components }}
-      RELEASE_COMPONENTS: api,auth,shop-identity,shop,shop-api,shop-admin,ws,worker,migrate,web,clamav
+      RELEASE_COMPONENTS: api,auth,shop-identity,shop,shop-api,shop-admin,account,ws,worker,migrate,web,clamav
     steps:
       - uses: actions/checkout@v4
         with:

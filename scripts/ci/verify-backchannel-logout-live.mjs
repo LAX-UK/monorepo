@@ -8,6 +8,7 @@ const timeoutMs = Number(process.env.BACKCHANNEL_LOGOUT_TIMEOUT_MS ?? 60_000);
 const expected = new Map([
   ["lax-bid-web", "https://test.lax.bid/api/auth/backchannel-logout"],
   ["lax-shop-web", "https://test-shop.lax.bid/api/auth/backchannel-logout"],
+  ["lax-account-web", "https://test-account.lax.bid/api/auth/backchannel-logout"],
 ]);
 
 if (!databaseUrl || !startedAt || Number.isNaN(Date.parse(startedAt))) {

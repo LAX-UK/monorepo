@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { IdentityEventPublisher, ProductSubjectUsageProbe } from "@auction/auth";
+import type {
+  BreachedPasswordChecker,
+  IdentityEventPublisher,
+  ProductSubjectUsageProbe,
+} from "@auction/auth";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
-import { setupPasswordBodySchema } from "../schemas/setup-password.js";
+import { findNewPasswordPolicyViolation } from "../schemas/validate-new-password.js";
 import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
 import type { IIdentityNotifier } from "./identity-notification.ports.js";
 import type {
@@ -17,6 +21,7 @@ export type IdentityOperationErrorCode =
   | "expired"
   | "invalid_password"
   | "invalid_password_policy"
+  | "password_breached"
   | "invalid_expiry"
   | "no_credential"
   | "no_session"
@@ -65,7 +70,13 @@ export class IdentityOperationsService {
       "revokeIdentitySessions" | "revokeSubject"
     >,
     private readonly now: () => Date = () => new Date(),
+    private readonly breachedPasswordChecker?: BreachedPasswordChecker,
   ) {}
+
+  private async assertPasswordPolicy(password: string): Promise<void> {
+    const violation = await findNewPasswordPolicyViolation(password, this.breachedPasswordChecker);
+    if (violation) throw new IdentityOperationError(violation);
+  }
 
   readSubject(subjectId: string): Promise<IdentitySubject | null> {
     return this.repositories.subjects.findById(subjectId);
@@ -91,9 +102,7 @@ export class IdentityOperationsService {
   }
 
   async setupPassword(subjectId: string, password: string, sessionToken?: string): Promise<void> {
-    if (!setupPasswordBodySchema.safeParse({ password }).success) {
-      throw new IdentityOperationError("invalid_password_policy");
-    }
+    await this.assertPasswordPolicy(password);
     const subject = await this.readSubject(subjectId);
     if (!subject) throw new IdentityOperationError("subject_not_found");
     const passwordHash = await hashPassword(password);
@@ -171,9 +180,7 @@ export class IdentityOperationsService {
     newPassword: string,
     sessionToken: string,
   ): Promise<void> {
-    if (!setupPasswordBodySchema.safeParse({ password: newPassword }).success) {
-      throw new IdentityOperationError("invalid_password_policy");
-    }
+    await this.assertPasswordPolicy(newPassword);
     const credential = await this.repositories.credentials.findCredential(subjectId);
     if (
       !credential?.passwordHash ||
@@ -206,6 +213,26 @@ export class IdentityOperationsService {
 
   listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {
     return this.repositories.sessions.listForSubject(subjectId, currentSessionToken);
+  }
+
+  async resetTwoFactor(subjectId: string): Promise<void> {
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const ok = await this.repositories.subjects.resetTwoFactorEnrollment(
+        transaction,
+        subjectId,
+        this.now(),
+      );
+      if (!ok) throw new IdentityOperationError("subject_not_found");
+      const deleted = await this.repositories.sessions.deleteAllSessions(transaction, subjectId);
+      if (deleted > 0) {
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId },
+          { transaction },
+        );
+      }
+    });
+    // RP sessions (shop-admin, account) can outlive IdP sessions, so always fan out logout.
+    await this.logout?.revokeSubject(subjectId);
   }
 
   async revokeSession(subjectId: string, sessionId: string): Promise<boolean> {

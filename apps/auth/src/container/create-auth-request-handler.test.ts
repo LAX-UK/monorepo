@@ -109,7 +109,8 @@ describe("auth request lifecycle ordering", () => {
     type GetSessionInput = { headers: Headers; query?: { disableCookieCache?: boolean } };
     const getSessionInput = (getSession.mock.calls as unknown as [GetSessionInput][])[0]?.[0];
     expect(getSessionInput).toBeDefined();
-    const headers = getSessionInput!.headers;
+    const headers = getSessionInput?.headers;
+    if (!headers) throw new Error("expected getSession headers");
     expect(headers.get("cookie")).toContain("better-auth.session_token=new-token");
     expect(headers.get("cookie")).not.toContain("session_data");
     expect(captureAuthorizationSession).toHaveBeenCalledWith(expect.any(Response), "session-2");

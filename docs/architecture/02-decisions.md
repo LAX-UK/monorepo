@@ -627,3 +627,15 @@ before production go-live.
 **Why this wins.** Artist portal routes (`/v1/me/artist/*`) need a deliberate, reversible binding with the same admin safety model as finance mutations, without breaking multi-party ownership.
 
 **Status.** *Implemented.* Handler: [apps/shop-api/src/infrastructure/handlers/admin/link-artist-identity.handler.ts](../../apps/shop-api/src/infrastructure/handlers/admin/link-artist-identity.handler.ts); merge remap: [apps/shop-api/src/infrastructure/scheduler/process-identity-merge-inbox.runner.ts](../../apps/shop-api/src/infrastructure/scheduler/process-identity-merge-inbox.runner.ts); migration **0203** `shop_artist.identity_subject_id`.
+
+## D34. LAX Account app, phone-as-contact-only, and disabled SMS password reset
+
+**Supersedes none; extends D13 / D7.**
+
+**Chosen.** Cross-product identity settings live in `apps/account` (`account.lax.bid`) as an OIDC RP/BFF (`lax-account-web`). Phone numbers are verified contact data only: hosted `/phone` sign-in is retired and Better Auth phone SMS password-reset paths are disabled. Shop checkout may request OIDC `phone` scope to prefill `shop_order.delivery_phone`. Staff shop-admin sign-in uses silver ACR with hosted MFA setup when no authenticator exists.
+
+**Portal scope (v1).** `/account` shows profile claims read-only (edits link to Bid via `LAX_BID_PUBLIC_URL`) and security actions that hand off to issuer-hosted pages: password change via `/forgot-password`, authenticator enrolment via `/two-factor/setup`. The hosted setup page requires an issuer session and refuses to re-enrol an account that already has an authenticator, because Better Auth's enable call replaces the working secret immediately. Authenticator status is shown from the session ACR (silver means this sign-in used a second factor); the portal does not claim "not enrolled" from a bronze sign-in. Bid web keeps `LAX_ACCOUNT_ORIGIN` unset until the portal owns profile editing.
+
+**Rollout.** Test: build `lax-test-account:<sha>` with `app-deploy-test`, then run `terraform-test-up` with `account_sha` set (the workflow verifies the image exists before apply); later runs resolve the live tag. Production has no account component, DNS or OIDC client secrets in Terraform yet; those land with the production rollout.
+
+**Status.** *Implemented (foundation).* Runbooks: [docs/runbooks/mfa-staff-reset.md](../runbooks/mfa-staff-reset.md), [docs/runbooks/shop-admin-staff-grant.md](../runbooks/shop-admin-staff-grant.md).

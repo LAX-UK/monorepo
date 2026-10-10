@@ -47,6 +47,7 @@ function createRepositories(): IdentityOperationsRepositories {
         .fn()
         .mockResolvedValue({ id: "subject", createdAt: new Date("2026-08-10T00:05:00.000Z") }),
       listAccountProviders: vi.fn().mockResolvedValue(["credential"]),
+      resetTwoFactorEnrollment: vi.fn().mockResolvedValue(true),
       deleteSubject: vi.fn().mockResolvedValue(true),
     },
     credentials: {
@@ -125,6 +126,31 @@ describe("IdentityOperationsService", () => {
     ).rejects.toMatchObject({ code: "invalid_expiry" });
 
     expect(repositories.subjects.findById).not.toHaveBeenCalled();
+  });
+
+  it("reports breached passwords distinctly and fails open when the breach check is unknown", async () => {
+    const repositories = createRepositories();
+    const status = { value: "breached" as "breached" | "unknown" };
+    const service = new IdentityOperationsService(
+      repositories,
+      { passwordChanged: vi.fn().mockResolvedValue(undefined) },
+      { getSubjectUsage: vi.fn() },
+      { publish: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      () => now,
+      { checkPassword: vi.fn(async () => ({ status: status.value })) },
+    );
+
+    await expect(service.setupPassword("subject", "Correct-horse-9")).rejects.toMatchObject({
+      code: "password_breached",
+    });
+    expect(repositories.subjects.findById).not.toHaveBeenCalled();
+
+    status.value = "unknown";
+    vi.mocked(repositories.subjects.findById).mockResolvedValue(null);
+    await expect(service.setupPassword("subject", "Correct-horse-9")).rejects.toMatchObject({
+      code: "subject_not_found",
+    });
   });
 
   it("maps missing subjects and duplicate credentials to stable errors", async () => {
@@ -449,6 +475,47 @@ describe("IdentityOperationsService", () => {
       { type: "user.deletion_cancelled", userId: "subject", cancelledAt: now },
       { producer: "apps/auth", transaction },
     );
+  });
+});
+
+describe("resetTwoFactor", () => {
+  it("clears enrollment and deletes sessions in one transaction, then fans out logout", async () => {
+    const { repositories, service, logout, identityEventPublisher } = createService();
+    await service.resetTwoFactor("subject");
+    expect(repositories.unitOfWork.transaction).toHaveBeenCalledTimes(1);
+    expect(repositories.subjects.resetTwoFactorEnrollment).toHaveBeenCalledWith(
+      transaction,
+      "subject",
+      expect.any(Date),
+    );
+    expect(repositories.sessions.deleteAllSessions).toHaveBeenCalledWith(transaction, "subject");
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.session_revoked", userId: "subject" },
+      { transaction },
+    );
+    expect(identityEventPublisher.publish).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "user.credential_changed" }),
+      expect.anything(),
+    );
+    expect(logout.revokeSubject).toHaveBeenCalledWith("subject");
+  });
+
+  it("still fans out RP logout when the subject has no IdP sessions", async () => {
+    const { repositories, service, logout, identityEventPublisher } = createService();
+    vi.mocked(repositories.sessions.deleteAllSessions).mockResolvedValue(0);
+    await service.resetTwoFactor("subject");
+    expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    expect(logout.revokeSubject).toHaveBeenCalledWith("subject");
+  });
+
+  it("rejects unknown subjects without revoking anything", async () => {
+    const { repositories, service, logout } = createService();
+    vi.mocked(repositories.subjects.resetTwoFactorEnrollment).mockResolvedValue(false);
+    await expect(service.resetTwoFactor("missing")).rejects.toMatchObject({
+      code: "subject_not_found",
+    });
+    expect(repositories.sessions.deleteAllSessions).not.toHaveBeenCalled();
+    expect(logout.revokeSubject).not.toHaveBeenCalled();
   });
 });
 

@@ -110,6 +110,13 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
               country: Type.String({ minLength: 2, maxLength: 2 }),
             }),
           ),
+          deliveryPhone: Type.Optional(
+            Type.String({
+              minLength: 8,
+              maxLength: 20,
+              pattern: "^\\+?[0-9][0-9 ()-]{6,19}$",
+            }),
+          ),
         }),
         response: {
           200: CheckoutSessionSchema,
@@ -134,7 +141,16 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
           postcode: string;
           country: string;
         };
+        deliveryPhone?: string;
       };
+      const deliveryPhone = body.deliveryPhone?.trim();
+      if (body.deliveryAddress && !deliveryPhone) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.VALIDATION,
+          "Delivery phone is required with a delivery address",
+          400,
+        );
+      }
       const session = await deps.checkoutOrder({
         subject,
         basketId: body.basketId,
@@ -142,6 +158,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         idempotencyKey: body.idempotencyKey,
         successUrl: body.successUrl,
         cancelUrl: body.cancelUrl,
+        ...(deliveryPhone ? { deliveryPhone } : {}),
         ...(body.deliveryAddress ? { deliveryAddress: body.deliveryAddress } : {}),
       });
       return presentCheckoutSession(session);

@@ -26,6 +26,7 @@ export const userProfileUpdatedPayloadSchemaV1 = identityEventBaseSchemaV1.exten
   email: z.string().email().optional(),
   name: z.string().optional(),
   phone: z.string().nullable().optional(),
+  phoneVerified: z.boolean().optional(),
   image: z.string().nullable().optional(),
   updatedAt: rfc3339Timestamp,
 });

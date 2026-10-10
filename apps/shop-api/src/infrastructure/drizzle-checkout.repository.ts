@@ -173,6 +173,7 @@ export function createDrizzleCheckoutRepository(
               deliveryCity: deliveryAddress?.city ?? null,
               deliveryPostcode: deliveryAddress?.postcode ?? null,
               deliveryCountry: deliveryAddress?.country ?? null,
+              deliveryPhone: input.deliveryPhone?.trim() || null,
             })
             .returning({ id: shopOrder.id });
           if (!order) {

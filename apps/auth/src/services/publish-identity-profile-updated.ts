@@ -7,6 +7,7 @@ export async function publishIdentityProfileUpdated(
     email?: string;
     name?: string;
     phone?: string | null;
+    phoneVerified?: boolean;
     image?: string | null;
   },
   options?: { transaction?: unknown },
@@ -18,6 +19,7 @@ export async function publishIdentityProfileUpdated(
       ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.phoneVerified !== undefined ? { phoneVerified: input.phoneVerified } : {}),
       ...(input.image !== undefined ? { image: input.image } : {}),
     },
     { producer: "apps/auth", transaction: options?.transaction },

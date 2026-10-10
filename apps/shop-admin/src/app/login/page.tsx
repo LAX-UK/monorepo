@@ -1,5 +1,6 @@
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { safeReturnTo } from "@/lib/safe-return-to";
+import { shopAdminLoginErrorView } from "@/server/domain/login-error.vm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -29,30 +30,42 @@ async function ShopAdminLoginContent({
     redirect(loginHref);
   }
 
-  const errorMessage =
-    params.error === "not_authorized"
-      ? "Your account is signed in but does not have shop staff access."
-      : params.error === "auth_failed"
-        ? "Sign-in failed. Try again."
-        : params.error === "missing_pending" || params.error === "missing_code"
-          ? "Sign-in session expired. Try again."
-          : `Sign-in failed (${params.error}). Try again.`;
+  const view = shopAdminLoginErrorView(params.error);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 px-6 py-12">
-      <h1 className="text-2xl font-semibold">Shop admin sign-in</h1>
-      <p className="text-sm text-on-surface-variant">
-        Sign in with your LAX staff email and password. You may be asked for an authenticator code.
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-6 py-12">
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
+          LAX Shop Admin
+        </p>
+        <h1 className="text-2xl font-semibold">{view.title}</h1>
+      </div>
+      <p className="text-sm text-on-surface-variant" role="alert">
+        {view.message}
       </p>
-      <p className="text-sm text-error" role="alert">
-        {errorMessage}
-      </p>
-      <Link
-        href={loginHref}
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-on-primary"
-      >
-        Continue to sign in
-      </Link>
+      <div className="flex flex-col gap-3">
+        {view.showRetrySignIn ? (
+          <Link
+            href={loginHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-on-primary"
+          >
+            Try sign-in again
+          </Link>
+        ) : null}
+        {view.showUseDifferentAccount ? (
+          <form
+            method="post"
+            action={`/api/auth/switch-account?returnTo=${encodeURIComponent(returnTo)}`}
+          >
+            <button
+              type="submit"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-outline px-4 text-sm font-medium"
+            >
+              Use a different account
+            </button>
+          </form>
+        ) : null}
+      </div>
     </main>
   );
 }

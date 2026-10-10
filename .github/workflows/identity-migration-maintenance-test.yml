@@ -58,6 +58,8 @@ jobs:
             [DATABASE_URL_WORKER]=database_url_worker
             [OIDC_CLIENT_SECRET_LAX_BID_WEB]=oidc_bid_web_client_secret
             [OIDC_CLIENT_SECRET_LAX_SHOP_WEB]=oidc_shop_web_client_secret
+            [OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN]=oidc_shop_admin_client_secret
+            [OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB]=oidc_account_web_client_secret
           )
           for env_name in "${!outputs[@]}"; do
             value="$(terraform -chdir="$tf_dir" output -raw "${outputs[$env_name]}")"

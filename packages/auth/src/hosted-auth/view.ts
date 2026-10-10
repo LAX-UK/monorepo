@@ -11,6 +11,7 @@ export type HostedAuthCapabilities = {
   shopOrigin: string;
   shopAdminOrigin: string;
   bidOrigin: string;
+  accountOrigin?: string;
   emailFirst: boolean;
   requireEmailVerification: boolean;
 };
@@ -47,7 +48,9 @@ export function buildHostedAuthPageConfig(
         ? `${trimOrigin(capabilities.shopAdminOrigin)}/`
         : flow.product === "bid"
           ? `${trimOrigin(capabilities.bidOrigin)}/login`
-          : "/login";
+          : flow.product === "account" && capabilities.accountOrigin
+            ? `${trimOrigin(capabilities.accountOrigin)}/api/auth/login`
+            : "/login";
   return {
     authorizeResumePath: flow.authorizeResumePath,
     loginPath: flow.loginPath,

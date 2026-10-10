@@ -23,6 +23,10 @@ export const CROSS_PLATFORM_ID_TOKEN_CLAIMS = [
   "email",
   "email_verified",
   "name",
+  "phone_number",
+  "phone_number_verified",
+  "picture",
+  "locale",
 ] as const;
 
 /** Verification-essential access-token claims for remote consumers. */
@@ -59,6 +63,10 @@ export const crossPlatformIdTokenPayloadSchemaV1 = z.object({
   email: z.string().email().optional(),
   email_verified: z.boolean().optional(),
   name: z.string().optional(),
+  phone_number: z.string().optional(),
+  phone_number_verified: z.boolean().optional(),
+  picture: z.string().url().optional(),
+  locale: z.string().optional(),
 });
 
 export const minimalAccessTokenPayloadSchemaV1 = z.object({

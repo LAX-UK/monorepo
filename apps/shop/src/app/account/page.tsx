@@ -1,6 +1,7 @@
 import { ShopAccountOverviewCards } from "@/components/account/shop-account-overview-cards";
 import { ShopAccountLinkButton, ShopAccountShell } from "@/components/account/shop-account-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
+import { laxAccountPortalHref } from "@/lib/lax-account-url";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import {
   resolveShopArtistPortalLinked,
@@ -11,6 +12,7 @@ import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { Button } from "@auction/ui/components/button";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("Account");
@@ -94,6 +96,14 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
           <dd className="font-medium text-on-surface">{viewer.displayName || "—"}</dd>
         </div>
       </dl>
+      {laxAccountPortalHref() ? (
+        <p className="text-sm">
+          <Link href={laxAccountPortalHref() ?? "/account"} className="text-primary underline">
+            Manage your LAX account
+          </Link>
+          {" — profile, password, and two-step verification."}
+        </p>
+      ) : null}
       <ShopAccountOverviewCards
         portalOwnershipEnabled={portalOwnershipEnabled}
         payoutsEnabled={payoutsEnabled}

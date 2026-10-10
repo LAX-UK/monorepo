@@ -1,5 +1,5 @@
 import type { IdentityDatabase } from "@auction/identity-db";
-import { account, user } from "@auction/identity-db/schema";
+import { account, twoFactor, user } from "@auction/identity-db/schema";
 import { eq, sql } from "drizzle-orm";
 import type {
   IIdentitySubjectRepository,
@@ -128,6 +128,21 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
   ): Promise<boolean> {
     const tx = identityOperationDb(this.db, transaction);
     const rows = await tx.delete(user).where(eq(user.id, subjectId)).returning({ id: user.id });
+    return rows.length > 0;
+  }
+
+  async resetTwoFactorEnrollment(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const tx = identityOperationDb(this.db, transaction);
+    await tx.delete(twoFactor).where(eq(twoFactor.userId, subjectId));
+    const rows = await tx
+      .update(user)
+      .set({ twoFactorEnabled: false, updatedAt: now })
+      .where(eq(user.id, subjectId))
+      .returning({ id: user.id });
     return rows.length > 0;
   }
 }

@@ -6,7 +6,7 @@ import {
 
 const AUTHORIZE_PATH = "/api/auth/oauth2/authorize";
 
-const ALLOWED_AUTHORIZE_PARAMS = [
+export const ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS = [
   "response_type",
   "client_id",
   "redirect_uri",
@@ -20,7 +20,22 @@ const ALLOWED_AUTHORIZE_PARAMS = [
   "acr_values",
 ] as const;
 
-export type HostedAuthProduct = "shop" | "bid" | "shop-admin" | "unknown";
+/** Copy OIDC authorize query params onto a hosted MFA/setup URL so authorize can resume. */
+export function appendOidcAuthorizeParams(
+  target: URL,
+  source: URLSearchParams,
+  options?: { ensureClientId?: string },
+): void {
+  if (options?.ensureClientId) {
+    target.searchParams.set("client_id", options.ensureClientId);
+  }
+  for (const key of ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS) {
+    const value = source.get(key);
+    if (value) target.searchParams.set(key, value);
+  }
+}
+
+export type HostedAuthProduct = "shop" | "bid" | "shop-admin" | "account" | "unknown";
 export type HostedAuthAudience = "customer" | "staff";
 
 export type HostedAuthFlow = {
@@ -37,6 +52,7 @@ function productForClient(clientId: RegisteredOidcClientId): HostedAuthProduct {
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) return "shop-admin";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB) return "shop";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) return "bid";
+  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB) return "account";
   return "unknown";
 }
 
@@ -92,7 +108,7 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
   const continuation = new URLSearchParams();
   continuation.set("client_id", clientId);
   if (canResume) {
-    for (const key of ALLOWED_AUTHORIZE_PARAMS) {
+    for (const key of ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS) {
       const value = searchParams.get(key);
       if (value) continuation.set(key, value);
     }

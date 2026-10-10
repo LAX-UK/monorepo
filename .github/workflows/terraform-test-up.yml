@@ -52,6 +52,10 @@ on:
         description: Shop Admin image SHA when infra uses /health/live (must include that route)
         type: string
         required: false
+      account_sha:
+        description: LAX Account image SHA (required until the account component is live)
+        type: string
+        required: false
 concurrency:
   group: app-deploy-test
   cancel-in-progress: false
@@ -130,6 +134,7 @@ jobs:
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
       TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
+      TF_VAR_account_image_tag: ${{ inputs.account_sha }}
       TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || 'true' }}
       TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
       TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
@@ -176,6 +181,7 @@ jobs:
           APP_ID: ${{ env.APP_ID }}
           INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
           INPUT_SHOP_ADMIN_IMAGE_TAG: ${{ inputs.shop_admin_sha }}
+          INPUT_ACCOUNT_IMAGE_TAG: ${{ inputs.account_sha }}
         run: |
           set -euo pipefail
           while IFS= read -r line; do
@@ -183,12 +189,26 @@ jobs:
             if [[ "$line" == TF_VAR_app_image_tag=* ]]; then
               echo "APP_IMAGE_TAG=${line#TF_VAR_app_image_tag=}" >> "$GITHUB_ENV"
             fi
+            if [[ "$line" == TF_VAR_account_image_tag=* ]]; then
+              echo "ACCOUNT_IMAGE_TAG=${line#TF_VAR_account_image_tag=}" >> "$GITHUB_ENV"
+            fi
           done < <(
             node scripts/ci/resolve-live-app-image-tags.mjs \
               --app-id "$APP_ID" \
               --input-app-image-tag "$INPUT_APP_IMAGE_TAG" \
-              --input-shop-admin-image-tag "$INPUT_SHOP_ADMIN_IMAGE_TAG"
+              --input-shop-admin-image-tag "$INPUT_SHOP_ADMIN_IMAGE_TAG" \
+              --input-account-image-tag "$INPUT_ACCOUNT_IMAGE_TAG"
           )
+      - name: Verify prebuilt LAX Account image for Terraform account_image_tag
+        if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
+        env:
+          ACCOUNT_IMAGE_TAG: ${{ env.ACCOUNT_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/verify-prebuilt-monorepo-app-images.mjs \
+            --environment test \
+            --sha "$ACCOUNT_IMAGE_TAG" \
+            --component account
       - name: Verify prebuilt web image exists for app pin
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:

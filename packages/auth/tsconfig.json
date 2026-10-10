@@ -9,6 +9,7 @@
   "exclude": [
     "src/**/*.test.ts",
     "src/hosted-auth/browser/*.entry.ts",
+    "src/hosted-auth/browser/password-breached.ts",
     "src/hosted-auth/browser/runtime-controller.ts",
     "src/hosted-auth/browser/social-sign-in.ts",
     "src/hosted-auth/browser/window-auth.ts",

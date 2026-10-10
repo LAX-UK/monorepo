@@ -126,7 +126,10 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
         <CheckoutForm
           basket={basket}
           {...(viewer.kind === "authenticated" && viewer.email
-            ? { customerEmail: viewer.email }
+            ? {
+                customerEmail: viewer.email,
+                ...(viewer.verifiedPhone ? { defaultDeliveryPhone: viewer.verifiedPhone } : {}),
+              }
             : {})}
         />
         <ShopCommerceButton href="/basket" variant="outline" className="mt-4">

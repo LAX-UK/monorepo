@@ -21,10 +21,7 @@ function phoneAndSignUp(view: HostedAuthView): string {
     return `<p class="links-secondary staff-access-note">Access is limited to LAX staff accounts. Ask a Shop administrator if you need access.</p>`;
   }
   const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
-  const phone = view.capabilities.phoneEnabled
-    ? `<p class="links-secondary">${continuationAnchor("Sign in with phone number", "/phone", view.flow)}</p>`
-    : "";
-  return `<div class="links links--stacked" data-login-chrome="footer">${signUp}${phone}</div>`;
+  return `<div class="links links--stacked" data-login-chrome="footer">${signUp}</div>`;
 }
 
 function magicLinkInsteadButton(view: HostedAuthView): string {

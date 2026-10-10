@@ -16,6 +16,7 @@ export type IdentityLifecycleEvent =
       email?: string;
       name?: string;
       phone?: string | null;
+      phoneVerified?: boolean;
       image?: string | null;
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }

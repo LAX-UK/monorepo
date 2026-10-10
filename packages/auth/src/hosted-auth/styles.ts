@@ -589,6 +589,58 @@ html.theme-bid .brand-logo {
   gap: 0.5rem;
 }
 
+.auth-hint {
+  margin: 0;
+  font-family: var(--font-supporting);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-on-surface-variant);
+}
+
+.auth-qr {
+  align-self: center;
+  width: 180px;
+  height: 180px;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.auth-qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.auth-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+pre.auth-mono {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+  border-radius: var(--radius);
+  color: var(--color-on-surface);
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  columns: 2;
+}
+
+#setup-enrol,
+#setup-backup {
+  gap: 1.5rem;
+}
+
+#setup-backup {
+  display: flex;
+  flex-direction: column;
+}
+
 .links-secondary {
   margin: 0;
   font-family: var(--font-supporting);

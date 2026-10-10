@@ -692,6 +692,39 @@ if (shopApiApplicationViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── LAX Account app boundary ───────────────────────────────────────────────
+
+const ACCOUNT_FORBIDDEN_IMPORT_RE =
+  /^@auction\/(auth\/server|identity-db|db|persistence|domain|bidding-runtime)(\/|$)/;
+
+/** @type {string[]} */
+const accountBoundaryViolations = [];
+
+const accountSrc = join(root, "apps/account/src");
+if (statSync(accountSrc, { throwIfNoEntry: false })?.isDirectory()) {
+  for (const file of listAllSources(accountSrc)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    if (isTestSource(rel)) continue;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SPECIFIER_RE)) {
+      const specifier = match[1] ?? match[2] ?? match[3];
+      if (specifier && ACCOUNT_FORBIDDEN_IMPORT_RE.test(specifier)) {
+        accountBoundaryViolations.push(
+          `${rel}: imports "${specifier}" — apps/account must use BFF + identity-contracts, not Identity DB or auth/server`,
+        );
+      }
+    }
+  }
+}
+
+if (accountBoundaryViolations.length > 0) {
+  console.error("LAX Account app boundary violations detected:\n");
+  for (const v of accountBoundaryViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
 // ─── Identity extractability (Phase 8) ────────────────────────────────────
 
 const AUCTION_PKG_RE = /^@auction\//;

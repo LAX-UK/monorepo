@@ -46,6 +46,17 @@ else
   exit 1
 fi
 
+account_web_secret=""
+if account_web_secret="$(terraform -chdir="$tf_dir" output -raw oidc_account_web_client_secret 2>/dev/null)" &&
+  [[ -n "$account_web_secret" ]]; then
+  export OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB="$account_web_secret"
+elif [[ -n "${OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB_FALLBACK:-}" ]]; then
+  export OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB="$OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB_FALLBACK"
+else
+  echo "::error::Missing Terraform output oidc_account_web_client_secret and OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB_FALLBACK for OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB"
+  exit 1
+fi
+
 export DATABASE_URL="$DATABASE_URL_OWNER"
 
 shop_url="$(tf_output database_url_shop)"
@@ -86,6 +97,7 @@ docker run --rm \
   -e OIDC_CLIENT_SECRET_LAX_BID_WEB \
   -e OIDC_CLIENT_SECRET_LAX_SHOP_WEB \
   -e OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN \
+  -e OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB \
   -e NODE_ENV=production \
   -e APP_ENV=test \
   "$migrate_image" \

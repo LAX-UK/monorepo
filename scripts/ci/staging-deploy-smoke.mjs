@@ -12,12 +12,16 @@ export function smokeProbes({
   pinWeb = true,
   pinShop = true,
   pinAuth = true,
+  pinAccount = false,
+  accountLive = false,
 }) {
   return {
     readinessApi: pinApi,
     readinessWeb: pinWeb,
     readinessAuth: pinAuth && smokeAuth,
     readinessShop: pinShop && smokeShop,
+    readinessAccount: pinAccount,
+    accountLoginRedirect: accountLive && (pinAccount || smokeAuth),
     authDiscovery: smokeAuth,
     shopAdminOidc: smokeShop,
     shopStripeWebhook: smokeShop,
@@ -31,7 +35,26 @@ export function pinsForTargetSha(tagMap, targetSha) {
     pinWeb: pin("web"),
     pinShop: pin("shop") || pin("shop-api") || pin("shop-identity") || pin("shop-admin"),
     pinAuth: pin("auth"),
+    pinAccount: pin("account"),
+    accountLive: Boolean(tagMap?.account),
   };
+}
+
+export function assertAccountLoginRedirect(response) {
+  const location = response.headers.get("location") ?? "";
+  if (response.status < 300 || response.status >= 400 || !location) {
+    throw new Error(`LAX Account login did not redirect (status=${response.status})`);
+  }
+  const target = new URL(location);
+  if (
+    target.origin !== "https://test-auth.lax.bid" ||
+    target.pathname !== "/api/auth/oauth2/authorize" ||
+    target.searchParams.get("client_id") !== "lax-account-web" ||
+    target.searchParams.get("redirect_uri") !== "https://test-account.lax.bid/api/auth/callback" ||
+    target.searchParams.get("code_challenge_method") !== "S256"
+  ) {
+    throw new Error(`LAX Account login redirected to an unexpected authorize URL: ${location}`);
+  }
 }
 
 export function releaseMatchesExpected(body, expectedRelease, url) {
@@ -98,6 +121,16 @@ export async function runStagingDeploySmoke(env, fetchImpl = fetch) {
   }
   if (probes.readinessAuth) {
     await waitForReady("https://test-auth.lax.bid/health/ready", sha, fetchImpl);
+  }
+  if (probes.readinessAccount) {
+    await waitForReady("https://test-account.lax.bid/health/ready", sha, fetchImpl);
+  }
+  if (probes.accountLoginRedirect) {
+    const response = await fetchImpl("https://test-account.lax.bid/api/auth/login", {
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+    });
+    assertAccountLoginRedirect(response);
   }
 
   if (probes.authDiscovery) {

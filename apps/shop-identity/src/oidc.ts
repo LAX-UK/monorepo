@@ -107,6 +107,7 @@ export function buildAuthorizeUrl(input: {
       "offline_access",
       "shop.read",
       "shop.write",
+      "phone",
     ],
     state: input.params.state,
     nonce: input.params.nonce,

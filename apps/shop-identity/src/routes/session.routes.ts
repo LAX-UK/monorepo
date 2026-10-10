@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { decodeJwt } from "jose";
 import { clearShopAuthCookies } from "../clear-shop-auth-cookies.js";
 import { readSession } from "../session.js";
 import type { ShopIdentityAppDeps } from "../shop-identity-app-deps.js";
@@ -29,11 +30,23 @@ export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): voi
     }
     const hasRefresh = await tokenService.hasStoredRefreshToken(session.id);
     const tokenUpgradeRequired = !hasRefresh;
+    let verifiedPhone: string | undefined;
+    try {
+      const idToken = await tokenService.readIdTokenForLogout(session.id);
+      if (!idToken) throw new Error("no_id_token");
+      const claims = decodeJwt(idToken);
+      if (claims.phone_number_verified === true && typeof claims.phone_number === "string") {
+        verifiedPhone = claims.phone_number;
+      }
+    } catch {
+      verifiedPhone = undefined;
+    }
     return c.json({
       authenticated: true,
       subject: session.subject,
       profile,
       tokenUpgradeRequired,
+      ...(verifiedPhone ? { verifiedPhone } : {}),
     });
   });
 }

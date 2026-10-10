@@ -36,12 +36,8 @@ describe("registerBodySchema phone", () => {
 });
 
 describe("updateProfileSchema phone", () => {
-  it("clears with phone null", () => {
+  it("rejects phone and mobile fields", () => {
     const r = updateProfileSchema.safeParse({ phone: null, mobile: null });
-    expect(r.success).toBe(true);
-    if (r.success) {
-      expect(r.data.mobile).toBeNull();
-      expect(r.data.mobileCountry).toBeNull();
-    }
+    expect(r.success).toBe(false);
   });
 });

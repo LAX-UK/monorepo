@@ -33,7 +33,6 @@ export { getServerSessionUser } from "../data/http/session.server";
 export type { SessionUser } from "../data/contracts";
 export {
   updateProfileNameFromValuesAction,
-  updateProfilePhoneFromValuesAction,
   updateProfileImageAction,
   createAddressFromValuesAction,
   updateAddressFromValuesAction,

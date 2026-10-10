@@ -13,6 +13,42 @@ import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 const USER_TOKEN = "user-token-placeholder";
 
 describe("orders routes", () => {
+  it("rejects delivery checkout without a delivery phone before creating a session", async () => {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "subject-1",
+      payload: { scope: "shop.write" },
+    } as never);
+    const checkoutOrder = vi.fn();
+    const deps = createMinimalShopApiTestDeps({
+      commerce: { ...createMinimalShopApiTestDeps().commerce, checkoutOrder },
+    });
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/orders/checkout",
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+      payload: {
+        basketId: "00000000-0000-4000-8000-000000000001",
+        fulfilment: "uk_insured_delivery",
+        idempotencyKey: "idem-key-0001",
+        successUrl: "https://test-shop.lax.bid/checkout/success",
+        cancelUrl: "https://test-shop.lax.bid/checkout",
+        deliveryAddress: {
+          line1: "1 High St",
+          city: "Brighton",
+          postcode: "BN1 1AA",
+          country: "GB",
+        },
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "shop.validation" });
+    expect(checkoutOrder).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it("returns 404 when the order is missing", async () => {
     const deps = createMinimalShopApiTestDeps({
       commerce: {

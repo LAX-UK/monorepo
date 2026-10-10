@@ -11,6 +11,7 @@ export type PendingStaffLogin = {
 export function startStaffLogin(input: {
   config: ShopAdminConfig;
   returnTo: string;
+  prompt?: string;
 }): { authorizeUrl: URL; pending: PendingStaffLogin } {
   const params = generateOAuthLoginParams();
   const redirectUri = `${input.config.publicOrigin}/api/auth/callback`;
@@ -28,6 +29,7 @@ export function startStaffLogin(input: {
   });
   const authorizeUrl = new URL(href);
   authorizeUrl.searchParams.set("acr_values", "urn:mace:incommon:iap:silver");
+  if (input.prompt) authorizeUrl.searchParams.set("prompt", input.prompt);
   return {
     authorizeUrl,
     pending: {

@@ -3,11 +3,12 @@ import {
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
-  buildHostedPhoneHtml,
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
+  buildHostedTwoFactorAlreadyEnabledHtml,
   buildHostedTwoFactorHtml,
+  buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   hostedAuthViewFromSearch,
   hostedSignUpRequested,
@@ -47,6 +48,12 @@ async function redirectSignedInIfNeeded(
   } catch {
     return null;
   }
+}
+
+function sessionHasTwoFactor(session: unknown): boolean {
+  if (!session || typeof session !== "object") return false;
+  const user = (session as { user?: { twoFactorEnabled?: unknown } }).user;
+  return user?.twoFactorEnabled === true;
 }
 
 const STAFF_CUSTOMER_ONLY_PATHS = new Set(["/sign-up", "/phone", "/magic-link"]);
@@ -95,10 +102,25 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
   html("/forgot-password", buildHostedForgotPasswordHtml);
   html("/reset-password", buildHostedResetPasswordHtml);
   html("/two-factor", buildHostedTwoFactorHtml);
+  app.get("/two-factor/setup", async (c) => {
+    const view = viewFromRequest(c.req.url, capabilities);
+    c.header("Cache-Control", "no-store");
+    if (!capabilities.getSession) return c.html(buildHostedTwoFactorSetupHtml(view));
+    let session: unknown;
+    try {
+      session = await capabilities.getSession(c.req.raw.headers);
+    } catch {
+      return c.html(buildHostedTwoFactorSetupHtml(view));
+    }
+    if (!session) return c.redirect(view.flow.loginPath, 302);
+    // Enabling again would immediately replace the working authenticator secret.
+    if (sessionHasTwoFactor(session)) {
+      return c.html(buildHostedTwoFactorAlreadyEnabledHtml(view));
+    }
+    return c.html(buildHostedTwoFactorSetupHtml(view));
+  });
   html("/verify-email", buildHostedVerifyEmailHtml);
   html("/resend-verification", buildHostedResendVerificationHtml);
   html("/magic-link", buildHostedMagicLinkHtml);
-  if (capabilities.phoneEnabled) {
-    html("/phone", buildHostedPhoneHtml);
-  }
+  // Phone sign-in retired: contact verification uses account settings / LAX Account only.
 }

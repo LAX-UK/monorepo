@@ -64,6 +64,61 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  apps/account:
+    dependencies:
+      '@auction/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/identity-contracts
+      '@auction/identity-rp':
+        specifier: workspace:*
+        version: link:../../packages/identity-rp
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react:
+        specifier: ^19.1.1
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.5(react@19.2.5)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@tailwindcss/postcss':
+        specifier: ^4.1.13
+        version: 4.2.2
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.9
+        version: 19.2.3(@types/react@19.2.14)
+      tailwindcss:
+        specifier: ^4.1.13
+        version: 4.2.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
   apps/api:
     dependencies:
       '@auction/auth':
@@ -1013,6 +1068,9 @@ importers:
       jose:
         specifier: ^6.2.3
         version: 6.2.3
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -1023,6 +1081,9 @@ importers:
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1
+      '@types/qrcode':
+        specifier: ^1.5.5
+        version: 1.5.6
       esbuild:
         specifier: ^0.25.12
         version: 0.25.12

@@ -7,6 +7,7 @@ const URL_COMPONENT = {
   "https://test-auth.lax.bid/health/ready": "auth",
   "https://test-shop.lax.bid/health/ready": "shop",
   "https://test-shop-admin.lax.bid/health/ready": "shop-admin",
+  "https://test-account.lax.bid/health/ready": "account",
 };
 
 const SHOP_STACK_COMPONENTS = ["shop", "shop-api", "shop-identity"];

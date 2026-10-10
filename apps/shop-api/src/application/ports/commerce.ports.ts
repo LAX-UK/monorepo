@@ -44,6 +44,7 @@ export type CheckoutOrderInput = {
   successUrl: string;
   cancelUrl: string;
   deliveryAddress?: ShopDeliveryAddress;
+  deliveryPhone?: string;
 };
 
 export type CheckoutOrderResult = {

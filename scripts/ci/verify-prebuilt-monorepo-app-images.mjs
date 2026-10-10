@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Fail closed before Terraform apply when DOCR lacks immutable tags for every
- * component that shares TF_VAR_app_image_tag (api, ws, worker, web, migrate, clamav).
+ * component that shares TF_VAR_app_image_tag (api, ws, worker, web, migrate, clamav),
+ * or for the components named with repeated --component flags.
  */
 import { digestForTag, listTags, waitForShaTag } from "./registry-tag-poll.mjs";
 
@@ -10,9 +11,11 @@ const APP_IMAGE_COMPONENTS = ["api", "ws", "worker", "web", "migrate", "clamav"]
 function parseArgs(argv) {
   let environment = "";
   let sha = "";
+  const components = [];
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--environment") environment = argv[++i] ?? "";
     if (argv[i] === "--sha") sha = argv[++i] ?? "";
+    if (argv[i] === "--component") components.push(argv[++i] ?? "");
   }
   if (!/^(test|prod)$/.test(environment)) {
     throw new Error("--environment must be test or prod");
@@ -20,7 +23,10 @@ function parseArgs(argv) {
   if (!/^[0-9a-f]{40}$/.test(sha)) {
     throw new Error("--sha must be a 40-char commit SHA");
   }
-  return { environment, sha };
+  if (components.some((component) => !/^[a-z][a-z-]*$/.test(component))) {
+    throw new Error("--component must be a lowercase component name");
+  }
+  return { environment, sha, components: components.length ? components : APP_IMAGE_COMPONENTS };
 }
 
 async function verifyRepository(repository, sha) {
@@ -32,8 +38,8 @@ async function verifyRepository(repository, sha) {
 }
 
 async function main() {
-  const { environment, sha } = parseArgs(process.argv.slice(2));
-  for (const component of APP_IMAGE_COMPONENTS) {
+  const { environment, sha, components } = parseArgs(process.argv.slice(2));
+  for (const component of components) {
     await verifyRepository(`lax-${environment}-${component}`, sha);
   }
 }
