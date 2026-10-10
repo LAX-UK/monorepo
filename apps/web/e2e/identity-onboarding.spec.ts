@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { dismissCookieConsentIfVisible } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
@@ -53,6 +54,7 @@ test.describe("identity onboarding @journey", () => {
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expect(page.getByText(/photo id ready/i).first()).toBeVisible();
 
+    await dismissCookieConsentIfVisible(page);
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/watchlist/);
 
@@ -74,6 +76,7 @@ test.describe("identity onboarding @journey", () => {
 
   test("rejects an unsafe next destination", async ({ page }) => {
     await page.goto("/onboarding/identity?next=%2F%2Fevil.example&source=direct");
+    await dismissCookieConsentIfVisible(page);
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
@@ -113,12 +116,16 @@ test.describe("full post-verification buyer onboarding @journey", () => {
   test.describe("empty recommendations @journey", () => {
     test.use({ storageState: roleAuthState.zeroLot });
 
-    test("skips recommendations when selected categories have zero active lots", async ({
-      page,
-    }) => {
+    test("explains empty recommendations and continues to identity", async ({ page }) => {
       skipUnlessPrepared(roleAuthState.zeroLot, "setup-zero-lot");
       await page.goto("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist");
-      await expect(page).toHaveURL(/\/onboarding\/identity\?.*next=%2Fdashboard%2Fwatchlist/);
+      await expect(
+        page.getByText(/don.t have live lots in your selected categories/i),
+      ).toBeVisible();
+      await expect(page.getByRole("link", { name: "Continue" })).toHaveAttribute(
+        "href",
+        /\/onboarding\/identity\?.*next=%2Fdashboard%2Fwatchlist/,
+      );
     });
   });
 });

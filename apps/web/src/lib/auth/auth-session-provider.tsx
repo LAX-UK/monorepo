@@ -5,9 +5,8 @@
  *
  * - Seeds client state from server `SessionUser` (`GET /users/me`) when Better Auth
  *   has not resolved yet (`clientUser ?? serverUser`).
- * - Cross-tab sync: listens for our `lax-auth` signed-in broadcast (Better Auth does
- *   not broadcast email sign-in) and Better Auth's `better-auth.message` storage event
- *   (sign-out / user updates). Window-focus refetch is handled by Better Auth defaults.
+ * - Cross-tab sync: listens for our `lax-auth` signed-in / signed-out broadcasts and
+ *   Better Auth's `better-auth.message` storage event (user updates).
  * - Do not call `authClient.useSession()` outside this module (enforced by lint script).
  */
 import { AUTH_BROADCAST_CHANNEL, type AuthBroadcastMessage } from "@/lib/auth/auth-broadcast";
@@ -70,7 +69,7 @@ export function AuthSessionProvider({
     if (typeof BroadcastChannel === "undefined") return;
     const bc = new BroadcastChannel(AUTH_BROADCAST_CHANNEL);
     bc.onmessage = (event: MessageEvent<AuthBroadcastMessage>) => {
-      if (event.data?.type === "signed-in") {
+      if (event.data?.type === "signed-in" || event.data?.type === "signed-out") {
         void refetch();
       }
     };

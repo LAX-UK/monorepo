@@ -9,6 +9,7 @@
  * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/sell-funnel-smoke.spec.ts
  */
 import { expect, test } from "@playwright/test";
+import { clientLogin } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -28,8 +29,9 @@ test.describe("sell funnel smoke @journey", () => {
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: /what we accept/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /prepare your submission/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /start your submission/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /start submission/i })).toBeVisible();
+    const submitCtas = page.getByRole("link", { name: /start your submission/i });
+    await expect(submitCtas).toHaveCount(2);
+    await expect(submitCtas.first()).toHaveAttribute("href", /^\/dashboard\/submissions\/new/);
   });
 
   test("/sell#departments exposes department grid", async ({ page }) => {
@@ -51,7 +53,7 @@ test.describe("sell funnel smoke @journey", () => {
       "href",
       "/sell#departments",
     );
-    await expect(page.getByRole("link", { name: /sell watches/i })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: /watches & clocks/i })).toHaveAttribute(
       "href",
       "/sell/watches",
     );
@@ -61,21 +63,24 @@ test.describe("sell funnel smoke @journey", () => {
     );
   });
 
-  test("/sell/estate landing exposes specialist and submit CTAs", async ({ page }) => {
+  test("/sell/estate landing routes its CTA into the submission wizard", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
     const res = await page.goto("/sell/estate");
     expect(res?.ok()).toBeTruthy();
     await expect(page.getByRole("heading", { name: /estate & collections/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /speak to a specialist/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /start your submission/i })).toHaveAttribute(
+      "href",
+      /^\/dashboard\/submissions\/new/,
+    );
   });
 
-  test("login with intent=sell shows consignment handoff banner", async ({ page }) => {
+  test("login with intent=sell hands off to hosted sign-up", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
     await page.goto("/login?next=/dashboard/submissions/new&intent=sell");
-    await expect(page.getByText(/consignment submission/i)).toBeVisible();
-    await expect(page.getByText(/about 3 minutes/i)).toBeVisible();
+    await page.waitForURL(/\/sign-up\?/, { timeout: 30_000 });
+    expect(new URL(page.url()).searchParams.get("client_id")).toBe("lax-bid-web");
   });
 
   test("authenticated user can open new submission wizard", async ({ page }) => {
@@ -85,11 +90,8 @@ test.describe("sell funnel smoke @journey", () => {
       "Set PLAYWRIGHT_CLIENT_EMAIL and PLAYWRIGHT_CLIENT_PASSWORD",
     );
 
-    await page.goto("/login?next=/dashboard/submissions/new&intent=sell");
-    await page.getByLabel(/email/i).fill(clientEmail);
-    await page.getByLabel(/password/i).fill(clientPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/dashboard\/submissions\/new/);
+    await clientLogin(page);
+    await page.goto("/dashboard/submissions/new");
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({
       timeout: 15_000,

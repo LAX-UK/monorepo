@@ -24,7 +24,8 @@ test.describe("buyer onboarding a11y @a11y", () => {
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
 
-    const skip = page.getByRole("link", { name: /verify later|finish later/i });
+    // KYC off renders "Continue" instead of the skip link; both go to `next`.
+    const skip = page.getByRole("link", { name: /^(verify later|finish later|continue)$/i });
     await skip.focus();
     await expect(skip).toBeFocused();
     await page.keyboard.press("Enter");

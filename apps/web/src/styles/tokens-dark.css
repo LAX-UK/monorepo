@@ -75,7 +75,7 @@ html.dark {
   --color-secondary-fixed: #8e8d8d;
   --color-inverse-primary: var(--color-brand-midnight);
   --color-background: #121414;
-  --color-link: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
+  --color-link: color-mix(in srgb, var(--color-brand-midnight) 45%, white);
 
   --color-warning: oklch(0.78 0.12 85);
   --color-warning-on-surface: oklch(0.82 0.12 85);

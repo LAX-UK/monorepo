@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { clientLogin, financeLogin } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -9,18 +10,6 @@ const financeEmail = process.env.PLAYWRIGHT_FINANCE_EMAIL ?? "";
 const financePassword = process.env.PLAYWRIGHT_FINANCE_PASSWORD ?? "";
 const orgEntityId = process.env.PLAYWRIGHT_ORG_ENTITY_ID ?? "";
 const orgOnboardingEntityId = process.env.PLAYWRIGHT_ORG_ONBOARDING_ENTITY_ID ?? "";
-
-async function loginAs(page: import("@playwright/test").Page, email: string, password: string) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
-
-async function clientLogin(page: import("@playwright/test").Page) {
-  await loginAs(page, clientEmail, clientPassword);
-}
 
 test.describe("seller connect embedded @journey", () => {
   test("seller connect page loads workspace shell", async ({ page }) => {
@@ -166,7 +155,7 @@ test.describe("connect role matrix @roles", () => {
       "Set PLAYWRIGHT_FINANCE_EMAIL, PLAYWRIGHT_FINANCE_PASSWORD, and PLAYWRIGHT_ORG_ENTITY_ID",
     );
 
-    await loginAs(page, financeEmail, financePassword);
+    await financeLogin(page);
     await page.goto(`/dashboard/organisations/${orgEntityId}/connect`);
     await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible({
       timeout: 15_000,

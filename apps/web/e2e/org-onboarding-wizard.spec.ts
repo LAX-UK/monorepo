@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { clientLogin } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
@@ -6,14 +7,6 @@ const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
 const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "";
 const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "";
 const orgOnboardingEntityId = process.env.PLAYWRIGHT_ORG_ONBOARDING_ENTITY_ID ?? "";
-
-async function clientLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(clientEmail);
-  await page.getByLabel(/password/i).fill(clientPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
 
 test.describe("org onboarding wizard @journey", () => {
   test("resume path shows progress, finish later, and mobile step sheet", async ({ page }) => {

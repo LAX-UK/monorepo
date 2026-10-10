@@ -29,11 +29,10 @@ test.describe("bid blockers @journey", () => {
     test.skip(!enabled, skipReason);
 
     await loginWithCredentials(page, unverifiedCredentials, {
-      destination: /\/register\/verify-pending(?:[/?#]|$)/,
+      destination: /\/resend-verification\?/,
     });
 
-    await expect(page).toHaveURL(/\/register\/verify-pending(?:[/?#]|$)/);
-    await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Resend verification" })).toBeVisible();
     await expect(page.locator("#lot-bid-entry")).toHaveCount(0);
   });
 });

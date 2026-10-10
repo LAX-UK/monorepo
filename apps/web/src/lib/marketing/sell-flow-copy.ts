@@ -34,9 +34,6 @@ export const SELL_PAGE_ACCEPTANCE =
 export const SELL_PAGE_CONSIGNMENT_WORKS =
   "Start with a submission, then our team vets the object, confirms sale suitability, prepares catalogue materials, coordinates photography and logistics, and markets the lot to collectors. After the auction, we coordinate payment, buyer handover, and consignor settlement.";
 
-export const SELL_AUTH_INTENT_BANNER =
-  "Sign in or create an account to start your consignment submission. Takes about 3 minutes. You'll need photos and basic object details.";
-
 export const SELL_PHOTO_TIPS = [
   "Shoot in natural daylight or neutral indoor light — avoid harsh flash.",
   "Include an overall view, close-up details, and signature or markings.",

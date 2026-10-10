@@ -20,8 +20,8 @@ export const MARKETING_CARD_LIFT =
 export const MARKETING_CARD_MEDIA_HOVER =
   "motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100";
 
-/** Inline text link inside prose / legal / content pages (midnight brand, underline-on-hover). */
-export const MARKETING_PROSE_LINK = `rounded-sm text-link underline-offset-4 hover:underline ${FOCUS_RING}`;
+/** Inline text link inside prose / legal / content pages. Always underlined: WCAG 1.4.1 forbids colour-only links in text. */
+export const MARKETING_PROSE_LINK = `rounded-sm text-link underline decoration-1 underline-offset-4 hover:decoration-2 ${FOCUS_RING}`;
 
 /** Standard inline link — admin, dashboard, auth (midnight). */
 export const INLINE_LINK = `text-link underline-offset-4 hover:underline ${FOCUS_RING}`;

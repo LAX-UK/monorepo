@@ -120,7 +120,7 @@ export async function dismissStaffPaletteIfOpen(page: Page): Promise<void> {
   }
 }
 
-async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
+export async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
   try {
     const webOrigin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
     if (!page.url().startsWith(webOrigin)) return;

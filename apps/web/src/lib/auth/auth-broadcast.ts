@@ -1,7 +1,7 @@
-/** Cross-tab sign-in events (Better Auth handles sign-out via its own storage channel). */
+/** Cross-tab auth events: the Bid BFF session has no built-in multi-tab channel. */
 export const AUTH_BROADCAST_CHANNEL = "lax-auth";
 
-export type AuthBroadcastMessage = { type: "signed-in" };
+export type AuthBroadcastMessage = { type: "signed-in" } | { type: "signed-out" };
 
 export function postAuthBroadcast(message: AuthBroadcastMessage): void {
   try {

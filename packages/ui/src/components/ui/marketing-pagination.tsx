@@ -71,9 +71,13 @@ export function MarketingPagination({
             children: prev.label ?? "Previous",
           })
         ) : (
-          <span className="flex cursor-not-allowed items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/40">
+          <button
+            type="button"
+            disabled
+            className="flex cursor-not-allowed items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/40"
+          >
             {prev.label ?? "Previous"}
-          </span>
+          </button>
         )}
         <div className="flex items-center gap-6 md:gap-8">
           {pages.map((p) => (
@@ -125,9 +129,13 @@ export function MarketingPagination({
             children: next.label ?? "Next",
           })
         ) : (
-          <span className="flex cursor-not-allowed items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/40">
+          <button
+            type="button"
+            disabled
+            className="flex cursor-not-allowed items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/40"
+          >
             {next.label ?? "Next"}
-          </span>
+          </button>
         )}
       </div>
     </nav>
