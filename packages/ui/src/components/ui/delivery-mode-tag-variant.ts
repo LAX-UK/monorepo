@@ -36,8 +36,8 @@ export const DELIVERY_MODE_TAG_VARIANT: Record<DeliveryModeTagKey, DeliveryModeT
     glyph: "laptop",
   },
   onsite: {
-    shell: iconShell("bg-warning-container", "text-warning"),
-    iconColor: "text-warning",
+    shell: iconShell("bg-warning-container", "text-warning-on-surface"),
+    iconColor: "text-warning-on-surface",
     iconBg: "bg-warning",
     glyph: "mapPin",
   },

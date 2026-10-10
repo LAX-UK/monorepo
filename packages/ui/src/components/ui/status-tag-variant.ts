@@ -82,8 +82,8 @@ export const STATUS_TAG_VARIANT: Record<DotStatusPillTone, StatusTagVariant> = {
     useIcon: true,
   },
   warning: {
-    shell: iconShell("bg-warning-container", "text-warning"),
-    iconColor: "text-warning",
+    shell: iconShell("bg-warning-container", "text-warning-on-surface"),
+    iconColor: "text-warning-on-surface",
     iconBg: "bg-warning",
     glyph: "warning",
     useIcon: true,

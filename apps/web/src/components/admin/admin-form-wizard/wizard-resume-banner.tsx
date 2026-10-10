@@ -18,7 +18,7 @@ export function WizardResumeBanner({ draft, onResume, onDiscard }: Props) {
       className="flex flex-col gap-4 rounded-lg border border-warning/40 bg-warning-container/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="flex min-w-0 items-start gap-3">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning-on-surface" aria-hidden />
         <div className="min-w-0">
           <p className="font-headline text-sm font-semibold text-on-surface">Draft found</p>
           <p className="mt-0.5 font-body text-sm text-on-surface-variant">

@@ -84,7 +84,7 @@ export const onboardingPrimaryButton =
   "inline-flex min-h-14 min-w-[140px] items-center justify-center gap-2 rounded-md bg-secondary px-6 py-4 text-base font-medium leading-6 text-on-secondary shadow-none transition-[background-color,box-shadow,transform] duration-200 hover:bg-secondary/90 hover:shadow-md active:translate-y-px disabled:pointer-events-none disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
 
 export const onboardingTextButton =
-  "inline-flex min-h-14 items-center justify-center rounded-md bg-transparent px-3 py-4 text-base font-medium leading-6 text-secondary shadow-none transition-colors hover:bg-secondary/[0.06] hover:text-secondary dark:text-link dark:hover:text-link disabled:pointer-events-none disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:px-4";
+  "inline-flex min-h-14 items-center justify-center rounded-md bg-transparent px-3 py-4 text-base font-medium leading-6 text-secondary shadow-none transition-colors hover:bg-secondary/[0.06] hover:text-secondary disabled:pointer-events-none disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:px-4";
 
 export const onboardingActions =
   "flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between";

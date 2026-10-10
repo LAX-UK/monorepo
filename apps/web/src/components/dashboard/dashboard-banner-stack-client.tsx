@@ -77,12 +77,12 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
         data-testid="dashboard-alerts-preview"
       >
         <span className="flex min-w-0 items-center gap-2">
-          <BellRing className="size-4 shrink-0 text-warning" aria-hidden />
+          <BellRing className="size-4 shrink-0 text-warning-on-surface" aria-hidden />
           <span className="font-body text-sm text-on-surface">
             {alertCount} account alert{alertCount === 1 ? "" : "s"}
           </span>
         </span>
-        <span className="shrink-0 font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary dark:text-link">
+        <span className="shrink-0 font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary">
           View
         </span>
       </Button>

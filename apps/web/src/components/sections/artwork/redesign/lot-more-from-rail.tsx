@@ -178,7 +178,7 @@ export function LotMoreFromRail({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    <p className="text-sm font-bold uppercase leading-4 text-warning">
+                    <p className="text-sm font-bold uppercase leading-4 text-warning-on-surface">
                       {c.lotNumber != null ? `LOT ${c.lotNumber}` : "LOT"}
                     </p>
                     <div>

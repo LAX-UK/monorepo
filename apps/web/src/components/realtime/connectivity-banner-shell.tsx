@@ -54,7 +54,10 @@ export function ConnectivityBannerShell({
     >
       {showIcon ? (
         <WifiOff
-          className={cn("mt-0.5 size-4 shrink-0", isError ? "text-error" : "text-warning")}
+          className={cn(
+            "mt-0.5 size-4 shrink-0",
+            isError ? "text-error" : "text-warning-on-surface",
+          )}
           aria-hidden
         />
       ) : null}

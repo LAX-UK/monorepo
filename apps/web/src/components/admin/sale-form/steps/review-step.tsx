@@ -65,7 +65,7 @@ function SetupReviewBeforePublish({
                   <Circle
                     className={cn(
                       "mt-0.5 size-4 shrink-0",
-                      item.severity === "required" ? "text-danger" : "text-warning",
+                      item.severity === "required" ? "text-danger" : "text-warning-on-surface",
                     )}
                     aria-hidden
                   />
@@ -76,7 +76,7 @@ function SetupReviewBeforePublish({
                   <Circle
                     className={cn(
                       "mt-0.5 size-4 shrink-0",
-                      item.severity === "required" ? "text-danger" : "text-warning",
+                      item.severity === "required" ? "text-danger" : "text-warning-on-surface",
                     )}
                     aria-hidden
                   />

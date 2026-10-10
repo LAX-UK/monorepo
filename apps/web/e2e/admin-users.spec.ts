@@ -9,13 +9,13 @@ test.describe("admin user directories @journey", () => {
 
   test("clients list loads", async ({ page }) => {
     await page.goto("/admin/clients");
-    await expect(page.getByRole("heading", { name: /^clients$/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^clients$/i, level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: /views/i })).toBeVisible();
   });
 
   test("clients list accepts verification filters in URL", async ({ page }) => {
     await page.goto("/admin/clients?emailVerified=0&kycStatus=pending&status=active");
-    await expect(page.getByRole("heading", { name: /^clients$/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^clients$/i, level: 1 })).toBeVisible();
     await expect(page.getByText(/email unverified/i).first())
       .toBeVisible({ timeout: 15_000 })
       .catch(() => undefined);
@@ -23,7 +23,7 @@ test.describe("admin user directories @journey", () => {
 
   test("staff list loads", async ({ page }) => {
     await page.goto("/admin/staff");
-    await expect(page.getByRole("heading", { name: /^staff$/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^staff$/i, level: 1 })).toBeVisible();
   });
 
   test("client drawer quick actions tab is reachable", async ({ page }) => {

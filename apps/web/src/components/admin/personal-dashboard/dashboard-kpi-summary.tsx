@@ -25,7 +25,7 @@ function KpiCellContent({ tile }: { tile: KpiRowTile }) {
       <p className="font-body text-xs text-on-surface-variant">{tile.label}</p>
       <p
         className={`mt-1 font-headline text-2xl font-semibold tabular-nums tracking-tight text-on-surface ${
-          tile.semanticTone === "warning" ? "text-warning" : ""
+          tile.semanticTone === "warning" ? "text-warning-on-surface" : ""
         }`}
       >
         {tile.value}

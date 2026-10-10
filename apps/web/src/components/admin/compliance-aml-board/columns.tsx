@@ -65,7 +65,7 @@ export function amlColumns(onOpen: (row: AdminAmlTableRow) => void): ColumnDef<A
           {row.original.triagedByUserId ? (
             <p className="text-xs text-on-surface-variant">Analyst assigned</p>
           ) : (
-            <p className="text-xs text-warning">Unassigned</p>
+            <p className="text-xs text-warning-on-surface">Unassigned</p>
           )}
         </div>
       ),

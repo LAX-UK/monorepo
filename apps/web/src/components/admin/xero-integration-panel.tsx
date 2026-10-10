@@ -182,19 +182,19 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
               </dt>
               <dd className="mt-1">
                 <AdminCopyField value={status.webhookUrl} label="Webhook URL" />
+                <p className="mt-2 text-xs text-on-surface-variant">
+                  Register this URL in your Xero organisation webhook settings.{" "}
+                  <a
+                    href="https://developer.xero.com/documentation/guides/webhooks/overview/"
+                    className="underline underline-offset-2"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Xero webhook guide (external)
+                  </a>
+                  .
+                </p>
               </dd>
-              <p className="mt-2 text-xs text-on-surface-variant">
-                Register this URL in your Xero organisation webhook settings.{" "}
-                <a
-                  href="https://developer.xero.com/documentation/guides/webhooks/overview/"
-                  className="underline underline-offset-2"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Xero webhook guide (external)
-                </a>
-                .
-              </p>
             </div>
           ) : null}
           {status.recentWebhookErrors > 0 ? (

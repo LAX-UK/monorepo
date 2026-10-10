@@ -130,7 +130,7 @@ export function KpiTile({
       )}
     >
       {anomaly ? (
-        <span className="absolute right-3 top-3 max-w-[40%] truncate rounded-full bg-warning-container px-2 py-0.5 font-label text-[10px] font-semibold uppercase tracking-wide text-warning">
+        <span className="absolute right-3 top-3 max-w-[40%] truncate rounded-full bg-warning-container px-2 py-0.5 font-label text-[10px] font-semibold uppercase tracking-wide text-warning-on-surface">
           {anomaly}
         </span>
       ) : null}

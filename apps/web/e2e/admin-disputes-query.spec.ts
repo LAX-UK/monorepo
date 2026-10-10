@@ -12,12 +12,12 @@ test.describe("admin disputes (query + nuqs) @journey", () => {
   test("disputes page loads with status chips and table shell", async ({ page }) => {
     await page.goto("/admin/disputes");
     await expect(page.getByRole("heading", { name: /payment disputes/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^open$/i })).toBeVisible();
+    await expect(page.locator('a[href^="/admin/disputes?status=open"]')).toBeVisible();
   });
 
   test("status filter updates URL", async ({ page }) => {
     await page.goto("/admin/disputes");
-    await page.getByRole("link", { name: /^open$/i }).click();
+    await page.locator('a[href^="/admin/disputes?status=open"]').click();
     await expect(page).toHaveURL(/status=open/);
     await expect(page).toHaveURL(/offset=/);
   });

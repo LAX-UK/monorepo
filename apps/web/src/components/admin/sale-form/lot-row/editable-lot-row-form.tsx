@@ -96,13 +96,15 @@ export function EditableLotRowForm({
                 Saved
               </span>
             ) : (
-              <span className="ml-2 font-body text-xs text-warning">Unsaved</span>
+              <span className="ml-2 font-body text-xs text-warning-on-surface">Unsaved</span>
             )}
             {isSaved && isDirty ? (
-              <span className="ml-2 font-body text-xs text-warning">Unsaved changes</span>
+              <span className="ml-2 font-body text-xs text-warning-on-surface">
+                Unsaved changes
+              </span>
             ) : null}
             {scheduleOutOfSync ? (
-              <span className="ml-2 font-body text-xs text-warning">
+              <span className="ml-2 font-body text-xs text-warning-on-surface">
                 {scheduleOutOfSyncBadge()}
               </span>
             ) : null}

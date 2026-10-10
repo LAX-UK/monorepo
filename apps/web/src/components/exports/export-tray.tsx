@@ -85,7 +85,7 @@ export function ExportTray() {
               <p className="font-body text-xs text-on-surface-variant">Loading export history…</p>
             ) : null}
             {jobsLoadError ? (
-              <p className="font-body text-xs text-warning">{jobsLoadError}</p>
+              <p className="font-body text-xs text-warning-on-surface">{jobsLoadError}</p>
             ) : null}
             {visible.map((job) => (
               <ExportJobRow key={job.id} job={job} onCancel={cancelJob} onDownload={downloadJob} />

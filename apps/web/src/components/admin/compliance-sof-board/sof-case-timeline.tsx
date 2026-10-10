@@ -21,7 +21,9 @@ export function SofCaseTimeline({ steps }: Props) {
   return (
     <nav
       aria-label="Case workflow"
-      className="overflow-x-auto rounded-lg border border-outline-variant/40 p-4"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: horizontally scrollable region must be keyboard-scrollable (WCAG 2.1.1).
+      tabIndex={0}
+      className="overflow-x-auto rounded-lg border border-outline-variant/40 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <ol className="flex min-w-max items-start gap-0 sm:gap-2">
         {steps.map((step, index) => (

@@ -9,10 +9,10 @@ test.describe("admin invitations (query + nuqs) @journey", () => {
 
   test("invitations page loads with filters and table shell", async ({ page }) => {
     await page.goto("/admin/invitations");
-    await expect(page.getByRole("heading", { name: /^invitations$/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^invitations$/i, level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: /sent invitations/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /invite users/i })).toBeVisible();
-    await expect(page.getByPlaceholder(/search by email/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/search by email/i).filter({ visible: true })).toBeVisible();
   });
 
   test("invite users opens modal with role controls", async ({ page }) => {
@@ -37,7 +37,7 @@ test.describe("admin invitations (query + nuqs) @journey", () => {
 
   test("search submits q param to URL", async ({ page }) => {
     await page.goto("/admin/invitations");
-    const search = page.getByPlaceholder(/search by email/i);
+    const search = page.getByPlaceholder(/search by email/i).filter({ visible: true });
     await search.fill("test@example.com");
     await search.press("Enter");
     await expect(page).toHaveURL(/q=test/);

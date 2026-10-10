@@ -256,7 +256,9 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
                     Verification checklist
                   </p>
                   {dirty ? (
-                    <span className="text-[10px] font-medium uppercase text-warning">Unsaved</span>
+                    <span className="text-[10px] font-medium uppercase text-warning-on-surface">
+                      Unsaved
+                    </span>
                   ) : null}
                 </div>
                 {row.declaredSource ? (

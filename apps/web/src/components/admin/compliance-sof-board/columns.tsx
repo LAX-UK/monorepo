@@ -26,7 +26,7 @@ function buyerCell(row: AdminSofTableRow) {
       </Link>
       {row.pendingCasesForBuyer > 1 ? (
         <span
-          className="ml-1 text-xs text-warning"
+          className="ml-1 text-xs text-warning-on-surface"
           title={`${row.pendingCasesForBuyer} pending cases for this buyer`}
         >
           ⚠

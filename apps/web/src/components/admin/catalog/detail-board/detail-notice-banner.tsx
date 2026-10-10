@@ -22,7 +22,7 @@ export function DetailNoticeBanner({
 }: DetailNoticeBannerProps) {
   return (
     <Alert className={cn("border-warning/40 bg-warning-container/20", className)} role="alert">
-      <AlertTriangle className="size-4 text-warning" aria-hidden />
+      <AlertTriangle className="size-4 text-warning-on-surface" aria-hidden />
       <div className="flex flex-1 items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <AlertTitle className="font-headline text-sm font-semibold text-on-surface">

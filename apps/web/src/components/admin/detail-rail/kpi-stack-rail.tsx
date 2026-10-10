@@ -16,7 +16,7 @@ type Props = {
 
 const toneClass = {
   default: "text-on-surface",
-  warning: "text-warning",
+  warning: "text-warning-on-surface",
   danger: "text-danger",
   success: "text-positive",
 } as const;

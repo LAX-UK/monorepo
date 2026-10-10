@@ -136,7 +136,7 @@ export function SaleIdentityStep({
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="mb-2 block">
+              <FormLabel htmlFor="description" className="mb-2 block">
                 <LabelCaps>Description</LabelCaps>
               </FormLabel>
               <FormControl>

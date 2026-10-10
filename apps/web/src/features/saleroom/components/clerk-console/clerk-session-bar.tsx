@@ -42,7 +42,7 @@ export function ClerkSessionBar({
               Live
             </span>
           ) : session.status === "paused" ? (
-            <span className="rounded-full bg-warning/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-warning">
+            <span className="rounded-full bg-warning/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-warning-on-surface">
               Paused
             </span>
           ) : (

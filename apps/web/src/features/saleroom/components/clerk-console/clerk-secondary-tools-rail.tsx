@@ -85,7 +85,7 @@ export function ClerkSecondaryToolsRail({ phase, phaseLayout, pendingTelForLot, 
           >
             {tab.label}
             {tab.id === "telephone" && pendingTelForLot > 0 ? (
-              <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] text-warning">
+              <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] text-warning-on-surface">
                 {pendingTelForLot}
               </span>
             ) : null}
