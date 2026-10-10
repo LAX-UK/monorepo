@@ -127,7 +127,7 @@ jobs:
       - name: Prepare auth sessions
         run: pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs
       - name: Playwright stabilization suite
-        run: pnpm --filter @auction/web test:e2e:stabilization -- --no-deps --shard=${{ matrix.shard }}/2
+        run: pnpm --filter @auction/web test:e2e:stabilization --no-deps --shard=${{ matrix.shard }}/2
         env:
           PLAYWRIGHT_AUTH_PREPARED: "1"
       - name: Upload blob report
