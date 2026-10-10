@@ -4,6 +4,7 @@ import { clearShopAuthCookies } from "../clear-shop-auth-cookies.js";
 import { readSession } from "../session.js";
 import type { ShopIdentityAppDeps } from "../shop-identity-app-deps.js";
 import { shopStorefrontPath } from "../storefront-routes.js";
+import { readRecentIdTokenClaims } from "../verified-email.js";
 
 async function readIdTokenClaims(
   tokenService: ShopIdentityAppDeps["tokenService"],
@@ -16,24 +17,6 @@ async function readIdTokenClaims(
     return null;
   }
 }
-
-/** Lets a just-verified email show up within a minute instead of at ID token expiry. */
-const UNVERIFIED_CLAIMS_MAX_AGE_MS = 60_000;
-
-async function readRecentIdTokenClaims(
-  tokenService: ShopIdentityAppDeps["tokenService"],
-  sessionId: string,
-  fallback: JWTPayload,
-): Promise<JWTPayload> {
-  try {
-    return decodeJwt(
-      await tokenService.resolveIdToken(sessionId, { maxAgeMs: UNVERIFIED_CLAIMS_MAX_AGE_MS }),
-    );
-  } catch {
-    return fallback;
-  }
-}
-
 export function registerSessionRoutes(app: Hono, deps: ShopIdentityAppDeps): void {
   const { sessionRepository, tokenService, env } = deps;
 

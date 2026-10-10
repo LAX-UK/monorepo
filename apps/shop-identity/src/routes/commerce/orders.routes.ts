@@ -27,6 +27,7 @@ export function registerCommerceOrdersRoutes(app: Hono, deps: CommerceRoutesDeps
       path: `/v1/orders/${encodeURIComponent(orderId)}/resume-checkout`,
       scopes: "shop.write",
       requireCsrf: true,
+      requireVerifiedEmail: true,
     });
   });
 

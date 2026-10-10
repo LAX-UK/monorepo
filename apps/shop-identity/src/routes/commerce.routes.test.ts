@@ -490,3 +490,67 @@ describe("commerce basket merge on sign-in", () => {
     expect(response.headers.get("set-cookie")).toContain(`${SHOP_BASKET_COOKIE_NAME}=`);
   });
 });
+
+function idTokenWithClaims(claims: Record<string, unknown>): string {
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none" })}.${encode({ sub: "user-1", ...claims })}.signature`;
+}
+
+async function authedCsrfHeaders(app: Hono) {
+  const csrf = await app.request("/commerce/csrf", { headers: { cookie: AUTH_COOKIE } });
+  const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+  const csrfCookie = (csrf.headers.get("set-cookie") ?? "").split(";")[0];
+  return {
+    "content-type": "application/json",
+    cookie: `${AUTH_COOKIE}; ${csrfCookie}`,
+    "x-shop-csrf": csrfToken,
+  };
+}
+
+const checkoutBody = {
+  basketId: "11111111-1111-4111-8111-111111111111",
+  fulfilment: "collection",
+  idempotencyKey: "idem-key-1234",
+  successUrl: "http://localhost:3020/checkout/success",
+  cancelUrl: "http://localhost:3020/checkout/cancel",
+};
+
+describe("checkout email verification", () => {
+  it.each([
+    ["/commerce/checkout", checkoutBody],
+    ["/commerce/orders/11111111-1111-4111-8111-111111111111/resume-checkout", {}],
+  ])("rejects %s for unverified email without calling shop-api", async (path, body) => {
+    const shopApiFetch = vi.fn();
+    const unverified = idTokenWithClaims({ email_verified: false });
+    const { app } = createCommerceApp(shopApiFetch, {
+      resolveIdToken: vi.fn(async () => unverified),
+    });
+
+    const response = await app.request(path, {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "email_not_verified" });
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("proxies checkout once the email is verified", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ url: "https://stripe.test/pay" }));
+    const verified = idTokenWithClaims({ email_verified: true });
+    const { app } = createCommerceApp(shopApiFetch, {
+      resolveIdToken: vi.fn(async () => verified),
+    });
+
+    const response = await app.request("/commerce/checkout", {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify(checkoutBody),
+    });
+
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledOnce();
+  });
+});

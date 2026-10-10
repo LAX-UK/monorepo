@@ -4,13 +4,18 @@ import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
-import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import {
+  ShopStatusState,
+  ShopStatusStateAction,
+  ShopStatusStateLink,
+} from "@/components/shop-status-state";
 import {
   basketCheckoutBlockMessage,
   basketCheckoutBlockReasons,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
+import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
@@ -93,6 +98,42 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
 
   if (basket.lines.length === 0) {
     redirect("/basket");
+  }
+
+  if (viewer.kind === "authenticated" && viewer.emailVerified === false) {
+    return (
+      <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
+        <ShopCommercePageShell
+          header={shopPageWayfinding.checkout}
+          contentClassName="shop-checkout"
+        >
+          <ShopStatusState
+            layout="page"
+            variant="error"
+            title="Verify your email to check out"
+            titleAs="h2"
+            description={`Confirm ${viewer.email || "your email address"} so your order confirmation, receipt and delivery updates reach you. Your basket is saved.`}
+            actions={
+              <>
+                <ShopStatusStateAction priority="primary" asChild>
+                  <a href={shopIdentityUrl("/auth/verify-email")} className="shop-focus-ring">
+                    Send verification email
+                  </a>
+                </ShopStatusStateAction>
+                <ShopStatusStateAction asChild>
+                  <a
+                    href={shopIdentityUrl("/auth/upgrade?returnTo=%2Fcheckout")}
+                    className="shop-focus-ring"
+                  >
+                    I’ve verified it
+                  </a>
+                </ShopStatusStateAction>
+              </>
+            }
+          />
+        </ShopCommercePageShell>
+      </MarketingDetailShell>
+    );
   }
 
   if (!canProceedToCheckout(basket)) {

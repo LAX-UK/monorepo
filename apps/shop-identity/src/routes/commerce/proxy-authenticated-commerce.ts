@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { assertCommerceCsrf } from "../../commerce-csrf.js";
 import { resolveAuthenticatedCommerceContext } from "../../commerce-session.js";
 import { ShopIdentityReauthRequiredError } from "../../errors/shop-identity-reauth.error.js";
+import { hasVerifiedEmail } from "../../verified-email.js";
 import type { CommerceRoutesDeps } from "./commerce-route-types.js";
 import { proxyJson } from "./proxy-json.js";
 
@@ -16,6 +17,7 @@ export async function proxyAuthenticatedCommerce(
     scopes: ShopApiScope;
     body?: unknown;
     requireCsrf?: boolean;
+    requireVerifiedEmail?: boolean;
     basketToken?: string;
     idempotencyKey?: string;
   },
@@ -38,6 +40,12 @@ export async function proxyAuthenticatedCommerce(
   }
   if (!auth) {
     return c.json({ error: "sign_in_required" }, 401);
+  }
+  if (
+    options.requireVerifiedEmail &&
+    !(await hasVerifiedEmail(deps.tokenService, auth.sessionId, auth.idToken))
+  ) {
+    return c.json({ error: "email_not_verified" }, 403);
   }
   const response = await deps.shopApiFetch(deps.shopApi, {
     sessionId: auth.sessionId,
