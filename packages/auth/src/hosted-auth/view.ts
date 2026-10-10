@@ -100,22 +100,16 @@ export type HostedProductBackLink = {
   label: string;
 };
 
+/** Shop Admin has no signed-out page, so a back link would loop straight back to sign-in. */
 export function resolveHostedProductBackLink(view: HostedAuthView): HostedProductBackLink | null {
   const origin =
     view.flow.product === "shop"
       ? view.capabilities.shopOrigin
-      : view.flow.product === "shop-admin"
-        ? view.capabilities.shopAdminOrigin
-        : view.flow.product === "bid"
-          ? view.capabilities.bidOrigin
-          : null;
+      : view.flow.product === "bid"
+        ? view.capabilities.bidOrigin
+        : null;
   if (!origin) return null;
   const href = origin.replace(/\/$/, "");
-  const label =
-    view.flow.product === "shop"
-      ? "Back to LAX Shop"
-      : view.flow.product === "shop-admin"
-        ? "Back to Shop Admin"
-        : "Back to LAX Bid";
+  const label = view.flow.product === "shop" ? "Back to LAX Shop" : "Back to LAX Bid";
   return { href, label };
 }

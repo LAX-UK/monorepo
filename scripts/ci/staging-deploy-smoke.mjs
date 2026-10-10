@@ -2,6 +2,8 @@
 /**
  * Fast post-deploy smoke for test (readiness + conditional auth/shop probes).
  */
+import { shopStackPinned } from "./build-expected-releases.mjs";
+
 const DEFAULT_ATTEMPTS = 12;
 const DEFAULT_INTERVAL_MS = 5000;
 
@@ -11,6 +13,7 @@ export function smokeProbes({
   pinApi = true,
   pinWeb = true,
   pinShop = true,
+  pinShopAdmin = true,
   pinAuth = true,
   pinAccount = false,
   accountLive = false,
@@ -20,6 +23,7 @@ export function smokeProbes({
     readinessWeb: pinWeb,
     readinessAuth: pinAuth && smokeAuth,
     readinessShop: pinShop && smokeShop,
+    readinessShopAdmin: pinShopAdmin && smokeShop,
     readinessAccount: pinAccount,
     accountLoginRedirect: accountLive && (pinAccount || smokeAuth),
     authDiscovery: smokeAuth,
@@ -33,7 +37,8 @@ export function pinsForTargetSha(tagMap, targetSha) {
   return {
     pinApi: pin("api"),
     pinWeb: pin("web"),
-    pinShop: pin("shop") || pin("shop-api") || pin("shop-identity") || pin("shop-admin"),
+    pinShop: shopStackPinned(tagMap ?? {}, targetSha),
+    pinShopAdmin: pin("shop-admin"),
     pinAuth: pin("auth"),
     pinAccount: pin("account"),
     accountLive: Boolean(tagMap?.account),
@@ -118,6 +123,9 @@ export async function runStagingDeploySmoke(env, fetchImpl = fetch) {
   }
   if (probes.readinessShop) {
     await waitForReady("https://test-shop.lax.bid/health/ready", sha, fetchImpl);
+  }
+  if (probes.readinessShopAdmin) {
+    await waitForReady("https://test-shop-admin.lax.bid/health/ready", sha, fetchImpl);
   }
   if (probes.readinessAuth) {
     await waitForReady("https://test-auth.lax.bid/health/ready", sha, fetchImpl);

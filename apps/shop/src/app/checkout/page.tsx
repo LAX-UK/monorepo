@@ -36,6 +36,10 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
     redirect(shopStorefrontLoginHref("/checkout"));
   }
 
+  if (!params.basketMerge && basketResult.status === "ok" && basketResult.data.lines.length === 0) {
+    redirect("/basket");
+  }
+
   const gate = gateShopAuthenticatedRoute(viewer, "/checkout");
   if (!gate.allowed) {
     if (viewer.kind === "guest" && params.basketMerge) {

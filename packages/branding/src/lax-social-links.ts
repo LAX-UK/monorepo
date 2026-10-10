@@ -1,3 +1,5 @@
+import { SITE_COMPANY_NAME } from "./site.js";
+
 /** Official LAX social destinations — shared across marketing surfaces. */
 export const LAX_SOCIAL_LINKS = {
   youtube: "https://www.youtube.com/@londonauctionxchange",
@@ -8,7 +10,7 @@ export const LAX_SOCIAL_LINKS = {
 export type LaxSocialNetwork = keyof typeof LAX_SOCIAL_LINKS;
 
 export const LAX_SOCIAL_ARIA_LABELS: Record<LaxSocialNetwork, string> = {
-  youtube: "London Auction Xchange on YouTube",
-  instagram: "London Auction Xchange on Instagram",
-  linkedin: "London Auction Xchange on LinkedIn",
+  youtube: `${SITE_COMPANY_NAME} on YouTube`,
+  instagram: `${SITE_COMPANY_NAME} on Instagram`,
+  linkedin: `${SITE_COMPANY_NAME} on LinkedIn`,
 };

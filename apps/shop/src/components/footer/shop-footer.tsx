@@ -1,8 +1,8 @@
 import { ShopLaxLogo } from "@/components/layout/shop-lax-logo";
 import { ShopAuthLink } from "@/components/shop-auth-link";
-import { buildShopPolicyLinks, shopFooterCopyright } from "@/content/footer-nav.config";
+import { buildShopPolicyLinks } from "@/content/footer-nav.config";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
-import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
+import { FOCUS_RING, MARKETING_PAGE_GUTTER_X, siteCopyrightLine } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { MarketingFooterSocials } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -141,7 +141,7 @@ export function ShopFooter({
           className="h-px w-full max-w-[var(--container-inner,86rem)] bg-border-hairline"
           aria-hidden
         />
-        <p className="font-supporting text-sm text-on-surface-variant">{shopFooterCopyright}</p>
+        <p className="font-supporting text-sm text-on-surface-variant">{siteCopyrightLine()}</p>
       </div>
     </footer>
   );

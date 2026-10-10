@@ -1,5 +1,3 @@
-export const shopFooterCopyright = "© 2026  London Art Exchange Ltd";
-
 const shopPolicyRoutes = [
   { label: "Privacy notice", pathname: "/privacy" },
   { label: "Cookie policy", pathname: "/cookies" },
