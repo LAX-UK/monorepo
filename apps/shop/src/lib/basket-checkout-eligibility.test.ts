@@ -1,4 +1,4 @@
-import { canProceedToCheckout } from "@/lib/basket-checkout-eligibility";
+import { basketKnownEmpty, canProceedToCheckout } from "@/lib/basket-checkout-eligibility";
 import type { BasketView } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 
@@ -39,5 +39,18 @@ describe("canProceedToCheckout", () => {
 
   it("allows a clean basket", () => {
     expect(canProceedToCheckout(baseBasket)).toBe(true);
+  });
+});
+
+describe("basketKnownEmpty", () => {
+  it("treats a missing basket and a basket without lines as empty", () => {
+    expect(basketKnownEmpty({ status: "empty" })).toBe(true);
+    expect(basketKnownEmpty({ status: "ok", data: { ...baseBasket, lines: [] } })).toBe(true);
+  });
+
+  it("does not treat lines, failures or 401s as empty", () => {
+    expect(basketKnownEmpty({ status: "ok", data: baseBasket })).toBe(false);
+    expect(basketKnownEmpty({ status: "failed" })).toBe(false);
+    expect(basketKnownEmpty({ status: "unauthorized" })).toBe(false);
   });
 });

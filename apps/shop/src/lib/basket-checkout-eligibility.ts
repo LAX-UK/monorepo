@@ -1,4 +1,10 @@
+import type { ShopFetchResult } from "@/lib/shop-fetch-result";
 import type { BasketView } from "@auction/shop-contracts";
+
+/** True only when the basket is known to be empty; failures and 401s are not "empty". */
+export function basketKnownEmpty(result: ShopFetchResult<BasketView>): boolean {
+  return result.status === "empty" || (result.status === "ok" && result.data.lines.length === 0);
+}
 
 export type BasketCheckoutBlockReason = "price_changed" | "out_of_stock";
 
