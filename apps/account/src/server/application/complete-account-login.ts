@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { JWKS_PATH, normalizeIssuerUrl } from "@auction/identity-contracts";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
-import { createFetchTokenEndpoint, validateOAuthStateTimingSafe } from "@auction/identity-rp";
+import { validateOAuthStateTimingSafe } from "@auction/identity-rp";
 import type { LaxAccountConfig } from "../config";
+import { createAccountTokenEndpoint } from "../infrastructure/account-token-endpoint";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
 import type { PendingAccountLogin } from "./start-account-login";
 export async function completeAccountLogin(input: {
@@ -16,15 +17,7 @@ export async function completeAccountLogin(input: {
     throw new Error("Invalid OAuth state");
   }
   const redirectUri = `${input.config.publicOrigin}/api/auth/callback`;
-  const tokenEndpoint = createFetchTokenEndpoint({
-    tokenEndpointUrl: `${input.config.oidcInternalIssuer}/api/auth/oauth2/token`,
-    auth: {
-      kind: "basic",
-      clientId: input.config.oidcClientId,
-      clientSecret: input.config.oidcClientSecret,
-    },
-    timeoutMs: 15_000,
-  });
+  const tokenEndpoint = createAccountTokenEndpoint(input.config);
   const token = await tokenEndpoint.requestToken(
     new URLSearchParams({
       grant_type: "authorization_code",

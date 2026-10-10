@@ -25,6 +25,9 @@ export function createMemorySessionStore(): SessionStore {
       jtiSeen.add(jti);
       return true;
     },
+    async releaseBackchannelLogoutJti(jti) {
+      jtiSeen.delete(jti);
+    },
     async withRefreshLock(_sessionId, fn) {
       return fn();
     },

@@ -2,6 +2,7 @@ import { decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import { getLaxAccountContainer } from "../container";
 import { type AccountOverviewVm, buildAccountOverview } from "../domain/account-overview.vm";
+import { revalidateAccountSession } from "./revalidate-account-session";
 
 export type AccountSessionState =
   | { status: "ok"; subject: string; overview: AccountOverviewVm }
@@ -20,7 +21,12 @@ export async function loadAccountSession(): Promise<AccountSessionState> {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get(container.cookies.sessionCookie)?.value;
   if (!sessionId) return { status: "unsigned" };
-  const record = await container.sessions.get(sessionId);
+  const record = await revalidateAccountSession({
+    sessionId,
+    sessions: container.sessions,
+    tokenEndpoint: container.tokenEndpoint,
+    sessionTtlSeconds: container.config.sessionTtlSeconds,
+  });
   if (!record) return { status: "unsigned" };
   return {
     status: "ok",
