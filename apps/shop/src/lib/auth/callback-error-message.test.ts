@@ -5,6 +5,9 @@ describe("callbackErrorMessage", () => {
   it("maps known OIDC errors to shopper-friendly recovery copy", () => {
     expect(callbackErrorMessage("access_denied")).toContain("cancelled sign-in");
     expect(callbackErrorMessage("temporarily_unavailable")).toContain("temporarily unavailable");
+    expect(callbackErrorMessage("missing_refresh_token")).toContain(
+      "session could not be established",
+    );
   });
 
   it("does not expose unknown protocol error values", () => {

@@ -1,4 +1,5 @@
 import type { ShopIdentityMeReadResult } from "@/lib/shop-identity.server";
+import { safeRelativeReturnPath } from "@auction/identity-rp";
 import { type AccountChromeState, mapShopMeToAccountChromeState } from "@auction/lax-ecosystem";
 
 /** Session vocabulary shared with header account chrome. */
@@ -24,10 +25,8 @@ export function toShopViewerState(
 }
 
 export function shopStorefrontLoginHref(returnTo?: string): string {
-  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
-    return "/login";
-  }
-  return `/login?returnTo=${encodeURIComponent(returnTo)}`;
+  const safe = safeRelativeReturnPath(returnTo);
+  return safe ? `/login?returnTo=${encodeURIComponent(safe)}` : "/login";
 }
 
 export type ShopViewerGateOutcome = { allowed: true } | { allowed: false; redirectTo: string };

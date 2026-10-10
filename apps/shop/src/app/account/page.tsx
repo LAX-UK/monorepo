@@ -11,6 +11,7 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
+import { safeRelativeReturnPath } from "@auction/identity-rp";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -68,14 +69,10 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
     redirect(viewer.accountHref ?? "/account/disabled");
   }
 
+  const safeReturnTo = safeRelativeReturnPath(params.returnTo);
+
   if (viewer.kind === "guest") {
-    const returnTo =
-      typeof params.returnTo === "string" &&
-      params.returnTo.startsWith("/") &&
-      !params.returnTo.startsWith("//")
-        ? params.returnTo
-        : "/account";
-    redirect(shopStorefrontLoginHref(returnTo));
+    redirect(shopStorefrontLoginHref(safeReturnTo ?? "/account"));
   }
 
   const mergeComplete =
@@ -86,10 +83,7 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
 
   if (!mergeComplete) {
     const q = new URLSearchParams();
-    const returnTo = params.returnTo;
-    if (typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-      q.set("returnTo", returnTo);
-    }
+    if (safeReturnTo) q.set("returnTo", safeReturnTo);
     redirect(q.size > 0 ? `/account/post-sign-in?${q.toString()}` : "/account/post-sign-in");
   }
 
