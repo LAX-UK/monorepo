@@ -11,6 +11,10 @@ Main is the future source of truth. Release-only work is re-expressed in main’
 | Unified bid blocker UX                               | `17287326`                                                  | `BidBlockerPresentation` + `blockBid` + `BidBlockerNotice` + policy migrations                                                                                                                                              | Re-designed    | No `render` closure; unsupported-mode and connection are first-class policies, not `resolveRuntimeBidBlocker`                                    |
 | Contextual marketing prompts                         | `d5a42208`                                                  | `lib/marketing/prompts/**` + orchestrator/dialog                                                                                                                                                                            | Re-designed    | Route eligibility and selling intent split out; `PROMPT_RULES` table; analytics port; AVIF/WebP assets                                           |
 | CI secret-scan scoping                               | `3e8a1fb3`                                                  | `.github/workflows/ci.yml` `--log-opts`                                                                                                                                                                                     | Ported         | Applied to main’s 6-job CI; release `.gitleaksignore` fingerprint `f634d8bb` is not copied                                                       |
+| Standing bid 404 for missing buyer legal entity      | `794eec4a`                                                  | `packages/bidding-runtime` `StandingBidEligibilityValidator`                                                                                                                                                                | Re-implemented | Lives in bidding-runtime, not `apps/api`                                                                                                         |
+| Duplicate registration / resend for unverified email | `a63e645f`                                                  | Hosted sign-up (`sign-up-outcome.ts`) + hosted `/resend-verification`                                                                                                                                                       | Re-designed    | Success and existing-account outcomes are indistinguishable when verification is required (no enumeration)                                       |
+| Forgot-password Turnstile gating                     | `6f104296`, `00231d4a`                                      | Hosted recovery page `turnstileHost()`                                                                                                                                                                                      | Superseded     | Bid web no longer renders forgot-password; Identity owns the form                                                                                |
+| No default marketing footer tagline                  | `85ce35ba` (#459)                                           | `apps/web/src/components/layout/site-footer.tsx`                                                                                                                                                                            | Ported         | None                                                                                                                                             |
 
 Terraform `variable` blocks for `strict_bid_eligibility_enabled`, `kyc_onboarding_enabled`, `full_buyer_onboarding_enabled`, and `marketing_prompts_enabled` live in the private `.infra-config` repo. In-repo wiring is workflows, env examples, `docker-compose.prod.yml`, and `turbo.json` only.
 
@@ -33,3 +37,28 @@ main migrations. `0159` remains rolling-compatible. Before an old production
 binary can run after `0160`/`0161`, its required user-table grants must be
 restored. This is an Identity-scoped compatibility record, not evidence that
 the broader `release` → `main` merge is safe.
+
+As of release head `85ce35ba` (2026-10-10) the four commits after
+`b385dfb0` add no migrations, so the approved mapping still describes the
+production ledger. The shipped `db:adopt-release-lineage --apply` only replays
+main migrations on a disposable database; it does not rewrite a production
+ledger. Production rows at `1788000004000`–`1788000007000` hold the release
+`0128`–`0131` hashes, while main assigns those timestamps to `0128`–`0131`
+(role index, onsite links, Stripe Connect errors), so `db:migrate:prod` will
+fail closed with "Migration history diverged" until a ledger-normalization step
+exists and has been rehearsed on a production snapshot.
+
+## Promotion checklist (main → release)
+
+1. Ledger normalization for the production database is implemented, reviewed,
+   and rehearsed on a restored production snapshot (see above). Blocking.
+2. Every release-only commit since the last promotion has a row in the table
+   above (`git log --cherry-pick --right-only main...release`).
+3. Test environment runs the candidate SHA on every component, with onboarding
+   flags at their production values, and the hosted-login parity audit
+   (`docs/runbooks/bid-hosted-login-parity-audit.md`) passes.
+4. Production Terraform sets `kyc_onboarding_enabled`,
+   `full_buyer_onboarding_enabled`, and `strict_bid_eligibility_enabled`
+   explicitly; unset values default to off when `APP_ENV=production`.
+5. Identity grants for `0160`/`0161` stay staged via
+   `PRODUCTION_MIGRATION_THROUGH` per `docs/architecture/06-deployment.md`.
