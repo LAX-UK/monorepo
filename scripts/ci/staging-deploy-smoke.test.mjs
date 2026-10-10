@@ -59,4 +59,24 @@ describe("smokeProbes", () => {
     assert.equal(probes.readinessApi, true);
     assert.equal(probes.readinessWeb, false);
   });
+
+  it("probes shop-admin, not the storefront, when only shop-admin is rebuilt", () => {
+    const sha = "a".repeat(40);
+    const prior = "b".repeat(40);
+    const pins = pinsForTargetSha(
+      { shop: prior, "shop-api": prior, "shop-identity": prior, "shop-admin": sha },
+      sha,
+    );
+    const probes = smokeProbes({ smokeAuth: false, smokeShop: true, ...pins });
+    assert.equal(probes.readinessShop, false);
+    assert.equal(probes.readinessShopAdmin, true);
+  });
+
+  it("probes the storefront, not shop-admin, when only the shop stack is rebuilt", () => {
+    const sha = "a".repeat(40);
+    const pins = pinsForTargetSha({ "shop-api": sha, "shop-admin": "b".repeat(40) }, sha);
+    const probes = smokeProbes({ smokeAuth: false, smokeShop: true, ...pins });
+    assert.equal(probes.readinessShop, true);
+    assert.equal(probes.readinessShopAdmin, false);
+  });
 });

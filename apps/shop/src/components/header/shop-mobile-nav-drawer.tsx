@@ -39,7 +39,12 @@ export function ShopMobileNavDrawer({
       isSectionActive={(section) => shopMegaMenuSectionActive(pathname, section)}
       isLinkCurrent={(href) => pathname === href || pathname.startsWith(`${href}/`)}
       logo={
-        <Link href="/" className={cn("shrink-0 rounded-sm", FOCUS_RING)} onClick={close}>
+        <Link
+          href="/"
+          className={cn("shrink-0 rounded-sm", FOCUS_RING)}
+          aria-label="LAX Shop home"
+          onClick={close}
+        >
           <ShopLaxLogo variant="header" className="shop-header__logo" />
         </Link>
       }

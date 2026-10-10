@@ -1,20 +1,22 @@
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  access_denied: "You cancelled sign-in or access was not granted.",
+  invalid_state: "Your sign-in session expired or was interrupted. Please try again.",
+  token_exchange_failed: "Sign-in didn’t finish. Please try again.",
+  invalid_id_token: "We couldn’t confirm your sign-in. Please try again.",
+  missing_sid: "Your session could not be established. Please try again.",
+  missing_refresh_token: "Your session could not be established. Please try again.",
+  server_error: "LAX Identity is temporarily unavailable. Please try again shortly.",
+  temporarily_unavailable: "LAX Identity is temporarily unavailable. Please try again shortly.",
+};
+
+/** Support reference for a callback error; unrecognised values never echo back to the page. */
+export function callbackErrorReference(error: string): string {
+  return Object.hasOwn(CALLBACK_ERROR_MESSAGES, error) ? error : "unknown";
+}
+
 export function callbackErrorMessage(error: string): string {
-  switch (error) {
-    case "access_denied":
-      return "You cancelled sign-in or access was not granted.";
-    case "invalid_state":
-      return "Your sign-in session expired or was interrupted. Please try again.";
-    case "token_exchange_failed":
-      return "We could not exchange your sign-in code. Please try again.";
-    case "invalid_id_token":
-      return "We could not verify your identity token. Please try again.";
-    case "missing_sid":
-    case "missing_refresh_token":
-      return "Your session could not be established. Please try again.";
-    case "server_error":
-    case "temporarily_unavailable":
-      return "LAX Identity is temporarily unavailable. Please try again shortly.";
-    default:
-      return "We could not complete sign-in. Please try again.";
-  }
+  return (
+    CALLBACK_ERROR_MESSAGES[callbackErrorReference(error)] ??
+    "We could not complete sign-in. Please try again."
+  );
 }

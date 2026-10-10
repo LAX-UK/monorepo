@@ -2,6 +2,7 @@
 
 import { ShopAccountStatus } from "@/components/header/shop-account-status";
 import { ShopAuthLink } from "@/components/shop-auth-link";
+import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
@@ -9,7 +10,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 const ORDERS_HREF = "/account/orders";
 
@@ -18,6 +19,36 @@ type ShopMobileAuthSectionProps = {
   productLinks?: LaxProductLinkVm[];
   onNavigate?: () => void;
 };
+
+type GuestAuthAction = "register" | "login";
+
+/** Full-page auth redirects take seconds; keep the drawer open and show progress instead. */
+function useGuestAuthPending(onNavigate?: () => void) {
+  const [pending, setPending] = useState<GuestAuthAction | null>(null);
+
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setPending(null);
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
+
+  const handleClick =
+    (action: GuestAuthAction, href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+      if (!isShopAuthHref(href)) {
+        onNavigate?.();
+        return;
+      }
+      if (pending) {
+        event.preventDefault();
+        return;
+      }
+      setPending(action);
+    };
+
+  return { pending, handleClick };
+}
 
 function MobileGuestAuthSection({
   registerHref,
@@ -28,26 +59,31 @@ function MobileGuestAuthSection({
   loginHref: string;
   onNavigate?: () => void;
 }) {
+  const { pending, handleClick } = useGuestAuthPending(onNavigate);
+
   return (
-    <div className="flex w-full flex-col items-center gap-3">
+    <div className="flex w-full flex-col items-center gap-3" aria-busy={pending !== null}>
       <Button variant="cta" size="lg" className="w-full" asChild>
         <ShopAuthLink
           href={registerHref}
-          className="w-full justify-center"
-          {...(onNavigate ? { onClick: onNavigate } : {})}
+          className={cn("w-full justify-center", pending && "pointer-events-none opacity-60")}
+          aria-disabled={pending !== null}
+          onClick={handleClick("register", registerHref)}
         >
-          Create account
+          {pending === "register" ? "Opening…" : "Create account"}
         </ShopAuthLink>
       </Button>
       <ShopAuthLink
         href={loginHref}
         className={cn(
           "inline-flex min-h-11 w-full items-center justify-center rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
+          pending && "pointer-events-none opacity-60",
           FOCUS_RING,
         )}
-        {...(onNavigate ? { onClick: onNavigate } : {})}
+        aria-disabled={pending !== null}
+        onClick={handleClick("login", loginHref)}
       >
-        Sign in
+        {pending === "login" ? "Signing in…" : "Sign in"}
       </ShopAuthLink>
     </div>
   );
