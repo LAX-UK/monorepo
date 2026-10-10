@@ -79,6 +79,7 @@ export function createTestUserRouteServicesInput(
     emailService: { enqueue: vi.fn() } as never,
     accountDeletionEligibilityService: { check: vi.fn() } as never,
     twoFactorRequirement: { readMyRequirement: vi.fn() },
+    staffInvitationAccept: { accept: vi.fn() },
     ...overrides,
   };
 }

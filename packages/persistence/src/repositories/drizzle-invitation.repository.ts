@@ -1,12 +1,19 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
+  domainEvent,
   emailOutbox,
   userInvitation,
+  userInvitationProductGrant,
   type userStaffRoleEnum,
 } from "@auction/db/schema";
-import type { UserRole, UserStaffRole } from "@auction/types";
-import { type SQL, and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import type {
+  LaxStaffAccessGrantedPayloadV1,
+  LaxStaffGrant,
+  UserRole,
+  UserStaffRole,
+} from "@auction/types";
+import { type SQL, and, asc, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   ConsumeInviteResult,
@@ -88,11 +95,54 @@ function mapInvitationSummary(r: {
   };
 }
 
+type BidStaffRole = (typeof userStaffRoleEnum.enumValues)[number];
+
+async function selectGrants(
+  db: Database,
+  invitationIds: string[],
+): Promise<Map<string, LaxStaffGrant[]>> {
+  const byInvitation = new Map<string, LaxStaffGrant[]>();
+  if (invitationIds.length === 0) return byInvitation;
+  const rows = await db
+    .select({
+      invitationId: userInvitationProductGrant.invitationId,
+      product: userInvitationProductGrant.product,
+      role: userInvitationProductGrant.role,
+    })
+    .from(userInvitationProductGrant)
+    .where(inArray(userInvitationProductGrant.invitationId, invitationIds))
+    .orderBy(asc(userInvitationProductGrant.product));
+  for (const r of rows) {
+    const list = byInvitation.get(r.invitationId) ?? [];
+    list.push({ product: r.product, role: r.role });
+    byInvitation.set(r.invitationId, list);
+  }
+  return byInvitation;
+}
+
+type AcceptMode = { kind: "new_user" } | { kind: "existing_user" };
+
 export class DrizzleUserInvitationRepository implements IUserInvitationRepository {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly producer = "apps/api",
+  ) {}
 
   async insert(row: InvitationInsert): Promise<void> {
-    await this.db.insert(userInvitation).values({
+    await this.db.transaction(async (tx) => {
+      await this.insertInvitation(tx, row);
+      if (row.grants && row.grants.length > 0) {
+        await tx
+          .insert(userInvitationProductGrant)
+          .values(
+            row.grants.map((g) => ({ invitationId: row.id, product: g.product, role: g.role })),
+          );
+      }
+    });
+  }
+
+  private async insertInvitation(tx: Database, row: InvitationInsert): Promise<void> {
+    await tx.insert(userInvitation).values({
       id: row.id,
       email: row.email,
       targetRole: row.targetRole,
@@ -144,10 +194,31 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
     return row ? mapRow(row) : null;
   }
 
-  async consumeForNewUser(
+  async listGrants(invitationId: string): Promise<LaxStaffGrant[]> {
+    return (await selectGrants(this.db, [invitationId])).get(invitationId) ?? [];
+  }
+
+  consumeForNewUser(
     tokenHash: string,
     newUserId: string,
     email: string,
+  ): Promise<ConsumeInviteResult> {
+    return this.accept(tokenHash, newUserId, email, { kind: "new_user" });
+  }
+
+  acceptForExistingUser(
+    tokenHash: string,
+    userId: string,
+    email: string,
+  ): Promise<ConsumeInviteResult> {
+    return this.accept(tokenHash, userId, email, { kind: "existing_user" });
+  }
+
+  private accept(
+    tokenHash: string,
+    userId: string,
+    email: string,
+    mode: AcceptMode,
   ): Promise<ConsumeInviteResult> {
     return this.db.transaction(async (tx) => {
       // Row lock serializes concurrent redemptions of the same token: the loser
@@ -170,27 +241,55 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         return { outcome: "email_mismatch" };
       }
 
+      const grants = (await selectGrants(tx, [row.id])).get(row.id) ?? [];
       const targetRole = row.targetRole as UserRole;
-      const targetStaff =
-        targetRole === "staff"
-          ? (row.targetStaffRole as (typeof userStaffRoleEnum.enumValues)[number])
-          : null;
+      const now = new Date();
 
       await tx
         .update(userInvitation)
-        .set({
-          status: "accepted",
-          acceptedAt: new Date(),
-          acceptedUserId: newUserId,
-          updatedAt: new Date(),
-        })
+        .set({ status: "accepted", acceptedAt: now, acceptedUserId: userId, updatedAt: now })
         .where(eq(userInvitation.id, row.id));
-      await writeBidUserProfile(tx, newUserId, {
-        role: targetRole,
-        staffRole: targetStaff,
-      });
 
-      return { outcome: "ok", targetRole };
+      const bidGrant = grants.find((g) => g.product === "bid");
+      if (bidGrant) {
+        await writeBidUserProfile(tx, userId, {
+          role: "staff",
+          staffRole: bidGrant.role as BidStaffRole,
+        });
+      } else if (mode.kind === "new_user") {
+        await writeBidUserProfile(tx, userId, {
+          role: targetRole,
+          staffRole:
+            targetRole === "staff" ? ((row.targetStaffRole ?? null) as BidStaffRole | null) : null,
+        });
+      }
+
+      const remote = grants.filter((g) => g.product !== "bid");
+      if (remote.length > 0) {
+        await tx.insert(domainEvent).values(
+          remote.map((g) => {
+            const payload: LaxStaffAccessGrantedPayloadV1 = {
+              schemaVersion: 1,
+              subjectId: userId,
+              product: g.product,
+              role: g.role,
+              grantedBySubjectId: row.createdByUserId,
+              invitationId: row.id,
+            };
+            return {
+              aggregateType: "user",
+              aggregateId: userId,
+              eventType: "lax.staff_access.granted",
+              producer: this.producer,
+              payload,
+              actorUserId: userId,
+              schemaVersion: 1,
+            };
+          }),
+        );
+      }
+
+      return { outcome: "ok", targetRole: bidGrant ? "staff" : targetRole, grants };
     });
   }
 
@@ -246,8 +345,13 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       .orderBy(desc(userInvitation.createdAt))
       .limit(page.limit)
       .offset(page.offset);
+    const grants = await selectGrants(
+      this.db,
+      rows.map((r) => r.id),
+    );
     return rows.map((r) => ({
       ...mapInvitationSummary(r),
+      grants: grants.get(r.id) ?? [],
       inviteEmailLastStatus: r.inviteEmailLastStatus ?? null,
       invitedByName: r.invitedByName ?? null,
     }));

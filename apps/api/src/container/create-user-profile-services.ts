@@ -21,6 +21,7 @@ import type { EnsurePersonalLegalEntityService } from "../services/legal-entity/
 import { PersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import { ProfileService } from "../services/profile.service.js";
 import { SavedSearchService } from "../services/saved-search.service.js";
+import { StaffInvitationAcceptService } from "../services/staff-invitation-accept.service.js";
 import { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
 import { UserSecurityReadService } from "../services/user-security-read.service.js";
 import { UserService } from "../services/user.service.js";
@@ -45,6 +46,7 @@ export type ContainerUserProfileServices = {
   addressService: AddressService;
   invitationService: InvitationService;
   invitationRepository: IUserInvitationRepository;
+  staffInvitationAccept: StaffInvitationAcceptService;
   accountOnboardingService: AccountOnboardingService;
   accountOnboardingGate: CachedAccountOnboardingChecker;
   orgModuleGate: OrgModuleGate;
@@ -170,6 +172,10 @@ export function createUserProfileServices(
     env.WEB_ORIGIN,
   );
   const invitationConsumptionService = new InvitationConsumptionService(invitationRepository);
+  const staffInvitationAccept = new StaffInvitationAcceptService(
+    userRepo,
+    invitationConsumptionService,
+  );
 
   const accountOnboardingRepository = new DrizzleAccountOnboardingRepository(db);
   const accountOnboardingService = new AccountOnboardingService(
@@ -212,6 +218,7 @@ export function createUserProfileServices(
     addressService,
     invitationService,
     invitationRepository,
+    staffInvitationAccept,
     accountOnboardingService,
     accountOnboardingGate,
     orgModuleGate,

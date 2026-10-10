@@ -43,6 +43,8 @@ function makeDeps() {
     findPendingByTokenHash: vi.fn().mockResolvedValue(null),
     findPendingPlatformByEmail: vi.fn().mockResolvedValue(null),
     consumeForNewUser: vi.fn(),
+    acceptForExistingUser: vi.fn(),
+    listGrants: vi.fn().mockResolvedValue([]),
     listAdmin: vi.fn().mockResolvedValue([]),
     counts: vi.fn().mockResolvedValue({ total: 0, pending: 0, accepted: 0 }),
     updateStatus: vi.fn().mockResolvedValue(undefined),
@@ -141,11 +143,87 @@ describe("InvitationService.create", () => {
     });
     expect(res.isOk()).toBe(true);
     expect(deps.invites.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "new@example.com", targetStaffRole: "finance_ops" }),
+      expect.objectContaining({
+        email: "new@example.com",
+        targetStaffRole: "finance_ops",
+        grants: [{ product: "bid", role: "finance_ops" }],
+      }),
     );
     expect(deps.email.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "new@example.com", template: "invite" }),
+      expect.objectContaining({ to: "new@example.com", template: "access-invite" }),
     );
+  });
+
+  it("stores one grant per platform and derives the Bid base role", async () => {
+    const res = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "multi@example.com",
+      grants: [
+        { product: "shop", role: "broker" },
+        { product: "bid", role: "specialist" },
+      ],
+    });
+    expect(res.isOk()).toBe(true);
+    expect(deps.invites.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetRole: "staff",
+        targetStaffRole: "specialist",
+        grants: [
+          { product: "bid", role: "specialist" },
+          { product: "shop", role: "broker" },
+        ],
+      }),
+    );
+    const call = vi.mocked(deps.email.enqueue).mock.calls[0]?.[0] as {
+      vars: { grants: { platform: string; role: string }[]; actionUrl: string };
+    };
+    expect(call.vars.grants.map((g) => `${g.platform}:${g.role}`)).toEqual([
+      "Bid:Specialist",
+      "Shop:Broker",
+    ]);
+    expect(call.vars.actionUrl).toMatch(
+      /^https:\/\/web\.test\/register\?invite=[^&]+&next=%2Finvitations%2Fwelcome%3Fplatforms%3Dbid%2Cshop$/,
+    );
+  });
+
+  it("a Shop-only invite keeps the Bid base role as client", async () => {
+    await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "shop@example.com",
+      grants: [{ product: "shop", role: "operations" }],
+    });
+    expect(deps.invites.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ targetRole: "client", targetStaffRole: null }),
+    );
+  });
+
+  it("rejects roles that do not exist on the platform", async () => {
+    const res = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "bad@example.com",
+      grants: [{ product: "shop", role: "super_admin" }],
+    });
+    expect(res.isErr() && res.error.status).toBe(400);
+    expect(deps.invites.insert).not.toHaveBeenCalled();
+  });
+
+  it("invites an existing account to staff access with a sign-in accept link", async () => {
+    vi.mocked(deps.users.findByEmail).mockResolvedValue({
+      ...SUPER_ADMIN,
+      id: "existing",
+      email: "client@example.com",
+    });
+    const res = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "client@example.com",
+      grants: [{ product: "shop", role: "finance" }],
+    });
+    expect(res.isOk()).toBe(true);
+    const call = vi.mocked(deps.email.enqueue).mock.calls[0]?.[0] as {
+      vars: { existingAccount: boolean; actionUrl: string };
+    };
+    expect(call.vars.existingAccount).toBe(true);
+    expect(call.vars.actionUrl).toMatch(/^https:\/\/web\.test\/invitations\/accept\/[\w-]+$/);
   });
 
   it("SC3: still succeeds when the invite email fails to enqueue", async () => {

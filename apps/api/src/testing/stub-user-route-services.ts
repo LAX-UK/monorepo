@@ -78,6 +78,7 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       requestAccountDeletion: vi.fn(),
     },
     twoFactorRequirement: { readMyRequirement: vi.fn() },
+    staffInvitationAccept: { accept: vi.fn() },
     ...overrides,
   };
 }

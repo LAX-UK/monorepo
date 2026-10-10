@@ -28,6 +28,40 @@ describe("renderEmail", () => {
     expect(rendered.text).not.toContain("activate your account");
   });
 
+  it("renders access-invite listing every platform role for a new address", async () => {
+    const rendered = await renderEmail("access-invite", {
+      scope: "staff",
+      inviterName: "Grace",
+      inviteeEmail: "new@example.com",
+      grants: [
+        { platform: "Bid", role: "Specialist", summary: "Appraises consignments." },
+        { platform: "Shop", role: "Broker" },
+      ],
+      existingAccount: false,
+      actionUrl: "https://lax.bid/register?invite=tok",
+      expiresAt: "2026-10-17",
+    });
+    expect(rendered.subject).toBe("You're invited to join London Art Exchange");
+    expect(rendered.html).toContain("Specialist — Appraises consignments.");
+    expect(rendered.html).toContain("Broker");
+    expect(rendered.text).toContain("Create account and accept");
+    expect(rendered.text).toContain("https://lax.bid/register?invite=tok");
+  });
+
+  it("renders access-invite for an existing account joining an organisation", async () => {
+    const rendered = await renderEmail("access-invite", {
+      scope: "organisation",
+      orgName: "Acme Gallery",
+      inviteeEmail: "member@example.com",
+      grants: [{ platform: "Acme Gallery", role: "Admin" }],
+      existingAccount: true,
+      actionUrl: "https://lax.bid/dashboard/invitations/accept/tok",
+    });
+    expect(rendered.subject).toBe("You've been given access to Acme Gallery");
+    expect(rendered.text).toContain("Acme Gallery on London Art Exchange");
+    expect(rendered.text).toContain("Accept and sign in");
+  });
+
   it("renders shop-order-receipt", async () => {
     const rendered = await renderEmail("shop-order-receipt", {
       orderId: "ord-1",

@@ -18,6 +18,7 @@ function createInvites(overrides?: Partial<IInvitationConsumption>): IInvitation
   return {
     validateForRegistration: vi.fn(),
     consumeInviteForNewUser: vi.fn(),
+    acceptForExistingUser: vi.fn(),
     ...overrides,
   };
 }

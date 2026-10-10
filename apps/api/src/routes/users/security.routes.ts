@@ -1,4 +1,6 @@
+import { invitationAcceptBodySchema } from "@auction/validators";
 import { z } from "zod";
+import { asHttpStatus } from "../../lib/http-status.js";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
@@ -48,6 +50,21 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     });
     return respondUserHttpJson(c, response);
   });
+
+  r.post(
+    "/me/invitations/accept",
+    requireAuth,
+    zValidator("json", invitationAcceptBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { token } = c.req.valid("json");
+      const result = await container.userRoutes.staffInvitationAccept.accept(userId, token);
+      return result.match(
+        (data) => c.json({ data }, 201),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 
   r.get("/me/two-factor-requirement", requireAuth, async (c) => {
     const userId = c.get("userId") as string;

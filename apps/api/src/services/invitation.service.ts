@@ -7,8 +7,12 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IUserRepository } from "@auction/persistence/interfaces";
 import {
+  type LaxStaffGrant,
   type UserRole,
   type UserStaffRole,
+  laxStaffPlatform,
+  laxStaffRoleOption,
+  normalizeLaxStaffGrants,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
@@ -19,8 +23,17 @@ export type InvitationError = { message: string; status: number };
 export type CreateInvitationInput = {
   actorUserId: string;
   email: string;
-  targetRole: UserRole;
+  /** Legacy single-platform shape; ignored when `grants` is non-empty. */
+  targetRole?: UserRole;
   targetStaffRole?: UserStaffRole | null;
+  /** Staff role per LAX platform. Any grant makes this a staff invitation. */
+  grants?: readonly { product: string; role: string }[];
+};
+
+type ResolvedInvitationAccess = {
+  targetRole: UserRole;
+  targetStaffRole: UserStaffRole | null;
+  grants: LaxStaffGrant[];
 };
 
 function hashToken(token: string): string {
@@ -37,6 +50,56 @@ function isUniqueViolation(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { code?: unknown }).code === "23505";
 }
 
+/** Path the invitee lands on after accepting, listing the platforms they can now open. */
+export function invitationWelcomePath(grants: readonly LaxStaffGrant[]): string {
+  const platforms = grants.map((g) => g.product).join(",");
+  return platforms ? `/invitations/welcome?platforms=${platforms}` : "/invitations/welcome";
+}
+
+function resolveInvitationAccess(
+  input: Pick<CreateInvitationInput, "targetRole" | "targetStaffRole" | "grants">,
+): Result<ResolvedInvitationAccess, InvitationError> {
+  if (input.grants && input.grants.length > 0) {
+    const normalized = normalizeLaxStaffGrants(input.grants);
+    if (!normalized.ok) return err({ message: normalized.message, status: 400 });
+    const bid = normalized.grants.find((g) => g.product === "bid");
+    return ok({
+      targetRole: bid ? "staff" : "client",
+      targetStaffRole: bid ? (bid.role as UserStaffRole) : null,
+      grants: normalized.grants,
+    });
+  }
+  const targetRole = input.targetRole ?? "client";
+  if (targetRole !== "staff" && input.targetStaffRole != null) {
+    return err({ message: "targetStaffRole is only valid for staff invitations", status: 400 });
+  }
+  if (targetRole === "staff") {
+    if (input.targetStaffRole == null) {
+      return err({ message: "targetStaffRole is required for staff invitations", status: 400 });
+    }
+    return ok({
+      targetRole,
+      targetStaffRole: input.targetStaffRole,
+      grants: [{ product: "bid", role: input.targetStaffRole }],
+    });
+  }
+  return ok({ targetRole, targetStaffRole: null, grants: [] });
+}
+
+function emailGrantRows(grants: readonly LaxStaffGrant[]) {
+  if (grants.length === 0) {
+    return [{ platform: "London Art Exchange", role: "Client account" }];
+  }
+  return grants.map((g) => {
+    const option = laxStaffRoleOption(g.product, g.role);
+    return {
+      platform: laxStaffPlatform(g.product).label,
+      role: option?.label ?? g.role,
+      summary: option?.summary ?? null,
+    };
+  });
+}
+
 /**
  * Admin lifecycle of platform invitations (create / list / revoke / resend / preview).
  * Registration-time validation and consumption live in InvitationConsumptionService.
@@ -49,9 +112,13 @@ export class InvitationService {
     private readonly webOrigin: string,
   ) {}
 
-  private inviteLink(token: string): string {
+  private inviteLink(token: string, grants: readonly LaxStaffGrant[], existingAccount: boolean) {
     const base = this.webOrigin.replace(/\/$/, "");
-    return `${base}/register?invite=${encodeURIComponent(token)}`;
+    if (existingAccount) {
+      return `${base}/invitations/accept/${encodeURIComponent(token)}`;
+    }
+    const params = new URLSearchParams({ invite: token, next: invitationWelcomePath(grants) });
+    return `${base}/register?${params.toString()}`;
   }
 
   private async requireInviteCapability(
@@ -73,21 +140,22 @@ export class InvitationService {
     token: string;
     email: string;
     inviterName: string | null;
-    targetRole: UserRole;
-    targetStaffRole: UserStaffRole | null;
+    grants: readonly LaxStaffGrant[];
     expiresAt: Date;
   }): Promise<void> {
     try {
+      const existingAccount = (await this.users.findByEmail(args.email)) != null;
       const { outboxId } = await this.email.enqueue({
-        template: "invite",
+        template: "access-invite",
         to: args.email,
         category: "transactional",
         vars: {
-          inviteUrl: this.inviteLink(args.token),
+          scope: "staff",
           inviterName: args.inviterName,
           inviteeEmail: args.email,
-          role: args.targetRole,
-          staffRole: args.targetStaffRole,
+          grants: emailGrantRows(args.grants),
+          existingAccount,
+          actionUrl: this.inviteLink(args.token, args.grants, existingAccount),
           expiresAt: args.expiresAt.toISOString(),
         },
       });
@@ -106,21 +174,14 @@ export class InvitationService {
     const actor = await this.requireInviteCapability(input.actorUserId);
     if (actor.isErr()) return err(actor.error);
 
-    if (input.targetRole !== "staff" && input.targetStaffRole != null) {
-      return err({
-        message: "targetStaffRole is only valid for staff invitations",
-        status: 400,
-      });
-    }
-    const targetStaff = input.targetRole === "staff" ? (input.targetStaffRole ?? null) : null;
-    if (input.targetRole === "staff" && targetStaff == null) {
-      return err({ message: "targetStaffRole is required for staff invitations", status: 400 });
-    }
+    const access = resolveInvitationAccess(input);
+    if (access.isErr()) return err(access.error);
+    const { targetRole, targetStaffRole, grants } = access.value;
 
     const email = input.email.trim().toLowerCase();
 
-    const existingUser = await this.users.findByEmail(email);
-    if (existingUser) {
+    // Existing accounts can receive staff access; a client invite would grant nothing.
+    if (grants.length === 0 && (await this.users.findByEmail(email))) {
       return err({ message: "A user with this email already exists", status: 409 });
     }
     const existingInvite = await this.invites.findPendingPlatformByEmail(email);
@@ -139,14 +200,15 @@ export class InvitationService {
       await this.invites.insert({
         id,
         email,
-        targetRole: input.targetRole,
-        targetStaffRole: targetStaff,
+        targetRole,
+        targetStaffRole,
         tokenHash: hashToken(token),
         status: "pending",
         expiresAt,
         acceptedAt: null,
         acceptedUserId: null,
         createdByUserId: input.actorUserId,
+        grants,
       });
     } catch (e) {
       // Partial unique index race: another admin created the invite concurrently.
@@ -164,8 +226,7 @@ export class InvitationService {
       token,
       email,
       inviterName: actor.value.name,
-      targetRole: input.targetRole,
-      targetStaffRole: targetStaff,
+      grants,
       expiresAt,
     });
 
@@ -178,6 +239,7 @@ export class InvitationService {
         email: string;
         targetRole: UserRole;
         targetStaffRole: UserStaffRole | null;
+        grants: LaxStaffGrant[];
         expiresAt: Date;
         entityScoped: boolean;
       },
@@ -197,6 +259,7 @@ export class InvitationService {
       email: row.email,
       targetRole: row.targetRole,
       targetStaffRole: row.targetStaffRole,
+      grants: await this.invites.listGrants(row.id),
       expiresAt: row.expiresAt,
       entityScoped: row.targetLegalEntityId != null,
     });
@@ -273,8 +336,7 @@ export class InvitationService {
       token,
       email: row.email,
       inviterName: actor.value.name,
-      targetRole: row.targetRole,
-      targetStaffRole: row.targetStaffRole,
+      grants: await this.invites.listGrants(row.id),
       expiresAt,
     });
 

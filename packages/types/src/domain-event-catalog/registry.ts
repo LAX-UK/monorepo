@@ -5,6 +5,10 @@ import {
   payoutPaidPayloadSchemaV1,
   payoutSettlementCreatedPayloadSchemaV1,
 } from "./financial-payload-schemas.js";
+import {
+  laxStaffAccessGrantedPayloadSchemaV1,
+  laxStaffAccessRevokedPayloadSchemaV1,
+} from "./lax-staff-access-payload-schemas.js";
 import { LotEventSchemas } from "./lot-payload-schemas.js";
 import {
   amlScreeningPayloadSchemaV1,
@@ -90,6 +94,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "bid.lot_won",
   "bid.outbid",
   "bid.proxy_cancelled",
+  "lax.staff_access.granted",
+  "lax.staff_access.revoked",
   "category.archived",
   "category.created",
   "category.deleted",
@@ -450,6 +456,20 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     ],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
+  },
+  "lax.staff_access.granted": {
+    schema: laxStaffAccessGrantedPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: ["shop_staff_access"],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "lax.staff_access.revoked": {
+    schema: laxStaffAccessRevokedPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: ["shop_staff_access"],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
   },
   "shop.order.paid": {
     schema: shopOrderPaidPayloadSchemaV1,

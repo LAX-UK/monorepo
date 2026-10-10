@@ -22,28 +22,69 @@ describe("NoOpMembershipInviteNotifier", () => {
 });
 
 describe("EmailMembershipInviteNotifier", () => {
-  it("sends invite_to_existing_user with accept URL in body", async () => {
+  function makeNotifier() {
     const send = vi.fn().mockResolvedValue(undefined);
+    const enqueue = vi.fn().mockResolvedValue({ outboxId: "outbox-1" });
     const mailer: ITransactionalMailer = { send };
-    const n = new EmailMembershipInviteNotifier(mailer);
+    return { n: new EmailMembershipInviteNotifier(mailer, { enqueue }), send, enqueue };
+  }
+
+  it("enqueues the shared access-invite template for an existing account", async () => {
+    const { n, send, enqueue } = makeNotifier();
     await n.notify({
       kind: "invite_to_existing_user",
       to: "invitee@example.com",
       orgName: "Gallery",
       inviterName: "Alex",
-      role: "staff",
+      role: "admin",
       acceptUrl: "https://app/dashboard/invitations/accept/tok",
     });
+    expect(send).not.toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledWith({
+      template: "access-invite",
+      to: "invitee@example.com",
+      category: "transactional",
+      vars: {
+        scope: "organisation",
+        orgName: "Gallery",
+        inviterName: "Alex",
+        inviteeEmail: "invitee@example.com",
+        grants: [{ platform: "Gallery", role: "Admin" }],
+        existingAccount: true,
+        actionUrl: "https://app/dashboard/invitations/accept/tok",
+      },
+    });
+  });
+
+  it("links new addresses to sign-up", async () => {
+    const { n, enqueue } = makeNotifier();
+    await n.notify({
+      kind: "invite_to_new_user",
+      to: "new@example.com",
+      orgName: "Gallery",
+      inviterName: "Alex",
+      role: "viewer",
+      signupUrl: "https://app/register?invite=tok",
+    });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vars: expect.objectContaining({
+          existingAccount: false,
+          actionUrl: "https://app/register?invite=tok",
+        }),
+      }),
+    );
+  });
+
+  it("keeps plain mail for acceptance notices", async () => {
+    const { n, send, enqueue } = makeNotifier();
+    await n.notify({
+      kind: "invite_accepted",
+      to: "owner@example.com",
+      orgName: "Gallery",
+      memberName: "Sam",
+    });
     expect(send).toHaveBeenCalledTimes(1);
-    const first = send.mock.calls.at(0);
-    expect(first).toBeDefined();
-    if (first === undefined) {
-      throw new Error("expected one send call");
-    }
-    const arg = first[0] as { to: string; subject: string; text: string };
-    expect(arg.to).toBe("invitee@example.com");
-    expect(arg.subject).toContain("Gallery");
-    expect(arg.text).toContain("Alex");
-    expect(arg.text).toContain("https://app/dashboard/invitations/accept/tok");
+    expect(enqueue).not.toHaveBeenCalled();
   });
 });

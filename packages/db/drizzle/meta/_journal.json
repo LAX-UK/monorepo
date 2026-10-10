@@ -1436,6 +1436,13 @@
       "when": 1793088000000,
       "tag": "0205_identity_access_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1793174400000,
+      "tag": "0206_invitation_product_grants",
+      "breakpoints": true
     }
   ]
 }
