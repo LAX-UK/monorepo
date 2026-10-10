@@ -1,30 +1,43 @@
+import type { IEmailService } from "@auction/email";
 import type {
   IMembershipInviteNotifier,
   MembershipInviteNotification,
 } from "./interfaces/membership-invite-notification.js";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 
+function memberRoleLabel(role: string): string {
+  const words = role.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Org invitations share the LAX-wide `access-invite` design with staff invitations. */
 export class EmailMembershipInviteNotifier implements IMembershipInviteNotifier {
-  constructor(private readonly mailer: ITransactionalMailer) {}
+  constructor(
+    private readonly mailer: ITransactionalMailer,
+    private readonly email: Pick<IEmailService, "enqueue">,
+  ) {}
 
   async notify(event: MembershipInviteNotification): Promise<void> {
     switch (event.kind) {
       case "invite_to_existing_user":
-        await this.mailer.send({
+      case "invite_to_new_user": {
+        const existingAccount = event.kind === "invite_to_existing_user";
+        await this.email.enqueue({
+          template: "access-invite",
           to: event.to,
-          subject: `You're invited to join ${event.orgName} on LAX`,
-          text: `${event.inviterName} invited you to join ${event.orgName} as ${event.role}.\n\nAccept the invitation:\n${event.acceptUrl}\n`,
-          meta: { kind: event.kind, role: event.role },
+          category: "transactional",
+          vars: {
+            scope: "organisation",
+            orgName: event.orgName,
+            inviterName: event.inviterName,
+            inviteeEmail: event.to,
+            grants: [{ platform: event.orgName, role: memberRoleLabel(event.role) }],
+            existingAccount,
+            actionUrl: existingAccount ? event.acceptUrl : event.signupUrl,
+          },
         });
         return;
-      case "invite_to_new_user":
-        await this.mailer.send({
-          to: event.to,
-          subject: `Join ${event.orgName} on LAX`,
-          text: `${event.inviterName} invited you to join ${event.orgName} as ${event.role}.\n\nCreate your account:\n${event.signupUrl}\n`,
-          meta: { kind: event.kind, role: event.role },
-        });
-        return;
+      }
       case "invite_accepted":
         await this.mailer.send({
           to: event.to,

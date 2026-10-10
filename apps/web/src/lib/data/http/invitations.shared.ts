@@ -1,6 +1,11 @@
 import type { InvitationListStatus } from "@/lib/admin/invitations-list-query";
 import { isIndexableObject } from "@/lib/data/http/object-guards";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import {
+  type LaxStaffGrant,
+  type UserRole,
+  type UserStaffRole,
+  laxStaffAccessProductSchema,
+} from "@auction/types";
 import { z } from "zod";
 
 export type AdminInvitationSummary = {
@@ -8,6 +13,7 @@ export type AdminInvitationSummary = {
   email: string;
   targetRole: UserRole;
   targetStaffRole: UserStaffRole | null;
+  grants: LaxStaffGrant[];
   status: string;
   expiresAt: Date;
   createdAt: Date;
@@ -21,6 +27,7 @@ export type AdminInvitationWire = {
   email: string;
   targetRole: string;
   targetStaffRole?: string | null;
+  grants?: LaxStaffGrant[];
   status: string;
   expiresAt: string;
   createdAt: string;
@@ -67,6 +74,9 @@ const rowSchema = z
     email: z.coerce.string(),
     targetRole: z.coerce.string(),
     targetStaffRole: z.union([z.null(), z.coerce.string()]).optional(),
+    grants: z
+      .array(z.object({ product: laxStaffAccessProductSchema, role: z.string() }))
+      .optional(),
     status: z.coerce.string(),
     expiresAt: z.coerce.string(),
     createdAt: z.coerce.string(),
@@ -83,6 +93,7 @@ const rowSchema = z
       expiresAt: row.expiresAt,
       createdAt: row.createdAt,
       ...(row.targetStaffRole !== undefined ? { targetStaffRole: row.targetStaffRole } : {}),
+      ...(row.grants !== undefined ? { grants: row.grants } : {}),
       ...(row.openedAt !== undefined ? { openedAt: row.openedAt } : {}),
       ...(row.inviteEmailLastStatus !== undefined
         ? { inviteEmailLastStatus: row.inviteEmailLastStatus }
@@ -111,6 +122,7 @@ export function mapAdminInvitation(r: AdminInvitationWire): AdminInvitationSumma
     email: r.email,
     targetRole: r.targetRole as UserRole,
     targetStaffRole: (r.targetStaffRole ?? null) as UserStaffRole | null,
+    grants: r.grants ?? [],
     status: r.status,
     expiresAt: new Date(r.expiresAt),
     createdAt: new Date(r.createdAt),

@@ -2,9 +2,9 @@
 
 import { useAdminBulkSelectionBulk } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { InvitationAccessBadges } from "@/components/admin/invitation-access-badges";
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
 import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
-import { PlatformRoleBadge } from "@/components/admin/platform-role-badge";
 import { invitationLifecycleDisplay } from "@/lib/admin/invite-lifecycle";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
@@ -38,7 +38,11 @@ export function InvitationsMobileCards({ rows }: Props) {
           <div className="min-w-0 flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4">
             <p className="truncate font-medium text-on-surface">{r.email}</p>
             <div className="mt-1">
-              <PlatformRoleBadge targetRole={r.targetRole} targetStaffRole={r.targetStaffRole} />
+              <InvitationAccessBadges
+                targetRole={r.targetRole}
+                targetStaffRole={r.targetStaffRole}
+                grants={r.grants}
+              />
             </div>
             {r.invitedByName ? (
               <p className="mt-1 text-xs text-on-surface-variant">Invited by {r.invitedByName}</p>

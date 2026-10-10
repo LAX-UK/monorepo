@@ -67,6 +67,14 @@ export { assertDomainEventConsumerContract } from "./consumer-guard.js";
 export { listDomainEventTypesForConsumer } from "./consumer-routing.js";
 export { shopOrderPaidPayloadSchemaV1 } from "./shop-payload-schemas.js";
 export {
+  laxStaffAccessGrantedPayloadSchemaV1,
+  laxStaffAccessProductSchema,
+  laxStaffAccessRevokedPayloadSchemaV1,
+  type LaxStaffAccessGrantedPayloadV1,
+  type LaxStaffAccessProduct,
+  type LaxStaffAccessRevokedPayloadV1,
+} from "./lax-staff-access-payload-schemas.js";
+export {
   shopCancellationRequestedPayloadSchemaV1,
   shopDisputeClosedPayloadSchemaV1,
   shopDisputeOpenedPayloadSchemaV1,

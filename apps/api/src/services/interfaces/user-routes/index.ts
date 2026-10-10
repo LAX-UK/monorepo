@@ -1,4 +1,5 @@
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
+import type { StaffInvitationAcceptService } from "../../staff-invitation-accept.service.js";
 import type { IUserAccountOnboardingHttpApplicationService } from "./user-account-onboarding-http.js";
 import type { IUserCategoryInterestsHttpApplicationService } from "./user-category-interests-http.js";
 import type { IUserDashboardHttpApplicationService } from "./user-dashboard-http.js";
@@ -20,6 +21,7 @@ export type UserRouteServices = {
   accountOnboardingHttp: IUserAccountOnboardingHttpApplicationService;
   securityHttp: IUserSecurityHttpApplicationService;
   twoFactorRequirement: Pick<TwoFactorPolicyService, "readMyRequirement">;
+  staffInvitationAccept: Pick<StaffInvitationAcceptService, "accept">;
 };
 
 export type {

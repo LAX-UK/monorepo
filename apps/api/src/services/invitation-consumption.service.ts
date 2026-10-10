@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
-import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence/interfaces";
-import type { UserRole } from "@auction/types";
+import type {
+  ConsumeInviteResult,
+  IUserInvitationRepository,
+  InvitationRow,
+} from "@auction/persistence/interfaces";
+import type { LaxStaffGrant, UserRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { InvitationError } from "./invitation.service.js";
 
@@ -19,6 +23,23 @@ export interface IInvitationConsumption {
     newUserId: string,
     email: string,
   ): Promise<Result<UserRole, InvitationError>>;
+  /** Signed-in existing account accepting a staff invitation sent to its email. */
+  acceptForExistingUser(
+    token: string,
+    userId: string,
+    email: string,
+  ): Promise<Result<{ grants: LaxStaffGrant[] }, InvitationError>>;
+}
+
+function consumeError(result: Exclude<ConsumeInviteResult, { outcome: "ok" }>): InvitationError {
+  switch (result.outcome) {
+    case "expired":
+      return { message: "Invitation expired", status: 400 };
+    case "email_mismatch":
+      return { message: "Email does not match invitation", status: 400 };
+    default:
+      return { message: "Invalid invitation", status: 400 };
+  }
 }
 
 /**
@@ -53,15 +74,19 @@ export class InvitationConsumptionService implements IInvitationConsumption {
     email: string,
   ): Promise<Result<UserRole, InvitationError>> {
     const result = await this.invites.consumeForNewUser(hashToken(token), newUserId, email);
-    switch (result.outcome) {
-      case "ok":
-        return ok(result.targetRole);
-      case "expired":
-        return err({ message: "Invitation expired", status: 400 });
-      case "email_mismatch":
-        return err({ message: "Email does not match invitation", status: 400 });
-      default:
-        return err({ message: "Invalid invitation", status: 400 });
+    return result.outcome === "ok" ? ok(result.targetRole) : err(consumeError(result));
+  }
+
+  async acceptForExistingUser(
+    token: string,
+    userId: string,
+    email: string,
+  ): Promise<Result<{ grants: LaxStaffGrant[] }, InvitationError>> {
+    const row = await this.invites.findPendingByTokenHash(hashToken(token));
+    if (row?.targetLegalEntityId != null) {
+      return err({ message: "Invalid invitation", status: 400 });
     }
+    const result = await this.invites.acceptForExistingUser(hashToken(token), userId, email);
+    return result.outcome === "ok" ? ok({ grants: result.grants }) : err(consumeError(result));
   }
 }

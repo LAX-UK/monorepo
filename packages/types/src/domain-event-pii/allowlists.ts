@@ -244,6 +244,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
   "bid.user_suspended": new Set(),
+  "lax.staff_access.granted": new Set([
+    "subjectId",
+    "product",
+    "role",
+    "grantedBySubjectId",
+    "invitationId",
+  ]),
+  "lax.staff_access.revoked": new Set(["subjectId", "product", "revokedBySubjectId"]),
 };
 
 export function isExceptionPath(eventType: string, path: string): boolean {

@@ -1,12 +1,13 @@
 import "server-only";
 
 import { getServerApiBase } from "@/lib/data/http/hc-server";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { LaxStaffGrant, UserRole, UserStaffRole } from "@auction/types";
 
 export type InvitePreview = {
   email: string;
   targetRole: UserRole;
   targetStaffRole: UserStaffRole | null;
+  grants?: LaxStaffGrant[];
   expiresAt: string;
   entityScoped: boolean;
 };

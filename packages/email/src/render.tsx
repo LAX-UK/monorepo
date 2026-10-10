@@ -6,6 +6,7 @@ import TwoFactorDisabledEmail, {
 import TwoFactorEnabledEmail, {
   subject as twoFactorEnabledSubject,
 } from "./templates/2fa-enabled.js";
+import AccessInviteEmail, { subject as accessInviteSubject } from "./templates/access-invite.js";
 import AccountActivation, {
   subject as accountActivationSubject,
 } from "./templates/account-activation.js";
@@ -226,6 +227,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     component: (vars) => <ChangeEmail {...vars} />,
   },
   invite: { subject: inviteSubject, component: (vars) => <InviteEmail {...vars} /> },
+  "access-invite": {
+    subject: accessInviteSubject,
+    component: (vars) => <AccessInviteEmail {...vars} />,
+  },
   "bid-outbid": { subject: bidOutbidSubject, component: (vars) => <BidOutbidEmail {...vars} /> },
   "lot-won": { subject: lotWonSubject, component: (vars) => <LotWonEmail {...vars} /> },
   "lot-ended-seller": {
