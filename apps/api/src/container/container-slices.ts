@@ -15,7 +15,10 @@ import type {
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
-import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
+import type {
+  AdminRouteServices,
+  AdminStaffSecurityRouteServices,
+} from "../services/interfaces/admin-routes.js";
 import type {
   AdminSatelliteJobQueuesRoutesContainer,
   AdminSatelliteMarketingEventsRoutesContainer,
@@ -64,7 +67,6 @@ import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
-import type { TwoFactorPolicyService } from "../services/security/two-factor-policy.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
@@ -114,7 +116,6 @@ export type ContainerRootSlice = {
   oauthAttributionStore: IOAuthAttributionStore;
   authOAuthAccountReader: IAuthOAuthAccountReader;
   subjectUsageReader: ISubjectUsageReader;
-  twoFactorPolicy: TwoFactorPolicyService;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */
@@ -294,7 +295,7 @@ export type ContainerCronSlice = Pick<
 
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
-  admin: AdminRouteServices;
+  admin: AdminRouteServices & AdminStaffSecurityRouteServices;
 };
 
 /** Route-facing bidding bag (mirrors `container.bidding`). */
@@ -492,7 +493,7 @@ export type ContainerSaleroomDisplayRoutesSlice = Pick<Container, "bidding">;
 /** User account routes (`routes/users/*`). */
 export type ContainerUserAccountRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "env" | "userRoutes" | "twoFactorPolicy"
+  "userSuspensionChecker" | "env" | "userRoutes"
 > & {
   identityIssuer: IIdentityCredentialClient;
 };
@@ -530,7 +531,7 @@ export type ContainerLegalEntityRoutesSlice = Pick<
 /** Legal entity member admin (invite, roles, transfer). */
 export type ContainerLegalEntityMemberRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "requireLegalEntityContext" | "identityRoutes" | "twoFactorPolicy"
+  "userSuspensionChecker" | "requireLegalEntityContext" | "identityRoutes"
 >;
 
 /** Item submission seller + admin APIs. */
@@ -617,8 +618,7 @@ export type ContainerAdminPlatformRoutesSlice = ContainerAdminRoutesSlice &
   Pick<Container, "redis"> &
   ContainerAdminOnsiteEventRoutesSlice &
   ContainerAdminMarketingEventsRoutesSlice &
-  ContainerAdminQueuesRoutesSlice &
-  Pick<Container, "twoFactorPolicy">;
+  ContainerAdminQueuesRoutesSlice;
 
 /** Password step-up middleware minimum deps. */
 export type ContainerPasswordStepUpSlice = {

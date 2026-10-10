@@ -22,8 +22,8 @@ function buildApp(staffRole: string) {
         isSuspended: vi.fn().mockResolvedValue(false),
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
+      staffTwoFactorPolicy: twoFactorPolicy,
     },
-    twoFactorPolicy,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({

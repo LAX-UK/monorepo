@@ -45,6 +45,10 @@ export function stubIdentityRouteServices(
       completeStep: vi.fn(),
       submitForReview: vi.fn(),
     },
+    orgTwoFactorPolicy: {
+      readOrgPolicy: vi.fn(),
+      setOrgPolicy: vi.fn(),
+    },
     ...overrides,
   };
 }

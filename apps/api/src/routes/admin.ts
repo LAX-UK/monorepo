@@ -109,7 +109,7 @@ export function createAdminRoutes(
   attachAdminComplianceRoutes(platform, container);
   attachAdminUsersManagementRoutes(platform, container);
   attachAdminImpersonationRoutes(platform, container);
-  attachAdminSecurityRoutes(platform, container.twoFactorPolicy);
+  attachAdminSecurityRoutes(platform, container.admin.staffTwoFactorPolicy);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 

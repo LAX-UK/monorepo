@@ -145,7 +145,7 @@ export function createLegalEntityMemberRoutes(
   r.get("/two-factor-policy", requireAuth, requireContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     try {
-      return c.json({ data: await container.twoFactorPolicy.readOrgPolicy(ctx) });
+      return c.json({ data: await container.identityRoutes.orgTwoFactorPolicy.readOrgPolicy(ctx) });
     } catch (error) {
       if (error instanceof TwoFactorPolicyForbiddenError)
         return c.json({ error: "forbidden" }, 403);
@@ -162,7 +162,9 @@ export function createLegalEntityMemberRoutes(
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { required } = c.req.valid("json");
       try {
-        return c.json({ data: await container.twoFactorPolicy.setOrgPolicy(ctx, required) });
+        return c.json({
+          data: await container.identityRoutes.orgTwoFactorPolicy.setOrgPolicy(ctx, required),
+        });
       } catch (error) {
         if (error instanceof TwoFactorPolicyForbiddenError) {
           return c.json({ error: "forbidden" }, 403);

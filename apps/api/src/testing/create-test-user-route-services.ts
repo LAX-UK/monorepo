@@ -78,6 +78,7 @@ export function createTestUserRouteServicesInput(
     userSecurityReadService: { getTwoFactorEnabled: vi.fn() } as never,
     emailService: { enqueue: vi.fn() } as never,
     accountDeletionEligibilityService: { check: vi.fn() } as never,
+    twoFactorRequirement: { readMyRequirement: vi.fn() },
     ...overrides,
   };
 }

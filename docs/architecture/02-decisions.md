@@ -649,7 +649,7 @@ before production go-live.
 
 **Chosen.** Two-step verification (TOTP) is optional by default: each user turns it on or off in their own security settings. Two policies can make it mandatory:
 
-- **Staff policy** — a Bid super admin (`platform.admin.full`) requires it for everyone with a staff role on any LAX platform (Bid staff role, active Shop staff grant). Seeded **on**.
+- **Staff policy** — a Bid super admin (`platform.admin.full`) requires it for everyone with a staff role on any LAX platform (Bid staff role, active Shop staff grant). Seeded **on** by the migration; the dev seed (`db:seed:dev`, used by hermetic CI) turns it off so password-only fixture logins keep working.
 - **Organisation policy** — an organisation owner requires it for that organisation's members. Default **off**.
 
 Identity enforces the result at `/oauth2/authorize` for every relying party. Products still own roles (D13): SECURITY DEFINER triggers on `bid_user_profile`, `shop_staff_member` and `legal_entity_member` (organisations only) maintain `identity_access_marker`, a role-free "this subject is staff / belongs to org X" table that `auth_app` can read. Policies live in `identity_mfa_policy`. Both tables are denied to `api_app`; Bid reads and writes policy through Identity machine endpoints (`/internal/identity/two-factor-policies/*`, `/internal/identity/subjects/:id/two-factor-requirement`), and every change is audited as `auth.two_factor_policy_changed`.
