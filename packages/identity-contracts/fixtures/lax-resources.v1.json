@@ -21,6 +21,7 @@
     "profile",
     "email",
     "offline_access",
+    "phone",
     "bid.read",
     "bid.write",
     "shop.admin",

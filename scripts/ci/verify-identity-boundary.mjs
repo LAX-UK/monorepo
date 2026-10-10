@@ -253,6 +253,7 @@ async function runLiveVerification() {
       "shop.read",
       "shop.write",
       "shop.admin",
+      "phone",
     ],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
   };
