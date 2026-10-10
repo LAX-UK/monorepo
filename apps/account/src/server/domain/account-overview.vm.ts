@@ -1,4 +1,9 @@
-import { OIDC_ACR_SILVER } from "@auction/identity-contracts";
+import {
+  LAX_STAFF_PLATFORMS_CLAIM,
+  type LaxStaffPlatformsClaim,
+  OIDC_ACR_SILVER,
+  laxStaffPlatformsClaimSchema,
+} from "@auction/identity-contracts";
 
 export type AccountOverviewVm = {
   /** Greeting name: profile name, else email, else a neutral label. */
@@ -13,6 +18,8 @@ export type AccountOverviewVm = {
    * session used an authenticator; bronze does not prove one is absent.
    */
   signedInWithAuthenticator: boolean;
+  /** LAX platforms where this person has staff access, as of this sign-in. */
+  staffPlatforms: LaxStaffPlatformsClaim;
 };
 
 function text(value: unknown): string | null {
@@ -35,5 +42,6 @@ export function buildAccountOverview(
     phone,
     phoneVerified: phone !== null && claims.phone_number_verified === true,
     signedInWithAuthenticator: acr === OIDC_ACR_SILVER,
+    staffPlatforms: laxStaffPlatformsClaimSchema.catch([]).parse(claims[LAX_STAFF_PLATFORMS_CLAIM]),
   };
 }

@@ -81,13 +81,19 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
 
   async setStaffRole(
     actorRole: string,
-    _actorUserId: string,
+    actorUserId: string,
     targetUserId: string,
     staffRole: import("@auction/types").UserStaffRole | null,
     actorStaffRole?: string | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
     try {
-      await this.adminUsers.setStaffRole(actorRole, targetUserId, staffRole, actorStaffRole);
+      await this.adminUsers.setStaffRole(
+        actorRole,
+        actorUserId,
+        targetUserId,
+        staffRole,
+        actorStaffRole,
+      );
       return { ok: true };
     } catch (e) {
       if (e instanceof AuthzError) {

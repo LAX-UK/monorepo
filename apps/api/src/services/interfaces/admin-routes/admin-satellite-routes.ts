@@ -1,6 +1,7 @@
 import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
 import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
+import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
@@ -49,6 +50,10 @@ export type AdminSatelliteRouteServices = {
 /** Wired in the container root because the policy client lives outside the admin graph. */
 export type AdminStaffSecurityRouteServices = {
   staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
+  staffAccess: Pick<
+    StaffAccessAdminService,
+    "summaries" | "detail" | "setRemoteRole" | "revokeRemote"
+  >;
 };
 
 export type { IQueueInspector, IQueueMutator };

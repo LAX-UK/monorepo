@@ -1,12 +1,13 @@
-import { shopArtist, shopUserProfile } from "@auction/db/schema";
+import { shopArtist } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../../../application/admin/operator-context.js";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../../../lib/pg-errors.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { resolveActiveProfileByEmail } from "../../resolve-shop-profile-by-email.js";
 
 export type LinkArtistIdentityCommand = {
   artistId: string;
@@ -22,39 +23,6 @@ export type UnlinkArtistIdentityCommand = {
   idempotencyKey: string;
   operatorContext?: import("../../../application/admin/operator-context.js").ShopOperatorContext;
 };
-
-async function resolveActiveProfileByEmail(
-  tx: ReturnType<typeof shopPhaseDbSession>,
-  email: string,
-): Promise<{ identitySubjectId: string }> {
-  const normalizedEmail = email.trim().toLowerCase();
-  const profiles = await tx
-    .select({ identitySubjectId: shopUserProfile.identitySubjectId })
-    .from(shopUserProfile)
-    .where(
-      and(
-        sql`lower(${shopUserProfile.email}) = ${normalizedEmail}`,
-        isNull(shopUserProfile.disabledAt),
-        isNull(shopUserProfile.mergedIntoSubjectId),
-      ),
-    )
-    .limit(2);
-  if (profiles.length === 0) {
-    throw notFound("Shop login for email");
-  }
-  if (profiles.length > 1) {
-    throw new ShopApiError(
-      SHOP_API_ERROR_CODES.CONFLICT,
-      "Email matches more than one active shop login",
-      409,
-    );
-  }
-  const profile = profiles[0];
-  if (!profile) {
-    throw notFound("Shop login for email");
-  }
-  return profile;
-}
 
 async function lockArtistRow(
   tx: ReturnType<typeof shopPhaseDbSession>,

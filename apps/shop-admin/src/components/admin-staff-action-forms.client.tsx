@@ -44,20 +44,36 @@ const STAFF_ROLES = [
   "catalogue_editor",
 ] as const;
 
-export function GrantStaffRoleForm() {
+export function GrantStaffRoleForm({ bidStaffUrl }: { bidStaffUrl: string | undefined }) {
   const { pending, idempotencyKey, message, stepUpRequired, stepUpHref, run } = useAdminMutation();
-  const [identitySubjectId, setIdentitySubjectId] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<(typeof STAFF_ROLES)[number]>("operations");
 
   return (
-    <FormSection title="Grant staff role">
+    <FormSection title="Add staff by email">
+      <p className="text-sm text-neutral-600">
+        The person must already have a LAX login.{" "}
+        {bidStaffUrl ? (
+          <>
+            To bring in someone new, or to manage their access on every LAX platform, use{" "}
+            <a className="underline" href={bidStaffUrl}>
+              Manage all LAX access
+            </a>
+            .
+          </>
+        ) : (
+          "To bring in someone new, invite them from LAX admin."
+        )}
+      </p>
       <label className={adminFormLabelClass}>
-        <span className="text-neutral-600">Identity subject ID</span>
+        <span className="text-neutral-600">Email</span>
         <input
+          type="email"
+          autoComplete="off"
           className={adminFormFieldClass}
-          value={identitySubjectId}
+          value={email}
           disabled={pending}
-          onChange={(e) => setIdentitySubjectId(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
         />
       </label>
       <label className={adminFormLabelClass}>
@@ -79,10 +95,10 @@ export function GrantStaffRoleForm() {
         pending={pending}
         label="Grant role"
         onClick={() => {
-          const subject = identitySubjectId.trim();
-          if (!subject) return;
+          const address = email.trim();
+          if (!address) return;
           void run(
-            () => grantStaffRole({ identitySubjectId: subject, role, idempotencyKey }),
+            () => grantStaffRole({ email: address, role, idempotencyKey }),
             "Staff role granted.",
           );
         }}

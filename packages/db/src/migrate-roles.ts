@@ -107,7 +107,8 @@ export const API_DENY_TABLES = [
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
 /** Identity-backed read models exposed to the Bid API without write privileges. */
-export const API_READ_TABLES = ["bid_identity_directory"] as const;
+/** `lax_staff_access_directory` is trigger-maintained (D36); Bid reads Shop roles from it. */
+export const API_READ_TABLES = ["bid_identity_directory", "lax_staff_access_directory"] as const;
 /** Product-local profile tables owned by apps/api (Bid). */
 export const API_PRODUCT_PROFILE_TABLES = ["bid_user_profile"] as const;
 export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;

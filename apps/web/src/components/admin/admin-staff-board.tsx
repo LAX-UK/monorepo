@@ -1,8 +1,10 @@
 "use client";
 
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { UserStaffRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
 import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
 import { PeopleStaffMobileCard } from "@/components/admin/people/people-mobile-card";
+import { StaffPlatformBadges } from "@/components/admin/people/staff-platform-badges";
 import {
   userJoinedColumn,
   userRowActionsColumn,
@@ -11,15 +13,20 @@ import {
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
+import { twoFactorStatusLabel } from "@/lib/admin/people/staff-access-presenter";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import type { StaffAccessSummary } from "@/lib/data/http/staff-access.server";
 import type { UserStaffRole } from "@auction/types";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 
-function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow>[] {
+function staffColumns(
+  onOpen: (u: AdminUserRow) => void,
+  access: Record<string, StaffAccessSummary>,
+): ColumnDef<AdminUserRow>[] {
   return [
     {
       accessorKey: "name",
@@ -49,6 +56,27 @@ function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow
         <span className="text-xs capitalize text-on-surface">
           {staffRoleLabel(row.original.staffRole as UserStaffRole | null)}
         </span>
+      ),
+    },
+    {
+      id: "laxAccess",
+      header: "LAX access",
+      cell: ({ row }) => <StaffPlatformBadges platforms={access[row.original.id]?.platforms} />,
+    },
+    {
+      id: "twoFactor",
+      header: "2FA",
+      cell: ({ row }) => (
+        <span className="text-xs text-on-surface">
+          {twoFactorStatusLabel(access[row.original.id]?.twoFactorEnabled)}
+        </span>
+      ),
+    },
+    {
+      id: "lastSignIn",
+      header: "Last sign-in",
+      cell: ({ row }) => (
+        <AdminTableDateTimeCell iso={access[row.original.id]?.lastSignInAt} mode="timestamp" />
       ),
     },
     userStatusColumn(),
@@ -108,6 +136,7 @@ function StaffDrawerActions({
 
 type Props = {
   rows: AdminUserRow[];
+  access: Record<string, StaffAccessSummary>;
   totalMatches: number;
   hasActiveFilters: boolean;
   externalMobileCards?: boolean;
@@ -119,6 +148,7 @@ type Props = {
 
 export function AdminStaffBoard({
   rows,
+  access,
   totalMatches,
   hasActiveFilters,
   externalMobileCards = false,
@@ -141,9 +171,14 @@ export function AdminStaffBoard({
         user={u}
         onOpen={onOpen}
         roleLabel={staffRoleLabel(u.staffRole as UserStaffRole | null)}
+        platforms={access[u.id]?.platforms}
       />
     ),
-    [],
+    [access],
+  );
+  const buildColumns = useCallback(
+    (onOpen: (u: AdminUserRow) => void) => staffColumns(onOpen, access),
+    [access],
   );
 
   return (
@@ -165,7 +200,7 @@ export function AdminStaffBoard({
       renderDrawerOverview={renderDrawerOverview}
       renderDrawerActions={renderDrawerActions}
       {...(externalMobileCards ? { externalMobileCards: true } : { renderMobileCard })}
-      buildColumns={staffColumns}
+      buildColumns={buildColumns}
       detailHref={(u) => `/admin/staff/${u.id}`}
       showColumnPicker
       columnVisibilityStorageKey="admin.staff.columns"

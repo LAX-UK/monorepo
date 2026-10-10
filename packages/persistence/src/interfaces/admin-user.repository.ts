@@ -164,8 +164,16 @@ export interface IAdminUserKycReader {
 }
 
 export interface IAdminUserRoleManager {
-  /** Atomically sets `role` and `staff_role` (`staff_role` null iff `role` is `client`). */
-  setRoleAndStaff(userId: string, role: string, staffRole: string | null): Promise<void>;
+  /**
+   * Atomically sets `role` and `staff_role` (`staff_role` null iff `role` is `client`) and,
+   * when the Bid staff role changes, records `lax.staff_access.*` for the access history.
+   */
+  setRoleAndStaff(
+    userId: string,
+    role: string,
+    staffRole: string | null,
+    actorUserId: string,
+  ): Promise<void>;
 }
 
 export interface IAdminUserSuspender {

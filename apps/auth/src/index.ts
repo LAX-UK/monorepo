@@ -17,6 +17,7 @@ import { createOidcRouteServices } from "./container/create-oidc-route-services.
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { loadAuthEnv } from "./env.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
+import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 
 const env = loadAuthEnv();
@@ -76,6 +77,9 @@ const auth = createAuthIssuer({
   trustedOrigins: webOrigins,
   logout: services.oidc.logout,
   oidcSessions: services.oidc.sessions,
+  accountAccessClaims: createAccountAccessClaimsResolver({
+    store: identityPorts.twoFactorPolicyStore,
+  }),
   identityEventPublisher: repositories.identityEventPublisher,
 });
 const identityOperations = createIdentityOperationsService({

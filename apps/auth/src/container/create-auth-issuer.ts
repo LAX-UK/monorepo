@@ -17,7 +17,10 @@ import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
 import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
-import { adaptOidcClaimsResolver } from "../infrastructure/oidc-claim-resolver-adapter.js";
+import {
+  type OidcClaims,
+  adaptOidcClaimsResolver,
+} from "../infrastructure/oidc-claim-resolver-adapter.js";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
 import type { OidcSessionCoordinator } from "../services/oidc-session-coordinator.js";
 import { publishIdentityProfileUpdated } from "../services/publish-identity-profile-updated.js";
@@ -55,6 +58,7 @@ export function createAuthIssuer(options: {
   trustedOrigins: string[];
   logout: BackchannelLogoutRevoker;
   oidcSessions: Pick<OidcSessionCoordinator, "resolveIdTokenClaims">;
+  accountAccessClaims: (input: { subjectId: string; clientId: string }) => Promise<OidcClaims>;
   identityEventPublisher: IdentityEventPublisher;
 }): ReturnType<typeof createAuth> {
   const lifecycle = createAuthLifecycleCallbacks({
@@ -162,9 +166,10 @@ export function createAuthIssuer(options: {
       }),
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
     blockNewUserRegistration: Boolean(env.DISABLE_NEW_USER_REGISTRATION),
-    resolveOidcIdTokenClaims: adaptOidcClaimsResolver((input) =>
-      options.oidcSessions.resolveIdTokenClaims(input),
-    ),
+    resolveOidcIdTokenClaims: adaptOidcClaimsResolver(async (input) => ({
+      ...(await options.oidcSessions.resolveIdTokenClaims(input)),
+      ...(await options.accountAccessClaims(input)),
+    })),
     breachedPasswordChecker: new HibpRangeBreachedPasswordChecker(),
   });
 }
