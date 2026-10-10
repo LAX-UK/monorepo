@@ -16,5 +16,11 @@ export function createDrizzleSessionStampStore(db: IdentityDatabase) {
         .set({ mfaCompletedAt: at, updatedAt: at })
         .where(eq(session.token, sessionToken));
     },
+    async stampSocialAuth(sessionToken: string, at: Date) {
+      await db
+        .update(session)
+        .set({ socialAuthAt: at, updatedAt: at })
+        .where(eq(session.token, sessionToken));
+    },
   };
 }

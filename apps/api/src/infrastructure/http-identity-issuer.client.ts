@@ -6,10 +6,14 @@ import type {
   IIdentitySecurityClient,
   IIdentitySessionClient,
   IIdentitySubjectClient,
+  IIdentityTwoFactorPolicyClient,
   IdentityIssuerRequestContext,
   IdentityIssuerSignUpInput,
   IdentitySession,
   IdentitySubject,
+  IdentityTwoFactorPolicyScope,
+  IdentityTwoFactorPolicyView,
+  IdentityTwoFactorRequirement,
 } from "../services/interfaces/identity-issuer-client.js";
 
 const DEFAULT_TIMEOUT_MS = 5_000;
@@ -21,6 +25,9 @@ const FORWARDED_HEADERS = [
   "x-real-ip",
   "cf-connecting-ip",
 ] as const;
+
+/** Identity's `/identity/subjects/two-factor-status` accepts at most 200 ids per call. */
+const TWO_FACTOR_STATUS_BATCH = 200;
 
 export type IdentityIssuerClientErrorKind = "timeout" | "network" | "http" | "invalid_response";
 
@@ -44,7 +51,8 @@ export class HttpIdentityIssuerClient
     IIdentitySessionClient,
     IIdentityEmailChangeClient,
     IIdentityProfileClient,
-    IIdentitySecurityClient
+    IIdentitySecurityClient,
+    IIdentityTwoFactorPolicyClient
 {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -195,6 +203,56 @@ export class HttpIdentityIssuerClient
       }
       throw error;
     }
+  }
+
+  async readTwoFactorRequirement(subjectId: string): Promise<IdentityTwoFactorRequirement> {
+    const body = await this.machineRequest(
+      "GET",
+      `/identity/subjects/${encodeURIComponent(subjectId)}/two-factor-requirement`,
+    );
+    if (!isRecord(body)) throw invalidResponse("two-factor requirement");
+    return readTwoFactorRequirement(body.requirement);
+  }
+
+  async readTwoFactorPolicy(
+    scope: IdentityTwoFactorPolicyScope,
+  ): Promise<IdentityTwoFactorPolicyView> {
+    return readTwoFactorPolicyView(await this.machineRequest("GET", twoFactorPolicyPath(scope)));
+  }
+
+  async writeTwoFactorPolicy(
+    scope: IdentityTwoFactorPolicyScope,
+    input: { required: boolean; actorSubjectId: string },
+  ): Promise<IdentityTwoFactorPolicyView> {
+    return readTwoFactorPolicyView(
+      await this.machineRequest("PUT", twoFactorPolicyPath(scope), {
+        required: input.required,
+        actorSubjectId: input.actorSubjectId,
+      }),
+    );
+  }
+
+  async readTwoFactorStatuses(subjectIds: readonly string[]): Promise<Map<string, boolean>> {
+    const statuses = new Map<string, boolean>();
+    for (let start = 0; start < subjectIds.length; start += TWO_FACTOR_STATUS_BATCH) {
+      const body = await this.machineRequest("POST", "/identity/subjects/two-factor-status", {
+        subjectIds: subjectIds.slice(start, start + TWO_FACTOR_STATUS_BATCH),
+      });
+      if (!isRecord(body) || !Array.isArray(body.statuses)) {
+        throw invalidResponse("two-factor status");
+      }
+      for (const status of body.statuses) {
+        if (
+          !isRecord(status) ||
+          typeof status.subjectId !== "string" ||
+          typeof status.twoFactorEnabled !== "boolean"
+        ) {
+          throw invalidResponse("two-factor status");
+        }
+        statuses.set(status.subjectId, status.twoFactorEnabled);
+      }
+    }
+    return statuses;
   }
 
   async credentialSummary(
@@ -452,7 +510,7 @@ export class HttpIdentityIssuerClient
   }
 
   private async machineRequest(
-    method: "GET" | "POST" | "PATCH" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
     body?: Record<string, unknown>,
     retry = true,
@@ -630,6 +688,50 @@ function readSubject(body: unknown): IdentitySubject {
       "subject.identityDisabledAt",
     ),
     mergedIntoSubjectId: candidate.mergedIntoSubjectId,
+  };
+}
+
+function twoFactorPolicyPath(scope: IdentityTwoFactorPolicyScope): string {
+  return scope.scope === "staff"
+    ? "/identity/two-factor-policies/staff"
+    : `/identity/two-factor-policies/orgs/${encodeURIComponent(scope.legalEntityId)}`;
+}
+
+function readTwoFactorScope(value: unknown): IdentityTwoFactorPolicyScope {
+  if (isRecord(value) && value.scope === "staff") return { scope: "staff" };
+  if (isRecord(value) && value.scope === "org" && typeof value.legalEntityId === "string") {
+    return { scope: "org", legalEntityId: value.legalEntityId };
+  }
+  throw invalidResponse("two-factor requirement");
+}
+
+function readTwoFactorRequirement(value: unknown): IdentityTwoFactorRequirement {
+  if (!isRecord(value) || typeof value.required !== "boolean" || !Array.isArray(value.sources)) {
+    throw invalidResponse("two-factor requirement");
+  }
+  return { required: value.required, sources: value.sources.map(readTwoFactorScope) };
+}
+
+function readTwoFactorPolicyView(body: unknown): IdentityTwoFactorPolicyView {
+  if (!isRecord(body) || !isRecord(body.policy) || !isRecord(body.coverage)) {
+    throw invalidResponse("two-factor policy");
+  }
+  const { policy, coverage } = body;
+  if (
+    typeof policy.required !== "boolean" ||
+    (policy.setBySubjectId !== null && typeof policy.setBySubjectId !== "string") ||
+    typeof coverage.members !== "number" ||
+    typeof coverage.enrolled !== "number"
+  ) {
+    throw invalidResponse("two-factor policy");
+  }
+  return {
+    policy: {
+      required: policy.required,
+      setBySubjectId: policy.setBySubjectId,
+      setAt: readNullableDate(policy.setAt, "policy.setAt"),
+    },
+    coverage: { members: coverage.members, enrolled: coverage.enrolled },
   };
 }
 

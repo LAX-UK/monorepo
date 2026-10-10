@@ -1,22 +1,26 @@
 import {
   type HostedAuthCapabilities,
+  type TwoFactorSetupRequiredBy,
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
-  buildHostedTwoFactorAlreadyEnabledHtml,
   buildHostedTwoFactorHtml,
+  buildHostedTwoFactorManageHtml,
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   hostedAuthViewFromSearch,
   hostedSignUpRequested,
+  parseTwoFactorSetupRequiredBy,
 } from "@auction/auth";
 import type { Context, Hono } from "hono";
+import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 
 export type HostedAuthPageMountOptions = HostedAuthCapabilities & {
   getSession?: (headers: Headers) => Promise<unknown>;
+  readTwoFactorRequirement?: TwoFactorRequirementReader;
 };
 
 function viewFromRequest(url: string, capabilities: HostedAuthCapabilities) {
@@ -54,6 +58,34 @@ function sessionHasTwoFactor(session: unknown): boolean {
   if (!session || typeof session !== "object") return false;
   const user = (session as { user?: { twoFactorEnabled?: unknown } }).user;
   return user?.twoFactorEnabled === true;
+}
+
+function sessionSubjectId(session: unknown): string | null {
+  if (!session || typeof session !== "object") return null;
+  const id = (session as { user?: { id?: unknown } }).user?.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+function manageUrl(requestUrl: string): string {
+  const params = new URL(requestUrl).searchParams;
+  params.delete("required_by");
+  const query = params.toString();
+  return `/two-factor/manage${query ? `?${query}` : ""}`;
+}
+
+/** Display only: `/two-factor/disable` enforces the policy on the server either way. */
+async function policyRequiredBy(
+  capabilities: HostedAuthPageMountOptions,
+  subjectId: string,
+): Promise<TwoFactorSetupRequiredBy[]> {
+  if (!capabilities.readTwoFactorRequirement) return [];
+  try {
+    const requirement = await capabilities.readTwoFactorRequirement(subjectId);
+    if (!requirement.required) return [];
+    return [...new Set(requirement.sources.map((source) => source.scope))];
+  } catch {
+    return [];
+  }
 }
 
 const STAFF_CUSTOMER_ONLY_PATHS = new Set(["/sign-up", "/phone", "/magic-link"]);
@@ -104,20 +136,39 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
   html("/two-factor", buildHostedTwoFactorHtml);
   app.get("/two-factor/setup", async (c) => {
     const view = viewFromRequest(c.req.url, capabilities);
+    const requiredBy = parseTwoFactorSetupRequiredBy(
+      new URL(c.req.url).searchParams.get("required_by"),
+    );
     c.header("Cache-Control", "no-store");
-    if (!capabilities.getSession) return c.html(buildHostedTwoFactorSetupHtml(view));
+    if (!capabilities.getSession) return c.html(buildHostedTwoFactorSetupHtml(view, requiredBy));
     let session: unknown;
     try {
       session = await capabilities.getSession(c.req.raw.headers);
     } catch {
-      return c.html(buildHostedTwoFactorSetupHtml(view));
+      return c.html(buildHostedTwoFactorSetupHtml(view, requiredBy));
     }
     if (!session) return c.redirect(view.flow.loginPath, 302);
     // Enabling again would immediately replace the working authenticator secret.
-    if (sessionHasTwoFactor(session)) {
-      return c.html(buildHostedTwoFactorAlreadyEnabledHtml(view));
+    if (sessionHasTwoFactor(session)) return c.redirect(manageUrl(c.req.url), 302);
+    return c.html(buildHostedTwoFactorSetupHtml(view, requiredBy));
+  });
+  app.get("/two-factor/manage", async (c) => {
+    const view = viewFromRequest(c.req.url, capabilities);
+    c.header("Cache-Control", "no-store");
+    let session: unknown = null;
+    try {
+      session = capabilities.getSession ? await capabilities.getSession(c.req.raw.headers) : null;
+    } catch {
+      session = null;
     }
-    return c.html(buildHostedTwoFactorSetupHtml(view));
+    const subjectId = sessionSubjectId(session);
+    if (!subjectId) return c.redirect(view.flow.loginPath, 302);
+    if (!sessionHasTwoFactor(session)) {
+      return c.redirect(`/two-factor/setup${new URL(c.req.url).search}`, 302);
+    }
+    return c.html(
+      buildHostedTwoFactorManageHtml(view, await policyRequiredBy(capabilities, subjectId)),
+    );
   });
   html("/verify-email", buildHostedVerifyEmailHtml);
   html("/resend-verification", buildHostedResendVerificationHtml);

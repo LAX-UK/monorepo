@@ -52,7 +52,7 @@ describe("buildAccountLinks", () => {
       bidPublicUrl: "https://test.lax.bid",
     });
     expect(links).toEqual({
-      setUpAuthenticator: "https://test-auth.lax.bid/two-factor/setup?client_id=lax-account-web",
+      manageTwoStep: "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
       changePassword: "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
       verifyEmail: "https://test-auth.lax.bid/resend-verification?client_id=lax-account-web",
       editProfile: "https://test.lax.bid/dashboard/settings/profile",

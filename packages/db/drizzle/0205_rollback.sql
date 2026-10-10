@@ -1,0 +1,11 @@
+DROP TRIGGER IF EXISTS identity_access_marker_org_member ON public."legal_entity_member";
+DROP TRIGGER IF EXISTS identity_access_marker_shop_staff ON public."shop_staff_member";
+DROP TRIGGER IF EXISTS identity_access_marker_bid_profile ON public."bid_user_profile";
+DROP FUNCTION IF EXISTS public.identity_access_marker_from_org_member();
+DROP FUNCTION IF EXISTS public.identity_access_marker_sync_org(text, uuid);
+DROP FUNCTION IF EXISTS public.identity_access_marker_from_shop_staff();
+DROP FUNCTION IF EXISTS public.identity_access_marker_from_bid_profile();
+DROP FUNCTION IF EXISTS public.identity_access_marker_sync_staff(text, text, boolean);
+DROP TABLE IF EXISTS "identity_mfa_policy";
+DROP TABLE IF EXISTS "identity_access_marker";
+ALTER TABLE "session" DROP COLUMN IF EXISTS "social_auth_at";

@@ -71,6 +71,7 @@ export type CreateUserRouteServicesInput = {
   userSecurityReadService: UserSecurityReadService;
   emailService: Pick<IEmailService, "enqueue">;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
+  twoFactorRequirement: UserRouteServices["twoFactorRequirement"];
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
@@ -133,5 +134,6 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       accountDeletionEligibilityService: input.accountDeletionEligibilityService,
       attributionStore: input.attributionStore,
     }),
+    twoFactorRequirement: input.twoFactorRequirement,
   };
 }

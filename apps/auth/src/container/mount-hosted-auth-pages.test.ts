@@ -18,9 +18,18 @@ const capabilities: Omit<HostedAuthPageMountOptions, "getSession"> = {
   requireEmailVerification: true,
 };
 
-function appWithSession(session: unknown): Hono {
+function appWithSession(
+  session: unknown,
+  requirement: Awaited<
+    ReturnType<NonNullable<HostedAuthPageMountOptions["readTwoFactorRequirement"]>>
+  > = { required: false, sources: [] },
+): Hono {
   const app = new Hono();
-  mountHostedAuthPages(app, { ...capabilities, getSession: async () => session });
+  mountHostedAuthPages(app, {
+    ...capabilities,
+    getSession: async () => session,
+    readTwoFactorRequirement: async () => requirement,
+  });
   return app;
 }
 
@@ -34,12 +43,11 @@ describe("hosted two-factor setup page", () => {
   });
 
   it("never offers re-enrolment when an authenticator is already set up", async () => {
-    const response = await appWithSession({ user: { twoFactorEnabled: true } }).request(setupPath);
-    const html = await response.text();
-    expect(response.status).toBe(200);
-    expect(html).toContain("Authenticator already set up");
-    expect(html).not.toContain("setup-enable-btn");
-    expect(html).toContain('href="https://test-account.lax.bid/api/auth/login"');
+    const response = await appWithSession({ user: { id: "u1", twoFactorEnabled: true } }).request(
+      `${setupPath}&required_by=staff`,
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/two-factor/manage?client_id=lax-account-web");
   });
 
   it("renders enrolment with customer copy for non-staff products", async () => {
@@ -55,5 +63,44 @@ describe("hosted two-factor setup page", () => {
       "/two-factor/setup?client_id=lax-shop-admin",
     );
     expect(await response.text()).toContain("Shop admin and other staff tools");
+  });
+});
+
+const managePath = "/two-factor/manage?client_id=lax-account-web";
+
+describe("hosted two-factor manage page", () => {
+  it("offers turning it off when no policy requires it", async () => {
+    const response = await appWithSession({ user: { id: "u1", twoFactorEnabled: true } }).request(
+      managePath,
+    );
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(html).toContain("manage-disable");
+    expect(html).not.toContain("setup-enable-btn");
+    expect(html).toContain('href="https://test-account.lax.bid/api/auth/login"');
+  });
+
+  it("explains the requirement and hides turn off while a policy applies", async () => {
+    const response = await appWithSession(
+      { user: { id: "u1", twoFactorEnabled: true } },
+      { required: true, sources: [{ scope: "org", legalEntityId: "e1" }, { scope: "staff" }] },
+    ).request(managePath);
+    const html = await response.text();
+    expect(html).toContain("Required by LAX staff policy and your organisation");
+    expect(html).not.toContain("manage-disable");
+  });
+
+  it("sends accounts without an authenticator to setup", async () => {
+    const response = await appWithSession({ user: { id: "u1", twoFactorEnabled: false } }).request(
+      managePath,
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/two-factor/setup?client_id=lax-account-web");
+  });
+
+  it("sends visitors without a session to sign in", async () => {
+    const response = await appWithSession(null).request(managePath);
+    expect(response.headers.get("location")).toBe("/login?client_id=lax-account-web");
   });
 });

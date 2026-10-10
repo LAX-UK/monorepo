@@ -64,6 +64,31 @@ export interface IIdentitySecurityClient {
   readSecurityStatus(subjectId: string): Promise<IdentitySecurityStatus | null>;
 }
 
+export type IdentityTwoFactorPolicyScope =
+  | { scope: "staff" }
+  | { scope: "org"; legalEntityId: string };
+
+export type IdentityTwoFactorRequirement = {
+  required: boolean;
+  sources: IdentityTwoFactorPolicyScope[];
+};
+
+export type IdentityTwoFactorPolicyView = {
+  policy: { required: boolean; setBySubjectId: string | null; setAt: Date | null };
+  coverage: { members: number; enrolled: number };
+};
+
+/** Identity owns two-step verification policy (D35); Bid decides who may change it. */
+export interface IIdentityTwoFactorPolicyClient {
+  readTwoFactorRequirement(subjectId: string): Promise<IdentityTwoFactorRequirement>;
+  readTwoFactorPolicy(scope: IdentityTwoFactorPolicyScope): Promise<IdentityTwoFactorPolicyView>;
+  writeTwoFactorPolicy(
+    scope: IdentityTwoFactorPolicyScope,
+    input: { required: boolean; actorSubjectId: string },
+  ): Promise<IdentityTwoFactorPolicyView>;
+  readTwoFactorStatuses(subjectIds: readonly string[]): Promise<Map<string, boolean>>;
+}
+
 export interface IIdentityCredentialClient {
   credentialSummary(
     subjectId: string,

@@ -9,6 +9,7 @@ export const HOSTED_FORGOT_PASSWORD_SCRIPT = readHostedAsset("hosted-forgot-pass
 export const HOSTED_RESET_PASSWORD_SCRIPT = readHostedAsset("hosted-reset-password.js");
 export const HOSTED_TWO_FACTOR_SCRIPT = readHostedAsset("hosted-two-factor.js");
 export const HOSTED_TWO_FACTOR_SETUP_SCRIPT = readHostedAsset("hosted-two-factor-setup.js");
+export const HOSTED_TWO_FACTOR_MANAGE_SCRIPT = readHostedAsset("hosted-two-factor-manage.js");
 export const HOSTED_VERIFY_EMAIL_SCRIPT = readHostedAsset("hosted-verify-email.js");
 export const HOSTED_RESEND_VERIFICATION_SCRIPT = readHostedAsset("hosted-resend-verification.js");
 export const HOSTED_MAGIC_LINK_SCRIPT = readHostedAsset("hosted-magic-link.js");

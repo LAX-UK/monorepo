@@ -37,3 +37,13 @@ export async function stampMfaCompletedFromResponse(
   if (!token) return;
   await store.stampMfaCompleted(token, new Date());
 }
+
+/** Records a completed social/OAuth callback; it satisfies policy-required two-step verification. */
+export async function stampSocialAuthFromResponse(
+  store: SessionStampStore,
+  res: Response,
+): Promise<void> {
+  const token = readSessionToken(res);
+  if (!token) return;
+  await store.stampSocialAuth(token, new Date());
+}

@@ -1,5 +1,5 @@
 import { verifyBearerToken } from "@auction/auth/token-verifier";
-import { OIDC_ACR_SILVER, type ProductScope } from "@auction/identity-contracts";
+import type { ProductScope } from "@auction/identity-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type ShopStaffCapability, roleHasCapability } from "@auction/shop-domain";
 import type { FastifyInstance, FastifyRequest } from "fastify";
@@ -75,14 +75,6 @@ export function registerShopAdminAuthHooks(
       .filter(Boolean) as ProductScope[];
     if (!scopes.includes("shop.admin")) {
       throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient scope", 403);
-    }
-    const acr = verified.payload.acr;
-    if (acr !== OIDC_ACR_SILVER) {
-      throw new ShopApiError(
-        SHOP_API_ERROR_CODES.STEP_UP_REQUIRED,
-        "Silver MFA (step-up) required for staff admin",
-        403,
-      );
     }
     const staff = await options.staffReader.findActiveByIdentitySubject(verified.subject);
     if (!staff) {

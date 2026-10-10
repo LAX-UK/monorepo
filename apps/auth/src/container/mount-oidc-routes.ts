@@ -16,7 +16,7 @@ import type { Redis } from "ioredis";
 import type { AuthAppEnv } from "../env.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
-import { createSilverAcrAuthorizeGateMiddleware } from "../infrastructure/silver-acr-authorize-gate.middleware.js";
+import { createTwoFactorAuthorizeGateMiddleware } from "../infrastructure/two-factor-authorize-gate.middleware.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
@@ -37,6 +37,7 @@ import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.rou
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
+import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import type { AuthRequestHandler } from "./create-auth-request-handler.js";
 
@@ -46,6 +47,7 @@ export type OidcRouteMountOptions = {
   env: AuthAppEnv;
   db: IdentityDatabase;
   sessionStampStore: SessionStampStore;
+  readTwoFactorRequirement: TwoFactorRequirementReader;
   redis: Redis;
   auth: ReturnType<typeof createAuth>;
   webOrigins: string[];
@@ -68,10 +70,11 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
   app.use("/api/auth/*", createOidcClientPolicyMiddleware());
   app.use(
     "/api/auth/*",
-    createSilverAcrAuthorizeGateMiddleware({
+    createTwoFactorAuthorizeGateMiddleware({
       auth: options.auth,
       db: options.db,
       sessions: new DrizzleOidcRpSessionRepository(options.db),
+      readRequirement: options.readTwoFactorRequirement,
       issuerOrigin: issuer,
     }),
   );

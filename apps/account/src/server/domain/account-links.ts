@@ -1,7 +1,7 @@
 import type { LaxAccountConfig } from "../config";
 
 export type AccountLinksVm = {
-  setUpAuthenticator: string;
+  manageTwoStep: string;
   changePassword: string;
   verifyEmail: string;
   /** Bid owns profile edits until the portal gains its own editor. */
@@ -19,7 +19,7 @@ export function buildAccountLinks(
     return url.toString();
   };
   return {
-    setUpAuthenticator: hosted("/two-factor/setup"),
+    manageTwoStep: hosted("/two-factor/manage"),
     changePassword: hosted("/forgot-password"),
     verifyEmail: hosted("/resend-verification", account.email ? { email: account.email } : {}),
     editProfile: config.bidPublicUrl

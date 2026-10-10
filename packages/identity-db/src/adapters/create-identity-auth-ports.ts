@@ -8,6 +8,7 @@ import { createDrizzlePhoneNumberStore } from "./drizzle-phone-number-store.js";
 import { createDrizzleSessionCountReader } from "./drizzle-session-count-reader.js";
 import { createDrizzleSessionStampStore } from "./drizzle-session-stamp-store.js";
 import { createDrizzleSubjectStatusReader } from "./drizzle-subject-status-reader.js";
+import { createDrizzleTwoFactorPolicyStore } from "./drizzle-two-factor-policy-store.js";
 import type { EnvelopeCrypto } from "./envelope.js";
 
 export type IdentityAuthPorts = {
@@ -18,6 +19,7 @@ export type IdentityAuthPorts = {
   accountLinkReader: ReturnType<typeof createDrizzleAccountLinkReader>;
   sessionCountReader: ReturnType<typeof createDrizzleSessionCountReader>;
   phoneNumberStore: ReturnType<typeof createDrizzlePhoneNumberStore>;
+  twoFactorPolicyStore: ReturnType<typeof createDrizzleTwoFactorPolicyStore>;
 };
 
 export function createIdentityAuthPorts(
@@ -32,6 +34,7 @@ export function createIdentityAuthPorts(
     accountLinkReader: createDrizzleAccountLinkReader(db),
     sessionCountReader: createDrizzleSessionCountReader(db),
     phoneNumberStore: createDrizzlePhoneNumberStore(db),
+    twoFactorPolicyStore: createDrizzleTwoFactorPolicyStore(db),
   };
 }
 

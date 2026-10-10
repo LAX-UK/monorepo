@@ -79,6 +79,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
     requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
     getSession: (headers) => options.oidc.auth.api.getSession({ headers }),
+    readTwoFactorRequirement: options.oidc.readTwoFactorRequirement,
   });
   app.use("/api/auth/oauth2/authorize", async (c, next) => {
     const normalized = normalizeAuthorizePromptForCreate(new URL(c.req.url));

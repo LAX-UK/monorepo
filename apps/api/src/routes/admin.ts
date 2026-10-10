@@ -39,6 +39,7 @@ import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
 import { attachAdminSaleroomSessionRoutes } from "./admin/saleroom-session.routes.js";
 import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
+import { attachAdminSecurityRoutes } from "./admin/security.routes.js";
 import {
   attachAdminUsersDirectoryRoutes,
   attachAdminUsersManagementRoutes,
@@ -108,6 +109,7 @@ export function createAdminRoutes(
   attachAdminComplianceRoutes(platform, container);
   attachAdminUsersManagementRoutes(platform, container);
   attachAdminImpersonationRoutes(platform, container);
+  attachAdminSecurityRoutes(platform, container.admin.staffTwoFactorPolicy);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 

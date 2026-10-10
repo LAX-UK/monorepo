@@ -2,6 +2,7 @@ import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
 import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
+import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type {
@@ -43,6 +44,11 @@ export type AdminSatelliteRouteServices = {
   marketingEvents: IAdminMarketingEventsApplicationService;
   onsiteEvents: IAdminOnsiteEventsApplicationService;
   deliveryOps: DeliveryOpsApplicationService;
+};
+
+/** Wired in the container root because the policy client lives outside the admin graph. */
+export type AdminStaffSecurityRouteServices = {
+  staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
 };
 
 export type { IQueueInspector, IQueueMutator };

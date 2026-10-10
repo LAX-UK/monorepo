@@ -128,6 +128,8 @@ export type AdminRouteServicesWithoutSatellites = AdminCatalogRouteServices &
 
 export type AdminRouteServices = AdminRouteServicesWithoutSatellites & AdminSatelliteRouteServices;
 
+export type { AdminStaffSecurityRouteServices } from "./admin-satellite-routes.js";
+
 export type {
   AdminAuditRoutesContainer,
   AdminCatalogBrowseRoutesContainer,

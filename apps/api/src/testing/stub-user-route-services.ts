@@ -77,6 +77,7 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       notifyTwoFactorDisabled: vi.fn(),
       requestAccountDeletion: vi.fn(),
     },
+    twoFactorRequirement: { readMyRequirement: vi.fn() },
     ...overrides,
   };
 }

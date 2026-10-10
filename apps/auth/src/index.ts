@@ -17,6 +17,7 @@ import { createOidcRouteServices } from "./container/create-oidc-route-services.
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { loadAuthEnv } from "./env.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
+import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -47,6 +48,9 @@ const repositories = createAuthRepositories(db);
 const identityPorts = createIdentityAuthPorts(db, {
   envelope: envelope ?? undefined,
 });
+const readTwoFactorRequirement = createTwoFactorRequirementReader(
+  identityPorts.twoFactorPolicyStore,
+);
 const metrics = createAuthMetrics();
 const services = createOidcRouteServices({
   db,
@@ -89,6 +93,7 @@ const identityLifecycle = createIdentityLifecycleService({
 const authHandler = createAuthRequestHandler({
   events: repositories.identityEventPublisher,
   sessionStampStore: identityPorts.sessionStampStore,
+  readTwoFactorRequirement,
   auth,
   oidcSessions: services.oidc.sessions,
   logout: services.oidc.logout,
@@ -121,6 +126,10 @@ const internal =
           machineClientId: env.IDENTITY_MACHINE_CLIENT_ID,
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
           allowMerge: env.IDENTITY_MERGE_ENABLED,
+          twoFactorPolicy: {
+            store: identityPorts.twoFactorPolicyStore,
+            readRequirement: readTwoFactorRequirement,
+          },
           onCredentialRateLimitError: (error) => {
             log.warn({ err: error }, "machine_credential_rate_limit_unavailable");
           },
@@ -149,6 +158,7 @@ const app = createAuthApp({
     env,
     db,
     sessionStampStore: identityPorts.sessionStampStore,
+    readTwoFactorRequirement,
     redis,
     auth,
     webOrigins,

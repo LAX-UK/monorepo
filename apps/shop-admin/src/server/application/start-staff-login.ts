@@ -28,7 +28,6 @@ export function startStaffLogin(input: {
     codeChallenge: params.codeChallenge,
   });
   const authorizeUrl = new URL(href);
-  authorizeUrl.searchParams.set("acr_values", "urn:mace:incommon:iap:silver");
   if (input.prompt) authorizeUrl.searchParams.set("prompt", input.prompt);
   return {
     authorizeUrl,

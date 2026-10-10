@@ -1,3 +1,4 @@
+import { seedDevTwoFactorPolicy } from "../dev/dev-two-factor-policy.js";
 import { seedE2eRolloutIdentities } from "../dev/e2e-rollout-identities.js";
 import { runLegacyDemoSeed } from "../dev/legacy-demo-seed.js";
 
@@ -7,4 +8,5 @@ export async function runDevSeed(): Promise<void> {
   }
   await runLegacyDemoSeed();
   await seedE2eRolloutIdentities();
+  await seedDevTwoFactorPolicy();
 }

@@ -162,6 +162,18 @@ MFA enrollment alone does not raise assurance. `amr` is emitted only from
 evidence: `pwd` for password, and `pwd otp` after TOTP/backup-code completion.
 It is omitted when the method is not reliably known.
 
+## Two-step verification policy
+
+Two-step verification is optional per user. A staff policy (Bid super admin) and
+per-organisation policies (organisation owner) can require it; Identity evaluates
+them at `/oauth2/authorize` from `identity_access_marker` (written by product
+triggers, no roles) and `identity_mfa_policy`. A required session passes after
+TOTP or Google/Apple sign-in; otherwise the user is sent to `/two-factor` or, if
+not enrolled, `/two-factor/setup?required_by=staff|org`. `/two-factor/disable` is
+refused while a policy applies. Products read and change policy only through
+`/internal/identity/two-factor-policies/*`. See D35 in
+[02-decisions.md](./02-decisions.md).
+
 ## Logout, revocation, and introspection
 
 RP-initiated logout uses `/api/auth/oauth2/endsession` with an ID-token hint and

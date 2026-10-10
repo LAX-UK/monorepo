@@ -75,9 +75,9 @@ describe("admin auth and authz", () => {
     await app.close();
   });
 
-  it("returns 403 when acr is not silver", async () => {
+  it("leaves two-step verification to Identity and authorizes non-Silver tokens by staff membership", async () => {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
-      subject: "ops-subject",
+      subject: "unknown-subject",
       payload: { scope: "shop.admin", acr: "bronze", auth_time: Math.floor(Date.now() / 1000) },
     } as never);
     const app = createShopApiApp({ deps: adminDeps(), logger: false });
@@ -92,7 +92,7 @@ describe("admin auth and authz", () => {
       },
     });
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.STEP_UP_REQUIRED });
+    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.STAFF_REQUIRED });
     await app.close();
   });
 

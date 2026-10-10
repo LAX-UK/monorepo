@@ -15,7 +15,10 @@ import type {
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
-import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
+import type {
+  AdminRouteServices,
+  AdminStaffSecurityRouteServices,
+} from "../services/interfaces/admin-routes.js";
 import type {
   AdminSatelliteJobQueuesRoutesContainer,
   AdminSatelliteMarketingEventsRoutesContainer,
@@ -34,6 +37,7 @@ import type {
   IIdentityProfileClient,
   IIdentitySessionClient,
   IIdentitySubjectClient,
+  IIdentityTwoFactorPolicyClient,
 } from "../services/interfaces/identity-issuer-client.js";
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
@@ -107,7 +111,8 @@ export type ContainerRootSlice = {
     IIdentityCredentialClient &
     IIdentitySessionClient &
     IIdentityEmailChangeClient &
-    IIdentityProfileClient;
+    IIdentityProfileClient &
+    IIdentityTwoFactorPolicyClient;
   oauthAttributionStore: IOAuthAttributionStore;
   authOAuthAccountReader: IAuthOAuthAccountReader;
   subjectUsageReader: ISubjectUsageReader;
@@ -290,7 +295,7 @@ export type ContainerCronSlice = Pick<
 
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
-  admin: AdminRouteServices;
+  admin: AdminRouteServices & AdminStaffSecurityRouteServices;
 };
 
 /** Route-facing bidding bag (mirrors `container.bidding`). */

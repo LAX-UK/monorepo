@@ -26,6 +26,7 @@ export type OidcIdentitySessionEvidence = {
   createdAt: Date;
   lastPasswordAuthAt: Date | null;
   mfaCompletedAt: Date | null;
+  socialAuthAt: Date | null;
   lastStepUpAt: Date | null;
 };
 

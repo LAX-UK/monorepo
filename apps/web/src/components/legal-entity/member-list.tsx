@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
@@ -30,6 +31,8 @@ type Props = {
   viewerIsPrimaryAdmin: boolean;
   /** Current viewer's user.id, used to disable self-targeting actions. */
   viewerUserId: string;
+  /** Owners/admins only: two-step verification status per user (`null` when unknown). */
+  twoFactorByUserId?: Record<string, boolean | null>;
 };
 
 type PendingDialog =
@@ -40,12 +43,22 @@ function needsTypedRemove(role: LegalEntityMemberRole): boolean {
   return role === "owner" || role === "admin";
 }
 
+function TwoFactorMemberBadge({ enabled }: { enabled: boolean | null }) {
+  if (enabled === null) return null;
+  return (
+    <StatusBadge size="sm" variant={enabled ? "success" : "neutral"}>
+      {enabled ? "2FA on" : "2FA off"}
+    </StatusBadge>
+  );
+}
+
 export function MemberList({
   legalEntityId,
   members,
   viewerIsAdmin,
   viewerIsPrimaryAdmin,
   viewerUserId,
+  twoFactorByUserId,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +126,9 @@ export function MemberList({
                   {m.isPrimaryAdmin ? " · primary admin" : ""}
                 </p>
               </div>
+              {twoFactorByUserId && !pendingInvitation ? (
+                <TwoFactorMemberBadge enabled={twoFactorByUserId[m.userId] ?? null} />
+              ) : null}
               <div className="flex items-center gap-2">
                 {canEdit ? (
                   <Select

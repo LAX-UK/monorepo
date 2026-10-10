@@ -77,6 +77,7 @@ describe("OIDC authorization-session coordination", () => {
       createdAt,
       lastPasswordAuthAt: createdAt,
       mfaCompletedAt: null,
+      socialAuthAt: null,
       lastStepUpAt: null,
     });
     const coordinator = new OidcSessionCoordinator(
@@ -129,6 +130,7 @@ describe("OIDC authorization-session coordination", () => {
         createdAt: new Date("2026-08-13T05:00:00Z"),
         lastPasswordAuthAt: null,
         mfaCompletedAt: null,
+        socialAuthAt: null,
         lastStepUpAt: null,
       }),
     );
@@ -147,6 +149,7 @@ describe("OIDC authorization-session coordination", () => {
         createdAt: new Date("2026-08-13T05:00:00Z"),
         lastPasswordAuthAt: null,
         mfaCompletedAt: null,
+        socialAuthAt: null,
         lastStepUpAt: null,
       }),
     );
@@ -206,6 +209,7 @@ describe("OIDC authorization-session coordination", () => {
       createdAt: new Date("2026-08-13T05:00:00Z"),
       lastPasswordAuthAt: new Date("2026-08-13T05:04:00Z"),
       mfaCompletedAt: new Date("2026-08-13T05:01:00Z"),
+      socialAuthAt: null,
       lastStepUpAt: null,
     });
     const coordinator = new OidcSessionCoordinator(
@@ -235,6 +239,7 @@ describe("OIDC authorization-session coordination", () => {
       createdAt: new Date("2026-08-13T05:00:00Z"),
       lastPasswordAuthAt: new Date("2026-08-13T05:04:00Z"),
       mfaCompletedAt: null,
+      socialAuthAt: null,
       lastStepUpAt: new Date("2026-08-13T05:04:00Z"),
     });
     const coordinator = new OidcSessionCoordinator(
@@ -264,6 +269,7 @@ describe("OIDC authorization-session coordination", () => {
       createdAt: new Date("2026-08-13T05:00:00Z"),
       lastPasswordAuthAt: new Date("2026-08-13T05:00:00Z"),
       mfaCompletedAt: null,
+      socialAuthAt: null,
       lastStepUpAt: null,
     });
     const coordinator = new OidcSessionCoordinator(correlations, repository);
@@ -295,6 +301,7 @@ describe("OIDC authorization-session coordination", () => {
       createdAt: new Date("2026-08-13T05:00:00Z"),
       lastPasswordAuthAt: new Date("2026-08-13T05:00:00Z"),
       mfaCompletedAt: null,
+      socialAuthAt: null,
       lastStepUpAt: null,
     });
     const coordinator = new OidcSessionCoordinator(correlations, repository);
@@ -328,6 +335,7 @@ describe("OIDC authorization-session coordination", () => {
       createdAt: new Date("2026-08-13T05:00:00Z"),
       lastPasswordAuthAt: null,
       mfaCompletedAt: null,
+      socialAuthAt: null,
       lastStepUpAt: null,
     });
     const coordinator = new OidcSessionCoordinator(correlations, repository);

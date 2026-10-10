@@ -7,7 +7,10 @@ import { IdentityLegalEntityHttpApplicationService } from "../services/identity/
 import { IdentityLegalEntityMemberHttpApplicationService } from "../services/identity/identity-legal-entity-member-http-application.service.js";
 import { IdentityOrganizationHttpApplicationService } from "../services/identity/identity-organization-http-application.service.js";
 import { IdentityOrganizationOnboardingHttpApplicationService } from "../services/identity/identity-organization-onboarding-http-application.service.js";
-import type { IdentityRouteServices } from "../services/interfaces/identity-routes/index.js";
+import type {
+  IOrgTwoFactorPolicyHttp,
+  IdentityRouteServices,
+} from "../services/interfaces/identity-routes/index.js";
 import type { IInvitationLifecycleService } from "../services/interfaces/invitation-lifecycle.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
@@ -28,6 +31,7 @@ export type CreateIdentityRouteServicesInput = {
   memberManagementService: IMemberManagementService;
   organizationOnboardingService: IOrganizationOnboardingService;
   organizationOnboardingFlowService: IOrganizationOnboardingFlowService;
+  orgTwoFactorPolicy: IOrgTwoFactorPolicyHttp;
 };
 
 export function createIdentityRouteServices(
@@ -57,5 +61,6 @@ export function createIdentityRouteServices(
     organizationOnboardingHttp: new IdentityOrganizationOnboardingHttpApplicationService(
       input.organizationOnboardingFlowService,
     ),
+    orgTwoFactorPolicy: input.orgTwoFactorPolicy,
   };
 }

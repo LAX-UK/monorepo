@@ -11,9 +11,22 @@ import { useState } from "react";
 
 export type TwoFactorStatusCardProps = {
   twoFactorEnabled: boolean;
+  /** Policies that currently require two-step verification for this account. */
+  requiredBy?: readonly ("staff" | "org")[];
 };
 
-export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardProps) {
+function requiredByLabel(requiredBy: readonly ("staff" | "org")[]): string {
+  const staff = requiredBy.includes("staff");
+  const org = requiredBy.includes("org");
+  if (staff && org) return "LAX staff policy and your organisation";
+  return staff ? "LAX staff policy" : "your organisation";
+}
+
+export function TwoFactorStatusCard({
+  twoFactorEnabled,
+  requiredBy = [],
+}: TwoFactorStatusCardProps) {
+  const required = requiredBy.length > 0;
   const router = useRouter();
   const [disableOpen, setDisableOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
@@ -31,10 +44,21 @@ export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardPro
               and anyone bidding regularly.
             </p>
           </div>
-          <StatusBadge variant={twoFactorEnabled ? "success" : "warning"}>
-            {twoFactorEnabled ? "On" : "Off"}
-          </StatusBadge>
+          <div className="flex flex-wrap gap-2">
+            {required ? <StatusBadge variant="info">Required</StatusBadge> : null}
+            <StatusBadge variant={twoFactorEnabled ? "success" : "warning"}>
+              {twoFactorEnabled ? "On" : "Off"}
+            </StatusBadge>
+          </div>
         </div>
+        {required ? (
+          <p className="font-body text-sm text-on-surface">
+            Required by {requiredByLabel(requiredBy)}.{" "}
+            {twoFactorEnabled
+              ? "It can't be turned off while this applies."
+              : "You'll be asked to set it up the next time you sign in."}
+          </p>
+        ) : null}
         <div className="space-y-4 font-body text-sm text-on-surface-variant">
           {twoFactorEnabled ? (
             <>
@@ -46,9 +70,11 @@ export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardPro
                 <Button type="button" variant="secondaryOutline" onClick={() => setRegenOpen(true)}>
                   Regenerate backup codes
                 </Button>
-                <Button type="button" variant="destructive" onClick={() => setDisableOpen(true)}>
-                  Turn off 2FA
-                </Button>
+                {required ? null : (
+                  <Button type="button" variant="destructive" onClick={() => setDisableOpen(true)}>
+                    Turn off 2FA
+                  </Button>
+                )}
               </div>
             </>
           ) : (

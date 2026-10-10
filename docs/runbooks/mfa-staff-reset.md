@@ -14,7 +14,7 @@ POST /identity/subjects/{subjectId}/two-factor/reset
 Authorization: Bearer {machine_token}
 ```
 
-The subject must sign in again and complete `/two-factor/setup` before shop admin (silver ACR) succeeds.
+If the staff or organisation policy applies to the subject (D35), they are sent to `/two-factor/setup` at their next sign-in unless they sign in with Google or Apple. Otherwise two-step verification stays off until they turn it on again.
 
 ## Audit
 

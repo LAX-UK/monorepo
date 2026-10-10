@@ -24,6 +24,7 @@ export { createDrizzleAccountLinkReader } from "./adapters/drizzle-account-link-
 export { createDrizzleSubjectStatusReader } from "./adapters/drizzle-subject-status-reader.js";
 export { createDrizzleSessionCountReader } from "./adapters/drizzle-session-count-reader.js";
 export { createDrizzlePhoneNumberStore } from "./adapters/drizzle-phone-number-store.js";
+export { createDrizzleTwoFactorPolicyStore } from "./adapters/drizzle-two-factor-policy-store.js";
 export {
   createDrizzleIdentityOutboxPublisher,
   type IdentityOutboxLifecycleEvent,
