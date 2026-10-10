@@ -27,7 +27,7 @@ export default async function AccountPage() {
   const session = await loadAccountSession();
   if (session.status !== "ok") redirect("/api/auth/login?returnTo=/account");
   const { overview } = session;
-  const links = buildAccountLinks(getLaxAccountContainer().config);
+  const links = buildAccountLinks(getLaxAccountContainer().config, { email: overview.email });
   const editProfile = links.editProfile ? (
     <a href={links.editProfile} className={textLink}>
       Edit in LAX Bid
@@ -49,7 +49,16 @@ export default async function AccountPage() {
           <Row label="Name" action={editProfile}>
             {overview.name ?? <span className="text-on-surface-variant">Not added</span>}
           </Row>
-          <Row label="Email">
+          <Row
+            label="Email"
+            action={
+              overview.email && !overview.emailVerified ? (
+                <a href={links.verifyEmail} className={secondaryButton}>
+                  Verify email
+                </a>
+              ) : null
+            }
+          >
             {overview.email ?? <span className="text-on-surface-variant">Not added</span>}
             {overview.email ? (
               <StatusPill tone={overview.emailVerified ? "ok" : "muted"}>

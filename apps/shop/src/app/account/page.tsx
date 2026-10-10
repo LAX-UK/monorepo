@@ -17,6 +17,29 @@ import { redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("Account");
 
+function unverifiedEmailNotice(email: string) {
+  return {
+    variant: "warning" as const,
+    title: "Verify your email address",
+    description: (
+      <div className="flex flex-col gap-3">
+        <p>
+          {email ? `Confirm ${email} ` : "Confirm your email "}
+          so order confirmations, receipts and delivery updates reach you.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild className="min-h-11">
+            <a href={shopIdentityUrl("/auth/verify-email")}>Send verification email</a>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <a href={shopIdentityUrl("/auth/upgrade?returnTo=%2Faccount")}>I’ve verified it</a>
+          </Button>
+        </div>
+      </div>
+    ),
+  };
+}
+
 type ShopAccountPageProps = {
   searchParams: Promise<{ returnTo?: string; merged?: string; basketMerge?: string }>;
 };
@@ -85,6 +108,7 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
       title={shopPageWayfinding.account.title}
       breadcrumbs={shopPageWayfinding.account.breadcrumbs}
       {...shellNav}
+      {...(viewer.emailVerified === false ? { notice: unverifiedEmailNotice(viewer.email) } : {})}
     >
       <dl className="grid gap-3 text-sm">
         <div>

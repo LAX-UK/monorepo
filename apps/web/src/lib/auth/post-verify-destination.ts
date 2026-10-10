@@ -1,5 +1,8 @@
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
-import { fullBuyerOnboardingHref } from "@/lib/kyc/buyer-onboarding";
+import {
+  BUYER_INTERESTS_ONBOARDING_PATH,
+  fullBuyerOnboardingHref,
+} from "@/lib/kyc/buyer-onboarding";
 import { identityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 
 export type SignupPersona = "individual" | "organisation";
@@ -26,6 +29,21 @@ export type PostVerifyDestination = {
   href: string;
   label: string;
 };
+
+/** One-line preview of the step the verified user is about to land on. */
+export function describePostVerifyNextStep(href: string): string {
+  const path = href.split("?")[0] ?? href;
+  if (path === BUYER_INTERESTS_ONBOARDING_PATH) {
+    return "Next, tell us what you collect so we can tailor your lots. It takes a minute and you can skip it.";
+  }
+  if (path.startsWith("/onboarding/identity")) {
+    return "Next, verify your identity so you’re ready to bid. You can also do this later.";
+  }
+  if (path.startsWith("/onboarding/organisation")) {
+    return "Next, set up your organisation so your team can bid and sell.";
+  }
+  return "Your account is ready to use.";
+}
 
 function normalisePersona(value: string | null | undefined): SignupPersona | null {
   return value === "individual" || value === "organisation" ? value : null;

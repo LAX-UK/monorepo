@@ -340,6 +340,7 @@ describe("OAuth routes", () => {
       expect(location.searchParams.get("scope")).toContain("offline_access");
       expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE_NAME}=`);
       expect(response.headers.get("set-cookie")?.toLowerCase()).toContain("httponly");
+      expect(location.searchParams.get("prompt")).toBe(path === "/register" ? "create" : null);
     }
   });
 

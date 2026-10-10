@@ -5,6 +5,8 @@ export type AccountChromeState =
       displayName: string;
       email: string;
       verifiedPhone?: string;
+      /** Absent when the session token predates the claim; treat as unknown, not unverified. */
+      emailVerified?: boolean;
       accountHref: string;
       logoutHref: string;
     }
@@ -16,6 +18,7 @@ export type ShopIdentityMePayload = {
   subject?: string;
   profile?: { email?: string | null; name?: string | null };
   verifiedPhone?: string;
+  emailVerified?: boolean;
   reason?: string;
   tokenUpgradeRequired?: boolean;
 };
@@ -69,6 +72,9 @@ export function mapShopMeToAccountChromeState(
       displayName,
       email,
       ...(payload.verifiedPhone ? { verifiedPhone: payload.verifiedPhone } : {}),
+      ...(typeof payload.emailVerified === "boolean"
+        ? { emailVerified: payload.emailVerified }
+        : {}),
       accountHref: destinations.accountHref,
       logoutHref: destinations.logoutHref,
     };

@@ -53,6 +53,22 @@ describe("mapShopMeToAccountChromeState", () => {
     expect(disabled.kind).toBe("disabled");
   });
 
+  it("passes email verification through only when the claim is known", () => {
+    const unverified = mapShopMeToAccountChromeState({
+      payload: { authenticated: true, profile: { email: "a@lax.bid" }, emailVerified: false },
+      sessionLookupOk: true,
+      destinations,
+    });
+    expect(unverified).toMatchObject({ kind: "authenticated", emailVerified: false });
+
+    const unknown = mapShopMeToAccountChromeState({
+      payload: { authenticated: true, profile: { email: "a@lax.bid" } },
+      sessionLookupOk: true,
+      destinations,
+    });
+    expect(unknown).not.toHaveProperty("emailVerified");
+  });
+
   it("preserves custom unavailable and disabled copy for presenters", () => {
     const unavailable = mapShopMeToAccountChromeState({
       payload: null,

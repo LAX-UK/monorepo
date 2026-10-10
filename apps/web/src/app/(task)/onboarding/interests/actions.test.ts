@@ -52,6 +52,28 @@ describe("completeBuyerInterests", () => {
     });
   });
 
+  it("completes onboarding with no interests when skipped and continues to identity", async () => {
+    vi.mocked(replaceServerCategoryInterests).mockResolvedValueOnce({
+      categoryIds: [],
+      onboardingCompleted: true,
+      onboardingCompletedAt: "2026-08-20T12:00:00.000Z",
+    });
+    const formData = new FormData();
+    formData.set("skip", "1");
+    formData.set("categoryId", "11111111-1111-4111-8111-111111111111");
+    formData.set("next", "/dashboard/watchlist");
+    formData.set("source", "sign_in_resume");
+
+    await expect(
+      completeBuyerInterests(INITIAL_BUYER_INTERESTS_ACTION_STATE, formData),
+    ).resolves.toEqual({
+      error: null,
+      redirectTo: "/onboarding/identity?next=%2Fdashboard%2Fwatchlist&source=sign_in_resume",
+      submission: { skipped: true, selectedCount: 0, source: "sign_in_resume" },
+    });
+    expect(replaceServerCategoryInterests).toHaveBeenLastCalledWith([]);
+  });
+
   it("returns a client-navigable completion href after a confirmed save", async () => {
     vi.mocked(replaceServerCategoryInterests).mockResolvedValueOnce({
       categoryIds: ["11111111-1111-4111-8111-111111111111"],
