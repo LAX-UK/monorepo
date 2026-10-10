@@ -4,6 +4,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
+import { getServerMyTwoFactorRequiredBy } from "@/lib/data/http/two-factor-policy.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -33,7 +34,10 @@ export default async function SecurityTwoFactorPage() {
       />
       {user.securityStatusAvailable === true ? (
         user.twoFactorEnabled === true ? (
-          <TwoFactorStatusCard twoFactorEnabled />
+          <TwoFactorStatusCard
+            twoFactorEnabled
+            requiredBy={await getServerMyTwoFactorRequiredBy()}
+          />
         ) : (
           <TwoFactorEnableWizard />
         )

@@ -102,6 +102,11 @@ export const session = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** Session was created by a social identity provider callback (counts as a second factor). */
+    socialAuthAt: timestamp("social_auth_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     /** Explicit successful reauthentication, distinct from ordinary password sign-in. */
     lastStepUpAt: timestamp("last_step_up_at", {
       mode: "date",

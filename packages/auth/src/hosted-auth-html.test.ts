@@ -19,6 +19,7 @@ import {
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   buildOidcConsentHtml,
+  parseTwoFactorSetupRequiredBy,
 } from "./index.js";
 import { isSafeHostedReturnPath } from "./safe-return-url.js";
 
@@ -73,6 +74,17 @@ describe("issuer-hosted credential HTML", () => {
   ])("uses floating-label primitives and scoped buttons on %s", (_label, html) => {
     expect(html).toContain("field-control");
     expect(html).toContain("btn btn-primary");
+  });
+
+  it("explains who requires two-step verification on forced setup", () => {
+    const view = hostedAuthViewFromSearch(shopSearch);
+    expect(buildHostedTwoFactorSetupHtml(view, "staff")).toContain(
+      "LAX requires two-step verification for staff accounts.",
+    );
+    expect(buildHostedTwoFactorSetupHtml(view, "org")).toContain(
+      "Your organisation requires two-step verification.",
+    );
+    expect(parseTwoFactorSetupRequiredBy("admin")).toBeNull();
   });
 
   it("styles OIDC consent through the shared hosted shell", () => {

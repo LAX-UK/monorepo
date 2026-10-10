@@ -21,6 +21,7 @@ export const AUTH_ERROR_CODES = [
   "backup_code_invalid",
   "two_factor_enable_failed",
   "two_factor_disable_failed",
+  "two_factor_required_by_policy",
   "two_factor_backup_regenerate_failed",
   "two_factor_unexpected_response",
   "newsletter_submit_failed",
@@ -75,6 +76,8 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
     "We could not start two-factor setup. Check your password and try again.",
   two_factor_disable_failed:
     "We could not turn off two-factor authentication. Check your password and try again.",
+  two_factor_required_by_policy:
+    "Your organisation or LAX staff policy requires two-factor authentication, so it can't be turned off.",
   two_factor_backup_regenerate_failed:
     "We could not generate new backup codes. Check your password and try again.",
   two_factor_unexpected_response: "Something went wrong with two-factor setup. Please try again.",
@@ -159,6 +162,7 @@ export function mapBetterAuthSecondaryFailure(input: {
   if (raw.includes("RATE") || raw.includes("TOO_MANY") || msg.includes("too many")) {
     return "rate_limited";
   }
+  if (raw === "TWO_FACTOR_REQUIRED_BY_POLICY") return "two_factor_required_by_policy";
   if (raw.includes("INVALID_TWO_FACTOR") || raw.includes("TWO_FACTOR_COOKIE")) {
     return "two_factor_session_expired";
   }

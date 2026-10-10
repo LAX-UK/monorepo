@@ -41,6 +41,7 @@ export {
   HOSTED_RESET_PASSWORD_SCRIPT,
   HOSTED_TWO_FACTOR_SCRIPT,
   HOSTED_TWO_FACTOR_SETUP_SCRIPT,
+  HOSTED_TWO_FACTOR_MANAGE_SCRIPT,
   HOSTED_VERIFY_EMAIL_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
   HOSTED_MAGIC_LINK_SCRIPT,
@@ -49,8 +50,10 @@ export {
   buildHostedForgotPasswordHtml,
   buildHostedResetPasswordHtml,
   buildHostedTwoFactorHtml,
-  buildHostedTwoFactorAlreadyEnabledHtml,
+  buildHostedTwoFactorManageHtml,
   buildHostedTwoFactorSetupHtml,
+  parseTwoFactorSetupRequiredBy,
+  type TwoFactorSetupRequiredBy,
   buildHostedVerifyEmailHtml,
   buildHostedResendVerificationHtml,
   buildHostedMagicLinkHtml,
@@ -94,7 +97,19 @@ export type {
   SessionStampStore,
   SmsSender,
   SubjectStatusReader,
+  AccessMarker,
+  TwoFactorPolicy,
+  TwoFactorPolicyRecord,
+  TwoFactorPolicyScope,
+  TwoFactorPolicyStore,
 } from "./ports/index.js";
+export {
+  decideAuthorizeTwoFactorStep,
+  resolveTwoFactorRequirement,
+  TWO_FACTOR_POLICY_DEFAULTS,
+  type TwoFactorRequirement,
+  type TwoFactorRequirementSource,
+} from "./two-factor-requirement.js";
 export {
   runSignInTurnstileGate,
   isSignInEmailPost,
@@ -104,6 +119,7 @@ export {
 export {
   stampLastPasswordAuthFromSignInResponse,
   stampMfaCompletedFromResponse,
+  stampSocialAuthFromResponse,
 } from "./stamp-last-password-auth.js";
 export { hasSessionCredential } from "./session-credential.js";
 export {

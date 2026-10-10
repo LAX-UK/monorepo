@@ -83,6 +83,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "auth.reauth_success",
   "auth.session_revoked",
   "auth.sessions_revoked_all_except_current",
+  "auth.two_factor_policy_changed",
   "auth.two_factor_security_email",
   "bid.first_for_user",
   "bid.user_suspended",

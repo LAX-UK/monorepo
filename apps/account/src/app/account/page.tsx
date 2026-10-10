@@ -96,11 +96,9 @@ export default async function AccountPage() {
           <Row
             label="Two-step verification"
             action={
-              overview.signedInWithAuthenticator ? null : (
-                <a href={links.setUpAuthenticator} className={secondaryButton}>
-                  Set up authenticator
-                </a>
-              )
+              <a href={links.manageTwoStep} className={secondaryButton}>
+                {overview.signedInWithAuthenticator ? "Manage" : "Set up or manage"}
+              </a>
             }
           >
             {overview.signedInWithAuthenticator ? (
@@ -114,7 +112,8 @@ export default async function AccountPage() {
             ) : (
               <span className="text-on-surface-variant">
                 Add an authenticator app so signing in needs a code as well as your password. If you
-                already have one, you'll be told so.
+                already have one, you can manage or turn it off there — unless your organisation or
+                LAX requires it.
               </span>
             )}
           </Row>

@@ -35,6 +35,10 @@
     "./pg": {
       "types": "./dist/pg/ssl.d.ts",
       "default": "./dist/pg/ssl.js"
+    },
+    "./schema/access-policy": {
+      "types": "./dist/schema/access-policy.d.ts",
+      "default": "./dist/schema/access-policy.js"
     }
   },
   "scripts": {

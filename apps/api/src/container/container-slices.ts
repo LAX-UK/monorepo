@@ -34,6 +34,7 @@ import type {
   IIdentityProfileClient,
   IIdentitySessionClient,
   IIdentitySubjectClient,
+  IIdentityTwoFactorPolicyClient,
 } from "../services/interfaces/identity-issuer-client.js";
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
@@ -63,6 +64,7 @@ import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
+import type { TwoFactorPolicyService } from "../services/security/two-factor-policy.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
@@ -107,10 +109,12 @@ export type ContainerRootSlice = {
     IIdentityCredentialClient &
     IIdentitySessionClient &
     IIdentityEmailChangeClient &
-    IIdentityProfileClient;
+    IIdentityProfileClient &
+    IIdentityTwoFactorPolicyClient;
   oauthAttributionStore: IOAuthAttributionStore;
   authOAuthAccountReader: IAuthOAuthAccountReader;
   subjectUsageReader: ISubjectUsageReader;
+  twoFactorPolicy: TwoFactorPolicyService;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */
@@ -488,7 +492,7 @@ export type ContainerSaleroomDisplayRoutesSlice = Pick<Container, "bidding">;
 /** User account routes (`routes/users/*`). */
 export type ContainerUserAccountRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "env" | "userRoutes"
+  "userSuspensionChecker" | "env" | "userRoutes" | "twoFactorPolicy"
 > & {
   identityIssuer: IIdentityCredentialClient;
 };
@@ -526,7 +530,7 @@ export type ContainerLegalEntityRoutesSlice = Pick<
 /** Legal entity member admin (invite, roles, transfer). */
 export type ContainerLegalEntityMemberRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "requireLegalEntityContext" | "identityRoutes"
+  "userSuspensionChecker" | "requireLegalEntityContext" | "identityRoutes" | "twoFactorPolicy"
 >;
 
 /** Item submission seller + admin APIs. */
@@ -613,7 +617,8 @@ export type ContainerAdminPlatformRoutesSlice = ContainerAdminRoutesSlice &
   Pick<Container, "redis"> &
   ContainerAdminOnsiteEventRoutesSlice &
   ContainerAdminMarketingEventsRoutesSlice &
-  ContainerAdminQueuesRoutesSlice;
+  ContainerAdminQueuesRoutesSlice &
+  Pick<Container, "twoFactorPolicy">;
 
 /** Password step-up middleware minimum deps. */
 export type ContainerPasswordStepUpSlice = {

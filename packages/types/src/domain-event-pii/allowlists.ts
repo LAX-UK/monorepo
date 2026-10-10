@@ -240,6 +240,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.reauth_success": new Set(),
   "auth.session_revoked": new Set(["sessionId"]),
   "auth.sessions_revoked_all_except_current": new Set(),
+  "auth.two_factor_policy_changed": new Set(["scope", "required", "legalEntityId"]),
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
   "bid.user_suspended": new Set(),

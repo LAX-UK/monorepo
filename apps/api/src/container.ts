@@ -26,6 +26,7 @@ import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usag
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
+import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 
 export type { Container, ContainerComposedSlices };
@@ -207,6 +208,12 @@ export function createContainer(env: Env): Container {
     payoutStatementApplication: finance.payoutStatement,
   });
 
+  const twoFactorPolicy = new TwoFactorPolicyService({
+    identity: identityIssuer,
+    members: repos.legalEntityMemberRepository,
+    audit: platform.authAuditPublisher,
+  });
+
   return {
     env,
     db,
@@ -300,6 +307,7 @@ export function createContainer(env: Env): Container {
     addressService: userMisc.addressService,
     domainEventSink: platform.domainEventSink,
     transactionRunner: platform.transactionRunner,
+    twoFactorPolicy,
     authAuditPublisher: platform.authAuditPublisher,
     legalEntityLifecycleAdminService: platform.legalEntityLifecycleAdminService,
     legalEntityDocumentAdminService: complianceMedia.legalEntityDocumentAdminService,

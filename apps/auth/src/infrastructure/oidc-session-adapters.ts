@@ -44,6 +44,7 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
         createdAt: session.createdAt,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
         mfaCompletedAt: session.mfaCompletedAt,
+        socialAuthAt: session.socialAuthAt,
         lastStepUpAt: session.lastStepUpAt,
       })
       .from(session)

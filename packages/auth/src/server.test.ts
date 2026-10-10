@@ -49,6 +49,7 @@ function mockAuthPorts(overrides?: Partial<AuthPorts>): AuthPorts {
     sessionStampStore: {
       stampPasswordAuth: vi.fn(async () => undefined),
       stampMfaCompleted: vi.fn(async () => undefined),
+      stampSocialAuth: vi.fn(async () => undefined),
     },
     subjectStatusReader: { isDisabledOrMerged: vi.fn(async () => false) },
     accountLinkReader: mockAccountLinkReader({ accountRows: 0, emailVerified: true }),

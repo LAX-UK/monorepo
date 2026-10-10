@@ -73,8 +73,11 @@ export {
 export { HOSTED_TWO_FACTOR_SCRIPT, buildHostedTwoFactorHtml } from "./pages/two-factor.js";
 export {
   HOSTED_TWO_FACTOR_SETUP_SCRIPT,
-  buildHostedTwoFactorAlreadyEnabledHtml,
+  HOSTED_TWO_FACTOR_MANAGE_SCRIPT,
+  buildHostedTwoFactorManageHtml,
   buildHostedTwoFactorSetupHtml,
+  parseTwoFactorSetupRequiredBy,
+  type TwoFactorSetupRequiredBy,
 } from "./pages/two-factor-setup.js";
 export {
   HOSTED_VERIFY_EMAIL_SCRIPT,

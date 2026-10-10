@@ -1,5 +1,5 @@
-import type { createAuth } from "@auction/auth";
-import { appendOidcAuthorizeParams, decideSilverAcrStep } from "@auction/auth";
+import type { TwoFactorRequirement, createAuth } from "@auction/auth";
+import { appendOidcAuthorizeParams, decideAuthorizeTwoFactorStep } from "@auction/auth";
 import {
   AUTH_ROUTE_PATH,
   OIDC_ACR_SILVER,
@@ -30,10 +30,21 @@ function oauthErrorRedirect(
   return target.toString();
 }
 
-export function createSilverAcrAuthorizeGateMiddleware(options: {
+/** Hosted-page hint for why setup is forced; never forwarded to /oauth2/authorize. */
+function requiredByHint(requirement: TwoFactorRequirement): "staff" | "org" | null {
+  const [first] = requirement.sources;
+  return first?.scope ?? null;
+}
+
+/**
+ * Enforces two-step verification on authorize: always for `acr_values=silver`, and for
+ * subjects whose staff or organisation policy requires it (D35).
+ */
+export function createTwoFactorAuthorizeGateMiddleware(options: {
   auth: ReturnType<typeof createAuth>;
   db: IdentityDatabase;
   sessions: Pick<OidcRpSessionRepository, "findIdentitySession">;
+  readRequirement: (subjectId: string) => Promise<TwoFactorRequirement>;
   issuerOrigin: string;
 }): MiddlewareHandler {
   return async (c, next) => {
@@ -43,12 +54,9 @@ export function createSilverAcrAuthorizeGateMiddleware(options: {
       return;
     }
     const params = new URL(c.req.url).searchParams;
-    if (!requestsSilverAcr(params.get("acr_values"))) {
-      await next();
-      return;
-    }
-    const prompt = (params.get("prompt") ?? "").split(/\s+/);
-    if (prompt.includes("none")) {
+    const requestsSilver = requestsSilverAcr(params.get("acr_values"));
+    const silent = (params.get("prompt") ?? "").split(/\s+/).includes("none");
+    if (requestsSilver && silent) {
       await next();
       return;
     }
@@ -73,8 +81,13 @@ export function createSilverAcrAuthorizeGateMiddleware(options: {
       await next();
       return;
     }
-
     if (identitySession.mfaCompletedAt) {
+      await next();
+      return;
+    }
+
+    const requirement = await options.readRequirement(subjectId);
+    if (!requestsSilver && (!requirement.required || identitySession.socialAuthAt)) {
       await next();
       return;
     }
@@ -91,17 +104,29 @@ export function createSilverAcrAuthorizeGateMiddleware(options: {
       .where(and(eq(account.userId, subjectId), eq(account.providerId, "credential")))
       .limit(1);
 
-    const canEnrolTotp = Boolean(credentialAccount?.id);
-
-    const step = decideSilverAcrStep({
+    const step = decideAuthorizeTwoFactorStep({
+      requestsSilver,
+      requiredByPolicy: requirement.required,
       mfaCompletedAt: identitySession.mfaCompletedAt,
+      socialAuthAt: identitySession.socialAuthAt,
       twoFactorEnabled: Boolean(subject?.twoFactorEnabled),
-      canEnrolTotp,
+      canEnrolTotp: Boolean(credentialAccount?.id),
     });
 
     if (step === "pass") {
       await next();
       return;
+    }
+    if (silent) {
+      return c.redirect(
+        oauthErrorRedirect(
+          redirectUri,
+          state,
+          "interaction_required",
+          "Two-step verification is required to continue",
+        ),
+        302,
+      );
     }
     if (step === "verify") {
       const twoFactor = new URL("/two-factor", options.issuerOrigin);
@@ -111,6 +136,8 @@ export function createSilverAcrAuthorizeGateMiddleware(options: {
     if (step === "setup") {
       const setup = new URL("/two-factor/setup", options.issuerOrigin);
       appendOidcAuthorizeParams(setup, params, { ensureClientId: clientId });
+      const hint = requestsSilver ? null : requiredByHint(requirement);
+      if (hint) setup.searchParams.set("required_by", hint);
       return c.redirect(setup.toString(), 302);
     }
     return c.redirect(

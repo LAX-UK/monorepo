@@ -48,6 +48,7 @@ function buildApp(
       env,
       db: {} as CreateAuthAppOptions["oidc"]["db"],
       sessionStampStore: {} as CreateAuthAppOptions["oidc"]["sessionStampStore"],
+      readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       redis: {} as CreateAuthAppOptions["oidc"]["redis"],
       auth,
       webOrigins: ["https://web.test"],

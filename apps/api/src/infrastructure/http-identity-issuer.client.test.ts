@@ -270,4 +270,51 @@ describe("HttpIdentityIssuerClient", () => {
       emailChangeExpiresAt: new Date("2026-08-21T00:00:00.000Z"),
     });
   });
+
+  it("writes org two-factor policy and batches status lookups at 200 ids", async () => {
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/internal/oauth/token")) {
+        return Response.json({
+          access_token: "machine-token",
+          token_type: "Bearer",
+          expires_in: 300,
+        });
+      }
+      if (url.endsWith("/two-factor-status")) {
+        const { subjectIds } = JSON.parse(String(init?.body)) as { subjectIds: string[] };
+        return Response.json({
+          statuses: subjectIds.map((subjectId) => ({ subjectId, twoFactorEnabled: true })),
+        });
+      }
+      return Response.json({
+        policy: { required: true, setBySubjectId: "user-1", setAt: "2026-10-01T00:00:00.000Z" },
+        coverage: { members: 5, enrolled: 4 },
+      });
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    const view = await client.writeTwoFactorPolicy(
+      { scope: "org", legalEntityId: "entity-1" },
+      { required: true, actorSubjectId: "user-1" },
+    );
+    expect(view.policy.setAt).toEqual(new Date("2026-10-01T00:00:00.000Z"));
+    const [writeUrl, writeInit] = fetchImpl.mock.calls[1] ?? [];
+    expect(String(writeUrl)).toBe(
+      "https://identity.example.com/internal/identity/two-factor-policies/orgs/entity-1",
+    );
+    expect(writeInit?.method).toBe("PUT");
+
+    const ids = Array.from({ length: 250 }, (_, index) => `user-${index}`);
+    const statuses = await client.readTwoFactorStatuses(ids);
+    expect(statuses.size).toBe(250);
+    expect(
+      fetchImpl.mock.calls.filter(([url]) => String(url).endsWith("/two-factor-status")),
+    ).toHaveLength(2);
+  });
 });

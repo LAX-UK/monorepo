@@ -3,7 +3,11 @@ import { createAuthRequestHandler } from "./create-auth-request-handler.js";
 
 function setup(
   publish = vi.fn(async () => undefined),
-  opts: { twoFactorEnabled?: boolean; response?: () => Response } = {},
+  opts: {
+    twoFactorEnabled?: boolean;
+    response?: () => Response;
+    requiredByPolicy?: boolean;
+  } = {},
 ) {
   const logout = {
     revokeClientSubject: vi.fn(async () => 1),
@@ -22,9 +26,18 @@ function setup(
       revokeOtherSessions,
     },
   };
+  const sessionStampStore = {
+    stampPasswordAuth: vi.fn(async () => undefined),
+    stampMfaCompleted: vi.fn(async () => undefined),
+    stampSocialAuth: vi.fn(async () => undefined),
+  };
   const handler = createAuthRequestHandler({
     events: { publish },
-    sessionStampStore: { stampMfaCompleted: vi.fn(async () => undefined) } as never,
+    sessionStampStore,
+    readTwoFactorRequirement: vi.fn(async () => ({
+      required: opts.requiredByPolicy ?? false,
+      sources: opts.requiredByPolicy ? [{ scope: "staff" as const }] : [],
+    })),
     auth: auth as never,
     oidcSessions: {
       runTokenRequest: vi.fn(async (_code, action) => action()),
@@ -32,7 +45,7 @@ function setup(
     } as never,
     logout,
   });
-  return { handler, logout, publish, revokeOtherSessions };
+  return { auth, handler, logout, publish, revokeOtherSessions, sessionStampStore };
 }
 
 const rotatedSessionResponse = () =>
@@ -143,6 +156,7 @@ describe("auth request lifecycle ordering", () => {
     const handler = createAuthRequestHandler({
       events: { publish: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
+      readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       auth: auth as never,
       oidcSessions: {
         runTokenRequest: vi.fn(async (_code, action) => action()),
@@ -203,6 +217,7 @@ describe("auth request lifecycle ordering", () => {
     const handler = createAuthRequestHandler({
       events: { publish: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
+      readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       auth: auth as never,
       oidcSessions: {
         runTokenRequest: vi.fn(async (_code, action) => action()),
@@ -221,5 +236,53 @@ describe("auth request lifecycle ordering", () => {
     );
     const cookies = response.headers.getSetCookie?.() ?? [];
     expect(cookies.some((c) => c.startsWith("better-auth.session_data=; Max-Age=0"))).toBe(true);
+  });
+});
+
+describe("two-factor policy", () => {
+  it("refuses to turn off two-step verification while a policy requires it", async () => {
+    const { auth, handler, logout } = setup(undefined, {
+      twoFactorEnabled: true,
+      requiredByPolicy: true,
+    });
+
+    const response = await handler(
+      new Request("https://auth.test/api/auth/two-factor/disable", { method: "POST" }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "TWO_FACTOR_REQUIRED_BY_POLICY",
+    });
+    expect(auth.handler).not.toHaveBeenCalled();
+    expect(logout.revokeSubjectExceptIdentitySession).not.toHaveBeenCalled();
+  });
+
+  it("stamps social sign-in on the session created by an OAuth callback", async () => {
+    const { handler, sessionStampStore } = setup(undefined, {
+      response: () =>
+        new Response(null, {
+          status: 302,
+          headers: {
+            location: "https://auth.test/api/auth/oauth2/authorize?client_id=shop",
+            "set-cookie": "better-auth.session_token=social-token; Path=/; HttpOnly",
+          },
+        }),
+    });
+
+    await handler(new Request("https://auth.test/api/auth/callback/google?code=provider-code"));
+
+    expect(sessionStampStore.stampSocialAuth).toHaveBeenCalledWith(
+      "social-token",
+      expect.any(Date),
+    );
+  });
+
+  it("does not stamp social sign-in for password sign-in", async () => {
+    const { handler, sessionStampStore } = setup(undefined, { response: rotatedSessionResponse });
+
+    await handler(new Request("https://auth.test/api/auth/sign-in/email", { method: "POST" }));
+
+    expect(sessionStampStore.stampSocialAuth).not.toHaveBeenCalled();
   });
 });

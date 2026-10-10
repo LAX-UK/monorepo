@@ -33,9 +33,9 @@ export function shopAdminLoginErrorView(
     case "mfa_required":
       return {
         code,
-        title: "Authenticator app required",
+        title: "Two-step verification required",
         message:
-          "Shop admin needs two-step verification with an authenticator app. Sign in with your email and password; you’ll be asked to set up or enter your authenticator code. Accounts that only use Google or Apple sign-in can’t enrol one yet — ask a shop administrator for help.",
+          "Your LAX staff account needs two-step verification. Sign in again with Google or Apple, or with your email and password and your authenticator code — you’ll be asked to set one up if you haven’t yet.",
         showRetrySignIn: true,
         showUseDifferentAccount: true,
       };

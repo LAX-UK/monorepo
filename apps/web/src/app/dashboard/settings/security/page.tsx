@@ -6,6 +6,7 @@ import { SecurityAccountMethods } from "@/components/settings/security-account-m
 import { SecuritySettingsAlerts } from "@/components/settings/security-settings-alerts";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
+import { getServerMyTwoFactorRequiredBy } from "@/lib/data/http/two-factor-policy.server";
 import { redirectIdentitySettingsToLaxAccount } from "@/lib/lax-account-portal-redirect.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
@@ -23,6 +24,8 @@ export default async function SecuritySettingsPage() {
     shell: "client",
     loginNext: "/dashboard/settings/security",
   });
+  const twoFactorRequiredBy =
+    me.securityStatusAvailable === true ? await getServerMyTwoFactorRequiredBy() : [];
   const deletionRequestedAt = me.deletionRequestedAt ? new Date(me.deletionRequestedAt) : null;
   return (
     <DashboardPage className={`space-y-6 ${SETTINGS_NARROW_MAX_WIDTH}`}>
@@ -60,7 +63,10 @@ export default async function SecuritySettingsPage() {
         <SecurityAccountMethods emailVerified={me.emailVerified === true} />
       </Surface>
       {me.securityStatusAvailable === true ? (
-        <TwoFactorStatusCard twoFactorEnabled={me.twoFactorEnabled === true} />
+        <TwoFactorStatusCard
+          twoFactorEnabled={me.twoFactorEnabled === true}
+          requiredBy={twoFactorRequiredBy}
+        />
       ) : (
         <Alert>
           <AlertTitle>Two-factor status unavailable</AlertTitle>

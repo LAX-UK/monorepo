@@ -3,8 +3,10 @@ import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { TwoFactorPolicyCard } from "@/components/security/two-factor-policy-card";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
 import {
   type ILegalEntityMemberListGateway,
   createLegalEntityMemberListGateway,
@@ -66,6 +68,13 @@ export default async function OrganisationMembersPage({
   const missingSelfInList = !meRow;
   const viewerIsAdmin = meRow ? ADMIN_ROLES.includes(meRow.role) : false;
   const viewerIsPrimaryAdmin = meRow?.isPrimaryAdmin === true;
+  const twoFactorPolicy =
+    viewerIsAdmin && acting.kind === "organisation"
+      ? await getServerOrgTwoFactorPolicy(acting.id)
+      : null;
+  const twoFactorByUserId = twoFactorPolicy
+    ? Object.fromEntries(twoFactorPolicy.members.map((m) => [m.userId, m.twoFactorEnabled]))
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -110,8 +119,19 @@ export default async function OrganisationMembersPage({
         </Surface>
       ) : null}
 
+      {twoFactorPolicy ? (
+        <TwoFactorPolicyCard
+          scope={{ kind: "org", legalEntityId: acting.id }}
+          required={twoFactorPolicy.policy.required}
+          members={twoFactorPolicy.coverage.members}
+          enrolled={twoFactorPolicy.coverage.enrolled}
+          canEdit={twoFactorPolicy.canEdit}
+        />
+      ) : null}
+
       <MemberList
         legalEntityId={acting.id}
+        {...(twoFactorByUserId ? { twoFactorByUserId } : {})}
         members={members}
         viewerIsAdmin={viewerIsAdmin}
         viewerIsPrimaryAdmin={viewerIsPrimaryAdmin}

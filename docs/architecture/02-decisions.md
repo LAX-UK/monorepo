@@ -592,7 +592,8 @@ OIDC client and `apps/shop-admin` UI deferred until BFF login ships. Boundary:
 **Chosen.** When the subject token in token exchange is an OIDC ID token, the issuer copies
 `acr` and `auth_time` into the issued `lax-shop-api` access token. `apps/shop-admin` rejects
 non-silver ID tokens; `apps/shop-api` `/admin/v1/*` requires `shop.admin`, `acr` silver, and
-(for finance mutations) recent `auth_time`. This is not a role claim — capabilities remain in
+(for finance mutations) recent `auth_time`. *(Silver requirement superseded by D35; recent
+`auth_time` for finance mutations remains.)* This is not a role claim — capabilities remain in
 Shop Postgres.
 
 **Alternatives considered.** Trusting ID-token checks only in the admin BFF without API
@@ -634,10 +635,31 @@ before production go-live.
 
 **Supersedes none; extends D13 / D7.**
 
-**Chosen.** Cross-product identity settings live in `apps/account` (`account.lax.bid`) as an OIDC RP/BFF (`lax-account-web`). Phone numbers are verified contact data only: hosted `/phone` sign-in is retired and Better Auth phone SMS password-reset paths are disabled. Shop checkout may request OIDC `phone` scope to prefill `shop_order.delivery_phone`. Staff shop-admin sign-in uses silver ACR with hosted MFA setup when no authenticator exists.
+**Chosen.** Cross-product identity settings live in `apps/account` (`account.lax.bid`) as an OIDC RP/BFF (`lax-account-web`). Phone numbers are verified contact data only: hosted `/phone` sign-in is retired and Better Auth phone SMS password-reset paths are disabled. Shop checkout may request OIDC `phone` scope to prefill `shop_order.delivery_phone`. Staff shop-admin sign-in uses silver ACR with hosted MFA setup when no authenticator exists *(superseded by D35: staff two-step verification follows the staff policy)*.
 
 **Portal scope (v1).** `/account` shows profile claims read-only (edits link to Bid via `LAX_BID_PUBLIC_URL`) and security actions that hand off to issuer-hosted pages: password change via `/forgot-password`, authenticator enrolment via `/two-factor/setup`. The hosted setup page requires an issuer session and refuses to re-enrol an account that already has an authenticator, because Better Auth's enable call replaces the working secret immediately. Authenticator status is shown from the session ACR (silver means this sign-in used a second factor); the portal does not claim "not enrolled" from a bronze sign-in. Bid web keeps `LAX_ACCOUNT_ORIGIN` unset until the portal owns profile editing.
 
 **Rollout.** Test: build `lax-test-account:<sha>` with `app-deploy-test`, then run `terraform-test-up` with `account_sha` set (the workflow verifies the image exists before apply); later runs resolve the live tag. Production has no account component, DNS or OIDC client secrets in Terraform yet; those land with the production rollout.
 
 **Status.** *Implemented (foundation).* Runbooks: [docs/runbooks/mfa-staff-reset.md](../runbooks/mfa-staff-reset.md), [docs/runbooks/shop-admin-staff-grant.md](../runbooks/shop-admin-staff-grant.md).
+
+## D35. Two-step verification is optional per user, with staff and organisation policies enforced by Identity
+
+**Supersedes the hard silver-ACR staff requirement in D31 and D34; extends D13.**
+
+**Chosen.** Two-step verification (TOTP) is optional by default: each user turns it on or off in their own security settings. Two policies can make it mandatory:
+
+- **Staff policy** — a Bid super admin (`platform.admin.full`) requires it for everyone with a staff role on any LAX platform (Bid staff role, active Shop staff grant). Seeded **on**.
+- **Organisation policy** — an organisation owner requires it for that organisation's members. Default **off**.
+
+Identity enforces the result at `/oauth2/authorize` for every relying party. Products still own roles (D13): SECURITY DEFINER triggers on `bid_user_profile`, `shop_staff_member` and `legal_entity_member` (organisations only) maintain `identity_access_marker`, a role-free "this subject is staff / belongs to org X" table that `auth_app` can read. Policies live in `identity_mfa_policy`. Both tables are denied to `api_app`; Bid reads and writes policy through Identity machine endpoints (`/internal/identity/two-factor-policies/*`, `/internal/identity/subjects/:id/two-factor-requirement`), and every change is audited as `auth.two_factor_policy_changed`.
+
+When a policy applies, a session satisfies it if it completed TOTP or signed in with Google or Apple (`session.social_auth_at`). Otherwise the gate sends enrolled users to `/two-factor` and unenrolled users to `/two-factor/setup?required_by=staff|org` (forced setup at next sign-in); `prompt=none` returns `interaction_required`. While a policy applies, `/two-factor/disable` returns 403 `TWO_FACTOR_REQUIRED_BY_POLICY`. Clients that explicitly request silver ACR still get the strict TOTP step. `apps/shop-admin` and `apps/shop-api` no longer demand silver; recent `auth_time` for finance mutations (D31) stays.
+
+Users manage two-step verification on the hosted `/two-factor/manage` page (linked from LAX Account) or Bid's security settings; both show "Required by …" and hide **Turn off** while a policy applies.
+
+**Alternatives considered.** Keeping silver mandatory for all staff (rejected — product owners want it configurable). Putting roles or a `lax_2fa_required` claim in tokens (rejected — D13 and the governed cross-platform claim set). Granting `auth_app` read access to product role tables (rejected — couples Identity to product schemas).
+
+**Why this wins.** One enforcement point covers every LAX product, product role models stay private, and admins can tighten or relax policy without a deploy.
+
+**Status.** *Implemented.* Migration **0205** `identity_access_policy`; gate: [apps/auth/src/infrastructure/two-factor-authorize-gate.middleware.ts](../../apps/auth/src/infrastructure/two-factor-authorize-gate.middleware.ts); policy routes: [apps/auth/src/routes/internal-two-factor-policy.routes.ts](../../apps/auth/src/routes/internal-two-factor-policy.routes.ts); Bid service: [apps/api/src/services/security/two-factor-policy.service.ts](../../apps/api/src/services/security/two-factor-policy.service.ts).

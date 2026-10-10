@@ -49,6 +49,11 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     return respondUserHttpJson(c, response);
   });
 
+  r.get("/me/two-factor-requirement", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    return c.json({ data: await container.twoFactorPolicy.readMyRequirement(userId) });
+  });
+
   r.post("/me/security-notify/two-factor-enabled", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     const response = await container.userRoutes.securityHttp.notifyTwoFactorEnabled({ userId });

@@ -5,6 +5,13 @@ export type { IdentityEmailTemplate } from "./email-sender.js";
 export type { SendOtpOptions, SmsSender } from "./sms-sender.js";
 export type { SubjectStatusReader } from "./subject-status-reader.js";
 export type { SessionStampStore } from "./session-stamp-store.js";
+export type {
+  AccessMarker,
+  TwoFactorPolicy,
+  TwoFactorPolicyRecord,
+  TwoFactorPolicyScope,
+  TwoFactorPolicyStore,
+} from "./two-factor-policy-store.js";
 export type { AccountLinkReader } from "./account-link-reader.js";
 export type { SessionCountReader } from "./session-count-reader.js";
 export type { JwksStore } from "./jwks-store.js";

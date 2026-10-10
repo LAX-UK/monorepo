@@ -10,6 +10,10 @@ import {
   type MachineCredentialRateLimitRedis,
   MachineCredentialRateLimiter,
 } from "../services/machine-credential-rate-limiter.js";
+import {
+  type TwoFactorPolicyRouteDeps,
+  mountTwoFactorPolicyRoutes,
+} from "./internal-two-factor-policy.routes.js";
 
 const MACHINE_TOKEN_TTL_SEC = 5 * 60;
 const MACHINE_SCOPE = "identity.lifecycle";
@@ -110,6 +114,7 @@ export function createInternalIdentityRoutes(options: {
     operation: "disable" | "enable" | "merge" | "two_factor_reset",
     subjectId: string,
   ) => void;
+  twoFactorPolicy?: TwoFactorPolicyRouteDeps;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
@@ -214,6 +219,8 @@ export function createInternalIdentityRoutes(options: {
     }
     await next();
   });
+
+  if (options.twoFactorPolicy) mountTwoFactorPolicyRoutes(app, options.twoFactorPolicy);
 
   app.post("/identity/subjects/:subjectId/disable", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { reason?: unknown };

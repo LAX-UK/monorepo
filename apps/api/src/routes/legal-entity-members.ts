@@ -13,8 +13,10 @@ import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { TwoFactorPolicyForbiddenError } from "../services/security/two-factor-policy.service.js";
 
 const memberIdParam = z.object({ memberId: z.string().uuid() });
+const twoFactorPolicyBodySchema = z.object({ required: z.boolean() });
 const acceptBodySchema = z.object({ token: z.string().min(10).max(200) });
 const transferBodySchema = z.object({
   memberId: z.string().uuid(),
@@ -137,6 +139,36 @@ export function createLegalEntityMemberRoutes(
         return respondIdentityError(c, outcome.error);
       }
       return respondIdentityRouteOutcome(c, outcome);
+    },
+  );
+
+  r.get("/two-factor-policy", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    try {
+      return c.json({ data: await container.twoFactorPolicy.readOrgPolicy(ctx) });
+    } catch (error) {
+      if (error instanceof TwoFactorPolicyForbiddenError)
+        return c.json({ error: "forbidden" }, 403);
+      throw error;
+    }
+  });
+
+  r.put(
+    "/two-factor-policy",
+    requireAuth,
+    requireContext,
+    zValidator("json", twoFactorPolicyBodySchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const { required } = c.req.valid("json");
+      try {
+        return c.json({ data: await container.twoFactorPolicy.setOrgPolicy(ctx, required) });
+      } catch (error) {
+        if (error instanceof TwoFactorPolicyForbiddenError) {
+          return c.json({ error: "forbidden" }, 403);
+        }
+        throw error;
+      }
     },
   );
 

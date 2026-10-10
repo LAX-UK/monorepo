@@ -3,7 +3,6 @@ import { JWKS_PATH, normalizeIssuerUrl } from "@auction/identity-contracts";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
 import { createFetchTokenEndpoint, validateOAuthStateTimingSafe } from "@auction/identity-rp";
 import type { ShopAdminConfig } from "../config";
-import { assertSilverAcr } from "../domain/acr-policy";
 import { StaffLoginError } from "../domain/staff-login-failure";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
 import type { PendingStaffLogin } from "./start-staff-login";
@@ -51,7 +50,6 @@ export async function completeStaffLogin(input: {
     throw new StaffLoginError("invalid_id_token", "Invalid id_token");
   }
   const acr = typeof verified.payload.acr === "string" ? verified.payload.acr : undefined;
-  assertSilverAcr(acr);
   const authTime =
     typeof verified.payload.auth_time === "number"
       ? verified.payload.auth_time

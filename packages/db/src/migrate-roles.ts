@@ -24,6 +24,10 @@ export const AUTH_FULL_TABLES = [
 ] as const;
 /** Append-only Identity side effects emitted by apps/auth. */
 export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
+/** Trigger-maintained access projection; Identity reads it to apply 2FA policy. */
+export const AUTH_READ_TABLES = ["identity_access_marker"] as const;
+/** Two-step verification policy rows written through Identity's internal API only. */
+export const AUTH_POLICY_TABLES = ["identity_mfa_policy"] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
@@ -96,6 +100,8 @@ export const API_DENY_TABLES = [
   "ssf_delivery",
   "identity_lifecycle_outbox",
   "shop_ssf_replay",
+  ...AUTH_READ_TABLES,
+  ...AUTH_POLICY_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
@@ -463,6 +469,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of AUTH_INSERT_SELECT_TABLES) {
           await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of AUTH_READ_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "SELECT");
+        }
+        for (const tableName of AUTH_POLICY_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of tables) {
           if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {

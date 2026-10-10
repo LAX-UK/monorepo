@@ -2,6 +2,7 @@ import {
   type IdentityEventPublisher,
   type SessionStampStore,
   stampMfaCompletedFromResponse,
+  stampSocialAuthFromResponse,
 } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
@@ -10,6 +11,7 @@ import {
   createAuthorizationServerErrorResponse,
   readAuthorizationCodeFromResponse,
 } from "../services/oidc-session-coordinator.js";
+import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import {
   buildCookieHeaderForAuthorizationCodeCapture,
   readResponseSetCookies,
@@ -24,6 +26,7 @@ export type AuthRequestHandler = (
 export function createAuthRequestHandler(options: {
   events: IdentityEventPublisher;
   sessionStampStore: SessionStampStore;
+  readTwoFactorRequirement: TwoFactorRequirementReader;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
   logout: BackchannelLogoutRevoker;
@@ -43,6 +46,10 @@ export function createAuthRequestHandler(options: {
       logoutSensitive || twoFactorSensitive
         ? await options.auth.api.getSession({ headers: request.headers })
         : null;
+    if (path.endsWith("/two-factor/disable") && priorSession?.user?.id) {
+      const requirement = await options.readTwoFactorRequirement(priorSession.user.id);
+      if (requirement.required) return twoFactorRequiredByPolicyResponse();
+    }
     let response = await options.oidcSessions.runTokenRequest(authorizationCode, () =>
       options.auth.handler(request),
     );
@@ -102,6 +109,9 @@ export function createAuthRequestHandler(options: {
     ) {
       await stampMfaCompletedFromResponse(options.sessionStampStore, response);
     }
+    if (response.status < 400 && isSocialSignInPath(path)) {
+      await stampSocialAuthFromResponse(options.sessionStampStore, response);
+    }
     if (await readAuthorizationCodeFromResponse(response, request.url)) {
       const codeSession = await options.auth.api.getSession({
         headers: headersWithResponseSessionCookie(request, response),
@@ -113,6 +123,24 @@ export function createAuthRequestHandler(options: {
     }
     return response;
   };
+}
+
+export const TWO_FACTOR_REQUIRED_BY_POLICY = "TWO_FACTOR_REQUIRED_BY_POLICY";
+
+function twoFactorRequiredByPolicyResponse(): Response {
+  return Response.json(
+    {
+      code: TWO_FACTOR_REQUIRED_BY_POLICY,
+      message:
+        "Two-step verification is required for your LAX staff or organisation access, so it can't be turned off.",
+    },
+    { status: 403 },
+  );
+}
+
+/** OAuth callbacks (`/callback/:provider`, `/oauth2/callback/:provider`) and ID-token social sign-in. */
+function isSocialSignInPath(path: string): boolean {
+  return /\/callback\/[^/]+$/.test(path) || path.endsWith("/sign-in/social");
 }
 
 /**

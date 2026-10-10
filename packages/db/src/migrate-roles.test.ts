@@ -8,6 +8,8 @@ import {
   API_READ_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  AUTH_POLICY_TABLES,
+  AUTH_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
   WORKER_DATA_EXPORT_TABLES,
@@ -330,6 +332,15 @@ describe("migrate-roles invariants", () => {
   it("grants append-only access to identity_lifecycle_outbox", () => {
     expect([...AUTH_INSERT_SELECT_TABLES]).toContain("identity_lifecycle_outbox");
     expect([...AUTH_FULL_TABLES]).not.toContain("identity_lifecycle_outbox");
+  });
+
+  it("lets auth_app read access markers and manage 2FA policy while denying api_app both", () => {
+    expect([...AUTH_READ_TABLES]).toEqual(["identity_access_marker"]);
+    expect([...AUTH_POLICY_TABLES]).toEqual(["identity_mfa_policy"]);
+    for (const table of [...AUTH_READ_TABLES, ...AUTH_POLICY_TABLES]) {
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...AUTH_FULL_TABLES]).not.toContain(table);
+    }
   });
 
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {

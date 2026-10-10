@@ -20,6 +20,9 @@ export const HOSTED_AUTH_MESSAGES = {
   MFA_ENABLED: "Authenticator added. Save your backup codes before you continue.",
   MFA_CODES_COPIED: "Backup codes copied.",
   MFA_CODES_COPY_FAILED: "Couldn't copy automatically. Select the codes and copy them.",
+  MFA_DISABLED: "Two-step verification is off. You can turn it back on at any time.",
+  MFA_REQUIRED_BY_POLICY:
+    "Your organisation or LAX staff policy requires two-step verification, so it can't be turned off.",
   CONSENT_FAILED: "Authorization failed. Please try again.",
   EMAIL_REQUIRED: "Enter your email address.",
   EMAIL_INVALID: "Enter a valid email address.",
