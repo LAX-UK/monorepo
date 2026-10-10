@@ -1,5 +1,5 @@
 import type { ShopIdentityMeReadResult } from "@/lib/shop-identity.server";
-import { safeRelativeReturnPath } from "@auction/identity-rp";
+import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
 import { type AccountChromeState, mapShopMeToAccountChromeState } from "@auction/lax-ecosystem";
 
 /** Session vocabulary shared with header account chrome. */

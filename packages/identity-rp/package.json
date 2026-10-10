@@ -11,6 +11,10 @@
     "./silent-sign-in": {
       "types": "./dist/silent-sign-in/index.d.ts",
       "default": "./dist/silent-sign-in/index.js"
+    },
+    "./safe-return-path": {
+      "types": "./dist/safe-return-path.d.ts",
+      "default": "./dist/safe-return-path.js"
     }
   },
   "scripts": {

@@ -1,6 +1,6 @@
 import { mergeBasketOnSignIn } from "@/lib/merge-basket-on-sign-in.server";
 import { markShopSilentNoticeOnStorefront } from "@/lib/silent-sign-in/cookies.server";
-import { safeRelativeReturnPath } from "@auction/identity-rp";
+import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
 import { redirect } from "next/navigation";
 
 export async function GET(request: Request) {

@@ -11,7 +11,7 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
-import { safeRelativeReturnPath } from "@auction/identity-rp";
+import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { redirect } from "next/navigation";

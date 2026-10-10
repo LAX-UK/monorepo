@@ -1,6 +1,6 @@
 import { shopIdentityBaseUrl } from "@/lib/shop-identity.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
-import { safeRelativeReturnPath } from "@auction/identity-rp";
+import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
 
 export const metadata = shopPrivatePageMetadata;
 import { redirect } from "next/navigation";
