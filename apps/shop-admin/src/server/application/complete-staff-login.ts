@@ -4,6 +4,7 @@ import { verifyIdentityToken } from "@auction/identity-contracts/verify";
 import { createFetchTokenEndpoint, validateOAuthStateTimingSafe } from "@auction/identity-rp";
 import type { ShopAdminConfig } from "../config";
 import { assertSilverAcr } from "../domain/acr-policy";
+import { StaffLoginError } from "../domain/staff-login-failure";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
 import type { PendingStaffLogin } from "./start-staff-login";
 
@@ -15,7 +16,7 @@ export async function completeStaffLogin(input: {
   sessions: SessionStore;
 }): Promise<{ sessionId: string; returnTo: string }> {
   if (!validateOAuthStateTimingSafe(input.pending.state, input.receivedState)) {
-    throw new Error("Invalid OAuth state");
+    throw new StaffLoginError("invalid_state", "Invalid OAuth state");
   }
   const redirectUri = `${input.config.publicOrigin}/api/auth/callback`;
   const tokenEndpoint = createFetchTokenEndpoint({
@@ -36,7 +37,7 @@ export async function completeStaffLogin(input: {
     }),
   );
   if (!token.id_token || !token.refresh_token || typeof token.expires_in !== "number") {
-    throw new Error("Identity token response incomplete");
+    throw new StaffLoginError("token_exchange_failed", "Identity token response incomplete");
   }
   const issuer = normalizeIssuerUrl(input.config.oidcIssuer);
   const jwksUrl = `${input.config.oidcInternalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
@@ -47,7 +48,7 @@ export async function completeStaffLogin(input: {
     audience: input.config.oidcClientId,
   });
   if (!verified || verified.payload.nonce !== input.pending.nonce) {
-    throw new Error("Invalid id_token");
+    throw new StaffLoginError("invalid_id_token", "Invalid id_token");
   }
   const acr = typeof verified.payload.acr === "string" ? verified.payload.acr : undefined;
   assertSilverAcr(acr);

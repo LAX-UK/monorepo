@@ -4,3 +4,5 @@ export const SHOP_ADMIN_LOGIN_COOKIE = "lax-shop-admin-login-pending";
 export const SHOP_ADMIN_LOGIN_ATTEMPT_COOKIE = "lax-shop-admin-login-attempt";
 /** One-shot guard when the pending login cookie expired but Auth returned a code. */
 export const SHOP_ADMIN_LOGIN_RETRY_COOKIE = "lax-shop-admin-login-retry";
+/** One-shot guard: restart authorize once when Auth returned a non-Silver code. */
+export const SHOP_ADMIN_STEP_UP_RETRY_COOKIE = "lax-shop-admin-step-up-retry";

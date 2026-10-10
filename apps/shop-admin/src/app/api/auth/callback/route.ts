@@ -8,9 +8,14 @@ import {
   SHOP_ADMIN_LOGIN_COOKIE,
   SHOP_ADMIN_LOGIN_RETRY_COOKIE,
   SHOP_ADMIN_SESSION_COOKIE,
+  SHOP_ADMIN_STEP_UP_RETRY_COOKIE,
 } from "../../../../lib/session-cookie";
 import { resolveStaffOAuthCallback } from "../../../../server/application/handle-staff-oauth-callback";
 import { getShopAdminContainer } from "../../../../server/container";
+import {
+  classifyStaffLoginFailure,
+  nextStepAfterStaffLoginFailure,
+} from "../../../../server/domain/staff-login-failure";
 
 function loginRedirect(publicOrigin: string, error: string): URL {
   return new URL(`/login?error=${encodeURIComponent(error)}`, publicOrigin);
@@ -19,6 +24,7 @@ function loginRedirect(publicOrigin: string, error: string): URL {
 function clearLoginAttemptCookies(cookieStore: Awaited<ReturnType<typeof cookies>>): void {
   cookieStore.delete(SHOP_ADMIN_LOGIN_COOKIE);
   cookieStore.delete(SHOP_ADMIN_LOGIN_RETRY_COOKIE);
+  cookieStore.delete(SHOP_ADMIN_STEP_UP_RETRY_COOKIE);
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -81,6 +87,7 @@ export async function GET(request: Request): Promise<Response> {
     });
     cookieStore.delete(SHOP_ADMIN_LOGIN_COOKIE);
     cookieStore.delete(SHOP_ADMIN_LOGIN_RETRY_COOKIE);
+    cookieStore.delete(SHOP_ADMIN_STEP_UP_RETRY_COOKIE);
     cookieStore.set(SHOP_ADMIN_SESSION_COOKIE, result.sessionId, {
       httpOnly: true,
       secure,
@@ -105,8 +112,31 @@ export async function GET(request: Request): Promise<Response> {
     });
     const destination = safeReturnTo(result.returnTo);
     return NextResponse.redirect(new URL(destination, publicOrigin));
-  } catch {
+  } catch (error) {
+    const code = classifyStaffLoginFailure(error);
+    console.error("[shop-admin.oauth.callback] staff login failed", {
+      code,
+      error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    });
     cookieStore.delete(SHOP_ADMIN_LOGIN_COOKIE);
-    return NextResponse.redirect(loginRedirect(publicOrigin, "auth_failed"));
+    const next = nextStepAfterStaffLoginFailure(
+      code,
+      Boolean(cookieStore.get(SHOP_ADMIN_STEP_UP_RETRY_COOKIE)?.value),
+    );
+    if (next.kind === "restart_for_step_up") {
+      cookieStore.set(SHOP_ADMIN_STEP_UP_RETRY_COOKIE, "1", {
+        httpOnly: true,
+        secure,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 600,
+      });
+      const returnTo = safeReturnTo(outcome.pending.returnTo);
+      return NextResponse.redirect(
+        new URL(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`, publicOrigin),
+      );
+    }
+    cookieStore.delete(SHOP_ADMIN_STEP_UP_RETRY_COOKIE);
+    return NextResponse.redirect(loginRedirect(publicOrigin, next.reason));
   }
 }
