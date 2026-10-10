@@ -49,7 +49,7 @@ export function findLaxResourceByUri(resourceUri: string): LaxResourceMetadata |
   return Object.values(LAX_RESOURCES).find((candidate) => candidate.uri === resourceUri);
 }
 
-const STANDARD_OIDC_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
+const STANDARD_OIDC_SCOPES = ["openid", "profile", "email", "offline_access", "phone"] as const;
 
 /** Product scopes registered in {@link LAX_RESOURCES}, plus standard OIDC scopes. */
 export function allRegisteredOidcScopes(): readonly string[] {

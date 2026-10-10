@@ -13,6 +13,7 @@ export async function startCheckout(input: {
   basketId: string;
   fulfilment: ShopFulfilmentOption;
   deliveryAddress?: ShopDeliveryAddressInput;
+  deliveryPhone?: string;
 }): Promise<
   | { kind: "redirect"; checkoutUrl: string }
   | { kind: "enquiry" }
@@ -58,6 +59,7 @@ export async function startCheckout(input: {
         successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
         cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
         ...(deliveryAddress ? { deliveryAddress } : {}),
+        ...(input.deliveryPhone?.trim() ? { deliveryPhone: input.deliveryPhone.trim() } : {}),
       }),
     },
     { applyCookies: true, csrfToken: csrf.token },

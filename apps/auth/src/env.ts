@@ -40,6 +40,7 @@ const envSchema = z
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     SHOP_ORIGIN: z.string().url().default("http://localhost:3020"),
     SHOP_ADMIN_ORIGIN: z.string().url().default("http://localhost:3030"),
+    LAX_ACCOUNT_ORIGIN: z.string().url().optional(),
     WEB_ORIGINS: z.preprocess((val) => {
       let source = val;
       if (source === undefined || source === "" || source == null) {

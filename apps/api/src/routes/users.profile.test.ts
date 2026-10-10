@@ -201,7 +201,7 @@ describe("PATCH /users/me/profile", () => {
     });
   });
 
-  it("accepts structured phone update", async () => {
+  it("rejects structured phone update", async () => {
     const profileService = { updateProfile: vi.fn().mockResolvedValue(undefined) };
     const app = appWithProfileService(profileService);
 
@@ -211,14 +211,11 @@ describe("PATCH /users/me/profile", () => {
       body: JSON.stringify({ phone: { country: "GB", number: "7400123456" } }),
     });
 
-    expect(res.status, await res.clone().text()).toBe(200);
-    expect(profileService.updateProfile).toHaveBeenCalledWith("u1", {
-      mobile: "+447400123456",
-      mobileCountry: "GB",
-    });
+    expect(res.status, await res.clone().text()).toBe(400);
+    expect(profileService.updateProfile).not.toHaveBeenCalled();
   });
 
-  it("accepts mobile clear with phone null", async () => {
+  it("rejects mobile clear with phone null", async () => {
     const profileService = { updateProfile: vi.fn().mockResolvedValue(undefined) };
     const app = appWithProfileService(profileService);
 
@@ -228,10 +225,7 @@ describe("PATCH /users/me/profile", () => {
       body: JSON.stringify({ phone: null, mobile: null }),
     });
 
-    expect(res.status, await res.clone().text()).toBe(200);
-    expect(profileService.updateProfile).toHaveBeenCalledWith("u1", {
-      mobile: null,
-      mobileCountry: null,
-    });
+    expect(res.status, await res.clone().text()).toBe(400);
+    expect(profileService.updateProfile).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 export const ISSUER_CONTINUE_PATHS = [
   "/api/auth/oauth2/authorize",
   "/two-factor",
+  "/two-factor/setup",
   "/login",
   "/verify-email",
   "/magic-link",

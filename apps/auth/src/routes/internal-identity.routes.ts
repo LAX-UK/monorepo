@@ -106,7 +106,10 @@ export function createInternalIdentityRoutes(options: {
   machineClientSecret: string;
   allowMerge?: boolean;
   onCredentialRateLimitError?: (error: unknown) => void;
-  onOperation?: (operation: "disable" | "enable" | "merge", subjectId: string) => void;
+  onOperation?: (
+    operation: "disable" | "enable" | "merge" | "two_factor_reset",
+    subjectId: string,
+  ) => void;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
@@ -278,6 +281,15 @@ export function createInternalIdentityRoutes(options: {
         body.password as string,
         typeof body.sessionToken === "string" ? body.sessionToken : undefined,
       );
+      return { ok: true };
+    });
+  });
+
+  app.post("/identity/subjects/:subjectId/two-factor/reset", async (c) => {
+    const subjectId = c.req.param("subjectId");
+    return runIdentityOperation(c, async () => {
+      await options.operations.resetTwoFactor(subjectId);
+      options.onOperation?.("two_factor_reset", subjectId);
       return { ok: true };
     });
   });

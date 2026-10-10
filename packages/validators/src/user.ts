@@ -1,37 +1,37 @@
 import { userEmailStatuses, userKycStatuses, userRoles, userStaffRoles } from "@auction/types";
 import { z } from "zod";
 import { mediaReferenceSchema } from "./media.js";
-import { phoneCountrySchema, phoneInputSchema } from "./mobile.js";
-import { resolvePhoneFromBody } from "./phone/resolve.js";
 
 /** Whether live Identity security fields were available for this response. */
 export const securityStatusAvailableSchema = z.boolean();
 
+const PHONE_MANAGED_MESSAGE = "Phone is managed in LAX Account";
+
+/** Bid profile patch — identity-owned phone is managed via LAX Account / auth, not bid_user_profile. */
 export const updateProfileSchema = z
   .object({
     name: z.string().min(1).max(200).optional(),
     image: mediaReferenceSchema.nullable().optional(),
-    phone: phoneInputSchema.nullable().optional(),
-    /** @deprecated Prefer `phone`. */
-    mobile: z.string().trim().max(32).nullable().optional(),
-    mobileCountry: phoneCountrySchema.optional(),
+    phone: z.unknown().optional(),
+    mobile: z.unknown().optional(),
+    mobileCountry: z.unknown().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.phone === null && data.mobile === null) return;
-    const r = resolvePhoneFromBody(data);
-    if (!r.ok) {
-      ctx.addIssue({ code: "custom", message: r.message, path: r.path });
+    if (data.phone !== undefined) {
+      ctx.addIssue({ code: "custom", message: PHONE_MANAGED_MESSAGE, path: ["phone"] });
+    }
+    if (data.mobile !== undefined) {
+      ctx.addIssue({ code: "custom", message: PHONE_MANAGED_MESSAGE, path: ["mobile"] });
+    }
+    if (data.mobileCountry !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: PHONE_MANAGED_MESSAGE,
+        path: ["mobileCountry"],
+      });
     }
   })
-  .transform((data) => {
-    const { phone: _phone, mobile: _legacy, mobileCountry: _legacyCc, ...rest } = data;
-    if (data.phone === null && data.mobile === null) {
-      return { ...rest, mobile: null as string | null, mobileCountry: null as string | null };
-    }
-    const r = resolvePhoneFromBody(data);
-    if (!r.ok || !r.value) return rest;
-    return { ...rest, mobile: r.value.e164, mobileCountry: r.value.country };
-  });
+  .transform(({ phone: _p, mobile: _m, mobileCountry: _c, ...rest }) => rest);
 
 /** RHF: display name only. */
 export const updateProfileNameFormSchema = z.object({

@@ -26,6 +26,9 @@ The shape of every secret in this list:
 | `OIDC_CLIENT_SECRET_LAX_BID_WEB` | DO App Platform env on `apps/web`; 1Password | Bid BFF and one-time client provisioning only | Quarterly |
 | `BID_BFF_SESSION_ENCRYPTION_KEY` | DO App Platform env on `apps/web`; 1Password | Bid BFF only | Quarterly; rotation logs out Bid sessions |
 | `OIDC_CLIENT_SECRET` (`lax-shop-web`) | DO App Platform env on the Shop BFF; 1Password | Shop BFF and one-time client provisioning only | Quarterly |
+| `OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN` | DO App Platform env on `apps/shop-admin`; 1Password | Shop admin BFF and one-time client provisioning only | Quarterly |
+| `OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB` | DO App Platform env on `apps/account`; 1Password | LAX Account BFF and one-time client provisioning only | Quarterly |
+| `LAX_ACCOUNT_SESSION_ENCRYPTION_KEY` | DO App Platform env on `apps/account`; 1Password | LAX Account BFF only | Quarterly; rotation logs out LAX Account sessions |
 | `AUTH_DEK_KEY` | DO App Platform env on `apps/auth`; 1Password | `apps/auth` only | Re-encryption procedure only; never rotate in place |
 | `JWKS` private keys | Postgres `jwks_key.private_jwk`, readable only by `auth_app` role | The role; nobody on the team has direct DB access at app-runtime time | Quarterly via [../runbooks/jwks-rotation.md](../runbooks/jwks-rotation.md) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | DO App Platform env on `apps/auth`; Google Cloud console | `apps/auth`; ops team | On suspected leak |

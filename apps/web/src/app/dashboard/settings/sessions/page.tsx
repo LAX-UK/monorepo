@@ -5,12 +5,14 @@ import { SessionsClientPage } from "@/components/settings/sessions/sessions-clie
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { describeSessionsOverviewError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { redirectIdentitySettingsToLaxAccount } from "@/lib/lax-account-portal-redirect.server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Active sessions" };
 
 export default async function SessionsPage() {
+  redirectIdentitySettingsToLaxAccount("sessions");
   await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings/sessions",

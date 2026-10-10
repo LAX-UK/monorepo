@@ -50,8 +50,9 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL_OWNER: postgresql://postgres:postgres@postgres:5432/auction
-      OIDC_CLIENT_IDS: lax-shop-web
+      OIDC_CLIENT_IDS: lax-shop-web,lax-account-web
       OIDC_CLIENT_SECRET_LAX_SHOP_WEB: ${OIDC_CLIENT_SECRET:-local-shop-identity-client-secret-32}
+      OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB: ${OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB:-local-lax-account-web-client-secret-32}
     depends_on:
       migrate:
         condition: service_completed_successfully

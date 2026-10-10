@@ -1,0 +1,36 @@
+{
+  "name": "@auction/account",
+  "version": "0.0.0",
+  "private": true,
+  "description": "LAX Account portal BFF",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3040 --turbopack",
+    "build": "next build",
+    "start": "next start --port 3040",
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@auction/branding": "workspace:*",
+    "@auction/identity-contracts": "workspace:*",
+    "@auction/identity-rp": "workspace:*",
+    "ioredis": "^5.6.1",
+    "jose": "^6.2.3",
+    "next": "15.5.9",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

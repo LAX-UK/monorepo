@@ -1,7 +1,8 @@
 import type { BetterAuthOptions } from "better-auth";
 import type { BetterAuthPlugin } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { phoneNumber } from "better-auth/plugins";
+import { maskPhoneE164 } from "./mask-phone-e164.js";
 import {
   InvalidPhoneNumberError,
   PhoneVerificationRateLimitedError,
@@ -49,7 +50,7 @@ export function buildPhoneNumberPlugin(options: {
           });
         }
         console.error("[auth.phoneNumber] sendOTP failed", {
-          phoneE164,
+          phoneE164: maskPhoneE164(phoneE164),
           error: error instanceof Error ? error.message : String(error),
         });
         throw new APIError("INTERNAL_SERVER_ERROR", {
@@ -73,7 +74,7 @@ export function buildPhoneNumberPlugin(options: {
           });
         }
         console.error("[auth.phoneNumber] verifyOTP failed", {
-          phoneE164,
+          phoneE164: maskPhoneE164(phoneE164),
           error: error instanceof Error ? error.message : String(error),
         });
         return false;
@@ -89,7 +90,7 @@ export function buildPhoneNumberPlugin(options: {
           vars: {
             userName: authUser.name,
             whenDisplay: new Date().toUTCString(),
-            deviceSummary: `Phone number verified: ${phoneE164}`,
+            deviceSummary: `Phone number verified: ${maskPhoneE164(phoneE164)}`,
           },
         })
         .catch((err: unknown) => {
@@ -102,15 +103,29 @@ export function buildPhoneNumberPlugin(options: {
   });
 }
 
+async function requireSignedInSession(ctx: Parameters<typeof getSessionFromCtx>[0]): Promise<void> {
+  const session = await getSessionFromCtx(ctx);
+  if (!session?.session) {
+    throw new APIError("UNAUTHORIZED", { message: "Sign in required" });
+  }
+}
+
 export function buildPhoneNumberGuardPlugin(phoneNumberStore: PhoneNumberStore): BetterAuthPlugin {
   return {
     id: "phone-number-guard",
     hooks: {
       before: [
         {
-          matcher: (ctx) => ctx.path === "/phone-number/verify",
+          matcher: (ctx) =>
+            ctx.path === "/phone-number/send-otp" || ctx.path === "/phone-number/verify",
           handler: createAuthMiddleware(async (ctx) => {
             await phoneNumberStore.purgeExpiredVerifications();
+            await requireSignedInSession(ctx);
+            if (ctx.path === "/phone-number/verify" && ctx.body && typeof ctx.body === "object") {
+              const body = ctx.body as Record<string, unknown>;
+              body.disableSession = true;
+              body.updatePhoneNumber = true;
+            }
             return { context: ctx };
           }),
         },

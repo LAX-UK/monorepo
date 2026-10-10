@@ -1,4 +1,11 @@
 export const AUTH_ROUTE_PATH = "/api/auth";
+
+/** Better Auth paths (relative to AUTH_ROUTE_PATH) that must not be exposed. */
+export const DISABLED_AUTH_ENDPOINT_PATHS = [
+  "/phone-number/request-password-reset",
+  "/phone-number/reset-password",
+  "/sign-in/phone-number",
+] as const;
 export const JWKS_PATH = "/.well-known/jwks.json";
 export const OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration";
 export const AUTH_NO_STORE_HEADERS = {
@@ -45,6 +52,12 @@ export const AUTH_RATE_LIMIT_POLICY = {
   sendVerificationEmailMax: 3,
   phoneSendOtpWindowSec: 60,
   phoneSendOtpMax: 5,
+  phoneSendOtpSubjectWindowSec: 60 * 60,
+  phoneSendOtpSubjectMax: 5,
+  phoneSendOtpNumberWindowSec: 60 * 60,
+  phoneSendOtpNumberMax: 3,
+  phoneVerifySubjectWindowSec: 15 * 60,
+  phoneVerifySubjectMax: 10,
 } as const;
 
 export type OidcDiscoveryDocument = {

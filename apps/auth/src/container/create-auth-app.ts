@@ -73,6 +73,9 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     shopOrigin: options.oidc.env.SHOP_ORIGIN,
     shopAdminOrigin: options.oidc.env.SHOP_ADMIN_ORIGIN,
     bidOrigin: options.oidc.env.WEB_ORIGIN,
+    ...(options.oidc.env.LAX_ACCOUNT_ORIGIN
+      ? { accountOrigin: options.oidc.env.LAX_ACCOUNT_ORIGIN }
+      : {}),
     emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
     requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
     getSession: (headers) => options.oidc.auth.api.getSession({ headers }),

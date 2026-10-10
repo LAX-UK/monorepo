@@ -38,6 +38,7 @@ describe("LAX resource registry", () => {
       "profile",
       "email",
       "offline_access",
+      "phone",
       "bid.read",
       "bid.write",
       "shop.admin",

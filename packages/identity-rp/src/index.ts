@@ -13,6 +13,10 @@ export {
 } from "./pkce.js";
 export type { OidcAuthorizePrompt } from "./authorize-prompt.js";
 export { OIDC_AUTHORIZE_PROMPTS, isOidcAuthorizePrompt } from "./authorize-prompt.js";
+export {
+  classifyAuthorizationError,
+  type AuthorizationCallbackReason,
+} from "./authorization-error.js";
 export { assertRecentAuthentication } from "./auth-time.js";
 export type { AssertRecentAuthenticationInput } from "./auth-time.js";
 export { buildAuthorizeUrl } from "./authorize-url.js";

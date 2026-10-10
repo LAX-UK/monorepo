@@ -6,6 +6,7 @@ import { SecurityAccountMethods } from "@/components/settings/security-account-m
 import { SecuritySettingsAlerts } from "@/components/settings/security-settings-alerts";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
+import { redirectIdentitySettingsToLaxAccount } from "@/lib/lax-account-portal-redirect.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SecuritySettingsPage() {
+  redirectIdentitySettingsToLaxAccount("security");
   const me = await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings/security",

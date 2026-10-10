@@ -22,6 +22,10 @@ describe("cross-platform token claim contracts", () => {
       "email",
       "email_verified",
       "name",
+      "phone_number",
+      "phone_number_verified",
+      "picture",
+      "locale",
     ]);
     expect(CROSS_PLATFORM_ID_TOKEN_CLAIMS).not.toContain("role");
     expect(CROSS_PLATFORM_ID_TOKEN_CLAIMS).not.toContain("staff_role");

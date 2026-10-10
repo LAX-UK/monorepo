@@ -1,3 +1,4 @@
+import { showPasswordBreached } from "./password-breached.js";
 import { signUpOutcome } from "./sign-up-outcome.js";
 import { bindSocialCallbackError, bindSocialSignIn } from "./social-sign-in.js";
 import { submitEnabled } from "./turnstile.js";
@@ -39,7 +40,12 @@ form.addEventListener("submit", async (event) => {
     const outcome = signUpOutcome({
       requireEmailVerification: auth.config.requireEmailVerification,
       status: response.status,
+      data,
     });
+    if (outcome === "password-breached") {
+      showPasswordBreached(auth);
+      return;
+    }
     if (outcome === "check-email") {
       auth.showSuccess(auth.REGISTER_CHECK_EMAIL);
       return;

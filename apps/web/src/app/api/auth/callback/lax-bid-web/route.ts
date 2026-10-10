@@ -15,7 +15,7 @@ import {
   setBidSessionCookie,
 } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionStore, type PendingBidSession } from "@/lib/bff/session-store.server";
-import { classifySilentCallback } from "@auction/identity-rp";
+import { classifyAuthorizationError, classifySilentCallback } from "@auction/identity-rp";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -81,6 +81,21 @@ export async function GET(request: NextRequest) {
       if (id) await sessions.invalidate(id);
       return redirectSilentGuest(pending.nextPath);
     }
+  }
+
+  if (oauthError) {
+    if (id) await sessions.invalidate(id);
+    const mapped =
+      classifyAuthorizationError({
+        error: oauthError,
+        errorDescription: request.nextUrl.searchParams.get("error_description"),
+      }) ?? "auth_failed";
+    const restored = Boolean(replacesSessionId);
+    return buildLoginFailureResponse(
+      sessions,
+      loginErrorPath(mapped, pendingCtx, restored),
+      replacesSessionId,
+    );
   }
 
   if (!id || pending?.kind !== "pending" || !validateCallbackState(pending.state, state) || !code) {

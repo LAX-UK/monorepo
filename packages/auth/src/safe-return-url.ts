@@ -15,6 +15,7 @@ export function isSafeHostedReturnPath(path: string | null | undefined): boolean
     "/verify-email",
     "/resend-verification",
     "/two-factor",
+    "/two-factor/setup",
     "/auth/",
   ];
   for (const prefix of blockedPrefixes) {

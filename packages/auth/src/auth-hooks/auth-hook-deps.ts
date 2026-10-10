@@ -20,6 +20,7 @@ export type AuthHookDeps = {
         email: string;
         name: string;
         phoneNumber?: string | null;
+        phoneNumberVerified?: boolean | null;
         image?: string | null;
       }) => Promise<void>)
     | undefined;

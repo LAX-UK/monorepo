@@ -55,6 +55,7 @@ describe("user profile update hooks", () => {
       email: "user@example.com",
       name: "User",
       phoneNumber: null,
+      phoneNumberVerified: false,
       image: null,
     });
   });

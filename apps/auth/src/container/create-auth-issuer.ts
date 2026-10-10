@@ -16,6 +16,7 @@ import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
+import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
 import { adaptOidcClaimsResolver } from "../infrastructure/oidc-claim-resolver-adapter.js";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
 import type { OidcSessionCoordinator } from "../services/oidc-session-coordinator.js";
@@ -154,6 +155,9 @@ export function createAuthIssuer(options: {
         email: user.email,
         name: user.name,
         phone: user.phoneNumber ?? null,
+        ...(typeof user.phoneNumberVerified === "boolean"
+          ? { phoneVerified: user.phoneNumberVerified }
+          : {}),
         image: user.image ?? null,
       }),
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
@@ -161,5 +165,6 @@ export function createAuthIssuer(options: {
     resolveOidcIdTokenClaims: adaptOidcClaimsResolver((input) =>
       options.oidcSessions.resolveIdTokenClaims(input),
     ),
+    breachedPasswordChecker: new HibpRangeBreachedPasswordChecker(),
   });
 }

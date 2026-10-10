@@ -14,6 +14,7 @@ export const DEPLOY_COMPONENTS = [
   "shop-identity",
   "shop-api",
   "shop-admin",
+  "account",
   "shop",
 ];
 
@@ -27,6 +28,7 @@ export const COMPONENT_APP_ROOT = {
   shop: "apps/shop",
   "shop-api": "apps/shop-api",
   "shop-admin": "apps/shop-admin",
+  account: "apps/account",
   "shop-identity": "apps/shop-identity",
   migrate: "packages/db",
 };

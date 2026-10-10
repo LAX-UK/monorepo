@@ -72,6 +72,11 @@ export interface IIdentitySubjectRepository {
     subjectId: string,
   ): Promise<string[]>;
   deleteSubject(transaction: IdentityOperationTransaction, subjectId: string): Promise<boolean>;
+  resetTwoFactorEnrollment(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<boolean>;
 }
 
 export interface IIdentityCredentialRepository {

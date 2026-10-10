@@ -137,6 +137,15 @@ export class IdentityAccountSecurityHttpApplicationService
           body: { error: "Password does not meet policy", code: error.code },
         };
       }
+      if (error instanceof IdentityIssuerClientError && error.code === "password_breached") {
+        return {
+          status: 400,
+          body: {
+            error: "This password has appeared in a data breach. Choose a different one.",
+            code: error.code,
+          },
+        };
+      }
       throw error;
     }
   }
@@ -194,6 +203,21 @@ export class IdentityAccountSecurityHttpApplicationService
         body: {
           error: "A password is already set on this account.",
           code: "credential_already_set",
+        },
+      };
+    }
+    if (result.kind === "invalid_password_policy") {
+      return {
+        status: 400,
+        body: { error: "Password does not meet policy", code: result.kind },
+      };
+    }
+    if (result.kind === "password_breached") {
+      return {
+        status: 400,
+        body: {
+          error: "This password has appeared in a data breach. Choose a different one.",
+          code: result.kind,
         },
       };
     }

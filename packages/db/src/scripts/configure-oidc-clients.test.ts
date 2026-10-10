@@ -14,7 +14,15 @@ describe("OIDC client provisioning", () => {
 
   it("persists resource and scope policy for the promoted Shop client", () => {
     expect(JSON.parse(buildOidcClientMetadata("lax-shop-web"))).toEqual({
-      allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
+      allowedScopes: [
+        "openid",
+        "profile",
+        "email",
+        "offline_access",
+        "phone",
+        "shop.read",
+        "shop.write",
+      ],
       allowedResources: ["lax-shop-api"],
       pkceRequired: true,
       postLogoutRedirectUris: [

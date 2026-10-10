@@ -17,6 +17,7 @@ export {
   productHintHref,
   hostedSignUpRequested,
   normalizeAuthorizePromptForCreate,
+  appendOidcAuthorizeParams,
   type HostedAuthFlow,
   type HostedAuthProduct,
 } from "./flow-context.js";
@@ -71,11 +72,15 @@ export {
 } from "./pages/recovery.js";
 export { HOSTED_TWO_FACTOR_SCRIPT, buildHostedTwoFactorHtml } from "./pages/two-factor.js";
 export {
+  HOSTED_TWO_FACTOR_SETUP_SCRIPT,
+  buildHostedTwoFactorAlreadyEnabledHtml,
+  buildHostedTwoFactorSetupHtml,
+} from "./pages/two-factor-setup.js";
+export {
   HOSTED_VERIFY_EMAIL_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
   buildHostedVerifyEmailHtml,
   buildHostedResendVerificationHtml,
 } from "./pages/verification.js";
 export { HOSTED_MAGIC_LINK_SCRIPT, buildHostedMagicLinkHtml } from "./pages/magic-link.js";
-export { HOSTED_PHONE_SCRIPT, buildHostedPhoneHtml } from "./pages/phone.js";
 export { OIDC_CONSENT_SCRIPT, buildOidcConsentHtml } from "./pages/consent.js";

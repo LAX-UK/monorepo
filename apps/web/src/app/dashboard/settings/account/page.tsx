@@ -4,6 +4,7 @@ import { SettingsFormHeader } from "@/components/dashboard/settings-form-header"
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import { redirectIdentitySettingsToLaxAccount } from "@/lib/lax-account-portal-redirect.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -16,6 +17,7 @@ export default async function AccountSettingsPage({
 }: {
   searchParams: Promise<{ changed?: string }>;
 }) {
+  redirectIdentitySettingsToLaxAccount("account");
   const sp = await searchParams;
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const user = await requireAuthenticatedUser({

@@ -35,6 +35,7 @@ describe("registered OIDC clients", () => {
       "profile",
       "email",
       "offline_access",
+      "phone",
       "shop.read",
       "shop.write",
     ]);
@@ -70,7 +71,7 @@ describe("registered OIDC clients", () => {
 
   it("pre-authorizes Bid, Shop web, and Shop admin clients", () => {
     expect([...oidcClientIdsWithImplicitConsent()].sort()).toEqual(
-      ["lax-bid-web", "lax-shop-admin", "lax-shop-web"].sort(),
+      ["lax-account-web", "lax-bid-web", "lax-shop-admin", "lax-shop-web"].sort(),
     );
     expect(REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.WS_MOBILE].consentPolicy).toBe(
       "explicit",

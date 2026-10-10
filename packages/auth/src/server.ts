@@ -27,7 +27,7 @@ import { betterAuth } from "better-auth";
 import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import { AUTH_IP_ADDRESS_HEADERS } from "./client-ip-headers.js";
-import type { AuthLifecycleCallbacks } from "./contracts.js";
+import { type AuthLifecycleCallbacks, DISABLED_AUTH_ENDPOINT_PATHS } from "./contracts.js";
 import type { AuthDatabase } from "./phone-number-plugin.js";
 import type { AuthPorts } from "./ports/index.js";
 import {
@@ -81,6 +81,7 @@ export type AuthEnv = {
         email: string;
         name: string;
         phoneNumber?: string | null;
+        phoneNumberVerified?: boolean | null;
         image?: string | null;
       }) => Promise<void>)
     | undefined;
@@ -91,6 +92,7 @@ export type AuthEnv = {
   enableNewDeviceLoginEmail?: boolean | undefined;
   /** When true, `databaseHooks.user.create.before` rejects all new auth users. */
   blockNewUserRegistration?: boolean | undefined;
+  breachedPasswordChecker?: import("./ports/breached-password-checker.js").BreachedPasswordChecker;
   /** Request-scoped claims resolver used by the OIDC authorization-code flow. */
   resolveOidcIdTokenClaims?:
     | ((input: {
@@ -170,6 +172,7 @@ export function createAuth(env: AuthEnv): Auth {
     secret: env.secret,
     baseURL: issuer,
     basePath: "/api/auth",
+    disabledPaths: [...DISABLED_AUTH_ENDPOINT_PATHS],
     trustedOrigins: env.trustedOrigins,
     database: env.database,
     // Rate limiting is enforced once, at the issuer boundary, by the
@@ -246,6 +249,7 @@ export function createAuth(env: AuthEnv): Auth {
       phoneVerification: ports.sms,
       onEmailVerified: env.onEmailVerified,
       resolveOidcIdTokenClaims: env.resolveOidcIdTokenClaims,
+      breachedPasswordChecker: env.breachedPasswordChecker,
     }),
     advanced: {
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
@@ -262,6 +266,7 @@ export {
   AUTH_NO_STORE_HEADERS,
   AUTH_RATE_LIMIT_POLICY,
   AUTH_ROUTE_PATH,
+  DISABLED_AUTH_ENDPOINT_PATHS,
   buildOidcDiscoveryDocument,
   buildTrustedAuthOrigins,
   createAuthNoStoreMiddleware,

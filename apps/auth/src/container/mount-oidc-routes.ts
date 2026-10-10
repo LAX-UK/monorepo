@@ -91,7 +91,15 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/api/auth/*",
     createSendVerificationIssuerRateLimitMiddleware(options.redis, options.clientIp),
   );
-  app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(options.redis, options.clientIp));
+  app.use(
+    "/api/auth/*",
+    createAuthIssuerRateLimitMiddleware(options.redis, options.clientIp, {
+      resolveSubjectId: async (headers) => {
+        const session = await options.auth.api.getSession({ headers });
+        return session?.user?.id ?? null;
+      },
+    }),
+  );
   app.use("/api/auth/*", createMagicLinkIssuerRateLimitMiddleware(options.redis, options.clientIp));
   app.get("/.well-known/jwks.json", async (c) => {
     c.header("Cache-Control", "public, max-age=60");

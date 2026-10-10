@@ -36,7 +36,7 @@ export function createOidcRouteServices(options: {
     ...(options.log
       ? {
           onCorrelationFailure: (reason) => {
-            options.log!.warn({ reason }, "oidc_authorization_code_correlation_failed");
+            options.log?.warn({ reason }, "oidc_authorization_code_correlation_failed");
           },
         }
       : {}),

@@ -34,6 +34,7 @@ export type OidcDiscoveryDocument = {
     "shop.read",
     "shop.write",
     "shop.admin",
+    "phone",
   ];
   token_endpoint_auth_methods_supported: readonly [
     "client_secret_basic",
@@ -65,6 +66,10 @@ export type OidcDiscoveryDocument = {
     "email",
     "email_verified",
     "name",
+    "phone_number",
+    "phone_number_verified",
+    "picture",
+    "locale",
   ];
   code_challenge_methods_supported: readonly ["S256"];
   prompt_values_supported: readonly ["none", "login", "consent", "create", "select_account"];
@@ -107,6 +112,7 @@ export function buildOidcDiscoveryDocument(issuerUrl: string): OidcDiscoveryDocu
       "shop.read",
       "shop.write",
       "shop.admin",
+      "phone",
     ],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
     revocation_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
@@ -128,6 +134,10 @@ export function buildOidcDiscoveryDocument(issuerUrl: string): OidcDiscoveryDocu
       "email",
       "email_verified",
       "name",
+      "phone_number",
+      "phone_number_verified",
+      "picture",
+      "locale",
     ],
     code_challenge_methods_supported: ["S256"],
     prompt_values_supported: ["none", "login", "consent", "create", "select_account"],

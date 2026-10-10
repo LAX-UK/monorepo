@@ -47,6 +47,12 @@ on:
       shop_admin_digest:
         type: string
         required: false
+      account_sha:
+        type: string
+        required: false
+      account_digest:
+        type: string
+        required: false
       app_image_tag:
         type: string
         required: false
@@ -150,6 +156,7 @@ jobs:
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
       TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
       TF_VAR_shop_admin_image_tag: ${{ inputs.shop_admin_sha }}
+      TF_VAR_account_image_tag: ${{ inputs.account_sha }}
       TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || 'true' }}
       TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
       TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}

@@ -13,10 +13,8 @@ import {
 import {
   createAddressBodySchema,
   mediaReferenceSchema,
-  type phoneInputSchema,
   updateAddressBodySchema,
   updateProfileNameFormSchema,
-  updateProfileSchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -35,28 +33,6 @@ export async function updateProfileNameFromValuesAction(input: {
     }
     const { profile } = getWriteContainer();
     const r = await profile.updateProfile({ name: parsed.data.name });
-    if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
-    }
-    revalidatePath("/dashboard/settings/profile");
-    revalidatePath("/dashboard");
-    return actionSuccess();
-  });
-}
-
-export async function updateProfilePhoneFromValuesAction(input: {
-  phone: z.infer<typeof phoneInputSchema> | null;
-  mobile?: null;
-}): Promise<ActionResult<void>> {
-  return instrumentServerAction("updateProfilePhoneFromValuesAction", async () => {
-    const parsed = updateProfileSchema.safeParse(
-      input.phone === null ? { phone: null, mobile: null } : { phone: input.phone },
-    );
-    if (!parsed.success) {
-      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
-    }
-    const { profile } = getWriteContainer();
-    const r = await profile.updateProfile(parsed.data);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }

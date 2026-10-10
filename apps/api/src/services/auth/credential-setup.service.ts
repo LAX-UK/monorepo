@@ -8,7 +8,18 @@ export async function setupCredentialPassword(args: {
   password: string;
   sessionTokenFromCookie?: string | undefined;
   authAudit?: IAuthAuditPublisher | undefined;
-}): Promise<{ ok: true } | { ok: false; kind: "user_not_found" | "already_set" | "db_error" }> {
+}): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      kind:
+        | "user_not_found"
+        | "already_set"
+        | "invalid_password_policy"
+        | "password_breached"
+        | "db_error";
+    }
+> {
   const { container, userId, password, authAudit } = args;
 
   try {
@@ -23,6 +34,12 @@ export async function setupCredentialPassword(args: {
     }
     if (error instanceof IdentityIssuerClientError && error.code === "already_set") {
       return { ok: false, kind: "already_set" };
+    }
+    if (
+      error instanceof IdentityIssuerClientError &&
+      (error.code === "invalid_password_policy" || error.code === "password_breached")
+    ) {
+      return { ok: false, kind: error.code };
     }
     return { ok: false, kind: "db_error" };
   }

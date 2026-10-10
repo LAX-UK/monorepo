@@ -17,10 +17,10 @@ const entries = {
   "hosted-forgot-password": join(src, "forgot-password.entry.ts"),
   "hosted-reset-password": join(src, "reset-password.entry.ts"),
   "hosted-two-factor": join(src, "two-factor.entry.ts"),
+  "hosted-two-factor-setup": join(src, "two-factor-setup.entry.ts"),
   "hosted-verify-email": join(src, "verify-email.entry.ts"),
   "hosted-resend-verification": join(src, "resend-verification.entry.ts"),
   "hosted-magic-link": join(src, "magic-link.entry.ts"),
-  "hosted-phone": join(src, "phone.entry.ts"),
   "oidc-consent": join(src, "consent.entry.ts"),
 };
 

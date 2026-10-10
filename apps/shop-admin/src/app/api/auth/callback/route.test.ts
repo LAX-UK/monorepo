@@ -70,4 +70,38 @@ describe("GET /api/auth/callback", () => {
       "https://admin.example.com/login?error=auth_failed",
     );
   });
+
+  it("maps OAuth login_required to mfa_required", async () => {
+    cookieStore.set(SHOP_ADMIN_LOGIN_COOKIE, {
+      value: JSON.stringify({ state: "s", nonce: "n", codeVerifier: "v", returnTo: "/" }),
+    });
+    const { GET } = await import("./route.js");
+    const response = await GET(
+      new Request(
+        "https://internal:3030/api/auth/callback?error=login_required&error_description=Silver+ACR+required&state=s",
+      ),
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://admin.example.com/login?error=mfa_required",
+    );
+    expect(cookieStore.has(SHOP_ADMIN_LOGIN_COOKIE)).toBe(false);
+  });
+
+  it("maps access_denied", async () => {
+    const { GET } = await import("./route.js");
+    const response = await GET(
+      new Request("https://internal:3030/api/auth/callback?error=access_denied&state=s"),
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://admin.example.com/login?error=access_denied",
+    );
+  });
+
+  it("uses missing_code only when callback has neither code nor error", async () => {
+    const { GET } = await import("./route.js");
+    const response = await GET(new Request("https://internal:3030/api/auth/callback"));
+    expect(response.headers.get("location")).toBe(
+      "https://admin.example.com/login?error=missing_code",
+    );
+  });
 });

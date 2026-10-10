@@ -7,6 +7,7 @@ import { DrizzleIdentitySubjectRepository } from "../infrastructure/drizzle-iden
 import { DrizzleIdentityUnitOfWork } from "../infrastructure/drizzle-identity-unit-of-work.js";
 import { DrizzleIdentityVerificationPurger } from "../infrastructure/drizzle-identity-verification-purger.js";
 import { EmailIdentityNotifier } from "../infrastructure/email-identity-notifier.js";
+import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
 import type { BackchannelLogoutService } from "../services/backchannel-logout.service.js";
 import { IdentityOperationsService } from "../services/identity-operations.service.js";
 
@@ -31,5 +32,7 @@ export function createIdentityOperationsService(options: {
     options.productSubjectUsage,
     options.identityEventPublisher,
     options.logout,
+    undefined,
+    new HibpRangeBreachedPasswordChecker(),
   );
 }

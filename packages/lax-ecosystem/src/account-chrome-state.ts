@@ -4,6 +4,7 @@ export type AccountChromeState =
       kind: "authenticated";
       displayName: string;
       email: string;
+      verifiedPhone?: string;
       accountHref: string;
       logoutHref: string;
     }
@@ -14,6 +15,7 @@ export type ShopIdentityMePayload = {
   authenticated?: boolean;
   subject?: string;
   profile?: { email?: string | null; name?: string | null };
+  verifiedPhone?: string;
   reason?: string;
   tokenUpgradeRequired?: boolean;
 };
@@ -66,6 +68,7 @@ export function mapShopMeToAccountChromeState(
       kind: "authenticated",
       displayName,
       email,
+      ...(payload.verifiedPhone ? { verifiedPhone: payload.verifiedPhone } : {}),
       accountHref: destinations.accountHref,
       logoutHref: destinations.logoutHref,
     };

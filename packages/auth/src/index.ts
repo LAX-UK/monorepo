@@ -1,4 +1,9 @@
 export { createAuth, type Auth, type AuthEnv } from "./server.js";
+export { decideSilverAcrStep, type SilverAcrStep } from "./silver-acr-step.js";
+export type {
+  BreachedPasswordChecker,
+  BreachedPasswordCheckResult,
+} from "./ports/breached-password-checker.js";
 export {
   AUTH_IP_ADDRESS_HEADERS,
   CLIENT_IP_HEADER_NAMES,
@@ -35,22 +40,24 @@ export {
   HOSTED_FORGOT_PASSWORD_SCRIPT,
   HOSTED_RESET_PASSWORD_SCRIPT,
   HOSTED_TWO_FACTOR_SCRIPT,
+  HOSTED_TWO_FACTOR_SETUP_SCRIPT,
   HOSTED_VERIFY_EMAIL_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
   HOSTED_MAGIC_LINK_SCRIPT,
-  HOSTED_PHONE_SCRIPT,
   buildHostedLoginHtml,
   buildHostedSignUpHtml,
   buildHostedForgotPasswordHtml,
   buildHostedResetPasswordHtml,
   buildHostedTwoFactorHtml,
+  buildHostedTwoFactorAlreadyEnabledHtml,
+  buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   buildHostedResendVerificationHtml,
   buildHostedMagicLinkHtml,
-  buildHostedPhoneHtml,
   hostedAuthViewFromSearch,
   createHostedAuthView,
   parseHostedAuthFlow,
+  appendOidcAuthorizeParams,
   hostedSignUpRequested,
   normalizeAuthorizePromptForCreate,
   readHostedBidLogoLightSvg,

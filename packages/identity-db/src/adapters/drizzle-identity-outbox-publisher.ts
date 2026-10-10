@@ -22,6 +22,7 @@ export type IdentityOutboxLifecycleEvent =
       email?: string;
       name?: string;
       phone?: string | null;
+      phoneVerified?: boolean;
       image?: string | null;
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
@@ -123,6 +124,7 @@ function buildOutboxRow(
           ...(event.email !== undefined ? { email: event.email } : {}),
           ...(event.name !== undefined ? { name: event.name } : {}),
           ...(event.phone !== undefined ? { phone: event.phone } : {}),
+          ...(event.phoneVerified !== undefined ? { phoneVerified: event.phoneVerified } : {}),
           ...(event.image !== undefined ? { image: event.image } : {}),
           updatedAt: new Date().toISOString(),
         },

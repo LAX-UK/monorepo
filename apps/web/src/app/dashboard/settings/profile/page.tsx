@@ -9,6 +9,7 @@ import {
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
+import { redirectIdentitySettingsToLaxAccount } from "@/lib/lax-account-portal-redirect.server";
 import { resolvePhoneDefaultCountry } from "@/lib/phone/resolve-phone-default-country";
 
 export default async function ProfileSettingsPage({
@@ -16,6 +17,7 @@ export default async function ProfileSettingsPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  redirectIdentitySettingsToLaxAccount("profile");
   const sp = await searchParams;
   const err = sp.error ? decodeURIComponent(sp.error) : null;
 

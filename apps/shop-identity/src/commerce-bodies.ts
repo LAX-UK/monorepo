@@ -18,6 +18,8 @@ export const upsertBasketLineBodySchema = z.union([
     .strict(),
 ]);
 
+export const DELIVERY_PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{6,19}$/;
+
 const deliveryAddressSchema = z.object({
   line1: z.string().min(1).max(200),
   line2: z.string().max(200).optional(),
@@ -35,6 +37,12 @@ export function createCheckoutBodySchema(storefrontOrigin: string) {
       successUrl: z.string().url(),
       cancelUrl: z.string().url(),
       deliveryAddress: deliveryAddressSchema.optional(),
+      deliveryPhone: z
+        .string()
+        .min(8)
+        .max(20)
+        .regex(DELIVERY_PHONE_PATTERN, "Enter a valid delivery phone number")
+        .optional(),
     })
     .superRefine((body, ctx) => {
       for (const field of ["successUrl", "cancelUrl"] as const) {
@@ -61,6 +69,22 @@ export function createCheckoutBodySchema(storefrontOrigin: string) {
           message: "Delivery address is required",
           path: ["deliveryAddress"],
         });
+      }
+      if (body.fulfilment === "uk_insured_delivery" && body.deliveryAddress) {
+        const phone = body.deliveryPhone?.trim();
+        if (!phone) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Delivery phone is required",
+            path: ["deliveryPhone"],
+          });
+        } else if (!DELIVERY_PHONE_PATTERN.test(phone)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Enter a valid delivery phone number",
+            path: ["deliveryPhone"],
+          });
+        }
       }
       if (
         body.fulfilment === "uk_insured_delivery" &&

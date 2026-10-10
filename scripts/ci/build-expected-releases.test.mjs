@@ -24,6 +24,13 @@ describe("buildExpectedReleases", () => {
     assert.equal(expected["https://test.lax.bid/api/health/ready"], undefined);
   });
 
+  it("expects the account release on its readiness route only when account is pinned", () => {
+    const pinned = buildExpectedReleases({ targetSha: sha, tagMap: { account: sha } });
+    assert.deepEqual(pinned, { "https://test-account.lax.bid/health/ready": sha });
+    const unpinned = buildReadinessUrls({ targetSha: sha, tagMap: { account: old } });
+    assert.deepEqual(unpinned, []);
+  });
+
   it("includes shop readiness when only shop-api is pinned", () => {
     const urls = buildReadinessUrls({
       targetSha: sha,

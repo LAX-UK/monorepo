@@ -1,4 +1,5 @@
 import type { createAuth } from "@auction/auth";
+import { appendOidcAuthorizeParams, decideSilverAcrStep } from "@auction/auth";
 import {
   AUTH_ROUTE_PATH,
   OIDC_ACR_SILVER,
@@ -6,8 +7,8 @@ import {
   type RegisteredOidcClientId,
 } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
-import { user } from "@auction/identity-db/schema";
-import { eq } from "drizzle-orm";
+import { account, user } from "@auction/identity-db/schema";
+import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import type { OidcRpSessionRepository } from "../services/oidc-session-coordinator.js";
 
@@ -16,10 +17,15 @@ function requestsSilverAcr(acrValues: string | null): boolean {
   return acrValues.split(/\s+/).some((part) => part.trim() === OIDC_ACR_SILVER);
 }
 
-function loginRequiredRedirect(redirectUri: string, state: string | null): string {
+function oauthErrorRedirect(
+  redirectUri: string,
+  state: string | null,
+  error: string,
+  description: string,
+): string {
   const target = new URL(redirectUri);
-  target.searchParams.set("error", "login_required");
-  target.searchParams.set("error_description", "Silver ACR required");
+  target.searchParams.set("error", error);
+  target.searchParams.set("error_description", description);
   if (state) target.searchParams.set("state", state);
   return target.toString();
 }
@@ -67,6 +73,7 @@ export function createSilverAcrAuthorizeGateMiddleware(options: {
       await next();
       return;
     }
+
     if (identitySession.mfaCompletedAt) {
       await next();
       return;
@@ -77,11 +84,43 @@ export function createSilverAcrAuthorizeGateMiddleware(options: {
       .from(user)
       .where(eq(user.id, subjectId))
       .limit(1);
-    if (subject?.twoFactorEnabled) {
+
+    const [credentialAccount] = await options.db
+      .select({ id: account.id })
+      .from(account)
+      .where(and(eq(account.userId, subjectId), eq(account.providerId, "credential")))
+      .limit(1);
+
+    const canEnrolTotp = Boolean(credentialAccount?.id);
+
+    const step = decideSilverAcrStep({
+      mfaCompletedAt: identitySession.mfaCompletedAt,
+      twoFactorEnabled: Boolean(subject?.twoFactorEnabled),
+      canEnrolTotp,
+    });
+
+    if (step === "pass") {
+      await next();
+      return;
+    }
+    if (step === "verify") {
       const twoFactor = new URL("/two-factor", options.issuerOrigin);
-      twoFactor.searchParams.set("client_id", clientId);
+      appendOidcAuthorizeParams(twoFactor, params, { ensureClientId: clientId });
       return c.redirect(twoFactor.toString(), 302);
     }
-    return c.redirect(loginRequiredRedirect(redirectUri, state), 302);
+    if (step === "setup") {
+      const setup = new URL("/two-factor/setup", options.issuerOrigin);
+      appendOidcAuthorizeParams(setup, params, { ensureClientId: clientId });
+      return c.redirect(setup.toString(), 302);
+    }
+    return c.redirect(
+      oauthErrorRedirect(
+        redirectUri,
+        state,
+        "unmet_authentication_requirements",
+        "Multi-factor authentication is required but cannot be configured for this account",
+      ),
+      302,
+    );
   };
 }

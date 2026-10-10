@@ -12,11 +12,11 @@ import {
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
-  buildHostedPhoneHtml,
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
   buildHostedTwoFactorHtml,
+  buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   buildOidcConsentHtml,
 } from "./index.js";
@@ -46,8 +46,8 @@ describe("issuer-hosted credential HTML", () => {
     ["verify-email", buildHostedVerifyEmailHtml()],
     ["resend-verification", buildHostedResendVerificationHtml()],
     ["two-factor", buildHostedTwoFactorHtml()],
+    ["two-factor-setup", buildHostedTwoFactorSetupHtml()],
     ["magic-link", buildHostedMagicLinkHtml()],
-    ["phone", buildHostedPhoneHtml()],
   ])("renders shared hosted shell styling for %s", (_label, html) => {
     expect(html).toContain('class="brand"');
     expect(html).toContain('class="panel"');
@@ -68,8 +68,8 @@ describe("issuer-hosted credential HTML", () => {
     ["reset-password", buildHostedResetPasswordHtml()],
     ["resend-verification", buildHostedResendVerificationHtml()],
     ["two-factor", buildHostedTwoFactorHtml()],
+    ["two-factor-setup", buildHostedTwoFactorSetupHtml()],
     ["magic-link", buildHostedMagicLinkHtml()],
-    ["phone", buildHostedPhoneHtml()],
   ])("uses floating-label primitives and scoped buttons on %s", (_label, html) => {
     expect(html).toContain("field-control");
     expect(html).toContain("btn btn-primary");
@@ -117,8 +117,7 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain('data-login-step="magic-link-sent"');
     expect(html).toContain("Forgot password?");
     expect(html).toContain("Email me a sign-in link instead");
-    expect(html).toContain("Sign in with phone number");
-    expect(html).toContain('href="/phone?client_id=lax-shop-web"');
+    expect(html).not.toContain("Sign in with phone number");
     expect(html).toContain('href="/forgot-password?client_id=lax-shop-web"');
     expect(html).not.toMatch(/href="\/[^"]*code_challenge/);
     expect(html).not.toMatch(/href="\/[^"]*state=/);

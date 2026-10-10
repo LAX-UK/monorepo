@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import "@auction/branding/brand-primitives.css" layer(base);
+
+@theme {
+  --color-page-bg: #f6f5f2;
+  --color-surface: #ffffff;
+  --color-on-surface: #1c170d;
+  --color-on-surface-variant: #5c5c5c;
+  --color-primary: var(--brand-obsidian);
+  --color-on-primary: var(--brand-light-cream);
+  --color-link: var(--brand-midnight);
+  --color-ring: var(--brand-midnight);
+  --color-outline: color-mix(in srgb, var(--brand-light-gray) 70%, white);
+  --color-success: #1f7a35;
+  --color-success-container: #e6f4ea;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-info-container: #eef2fb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page-bg: #0f0f0f;
+    --color-surface: #181818;
+    --color-on-surface: #f2efe8;
+    --color-on-surface-variant: #b3b0a8;
+    --color-primary: var(--brand-light-cream);
+    --color-on-primary: var(--brand-obsidian);
+    --color-link: color-mix(in srgb, var(--brand-midnight) 55%, white);
+    --color-ring: color-mix(in srgb, var(--brand-midnight) 55%, white);
+    --color-outline: #2e2e2e;
+    --color-success: #56d364;
+    --color-success-container: #12261a;
+    --color-error: #ffb4ab;
+    --color-error-container: #3a1414;
+    --color-info-container: #1a1f2b;
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
