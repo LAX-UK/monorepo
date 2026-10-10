@@ -1,5 +1,19 @@
-import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
+import {
+  describePostVerifyNextStep,
+  resolvePostVerifyDestination,
+} from "@/lib/auth/post-verify-destination";
 import { describe, expect, it } from "vitest";
+
+describe("describePostVerifyNextStep", () => {
+  it.each([
+    ["/onboarding/interests?next=%2Fdashboard&source=post_verify", /what you collect/],
+    ["/onboarding/identity?next=%2Fdashboard&source=post_verify", /verify your identity/],
+    ["/onboarding/organisation", /set up your organisation/],
+    ["/dashboard", /ready to use/],
+  ])("previews %s", (href, copy) => {
+    expect(describePostVerifyNextStep(href)).toMatch(copy);
+  });
+});
 
 describe("resolvePostVerifyDestination", () => {
   it("starts the full flow once for a newly verified individual", () => {

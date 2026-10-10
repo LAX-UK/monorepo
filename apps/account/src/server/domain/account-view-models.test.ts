@@ -54,8 +54,20 @@ describe("buildAccountLinks", () => {
     expect(links).toEqual({
       setUpAuthenticator: "https://test-auth.lax.bid/two-factor/setup?client_id=lax-account-web",
       changePassword: "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
+      verifyEmail: "https://test-auth.lax.bid/resend-verification?client_id=lax-account-web",
       editProfile: "https://test.lax.bid/dashboard/settings/profile",
     });
+  });
+
+  it("prefills the account email on the hosted resend-verification page", () => {
+    const url = new URL(
+      buildAccountLinks(
+        { oidcIssuer: "https://test-auth.lax.bid", oidcClientId: "lax-account-web" },
+        { email: "collector@example.com" },
+      ).verifyEmail,
+    );
+    expect(url.pathname).toBe("/resend-verification");
+    expect(url.searchParams.get("email")).toBe("collector@example.com");
   });
 
   it("omits the profile link when Bid is not configured", () => {

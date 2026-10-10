@@ -10,7 +10,7 @@ prose when they diverge.
 | Concern | Owner | Must not |
 |---------|--------|----------|
 | Credentials, MFA, canonical `sub`, OIDC grants, host-only sessions, logout delivery | LAX Identity (`apps/auth`, product BFFs) | Live in product settings UI or shared “account” monolith tables |
-| Profile, security UI copy, connected products list, global locale, communication consent | Shared LAX Account experience (future portal; contracts in `@auction/lax-ecosystem`) | Replace product roles, org memberships, or commerce/auction notification prefs |
+| Profile, security UI copy, connected products list, global locale, communication consent | Shared LAX Account experience (`apps/account`, D34; contracts in `@auction/lax-ecosystem`) | Replace product roles, org memberships, or commerce/auction notification prefs |
 | Product roles, entitlements, org context, domain workflows, operational data | Each product (`apps/web` / Bid, `apps/shop`, …) | Query Identity tables or import `@auction/auth/server` from Shop |
 | Product discovery URLs, safe cross-origin links, header account chrome view models | `@auction/lax-ecosystem` (pure policy) + per-app composition roots | Hardcode production origins in components |
 
@@ -43,6 +43,18 @@ Adapters must map session lookup to a discriminated union:
 - `unavailable` — session reader failed; show recovery copy, not guest CTAs.
 
 Shared mapping helpers live in `@auction/lax-ecosystem`; Bid and Shop each provide an adapter that satisfies the same contract tests.
+`authenticated` carries `emailVerified` only when the session ID token states it; absence
+means unknown and must not render an unverified warning.
+
+## Sign-up and onboarding ownership
+
+| Step | Owner | Notes |
+|------|-------|-------|
+| Sign-up, email verification, resend | LAX Identity hosted pages | Products enter via `prompt=create`; resend is `/resend-verification?client_id=…` |
+| Unverified-email prompts | Each product + LAX Account | Bid: verify-pending guard and dashboard strip; Shop: account notice via shop-identity `/auth/verify-email`; portal: “Verify email” row action |
+| Conditions of Business, persona | Bid (`/onboarding/account`) | Product-local |
+| Interests, recommendations, KYC | Bid (`/onboarding/*`, D19/D20) | Skippable except where bidding is server-gated |
+| Shop onboarding | None beyond sign-in | Basket merge in `/account/post-sign-in` |
 
 ## Product directory contract
 

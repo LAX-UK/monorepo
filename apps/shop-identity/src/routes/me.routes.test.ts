@@ -220,4 +220,76 @@ describe("GET /me", () => {
       tokenUpgradeRequired: false,
     });
   });
+
+  it("surfaces the email_verified claim from the stored ID token", async () => {
+    const session: ShopIdentitySession = { id: "sess-3", subject: "sub-3", sid: null, oauth: null };
+    const app = createTestApp({
+      sessionRepository: activeSessionRepository(session),
+      findShopProfile: vi.fn(async () => ({
+        identitySubjectId: "sub-3",
+        email: "new@example.com",
+        name: null,
+        disabledAt: null,
+      })),
+      tokenService: createTestTokenService({
+        readIdTokenForLogout: vi.fn(async () => unsignedIdToken({ email_verified: false })),
+      }),
+    });
+    const response = await app.request("/me", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_ID}` },
+    });
+    await expect(response.json()).resolves.toMatchObject({ emailVerified: false });
+  });
+});
+
+function activeSessionRepository(session: ShopIdentitySession | null): ShopSessionRepository {
+  return {
+    findActive: vi.fn(async () => session),
+    createPendingOAuth: vi.fn(),
+    attachPendingOAuthToAuthenticatedSession: vi.fn(async () => true),
+    createGuestSession: vi.fn(),
+    authenticate: vi.fn(),
+    invalidate: vi.fn(),
+    consumeLogoutToken: vi.fn(),
+  };
+}
+
+function unsignedIdToken(claims: Record<string, unknown>): string {
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none" })}.${encode({ sub: "sub-3", ...claims })}.`;
+}
+
+describe("GET /auth/verify-email", () => {
+  it("redirects signed-in shoppers to hosted resend with client and email", async () => {
+    const session: ShopIdentitySession = { id: "sess-4", subject: "sub-4", sid: null, oauth: null };
+    const app = createTestApp({
+      sessionRepository: activeSessionRepository(session),
+      findShopProfile: vi.fn(async () => ({
+        identitySubjectId: "sub-4",
+        email: "verify@example.com",
+        name: null,
+        disabledAt: null,
+      })),
+    });
+    const response = await app.request("/auth/verify-email", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${SESSION_ID}` },
+    });
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.origin).toBe(baseEnv.OIDC_ISSUER_URL);
+    expect(location.pathname).toBe("/resend-verification");
+    expect(location.searchParams.get("client_id")).toBe("lax-shop-web");
+    expect(location.searchParams.get("email")).toBe("verify@example.com");
+  });
+
+  it("sends guests to storefront sign-in", async () => {
+    const app = createTestApp({
+      sessionRepository: activeSessionRepository(null),
+      findShopProfile: vi.fn(),
+    });
+    const response = await app.request("/auth/verify-email");
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3020/login?returnTo=%2Faccount",
+    );
+  });
 });

@@ -138,8 +138,9 @@ export function ComplianceStatusStrip({
       icon: AlertTriangle,
       label: "Email",
       value: "Unverified",
-      href: "/dashboard/settings/account",
+      href: "/register/verify-pending?next=%2Fdashboard",
       tone: "warn",
+      hint: "Resend the verification link to your inbox",
     });
   } else if (user.emailStatus === "bounced") {
     pills.push({

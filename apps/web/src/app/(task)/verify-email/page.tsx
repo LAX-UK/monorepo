@@ -1,7 +1,10 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyEmailSuccessRedirect } from "@/components/auth/verify-email-success-redirect";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
-import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
+import {
+  describePostVerifyNextStep,
+  resolvePostVerifyDestination,
+} from "@/lib/auth/post-verify-destination";
 import { tryConsumePendingInviteAfterVerify } from "@/lib/auth/post-verify-invite.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { isFullBuyerOnboardingEnabled } from "@/lib/kyc/full-buyer-onboarding-rollout.server";
@@ -75,6 +78,8 @@ export default async function VerifyEmailPage({
           ...(sessionUser?.kycStatus !== undefined ? { kycStatus: sessionUser.kycStatus } : {}),
         });
 
+  const resendEmail = email || sessionUser?.email || "";
+
   if (error) {
     return (
       <main id="main-content">
@@ -89,8 +94,11 @@ export default async function VerifyEmailPage({
                 This verification link is no longer valid. Send a new link and try again.
               </AlertDescription>
             </Alert>
-            {email ? (
-              <VerifyPendingActions email={email} />
+            {resendEmail ? (
+              <VerifyPendingActions
+                email={resendEmail}
+                {...(queryNext ? { next: queryNext } : {})}
+              />
             ) : (
               <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
                 <Link href="/login">Return to sign in</Link>
@@ -113,8 +121,11 @@ export default async function VerifyEmailPage({
           description="Open the verification link we sent to your inbox to finish setting up your account."
         >
           <div className="flex flex-col gap-6">
-            {email ? (
-              <VerifyPendingActions email={email} {...(queryNext ? { next: queryNext } : {})} />
+            {resendEmail ? (
+              <VerifyPendingActions
+                email={resendEmail}
+                {...(queryNext ? { next: queryNext } : {})}
+              />
             ) : (
               <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
                 <Link href="/login">Return to sign in</Link>
@@ -138,15 +149,12 @@ export default async function VerifyEmailPage({
       <AuthLayout
         chrome="task"
         title="Email verified"
-        description="Your account email has been confirmed. You can continue to your dashboard."
+        description={describePostVerifyNextStep(destination.href)}
       >
         <div className="flex flex-col gap-6">
-          <output
-            className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
-            aria-live="polite"
-          >
-            Email verified — you&apos;re ready to use London Art Exchange.
-          </output>
+          <p className="rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container">
+            Email verified — your London Art Exchange account is secured.
+          </p>
           <VerifyEmailSuccessRedirect href={destination.href} />
           <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
             <Link href={destination.href} prefetch>

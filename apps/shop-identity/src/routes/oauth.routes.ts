@@ -144,7 +144,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
         ? returnTo
         : null;
-    const isInteractiveLogin = !options?.prompt;
+    const isInteractiveLogin = !options?.prompt || options.prompt === "create";
     if (
       isInteractiveLogin &&
       !options?.requireAuthenticatedSession &&
@@ -247,7 +247,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       return skipBackgroundAuthStart(c);
     }
     clearShopSilentSuppressed(c);
-    return startShopAuthorization(c);
+    return startShopAuthorization(c, { prompt: "create" });
   });
 
   app.get("/auth/sso-probe", async (c) => {
