@@ -95,7 +95,7 @@ describe.skipIf(!HAS_DB)("invitation product grants (integration)", () => {
 
   afterAll(cleanup);
 
-  it("applies the Bid grant and emits a Shop grant event for an existing account", async () => {
+  it("applies the Bid grant and records a granted event per platform for an existing account", async () => {
     const { id, tokenHash } = await invite(
       [
         { product: "bid", role: "specialist" },
@@ -117,19 +117,21 @@ describe.skipIf(!HAS_DB)("invitation product grants (integration)", () => {
       .where(eq(bidUserProfile.userId, memberId));
     expect(profile).toEqual({ role: "staff", staffRole: "specialist" });
     const events = await grantedEvents(id);
-    expect(events).toEqual([
-      {
-        producer: "apps/api",
-        payload: {
-          schemaVersion: 1,
-          subjectId: memberId,
-          product: "shop",
-          role: "broker",
-          grantedBySubjectId: inviterId,
-          invitationId: id,
-        },
+    const grant = (product: "bid" | "shop", role: string) => ({
+      producer: "apps/api",
+      payload: {
+        schemaVersion: 1,
+        subjectId: memberId,
+        product,
+        role,
+        grantedBySubjectId: inviterId,
+        invitationId: id,
       },
-    ]);
+    });
+    expect(events).toHaveLength(2);
+    expect(events).toEqual(
+      expect.arrayContaining([grant("bid", "specialist"), grant("shop", "broker")]),
+    );
     const [row] = await db
       .select({ status: userInvitation.status, acceptedUserId: userInvitation.acceptedUserId })
       .from(userInvitation)

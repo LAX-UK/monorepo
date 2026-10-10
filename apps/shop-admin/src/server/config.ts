@@ -15,6 +15,7 @@ const configSchema = z.object({
   sessionEncryptionKey: z.string().min(32),
   sessionTtlSeconds: z.coerce.number().int().min(300).default(604_800),
   release: z.string().optional(),
+  bidPublicUrl: z.string().url().optional(),
 });
 
 export type ShopAdminConfig = z.infer<typeof configSchema>;
@@ -45,6 +46,7 @@ export function loadShopAdminConfig(source: NodeJS.ProcessEnv = process.env): Sh
     sessionEncryptionKey: source.SHOP_ADMIN_SESSION_ENCRYPTION_KEY,
     sessionTtlSeconds: source.SHOP_ADMIN_SESSION_TTL_SECONDS ?? "604800",
     release: source.SENTRY_RELEASE ?? source.GITHUB_SHA,
+    bidPublicUrl: source.LAX_BID_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
   });
   if (!parsed.success) {
     console.error(parsed.error.flatten());

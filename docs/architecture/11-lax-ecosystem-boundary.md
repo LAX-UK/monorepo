@@ -44,6 +44,8 @@ tables. Platform names, role labels and summaries come from `LAX_STAFF_PLATFORMS
 | Accept (existing account) | Bid web | `/invitations/accept/:token` |
 | Apply Shop grant | `apps/shop-api` (`shop_staff_access_inbox`) | Audited like a manual Shop Admin grant |
 | Launch each platform | Bid web | `/invitations/welcome` |
+| See and change access on every platform | Bid admin (`lax_staff_access_directory`) | **Admin → Staff**, **LAX access** tab, with history and pending changes |
+| Grant a Shop role to an existing login | Shop Admin | **Staff → Add staff by email** |
 
 ## SOLID module map
 

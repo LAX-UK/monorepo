@@ -10,6 +10,7 @@ import { buildClientsDrawerHref } from "@/lib/admin/people/clients-list-href";
 import { buildStaffDrawerHref } from "@/lib/admin/people/staff-list-href";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import type { StaffAccessSummary } from "@/lib/data/http/staff-access.server";
 import type { UserStaffRole } from "@auction/types";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -69,7 +70,10 @@ export function PeopleClientsMobileCards({ rows }: Props) {
   );
 }
 
-export function PeopleStaffMobileCards({ rows }: Props) {
+export function PeopleStaffMobileCards({
+  rows,
+  access,
+}: Props & { access: Record<string, StaffAccessSummary> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -84,6 +88,7 @@ export function PeopleStaffMobileCards({ rows }: Props) {
                 router.push(buildStaffDrawerHref(searchParams, user.id), { scroll: false })
               }
               roleLabel={staffRoleLabel(user.staffRole as UserStaffRole | null)}
+              platforms={access[user.id]?.platforms}
             />
           </UserMobileCardRow>
         </li>

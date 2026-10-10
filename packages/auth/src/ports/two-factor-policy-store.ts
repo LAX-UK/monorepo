@@ -27,4 +27,6 @@ export type TwoFactorPolicyStore = {
   countCoverage(scope: TwoFactorPolicyScope): Promise<{ members: number; enrolled: number }>;
   /** Subjects that exist mapped to whether they have two-step verification on. */
   readTwoFactorEnabled(subjectIds: readonly string[]): Promise<Map<string, boolean>>;
+  /** Newest session start per subject, among the sessions Identity still holds. */
+  readLastSignIn(subjectIds: readonly string[]): Promise<Map<string, Date>>;
 };

@@ -1,18 +1,12 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
-  domainEvent,
   emailOutbox,
   userInvitation,
   userInvitationProductGrant,
   type userStaffRoleEnum,
 } from "@auction/db/schema";
-import type {
-  LaxStaffAccessGrantedPayloadV1,
-  LaxStaffGrant,
-  UserRole,
-  UserStaffRole,
-} from "@auction/types";
+import type { LaxStaffGrant, UserRole, UserStaffRole } from "@auction/types";
 import { type SQL, and, asc, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
@@ -24,6 +18,7 @@ import type {
   InvitationRow,
   InvitationSummary,
 } from "../interfaces/invitation.repository.js";
+import { insertLaxStaffAccessEvents } from "./drizzle-lax-staff-access.repository.js";
 
 const inviter = bidIdentityDirectory;
 
@@ -264,30 +259,21 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         });
       }
 
-      const remote = grants.filter((g) => g.product !== "bid");
-      if (remote.length > 0) {
-        await tx.insert(domainEvent).values(
-          remote.map((g) => {
-            const payload: LaxStaffAccessGrantedPayloadV1 = {
-              schemaVersion: 1,
-              subjectId: userId,
-              product: g.product,
-              role: g.role,
-              grantedBySubjectId: row.createdByUserId,
-              invitationId: row.id,
-            };
-            return {
-              aggregateType: "user",
-              aggregateId: userId,
-              eventType: "lax.staff_access.granted",
-              producer: this.producer,
-              payload,
-              actorUserId: userId,
-              schemaVersion: 1,
-            };
-          }),
-        );
-      }
+      await insertLaxStaffAccessEvents(
+        tx,
+        this.producer,
+        grants.map((g) => ({
+          type: "lax.staff_access.granted" as const,
+          payload: {
+            schemaVersion: 1 as const,
+            subjectId: userId,
+            product: g.product,
+            role: g.role,
+            grantedBySubjectId: row.createdByUserId,
+            invitationId: row.id,
+          },
+        })),
+      );
 
       return { outcome: "ok", targetRole: bidGrant ? "staff" : targetRole, grants };
     });

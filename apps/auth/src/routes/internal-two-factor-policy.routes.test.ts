@@ -16,6 +16,7 @@ function setup() {
     readTwoFactorEnabled: vi.fn(
       async (ids: readonly string[]) => new Map(ids.map((id) => [id, id === "subject-1"])),
     ),
+    readLastSignIn: vi.fn(async () => new Map([["subject-1", AT]])),
   } satisfies TwoFactorPolicyStore;
   const readRequirement = vi.fn(async () => ({
     required: true,
@@ -111,8 +112,8 @@ describe("internal two-step verification policy routes", () => {
 
     expect(await response.json()).toEqual({
       statuses: [
-        { subjectId: "subject-1", twoFactorEnabled: true },
-        { subjectId: "subject-2", twoFactorEnabled: false },
+        { subjectId: "subject-1", twoFactorEnabled: true, lastSignInAt: AT.toISOString() },
+        { subjectId: "subject-2", twoFactorEnabled: false, lastSignInAt: null },
       ],
     });
     expect(tooMany.status).toBe(400);

@@ -24,14 +24,14 @@ export async function decideSaleAuthorityRequest(input: {
 }
 
 export async function grantStaffRole(input: {
-  identitySubjectId: string;
+  email: string;
   role: string;
   idempotencyKey?: string;
 }) {
   return forwardAdminJsonMutation({
     bffPath: "staff/grants",
     method: "POST",
-    jsonBody: { identitySubjectId: input.identitySubjectId, role: input.role },
+    jsonBody: { email: input.email, role: input.role },
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
   });
 }

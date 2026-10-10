@@ -112,18 +112,19 @@ export class AdminUserService {
       if (targetStaff == null) {
         throw new AuthzError("staffRole is required when role is staff", 400);
       }
-      await this.roles.setRoleAndStaff(targetUserId, "staff", targetStaff);
+      await this.roles.setRoleAndStaff(targetUserId, "staff", targetStaff, actorUserId);
       return;
     }
 
     if (targetStaff != null) {
       throw new AuthzError("staffRole must be omitted when role is client", 400);
     }
-    await this.roles.setRoleAndStaff(targetUserId, "client", null);
+    await this.roles.setRoleAndStaff(targetUserId, "client", null, actorUserId);
   }
 
   async setStaffRole(
     actorRole: string,
+    actorUserId: string,
     targetUserId: string,
     staffRole: UserStaffRole | null,
     actorStaffRole?: string | null,
@@ -140,7 +141,7 @@ export class AdminUserService {
     if (staffRole == null) {
       throw new AuthzError("staffRole is required for staff accounts", 400);
     }
-    await this.roles.setRoleAndStaff(targetUserId, "staff", staffRole);
+    await this.roles.setRoleAndStaff(targetUserId, "staff", staffRole, actorUserId);
   }
 
   async suspend(

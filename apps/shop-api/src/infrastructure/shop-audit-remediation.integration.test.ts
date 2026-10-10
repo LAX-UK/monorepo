@@ -3,6 +3,7 @@ import {
   shopArtwork,
   shopOrder,
   shopSaleAuthorityRequest,
+  shopStaffMember,
   shopUserProfile,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
@@ -26,7 +27,10 @@ import { createDrizzleAdminReadRepository } from "./drizzle-admin-read.repositor
 import { createDrizzlePortalOwnershipRepository } from "./drizzle-portal-ownership.repository.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
 import { revokeShopStaffRoleInTx } from "./grant-staff-role.js";
-import { createRevokeStaffRoleHandler } from "./handlers/admin/grant-staff-role.handler.js";
+import {
+  createGrantStaffRoleHandler,
+  createRevokeStaffRoleHandler,
+} from "./handlers/admin/grant-staff-role.handler.js";
 import {
   createLinkArtistIdentityHandler,
   createUnlinkArtistIdentityHandler,
@@ -192,6 +196,44 @@ describe.skipIf(!hasShopIntegrationDb)("shop audit remediation integration", () 
       .where(eq(shopSaleAuthorityRequest.id, created.requestId))
       .limit(1);
     expect(row?.id).toBe(created.requestId);
+  });
+
+  it("grants a staff role by email through the shop login profile", async () => {
+    const db = createShopDb(shopPool);
+    const grantStaff = createGrantStaffRoleHandler({ uow: createDrizzleShopUnitOfWork(db, "off") });
+    const suffix = integrationSuffix("grant-email");
+    const identitySubjectId = `staff-email-${suffix}`;
+    const email = `staff-${suffix}@example.test`;
+    await db.insert(shopUserProfile).values({ identitySubjectId, email, name: "Staff By Email" });
+
+    const granted = await grantStaff({
+      email: email.toUpperCase(),
+      role: "broker",
+      operatorSubjectId: `operator-${suffix}`,
+      idempotencyKey: `grant-email-${suffix}`,
+    });
+
+    expect(granted).toEqual({ subject: identitySubjectId });
+    const [member] = await db
+      .select({ role: shopStaffMember.role })
+      .from(shopStaffMember)
+      .where(eq(shopStaffMember.identitySubjectId, identitySubjectId));
+    expect(member?.role).toBe("broker");
+  });
+
+  it("refuses an email grant when no shop login exists", async () => {
+    const db = createShopDb(shopPool);
+    const grantStaff = createGrantStaffRoleHandler({ uow: createDrizzleShopUnitOfWork(db, "off") });
+    const suffix = integrationSuffix("grant-missing");
+
+    await expect(
+      grantStaff({
+        email: `nobody-${suffix}@example.test`,
+        role: "broker",
+        operatorSubjectId: `operator-${suffix}`,
+        idempotencyKey: `grant-missing-${suffix}`,
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it("returns 409 when concurrent revokes would remove the last shop admin", async () => {

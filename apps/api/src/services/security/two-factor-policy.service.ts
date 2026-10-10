@@ -36,7 +36,13 @@ export class TwoFactorPolicyForbiddenError extends Error {
 export class TwoFactorPolicyService {
   constructor(
     private readonly deps: {
-      identity: IIdentityTwoFactorPolicyClient;
+      identity: Pick<
+        IIdentityTwoFactorPolicyClient,
+        | "readTwoFactorRequirement"
+        | "readTwoFactorPolicy"
+        | "writeTwoFactorPolicy"
+        | "readTwoFactorStatuses"
+      >;
       members: Pick<ILegalEntityMemberRepository, "listMembersWithUsers">;
       audit: IAuthAuditPublisher;
     },

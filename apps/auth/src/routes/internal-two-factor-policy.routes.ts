@@ -56,11 +56,16 @@ export function mountTwoFactorPolicyRoutes(app: Hono, deps: TwoFactorPolicyRoute
     if (!ids || ids.length > MAX_STATUS_BATCH) {
       return c.json({ error: "subject_ids_required" }, 400);
     }
-    const enabled = await deps.store.readTwoFactorEnabled([...new Set(ids)]);
+    const unique = [...new Set(ids)];
+    const [enabled, lastSignIn] = await Promise.all([
+      deps.store.readTwoFactorEnabled(unique),
+      deps.store.readLastSignIn(unique),
+    ]);
     return c.json({
       statuses: [...enabled].map(([subjectId, twoFactorEnabled]) => ({
         subjectId,
         twoFactorEnabled,
+        lastSignInAt: lastSignIn.get(subjectId)?.toISOString() ?? null,
       })),
     });
   });

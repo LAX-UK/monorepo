@@ -6,15 +6,23 @@ import {
 } from "@/lib/admin/people/build-staff-list-page-model";
 import { getAdminUserList } from "@/lib/data/http/admin-users.reader";
 import { EMPTY_ADMIN_USER_LIST_SUMMARY } from "@/lib/data/http/admin-users.shared";
+import {
+  type StaffAccessSummary,
+  getServerStaffAccessSummaries,
+} from "@/lib/data/http/staff-access.server";
 
 export async function loadAdminStaffListPage(sp: StaffListSearchParams) {
   const model = buildStaffListPageModel(sp);
 
   try {
     const page = await getAdminUserList(model.listQueryParams);
+    const access = await getServerStaffAccessSummaries(page.rows.map((row) => row.id)).catch(
+      (): Record<string, StaffAccessSummary> => ({}),
+    );
     return {
       model,
       rows: page.rows,
+      access,
       summary: page.summary,
       total: page.total,
       hasNextPage: page.hasNextPage,
@@ -45,6 +53,7 @@ export async function loadAdminStaffListPage(sp: StaffListSearchParams) {
     return {
       model,
       rows: [],
+      access: {} as Record<string, StaffAccessSummary>,
       summary: EMPTY_ADMIN_USER_LIST_SUMMARY,
       total: 0,
       hasNextPage: false,
