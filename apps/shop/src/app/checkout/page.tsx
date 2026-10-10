@@ -12,6 +12,7 @@ import {
 import {
   basketCheckoutBlockMessage,
   basketCheckoutBlockReasons,
+  basketKnownEmpty,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
@@ -36,7 +37,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
     redirect(shopStorefrontLoginHref("/checkout"));
   }
 
-  if (!params.basketMerge && basketResult.status === "ok" && basketResult.data.lines.length === 0) {
+  if (!params.basketMerge && basketKnownEmpty(basketResult)) {
     redirect("/basket");
   }
 
