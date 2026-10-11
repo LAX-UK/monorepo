@@ -45,10 +45,19 @@ import {
 import {
   PortalArtistArtworksResponseSchema,
   PortalArtistSalesResponseSchema,
+  type PortalCollectionItem,
+  PortalCollectionResponseSchema,
   type PortalDocument,
   PortalDocumentsResponseSchema,
   type PortalEdition,
   PortalEditionsResponseSchema,
+  PortalEnquiriesResponseSchema,
+  type PortalEnquiry,
+  type PortalPayeeConnectConfig,
+  PortalPayeeConnectConfigSchema,
+  PortalPayeeConnectSessionResponseSchema,
+  type PortalPayeeConnectStatus,
+  PortalPayeeConnectStatusSchema,
   type PortalPayout,
   PortalPayoutsResponseSchema,
   type PortalSaleAuthority,
@@ -235,6 +244,9 @@ export function parsePortalArtistSales(value: unknown): {
     artworkTitle: string;
     editionNumber: number | null;
     grossPence: number;
+    feesPence: number | null;
+    netPence: number | null;
+    arrApplicable: boolean | null;
     occurredAt: string | null;
   }>;
 } {
@@ -242,4 +254,39 @@ export function parsePortalArtistSales(value: unknown): {
     throw new ShopContractParseError("Invalid portal artist sales payload");
   }
   return { artist: value.artist, items: value.items };
+}
+
+export function parsePortalCollection(value: unknown): PortalCollectionItem[] {
+  if (!Value.Check(PortalCollectionResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal collection payload");
+  }
+  return value.items;
+}
+
+export function parsePortalPayeeConnectStatus(value: unknown): PortalPayeeConnectStatus {
+  if (!Value.Check(PortalPayeeConnectStatusSchema, value)) {
+    throw new ShopContractParseError("Invalid portal payout account status payload");
+  }
+  return value;
+}
+
+export function parsePortalPayeeConnectConfig(value: unknown): PortalPayeeConnectConfig {
+  if (!Value.Check(PortalPayeeConnectConfigSchema, value)) {
+    throw new ShopContractParseError("Invalid portal payout account config payload");
+  }
+  return value;
+}
+
+export function parsePortalPayeeConnectSession(value: unknown): { clientSecret: string } {
+  if (!Value.Check(PortalPayeeConnectSessionResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal payout account session payload");
+  }
+  return value;
+}
+
+export function parsePortalEnquiries(value: unknown): PortalEnquiry[] {
+  if (!Value.Check(PortalEnquiriesResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal enquiries payload");
+  }
+  return value.items;
 }

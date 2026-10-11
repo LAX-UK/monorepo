@@ -127,6 +127,9 @@ export const PortalArtistSaleSchema = Type.Object({
   artworkTitle: Type.String(),
   editionNumber: Type.Union([Type.Integer(), Type.Null()]),
   grossPence: Type.Integer(),
+  feesPence: Type.Union([Type.Integer(), Type.Null()]),
+  netPence: Type.Union([Type.Integer(), Type.Null()]),
+  arrApplicable: Type.Union([Type.Boolean(), Type.Null()]),
   occurredAt: Type.Union([Type.String(), Type.Null()]),
 });
 
@@ -141,3 +144,82 @@ export type PortalSaleAuthorityRequest = Static<typeof PortalSaleAuthorityReques
 export type PortalPayout = Static<typeof PortalPayoutSchema>;
 export type PortalDocument = Static<typeof PortalDocumentSchema>;
 export type PortalSaleStatement = Static<typeof PortalSaleStatementSchema>;
+
+export const PortalCollectionEditionItemSchema = Type.Object({
+  kind: Type.Literal("edition"),
+  editionId: Type.String({ format: "uuid" }),
+  artworkId: Type.String({ format: "uuid" }),
+  artworkSlug: Type.String(),
+  artworkTitle: Type.String(),
+  salesChannel: Type.Union([Type.Literal("shop"), Type.Literal("art")]),
+  editionNumber: Type.Integer(),
+  listingStatus: Type.String(),
+  custodyStatus: Type.String(),
+});
+
+export const PortalCollectionOriginalItemSchema = Type.Object({
+  kind: Type.Literal("original"),
+  originalSaleId: Type.String({ format: "uuid" }),
+  artworkId: Type.String({ format: "uuid" }),
+  artworkSlug: Type.String(),
+  artworkTitle: Type.String(),
+  salesChannel: Type.Union([Type.Literal("shop"), Type.Literal("art")]),
+  status: Type.String(),
+  acquiredAt: Type.String(),
+});
+
+export const PortalCollectionItemSchema = Type.Union([
+  PortalCollectionEditionItemSchema,
+  PortalCollectionOriginalItemSchema,
+]);
+
+export const PortalCollectionResponseSchema = Type.Object({
+  items: Type.Array(PortalCollectionItemSchema),
+});
+
+export const PortalEnquirySchema = Type.Object({
+  enquiryId: Type.String({ format: "uuid" }),
+  artworkId: Type.String({ format: "uuid" }),
+  artworkSlug: Type.String(),
+  artworkTitle: Type.String(),
+  salesChannel: Type.Union([Type.Literal("shop"), Type.Literal("art")]),
+  intent: Type.String(),
+  status: Type.String(),
+  createdAt: Type.String(),
+});
+
+export const PortalEnquiriesResponseSchema = Type.Object({
+  items: Type.Array(PortalEnquirySchema),
+});
+
+export type PortalCollectionItem = Static<typeof PortalCollectionItemSchema>;
+export type PortalEnquiry = Static<typeof PortalEnquirySchema>;
+
+/** Payee's payout account on the LAX Art Stripe platform (D38). */
+export const PortalPayeeConnectStatusSchema = Type.Object({
+  stripeAccountId: Type.Union([Type.String(), Type.Null()]),
+  chargesEnabled: Type.Boolean(),
+  payoutsEnabled: Type.Boolean(),
+  requirementsCurrentlyDue: Type.Array(Type.String()),
+  disabledReason: Type.Union([Type.String(), Type.Null()]),
+  ready: Type.Boolean(),
+});
+
+export const PortalPayeeConnectConfigSchema = Type.Object({
+  publishableKey: Type.Union([Type.String(), Type.Null()]),
+  connectConfigured: Type.Boolean(),
+});
+
+export const PortalPayeeConnectSessionBodySchema = Type.Object({
+  surface: Type.Union([Type.Literal("onboarding"), Type.Literal("management")]),
+});
+
+export const PortalPayeeConnectSessionResponseSchema = Type.Object({
+  clientSecret: Type.String({ minLength: 1 }),
+});
+
+export type PortalPayeeConnectStatus = Static<typeof PortalPayeeConnectStatusSchema>;
+export type PortalPayeeConnectConfig = Static<typeof PortalPayeeConnectConfigSchema>;
+export type PortalPayeeConnectSurface = Static<
+  typeof PortalPayeeConnectSessionBodySchema
+>["surface"];
