@@ -43,6 +43,8 @@ const env = {
   OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB:
     process.env.OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB ??
     "ci-lax-account-web-client-secret-at-least-32",
+  OIDC_CLIENT_SECRET_LAX_ART_WEB:
+    process.env.OIDC_CLIENT_SECRET_LAX_ART_WEB ?? "ci-lax-art-web-client-secret-at-least-32",
   AUTH_APP_DB_PASSWORD: process.env.AUTH_APP_DB_PASSWORD ?? "postgres",
   API_APP_DB_PASSWORD: process.env.API_APP_DB_PASSWORD ?? "postgres",
   SHOP_APP_DB_PASSWORD: process.env.SHOP_APP_DB_PASSWORD ?? "postgres",
