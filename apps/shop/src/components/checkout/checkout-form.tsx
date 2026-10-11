@@ -5,12 +5,12 @@ import { CheckoutBasketSummary } from "@/components/checkout/checkout-basket-sum
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { ShopStatusState } from "@/components/shop-status-state";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
 import { isValidUkPostcode } from "@/lib/uk-postcode";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
 import type { BasketView } from "@auction/shop-contracts";
 import { fulfilmentSurchargePence } from "@auction/shop-domain";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import { Input, Label, RadioCardGroup } from "@auction/ui";
 import { useMemo, useState, useTransition } from "react";
 

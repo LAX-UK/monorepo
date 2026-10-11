@@ -1,16 +1,12 @@
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@/lib/shop-api.server", () => ({
-  shopApiServerUrl: (path: string) => `http://shop-api.test${path}`,
-}));
+import { createPortalFetchers } from "./create-portal-fetchers.js";
 
 describe("resolveShopPortalOwnershipEnabled", () => {
   const originalEnv = process.env.SHOP_PORTAL_OWNERSHIP_ENABLED;
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    vi.resetModules();
     if (originalEnv === undefined) {
       process.env.SHOP_PORTAL_OWNERSHIP_ENABLED = undefined;
     } else {
@@ -18,9 +14,12 @@ describe("resolveShopPortalOwnershipEnabled", () => {
     }
   });
 
-  async function loadResolver() {
-    const mod = await import("./shop-portal.server.js");
-    return mod.resolveShopPortalOwnershipEnabled;
+  function createResolver() {
+    return createPortalFetchers({
+      commerceRequest: vi.fn(),
+      shopApiServerUrl: (path: string) => `http://shop-api.test${path}`,
+      readOwnershipEnvFlag: () => process.env.SHOP_PORTAL_OWNERSHIP_ENABLED?.trim(),
+    }).resolveShopPortalOwnershipEnabled;
   }
 
   it("returns true when storefront env is true without probing", async () => {
@@ -28,8 +27,7 @@ describe("resolveShopPortalOwnershipEnabled", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const resolve = await loadResolver();
-    await expect(resolve()).resolves.toBe(true);
+    await expect(createResolver()()).resolves.toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -38,8 +36,7 @@ describe("resolveShopPortalOwnershipEnabled", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const resolve = await loadResolver();
-    await expect(resolve()).resolves.toBe(false);
+    await expect(createResolver()()).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -47,8 +44,7 @@ describe("resolveShopPortalOwnershipEnabled", () => {
     process.env.SHOP_PORTAL_OWNERSHIP_ENABLED = undefined;
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
 
-    const resolve = await loadResolver();
-    await expect(resolve()).resolves.toBe(true);
+    await expect(createResolver()()).resolves.toBe(true);
   });
 
   it("probes shop-api and treats feature_disabled as disabled", async () => {
@@ -62,7 +58,6 @@ describe("resolveShopPortalOwnershipEnabled", () => {
         ),
     );
 
-    const resolve = await loadResolver();
-    await expect(resolve()).resolves.toBe(false);
+    await expect(createResolver()()).resolves.toBe(false);
   });
 });

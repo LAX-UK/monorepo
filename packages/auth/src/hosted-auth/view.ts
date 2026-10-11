@@ -9,6 +9,7 @@ export type HostedAuthCapabilities = {
   phoneEnabled: boolean;
   turnstileSiteKey: string | null;
   shopOrigin: string;
+  artOrigin: string;
   shopAdminOrigin: string;
   bidOrigin: string;
   accountOrigin?: string;
@@ -44,13 +45,15 @@ export function buildHostedAuthPageConfig(
   const restartUrl =
     flow.product === "shop"
       ? `${trimOrigin(capabilities.shopOrigin)}/login`
-      : flow.product === "shop-admin"
-        ? `${trimOrigin(capabilities.shopAdminOrigin)}/`
-        : flow.product === "bid"
-          ? `${trimOrigin(capabilities.bidOrigin)}/login`
-          : flow.product === "account" && capabilities.accountOrigin
-            ? `${trimOrigin(capabilities.accountOrigin)}/api/auth/login`
-            : "/login";
+      : flow.product === "art"
+        ? `${trimOrigin(capabilities.artOrigin)}/login`
+        : flow.product === "shop-admin"
+          ? `${trimOrigin(capabilities.shopAdminOrigin)}/`
+          : flow.product === "bid"
+            ? `${trimOrigin(capabilities.bidOrigin)}/login`
+            : flow.product === "account" && capabilities.accountOrigin
+              ? `${trimOrigin(capabilities.accountOrigin)}/api/auth/login`
+              : "/login";
   return {
     authorizeResumePath: flow.authorizeResumePath,
     loginPath: flow.loginPath,
@@ -81,6 +84,7 @@ export const EMPTY_HOSTED_AUTH_CAPABILITIES: HostedAuthCapabilities = {
   phoneEnabled: false,
   turnstileSiteKey: null,
   shopOrigin: "http://localhost:3020",
+  artOrigin: "http://localhost:3050",
   shopAdminOrigin: "http://localhost:3030",
   bidOrigin: "http://localhost:3000",
   emailFirst: true,
@@ -105,11 +109,18 @@ export function resolveHostedProductBackLink(view: HostedAuthView): HostedProduc
   const origin =
     view.flow.product === "shop"
       ? view.capabilities.shopOrigin
-      : view.flow.product === "bid"
-        ? view.capabilities.bidOrigin
-        : null;
+      : view.flow.product === "art"
+        ? view.capabilities.artOrigin
+        : view.flow.product === "bid"
+          ? view.capabilities.bidOrigin
+          : null;
   if (!origin) return null;
   const href = origin.replace(/\/$/, "");
-  const label = view.flow.product === "shop" ? "Back to LAX Shop" : "Back to LAX Bid";
+  const label =
+    view.flow.product === "shop"
+      ? "Back to LAX Shop"
+      : view.flow.product === "art"
+        ? "Back to LAX Art"
+        : "Back to LAX Bid";
   return { href, label };
 }

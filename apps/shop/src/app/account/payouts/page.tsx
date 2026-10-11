@@ -3,10 +3,6 @@ import { ShopPayoutAccountPanel } from "@/components/account/shop-payout-account
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { buildPayoutAccountViewModel } from "@/lib/account/payout-account.vm";
-import { resolvePortalPayoutStatusPresentation } from "@/lib/presenters/portal-payout-status.presenter";
-import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import {
   fetchPortalPayeeConnect,
   fetchPortalPayouts,
@@ -17,6 +13,12 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
+import {
+  buildPayoutAccountViewModel,
+  formatGbpPence,
+  formatShopDate,
+  resolvePortalPayoutStatusPresentation,
+} from "@auction/shop-portal/vm";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { notFound, redirect } from "next/navigation";
 

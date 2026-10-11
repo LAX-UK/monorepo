@@ -23,7 +23,11 @@ describe("coalesceImageSha", () => {
 describe("resolveLiveTerraformImageTags", () => {
   it("maps live component tags to terraform variables", () => {
     const tags = resolveLiveTerraformImageTags({
-      services: [...liveServices, { name: "account", image: { tag: sha("7") } }],
+      services: [
+        ...liveServices,
+        { name: "account", image: { tag: sha("7") } },
+        { name: "art", image: { tag: sha("2") } },
+      ],
     });
     assert.equal(tags.app_image_tag, sha("a"));
     assert.equal(tags.shop_image_tag, sha("c"));
@@ -31,11 +35,18 @@ describe("resolveLiveTerraformImageTags", () => {
     assert.equal(tags.shop_api_image_tag, sha("e"));
     assert.equal(tags.shop_admin_image_tag, sha("f"));
     assert.equal(tags.account_image_tag, sha("7"));
+    assert.equal(tags.art_image_tag, sha("2"));
   });
 
   it("allows shop-admin override when infra health path needs a newer image", () => {
     const tags = resolveLiveTerraformImageTags(
-      { services: [...liveServices, { name: "account", image: { tag: sha("7") } }] },
+      {
+        services: [
+          ...liveServices,
+          { name: "account", image: { tag: sha("7") } },
+          { name: "art", image: { tag: sha("2") } },
+        ],
+      },
       { inputShopAdminImageTag: sha("9") },
     );
     assert.equal(tags.shop_admin_image_tag, sha("9"));
@@ -43,7 +54,13 @@ describe("resolveLiveTerraformImageTags", () => {
 
   it("allows shop-api override from workflow input", () => {
     const tags = resolveLiveTerraformImageTags(
-      { services: [...liveServices, { name: "account", image: { tag: sha("7") } }] },
+      {
+        services: [
+          ...liveServices,
+          { name: "account", image: { tag: sha("7") } },
+          { name: "art", image: { tag: sha("2") } },
+        ],
+      },
       { inputShopApiImageTag: sha("0") },
     );
     assert.equal(tags.shop_api_image_tag, sha("0"));
@@ -55,6 +72,15 @@ describe("resolveLiveTerraformImageTags", () => {
       { inputAccountImageTag: sha("8") },
     );
     assert.equal(tags.account_image_tag, sha("8"));
+    assert.equal(tags.art_image_tag, "");
+  });
+
+  it("uses the art input before the art component exists", () => {
+    const tags = resolveLiveTerraformImageTags(
+      { services: liveServices },
+      { inputArtImageTag: sha("1"), inputAccountImageTag: sha("8") },
+    );
+    assert.equal(tags.art_image_tag, sha("1"));
   });
 
   it("fails closed when account is neither live nor provided", () => {

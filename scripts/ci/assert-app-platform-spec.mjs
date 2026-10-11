@@ -18,6 +18,7 @@ export const PINNED_COMPONENTS = [
   "shop-api",
   "shop-admin",
   "account",
+  "art",
 ];
 
 function parseArgs(argv) {

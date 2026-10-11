@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPayoutAccountViewModel } from "./payout-account.vm";
+import { buildPayoutAccountViewModel } from "./payout-account.vm.js";
 
 const base = {
   stripeAccountId: "acct_1",

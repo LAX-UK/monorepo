@@ -67,4 +67,4 @@ export async function listShopOrders(): Promise<ShopFetchResult<OrderSummary[]>>
   }
 }
 
-export { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
+export { formatGbpPence } from "@auction/shop-portal/vm";

@@ -39,10 +39,9 @@ When `Set-Login: logged-in|logged-out` is emitted from Identity (`apps/auth`), b
 
 Release (Set-Login and FedCM Identity routes):
 
-1. `pnpm ci:identity-closure-sync` — verify `lax-identity` closure matches `apps/auth`.
-2. Publish the lax-identity image for the merge SHA (identity deploy workflow).
-3. Run staging recovery with the new image digest and re-baseline the identity soak gate.
-4. Roll Shop/Bid `SILENT_SSO_ENABLED` only after Identity is live on test.
+1. Merge to the monorepo; app deploy builds and pins `lax-test-auth` for the merge SHA.
+2. Run staging recovery with the new image digest and re-baseline the identity soak gate.
+3. Roll Shop/Bid `SILENT_SSO_ENABLED` only after Identity is live on test.
 
 ## FedCM
 
@@ -78,6 +77,6 @@ Automated Playwright coverage is not checked in: it needs real test origins, `SI
 
 Turnstile (`TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`) must be set on the **auth** App Platform component (not only web/api) so hosted login renders the widget and enforces captcha after repeated failed passwords. Confirm Cloudflare Turnstile hostname allow-list includes `test-auth.lax.bid` / `auth.lax.bid`.
 
-## CI: lax-identity closure
+## CI: Identity closure
 
-PRs touching `apps/auth/**` run **Identity closure sync** against `lax-identity@main`. Merge the paired lax-identity closure PR (or sync SHA) before expecting that check to pass on the monorepo PR.
+`LAX-UK/lax-identity` is archived; Auth ships from the monorepo. `pnpm ci:identity-extractability` keeps the closure extractable — no paired mirror PR is needed.

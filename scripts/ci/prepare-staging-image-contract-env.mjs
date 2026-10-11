@@ -52,6 +52,8 @@ const pairs = [
   ["SHOP_API_SHA", "INPUT_SHOP_API_SHA", "TF_VAR_shop_api_image_tag", "lax-test-shop-api", ""],
 ];
 
+const optionalPairs = [["ART_SHA", "INPUT_ART_SHA", "TF_VAR_art_image_tag", "lax-test-art", ""]];
+
 for (const [shaKey, inputKey, tfKey, repository, liveFallback] of pairs) {
   let sha = pickSha(inputKey, tfKey);
   if (!sha && liveFallback) {
@@ -69,6 +71,15 @@ for (const [shaKey, inputKey, tfKey, repository, liveFallback] of pairs) {
       `${shaKey} is required (workflow input, ${tfKey || "live auth tag with DOCR digest"}, or live App Platform pin)`,
     );
   }
+  const digestKey = shaKey.replace("_SHA", "_DIGEST");
+  const digest = resolveDigest(repository, sha);
+  writeEnv(shaKey, sha);
+  writeEnv(digestKey, digest);
+}
+
+for (const [shaKey, inputKey, tfKey, repository] of optionalPairs) {
+  const sha = pickSha(inputKey, tfKey);
+  if (!sha) continue;
   const digestKey = shaKey.replace("_SHA", "_DIGEST");
   const digest = resolveDigest(repository, sha);
   writeEnv(shaKey, sha);

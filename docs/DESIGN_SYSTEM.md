@@ -59,6 +59,41 @@ LAX products share identity, branding, and ecosystem contracts; each product kee
 
 New products (e.g. Artist Growth) add a row to `@auction/lax-ecosystem` product directory and their own Figma-owned layout—they do not fork Bid or Shop repos.
 
+### lax.art: the "Apple model" rule
+
+lax.art (`apps/art`) is the first product built **composition-only** on shared packages:
+
+- **Shared behaviour, product-owned layout.** Every interactive control comes from `@auction/ui` (Button, Input, Textarea, Select, Label, Alert, Skeleton, DotStatusPill) or `@auction/marketing-ui` (heart toggle, side sheet, bottom tab bar, filter sheet/sidebar, card media). Art owns only page composition, Tailwind layout and copy.
+- **No local primitives.** If Art needs a control that does not exist, it is added to the shared package (with a test) and then consumed. Raw `<button>`, `<input>`, `<select>`, `<textarea>`, `lucide-react`, `vaul` and direct `@radix-ui/*` are rejected by `scripts/check-ui-guardrails.mjs` for `apps/art/src`.
+- **Shared presenters.** Money/date formatting and portal row VMs come from `@auction/shop-portal/vm`; Art does not copy Shop presenters.
+- **Theme contract.** Semantic tokens only (`apps/art/src/app/base.css`); palette utilities and raw hex outside `base.css` fail `scripts/ci/verify-art-theme.test.mjs`.
+- **Layering.** `page.tsx` composes, `lib/<area>/*-page.composer.ts` orchestrates via injected ports (`lib/ports.ts`, wired in `lib/art-services.server.ts`), `*.server.ts` does I/O, `*.vm.ts` is pure and unit-tested, client islands are `*.client.tsx`.
+
+### Primitive audit (Shop · Bid · Art)
+
+Counts are files importing the primitive (excluding tests) at the time of the lax.art MVP pass; "—" means unused.
+
+| Primitive | Shared package | Shop usage | Bid usage | Art usage | Notes / local duplicates |
+|-----------|----------------|------------|-----------|-----------|--------------------------|
+| Button | `@auction/ui/components/button` | 10 (account, auth entry) | 447 | 9 (incl. `underline` / `inline` variants for text links) | Shop storefront chrome still uses ~15 files of BEM-styled raw controls; Shop is not yet covered by the guardrails script |
+| Input / Label | `@auction/ui` | — | 54 / 41 | 4 / 4 (filters, search, enquiry) | Shop forms use BEM inputs |
+| Textarea | `@auction/ui` | — | 39 | 1 (enquiry) | |
+| Select | `@auction/ui` | — | 27 | 1 (catalogue sort) | |
+| Alert | `@auction/ui` | — | 81 | 2 (enquiry sheet and panel) | Shop renders inline notices |
+| Skeleton | `@auction/ui` | — | 29 | 1 (route skeletons) | Shop has local `shop-page-skeleton` / `shop-route-loading` |
+| DotStatusPill | `@auction/ui` | 10 | 32 | 1 | Registries emit tones only |
+| Sheet / Dialog | `@auction/ui` | Dialog 1 | Sheet 7, Dialog 18 | via `MarketingSideSheet` | Bid has product-specific sheets (iOS install, venue drawer, admin filters) |
+| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 1 (enquiry) | New in this pass; Shop/Bid candidates to adopt |
+| Heart / save toggle | `@auction/marketing-ui` `MarketingHeartToggle` | — | — | 1 (artwork favorite) | Bid keeps local `watchlist-heart*` and `artist-watch-heart`; Shop has `artwork-notify-me-button` (different intent) |
+| Bottom tab bar | `@auction/marketing-ui` `MarketingBottomTabBar` | — | — | 1 (mobile nav) | Bid keeps local `layout/bottom-tab-bar` |
+| Card media / `MediaImage` | `@auction/marketing-ui` | 5 / 8 | — / 63 | 2 / 6 | |
+| Filter sheet / sidebar / active chips | `@auction/marketing-ui` | 1 / 1 / 1 | 7 / 4 / 8 | 1 / 1 / 1 | |
+| Section header / status state | `@auction/marketing-ui` | 1 / 1 | 11 / 1 | 1 / 2 | |
+| Detail shell | `@auction/marketing-ui` `MarketingDetailShell` | 11 | 8 | — | Renders its own `<main id="main-content">`; Art avoids it to keep a single landmark inside the root layout |
+| Page gutter | `@auction/branding` `MARKETING_PAGE_SHELL` | 2 | 25 | 11 | |
+| Product switcher | `@auction/lax-ecosystem` via product wrapper | 2 | 2 | 2 | |
+| Money / date presenters | `@auction/shop-portal/vm` (`formatGbpPence`, `formatShopDate`) | 12 / 5 | — | 2 / 1 | Art's former copies of Shop presenters were deleted |
+
 ## Token layers (web)
 
 1. **Brand primitives** — `--color-brand-*` (obsidian, midnight, light gray, light cream)
@@ -124,11 +159,12 @@ Email hex mirrors live in [`packages/branding/src/tokens.ts`](../packages/brandi
 
 | Check | What it enforces |
 |-------|------------------|
-| `pnpm lint:ui-guardrails` | No raw `<button>`, native form controls, direct `@radix-ui/*`, `window.confirm` in `apps/web` |
+| `pnpm lint:ui-guardrails` | No raw `<button>`, native form controls, direct `@radix-ui/*`, `window.confirm` in `apps/web`; for `apps/art/src` additionally no raw `<input>`, `lucide-react`, `vaul` or "View All" labels |
+| `pnpm ci:shop-architecture` (`verify-art-theme`) | Art semantic-token contract: no palette utilities in `.tsx`, no raw hex outside `base.css` |
 | `pnpm lint:lib-admin-boundaries` | Blocks `lib/admin` → `@/components` imports (also in `ci:verify`) |
 | `apps/web` lint | Native form controls, Query usage allowlist, session ownership |
 | `packages/branding` tests | Token drift vs `globals.css`; event `brand-tokens.css` alignment |
-| Playwright axe | Marketing smoke + admin a11y (WCAG 2a/2aa) |
+| Playwright axe | Marketing smoke + admin a11y (WCAG 2a/2aa); Art `@a11y` axe on `#main-content` + viewport overflow audit (375/1024/1440) in `.github/workflows/art-e2e-pr.yml` |
 
 ## Adding components
 

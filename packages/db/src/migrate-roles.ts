@@ -51,6 +51,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_payout_ledger",
   "shop_processed_payment_event",
   "shop_artwork_interest",
+  "shop_saved_artwork",
+  "shop_followed_artist",
   "shop_product",
   "shop_product_variant",
   "shop_sale_authority_request",

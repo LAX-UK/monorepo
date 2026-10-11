@@ -15,6 +15,58 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
     }),
   );
 
+  app.get("/commerce/me/favorites/artworks", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/favorites/artworks",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.put("/commerce/me/favorites/artworks/:slug", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "PUT",
+      path: `/v1/me/favorites/artworks/${encodeURIComponent(c.req.param("slug"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
+
+  app.delete("/commerce/me/favorites/artworks/:slug", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "DELETE",
+      path: `/v1/me/favorites/artworks/${encodeURIComponent(c.req.param("slug"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
+
+  app.get("/commerce/me/favorites/artists", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/favorites/artists",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.put("/commerce/me/favorites/artists/:slug", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "PUT",
+      path: `/v1/me/favorites/artists/${encodeURIComponent(c.req.param("slug"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
+
+  app.delete("/commerce/me/favorites/artists/:slug", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "DELETE",
+      path: `/v1/me/favorites/artists/${encodeURIComponent(c.req.param("slug"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
+
   app.get("/commerce/me/enquiries", (c) =>
     proxyAuthenticatedCommerce(c, deps, {
       method: "GET",

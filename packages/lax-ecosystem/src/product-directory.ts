@@ -4,7 +4,7 @@ import {
   normalizeProductBaseUrl,
 } from "./safe-product-url.js";
 
-export const LAX_PRODUCT_IDS = ["bid", "shop"] as const;
+export const LAX_PRODUCT_IDS = ["bid", "shop", "art"] as const;
 export type LaxProductId = (typeof LAX_PRODUCT_IDS)[number];
 
 export type LaxProductLinkVm = {
@@ -19,15 +19,18 @@ export type ProductDirectoryConfig = {
   currentProductId: LaxProductId;
   bidPublicUrl: string;
   shopStorefrontUrl: string;
+  artPublicUrl: string;
 };
 
 export type ResolveProductDirectoryInput = {
   currentProductId: LaxProductId;
   bidPublicUrl?: string;
   shopStorefrontUrl?: string;
+  artPublicUrl?: string;
   /** Defaults used when env is unset (local dev). */
   defaultBidPublicUrl?: string;
   defaultShopStorefrontUrl?: string;
+  defaultArtPublicUrl?: string;
   urlValidation?: ProductUrlValidationOptions;
 };
 
@@ -38,6 +41,7 @@ export type ResolveProductDirectoryResult =
 const PRODUCT_LABELS: Record<LaxProductId, string> = {
   bid: "LAX Bid",
   shop: "LAX Shop",
+  art: "LAX Art",
 };
 
 export function resolveProductDirectoryConfig(
@@ -49,6 +53,8 @@ export function resolveProductDirectoryConfig(
     input.shopStorefrontUrl?.trim() ||
     input.defaultShopStorefrontUrl?.trim() ||
     "http://localhost:3020";
+  const artRaw =
+    input.artPublicUrl?.trim() || input.defaultArtPublicUrl?.trim() || "http://localhost:3050";
 
   const validation = input.urlValidation;
   if (!isAllowedLaxProductUrl(bidRaw, validation)) {
@@ -56,6 +62,9 @@ export function resolveProductDirectoryConfig(
   }
   if (!isAllowedLaxProductUrl(shopRaw, validation)) {
     return { ok: false, error: "Invalid LAX Shop storefront URL" };
+  }
+  if (!isAllowedLaxProductUrl(artRaw, validation)) {
+    return { ok: false, error: "Invalid LAX Art public URL" };
   }
 
   try {
@@ -65,6 +74,7 @@ export function resolveProductDirectoryConfig(
         currentProductId: input.currentProductId,
         bidPublicUrl: normalizeProductBaseUrl(bidRaw),
         shopStorefrontUrl: normalizeProductBaseUrl(shopRaw),
+        artPublicUrl: normalizeProductBaseUrl(artRaw),
       },
     };
   } catch {
@@ -75,6 +85,7 @@ export function resolveProductDirectoryConfig(
 export function buildProductDirectoryLinks(config: ProductDirectoryConfig): LaxProductLinkVm[] {
   const entries: Array<{ id: LaxProductId; href: string }> = [
     { id: "bid", href: config.bidPublicUrl },
+    { id: "art", href: config.artPublicUrl },
     { id: "shop", href: config.shopStorefrontUrl },
   ];
 

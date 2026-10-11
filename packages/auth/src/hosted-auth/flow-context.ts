@@ -35,7 +35,7 @@ export function appendOidcAuthorizeParams(
   }
 }
 
-export type HostedAuthProduct = "shop" | "bid" | "shop-admin" | "account" | "unknown";
+export type HostedAuthProduct = "shop" | "art" | "bid" | "shop-admin" | "account" | "unknown";
 export type HostedAuthAudience = "customer" | "staff";
 
 export type HostedAuthFlow = {
@@ -51,6 +51,7 @@ export type HostedAuthFlow = {
 function productForClient(clientId: RegisteredOidcClientId): HostedAuthProduct {
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) return "shop-admin";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB) return "shop";
+  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB) return "art";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) return "bid";
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB) return "account";
   return "unknown";

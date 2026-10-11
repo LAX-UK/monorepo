@@ -28,7 +28,20 @@ Use after migrations **0182–0210** are applied and phase flags match the targe
 - [ ] LAX Art Connect onboarding opens from Shop `/account/payouts` when payouts enabled; after completing it the panel shows **Ready** (requires the Connect webhook endpoint and `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET`).
 - [ ] With `SHOP_CONNECT_TRANSFERS_ENABLED=true`, a `due` payout for a ready payee becomes **Paid** with a `tr_…` reference, and staff mark-paid on that line returns 409.
 
+## lax.art (test-art.lax.bid)
+
+- [ ] Home and `/artworks` load seeded `salesChannel=art` catalogue; grid/list toggle and filters persist in the URL.
+- [ ] Artwork detail: enquiry sheet (signed-in submit), share/copy fallback, favorite heart persists after reload.
+- [ ] Artist profile: follow toggles and filters works by `artistSlug`.
+- [ ] Search: `q` returns results and empty state when no matches.
+- [ ] Account tabs: Inquiries (after enquiry), Collection (after assigned original), Favorites, Profile read-only with **Edit in LAX Account**, Payouts when `SHOP_PAYOUTS_ENABLED`.
+- [ ] Dark mode toggle persists (`lax_theme` cookie + `html.dark`).
+- [ ] Sign out on lax.art does not sign out Shop; sign out on Shop does not sign out lax.art.
+- [ ] OIDC login round trip: `/login` → auth → `/auth/callback` → `/account`.
+- [ ] **Originals journey (Phase 4):** client enquiry on lax.art → staff reserve/issue/pay in shop-admin → work appears in Collection on **both** test-art and test-shop; notification links use test-art URLs.
+
 ## Sign-off
 
 - [ ] Two consecutive **Shop staging acceptance** runs green with `seed_catalogue=true` after each flag flip.
 - [ ] Residual risks documented in [shop-v1-phase-gates.md](./shop-v1-phase-gates.md).
+- [ ] Sentry test environment: no unresolved issues for shop, shop-api, shop-identity, art, account, auth, api, web (query via Sentry MCP or dashboard).

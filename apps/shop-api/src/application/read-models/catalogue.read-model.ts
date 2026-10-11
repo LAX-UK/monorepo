@@ -13,7 +13,9 @@ export type ArtworkSummaryReadModel = {
   imageUrl: string | null;
   saleState: ArtworkSaleState;
   dimensions: string | null;
+  medium: string | null;
   yearCreated: number | null;
+  salesChannel: "shop" | "art";
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
   availability: EditionAvailabilityReadModel;

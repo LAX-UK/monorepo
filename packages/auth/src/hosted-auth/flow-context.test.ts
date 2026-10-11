@@ -6,6 +6,17 @@ import {
   productHintHref,
 } from "./flow-context.js";
 
+const artAuthorize = {
+  response_type: "code",
+  client_id: "lax-art-web",
+  redirect_uri: "http://localhost:3051/auth/callback",
+  scope: "openid profile email",
+  state: "state-art",
+  nonce: "nonce-art",
+  code_challenge: "challenge",
+  code_challenge_method: "S256",
+};
+
 const shopAuthorize = {
   response_type: "code",
   client_id: "lax-shop-web",
@@ -18,6 +29,13 @@ const shopAuthorize = {
 };
 
 describe("parseHostedAuthFlow", () => {
+  it("resumes a validated LAX Art authorization request", () => {
+    const flow = parseHostedAuthFlow(new URLSearchParams(artAuthorize));
+    expect(flow.product).toBe("art");
+    expect(flow.clientId).toBe("lax-art-web");
+    expect(flow.allowedRedirectOrigins).toContain("http://localhost:3051");
+  });
+
   it("resumes a validated Shop authorization request", () => {
     const flow = parseHostedAuthFlow(new URLSearchParams(shopAuthorize));
     expect(flow.product).toBe("shop");

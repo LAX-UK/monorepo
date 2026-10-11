@@ -185,6 +185,9 @@ export const PortalEnquirySchema = Type.Object({
   salesChannel: Type.Union([Type.Literal("shop"), Type.Literal("art")]),
   intent: Type.String(),
   status: Type.String(),
+  /** Always present from shop-api; optional so clients tolerate pre-0212 deployments. */
+  message: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  contactPhone: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   createdAt: Type.String(),
 });
 

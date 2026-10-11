@@ -6,6 +6,7 @@ import type {
   ArtworkInterestWriter,
 } from "../application/ports/artwork-interest.writer.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
+import { type StorefrontOrigins, artworkPublicUrl } from "../domain/storefront-origins.js";
 import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
@@ -14,6 +15,7 @@ import { countSellableForArtwork } from "./shop-edition-availability.js";
 
 type ArtworkInterestRepositoryOptions = {
   notifications?: ShopNotificationPublisher;
+  storefrontOrigins?: StorefrontOrigins;
   enquiryOpsEmail?: string;
   domainEventMode?: ShopDomainEventPublisherMode;
 };
@@ -30,6 +32,7 @@ async function loadArtworkSubscriptionContext(
       eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
       printPricePence: shopArtwork.printPricePence,
       saleState: shopArtwork.saleState,
+      salesChannel: shopArtwork.salesChannel,
     })
     .from(shopArtwork)
     .where(eq(shopArtwork.slug, artworkSlug))
@@ -46,13 +49,20 @@ async function loadArtworkSubscriptionContext(
     printPricePence: row.printPricePence,
     editionsAvailable,
     saleState: row.saleState,
+    salesChannel: row.salesChannel,
   };
 }
+
+const DEFAULT_STOREFRONT_ORIGINS: StorefrontOrigins = {
+  shop: "http://localhost:3020",
+  art: "http://localhost:3050",
+};
 
 export function createDrizzleArtworkInterestRepository(
   db: Database,
   options: ArtworkInterestRepositoryOptions = {},
 ): ArtworkInterestWriter {
+  const storefrontOrigins = options.storefrontOrigins ?? DEFAULT_STOREFRONT_ORIGINS;
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
   return {
     loadInterestContext: (artworkSlug) => loadArtworkSubscriptionContext(db, artworkSlug, false),
@@ -89,6 +99,10 @@ export function createDrizzleArtworkInterestRepository(
             artworkId: input.artworkId,
             identitySubjectId: input.identitySubjectId,
             intent: input.intent,
+            ...(input.intent === "enquiry" && input.message ? { message: input.message } : {}),
+            ...(input.intent === "enquiry" && input.contactPhone
+              ? { contactPhone: input.contactPhone }
+              : {}),
           })
           .onConflictDoNothing()
           .returning({ id: shopArtworkInterest.id });
@@ -129,8 +143,11 @@ export function createDrizzleArtworkInterestRepository(
             idempotencyKey: `enquiry:${interestId}`,
             artworkSlug: input.artworkSlug,
             artworkTitle: artwork?.title ?? input.artworkSlug,
+            artworkUrl: artworkPublicUrl(storefrontOrigins, input.salesChannel, input.artworkSlug),
             identitySubjectId: input.identitySubjectId,
             opsEmail: options.enquiryOpsEmail.trim(),
+            ...(input.message ? { message: input.message } : {}),
+            ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
           });
         }
 

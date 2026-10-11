@@ -5,7 +5,7 @@ import {
   type SaleAuthorityRequestFormState,
   submitSaleAuthorityRequest,
 } from "@/lib/shop-portal-actions.server";
-import type { PortalSaleAuthorityItem } from "@/lib/shop-portal.server";
+import type { PortalSaleAuthorityItem } from "@auction/shop-portal/portal";
 import { Button } from "@auction/ui/components/button";
 import { useActionState, useEffect, useState } from "react";
 

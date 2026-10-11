@@ -1,4 +1,4 @@
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 
 export type CatalogActiveFilterChip = {
   key: string;

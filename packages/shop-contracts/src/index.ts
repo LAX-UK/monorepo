@@ -23,6 +23,7 @@ export {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
   PublicArtworkSaleStateSchema,
+  PublicArtworkSalesChannelSchema,
   PublicArtworkSortSchema,
   PublicArtworkSummarySchema,
   PublicArtworkTypeFilterSchema,
@@ -120,6 +121,18 @@ export {
   type PortalSaleStatement,
 } from "./portal-me.js";
 export {
+  PortalFavoriteMutationResponseSchema,
+  PortalFavoriteMutationStatusSchema,
+  PortalFollowedArtistSchema,
+  PortalFollowedArtistsResponseSchema,
+  PortalSavedArtworkSchema,
+  PortalSavedArtworksResponseSchema,
+  type PortalFavoriteMutationResponse,
+  type PortalFavoriteMutationStatus,
+  type PortalFollowedArtist,
+  type PortalSavedArtwork,
+} from "./portal-favorites.js";
+export {
   BasketLineSchema,
   BasketResponseSchema,
   BasketViewSchema,
@@ -159,6 +172,8 @@ export {
   parsePortalDocuments,
   parsePortalEditions,
   parsePortalEnquiries,
+  parsePortalFollowedArtists,
+  parsePortalSavedArtworks,
   parsePortalPayeeConnectConfig,
   parsePortalPayeeConnectSession,
   parsePortalPayeeConnectStatus,

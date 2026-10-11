@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { shopArtwork, shopArtworkInterest } from "@auction/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
+import { type StorefrontOrigins, artworkPublicUrl } from "../domain/storefront-origins.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
 
 const NOTIFY_ME_BATCH_SIZE = 50;
@@ -10,7 +11,7 @@ export async function dispatchShopNotifyMeEmails(
   db: Database,
   input: {
     notifications: ShopNotificationPublisher;
-    storefrontUrl: string;
+    storefrontOrigins: StorefrontOrigins;
     now: Date;
   },
 ): Promise<number> {
@@ -21,6 +22,7 @@ export async function dispatchShopNotifyMeEmails(
       identitySubjectId: shopArtworkInterest.identitySubjectId,
       artworkSlug: shopArtwork.slug,
       artworkTitle: shopArtwork.title,
+      salesChannel: shopArtwork.salesChannel,
     })
     .from(shopArtworkInterest)
     .innerJoin(shopArtwork, eq(shopArtworkInterest.artworkId, shopArtwork.id))
@@ -52,7 +54,7 @@ export async function dispatchShopNotifyMeEmails(
         identitySubjectId: row.identitySubjectId,
         artworkSlug: row.artworkSlug,
         artworkTitle: row.artworkTitle,
-        storefrontUrl: input.storefrontUrl,
+        artworkUrl: artworkPublicUrl(input.storefrontOrigins, row.salesChannel, row.artworkSlug),
       });
 
       await tx

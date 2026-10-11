@@ -8,8 +8,8 @@ import {
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { BasketView } from "@auction/shop-contracts";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

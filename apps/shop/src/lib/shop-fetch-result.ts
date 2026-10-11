@@ -4,12 +4,7 @@ export type ShopFetchResult<T> =
   | { status: "unauthorized" }
   | { status: "failed" };
 
-export type ShopPortalFetchResult<T> =
-  | { status: "ok"; data: T }
-  | { status: "empty" }
-  | { status: "unauthorized" }
-  | { status: "commerce_unavailable" }
-  | { status: "failed" };
+export type { ShopPortalFetchResult } from "@auction/shop-portal/portal";
 
 export type ShopInterestReadResult =
   | { status: "ok"; data: { subscribed: boolean } }

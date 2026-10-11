@@ -1,6 +1,7 @@
 export type ArtworkInterestContext = {
   artworkId: string;
   artworkSlug: string;
+  salesChannel: "shop" | "art";
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
   editionsAvailable: number;
@@ -16,8 +17,11 @@ export interface ArtworkInterestWriter {
   registerInterest(input: {
     artworkId: string;
     artworkSlug: string;
+    salesChannel: "shop" | "art";
     identitySubjectId: string;
     intent: ArtworkInterestIntent;
+    message?: string | undefined;
+    contactPhone?: string | undefined;
   }): Promise<RegisterArtworkInterestResult>;
   getInterestStatus(input: {
     artworkId: string;

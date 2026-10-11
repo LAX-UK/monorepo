@@ -1,8 +1,8 @@
 "use client";
 
 import { resumeCheckoutPayment } from "@/app/actions/resume-checkout.actions";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { OrderSummary } from "@auction/shop-contracts";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import { useState, useTransition } from "react";
 
 type Props = {

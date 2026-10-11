@@ -8,6 +8,8 @@ export type ListPublicArtistsInput = {
   limit: number;
   cursor?: CatalogueCursor;
   placement?: "featured_artists";
+  /** Case-insensitive match on artist name or slug; ignored for curated placements. */
+  q?: string;
 };
 
 export type ListPublicArtistsResult = {

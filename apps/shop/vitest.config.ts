@@ -5,7 +5,12 @@ import { workspaceSourceAliases } from "../../scripts/vitest/workspace-source-al
 export default defineConfig({
   resolve: {
     alias: [
-      ...workspaceSourceAliases(["@auction/ui", "@auction/marketing-ui", "@auction/lax-ecosystem"]),
+      ...workspaceSourceAliases([
+        "@auction/ui",
+        "@auction/marketing-ui",
+        "@auction/lax-ecosystem",
+        "@auction/shop-portal",
+      ]),
       { find: "@", replacement: path.resolve(import.meta.dirname, "src") },
     ],
   },

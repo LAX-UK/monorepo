@@ -56,6 +56,10 @@ on:
         description: LAX Account image SHA (required until the account component is live)
         type: string
         required: false
+      art_sha:
+        description: lax.art storefront image SHA for ephemeral image deploys
+        type: string
+        required: false
 concurrency:
   group: app-deploy-test
   cancel-in-progress: false
@@ -110,6 +114,8 @@ jobs:
       TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}
       TF_VAR_stripe_shop_secret_key: ${{ secrets.STRIPE_SHOP_SECRET_KEY }}
       TF_VAR_stripe_shop_webhook_secret: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
+      TF_VAR_stripe_shop_connect_webhook_secret: ${{ secrets.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_shop_connect_transfers_enabled: ${{ vars.SHOP_CONNECT_TRANSFERS_ENABLED || 'false' }}
       TF_VAR_cron_internal_secret: ${{ secrets.CRON_INTERNAL_SECRET }}
       TF_VAR_ops_support_email: ${{ secrets.OPS_SUPPORT_EMAIL }}
       TF_VAR_ops_oncall_email: ${{ secrets.OPS_ONCALL_EMAIL }}
@@ -135,6 +141,7 @@ jobs:
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
       TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
       TF_VAR_account_image_tag: ${{ inputs.account_sha }}
+      TF_VAR_art_image_tag: ${{ inputs.art_sha }}
       TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || 'true' }}
       TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
       TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
@@ -185,6 +192,7 @@ jobs:
           INPUT_SHOP_IMAGE_TAG: ${{ inputs.shop_sha }}
           INPUT_SHOP_IDENTITY_IMAGE_TAG: ${{ inputs.shop_identity_sha }}
           INPUT_SHOP_API_IMAGE_TAG: ${{ inputs.shop_api_sha }}
+          INPUT_ART_IMAGE_TAG: ${{ inputs.art_sha }}
         run: |
           set -euo pipefail
           while IFS= read -r line; do
@@ -195,6 +203,9 @@ jobs:
             if [[ "$line" == TF_VAR_account_image_tag=* ]]; then
               echo "ACCOUNT_IMAGE_TAG=${line#TF_VAR_account_image_tag=}" >> "$GITHUB_ENV"
             fi
+            if [[ "$line" == TF_VAR_art_image_tag=* ]]; then
+              echo "ART_IMAGE_TAG=${line#TF_VAR_art_image_tag=}" >> "$GITHUB_ENV"
+            fi
           done < <(
             node scripts/ci/resolve-live-app-image-tags.mjs \
               --app-id "$APP_ID" \
@@ -203,7 +214,8 @@ jobs:
               --input-account-image-tag "$INPUT_ACCOUNT_IMAGE_TAG" \
               --input-shop-image-tag "$INPUT_SHOP_IMAGE_TAG" \
               --input-shop-identity-image-tag "$INPUT_SHOP_IDENTITY_IMAGE_TAG" \
-              --input-shop-api-image-tag "$INPUT_SHOP_API_IMAGE_TAG"
+              --input-shop-api-image-tag "$INPUT_SHOP_API_IMAGE_TAG" \
+              --input-art-image-tag "$INPUT_ART_IMAGE_TAG"
           )
       - name: Verify prebuilt LAX Account image for Terraform account_image_tag
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
@@ -215,6 +227,16 @@ jobs:
             --environment test \
             --sha "$ACCOUNT_IMAGE_TAG" \
             --component account
+      - name: Verify prebuilt lax.art image for Terraform art_image_tag
+        if: vars.APP_DEPLOY_SOURCE_TEST == 'image' && env.ART_IMAGE_TAG != ''
+        env:
+          ART_IMAGE_TAG: ${{ env.ART_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/verify-prebuilt-monorepo-app-images.mjs \
+            --environment test \
+            --sha "$ART_IMAGE_TAG" \
+            --component art
       - name: Verify prebuilt web image exists for app pin
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
@@ -241,6 +263,7 @@ jobs:
           INPUT_SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
           INPUT_SHOP_SHA: ${{ inputs.shop_sha }}
           INPUT_SHOP_API_SHA: ${{ inputs.shop_api_sha }}
+          INPUT_ART_SHA: ${{ inputs.art_sha }}
           DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
         run: |
           doctl registry login --expiry-seconds 900
@@ -290,6 +313,27 @@ jobs:
             sleep 10
           done
           echo "::error::Shop readiness/release contract did not converge"
+          exit 1
+      - name: Require lax.art DNS, TLS, and readiness after apply
+        if: inputs.art_sha != ''
+        env:
+          EXPECTED_ART_SHA: ${{ inputs.art_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_ART_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for _ in $(seq 1 60); do
+            body="$(
+              curl --fail --silent --show-error --max-time 10 \
+                https://test-art.lax.bid/health/ready || true
+            )"
+            status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
+            art_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
+            if test "$status" = "ok" && test "$art_release" = "$EXPECTED_ART_SHA"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::lax.art readiness/release contract did not converge"
           exit 1
       - name: Prove Auth readiness after ephemeral traffic change
         if: inputs.auth_sha != ''

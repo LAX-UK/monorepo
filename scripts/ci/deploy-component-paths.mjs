@@ -16,6 +16,7 @@ export const DEPLOY_COMPONENTS = [
   "shop-admin",
   "account",
   "shop",
+  "art",
 ];
 
 /** @type {Record<string, string>} */
@@ -26,6 +27,7 @@ export const COMPONENT_APP_ROOT = {
   worker: "apps/worker",
   web: "apps/web",
   shop: "apps/shop",
+  art: "apps/art",
   "shop-api": "apps/shop-api",
   "shop-admin": "apps/shop-admin",
   account: "apps/account",

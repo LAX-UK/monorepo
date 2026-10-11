@@ -96,7 +96,10 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
         vars: {
           artworkTitle: input.artworkTitle,
           artworkSlug: input.artworkSlug,
+          artworkUrl: input.artworkUrl,
           buyerEmail: buyerEmail ?? "unknown",
+          ...(input.message ? { message: input.message } : {}),
+          ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
         },
       });
     },
@@ -155,14 +158,13 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       const db = asDb(tx);
       const to = await resolveShopUserEmail(db, input.identitySubjectId);
       if (!to) return;
-      const artworkUrl = `${input.storefrontUrl.replace(/\/+$/, "")}/artworks/${input.artworkSlug}`;
       await insertShopEmailOutbox(db, {
         idempotencyKey: input.idempotencyKey,
         to,
         template: "shop-edition-available-notify",
         vars: {
           artworkTitle: input.artworkTitle,
-          artworkUrl,
+          artworkUrl: input.artworkUrl,
         },
       });
     },

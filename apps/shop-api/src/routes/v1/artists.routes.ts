@@ -13,6 +13,7 @@ const ListQuerySchema = Type.Object({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, default: 20 })),
   cursor: Type.Optional(Type.String()),
   placement: Type.Optional(Type.Literal("featured_artists")),
+  q: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
 });
 
 export async function registerArtistRoutes(app: FastifyInstance, catalogue: CatalogueRoutesDeps) {
@@ -33,11 +34,13 @@ export async function registerArtistRoutes(app: FastifyInstance, catalogue: Cata
         limit?: number;
         cursor?: string;
         placement?: "featured_artists";
+        q?: string;
       };
       const input = {
         limit: query.limit ?? 20,
         ...(query.cursor !== undefined ? { cursor: query.cursor } : {}),
         ...(query.placement !== undefined ? { placement: query.placement } : {}),
+        ...(query.q !== undefined ? { q: query.q } : {}),
       };
       return presentArtistList(await catalogue.listPublicArtists(input));
     },

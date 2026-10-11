@@ -8,6 +8,7 @@ describe("createRegisterArtworkInterestHandler", () => {
       loadInterestContext: vi.fn(async () => ({
         artworkId: "art-1",
         artworkSlug: "warm-basket",
+        salesChannel: "shop" as const,
         eligibleForEditionAllocation: true,
         printPricePence: 1000,
         editionsAvailable: 0,
@@ -22,6 +23,7 @@ describe("createRegisterArtworkInterestHandler", () => {
     expect(registerInterest).toHaveBeenCalledWith({
       artworkId: "art-1",
       artworkSlug: "warm-basket",
+      salesChannel: "shop",
       identitySubjectId: "sub-1",
       intent: "notify_me",
     });

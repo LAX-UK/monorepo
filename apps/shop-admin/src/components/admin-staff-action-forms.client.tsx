@@ -7,6 +7,7 @@ import {
   adminFormSectionClass,
 } from "@/components/admin-mutation-feedback";
 import { useAdminMutation } from "@/components/use-admin-mutation";
+import { ARTWORK_MEDIUM_MAX_LENGTH, buildImportArtworkInput } from "@/lib/import-artwork-form";
 import {
   adjustMerchandiseStock,
   importArtwork,
@@ -809,10 +810,12 @@ export function CreateOriginalSaleForm() {
 }
 
 export function ImportArtworkForm() {
-  const { pending, idempotencyKey, message, stepUpRequired, stepUpHref, run } = useAdminMutation();
+  const { pending, idempotencyKey, message, setMessage, stepUpRequired, stepUpHref, run } =
+    useAdminMutation();
   const [importKey, setImportKey] = useState("");
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
+  const [medium, setMedium] = useState("");
   const [artistSlug, setArtistSlug] = useState("");
   const [artistDisplayName, setArtistDisplayName] = useState("");
   const [eligible, setEligible] = useState(true);
@@ -827,6 +830,17 @@ export function ImportArtworkForm() {
       />
       <PlainUuidField label="Slug" value={slug} disabled={pending} onChange={setSlug} />
       <PlainUuidField label="Title" value={title} disabled={pending} onChange={setTitle} />
+      <label className={adminFormLabelClass}>
+        <span className="text-neutral-600">Medium (optional; blank clears it)</span>
+        <input
+          className={adminFormFieldClass}
+          value={medium}
+          maxLength={ARTWORK_MEDIUM_MAX_LENGTH}
+          placeholder="e.g. Oil on linen"
+          disabled={pending}
+          onChange={(e) => setMedium(e.target.value)}
+        />
+      </label>
       <PlainUuidField
         label="Artist slug"
         value={artistSlug}
@@ -852,30 +866,22 @@ export function ImportArtworkForm() {
         pending={pending}
         label="Import"
         onClick={() => {
-          if (
-            !importKey.trim() ||
-            !slug.trim() ||
-            !title.trim() ||
-            !artistSlug.trim() ||
-            !artistDisplayName.trim()
-          ) {
+          const built = buildImportArtworkInput({
+            importKey,
+            slug,
+            title,
+            medium,
+            artistSlug,
+            artistDisplayName,
+            eligibleForEditionAllocation: eligible,
+          });
+          if (!built.ok) {
+            if (built.error === "medium_too_long") {
+              setMessage(`Medium must be ${ARTWORK_MEDIUM_MAX_LENGTH} characters or fewer.`);
+            }
             return;
           }
-          void run(
-            () =>
-              importArtwork({
-                importKey: importKey.trim(),
-                slug: slug.trim(),
-                title: title.trim(),
-                description: null,
-                primaryImageUrl: null,
-                artistSlug: artistSlug.trim(),
-                artistDisplayName: artistDisplayName.trim(),
-                eligibleForEditionAllocation: eligible,
-                idempotencyKey,
-              }),
-            "Artwork imported.",
-          );
+          void run(() => importArtwork({ ...built.input, idempotencyKey }), "Artwork imported.");
         }}
       />
       <AdminMutationFeedback

@@ -2,7 +2,6 @@ import type { Database } from "@auction/db";
 import { shopParty, shopUserProfile } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { isPayeeConnectReady } from "@auction/shop-domain";
-import { assertConnectUrlAllowed } from "@auction/stripe-connect";
 import { eq } from "drizzle-orm";
 import type {
   ShopConnectAccountPrefill,
@@ -12,6 +11,10 @@ import type {
   ShopPayeeConnectPort,
   ShopPayeeConnectStatus,
 } from "../application/ports/shop-payee-connect.port.js";
+import {
+  type StorefrontOrigins,
+  assertStorefrontReturnUrlAllowed,
+} from "../domain/storefront-origins.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import type {
   ShopPayeeConnectAccountRepository,
@@ -57,7 +60,7 @@ export function createDrizzleShopPayeeConnectService(options: {
   accounts: ShopPayeeConnectAccountRepository;
   gateway: ShopConnectGateway | null;
   publishableKey: string | null;
-  storefrontOrigin: string;
+  storefrontOrigins: StorefrontOrigins;
   failClosedConnectUrls: boolean;
 }): ShopPayeeConnectPort {
   const { accounts } = options;
@@ -130,7 +133,7 @@ export function createDrizzleShopPayeeConnectService(options: {
 
   function assertReturnUrl(url: string): void {
     try {
-      assertConnectUrlAllowed(url, options.storefrontOrigin, {
+      assertStorefrontReturnUrlAllowed(url, options.storefrontOrigins, {
         failClosed: options.failClosedConnectUrls,
       });
     } catch {

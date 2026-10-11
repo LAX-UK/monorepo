@@ -11,6 +11,8 @@ const summary = (overrides: Partial<PublicArtworkSummary> = {}): PublicArtworkSu
   saleState: "for_sale",
   dimensions: null,
   yearCreated: null,
+  medium: null,
+  salesChannel: "shop",
   eligibleForEditionAllocation: true,
   printPricePence: 12000,
   availability: { totalEditions: 24, editionsAvailable: 10 },

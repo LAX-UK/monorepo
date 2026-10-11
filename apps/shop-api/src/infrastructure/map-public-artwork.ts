@@ -13,7 +13,9 @@ export type ArtworkCatalogueRow = {
   artistSlug: string;
   saleState: "for_sale" | "price_on_application" | "sold";
   dimensions: string | null;
+  medium: string | null;
   yearCreated: number | null;
+  salesChannel: "shop" | "art";
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
   totalEditionCount: number;
@@ -29,7 +31,9 @@ export function toPublicArtworkSummary(row: ArtworkCatalogueRow): ArtworkSummary
     imageUrl: row.primaryImageUrl,
     saleState: row.saleState,
     dimensions: row.dimensions,
+    medium: row.medium,
     yearCreated: row.yearCreated,
+    salesChannel: row.salesChannel,
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,
     availability: publicEditionAvailability({

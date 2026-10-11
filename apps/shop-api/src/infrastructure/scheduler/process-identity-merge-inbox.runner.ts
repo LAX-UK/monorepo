@@ -249,6 +249,32 @@ async function applyIdentityMerge(
     .set({ identitySubjectId: canonicalSubjectId })
     .where(eq(shopArtworkInterest.identitySubjectId, retiredSubjectId));
 
+  await tx.execute(sql`
+    DELETE FROM shop_saved_artwork AS retired
+    USING shop_saved_artwork AS canonical
+    WHERE retired.identity_subject_id = ${retiredSubjectId}
+      AND canonical.identity_subject_id = ${canonicalSubjectId}
+      AND retired.artwork_id = canonical.artwork_id
+  `);
+  await tx.execute(sql`
+    UPDATE shop_saved_artwork
+    SET identity_subject_id = ${canonicalSubjectId}
+    WHERE identity_subject_id = ${retiredSubjectId}
+  `);
+
+  await tx.execute(sql`
+    DELETE FROM shop_followed_artist AS retired
+    USING shop_followed_artist AS canonical
+    WHERE retired.identity_subject_id = ${retiredSubjectId}
+      AND canonical.identity_subject_id = ${canonicalSubjectId}
+      AND retired.artist_id = canonical.artist_id
+  `);
+  await tx.execute(sql`
+    UPDATE shop_followed_artist
+    SET identity_subject_id = ${canonicalSubjectId}
+    WHERE identity_subject_id = ${retiredSubjectId}
+  `);
+
   await tx
     .update(shopClientAssignment)
     .set({ brokerSubjectId: canonicalSubjectId })

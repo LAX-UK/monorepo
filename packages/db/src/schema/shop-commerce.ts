@@ -287,6 +287,7 @@ export const shopArtwork = pgTable(
     description: text("description"),
     primaryImageUrl: text("primary_image_url"),
     dimensions: text("dimensions"),
+    medium: text("medium"),
     yearCreated: integer("year_created"),
     saleState: shopSaleStateEnum("sale_state").default("for_sale").notNull(),
     artistId: uuid("artist_id")
@@ -1227,6 +1228,8 @@ export const shopArtworkInterest = pgTable(
       .references(() => shopArtwork.id, { onDelete: "cascade" }),
     identitySubjectId: text("identity_subject_id").notNull(),
     intent: shopArtworkInterestIntentEnum("intent").default("notify_me").notNull(),
+    message: text("message"),
+    contactPhone: text("contact_phone"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     notifiedAt: timestamp("notified_at", { mode: "date", withTimezone: true }),
   },
@@ -1237,5 +1240,43 @@ export const shopArtworkInterest = pgTable(
       table.intent,
     ),
     index("shop_artwork_interest_subject_idx").on(table.identitySubjectId),
+  ],
+);
+
+export const shopSavedArtwork = pgTable(
+  "shop_saved_artwork",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    identitySubjectId: text("identity_subject_id").notNull(),
+    artworkId: uuid("artwork_id")
+      .notNull()
+      .references(() => shopArtwork.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_saved_artwork_subject_artwork_uid").on(
+      table.identitySubjectId,
+      table.artworkId,
+    ),
+    index("shop_saved_artwork_subject_idx").on(table.identitySubjectId),
+  ],
+);
+
+export const shopFollowedArtist = pgTable(
+  "shop_followed_artist",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    identitySubjectId: text("identity_subject_id").notNull(),
+    artistId: uuid("artist_id")
+      .notNull()
+      .references(() => shopArtist.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_followed_artist_subject_artist_uid").on(
+      table.identitySubjectId,
+      table.artistId,
+    ),
+    index("shop_followed_artist_subject_idx").on(table.identitySubjectId),
   ],
 );

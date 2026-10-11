@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopArtwork, shopEdition, shopParty, shopSaleAuthorityGrant } from "@auction/db/schema";
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { ImportArtworkHandler } from "../../application/handlers/import-artwork.handler.js";
 import type {
   GrantSaleAuthorityCommand,
@@ -19,6 +19,49 @@ export const SHOP_SEED_BUYER_FIXTURE_SLUG = "harbor-print";
 
 /** Dedicated Stripe checkout acceptance fixture (reset between staging runs). */
 export const SHOP_SEED_STRIPE_CHECKOUT_SLUG = "acceptance-stripe-print";
+
+/** lax.art originals (sold by enquiry and invoice) so Art catalogue journeys have data. */
+export const ART_SEED_ORIGINAL_SLUGS = ["tidal-forms", "quiet-orchard"] as const;
+
+async function seedArtChannelOriginals(
+  importArtwork: ImportArtworkHandler,
+  db: Database,
+): Promise<void> {
+  await importArtwork({
+    importKey: "seed:art:foundation:tidal-forms",
+    slug: "tidal-forms",
+    title: "Tidal Forms",
+    description: "Layered blues and ochres tracing the movement of a receding tide.",
+    primaryImageUrl: "/shop/home/original-2.webp",
+    dimensions: "100 × 80 cm",
+    medium: "Oil on canvas",
+    yearCreated: 2021,
+    saleState: "price_on_application",
+    artistSlug: "art-foundation-artist",
+    artistDisplayName: "Mara Ellison",
+    artistDiscipline: "Painter",
+    eligibleForEditionAllocation: false,
+  });
+  await importArtwork({
+    importKey: "seed:art:foundation:quiet-orchard",
+    slug: "quiet-orchard",
+    title: "Quiet Orchard",
+    description: "A muted orchard study in graphite and wash.",
+    primaryImageUrl: "/shop/home/original-3.webp",
+    dimensions: "70 × 50 cm",
+    medium: "Graphite and watercolour on paper",
+    yearCreated: 2019,
+    saleState: "price_on_application",
+    artistSlug: "art-foundation-artist",
+    artistDisplayName: "Mara Ellison",
+    artistDiscipline: "Painter",
+    eligibleForEditionAllocation: false,
+  });
+  await db
+    .update(shopArtwork)
+    .set({ salesChannel: "art" })
+    .where(inArray(shopArtwork.slug, [...ART_SEED_ORIGINAL_SLUGS]));
+}
 
 async function depleteEditionStockForSlug(db: Database, slug: string): Promise<void> {
   const artwork = await db
@@ -181,4 +224,5 @@ export async function seedShopFoundationCatalogue(
     }
     await depleteEditionStockForSlug(db, "reed-study");
   }
+  if (db) await seedArtChannelOriginals(importArtwork, db);
 }

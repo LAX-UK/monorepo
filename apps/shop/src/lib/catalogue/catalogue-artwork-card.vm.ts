@@ -1,8 +1,8 @@
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { ShopStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import { resolveArtworkSaleStatePresentation } from "@/lib/presenters/shop-status-presentation";
 import { formatEditionAvailabilitySummary } from "@/lib/public-artwork-presenters";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 
 export type CatalogueArtworkCardVm = {
   slug: string;

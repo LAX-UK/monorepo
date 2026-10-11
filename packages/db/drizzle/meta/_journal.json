@@ -1471,6 +1471,27 @@
       "when": 1793520000000,
       "tag": "0210_shop_payee_connect_account",
       "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1793606400000,
+      "tag": "0211_shop_artwork_medium",
+      "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1793692800000,
+      "tag": "0212_shop_artwork_interest_enquiry_contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1793779200000,
+      "tag": "0213_shop_favorites",
+      "breakpoints": true
     }
   ]
 }

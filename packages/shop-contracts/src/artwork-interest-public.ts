@@ -8,6 +8,11 @@ export const ArtworkInterestIntentSchema = Type.Union([
 export const RegisterArtworkInterestRequestSchema = Type.Object(
   {
     intent: Type.Optional(ArtworkInterestIntentSchema),
+    message: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
+    /** Same shape as checkout `deliveryPhone`. */
+    contactPhone: Type.Optional(
+      Type.String({ minLength: 8, maxLength: 20, pattern: "^\\+?[0-9][0-9 ()-]{6,19}$" }),
+    ),
   },
   { additionalProperties: false },
 );

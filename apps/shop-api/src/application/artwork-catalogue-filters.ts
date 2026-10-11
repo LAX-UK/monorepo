@@ -8,6 +8,7 @@ export type NormalizedArtworkCatalogueFilters = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
   artistSlug?: string;
+  salesChannel?: "shop" | "art";
   saleState?: "for_sale" | "price_on_application" | "sold";
   q?: string;
   artworkType: ArtworkCatalogueType;
@@ -22,6 +23,7 @@ export type RawArtworkCatalogueFilters = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
   artistSlug?: string;
+  salesChannel?: "shop" | "art";
   saleState?: "for_sale" | "price_on_application" | "sold";
   q?: string;
   artworkType?: ArtworkCatalogueType;
@@ -55,10 +57,16 @@ export function normalizeArtworkCatalogueFilters(
     artworkType = "all";
   }
 
+  let salesChannel = raw.salesChannel;
+  if (salesChannel !== undefined && salesChannel !== "shop" && salesChannel !== "art") {
+    salesChannel = undefined;
+  }
+
   return {
     ...(raw.placement !== undefined ? { placement: raw.placement } : {}),
     ...(raw.categorySlug ? { categorySlug: raw.categorySlug } : {}),
     ...(raw.artistSlug ? { artistSlug: raw.artistSlug } : {}),
+    ...(salesChannel ? { salesChannel } : {}),
     ...(raw.saleState ? { saleState: raw.saleState } : {}),
     ...(raw.q?.trim() ? { q: raw.q.trim() } : {}),
     artworkType,

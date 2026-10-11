@@ -173,14 +173,15 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
     const interestRow = requireDefined(interest, "interest");
 
     const now = new Date();
+    const storefrontOrigins = { shop: "http://localhost:3020", art: "http://localhost:3050" };
     await dispatchShopNotifyMeEmails(db, {
       notifications,
-      storefrontUrl: "http://localhost:3020",
+      storefrontOrigins,
       now,
     });
     await dispatchShopNotifyMeEmails(db, {
       notifications,
-      storefrontUrl: "http://localhost:3020",
+      storefrontOrigins,
       now,
     });
 

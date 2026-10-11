@@ -37,6 +37,8 @@ export function createRegisterArtworkInterestHandler(writer: ArtworkInterestWrit
     artworkSlug: string;
     identitySubjectId: string;
     intent: ArtworkInterestIntent;
+    message?: string | undefined;
+    contactPhone?: string | undefined;
   }): Promise<RegisterArtworkInterestHandlerResult> => {
     const context = await writer.loadInterestContext(input.artworkSlug);
     if (!context) {
@@ -48,8 +50,13 @@ export function createRegisterArtworkInterestHandler(writer: ArtworkInterestWrit
     const result = await writer.registerInterest({
       artworkId: context.artworkId,
       artworkSlug: context.artworkSlug,
+      salesChannel: context.salesChannel,
       identitySubjectId: input.identitySubjectId,
       intent: input.intent,
+      ...(input.intent === "enquiry" && input.message ? { message: input.message } : {}),
+      ...(input.intent === "enquiry" && input.contactPhone
+        ? { contactPhone: input.contactPhone }
+        : {}),
     });
     if (result === "not_found") {
       return "artwork_not_found";

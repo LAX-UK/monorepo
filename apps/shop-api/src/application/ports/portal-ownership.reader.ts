@@ -92,6 +92,8 @@ export type PortalEnquiryRow = {
   salesChannel: "shop" | "art";
   intent: string;
   status: string;
+  message: string | null;
+  contactPhone: string | null;
   createdAt: string;
 };
 

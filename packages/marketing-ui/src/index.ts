@@ -7,7 +7,9 @@ export {
   MarketingChevronDownIcon,
   MarketingCircleAlertIcon,
   MarketingCloseIcon,
+  MarketingGridIcon,
   MarketingHeartIcon,
+  MarketingHomeIcon,
   MarketingInfoIcon,
   MarketingMenuIcon,
   MarketingMoonIcon,
@@ -138,3 +140,16 @@ export {
   marketingFilterRailLink,
 } from "./catalog-filter-rail.js";
 export { useSplitOverlayOpenLg } from "./hooks/use-split-overlay-open.js";
+export {
+  MarketingHeartToggle,
+  type MarketingHeartToggleProps,
+} from "./marketing-heart-toggle.js";
+export {
+  MarketingBottomTabBar,
+  type MarketingBottomTabBarProps,
+  type MarketingBottomTabItem,
+} from "./marketing-bottom-tab-bar.js";
+export {
+  MarketingSideSheet,
+  type MarketingSideSheetProps,
+} from "./marketing-side-sheet.js";

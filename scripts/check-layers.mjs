@@ -73,6 +73,20 @@ const rules = [
     ],
   },
   {
+    dir: "packages/shop-portal",
+    label: "packages/shop-portal must not import from apps/**",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)(\/|$)/, /(^|\/)apps\//],
+  },
+  {
+    dir: "packages/shop-portal",
+    label: "packages/shop-portal must stay on Shop portal boundaries",
+    forbiddenSpecifiers: [
+      /^@auction\/(db|persistence|domain|bidding-runtime|auth)(\/|$)/,
+      /^drizzle-orm(\/|$)/,
+      /^fastify(\/|$)/,
+    ],
+  },
+  {
     dir: "packages/lax-ecosystem",
     label: "packages/lax-ecosystem must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)(\/|$)/, /(^|\/)apps\//],
@@ -579,6 +593,8 @@ const SHOP_ALLOWED_AUCTION_IMPORTS = new Set([
   "@auction/ui",
   "@auction/branding",
   "@auction/marketing-ui",
+  "@auction/shop-portal",
+  "@auction/shop-domain",
 ]);
 
 /** @type {string[]} */
@@ -622,6 +638,55 @@ if (statSync(shopSrc, { throwIfNoEntry: false })?.isDirectory()) {
 if (shopBoundaryViolations.length > 0) {
   console.error("Shop product boundary violations detected:\n");
   for (const v of shopBoundaryViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
+// ─── Art product boundary (mirrors Shop) ───────────────────────────────────
+
+const ART_ALLOWED_AUCTION_IMPORTS = SHOP_ALLOWED_AUCTION_IMPORTS;
+/** @type {string[]} */
+const artBoundaryViolations = [];
+
+const artSrc = join(root, "apps/art/src");
+if (statSync(artSrc, { throwIfNoEntry: false })?.isDirectory()) {
+  for (const file of listAllSources(artSrc)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    if (isTestSource(rel)) continue;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SPECIFIER_RE)) {
+      const specifier = match[1] ?? match[2] ?? match[3];
+      if (!specifier) continue;
+      if (/(^|\/)apps\/web\//.test(specifier)) {
+        artBoundaryViolations.push(
+          `${rel}: imports "${specifier}" — apps/art must not import apps/web internals`,
+        );
+      }
+      if (specifier.startsWith("@auction/")) {
+        const packageName = specifier.split("/").slice(0, 2).join("/");
+        if (!ART_ALLOWED_AUCTION_IMPORTS.has(packageName)) {
+          artBoundaryViolations.push(
+            `${rel}: imports "${specifier}" — apps/art allowlist permits only ${[...ART_ALLOWED_AUCTION_IMPORTS].join(", ")}`,
+          );
+        } else if (SHOP_FORBIDDEN_IMPORT_RE.test(specifier)) {
+          artBoundaryViolations.push(
+            `${rel}: imports "${specifier}" — apps/art must stay on Shop-owned boundaries`,
+          );
+        }
+      }
+      if (IDENTITY_SERVER_IMPORT_RE.test(specifier)) {
+        artBoundaryViolations.push(
+          `${rel}: imports "${specifier}" — apps/art must use art Identity BFF, not @auction/auth/server`,
+        );
+      }
+    }
+  }
+}
+
+if (artBoundaryViolations.length > 0) {
+  console.error("Art product boundary violations detected:\n");
+  for (const v of artBoundaryViolations) {
     console.error(`  ${v}`);
   }
   process.exit(1);

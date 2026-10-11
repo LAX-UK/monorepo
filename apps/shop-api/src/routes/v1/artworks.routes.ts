@@ -2,6 +2,7 @@ import {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
   PublicArtworkSaleStateSchema,
+  PublicArtworkSalesChannelSchema,
   PublicArtworkSortSchema,
   PublicArtworkTypeFilterSchema,
   ShopApiErrorBodySchema,
@@ -20,6 +21,7 @@ const ListQuerySchema = Type.Object({
   ),
   categorySlug: Type.Optional(Type.String({ minLength: 1 })),
   artistSlug: Type.Optional(Type.String({ minLength: 1 })),
+  salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
   saleState: Type.Optional(PublicArtworkSaleStateSchema),
   editionEligible: Type.Optional(Type.Boolean()),
   type: Type.Optional(PublicArtworkTypeFilterSchema),
@@ -49,6 +51,7 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         placement?: "featured_originals" | "featured_prints";
         categorySlug?: string;
         artistSlug?: string;
+        salesChannel?: "shop" | "art";
         saleState?: "for_sale" | "price_on_application" | "sold";
         editionEligible?: boolean;
         type?: "all" | "original" | "edition";
@@ -61,6 +64,7 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         ...(query.placement !== undefined ? { placement: query.placement } : {}),
         ...(query.categorySlug !== undefined ? { categorySlug: query.categorySlug } : {}),
         ...(query.artistSlug !== undefined ? { artistSlug: query.artistSlug } : {}),
+        ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
         ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
         ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),
         ...(query.type !== undefined ? { artworkType: query.type } : {}),
@@ -84,6 +88,9 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
       schema: {
         tags: ["catalogue"],
         params: Type.Object({ slug: Type.String({ minLength: 1 }) }),
+        querystring: Type.Object({
+          salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
+        }),
         response: {
           200: PublicArtworkDetailSchema,
           404: ShopApiErrorBodySchema,
@@ -92,8 +99,9 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
     },
     async (request) => {
       const { slug } = request.params as { slug: string };
+      const { salesChannel } = request.query as { salesChannel?: "shop" | "art" };
       const artwork = await catalogue.getPublicArtwork(slug);
-      if (!artwork) {
+      if (!artwork || (salesChannel !== undefined && artwork.salesChannel !== salesChannel)) {
         throw notFound("Artwork not found");
       }
       return presentArtworkDetail(artwork);
