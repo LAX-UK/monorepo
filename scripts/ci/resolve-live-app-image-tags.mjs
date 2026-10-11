@@ -60,6 +60,15 @@ function inputOrLive(label, input, live, hint) {
   return SHA.test(input) ? input : requireSha(label, live, hint);
 }
 
+/** Prefer explicit CLI/workflow pin over job-level TF_VAR_* before falling back to live App spec. */
+export function coalesceImageSha(...candidates) {
+  for (const candidate of candidates) {
+    const trimmed = (candidate ?? "").trim();
+    if (SHA.test(trimmed)) return trimmed;
+  }
+  return "";
+}
+
 export function resolveLiveTerraformImageTags(
   spec,
   {
@@ -96,14 +105,32 @@ export function resolveLiveTerraformImageTags(
 }
 
 function main() {
-  const { appId, format, inputAppImageTag, inputShopAdminImageTag, inputAccountImageTag } =
-    parseArgs(process.argv.slice(2));
-  const spec = readAppSpec(appId);
+  const parsed = parseArgs(process.argv.slice(2));
+  const spec = readAppSpec(parsed.appId);
   const tags = resolveLiveTerraformImageTags(spec, {
-    inputAppImageTag,
-    inputShopAdminImageTag,
-    inputAccountImageTag,
+    inputAppImageTag: coalesceImageSha(parsed.inputAppImageTag, process.env.TF_VAR_app_image_tag),
+    inputShopAdminImageTag: coalesceImageSha(
+      parsed.inputShopAdminImageTag,
+      process.env.TF_VAR_shop_admin_image_tag,
+    ),
+    inputAccountImageTag: coalesceImageSha(
+      parsed.inputAccountImageTag,
+      process.env.TF_VAR_account_image_tag,
+    ),
+    inputShopImageTag: coalesceImageSha(
+      parsed.inputShopImageTag,
+      process.env.TF_VAR_shop_image_tag,
+    ),
+    inputShopIdentityImageTag: coalesceImageSha(
+      parsed.inputShopIdentityImageTag,
+      process.env.TF_VAR_shop_identity_image_tag,
+    ),
+    inputShopApiImageTag: coalesceImageSha(
+      parsed.inputShopApiImageTag,
+      process.env.TF_VAR_shop_api_image_tag,
+    ),
   });
+  const { format } = parsed;
   if (format === "json") {
     process.stdout.write(`${JSON.stringify(tags, null, 2)}\n`);
     return;
