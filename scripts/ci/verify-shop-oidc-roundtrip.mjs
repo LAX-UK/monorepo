@@ -27,6 +27,7 @@ if (existsSync(envPath)) {
 }
 
 const STAGING_SHOP_ORIGIN = "https://test-shop.lax.bid";
+const STAGING_ACCOUNT_ORIGIN = "https://test-account.lax.bid";
 const LOCAL_SHOP_IDENTITY_ORIGIN = "http://localhost:3010";
 const LOCAL_SHOP_STOREFRONT_ORIGIN = "http://localhost:3020";
 
@@ -43,6 +44,10 @@ const shopBase = authBase.includes("test-auth.lax.bid") ? STAGING_SHOP_ORIGIN : 
 const storefrontBase = authBase.includes("test-auth.lax.bid")
   ? STAGING_SHOP_ORIGIN
   : configuredStorefrontBase;
+/** Account joins the shared Identity session so central logout is proven for every first-party web app. */
+const accountBase = authBase.includes("test-auth.lax.bid")
+  ? STAGING_ACCOUNT_ORIGIN
+  : process.env.LAX_ACCOUNT_BASE_URL?.trim().replace(/\/+$/, "") || null;
 const email = process.env.SHOP_OIDC_TEST_EMAIL;
 const password = process.env.SHOP_OIDC_TEST_PASSWORD;
 
@@ -91,6 +96,62 @@ function captureCookies(response, jar) {
 
 function cookieHeader(jar) {
   return [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
+}
+
+async function signInToAccount(authCookies) {
+  const accountCookies = new Map();
+  const login = await fetch(`${accountBase}/api/auth/login?returnTo=/account`, {
+    redirect: "manual",
+  });
+  captureCookies(login, accountCookies);
+  const authorizeUrl = login.headers.get("location");
+  if (login.status < 300 || login.status >= 400 || !authorizeUrl || accountCookies.size === 0) {
+    throw new Error(`Account login did not start OIDC (${login.status})`);
+  }
+  assertTrustedRedirect(
+    authorizeUrl,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/authorize",
+    "Account login authorize",
+  );
+
+  const authorize = await fetch(authorizeUrl, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(authCookies) },
+  });
+  captureCookies(authorize, authCookies);
+  const callbackUri = await completeAuthorization({
+    authBase,
+    authorizeResponse: authorize,
+    cookieHeader: cookieHeader(authCookies),
+    onResponse: (response) => captureCookies(response, authCookies),
+    requireFirstPartySkip: true,
+    expectedState: new URL(authorizeUrl).searchParams.get("state") ?? undefined,
+  });
+  assertTrustedRedirect(
+    callbackUri,
+    new Set([new URL(accountBase).origin]),
+    "/api/auth/callback",
+    "Account OIDC callback",
+  );
+
+  const callback = await fetch(callbackUri, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(accountCookies) },
+  });
+  captureCookies(callback, accountCookies);
+  const landing = callback.headers.get("location");
+  if (!landing || new URL(landing, accountBase).pathname !== "/account") {
+    throw new Error(`Account callback did not land on /account (${callback.status} ${landing})`);
+  }
+
+  const page = await fetch(`${accountBase}/account`, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(accountCookies) },
+  });
+  if (page.status !== 200) {
+    throw new Error(`Account page did not render for the signed-in session (${page.status})`);
+  }
 }
 
 async function main() {
@@ -168,6 +229,8 @@ async function main() {
   if (!me.ok || profile.authenticated !== true || typeof profile.subject !== "string") {
     throw new Error(`Shop authenticated profile check failed (${me.status})`);
   }
+
+  if (accountBase) await signInToAccount(authCookies);
 
   const logout = await fetch(`${shopBase}/logout`, {
     method: "POST",
