@@ -172,6 +172,9 @@ importers:
       '@auction/queues':
         specifier: workspace:*
         version: link:../../packages/queues
+      '@auction/stripe-connect':
+        specifier: workspace:*
+        version: link:../../packages/stripe-connect
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -1663,6 +1666,18 @@ importers:
       '@auction/validators':
         specifier: workspace:*
         version: link:../validators
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
+  packages/stripe-connect:
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*

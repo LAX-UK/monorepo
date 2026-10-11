@@ -3,6 +3,7 @@ import type { DbTransaction, ITransactionRunner } from "@auction/persistence/int
 import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityConnectRow } from "@auction/persistence/lib";
+import { platformCollectedConnectController } from "@auction/stripe-connect";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
@@ -80,12 +81,7 @@ export class ConnectAccountService {
       kycIdCountry: context.kyc?.verifiedIdCountry ?? null,
     });
 
-    const controller: ConnectAccountController = {
-      fees: { payer: "application" },
-      losses: { payments: "application" },
-      requirement_collection: "application",
-      stripe_dashboard: { type: "none" },
-    };
+    const controller: ConnectAccountController = platformCollectedConnectController();
 
     const accountCreateParams: Stripe.AccountCreateParams =
       row.kind === "organisation"

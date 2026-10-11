@@ -1,4 +1,10 @@
 import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
+import {
+  type ConnectAccountSessionComponents,
+  type ConnectSessionSurface,
+  connectSessionComponents,
+  createConnectAccountSession,
+} from "@auction/stripe-connect";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
@@ -6,7 +12,7 @@ import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect
 import { throwConnectError } from "./connect-service-errors.js";
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
 
-export type ConnectSessionSurface = "onboarding" | "management";
+export type { ConnectSessionSurface };
 
 export type AccountSessionResult = {
   clientSecret: string;
@@ -42,27 +48,17 @@ export class ConnectSessionService {
   private buildComponents(
     role: string,
     surface: ConnectSessionSurface,
-  ): Stripe.AccountSessionCreateParams["components"] {
+  ): ConnectAccountSessionComponents {
     const isOwnerAdmin = role === "owner" || role === "admin";
     const isFinance = role === "finance";
 
     if (surface === "onboarding") {
       if (!isOwnerAdmin) throwConnectError("insufficient_role", 403);
-      return {
-        account_onboarding: { enabled: true },
-        notification_banner: { enabled: true },
-      };
+      return connectSessionComponents("onboarding");
     }
 
     if (isOwnerAdmin || isFinance) {
-      return {
-        account_management: {
-          enabled: true,
-          features: { external_account_collection: true },
-        },
-        notification_banner: { enabled: true },
-        balances: { enabled: true },
-      };
+      return connectSessionComponents("management");
     }
 
     throwConnectError("insufficient_role", 403);
@@ -80,16 +76,16 @@ export class ConnectSessionService {
     }
 
     const components = this.buildComponents(role, surface);
-    const session = await stripe.accountSessions.create({
-      account: row.stripeConnectAccountId,
+    const clientSecret = await createConnectAccountSession(stripe, {
+      accountId: row.stripeConnectAccountId,
       components,
     });
 
-    if (!session.client_secret) {
+    if (!clientSecret) {
       throwConnectError("account_session_missing_client_secret", 502);
     }
 
-    return { clientSecret: session.client_secret };
+    return { clientSecret };
   }
 }
 

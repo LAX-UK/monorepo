@@ -1,7 +1,7 @@
 import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
+import { assertConnectUrlAllowed, createConnectOnboardingLink } from "@auction/stripe-connect";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
-import { assertConnectUrlAllowed } from "../../../lib/stripe-connect-return-url.js";
 import type { AccountLink } from "../../interfaces/stripe-connect.js";
 import { throwConnectError } from "./connect-service-errors.js";
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
@@ -35,13 +35,11 @@ export class ConnectLinkService {
     if (!row.stripeConnectAccountId) {
       throwConnectError("stripe_account_missing", 400);
     }
-    const link = await stripe.accountLinks.create({
-      account: row.stripeConnectAccountId,
-      type: "account_onboarding",
-      return_url: returnUrl,
-      refresh_url: refreshUrl,
+    return createConnectOnboardingLink(stripe, {
+      accountId: row.stripeConnectAccountId,
+      returnUrl,
+      refreshUrl,
     });
-    return { url: link.url, expiresAt: new Date(link.expires_at * 1000) };
   }
 
   async createDashboardLink(_legalEntityId: string): Promise<AccountLink> {

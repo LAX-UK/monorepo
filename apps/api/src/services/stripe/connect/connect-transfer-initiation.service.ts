@@ -1,5 +1,6 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import { createConnectTransfer } from "@auction/stripe-connect";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { Env } from "../../../env.js";
@@ -148,20 +149,18 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
 
     try {
       const transfer = await executeWithStripeRetries(() =>
-        stripe.transfers.create(
-          {
-            amount: amountCents,
-            currency: payout.currency.toLowerCase(),
-            destination: destinationAccountId,
-            transfer_group: `payout:${payoutId}`,
-            ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
-            metadata: {
-              payoutId: payout.id,
-              legalEntityId: payout.legalEntityId,
-            },
+        createConnectTransfer(stripe, {
+          amountMinor: amountCents,
+          currency: payout.currency,
+          destinationAccountId,
+          transferGroup: `payout:${payoutId}`,
+          ...(sourceChargeId ? { sourceChargeId } : {}),
+          metadata: {
+            payoutId: payout.id,
+            legalEntityId: payout.legalEntityId,
           },
-          { idempotencyKey: `payout:transfer:${payoutId}` },
-        ),
+          idempotencyKey: `payout:transfer:${payoutId}`,
+        }),
       );
 
       const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
