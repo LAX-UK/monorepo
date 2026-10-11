@@ -1450,6 +1450,27 @@
       "when": 1793260800000,
       "tag": "0207_lax_staff_access_directory",
       "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1793347200000,
+      "tag": "0208_shop_artwork_is_personalised",
+      "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1793433600000,
+      "tag": "0209_shop_sales_channel",
+      "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1793520000000,
+      "tag": "0210_shop_payee_connect_account",
+      "breakpoints": true
     }
   ]
 }
