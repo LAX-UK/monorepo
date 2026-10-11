@@ -69,9 +69,24 @@ describe("registered OIDC clients", () => {
     );
   });
 
-  it("pre-authorizes Bid, Shop web, and Shop admin clients", () => {
+  it("registers the lax.art storefront for the commerce API only, with its own hosts", () => {
+    const art = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB];
+    expect(art.kind).toBe(OidcClientKind.Confidential);
+    expect(art.allowedResources).toEqual(["lax-shop-api"]);
+    expect(art.allowedScopes).not.toContain("shop.admin");
+    expect(art.redirectUris).toEqual([
+      "http://localhost:3051/auth/callback",
+      "https://lax.art/auth/callback",
+      "https://test-art.lax.bid/auth/callback",
+    ]);
+    expect(art.testBackchannelLogoutUri).toBe(
+      "https://test-art.lax.bid/api/auth/backchannel-logout",
+    );
+  });
+
+  it("pre-authorizes Bid, Shop web, lax.art, and Shop admin clients", () => {
     expect([...oidcClientIdsWithImplicitConsent()].sort()).toEqual(
-      ["lax-account-web", "lax-bid-web", "lax-shop-admin", "lax-shop-web"].sort(),
+      ["lax-account-web", "lax-art-web", "lax-bid-web", "lax-shop-admin", "lax-shop-web"].sort(),
     );
     expect(REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.WS_MOBILE].consentPolicy).toBe(
       "explicit",
