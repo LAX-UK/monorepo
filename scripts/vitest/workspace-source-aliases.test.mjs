@@ -11,6 +11,15 @@ test("maps @auction/marketing-ui root and MediaImage subpath exports to src", ()
   assert.equal(aliases.filter((a) => a.find.startsWith("@auction/marketing-ui")).length, 1);
 });
 
+test("maps @auction/shop-portal subpath exports to src", () => {
+  const aliases = workspaceSourceAliases(["@auction/shop-portal"]);
+  for (const subpath of ["bff", "portal", "vm", "react"]) {
+    const entry = aliases.find((a) => a.find === `@auction/shop-portal/${subpath}`);
+    assert.ok(entry, `@auction/shop-portal/${subpath} alias`);
+    assert.match(entry.replacement, new RegExp(`shop-portal/src/${subpath}/index\\.ts$`));
+  }
+});
+
 test("maps irregular @auction/ui typography and shell exports", () => {
   const aliases = workspaceSourceAliases(["@auction/ui"]);
   const typography = aliases.find((a) => a.find === "@auction/ui/components/typography");

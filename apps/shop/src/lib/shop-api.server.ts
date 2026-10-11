@@ -87,6 +87,7 @@ export async function fetchPublicArtworks(input: {
 }): Promise<PublicArtworkList> {
   const params = new URLSearchParams();
   params.set("limit", String(input.limit ?? 24));
+  params.set("salesChannel", "shop");
   if (input.cursor) params.set("cursor", input.cursor);
   if (input.placement) params.set("placement", input.placement);
   if (input.categorySlug) params.set("categorySlug", input.categorySlug);

@@ -1,113 +1,20 @@
 "use client";
 
-import { ShopCommerceButton } from "@/components/shop-commerce-button";
-import type { PayoutAccountViewModel } from "@/lib/account/payout-account.vm";
 import { createPayoutAccountSession } from "@/lib/shop-payout-account-actions.server";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js";
-import {
-  ConnectAccountManagement,
-  ConnectAccountOnboarding,
-  ConnectComponentsProvider,
-} from "@stripe/react-connect-js";
-import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { PayoutAccountPanel } from "@auction/shop-portal/react";
+import type { PayoutAccountViewModel } from "@auction/shop-portal/vm";
 
 type Props = {
   viewModel: PayoutAccountViewModel;
   publishableKey: string | null;
 };
 
-function cssVar(name: string, fallback: string): string {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || fallback;
-}
-
 export function ShopPayoutAccountPanel({ viewModel, publishableKey }: Props) {
-  const router = useRouter();
-  const [instance, setInstance] = useState<StripeConnectInstance | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const open = useCallback(() => {
-    if (!publishableKey) return;
-    setError(null);
-    try {
-      setInstance(
-        loadConnectAndInitialize({
-          publishableKey,
-          fetchClientSecret: async () => {
-            const result = await createPayoutAccountSession(viewModel.surface);
-            if (result.ok) return result.clientSecret;
-            const message =
-              result.reason === "sign_in_required"
-                ? "Sign in again to continue."
-                : "We could not open payout setup. Try again shortly.";
-            setError(message);
-            throw new Error(message);
-          },
-          appearance: {
-            overlays: "dialog",
-            variables: {
-              colorPrimary: cssVar("--color-primary", "#000000"),
-              colorText: cssVar("--color-on-surface", "#1a1614"),
-              colorDanger: cssVar("--color-error", "#b3261e"),
-              fontFamily: "var(--font-body, system-ui, sans-serif)",
-              borderRadius: "8px",
-            },
-          },
-        }),
-      );
-    } catch {
-      setError("We could not load Stripe. Try again shortly.");
-    }
-  }, [publishableKey, viewModel.surface]);
-
-  const close = useCallback(() => {
-    setInstance(null);
-    router.refresh();
-  }, [router]);
-
   return (
-    <section
-      aria-labelledby="payout-account-heading"
-      className="rounded-md border border-outline-variant p-4 text-sm"
-      data-testid="payout-account-panel"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="payout-account-heading" className="font-medium">
-          {viewModel.title}
-        </h2>
-        <DotStatusPill label={viewModel.statusLabel} tone={viewModel.tone} />
-      </div>
-      <p className="mt-1 text-on-surface-variant">{viewModel.description}</p>
-
-      {instance ? (
-        <div className="mt-4 min-h-[420px]">
-          <ConnectComponentsProvider connectInstance={instance}>
-            {viewModel.surface === "onboarding" ? (
-              <ConnectAccountOnboarding
-                onExit={close}
-                collectionOptions={{ fields: "eventually_due", futureRequirements: "include" }}
-              />
-            ) : (
-              <ConnectAccountManagement />
-            )}
-          </ConnectComponentsProvider>
-        </div>
-      ) : publishableKey ? (
-        <ShopCommerceButton type="button" className="mt-3" onClick={open}>
-          {viewModel.actionLabel}
-        </ShopCommerceButton>
-      ) : (
-        <p className="mt-3 text-on-surface-variant">
-          Payout setup is not available yet. Please check back soon.
-        </p>
-      )}
-      {error ? (
-        <p role="alert" className="mt-2 text-error">
-          {error}
-        </p>
-      ) : null}
-    </section>
+    <PayoutAccountPanel
+      viewModel={viewModel}
+      publishableKey={publishableKey}
+      createPayoutAccountSession={createPayoutAccountSession}
+    />
   );
 }

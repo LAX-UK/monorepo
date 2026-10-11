@@ -4,8 +4,8 @@ import { addMerchandiseVariantToBasket } from "@/app/actions/basket.actions";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { PublicMerchandiseProductDetail } from "@auction/shop-contracts";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 

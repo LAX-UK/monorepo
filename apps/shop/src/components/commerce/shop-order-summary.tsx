@@ -1,8 +1,7 @@
-import { formatShopDateTime } from "@/lib/presenters/shop-date.presenter";
 import { resolveShopFulfilmentLabel } from "@/lib/presenters/shop-fulfilment.presenter";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 import type { OrderSummary } from "@auction/shop-contracts";
+import { formatGbpPence, formatShopDateTime } from "@auction/shop-portal/vm";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 

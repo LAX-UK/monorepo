@@ -2,8 +2,6 @@ import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { resolvePortalDocumentKindLabel } from "@/lib/presenters/portal-document-kind.presenter";
-import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
 import {
   fetchPortalDocuments,
   resolveShopArtistPortalLinked,
@@ -13,6 +11,7 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
+import { formatShopDate, resolvePortalDocumentKindLabel } from "@auction/shop-portal/vm";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { notFound, redirect } from "next/navigation";
 

@@ -14,12 +14,12 @@ import {
   basketCheckoutBlockReasons,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { fetchShopBasket, listShopOrders } from "@/lib/shop-commerce.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Suspense } from "react";

@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
-  transpilePackages: ["@auction/ui", "@auction/marketing-ui"],
+  transpilePackages: ["@auction/ui", "@auction/marketing-ui", "@auction/shop-portal"],
   images: {
     remotePatterns: imageRemoteHosts.map((hostname) => ({
       protocol: "https" as const,

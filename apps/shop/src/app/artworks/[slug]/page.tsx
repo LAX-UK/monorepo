@@ -9,13 +9,13 @@ import {
   isArtworkPurchasable,
   resolveArtworkUnavailableReason,
 } from "@/lib/presenters/artwork-commerce.presenter";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import { fetchPublicArtworkBySlug } from "@/lib/shop-api.server";
 import { fetchArtworkInterestStatus } from "@/lib/shop-artwork-interest.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { FOCUS_RING } from "@auction/branding";
 import { MarketingDetailShell } from "@auction/marketing-ui";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import { cn } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import type { Metadata } from "next";

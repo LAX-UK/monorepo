@@ -1,10 +1,10 @@
 "use client";
 
 import { resolveShopFulfilmentLabel } from "@/lib/presenters/shop-fulfilment.presenter";
-import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { ShopFulfilmentOption } from "@/lib/shop-fulfilment";
 import type { BasketView } from "@auction/shop-contracts";
 import { computeOrderTotal, fulfilmentSurchargePence, pence } from "@auction/shop-domain";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 
 type Props = {
   basket: BasketView;
