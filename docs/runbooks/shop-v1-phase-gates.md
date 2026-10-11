@@ -259,7 +259,11 @@ GitHub environment variables and Terraform on **auction-infra** are the only pro
 | Staff acceptance secrets | `SHOP_ADMIN_ACCEPTANCE_PASSWORD` (required); optional `SHOP_ADMIN_ACCEPTANCE_EMAIL` + `TOTP_SECRET` (email defaults from `IDENTITY_ACCEPTANCE_EMAIL` via `resolve-shop-admin-acceptance-email.mjs`; provision runs in acceptance when shop-admin is live) |
 | Persistent DNS (shop-admin CNAME) | **Terraform apply test (manual)** `layer=persistent`, confirmation `APPLY-TEST`, after [auction-infra #31](https://github.com/LAX-UK/auction-infra/pull/31) |
 
-**Sentry (2026-10-04):** no unresolved shop storefront / shop-api issues on test in the last 7 days; unrelated test worker 504 cron noise only.
+**Monorepo wiring (2026-10-12):** `TF_VAR_stripe_shop_connect_webhook_secret`, `TF_VAR_shop_connect_transfers_enabled`, and `TF_VAR_art_image_tag` are passed from [terraform-test-up.yml](../../.github/workflows/terraform-test-up.yml), [terraform-apply-test.yml](../../.github/workflows/terraform-apply-test.yml), and [terraform-apply-test-dispatch.yml](../../.github/workflows/terraform-apply-test-dispatch.yml). Shop Connect unsigned webhook probe: `POST https://test-shop.lax.bid/webhooks/stripe/connect` → **400** (route live).
+
+**lax.art test deploy:** merge and apply [auction-infra](https://github.com/LAX-UK/auction-infra) `feat/test-art-lax-bid-infra` (persistent `test-art` CNAME + ephemeral `art` / `art-identity`), build `lax-test-art`, then deploy monorepo with `art_sha`. Until DNS resolves, skip lax.art live QA and originals E2E.
+
+**Sentry (2026-10-12):** [test unresolved issues](https://lax-bid.sentry.io/issues/?query=is%3Aunresolved+environment%3Atest) are mostly worker cron 504s, DB admin disconnects, and auth hardening noise — not shop-api storefront regressions. Triage before live QA sign-off.
 
 ## Test environment configuration (staff operations)
 
@@ -291,6 +295,7 @@ Terraform on test (**auction-infra**) is the single source of truth for flags an
 
 | Step | Flag(s) | Acceptance run IDs |
 | --- | --- | --- |
+| Connect transfers (Phase 2) | `SHOP_CONNECT_TRANSFERS_ENABLED` (after payee **Ready** + dedicated Connect webhook secret applied) | _pending_ |
 | Payouts | `SHOP_PAYOUTS_ENABLED` | _pending_ |
 | Third-party | `SHOP_THIRD_PARTY_ENABLED` | _pending_ |
 | Originals + merchandise | `SHOP_ORIGINALS_ENABLED`, `SHOP_MERCHANDISE_ENABLED` | _pending_ |

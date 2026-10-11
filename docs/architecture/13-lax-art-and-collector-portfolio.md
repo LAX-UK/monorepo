@@ -33,20 +33,38 @@ Collectors think in **my works and my money**, not in which hostname they used.
 | --- | --- | --- | --- |
 | **Collection** | Owned originals and editions, documents, provenance | To be designed | `/account/editions` (partial) |
 | **Enquiries** | Open and historical purchase / viewing enquiries | Inquiries tab | Interest / enquiry (partial) |
-| **Favorites** | Saved artworks and followed artists | Saved / Followed | Not yet unified |
+| **Favorites** | Saved artworks and followed artists | Saved / Followed | Unified in `shop-api`; lax.art `/account/favorites` is the first consumer |
 | **Orders** | Paid commerce orders (prints, merch) | N/A for originals invoice path | `/account/orders` |
 | **Payouts** | LAX Art business payout account (Connect) | Payouts (mobile designs) | `/account/payouts` when enabled |
 
-**API:** `GET /v1/me/collection` aggregates owned works and document metadata across channels. **Enquiries** use `GET /v1/me/enquiries` with a staff-visible status lifecycle.
+**API:** `GET /v1/me/collection` aggregates owned works and document metadata across channels. **Enquiries** use `GET /v1/me/enquiries` with a staff-visible status lifecycle; each row includes the enquiry `message` and `contactPhone` (migration 0212; both nullable). Enquiry requests validate `message` (1–2000 characters) and `contactPhone` (same shape as checkout `deliveryPhone`).
 
 Presentation uses shared view models in a package consumed by **`apps/shop`** and **`apps/art`** so both sites render the same collection semantics.
+
+### Favorites
+
+Saved artworks and followed artists live in `shop-api` (migration **0213**: `shop_saved_artwork`, `shop_followed_artist`). Rows are keyed by **identity subject**, not party, so a collector without a `shop_party` can still save works. Deleting an artwork or artist cascades its favorites. Identity merges re-key both tables in the merge-inbox runner, dropping duplicates. `shop_app` has DML grants via `SHOP_COMMERCE_TABLES` in `migrate-roles`.
+
+Favorites are only registered when `SHOP_PORTAL_OWNERSHIP_ENABLED` is true. When the flag is off they return `shop.feature_disabled` (404). Routes require a user token (BFF tokens get 401). Reads need `shop.read`; writes need `shop.write`.
+
+| `shop-api` route | BFF route (`shop-identity` / art-identity) | Result |
+| --- | --- | --- |
+| `GET /v1/me/favorites/artworks` | `GET /commerce/me/favorites/artworks` | `{ items: PortalSavedArtwork[] }`, newest first |
+| `PUT /v1/me/favorites/artworks/:slug` | `PUT /commerce/me/favorites/artworks/:slug` (CSRF) | `saved` or `already_saved` |
+| `DELETE /v1/me/favorites/artworks/:slug` | `DELETE /commerce/me/favorites/artworks/:slug` (CSRF) | `removed` or `already_removed` |
+| `GET /v1/me/favorites/artists` | `GET /commerce/me/favorites/artists` | `{ items: PortalFollowedArtist[] }`, newest first |
+| `PUT /v1/me/favorites/artists/:slug` | `PUT /commerce/me/favorites/artists/:slug` (CSRF) | `followed` or `already_followed` |
+| `DELETE /v1/me/favorites/artists/:slug` | `DELETE /commerce/me/favorites/artists/:slug` (CSRF) | `removed` or `already_removed` |
+
+PUT and DELETE are idempotent: repeating one returns `200` with the `already_*` status. An unknown slug returns `404 shop.not_found`. Contracts are in `packages/shop-contracts/src/portal-favorites.ts`. Layering follows the usual path: route → `application/handlers/portal-favorites.handler.ts` → `PortalFavoritesPort` → Drizzle adapter.
 
 ## lax.art application
 
 - **`apps/art`:** Next.js storefront and signed-in account surfaces aligned with [Figma LAX.art rebuild](https://www.figma.com/design/JvWqZrAeu8r8fs5EfjDlRc/LAX.art-rebuild).
-- **OIDC client:** `lax-art-web` (confidential BFF pattern, same family as Shop).
-- **Public URL:** from env only (`LAX_ART_PUBLIC_URL`); never hard-code production host in code.
-- **BFF:** Either extend **`apps/shop-identity`** to serve a second RP client or add a dedicated art BFF; the choice is recorded in **D37** after a short spike (cookie isolation, `/commerce/*` proxy paths, OIDC client registration).
+- **OIDC client:** `lax-art-web` (confidential BFF pattern, same family as Shop). Its redirect on test is `https://test-art.lax.bid/auth/callback`.
+- **Public URL:** from env only (`LAX_ART_PUBLIC_URL`); never hard-code production host in code. `shop-api` reads the same variable (`StorefrontOrigins`) to pick the origin for art-channel artwork links in enquiry and notify-me emails, and to allow lax.art Connect return URLs.
+- **BFF (art-identity):** a second deployment of the **`apps/shop-identity`** codebase (see **D37**), configured with `OIDC_CLIENT_ID=lax-art-web` and `SHOP_STOREFRONT_URL=<LAX_ART_PUBLIC_URL>`. Ingress on the art hostname routes exactly the `SHOP_IDENTITY_OWNED_PREFIXES` (`/login`, `/logout`, `/register`, `/auth`, `/api`, `/me`, `/commerce`) to art-identity and everything else to `apps/art`. `apps/art` calls art-identity server-side (`ART_IDENTITY_INTERNAL_BASE_URL`, falling back to `ART_IDENTITY_BASE_URL`).
+- **Routes:** `/`, `/artworks`, `/artworks/[slug]`, `/artists/[slug]`, `/search`, and the signed-in `/account` area with `/account/collection`, `/account/inquiries`, `/account/favorites` and `/account/payouts`. Health checks are `/health/live` and `/health/ready`.
 
 Editorial pages (exhibitions, stories, Arthub, press) may ship after commerce and account MVP.
 
@@ -74,7 +92,9 @@ A person may have at most **one Connect account per Stripe platform**. Test may 
 | `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET` | Secret of the **Connect** webhook endpoint `/webhooks/stripe/connect` (`account.updated`) |
 | `SHOP_CONNECT_TRANSFERS_ENABLED` | Turns on automatic transfers of `due` payouts to ready accounts |
 
-Payee journey: Shop `/account/payouts` shows the payout account state (not set up, action needed, ready) and opens Stripe's embedded onboarding or account management. Ready accounts receive `due` payouts automatically; staff can still mark a payout paid by bank transfer.
+Connect onboarding return and refresh URLs must be on the `SHOP_STOREFRONT_URL` or `LAX_ART_PUBLIC_URL` origin. URLs are compared by exact origin (scheme, host and port), and anything else gets `400 shop.validation`.
+
+Payee journey: Shop `/account/payouts` (and lax.art `/account/payouts`) shows the payout account state (not set up, action needed, ready) and opens Stripe's embedded onboarding or account management. Ready accounts receive `due` payouts automatically; staff can still mark a payout paid by bank transfer.
 
 ## Original purchase flow (lax.art)
 
