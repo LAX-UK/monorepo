@@ -17,6 +17,7 @@ function parseArgs(argv) {
   let inputShopImageTag = "";
   let inputShopIdentityImageTag = "";
   let inputShopApiImageTag = "";
+  let inputArtImageTag = "";
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--app-id") appId = argv[++i] ?? "";
     if (argv[i] === "--format") format = argv[++i] ?? "github-env";
@@ -26,6 +27,7 @@ function parseArgs(argv) {
     if (argv[i] === "--input-shop-image-tag") inputShopImageTag = argv[++i] ?? "";
     if (argv[i] === "--input-shop-identity-image-tag") inputShopIdentityImageTag = argv[++i] ?? "";
     if (argv[i] === "--input-shop-api-image-tag") inputShopApiImageTag = argv[++i] ?? "";
+    if (argv[i] === "--input-art-image-tag") inputArtImageTag = argv[++i] ?? "";
   }
   if (!appId) throw new Error("--app-id is required");
   if (format !== "github-env" && format !== "json") {
@@ -40,6 +42,7 @@ function parseArgs(argv) {
     inputShopImageTag: inputShopImageTag.trim(),
     inputShopIdentityImageTag: inputShopIdentityImageTag.trim(),
     inputShopApiImageTag: inputShopApiImageTag.trim(),
+    inputArtImageTag: inputArtImageTag.trim(),
   };
 }
 
@@ -60,6 +63,13 @@ function inputOrLive(label, input, live, hint) {
   return SHA.test(input) ? input : requireSha(label, live, hint);
 }
 
+/** Art may be absent from the live spec until the first infra + image deploy. */
+function optionalInputOrLive(input, live) {
+  if (SHA.test(input)) return input;
+  if (SHA.test(live ?? "")) return live;
+  return "";
+}
+
 /** Prefer explicit CLI/workflow pin over job-level TF_VAR_* before falling back to live App spec. */
 export function coalesceImageSha(...candidates) {
   for (const candidate of candidates) {
@@ -78,6 +88,7 @@ export function resolveLiveTerraformImageTags(
     inputShopImageTag = "",
     inputShopIdentityImageTag = "",
     inputShopApiImageTag = "",
+    inputArtImageTag = "",
   } = {},
 ) {
   const live = readComponentImageTags(spec);
@@ -101,6 +112,7 @@ export function resolveLiveTerraformImageTags(
       live.account,
       "Before the account component exists, pass account_sha (a SHA app-deploy-test built lax-test-account for).",
     ),
+    art_image_tag: optionalInputOrLive(inputArtImageTag, live.art),
   };
 }
 
@@ -129,6 +141,7 @@ function main() {
       parsed.inputShopApiImageTag,
       process.env.TF_VAR_shop_api_image_tag,
     ),
+    inputArtImageTag: coalesceImageSha(parsed.inputArtImageTag, process.env.TF_VAR_art_image_tag),
   });
   const { format } = parsed;
   if (format === "json") {

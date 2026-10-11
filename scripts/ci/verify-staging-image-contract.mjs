@@ -53,6 +53,16 @@ if (missingInputs.length > 0) {
   throw new Error(`Missing required staging image contracts: ${missingInputs.join(", ")}`);
 }
 
+if (process.env.ART_SHA && process.env.ART_DIGEST) {
+  contracts.push({
+    repository: "lax-test-art",
+    sha: process.env.ART_SHA,
+    digest: process.env.ART_DIGEST,
+    releaseEnv: process.env.ART_SHA,
+    rollingTag: "test",
+  });
+}
+
 const manifestPath = process.env.RELEASE_MANIFEST;
 if (manifestPath) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -101,4 +111,5 @@ if (outputPath) {
   );
 }
 
-console.log("Staging image contracts verified for Auth, Shop Identity, Shop, and Shop API");
+const verified = contracts.map((c) => c.repository.replace("lax-test-", "")).join(", ");
+console.log(`Staging image contracts verified for ${verified}`);

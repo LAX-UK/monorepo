@@ -7,6 +7,7 @@ const ALL = [
   { component: "auth", dockerfile: "apps/auth/Dockerfile" },
   { component: "shop-identity", dockerfile: "apps/shop-identity/Dockerfile" },
   { component: "shop", dockerfile: "apps/shop/Dockerfile" },
+  { component: "art", dockerfile: "apps/art/Dockerfile" },
   { component: "shop-api", dockerfile: "apps/shop-api/Dockerfile" },
   { component: "shop-admin", dockerfile: "apps/shop-admin/Dockerfile" },
   { component: "account", dockerfile: "apps/account/Dockerfile" },

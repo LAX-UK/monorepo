@@ -16,6 +16,7 @@ export function smokeProbes({
   pinShopAdmin = true,
   pinAuth = true,
   pinAccount = false,
+  pinArt = false,
   accountLive = false,
 }) {
   return {
@@ -25,6 +26,7 @@ export function smokeProbes({
     readinessShop: pinShop && smokeShop,
     readinessShopAdmin: pinShopAdmin && smokeShop,
     readinessAccount: pinAccount,
+    readinessArt: pinArt,
     accountLoginRedirect: accountLive && (pinAccount || smokeAuth),
     authDiscovery: smokeAuth,
     shopAdminOidc: smokeShop,
@@ -41,6 +43,7 @@ export function pinsForTargetSha(tagMap, targetSha) {
     pinShopAdmin: pin("shop-admin"),
     pinAuth: pin("auth"),
     pinAccount: pin("account"),
+    pinArt: pin("art"),
     accountLive: Boolean(tagMap?.account),
   };
 }
@@ -66,7 +69,11 @@ export function releaseMatchesExpected(body, expectedRelease, url) {
   if (!expectedRelease) return true;
   const top = String(body?.release ?? body?.version ?? "").trim();
   if (top === expectedRelease) return true;
-  if (url.includes("test-shop.lax.bid") || url.includes("test-shop-admin.lax.bid")) {
+  if (
+    url.includes("test-shop.lax.bid") ||
+    url.includes("test-shop-admin.lax.bid") ||
+    url.includes("test-art.lax.bid")
+  ) {
     const apiRelease = body?.dependencies?.shopApi?.release;
     if (apiRelease === expectedRelease) return true;
   }
@@ -132,6 +139,9 @@ export async function runStagingDeploySmoke(env, fetchImpl = fetch) {
   }
   if (probes.readinessAccount) {
     await waitForReady("https://test-account.lax.bid/health/ready", sha, fetchImpl);
+  }
+  if (probes.readinessArt) {
+    await waitForReady("https://test-art.lax.bid/health/ready", sha, fetchImpl);
   }
   if (probes.accountLoginRedirect) {
     const response = await fetchImpl("https://test-account.lax.bid/api/auth/login", {
