@@ -58,4 +58,18 @@ describe("catalogue handlers", () => {
     expect(listPublicArtists).toHaveBeenCalledOnce();
     expect(getPublicArtistBySlug).toHaveBeenCalledWith("artist");
   });
+
+  it("trims the artist search term and drops it when blank", async () => {
+    const listPublicArtists = vi.fn(async () => ({ items: [] }));
+    const handler = createListPublicArtistsHandler({
+      listPublicArtists,
+      getPublicArtistBySlug: async () => null,
+    });
+
+    await handler({ limit: 12, q: "  Ellison " });
+    await handler({ limit: 12, q: "   " });
+
+    expect(listPublicArtists).toHaveBeenNthCalledWith(1, { limit: 12, q: "Ellison" });
+    expect(listPublicArtists).toHaveBeenNthCalledWith(2, { limit: 12 });
+  });
 });

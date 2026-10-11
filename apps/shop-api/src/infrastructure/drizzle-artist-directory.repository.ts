@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopHomePlacement, shopParty } from "@auction/db/schema";
 import { maxItemsForPlacement } from "@auction/shop-domain";
-import { and, asc, count, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, lt, or } from "drizzle-orm";
 import type {
   ArtistDirectoryReader,
   ListPublicArtistsInput,
@@ -84,12 +84,20 @@ export function createDrizzleArtistDirectoryRepository(db: Database): ArtistDire
         .from(shopArtist)
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
         .where(
-          cursor
-            ? or(
-                lt(shopArtist.createdAt, cursor.createdAt),
-                and(eq(shopArtist.createdAt, cursor.createdAt), lt(shopArtist.id, cursor.id)),
-              )
-            : undefined,
+          and(
+            cursor
+              ? or(
+                  lt(shopArtist.createdAt, cursor.createdAt),
+                  and(eq(shopArtist.createdAt, cursor.createdAt), lt(shopArtist.id, cursor.id)),
+                )
+              : undefined,
+            input.q
+              ? or(
+                  ilike(shopParty.displayName, `%${input.q}%`),
+                  ilike(shopArtist.slug, `%${input.q}%`),
+                )
+              : undefined,
+          ),
         )
         .orderBy(desc(shopArtist.createdAt), desc(shopArtist.id))
         .limit(limit + 1);

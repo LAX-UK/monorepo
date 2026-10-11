@@ -8,6 +8,7 @@ export type ListPublicArtistsQuery = {
   limit: number;
   cursor?: string;
   placement?: "featured_artists";
+  q?: string;
 };
 
 export type ListPublicArtistsHandler = (
@@ -19,10 +20,12 @@ export function createListPublicArtistsHandler(
 ): ListPublicArtistsHandler {
   return (input) => {
     const cursor = decodeCatalogueCursor(input.cursor);
+    const q = input.q?.trim();
     return reader.listPublicArtists({
       limit: input.limit,
       ...(cursor ? { cursor } : {}),
       ...(input.placement ? { placement: input.placement } : {}),
+      ...(q ? { q } : {}),
     });
   };
 }
