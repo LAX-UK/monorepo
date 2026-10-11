@@ -98,7 +98,7 @@ Then on shop-api (local dev uses `tsx`; production image uses built CLI under `d
 ## Phase 3 gate (operations)
 
 - Migration `0189` applied; broker assignments populated for production brokers.
-- Reconciliation job skeleton: `apps/worker/src/jobs/shop-stock-reconciliation.job.ts` (not scheduled until ops wire cron).
+- Reconciliation job: `apps/worker/src/jobs/shop-stock-reconciliation.job.ts` registered daily via `shop-stock-reconciliation` queue (compare logic still a skeleton until Zoho projection wiring).
 - Acceptance tests **#3** (hold) and **#5** (third-party gross/fees/net).
 
 ## Phase 4 gate (originals + merchandise)
@@ -166,7 +166,7 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | `isPersonalisedGoods` column | defaults `false` | Catalogue schema + legal exemption config |
 | Zoho order financials | stub path; enquiry deal optional | Wire `crm-shop-record-sync-handler` financials |
 | Customer dispatch/refund emails | partial wiring | Wire remaining templates |
-| `apps/shop-admin` screens | BFF + acceptance only; no product UI yet | Build admin UI when prioritised |
+| `apps/shop-admin` screens | Operational MVP (lists, detail, forms); gaps: settings page, audit log UI, disputes UI, full catalogue editor | Harden UX and remaining screens per phase gates |
 | Payout ledger nullable `order_line_id` | non-order sources tracked | Confirm accounting before prod payouts |
 | Portal no-party edge cases | monitor on test enable | UX polish before prod |
 
@@ -231,6 +231,23 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 **Staff silver TOTP (test acceptance):** when `POST /api/auth/two-factor/enable` returns 5xx, CI provision bootstraps `two_factor` with Better Auth `symmetricEncrypt(BETTER_AUTH_SECRET)` then DEK seal (`AUTH_DEK_KEY`), exports `SHOP_ACCEPTANCE_PROVISIONED_TOTP_SECRET` to `GITHUB_ENV` for the same job, and attempts `gh secret set` on the **test** environment. Dispatch **Shop staging acceptance** from a ref whose workflow passes `AUTH_DEK_KEY` and `BETTER_AUTH_SECRET` (merge [#451](https://github.com/LAX-UK/monorepo/pull/451) or `--ref fix/staff-acceptance-totp-reconcile-v2`); `monorepo_ref` alone does not change the workflow file on `main`.
 
 **Next:** merge staff TOTP + platform push; 2× seeded acceptance per flag flip (payouts → third-party → originals + merchandise); record run IDs below.
+
+### Flag flip procedure (requires human approval)
+
+GitHub environment variables and Terraform on **auction-infra** are the only production/test levers for `SHOP_*_ENABLED`. Agents and CI **must not** change GitHub vars or run Terraform apply without explicit operator approval.
+
+1. Confirm the gate row for the target phase is green (migrations, contract tests, acceptance).
+2. Operator updates Terraform test/prod shop-api env (or the documented GitHub var mirror) **one flag at a time**: `SHOP_PAYOUTS_ENABLED` → `SHOP_THIRD_PARTY_ENABLED` → `SHOP_ORIGINALS_ENABLED` + `SHOP_MERCHANDISE_ENABLED`.
+3. Deploy shop-api, then shop-identity + storefronts; pin SHAs from `/health/ready`.
+4. Run **Shop staging acceptance** twice with `seed_catalogue=true`; roll back the flag on any failure.
+5. Local/CI reference values (no secret writes): `pnpm --filter @auction/shop-api exec tsx src/scripts/print-test-policy-env.ts`
+
+**LAX Art Connect with `SHOP_PAYOUTS_ENABLED` (D38):**
+
+1. Set `STRIPE_PUBLISHABLE_KEY` and `STRIPE_SHOP_CONNECT_PLATFORM_KEY` (`bid_sandbox` on test, `lax_art` in production; production boot fails otherwise).
+2. In the Stripe dashboard of that platform, add a **Connect** webhook endpoint `https://<shop-api>/webhooks/stripe/connect` listening to `account.updated`; store its signing secret as `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET`.
+3. Leave `SHOP_CONNECT_TRANSFERS_ENABLED=false` until one payee completes onboarding on test and shows **Ready** on `/account/payouts`; then enable it and confirm a `due` payout becomes `paid` with a `tr_…` reference.
+4. When Stripe account 2 exists, switch keys, webhook secrets and `STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art` together. Sandbox rows stay keyed `bid_sandbox` and are never reused; payees onboard once on the new platform.
 
 **Infra follow-ups (test):**
 
