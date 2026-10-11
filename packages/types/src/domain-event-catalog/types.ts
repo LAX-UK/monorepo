@@ -25,6 +25,7 @@ export type DomainEventConsumer =
   | "bid_profile_provisioning"
   | "bid_identity_directory"
   | "shop_identity_projection"
+  | "shop_staff_access"
   | "ssf_transmitter"
   | "lot_invoice_initiation"
   | "payment_refund_notify"

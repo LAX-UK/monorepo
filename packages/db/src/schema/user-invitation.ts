@@ -1,5 +1,15 @@
 import { relations, sql } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user, userStaffRoleEnum } from "./auth.js";
 import { emailOutbox } from "./email.js";
 import { legalEntity } from "./legal-entities.js";
@@ -48,6 +58,33 @@ export const userInvitation = pgTable(
     uniqueIndex("user_invitation_pending_platform_email_uidx")
       .on(sql`lower(${table.email})`)
       .where(sql`status = 'pending' AND target_legal_entity_id IS NULL`),
+  ],
+);
+
+/** LAX platforms an invitation can grant staff roles on. */
+export const INVITATION_GRANT_PRODUCTS = ["bid", "shop"] as const;
+export type InvitationGrantProduct = (typeof INVITATION_GRANT_PRODUCTS)[number];
+
+/**
+ * Staff role per platform carried by an invitation. Roles are validated against each
+ * platform's role enum by the application; the database only pins the platform set.
+ */
+export const userInvitationProductGrant = pgTable(
+  "user_invitation_product_grant",
+  {
+    invitationId: uuid("invitation_id")
+      .notNull()
+      .references(() => userInvitation.id, { onDelete: "cascade" }),
+    product: text("product").$type<InvitationGrantProduct>().notNull(),
+    role: text("role").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "user_invitation_product_grant_pk",
+      columns: [table.invitationId, table.product],
+    }),
+    check("user_invitation_product_grant_product_check", sql`${table.product} IN ('bid', 'shop')`),
   ],
 );
 

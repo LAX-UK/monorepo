@@ -27,6 +27,24 @@ Personal two-step verification stays a global setting: users turn it on or off f
 Account (hosted `/two-factor/manage`) or Bid security settings. When a policy requires it,
 both surfaces say who requires it and hide **Turn off**.
 
+## Staff access across platforms
+
+One identity, separate roles per platform. A Bid super admin invites a person once and
+chooses, for each platform, whether they get access and which role (D36). Bid applies its
+own grant. Other platforms receive `lax.staff_access.granted` / `.revoked` domain events
+and apply them with their own roster rules, so no product writes another product's role
+tables. Platform names, role labels and summaries come from `LAX_STAFF_PLATFORMS` in
+`@auction/types` and must not be redefined in product UI.
+
+| Step | Owner | Surface |
+|------|-------|---------|
+| Choose platforms and roles | Bid admin | **Admin → People → Invite** |
+| Invitation email | Bid API (`access-invite` template) | One email listing every platform and role |
+| Accept (new account) | LAX Identity sign-up + Bid registration | `/register?invite=…` |
+| Accept (existing account) | Bid web | `/invitations/accept/:token` |
+| Apply Shop grant | `apps/shop-api` (`shop_staff_access_inbox`) | Audited like a manual Shop Admin grant |
+| Launch each platform | Bid web | `/invitations/welcome` |
+
 ## SOLID module map
 
 | Module | Responsibility | Allowed dependencies |

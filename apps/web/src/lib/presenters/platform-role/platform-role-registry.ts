@@ -1,5 +1,5 @@
 import type { UserRole, UserStaffRole } from "@auction/types";
-import { userStaffRoles } from "@auction/types";
+import { laxStaffPlatform, userStaffRoles } from "@auction/types";
 
 /** Categorical palette keys — one per displayed platform role (CSS in globals.css). */
 export type PlatformRolePaletteKey =
@@ -26,20 +26,9 @@ export type PlatformRolePresentation = {
   paletteKey: PlatformRolePaletteKey;
 };
 
-const STAFF_ROLE_LABELS: Record<UserStaffRole, string> = {
-  super_admin: "Super admin",
-  auction_manager: "Auction manager",
-  catalogue_manager: "Catalogue manager",
-  specialist: "Specialist",
-  finance_ops: "Finance",
-  operations_fulfilment: "Operations fulfilment",
-  content_marketing: "Content & marketing",
-  support_concierge: "Support concierge",
-  staff_viewer: "Staff viewer",
-  compliance_officer: "Compliance officer",
-  client_advisor: "Client advisor",
-  operations: "Operations",
-};
+const STAFF_ROLE_LABELS = Object.fromEntries(
+  laxStaffPlatform("bid").roles.map((r) => [r.value, r.label]),
+) as Record<UserStaffRole, string>;
 
 const STAFF_ROLE_PALETTE: Record<UserStaffRole, PlatformRolePaletteKey> = {
   super_admin: "super_admin",

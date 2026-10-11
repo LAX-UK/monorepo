@@ -25,8 +25,9 @@ export function attachAdminInvitationRoutes(
       const result = await invitations.create({
         actorUserId: actorId,
         email: body.email,
-        targetRole: body.targetRole,
+        ...(body.targetRole != null ? { targetRole: body.targetRole } : {}),
         ...(body.targetStaffRole != null ? { targetStaffRole: body.targetStaffRole } : {}),
+        ...(body.grants != null ? { grants: body.grants } : {}),
       });
       return result.match(
         (data) => c.json({ data }, 201),

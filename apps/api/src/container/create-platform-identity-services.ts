@@ -104,7 +104,10 @@ export function createPlatformIdentityServices(
     repoFactory,
   );
   const transactionalMailer: ITransactionalMailer = createTransactionalMailer(env);
-  const membershipInviteNotifier = new EmailMembershipInviteNotifier(transactionalMailer);
+  const membershipInviteNotifier = new EmailMembershipInviteNotifier(
+    transactionalMailer,
+    emailService,
+  );
   const membershipGuard = new LegalEntityMembershipGuard(repos.legalEntityMemberRepository);
   const invitationLifecycleService: IInvitationLifecycleService = new InvitationLifecycleService(
     core.transactionRunner,

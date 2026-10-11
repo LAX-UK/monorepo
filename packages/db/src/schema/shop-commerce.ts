@@ -790,6 +790,36 @@ export const shopIdentityMergeInbox = pgTable(
   ],
 );
 
+/** Bid-emitted lax.staff_access.* events awaiting application to shop_staff_member. */
+export const shopStaffAccessInbox = pgTable(
+  "shop_staff_access_inbox",
+  {
+    eventId: bigint("event_id", { mode: "number" })
+      .primaryKey()
+      .references(() => domainEvent.id, { onDelete: "restrict" }),
+    eventType: text("event_type")
+      .$type<"lax.staff_access.granted" | "lax.staff_access.revoked">()
+      .notNull(),
+    status: text("status").default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    lastError: text("last_error"),
+    payload: jsonb("payload").notNull(),
+    processedAt: timestamp("processed_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("shop_staff_access_inbox_status_created_idx").on(table.status, table.createdAt),
+    check(
+      "shop_staff_access_inbox_event_type_check",
+      sql`${table.eventType} IN ('lax.staff_access.granted', 'lax.staff_access.revoked')`,
+    ),
+    check(
+      "shop_staff_access_inbox_status_check",
+      sql`${table.status} IN ('pending', 'completed', 'dead', 'failed')`,
+    ),
+  ],
+);
+
 export const shopPartyInvite = pgTable(
   "shop_party_invite",
   {

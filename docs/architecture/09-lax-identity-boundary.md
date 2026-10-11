@@ -174,6 +174,11 @@ refused while a policy applies. Products read and change policy only through
 `/internal/identity/two-factor-policies/*`. See D35 in
 [02-decisions.md](./02-decisions.md).
 
+Per-platform staff grants from invitations (D36) reach Identity only through the same
+`identity_access_marker` triggers: when Shop applies a `lax.staff_access.granted` event,
+the `shop_staff_member` trigger marks the subject as staff and the staff policy applies
+from the next sign-in.
+
 ## Logout, revocation, and introspection
 
 RP-initiated logout uses `/api/auth/oauth2/endsession` with an ID-token hint and

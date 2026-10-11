@@ -1,4 +1,4 @@
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { LaxStaffGrant, UserRole, UserStaffRole } from "@auction/types";
 
 export type InvitationRow = {
   id: string;
@@ -34,6 +34,8 @@ export type InvitationInsert = {
   targetLegalEntityId?: string | null;
   targetLegalEntityMemberRole?: string | null;
   createdByUserId: string;
+  /** Per-platform staff roles; written in the same transaction as the invitation. */
+  grants?: readonly LaxStaffGrant[];
 };
 
 /** Safe for internal reads (no token hash). Omits operational FK only used for joins. */
@@ -41,6 +43,7 @@ export type InvitationSummary = Omit<InvitationRow, "tokenHash" | "lastEmailOutb
 
 /** Admin list projection including invite-email delivery snapshot from linked outbox row. */
 export type InvitationAdminListRow = InvitationSummary & {
+  grants: LaxStaffGrant[];
   inviteEmailLastStatus: string | null;
   invitedByName: string | null;
 };
@@ -52,7 +55,7 @@ export type InvitationAdminListFilters = {
 
 /** Outcome of the atomic single-use consume transaction. */
 export type ConsumeInviteResult =
-  | { outcome: "ok"; targetRole: UserRole }
+  | { outcome: "ok"; targetRole: UserRole; grants: LaxStaffGrant[] }
   | { outcome: "invalid" }
   | { outcome: "expired" }
   | { outcome: "email_mismatch" };
@@ -65,14 +68,25 @@ export interface IUserInvitationRepository {
   findPendingPlatformByEmail(email: string): Promise<InvitationRow | null>;
   /**
    * Atomically consumes a pending invite for a freshly registered user: marks it
-   * accepted and applies the target role to the user row, in one transaction with
-   * a row lock so a token can never be redeemed twice.
+   * accepted, applies the target role and grants, in one transaction with a row lock
+   * so a token can never be redeemed twice.
    */
   consumeForNewUser(
     tokenHash: string,
     newUserId: string,
     email: string,
   ): Promise<ConsumeInviteResult>;
+  /**
+   * Accepts a pending invite for a signed-in existing user. Applies the Bid grant (if any)
+   * and records `lax.staff_access.granted` for every other platform in the same
+   * transaction; never downgrades an existing user to the invitation's base role.
+   */
+  acceptForExistingUser(
+    tokenHash: string,
+    userId: string,
+    email: string,
+  ): Promise<ConsumeInviteResult>;
+  listGrants(invitationId: string): Promise<LaxStaffGrant[]>;
   listAdmin(
     filters: InvitationAdminListFilters,
     page: { limit: number; offset: number },

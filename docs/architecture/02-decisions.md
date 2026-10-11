@@ -663,3 +663,24 @@ Users manage two-step verification on the hosted `/two-factor/manage` page (link
 **Why this wins.** One enforcement point covers every LAX product, product role models stay private, and admins can tighten or relax policy without a deploy.
 
 **Status.** *Implemented.* Migration **0205** `identity_access_policy`; gate: [apps/auth/src/infrastructure/two-factor-authorize-gate.middleware.ts](../../apps/auth/src/infrastructure/two-factor-authorize-gate.middleware.ts); policy routes: [apps/auth/src/routes/internal-two-factor-policy.routes.ts](../../apps/auth/src/routes/internal-two-factor-policy.routes.ts); Bid service: [apps/api/src/services/security/two-factor-policy.service.ts](../../apps/api/src/services/security/two-factor-policy.service.ts).
+
+## D36. LAX staff invitations carry per-platform grants; each product applies its own grant
+
+**Extends D13 and D35.**
+
+**Chosen.** A staff invitation is one LAX invitation with a list of grants, one per platform: `{ product: "bid" | "shop", role }`. The super admin picks, per platform, whether the person gets access and which role. The catalogue of platforms, roles, labels and summaries lives in `@auction/types` (`LAX_STAFF_PLATFORMS`), so Bid's invite form, badges and emails use the same names as Shop Admin. `user_invitation_product_grant` (migration **0206**) is the source of truth. `user_invitation.target_role` and `target_staff_role` are derived from it for older readers: a Bid grant makes the invitee Bid staff, and Shop-only invitees stay Bid clients.
+
+The same invitation works for new and existing accounts:
+
+- **New account** — the email links to `/register?invite=…&next=/invitations/welcome?platforms=…`; registration consumes the invitation.
+- **Existing account** — the email links to `/invitations/accept/:token`. The person signs in as the invited email and accepts (`POST /users/me/invitations/accept`). Signed in as someone else, the page offers **Switch account**.
+
+Both paths accept in one transaction. Bid applies its grant directly (`bid_user_profile` staff role), and each other platform gets a `lax.staff_access.granted` domain event (aggregate = subject). Shop consumes these through `shop_staff_access_inbox` (the `staff-access` scheduler task in `apps/shop-api`). It applies the grant with the same roster rules as Shop Admin and writes a staff audit row. A roster conflict (for example, last-admin protection), an unknown role or an invalid payload dead-letters the row and sends an ops alert instead of retrying. `lax.staff_access.revoked` follows the same path. The welcome page lists each granted platform with a launch link; web reads Shop Admin's origin from `LAX_SHOP_ADMIN_URL` (or `SHOP_ADMIN_URL`), falling back to the Shop storefront.
+
+All invitation emails, including organisation invitations, use the `access-invite` template. Its subject reads "You've been given access to …" for existing accounts and "You're invited to join …" otherwise, and it lists one row per platform and role.
+
+**Alternatives considered.** One global staff role across every LAX product (rejected — Shop and Bid roles differ, and D13 keeps roles product-owned). Bid writing `shop_staff_member` directly (rejected — crosses the product database boundary and bypasses Shop's roster rules). Separate invitations per product (rejected — several emails and sign-ups for one hire).
+
+**Why this wins.** One email and one acceptance give access everywhere the super admin chose. Each product still owns its role model and rules, and delivery to other products is idempotent and auditable.
+
+**Status.** *Implemented.* Migration **0206** `invitation_product_grants`; repository: [packages/persistence/src/repositories/drizzle-invitation.repository.ts](../../packages/persistence/src/repositories/drizzle-invitation.repository.ts); Shop consumer: [apps/shop-api/src/infrastructure/scheduler/process-staff-access-inbox.runner.ts](../../apps/shop-api/src/infrastructure/scheduler/process-staff-access-inbox.runner.ts); catalogue: [packages/types/src/lax-staff-platforms.ts](../../packages/types/src/lax-staff-platforms.ts).

@@ -57,6 +57,7 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_staff_member",
   "shop_admin_command",
   "shop_identity_merge_inbox",
+  "shop_staff_access_inbox",
   "shop_admin_idempotency",
   "shop_party_invite",
   "shop_document",

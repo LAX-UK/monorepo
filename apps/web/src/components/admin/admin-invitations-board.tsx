@@ -6,10 +6,10 @@ import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
+import { InvitationAccessBadges } from "@/components/admin/invitation-access-badges";
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
 import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
 import { InvitationDrawerContent } from "@/components/admin/invitations-board/drawer";
-import { PlatformRoleBadge } from "@/components/admin/platform-role-badge";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getInvitationBulkOperations } from "@/lib/admin/bulk-ops/invitations";
 import { invitationLifecycleDisplay } from "@/lib/admin/invite-lifecycle";
@@ -46,11 +46,12 @@ function columns(
     },
     {
       accessorKey: "targetRole",
-      header: "Role",
+      header: "Access",
       cell: ({ row }) => (
-        <PlatformRoleBadge
+        <InvitationAccessBadges
           targetRole={row.original.targetRole}
           targetStaffRole={row.original.targetStaffRole}
+          grants={row.original.grants}
         />
       ),
     },

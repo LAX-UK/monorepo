@@ -1,15 +1,17 @@
 "use client";
 
 import { InviteEmailChipInput } from "@/components/admin/invite-email-chip-input";
-import { PlatformRoleBadge } from "@/components/admin/platform-role-badge";
+import {
+  type DraftPlatformGrant,
+  InvitePlatformAccessPicker,
+  platformGrantsError,
+} from "@/components/admin/invite-platform-access-picker";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { adminCreateInvitationResultAction } from "@/lib/actions/admin";
 import { MAX_INVITE_BATCH } from "@/lib/admin/parse-invite-email-list";
 import { useActionForm } from "@/lib/forms/use-action-form";
-import { staffRoleFilterOptions } from "@/lib/presenters/platform-role/platform-role-registry";
 import { notify } from "@/lib/ui/notify";
 import type { UserRole } from "@auction/types";
-import type { UserStaffRole } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -48,11 +50,6 @@ const coarseRoleOptions: { value: UserRole; label: string }[] = [
   { value: "staff", label: "Staff" },
 ];
 
-const staffRoleOptions = staffRoleFilterOptions.map((o) => ({
-  value: o.value,
-  label: o.label,
-}));
-
 export function AdminInviteForm({ formId, layout, onSubmittingChange, onCompleteSuccess }: Props) {
   const router = useRouter();
   const recipientsId = useId();
@@ -61,6 +58,8 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
   const [recipientError, setRecipientError] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<BatchResult>(null);
   const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
+  const [platformGrants, setPlatformGrants] = useState<DraftPlatformGrant[]>([]);
+  const [grantsError, setGrantsError] = useState<string | null>(null);
   const isDialog = layout === "dialog";
 
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
@@ -68,7 +67,7 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
     defaultValues: {
       email: "",
       targetRole: "client",
-      targetStaffRole: undefined,
+      grants: undefined,
     },
     action: adminCreateInvitationResultAction,
     ...(isDialog ? {} : { successToast: { title: "Invitation sent" } }),
@@ -76,7 +75,8 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
       setRecipientEmails([]);
       setBatchResult(null);
       setRecipientError(null);
-      form.reset({ email: "", targetRole: "client", targetStaffRole: undefined });
+      setPlatformGrants([]);
+      form.reset({ email: "", targetRole: "client", grants: undefined });
       router.refresh();
       if (isDialog) {
         notify.success("Invitation sent");
@@ -86,13 +86,14 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
   });
 
   const targetRole = useWatch({ control: form.control, name: "targetRole" });
-  const targetStaffRole = useWatch({ control: form.control, name: "targetStaffRole" });
 
   useEffect(() => {
-    if (targetRole !== "staff") {
-      form.setValue("targetStaffRole", undefined);
-    }
-  }, [targetRole, form]);
+    form.setValue(
+      "grants",
+      targetRole === "staff" && platformGrants.length > 0 ? platformGrants : undefined,
+    );
+    setGrantsError(null);
+  }, [targetRole, platformGrants, form]);
 
   const submitting = isSubmitting || isBatchSubmitting;
 
@@ -116,9 +117,12 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
       setRecipientError(`Maximum ${MAX_INVITE_BATCH} recipients per batch`);
       return;
     }
-    if (values.targetRole === "staff" && values.targetStaffRole == null) {
-      form.setError("targetStaffRole", { message: "Select a staff role" });
-      return;
+    if (values.targetRole === "staff") {
+      const message = platformGrantsError(platformGrants);
+      if (message) {
+        setGrantsError(message);
+        return;
+      }
     }
 
     if (recipientEmails.length === 1) {
@@ -135,7 +139,7 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
       const result = await adminCreateInvitationResultAction({
         email,
         targetRole: values.targetRole,
-        ...(values.targetStaffRole != null ? { targetStaffRole: values.targetStaffRole } : {}),
+        ...(values.grants ? { grants: values.grants } : {}),
       });
       if (result.ok) {
         sent += 1;
@@ -149,11 +153,7 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
 
     if (sent > 0) {
       setRecipientEmails([]);
-      form.reset({
-        email: "",
-        targetRole: values.targetRole,
-        targetStaffRole: values.targetStaffRole,
-      });
+      form.reset({ email: "", targetRole: values.targetRole, grants: values.grants });
       router.refresh();
     }
 
@@ -162,10 +162,6 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
       onCompleteSuccess?.();
     }
   }
-
-  const accessPreviewRole =
-    targetRole === "staff" && targetStaffRole ? ("staff" as const) : targetRole;
-  const accessPreviewStaffRole = targetRole === "staff" ? (targetStaffRole ?? null) : null;
 
   return (
     <div className="space-y-5">
@@ -266,7 +262,7 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
                   </fieldset>
                 ) : (
                   <RhfSelect
-                    value={field.value}
+                    value={field.value ?? "client"}
                     onValueChange={field.onChange}
                     onBlur={field.onBlur}
                     options={coarseRoleOptions}
@@ -279,37 +275,29 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
           />
 
           {targetRole === "staff" ? (
-            <FormField
-              control={form.control}
-              name="targetStaffRole"
-              render={({ field }) => (
-                <FormItem className="grid gap-1.5">
-                  <FormLabel className={labelCls}>Staff role</FormLabel>
-                  <RhfSelect
-                    value={field.value ?? ""}
-                    onValueChange={(v) =>
-                      field.onChange(v === "" ? undefined : (v as UserStaffRole))
-                    }
-                    onBlur={field.onBlur}
-                    options={staffRoleOptions}
-                    placeholder="Select staff role"
-                    triggerClassName="min-h-11 w-full font-body text-sm"
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : null}
-
-          {accessPreviewStaffRole || targetRole === "client" ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-body text-sm text-on-surface-variant">Inviting as</span>
-              <PlatformRoleBadge
-                targetRole={accessPreviewRole}
-                targetStaffRole={accessPreviewStaffRole}
+            <fieldset className="m-0 grid gap-2.5 border-0 p-0" disabled={submitting}>
+              <legend className={labelCls}>Platform access</legend>
+              <p className="font-body text-sm text-on-surface-variant">
+                One LAX account works on every platform. Choose where they get staff access and the
+                role on each. People who already have an account can accept after signing in.
+              </p>
+              <InvitePlatformAccessPicker
+                value={platformGrants}
+                onChange={setPlatformGrants}
+                disabled={submitting}
               />
-            </div>
-          ) : null}
+              {grantsError ? (
+                <p className="font-body text-sm text-error" role="alert">
+                  {grantsError}
+                </p>
+              ) : null}
+            </fieldset>
+          ) : (
+            <p className="font-body text-sm text-on-surface-variant">
+              Clients create a LAX account with the link we send. Existing accounts don&apos;t need
+              an invitation.
+            </p>
+          )}
 
           {!isDialog ? (
             <Button
