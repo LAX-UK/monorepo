@@ -278,12 +278,33 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/identity-rp':
+        specifier: workspace:*
+        version: link:../../packages/identity-rp
+      '@auction/lax-ecosystem':
+        specifier: workspace:*
+        version: link:../../packages/lax-ecosystem
+      '@auction/marketing-ui':
+        specifier: workspace:*
+        version: link:../../packages/marketing-ui
       '@auction/shop-contracts':
         specifier: workspace:*
         version: link:../../packages/shop-contracts
+      '@auction/shop-domain':
+        specifier: workspace:*
+        version: link:../../packages/shop-domain
+      '@auction/shop-portal':
+        specifier: workspace:*
+        version: link:../../packages/shop-portal
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@stripe/connect-js':
+        specifier: ^3.3.31
+        version: 3.4.5
+      '@stripe/react-connect-js':
+        specifier: ^3.3.31
+        version: 3.4.3(@stripe/connect-js@3.4.5)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next:
         specifier: 15.5.9
         version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -293,10 +314,22 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.2.5(react@19.2.5)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts
+      '@axe-core/playwright':
+        specifier: ^4.10.1
+        version: 4.11.3(playwright-core@1.55.1)
+      '@playwright/test':
+        specifier: ^1.55.0
+        version: 1.55.1
+      '@tailwindcss/postcss':
+        specifier: ^4.1.13
+        version: 4.2.2
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1
@@ -306,9 +339,18 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.9
         version: 19.2.3(@types/react@19.2.14)
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
+      tailwindcss:
+        specifier: ^4.1.13
+        version: 4.2.2
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   apps/auth:
     dependencies:
@@ -431,18 +473,15 @@ importers:
       '@auction/shop-domain':
         specifier: workspace:*
         version: link:../../packages/shop-domain
+      '@auction/shop-portal':
+        specifier: workspace:*
+        version: link:../../packages/shop-portal
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@sentry/nextjs':
         specifier: 10.51.0
         version: 10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18))
-      '@stripe/connect-js':
-        specifier: ^3.3.31
-        version: 3.4.5
-      '@stripe/react-connect-js':
-        specifier: ^3.3.31
-        version: 3.4.3(@stripe/connect-js@3.4.5)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next:
         specifier: 15.5.9
         version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -782,7 +821,7 @@ importers:
         version: 1.2.4(@types/react@19.2.14)(react@19.2.5)
       '@sentry/nextjs':
         specifier: 10.51.0
-        version: 10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18)(sharp@0.35.0))
+        version: 10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18)(sharp@0.35.0))
       '@stripe/connect-js':
         specifier: ^3.3.31
         version: 3.4.5
@@ -833,10 +872,10 @@ importers:
         version: 1.8.0(react@19.2.5)
       next:
         specifier: ^15.5.21
-        version: 15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.0(next@15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+        version: 2.9.0(next@15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.5)
@@ -1725,6 +1764,58 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
+  packages/shop-portal:
+    dependencies:
+      '@auction/shop-contracts':
+        specifier: workspace:*
+        version: link:../shop-contracts
+      '@auction/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@stripe/connect-js':
+        specifier: ^3.3.31
+        version: 3.4.5
+      '@stripe/react-connect-js':
+        specifier: ^3.3.31
+        version: 3.4.3(@stripe/connect-js@3.4.5)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.9
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^4.7.0
+        version: 4.7.0(vite@6.4.3(@types/node@22.20.1)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react:
+        specifier: ^19.1.1
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.5(react@19.2.5)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -12120,7 +12211,7 @@ snapshots:
       '@sentry/types': 6.19.7
       tslib: 1.14.1
 
-  '@sentry/nextjs@10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18)(sharp@0.35.0))':
+  '@sentry/nextjs@10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18)(sharp@0.35.0))':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/semantic-conventions': 1.43.0
@@ -12133,7 +12224,7 @@ snapshots:
       '@sentry/react': 10.51.0(react@19.2.5)
       '@sentry/vercel-edge': 10.51.0
       '@sentry/webpack-plugin': 5.4.0(rollup@4.63.1)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18)(sharp@0.35.0))
-      next: 15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       rollup: 4.63.1
       stacktrace-parser: 0.1.11
     transitivePeerDependencies:
@@ -13346,7 +13437,7 @@ snapshots:
     optionalDependencies:
       drizzle-kit: 0.31.10
       drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.29.5)(pg@8.20.0)
-      next: 15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       pg: 8.20.0
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
@@ -13377,7 +13468,7 @@ snapshots:
     optionalDependencies:
       drizzle-kit: 0.31.10
       drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.29.5)(pg@8.20.0)
-      next: 15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       pg: 8.20.0
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
@@ -15247,7 +15338,7 @@ snapshots:
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu': 4.63.1
 
-  next@15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+  next@15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
       '@next/env': 15.5.21
       '@swc/helpers': 0.5.15
@@ -15255,7 +15346,7 @@ snapshots:
       postcss: 8.5.18
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
-      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.5)
+      styled-jsx: 5.1.6(react@19.2.5)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.21
       '@next/swc-darwin-x64': 15.5.21
@@ -15280,7 +15371,7 @@ snapshots:
       postcss: 8.5.18
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
-      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.5)
+      styled-jsx: 5.1.6(react@19.2.5)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.7
       '@next/swc-darwin-x64': 15.5.7
@@ -15314,12 +15405,12 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.8
 
-  nuqs@2.9.0(next@15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5):
+  nuqs@2.9.0(next@15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5):
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.5
     optionalDependencies:
-      next: 15.5.21(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
 
   nwsapi@2.2.27: {}
 
@@ -16355,12 +16446,10 @@ snapshots:
 
   strnum@2.2.3: {}
 
-  styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.2.5):
+  styled-jsx@5.1.6(react@19.2.5):
     dependencies:
       client-only: 0.0.1
       react: 19.2.5
-    optionalDependencies:
-      '@babel/core': 7.29.7
 
   stylus-lookup@6.1.2:
     dependencies:

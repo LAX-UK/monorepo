@@ -29,6 +29,9 @@ const buttonVariants = cva(
           "h-auto min-h-0 rounded-none border-b border-primary/0 bg-transparent p-0 px-0 py-2 font-label text-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary shadow-none hover:border-primary focus-visible:ring-accent-brand",
         ctaLink:
           "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-none hover:underline focus-visible:ring-accent-brand",
+        /** Underlined label-caps text action with a 44px tap target (card “Enquire”, inline actions). */
+        underline:
+          "rounded-none bg-transparent font-label text-xs font-semibold uppercase tracking-[0.18em] text-on-surface underline decoration-1 underline-offset-4 shadow-none hover:decoration-2",
         /** Primary marketing CTA (solid) */
         cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-brand",
         /** “Join live” style — border + label caps */
@@ -48,6 +51,8 @@ const buttonVariants = cva(
         touch: "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] px-3",
         /** Link-shaped controls — no block tap target */
         link: "h-auto min-h-0 p-0",
+        /** Text-shaped controls that keep the 44px tap target */
+        inline: "h-auto min-h-[var(--tap-target-min,44px)] px-0 py-0",
         /** Full-width auth / hero primary button */
         xl: "h-[60px] min-h-[44px] w-full px-8 py-[18px] text-base font-semibold leading-6 tracking-wide",
       },
@@ -71,10 +76,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant === "ctaLink" ||
       variant === "link" ||
       variant === "chevron";
+    const resolvedSize = isLinkShape ? "link" : variant === "underline" ? "inline" : size;
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size: isLinkShape ? "link" : size }), className)}
+        className={cn(buttonVariants({ variant, size: resolvedSize }), className)}
         ref={ref}
         {...props}
       />

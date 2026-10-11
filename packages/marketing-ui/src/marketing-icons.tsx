@@ -7,7 +7,9 @@ import {
   ChevronRight,
   CircleAlert,
   Heart,
+  House,
   Info,
+  LayoutGrid,
   type LucideProps,
   Menu,
   Moon,
@@ -35,6 +37,14 @@ export function MarketingCarouselNextIcon({ className, ...props }: MarketingIcon
 
 export function MarketingSearchIcon({ className, ...props }: MarketingIconProps) {
   return <Search className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingHomeIcon({ className, ...props }: MarketingIconProps) {
+  return <House className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingGridIcon({ className, ...props }: MarketingIconProps) {
+  return <LayoutGrid className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }
 
 export function MarketingHeartIcon({ className, ...props }: MarketingIconProps) {

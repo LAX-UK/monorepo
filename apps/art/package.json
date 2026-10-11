@@ -2,28 +2,45 @@
   "name": "@auction/art",
   "version": "0.0.0",
   "private": true,
-  "description": "lax.art gallery storefront (MVP scaffold)",
+  "description": "lax.art gallery storefront",
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3050",
     "build": "next build",
     "start": "next start --port 3050",
     "lint": "biome check .",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
+    "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @a11y"
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
+    "@auction/identity-rp": "workspace:*",
+    "@auction/lax-ecosystem": "workspace:*",
+    "@auction/marketing-ui": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
+    "@auction/shop-domain": "workspace:*",
+    "@auction/shop-portal": "workspace:*",
     "@auction/ui": "workspace:*",
+    "@stripe/connect-js": "^3.3.31",
+    "@stripe/react-connect-js": "^3.3.31",
     "next": "15.5.9",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.55.0",
+    "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.10.5",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "typescript": "^5.7.3"
+    "jsdom": "^25.0.1",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }

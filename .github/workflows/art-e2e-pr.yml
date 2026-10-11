@@ -1,0 +1,174 @@
+name: Art PR browser gates
+
+on:
+  pull_request:
+    branches: [main, master]
+  merge_group:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: art-e2e-pr-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      art: ${{ steps.filter.outputs.art }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        with:
+          filters: |
+            art:
+              - "apps/art/**"
+              - "packages/shop-portal/**"
+              - "packages/ui/**"
+              - "packages/marketing-ui/**"
+              - ".github/workflows/art-e2e-pr.yml"
+
+  art-browser-gates:
+    needs: changes
+    if: github.event_name == 'merge_group' || needs.changes.outputs.art == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707"
+      IDENTITY_MACHINE_CLIENT_ID: api-service
+      IDENTITY_MACHINE_CLIENT_SECRET: ci-identity-machine-secret-at-least-32
+      OIDC_ISSUER_URL: http://localhost:3003
+      OIDC_INTERNAL_BASE_URL: http://localhost:3003
+      # art-identity is the shop-identity app registered as the lax-art-web client.
+      OIDC_CLIENT_ID: lax-art-web
+      OIDC_CLIENT_SECRET: ci-art-identity-client-secret-at-least-32
+      OIDC_REDIRECT_URI: http://localhost:3051/auth/callback
+      OIDC_POST_LOGOUT_REDIRECT_URI: http://localhost:3050/
+      SHOP_STOREFRONT_URL: http://localhost:3050
+      SESSION_SECRET: ci-art-identity-session-secret-at-least-32
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_API_BASE_URL: http://localhost:3011
+      SHOP_API_PUBLIC_BASE_URL: http://localhost:3011
+      SHOP_API_BFF_TOKEN: ci-shop-api-bff-token-at-least-32-characters
+      ART_IDENTITY_BASE_URL: http://localhost:3051
+      ART_IDENTITY_INTERNAL_BASE_URL: http://localhost:3051
+      LAX_ART_PUBLIC_URL: http://localhost:3050
+      LAX_ART_ORIGIN: http://localhost:3050
+      LAX_SHOP_STOREFRONT_URL: http://localhost:3020
+      LAX_BID_PUBLIC_URL: http://localhost:3000
+      AUTH_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
+      WORKER_APP_DB_PASSWORD: postgres
+      ALLOW_HTTP_COOKIES: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
+      APP_ENV: development
+      SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
+      # Payouts stay off so the flag-off journey (404) is exercised.
+      SHOP_PAYOUTS_ENABLED: "false"
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3050
+      ART_E2E_BUYER_EMAIL: estate-owner@lax.bid
+      ART_E2E_BUYER_PASSWORD: Password123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Fast static checks
+        run: |
+          node scripts/ci/require-node-version.mjs
+          pnpm --filter @auction/art exec playwright test --list
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install pinned Chromium
+        run: pnpm --filter @auction/art exec playwright install chromium --with-deps
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @auction/db... build
+          pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db db:seed:dev
+          DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
+          DATABASE_URL_AUTH="$DATABASE_URL" \
+            OIDC_CLIENT_IDS=lax-art-web \
+            OIDC_CLIENT_SECRET_LAX_ART_WEB="$OIDC_CLIENT_SECRET" \
+            pnpm --filter @auction/db db:configure-oidc-clients
+          pnpm --filter @auction/shop-api seed:catalogue
+      - name: Build Art stack
+        run: >-
+          pnpm turbo run build
+          --filter=@auction/auth-app
+          --filter=@auction/shop-identity
+          --filter=@auction/shop-api
+          --filter=@auction/art
+      - name: Start stack
+        run: |
+          mkdir -p /tmp/art-e2e-logs
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/art-e2e-logs/auth.log 2>&1 &
+          PORT=3051 pnpm --filter @auction/shop-identity start > /tmp/art-e2e-logs/art-identity.log 2>&1 &
+          PORT=3011 pnpm --filter @auction/shop-api start > /tmp/art-e2e-logs/shop-api.log 2>&1 &
+          pnpm --filter @auction/art start > /tmp/art-e2e-logs/art.log 2>&1 &
+          npx --yes wait-on http://localhost:3003/health/live http://localhost:3051/health/ready http://localhost:3011/health/ready http://localhost:3050/health/live --timeout 120000
+      - name: Run Art journeys, a11y and viewport audit
+        run: pnpm --filter @auction/art exec playwright test
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: art-pr-playwright-report
+          path: |
+            apps/art/blob-report
+            apps/art/playwright-report
+            apps/art/test-results
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload process logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: art-pr-process-logs
+          path: /tmp/art-e2e-logs
+          if-no-files-found: warn
+          retention-days: 7
