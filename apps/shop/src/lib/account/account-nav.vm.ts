@@ -22,6 +22,7 @@ export function buildShopAccountNavItems({
   ];
   if (portalOwnershipEnabled) {
     items.push(
+      { href: "/account/collection", label: "Collection" },
       { href: "/account/editions", label: "My editions" },
       { href: "/account/sale-limits", label: "Sale limits" },
     );

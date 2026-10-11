@@ -30,6 +30,7 @@ import {
   approveSaleFee,
   createOriginalSale,
   createStockHold,
+  issueOriginalSaleInvoice,
   recordThirdPartySale,
   releaseStockHold,
 } from "@/server/application/admin-sales-actions.server";
@@ -665,6 +666,70 @@ export function ApproveSaleFeeForm() {
         stepUpRequired={stepUpRequired}
         stepUpHref={stepUpHref}
       />
+    </FormSection>
+  );
+}
+
+export function IssueOriginalSaleInvoiceForm() {
+  const { pending, idempotencyKey, message, stepUpRequired, stepUpHref, run } = useAdminMutation();
+  const [originalSaleId, setOriginalSaleId] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerName, setBuyerName] = useState("");
+
+  return (
+    <FormSection title="Issue Stripe invoice (step 2)">
+      <PlainUuidField
+        label="Original sale ID"
+        value={originalSaleId}
+        disabled={pending}
+        onChange={setOriginalSaleId}
+      />
+      <label className={adminFormLabelClass}>
+        <span className="text-neutral-600">Buyer email</span>
+        <input
+          type="email"
+          className={adminFormFieldClass}
+          value={buyerEmail}
+          disabled={pending}
+          onChange={(e) => setBuyerEmail(e.target.value)}
+        />
+      </label>
+      <label className={adminFormLabelClass}>
+        <span className="text-neutral-600">Buyer name (optional)</span>
+        <input
+          type="text"
+          className={adminFormFieldClass}
+          value={buyerName}
+          disabled={pending}
+          onChange={(e) => setBuyerName(e.target.value)}
+        />
+      </label>
+      <ActionButton
+        pending={pending}
+        label="Issue invoice"
+        onClick={() => {
+          if (!originalSaleId.trim() || !buyerEmail.trim()) return;
+          void run(
+            () =>
+              issueOriginalSaleInvoice({
+                originalSaleId: originalSaleId.trim(),
+                buyerEmail: buyerEmail.trim(),
+                ...(buyerName.trim() ? { buyerName: buyerName.trim() } : {}),
+                idempotencyKey,
+              }),
+            "Invoice issued.",
+          );
+        }}
+      />
+      <AdminMutationFeedback
+        message={message}
+        stepUpRequired={stepUpRequired}
+        stepUpHref={stepUpHref}
+      />
+      <p className="text-sm text-neutral-600">
+        After the buyer pays, Stripe sends <code>invoice.paid</code> to shop-api to assign the
+        original and buyer editions automatically.
+      </p>
     </FormSection>
   );
 }

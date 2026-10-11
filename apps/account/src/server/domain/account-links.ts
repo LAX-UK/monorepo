@@ -31,6 +31,29 @@ export function buildAccountLinks(
 
 export type StaffPlatformLinkVm = { product: "bid" | "shop"; label: string; href: string };
 
+export type PayoutLaunchLinkVm = { label: string; href: string };
+
+/** Product-owned payout onboarding entry points (Account does not read balances or Connect state). */
+export function buildPayoutLaunchLinks(
+  config: Pick<LaxAccountConfig, "bidPublicUrl" | "shopPublicUrl" | "laxArtPublicUrl">,
+): PayoutLaunchLinkVm[] {
+  const links: PayoutLaunchLinkVm[] = [];
+  if (config.bidPublicUrl) {
+    links.push({
+      label: "LAX Bid payouts",
+      href: new URL("/dashboard/seller/connect", config.bidPublicUrl).toString(),
+    });
+  }
+  const artPayouts = config.laxArtPublicUrl ?? config.shopPublicUrl;
+  if (artPayouts) {
+    links.push({
+      label: "LAX Art payouts",
+      href: new URL("/account/payouts", artPayouts).toString(),
+    });
+  }
+  return links;
+}
+
 /** Admin launch links for the platforms in the ID token; platforms without a configured URL are skipped. */
 export function buildStaffPlatformLinks(
   config: Pick<LaxAccountConfig, "bidPublicUrl" | "shopAdminUrl">,

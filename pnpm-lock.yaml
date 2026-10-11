@@ -273,6 +273,43 @@ importers:
         specifier: ^3.0.5
         version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1)
 
+  apps/art:
+    dependencies:
+      '@auction/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
+      '@auction/shop-contracts':
+        specifier: workspace:*
+        version: link:../../packages/shop-contracts
+      '@auction/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      next:
+        specifier: 15.5.9
+        version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react:
+        specifier: ^19.1.1
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.5(react@19.2.5)
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.9
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   apps/auth:
     dependencies:
       '@auction/auth':
@@ -400,6 +437,12 @@ importers:
       '@sentry/nextjs':
         specifier: 10.51.0
         version: 10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18))
+      '@stripe/connect-js':
+        specifier: ^3.3.31
+        version: 3.4.5
+      '@stripe/react-connect-js':
+        specifier: ^3.3.31
+        version: 3.4.3(@stripe/connect-js@3.4.5)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next:
         specifier: 15.5.9
         version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -525,6 +568,9 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@auction/connect':
+        specifier: workspace:*
+        version: link:../../packages/connect
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -540,9 +586,18 @@ importers:
       '@auction/shop-domain':
         specifier: workspace:*
         version: link:../../packages/shop-domain
+      '@auction/stripe-connect':
+        specifier: workspace:*
+        version: link:../../packages/stripe-connect
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@aws-sdk/client-s3':
+        specifier: ^3.1041.0
+        version: 3.1041.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.1041.0
+        version: 3.1041.0
       '@fastify/etag':
         specifier: ^6.0.3
         version: 6.2.0

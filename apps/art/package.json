@@ -1,0 +1,29 @@
+{
+  "name": "@auction/art",
+  "version": "0.0.0",
+  "private": true,
+  "description": "lax.art gallery storefront (MVP scaffold)",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3050",
+    "build": "next build",
+    "start": "next start --port 3050",
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@auction/branding": "workspace:*",
+    "@auction/shop-contracts": "workspace:*",
+    "@auction/ui": "workspace:*",
+    "next": "15.5.9",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.7.3"
+  }
+}
