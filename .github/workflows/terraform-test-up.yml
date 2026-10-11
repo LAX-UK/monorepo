@@ -182,6 +182,9 @@ jobs:
           INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
           INPUT_SHOP_ADMIN_IMAGE_TAG: ${{ inputs.shop_admin_sha }}
           INPUT_ACCOUNT_IMAGE_TAG: ${{ inputs.account_sha }}
+          INPUT_SHOP_IMAGE_TAG: ${{ inputs.shop_sha }}
+          INPUT_SHOP_IDENTITY_IMAGE_TAG: ${{ inputs.shop_identity_sha }}
+          INPUT_SHOP_API_IMAGE_TAG: ${{ inputs.shop_api_sha }}
         run: |
           set -euo pipefail
           while IFS= read -r line; do
@@ -197,7 +200,10 @@ jobs:
               --app-id "$APP_ID" \
               --input-app-image-tag "$INPUT_APP_IMAGE_TAG" \
               --input-shop-admin-image-tag "$INPUT_SHOP_ADMIN_IMAGE_TAG" \
-              --input-account-image-tag "$INPUT_ACCOUNT_IMAGE_TAG"
+              --input-account-image-tag "$INPUT_ACCOUNT_IMAGE_TAG" \
+              --input-shop-image-tag "$INPUT_SHOP_IMAGE_TAG" \
+              --input-shop-identity-image-tag "$INPUT_SHOP_IDENTITY_IMAGE_TAG" \
+              --input-shop-api-image-tag "$INPUT_SHOP_API_IMAGE_TAG"
           )
       - name: Verify prebuilt LAX Account image for Terraform account_image_tag
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'

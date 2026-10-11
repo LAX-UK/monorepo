@@ -34,6 +34,14 @@ describe("resolveLiveTerraformImageTags", () => {
     assert.equal(tags.shop_admin_image_tag, sha("9"));
   });
 
+  it("allows shop-api override from workflow input", () => {
+    const tags = resolveLiveTerraformImageTags(
+      { services: [...liveServices, { name: "account", image: { tag: sha("7") } }] },
+      { inputShopApiImageTag: sha("0") },
+    );
+    assert.equal(tags.shop_api_image_tag, sha("0"));
+  });
+
   it("uses the account input before the account component exists", () => {
     const tags = resolveLiveTerraformImageTags(
       { services: liveServices },
