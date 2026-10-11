@@ -135,7 +135,6 @@ jobs:
             OIDC_CLIENT_IDS=lax-art-web \
             OIDC_CLIENT_SECRET_LAX_ART_WEB="$OIDC_CLIENT_SECRET" \
             pnpm --filter @auction/db db:configure-oidc-clients
-          pnpm --filter @auction/shop-api seed:catalogue
       - name: Build Art stack
         run: >-
           pnpm turbo run build
@@ -143,6 +142,8 @@ jobs:
           --filter=@auction/shop-identity
           --filter=@auction/shop-api
           --filter=@auction/art
+      - name: Seed catalogue
+        run: pnpm --filter @auction/shop-api seed:catalogue
       - name: Start stack
         run: |
           mkdir -p /tmp/art-e2e-logs
