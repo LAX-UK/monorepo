@@ -17,7 +17,55 @@ const AdjustStockResponseSchema = Type.Object({
   onHand: Type.Integer({ minimum: 0 }),
 });
 
+const CreateProductBodySchema = Type.Object({
+  slug: Type.String({ minLength: 1, maxLength: 120 }),
+  title: Type.String({ minLength: 1, maxLength: 200 }),
+  description: Type.Optional(Type.String({ maxLength: 4000 })),
+  sku: Type.String({ minLength: 1, maxLength: 64 }),
+  pricePence: Type.Integer({ minimum: 0 }),
+  onHand: Type.Integer({ minimum: 0 }),
+});
+
+const CreateProductResponseSchema = Type.Object({
+  productId: Type.String({ format: "uuid" }),
+  variantId: Type.String({ format: "uuid" }),
+  slug: Type.String(),
+});
+
 export async function registerAdminMerchandiseRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
+  app.post(
+    "/merchandise/products",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        body: CreateProductBodySchema,
+        response: {
+          200: CreateProductResponseSchema,
+          403: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "merchandise.write");
+      const subject = requireShopAdminSubject(request);
+      const idempotencyKey = requireIdempotencyKey(request);
+      const body = request.body as {
+        slug: string;
+        title: string;
+        description?: string;
+        sku: string;
+        pricePence: number;
+        onHand: number;
+      };
+      return deps.createMerchandiseProduct({
+        ...body,
+        actorSubjectId: subject,
+        idempotencyKey,
+      });
+    },
+  );
+
   app.post(
     "/merchandise/variants/:variantId/adjust-stock",
     {

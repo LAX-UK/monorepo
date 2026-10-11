@@ -13,10 +13,15 @@ function portalFeatureDisabled(): never {
 /** Stable Phase 1 contract when `SHOP_PORTAL_OWNERSHIP_ENABLED` is off (not a missing route). */
 export async function registerPortalMeDisabledRoutes(app: FastifyInstance): Promise<void> {
   const routes = [
+    "/v1/me/collection",
+    "/v1/me/enquiries",
     "/v1/me/editions",
     "/v1/me/sale-authority",
     "/v1/me/sale-authority-requests",
     "/v1/me/payouts",
+    "/v1/me/connect/status",
+    "/v1/me/connect/account",
+    "/v1/me/connect/onboarding-link",
     "/v1/me/sales",
     "/v1/me/documents",
     "/v1/me/artist/artworks",

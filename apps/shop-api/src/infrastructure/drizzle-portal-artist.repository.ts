@@ -65,6 +65,9 @@ export function createDrizzlePortalArtistRepository(db: Database): PortalArtistR
         artworkTitle: row.artworkTitle,
         editionNumber: row.editionNumber,
         grossPence: row.grossPence,
+        feesPence: row.feesPence,
+        netPence: row.netPence,
+        arrApplicable: row.arrApplicable,
         occurredAt: row.occurredAt,
       }));
     },

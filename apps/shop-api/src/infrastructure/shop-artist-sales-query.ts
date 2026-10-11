@@ -5,6 +5,7 @@ import {
   shopOrder,
   shopOrderLine,
   shopParty,
+  shopPayoutLedger,
   shopThirdPartySale,
 } from "@auction/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -17,6 +18,9 @@ export type ShopArtistSaleRow = {
   artworkTitle: string;
   editionNumber: number | null;
   grossPence: number;
+  feesPence: number | null;
+  netPence: number | null;
+  arrApplicable: boolean | null;
   payeeDisplayName: string | null;
   occurredAt: string | null;
 };
@@ -62,22 +66,53 @@ export async function listArtistSalesForArtworkIds(
     .leftJoin(shopParty, eq(shopThirdPartySale.sellerPartyId, shopParty.id))
     .where(and(inArray(shopArtwork.id, artworkIds), eq(shopThirdPartySale.status, "recorded")));
 
+  const orderLineIds = orderLineSales.map((row) => row.saleId);
+  const artistPayouts =
+    orderLineIds.length === 0
+      ? []
+      : await db
+          .select({
+            orderLineId: shopPayoutLedger.orderLineId,
+            deductionsPence: shopPayoutLedger.deductionsPence,
+            netPence: shopPayoutLedger.netPence,
+            arrApplicable: shopPayoutLedger.arrApplicable,
+          })
+          .from(shopPayoutLedger)
+          .where(
+            and(
+              inArray(shopPayoutLedger.orderLineId, orderLineIds),
+              eq(shopPayoutLedger.payeeKind, "artist"),
+            ),
+          );
+  const payoutByLine = new Map(
+    artistPayouts.filter((p) => p.orderLineId).map((p) => [p.orderLineId as string, p]),
+  );
+
   const merged: ShopArtistSaleRow[] = [
-    ...orderLineSales.map((row) => ({
-      saleId: row.saleId,
-      channel: "shop_order" as const,
-      artworkTitle: row.artworkTitle,
-      editionNumber: row.editionNumber,
-      grossPence: row.grossPence,
-      payeeDisplayName: row.payeeDisplayName,
-      occurredAt: row.paidAt ? row.paidAt.toISOString() : null,
-    })),
+    ...orderLineSales.map((row) => {
+      const payout = payoutByLine.get(row.saleId);
+      return {
+        saleId: row.saleId,
+        channel: "shop_order" as const,
+        artworkTitle: row.artworkTitle,
+        editionNumber: row.editionNumber,
+        grossPence: row.grossPence,
+        feesPence: payout?.deductionsPence ?? null,
+        netPence: payout?.netPence ?? null,
+        arrApplicable: payout?.arrApplicable ?? null,
+        payeeDisplayName: row.payeeDisplayName,
+        occurredAt: row.paidAt ? row.paidAt.toISOString() : null,
+      };
+    }),
     ...thirdPartyRows.map((row) => ({
       saleId: row.saleId,
       channel: "third_party" as const,
       artworkTitle: row.artworkTitle,
       editionNumber: row.editionNumber,
       grossPence: row.grossPence,
+      feesPence: null,
+      netPence: null,
+      arrApplicable: null,
       payeeDisplayName: row.payeeDisplayName,
       occurredAt: row.recordedAt ? row.recordedAt.toISOString() : null,
     })),

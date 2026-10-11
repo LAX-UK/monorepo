@@ -26,6 +26,8 @@ export function createMinimalShopApiTestDeps(
       SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: 900,
       SHOP_OPS_FINANCE_CLI_ENABLED: false,
       SHOP_OPS_DUAL_CONTROL_PENCE: 500_000,
+      STRIPE_SHOP_CONNECT_PLATFORM_KEY: "bid_sandbox",
+      SHOP_CONNECT_TRANSFERS_ENABLED: false,
     },
     auth: {
       jwksUrl: "http://localhost:3001/.well-known/jwks.json",
@@ -177,6 +179,19 @@ export function createMinimalShopApiTestDeps(
             pendingAuthorityRequestsCount: 0,
           }),
         },
+        compliance: {
+          listAuditEntries: async () => ({ items: [], nextCursor: null }),
+          listDisputes: async () => ({ items: [], nextCursor: null }),
+          readEffectiveSettings: async () => ({
+            cancellationDaysAfterPossession: null,
+            personalisedGoodsCancellationExempt: false,
+            vatStandardRateBp: null,
+            payoutsEnabled: false,
+            merchandiseEnabled: false,
+            originalsEnabled: false,
+            thirdPartyEnabled: false,
+          }),
+        },
       },
       staffReader: {
         findActiveByIdentitySubject: async () => null,
@@ -206,6 +221,11 @@ export function createMinimalShopApiTestDeps(
       adjustMerchandiseStock: async () => ({
         variantId: "00000000-0000-4000-8000-000000000018",
         onHand: 10,
+      }),
+      createMerchandiseProduct: async () => ({
+        productId: "00000000-0000-4000-8000-000000000019",
+        variantId: "00000000-0000-4000-8000-000000000018",
+        slug: "test-product",
       }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
@@ -242,6 +262,16 @@ export function createMinimalShopApiTestDeps(
           originalSaleId: "00000000-0000-4000-8000-000000000015",
           status: "reserved",
         }),
+        issueInvoice: async () => ({
+          originalSaleId: "00000000-0000-4000-8000-000000000015",
+          status: "invoiced" as const,
+          stripeInvoiceId: "in_test",
+          hostedInvoiceUrl: null,
+        }),
+        completePaidAndAssign: async () => ({
+          originalSaleId: "00000000-0000-4000-8000-000000000015",
+          status: "assigned" as const,
+        }),
       },
       linkArtistIdentity: async () => ({
         artistId: "00000000-0000-4000-8000-000000000020",
@@ -250,6 +280,30 @@ export function createMinimalShopApiTestDeps(
       unlinkArtistIdentity: async () => ({
         artistId: "00000000-0000-4000-8000-000000000020",
       }),
+    },
+    payeeConnect: {
+      getClientConfig: () => ({ publishableKey: null, connectConfigured: false }),
+      getStatusForSubject: async () => ({
+        stripeAccountId: null,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        requirementsCurrentlyDue: [],
+        disabledReason: null,
+        ready: false,
+      }),
+      ensureAccountForSubject: async () => ({ stripeAccountId: "acct_test" }),
+      createOnboardingLinkForSubject: async () => ({
+        url: "https://connect.stripe.com/setup/test",
+        expiresAt: new Date().toISOString(),
+      }),
+      createAccountSessionForSubject: async () => ({ clientSecret: "acct_sess_test" }),
+    },
+    stripeConnectWebhook: {
+      webhookSecret: undefined,
+      verifyWebhook: () => {
+        throw new Error("Stripe Connect webhook not configured in tests");
+      },
+      syncAccount: async () => "ignored" as const,
     },
     portal: {
       portalOwnership: {
@@ -262,6 +316,8 @@ export function createMinimalShopApiTestDeps(
         listSaleAuthorityRequests: async () => [],
         listPayouts: async () => [],
         listDocuments: async () => [],
+        listCollection: async () => [],
+        listEnquiries: async () => [],
       },
       portalSales: {
         listSales: async () => [],

@@ -1,8 +1,10 @@
 import type { Database } from "@auction/db";
 import {
   shopArtwork,
+  shopArtworkInterest,
   shopDocument,
   shopEdition,
+  shopOriginalSale,
   shopParty,
   shopPayoutLedger,
   shopSaleAuthorityGrant,
@@ -13,6 +15,8 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   CreateSaleAuthorityRequestCommand,
   CreateSaleAuthorityRequestResult,
+  PortalCollectionItem,
+  PortalEnquiryRow,
   PortalOwnedEditionRow,
   PortalOwnershipReader,
   PortalSaleAuthorityRow,
@@ -21,6 +25,8 @@ import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { createShopDocumentDownloadUrl } from "./shop-document-download-url.js";
+import type { ShopDocumentStorageConfig } from "./shop-document-download-url.js";
 
 async function tryResolveOwnerPartyId(
   db: Database,
@@ -34,7 +40,11 @@ async function tryResolveOwnerPartyId(
   return party?.id ?? null;
 }
 
-export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwnershipReader {
+export function createDrizzlePortalOwnershipRepository(
+  db: Database,
+  options?: { documentStorage?: ShopDocumentStorageConfig | null },
+): PortalOwnershipReader {
+  const documentStorage = options?.documentStorage ?? null;
   return {
     async listOwnedEditions(identitySubjectId: string): Promise<PortalOwnedEditionRow[]> {
       const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
@@ -50,6 +60,7 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
           editionNumber: shopEdition.editionNumber,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
+          salesChannel: shopArtwork.salesChannel,
         })
         .from(shopEdition)
         .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
@@ -334,6 +345,109 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
       }));
     },
 
+    async listCollection(identitySubjectId: string): Promise<PortalCollectionItem[]> {
+      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
+      if (partyIds.length === 0) {
+        return [];
+      }
+      const editions = await db
+        .select({
+          editionId: shopEdition.id,
+          artworkId: shopArtwork.id,
+          artworkSlug: shopArtwork.slug,
+          artworkTitle: shopArtwork.title,
+          editionNumber: shopEdition.editionNumber,
+          listingStatus: shopEdition.listingStatus,
+          custodyStatus: shopEdition.custodyStatus,
+          salesChannel: shopArtwork.salesChannel,
+        })
+        .from(shopEdition)
+        .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
+        .where(inArray(shopEdition.ownerPartyId, partyIds))
+        .orderBy(shopArtwork.title, shopEdition.editionNumber)
+        .limit(PORTAL_ME_LIST_LIMIT);
+
+      const originals = await db
+        .select({
+          originalSaleId: shopOriginalSale.id,
+          artworkId: shopArtwork.id,
+          artworkSlug: shopArtwork.slug,
+          artworkTitle: shopArtwork.title,
+          salesChannel: shopOriginalSale.salesChannel,
+          status: shopOriginalSale.status,
+          acquiredAt: shopOriginalSale.updatedAt,
+        })
+        .from(shopOriginalSale)
+        .innerJoin(shopArtwork, eq(shopOriginalSale.artworkId, shopArtwork.id))
+        .where(
+          and(
+            inArray(shopOriginalSale.buyerPartyId, partyIds),
+            eq(shopOriginalSale.status, "assigned"),
+          ),
+        )
+        .orderBy(desc(shopOriginalSale.updatedAt))
+        .limit(PORTAL_ME_LIST_LIMIT);
+
+      const items: PortalCollectionItem[] = [
+        ...originals.map((row) => ({
+          kind: "original" as const,
+          originalSaleId: row.originalSaleId,
+          artworkId: row.artworkId,
+          artworkSlug: row.artworkSlug,
+          artworkTitle: row.artworkTitle,
+          salesChannel: row.salesChannel,
+          status: row.status,
+          acquiredAt: row.acquiredAt.toISOString(),
+        })),
+        ...editions.map((row) => ({
+          kind: "edition" as const,
+          editionId: row.editionId,
+          artworkId: row.artworkId,
+          artworkSlug: row.artworkSlug,
+          artworkTitle: row.artworkTitle,
+          salesChannel: row.salesChannel,
+          editionNumber: row.editionNumber,
+          listingStatus: row.listingStatus,
+          custodyStatus: row.custodyStatus,
+        })),
+      ];
+      return items;
+    },
+
+    async listEnquiries(identitySubjectId: string): Promise<PortalEnquiryRow[]> {
+      const rows = await db
+        .select({
+          enquiryId: shopArtworkInterest.id,
+          artworkId: shopArtwork.id,
+          artworkSlug: shopArtwork.slug,
+          artworkTitle: shopArtwork.title,
+          salesChannel: shopArtwork.salesChannel,
+          intent: shopArtworkInterest.intent,
+          createdAt: shopArtworkInterest.createdAt,
+          notifiedAt: shopArtworkInterest.notifiedAt,
+        })
+        .from(shopArtworkInterest)
+        .innerJoin(shopArtwork, eq(shopArtworkInterest.artworkId, shopArtwork.id))
+        .where(
+          and(
+            eq(shopArtworkInterest.identitySubjectId, identitySubjectId),
+            eq(shopArtworkInterest.intent, "enquiry"),
+          ),
+        )
+        .orderBy(desc(shopArtworkInterest.createdAt))
+        .limit(PORTAL_ME_LIST_LIMIT);
+      return rows.map((row) => ({
+        enquiryId: row.enquiryId,
+        artworkId: row.artworkId,
+        artworkSlug: row.artworkSlug,
+        artworkTitle: row.artworkTitle,
+        salesChannel: row.salesChannel,
+        intent: row.intent,
+        status: row.notifiedAt ? "staff_notified" : "open",
+        createdAt: row.createdAt.toISOString(),
+      }));
+    },
+
     async listDocuments(identitySubjectId: string) {
       const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
       if (partyIds.length === 0) {
@@ -351,12 +465,14 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
         .where(and(inArray(shopDocument.partyId, partyIds), eq(shopDocument.visibility, "client")))
         .orderBy(desc(shopDocument.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
-      return rows.map((row) => ({
-        documentId: row.documentId,
-        kind: row.kind,
-        createdAt: row.createdAt.toISOString(),
-        downloadUrl: null,
-      }));
+      return Promise.all(
+        rows.map(async (row) => ({
+          documentId: row.documentId,
+          kind: row.kind,
+          createdAt: row.createdAt.toISOString(),
+          downloadUrl: await createShopDocumentDownloadUrl(documentStorage, row.objectKey),
+        })),
+      );
     },
   };
 }

@@ -8,6 +8,7 @@ import {
   shopRefund,
 } from "@auction/db/schema";
 import { and, eq, inArray, or } from "drizzle-orm";
+import type { ShopNotificationPublisher } from "../../../application/ports/shop-notification.publisher.js";
 import type { StripeMoneyWebhookOutcome } from "../../../application/ports/stripe-money-webhook.types.js";
 import { ShopPaymentWebhookError } from "../../../errors/shop-payment-webhook.error.js";
 import { insertShopAdminAudit } from "../../shop-admin-audit.js";
@@ -88,14 +89,22 @@ export function computeEffectiveLineRefundedPence(
 async function resolveShopOrderForPaymentIntent(
   db: Database,
   paymentIntentId: string,
-): Promise<{ orderId: string; totalPence: number } | null> {
+): Promise<{ orderId: string; totalPence: number; identitySubjectId: string } | null> {
   const [order] = await db
-    .select({ id: shopOrder.id, totalPence: shopOrder.totalPence })
+    .select({
+      id: shopOrder.id,
+      totalPence: shopOrder.totalPence,
+      identitySubjectId: shopOrder.identitySubjectId,
+    })
     .from(shopOrder)
     .where(eq(shopOrder.stripePaymentIntentId, paymentIntentId))
     .limit(1);
   if (!order) return null;
-  return { orderId: order.id, totalPence: order.totalPence };
+  return {
+    orderId: order.id,
+    totalPence: order.totalPence,
+    identitySubjectId: order.identitySubjectId,
+  };
 }
 
 function deriveOrderRefundStatus(
@@ -237,6 +246,7 @@ export async function completeRefundFromWebhook(
   db: Database,
   input: CompleteRefundWebhookInput,
   domainEventMode: ShopDomainEventPublisherMode,
+  options?: { notifications?: ShopNotificationPublisher },
 ): Promise<StripeMoneyWebhookOutcome> {
   const order = await resolveShopOrderForPaymentIntent(db, input.paymentIntentId);
   if (!order) {
@@ -357,6 +367,16 @@ export async function completeRefundFromWebhook(
           status: "succeeded",
         },
       });
+
+      if (options?.notifications) {
+        await options.notifications.queueRefundIssued(tx as Database, {
+          idempotencyKey: `refund-email:${input.stripeRefundId}`,
+          identitySubjectId: order.identitySubjectId,
+          fallbackEmail: null,
+          orderId: order.orderId,
+          amountPence: input.amountPence,
+        });
+      }
     }
 
     return "processed";

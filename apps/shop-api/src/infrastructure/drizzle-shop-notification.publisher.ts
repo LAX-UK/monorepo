@@ -115,6 +115,42 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueDispatchNotice(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-dispatch-notice",
+        vars: {
+          artworkTitle: input.artworkTitle,
+          trackingUrl: input.trackingUrl,
+          fulfilmentSummary: input.fulfilmentSummary,
+        },
+      });
+    },
+
+    async queueRefundIssued(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-refund-issued",
+        vars: {
+          orderId: input.orderId,
+          amountPence: input.amountPence,
+          buyerEmail: to,
+        },
+      });
+    },
+
     async queueEditionAvailable(tx, input) {
       const db = asDb(tx);
       const to = await resolveShopUserEmail(db, input.identitySubjectId);

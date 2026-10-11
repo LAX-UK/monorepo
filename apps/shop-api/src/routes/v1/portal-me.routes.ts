@@ -1,8 +1,10 @@
 import {
   PortalArtistArtworksResponseSchema,
   PortalArtistSalesResponseSchema,
+  PortalCollectionResponseSchema,
   PortalDocumentsResponseSchema,
   PortalEditionsResponseSchema,
+  PortalEnquiriesResponseSchema,
   PortalPayoutsResponseSchema,
   PortalSaleAuthorityRequestsResponseSchema,
   PortalSaleAuthorityResponseSchema,
@@ -20,6 +22,38 @@ export type PortalMeRoutesDeps = PortalRoutesDeps & {
 };
 
 export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalMeRoutesDeps) {
+  app.get(
+    "/v1/me/collection",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        response: { 200: PortalCollectionResponseSchema, 401: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const items = await deps.portalOwnership.listCollection(subject);
+      return { items };
+    },
+  );
+
+  app.get(
+    "/v1/me/enquiries",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        response: { 200: PortalEnquiriesResponseSchema, 401: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const items = await deps.portalOwnership.listEnquiries(subject);
+      return { items };
+    },
+  );
+
   app.get(
     "/v1/me/editions",
     {

@@ -1,7 +1,10 @@
 import {
   AdminArtistDetailSchema,
   AdminArtistListSchema,
+  AdminAuditListSchema,
   AdminClientDetailSchema,
+  AdminDisputeListSchema,
+  AdminEffectiveSettingsSchema,
   AdminFulfilmentListSchema,
   AdminMerchandiseProductListSchema,
   AdminOrderDetailSchema,
@@ -306,6 +309,52 @@ export async function registerAdminReadRoutes(
       requireShopStaffCapability(request, "settings.write");
       const query = request.query as { cursor?: string; limit?: number };
       return deps.adminRead.staff.listStaffMembers(query);
+    },
+  );
+
+  app.get(
+    "/audit",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: CursorListQuerySchema,
+        response: { 200: AdminAuditListSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "audit.read");
+      const query = request.query as { cursor?: string; limit?: number };
+      return deps.adminRead.compliance.listAuditEntries(query);
+    },
+  );
+
+  app.get(
+    "/disputes",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: CursorListQuerySchema,
+        response: { 200: AdminDisputeListSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "audit.read");
+      const query = request.query as { cursor?: string; limit?: number };
+      return deps.adminRead.compliance.listDisputes(query);
+    },
+  );
+
+  app.get(
+    "/settings/effective",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        response: { 200: AdminEffectiveSettingsSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "settings.write");
+      return deps.adminRead.compliance.readEffectiveSettings();
     },
   );
 

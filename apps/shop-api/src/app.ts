@@ -28,8 +28,10 @@ import { registerBasketRoutes } from "./routes/v1/basket.routes.js";
 import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
 import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
+import { registerPortalConnectRoutes } from "./routes/v1/portal-connect.routes.js";
 import { registerPortalMeDisabledRoutes } from "./routes/v1/portal-me-disabled.routes.js";
 import { registerPortalMeRoutes } from "./routes/v1/portal-me.routes.js";
+import { registerStripeConnectWebhookRoutes } from "./routes/webhooks/stripe-connect.routes.js";
 import { registerStripeWebhookRoutes } from "./routes/webhooks/stripe.routes.js";
 
 export type CreateShopApiAppOptions = {
@@ -109,6 +111,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
 
   void registerHealthRoutes(app, options.deps.health);
   void registerStripeWebhookRoutes(app, options.deps.stripeWebhook);
+  if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
+    void registerStripeConnectWebhookRoutes(app, options.deps.stripeConnectWebhook);
+  }
   void registerArtworkRoutes(app, options.deps.catalogue);
   void registerArtworkInterestRoutes(app, options.deps.interest);
   void registerBasketRoutes(app, options.deps.commerce);
@@ -161,6 +166,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
       ...options.deps.portal,
       payoutsEnabled: options.deps.env.SHOP_PAYOUTS_ENABLED,
     });
+    if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
+      void registerPortalConnectRoutes(app, options.deps.payeeConnect);
+    }
   } else {
     void registerPortalMeDisabledRoutes(app);
   }

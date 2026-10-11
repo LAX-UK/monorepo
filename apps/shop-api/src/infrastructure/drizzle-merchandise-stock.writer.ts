@@ -1,4 +1,4 @@
-import { shopProductVariant } from "@auction/db/schema";
+import { shopProduct, shopProductVariant } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../application/admin/operator-context.js";
@@ -74,6 +74,77 @@ export function createDrizzleMerchandiseStockWriter(
               },
             });
             return { variantId: updated.id, onHand: updated.onHand };
+          },
+        }),
+      ),
+    createProduct: (input) =>
+      uow.run(async (tx) =>
+        withAdminIdempotency({
+          tx,
+          commandType: "merchandise.create_product",
+          idempotencyKey: input.idempotencyKey,
+          actorSubjectId: input.actorSubjectId,
+          requestPayload: input,
+          run: async () => {
+            const slug = input.slug.trim().toLowerCase();
+            const title = input.title.trim();
+            if (!slug || !title) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.VALIDATION,
+                "Slug and title required",
+                400,
+              );
+            }
+            if (!Number.isInteger(input.pricePence) || input.pricePence < 0) {
+              throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid price", 400);
+            }
+            if (!Number.isInteger(input.onHand) || input.onHand < 0) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.VALIDATION,
+                "Invalid on-hand quantity",
+                400,
+              );
+            }
+            const [product] = await shopPhaseDbSession(tx)
+              .insert(shopProduct)
+              .values({
+                slug,
+                title,
+                ...(input.description?.trim() ? { description: input.description.trim() } : {}),
+              })
+              .returning({ id: shopProduct.id, slug: shopProduct.slug });
+            if (!product) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.INTERNAL,
+                "Failed to create product",
+                500,
+              );
+            }
+            const [variant] = await shopPhaseDbSession(tx)
+              .insert(shopProductVariant)
+              .values({
+                productId: product.id,
+                sku: input.sku.trim(),
+                pricePence: input.pricePence,
+                onHand: input.onHand,
+              })
+              .returning({ id: shopProductVariant.id });
+            if (!variant) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.INTERNAL,
+                "Failed to create variant",
+                500,
+              );
+            }
+            await tx.audit.append({
+              actorSubjectId: input.actorSubjectId,
+              capability: "merchandise.write",
+              action: "create_merchandise_product",
+              targetType: "shop_product",
+              targetId: product.id,
+              afterJson: { slug: product.slug, variantId: variant.id, sku: input.sku.trim() },
+            });
+            return { productId: product.id, variantId: variant.id, slug: product.slug };
           },
         }),
       ),

@@ -13,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { orderHasPersonalisedGoods } from "../../shop-order-personalised-goods.js";
 
 const POSSESSION_FULFILMENT_STATUSES: readonly ShopFulfilmentStatus[] = [
   "delivered",
@@ -123,11 +124,15 @@ export function createRecordPossessionHandler(deps: {
               400,
             );
           }
+          const isPersonalisedGoods = await orderHasPersonalisedGoods(
+            shopPhaseDbSession(tx),
+            existing.orderId,
+          );
           const period = computeCancellationPeriodEndsAt({
             fulfilmentOption: existing.option,
             possessionAt,
             policy: policy as CancellationPeriodPolicy,
-            isPersonalisedGoods: false,
+            isPersonalisedGoods,
           });
           if (!period.ok) {
             policyNotConfigured("Cancellation period");
