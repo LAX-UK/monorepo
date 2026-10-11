@@ -1,4 +1,5 @@
 import { createDb } from "@auction/db";
+import { DrizzleLaxStaffAccessRepository } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
@@ -25,6 +26,7 @@ import type { Env } from "./env.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
+import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
@@ -212,6 +214,11 @@ export function createContainer(env: Env): Container {
     identity: identityIssuer,
     members: repos.legalEntityMemberRepository,
     audit: platform.authAuditPublisher,
+  });
+  const staffAccess = new StaffAccessAdminService({
+    access: new DrizzleLaxStaffAccessRepository(db),
+    users: repos.adminUserReader,
+    identity: identityIssuer,
   });
 
   return {
@@ -444,7 +451,7 @@ export function createContainer(env: Env): Container {
       twoFactorRequirement: twoFactorPolicy,
       staffInvitationAccept: userMisc.staffInvitationAccept,
     }),
-    admin: { ...admin.admin, staffTwoFactorPolicy: twoFactorPolicy },
+    admin: { ...admin.admin, staffTwoFactorPolicy: twoFactorPolicy, staffAccess },
     finance,
     platformCron,
     compliance,

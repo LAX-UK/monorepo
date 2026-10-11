@@ -428,6 +428,12 @@ export type {
   InvitationSummary,
   IUserInvitationRepository,
 } from "./invitation.repository.js";
+export type {
+  ILaxStaffAccessRepository,
+  LaxStaffAccessEntry,
+  LaxStaffAccessHistoryEntry,
+  LaxStaffAccessRequest,
+} from "./lax-staff-access.repository.js";
 
 export type {
   AdminPaymentTableRowDto,

@@ -32,7 +32,8 @@ export default async function AdminStaffPage({
 }) {
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
-  const { model, rows, summary, total, loadError, pagination } = await loadAdminStaffListPage(sp);
+  const { model, rows, access, summary, total, loadError, pagination } =
+    await loadAdminStaffListPage(sp);
   const isPaginationEmpty = !loadError && total > 0 && rows.length === 0 && !model.hasFilters;
 
   return (
@@ -44,7 +45,11 @@ export default async function AdminStaffPage({
         resetHref={model.basePath}
         bulkBar={<AdminUserListBulkBar />}
         filtersSelfContained
-        mobileCards={!loadError && rows.length > 0 ? <PeopleStaffMobileCards rows={rows} /> : null}
+        mobileCards={
+          !loadError && rows.length > 0 ? (
+            <PeopleStaffMobileCards rows={rows} access={access} />
+          ) : null
+        }
         mobileSummary={
           !loadError ? (
             <CatalogListMobileSummary metrics={buildStaffMobileMetrics(summary)} />
@@ -100,6 +105,7 @@ export default async function AdminStaffPage({
         {!loadError && rows.length > 0 ? (
           <AdminStaffBoardContainer
             rows={rows}
+            access={access}
             totalMatches={total}
             hasActiveFilters={model.hasFilters}
             selectedStaffId={model.selectedStaffId}

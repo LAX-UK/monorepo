@@ -87,7 +87,16 @@ export interface IIdentityTwoFactorPolicyClient {
     input: { required: boolean; actorSubjectId: string },
   ): Promise<IdentityTwoFactorPolicyView>;
   readTwoFactorStatuses(subjectIds: readonly string[]): Promise<Map<string, boolean>>;
+  readSecuritySummaries(
+    subjectIds: readonly string[],
+  ): Promise<Map<string, IdentitySubjectSecuritySummary>>;
 }
+
+/** `lastSignInAt` is the newest session Identity still holds, so it can be null. */
+export type IdentitySubjectSecuritySummary = {
+  twoFactorEnabled: boolean;
+  lastSignInAt: Date | null;
+};
 
 export interface IIdentityCredentialClient {
   credentialSummary(

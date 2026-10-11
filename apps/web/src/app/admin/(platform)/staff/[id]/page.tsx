@@ -7,10 +7,12 @@ import {
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import { PeopleDetailShell } from "@/components/admin/people-detail-shell";
 import { PeopleOverviewTab } from "@/components/admin/people/people-overview-tab";
+import { StaffLaxAccessPanel } from "@/components/admin/people/staff-lax-access-panel";
 import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
 import { loadAdminStaffDetail } from "@/lib/admin/load-admin-staff-detail";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { getAdminUserById } from "@/lib/data/http/admin.server";
+import { getServerStaffAccessDetail } from "@/lib/data/http/staff-access.server";
 import { buildPeopleOverviewViewModel } from "@/lib/data/view-models/people-overview.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { UserRole, UserStaffRole } from "@auction/types";
@@ -35,7 +37,10 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
   const { id } = await params;
   const sp = await searchParams;
   const listHref = parseAdminListReturnTarget(sp.returnTo, "/admin/staff");
-  const { user, canManageRoles, canModerate } = await loadAdminStaffDetail(id);
+  const [{ user, canManageRoles, canModerate }, accessDetail] = await Promise.all([
+    loadAdminStaffDetail(id),
+    getServerStaffAccessDetail(id).catch(() => null),
+  ]);
   const staffRole = (user.staffRole as UserStaffRole | null) ?? null;
   const permissionsCount = countStaffCapabilities(staffRole);
   const overviewVm = buildPeopleOverviewViewModel({
@@ -65,6 +70,19 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
             <PeopleOverviewTab kpiTiles={overviewVm.kpiTiles} ariaLabel="Staff summary">
               <AdminUserProfilePanel user={user} />
             </PeopleOverviewTab>
+          ),
+        },
+        {
+          id: "lax-access",
+          label: "LAX access",
+          count: accessDetail?.platforms.filter((p) => p.role).length ?? 0,
+          content: (
+            <StaffLaxAccessPanel
+              userId={user.id}
+              detail={accessDetail}
+              canManage={canManageRoles}
+              bidStaffRole={staffRole}
+            />
           ),
         },
         {

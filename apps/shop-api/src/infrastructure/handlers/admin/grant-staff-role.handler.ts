@@ -3,13 +3,13 @@ import { withAdminIdempotency } from "../../../application/admin/with-admin-idem
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
 import { grantShopStaffRoleInTx, revokeShopStaffRoleInTx } from "../../grant-staff-role.js";
+import { resolveActiveProfileByEmail } from "../../resolve-shop-profile-by-email.js";
 
 export type GrantStaffRoleCommand = {
-  subject: string;
   role: ShopStaffRole;
   operatorSubjectId: string;
   idempotencyKey: string;
-};
+} & ({ subject: string } | { email: string });
 
 export type RevokeStaffRoleCommand = {
   subject: string;
@@ -19,7 +19,7 @@ export type RevokeStaffRoleCommand = {
 
 export function createGrantStaffRoleHandler(deps: {
   uow: ShopUnitOfWorkFactory;
-}): (command: GrantStaffRoleCommand) => Promise<void> {
+}): (command: GrantStaffRoleCommand) => Promise<{ subject: string }> {
   return async (command) =>
     deps.uow.run(async (tx) =>
       withAdminIdempotency({
@@ -28,12 +28,19 @@ export function createGrantStaffRoleHandler(deps: {
         idempotencyKey: command.idempotencyKey,
         actorSubjectId: command.operatorSubjectId,
         requestPayload: command,
-        run: () =>
-          grantShopStaffRoleInTx(shopPhaseDbSession(tx), {
-            subject: command.subject,
+        run: async () => {
+          const db = shopPhaseDbSession(tx);
+          const subject =
+            "subject" in command
+              ? command.subject
+              : (await resolveActiveProfileByEmail(db, command.email)).identitySubjectId;
+          await grantShopStaffRoleInTx(db, {
+            subject,
             role: command.role,
             operatorSubjectId: command.operatorSubjectId,
-          }),
+          });
+          return { subject };
+        },
       }),
     );
 }

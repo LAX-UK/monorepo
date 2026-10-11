@@ -130,7 +130,7 @@ export function createMinimalShopApiTestDeps(
         requestId: "00000000-0000-4000-8000-000000000004",
         status: "rejected" as const,
       }),
-      grantStaffRole: async () => undefined,
+      grantStaffRole: async () => ({ subject: "sub_test" }),
       revokeStaffRole: async () => undefined,
       adminRead: {
         orders: {

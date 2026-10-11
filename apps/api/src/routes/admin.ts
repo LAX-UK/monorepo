@@ -40,6 +40,7 @@ import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.r
 import { attachAdminSaleroomSessionRoutes } from "./admin/saleroom-session.routes.js";
 import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
 import { attachAdminSecurityRoutes } from "./admin/security.routes.js";
+import { attachAdminStaffAccessRoutes } from "./admin/staff-access.routes.js";
 import {
   attachAdminUsersDirectoryRoutes,
   attachAdminUsersManagementRoutes,
@@ -110,6 +111,7 @@ export function createAdminRoutes(
   attachAdminUsersManagementRoutes(platform, container);
   attachAdminImpersonationRoutes(platform, container);
   attachAdminSecurityRoutes(platform, container.admin.staffTwoFactorPolicy);
+  attachAdminStaffAccessRoutes(platform, container.admin.staffAccess);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 

@@ -2,6 +2,10 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
+import {
+  StaffPlatformBadges,
+  type StaffPlatformBadgesProps,
+} from "@/components/admin/people/staff-platform-badges";
 import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { Button } from "@auction/ui/components/button";
@@ -77,9 +81,10 @@ type StaffCardProps = {
   user: AdminUserRow;
   onOpen: () => void;
   roleLabel: string;
+  platforms?: StaffPlatformBadgesProps["platforms"];
 };
 
-export function PeopleStaffMobileCard({ user, onOpen, roleLabel }: StaffCardProps) {
+export function PeopleStaffMobileCard({ user, onOpen, roleLabel, platforms }: StaffCardProps) {
   return (
     <PeopleMobileCard
       title={user.name}
@@ -93,6 +98,7 @@ export function PeopleStaffMobileCard({ user, onOpen, roleLabel }: StaffCardProp
             status={user.suspendedAt ? "suspended" : "active"}
             size="sm"
           />
+          <StaffPlatformBadges platforms={platforms} />
         </>
       }
     />

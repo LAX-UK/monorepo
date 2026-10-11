@@ -11,6 +11,7 @@ import type {
   IdentityIssuerSignUpInput,
   IdentitySession,
   IdentitySubject,
+  IdentitySubjectSecuritySummary,
   IdentityTwoFactorPolicyScope,
   IdentityTwoFactorPolicyView,
   IdentityTwoFactorRequirement,
@@ -233,7 +234,14 @@ export class HttpIdentityIssuerClient
   }
 
   async readTwoFactorStatuses(subjectIds: readonly string[]): Promise<Map<string, boolean>> {
-    const statuses = new Map<string, boolean>();
+    const summaries = await this.readSecuritySummaries(subjectIds);
+    return new Map([...summaries].map(([id, summary]) => [id, summary.twoFactorEnabled]));
+  }
+
+  async readSecuritySummaries(
+    subjectIds: readonly string[],
+  ): Promise<Map<string, IdentitySubjectSecuritySummary>> {
+    const summaries = new Map<string, IdentitySubjectSecuritySummary>();
     for (let start = 0; start < subjectIds.length; start += TWO_FACTOR_STATUS_BATCH) {
       const body = await this.machineRequest("POST", "/identity/subjects/two-factor-status", {
         subjectIds: subjectIds.slice(start, start + TWO_FACTOR_STATUS_BATCH),
@@ -249,10 +257,15 @@ export class HttpIdentityIssuerClient
         ) {
           throw invalidResponse("two-factor status");
         }
-        statuses.set(status.subjectId, status.twoFactorEnabled);
+        const lastSignInAt =
+          typeof status.lastSignInAt === "string" ? new Date(status.lastSignInAt) : null;
+        summaries.set(status.subjectId, {
+          twoFactorEnabled: status.twoFactorEnabled,
+          lastSignInAt: lastSignInAt && !Number.isNaN(lastSignInAt.getTime()) ? lastSignInAt : null,
+        });
       }
     }
-    return statuses;
+    return summaries;
   }
 
   async credentialSummary(

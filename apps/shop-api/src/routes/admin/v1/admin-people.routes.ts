@@ -20,17 +20,25 @@ const SaleAuthorityDecisionResponseSchema = Type.Object({
   status: Type.String(),
 });
 
-const StaffGrantBodySchema = Type.Object({
-  identitySubjectId: Type.String({ minLength: 1 }),
-  role: Type.Union([
-    Type.Literal("shop_admin"),
-    Type.Literal("account_manager"),
-    Type.Literal("broker"),
-    Type.Literal("operations"),
-    Type.Literal("finance"),
-    Type.Literal("catalogue_editor"),
-  ]),
-});
+const StaffGrantRoleSchema = Type.Union([
+  Type.Literal("shop_admin"),
+  Type.Literal("account_manager"),
+  Type.Literal("broker"),
+  Type.Literal("operations"),
+  Type.Literal("finance"),
+  Type.Literal("catalogue_editor"),
+]);
+
+const StaffGrantBodySchema = Type.Union([
+  Type.Object(
+    { identitySubjectId: Type.String({ minLength: 1 }), role: StaffGrantRoleSchema },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { email: Type.String({ format: "email", maxLength: 320 }), role: StaffGrantRoleSchema },
+    { additionalProperties: false },
+  ),
+]);
 
 const StaffGrantResponseSchema = Type.Object({
   identitySubjectId: Type.String(),
@@ -92,25 +100,30 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
       schema: {
         tags: ["shop-admin"],
         body: StaffGrantBodySchema,
-        response: { 200: StaffGrantResponseSchema, 403: ShopApiErrorBodySchema },
+        response: {
+          200: StaffGrantResponseSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "settings.write");
       const subject = requireShopAdminSubject(request);
       const idempotencyKey = requireIdempotencyKey(request);
-      const body = request.body as {
-        identitySubjectId: string;
-        role: import("@auction/shop-domain").ShopStaffRole;
-      };
-      await deps.grantStaffRole({
-        subject: body.identitySubjectId,
+      const body = request.body as { role: import("@auction/shop-domain").ShopStaffRole } & (
+        | { identitySubjectId: string }
+        | { email: string }
+      );
+      const granted = await deps.grantStaffRole({
+        ...("email" in body ? { email: body.email } : { subject: body.identitySubjectId }),
         role: body.role,
         operatorSubjectId: subject,
         idempotencyKey,
       });
       return {
-        identitySubjectId: body.identitySubjectId,
+        identitySubjectId: granted.subject,
         role: body.role,
         status: "active" as const,
       };
