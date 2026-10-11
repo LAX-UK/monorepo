@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+type AppEnv = "production" | "test" | "development";
+
+function resolveAppEnv(source: NodeJS.ProcessEnv): AppEnv {
+  const raw = source.APP_ENV?.trim();
+  if (raw === "production" || raw === "test" || raw === "development") return raw;
+  return (source.NODE_ENV ?? "development") === "production" ? "production" : "development";
+}
+
 export const shopApiEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3011),
@@ -142,11 +150,12 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
       throw new Error("SHOP_FAKE_CHECKOUT_ENABLED must not be enabled in production");
     }
     if (
+      resolveAppEnv(normalized) === "production" &&
       parsed.data.SHOP_PAYOUTS_ENABLED &&
       parsed.data.STRIPE_SHOP_CONNECT_PLATFORM_KEY !== "lax_art"
     ) {
       throw new Error(
-        "SHOP_PAYOUTS_ENABLED in production requires STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art (D38)",
+        "SHOP_PAYOUTS_ENABLED when APP_ENV=production requires STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art",
       );
     }
   }

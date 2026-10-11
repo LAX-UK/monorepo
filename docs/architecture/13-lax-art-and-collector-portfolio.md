@@ -65,7 +65,7 @@ Exactly **two** Stripe platform accounts:
 1. **LAX Bid** — `apps/api` payments and Bid seller Connect.
 2. **LAX Art** — `shop-api` Checkout, Invoicing, refunds, and payee Connect for both lax.art and shop.lax.art.
 
-A person may have at most **one Connect account per Stripe platform**. Test may use Bid's sandbox keys until account 2 exists (`STRIPE_SHOP_CONNECT_PLATFORM_KEY=bid_sandbox`); production Connect for LAX Art must not go live on the shared sandbox account (connected accounts cannot migrate between platforms), and `shop-api` enforces `lax_art` in production.
+A person may have at most **one Connect account per Stripe platform**. Test may use Bid's sandbox keys until account 2 exists (`STRIPE_SHOP_CONNECT_PLATFORM_KEY=bid_sandbox`); production Connect for LAX Art must not go live on the shared sandbox account (connected accounts cannot migrate between platforms), and `shop-api` enforces `lax_art` when `APP_ENV=production`.
 
 | `shop-api` setting | Purpose |
 | --- | --- |
