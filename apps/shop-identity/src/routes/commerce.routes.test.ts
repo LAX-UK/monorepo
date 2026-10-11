@@ -554,3 +554,112 @@ describe("checkout email verification", () => {
     expect(shopApiFetch).toHaveBeenCalledOnce();
   });
 });
+
+describe("commerce favorites proxy routes", () => {
+  async function csrfHeaders(app: Hono) {
+    const csrf = await app.request("/commerce/csrf");
+    const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+    const csrfCookie = (csrf.headers.get("set-cookie") ?? "").split(";")[0];
+    return { cookie: `${AUTH_COOKIE}; ${csrfCookie}`, "x-shop-csrf": csrfToken };
+  }
+
+  it.each([
+    ["/commerce/me/favorites/artworks", "/v1/me/favorites/artworks"],
+    ["/commerce/me/favorites/artists", "/v1/me/favorites/artists"],
+  ])("proxies GET %s with shop.read scope", async (route, upstreamPath) => {
+    const shopApiFetch = vi.fn(async () => Response.json({ items: [] }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(route, { headers: { cookie: AUTH_COOKIE } });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ items: [] });
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ path: upstreamPath, method: "GET", scopes: "shop.read" }),
+    );
+  });
+
+  it("returns 401 for guest GET favorites without calling shop-api", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/favorites/artworks");
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "sign_in_required" });
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["PUT", "/commerce/me/favorites/artworks/reed-study"],
+    ["DELETE", "/commerce/me/favorites/artworks/reed-study"],
+    ["PUT", "/commerce/me/favorites/artists/ada-artist"],
+    ["DELETE", "/commerce/me/favorites/artists/ada-artist"],
+  ])("rejects %s %s without CSRF", async (method, route) => {
+    const shopApiFetch = vi.fn();
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(route, { method, headers: { cookie: AUTH_COOKIE } });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "csrf_failed" });
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects favorites mutations from a foreign Origin even with a valid CSRF pair", async () => {
+    const shopApiFetch = vi.fn();
+    const { app } = createCommerceApp(shopApiFetch);
+    const headers = await csrfHeaders(app);
+    const response = await app.request("/commerce/me/favorites/artworks/reed-study", {
+      method: "PUT",
+      headers: { ...headers, origin: "https://evil.example" },
+    });
+    expect(response.status).toBe(403);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["PUT", "/commerce/me/favorites/artworks/reed study", "/v1/me/favorites/artworks/reed%20study"],
+    [
+      "DELETE",
+      "/commerce/me/favorites/artworks/reed-study",
+      "/v1/me/favorites/artworks/reed-study",
+    ],
+    ["PUT", "/commerce/me/favorites/artists/ada-artist", "/v1/me/favorites/artists/ada-artist"],
+    ["DELETE", "/commerce/me/favorites/artists/ada-artist", "/v1/me/favorites/artists/ada-artist"],
+  ])("proxies %s %s with shop.write scope", async (method, route, upstreamPath) => {
+    const shopApiFetch = vi.fn(async () => Response.json({ status: "saved" }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(route, { method, headers: await csrfHeaders(app) });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "saved" });
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ path: upstreamPath, method, scopes: "shop.write" }),
+    );
+  });
+
+  it("passes upstream 404 through as a commerce_upstream_failed envelope", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ code: "shop.not_found", message: "Artwork not found" }, { status: 404 }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/favorites/artworks/missing", {
+      method: "PUT",
+      headers: await csrfHeaders(app),
+    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: "commerce_upstream_failed",
+      code: "shop.not_found",
+      message: "Artwork not found",
+    });
+  });
+
+  it("passes upstream feature_disabled 404 through on GET", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ code: "shop.feature_disabled", message: "Disabled" }, { status: 404 }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/favorites/artists", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ code: "shop.feature_disabled" });
+  });
+});

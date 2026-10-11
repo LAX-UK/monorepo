@@ -423,6 +423,8 @@ export function createDrizzlePortalOwnershipRepository(
           artworkTitle: shopArtwork.title,
           salesChannel: shopArtwork.salesChannel,
           intent: shopArtworkInterest.intent,
+          message: shopArtworkInterest.message,
+          contactPhone: shopArtworkInterest.contactPhone,
           createdAt: shopArtworkInterest.createdAt,
           notifiedAt: shopArtworkInterest.notifiedAt,
         })
@@ -444,6 +446,8 @@ export function createDrizzlePortalOwnershipRepository(
         salesChannel: row.salesChannel,
         intent: row.intent,
         status: row.notifiedAt ? "staff_notified" : "open",
+        message: row.message,
+        contactPhone: row.contactPhone,
         createdAt: row.createdAt.toISOString(),
       }));
     },

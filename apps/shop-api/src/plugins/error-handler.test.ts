@@ -34,4 +34,19 @@ describe("Shop API error handler", () => {
     expect(response.statusCode).toBe(500);
     await app.close();
   });
+
+  it("maps oversized request bodies to 413 instead of an internal error", async () => {
+    const app = Fastify({ logger: false, bodyLimit: 16 });
+    registerErrorHandler(app);
+    app.post("/echo", async () => ({ ok: true }));
+    const response = await app.inject({
+      method: "POST",
+      url: "/echo",
+      payload: { text: "x".repeat(64) },
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toMatchObject({ code: "shop.validation" });
+    await app.close();
+  });
 });

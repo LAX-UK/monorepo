@@ -43,6 +43,12 @@ import {
   PublicMerchandiseProductListSchema,
 } from "./merchandise-public.js";
 import {
+  type PortalFollowedArtist,
+  PortalFollowedArtistsResponseSchema,
+  type PortalSavedArtwork,
+  PortalSavedArtworksResponseSchema,
+} from "./portal-favorites.js";
+import {
   PortalArtistArtworksResponseSchema,
   PortalArtistSalesResponseSchema,
   type PortalCollectionItem,
@@ -287,6 +293,20 @@ export function parsePortalPayeeConnectSession(value: unknown): { clientSecret: 
 export function parsePortalEnquiries(value: unknown): PortalEnquiry[] {
   if (!Value.Check(PortalEnquiriesResponseSchema, value)) {
     throw new ShopContractParseError("Invalid portal enquiries payload");
+  }
+  return value.items;
+}
+
+export function parsePortalSavedArtworks(value: unknown): PortalSavedArtwork[] {
+  if (!Value.Check(PortalSavedArtworksResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal saved artworks payload");
+  }
+  return value.items;
+}
+
+export function parsePortalFollowedArtists(value: unknown): PortalFollowedArtist[] {
+  if (!Value.Check(PortalFollowedArtistsResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal followed artists payload");
   }
   return value.items;
 }

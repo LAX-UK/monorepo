@@ -5,6 +5,8 @@ export type ImportArtworkCommand = {
   description: string | null;
   primaryImageUrl: string | null;
   dimensions?: string | null;
+  /** Omitted leaves an existing value unchanged on re-import; `null` clears it. */
+  medium?: string | null;
   yearCreated?: number | null;
   saleState?: "for_sale" | "price_on_application" | "sold";
   artistSlug: string;

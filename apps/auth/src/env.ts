@@ -39,6 +39,7 @@ const envSchema = z
       .default(false),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     SHOP_ORIGIN: z.string().url().default("http://localhost:3020"),
+    LAX_ART_ORIGIN: z.string().url().default("http://localhost:3050"),
     SHOP_ADMIN_ORIGIN: z.string().url().default("http://localhost:3030"),
     LAX_ACCOUNT_ORIGIN: z.string().url().optional(),
     WEB_ORIGINS: z.preprocess((val) => {
@@ -150,6 +151,7 @@ const envSchema = z
         ["OIDC_ISSUER_URL", e.OIDC_ISSUER_URL],
         ["WEB_ORIGIN", e.WEB_ORIGIN],
         ["SHOP_ORIGIN", e.SHOP_ORIGIN],
+        ["LAX_ART_ORIGIN", e.LAX_ART_ORIGIN],
         ["SHOP_ADMIN_ORIGIN", e.SHOP_ADMIN_ORIGIN],
         ...(e.WEB_ORIGINS ?? []).map((url): [field: string, url: string] => ["WEB_ORIGINS", url]),
         ...(e.SSR_TRUSTED_ORIGINS ?? []).map((url): [field: string, url: string] => [
@@ -184,6 +186,7 @@ const envSchema = z
         e.WEB_ORIGIN,
         e.SHOP_ORIGIN,
         e.SHOP_ADMIN_ORIGIN,
+        e.LAX_ART_ORIGIN,
         e.OIDC_ISSUER_URL,
         e.API_INTERNAL_BASE_URL,
       ]) {
@@ -273,19 +276,44 @@ export function deriveShopAdminOriginFromShopOrigin(shopOrigin: string): string 
   return undefined;
 }
 
-function withDerivedShopAdminOrigin(input: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const raw = input.SHOP_ADMIN_ORIGIN?.trim();
-  const needsDerive =
-    raw === undefined ||
-    raw === "" ||
-    raw === "http://localhost:3030" ||
-    raw.startsWith("http://127.0.0.1");
-  if (!needsDerive) return input;
+export function deriveLaxArtOriginFromShopOrigin(shopOrigin: string): string | undefined {
+  try {
+    const host = new URL(shopOrigin).hostname;
+    if (host === "test-shop.lax.bid") return "https://test-art.lax.bid";
+    if (host === "shop.lax.bid" || host === "shop.lax.art") return "https://lax.art";
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function withDerivedProductOrigins(input: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  let next = input;
   const shopOrigin = input.SHOP_ORIGIN?.trim();
-  if (!shopOrigin) return input;
-  const derived = deriveShopAdminOriginFromShopOrigin(shopOrigin);
-  if (!derived) return input;
-  return { ...input, SHOP_ADMIN_ORIGIN: derived };
+
+  const rawAdmin = input.SHOP_ADMIN_ORIGIN?.trim();
+  const needsAdminDerive =
+    rawAdmin === undefined ||
+    rawAdmin === "" ||
+    rawAdmin === "http://localhost:3030" ||
+    rawAdmin.startsWith("http://127.0.0.1");
+  if (needsAdminDerive && shopOrigin) {
+    const derived = deriveShopAdminOriginFromShopOrigin(shopOrigin);
+    if (derived) next = { ...next, SHOP_ADMIN_ORIGIN: derived };
+  }
+
+  const rawArt = input.LAX_ART_ORIGIN?.trim();
+  const needsArtDerive =
+    rawArt === undefined ||
+    rawArt === "" ||
+    rawArt === "http://localhost:3050" ||
+    rawArt.startsWith("http://127.0.0.1");
+  if (needsArtDerive && shopOrigin) {
+    const derivedArt = deriveLaxArtOriginFromShopOrigin(shopOrigin);
+    if (derivedArt) next = { ...next, LAX_ART_ORIGIN: derivedArt };
+  }
+
+  return next;
 }
 
 function formatAuthEnvIssues(error: z.ZodError): string {
@@ -298,7 +326,7 @@ function formatAuthEnvIssues(error: z.ZodError): string {
 }
 
 export function parseAuthEnv(input: NodeJS.ProcessEnv): AuthAppEnv {
-  const parsed = envSchema.safeParse(withDerivedShopAdminOrigin(input));
+  const parsed = envSchema.safeParse(withDerivedProductOrigins(input));
   if (!parsed.success) {
     throw new Error(`Invalid auth app environment variables: ${formatAuthEnvIssues(parsed.error)}`);
   }

@@ -16,7 +16,9 @@ function createCatalogueDeps() {
             imageUrl: null,
             saleState: "for_sale",
             dimensions: null,
+            medium: null,
             yearCreated: null,
+            salesChannel: "shop",
             eligibleForEditionAllocation: true,
             printPricePence: 12000,
             availability: { totalEditions: 24, editionsAvailable: 4 },
@@ -34,7 +36,9 @@ function createCatalogueDeps() {
               imageUrl: null,
               saleState: "for_sale",
               dimensions: null,
+              medium: null,
               yearCreated: null,
+              salesChannel: "shop",
               eligibleForEditionAllocation: true,
               printPricePence: 12000,
               availability: { totalEditions: 24, editionsAvailable: 4 },
@@ -67,6 +71,23 @@ describe("artworks routes", () => {
     const response = await app.inject({ method: "GET", url: "/v1/artworks/missing" });
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ code: "shop.not_found" });
+    await app.close();
+  });
+
+  it("hides artwork detail from a storefront on another sales channel", async () => {
+    const app = createShopApiApp({ deps: createCatalogueDeps(), logger: false });
+    await app.ready();
+    const sameChannel = await app.inject({
+      method: "GET",
+      url: "/v1/artworks/demo?salesChannel=shop",
+    });
+    expect(sameChannel.statusCode).toBe(200);
+    const otherChannel = await app.inject({
+      method: "GET",
+      url: "/v1/artworks/demo?salesChannel=art",
+    });
+    expect(otherChannel.statusCode).toBe(404);
+    expect(otherChannel.json()).toMatchObject({ code: "shop.not_found" });
     await app.close();
   });
 

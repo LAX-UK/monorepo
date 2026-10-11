@@ -25,7 +25,10 @@ type ShopTemplateVars = {
   "shop-artwork-enquiry-alert": {
     artworkTitle: string;
     artworkSlug: string;
+    artworkUrl: string;
     buyerEmail: string;
+    message?: string;
+    contactPhone?: string;
   };
   "shop-edition-available-notify": {
     artworkTitle: string;

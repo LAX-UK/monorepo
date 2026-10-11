@@ -64,6 +64,8 @@ export async function registerArtworkInterestRoutes(
   app.post(
     "/v1/artworks/:slug/interest",
     {
+      // Global limit is 1 KiB; a 2000-char enquiry message can be up to ~12 KiB as escaped JSON.
+      bodyLimit: 16_384,
       schema: {
         tags: ["catalogue"],
         params: {
@@ -85,12 +87,18 @@ export async function registerArtworkInterestRoutes(
       requireShopScope(request, "shop.write");
       const subject = requireShopSubject(request);
       const { slug } = request.params as { slug: string };
-      const body = (request.body ?? {}) as { intent?: ArtworkInterestIntent };
+      const body = (request.body ?? {}) as {
+        intent?: ArtworkInterestIntent;
+        message?: string;
+        contactPhone?: string;
+      };
       const intent = normalizeArtworkInterestIntent(body.intent);
       const status = await deps.registerArtworkInterest({
         artworkSlug: slug,
         identitySubjectId: subject,
         intent,
+        ...(intent === "enquiry" && body.message ? { message: body.message } : {}),
+        ...(intent === "enquiry" && body.contactPhone ? { contactPhone: body.contactPhone } : {}),
       });
       if (status === "artwork_not_found") {
         throw notFound("Artwork");

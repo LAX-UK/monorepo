@@ -16,4 +16,13 @@ describe("normalizeArtworkCatalogueFilters", () => {
       artworkType: "edition",
     });
   });
+
+  it("passes through salesChannel when valid", () => {
+    expect(normalizeArtworkCatalogueFilters({ salesChannel: "art" })).toMatchObject({
+      salesChannel: "art",
+    });
+    expect(
+      normalizeArtworkCatalogueFilters({ salesChannel: "other" as unknown as "shop" }),
+    ).not.toHaveProperty("salesChannel");
+  });
 });

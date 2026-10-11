@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { deriveShopAdminOriginFromShopOrigin, parseAuthEnv } from "./env.js";
+import {
+  deriveLaxArtOriginFromShopOrigin,
+  deriveShopAdminOriginFromShopOrigin,
+  parseAuthEnv,
+} from "./env.js";
 
 const base = {
   NODE_ENV: "development",
@@ -90,6 +94,7 @@ describe("auth app environment contract", () => {
       SHOP_ORIGIN: "https://test-shop.lax.bid",
     });
     expect(env.SHOP_ADMIN_ORIGIN).toBe("https://test-shop-admin.lax.bid");
+    expect(env.LAX_ART_ORIGIN).toBe("https://test-art.lax.bid");
   });
 
   it("maps known shop hosts to shop-admin origins", () => {
@@ -99,5 +104,9 @@ describe("auth app environment contract", () => {
     expect(deriveShopAdminOriginFromShopOrigin("https://shop.lax.bid")).toBe(
       "https://shop-admin.lax.bid",
     );
+    expect(deriveLaxArtOriginFromShopOrigin("https://test-shop.lax.bid")).toBe(
+      "https://test-art.lax.bid",
+    );
+    expect(deriveLaxArtOriginFromShopOrigin("https://shop.lax.art")).toBe("https://lax.art");
   });
 });

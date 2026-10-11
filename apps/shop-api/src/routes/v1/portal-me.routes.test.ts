@@ -169,6 +169,49 @@ describe("portal me routes", () => {
     await app.close();
   });
 
+  it("returns enquiry message and contact phone on /v1/me/enquiries", async () => {
+    const enquiry = {
+      enquiryId: "550e8400-e29b-41d4-a716-446655440040",
+      artworkId: "550e8400-e29b-41d4-a716-446655440041",
+      artworkSlug: "art-original",
+      artworkTitle: "Art Original",
+      salesChannel: "art" as const,
+      intent: "enquiry",
+      status: "open",
+      message: "Could I view this in person?",
+      contactPhone: "+44 20 7946 0000",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const listEnquiries = vi.fn(async () => [
+      enquiry,
+      { ...enquiry, message: null, contactPhone: null },
+    ]);
+    const base = createMinimalShopApiTestDeps();
+    const app = createShopApiApp({
+      deps: portalEnabledDeps({
+        portal: {
+          ...base.portal,
+          portalOwnership: { ...base.portal.portalOwnership, listEnquiries },
+        },
+      }),
+      logger: false,
+    });
+    await app.ready();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/me/enquiries",
+      headers: userHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items).toEqual([
+      enquiry,
+      { ...enquiry, message: null, contactPhone: null },
+    ]);
+    expect(listEnquiries).toHaveBeenCalledWith("portal-subject-1");
+    await app.close();
+  });
+
   it("returns feature_disabled for artist routes when portal ownership is off", async () => {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
       subject: "portal-subject-1",

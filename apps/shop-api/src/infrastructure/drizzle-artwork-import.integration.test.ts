@@ -227,4 +227,36 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork import", () => {
     expect(new Set(results.map((result) => result.artworkId)).size).toBe(1);
     expect(results.every((result) => result.editionCount === 24)).toBe(true);
   });
+
+  it("stores medium on create, keeps it when a re-import omits it, and clears it on null", async () => {
+    const suffix = Date.now();
+    const db = createDbFromPool(shopPool);
+    const writer = createDrizzleArtworkImportRepository(db);
+    const command = {
+      importKey: `integration:${suffix}:medium`,
+      slug: `integration-medium-${suffix}`,
+      title: "Integration Medium",
+      description: null,
+      primaryImageUrl: null,
+      artistSlug: `integration-medium-artist-${suffix}`,
+      artistDisplayName: "Medium Artist",
+      eligibleForEditionAllocation: false,
+    };
+    const readMedium = async (artworkId: string) =>
+      (
+        await db
+          .select({ medium: shopArtwork.medium })
+          .from(shopArtwork)
+          .where(eq(shopArtwork.id, artworkId))
+      )[0]?.medium;
+
+    const created = await writer.importArtwork({ ...command, medium: "Oil on linen" });
+    expect(await readMedium(created.artworkId)).toBe("Oil on linen");
+
+    await writer.importArtwork({ ...command, title: "Retitled" });
+    expect(await readMedium(created.artworkId)).toBe("Oil on linen");
+
+    await writer.importArtwork({ ...command, medium: null });
+    expect(await readMedium(created.artworkId)).toBeNull();
+  });
 });

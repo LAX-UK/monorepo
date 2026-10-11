@@ -16,7 +16,7 @@ describe("product-directory", () => {
     if (!resolved.ok) return;
 
     const links = buildProductDirectoryLinks(resolved.config);
-    expect(links).toHaveLength(2);
+    expect(links).toHaveLength(3);
     const bid = links.find((l) => l.id === "bid");
     const shop = links.find((l) => l.id === "shop");
     expect(bid?.current).toBe(true);
@@ -32,7 +32,7 @@ describe("product-directory", () => {
     });
     if (!resolved.ok) throw new Error("expected ok");
     const footer = buildCrossProductFooterLinks(resolved.config);
-    expect(footer).toHaveLength(1);
-    expect(footer[0]?.id).toBe("bid");
+    expect(footer).toHaveLength(2);
+    expect(footer.map((l) => l.id).sort()).toEqual(["art", "bid"]);
   });
 });

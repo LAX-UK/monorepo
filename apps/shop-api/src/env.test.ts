@@ -12,6 +12,26 @@ function productionNodeBase(overrides: Record<string, string> = {}) {
   };
 }
 
+describe("loadShopApiEnv LAX_ART_PUBLIC_URL", () => {
+  it("is optional and treats an empty value as unset", () => {
+    expect(loadShopApiEnv(productionNodeBase()).LAX_ART_PUBLIC_URL).toBeUndefined();
+    expect(
+      loadShopApiEnv(productionNodeBase({ LAX_ART_PUBLIC_URL: "" })).LAX_ART_PUBLIC_URL,
+    ).toBeUndefined();
+  });
+
+  it("accepts an absolute URL", () => {
+    expect(
+      loadShopApiEnv(productionNodeBase({ LAX_ART_PUBLIC_URL: "https://test-art.lax.bid" }))
+        .LAX_ART_PUBLIC_URL,
+    ).toBe("https://test-art.lax.bid");
+  });
+
+  it("rejects a non-URL value", () => {
+    expect(() => loadShopApiEnv(productionNodeBase({ LAX_ART_PUBLIC_URL: "lax.art" }))).toThrow();
+  });
+});
+
 describe("loadShopApiEnv Connect platform", () => {
   it("allows bid_sandbox payouts on test when NODE_ENV is production", () => {
     expect(() =>

@@ -11,6 +11,7 @@ const capabilities: Omit<HostedAuthPageMountOptions, "getSession"> = {
   phoneEnabled: false,
   turnstileSiteKey: null,
   shopOrigin: "https://test-shop.lax.bid",
+  artOrigin: "https://test-art.lax.bid",
   shopAdminOrigin: "https://test-shop-admin.lax.bid",
   bidOrigin: "https://test.lax.bid",
   accountOrigin: "https://test-account.lax.bid",

@@ -71,6 +71,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     phoneEnabled: options.oidc.env.ENABLE_PHONE_VERIFICATION,
     turnstileSiteKey: options.oidc.env.TURNSTILE_SITE_KEY ?? null,
     shopOrigin: options.oidc.env.SHOP_ORIGIN,
+    artOrigin: options.oidc.env.LAX_ART_ORIGIN,
     shopAdminOrigin: options.oidc.env.SHOP_ADMIN_ORIGIN,
     bidOrigin: options.oidc.env.WEB_ORIGIN,
     ...(options.oidc.env.LAX_ACCOUNT_ORIGIN

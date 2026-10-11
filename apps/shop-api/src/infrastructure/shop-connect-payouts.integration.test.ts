@@ -215,7 +215,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop Connect payouts integration", () =>
       accounts: createDrizzleShopPayeeConnectAccountRepository(db, PLATFORM),
       gateway,
       publishableKey: null,
-      storefrontOrigin: "https://shop.example",
+      storefrontOrigins: { shop: "https://shop.example", art: "https://lax.art" },
       failClosedConnectUrls: true,
     });
 
@@ -238,5 +238,43 @@ describe.skipIf(!hasShopIntegrationDb)("shop Connect payouts integration", () =>
       stripeAccountId: first.stripeAccountId,
       ready: false,
     });
+  });
+
+  it("onboarding links accept lax.art return URLs and reject foreign origins with 400", async () => {
+    const db = createShopDb(shopPool);
+    const subject = `connect-art-origin-${integrationSuffix("s")}`;
+    await insertTestOwnerParty(db, { identitySubjectId: subject, displayName: "Art Payee" });
+    const gateway = fakeGateway();
+    const service = createDrizzleShopPayeeConnectService({
+      db,
+      accounts: createDrizzleShopPayeeConnectAccountRepository(db, PLATFORM),
+      gateway,
+      publishableKey: null,
+      storefrontOrigins: { shop: "https://shop.example", art: "https://lax.art" },
+      failClosedConnectUrls: true,
+    });
+
+    await expect(
+      service.createOnboardingLinkForSubject(
+        subject,
+        "https://lax.art/account/payouts?connect=return",
+        "https://lax.art/account/payouts?connect=refresh",
+      ),
+    ).resolves.toMatchObject({ url: "https://connect.stripe.test/onboard" });
+    expect(gateway.createOnboardingLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        returnUrl: "https://lax.art/account/payouts?connect=return",
+        refreshUrl: "https://lax.art/account/payouts?connect=refresh",
+      }),
+    );
+
+    await expect(
+      service.createOnboardingLinkForSubject(
+        subject,
+        "https://lax.art/account/payouts",
+        "https://lax.art.evil.example/refresh",
+      ),
+    ).rejects.toMatchObject({ code: SHOP_API_ERROR_CODES.VALIDATION, statusCode: 400 });
+    expect(gateway.createOnboardingLink).toHaveBeenCalledTimes(1);
   });
 });

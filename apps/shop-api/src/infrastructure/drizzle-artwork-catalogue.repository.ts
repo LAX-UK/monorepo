@@ -79,7 +79,9 @@ type SelectedArtworkRow = {
   primaryImageUrl: string | null;
   saleState: "for_sale" | "price_on_application" | "sold";
   dimensions: string | null;
+  medium: string | null;
   yearCreated: number | null;
+  salesChannel: "shop" | "art";
   artistName: string;
   artistSlug: string;
   eligibleForEditionAllocation: boolean;
@@ -102,7 +104,9 @@ function mapRow(
     artistSlug: row.artistSlug,
     saleState: row.saleState,
     dimensions: row.dimensions,
+    medium: row.medium,
     yearCreated: row.yearCreated,
+    salesChannel: row.salesChannel,
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,
     totalEditionCount: counts.total,
@@ -124,6 +128,9 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   }
   if (filter.saleState) {
     conditions.push(eq(shopArtwork.saleState, filter.saleState));
+  }
+  if (filter.salesChannel) {
+    conditions.push(eq(shopArtwork.salesChannel, filter.salesChannel));
   }
   if (filter.artistSlug) {
     conditions.push(eq(shopArtist.slug, filter.artistSlug));
@@ -248,7 +255,9 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
         primaryImageUrl: shopArtwork.primaryImageUrl,
         saleState: shopArtwork.saleState,
         dimensions: shopArtwork.dimensions,
+        medium: shopArtwork.medium,
         yearCreated: shopArtwork.yearCreated,
+        salesChannel: shopArtwork.salesChannel,
         artistName: shopParty.displayName,
         artistSlug: shopArtist.slug,
         eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
@@ -365,7 +374,9 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
           primaryImageUrl: shopArtwork.primaryImageUrl,
           saleState: shopArtwork.saleState,
           dimensions: shopArtwork.dimensions,
+          medium: shopArtwork.medium,
           yearCreated: shopArtwork.yearCreated,
+          salesChannel: shopArtwork.salesChannel,
           artistName: shopParty.displayName,
           artistSlug: shopArtist.slug,
           eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,

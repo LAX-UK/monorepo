@@ -26,7 +26,12 @@ export async function registerPortalMeDisabledRoutes(app: FastifyInstance): Prom
     "/v1/me/documents",
     "/v1/me/artist/artworks",
     "/v1/me/artist/sales",
+    "/v1/me/favorites/artworks",
+    "/v1/me/favorites/artists",
   ] as const;
+
+  app.all("/v1/me/favorites/artworks/:slug", async () => portalFeatureDisabled());
+  app.all("/v1/me/favorites/artists/:slug", async () => portalFeatureDisabled());
 
   for (const url of routes) {
     app.all(url, async () => portalFeatureDisabled());

@@ -327,6 +327,14 @@ export function createMinimalShopApiTestDeps(
         listArtworks: async () => [],
         listSales: async () => [],
       },
+      portalFavorites: {
+        listSavedArtworks: async () => [],
+        saveArtwork: async () => "saved",
+        unsaveArtwork: async () => "removed",
+        listFollowedArtists: async () => [],
+        followArtist: async () => "followed",
+        unfollowArtist: async () => "removed",
+      },
     },
     ...overrides,
   };

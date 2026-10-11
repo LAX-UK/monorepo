@@ -9,6 +9,7 @@ export async function importArtwork(input: {
   description: string | null;
   primaryImageUrl: string | null;
   dimensions?: string | null;
+  medium?: string | null;
   yearCreated?: number | null;
   saleState?: "for_sale" | "price_on_application" | "sold";
   artistSlug: string;
@@ -29,6 +30,7 @@ export async function importArtwork(input: {
       description: input.description,
       primaryImageUrl: input.primaryImageUrl,
       ...(input.dimensions !== undefined ? { dimensions: input.dimensions } : {}),
+      ...(input.medium !== undefined ? { medium: input.medium } : {}),
       ...(input.yearCreated !== undefined ? { yearCreated: input.yearCreated } : {}),
       ...(input.saleState ? { saleState: input.saleState } : {}),
       artistSlug: input.artistSlug,

@@ -32,6 +32,7 @@ const shopCapabilities = {
   phoneEnabled: true,
   turnstileSiteKey: "site-key",
   shopOrigin: "http://localhost:3020",
+  artOrigin: "http://localhost:3050",
   shopAdminOrigin: "http://localhost:3030",
   bidOrigin: "http://localhost:3000",
   emailFirst: true,

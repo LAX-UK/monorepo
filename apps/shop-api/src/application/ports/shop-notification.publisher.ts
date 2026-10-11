@@ -27,8 +27,11 @@ export type ShopNotificationPublisher = {
       idempotencyKey: string;
       artworkSlug: string;
       artworkTitle: string;
+      artworkUrl: string;
       identitySubjectId: string;
       opsEmail: string;
+      message?: string | undefined;
+      contactPhone?: string | undefined;
     },
   ): Promise<void>;
 
@@ -39,7 +42,7 @@ export type ShopNotificationPublisher = {
       identitySubjectId: string;
       artworkSlug: string;
       artworkTitle: string;
-      storefrontUrl: string;
+      artworkUrl: string;
     },
   ): Promise<void>;
 

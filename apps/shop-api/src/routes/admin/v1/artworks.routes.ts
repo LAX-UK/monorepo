@@ -16,6 +16,7 @@ const ImportArtworkBodySchema = Type.Object({
   description: Type.Union([Type.String(), Type.Null()]),
   primaryImageUrl: Type.Union([Type.String(), Type.Null()]),
   dimensions: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  medium: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 200 }), Type.Null()])),
   yearCreated: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   saleState: Type.Optional(
     Type.Union([

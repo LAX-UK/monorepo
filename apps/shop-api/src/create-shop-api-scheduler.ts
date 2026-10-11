@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { FastifyBaseLogger } from "fastify";
+import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { ShopApiEnv } from "./env.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
@@ -60,7 +61,10 @@ export function buildShopApiSchedulerTasks(input: {
     createStaffAccessTask(input.db, opsAlertEmail),
     createNotifyMeDispatchTask(input.db, {
       notifications,
-      storefrontUrl: input.env.SHOP_STOREFRONT_URL,
+      storefrontOrigins: resolveStorefrontOrigins({
+        shopStorefrontUrl: input.env.SHOP_STOREFRONT_URL,
+        laxArtPublicUrl: input.env.LAX_ART_PUBLIC_URL,
+      }),
     }),
     ...(input.env.SHOP_PAYOUTS_ENABLED ? [createPayoutEligibilityTask(input.db)] : []),
     ...connectPayoutTransferTasks(input),

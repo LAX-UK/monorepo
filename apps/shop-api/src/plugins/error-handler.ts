@@ -8,6 +8,15 @@ function isValidationError(error: unknown): error is { validation: unknown } {
   return typeof error === "object" && error !== null && "validation" in error;
 }
 
+function isBodyTooLargeError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "FST_ERR_CTP_BODY_TOO_LARGE"
+  );
+}
+
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ShopApiError) {
@@ -44,6 +53,13 @@ export function registerErrorHandler(app: FastifyInstance): void {
       return reply.status(400).send({
         code: SHOP_API_ERROR_CODES.VALIDATION,
         message: "Request validation failed",
+        requestId: request.id,
+      });
+    }
+    if (isBodyTooLargeError(error)) {
+      return reply.status(413).send({
+        code: SHOP_API_ERROR_CODES.VALIDATION,
+        message: "Request body is too large",
         requestId: request.id,
       });
     }

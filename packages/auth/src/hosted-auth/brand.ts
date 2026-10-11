@@ -45,6 +45,16 @@ export function selectHostedBrand(clientId: string | null | undefined): HostedBr
       tagline: null,
     };
   }
+  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB) {
+    return {
+      theme: "shop",
+      productName: "LAX Art",
+      logoSrc: HOSTED_SHOP_LOGO_PATH,
+      logoDarkSrc: null,
+      logoAlt: "LAX Art",
+      tagline: null,
+    };
+  }
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) {
     return {
       theme: "bid",

@@ -20,6 +20,10 @@ export const shopApiEnvSchema = z.object({
   ),
   SHOP_API_PUBLIC_BASE_URL: z.string().url().default("http://localhost:3011"),
   SHOP_STOREFRONT_URL: z.string().url().default("http://localhost:3020"),
+  LAX_ART_PUBLIC_URL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
   OIDC_ISSUER_URL: z.string().url().default("http://localhost:3001"),
   OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
   SHOP_API_BFF_TOKEN: z.string().min(32).optional(),

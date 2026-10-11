@@ -11,10 +11,12 @@ import { createListPublicArtistsHandler } from "./application/handlers/list-publ
 import { createListPublicArtworksHandler } from "./application/handlers/list-public-artworks.handler.js";
 import { createListPublicCategoriesHandler } from "./application/handlers/list-public-categories.handler.js";
 import { createListPublicMerchandiseProductsHandler } from "./application/handlers/list-public-merchandise-products.handler.js";
+import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
+import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { ShopApiEnv } from "./env.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
@@ -25,6 +27,7 @@ import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizz
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
+import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
@@ -141,8 +144,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const importArtwork = createImportArtworkHandler(artworkImportWriter);
   const { commerce, stripeWebhook } = createCommerceServices(db, env);
   const readiness = createDrizzleShopReadinessAdapter(db);
+  const storefrontOrigins = resolveStorefrontOrigins({
+    shopStorefrontUrl: env.SHOP_STOREFRONT_URL,
+    laxArtPublicUrl: env.LAX_ART_PUBLIC_URL,
+  });
   const artworkInterestWriter = createDrizzleArtworkInterestRepository(db, {
     notifications,
+    storefrontOrigins,
     domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
     ...(env.SHOP_ENQUIRY_NOTIFICATION_EMAIL
       ? { enquiryOpsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL }
@@ -160,6 +168,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const portalSales = createDrizzlePortalSalesRepository(db);
   const portalArtist = createDrizzlePortalArtistRepository(db);
+  const portalFavorites = createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db));
   const adminRead = createDrizzleAdminReadRepository(db, env);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
@@ -202,7 +211,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     accounts: payeeConnectAccounts,
     gateway: connectGateway,
     publishableKey: env.STRIPE_PUBLISHABLE_KEY ?? null,
-    storefrontOrigin: env.SHOP_STOREFRONT_URL.replace(/\/+$/, ""),
+    storefrontOrigins,
     failClosedConnectUrls: env.NODE_ENV === "production",
   });
   const syncConnectAccount = connectGateway
@@ -260,7 +269,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         linkArtistIdentity,
         unlinkArtistIdentity,
       },
-      portal: { portalOwnership, portalSales, portalArtist },
+      portal: { portalOwnership, portalSales, portalArtist, portalFavorites },
       payeeConnect,
       stripeConnectWebhook: {
         webhookSecret: env.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET,

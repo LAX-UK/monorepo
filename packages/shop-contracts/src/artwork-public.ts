@@ -6,6 +6,11 @@ export const PublicArtworkSaleStateSchema = Type.Union([
   Type.Literal("sold"),
 ]);
 
+export const PublicArtworkSalesChannelSchema = Type.Union([
+  Type.Literal("shop"),
+  Type.Literal("art"),
+]);
+
 export const PublicEditionAvailabilitySchema = Type.Object({
   totalEditions: Type.Integer({ minimum: 0 }),
   editionsAvailable: Type.Integer({ minimum: 0 }),
@@ -20,7 +25,9 @@ export const PublicArtworkSummarySchema = Type.Object(
     imageUrl: Type.Union([Type.String({ minLength: 1, maxLength: 2048 }), Type.Null()]),
     saleState: PublicArtworkSaleStateSchema,
     dimensions: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    medium: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     yearCreated: Type.Union([Type.Integer(), Type.Null()]),
+    salesChannel: PublicArtworkSalesChannelSchema,
     eligibleForEditionAllocation: Type.Boolean(),
     printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     availability: PublicEditionAvailabilitySchema,
@@ -57,7 +64,9 @@ export const PublicArtworkDetailSchema = Type.Object(
     imageUrl: Type.Union([Type.String({ minLength: 1, maxLength: 2048 }), Type.Null()]),
     saleState: PublicArtworkSaleStateSchema,
     dimensions: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    medium: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     yearCreated: Type.Union([Type.Integer(), Type.Null()]),
+    salesChannel: PublicArtworkSalesChannelSchema,
     eligibleForEditionAllocation: Type.Boolean(),
     printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     availability: PublicEditionAvailabilitySchema,
