@@ -1,6 +1,9 @@
 import type {
   AdminArtistDetail,
+  AdminAuditEntry,
   AdminClientDetail,
+  AdminDisputeListItem,
+  AdminEffectiveSettings,
   AdminOrderDetail,
   AdminOverviewKpis,
 } from "@auction/shop-contracts";
@@ -198,6 +201,12 @@ export interface AdminOverviewReader {
   readOverviewKpis(): Promise<AdminOverviewKpis>;
 }
 
+export interface AdminComplianceReader {
+  listAuditEntries(input: CursorListInput): Promise<CursorListResult<AdminAuditEntry>>;
+  listDisputes(input: CursorListInput): Promise<CursorListResult<AdminDisputeListItem>>;
+  readEffectiveSettings(): Promise<AdminEffectiveSettings>;
+}
+
 export type AdminReadPorts = {
   orders: AdminOrderReader;
   fulfilment: AdminFulfilmentReader;
@@ -209,4 +218,5 @@ export type AdminReadPorts = {
   staff: AdminStaffReader;
   catalogue: AdminCatalogueReader;
   overview: AdminOverviewReader;
+  compliance: AdminComplianceReader;
 };

@@ -1,5 +1,9 @@
-import { STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME } from "@auction/queues";
+import {
+  SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+  STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+} from "@auction/queues";
 import { Queue, Worker } from "bullmq";
+import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import { registerFinanceAndLifecycleCronWorkers } from "./register-finance-cron-workers.js";
@@ -80,6 +84,43 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
   });
   closables.push(staleSubmissionDraftRemindersWorker, staleSubmissionDraftRemindersQueue);
+
+  const shopStockReconciliationQueue = new Queue(
+    SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+    bullConnection,
+  );
+  const shopStockReconciliationWorker = new Worker(
+    SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runShopStockReconciliationJob();
+          await heartbeat(SHOP_STOCK_RECONCILIATION_QUEUE_NAME);
+        },
+      );
+    },
+    bullConnection,
+  );
+  shopStockReconciliationWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(SHOP_STOCK_RECONCILIATION_QUEUE_NAME, job, err);
+  });
+  void shopStockReconciliationQueue.add(
+    SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+    {},
+    {
+      jobId: "daily-shop-stock-reconciliation",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("shop-stock-reconciliation repeat registered (daily)");
+  errorHandlers.push({
+    worker: shopStockReconciliationWorker,
+    queue: SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+  });
+  closables.push(shopStockReconciliationWorker, shopStockReconciliationQueue);
 
   return {
     errorHandlers,

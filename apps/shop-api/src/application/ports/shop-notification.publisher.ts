@@ -53,4 +53,27 @@ export type ShopNotificationPublisher = {
       detail: string;
     },
   ): Promise<void>;
+
+  queueDispatchNotice(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      artworkTitle: string;
+      trackingUrl: string | null;
+      fulfilmentSummary: string;
+    },
+  ): Promise<void>;
+
+  queueRefundIssued(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderId: string;
+      amountPence: number;
+    },
+  ): Promise<void>;
 };

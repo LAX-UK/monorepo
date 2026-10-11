@@ -1,11 +1,14 @@
 import { ShopAccountShell } from "@/components/account/shop-account-shell";
+import { ShopPayoutAccountPanel } from "@/components/account/shop-payout-account-panel.client";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import { buildPayoutAccountViewModel } from "@/lib/account/payout-account.vm";
 import { resolvePortalPayoutStatusPresentation } from "@/lib/presenters/portal-payout-status.presenter";
 import { formatShopDate } from "@/lib/presenters/shop-date.presenter";
 import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import {
+  fetchPortalPayeeConnect,
   fetchPortalPayouts,
   resolveShopArtistPortalLinked,
   resolveShopPortalOwnershipEnabled,
@@ -51,7 +54,10 @@ export default async function ShopAccountPayoutsPage() {
     );
   }
 
-  const result = await fetchPortalPayouts();
+  const [result, payoutAccount] = await Promise.all([
+    fetchPortalPayouts(),
+    fetchPortalPayeeConnect(),
+  ]);
 
   return (
     <ShopAccountShell
@@ -59,6 +65,17 @@ export default async function ShopAccountPayoutsPage() {
       breadcrumbs={shopPageWayfinding.accountPayouts.breadcrumbs}
       {...shellNav}
     >
+      {payoutAccount.status === "ok" ? (
+        <ShopPayoutAccountPanel
+          viewModel={buildPayoutAccountViewModel(payoutAccount.data.status)}
+          publishableKey={
+            payoutAccount.data.config.connectConfigured
+              ? payoutAccount.data.config.publishableKey
+              : null
+          }
+        />
+      ) : null}
+
       {result.status === "unauthorized" ? (
         <ShopStatusState
           layout="page"

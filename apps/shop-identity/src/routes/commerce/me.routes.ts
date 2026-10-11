@@ -7,6 +7,22 @@ import { proxyAuthenticatedCommerce } from "./proxy-authenticated-commerce.js";
 import { proxyJson } from "./proxy-json.js";
 
 export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): void {
+  app.get("/commerce/me/collection", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/collection",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.get("/commerce/me/enquiries", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/enquiries",
+      scopes: "shop.read",
+    }),
+  );
+
   app.get("/commerce/me/editions", (c) =>
     proxyAuthenticatedCommerce(c, deps, {
       method: "GET",
@@ -22,6 +38,33 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
       scopes: "shop.read",
     }),
   );
+
+  app.get("/commerce/me/connect/status", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/connect/status",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.get("/commerce/me/connect/config", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/connect/config",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.post("/commerce/me/connect/account-session", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "POST",
+      path: "/v1/me/connect/account-session",
+      scopes: "shop.write",
+      requireCsrf: true,
+      body,
+    });
+  });
 
   app.get("/commerce/me/payouts", (c) =>
     proxyAuthenticatedCommerce(c, deps, {

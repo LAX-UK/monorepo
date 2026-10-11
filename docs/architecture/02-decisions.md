@@ -694,3 +694,55 @@ All invitation emails, including organisation invitations, use the `access-invit
 **Why this wins.** One email and one acceptance give access everywhere the super admin chose. Each product still owns its role model and rules, and delivery to other products is idempotent and auditable.
 
 **Status.** *Implemented.* Migrations **0206** `invitation_product_grants` and **0207** `lax_staff_access_directory`; access service: [apps/api/src/services/admin/staff-access-admin.service.ts](../../apps/api/src/services/admin/staff-access-admin.service.ts); repository: [packages/persistence/src/repositories/drizzle-invitation.repository.ts](../../packages/persistence/src/repositories/drizzle-invitation.repository.ts); Shop consumer: [apps/shop-api/src/infrastructure/scheduler/process-staff-access-inbox.runner.ts](../../apps/shop-api/src/infrastructure/scheduler/process-staff-access-inbox.runner.ts); catalogue: [packages/types/src/lax-staff-platforms.ts](../../packages/types/src/lax-staff-platforms.ts).
+
+## D37. lax.art is a second storefront on the shared LAX Art commerce backend
+
+**Extends D17 and D29.**
+
+**Chosen.** **lax.art** (production) and **test-art.lax.bid** (interim) are a new Next.js app **`apps/art`** with OIDC client **`lax-art-web`**. Originals and gallery-led sales use the same **`apps/shop-api`** and **`packages/shop-domain`** as **shop.lax.art**, with a **sales channel** (`art` vs `shop`) on listings and orders so originals invoicing and print checkout coexist without a second domain model.
+
+Collectors see a unified **Collection** and **Enquiries** across both hostnames via shared portal APIs and view models ([13-lax-art-and-collector-portfolio.md](./13-lax-art-and-collector-portfolio.md)). Public URLs come from environment variables only (`LAX_ART_PUBLIC_URL`).
+
+The browser BFF is a second deployment of **`apps/shop-identity`** for the art hostname (see the implementation note).
+
+**Alternatives considered.** A separate commerce API for lax.art (rejected — one legal entity, duplicate payout and edition rules). Serving originals only from Shop with a path prefix (rejected — product and brand require distinct gallery UX per Figma). Putting collection data in LAX Account (rejected — crosses identity boundary; Account shows launch links only).
+
+**Why this wins.** One business, one ledger, two tailored storefronts; originals and prints share ownership, documents and payouts.
+
+**Status.** *Accepted.* Storefront and channel fields to be implemented per end-to-end delivery plan.
+
+**Implementation note — BFF spike (2026-10-11).** **Chosen:** reuse the **`apps/shop-identity` codebase** as a **second deployment** for the art hostname, configured with `OIDC_CLIENT_ID=lax-art-web` and `SHOP_STOREFRONT_URL=<LAX_ART_PUBLIC_URL>`. Not one multi-tenant process, and not a new BFF codebase.
+
+- *Why not one process:* `shop-identity` is single-client by design — one `OIDC_CLIENT_ID`, one redirect and post-logout URI validated against the registry, and one storefront origin used for CSRF (`assertCommerceCsrf`) and post-login redirects. Multi-tenancy would thread a client resolver through OAuth, logout, CSRF and redirect code for no product gain.
+- *Why a second deployment is safe:* session, id-token, basket and silent-SSO cookies are host-only (no `Domain`), so shop.lax.art and lax.art sessions are isolated by the browser. `shop_identity_session` rows are keyed by random ids and back-channel logout replay by `jti`, so sharing the Shop database is collision-free. `shop-api` validates the `lax-shop-api` resource audience, which `lax-art-web` is registered for.
+- *Changes made:* the production guard accepts `lax-shop-web` or `lax-art-web`. The local `lax-art-web` callback is `http://localhost:3051/auth/callback` (second shop-identity instance on `PORT=3051`; `apps/art` dev stays on 3050). Ingress on the art hostname must route the identity-owned prefixes (`SHOP_IDENTITY_OWNED_PREFIXES`: `/login`, `/logout`, `/register`, `/auth`, `/api`, `/me`, `/commerce`) to that instance, mirroring test-shop.
+- *Not yet done:* `apps/art` does not call `/commerce/*` yet; Connect return URLs in `shop-api` allow only `SHOP_STOREFRONT_URL`, so lax.art links to Shop `/account/payouts` until a second allowed origin is added. The `lax-art-web` registration must also be mirrored in the Identity service (`lax-identity`) and auth DB (`db:configure-oidc-clients`) before test-art goes live.
+
+## D38. Exactly two Stripe accounts; product-owned payout screens
+
+**Extends D28 and D13.**
+
+**Chosen.**
+
+1. **Stripe account 1 (LAX Bid):** `apps/api` — buyer payments and Bid seller Connect (Custom accounts, separate charges and transfers).
+2. **Stripe account 2 (LAX Art):** `shop-api` — Checkout and Invoicing for shop.lax.art and lax.art, refunds, disputes, and **one Connect account per payee person** for that business (owners, artists, consignors as modelled today; a person's parties share it).
+
+A person who sells on both Bid and LAX Art completes Connect onboarding **at most twice**, never once per hostname. Until account 2 exists, test may use Bid sandbox keys wired as `STRIPE_SHOP_*`; **production LAX Art Connect must not go live on account 1** because connected accounts cannot migrate between Stripe platforms.
+
+**Payout UX:** LAX Art owns the payouts onboarding and status UI (embedded Connect like Bid), shown on Shop and lax.art account. **LAX Account** lists launch links to Bid payouts and LAX Art payouts only — it does not read product APIs for balances or requirements (same pattern as **Your LAX access**).
+
+Shared Stripe Connect adapter code may live in a package consumed by `apps/api` and `shop-api`, with credentials and webhook secrets injected per platform in composition roots. Bid's `requirement_collection: "application"` remains until a business decision changes liability (`losses.payments`); networked onboarding is optional later, not assumed for Bid sellers moving to LAX Art.
+
+**Alternatives considered.** One Stripe account for all LAX products (rejected — separate legal entities / finance separation for Bid vs gallery). A unified payouts hub in Account (rejected — violates [09-lax-identity-boundary.md](./09-lax-identity-boundary.md)). Manual bank details only for Shop (rejected for go-live — plan moves to Connect on account 2 with bank-transfer mark-paid as staff fallback).
+
+**Why this wins.** Matches Stripe's one-platform-per-Connect-account rule, keeps identity boundary clean, and minimises duplicate onboarding while respecting two businesses.
+
+**Status.** *Accepted.*
+
+**Implementation note (2026-10-11).**
+
+- **Shared adapters:** `packages/stripe-connect` holds version-independent Stripe calls (controller config, onboarding link, account session components, transfer) behind narrow structural client types; Bid (`stripe@22`) and `shop-api` (`stripe@18`) inject their own clients. Bid behaviour and tests are unchanged. Readiness flags reuse `@auction/connect` (`buildStripeConnectFlagPatch`).
+- **Data:** `shop_payee_connect_account` is keyed by `(party_id, stripe_platform_key)` with a unique `stripe_connect_account_id`. All parties of one person (collector party plus linked artist party) pay out to the same account. `STRIPE_SHOP_CONNECT_PLATFORM_KEY` is `bid_sandbox` on test and must be `lax_art` in production — `shop-api` refuses to boot with `SHOP_PAYOUTS_ENABLED=true` otherwise.
+- **Onboarding:** Custom accounts with the same controller as Bid (`requirement_collection: "application"`, no Stripe dashboard), idempotent create, name and email prefilled from the Shop profile, embedded `ConnectAccountOnboarding` / `ConnectAccountManagement` on Shop `/account/payouts`.
+- **Webhooks:** `POST /webhooks/stripe/connect` (Connect endpoint secret `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET`) handles `account.updated` by re-reading the account from Stripe, so out-of-order deliveries cannot regress readiness.
+- **Transfers:** the `connect-payout-transfer` scheduler task (`SHOP_CONNECT_TRANSFERS_ENABLED`) pays `due` ledger lines to ready accounts. Each line is row-locked during its Stripe call with idempotency key `shop:payout:transfer:<platform>:<payoutId>`, so a concurrent staff mark-paid gets 409 and a lost commit replays the same transfer. Manual mark-paid stays as the staff fallback.

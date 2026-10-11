@@ -9,6 +9,7 @@ import type { StockHoldWriter } from "./application/ports/stock-hold.writer.js";
 import type { ThirdPartySaleWriter } from "./application/ports/third-party-sale.writer.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import type { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
+import type { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
 import type { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
 import type { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
 import type {
@@ -48,6 +49,7 @@ export type AdminRoutesDeps = {
   stockHolds: StockHoldWriter;
   createStockHold: ReturnType<typeof createCreateStockHoldHandler>;
   adjustMerchandiseStock: ReturnType<typeof createAdjustMerchandiseStockHandler>;
+  createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   thirdPartySales: ThirdPartySaleWriter;
   originalSales: OriginalSaleWriter;
   linkArtistIdentity: ReturnType<typeof createLinkArtistIdentityHandler>;

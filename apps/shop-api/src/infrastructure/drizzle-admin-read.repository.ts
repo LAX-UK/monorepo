@@ -1,8 +1,10 @@
 import type { Database } from "@auction/db";
 import {
+  shopAdminAudit,
   shopArtist,
   shopArtwork,
   shopClientAssignment,
+  shopDispute,
   shopEdition,
   shopFulfilment,
   shopOrder,
@@ -24,9 +26,12 @@ import {
   truncateCatalogueCursorDate,
 } from "../application/catalogue-cursor.js";
 import type { AdminReadPorts } from "../application/ports/admin-readers.js";
+import type { ShopApiEnv } from "../env.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
+import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
+import { loadShopVatPolicy } from "./shop-vat-policy.js";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -55,7 +60,19 @@ function paginateByCreatedAtId<T extends { createdAt: Date; id: string }, R>(
   };
 }
 
-export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
+export function createDrizzleAdminReadRepository(
+  db: Database,
+  env?: Pick<
+    ShopApiEnv,
+    | "SHOP_CANCELLATION_DAYS_AFTER_POSSESSION"
+    | "SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT"
+    | "SHOP_VAT_STANDARD_RATE_BP"
+    | "SHOP_PAYOUTS_ENABLED"
+    | "SHOP_MERCHANDISE_ENABLED"
+    | "SHOP_ORIGINALS_ENABLED"
+    | "SHOP_THIRD_PARTY_ENABLED"
+  >,
+): AdminReadPorts {
   const detail = createDrizzleAdminDetailReaders(db);
   return {
     orders: {
@@ -570,6 +587,76 @@ export function createDrizzleAdminReadRepository(db: Database): AdminReadPorts {
           payoutsDueCount: payoutsDue[0]?.count ?? 0,
           activeHoldsCount: activeHolds[0]?.count ?? 0,
           pendingAuthorityRequestsCount: pendingRequests[0]?.count ?? 0,
+        };
+      },
+    },
+    compliance: {
+      async listAuditEntries(input) {
+        const limit = resolveLimit(input.limit);
+        const cursor = decodeCatalogueCursor(input.cursor);
+        const rows = await db
+          .select()
+          .from(shopAdminAudit)
+          .where(
+            cursor
+              ? keysetBeforeCreatedAtId(shopAdminAudit.createdAt, shopAdminAudit.id, cursor)
+              : undefined,
+          )
+          .orderBy(...orderByMsTimestampIdDesc(shopAdminAudit.createdAt, shopAdminAudit.id))
+          .limit(limit + 1);
+        return paginateByCreatedAtId(rows, limit, (row) => ({
+          auditId: row.id,
+          actorSubjectId: row.actorSubjectId,
+          capability: row.capability,
+          action: row.action,
+          targetType: row.targetType,
+          targetId: row.targetId,
+          createdAt: row.createdAt.toISOString(),
+        }));
+      },
+      async listDisputes(input) {
+        const limit = resolveLimit(input.limit);
+        const cursor = decodeCatalogueCursor(input.cursor);
+        const rows = await db
+          .select({
+            id: shopDispute.id,
+            orderId: shopDispute.orderId,
+            stripeDisputeId: shopDispute.stripeDisputeId,
+            status: shopDispute.status,
+            amountPence: shopDispute.amountPence,
+            openedAt: shopDispute.openedAt,
+            closedAt: shopDispute.closedAt,
+            createdAt: shopDispute.openedAt,
+          })
+          .from(shopDispute)
+          .where(
+            cursor
+              ? keysetBeforeCreatedAtId(shopDispute.openedAt, shopDispute.id, cursor)
+              : undefined,
+          )
+          .orderBy(...orderByMsTimestampIdDesc(shopDispute.openedAt, shopDispute.id))
+          .limit(limit + 1);
+        return paginateByCreatedAtId(rows, limit, (row) => ({
+          disputeId: row.id,
+          orderId: row.orderId,
+          stripeDisputeId: row.stripeDisputeId,
+          status: row.status,
+          amountPence: row.amountPence,
+          openedAt: row.openedAt.toISOString(),
+          closedAt: row.closedAt?.toISOString() ?? null,
+        }));
+      },
+      async readEffectiveSettings() {
+        const cancellation = env ? loadShopCancellationPolicy(env as ShopApiEnv) : null;
+        const vat = env ? loadShopVatPolicy(env as ShopApiEnv) : null;
+        return {
+          cancellationDaysAfterPossession: cancellation?.daysAfterPossession ?? null,
+          personalisedGoodsCancellationExempt: cancellation?.personalisedGoodsExempt ?? false,
+          vatStandardRateBp: vat?.standardRateBp ?? null,
+          payoutsEnabled: env?.SHOP_PAYOUTS_ENABLED ?? false,
+          merchandiseEnabled: env?.SHOP_MERCHANDISE_ENABLED ?? false,
+          originalsEnabled: env?.SHOP_ORIGINALS_ENABLED ?? false,
+          thirdPartyEnabled: env?.SHOP_THIRD_PARTY_ENABLED ?? false,
         };
       },
     },

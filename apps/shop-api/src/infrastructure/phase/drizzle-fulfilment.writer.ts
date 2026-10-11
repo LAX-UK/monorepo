@@ -12,6 +12,7 @@ import { and, eq } from "drizzle-orm";
 import type { FulfilmentWriter } from "../../application/ports/fulfilment.writer.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { insertShopAdminAudit } from "../shop-admin-audit.js";
+import { orderHasPersonalisedGoods } from "../shop-order-personalised-goods.js";
 import {
   POSSESSION_FULFILMENT_STATUSES,
   parseFulfilmentStatus,
@@ -83,11 +84,12 @@ export function createDrizzleFulfilmentWriter(
           .where(eq(shopFulfilment.id, command.fulfilmentId));
 
         if (possessionAt && policy) {
+          const isPersonalisedGoods = await orderHasPersonalisedGoods(tx, existing.orderId);
           const period = computeCancellationPeriodEndsAt({
             fulfilmentOption: existing.option,
             possessionAt,
             policy,
-            isPersonalisedGoods: false,
+            isPersonalisedGoods,
           });
           if (!period.ok) {
             policyNotConfigured("Cancellation period");

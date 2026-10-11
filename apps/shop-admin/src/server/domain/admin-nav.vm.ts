@@ -66,9 +66,19 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
     },
     {
       title: "Finance",
-      items: input.features.payouts
-        ? [{ href: "/payouts", label: "Payouts", capability: "payout.mark_paid" as const }]
-        : [],
+      items: [
+        ...(input.features.payouts
+          ? [{ href: "/payouts", label: "Payouts", capability: "payout.mark_paid" as const }]
+          : []),
+        { href: "/disputes", label: "Disputes", capability: "audit.read" as const },
+      ],
+    },
+    {
+      title: "Operations",
+      items: [
+        { href: "/audit", label: "Audit log", capability: "audit.read" as const },
+        { href: "/settings", label: "Settings", capability: "settings.write" as const },
+      ],
     },
     {
       title: "Sales",

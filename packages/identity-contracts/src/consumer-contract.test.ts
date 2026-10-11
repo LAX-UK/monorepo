@@ -37,6 +37,11 @@ describe("identity-contracts consumer fixtures", () => {
         allowedScopes: string[];
         backchannelLogoutUri: string;
       };
+      artWeb: {
+        allowedResources: string[];
+        allowedScopes: string[];
+        backchannelLogoutUri: string;
+      };
       wsMobile: { allowedResources: string[]; allowedScopes: string[] };
     }>("registered-clients.v1.json");
 
@@ -51,6 +56,11 @@ describe("identity-contracts consumer fixtures", () => {
     expect(shop.allowedResources).toEqual(fixture.shopWeb.allowedResources);
     expect(shop.allowedScopes).toEqual(fixture.shopWeb.allowedScopes);
     expect(shop.backchannelLogoutUri).toBe(fixture.shopWeb.backchannelLogoutUri);
+
+    const art = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB];
+    expect(art.allowedResources).toEqual(fixture.artWeb.allowedResources);
+    expect(art.allowedScopes).toEqual(fixture.artWeb.allowedScopes);
+    expect(art.backchannelLogoutUri).toBe(fixture.artWeb.backchannelLogoutUri);
 
     const mobile = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.WS_MOBILE];
     expect(mobile.allowedResources).toEqual(fixture.wsMobile.allowedResources);

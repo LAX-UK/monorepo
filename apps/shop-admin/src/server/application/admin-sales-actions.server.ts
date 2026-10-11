@@ -59,6 +59,28 @@ export async function approveSaleFee(input: { feeId: string; idempotencyKey?: st
   });
 }
 
+export async function issueOriginalSaleInvoice(input: {
+  originalSaleId: string;
+  buyerEmail: string;
+  buyerName?: string;
+  idempotencyKey?: string;
+}) {
+  return forwardAdminJsonMutation<{
+    originalSaleId: string;
+    status: "invoiced";
+    stripeInvoiceId: string;
+    hostedInvoiceUrl: string | null;
+  }>({
+    bffPath: `original-sales/${encodeURIComponent(input.originalSaleId)}/invoice`,
+    method: "POST",
+    jsonBody: {
+      buyerEmail: input.buyerEmail,
+      ...(input.buyerName ? { buyerName: input.buyerName } : {}),
+    },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
 export async function createOriginalSale(input: {
   artworkId: string;
   buyerPartyId: string;

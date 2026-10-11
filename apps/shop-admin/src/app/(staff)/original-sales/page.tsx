@@ -1,6 +1,9 @@
 import { AdminFetchState } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { CreateOriginalSaleForm } from "@/components/admin-staff-action-forms.client";
+import {
+  CreateOriginalSaleForm,
+  IssueOriginalSaleInvoiceForm,
+} from "@/components/admin-staff-action-forms.client";
 import { AdminTable } from "@/components/shop-admin-shell";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
@@ -42,11 +45,16 @@ export default async function ShopAdminOriginalSalesPage({
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold">Original sales</h1>
       <CreateOriginalSaleForm />
+      <IssueOriginalSaleInvoiceForm />
       <section>
-        <h2 className="mb-3 text-lg font-medium">Reservations</h2>
+        <h2 className="mb-3 text-lg font-medium">Pipeline</h2>
+        <p className="mb-3 text-sm text-neutral-600">
+          Workflow: reserve → issue invoice → buyer pays (webhook assigns original + editions).
+        </p>
         <AdminTable
-          columns={["Artwork", "Price", "Status", "Created"]}
+          columns={["Sale ID", "Artwork", "Price", "Status", "Created"]}
           rows={result.data.items.map((row) => [
+            row.saleId,
             row.artworkTitle,
             formatAdminDetailGbpPence(row.salePricePence),
             row.status,

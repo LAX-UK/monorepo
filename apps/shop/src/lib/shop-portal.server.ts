@@ -2,8 +2,12 @@ import { shopApiServerUrl } from "@/lib/shop-api.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
 import type { ShopPortalFetchResult } from "@/lib/shop-fetch-result";
 import {
+  type PortalCollectionItem,
   type PortalDocument,
   type PortalEdition,
+  type PortalEnquiry,
+  type PortalPayeeConnectConfig,
+  type PortalPayeeConnectStatus,
   type PortalPayout,
   type PortalSaleAuthority,
   type PortalSaleAuthorityRequest,
@@ -12,8 +16,12 @@ import {
   ShopContractParseError,
   parsePortalArtistArtworks,
   parsePortalArtistSales,
+  parsePortalCollection,
   parsePortalDocuments,
   parsePortalEditions,
+  parsePortalEnquiries,
+  parsePortalPayeeConnectConfig,
+  parsePortalPayeeConnectStatus,
   parsePortalPayouts,
   parsePortalSaleAuthority,
   parsePortalSaleAuthorityRequests,
@@ -109,6 +117,16 @@ export async function fetchPortalEditions(): Promise<ShopPortalFetchResult<Porta
   return fetchPortalList("/commerce/me/editions", parsePortalEditions);
 }
 
+export async function fetchPortalCollection(): Promise<
+  ShopPortalFetchResult<PortalCollectionItem[]>
+> {
+  return fetchPortalList("/commerce/me/collection", parsePortalCollection);
+}
+
+export async function fetchPortalEnquiries(): Promise<ShopPortalFetchResult<PortalEnquiry[]>> {
+  return fetchPortalList("/commerce/me/enquiries", parsePortalEnquiries);
+}
+
 export async function fetchPortalSaleAuthority(): Promise<
   ShopPortalFetchResult<PortalSaleAuthorityItem[]>
 > {
@@ -135,7 +153,7 @@ export async function fetchPortalDocuments(): Promise<ShopPortalFetchResult<Port
   return fetchPortalList("/commerce/me/documents", parsePortalDocuments);
 }
 
-async function fetchPortalArtistPayload<T>(
+async function fetchPortalObject<T>(
   path: string,
   parse: (body: unknown) => T,
 ): Promise<ShopPortalFetchResult<T>> {
@@ -158,11 +176,35 @@ async function fetchPortalArtistPayload<T>(
 }
 
 export async function fetchPortalArtistArtworks() {
-  return fetchPortalArtistPayload("/commerce/me/artist/artworks", parsePortalArtistArtworks);
+  return fetchPortalObject("/commerce/me/artist/artworks", parsePortalArtistArtworks);
 }
 
 export async function fetchPortalArtistSales() {
-  return fetchPortalArtistPayload("/commerce/me/artist/sales", parsePortalArtistSales);
+  return fetchPortalObject("/commerce/me/artist/sales", parsePortalArtistSales);
+}
+
+export type PortalPayeeConnectView = {
+  status: PortalPayeeConnectStatus;
+  config: PortalPayeeConnectConfig;
+};
+
+export async function fetchPortalPayeeConnect(): Promise<
+  ShopPortalFetchResult<PortalPayeeConnectView>
+> {
+  const [status, config] = await Promise.all([
+    fetchPortalObject("/commerce/me/connect/status", parsePortalPayeeConnectStatus),
+    fetchPortalObject("/commerce/me/connect/config", parsePortalPayeeConnectConfig),
+  ]);
+  if (status.status === "ok" && config.status === "ok") {
+    return { status: "ok", data: { status: status.data, config: config.data } };
+  }
+  if (status.status === "unauthorized" || config.status === "unauthorized") {
+    return { status: "unauthorized" };
+  }
+  if (status.status === "commerce_unavailable" || config.status === "commerce_unavailable") {
+    return { status: "commerce_unavailable" };
+  }
+  return { status: "failed" };
 }
 
 /** Whether the signed-in subject is linked to an artist profile (for account nav). */

@@ -23,6 +23,24 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().min(1).optional(),
   ),
+  STRIPE_PUBLISHABLE_KEY: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(1).optional(),
+  ),
+  /** Connect endpoint secret (events from connected accounts, e.g. `account.updated`). */
+  STRIPE_SHOP_CONNECT_WEBHOOK_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(1).optional(),
+  ),
+  /**
+   * Stripe platform that `STRIPE_SECRET_KEY` belongs to (D38). Test runs on Bid's sandbox until
+   * the LAX Art account exists; keying rows by platform stops sandbox accounts being reused.
+   */
+  STRIPE_SHOP_CONNECT_PLATFORM_KEY: z.enum(["lax_art", "bid_sandbox"]).default("bid_sandbox"),
+  SHOP_CONNECT_TRANSFERS_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   SHOP_SCHEDULER_ENABLED: z
     .enum(["true", "false"])
     .default("true")
@@ -84,6 +102,14 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   SHOP_OPS_DUAL_CONTROL_PENCE: z.coerce.number().int().min(0).default(500_000),
+  S3_BUCKET: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  S3_REGION: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  S3_ENDPOINT: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),
+  S3_ACCESS_KEY_ID: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  S3_SECRET_ACCESS_KEY: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().optional(),
+  ),
 });
 
 export type ShopApiEnv = z.infer<typeof shopApiEnvSchema>;
@@ -114,6 +140,14 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
     }
     if (parsed.data.SHOP_FAKE_CHECKOUT_ENABLED) {
       throw new Error("SHOP_FAKE_CHECKOUT_ENABLED must not be enabled in production");
+    }
+    if (
+      parsed.data.SHOP_PAYOUTS_ENABLED &&
+      parsed.data.STRIPE_SHOP_CONNECT_PLATFORM_KEY !== "lax_art"
+    ) {
+      throw new Error(
+        "SHOP_PAYOUTS_ENABLED in production requires STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art (D38)",
+      );
     }
   }
   return parsed.data;

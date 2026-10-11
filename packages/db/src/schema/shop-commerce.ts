@@ -28,6 +28,8 @@ export const shopSaleStateEnum = pgEnum("shop_sale_state", [
   "sold",
 ]);
 
+export const shopSalesChannelEnum = pgEnum("shop_sales_channel", ["shop", "art"]);
+
 export const shopPlacementSlotEnum = pgEnum("shop_placement_slot", [
   "featured_originals",
   "featured_categories",
@@ -291,6 +293,7 @@ export const shopArtwork = pgTable(
       .notNull()
       .references(() => shopArtist.id, { onDelete: "restrict" }),
     eligibleForEditionAllocation: boolean("eligible_for_edition_allocation").notNull(),
+    isPersonalisedGoods: boolean("is_personalised_goods").default(false).notNull(),
     printPricePence: integer("print_price_pence"),
     importKey: text("import_key").notNull(),
     printPriceFloorPence: integer("print_price_floor_pence"),
@@ -298,6 +301,7 @@ export const shopArtwork = pgTable(
     printPaper: text("print_paper"),
     printFrame: text("print_frame"),
     zohoProductId: text("zoho_product_id"),
+    salesChannel: shopSalesChannelEnum("sales_channel").default("shop").notNull(),
     version: integer("version").default(1).notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -516,6 +520,7 @@ export const shopOrder = pgTable(
     deliveryCountry: text("delivery_country"),
     deliveryRecipientName: text("delivery_recipient_name"),
     deliveryPhone: text("delivery_phone"),
+    salesChannel: shopSalesChannelEnum("sales_channel").default("shop").notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
@@ -850,6 +855,35 @@ export const shopDocument = pgTable(
   (table) => [index("shop_document_party_idx").on(table.partyId)],
 );
 
+export const shopPayeeConnectAccount = pgTable(
+  "shop_payee_connect_account",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => shopParty.id, { onDelete: "restrict" }),
+    /** Stripe platform that owns the connected account; accounts never move between platforms. */
+    stripePlatformKey: text("stripe_platform_key").notNull(),
+    stripeConnectAccountId: text("stripe_connect_account_id").notNull(),
+    chargesEnabled: boolean("charges_enabled").default(false).notNull(),
+    payoutsEnabled: boolean("payouts_enabled").default(false).notNull(),
+    requirementsCurrentlyDue: jsonb("requirements_currently_due")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
+    disabledReason: text("disabled_reason"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_payee_connect_account_party_platform_uid").on(
+      table.partyId,
+      table.stripePlatformKey,
+    ),
+    uniqueIndex("shop_payee_connect_account_stripe_uid").on(table.stripeConnectAccountId),
+  ],
+);
+
 export const shopFulfilmentOptionPrice = pgTable(
   "shop_fulfilment_option_price",
   {
@@ -1116,6 +1150,7 @@ export const shopOriginalSale = pgTable(
     vatPence: integer("vat_pence"),
     reservationExpiresAt: timestamp("reservation_expires_at", { mode: "date", withTimezone: true }),
     stripeInvoiceId: text("stripe_invoice_id"),
+    salesChannel: shopSalesChannelEnum("sales_channel").default("art").notNull(),
     recordedBySubjectId: text("recorded_by_subject_id").notNull(),
     version: integer("version").default(1).notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),

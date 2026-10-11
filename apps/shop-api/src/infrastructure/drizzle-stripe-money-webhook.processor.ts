@@ -6,6 +6,7 @@ import type { ShopNotificationPublisher } from "../application/ports/shop-notifi
 import type { StripeMoneyWebhookOutcome } from "../application/ports/stripe-money-webhook.types.js";
 import { completeRefundFromWebhook } from "./handlers/webhooks/complete-refund.handler.js";
 import { handleStripeDisputeWebhook } from "./handlers/webhooks/stripe-dispute.handler.js";
+import { completeOriginalSaleFromStripeInvoice } from "./phase/drizzle-original-sale.writer.js";
 import type { ShopDomainEventPublisherMode } from "./shop-domain-event-publisher.js";
 import {
   isShopOwnedPaymentIntentMetadata,
@@ -30,6 +31,25 @@ export function createDrizzleStripeMoneyWebhookProcessor(
 
   return {
     async processMoneyWebhook(event) {
+      if (event.type === "invoice.paid") {
+        const invoice = event.data.object as Stripe.Invoice;
+        if (typeof invoice.id !== "string") {
+          return "ignored";
+        }
+        const paidAt = invoice.status_transitions?.paid_at
+          ? new Date(invoice.status_transitions.paid_at * 1000)
+          : new Date();
+        const outcome = await completeOriginalSaleFromStripeInvoice(db, {
+          stripeInvoiceId: invoice.id,
+          paidAt,
+          domainEventMode: options.domainEventMode,
+        });
+        if (outcome === "ignored") {
+          return "ignored";
+        }
+        return "processed";
+      }
+
       const refundDto = parseStripeRefundEvent(event);
       if (refundDto) {
         const [order] = await db
@@ -43,7 +63,12 @@ export function createDrizzleStripeMoneyWebhookProcessor(
             return "ignored";
           }
         }
-        return completeRefundFromWebhook(db, refundDto, options.domainEventMode);
+        return completeRefundFromWebhook(
+          db,
+          refundDto,
+          options.domainEventMode,
+          options.notifications ? { notifications: options.notifications } : undefined,
+        );
       }
 
       const disputeDto = parseDisputeEvent(event);

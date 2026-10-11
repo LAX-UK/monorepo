@@ -18,6 +18,19 @@ const CreateOriginalSaleBodySchema = Type.Object({
   buyerPartyId: Type.String({ format: "uuid" }),
   salePricePence: Type.Integer({ minimum: 0 }),
   reservationExpiresAt: Type.Optional(Type.String({ format: "date-time" })),
+  salesChannel: Type.Optional(Type.Union([Type.Literal("shop"), Type.Literal("art")])),
+});
+
+const IssueOriginalSaleInvoiceBodySchema = Type.Object({
+  buyerEmail: Type.String({ format: "email" }),
+  buyerName: Type.Optional(Type.String()),
+});
+
+const IssueOriginalSaleInvoiceResponseSchema = Type.Object({
+  originalSaleId: Type.String({ format: "uuid" }),
+  status: Type.Literal("invoiced"),
+  stripeInvoiceId: Type.String(),
+  hostedInvoiceUrl: Type.Union([Type.String(), Type.Null()]),
 });
 
 export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
@@ -43,6 +56,7 @@ export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps
         buyerPartyId: string;
         salePricePence: number;
         reservationExpiresAt?: string;
+        salesChannel?: "shop" | "art";
       };
       const result = await deps.originalSales.createReservation({
         artworkId: body.artworkId,
@@ -52,8 +66,40 @@ export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps
         ...(body.reservationExpiresAt !== undefined
           ? { reservationExpiresAt: body.reservationExpiresAt }
           : {}),
+        ...(body.salesChannel !== undefined ? { salesChannel: body.salesChannel } : {}),
       });
       return { id: result.originalSaleId, status: result.status };
+    },
+  );
+
+  app.post(
+    "/original-sales/:originalSaleId/invoice",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: Type.Object({ originalSaleId: Type.String({ format: "uuid" }) }),
+        body: IssueOriginalSaleInvoiceBodySchema,
+        response: {
+          200: IssueOriginalSaleInvoiceResponseSchema,
+          403: ShopApiErrorBodySchema,
+          501: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "original_sale.write");
+      requireIdempotencyKey(request);
+      const subject = requireShopAdminSubject(request);
+      const { originalSaleId } = request.params as { originalSaleId: string };
+      const body = request.body as { buyerEmail: string; buyerName?: string };
+      const idempotencyKey = request.headers["idempotency-key"] as string;
+      return deps.originalSales.issueInvoice({
+        originalSaleId,
+        buyerEmail: body.buyerEmail,
+        actorSubjectId: subject,
+        idempotencyKey,
+        ...(body.buyerName !== undefined ? { buyerName: body.buyerName } : {}),
+      });
     },
   );
 }

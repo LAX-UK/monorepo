@@ -25,6 +25,12 @@ export {
   assertFeaturedOriginalArtwork,
   type FeaturedOriginalArtworkCandidate,
 } from "./featured-originals-placement.js";
+export {
+  assertOriginalSaleCanAssign,
+  assertOriginalSaleCanIssueInvoice,
+  assertOriginalSaleCanMarkPaid,
+  type ShopOriginalSaleStatus,
+} from "./original-sale-lifecycle.js";
 export { ShopDomainError } from "./shop-domain-error.js";
 export {
   assertQuantityWithinSellable,
@@ -107,6 +113,7 @@ export {
   canTransitionFulfilmentStatus,
   type ShopFulfilmentStatus,
 } from "./fulfilment-state.js";
+export { isPayeeConnectReady, type PayeeConnectReadinessInput } from "./payee-connect-readiness.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
 export { computeLineVat, type LineVatResult, type VatPolicy } from "./vat-policy.js";

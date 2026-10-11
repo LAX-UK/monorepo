@@ -63,7 +63,10 @@ export default async function ShopAccountArtistSalesPage() {
           {result.data.items.map((row) => (
             <li key={row.saleId}>
               <span className="font-medium">{row.artworkTitle}</span> ·{" "}
-              {formatPortalSaleChannel(row.channel)} · {formatPence(row.grossPence)}
+              {formatPortalSaleChannel(row.channel)} · gross {formatPence(row.grossPence)}
+              {row.netPence != null ? ` · net ${formatPence(row.netPence)}` : ""}
+              {row.feesPence != null ? ` · fees ${formatPence(row.feesPence)}` : ""}
+              {row.arrApplicable ? " · ARR" : ""}
             </li>
           ))}
           {result.data.items.length === 0 ? <li>No sales recorded yet.</li> : null}

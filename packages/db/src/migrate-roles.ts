@@ -74,6 +74,7 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_sale_fee",
   "shop_client_assignment",
   "shop_original_sale",
+  "shop_payee_connect_account",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */

@@ -29,8 +29,8 @@ import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
+import { createDrizzleShopPayeeConnectService } from "./infrastructure/drizzle-shop-payee-connect.service.js";
 import {
-  createDrizzleOriginalSaleWriter,
   createDrizzleSaleFeeWriter,
   createDrizzleStockHoldWriter,
   createDrizzleThirdPartySaleWriter,
@@ -42,6 +42,7 @@ import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
 import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
+import { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
 import { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
 import { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
 import {
@@ -57,15 +58,25 @@ import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/r
 import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
+import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
 import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
+import { resolveShopDocumentStorageConfig } from "./infrastructure/shop-document-storage-config.js";
 import { createShopFeatureFlagsReader } from "./infrastructure/shop-feature-flags-env.js";
 import { assertShopVatPolicyWhenPayoutsEnabled } from "./infrastructure/shop-vat-policy.js";
+import { createStripeShopInvoiceGateway } from "./infrastructure/stripe-shop-invoice.gateway.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
 import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
+
+import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
+import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
+import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
+import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
+import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
+import type { StripeConnectWebhookDeps } from "./routes/webhooks/stripe-connect.routes.js";
 
 export type ShopApiAppDeps = {
   env: ShopApiEnv;
@@ -85,6 +96,8 @@ export type ShopApiAppDeps = {
   };
   admin: AdminRoutesDeps;
   portal: PortalRoutesDeps;
+  payeeConnect: ShopPayeeConnectPort;
+  stripeConnectWebhook: StripeConnectWebhookDeps;
   staffReader: AdminRoutesDeps["staffReader"];
 };
 
@@ -142,16 +155,21 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     db,
     env.DOMAIN_EVENT_PUBLISH_VALIDATE,
   );
-  const portalOwnership = createDrizzlePortalOwnershipRepository(db);
+  const portalOwnership = createDrizzlePortalOwnershipRepository(db, {
+    documentStorage: resolveShopDocumentStorageConfig(env),
+  });
   const portalSales = createDrizzlePortalSalesRepository(db);
   const portalArtist = createDrizzlePortalArtistRepository(db);
-  const adminRead = createDrizzleAdminReadRepository(db);
+  const adminRead = createDrizzleAdminReadRepository(db, env);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
   const requestRefund = createRequestRefundHandler({ uow: shopUow });
   const markPayoutPaid = createMarkPayoutPaidHandler({ uow: shopUow });
-  const updateFulfilment = createUpdateFulfilmentHandler({ uow: shopUow });
+  const updateFulfilment = createUpdateFulfilmentHandler({
+    uow: shopUow,
+    storefrontUrl: env.SHOP_STOREFRONT_URL,
+  });
   const recordPossession = createRecordPossessionHandler({
     uow: shopUow,
     policy: cancellationPolicy,
@@ -166,6 +184,36 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const createStockHold = createCreateStockHoldHandler({ stockHolds, staffReader });
   const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
   const adjustMerchandiseStock = createAdjustMerchandiseStockHandler({ merchandiseStock });
+  const createMerchandiseProduct = createCreateMerchandiseProductHandler({ merchandiseStock });
+  const invoiceGateway = createStripeShopInvoiceGateway({ secretKey: env.STRIPE_SECRET_KEY });
+  const connectPlatformKey = env.STRIPE_SHOP_CONNECT_PLATFORM_KEY;
+  const connectGateway = env.STRIPE_SECRET_KEY
+    ? createStripeShopConnectGateway({
+        secretKey: env.STRIPE_SECRET_KEY,
+        platformKey: connectPlatformKey,
+      })
+    : null;
+  const payeeConnectAccounts = createDrizzleShopPayeeConnectAccountRepository(
+    db,
+    connectPlatformKey,
+  );
+  const payeeConnect = createDrizzleShopPayeeConnectService({
+    db,
+    accounts: payeeConnectAccounts,
+    gateway: connectGateway,
+    publishableKey: env.STRIPE_PUBLISHABLE_KEY ?? null,
+    storefrontOrigin: env.SHOP_STOREFRONT_URL.replace(/\/+$/, ""),
+    failClosedConnectUrls: env.NODE_ENV === "production",
+  });
+  const syncConnectAccount = connectGateway
+    ? createSyncConnectAccountHandler({ gateway: connectGateway, accounts: payeeConnectAccounts })
+    : async () => "ignored" as const;
+  const originalSales = createDrizzleOriginalSaleWriter({
+    db,
+    uow: shopUow,
+    invoiceGateway,
+    domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+  });
   const healthDeps = {
     checkConnectivity: () => readiness.checkConnectivity(),
     checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
@@ -206,12 +254,19 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         stockHolds,
         createStockHold,
         adjustMerchandiseStock,
+        createMerchandiseProduct,
         thirdPartySales: createDrizzleThirdPartySaleWriter(db),
-        originalSales: createDrizzleOriginalSaleWriter(db),
+        originalSales,
         linkArtistIdentity,
         unlinkArtistIdentity,
       },
       portal: { portalOwnership, portalSales, portalArtist },
+      payeeConnect,
+      stripeConnectWebhook: {
+        webhookSecret: env.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET,
+        verifyWebhook: constructStripeWebhookEvent,
+        syncAccount: syncConnectAccount,
+      },
       catalogue: {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),

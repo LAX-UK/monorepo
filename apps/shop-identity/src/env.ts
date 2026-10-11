@@ -1,5 +1,15 @@
-import { REGISTERED_OIDC_CLIENTS, type RegisteredOidcClientId } from "@auction/identity-contracts";
+import {
+  REGISTERED_OIDC_CLIENTS,
+  REGISTERED_OIDC_CLIENT_IDS,
+  type RegisteredOidcClientId,
+} from "@auction/identity-contracts";
 import { z } from "zod";
+
+/** One shop-identity deployment per storefront hostname (D37): shop.lax.art and lax.art. */
+const STOREFRONT_OIDC_CLIENT_IDS = [
+  REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB,
+  REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB,
+] as const;
 
 const envSchema = z
   .object({
@@ -36,10 +46,13 @@ const envSchema = z
         path: ["DATABASE_URL_SHOP"],
       });
     }
-    if (env.NODE_ENV === "production" && env.OIDC_CLIENT_ID !== "lax-shop-web") {
+    if (
+      env.NODE_ENV === "production" &&
+      !(STOREFRONT_OIDC_CLIENT_IDS as readonly string[]).includes(env.OIDC_CLIENT_ID)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Production OIDC_CLIENT_ID must be lax-shop-web",
+        message: `Production OIDC_CLIENT_ID must be one of ${STOREFRONT_OIDC_CLIENT_IDS.join(", ")}`,
         path: ["OIDC_CLIENT_ID"],
       });
     }

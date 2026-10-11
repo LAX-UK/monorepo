@@ -1,4 +1,4 @@
-import { shopFulfilment } from "@auction/db/schema";
+import { shopArtwork, shopFulfilment, shopOrder, shopOrderLine } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   SHOP_FULFILMENT_STATUSES,
@@ -27,7 +27,31 @@ export type UpdateFulfilmentCommand = {
   trackingNumber?: string;
 };
 
-export function createUpdateFulfilmentHandler(deps: { uow: ShopUnitOfWorkFactory }) {
+function buildTrackingUrl(carrier: string | null, trackingNumber: string | null): string | null {
+  if (!trackingNumber?.trim()) return null;
+  const num = trackingNumber.trim();
+  const c = carrier?.trim().toLowerCase() ?? "";
+  if (c.includes("royal mail")) {
+    return `https://www.royalmail.com/track-your-item#/tracking-results/${encodeURIComponent(num)}`;
+  }
+  return null;
+}
+
+function fulfilmentSummary(
+  status: string,
+  carrier?: string | null,
+  trackingNumber?: string | null,
+): string {
+  const parts = [`Status: ${status.replace(/_/g, " ")}`];
+  if (carrier?.trim()) parts.push(`Carrier: ${carrier.trim()}`);
+  if (trackingNumber?.trim()) parts.push(`Tracking: ${trackingNumber.trim()}`);
+  return parts.join(" · ");
+}
+
+export function createUpdateFulfilmentHandler(deps: {
+  uow: ShopUnitOfWorkFactory;
+  storefrontUrl: string;
+}) {
   return async (command: UpdateFulfilmentCommand) =>
     deps.uow.run(async (tx) =>
       withAdminIdempotency({
@@ -43,6 +67,8 @@ export function createUpdateFulfilmentHandler(deps: { uow: ShopUnitOfWorkFactory
               id: shopFulfilment.id,
               status: shopFulfilment.status,
               orderId: shopFulfilment.orderId,
+              carrier: shopFulfilment.carrier,
+              trackingNumber: shopFulfilment.trackingNumber,
             })
             .from(shopFulfilment)
             .where(eq(shopFulfilment.id, command.fulfilmentId))
@@ -87,6 +113,34 @@ export function createUpdateFulfilmentHandler(deps: { uow: ShopUnitOfWorkFactory
                 orderId: existing.orderId,
               },
             });
+
+            const [orderRow] = await shopPhaseDbSession(tx)
+              .select({ identitySubjectId: shopOrder.identitySubjectId })
+              .from(shopOrder)
+              .where(eq(shopOrder.id, existing.orderId))
+              .limit(1);
+            const [lineRow] = await shopPhaseDbSession(tx)
+              .select({ title: shopArtwork.title })
+              .from(shopOrderLine)
+              .innerJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
+              .where(eq(shopOrderLine.orderId, existing.orderId))
+              .limit(1);
+            const carrier =
+              command.carrier !== undefined ? command.carrier : (existing.carrier ?? null);
+            const trackingNumber =
+              command.trackingNumber !== undefined
+                ? command.trackingNumber
+                : (existing.trackingNumber ?? null);
+            if (orderRow?.identitySubjectId) {
+              await tx.notifications.queueDispatchNotice(tx.session, {
+                idempotencyKey: `dispatch:${command.fulfilmentId}:${command.idempotencyKey}`,
+                identitySubjectId: orderRow.identitySubjectId,
+                fallbackEmail: null,
+                artworkTitle: lineRow?.title ?? "Your order",
+                trackingUrl: buildTrackingUrl(carrier, trackingNumber),
+                fulfilmentSummary: fulfilmentSummary(nextStatus, carrier, trackingNumber),
+              });
+            }
           }
           return { fulfilmentId: command.fulfilmentId, status: command.status };
         },

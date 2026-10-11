@@ -8,7 +8,11 @@ import {
 } from "@/components/account-ui";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
-import { buildAccountLinks, buildStaffPlatformLinks } from "@/server/domain/account-links";
+import {
+  buildAccountLinks,
+  buildPayoutLaunchLinks,
+  buildStaffPlatformLinks,
+} from "@/server/domain/account-links";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +34,7 @@ export default async function AccountPage() {
   const { config } = getLaxAccountContainer();
   const links = buildAccountLinks(config, { email: overview.email });
   const staffPlatforms = buildStaffPlatformLinks(config, overview.staffPlatforms);
+  const payoutLinks = buildPayoutLaunchLinks(config);
   const editProfile = links.editProfile ? (
     <a href={links.editProfile} className={textLink}>
       Edit in LAX Bid
@@ -121,6 +126,30 @@ export default async function AccountPage() {
           </Row>
         </dl>
       </Card>
+
+      {payoutLinks.length > 0 ? (
+        <Card
+          id="payouts"
+          title="Payout accounts"
+          description="Manage bank and tax details on each LAX business product. LAX Account does not store payout balances."
+        >
+          <dl>
+            {payoutLinks.map((link) => (
+              <Row
+                key={link.href}
+                label={link.label}
+                action={
+                  <a href={link.href} className={secondaryButton}>
+                    Open payouts
+                  </a>
+                }
+              >
+                Launch the product payout screen to complete or update Connect onboarding.
+              </Row>
+            ))}
+          </dl>
+        </Card>
+      ) : null}
 
       {staffPlatforms.length > 0 ? (
         <Card

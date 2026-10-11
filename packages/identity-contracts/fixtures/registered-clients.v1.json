@@ -1,5 +1,25 @@
 {
-  "clientIds": ["lax-account-web", "lax-bid-web", "lax-shop-web", "lax-shop-admin", "ws-mobile"],
+  "clientIds": [
+    "lax-account-web",
+    "lax-art-web",
+    "lax-bid-web",
+    "lax-shop-web",
+    "lax-shop-admin",
+    "ws-mobile"
+  ],
+  "artWeb": {
+    "allowedResources": ["lax-shop-api"],
+    "allowedScopes": [
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      "phone",
+      "shop.read",
+      "shop.write"
+    ],
+    "backchannelLogoutUri": "https://lax.art/api/auth/backchannel-logout"
+  },
   "bidWeb": {
     "allowedResources": ["lax-bid-api", "lax-ws"],
     "allowedScopes": ["openid", "profile", "email", "offline_access", "bid.read", "bid.write"],
