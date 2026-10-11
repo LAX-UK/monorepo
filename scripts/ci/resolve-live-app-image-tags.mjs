@@ -14,12 +14,18 @@ function parseArgs(argv) {
   let inputAppImageTag = "";
   let inputShopAdminImageTag = "";
   let inputAccountImageTag = "";
+  let inputShopImageTag = "";
+  let inputShopIdentityImageTag = "";
+  let inputShopApiImageTag = "";
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--app-id") appId = argv[++i] ?? "";
     if (argv[i] === "--format") format = argv[++i] ?? "github-env";
     if (argv[i] === "--input-app-image-tag") inputAppImageTag = argv[++i] ?? "";
     if (argv[i] === "--input-shop-admin-image-tag") inputShopAdminImageTag = argv[++i] ?? "";
     if (argv[i] === "--input-account-image-tag") inputAccountImageTag = argv[++i] ?? "";
+    if (argv[i] === "--input-shop-image-tag") inputShopImageTag = argv[++i] ?? "";
+    if (argv[i] === "--input-shop-identity-image-tag") inputShopIdentityImageTag = argv[++i] ?? "";
+    if (argv[i] === "--input-shop-api-image-tag") inputShopApiImageTag = argv[++i] ?? "";
   }
   if (!appId) throw new Error("--app-id is required");
   if (format !== "github-env" && format !== "json") {
@@ -31,6 +37,9 @@ function parseArgs(argv) {
     inputAppImageTag: inputAppImageTag.trim(),
     inputShopAdminImageTag: inputShopAdminImageTag.trim(),
     inputAccountImageTag: inputAccountImageTag.trim(),
+    inputShopImageTag: inputShopImageTag.trim(),
+    inputShopIdentityImageTag: inputShopIdentityImageTag.trim(),
+    inputShopApiImageTag: inputShopApiImageTag.trim(),
   };
 }
 
@@ -51,9 +60,25 @@ function inputOrLive(label, input, live, hint) {
   return SHA.test(input) ? input : requireSha(label, live, hint);
 }
 
+/** Prefer explicit CLI/workflow pin over job-level TF_VAR_* before falling back to live App spec. */
+export function coalesceImageSha(...candidates) {
+  for (const candidate of candidates) {
+    const trimmed = (candidate ?? "").trim();
+    if (SHA.test(trimmed)) return trimmed;
+  }
+  return "";
+}
+
 export function resolveLiveTerraformImageTags(
   spec,
-  { inputAppImageTag = "", inputShopAdminImageTag = "", inputAccountImageTag = "" } = {},
+  {
+    inputAppImageTag = "",
+    inputShopAdminImageTag = "",
+    inputAccountImageTag = "",
+    inputShopImageTag = "",
+    inputShopIdentityImageTag = "",
+    inputShopApiImageTag = "",
+  } = {},
 ) {
   const live = readComponentImageTags(spec);
   const appImageTag = resolveAppImageTag({
@@ -62,9 +87,13 @@ export function resolveLiveTerraformImageTags(
   });
   return {
     app_image_tag: appImageTag,
-    shop_identity_image_tag: requireSha("shop-identity", live["shop-identity"]),
-    shop_image_tag: requireSha("shop", live.shop),
-    shop_api_image_tag: requireSha("shop-api", live["shop-api"]),
+    shop_identity_image_tag: inputOrLive(
+      "shop-identity",
+      inputShopIdentityImageTag,
+      live["shop-identity"],
+    ),
+    shop_image_tag: inputOrLive("shop", inputShopImageTag, live.shop),
+    shop_api_image_tag: inputOrLive("shop-api", inputShopApiImageTag, live["shop-api"]),
     shop_admin_image_tag: inputOrLive("shop-admin", inputShopAdminImageTag, live["shop-admin"]),
     account_image_tag: inputOrLive(
       "account",
@@ -76,14 +105,32 @@ export function resolveLiveTerraformImageTags(
 }
 
 function main() {
-  const { appId, format, inputAppImageTag, inputShopAdminImageTag, inputAccountImageTag } =
-    parseArgs(process.argv.slice(2));
-  const spec = readAppSpec(appId);
+  const parsed = parseArgs(process.argv.slice(2));
+  const spec = readAppSpec(parsed.appId);
   const tags = resolveLiveTerraformImageTags(spec, {
-    inputAppImageTag,
-    inputShopAdminImageTag,
-    inputAccountImageTag,
+    inputAppImageTag: coalesceImageSha(parsed.inputAppImageTag, process.env.TF_VAR_app_image_tag),
+    inputShopAdminImageTag: coalesceImageSha(
+      parsed.inputShopAdminImageTag,
+      process.env.TF_VAR_shop_admin_image_tag,
+    ),
+    inputAccountImageTag: coalesceImageSha(
+      parsed.inputAccountImageTag,
+      process.env.TF_VAR_account_image_tag,
+    ),
+    inputShopImageTag: coalesceImageSha(
+      parsed.inputShopImageTag,
+      process.env.TF_VAR_shop_image_tag,
+    ),
+    inputShopIdentityImageTag: coalesceImageSha(
+      parsed.inputShopIdentityImageTag,
+      process.env.TF_VAR_shop_identity_image_tag,
+    ),
+    inputShopApiImageTag: coalesceImageSha(
+      parsed.inputShopApiImageTag,
+      process.env.TF_VAR_shop_api_image_tag,
+    ),
   });
+  const { format } = parsed;
   if (format === "json") {
     process.stdout.write(`${JSON.stringify(tags, null, 2)}\n`);
     return;

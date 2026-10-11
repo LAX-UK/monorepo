@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveLiveTerraformImageTags } from "./resolve-live-app-image-tags.mjs";
+import { coalesceImageSha, resolveLiveTerraformImageTags } from "./resolve-live-app-image-tags.mjs";
 
 const sha = (c) => c.repeat(40);
 
@@ -12,6 +12,13 @@ const liveServices = [
   { name: "shop-api", image: { tag: sha("e") } },
   { name: "shop-admin", image: { tag: sha("f") } },
 ];
+
+describe("coalesceImageSha", () => {
+  it("prefers the first valid SHA", () => {
+    assert.equal(coalesceImageSha("", sha("a"), sha("b")), sha("a"));
+    assert.equal(coalesceImageSha(sha("c"), sha("a")), sha("c"));
+  });
+});
 
 describe("resolveLiveTerraformImageTags", () => {
   it("maps live component tags to terraform variables", () => {
@@ -32,6 +39,14 @@ describe("resolveLiveTerraformImageTags", () => {
       { inputShopAdminImageTag: sha("9") },
     );
     assert.equal(tags.shop_admin_image_tag, sha("9"));
+  });
+
+  it("allows shop-api override from workflow input", () => {
+    const tags = resolveLiveTerraformImageTags(
+      { services: [...liveServices, { name: "account", image: { tag: sha("7") } }] },
+      { inputShopApiImageTag: sha("0") },
+    );
+    assert.equal(tags.shop_api_image_tag, sha("0"));
   });
 
   it("uses the account input before the account component exists", () => {
