@@ -45,8 +45,8 @@ export const shopApiEnvSchema = z.object({
     z.string().min(1).optional(),
   ),
   /**
-   * Stripe platform that `STRIPE_SECRET_KEY` belongs to (D38). Test runs on Bid's sandbox until
-   * the LAX Art account exists; keying rows by platform stops sandbox accounts being reused.
+   * Stripe platform that `STRIPE_SECRET_KEY` belongs to (D38). Keying rows by platform stops
+   * connected accounts from one platform being reused on another.
    */
   STRIPE_SHOP_CONNECT_PLATFORM_KEY: z.enum(["lax_art", "bid_sandbox"]).default("bid_sandbox"),
   SHOP_CONNECT_TRANSFERS_ENABLED: z

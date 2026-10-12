@@ -5,23 +5,31 @@
 **Target end state:** a [Stripe Organization](https://stripe.com/docs/connect/account-management) with
 separate **Bid** and **Shop** accounts so keys, webhooks, and reporting stay product-owned.
 
-**Test phase (current):** Shop may reuse the existing **Bid test account** (`sk_test_…`) to avoid
-standing up a second test account before commerce acceptance is stable. Even when reusing the same
-secret key, Shop still requires its **own webhook endpoint** and signing secret — Stripe issues
-`whsec_…` per endpoint, not per account.
+**Test phase (current):** Shop and lax.art run on the dedicated **London Art Test** sandbox
+(`acct_1UPkKJ3K388lobXL`) with `STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art`. Bid stays on the
+**London Auction Xchange LTD** sandbox; its `STRIPE_*` secrets and webhooks are untouched. London
+Art Test stands in for LAX Art account 2 until the business creates it under the organization.
 
-Shop checkout metadata must remain Shop-scoped (`metadata.app = "shop"`). Bid Connect, transfers,
-refunds and disputes are recorded on the Shop webhook (with PI ownership filter); Connect transfers and payout execution stay on Bid endpoints.
+| Item | Value |
+| --- | --- |
+| Checkout webhook | `https://test-shop.lax.bid/webhooks/stripe` |
+| Connect webhook | `https://test-shop.lax.bid/webhooks/stripe/connect` (`account.updated`) |
+| GitHub `test` secrets | `STRIPE_SHOP_SECRET_KEY`, `STRIPE_SHOP_PUBLISHABLE_KEY`, `STRIPE_SHOP_WEBHOOK_SECRET`, `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET` |
+| GitHub `test` variable | `STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art` |
 
-When moving to the dedicated Shop test account, rotate `STRIPE_SHOP_SECRET_KEY` and
-`STRIPE_SHOP_WEBHOOK_SECRET` in the GitHub `test` environment and re-apply ephemeral Terraform;
-no Bid webhook URLs change.
+Connect rows created while Shop shared Bid's sandbox stay keyed `bid_sandbox` and are never reused;
+payees onboard again on London Art Test. Moving to the real LAX Art account repeats the same
+rotation — new keys, both webhook secrets, fresh payee onboarding — per
+[lax-art-production-launch.md](./lax-art-production-launch.md).
+
+Shop checkout metadata must remain Shop-scoped (`metadata.app = "shop"`). Shop ignores money events
+whose PaymentIntent it does not own, so a shared account never mutates Bid state.
 
 ## Test environment
 
 ### 1. Stripe Dashboard (test mode)
 
-1. Create a **restricted key** with **Checkout Sessions: Write** and **Refunds: Write** (Phase 2+). Add **Disputes: Read** for chargeback handling. During the shared-account test phase, this may be the same restricted key Bid already uses; prefer a Shop-only restricted key when the Shop account exists.
+1. Create a **restricted key** with **Checkout Sessions: Write** and **Refunds: Write** (Phase 2+). Add **Disputes: Read** for chargeback handling, and Connect account write access for payee onboarding.
 2. Create a webhook endpoint:
    - URL: `https://test-shop.lax.bid/webhooks/stripe`
    - Events:
@@ -39,25 +47,14 @@ no Bid webhook URLs change.
 
 ### 2. GitHub environment secrets (`test`)
 
-**Bootstrap from Bid test (shared account):** when `STRIPE_SECRET_KEY` already exists in the `test` environment, mirror it and register the Shop webhook manually:
+Set with `gh secret set <NAME> --env test --repo LAX-UK/monorepo` (pipe the value on stdin; never pass it as an argument):
 
-```bash
-# Requires IDENTITY_EVIDENCE_PAT with permission to write test env secrets.
-printf '%s' "$STRIPE_SECRET_KEY" | gh secret set STRIPE_SHOP_SECRET_KEY --env test --repo LAX-UK/monorepo
+- `STRIPE_SHOP_SECRET_KEY` — restricted Shop key
+- `STRIPE_SHOP_PUBLISHABLE_KEY` — same account's `pk_test_…` (Connect embedded onboarding)
+- `STRIPE_SHOP_WEBHOOK_SECRET` — checkout endpoint signing secret
+- `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET` — Connect endpoint signing secret
 
-SHOP_URL="https://test-shop.lax.bid/webhooks/stripe"
-# List or create the endpoint on the shared test account, then:
-printf '%s' "$WHSEC_FROM_STRIPE" | gh secret set STRIPE_SHOP_WEBHOOK_SECRET --env test --repo LAX-UK/monorepo
-```
-
-Create the webhook with Stripe API (`checkout.session.*` events on `SHOP_URL`) if it does not exist; roll the endpoint secret when reusing an existing endpoint.
-
-Add:
-
-- `STRIPE_SHOP_SECRET_KEY` — restricted Shop Checkout key
-- `STRIPE_SHOP_WEBHOOK_SECRET` — Shop endpoint signing secret
-
-Terraform apply workflows pass these as `TF_VAR_stripe_shop_secret_key` and `TF_VAR_stripe_shop_webhook_secret` into `auction-infra` for the `shop-api` component.
+and the `test` variable `STRIPE_SHOP_CONNECT_PLATFORM_KEY` (`lax_art` or `bid_sandbox`). Terraform apply workflows pass them as `TF_VAR_stripe_shop_*` into `auction-infra` for the `shop-api` component; an empty `STRIPE_SHOP_PUBLISHABLE_KEY` falls back to Bid's `STRIPE_PUBLISHABLE_KEY`.
 
 ### 3. Infra apply order
 

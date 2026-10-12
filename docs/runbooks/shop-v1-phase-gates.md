@@ -244,10 +244,10 @@ GitHub environment variables and Terraform on **auction-infra** are the only pro
 
 **LAX Art Connect with `SHOP_PAYOUTS_ENABLED` (D38):**
 
-1. Set `STRIPE_PUBLISHABLE_KEY` and `STRIPE_SHOP_CONNECT_PLATFORM_KEY` (`bid_sandbox` on test, `lax_art` in production; production boot fails otherwise).
+1. Set `STRIPE_SHOP_PUBLISHABLE_KEY` and `STRIPE_SHOP_CONNECT_PLATFORM_KEY` (`lax_art` on test via the London Art Test sandbox and in production; production boot fails otherwise).
 2. In the Stripe dashboard of that platform, add a **Connect** webhook endpoint `https://<shop-api>/webhooks/stripe/connect` listening to `account.updated`; store its signing secret as `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET`.
 3. Leave `SHOP_CONNECT_TRANSFERS_ENABLED=false` until one payee completes onboarding on test and shows **Ready** on `/account/payouts`; then enable it and confirm a `due` payout becomes `paid` with a `tr_…` reference.
-4. When Stripe account 2 exists, switch keys, webhook secrets and `STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art` together. Sandbox rows stay keyed `bid_sandbox` and are never reused; payees onboard once on the new platform.
+4. Switching Stripe accounts means switching keys, both webhook secrets and `STRIPE_SHOP_CONNECT_PLATFORM_KEY` together. Rows from the earlier Bid-sandbox phase stay keyed `bid_sandbox` and are never reused; payees onboard again on the new platform.
 
 **Infra follow-ups (test):**
 

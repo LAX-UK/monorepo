@@ -4,8 +4,8 @@ Code and CI wiring for the “Finish LAX on test” plan are on branch `fix/shop
 
 ## A. Shop Connect webhook + publishable key
 
-1. In the Bid sandbox Stripe dashboard, create Connect webhook `https://test-shop.lax.bid/webhooks/stripe/connect` (`account.updated`).
-2. Store signing secret as GitHub **test** secret `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET`.
+1. Done 2026-10-12 on the **London Art Test** sandbox: checkout and Connect webhooks on `https://test-shop.lax.bid/webhooks/stripe{,/connect}`, `STRIPE_SHOP_*` test secrets and `STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art` ([shop-stripe-setup.md](./shop-stripe-setup.md)).
+2. Merge the auction-infra change that passes `stripe_shop_publishable_key` and `stripe_shop_connect_platform_key` to `shop-api`.
 3. Merge and **Terraform apply test** (ephemeral) with auction-infra changes for `stripe_shop_connect_webhook_secret`, `STRIPE_PUBLISHABLE_KEY`, `SHOP_CONNECT_TRANSFERS_ENABLED`.
 4. Verify: unsigned POST → **400**; signed-in payee `GET /commerce/me/connect/config` → non-null `publishableKey`.
 
