@@ -2,6 +2,7 @@ import {
   fetchArtChannelArtistBySlug,
   fetchArtChannelArtists,
   fetchArtChannelArtworkBySlug,
+  fetchArtChannelArtworkObjectTypes,
   fetchArtChannelArtworks,
   fetchArtChannelCategories,
 } from "@/lib/art-catalogue.server";
@@ -59,6 +60,7 @@ export const artServices: ArtServices = {
     listArtists: fetchArtChannelArtists,
     getArtist: fetchArtChannelArtistBySlug,
     listCategories: fetchArtChannelCategories,
+    listArtworkObjectTypes: fetchArtChannelArtworkObjectTypes,
   },
   viewer: { load: loadArtViewerState },
   favorites: {

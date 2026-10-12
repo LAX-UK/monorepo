@@ -7,6 +7,7 @@ function createDeps() {
     catalogue: {
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtwork: async () => null,
+      listArtworkObjectTypeFacets: async () => [],
       listPublicCategories: async () => ({
         items: [{ slug: "art", label: "Art", imageUrl: null, artworkCount: 1 }],
       }),

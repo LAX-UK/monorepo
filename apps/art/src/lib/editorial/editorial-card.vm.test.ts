@@ -33,7 +33,15 @@ describe("placementHref", () => {
       "/exhibitions/summer-show",
     );
     expect(placementHref(placement({ refKind: "story", refSlug: "a b" }))).toBe("/stories/a%20b");
-    expect(placementHref(placement({ refKind: "venue", refSlug: "mayfair" }))).toBe("/visit");
+    expect(placementHref(placement({ refKind: "venue", refSlug: "mayfair" }))).toBe(
+      "/visit/mayfair",
+    );
+    expect(placementHref(placement({ refKind: "page", refSlug: "how-to-sell" }))).toBe(
+      "/how-to-sell",
+    );
+    expect(placementHref(placement({ refKind: "page", refSlug: "art-advisory" }))).toBe(
+      "/collector-hub/art-advisory",
+    );
   });
 
   it("returns null when there is nothing to link to", () => {

@@ -16,11 +16,14 @@ import {
 } from "@auction/shop-contracts";
 import { type SQL, and, asc, desc, eq, gt, gte, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import type { EditorialRepository } from "../application/ports/editorial.repository.js";
+import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 
 type RepoOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
+  /** Staff alert queued in the same transaction as each general enquiry. */
+  generalEnquiryAlerts?: { notifications: ShopNotificationPublisher; opsEmail: string };
 };
 
 function todayIsoDate(): string {
@@ -425,17 +428,32 @@ export function createDrizzleEditorialRepository(
     },
 
     async insertGeneralEnquiry(input) {
-      const [row] = await db
-        .insert(shopGeneralEnquiry)
-        .values({
-          identitySubjectId: input.identitySubjectId,
-          topic: input.topic,
-          contextSlug: input.contextSlug,
-          message: input.message,
-          phone: input.phone,
-        })
-        .returning({ id: shopGeneralEnquiry.id });
-      return { enquiryId: row?.id ?? "" };
+      const alerts = options.generalEnquiryAlerts;
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(shopGeneralEnquiry)
+          .values({
+            identitySubjectId: input.identitySubjectId,
+            topic: input.topic,
+            contextSlug: input.contextSlug,
+            message: input.message,
+            phone: input.phone,
+          })
+          .returning({ id: shopGeneralEnquiry.id });
+        if (!row) throw new Error("general enquiry insert returned no row");
+        if (alerts?.opsEmail.trim()) {
+          await alerts.notifications.queueGeneralEnquiryAlert(tx, {
+            idempotencyKey: `general-enquiry:${row.id}`,
+            identitySubjectId: input.identitySubjectId,
+            opsEmail: alerts.opsEmail.trim(),
+            topic: input.topic,
+            contextSlug: input.contextSlug,
+            message: input.message,
+            phone: input.phone,
+          });
+        }
+        return { enquiryId: row.id };
+      });
     },
 
     async listGeneralEnquiriesForSubject(identitySubjectId) {

@@ -17,6 +17,8 @@ import {
   PublicArtworkDetailSchema,
   type PublicArtworkList,
   PublicArtworkListSchema,
+  type PublicArtworkObjectTypeFacetList,
+  PublicArtworkObjectTypeFacetListSchema,
 } from "./artwork-public.js";
 import {
   type PublicCategoryList,
@@ -95,6 +97,15 @@ export function parsePublicArtworkList(value: unknown): PublicArtworkList {
 export function parsePublicArtworkDetail(value: unknown): PublicArtworkDetail {
   if (!Value.Check(PublicArtworkDetailSchema, value)) {
     throw new ShopContractParseError("Invalid public artwork detail payload");
+  }
+  return value;
+}
+
+export function parsePublicArtworkObjectTypeFacets(
+  value: unknown,
+): PublicArtworkObjectTypeFacetList {
+  if (!Value.Check(PublicArtworkObjectTypeFacetListSchema, value)) {
+    throw new ShopContractParseError("Invalid public artwork object type facets payload");
   }
   return value;
 }

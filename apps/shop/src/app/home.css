@@ -340,38 +340,6 @@
   width: min(18.75rem, 70vw);
 }
 
-.shop-home__category-image {
-  position: relative;
-  aspect-ratio: 288 / 295;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.shop-home__category-photo {
-  object-fit: cover;
-}
-
-.shop-home__category-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0 var(--shop-card-pad-x) var(--shop-card-pad-y);
-}
-
-.shop-home__category-label {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.625rem;
-  transition: color var(--motion-duration-md, 320ms) ease;
-}
-
-.shop-home__category-card:hover .shop-home__category-label,
-.shop-home__category-card:focus-within .shop-home__category-label {
-  color: var(--color-link);
-}
-
 .shop-home__print-card {
   width: 14.5rem;
   display: flex;

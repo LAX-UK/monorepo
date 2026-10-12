@@ -1,4 +1,5 @@
 import { CatalogueGrid } from "@/components/catalogue-grid";
+import { CatalogueList } from "@/components/catalogue-list";
 import { ArtworkCatalogueBrowse } from "@/components/catalogue/artwork-catalogue-browse";
 import {
   ShopCatalogueHub,
@@ -12,11 +13,14 @@ import {
   artworkCataloguePagerHref,
   parseArtworkCatalogueParams,
 } from "@/lib/catalogue/artwork-catalogue-params";
+import { SHOP_ARTWORKS_VIEW_ROUTE_KEY } from "@/lib/catalogue/catalogue-view";
+import { resolveShopCatalogueView } from "@/lib/catalogue/catalogue-view.server";
 import {
   fetchPublicArtists,
   fetchPublicArtworks,
   fetchPublicCategories,
 } from "@/lib/shop-api.server";
+import { MarketingCatalogView } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
 type ArtworksIndexPageProps = {
@@ -41,9 +45,10 @@ export async function generateMetadata({
 }
 
 export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexPageProps) {
-  const state = parseArtworkCatalogueParams(await searchParams);
+  const query = await searchParams;
+  const state = parseArtworkCatalogueParams(query);
   const fetchQuery = artworkCatalogueFetchQuery(state);
-  const [catalogue, categoryList, artistList] = await Promise.all([
+  const [catalogue, categoryList, artistList, view] = await Promise.all([
     fetchPublicArtworks({
       limit: 24,
       ...(fetchQuery.cursor ? { cursor: fetchQuery.cursor } : {}),
@@ -58,6 +63,7 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
     }),
     fetchPublicCategories({ limit: 50 }),
     fetchPublicArtists({ limit: 50 }),
+    resolveShopCatalogueView(SHOP_ARTWORKS_VIEW_ROUTE_KEY, query.view),
   ]);
   const { items, nextCursor, totalCount } = catalogue;
   const resultCount = totalCount ?? items.length;
@@ -114,6 +120,7 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
         resultCount={resultCount}
         categories={categories}
         artists={artists}
+        view={view}
       >
         {items.length === 0 ? (
           <ShopStatusState
@@ -134,7 +141,11 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
             }
           />
         ) : (
-          <CatalogueGrid items={items} />
+          <MarketingCatalogView
+            value={view}
+            grid={<CatalogueGrid items={items} />}
+            list={<CatalogueList items={items} />}
+          />
         )}
       </ArtworkCatalogueBrowse>
     </ShopCatalogueHub>

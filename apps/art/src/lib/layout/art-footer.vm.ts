@@ -21,6 +21,8 @@ export function buildArtFooterVm(input: {
   const discoverLinks = [
     { label: "Art Hub", href: "/art-hub" },
     { label: "Collector Hub", href: "/collector-hub" },
+    { label: "How to buy", href: "/how-to-buy" },
+    { label: "How to sell", href: "/how-to-sell" },
     { label: "Visit", href: "/visit" },
     { label: "Contact", href: "/contact" },
   ];

@@ -2,6 +2,7 @@ import type { ArtworkListCursor } from "../artwork-catalogue-cursor.js";
 import type { NormalizedArtworkCatalogueFilters } from "../artwork-catalogue-filters.js";
 import type {
   ArtworkDetailReadModel,
+  ArtworkObjectTypeFacetReadModel,
   ArtworkSummaryReadModel,
 } from "../read-models/catalogue.read-model.js";
 
@@ -22,4 +23,8 @@ export type ListPublicArtworksResult = {
 export interface ArtworkCatalogueReader {
   listPublicArtworks(input: ListPublicArtworksInput): Promise<ListPublicArtworksResult>;
   getPublicArtworkBySlug(slug: string): Promise<ArtworkDetailReadModel | null>;
+  /** Object types with at least one work on the channel, in canonical type order. */
+  listObjectTypeFacets(input: {
+    salesChannel: "shop" | "art";
+  }): Promise<ArtworkObjectTypeFacetReadModel[]>;
 }

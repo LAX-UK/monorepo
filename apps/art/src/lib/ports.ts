@@ -23,6 +23,7 @@ import type {
   PublicArtistList,
   PublicArtworkDetail,
   PublicArtworkList,
+  PublicArtworkObjectTypeFacetList,
   PublicCategoryList,
 } from "@auction/shop-contracts";
 import type { PortalPayeeConnectView, ShopPortalFetchResult } from "@auction/shop-portal/portal";
@@ -63,6 +64,8 @@ export type ArtCataloguePort = {
   listArtists(query: ArtArtistListQuery): Promise<PublicArtistList>;
   getArtist(slug: string): Promise<PublicArtistDetail | null>;
   listCategories(query?: { limit?: number }): Promise<PublicCategoryList>;
+  /** Medium tiles: object types with works on lax.art, each with a cover image. */
+  listArtworkObjectTypes(): Promise<PublicArtworkObjectTypeFacetList>;
 };
 
 export type ArtViewerPort = {

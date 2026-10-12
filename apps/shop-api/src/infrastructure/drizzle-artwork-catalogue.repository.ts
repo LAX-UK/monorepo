@@ -30,7 +30,10 @@ import {
   sql,
 } from "drizzle-orm";
 import type { ArtworkListCursor } from "../application/artwork-catalogue-cursor.js";
-import type { NormalizedArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
+import {
+  ARTWORK_OBJECT_TYPES,
+  type NormalizedArtworkCatalogueFilters,
+} from "../application/artwork-catalogue-filters.js";
 import { DEFAULT_ARTWORK_CATALOGUE_SORT } from "../application/artwork-catalogue-sort.js";
 import type {
   ArtworkCatalogueReader,
@@ -494,6 +497,34 @@ export function createDrizzleArtworkCatalogueRepository(
       return toPublicArtworkDetail(
         mapRow({ ...row, createdAt: new Date() }, editionCounts, images),
       );
+    },
+
+    async listObjectTypeFacets({ salesChannel }) {
+      const rows = await db
+        .select({
+          objectType: shopArtwork.objectType,
+          artworkCount: count(),
+          coverImageUrl: sql<
+            string | null
+          >`(array_agg(${shopArtwork.primaryImageUrl} ORDER BY ${shopArtwork.createdAt} DESC) FILTER (WHERE ${shopArtwork.primaryImageUrl} IS NOT NULL))[1]`,
+        })
+        .from(shopArtwork)
+        .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+        .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+        .where(and(eq(shopArtwork.salesChannel, salesChannel), isNotNull(shopArtwork.objectType)))
+        .groupBy(shopArtwork.objectType);
+      const byType = new Map(rows.map((row) => [row.objectType, row]));
+      return ARTWORK_OBJECT_TYPES.flatMap((objectType) => {
+        const row = byType.get(objectType);
+        if (!row || Number(row.artworkCount) < 1) return [];
+        return [
+          {
+            objectType,
+            artworkCount: Number(row.artworkCount),
+            coverImageUrl: resolveMediaUrl(row.coverImageUrl),
+          },
+        ];
+      });
     },
   };
 }

@@ -1,6 +1,7 @@
 import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import { ArtArtistGrid } from "@/components/catalogue/art-artist-grid";
+import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
 import { composeArtistsPage, parseArtistLetter } from "@/lib/catalogue/artists-page.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
@@ -36,6 +37,11 @@ export default async function ArtistsIndexPage({ searchParams }: ArtistsPageProp
         title="Artists"
         description="Discover artists with works available through the London Art Exchange."
       />
+      {vm.featured.length > 0 ? (
+        <ArtSection id="featured-artists" title="Featured artists">
+          <ArtArtistGrid cards={vm.featured} aria-label="Featured artists" />
+        </ArtSection>
+      ) : null}
       <MarketingAlphabetFilter basePath="/artists" active={vm.letter} />
 
       {vm.failed ? (

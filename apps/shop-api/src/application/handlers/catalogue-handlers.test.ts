@@ -10,6 +10,7 @@ describe("catalogue handlers", () => {
     const handler = createListPublicArtworksHandler({
       listPublicArtworks,
       getPublicArtworkBySlug: async () => null,
+      listObjectTypeFacets: async () => [],
     });
     const input = {
       limit: 12,

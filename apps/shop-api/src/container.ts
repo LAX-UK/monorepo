@@ -7,6 +7,7 @@ import { createGetPublicArtworkHandler } from "./application/handlers/get-public
 import { createGetPublicCategoryHandler } from "./application/handlers/get-public-category.handler.js";
 import { createGetPublicMerchandiseProductHandler } from "./application/handlers/get-public-merchandise-product.handler.js";
 import { createImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
+import { createListArtworkObjectTypeFacetsHandler } from "./application/handlers/list-artwork-object-type-facets.handler.js";
 import { createListPublicArtistsHandler } from "./application/handlers/list-public-artists.handler.js";
 import { createListPublicArtworksHandler } from "./application/handlers/list-public-artworks.handler.js";
 import { createListPublicCategoriesHandler } from "./application/handlers/list-public-categories.handler.js";
@@ -250,7 +251,17 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const editorial: EditorialRoutesDeps | null =
     env.SHOP_EDITORIAL_ENABLED && previewSecret
       ? {
-          editorial: createDrizzleEditorialRepository(db, { resolveMediaUrl }),
+          editorial: createDrizzleEditorialRepository(db, {
+            resolveMediaUrl,
+            ...(env.SHOP_ENQUIRY_NOTIFICATION_EMAIL
+              ? {
+                  generalEnquiryAlerts: {
+                    notifications,
+                    opsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL,
+                  },
+                }
+              : {}),
+          }),
           previewSecret,
         }
       : null;
@@ -307,6 +318,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       catalogue: {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),
+        listArtworkObjectTypeFacets: createListArtworkObjectTypeFacetsHandler(catalogueReader),
         listPublicCategories: createListPublicCategoriesHandler(categoryReader),
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),

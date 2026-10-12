@@ -30,8 +30,23 @@ export type ShopNotificationPublisher = {
       artworkUrl: string;
       identitySubjectId: string;
       opsEmail: string;
+      salesChannel: "shop" | "art";
       message?: string | undefined;
       contactPhone?: string | undefined;
+    },
+  ): Promise<void>;
+
+  /** Staff alert for a lax.art general enquiry (contact, viewing, advisory, selling). */
+  queueGeneralEnquiryAlert(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      opsEmail: string;
+      topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
+      contextSlug: string | null;
+      message: string;
+      phone: string | null;
     },
   ): Promise<void>;
 

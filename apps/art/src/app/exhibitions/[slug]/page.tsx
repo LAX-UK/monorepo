@@ -10,6 +10,7 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingInfoStrip } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: ExhibitionPageProps): Promise
 export default async function ExhibitionDetailPage({ params }: ExhibitionPageProps) {
   const { slug } = await params;
   const result = await loadExhibition(slug);
-  if (result.status === "not_found") notFound();
+  if (result.status === "not_found" || result.status === "disabled") notFound();
   if (result.status !== "ok") {
     return (
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
@@ -54,7 +55,7 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
     );
   }
 
-  const { exhibition, kicker, dateLabel, venueName, hoursLabel, body } = result.data;
+  const { exhibition, kicker, dateLabel, venueName, venueHref, hoursLabel, body } = result.data;
   const returnTo = `/exhibitions/${encodeURIComponent(exhibition.slug)}`;
   const viewer = await artServices.viewer.load();
 
@@ -67,7 +68,21 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
         coverUrl={exhibition.coverUrl}
       />
       {dateLabel || venueName || hoursLabel ? (
-        <MarketingInfoStrip dateLabel={dateLabel} venueLabel={venueName} hoursLabel={hoursLabel} />
+        <div className="flex flex-col gap-3">
+          <MarketingInfoStrip
+            dateLabel={dateLabel}
+            venueLabel={venueName}
+            hoursLabel={hoursLabel}
+          />
+          {venueHref && venueName ? (
+            <Link
+              href={venueHref}
+              className="art-focus-ring w-fit rounded-sm font-label text-sm font-semibold uppercase tracking-wide text-on-surface underline underline-offset-4 hover:no-underline"
+            >
+              Plan your visit<span className="sr-only"> to {venueName}</span>
+            </Link>
+          ) : null}
+        </div>
       ) : null}
       <EditorialBlockRenderer body={body} className="max-w-3xl" />
       {exhibition.installationMedia.length > 0 ? (

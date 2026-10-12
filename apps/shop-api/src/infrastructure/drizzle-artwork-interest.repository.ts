@@ -146,6 +146,7 @@ export function createDrizzleArtworkInterestRepository(
             artworkUrl: artworkPublicUrl(storefrontOrigins, input.salesChannel, input.artworkSlug),
             identitySubjectId: input.identitySubjectId,
             opsEmail: options.enquiryOpsEmail.trim(),
+            salesChannel: input.salesChannel,
             ...(input.message ? { message: input.message } : {}),
             ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
           });

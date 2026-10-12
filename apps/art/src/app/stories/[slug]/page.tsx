@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: StoryPageProps): Promise<Meta
 export default async function StoryPage({ params }: StoryPageProps) {
   const { slug } = await params;
   const result = await loadStory(slug);
-  if (result.status === "not_found") notFound();
+  if (result.status === "not_found" || result.status === "disabled") notFound();
   if (result.status !== "ok") {
     return (
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>

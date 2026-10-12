@@ -3,6 +3,7 @@ import type {
   ArtEditorialPlacement,
   ArtEditorialStorySummary,
 } from "@/lib/editorial/art-editorial.types";
+import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
 import { isSafeEditorialHref } from "@auction/shop-contracts";
 
 export type EditorialCardVm = {
@@ -19,8 +20,8 @@ type PlacementSlot = ArtEditorialPlacement["slot"];
 const REF_ROUTES: Record<string, (slug: string) => string> = {
   exhibition: (slug) => `/exhibitions/${encodeURIComponent(slug)}`,
   story: (slug) => `/stories/${encodeURIComponent(slug)}`,
-  page: (slug) => `/legal/${encodeURIComponent(slug)}`,
-  venue: () => "/visit",
+  page: editorialPageHref,
+  venue: (slug) => `/visit/${encodeURIComponent(slug)}`,
 };
 
 const REF_KICKERS: Record<string, string> = {

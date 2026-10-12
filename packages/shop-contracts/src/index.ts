@@ -23,6 +23,8 @@ export {
 export {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
+  PublicArtworkObjectTypeFacetListSchema,
+  PublicArtworkObjectTypeFacetSchema,
   PublicArtworkObjectTypeSchema,
   PublicArtworkRaritySchema,
   PublicArtworkSaleStateSchema,
@@ -34,6 +36,8 @@ export {
   ShopApiErrorBodySchema,
   type PublicArtworkDetail,
   type PublicArtworkList,
+  type PublicArtworkObjectTypeFacet,
+  type PublicArtworkObjectTypeFacetList,
   type PublicArtworkSummary,
 } from "./artwork-public.js";
 export {
@@ -199,6 +203,7 @@ export {
   parsePublicArtistList,
   parsePublicArtworkDetail,
   parsePublicArtworkList,
+  parsePublicArtworkObjectTypeFacets,
   parsePublicCategoryList,
   parsePublicCategorySummary,
   parsePublicMerchandiseProductDetail,

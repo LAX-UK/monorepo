@@ -8,6 +8,8 @@ export type ArtArtistsPageVm = {
   /** Upper-case A–Z, or null for the full newest-first directory. */
   letter: string | null;
   cards: CatalogueArtistCardVm[];
+  /** Curated `featured_artists` placement; only on the unfiltered first page. */
+  featured: CatalogueArtistCardVm[];
   nextPageHref: string | null;
   failed: boolean;
 };
@@ -15,6 +17,7 @@ export type ArtArtistsPageVm = {
 /** A letter page lists up to this many artists by name; the API does not page name sorts. */
 export const ARTISTS_LETTER_PAGE_LIMIT = 50;
 const ARTISTS_PAGE_SIZE = 24;
+const FEATURED_ARTISTS_LIMIT = 6;
 
 function firstString(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -31,22 +34,31 @@ export async function composeArtistsPage(
 ): Promise<ArtArtistsPageVm> {
   const letter = parseArtistLetter(query.letter);
   const cursor = letter ? undefined : firstString(query.cursor);
-  try {
-    const page = await catalogue.listArtists(
+  const showFeatured = !letter && !cursor;
+  const [pageResult, featuredResult] = await Promise.allSettled([
+    catalogue.listArtists(
       letter
         ? { limit: ARTISTS_LETTER_PAGE_LIMIT, letter, sort: "nameAsc" }
         : { limit: ARTISTS_PAGE_SIZE, ...(cursor ? { cursor } : {}) },
-    );
-    return {
-      letter,
-      cards: buildCatalogueArtistCards(page.items),
-      nextPageHref:
-        !letter && page.nextCursor
-          ? `/artists?cursor=${encodeURIComponent(page.nextCursor)}`
-          : null,
-      failed: false,
-    };
-  } catch {
-    return { letter, cards: [], nextPageHref: null, failed: true };
+    ),
+    showFeatured
+      ? catalogue.listArtists({ limit: FEATURED_ARTISTS_LIMIT, placement: "featured_artists" })
+      : Promise.resolve({ items: [] }),
+  ]);
+  const featured =
+    featuredResult.status === "fulfilled"
+      ? buildCatalogueArtistCards(featuredResult.value.items)
+      : [];
+  if (pageResult.status === "rejected") {
+    return { letter, cards: [], featured, nextPageHref: null, failed: true };
   }
+  const page = pageResult.value;
+  return {
+    letter,
+    cards: buildCatalogueArtistCards(page.items),
+    featured,
+    nextPageHref:
+      !letter && page.nextCursor ? `/artists?cursor=${encodeURIComponent(page.nextCursor)}` : null,
+    failed: false,
+  };
 }

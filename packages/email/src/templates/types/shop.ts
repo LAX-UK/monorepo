@@ -10,6 +10,7 @@ const names = [
   "shop-checkout-ops-alert",
   "shop-refund-issued",
   "shop-cancellation-confirmed",
+  "art-general-enquiry-alert",
 ] as const;
 
 type ShopTemplateName = (typeof names)[number];
@@ -29,6 +30,8 @@ type ShopTemplateVars = {
     buyerEmail: string;
     message?: string;
     contactPhone?: string;
+    /** Storefront the enquiry came from; absent on alerts queued before LAX Art branding. */
+    storefront?: "shop" | "art";
   };
   "shop-edition-available-notify": {
     artworkTitle: string;
@@ -63,6 +66,13 @@ type ShopTemplateVars = {
     orderId: string;
     refundPeriodEndsAt: string;
   };
+  "art-general-enquiry-alert": {
+    topicLabel: string;
+    buyerEmail: string;
+    message: string;
+    contextSlug?: string;
+    contactPhone?: string;
+  };
 };
 
 export const shopTemplates = {
@@ -78,6 +88,7 @@ export const shopTemplates = {
     "shop-checkout-ops-alert": "snapshot",
     "shop-refund-issued": "snapshot",
     "shop-cancellation-confirmed": "snapshot",
+    "art-general-enquiry-alert": "snapshot",
   },
 } satisfies TemplateDomainSlice<ShopTemplateName, ShopTemplateVars>;
 

@@ -12,6 +12,7 @@ Operational notes for **Shop Admin → Editorial (lax.art)** and public editoria
 | `ART_EDITORIAL_ENABLED` | apps/art | BFF reads against shop-api editorial endpoints |
 | `SHOP_IMAGE_REMOTE_HOSTS` | apps/art | Must include the media CDN host so `next/image` can optimise editorial and catalogue media |
 | `LAX_ART_PUBLIC_URL` | shop-admin | Builds the full lax.art preview link; without it staff only get the raw token to copy |
+| `SHOP_ENQUIRY_NOTIFICATION_EMAIL` | shop-api | Staff inbox for enquiry alerts: artwork enquiries (subject says "LAX Art" or "Shop" by sales channel) and lax.art general enquiries ("New LAX Art enquiry: <topic>"). Alerts are queued in the outbox inside the enquiry transaction; unset means no alert |
 
 Set matching GitHub environment variables on test (`vars.SHOP_EDITORIAL_ENABLED`, `vars.ART_EDITORIAL_ENABLED`) before enabling placements in production.
 
@@ -33,6 +34,21 @@ Rollback is the reverse: disable the two editorial flags first (Art pages fall b
 - Editorial slots (`home_hero`, `home_whats_on`, `home_stories`, `home_guide`, `art_hub_spotlight`, `collector_hub_card`) are managed under **Editorial → Placements** in shop-admin.
 - “Featured originals” and “Featured artists” on the Art home reuse Shop’s home curation filtered to the Art channel. When that curation holds no Art items, Art shows the newest Art originals and artists instead.
 - Slug conflicts on save return 409 and shop-admin says the slug is taken.
+- `featured_artists` is one slot shared by Shop and Art (8 positions, filtered by channel at read time); Art's featured strip on `/artists` reads the same slot.
+- `/exhibitions` features current then upcoming shows (up to 6) above the status tabs.
+
+## Page routes
+
+Editorial **pages** are served on canonical routes by slug; any other route for the same slug permanently redirects there.
+
+| Page slug | Route |
+|-----------|-------|
+| `how-to-buy`, `how-to-sell` | `/how-to-buy`, `/how-to-sell` |
+| `101-guide` | `/collector-hub/101-guide` |
+| `privacy`, `cookies`, `terms`, `accessibility`, `returns`, `shipping` | `/legal/<slug>` |
+| anything else | `/collector-hub/<slug>` (with an art-advisory enquiry form) |
+
+Venues live at `/visit/<slug>` and are listed on `/visit`. Placements that point at a page or venue link to these routes. Unknown slugs, and every slug route while `ART_EDITORIAL_ENABLED` is off, return 404.
 
 ## Content rules enforced by the API
 
@@ -55,13 +71,21 @@ DATABASE_URL=... DATABASE_URL_SHOP=... SHOP_EDITORIAL_ENABLED=true \
   pnpm --filter @auction/shop-api seed:editorial-showcase
 ```
 
-Idempotently publishes a minimal home hero / what's on showcase when editorial tables exist (migration `0216`).
+Idempotently publishes, when editorial tables exist (migration `0216`):
+
+- one venue (LAX Marylebone), three exhibitions (current + upcoming featured, one past), a story and a guide;
+- pages `how-to-buy`, `how-to-sell`, `101-guide`, `art-advisory`, and **placeholder** `privacy` / `terms` that must be replaced in shop-admin before launch;
+- placements for the home hero, what's on, stories, guide, Art Hub spotlight and Collector Hub cards.
+
+`seed:catalogue` adds eight Art-channel originals across painting, works on paper, sculpture, photography and print (with specs, provenance and exhibition history) and three Art featured artists at `featured_artists` positions 3–5.
+
+Seed images are root-relative `/art/seed/*` files served from `apps/art/public`. They resolve only while object storage is off (local and CI); on environments with `SHOP_MEDIA_PUBLIC_BASE_URL`, upload real media in shop-admin instead.
 
 ## Staff workflows
 
 1. Catalogue editors manage venues, exhibitions, stories, pages, and placements in **shop-admin** (`/editorial`).
 2. Ops readers review **General enquiries** at `/general-enquiries` (admin API `GET /admin/v1/general-enquiries`).
-3. Collectors submit general enquiries from lax.art `/contact`, `/visit` (private viewing) and exhibition pages (stored in `shop_general_enquiry` with `contextSlug`). Collectors see their enquiries under **Account → Inquiries**.
+3. Collectors submit general enquiries from lax.art `/contact`, `/visit` and `/visit/<slug>` (private viewing), exhibition pages, `/how-to-sell` (selling) and Collector Hub pages (art advisory). They are stored in `shop_general_enquiry` with `contextSlug`, alert `SHOP_ENQUIRY_NOTIFICATION_EMAIL` when set, and appear for the collector under **Account → Inquiries**.
 
 ## Related docs
 

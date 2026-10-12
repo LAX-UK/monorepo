@@ -1,6 +1,8 @@
 import { ArtStatusState } from "@/components/art-status-state";
-import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
+import { ArtEditorialCard, ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
+import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
+import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
 import {
   EXHIBITION_STATUS_TABS,
@@ -40,6 +42,17 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
           Exhibitions, films and events from the London Art Exchange gallery programme.
         </p>
       </header>
+      {result.status === "ok" && result.data.featured.length > 0 ? (
+        <ArtSection id="featured-exhibitions" title="Featured">
+          <ArtRail id="featured-exhibitions-rail" label="Featured exhibitions">
+            {result.data.featured.map((card, index) => (
+              <ArtRailItem key={card.key} size="feature">
+                <ArtEditorialCard card={card} priority={index === 0} />
+              </ArtRailItem>
+            ))}
+          </ArtRail>
+        </ArtSection>
+      ) : null}
       {result.status === "disabled" ? null : (
         <SectionTabs
           ariaLabel="Exhibition dates"

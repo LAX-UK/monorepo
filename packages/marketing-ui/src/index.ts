@@ -15,6 +15,7 @@ export {
   MarketingMoonIcon,
   MarketingPlayIcon,
   MarketingSearchIcon,
+  MarketingShareIcon,
   MarketingSunIcon,
   MarketingUserIcon,
   MarketingViewAllChevron,
@@ -32,6 +33,10 @@ export { MediaImage, type MediaImageProps } from "./media/media-image.js";
 export { MediaImageServer, type MediaImageServerProps } from "./media/media-image.server.js";
 export { MarketingCardMedia } from "./marketing-card-media.js";
 export { MarketingCardShell } from "./marketing-card-shell.js";
+export {
+  MarketingCategoryTile,
+  type MarketingCategoryTileProps,
+} from "./marketing-category-tile.js";
 export { MarketingCardReveal, MarketingReveal } from "./marketing-reveal.js";
 export { MarketingSectionHeader } from "./marketing-section-header.js";
 export {
@@ -192,3 +197,54 @@ export {
   type MarketingAlphabetFilterProps,
   marketingAlphabetHref,
 } from "./marketing-alphabet-filter.js";
+export {
+  CATALOG_VIEW_PARAM,
+  type BuildViewQueryParamsOptions,
+  type CatalogLayoutView,
+  VIEW_CHANGE_CLEAR_PARAMS,
+  VIEW_COOKIE_MAX_AGE_SEC,
+  buildViewHref,
+  buildViewQueryParams,
+  parseLayoutViewCookie,
+  resolveCatalogLayoutView,
+  viewCookieName,
+  writeViewPreferenceCookie,
+} from "./catalog-view/catalog-view.js";
+export {
+  notifyMarketingViewUrlChanged,
+  readMarketingViewParam,
+  replaceMarketingViewUrl,
+  resetMarketingViewClientState,
+  subscribeMarketingViewUrl,
+} from "./catalog-view/catalog-view-url-store.js";
+export {
+  type UseCatalogViewNavigationOptions,
+  useCatalogLayoutView,
+  useCatalogViewNavigation,
+} from "./catalog-view/use-catalog-view.js";
+export {
+  MarketingCatalogView,
+  type MarketingCatalogViewProps,
+  MarketingCatalogViewSwitcher,
+  type MarketingCatalogViewSwitcherProps,
+} from "./catalog-view/marketing-catalog-view.js";
+export {
+  MarketingShareButton,
+  type MarketingShareButtonProps,
+} from "./marketing-share-button.js";
+export {
+  MarketingUnderlineTabsPanel,
+  type MarketingUnderlineTabsPanelItem,
+  type MarketingUnderlineTabsPanelProps,
+} from "./marketing-underline-tabs-panel.js";
+export {
+  MarketingDetailAccordion,
+  type MarketingDetailAccordionItem,
+  type MarketingDetailAccordionProps,
+} from "./marketing-detail-accordion.js";
+export {
+  MarketingCatalogList,
+  MarketingCatalogListRow,
+  type MarketingCatalogListProps,
+  type MarketingCatalogListRowProps,
+} from "./catalog-view/marketing-catalog-list.js";

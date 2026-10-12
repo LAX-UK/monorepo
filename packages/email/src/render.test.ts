@@ -2,6 +2,33 @@ import { describe, expect, it } from "vitest";
 import { renderEmail } from "./render.js";
 
 describe("renderEmail", () => {
+  it("brands artwork enquiry alerts by storefront, defaulting to Shop", async () => {
+    const vars = {
+      artworkTitle: "Tidal Forms",
+      artworkSlug: "tidal-forms",
+      artworkUrl: "https://lax.art/artworks/tidal-forms",
+      buyerEmail: "ada@example.com",
+    };
+    const art = await renderEmail("shop-artwork-enquiry-alert", { ...vars, storefront: "art" });
+    expect(art.subject).toBe("New LAX Art artwork enquiry");
+    expect(art.html).toContain("LAX Art enquiry");
+
+    const legacy = await renderEmail("shop-artwork-enquiry-alert", vars);
+    expect(legacy.subject).toBe("New Shop artwork enquiry");
+  });
+
+  it("renders lax.art general enquiry alerts with topic and context", async () => {
+    const rendered = await renderEmail("art-general-enquiry-alert", {
+      topicLabel: "Private viewing",
+      buyerEmail: "ada@example.com",
+      message: "Saturday morning?",
+      contextSlug: "lax-marylebone",
+    });
+    expect(rendered.subject).toBe("New LAX Art enquiry: Private viewing");
+    expect(rendered.text).toContain("Regarding: lax-marylebone");
+    expect(rendered.text).toContain("Saturday morning?");
+  });
+
   it("renders auth templates to html and plaintext", async () => {
     const rendered = await renderEmail("verify-email", {
       verificationUrl: "https://lax.bid/verify",

@@ -3,7 +3,12 @@ import type { FastifyInstance } from "fastify";
 const PUBLIC_CATALOGUE_CACHE =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=86400, stale-if-error=86400";
 
-const PUBLIC_CATALOGUE_ROOTS = ["/v1/artworks", "/v1/categories", "/v1/artists"] as const;
+const PUBLIC_CATALOGUE_ROOTS = [
+  "/v1/artworks",
+  "/v1/artwork-object-types",
+  "/v1/categories",
+  "/v1/artists",
+] as const;
 
 /** Public CDN cache only for catalogue list or single-slug detail — not nested sub-resources (e.g. interest). */
 export function isPublicCatalogueGetPath(pathname: string): boolean {

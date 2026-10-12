@@ -22,6 +22,12 @@ export type ArtworkObjectType =
 
 export type ArtworkRarity = "unique" | "limited_edition" | "open_edition";
 
+export type ArtworkObjectTypeFacetReadModel = {
+  objectType: ArtworkObjectType;
+  artworkCount: number;
+  coverImageUrl: string | null;
+};
+
 export type ArtworkSummaryReadModel = {
   slug: string;
   title: string;

@@ -188,6 +188,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
       expect.anything(),
       expect.objectContaining({
         artworkUrl: `https://lax.art/artworks/${slug}`,
+        salesChannel: "art",
         message: "Could I view this in person?",
         contactPhone: "+44 20 7946 0000",
       }),

@@ -145,8 +145,10 @@ jobs:
           --filter=@auction/shop-identity
           --filter=@auction/shop-api
           --filter=@auction/art
-      - name: Seed catalogue
-        run: pnpm --filter @auction/shop-api seed:catalogue
+      - name: Seed catalogue and editorial showcase
+        run: |
+          pnpm --filter @auction/shop-api seed:catalogue
+          pnpm --filter @auction/shop-api seed:editorial-showcase
       - name: Start stack
         run: |
           mkdir -p /tmp/art-e2e-logs

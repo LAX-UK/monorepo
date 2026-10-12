@@ -6,6 +6,8 @@ export type MarketingFooterColumn = {
   id: string;
   title: string;
   links: ReadonlyArray<{ label: string; href: string }>;
+  /** Non-link status line after the links (e.g. "Sign-in status unavailable"). */
+  note?: string;
 };
 
 export type MarketingFooterLink = { label: string; href: string };
@@ -86,6 +88,13 @@ export function MarketingFooter({
                     )}
                   </li>
                 ))}
+                {column.note ? (
+                  <li>
+                    <span className="font-footer-links text-base text-on-surface-variant">
+                      {column.note}
+                    </span>
+                  </li>
+                ) : null}
               </ul>
             </nav>
           ))}

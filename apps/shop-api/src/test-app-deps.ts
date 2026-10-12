@@ -78,6 +78,7 @@ export function createMinimalShopApiTestDeps(
     catalogue: {
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtwork: async () => null,
+      listArtworkObjectTypeFacets: async () => [],
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),

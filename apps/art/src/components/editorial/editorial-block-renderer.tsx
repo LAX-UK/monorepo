@@ -1,10 +1,9 @@
 import { ArtArtistGrid } from "@/components/catalogue/art-artist-grid";
-import { ArtArtworkCard } from "@/components/catalogue/art-artwork-card";
+import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEditorialLink } from "@/components/editorial/art-editorial-link";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { EditorialBodyVm, EditorialRailVm } from "@/lib/editorial/editorial-body.composer";
 import {
-  MarketingHorizontalRail,
   MarketingInfoStrip,
   MarketingPullQuote,
   MarketingVideoPoster,
@@ -103,21 +102,12 @@ function RailSection({
         {headline}
       </h2>
       {rail.kind === "artworks" ? (
-        <MarketingHorizontalRail
+        <ArtArtworkRail
           id={id}
-          ariaLabel={headline}
-          forwardAriaLabel={`Scroll ${headline} forward`}
-          backAriaLabel={`Scroll ${headline} back`}
-          controls="arrows-progress"
-          scrollerAs="ul"
-          scrollerClassName="art-focus-ring flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] lg:gap-6"
-        >
-          {rail.cards.map((card) => (
-            <li key={card.slug} className="w-[min(70vw,16rem)] shrink-0 snap-start">
-              <ArtArtworkCard card={card} favoriteAuth={rail.favoriteAuth} />
-            </li>
-          ))}
-        </MarketingHorizontalRail>
+          label={headline}
+          cards={rail.cards}
+          favoriteAuth={rail.favoriteAuth}
+        />
       ) : (
         <ArtArtistGrid cards={rail.cards} aria-label={headline} />
       )}

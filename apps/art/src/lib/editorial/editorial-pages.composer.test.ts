@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import {
   composeArtHubPage,
   composeExhibitionDetailPage,
+  composeExhibitionsPage,
+  composeVenuePage,
   composeVisitPage,
   parseExhibitionStatus,
   presentOpeningHours,
@@ -82,6 +84,49 @@ describe("parseExhibitionStatus", () => {
   });
 });
 
+describe("composeExhibitionsPage", () => {
+  it("features current then upcoming shows on every tab, without duplicates", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockImplementation(async (status) => ({
+      status: "ok",
+      data: {
+        items:
+          status === "current"
+            ? [exhibition({ slug: "now", featured: true }), exhibition({ slug: "plain" })]
+            : status === "upcoming"
+              ? [exhibition({ slug: "soon", featured: true })]
+              : [exhibition({ slug: "old", featured: true })],
+      },
+    }));
+
+    const past = await composeExhibitionsPage(services, "past");
+
+    expect(past.status === "ok" && past.data.cards.map((c) => c.href)).toEqual([
+      "/exhibitions/old",
+    ]);
+    expect(past.status === "ok" && past.data.featured.map((c) => c.href)).toEqual([
+      "/exhibitions/now",
+      "/exhibitions/soon",
+    ]);
+    expect(services.editorial.listExhibitions).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the grid when featured reads fail and passes through grid failures", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockImplementation(async (status) =>
+      status === "current"
+        ? { status: "ok", data: { items: [exhibition({ slug: "now" })] } }
+        : { status: "error" },
+    );
+    const current = await composeExhibitionsPage(services, "current");
+    expect(current.status === "ok" && current.data.featured).toEqual([]);
+    expect(current.status === "ok" && current.data.cards).toHaveLength(1);
+
+    const upcoming = await composeExhibitionsPage(services, "upcoming");
+    expect(upcoming.status).toBe("error");
+  });
+});
+
 describe("composeExhibitionDetailPage", () => {
   it("joins venue name and hours, preferring the exhibition times note", async () => {
     const services = fakeArtServices();
@@ -94,6 +139,7 @@ describe("composeExhibitionDetailPage", () => {
       data: {
         dateLabel: "1 Jun – 30 Aug 2026",
         venueName: "LAX Mayfair",
+        venueHref: "/visit/mayfair",
         hoursLabel: "Tue – Sat 10:00 – 18:00",
       },
     });
@@ -114,7 +160,10 @@ describe("composeExhibitionDetailPage", () => {
     services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
     services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
     const result = await composeExhibitionDetailPage(services, "summer-show");
-    expect(result.status === "ok" && result.data.venueName).toBeNull();
+    expect(result.status === "ok" && result.data).toMatchObject({
+      venueName: null,
+      venueHref: null,
+    });
   });
 });
 
@@ -127,12 +176,33 @@ describe("composeVisitPage", () => {
     });
     services.editorial.getVenue.mockResolvedValue({ status: "ok", data: venue() });
     const ok = await composeVisitPage(services);
-    expect(ok.status === "ok" && ok.data.venues[0]?.hours).toEqual([
-      { label: "Tue – Sat", value: "10:00 – 18:00" },
-    ]);
+    expect(ok.status === "ok" && ok.data.venues[0]).toMatchObject({
+      href: "/visit/mayfair",
+      addressLine: "1 Bond Street, W1",
+      hours: [{ label: "Tue – Sat", value: "10:00 – 18:00" }],
+    });
 
     services.editorial.getVenue.mockResolvedValue({ status: "error" });
     expect(await composeVisitPage(services)).toEqual({ status: "error" });
+  });
+});
+
+describe("composeVenuePage", () => {
+  it("returns the venue facts and body, and passes through not found", async () => {
+    const services = fakeArtServices();
+    services.editorial.getVenue.mockResolvedValue({
+      status: "ok",
+      data: venue({ address: null, postcode: null }),
+    });
+    const ok = await composeVenuePage(services, "mayfair");
+    expect(ok.status === "ok" && ok.data).toMatchObject({
+      addressLine: null,
+      hours: [{ label: "Tue – Sat", value: "10:00 – 18:00" }],
+      venue: { slug: "mayfair" },
+    });
+
+    services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
+    expect(await composeVenuePage(services, "nowhere")).toEqual({ status: "not_found" });
   });
 });
 

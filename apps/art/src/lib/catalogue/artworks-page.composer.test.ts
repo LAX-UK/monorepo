@@ -49,4 +49,22 @@ describe("composeArtworksPage", () => {
     expect(vm.artists).toEqual([{ slug: "a", label: "A" }]);
     expect(vm.nextPageHref).toBeNull();
   });
+
+  it("builds medium tiles from facets and degrades to none when facets fail", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtworkObjectTypes.mockResolvedValue({
+      items: [
+        { objectType: "painting", artworkCount: 2, coverImageUrl: null },
+        { objectType: "print", artworkCount: 5, coverImageUrl: null },
+      ],
+    });
+    const vm = await composeArtworksPage(services, { objectType: "print" });
+    expect(vm.objectTypeTiles.map((tile) => [tile.label, tile.active])).toEqual([
+      ["Paintings", false],
+      ["Prints", true],
+    ]);
+
+    services.catalogue.listArtworkObjectTypes.mockRejectedValue(new Error("down"));
+    expect((await composeArtworksPage(services, {})).objectTypeTiles).toEqual([]);
+  });
 });

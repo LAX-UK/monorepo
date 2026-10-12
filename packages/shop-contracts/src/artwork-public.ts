@@ -111,6 +111,20 @@ export const PublicArtworkDetailSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/** Medium tiles: object types with published works on a channel, newest cover first. */
+export const PublicArtworkObjectTypeFacetSchema = Type.Object(
+  {
+    objectType: PublicArtworkObjectTypeSchema,
+    artworkCount: Type.Integer({ minimum: 1 }),
+    coverImageUrl: Type.Union([Type.String({ minLength: 1, maxLength: 2048 }), Type.Null()]),
+  },
+  { additionalProperties: false },
+);
+
+export const PublicArtworkObjectTypeFacetListSchema = Type.Object({
+  items: Type.Array(PublicArtworkObjectTypeFacetSchema),
+});
+
 export const ShopApiErrorBodySchema = Type.Object({
   code: Type.String(),
   message: Type.String(),
@@ -120,3 +134,5 @@ export const ShopApiErrorBodySchema = Type.Object({
 export type PublicArtworkSummary = typeof PublicArtworkSummarySchema.static;
 export type PublicArtworkList = typeof PublicArtworkListSchema.static;
 export type PublicArtworkDetail = typeof PublicArtworkDetailSchema.static;
+export type PublicArtworkObjectTypeFacet = typeof PublicArtworkObjectTypeFacetSchema.static;
+export type PublicArtworkObjectTypeFacetList = typeof PublicArtworkObjectTypeFacetListSchema.static;

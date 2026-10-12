@@ -6,12 +6,14 @@ import {
   type PublicArtistList,
   type PublicArtworkDetail,
   type PublicArtworkList,
+  type PublicArtworkObjectTypeFacetList,
   type PublicCategoryList,
   ShopContractParseError,
   parsePublicArtistDetail,
   parsePublicArtistList,
   parsePublicArtworkDetail,
   parsePublicArtworkList,
+  parsePublicArtworkObjectTypeFacets,
   parsePublicCategoryList,
 } from "@auction/shop-contracts";
 
@@ -114,6 +116,16 @@ export async function fetchArtChannelArtworkBySlug(
     throw new ArtApiBffError("upstream", `Art artwork request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicArtworkDetail, "artwork detail");
+}
+
+export async function fetchArtChannelArtworkObjectTypes(): Promise<PublicArtworkObjectTypeFacetList> {
+  const response = await artCatalogueFetch(
+    `/v1/artwork-object-types?salesChannel=${ART_SALES_CHANNEL}`,
+  );
+  if (!response.ok) {
+    throw new ArtApiBffError("upstream", `Art object types request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicArtworkObjectTypeFacets, "artwork object types");
 }
 
 export async function fetchArtChannelCategories(input?: {

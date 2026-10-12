@@ -1,8 +1,12 @@
-import {
-  type CatalogLayoutView,
-  VIEW_COOKIE_MAX_AGE_SEC,
-  viewCookieName,
-} from "@/lib/preferences/view-cookie";
+import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+
+export {
+  type BuildViewQueryParamsOptions,
+  VIEW_CHANGE_CLEAR_PARAMS,
+  buildViewHref,
+  buildViewQueryParams,
+  writeViewPreferenceCookie,
+} from "@auction/marketing-ui";
 
 /**
  * Marketing layout view navigation contract (performance + SEO + SOLID):
@@ -31,59 +35,6 @@ import {
  * **Pattern B** — inline hook when the presenter is already `"use client"`:
  * `const view = useUrlLayoutView("grid", initialView);`
  */
-
-/** Query keys cleared when layout view changes (pagination resets). */
-export const VIEW_CHANGE_CLEAR_PARAMS = ["page", "offset"] as const;
-
-export type BuildViewQueryParamsOptions = {
-  /** Param name (always `view` for marketing catalogues). */
-  param?: string;
-  /** Omit the param from the URL when it matches this value (cleaner canonical URLs). */
-  defaultView: string;
-  /** Extra params to remove on view change. */
-  clearParams?: readonly string[];
-};
-
-/**
- * Build updated search params for a layout view change.
- * Pure helper — shared by catalog and sales view switchers.
- */
-export function buildViewQueryParams(
-  current: URLSearchParams | string,
-  nextView: string,
-  options: BuildViewQueryParamsOptions,
-): URLSearchParams {
-  const params = new URLSearchParams(typeof current === "string" ? current : current.toString());
-  const param = options.param ?? "view";
-
-  if (nextView === options.defaultView) params.delete(param);
-  else params.set(param, nextView);
-
-  for (const key of options.clearParams ?? VIEW_CHANGE_CLEAR_PARAMS) {
-    params.delete(key);
-  }
-
-  return params;
-}
-
-export function buildViewHref(
-  pathname: string,
-  current: URLSearchParams | string,
-  nextView: string,
-  options: BuildViewQueryParamsOptions,
-): string {
-  const qs = buildViewQueryParams(current, nextView, options).toString();
-  return qs ? `${pathname}?${qs}` : pathname;
-}
-
-/** Persist per-route layout preference (client-only). */
-export function writeViewPreferenceCookie(
-  routeKey: string,
-  view: CatalogLayoutView | string,
-): void {
-  const secure = typeof window !== "undefined" && window.location.protocol === "https:";
-  document.cookie = `${viewCookieName(routeKey)}=${view}; path=/; max-age=${VIEW_COOKIE_MAX_AGE_SEC}; SameSite=Lax${secure ? "; Secure" : ""}`;
-}
 
 /** Sales calendar stores `grid` in the sales cookie when calendar mode is active. */
 export function salesBrowseViewCookieValue(view: string): CatalogLayoutView {

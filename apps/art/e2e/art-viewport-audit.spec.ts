@@ -7,7 +7,17 @@ const viewports = [
   { width: 1440, height: 900 },
 ] as const;
 
-const routes = ["/", "/artworks", "/search?q=art"] as const;
+const routes = [
+  "/",
+  "/artworks",
+  "/artworks?view=list",
+  "/artworks/tidal-forms",
+  "/artists",
+  "/exhibitions",
+  "/visit",
+  "/how-to-buy",
+  "/search?q=art",
+] as const;
 
 test.describe("lax.art viewport audit @a11y", () => {
   for (const viewport of viewports) {

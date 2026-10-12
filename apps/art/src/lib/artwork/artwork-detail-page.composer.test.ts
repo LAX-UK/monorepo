@@ -45,6 +45,42 @@ describe("composeArtworkDetailPage", () => {
     ]);
   });
 
+  it("titles the related rail after where its works came from", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(
+      artworkDetail({ artistSlug: "ada", artistName: "Ada Lane" }),
+    );
+    services.catalogue.listArtworks.mockImplementation(async (query) =>
+      query.relatedTo
+        ? { items: [artworkSummary({ slug: "peer", artistSlug: "someone-else" })] }
+        : { items: [artworkSummary({ slug: "own", artistSlug: "ada" })] },
+    );
+    const collection = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+    });
+    expect(collection.kind === "ok" && collection.vm.relatedSection).toEqual({
+      title: "More in this collection",
+      viewAllHref: "/artworks",
+      viewAllSrLabel: "artworks",
+    });
+
+    services.catalogue.listArtworks.mockImplementation(async (query) =>
+      query.relatedTo
+        ? { items: [] }
+        : { items: [artworkSummary({ slug: "own", artistSlug: "ada" })] },
+    );
+    const artistOnly = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+    });
+    expect(artistOnly.kind === "ok" && artistOnly.vm.relatedSection).toEqual({
+      title: "More by Ada Lane",
+      viewAllHref: "/artists/ada",
+      viewAllSrLabel: "works by Ada Lane",
+    });
+  });
+
   it("still renders when related reads fail", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtwork.mockResolvedValue(artworkDetail());

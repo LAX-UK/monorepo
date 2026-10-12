@@ -1,6 +1,7 @@
 import {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
+  PublicArtworkObjectTypeFacetListSchema,
   PublicArtworkObjectTypeSchema,
   PublicArtworkRaritySchema,
   PublicArtworkSaleStateSchema,
@@ -96,6 +97,24 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         ...(Object.keys(filter).length > 0 ? { filter } : {}),
       };
       return presentArtworkList(await catalogue.listPublicArtworks(input));
+    },
+  );
+
+  app.get(
+    "/v1/artwork-object-types",
+    {
+      schema: {
+        tags: ["catalogue"],
+        querystring: Type.Object({ salesChannel: PublicArtworkSalesChannelSchema }),
+        response: {
+          200: PublicArtworkObjectTypeFacetListSchema,
+          400: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      const { salesChannel } = request.query as { salesChannel: "shop" | "art" };
+      return { items: await catalogue.listArtworkObjectTypeFacets(salesChannel) };
     },
   );
 

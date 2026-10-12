@@ -16,6 +16,10 @@ import {
   countActiveArtworkCatalogueFilters,
 } from "@/lib/catalogue/artwork-catalogue-params";
 import {
+  SHOP_ARTWORKS_VIEW_ROUTE_KEY,
+  SHOP_CATALOGUE_VIEW_MODES,
+} from "@/lib/catalogue/catalogue-view";
+import {
   MARKETING_CATALOG_FILTER_GRID,
   MARKETING_CATALOG_FILTER_RAIL_SLOT,
   MARKETING_CATALOG_MAIN_COLUMN,
@@ -23,8 +27,10 @@ import {
 } from "@auction/branding";
 import {
   CatalogActiveFilterChips,
+  type CatalogLayoutView,
   MARKETING_FILTER_RAIL_IN_SHEET,
   MARKETING_FILTER_RAIL_STICKY,
+  MarketingCatalogViewSwitcher,
   MarketingFilterSheet,
   MarketingFilterTrigger,
   MarketingListToolbar,
@@ -45,14 +51,20 @@ type Props = {
   resultCount: number;
   categories: CatalogueFilterOption[];
   artists: CatalogueFilterOption[];
+  /** Server-resolved layout; the switcher keeps it in sync with `?view=`. */
+  view: CatalogLayoutView;
   children: ReactNode;
 };
+
+/** Cursor pagination survives a layout switch — the page itself does not change. */
+const KEEP_CURSOR: readonly string[] = [];
 
 export function ArtworkCatalogueBrowse({
   state,
   resultCount,
   categories,
   artists,
+  view,
   children,
 }: Props) {
   const router = useRouter();
@@ -138,6 +150,15 @@ export function ArtworkCatalogueBrowse({
           countLabel={countLabel}
           sort={sortControl}
           filters={searchControl}
+          stackTrailingOnMobile
+          trailing={
+            <MarketingCatalogViewSwitcher
+              routeKey={SHOP_ARTWORKS_VIEW_ROUTE_KEY}
+              value={view}
+              modes={SHOP_CATALOGUE_VIEW_MODES}
+              clearParams={KEEP_CURSOR}
+            />
+          }
           mobileFilterTrigger={
             <MarketingFilterSheet
               open={sheetOpen}

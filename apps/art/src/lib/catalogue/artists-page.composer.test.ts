@@ -31,12 +31,44 @@ describe("composeArtistsPage", () => {
     expect(vm).toMatchObject({ letter: "F", nextPageHref: null });
   });
 
+  it("adds the curated featured strip on the unfiltered first page only", async () => {
+    const { catalogue } = fakeArtServices();
+    catalogue.listArtists.mockImplementation(async (query) => ({
+      items: [artistSummary({ slug: query.placement ? "featured" : "listed" })],
+    }));
+
+    const first = await composeArtistsPage(catalogue, {});
+    expect(catalogue.listArtists).toHaveBeenCalledWith({
+      limit: 6,
+      placement: "featured_artists",
+    });
+    expect(first.featured.map((card) => card.slug)).toEqual(["featured"]);
+    expect(first.cards.map((card) => card.slug)).toEqual(["listed"]);
+
+    catalogue.listArtists.mockClear();
+    const paged = await composeArtistsPage(catalogue, { cursor: "c1" });
+    expect(paged.featured).toEqual([]);
+    expect(catalogue.listArtists).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the directory when the featured read fails", async () => {
+    const { catalogue } = fakeArtServices();
+    catalogue.listArtists.mockImplementation(async (query) => {
+      if (query.placement) throw new Error("down");
+      return { items: [artistSummary()] };
+    });
+    const vm = await composeArtistsPage(catalogue, {});
+    expect(vm).toMatchObject({ featured: [], failed: false });
+    expect(vm.cards).toHaveLength(1);
+  });
+
   it("reports failure without throwing", async () => {
     const { catalogue } = fakeArtServices();
     catalogue.listArtists.mockRejectedValue(new Error("down"));
     expect(await composeArtistsPage(catalogue, { letter: "z" })).toEqual({
       letter: "Z",
       cards: [],
+      featured: [],
       nextPageHref: null,
       failed: true,
     });

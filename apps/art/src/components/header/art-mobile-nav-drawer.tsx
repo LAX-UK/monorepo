@@ -15,8 +15,7 @@ import Link from "next/link";
 
 /**
  * Art's primary nav is flat, so it renders in `topSlot` rather than as accordion sections.
- * The theme row lives there too: the shared drawer always renders its sections `<nav>` after
- * `themeSlot`, which would leave an empty gap between the theme row and the menu.
+ * The theme row lives there too, so it sits directly above the flat menu.
  */
 const NO_SECTIONS: readonly MarketingMegaNavSection[] = [];
 
