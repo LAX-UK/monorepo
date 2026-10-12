@@ -30,10 +30,13 @@ Complete browser auth while the **London Art Test** account is selected in the D
 From monorepo root, using the **Art account** restricted key (not Bid’s):
 
 ```bash
-export LAX_ART_TEST_STRIPE_SECRET_KEY='sk_test_…'   # London Art Test only
-export STRIPE_SHOP_PUBLISHABLE_KEY='pk_test_…'      # same account
+cp scripts/ci/london-art-test-stripe.env.example .local/london-art-test-stripe.env
+# Edit .local/london-art-test-stripe.env with sk_test / pk_test from London Art Test sandbox.
+
+export LAX_ART_TEST_STRIPE_ENV_FILE=.local/london-art-test-stripe.env
 export UPDATE_GITHUB_SECRETS=1
 
+node scripts/ci/provision-lax-art-test-stripe.mjs --validate-only
 node scripts/ci/provision-lax-art-test-stripe.mjs
 ```
 

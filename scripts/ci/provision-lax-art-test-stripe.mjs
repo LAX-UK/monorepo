@@ -14,6 +14,7 @@
  *     node scripts/ci/provision-lax-art-test-stripe.mjs
  */
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 const SHOP_HOST = process.env.SHOP_STRIPE_WEBHOOK_HOST ?? "https://test-shop.lax.bid";
 const PAYMENT_URL = `${SHOP_HOST}/webhooks/stripe`;
@@ -33,10 +34,38 @@ const PAYMENT_EVENTS = [
 
 const CONNECT_EVENTS = ["account.updated"];
 
-const secretKey = process.env.LAX_ART_TEST_STRIPE_SECRET_KEY?.trim();
+/** Bid test sandbox key from Stripe CLI default profile (same platform, other sandbox). */
+const BID_SANDBOX_TEST_KEY_PREFIX = "sk_test_51TU4J13Bcac3pHk5";
+
+function loadSecretKey() {
+  const fromEnv = process.env.LAX_ART_TEST_STRIPE_SECRET_KEY?.trim();
+  if (fromEnv) return fromEnv;
+  const envFile = process.env.LAX_ART_TEST_STRIPE_ENV_FILE?.trim();
+  if (envFile) {
+    const text = readFileSync(envFile, "utf8");
+    for (const line of text.split("\n")) {
+      const m = line.match(/^\s*LAX_ART_TEST_STRIPE_SECRET_KEY\s*=\s*(.+?)\s*$/);
+      if (m?.[1]) return m[1].replace(/^["']|["']$/g, "");
+    }
+  }
+  return undefined;
+}
+
+const validateOnly = process.argv.includes("--validate-only");
+const secretKey = loadSecretKey();
 if (!secretKey?.startsWith("sk_test_")) {
   console.error(
-    "Set LAX_ART_TEST_STRIPE_SECRET_KEY to a test secret key (sk_test_…) for the London Art Test account.",
+    "Set LAX_ART_TEST_STRIPE_SECRET_KEY (or LAX_ART_TEST_STRIPE_ENV_FILE pointing at .local/london-art-test-stripe.env).",
+  );
+  console.error(
+    "Create the restricted key in Dashboard while **London Art Test** sandbox is selected (not LAX LTD sandbox).",
+  );
+  process.exit(1);
+}
+if (secretKey.startsWith(BID_SANDBOX_TEST_KEY_PREFIX)) {
+  console.error(
+    "This sk_test matches the Bid sandbox (London Auction Xchange LTD sandbox). " +
+      "Switch to **London Art Test** in Switch to sandbox, then create a new restricted key.",
   );
   process.exit(1);
 }
@@ -117,13 +146,20 @@ async function main() {
   const account = await stripeGet("/account");
   const display =
     account.settings?.dashboard?.display_name ?? account.business_profile?.name ?? account.id;
-  console.log(`Stripe account: ${account.id} (${display})`);
-  if (account.id === "acct_1TU4J13Bcac3pHk5") {
-    console.error(
-      "This key belongs to the Bid sandbox (London Auction Xchange LTD). " +
-        "Switch Stripe CLI/Dashboard to the London Art Test account and use its sk_test_…",
-    );
-    process.exit(1);
+  console.log(`Stripe platform account: ${account.id} (dashboard: ${display})`);
+  console.log(
+    "Sandbox keys can share one platform account id; this script rejects only the known Bid sandbox sk_test prefix.",
+  );
+
+  if (validateOnly) {
+    const listed = await stripeGet("/webhook_endpoints", { limit: 100 });
+    const endpoints = listed.data ?? [];
+    console.log(`Webhook endpoints visible with this key: ${endpoints.length}`);
+    for (const url of [PAYMENT_URL, CONNECT_URL]) {
+      const hit = findEndpoint(endpoints, url);
+      console.log(hit ? `OK  ${url} (${hit.id})` : `MISS ${url}`);
+    }
+    return;
   }
 
   const payment = await ensureWebhook(PAYMENT_URL, PAYMENT_EVENTS);
