@@ -15,6 +15,7 @@ const source = join(repoRoot, "packages/branding/public/favicons");
 const targets = [
   join(repoRoot, "apps/shop/public/favicons"),
   join(repoRoot, "apps/shop-admin/public/favicons"),
+  join(repoRoot, "apps/art/public/favicons"),
   join(repoRoot, "packages/auth/src/hosted-auth/assets/favicons"),
 ];
 
