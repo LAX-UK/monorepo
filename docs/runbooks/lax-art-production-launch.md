@@ -1,6 +1,6 @@
 # lax.art production launch plan
 
-This runbook is the production cutover checklist for **lax.art** alongside the existing Shop stack. Test continues to use the Bid Stripe sandbox (`STRIPE_SHOP_CONNECT_PLATFORM_KEY=bid_sandbox`) until this plan is executed.
+This runbook is the production cutover checklist for **lax.art** alongside the existing Shop stack. Test runs Shop and lax.art on the **London Art Test** Stripe sandbox (`STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art`), separate from Bid's sandbox ([shop-stripe-setup.md](./shop-stripe-setup.md)).
 
 ## Preconditions
 
@@ -14,14 +14,14 @@ Production uses a dedicated LAX Art Stripe platform account, not the Bid auction
 
 | Secret / var | Action |
 | --- | --- |
-| `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` (Shop) | Replace with LAX Art platform keys in prod GitHub secrets |
-| `STRIPE_SHOP_SECRET_KEY` | Same LAX Art secret key as Shop checkout + Connect |
+| `STRIPE_SHOP_SECRET_KEY` | LAX Art live secret key (Shop checkout + Connect) |
+| `STRIPE_SHOP_PUBLISHABLE_KEY` | LAX Art live publishable key (embedded Connect onboarding) |
 | `STRIPE_SHOP_WEBHOOK_SECRET` | New endpoint on `https://shop.lax.art/webhooks/stripe` (or prod Shop hostname) |
 | `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET` | New Connect endpoint on `https://shop.lax.art/webhooks/stripe/connect` (`account.updated`) |
 | `STRIPE_SHOP_CONNECT_PLATFORM_KEY` | Set to `lax_art` (prod enum) in Terraform |
 | Bid `STRIPE_*` keys | Unchanged on auction API; do not mix with Shop/Art |
 
-**Payee migration:** Connected accounts cannot move between Stripe platforms. Every payee who onboarded on test (Bid sandbox) must complete Connect onboarding again on production LAX Art. Document this in client comms (D38).
+**Payee migration:** Connected accounts cannot move between Stripe platforms. Every payee who onboarded on test (London Art Test sandbox) must complete Connect onboarding again on production LAX Art. Document this in client comms (D38).
 
 **Order of operations:** deploy shop-api with new keys and webhook secrets **before** enabling `SHOP_CONNECT_TRANSFERS_ENABLED` or flipping merchandise/originals flags.
 

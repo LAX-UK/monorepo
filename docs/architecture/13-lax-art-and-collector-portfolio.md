@@ -83,11 +83,11 @@ Exactly **two** Stripe platform accounts:
 1. **LAX Bid** — `apps/api` payments and Bid seller Connect.
 2. **LAX Art** — `shop-api` Checkout, Invoicing, refunds, and payee Connect for both lax.art and shop.lax.art.
 
-A person may have at most **one Connect account per Stripe platform**. Test may use Bid's sandbox keys until account 2 exists (`STRIPE_SHOP_CONNECT_PLATFORM_KEY=bid_sandbox`); production Connect for LAX Art must not go live on the shared sandbox account (connected accounts cannot migrate between platforms), and `shop-api` enforces `lax_art` when `APP_ENV=production`.
+A person may have at most **one Connect account per Stripe platform**. Until account 2 exists, test runs on the separate **London Art Test** sandbox (`STRIPE_SHOP_CONNECT_PLATFORM_KEY=lax_art`); production Connect for LAX Art must not go live on the shared sandbox account (connected accounts cannot migrate between platforms), and `shop-api` enforces `lax_art` when `APP_ENV=production`.
 
 | `shop-api` setting | Purpose |
 | --- | --- |
-| `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` | LAX Art platform keys (Bid sandbox keys on test until account 2 exists) |
+| `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` | LAX Art platform keys (London Art Test sandbox keys on test until account 2 exists) |
 | `STRIPE_SHOP_CONNECT_PLATFORM_KEY` | `bid_sandbox` or `lax_art`; part of every Connect row and transfer idempotency key |
 | `STRIPE_SHOP_CONNECT_WEBHOOK_SECRET` | Secret of the **Connect** webhook endpoint `/webhooks/stripe/connect` (`account.updated`) |
 | `SHOP_CONNECT_TRANSFERS_ENABLED` | Turns on automatic transfers of `due` payouts to ready accounts |
