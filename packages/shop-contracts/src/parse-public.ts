@@ -37,6 +37,10 @@ import {
   OrderSummarySchema,
 } from "./commerce-public.js";
 import {
+  type GeneralEnquiryRow,
+  PortalGeneralEnquiriesResponseSchema,
+} from "./editorial-public.js";
+import {
   type PublicMerchandiseProductDetail,
   PublicMerchandiseProductDetailSchema,
   type PublicMerchandiseProductList,
@@ -293,6 +297,13 @@ export function parsePortalPayeeConnectSession(value: unknown): { clientSecret: 
 export function parsePortalEnquiries(value: unknown): PortalEnquiry[] {
   if (!Value.Check(PortalEnquiriesResponseSchema, value)) {
     throw new ShopContractParseError("Invalid portal enquiries payload");
+  }
+  return value.items;
+}
+
+export function parsePortalGeneralEnquiries(value: unknown): GeneralEnquiryRow[] {
+  if (!Value.Check(PortalGeneralEnquiriesResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal general enquiries payload");
   }
   return value.items;
 }

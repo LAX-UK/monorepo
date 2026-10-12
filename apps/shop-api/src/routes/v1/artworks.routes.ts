@@ -1,6 +1,8 @@
 import {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
+  PublicArtworkObjectTypeSchema,
+  PublicArtworkRaritySchema,
   PublicArtworkSaleStateSchema,
   PublicArtworkSalesChannelSchema,
   PublicArtworkSortSchema,
@@ -21,6 +23,9 @@ const ListQuerySchema = Type.Object({
   ),
   categorySlug: Type.Optional(Type.String({ minLength: 1 })),
   artistSlug: Type.Optional(Type.String({ minLength: 1 })),
+  relatedTo: Type.Optional(Type.String({ minLength: 1 })),
+  objectType: Type.Optional(PublicArtworkObjectTypeSchema),
+  rarity: Type.Optional(PublicArtworkRaritySchema),
   salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
   saleState: Type.Optional(PublicArtworkSaleStateSchema),
   editionEligible: Type.Optional(Type.Boolean()),
@@ -51,6 +56,15 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         placement?: "featured_originals" | "featured_prints";
         categorySlug?: string;
         artistSlug?: string;
+        relatedTo?: string;
+        objectType?:
+          | "painting"
+          | "work_on_paper"
+          | "sculpture"
+          | "photography"
+          | "print"
+          | "mixed_media";
+        rarity?: "unique" | "limited_edition" | "open_edition";
         salesChannel?: "shop" | "art";
         saleState?: "for_sale" | "price_on_application" | "sold";
         editionEligible?: boolean;
@@ -64,6 +78,9 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         ...(query.placement !== undefined ? { placement: query.placement } : {}),
         ...(query.categorySlug !== undefined ? { categorySlug: query.categorySlug } : {}),
         ...(query.artistSlug !== undefined ? { artistSlug: query.artistSlug } : {}),
+        ...(query.relatedTo !== undefined ? { relatedToSlug: query.relatedTo } : {}),
+        ...(query.objectType !== undefined ? { objectType: query.objectType } : {}),
+        ...(query.rarity !== undefined ? { rarity: query.rarity } : {}),
         ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
         ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
         ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),

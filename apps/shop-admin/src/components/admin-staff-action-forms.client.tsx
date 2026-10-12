@@ -6,6 +6,7 @@ import {
   adminFormLabelClass,
   adminFormSectionClass,
 } from "@/components/admin-mutation-feedback";
+import { MediaUploadField } from "@/components/media-upload-field";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import { ARTWORK_MEDIUM_MAX_LENGTH, buildImportArtworkInput } from "@/lib/import-artwork-form";
 import {
@@ -819,6 +820,8 @@ export function ImportArtworkForm() {
   const [artistSlug, setArtistSlug] = useState("");
   const [artistDisplayName, setArtistDisplayName] = useState("");
   const [eligible, setEligible] = useState(true);
+  const [primaryImageKey, setPrimaryImageKey] = useState<string | null>(null);
+  const [primaryImagePublicUrl, setPrimaryImagePublicUrl] = useState<string | null>(null);
 
   return (
     <FormSection title="Import artwork">
@@ -830,6 +833,17 @@ export function ImportArtworkForm() {
       />
       <PlainUuidField label="Slug" value={slug} disabled={pending} onChange={setSlug} />
       <PlainUuidField label="Title" value={title} disabled={pending} onChange={setTitle} />
+      <MediaUploadField
+        kind="artwork_image"
+        label="Primary image"
+        value={primaryImageKey}
+        publicUrl={primaryImagePublicUrl}
+        disabled={pending}
+        onChange={(key, url) => {
+          setPrimaryImageKey(key);
+          setPrimaryImagePublicUrl(url);
+        }}
+      />
       <label className={adminFormLabelClass}>
         <span className="text-neutral-600">Medium (optional; blank clears it)</span>
         <input
@@ -871,6 +885,7 @@ export function ImportArtworkForm() {
             slug,
             title,
             medium,
+            primaryImageUrl: primaryImagePublicUrl,
             artistSlug,
             artistDisplayName,
             eligibleForEditionAllocation: eligible,

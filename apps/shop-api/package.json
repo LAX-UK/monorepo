@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "seed:catalogue": "tsx src/scripts/seed-catalogue.ts",
+    "seed:editorial-showcase": "tsx src/scripts/seed-editorial-showcase.ts",
     "seed:acceptance-portal": "tsx src/scripts/seed-acceptance-portal.ts",
     "seed:acceptance-commerce": "tsx src/scripts/seed-acceptance-commerce.ts",
     "rehearse:staging-stripe-webhook": "tsx src/scripts/rehearse-staging-stripe-webhook.ts",
@@ -22,6 +23,7 @@
   },
   "dependencies": {
     "@auction/connect": "workspace:*",
+    "@auction/object-storage": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
@@ -44,6 +46,7 @@
     "pg": "^8.16.3",
     "pino": "^10.3.1",
     "prom-client": "^15.1.3",
+    "sharp": "^0.34.5",
     "stripe": "^18.4.0",
     "zod": "^3.24.1"
   },

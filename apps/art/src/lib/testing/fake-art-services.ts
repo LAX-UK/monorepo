@@ -34,8 +34,11 @@ export function artworkSummary(
     imageUrl: "/warm-basket.webp",
     saleState: "price_on_application",
     dimensions: "40 × 50 cm",
+    dimensionsCmDisplay: null,
     yearCreated: 2024,
     medium: "Oil on linen",
+    objectType: "painting",
+    rarity: "unique",
     salesChannel: "art",
     eligibleForEditionAllocation: false,
     printPricePence: null,
@@ -45,7 +48,18 @@ export function artworkSummary(
 }
 
 export function artworkDetail(overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDetail {
-  return { ...artworkSummary(), description: "Late afternoon light.", ...overrides };
+  return {
+    ...artworkSummary(),
+    description: "Late afternoon light.",
+    images: [],
+    heightCm: null,
+    widthCm: null,
+    depthCm: null,
+    hasCertificate: false,
+    provenance: null,
+    exhibitionHistory: null,
+    ...overrides,
+  };
 }
 
 export function artistSummary(overrides: Partial<PublicArtistSummary> = {}): PublicArtistSummary {
@@ -78,6 +92,7 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
     },
     portal: {
       listEnquiries: vi.fn().mockResolvedValue({ status: "empty" }),
+      listGeneralEnquiries: vi.fn().mockResolvedValue({ status: "empty" }),
       listCollection: vi.fn().mockResolvedValue({ status: "empty" }),
       loadPayeeConnect: vi.fn().mockResolvedValue({ status: "failed" }),
     },
@@ -85,6 +100,18 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
       laxAccountHref: vi.fn().mockReturnValue("https://account.example.test/account"),
       verifyEmailHref: vi.fn().mockReturnValue("http://localhost:3051/auth/verify-email"),
       payoutsEnabled: vi.fn().mockReturnValue(false),
+    },
+    editorial: {
+      enabled: vi.fn().mockReturnValue(false),
+      home: vi.fn().mockResolvedValue({ status: "disabled" }),
+      listExhibitions: vi.fn().mockResolvedValue({ status: "disabled" }),
+      getExhibition: vi.fn().mockResolvedValue({ status: "disabled" }),
+      listStories: vi.fn().mockResolvedValue({ status: "disabled" }),
+      getStory: vi.fn().mockResolvedValue({ status: "disabled" }),
+      getPage: vi.fn().mockResolvedValue({ status: "disabled" }),
+      listVenues: vi.fn().mockResolvedValue({ status: "disabled" }),
+      getVenue: vi.fn().mockResolvedValue({ status: "disabled" }),
+      preview: vi.fn().mockResolvedValue({ status: "disabled" }),
     },
   } satisfies ArtServices;
 }

@@ -104,8 +104,11 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       ],
       postLogoutRedirectUris: [
         "http://localhost:3050/",
+        "http://localhost:3050/signed-out",
         "https://lax.art/",
+        "https://lax.art/signed-out",
         "https://test-art.lax.bid/",
+        "https://test-art.lax.bid/signed-out",
       ],
       allowedScopes: [
         "openid",

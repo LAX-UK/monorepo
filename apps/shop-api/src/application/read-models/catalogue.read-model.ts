@@ -5,6 +5,23 @@ export type EditionAvailabilityReadModel = {
   editionsAvailable: number;
 };
 
+export type ArtworkImageReadModel = {
+  url: string;
+  alt: string | null;
+  caption: string | null;
+  blurDataUrl: string | null;
+};
+
+export type ArtworkObjectType =
+  | "painting"
+  | "work_on_paper"
+  | "sculpture"
+  | "photography"
+  | "print"
+  | "mixed_media";
+
+export type ArtworkRarity = "unique" | "limited_edition" | "open_edition";
+
 export type ArtworkSummaryReadModel = {
   slug: string;
   title: string;
@@ -13,8 +30,11 @@ export type ArtworkSummaryReadModel = {
   imageUrl: string | null;
   saleState: ArtworkSaleState;
   dimensions: string | null;
+  dimensionsCmDisplay: string | null;
   medium: string | null;
   yearCreated: number | null;
+  objectType: ArtworkObjectType | null;
+  rarity: ArtworkRarity | null;
   salesChannel: "shop" | "art";
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
@@ -23,6 +43,13 @@ export type ArtworkSummaryReadModel = {
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
   description: string | null;
+  images: ArtworkImageReadModel[];
+  heightCm: number | null;
+  widthCm: number | null;
+  depthCm: number | null;
+  hasCertificate: boolean;
+  provenance: string | null;
+  exhibitionHistory: string | null;
 };
 
 export type ArtistSummaryReadModel = {
@@ -35,6 +62,11 @@ export type ArtistSummaryReadModel = {
 
 export type ArtistDetailReadModel = ArtistSummaryReadModel & {
   bio: string | null;
+  shortBio: string | null;
+  heroUrl: string | null;
+  nationality: string | null;
+  birthYear: number | null;
+  deathYear: number | null;
 };
 
 export type CategorySummaryReadModel = {

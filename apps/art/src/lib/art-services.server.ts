@@ -10,11 +10,24 @@ import {
   fetchPortalCollection,
   fetchPortalEnquiries,
   fetchPortalFollowedArtists,
+  fetchPortalGeneralEnquiries,
   fetchPortalPayeeConnect,
   fetchPortalSavedArtworks,
 } from "@/lib/art-portal.server";
 import { isArtPayoutsEnabled } from "@/lib/art-runtime-flags";
 import { loadArtViewerState } from "@/lib/art-viewer-state.server";
+import {
+  artEditorialFeatureEnabled,
+  fetchEditorialExhibitionBySlug,
+  fetchEditorialExhibitions,
+  fetchEditorialHomePlacements,
+  fetchEditorialPageBySlug,
+  fetchEditorialPreview,
+  fetchEditorialStories,
+  fetchEditorialStoryBySlug,
+  fetchEditorialVenueBySlug,
+  fetchEditorialVenues,
+} from "@/lib/editorial/art-editorial.server";
 import {
   loadArtFollowedArtistSlugs,
   loadArtSavedArtworkSlugs,
@@ -23,6 +36,7 @@ import { laxAccountPortalHref } from "@/lib/lax-account-url";
 import type {
   ArtAccountConfigPort,
   ArtCataloguePort,
+  ArtEditorialPort,
   ArtFavoritesReadPort,
   ArtPortalReadPort,
   ArtViewerPort,
@@ -34,6 +48,7 @@ export type ArtServices = {
   favorites: ArtFavoritesReadPort;
   portal: ArtPortalReadPort;
   account: ArtAccountConfigPort;
+  editorial: ArtEditorialPort;
 };
 
 /** Composition root: binds page composers to the shop-api and art-identity adapters. */
@@ -54,6 +69,7 @@ export const artServices: ArtServices = {
   },
   portal: {
     listEnquiries: fetchPortalEnquiries,
+    listGeneralEnquiries: fetchPortalGeneralEnquiries,
     listCollection: fetchPortalCollection,
     loadPayeeConnect: fetchPortalPayeeConnect,
   },
@@ -61,5 +77,17 @@ export const artServices: ArtServices = {
     laxAccountHref: () => laxAccountPortalHref(),
     verifyEmailHref: () => artIdentityUrl("/auth/verify-email"),
     payoutsEnabled: isArtPayoutsEnabled,
+  },
+  editorial: {
+    enabled: artEditorialFeatureEnabled,
+    home: fetchEditorialHomePlacements,
+    listExhibitions: fetchEditorialExhibitions,
+    getExhibition: fetchEditorialExhibitionBySlug,
+    listStories: fetchEditorialStories,
+    getStory: fetchEditorialStoryBySlug,
+    getPage: fetchEditorialPageBySlug,
+    listVenues: fetchEditorialVenues,
+    getVenue: fetchEditorialVenueBySlug,
+    preview: fetchEditorialPreview,
   },
 };

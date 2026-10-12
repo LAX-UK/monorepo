@@ -4,6 +4,7 @@ export * from "./bid-user-profile.js";
 export * from "./shop-user-profile.js";
 export * from "./shop-session.js";
 export * from "./shop-commerce.js";
+export * from "./shop-editorial.js";
 export * from "./user-invitation.js";
 export * from "./lots.js";
 export * from "./lot-lifecycle-snapshot.js";

@@ -95,6 +95,15 @@ export const shopApiEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  SHOP_EDITORIAL_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /** HMAC secret for draft preview tokens (defaults to SHOP_API_BFF_TOKEN in non-production). */
+  SHOP_EDITORIAL_PREVIEW_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(32).optional(),
+  ),
   SHOP_VAT_STANDARD_RATE_BP: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : Number(val)),
     z.number().int().min(0).max(10_000).optional(),
@@ -121,6 +130,11 @@ export const shopApiEnvSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.string().optional(),
+  ),
+  /** Public CDN base for shop media keys (no trailing slash). */
+  SHOP_MEDIA_PUBLIC_BASE_URL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
   ),
 });
 
@@ -152,6 +166,11 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
     }
     if (parsed.data.SHOP_FAKE_CHECKOUT_ENABLED) {
       throw new Error("SHOP_FAKE_CHECKOUT_ENABLED must not be enabled in production");
+    }
+    if (parsed.data.SHOP_EDITORIAL_ENABLED && !parsed.data.SHOP_EDITORIAL_PREVIEW_SECRET) {
+      throw new Error(
+        "SHOP_EDITORIAL_PREVIEW_SECRET is required in production when SHOP_EDITORIAL_ENABLED=true",
+      );
     }
     if (
       resolveAppEnv(normalized) === "production" &&

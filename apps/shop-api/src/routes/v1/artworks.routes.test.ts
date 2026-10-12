@@ -2,48 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import { createShopApiApp } from "../../app.js";
 import { createListPublicArtworksHandler } from "../../application/handlers/list-public-artworks.handler.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
+import {
+  mockArtworkDetail,
+  mockArtworkSummary,
+} from "../../test-support/mock-catalogue-read-models.js";
 
 function createCatalogueDeps() {
   return createMinimalShopApiTestDeps({
     catalogue: {
       listPublicArtworks: async () => ({
-        items: [
-          {
-            slug: "demo",
-            title: "Demo",
-            artistName: "Artist",
-            artistSlug: "artist",
-            imageUrl: null,
-            saleState: "for_sale",
-            dimensions: null,
-            medium: null,
-            yearCreated: null,
-            salesChannel: "shop",
-            eligibleForEditionAllocation: true,
-            printPricePence: 12000,
-            availability: { totalEditions: 24, editionsAvailable: 4 },
-          },
-        ],
+        items: [mockArtworkSummary()],
       }),
-      getPublicArtwork: async (slug) =>
-        slug === "demo"
-          ? {
-              slug: "demo",
-              title: "Demo",
-              artistName: "Artist",
-              artistSlug: "artist",
-              description: null,
-              imageUrl: null,
-              saleState: "for_sale",
-              dimensions: null,
-              medium: null,
-              yearCreated: null,
-              salesChannel: "shop",
-              eligibleForEditionAllocation: true,
-              printPricePence: 12000,
-              availability: { totalEditions: 24, editionsAvailable: 4 },
-            }
-          : null,
+      getPublicArtwork: async (slug) => (slug === "demo" ? mockArtworkDetail() : null),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),

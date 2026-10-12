@@ -75,6 +75,25 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
     }),
   );
 
+  app.get("/commerce/me/general-enquiries", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/general-enquiries",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.post("/commerce/me/general-enquiries", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "POST",
+      path: "/v1/me/general-enquiries",
+      scopes: "shop.write",
+      body,
+      requireCsrf: true,
+    });
+  });
+
   app.get("/commerce/me/editions", (c) =>
     proxyAuthenticatedCommerce(c, deps, {
       method: "GET",

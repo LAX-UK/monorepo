@@ -3,9 +3,11 @@ import {
   shopArtist,
   shopArtwork,
   shopArtworkCategory,
+  shopArtworkImage,
   shopCategory,
   shopEdition,
   shopHomePlacement,
+  shopMediaAsset,
   shopParty,
 } from "@auction/db/schema";
 import { maxItemsForPlacement } from "@auction/shop-domain";
@@ -35,8 +37,10 @@ import type {
   ListPublicArtworksInput,
   ListPublicArtworksResult,
 } from "../application/ports/artwork-catalogue.reader.js";
+import type { ArtworkImageReadModel } from "../application/read-models/catalogue.read-model.js";
 import {
   type ArtworkCatalogueRow,
+  parseDbNumeric,
   toPublicArtworkDetail,
   toPublicArtworkSummary,
 } from "./map-public-artwork.js";
@@ -79,8 +83,16 @@ type SelectedArtworkRow = {
   primaryImageUrl: string | null;
   saleState: "for_sale" | "price_on_application" | "sold";
   dimensions: string | null;
+  heightCm: string | null;
+  widthCm: string | null;
+  depthCm: string | null;
   medium: string | null;
   yearCreated: number | null;
+  objectType: ArtworkCatalogueRow["objectType"];
+  rarity: ArtworkCatalogueRow["rarity"];
+  hasCertificate: boolean;
+  provenance: string | null;
+  exhibitionHistory: string | null;
   salesChannel: "shop" | "art";
   artistName: string;
   artistSlug: string;
@@ -90,9 +102,14 @@ type SelectedArtworkRow = {
   placementPosition?: number;
 };
 
+type ArtworkCatalogueRepositoryOptions = {
+  resolveMediaUrl: (value: string | null | undefined) => string | null;
+};
+
 function mapRow(
   row: SelectedArtworkRow,
   editionCounts: Map<string, EditionCounts>,
+  images: ArtworkImageReadModel[] = [],
 ): ArtworkCatalogueRow {
   const counts = editionCounts.get(row.artworkId) ?? { total: 0, available: 0 };
   return {
@@ -100,18 +117,57 @@ function mapRow(
     title: row.title,
     description: row.description,
     primaryImageUrl: row.primaryImageUrl,
+    images,
     artistName: row.artistName,
     artistSlug: row.artistSlug,
     saleState: row.saleState,
     dimensions: row.dimensions,
+    heightCm: parseDbNumeric(row.heightCm),
+    widthCm: parseDbNumeric(row.widthCm),
+    depthCm: parseDbNumeric(row.depthCm),
     medium: row.medium,
     yearCreated: row.yearCreated,
+    objectType: row.objectType,
+    rarity: row.rarity,
+    hasCertificate: row.hasCertificate,
+    provenance: row.provenance,
+    exhibitionHistory: row.exhibitionHistory,
     salesChannel: row.salesChannel,
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,
     totalEditionCount: counts.total,
     availableEditionCount: counts.available,
   };
+}
+
+async function loadArtworkImages(
+  db: Database,
+  artworkId: string,
+  resolveMediaUrl: ArtworkCatalogueRepositoryOptions["resolveMediaUrl"],
+): Promise<ArtworkImageReadModel[]> {
+  const rows = await db
+    .select({
+      mediaKey: shopArtworkImage.mediaKey,
+      alt: shopArtworkImage.alt,
+      caption: shopArtworkImage.caption,
+      blurDataUrl: shopMediaAsset.blurDataUrl,
+    })
+    .from(shopArtworkImage)
+    .leftJoin(shopMediaAsset, eq(shopArtworkImage.mediaKey, shopMediaAsset.key))
+    .where(eq(shopArtworkImage.artworkId, artworkId))
+    .orderBy(asc(shopArtworkImage.position));
+  return rows
+    .map((row) => {
+      const url = resolveMediaUrl(row.mediaKey);
+      if (!url) return null;
+      return {
+        url,
+        alt: row.alt,
+        caption: row.caption,
+        blurDataUrl: row.blurDataUrl,
+      };
+    })
+    .filter((row): row is ArtworkImageReadModel => row !== null);
 }
 
 function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefined): SQL[] {
@@ -152,6 +208,27 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
         isNotNull(shopArtwork.printPricePence),
         lte(shopArtwork.printPricePence, filter.maxPricePence),
       ) as SQL,
+    );
+  }
+  if (filter.objectType) {
+    conditions.push(eq(shopArtwork.objectType, filter.objectType));
+  }
+  if (filter.rarity) {
+    conditions.push(eq(shopArtwork.rarity, filter.rarity));
+  }
+  if (filter.relatedToSlug) {
+    conditions.push(
+      sql`${shopArtwork.id} IN (
+        SELECT ac2.artwork_id FROM shop_artwork_category ac2
+        WHERE ac2.category_id IN (
+          SELECT ac.category_id FROM shop_artwork_category ac
+          INNER JOIN shop_artwork anchor ON anchor.id = ac.artwork_id
+          WHERE anchor.slug = ${filter.relatedToSlug}
+        )
+        AND ac2.artwork_id <> (
+          SELECT id FROM shop_artwork WHERE slug = ${filter.relatedToSlug} LIMIT 1
+        )
+      )`,
     );
   }
   const textQuery = filter.q?.trim();
@@ -236,7 +313,13 @@ function nextCursorForRow(
   }
 }
 
-export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCatalogueReader {
+export function createDrizzleArtworkCatalogueRepository(
+  db: Database,
+  options: ArtworkCatalogueRepositoryOptions = {
+    resolveMediaUrl: (value) => value ?? null,
+  },
+): ArtworkCatalogueReader {
+  const { resolveMediaUrl } = options;
   return {
     async listPublicArtworks(input: ListPublicArtworksInput): Promise<ListPublicArtworksResult> {
       const filter = input.filter;
@@ -255,8 +338,16 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
         primaryImageUrl: shopArtwork.primaryImageUrl,
         saleState: shopArtwork.saleState,
         dimensions: shopArtwork.dimensions,
+        heightCm: shopArtwork.heightCm,
+        widthCm: shopArtwork.widthCm,
+        depthCm: shopArtwork.depthCm,
         medium: shopArtwork.medium,
         yearCreated: shopArtwork.yearCreated,
+        objectType: shopArtwork.objectType,
+        rarity: shopArtwork.rarity,
+        hasCertificate: shopArtwork.hasCertificate,
+        provenance: shopArtwork.provenance,
+        exhibitionHistory: shopArtwork.exhibitionHistory,
         salesChannel: shopArtwork.salesChannel,
         artistName: shopParty.displayName,
         artistSlug: shopArtist.slug,
@@ -374,8 +465,16 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
           primaryImageUrl: shopArtwork.primaryImageUrl,
           saleState: shopArtwork.saleState,
           dimensions: shopArtwork.dimensions,
+          heightCm: shopArtwork.heightCm,
+          widthCm: shopArtwork.widthCm,
+          depthCm: shopArtwork.depthCm,
           medium: shopArtwork.medium,
           yearCreated: shopArtwork.yearCreated,
+          objectType: shopArtwork.objectType,
+          rarity: shopArtwork.rarity,
+          hasCertificate: shopArtwork.hasCertificate,
+          provenance: shopArtwork.provenance,
+          exhibitionHistory: shopArtwork.exhibitionHistory,
           salesChannel: shopArtwork.salesChannel,
           artistName: shopParty.displayName,
           artistSlug: shopArtist.slug,
@@ -391,7 +490,10 @@ export function createDrizzleArtworkCatalogueRepository(db: Database): ArtworkCa
         return null;
       }
       const editionCounts = await editionCountsByArtworkId(db, [row.artworkId]);
-      return toPublicArtworkDetail(mapRow({ ...row, createdAt: new Date() }, editionCounts));
+      const images = await loadArtworkImages(db, row.artworkId, resolveMediaUrl);
+      return toPublicArtworkDetail(
+        mapRow({ ...row, createdAt: new Date() }, editionCounts, images),
+      );
     },
   };
 }

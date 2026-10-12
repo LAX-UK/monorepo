@@ -30,8 +30,11 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
     imageUrl: model.imageUrl,
     saleState: model.saleState,
     dimensions: model.dimensions,
+    dimensionsCmDisplay: model.dimensionsCmDisplay,
     medium: model.medium,
     yearCreated: model.yearCreated,
+    objectType: model.objectType,
+    rarity: model.rarity,
     salesChannel: model.salesChannel,
     eligibleForEditionAllocation: model.eligibleForEditionAllocation,
     printPricePence: model.printPricePence,
@@ -43,6 +46,13 @@ export function presentArtworkDetail(model: ArtworkDetailReadModel): PublicArtwo
   return {
     ...presentArtworkSummary(model),
     description: model.description,
+    images: model.images.map((image) => ({ ...image })),
+    heightCm: model.heightCm,
+    widthCm: model.widthCm,
+    depthCm: model.depthCm,
+    hasCertificate: model.hasCertificate,
+    provenance: model.provenance,
+    exhibitionHistory: model.exhibitionHistory,
   };
 }
 
@@ -68,6 +78,11 @@ export function presentArtistDetail(model: ArtistDetailReadModel): PublicArtistD
   return {
     ...presentArtistSummary(model),
     bio: model.bio,
+    shortBio: model.shortBio,
+    heroUrl: model.heroUrl,
+    nationality: model.nationality,
+    birthYear: model.birthYear,
+    deathYear: model.deathYear,
   };
 }
 

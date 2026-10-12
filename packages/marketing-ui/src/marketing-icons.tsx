@@ -13,6 +13,7 @@ import {
   type LucideProps,
   Menu,
   Moon,
+  Play,
   Search,
   ShoppingBag,
   Sun,
@@ -93,4 +94,8 @@ export function MarketingMoonIcon({ className, ...props }: MarketingIconProps) {
 
 export function MarketingUserIcon({ className, ...props }: MarketingIconProps) {
   return <User className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingPlayIcon({ className, ...props }: MarketingIconProps) {
+  return <Play className={cn("size-6", className)} aria-hidden {...props} />;
 }

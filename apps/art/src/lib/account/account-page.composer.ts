@@ -20,7 +20,7 @@ import type {
   ArtPortalReadPort,
   ArtViewerPort,
 } from "@/lib/ports";
-import type { PortalCollectionItem } from "@auction/shop-contracts";
+import type { GeneralEnquiryRow, PortalCollectionItem } from "@auction/shop-contracts";
 import type { ShopPortalFetchResult } from "@auction/shop-portal/portal";
 import {
   type PayoutAccountViewModel,
@@ -139,19 +139,45 @@ export function composeArtAccountFavoritesPage(
   });
 }
 
+export type ArtGeneralEnquiryRowVm = {
+  id: string;
+  topicLabel: string;
+  messagePreview: string;
+  createdAtLabel: string;
+  createdAtIso: string;
+};
+
 export type ArtAccountInquiriesVm = {
   enquiries: ArtAccountListState<PortalEnquiryRowViewModel>;
+  generalEnquiries: ArtAccountListState<ArtGeneralEnquiryRowVm>;
 };
+
+function buildGeneralEnquiryRows(items: readonly GeneralEnquiryRow[]): ArtGeneralEnquiryRowVm[] {
+  return items.map((row) => ({
+    id: row.enquiryId,
+    topicLabel: row.topic.replace(/_/g, " "),
+    messagePreview: row.message.length > 160 ? `${row.message.slice(0, 157)}…` : row.message,
+    createdAtLabel: formatShopDate(row.createdAt),
+    createdAtIso: row.createdAt,
+  }));
+}
 
 export function composeArtAccountInquiriesPage(
   services: AccountServices & { portal: ArtPortalReadPort },
 ): Promise<ArtAccountPageResult<ArtAccountInquiriesVm>> {
   const path = "/account/inquiries";
-  return gateAccountPage(services, path, async () => ({
-    enquiries: toAccountListState(await services.portal.listEnquiries(), path, (items) =>
-      buildPortalEnquiryListViewModel(items),
-    ),
-  }));
+  return gateAccountPage(services, path, async () => {
+    const [enquiries, generalEnquiries] = await Promise.all([
+      services.portal.listEnquiries(),
+      services.portal.listGeneralEnquiries(),
+    ]);
+    return {
+      enquiries: toAccountListState(enquiries, path, (items) =>
+        buildPortalEnquiryListViewModel(items),
+      ),
+      generalEnquiries: toAccountListState(generalEnquiries, path, buildGeneralEnquiryRows),
+    };
+  });
 }
 
 export type ArtCollectionRowVm = {

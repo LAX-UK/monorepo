@@ -1,4 +1,5 @@
 import type { ImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
+import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
 import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
 import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
@@ -54,4 +55,5 @@ export type AdminRoutesDeps = {
   originalSales: OriginalSaleWriter;
   linkArtistIdentity: ReturnType<typeof createLinkArtistIdentityHandler>;
   unlinkArtistIdentity: ReturnType<typeof createUnlinkArtistIdentityHandler>;
+  shopMediaUpload: ShopMediaUploadHandlers | null;
 };

@@ -83,7 +83,16 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Skeleton | `@auction/ui` | — | 29 | 1 (route skeletons) | Shop has local `shop-page-skeleton` / `shop-route-loading` |
 | DotStatusPill | `@auction/ui` | 10 | 32 | 1 | Registries emit tones only |
 | Sheet / Dialog | `@auction/ui` | Dialog 1 | Sheet 7, Dialog 18 | via `MarketingSideSheet` | Bid has product-specific sheets (iOS install, venue drawer, admin filters) |
-| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 1 (enquiry) | New in this pass; Shop/Bid candidates to adopt |
+| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 2 (artwork + general enquiry) | New in this pass; Shop/Bid candidates to adopt |
+| Pull quote | `@auction/marketing-ui` `MarketingPullQuote` | — | 1 (press) | 1 (editorial blocks) | Bid keeps local `pull-quote.tsx` until migrated |
+| Info strip | `@auction/marketing-ui` `MarketingInfoStrip` | — | — | 2 (editorial blocks, exhibition header) | Exhibition date/venue/hours row |
+| Hero | `@auction/marketing-ui` `MarketingHero` | — | 1 | 1 (home, editorial `home_hero` placement) | Art falls back to a text hero when the placement has no image |
+| Video poster | `@auction/marketing-ui` `MarketingVideoPoster` | — | — | 2 (editorial `video` block, story film) | 16:9 poster linking out in a new tab; no third-party iframe |
+| Alphabet filter | `@auction/marketing-ui` `MarketingAlphabetFilter` | — | — | 1 (artists A–Z) | Links (`?letter=x`) with `aria-current`, not buttons, so filters are crawlable and shareable |
+| Horizontal rail | `@auction/marketing-ui` `MarketingHorizontalRail` | 1 | 1 | 1 (editorial artwork rails, `arrows-progress` controls) | |
+| Mobile nav drawer | `@auction/marketing-ui` `MarketingMobileNavDrawer` | 1 | 1 | 1 (header below `lg`, with auth section) | Art puts flat links in the top slot; the shared drawer only supports accordion sections |
+| LAX wordmark | `@auction/marketing-ui` `LaxLogo` | 2 (via `ShopLaxLogo`) | 2 | 2 | `@auction/branding` ships canonical SVG path |
+| Account menu (guest + signed-in) | `@auction/marketing-ui` `MarketingGuestAccountMenu` / `MarketingAuthenticatedAccountMenu` | 2 (Shop-specific wrappers) | — | 1 | Art passes `ArtAuthLink` for OIDC entry |
 | Heart / save toggle | `@auction/marketing-ui` `MarketingHeartToggle` | — | — | 1 (artwork favorite) | Bid keeps local `watchlist-heart*` and `artist-watch-heart`; Shop has `artwork-notify-me-button` (different intent) |
 | Bottom tab bar | `@auction/marketing-ui` `MarketingBottomTabBar` | — | — | 1 (mobile nav) | Bid keeps local `layout/bottom-tab-bar` |
 | Card media / `MediaImage` | `@auction/marketing-ui` | 5 / 8 | — / 63 | 2 / 6 | |

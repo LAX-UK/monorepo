@@ -11,6 +11,8 @@ import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
+import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
+import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
@@ -26,6 +28,7 @@ import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.rout
 import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
 import { registerBasketRoutes } from "./routes/v1/basket.routes.js";
 import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
+import { registerEditorialRoutes } from "./routes/v1/editorial.routes.js";
 import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
 import { registerPortalConnectRoutes } from "./routes/v1/portal-connect.routes.js";
@@ -121,6 +124,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerOrderRoutes(app, options.deps.commerce);
   void registerCategoryRoutes(app, options.deps.catalogue);
   void registerArtistRoutes(app, options.deps.catalogue);
+  if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
+    void registerEditorialRoutes(app, options.deps.editorial);
+  }
   if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
     void registerMerchandiseRoutes(app, options.deps.merchandise);
   }
@@ -147,6 +153,10 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminPeopleRoutes(adminScope, options.deps.admin);
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
+        void registerAdminMediaRoutes(adminScope, options.deps.admin);
+        if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
+          void registerAdminEditorialRoutes(adminScope, options.deps.editorial);
+        }
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
           void registerAdminOperationsRoutes(adminScope, options.deps.admin);
         }

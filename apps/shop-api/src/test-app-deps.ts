@@ -22,6 +22,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_THIRD_PARTY_ENABLED: false,
       SHOP_ORIGINALS_ENABLED: false,
       SHOP_MERCHANDISE_ENABLED: false,
+      SHOP_EDITORIAL_ENABLED: false,
       SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,
       SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: 900,
       SHOP_OPS_FINANCE_CLI_ENABLED: false,
@@ -280,6 +281,7 @@ export function createMinimalShopApiTestDeps(
       unlinkArtistIdentity: async () => ({
         artistId: "00000000-0000-4000-8000-000000000020",
       }),
+      shopMediaUpload: null,
     },
     payeeConnect: {
       getClientConfig: () => ({ publishableKey: null, connectConfigured: false }),
@@ -305,6 +307,7 @@ export function createMinimalShopApiTestDeps(
       },
       syncAccount: async () => "ignored" as const,
     },
+    editorial: null,
     portal: {
       portalOwnership: {
         listOwnedEditions: async () => [],

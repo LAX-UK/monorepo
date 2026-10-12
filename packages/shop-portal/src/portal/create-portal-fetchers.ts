@@ -1,4 +1,5 @@
 import {
+  type GeneralEnquiryRow,
   type PortalCollectionItem,
   type PortalDocument,
   type PortalEdition,
@@ -18,6 +19,7 @@ import {
   parsePortalEditions,
   parsePortalEnquiries,
   parsePortalFollowedArtists,
+  parsePortalGeneralEnquiries,
   parsePortalPayeeConnectConfig,
   parsePortalPayeeConnectStatus,
   parsePortalPayouts,
@@ -161,6 +163,12 @@ export function createPortalFetchers(deps: {
     return fetchPortalList("/commerce/me/enquiries", parsePortalEnquiries);
   }
 
+  async function fetchPortalGeneralEnquiries(): Promise<
+    ShopPortalFetchResult<GeneralEnquiryRow[]>
+  > {
+    return fetchPortalList("/commerce/me/general-enquiries", parsePortalGeneralEnquiries);
+  }
+
   async function fetchPortalSavedArtworks() {
     return fetchPortalList("/commerce/me/favorites/artworks", parsePortalSavedArtworks);
   }
@@ -233,6 +241,7 @@ export function createPortalFetchers(deps: {
     fetchPortalEditions,
     fetchPortalCollection,
     fetchPortalEnquiries,
+    fetchPortalGeneralEnquiries,
     fetchPortalSavedArtworks,
     fetchPortalFollowedArtists,
     fetchPortalSaleAuthority,

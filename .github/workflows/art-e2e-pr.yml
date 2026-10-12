@@ -100,6 +100,9 @@ jobs:
       REQUIRE_EMAIL_VERIFICATION: "false"
       APP_ENV: development
       SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
+      SHOP_EDITORIAL_ENABLED: "true"
+      SHOP_EDITORIAL_PREVIEW_SECRET: ci-editorial-preview-secret-minimum-32-chars
+      ART_EDITORIAL_ENABLED: "true"
       # Payouts stay off so the flag-off journey (404) is exercised.
       SHOP_PAYOUTS_ENABLED: "false"
       PLAYWRIGHT_E2E: "1"

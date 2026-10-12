@@ -1,7 +1,16 @@
-import type { ArtworkCatalogueSort, ArtworkCatalogueType } from "./artwork-catalogue-params";
+import {
+  ARTWORK_OBJECT_TYPES,
+  ARTWORK_OBJECT_TYPE_LABELS,
+  ARTWORK_RARITIES,
+  ARTWORK_RARITY_LABELS,
+  type ArtworkCatalogueSort,
+  type ArtworkCatalogueType,
+} from "./artwork-catalogue-params";
 
 export const ARTWORK_FILTER_GROUPS = [
   { value: "type", title: "Artwork type" },
+  { value: "objectType", title: "Medium" },
+  { value: "rarity", title: "Rarity" },
   { value: "availability", title: "Availability" },
   { value: "category", title: "Category" },
   { value: "artist", title: "Artist" },
@@ -41,3 +50,13 @@ export const ARTWORK_SORT_OPTIONS: ReadonlyArray<{
   { value: "priceAsc", label: "Price (low–high)" },
   { value: "priceDesc", label: "Price (high–low)" },
 ];
+
+export const ARTWORK_OBJECT_TYPE_OPTIONS = ARTWORK_OBJECT_TYPES.map((value) => ({
+  value,
+  label: ARTWORK_OBJECT_TYPE_LABELS[value],
+}));
+
+export const ARTWORK_RARITY_OPTIONS = ARTWORK_RARITIES.map((value) => ({
+  value,
+  label: ARTWORK_RARITY_LABELS[value],
+}));

@@ -1,5 +1,4 @@
-import { cn } from "@auction/ui";
-import Image from "next/image";
+import { LaxLogo } from "@auction/marketing-ui";
 
 export const SHOP_LOGO_PATH = "/shop/lax-shop-logo.svg";
 
@@ -8,22 +7,7 @@ type ShopLaxLogoProps = {
   className?: string;
 };
 
-/** Shop-owned mark. Light-on-dark is the same asset inverted in CSS — no Bid lockup. */
+/** Shop-owned mark via shared {@link LaxLogo} (Shop asset path until unified CDN). */
 export function ShopLaxLogo({ variant = "header", className }: ShopLaxLogoProps) {
-  const width = variant === "footer" ? 313 : 201;
-  const height = variant === "footer" ? 60 : 44;
-
-  return (
-    <span className={cn("shop-logo", className)}>
-      <Image
-        src={SHOP_LOGO_PATH}
-        alt=""
-        width={width}
-        height={height}
-        priority={variant === "header"}
-        unoptimized
-        className="shop-logo__mark"
-      />
-    </span>
-  );
+  return <LaxLogo variant={variant} src={SHOP_LOGO_PATH} {...(className ? { className } : {})} />;
 }

@@ -6,3 +6,4 @@ export * from "./email.js";
 export * from "./site.js";
 export * from "./favicons.js";
 export * from "./tokens.js";
+export * from "./lax-logo-path.js";

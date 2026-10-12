@@ -1492,6 +1492,27 @@
       "when": 1793779200000,
       "tag": "0213_shop_favorites",
       "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1793865600000,
+      "tag": "0214_shop_media_asset",
+      "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1793952000000,
+      "tag": "0215_shop_catalogue_rich",
+      "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1794038400000,
+      "tag": "0216_shop_editorial",
+      "breakpoints": true
     }
   ]
 }

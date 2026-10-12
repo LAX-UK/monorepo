@@ -1,5 +1,10 @@
 import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
-import { artistHref, artworkHref } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import {
+  type CatalogueArtworkCardVm,
+  artistHref,
+  artworkHref,
+  buildCatalogueArtworkCards,
+} from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
@@ -12,7 +17,8 @@ import {
   isArtworkEnquiryAvailable,
   resolveArtworkPriceLabel,
 } from "@/lib/presenters/artwork-commerce.presenter";
-import type { PublicArtworkDetail } from "@auction/shop-contracts";
+import { type ArtworkSpecRow, buildArtworkSpecRows } from "@/lib/presenters/artwork-spec.presenter";
+import type { PublicArtworkDetail, PublicArtworkSummary } from "@auction/shop-contracts";
 
 export type ArtEnquiryContact = {
   name: string;
@@ -26,6 +32,8 @@ export type ArtworkEnquiryVm =
   | { kind: "account_unavailable"; message: string }
   | { kind: "ready"; contact: ArtEnquiryContact; autoOpen: boolean };
 
+export type ArtworkGalleryImageVm = { url: string; alt: string };
+
 export type ArtworkDetailVm = {
   slug: string;
   title: string;
@@ -34,9 +42,14 @@ export type ArtworkDetailVm = {
   artistHref: string;
   imageUrl: string | null;
   imageAlt: string;
+  galleryImages: ArtworkGalleryImageVm[];
   priceLabel: string;
   metaLine: string | null;
   description: string | null;
+  specs: ArtworkSpecRow[];
+  provenance: string | null;
+  exhibitionHistory: string | null;
+  relatedArtworks: CatalogueArtworkCardVm[];
   availability: ArtworkAvailabilityView;
   enquiry: ArtworkEnquiryVm;
   saved: boolean;
@@ -92,8 +105,14 @@ export async function composeArtworkDetailPage(
     await favoritesPromise;
     return { kind: "unavailable" };
   }
+  const relatedPromise =
+    artwork != null
+      ? loadRelatedArtworks(services.catalogue, artwork)
+      : Promise.resolve<PublicArtworkSummary[]>([]);
   const favorites = await favoritesPromise;
   if (!artwork) return { kind: "not_found" };
+  const relatedPage = await relatedPromise;
+  const galleryImages = buildGalleryImages(artwork);
 
   return {
     kind: "ok",
@@ -105,15 +124,60 @@ export async function composeArtworkDetailPage(
       artistHref: artistHref(artwork.artistSlug),
       imageUrl: artwork.imageUrl,
       imageAlt: `${artwork.title} by ${artwork.artistName}`,
+      galleryImages,
       priceLabel: resolveArtworkPriceLabel(artwork),
       metaLine: formatArtworkMetaLine(artwork),
       description: artwork.description,
+      specs: buildArtworkSpecRows(artwork),
+      provenance: artwork.provenance ?? null,
+      exhibitionHistory: artwork.exhibitionHistory ?? null,
+      relatedArtworks: buildCatalogueArtworkCards(relatedPage, favorites.savedArtworkSlugs),
       availability: presentArtworkAvailability(artwork),
       enquiry: resolveEnquiry(artwork, favorites.viewer, input.enquireRequested),
       saved: favorites.savedArtworkSlugs.has(artwork.slug),
       favoriteAuth: favorites.favoriteAuth,
     },
   };
+}
+
+export const RELATED_ARTWORKS_LIMIT = 4;
+
+/** Same-category works first (`relatedTo`), topped up with the artist's other works. */
+async function loadRelatedArtworks(
+  catalogue: ArtCataloguePort,
+  artwork: PublicArtworkDetail,
+): Promise<PublicArtworkSummary[]> {
+  const [byCategory, byArtist] = await Promise.all([
+    catalogue
+      .listArtworks({ relatedTo: artwork.slug, limit: RELATED_ARTWORKS_LIMIT + 1 })
+      .catch(() => ({ items: [] })),
+    catalogue
+      .listArtworks({ artistSlug: artwork.artistSlug, limit: RELATED_ARTWORKS_LIMIT + 1 })
+      .catch(() => ({ items: [] })),
+  ]);
+  const seen = new Set([artwork.slug]);
+  const related: PublicArtworkSummary[] = [];
+  for (const item of [...byCategory.items, ...byArtist.items]) {
+    if (seen.has(item.slug)) continue;
+    seen.add(item.slug);
+    related.push(item);
+    if (related.length === RELATED_ARTWORKS_LIMIT) break;
+  }
+  return related;
+}
+
+function buildGalleryImages(artwork: PublicArtworkDetail): ArtworkGalleryImageVm[] {
+  const fromList = (artwork.images ?? [])
+    .filter((image) => image.url)
+    .map((image) => ({
+      url: image.url,
+      alt: image.alt ?? `${artwork.title} by ${artwork.artistName}`,
+    }));
+  if (fromList.length > 0) return fromList;
+  if (artwork.imageUrl) {
+    return [{ url: artwork.imageUrl, alt: `${artwork.title} by ${artwork.artistName}` }];
+  }
+  return [];
 }
 
 export type ArtworkDetailMetadataVm =

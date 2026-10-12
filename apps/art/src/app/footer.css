@@ -1,0 +1,28 @@
+.art-footer__logo {
+  display: block;
+  line-height: 0;
+}
+
+.art-footer__logo img {
+  width: auto;
+  height: 3.75rem;
+  max-width: 19.5625rem;
+  object-fit: contain;
+}
+
+.art-header__logo {
+  display: block;
+  line-height: 0;
+}
+
+.art-header__logo img {
+  width: auto;
+  height: 2.75rem;
+  max-width: 12.5625rem;
+  object-fit: contain;
+}
+
+html.dark .shop-logo__mark,
+.shop-logo--inverted .shop-logo__mark {
+  filter: brightness(0) invert(1);
+}
