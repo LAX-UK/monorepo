@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 /**
  * Fail closed before Terraform apply when DOCR lacks immutable tags for every
- * component that shares TF_VAR_app_image_tag (api, ws, worker, web, migrate, clamav),
- * or for the components named with repeated --component flags.
+ * component that shares TF_VAR_app_image_tag (api, ws, worker, web, migrate),
+ * or for the components named with repeated --component flags. ClamAV is excluded:
+ * build-images only rebuilds it when it changes, and no environment deploys it from
+ * that tag (prod builds it from source; test has no clamav component).
  */
 import { digestForTag, listTags, waitForShaTag } from "./registry-tag-poll.mjs";
 
-const APP_IMAGE_COMPONENTS = ["api", "ws", "worker", "web", "migrate", "clamav"];
+const APP_IMAGE_COMPONENTS = ["api", "ws", "worker", "web", "migrate"];
 
 function parseArgs(argv) {
   let environment = "";

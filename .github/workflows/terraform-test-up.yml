@@ -45,7 +45,7 @@ on:
         required: false
         default: false
       app_image_tag:
-        description: Immutable monorepo SHA for web/api/ws/worker/migrate/clamav (defaults to live pinned web tag)
+        description: Immutable monorepo SHA for web/api/ws/worker/migrate (defaults to live pinned web tag)
         type: string
         required: false
       shop_admin_sha:
