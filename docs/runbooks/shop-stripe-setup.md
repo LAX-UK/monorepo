@@ -17,6 +17,9 @@ When moving to the dedicated Shop test account, rotate `STRIPE_SHOP_SECRET_KEY` 
 `STRIPE_SHOP_WEBHOOK_SECRET` in the GitHub `test` environment and re-apply ephemeral Terraform;
 no Bid webhook URLs change.
 
+**Interim (London Art Test org account):** step-by-step cutover from Bid sandbox while keeping Bid
+keys unchanged — [shop-art-stripe-test-account-cutover.md](./shop-art-stripe-test-account-cutover.md).
+
 ## Test environment
 
 ### 1. Stripe Dashboard (test mode)
