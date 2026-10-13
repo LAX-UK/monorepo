@@ -56,6 +56,20 @@ module "cloudflare_domain" {
   # whitelisted_bot_user_agents = toset(["Googlebot", "GPTBot", "MyCustomMonitor/1.0"])
 }
 
+# ATG White Label (auctions.lax.bid). Prod auth cookies are scoped to .lax.bid, so the hostname is
+# only published proxied through the cookie-shield Worker. Once main's host-only BFF sessions (D15)
+# reach prod the Worker becomes defence in depth. See auction docs/integrations/atg.md.
+module "atg_white_label" {
+  source                 = "../../modules/atg-white-label"
+  account_id             = var.cloudflare_account_id
+  zone_id                = module.cloudflare_domain.zone_id
+  zone_name              = local.zone_name
+  origin                 = "prod-whitelabel-3.globalauctionplatform.com"
+  acm_validation         = { name = "_7671667c6e95f0ecab75baae6e6be6c7.auctions", value = "_63ea60ce6ca7e4fef3535e32988bcf1d.wzccmgtwzk.acm-validations.aws" }
+  acm_validation_enabled = var.atg_acm_validation_enabled
+  enabled                = var.atg_white_label_enabled
+}
+
 module "media" {
   source               = "../../modules/digitalocean-spaces"
   bucket_name          = "lax-media"

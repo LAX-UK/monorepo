@@ -62,3 +62,13 @@ variable "container_registry_region" {
     error_message = "container_registry_region must be one of: nyc3, sfo3, ams3, sgp1, fra1."
   }
 }
+variable "atg_acm_validation_enabled" {
+  type        = bool
+  default     = false
+  description = "Create the DNS-only ACM validation CNAME ATG needs to issue the auctions.lax.bid certificate."
+}
+variable "atg_white_label_enabled" {
+  type        = bool
+  default     = false
+  description = "Publish auctions.lax.bid proxied through the atg-cookie-shield Worker. Needs a Cloudflare token with Workers Scripts and Workers Routes edit (see auction docs/integrations/atg.md)."
+}

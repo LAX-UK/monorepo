@@ -155,9 +155,15 @@ back to LAX bids, invoices or Xero in this release.
 | `ATG_POLL_INTERVAL_MS` | worker | `120000` | 30000–240000 (queue readiness goes stale after 5 minutes). |
 | `ATG_WHITE_LABEL_BASE_URL` | api | — | Link shown on the ATG tab. Production: `https://auctions.lax.bid` once the hostname is live (see below). |
 
-The worker also needs `S3_PUBLIC_BASE_URL` when enabled. Production values come from
-`auction-infra` (`terraform/ephemeral/prod`, variables `atg_*`). `terraform-apply-prod.yml`
-(on both `release` and `main`, since GitHub runs the copy on the dispatched branch) passes
+The worker also needs `S3_PUBLIC_BASE_URL` when enabled. Production values come from the
+`atg_*` Terraform variables in `terraform/ephemeral/prod`. "Terraform apply prod" runs the copy
+of the workflow on the dispatched branch, and the two branches read different Terraform:
+
+- dispatched from `release`: this repository's `infra/terraform` (ATG changes on this branch);
+- dispatched from `main`: `auction-infra` `main` (ATG changes in `auction-infra` #41).
+
+Both write the same state, so the two copies must stay identical. Until both are merged, an
+apply from the branch without the ATG changes removes them again. The workflow passes
 GitHub secrets `ATG_API_USERNAME` / `ATG_API_PASSWORD` and repository variables
 `ATG_SYNC_ENABLED`, `ATG_CLIENT_ID`, `ATG_PLATFORM_CODE`, `ATG_INCREMENT_SET_ID`,
 `ATG_DEFAULT_CATEGORY`, `ATG_LISTING_PRIVATE` and `ATG_WHITE_LABEL_BASE_URL` as
@@ -169,7 +175,7 @@ GitHub secrets `ATG_API_USERNAME` / `ATG_API_PASSWORD` and repository variables
 1. **Deploy dark.** Merge to `release` with `ATG_SYNC_ENABLED=false`. Migration 0132 runs in
    the migrate job; `db:roles` grants `worker_app` the two new tables. Check `/admin/sales/<id>/atg`
    shows "ATG sync is turned off".
-2. **Configure.** Merge the `auction-infra` change (branch `feat/atg-prod-env`). When ATG
+2. **Configure.** Merge `auction-infra` #41 (branch `feat/atg-prod-env`). When ATG
    supplies the hard-blocker answers (questions 1–4), set the GitHub secrets and repository
    variables above, keep `ATG_LISTING_PRIVATE` unset or `true`, set `ATG_SYNC_ENABLED=true`,
    and run "Terraform apply prod" for the ephemeral layer.
@@ -227,14 +233,18 @@ features. When `main` absorbs `release`:
 - `WORKER_FULL_TABLES` in `packages/db/src/migrate-roles.ts` must keep both ATG tables;
 - the sale detail `ATG` tab and `admin.ts` route mount may conflict with `main`'s admin changes;
 - `main`'s `terraform-apply-prod.yml` carries the same `TF_VAR_atg_*` block (branch
-  `docs/atg-release-parity`), so prod applies dispatched from either branch keep ATG settings.
+  `docs/atg-release-parity`), so prod applies dispatched from either branch keep ATG settings;
+- `release` mirrors the ATG Terraform and the cookie-shield Worker into its in-repo
+  `infra/` (`ephemeral/prod`, `persistent/prod`, `modules/atg-white-label`,
+  `infra/workers/atg-cookie-shield`). `main` has no `infra/` and reads `auction-infra`, which
+  carries the same files.
 
 These items are tracked in `docs/engineering/release-main-parity.md` on `main`.
 
 ## White Label hostname (`auctions.lax.bid`)
 
-`auction-infra` (`terraform/modules/atg-white-label`, used by `terraform/persistent/prod`)
-creates four resources behind two repository variables:
+`infra/terraform/modules/atg-white-label` (mirrored in `auction-infra`), used by
+`terraform/persistent/prod`, creates four resources behind two repository variables:
 
 | Variable | Creates |
 | --- | --- |
@@ -293,7 +303,8 @@ pointed straight at ATG:
 | C. Point `auctions.lax.bid` straight at ATG and accept the exposure | None | ATG receives LAX session cookies |
 | **D. Proxied `auctions.lax.bid` with a cookie-shield Worker** | Infra only | See below |
 
-**Decision: D.** The Worker (`auction-infra` `workers/atg-cookie-shield/shield.js`):
+**Decision: D.** The Worker (`infra/workers/atg-cookie-shield/shield.js`, mirrored in
+`auction-infra` `workers/`):
 
 - removes LAX cookies from every request before it reaches ATG;
 - drops ATG `Set-Cookie` headers with a LAX name and strips `Domain` from the rest, so ATG can
