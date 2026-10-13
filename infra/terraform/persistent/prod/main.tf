@@ -40,7 +40,7 @@ module "cloudflare_domain" {
   zone_name      = local.zone_name
   account_id     = var.cloudflare_account_id
   environment    = local.environment
-  security_level = "high"
+  security_level = "medium"
   subdomains     = local.subdomains
   # Include test hosts so one zone ruleset covers both envs (test stack does not create rulesets).
   auth_hosts = ["auth.lax.bid", "test-auth.lax.bid"]
