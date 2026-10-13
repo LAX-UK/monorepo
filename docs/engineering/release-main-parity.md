@@ -15,6 +15,7 @@ Main is the future source of truth. Release-only work is re-expressed in main’
 | Duplicate registration / resend for unverified email | `a63e645f`                                                  | Hosted sign-up (`sign-up-outcome.ts`) + hosted `/resend-verification`                                                                                                                                                       | Re-designed    | Success and existing-account outcomes are indistinguishable when verification is required (no enumeration)                                       |
 | Forgot-password Turnstile gating                     | `6f104296`, `00231d4a`                                      | Hosted recovery page `turnstileHost()`                                                                                                                                                                                      | Superseded     | Bid web no longer renders forgot-password; Identity owns the form                                                                                |
 | No default marketing footer tagline                  | `85ce35ba` (#459)                                           | `apps/web/src/components/layout/site-footer.tsx`                                                                                                                                                                            | Ported         | None                                                                                                                                             |
+| ATG White Label sync (GAP API)                       | `53170f2e` (`feat/atg-integration-release`, not yet merged) | Not yet on main. Port worker `integrations/atg/**`, `packages/queues` `atg-sync`, API `/admin/integrations/atg`, web sale **ATG** tab, migration (see below), `TF_VAR_atg_*` in `terraform-apply-prod.yml` (done)         | Pending        | Re-sync is tick-driven (no enqueue hooks in sale/lot services); must be re-expressed in main's layers, not cherry-picked                        |
 
 Terraform `variable` blocks for `strict_bid_eligibility_enabled`, `kyc_onboarding_enabled`, `full_buyer_onboarding_enabled`, and `marketing_prompts_enabled` live in the private `.infra-config` repo. In-repo wiring is workflows, env examples, `docker-compose.prod.yml`, and `turbo.json` only.
 
@@ -48,12 +49,31 @@ ledger. Production rows at `1788000004000`–`1788000007000` hold the release
 fail closed with "Migration history diverged" until a ledger-normalization step
 exists and has been rehearsed on a production snapshot.
 
+## ATG migration lineage
+
+Release adds `0132_atg_sync_links` (tables `atg_auction_link`, `atg_lot_link`; additive,
+`IF NOT EXISTS`) with journal `when` **`1788000007500`**. That sits after release `0131`
+(`1788000007000`) and before main's `0132_domain_event_delivery` (`1788000008000`), so it
+does not shadow any main migration under the "apply newer than last `created_at`" rule.
+
+Once it ships, the production ledger has one more release-only row. Main must:
+
+1. add the release SQL file **byte-identical** (so its hash matches the production row),
+   registered in `_journal.json` between main's `0131` and `0132` entries with the same
+   `when` (`1788000007500`) and a non-colliding tag;
+2. extend the ledger-normalization step above to expect and keep this row;
+3. keep `atg_auction_link` and `atg_lot_link` in `WORKER_FULL_TABLES`
+   (`packages/db/src/migrate-roles.ts`).
+
+The full integration record is `docs/integrations/atg.md` on `release`.
+
 ## Promotion checklist (main → release)
 
 1. Ledger normalization for the production database is implemented, reviewed,
    and rehearsed on a restored production snapshot (see above). Blocking.
 2. Every release-only commit since the last promotion has a row in the table
-   above (`git log --cherry-pick --right-only main...release`).
+   above (`git log --cherry-pick --right-only main...release`), and the ATG
+   migration lineage steps above are done.
 3. Test environment runs the candidate SHA on every component, with onboarding
    flags at their production values, and the hosted-login parity audit
    (`docs/runbooks/bid-hosted-login-parity-audit.md`) passes.
