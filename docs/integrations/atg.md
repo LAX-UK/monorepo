@@ -153,15 +153,16 @@ back to LAX bids, invoices or Xero in this release.
 | `ATG_APPROVE_BEFORE_PUBLISH` | worker | `false` | Call `ApproveAuction` before publishing. |
 | `ATG_TIMEZONE` | worker | `Europe/London` | IANA; must have a Windows mapping. |
 | `ATG_POLL_INTERVAL_MS` | worker | `120000` | 30000–240000 (queue readiness goes stale after 5 minutes). |
-| `ATG_WHITE_LABEL_BASE_URL` | api | — | Link shown on the ATG tab. |
+| `ATG_WHITE_LABEL_BASE_URL` | api | — | Link shown on the ATG tab. Production: `https://auctions.lax.bid` once the hostname is live (see below). |
 
 The worker also needs `S3_PUBLIC_BASE_URL` when enabled. Production values come from
 `auction-infra` (`terraform/ephemeral/prod`, variables `atg_*`). `terraform-apply-prod.yml`
 (on both `release` and `main`, since GitHub runs the copy on the dispatched branch) passes
 GitHub secrets `ATG_API_USERNAME` / `ATG_API_PASSWORD` and repository variables
 `ATG_SYNC_ENABLED`, `ATG_CLIENT_ID`, `ATG_PLATFORM_CODE`, `ATG_INCREMENT_SET_ID`,
-`ATG_DEFAULT_CATEGORY`, `ATG_LISTING_PRIVATE`, `ATG_WHITE_LABEL_BASE_URL` and
-`ATG_WHITE_LABEL_DNS_ENABLED` (persistent layer) as `TF_VAR_atg_*`.
+`ATG_DEFAULT_CATEGORY`, `ATG_LISTING_PRIVATE` and `ATG_WHITE_LABEL_BASE_URL` as
+`TF_VAR_atg_*`. Two more repository variables drive the persistent layer:
+`ATG_ACM_VALIDATION_ENABLED` and `ATG_WHITE_LABEL_ENABLED` (see "White Label hostname" below).
 
 ## Production runbook
 
@@ -183,9 +184,7 @@ GitHub secrets `ATG_API_USERNAME` / `ATG_API_PASSWORD` and repository variables
 6. **Roll back.** Set `ATG_SYNC_ENABLED=false` and apply the ephemeral layer. Links and history
    stay in the database; nothing is deleted on ATG.
 
-**DNS.** Only after the decision record below is resolved in favour of `auctions.lax.bid`, set
-`ATG_WHITE_LABEL_DNS_ENABLED=true` and apply the persistent layer. It creates ATG's two
-DNS-only CNAMEs (ACM validation and `auctions` → `prod-whitelabel-3.globalauctionplatform.com`).
+**White Label hostname.** See "White Label hostname (`auctions.lax.bid`)" below.
 
 **Troubleshooting.** The ATG tab shows the last error per sale and per lot, and failures are
 reported to Sentry. Admin-triggered jobs are removed after their final failure, so retry by
@@ -232,31 +231,98 @@ features. When `main` absorbs `release`:
 
 These items are tracked in `docs/engineering/release-main-parity.md` on `main`.
 
+## White Label hostname (`auctions.lax.bid`)
+
+`auction-infra` (`terraform/modules/atg-white-label`, used by `terraform/persistent/prod`)
+creates four resources behind two repository variables:
+
+| Variable | Creates |
+| --- | --- |
+| `ATG_ACM_VALIDATION_ENABLED` | ATG's ACM validation CNAME (DNS-only; browsers never visit it) |
+| `ATG_WHITE_LABEL_ENABLED` | Worker `atg-cookie-shield`, route `auctions.lax.bid/*`, then `auctions` CNAME → `prod-whitelabel-3.globalauctionplatform.com`, **proxied** |
+
+Terraform creates the record only after the Worker route exists and deletes it first; a
+contract test (`atg-white-label.tftest.hcl`) fails if the record is ever DNS-only.
+
+**Before the first apply.**
+
+- The `CLOUDFLARE_API_TOKEN` secret needs **Account → Workers Scripts: Edit** and
+  **Zone → Workers Routes: Edit** on `lax.bid`, in addition to its DNS and ruleset permissions.
+- Put the Cloudflare account on **Workers Paid**. On the free plan, requests beyond 100,000 a
+  day fail with error 1027 (closed, so no cookie leak, but the auction site is down).
+
+**Go live.**
+
+1. Set both variables to `true` and run "Terraform apply prod" (persistent layer).
+2. Until ATG attaches its certificate to `auctions.lax.bid`, the site returns Cloudflare error
+   526 (the zone validates origin certificates strictly). That is expected.
+3. When ATG confirms the certificate (question 17), smoke test:
+   - `curl -sI https://auctions.lax.bid/` returns `x-lax-cookie-shield: 1`;
+   - no `Set-Cookie` from `auctions.lax.bid` carries a `Domain` attribute (browser DevTools →
+     Application → Cookies shows them under `auctions.lax.bid` only);
+   - register, sign in and bid on a private test auction, including real-time bid updates;
+   - signing in to `lax.bid` and using the admin still work in the same browser.
+4. Set `ATG_WHITE_LABEL_BASE_URL=https://auctions.lax.bid` and apply the ephemeral layer.
+
+**Roll back.** Set `ATG_WHITE_LABEL_ENABLED=false` and apply the persistent layer (record first,
+then route and Worker). In an emergency, delete the `auctions` record in the Cloudflare
+dashboard. Never set the record to DNS-only or remove the Worker route while the record exists:
+either sends LAX cookies straight to ATG.
+
 ## Decision record: White Label hostname vs. `.lax.bid` cookies
 
-**Status: open — needs a product/security decision before the DNS records are created and
-before ATG Step 7 sign-off.** ATG's CNAME instructions expire about 48 hours after
-Oct 12, 21:00.
+**Status: decided (Oct 13, 2026) — option D.** Keep `auctions.lax.bid` and production's shared
+`.lax.bid` sessions, with a cookie-shield proxy in front of ATG.
 
 **Context.** Production sets `COOKIE_DOMAIN=.lax.bid` (`auction-infra`
-`terraform/ephemeral/prod/main.tf`, `local.cookie_domain`), which api, auth and web use for
-session cookies. If `auctions.lax.bid` is a CNAME to
-`prod-whitelabel-3.globalauctionplatform.com`:
+`terraform/ephemeral/prod/main.tf`, `local.cookie_domain`). Better Auth on `auth.lax.bid` sets
+the session cookie with `Domain=.lax.bid`, and the `lax.bid` web app and `api.lax.bid` both
+read it, so the domain cannot be dropped without redesigning sign-in. If `auctions.lax.bid`
+pointed straight at ATG:
 
-- browsers send every `.lax.bid` cookie, including LAX session cookies, to ATG's servers;
-- ATG's servers can set `.lax.bid` cookies that `lax.bid`, `api.lax.bid` and `auth.lax.bid`
+- browsers would send every `.lax.bid` cookie, including LAX session cookies, to ATG's servers;
+- ATG's servers could set `.lax.bid` cookies that `lax.bid`, `api.lax.bid` and `auth.lax.bid`
   then receive (cookie tossing / session fixation surface).
 
 **Options.**
 
 | Option | Effort | Residual risk |
 | --- | --- | --- |
-| A. Use a host outside `lax.bid` (e.g. `londonartexchange.atgportals.net` or a separate registrable domain) | DNS/ATG config only | None from cookies; brand URL differs |
-| B. Keep `auctions.lax.bid`, scope LAX auth cookies to their own host (drop `Domain=.lax.bid`) | Auth change across api/auth/web; cross-subdomain session sharing must be re-designed | Low once shipped; blocks DNS until done |
-| C. Keep `auctions.lax.bid` and accept the exposure | None | ATG receives LAX session cookies; needs written security sign-off |
+| A. Use a host outside `lax.bid` (e.g. `londonartexchange.atgportals.net`) | DNS/ATG config only | None from cookies; brand URL differs |
+| B. Host-only LAX sessions (`main`'s D15: OIDC sign-in plus `__Host-` BFF sessions) | Large; not production-ready on `main` | Lowest |
+| C. Point `auctions.lax.bid` straight at ATG and accept the exposure | None | ATG receives LAX session cookies |
+| **D. Proxied `auctions.lax.bid` with a cookie-shield Worker** | Infra only | See below |
 
-**Recommendation.** Option A for go-live, with option B as a later migration if the
-`auctions.lax.bid` brand URL is required. Do not create the CNAMEs until this is decided.
+**Decision: D.** The Worker (`auction-infra` `workers/atg-cookie-shield/shield.js`):
+
+- removes LAX cookies from every request before it reaches ATG;
+- drops ATG `Set-Cookie` headers with a LAX name and strips `Domain` from the rest, so ATG can
+  only set cookies on `auctions.lax.bid`;
+- fails closed: an exception returns 502 and, if the Worker cannot run, the route returns
+  Cloudflare error 1027. It never forwards an unfiltered request.
+
+**Cookie naming rule.** Every cookie LAX sets with `Domain=.lax.bid` must match
+`^(__Secure-|__Host-)?(better-auth[.-]|lax[_-]|_lax_)` (case-insensitive). Today the shared
+cookies are the Better Auth cookies (`__Secure-better-auth.*`), `lax_acting_legal_entity_id`,
+`lax_consent` and `_lax_attr`; host-only cookies such as `lax_theme` never reach
+`auctions.lax.bid`. A shared cookie outside the pattern reaches ATG; rename it or extend the
+pattern and the Worker tests.
+
+**Residual risk (accepted).**
+
+- ATG's own JavaScript runs on a `lax.bid` subdomain. It cannot read the session cookies
+  (HttpOnly), but it can read non-HttpOnly shared cookies (`lax_consent`, `_lax_attr`, the
+  acting-entity cookie, Google Analytics cookies) and write `.lax.bid` cookies through
+  `document.cookie`, which the Worker never sees. Exploiting that needs malicious or
+  compromised ATG frontend code, and the impact is session fixation (planting a session for an
+  attacker's account), not session theft. Host-only `__Host-` sessions remove it.
+- Third-party analytics cookies (`_ga*`, `_gcl_*`) still reach ATG. They are not credentials.
+- `lax.bid` zone settings apply to the White Label: security level "high" (some bidders may see a
+  challenge), strict origin TLS, and Workers plan limits.
+- ATG sees Cloudflare IPs unless it reads `CF-Connecting-IP` (question 19).
+
+**Later, on `main`.** Once D15's host-only sessions reach production, the Worker becomes defence
+in depth. Tracked in `docs/engineering/release-main-parity.md` on `main`.
 
 **Related: header login link.** The cloned White Label header's "Log in" link points at
 `lax.bid/login`, which does not sign users into the White Label. ATG only allows header
@@ -312,6 +378,24 @@ login on `secure-login.globalauctionplatform.com`).
     need?
 14. Can native sign-up and password login be disabled on our tenant? Will you create GAP
     customers just-in-time with our `sub` as `ExternalReference`? How should logout work?
+
+### Cookie-shield proxy (before `auctions.lax.bid` goes live)
+
+17. **Certificate.** The ACM validation record is live. Please attach the issued certificate to
+    `auctions.lax.bid` on `prod-whitelabel-3`. Our proxy validates it strictly, so the site
+    returns Cloudflare error 526 until it is attached.
+18. **Proxy acceptance.** `auctions.lax.bid` is proxied through Cloudflare with a Worker in
+    front of your White Label; requests arrive from Cloudflare IP ranges with
+    `Host: auctions.lax.bid`. Is that supported, and do any IP allowlists, rate limits or bot
+    rules need Cloudflare's ranges added?
+19. **Client IP.** Which header do you trust for the bidder's IP (fraud checks, rate limits,
+    audit logs)? Cloudflare sends `CF-Connecting-IP` and appends to `X-Forwarded-For`.
+20. **Real-time bidding.** Do live or timed bidding pages use WebSockets (SignalR),
+    server-sent events or long polling, and on which hostnames? WebSockets on
+    `auctions.lax.bid` pass through the proxy; other hostnames are not affected.
+21. **Cookies.** Please confirm the White Label never sets cookies named `lax_*`, `lax-*`,
+    `_lax_*` or `better-auth*` (the proxy drops them) and does not rely on `Domain=` cookie
+    attributes (the proxy makes every White Label cookie host-only).
 
 ### Robustness (not blocking)
 
