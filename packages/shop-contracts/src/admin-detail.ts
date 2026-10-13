@@ -60,6 +60,8 @@ export const AdminArtistSummarySchema = Type.Object({
   displayName: Type.String(),
   discipline: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
+  seoTitle: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  seoDescription: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export const AdminArtistArtworkSchema = Type.Object({

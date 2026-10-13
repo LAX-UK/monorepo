@@ -6,6 +6,7 @@ import {
   artworkCatalogueHref,
   artworkCataloguePageTitle,
   artworkCataloguePagerHref,
+  artworkMediumLanding,
   parseArtworkCatalogueParams,
 } from "@/lib/catalogue/artwork-catalogue-params";
 import {
@@ -38,8 +39,25 @@ export type ArtworksPageVm = {
   favoriteAuth: ArtFavoriteAuth;
 };
 
-export function composeArtworksPageTitle(searchParams: ArtworkCatalogueSearchParams): string {
-  return artworkCataloguePageTitle(parseArtworkCatalogueParams(searchParams));
+export type ArtworksPageMetadataVm = {
+  title: string;
+  description?: string;
+  canonical: string;
+};
+
+export function composeArtworksPageMetadata(
+  searchParams: ArtworkCatalogueSearchParams,
+): ArtworksPageMetadataVm {
+  const state = parseArtworkCatalogueParams(searchParams);
+  const landing = artworkMediumLanding(state.objectType);
+  if (landing) {
+    return {
+      title: landing.metaTitle,
+      description: landing.metaDescription,
+      canonical: landing.path,
+    };
+  }
+  return { title: `${artworkCataloguePageTitle(state)} | LAX Art`, canonical: "/artworks" };
 }
 
 export async function composeArtworksPage(

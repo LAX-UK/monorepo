@@ -6,6 +6,7 @@ import { fakeArtServices } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
 import {
   composeArtHubPage,
+  composeEditorialPage,
   composeExhibitionDetailPage,
   composeExhibitionsPage,
   composeVenuePage,
@@ -230,5 +231,46 @@ describe("composeArtHubPage", () => {
       status: "ok",
       data: { spotlight: [], stories: [{ href: "/stories/studio", kicker: "Guide" }] },
     });
+  });
+});
+
+describe("composeEditorialPage metadata", () => {
+  const paragraph = "We help collectors find original work from emerging and established artists.";
+
+  it("derives the description from the first substantial paragraph", async () => {
+    const services = fakeArtServices();
+    services.editorial.getPage.mockResolvedValue({
+      status: "ok",
+      data: {
+        slug: "about-us",
+        title: "About us",
+        body: [
+          { type: "richText", spans: [{ text: "Short." }] },
+          { type: "richText", spans: [{ text: paragraph }] },
+        ],
+      },
+    });
+    const result = await composeEditorialPage(services, "about-us");
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.data.metaTitle).toBe("About us | LAX Art");
+    expect(result.data.metaDescription).toBe(paragraph);
+  });
+
+  it("prefers imported SEO overrides", async () => {
+    const services = fakeArtServices();
+    services.editorial.getPage.mockResolvedValue({
+      status: "ok",
+      data: {
+        slug: "about-us",
+        title: "About us",
+        body: [],
+        seoTitle: "About The LAX Art | London Gallery",
+        seoDescription: "Our story.",
+      },
+    });
+    const result = await composeEditorialPage(services, "about-us");
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.data.metaTitle).toBe("About The LAX Art | London Gallery");
+    expect(result.data.metaDescription).toBe("Our story.");
   });
 });

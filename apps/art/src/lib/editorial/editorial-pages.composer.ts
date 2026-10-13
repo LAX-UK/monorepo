@@ -25,6 +25,8 @@ import type {
   ArtFavoritesReadPort,
   ArtViewerPort,
 } from "@/lib/ports";
+import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
+import type { EditorialBlock } from "@auction/shop-contracts";
 
 type BodyServices = {
   catalogue: Pick<ArtCataloguePort, "getArtwork" | "getArtist">;
@@ -197,8 +199,25 @@ export type EditorialPageVm = {
   slug: string;
   title: string;
   canonicalPath: string;
+  metaTitle: string;
+  metaDescription?: string;
   body: EditorialBodyVm;
 };
+
+const MIN_EXCERPT_LENGTH = 40;
+
+/** First substantial paragraph, used when no SEO description is set. */
+function firstParagraphText(blocks: readonly EditorialBlock[]): string | null {
+  for (const block of blocks) {
+    if (block.type !== "richText") continue;
+    const text = block.spans
+      .map((span) => span.text)
+      .join("")
+      .trim();
+    if (text.length >= MIN_EXCERPT_LENGTH) return text;
+  }
+  return null;
+}
 
 /** Any `editorial_page` (guide, legal, Collector Hub service page) at its canonical route. */
 export async function composeEditorialPage(
@@ -209,9 +228,17 @@ export async function composeEditorialPage(
   if (result.status !== "ok") return passThrough(result);
   const canonicalPath = editorialPageHref(result.data.slug);
   const body = await composeEditorialBody(result.data.body, services, canonicalPath);
+  const metaDescription = seoMetadataDescription(result.data, firstParagraphText(result.data.body));
   return {
     status: "ok",
-    data: { slug: result.data.slug, title: result.data.title, canonicalPath, body },
+    data: {
+      slug: result.data.slug,
+      title: result.data.title,
+      canonicalPath,
+      metaTitle: seoMetadataTitle(result.data, result.data.title),
+      ...(metaDescription ? { metaDescription } : {}),
+      body,
+    },
   };
 }
 

@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { PublicSeoFieldsProperties } from "./seo-fields.js";
 
 export const PublicArtworkSaleStateSchema = Type.Union([
   Type.Literal("for_sale"),
@@ -57,6 +58,8 @@ export const PublicArtworkSummarySchema = Type.Object(
     eligibleForEditionAllocation: Type.Boolean(),
     printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     availability: PublicEditionAvailabilitySchema,
+    /** Sitemap `lastmod`; optional so storefronts parse responses from an older shop-api. */
+    updatedAt: Type.Optional(Type.String({ format: "date-time" })),
   },
   { additionalProperties: false },
 );
@@ -107,6 +110,7 @@ export const PublicArtworkDetailSchema = Type.Object(
     eligibleForEditionAllocation: Type.Boolean(),
     printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     availability: PublicEditionAvailabilitySchema,
+    ...PublicSeoFieldsProperties,
   },
   { additionalProperties: false },
 );

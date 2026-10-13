@@ -35,6 +35,47 @@ export const ARTWORK_OBJECT_TYPE_LABELS: Record<ArtworkObjectType, string> = {
   mixed_media: "Mixed media",
 };
 
+export type ArtworkMediumLanding = {
+  path: `/${string}`;
+  objectType: ArtworkObjectType;
+  title: string;
+  metaTitle: string;
+  metaDescription: string;
+};
+
+/** Legacy thelax.art medium URLs stay live; the catalogue links to them instead of `?objectType=`. */
+export const ARTWORK_MEDIUM_LANDINGS = [
+  {
+    path: "/paintings",
+    objectType: "painting",
+    title: "Paintings",
+    metaTitle: "Paintings for Sale | LAX Art",
+    metaDescription:
+      "Original paintings for sale from emerging and established artists, available to view at LAX Art in London.",
+  },
+  {
+    path: "/prints",
+    objectType: "print",
+    title: "Prints",
+    metaTitle: "Art Prints for Sale | LAX Art",
+    metaDescription:
+      "Limited edition and open edition art prints for sale, chosen by the LAX Art gallery in London.",
+  },
+  {
+    path: "/sculptures",
+    objectType: "sculpture",
+    title: "Sculptures",
+    metaTitle: "Sculptures for Sale | LAX Art",
+    metaDescription: "Contemporary sculpture for sale from artists represented by LAX Art, London.",
+  },
+] as const satisfies readonly ArtworkMediumLanding[];
+
+export function artworkMediumLanding(
+  objectType: ArtworkObjectType | undefined,
+): ArtworkMediumLanding | undefined {
+  return ARTWORK_MEDIUM_LANDINGS.find((landing) => landing.objectType === objectType);
+}
+
 export const ARTWORK_RARITY_LABELS: Record<ArtworkRarity, string> = {
   unique: "Unique",
   limited_edition: "Limited edition",
@@ -153,13 +194,14 @@ export function artworkCatalogueHref(
   overrides: Partial<ArtworkCatalogueUrlState> = {},
 ): string {
   const next = { ...state, ...overrides };
+  const landing = artworkMediumLanding(next.objectType);
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
   if (next.categorySlug) params.set("categorySlug", next.categorySlug);
   if (next.artistSlug) params.set("artistSlug", next.artistSlug);
   if (next.saleState) params.set("saleState", next.saleState);
   if (next.type !== "all") params.set("type", next.type);
-  if (next.objectType) params.set("objectType", next.objectType);
+  if (next.objectType && !landing) params.set("objectType", next.objectType);
   if (next.rarity) params.set("rarity", next.rarity);
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
@@ -167,7 +209,8 @@ export function artworkCatalogueHref(
   if (next.cursor) params.set("cursor", next.cursor);
   if (next.back) params.set("back", next.back);
   const qs = params.toString();
-  return qs ? `/artworks?${qs}` : "/artworks";
+  const path = landing?.path ?? "/artworks";
+  return qs ? `${path}?${qs}` : path;
 }
 
 export type ArtworkCatalogueFilterPatch = {
@@ -309,6 +352,8 @@ export function artworkCatalogueHasActiveFilters(state: ArtworkCatalogueUrlState
 }
 
 export function artworkCataloguePageTitle(state: ArtworkCatalogueUrlState): string {
+  const landing = artworkMediumLanding(state.objectType);
+  if (landing) return landing.title;
   if (state.type === "edition") return "Prints & Multiples";
   return "Artworks";
 }

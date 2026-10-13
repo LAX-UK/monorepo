@@ -18,6 +18,7 @@ export const EDITORIAL_LEGAL_SLUGS: ReadonlySet<string> = new Set([
   "accessibility",
   "returns",
   "shipping",
+  "modern-slavery",
 ]);
 
 function isGuideSlug(slug: string): slug is EditorialGuideSlug {

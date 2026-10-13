@@ -180,6 +180,8 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           artistId: shopArtist.id,
           slug: shopArtist.slug,
           discipline: shopArtist.discipline,
+          seoTitle: shopArtist.seoTitle,
+          seoDescription: shopArtist.seoDescription,
           createdAt: shopArtist.createdAt,
           displayName: shopParty.displayName,
         })
@@ -256,6 +258,8 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           slug: artistRow.slug,
           displayName: artistRow.displayName,
           discipline: artistRow.discipline,
+          seoTitle: artistRow.seoTitle,
+          seoDescription: artistRow.seoDescription,
           createdAt: artistRow.createdAt.toISOString(),
         },
         artworks: artworks.map((row) => ({

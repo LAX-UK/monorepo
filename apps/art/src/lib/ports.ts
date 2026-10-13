@@ -4,6 +4,7 @@ import type {
   ArtEditorialExhibitionList,
   ArtEditorialFetchResult,
   ArtEditorialPageDetail,
+  ArtEditorialPageList,
   ArtEditorialPreview,
   ArtEditorialStoryDetail,
   ArtEditorialStoryList,
@@ -104,6 +105,7 @@ export type ArtEditorialPort = {
   getExhibition(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialExhibitionDetail>>;
   listStories(kind?: ArtStoryKind): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>>;
   getStory(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialStoryDetail>>;
+  listPages(): Promise<ArtEditorialFetchResult<ArtEditorialPageList>>;
   getPage(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialPageDetail>>;
   listVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>>;
   getVenue(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialVenueDetail>>;

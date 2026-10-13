@@ -14,7 +14,8 @@ and edge rate limits). This page is the human-readable reference; Terraform is t
 | Auth (canonical OIDC issuer) | `auth.lax.bid` | `test-auth.lax.bid` |
 | WebSocket gateway | `ws.lax.bid` | `test-ws.lax.bid` |
 | Media CDN (Spaces) | `media.lax.bid` | `test-media.lax.bid` |
-| Marketing site (static initially) | `lax.art` | — |
+| LAX Art storefront (keeps legacy SEO domain) | `www.thelax.art` | `test-art.lax.bid` |
+| Redirect-only hosts (301 → `www.thelax.art`) | `thelax.art`, `lax.art`, `www.lax.art` | — |
 | Custom Shop | `shop.lax.art` | — |
 
 ## TLS

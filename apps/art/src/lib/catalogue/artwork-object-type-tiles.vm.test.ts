@@ -18,7 +18,7 @@ describe("buildArtworkObjectTypeTiles", () => {
         label: "Paintings",
         countLabel: "12 works",
         imageUrl: "https://cdn.test/p.webp",
-        href: "/artworks?type=original&objectType=painting",
+        href: "/paintings?type=original",
         active: false,
       },
       {
@@ -26,7 +26,7 @@ describe("buildArtworkObjectTypeTiles", () => {
         label: "Sculpture",
         countLabel: "1 work",
         imageUrl: null,
-        href: "/artworks?type=original&objectType=sculpture",
+        href: "/sculptures?type=original",
         active: false,
       },
     ]);

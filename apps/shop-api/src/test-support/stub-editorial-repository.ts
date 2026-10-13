@@ -20,6 +20,7 @@ export function createStubEditorialRepository(
     getExhibitionBySlug: async () => null,
     listStories: async () => [],
     getStoryBySlug: async () => null,
+    listPages: async () => [],
     getPageBySlug: async () => null,
     insertGeneralEnquiry: async () => ({ enquiryId: "11111111-1111-4111-8111-111111111111" }),
     listGeneralEnquiriesForSubject: async () => [],

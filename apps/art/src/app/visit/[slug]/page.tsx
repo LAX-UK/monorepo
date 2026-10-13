@@ -1,15 +1,14 @@
 import { ArtPageHeader } from "@/components/art-page-header";
-import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
 import { ArtVenueFacts } from "@/components/editorial/art-venue-facts";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
 import { ArtPrivateViewingSection } from "@/components/enquiry/art-private-viewing-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { composeVenuePage, venueHref } from "@/lib/editorial/editorial-pages.composer";
+import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { cache } from "react";
 
 type VenuePageProps = {
@@ -20,9 +19,7 @@ const loadVenue = cache((slug: string) => composeVenuePage(artServices, slug));
 
 export async function generateMetadata({ params }: VenuePageProps): Promise<Metadata> {
   const result = await loadVenue((await params).slug);
-  if (result.status !== "ok") {
-    return { title: "Visit | LAX Art", robots: { index: false, follow: false } };
-  }
+  if (result.status !== "ok") notFoundOrUnavailable(result.status, "Venue");
   const { venue, addressLine } = result.data;
   return {
     title: `${venue.name} | Visit | LAX Art`,
@@ -37,20 +34,7 @@ export async function generateMetadata({ params }: VenuePageProps): Promise<Meta
 export default async function VenuePage({ params }: VenuePageProps) {
   const { slug } = await params;
   const [result, viewer] = await Promise.all([loadVenue(slug), artServices.viewer.load()]);
-  if (result.status === "not_found" || result.status === "disabled") notFound();
-  if (result.status !== "ok") {
-    return (
-      <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
-        <ArtEditorialStatus
-          result={result}
-          disabledTitle="Visit information coming soon"
-          disabledDescription="Gallery visit content is not enabled in this environment yet."
-          emptyTitle="Venue not found"
-          emptyDescription="This venue is not available."
-        />
-      </div>
-    );
-  }
+  if (result.status !== "ok") notFoundOrUnavailable(result.status, "Venue");
 
   const { venue, body } = result.data;
   return (

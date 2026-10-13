@@ -114,6 +114,9 @@ jobs:
       - name: Shop architecture and asset budgets
         run: pnpm ci:shop-architecture
 
+      - name: thelax.art SEO migration tooling
+        run: pnpm ci:seo-migration
+
       - name: Docker patchedDependencies context
         run: pnpm ci:docker-patches
 

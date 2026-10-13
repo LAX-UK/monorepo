@@ -7,8 +7,15 @@ import {
   adminFormSectionClass,
 } from "@/components/admin-mutation-feedback";
 import { MediaUploadField } from "@/components/media-upload-field";
+import { SeoFieldsInputs } from "@/components/seo-fields-inputs.client";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import { ARTWORK_MEDIUM_MAX_LENGTH, buildImportArtworkInput } from "@/lib/import-artwork-form";
+import {
+  SEO_FIELDS_ERROR_MESSAGES,
+  type SeoFieldsFormValues,
+  parseSeoFields,
+  seoFieldsFormValues,
+} from "@/lib/seo-fields-form";
 import {
   adjustMerchandiseStock,
   importArtwork,
@@ -27,6 +34,7 @@ import {
   linkArtistIdentity,
   revokeStaffRole,
   unlinkArtistIdentity,
+  updateArtistSeo,
 } from "@/server/application/admin-people-actions.server";
 import {
   approveSaleFee,
@@ -822,6 +830,7 @@ export function ImportArtworkForm() {
   const [eligible, setEligible] = useState(true);
   const [primaryImageKey, setPrimaryImageKey] = useState<string | null>(null);
   const [primaryImagePublicUrl, setPrimaryImagePublicUrl] = useState<string | null>(null);
+  const [seo, setSeo] = useState<SeoFieldsFormValues>(seoFieldsFormValues(null));
 
   return (
     <FormSection title="Import artwork">
@@ -876,6 +885,12 @@ export function ImportArtworkForm() {
         />
         <span className="text-neutral-600">Eligible for edition allocation</span>
       </label>
+      <SeoFieldsInputs
+        values={seo}
+        disabled={pending}
+        blankHint="blank leaves unchanged"
+        onChange={setSeo}
+      />
       <ActionButton
         pending={pending}
         label="Import"
@@ -889,10 +904,13 @@ export function ImportArtworkForm() {
             artistSlug,
             artistDisplayName,
             eligibleForEditionAllocation: eligible,
+            ...seo,
           });
           if (!built.ok) {
             if (built.error === "medium_too_long") {
               setMessage(`Medium must be ${ARTWORK_MEDIUM_MAX_LENGTH} characters or fewer.`);
+            } else if (built.error !== "missing_required") {
+              setMessage(SEO_FIELDS_ERROR_MESSAGES[built.error]);
             }
             return;
           }
@@ -1036,6 +1054,49 @@ export function LinkArtistIdentityForm({ artistId }: { artistId: string }) {
           void run(
             () => linkArtistIdentity({ artistId, email: value, idempotencyKey }),
             "Identity linked.",
+          );
+        }}
+      />
+      <AdminMutationFeedback
+        message={message}
+        stepUpRequired={stepUpRequired}
+        stepUpHref={stepUpHref}
+      />
+    </FormSection>
+  );
+}
+
+export function ArtistSeoForm({
+  artistId,
+  initial,
+}: {
+  artistId: string;
+  initial: { seoTitle?: string | null; seoDescription?: string | null };
+}) {
+  const { pending, idempotencyKey, message, setMessage, stepUpRequired, stepUpHref, run } =
+    useAdminMutation();
+  const [seo, setSeo] = useState<SeoFieldsFormValues>(seoFieldsFormValues(initial));
+
+  return (
+    <FormSection title="Search metadata">
+      <SeoFieldsInputs
+        values={seo}
+        disabled={pending}
+        blankHint="blank uses the generated default"
+        onChange={setSeo}
+      />
+      <ActionButton
+        pending={pending}
+        label="Save SEO"
+        onClick={() => {
+          const parsed = parseSeoFields(seo);
+          if (!parsed.ok) {
+            setMessage(SEO_FIELDS_ERROR_MESSAGES[parsed.error]);
+            return;
+          }
+          void run(
+            () => updateArtistSeo({ artistId, ...parsed.fields, idempotencyKey }),
+            "SEO metadata saved.",
           );
         }}
       />

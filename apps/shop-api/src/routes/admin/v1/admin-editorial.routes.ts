@@ -46,8 +46,14 @@ const AdminRowSchema = Type.Object({
   label: Type.String(),
 });
 
+const AdminSeoFieldsSchema = Type.Object({
+  seoTitle: Type.Union([Type.String(), Type.Null()]),
+  seoDescription: Type.Union([Type.String(), Type.Null()]),
+});
+
 const AdminPageDetailSchema = Type.Intersect([
   AdminRowSchema,
+  AdminSeoFieldsSchema,
   Type.Object({
     title: Type.String(),
     body: Type.Array(Type.Unknown()),
@@ -71,6 +77,7 @@ const AdminVenueDetailSchema = Type.Intersect([
 
 const AdminStoryDetailSchema = Type.Intersect([
   AdminRowSchema,
+  AdminSeoFieldsSchema,
   Type.Object({
     kind: Type.Union([
       Type.Literal("article"),
@@ -284,17 +291,8 @@ export async function registerAdminEditorialRoutes(
     async (request, reply) => {
       requireShopStaffCapability(request, "catalogue.write");
       const subject = adminSubject(request);
-      const body = request.body as {
-        slug: string;
-        title: string;
-        body: unknown;
-      };
-      const created = await repo.createPage({
-        slug: body.slug,
-        title: body.title,
-        body: body.body as never,
-        updatedBy: subject,
-      });
+      const body = request.body as Omit<Parameters<typeof repo.createPage>[0], "updatedBy">;
+      const created = await repo.createPage({ ...body, updatedBy: subject });
       return reply.status(201).send(created);
     },
   );
@@ -313,13 +311,8 @@ export async function registerAdminEditorialRoutes(
       requireShopStaffCapability(request, "catalogue.write");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
-      const body = request.body as { slug: string; title: string; body: unknown };
-      await repo.updatePage(id, {
-        slug: body.slug,
-        title: body.title,
-        body: body.body as never,
-        updatedBy: subject,
-      });
+      const body = request.body as Omit<Parameters<typeof repo.updatePage>[1], "updatedBy">;
+      await repo.updatePage(id, { ...body, updatedBy: subject });
       return reply.status(204).send();
     },
   );

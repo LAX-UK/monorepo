@@ -107,6 +107,6 @@ describe("auth app environment contract", () => {
     expect(deriveLaxArtOriginFromShopOrigin("https://test-shop.lax.bid")).toBe(
       "https://test-art.lax.bid",
     );
-    expect(deriveLaxArtOriginFromShopOrigin("https://shop.lax.art")).toBe("https://lax.art");
+    expect(deriveLaxArtOriginFromShopOrigin("https://shop.lax.art")).toBe("https://www.thelax.art");
   });
 });

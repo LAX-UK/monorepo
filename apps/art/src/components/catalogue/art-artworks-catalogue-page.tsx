@@ -5,33 +5,26 @@ import { ArtArtworkList } from "@/components/catalogue/art-artwork-list";
 import { ArtObjectTypeTiles } from "@/components/catalogue/art-object-type-tiles";
 import { ArtworkCatalogueBrowse } from "@/components/catalogue/artwork-catalogue-browse";
 import { artServices } from "@/lib/art-services.server";
-import { artworkCatalogueClearHref } from "@/lib/catalogue/artwork-catalogue-params";
 import {
-  composeArtworksPage,
-  composeArtworksPageTitle,
-} from "@/lib/catalogue/artworks-page.composer";
+  type ArtworkCatalogueSearchParams,
+  artworkCatalogueClearHref,
+  artworkCatalogueHref,
+} from "@/lib/catalogue/artwork-catalogue-params";
+import { composeArtworksPage } from "@/lib/catalogue/artworks-page.composer";
 import { ART_ARTWORKS_VIEW_ROUTE_KEY } from "@/lib/catalogue/catalogue-view";
 import { resolveArtCatalogueView } from "@/lib/catalogue/catalogue-view.server";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingCatalogView } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import type { Metadata } from "next";
 import Link from "next/link";
 
-type ArtworksPageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export async function generateMetadata({ searchParams }: ArtworksPageProps): Promise<Metadata> {
-  return {
-    title: `${composeArtworksPageTitle(await searchParams)} | LAX Art`,
-    alternates: { canonical: "/artworks" },
-  };
-}
-
-export default async function ArtworksPage({ searchParams }: ArtworksPageProps) {
-  const params = await searchParams;
+/** Shared body of `/artworks` and the medium landings (`/paintings`, `/prints`, `/sculptures`). */
+export async function ArtArtworksCataloguePage({
+  params,
+}: {
+  params: ArtworkCatalogueSearchParams;
+}) {
   const [vm, view] = await Promise.all([
     composeArtworksPage(artServices, params),
     resolveArtCatalogueView(ART_ARTWORKS_VIEW_ROUTE_KEY, params.view),
@@ -59,7 +52,9 @@ export default async function ArtworksPage({ searchParams }: ArtworksPageProps) 
               variant="error"
               title="Catalogue unavailable"
               description="We could not load artworks. Try again shortly."
-              actions={<ArtStatusStateLink href="/artworks">Retry</ArtStatusStateLink>}
+              actions={
+                <ArtStatusStateLink href={artworkCatalogueHref(vm.state)}>Retry</ArtStatusStateLink>
+              }
             />
           ) : vm.cards.length === 0 ? (
             <ArtStatusState

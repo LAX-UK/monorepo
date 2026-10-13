@@ -1513,6 +1513,13 @@
       "when": 1794038400000,
       "tag": "0216_shop_editorial",
       "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1794124800000,
+      "tag": "0217_shop_seo_fields",
+      "breakpoints": true
     }
   ]
 }

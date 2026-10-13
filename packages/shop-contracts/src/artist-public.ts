@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { PublicSeoFieldsProperties } from "./seo-fields.js";
 
 export const PublicArtistSummarySchema = Type.Object(
   {
@@ -38,6 +39,7 @@ export const PublicArtistDetailSchema = Type.Object(
     birthYear: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
     deathYear: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
     artworkCount: Type.Integer({ minimum: 0 }),
+    ...PublicSeoFieldsProperties,
   },
   { additionalProperties: false },
 );

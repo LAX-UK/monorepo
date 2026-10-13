@@ -5,6 +5,8 @@ import {
   fakeArtServices,
 } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
+
+const SITE_URL = new URL("https://www.thelax.art/");
 import {
   composeArtworkDetailMetadata,
   composeArtworkDetailPage,
@@ -31,6 +33,7 @@ describe("composeArtworkDetailPage", () => {
     const result = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: false,
+      siteUrl: SITE_URL,
     });
 
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
@@ -58,6 +61,7 @@ describe("composeArtworkDetailPage", () => {
     const collection = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: false,
+      siteUrl: SITE_URL,
     });
     expect(collection.kind === "ok" && collection.vm.relatedSection).toEqual({
       title: "More in this collection",
@@ -73,6 +77,7 @@ describe("composeArtworkDetailPage", () => {
     const artistOnly = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: false,
+      siteUrl: SITE_URL,
     });
     expect(artistOnly.kind === "ok" && artistOnly.vm.relatedSection).toEqual({
       title: "More by Ada Lane",
@@ -88,6 +93,7 @@ describe("composeArtworkDetailPage", () => {
     const result = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: false,
+      siteUrl: SITE_URL,
     });
     expect(result.kind === "ok" && result.vm.relatedArtworks).toEqual([]);
   });
@@ -95,7 +101,11 @@ describe("composeArtworkDetailPage", () => {
   it("returns not_found for unknown slugs", async () => {
     const services = fakeArtServices();
     await expect(
-      composeArtworkDetailPage(services, { slug: "missing", enquireRequested: false }),
+      composeArtworkDetailPage(services, {
+        slug: "missing",
+        enquireRequested: false,
+        siteUrl: SITE_URL,
+      }),
     ).resolves.toEqual({ kind: "not_found" });
   });
 
@@ -103,7 +113,11 @@ describe("composeArtworkDetailPage", () => {
     const services = fakeArtServices();
     services.catalogue.getArtwork.mockRejectedValue(new Error("down"));
     await expect(
-      composeArtworkDetailPage(services, { slug: "warm-basket", enquireRequested: false }),
+      composeArtworkDetailPage(services, {
+        slug: "warm-basket",
+        enquireRequested: false,
+        siteUrl: SITE_URL,
+      }),
     ).resolves.toEqual({ kind: "unavailable" });
   });
 
@@ -114,6 +128,7 @@ describe("composeArtworkDetailPage", () => {
     const result = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: true,
+      siteUrl: SITE_URL,
     });
 
     expect(result.kind).toBe("ok");
@@ -135,6 +150,7 @@ describe("composeArtworkDetailPage", () => {
     const result = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: true,
+      siteUrl: SITE_URL,
     });
 
     if (result.kind !== "ok") throw new Error("expected ok");
@@ -153,6 +169,7 @@ describe("composeArtworkDetailPage", () => {
     const result = await composeArtworkDetailPage(services, {
       slug: "warm-basket",
       enquireRequested: true,
+      siteUrl: SITE_URL,
     });
 
     if (result.kind !== "ok") throw new Error("expected ok");
@@ -167,10 +184,26 @@ describe("composeArtworkDetailMetadata", () => {
     services.catalogue.getArtwork.mockResolvedValue(artworkDetail({ description: null }));
     await expect(composeArtworkDetailMetadata(services.catalogue, "warm-basket")).resolves.toEqual({
       kind: "ok",
-      title: "Warm Basket",
+      title: "Warm Basket | LAX Art",
       description: "Warm Basket by Flora Powers at LAX Art.",
       canonicalPath: "/artworks/warm-basket",
       imageUrl: "/warm-basket.webp",
+    });
+  });
+
+  it("prefers imported SEO overrides", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(
+      artworkDetail({
+        seoTitle: "Warm Basket by Flora Powers | The LAX Art",
+        seoDescription: "Original still life by Flora Powers.",
+      }),
+    );
+    await expect(
+      composeArtworkDetailMetadata(services.catalogue, "warm-basket"),
+    ).resolves.toMatchObject({
+      title: "Warm Basket by Flora Powers | The LAX Art",
+      description: "Original still life by Flora Powers.",
     });
   });
 });

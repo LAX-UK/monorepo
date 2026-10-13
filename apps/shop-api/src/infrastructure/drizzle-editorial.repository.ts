@@ -30,6 +30,13 @@ function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function seoColumns(input: { seoTitle?: string | null; seoDescription?: string | null }) {
+  return {
+    ...(input.seoTitle !== undefined ? { seoTitle: input.seoTitle } : {}),
+    ...(input.seoDescription !== undefined ? { seoDescription: input.seoDescription } : {}),
+  };
+}
+
 /** Drops individual blocks that no longer satisfy the contract instead of blanking the body. */
 function readBlocks(value: unknown): EditorialBlock[] {
   if (!Array.isArray(value)) return [];
@@ -365,6 +372,7 @@ export function createDrizzleEditorialRepository(
           standfirst: shopEditorialStory.standfirst,
           coverMediaKey: shopEditorialStory.coverMediaKey,
           featured: shopEditorialStory.featured,
+          updatedAt: shopEditorialStory.updatedAt,
         })
         .from(shopEditorialStory)
         .where(
@@ -381,6 +389,7 @@ export function createDrizzleEditorialRepository(
         standfirst: row.standfirst,
         coverUrl: resolveMediaUrl(row.coverMediaKey),
         featured: row.featured,
+        updatedAt: row.updatedAt.toISOString(),
       }));
     },
 
@@ -405,7 +414,26 @@ export function createDrizzleEditorialRepository(
         featured: row.featured,
         videoUrl: row.videoUrl,
         body: readPublicBlocks(row.bodyBlocks),
+        seoTitle: row.seoTitle,
+        seoDescription: row.seoDescription,
       };
+    },
+
+    async listPages() {
+      const rows = await db
+        .select({
+          slug: shopEditorialPage.slug,
+          title: shopEditorialPage.title,
+          updatedAt: shopEditorialPage.updatedAt,
+        })
+        .from(shopEditorialPage)
+        .where(eq(shopEditorialPage.status, "published"))
+        .orderBy(asc(shopEditorialPage.slug));
+      return rows.map((row) => ({
+        slug: row.slug,
+        title: row.title,
+        updatedAt: row.updatedAt.toISOString(),
+      }));
     },
 
     async getPageBySlug(slug, opts) {
@@ -424,6 +452,8 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         title: row.title,
         body: readPublicBlocks(row.bodyBlocks),
+        seoTitle: row.seoTitle,
+        seoDescription: row.seoDescription,
       };
     },
 
@@ -565,6 +595,8 @@ export function createDrizzleEditorialRepository(
         label: row.title,
         title: row.title,
         body: readBlocks(row.bodyBlocks),
+        seoTitle: row.seoTitle,
+        seoDescription: row.seoDescription,
       };
     },
 
@@ -576,6 +608,7 @@ export function createDrizzleEditorialRepository(
           slug: input.slug,
           title: input.title,
           bodyBlocks: body,
+          ...seoColumns(input),
           updatedBy: input.updatedBy,
         })
         .returning({ id: shopEditorialPage.id });
@@ -591,6 +624,7 @@ export function createDrizzleEditorialRepository(
           slug: input.slug,
           title: input.title,
           bodyBlocks: body,
+          ...seoColumns(input),
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })
@@ -707,6 +741,8 @@ export function createDrizzleEditorialRepository(
         videoUrl: row.videoUrl,
         featured: row.featured,
         body: readBlocks(row.bodyBlocks),
+        seoTitle: row.seoTitle,
+        seoDescription: row.seoDescription,
       };
     },
 
@@ -723,6 +759,7 @@ export function createDrizzleEditorialRepository(
           videoUrl: input.videoUrl,
           featured: input.featured,
           bodyBlocks: body,
+          ...seoColumns(input),
           updatedBy: input.updatedBy,
         })
         .returning({ id: shopEditorialStory.id });
@@ -743,6 +780,7 @@ export function createDrizzleEditorialRepository(
           videoUrl: input.videoUrl,
           featured: input.featured,
           bodyBlocks: body,
+          ...seoColumns(input),
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })

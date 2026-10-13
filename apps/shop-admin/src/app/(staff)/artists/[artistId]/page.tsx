@@ -1,4 +1,5 @@
 import {
+  ArtistSeoForm,
   LinkArtistIdentityForm,
   UnlinkArtistIdentityForm,
 } from "@/components/admin-staff-action-forms.client";
@@ -35,6 +36,16 @@ export default async function ArtistDetailPage({
       <section className="grid gap-4 lg:grid-cols-2">
         <LinkArtistIdentityForm artistId={data.artist.artistId} />
         <UnlinkArtistIdentityForm artistId={data.artist.artistId} />
+      </section>
+
+      <section>
+        <ArtistSeoForm
+          artistId={data.artist.artistId}
+          initial={{
+            seoTitle: data.artist.seoTitle ?? null,
+            seoDescription: data.artist.seoDescription ?? null,
+          }}
+        />
       </section>
 
       <section>

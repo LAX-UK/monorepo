@@ -39,6 +39,7 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
     eligibleForEditionAllocation: model.eligibleForEditionAllocation,
     printPricePence: model.printPricePence,
     availability: { ...model.availability },
+    updatedAt: model.updatedAt,
   };
 }
 
@@ -53,6 +54,8 @@ export function presentArtworkDetail(model: ArtworkDetailReadModel): PublicArtwo
     hasCertificate: model.hasCertificate,
     provenance: model.provenance,
     exhibitionHistory: model.exhibitionHistory,
+    seoTitle: model.seoTitle,
+    seoDescription: model.seoDescription,
   };
 }
 
@@ -83,6 +86,8 @@ export function presentArtistDetail(model: ArtistDetailReadModel): PublicArtistD
     nationality: model.nationality,
     birthYear: model.birthYear,
     deathYear: model.deathYear,
+    seoTitle: model.seoTitle,
+    seoDescription: model.seoDescription,
   };
 }
 

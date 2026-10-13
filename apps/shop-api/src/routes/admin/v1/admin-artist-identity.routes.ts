@@ -1,4 +1,8 @@
-import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import {
+  type ArtistSeoWriteBody,
+  ArtistSeoWriteBodySchema,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -74,6 +78,32 @@ export async function registerAdminArtistIdentityRoutes(
         actorSubjectId,
         idempotencyKey,
       });
+    },
+  );
+
+  app.put(
+    "/artists/:artistId/seo",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: Type.Object({ artistId: Type.String({ format: "uuid" }) }),
+        body: ArtistSeoWriteBodySchema,
+        response: {
+          204: Type.Null(),
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      requireShopStaffCapability(request, "catalogue.write");
+      const { artistId } = request.params as { artistId: string };
+      const body = request.body as ArtistSeoWriteBody;
+      const updated = await deps.updateArtistSeo(artistId, body);
+      if (!updated) {
+        return reply.status(404).send({ code: "not_found", message: "Artist not found" });
+      }
+      return reply.status(204).send();
     },
   );
 }

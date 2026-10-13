@@ -55,6 +55,8 @@ function mapArtistRow(
     nationality: string | null;
     birthYear: number | null;
     deathYear: number | null;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
     artworkCount: number;
   },
   resolveMediaUrl: ArtistDirectoryRepositoryOptions["resolveMediaUrl"],
@@ -70,6 +72,8 @@ function mapArtistRow(
     nationality: row.nationality,
     birthYear: row.birthYear,
     deathYear: row.deathYear,
+    seoTitle: row.seoTitle ?? null,
+    seoDescription: row.seoDescription ?? null,
     artworkCount: row.artworkCount,
     portraitUrl: resolveMediaUrl(row.portraitImageUrl),
     heroUrl: resolveMediaUrl(row.heroMediaKey),
@@ -251,6 +255,8 @@ export function createDrizzleArtistDirectoryRepository(
           nationality: shopArtist.nationality,
           birthYear: shopArtist.birthYear,
           deathYear: shopArtist.deathYear,
+          seoTitle: shopArtist.seoTitle,
+          seoDescription: shopArtist.seoDescription,
         })
         .from(shopArtist)
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
@@ -273,6 +279,8 @@ export function createDrizzleArtistDirectoryRepository(
             nationality: row.nationality,
             birthYear: row.birthYear,
             deathYear: row.deathYear,
+            seoTitle: row.seoTitle,
+            seoDescription: row.seoDescription,
             artworkCount: counts.get(row.artistId) ?? 0,
           },
           resolveMediaUrl,

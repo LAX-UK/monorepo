@@ -37,23 +37,6 @@ export function ArtCatalogueSkeleton({ label = "Loading artworks" }: { label?: s
   );
 }
 
-export function ArtDetailSkeleton() {
-  return (
-    <LoadingRegion label="Loading artwork">
-      <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <Skeleton className="aspect-square w-full" />
-        <div className="flex flex-col gap-4">
-          <Skeleton className="h-3 w-32" />
-          <Skeleton className="h-9 w-3/4" />
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-11 w-40" />
-        </div>
-      </div>
-    </LoadingRegion>
-  );
-}
-
 function Placeholders({ count, className }: { count: number; className: string }) {
   return Array.from({ length: count }, (_, index) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders

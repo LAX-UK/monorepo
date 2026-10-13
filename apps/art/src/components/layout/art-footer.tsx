@@ -29,6 +29,13 @@ export function ArtFooter({ vm }: ArtFooterProps) {
         </ArtAuthLink>
       );
     }
+    if (link.href.startsWith("#")) {
+      return (
+        <a href={link.href} className={linkClass}>
+          {link.label}
+        </a>
+      );
+    }
     if (link.href.startsWith("http://") || link.href.startsWith("https://")) {
       return (
         <a href={link.href} className={linkClass} rel="noopener noreferrer">

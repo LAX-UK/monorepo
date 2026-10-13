@@ -45,6 +45,7 @@ export type ArtworkSummaryReadModel = {
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
   availability: EditionAvailabilityReadModel;
+  updatedAt: string;
 };
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
@@ -56,6 +57,8 @@ export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
   hasCertificate: boolean;
   provenance: string | null;
   exhibitionHistory: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
 };
 
 export type ArtistSummaryReadModel = {
@@ -73,6 +76,8 @@ export type ArtistDetailReadModel = ArtistSummaryReadModel & {
   nationality: string | null;
   birthYear: number | null;
   deathYear: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
 };
 
 export type CategorySummaryReadModel = {

@@ -282,6 +282,7 @@ export function createMinimalShopApiTestDeps(
       unlinkArtistIdentity: async () => ({
         artistId: "00000000-0000-4000-8000-000000000020",
       }),
+      updateArtistSeo: async (artistId) => artistId === "00000000-0000-4000-8000-000000000020",
       shopMediaUpload: null,
     },
     payeeConnect: {

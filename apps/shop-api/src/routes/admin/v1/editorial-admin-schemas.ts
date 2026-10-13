@@ -1,4 +1,8 @@
-import { EditorialBlockListSchema, EditorialSafeHrefSchema } from "@auction/shop-contracts";
+import {
+  EditorialBlockListSchema,
+  EditorialSafeHrefSchema,
+  SeoFieldsWriteProperties,
+} from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 
 export const EditorialSlugBodyField = Type.String({
@@ -13,6 +17,7 @@ export const EditorialPageWriteBodySchema = Type.Object({
   slug: EditorialSlugBodyField,
   title: Type.String({ minLength: 1, maxLength: 300 }),
   body: EditorialBlockListSchema,
+  ...SeoFieldsWriteProperties,
 });
 
 export const EditorialVenueWriteBodySchema = Type.Object({
@@ -42,6 +47,7 @@ export const EditorialStoryWriteBodySchema = Type.Object({
   videoUrl: Type.Union([HttpsUrlField, Type.Null()]),
   featured: Type.Boolean(),
   body: EditorialBlockListSchema,
+  ...SeoFieldsWriteProperties,
 });
 
 export const EditorialExhibitionWriteBodySchema = Type.Object({

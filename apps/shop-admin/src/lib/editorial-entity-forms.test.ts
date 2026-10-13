@@ -15,16 +15,45 @@ import {
 const VENUE_ID = "3f2b8c1e-5d4a-4b6c-9e8f-1a2b3c4d5e6f";
 const blocks: EditorialBlock[] = [{ type: "heading", level: 2, text: "Hello" }];
 
+const noSeo = { seoTitle: "", seoDescription: "" };
+
 describe("buildPagePayload", () => {
-  it("trims fields and passes blocks through", () => {
-    expect(buildPagePayload({ slug: " how-to-buy ", title: " How " }, blocks)).toEqual({
+  it("trims fields, passes blocks through and sends blank SEO as null", () => {
+    expect(buildPagePayload({ slug: " how-to-buy ", title: " How ", ...noSeo }, blocks)).toEqual({
       ok: true,
-      payload: { slug: "how-to-buy", title: "How", body: blocks },
+      payload: {
+        slug: "how-to-buy",
+        title: "How",
+        body: blocks,
+        seoTitle: null,
+        seoDescription: null,
+      },
+    });
+  });
+
+  it("trims SEO overrides and rejects an over-long SEO title", () => {
+    const ok = buildPagePayload(
+      { slug: "faq", title: "FAQ", seoTitle: "  FAQ | LAX Art ", seoDescription: " Answers. " },
+      blocks,
+    );
+    expect(ok.ok && ok.payload).toMatchObject({
+      seoTitle: "FAQ | LAX Art",
+      seoDescription: "Answers.",
+    });
+    const tooLong = buildPagePayload(
+      { slug: "faq", title: "FAQ", seoTitle: "x".repeat(121), seoDescription: "" },
+      blocks,
+    );
+    expect(tooLong).toEqual({
+      ok: false,
+      errors: ["SEO title must be 120 characters or fewer."],
     });
   });
 
   it("collects form and block errors together", () => {
-    const result = buildPagePayload({ slug: "Bad Slug", title: "" }, [{ type: "quote", text: "" }]);
+    const result = buildPagePayload({ slug: "Bad Slug", title: "", ...noSeo }, [
+      { type: "quote", text: "" },
+    ]);
     expect(result).toEqual({
       ok: false,
       errors: [

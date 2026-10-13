@@ -32,6 +32,9 @@ export type ArtworkCatalogueRow = {
   hasCertificate: boolean;
   provenance: string | null;
   exhibitionHistory: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  updatedAt: Date;
   salesChannel: "shop" | "art";
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
@@ -79,6 +82,7 @@ export function toPublicArtworkSummary(row: ArtworkCatalogueRow): ArtworkSummary
     salesChannel: row.salesChannel,
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,
+    updatedAt: row.updatedAt.toISOString(),
     availability: publicEditionAvailability({
       eligibleForEditionAllocation: row.eligibleForEditionAllocation,
       totalEditionCount: row.totalEditionCount,
@@ -98,5 +102,7 @@ export function toPublicArtworkDetail(row: ArtworkCatalogueRow): ArtworkDetailRe
     hasCertificate: row.hasCertificate,
     provenance: row.provenance,
     exhibitionHistory: row.exhibitionHistory,
+    seoTitle: row.seoTitle,
+    seoDescription: row.seoDescription,
   };
 }

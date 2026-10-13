@@ -18,6 +18,8 @@ export async function importArtwork(input: {
   artistPortraitUrl?: string | null;
   eligibleForEditionAllocation: boolean;
   printPricePence?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   idempotencyKey?: string;
 }) {
   return forwardAdminJsonMutation<{ artworkId: string; created: boolean; editionCount: number }>({
@@ -41,6 +43,8 @@ export async function importArtwork(input: {
         : {}),
       eligibleForEditionAllocation: input.eligibleForEditionAllocation,
       ...(input.printPricePence !== undefined ? { printPricePence: input.printPricePence } : {}),
+      ...(input.seoTitle !== undefined ? { seoTitle: input.seoTitle } : {}),
+      ...(input.seoDescription !== undefined ? { seoDescription: input.seoDescription } : {}),
     },
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
   });

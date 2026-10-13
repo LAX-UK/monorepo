@@ -1,4 +1,7 @@
-import type { EditorialBlock } from "@auction/shop-contracts";
+import type { EditorialBlock, SeoFields } from "@auction/shop-contracts";
+
+/** Omitted leaves the stored value unchanged on update; `null` clears it. */
+type SeoFieldsInput = Partial<SeoFields>;
 
 export type EditorialHomePlacementReadModel = {
   slot: string;
@@ -53,12 +56,23 @@ export type EditorialStorySummaryReadModel = {
   featured: boolean;
 };
 
-export type EditorialStoryDetailReadModel = EditorialStorySummaryReadModel & {
-  videoUrl: string | null;
-  body: EditorialBlock[];
+export type EditorialStoryListItemReadModel = EditorialStorySummaryReadModel & {
+  updatedAt: string;
 };
 
-export type EditorialPageDetailReadModel = {
+export type EditorialPageSummaryReadModel = {
+  slug: string;
+  title: string;
+  updatedAt: string;
+};
+
+export type EditorialStoryDetailReadModel = EditorialStorySummaryReadModel &
+  SeoFields & {
+    videoUrl: string | null;
+    body: EditorialBlock[];
+  };
+
+export type EditorialPageDetailReadModel = SeoFields & {
   slug: string;
   title: string;
   body: EditorialBlock[];
@@ -71,10 +85,11 @@ export type EditorialAdminRow = {
   label: string;
 };
 
-export type EditorialPageAdminDetail = EditorialAdminRow & {
-  title: string;
-  body: EditorialBlock[];
-};
+export type EditorialPageAdminDetail = EditorialAdminRow &
+  SeoFields & {
+    title: string;
+    body: EditorialBlock[];
+  };
 
 export type EditorialVenueAdminDetail = EditorialAdminRow & {
   name: string;
@@ -88,15 +103,16 @@ export type EditorialVenueAdminDetail = EditorialAdminRow & {
   body: EditorialBlock[];
 };
 
-export type EditorialStoryAdminDetail = EditorialAdminRow & {
-  kind: "article" | "film" | "press" | "guide";
-  title: string;
-  standfirst: string | null;
-  coverMediaKey: string | null;
-  videoUrl: string | null;
-  featured: boolean;
-  body: EditorialBlock[];
-};
+export type EditorialStoryAdminDetail = EditorialAdminRow &
+  SeoFields & {
+    kind: "article" | "film" | "press" | "guide";
+    title: string;
+    standfirst: string | null;
+    coverMediaKey: string | null;
+    videoUrl: string | null;
+    featured: boolean;
+    body: EditorialBlock[];
+  };
 
 export type EditorialExhibitionAdminDetail = EditorialAdminRow & {
   kind: "exhibition" | "film" | "event";
@@ -143,11 +159,12 @@ export type EditorialRepository = {
   ): Promise<EditorialExhibitionDetailReadModel | null>;
   listStories(
     kind?: "article" | "film" | "press" | "guide",
-  ): Promise<EditorialStorySummaryReadModel[]>;
+  ): Promise<EditorialStoryListItemReadModel[]>;
   getStoryBySlug(
     slug: string,
     options?: { includeDraft?: boolean },
   ): Promise<EditorialStoryDetailReadModel | null>;
+  listPages(): Promise<EditorialPageSummaryReadModel[]>;
   getPageBySlug(
     slug: string,
     options?: { includeDraft?: boolean },
@@ -191,15 +208,22 @@ export type EditorialRepository = {
     | null
   >;
   getAdminPageById(id: string): Promise<EditorialPageAdminDetail | null>;
-  createPage(input: {
-    slug: string;
-    title: string;
-    body: EditorialBlock[];
-    updatedBy: string;
-  }): Promise<{ id: string }>;
+  createPage(
+    input: SeoFieldsInput & {
+      slug: string;
+      title: string;
+      body: EditorialBlock[];
+      updatedBy: string;
+    },
+  ): Promise<{ id: string }>;
   updatePage(
     id: string,
-    input: { slug: string; title: string; body: EditorialBlock[]; updatedBy: string },
+    input: SeoFieldsInput & {
+      slug: string;
+      title: string;
+      body: EditorialBlock[];
+      updatedBy: string;
+    },
   ): Promise<void>;
   setPagePublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminVenueById(id: string): Promise<EditorialVenueAdminDetail | null>;
@@ -234,20 +258,22 @@ export type EditorialRepository = {
   ): Promise<void>;
   setVenuePublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminStoryById(id: string): Promise<EditorialStoryAdminDetail | null>;
-  createStory(input: {
-    slug: string;
-    kind: "article" | "film" | "press" | "guide";
-    title: string;
-    standfirst: string | null;
-    coverMediaKey: string | null;
-    videoUrl: string | null;
-    featured: boolean;
-    body: EditorialBlock[];
-    updatedBy: string;
-  }): Promise<{ id: string }>;
+  createStory(
+    input: SeoFieldsInput & {
+      slug: string;
+      kind: "article" | "film" | "press" | "guide";
+      title: string;
+      standfirst: string | null;
+      coverMediaKey: string | null;
+      videoUrl: string | null;
+      featured: boolean;
+      body: EditorialBlock[];
+      updatedBy: string;
+    },
+  ): Promise<{ id: string }>;
   updateStory(
     id: string,
-    input: {
+    input: SeoFieldsInput & {
       slug: string;
       kind: "article" | "film" | "press" | "guide";
       title: string;

@@ -4,6 +4,7 @@ import {
   EditorialExhibitionSummarySchema,
   EditorialHomeResponseSchema,
   EditorialPageDetailSchema,
+  EditorialPageSummarySchema,
   EditorialStoryDetailSchema,
   EditorialStoryKindSchema,
   EditorialStorySummarySchema,
@@ -139,6 +140,19 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
       if (!story) throw notFound("Story not found");
       return story;
     },
+  );
+
+  app.get(
+    "/v1/editorial/pages",
+    {
+      schema: {
+        tags: ["editorial"],
+        response: {
+          200: Type.Object({ items: Type.Array(EditorialPageSummarySchema) }),
+        },
+      },
+    },
+    async () => ({ items: await deps.editorial.listPages() }),
   );
 
   app.get(

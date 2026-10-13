@@ -57,6 +57,31 @@ describe("editorial routes", () => {
     await app.close();
   });
 
+  it("lists published pages and story lastmod for the storefront sitemap", async () => {
+    const app = await buildApp({
+      listPages: async () => [{ slug: "faq", title: "FAQ", updatedAt: "2026-03-01T10:00:00.000Z" }],
+      listStories: async () => [
+        {
+          slug: "news",
+          kind: "article",
+          title: "News",
+          standfirst: null,
+          coverUrl: null,
+          featured: false,
+          updatedAt: "2026-03-02T10:00:00.000Z",
+        },
+      ],
+    });
+    const pages = await app.inject({ method: "GET", url: "/v1/editorial/pages" });
+    expect(pages.statusCode).toBe(200);
+    expect(pages.json()).toEqual({
+      items: [{ slug: "faq", title: "FAQ", updatedAt: "2026-03-01T10:00:00.000Z" }],
+    });
+    const stories = await app.inject({ method: "GET", url: "/v1/editorial/stories" });
+    expect(stories.json().items[0].updatedAt).toBe("2026-03-02T10:00:00.000Z");
+    await app.close();
+  });
+
   it("requires a bearer token to submit a general enquiry", async () => {
     const app = await buildApp();
     const res = await app.inject({

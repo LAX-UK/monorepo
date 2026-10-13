@@ -280,7 +280,7 @@ export function deriveLaxArtOriginFromShopOrigin(shopOrigin: string): string | u
   try {
     const host = new URL(shopOrigin).hostname;
     if (host === "test-shop.lax.bid") return "https://test-art.lax.bid";
-    if (host === "shop.lax.bid" || host === "shop.lax.art") return "https://lax.art";
+    if (host === "shop.lax.bid" || host === "shop.lax.art") return "https://www.thelax.art";
   } catch {
     return undefined;
   }
