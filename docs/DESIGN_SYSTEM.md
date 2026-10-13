@@ -83,7 +83,16 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Skeleton | `@auction/ui` | — | 29 | 1 (route skeletons) | Shop has local `shop-page-skeleton` / `shop-route-loading` |
 | DotStatusPill | `@auction/ui` | 10 | 32 | 1 | Registries emit tones only |
 | Sheet / Dialog | `@auction/ui` | Dialog 1 | Sheet 7, Dialog 18 | via `MarketingSideSheet` | Bid has product-specific sheets (iOS install, venue drawer, admin filters) |
-| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 1 (enquiry) | New in this pass; Shop/Bid candidates to adopt |
+| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 2 (artwork + general enquiry) | New in this pass; Shop/Bid candidates to adopt |
+| Pull quote | `@auction/marketing-ui` `MarketingPullQuote` | — | 1 (press) | 1 (editorial blocks) | Bid keeps local `pull-quote.tsx` until migrated |
+| Info strip | `@auction/marketing-ui` `MarketingInfoStrip` | — | — | 2 (editorial blocks, exhibition header) | Exhibition date/venue/hours row |
+| Hero | `@auction/marketing-ui` `MarketingHero` | — | 1 | 1 (home, editorial `home_hero` placement) | Art falls back to a text hero when the placement has no image |
+| Video poster | `@auction/marketing-ui` `MarketingVideoPoster` | — | — | 2 (editorial `video` block, story film) | 16:9 poster linking out in a new tab; no third-party iframe |
+| Alphabet filter | `@auction/marketing-ui` `MarketingAlphabetFilter` | — | — | 1 (artists A–Z) | Links (`?letter=x`) with `aria-current`, not buttons, so filters are crawlable and shareable |
+| Horizontal rail | `@auction/marketing-ui` `MarketingHorizontalRail` | 1 | 1 | 1 (editorial artwork rails, `arrows-progress` controls) | |
+| Mobile nav drawer | `@auction/marketing-ui` `MarketingMobileNavDrawer` | 1 | 1 | 1 (header below `lg`, with auth section) | Art puts flat links in the top slot and passes no sections; the drawer then omits its "Mobile primary" landmark |
+| LAX wordmark | `@auction/marketing-ui` `LaxLogo` | 2 (via `ShopLaxLogo`) | 2 | 2 | `@auction/branding` ships canonical SVG path |
+| Account menu (guest + signed-in) | `@auction/marketing-ui` `MarketingGuestAccountMenu` / `MarketingAuthenticatedAccountMenu` | 2 (Shop-specific wrappers) | — | 1 | Art passes `ArtAuthLink` for OIDC entry |
 | Heart / save toggle | `@auction/marketing-ui` `MarketingHeartToggle` | — | — | 1 (artwork favorite) | Bid keeps local `watchlist-heart*` and `artist-watch-heart`; Shop has `artwork-notify-me-button` (different intent) |
 | Bottom tab bar | `@auction/marketing-ui` `MarketingBottomTabBar` | — | — | 1 (mobile nav) | Bid keeps local `layout/bottom-tab-bar` |
 | Card media / `MediaImage` | `@auction/marketing-ui` | 5 / 8 | — / 63 | 2 / 6 | |
@@ -93,6 +102,14 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Page gutter | `@auction/branding` `MARKETING_PAGE_SHELL` | 2 | 25 | 11 | |
 | Product switcher | `@auction/lax-ecosystem` via product wrapper | 2 | 2 | 2 | |
 | Money / date presenters | `@auction/shop-portal/vm` (`formatGbpPence`, `formatShopDate`) | 12 / 5 | — | 2 / 1 | Art's former copies of Shop presenters were deleted |
+| Grid / list view | `@auction/marketing-ui` `MarketingCatalogViewSwitcher` + `MarketingCatalogView` (`useCatalogViewNavigation`) | 1 (artworks) | local `CatalogViewSwitcher` (same `ViewSwitcher`) | 1 (artworks) | Bid's contract: `?view=` is the source of truth, `lax_view_<routeKey>` cookie remembers it, default view drops the param. Art/Shop pass `clearParams={[]}` so cursor pagination survives a switch |
+| List row | `@auction/marketing-ui` `MarketingCatalogListRow` | 1 | lot list rows (local) | 1 | Thumbnail, title, artist, meta, price and trailing actions in one row |
+| Toolbar row | `@auction/marketing-ui` `MarketingListToolbar` / `MarketingToolbarRow` | 1 | 10 | 1 | With Filters + sort + view switcher, pass `stackTrailingOnMobile` (Bid's pattern) so the switcher drops to its own row below `lg` instead of overflowing at 375px |
+| Category tile | `@auction/marketing-ui` `MarketingCategoryTile` | 1 | — | 1 (artworks "Browse by medium") | Tiles are links with `aria-current` on the active filter, laid out in a horizontal rail |
+| Share | `@auction/marketing-ui` `MarketingShareButton` | — | — | 1 (artwork detail) | Native share sheet when available, otherwise copies the absolute URL and announces it; cancel is silent |
+| In-page tabs | `@auction/marketing-ui` `MarketingUnderlineTabsPanel` | — | route tabs use local `MarketingUnderlineTabs` (same underline) | 1 (artwork about / exhibition history) | A single panel renders as a titled region with no tablist. Tabs wrap rather than scroll, so no unfocusable scroll region exists before hydration |
+| Detail accordion | `@auction/marketing-ui` `MarketingDetailAccordion` | — | — | 1 (details, medium & dimensions, provenance) | First item open by default; empty when given no items |
+| Footer | `@auction/marketing-ui` `MarketingFooter` | 1 | — (product-owned) | 1 | Columns accept `note` for a non-link line (e.g. "Sign-in status unavailable") |
 
 ## Token layers (web)
 

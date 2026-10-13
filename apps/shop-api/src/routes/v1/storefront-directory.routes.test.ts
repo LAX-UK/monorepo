@@ -7,6 +7,7 @@ function createDeps() {
     catalogue: {
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtwork: async () => null,
+      listArtworkObjectTypeFacets: async () => [],
       listPublicCategories: async () => ({
         items: [{ slug: "art", label: "Art", imageUrl: null, artworkCount: 1 }],
       }),
@@ -30,7 +31,12 @@ function createDeps() {
               name: "Artist",
               discipline: null,
               bio: null,
+              shortBio: null,
               portraitUrl: null,
+              heroUrl: null,
+              nationality: null,
+              birthYear: null,
+              deathYear: null,
               artworkCount: 1,
             }
           : null,
@@ -75,6 +81,28 @@ describe("storefront directory routes", () => {
 
     expect(category.statusCode).toBe(404);
     expect(category.json()).toMatchObject({ code: "shop.not_found" });
+    await app.close();
+  });
+
+  it("forwards artist directory letter, sort and sales channel filters", async () => {
+    const deps = createDeps();
+    const inputs: unknown[] = [];
+    deps.catalogue.listPublicArtists = async (input) => {
+      inputs.push(input);
+      return { items: [] };
+    };
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const ok = await app.inject({
+      method: "GET",
+      url: "/v1/artists?letter=f&sort=nameAsc&salesChannel=art&limit=50",
+    });
+    const badLetter = await app.inject({ method: "GET", url: "/v1/artists?letter=ab" });
+
+    expect(ok.statusCode).toBe(200);
+    expect(inputs).toEqual([{ limit: 50, letter: "f", sort: "nameAsc", salesChannel: "art" }]);
+    expect(badLetter.statusCode).toBe(400);
     await app.close();
   });
 

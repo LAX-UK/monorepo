@@ -1,0 +1,19 @@
+DROP TABLE IF EXISTS "shop_general_enquiry";
+DROP TABLE IF EXISTS "shop_editorial_placement";
+DROP TABLE IF EXISTS "shop_editorial_page";
+DROP TABLE IF EXISTS "shop_editorial_story_exhibition";
+DROP TABLE IF EXISTS "shop_editorial_story_artwork";
+DROP TABLE IF EXISTS "shop_editorial_story_artist";
+DROP TABLE IF EXISTS "shop_editorial_story";
+DROP TABLE IF EXISTS "shop_editorial_exhibition_media";
+DROP TABLE IF EXISTS "shop_editorial_exhibition_artist";
+DROP TABLE IF EXISTS "shop_editorial_exhibition_artwork";
+DROP TABLE IF EXISTS "shop_editorial_exhibition";
+DROP TABLE IF EXISTS "shop_editorial_venue";
+
+DROP TYPE IF EXISTS "shop_general_enquiry_topic";
+DROP TYPE IF EXISTS "shop_editorial_placement_ref_kind";
+DROP TYPE IF EXISTS "shop_editorial_placement_slot";
+DROP TYPE IF EXISTS "shop_editorial_story_kind";
+DROP TYPE IF EXISTS "shop_editorial_exhibition_kind";
+DROP TYPE IF EXISTS "shop_editorial_status";

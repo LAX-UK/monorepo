@@ -7,11 +7,20 @@ export type ArtSectionProps = {
   title: string;
   subtitle?: string;
   viewAllHref?: string;
+  /** Screen-reader destination after "See all"; defaults to the lowercased title. */
+  viewAllSrLabel?: string;
   children: ReactNode;
 };
 
 /** Titled page section; the h2 labels the region for landmarks and heading order. */
-export function ArtSection({ id, title, subtitle, viewAllHref, children }: ArtSectionProps) {
+export function ArtSection({
+  id,
+  title,
+  subtitle,
+  viewAllHref,
+  viewAllSrLabel,
+  children,
+}: ArtSectionProps) {
   const headingId = `${id}-title`;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
@@ -30,7 +39,8 @@ export function ArtSection({ id, title, subtitle, viewAllHref, children }: ArtSe
               action: (
                 <MarketingViewAllLink asChild>
                   <Link href={viewAllHref}>
-                    See all<span className="sr-only"> {title.toLowerCase()}</span>
+                    See all
+                    <span className="sr-only"> {viewAllSrLabel ?? title.toLowerCase()}</span>
                   </Link>
                 </MarketingViewAllLink>
               ),

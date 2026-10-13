@@ -112,4 +112,55 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
 
     expect(result.items.some((item) => item.slug === `integration-search-${suffix}`)).toBe(true);
   });
+
+  it("aggregates object type facets per sales channel with the newest cover", async () => {
+    const db = createDbFromPool(shopPool);
+    const ownerDb = createDbFromPool(ownerPool);
+    const writer = createDrizzleArtworkImportRepository(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db, {
+      resolveMediaUrl: (value) => (value ? `https://cdn.test/${value}` : null),
+    });
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const sculptureCount = async (salesChannel: "shop" | "art") =>
+      (await repository.listObjectTypeFacets({ salesChannel })).find(
+        (facet) => facet.objectType === "sculpture",
+      )?.artworkCount ?? 0;
+    const beforeArt = await sculptureCount("art");
+    const beforeShop = await sculptureCount("shop");
+
+    // The image-less row is newest overall and must be skipped when picking the cover.
+    const rows = [
+      { image: null, createdAt: "2099-06-01T00:00:00.000Z" },
+      { image: "older.webp", createdAt: "2099-01-01T00:00:00.000Z" },
+      { image: "newest.webp", createdAt: "2099-02-01T00:00:00.000Z" },
+    ];
+    const ids: string[] = [];
+    for (const [index, { image, createdAt }] of rows.entries()) {
+      const created = await writer.importArtwork({
+        importKey: `integration:facets:${suffix}:${index}`,
+        slug: `integration-facets-${suffix}-${index}`,
+        title: `Facet artwork ${index}`,
+        description: null,
+        primaryImageUrl: image,
+        artistSlug: `integration-facets-artist-${suffix}`,
+        artistDisplayName: "Facet Artist",
+        eligibleForEditionAllocation: false,
+      });
+      ids.push(created.artworkId);
+      await ownerDb
+        .update(shopArtwork)
+        .set({ salesChannel: "art", objectType: "sculpture", createdAt: new Date(createdAt) })
+        .where(eq(shopArtwork.id, created.artworkId));
+    }
+
+    try {
+      const facets = await repository.listObjectTypeFacets({ salesChannel: "art" });
+      const sculpture = facets.find((facet) => facet.objectType === "sculpture");
+      expect(sculpture?.artworkCount).toBe(beforeArt + 3);
+      expect(sculpture?.coverImageUrl).toBe("https://cdn.test/newest.webp");
+      expect(await sculptureCount("shop")).toBe(beforeShop);
+    } finally {
+      await ownerDb.delete(shopArtwork).where(inArray(shopArtwork.id, ids));
+    }
+  });
 });

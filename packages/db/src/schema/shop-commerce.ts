@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -29,6 +30,21 @@ export const shopSaleStateEnum = pgEnum("shop_sale_state", [
 ]);
 
 export const shopSalesChannelEnum = pgEnum("shop_sales_channel", ["shop", "art"]);
+
+export const shopArtworkObjectTypeEnum = pgEnum("shop_artwork_object_type", [
+  "painting",
+  "work_on_paper",
+  "sculpture",
+  "photography",
+  "print",
+  "mixed_media",
+]);
+
+export const shopArtworkRarityEnum = pgEnum("shop_artwork_rarity", [
+  "unique",
+  "limited_edition",
+  "open_edition",
+]);
 
 export const shopPlacementSlotEnum = pgEnum("shop_placement_slot", [
   "featured_originals",
@@ -248,6 +264,11 @@ export const shopArtist = pgTable(
       .references(() => shopParty.id, { onDelete: "restrict" }),
     slug: text("slug").notNull(),
     portraitImageUrl: text("portrait_image_url"),
+    heroMediaKey: text("hero_media_key"),
+    nationality: text("nationality"),
+    birthYear: integer("birth_year"),
+    deathYear: integer("death_year"),
+    shortBio: text("short_bio"),
     discipline: text("discipline"),
     bio: text("bio"),
     zohoArtistCode: text("zoho_artist_code"),
@@ -288,6 +309,14 @@ export const shopArtwork = pgTable(
     primaryImageUrl: text("primary_image_url"),
     dimensions: text("dimensions"),
     medium: text("medium"),
+    objectType: shopArtworkObjectTypeEnum("object_type"),
+    rarity: shopArtworkRarityEnum("rarity"),
+    heightCm: numeric("height_cm", { precision: 8, scale: 2 }),
+    widthCm: numeric("width_cm", { precision: 8, scale: 2 }),
+    depthCm: numeric("depth_cm", { precision: 8, scale: 2 }),
+    hasCertificate: boolean("has_certificate").default(false).notNull(),
+    provenance: text("provenance"),
+    exhibitionHistory: text("exhibition_history"),
     yearCreated: integer("year_created"),
     saleState: shopSaleStateEnum("sale_state").default("for_sale").notNull(),
     artistId: uuid("artist_id")
@@ -312,6 +341,24 @@ export const shopArtwork = pgTable(
     uniqueIndex("shop_artwork_import_key_uid").on(table.importKey),
     index("shop_artwork_artist_idx").on(table.artistId),
     index("shop_artwork_created_id_idx").on(table.createdAt, table.id),
+  ],
+);
+
+export const shopArtworkImage = pgTable(
+  "shop_artwork_image",
+  {
+    artworkId: uuid("artwork_id")
+      .notNull()
+      .references(() => shopArtwork.id, { onDelete: "cascade" }),
+    mediaKey: text("media_key").notNull(),
+    position: integer("position").notNull(),
+    alt: text("alt"),
+    caption: text("caption"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.artworkId, table.position], name: "shop_artwork_image_pk" }),
+    uniqueIndex("shop_artwork_image_artwork_media_uid").on(table.artworkId, table.mediaKey),
+    index("shop_artwork_image_media_key_idx").on(table.mediaKey),
   ],
 );
 
@@ -1279,4 +1326,38 @@ export const shopFollowedArtist = pgTable(
     ),
     index("shop_followed_artist_subject_idx").on(table.identitySubjectId),
   ],
+);
+
+export const shopMediaKindEnum = pgEnum("shop_media_kind", [
+  "artwork_image",
+  "artist_portrait",
+  "artist_hero",
+  "editorial_cover",
+  "editorial_inline",
+  "venue_image",
+]);
+
+export const shopMediaAssetStatusEnum = pgEnum("shop_media_asset_status", [
+  "pending",
+  "active",
+  "rejected",
+]);
+
+export const shopMediaAsset = pgTable(
+  "shop_media_asset",
+  {
+    key: text("key").primaryKey(),
+    kind: shopMediaKindEnum("kind").notNull(),
+    status: shopMediaAssetStatusEnum("status").default("pending").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    blurDataUrl: text("blur_data_url"),
+    alt: text("alt"),
+    createdBySubjectId: text("created_by_subject_id"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("shop_media_asset_status_kind_idx").on(table.status, table.kind)],
 );

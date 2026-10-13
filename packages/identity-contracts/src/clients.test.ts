@@ -57,6 +57,18 @@ describe("registered OIDC clients", () => {
     expect(shop.consentPolicy).toBe("implicit");
   });
 
+  it("lets lax.art return to its signed-out page after logout", () => {
+    const art = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB];
+    expect(art.postLogoutRedirectUris).toEqual([
+      "http://localhost:3050/",
+      "http://localhost:3050/signed-out",
+      "https://lax.art/",
+      "https://lax.art/signed-out",
+      "https://test-art.lax.bid/",
+      "https://test-art.lax.bid/signed-out",
+    ]);
+  });
+
   it("registers shop admin client for staff API and acceptance only", () => {
     const admin = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN];
     expect(admin.kind).toBe(OidcClientKind.Confidential);

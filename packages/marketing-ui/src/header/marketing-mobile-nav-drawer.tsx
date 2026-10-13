@@ -96,85 +96,90 @@ export function MarketingMobileNavDrawer<TSection extends MarketingMegaNavSectio
             </div>
           ) : null}
 
-          <nav aria-label="Mobile primary">
-            <ul className="flex flex-col gap-1">
-              {sections.map((section, index) => {
-                const active = isSectionActive(section);
-                const expanded = expandedIndex === index;
-                const panelId = `mobile-nav-section-${index}`;
-                return (
-                  <li key={section.id} className="border-b border-nav-border pb-2 last:border-b-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-auto min-h-11 w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium uppercase tracking-wide hover:bg-transparent"
-                      aria-expanded={expanded}
-                      aria-controls={panelId}
-                      onClick={() => setExpandedIndex(expanded ? null : index)}
+          {sections.length > 0 ? (
+            <nav aria-label="Mobile primary">
+              <ul className="flex flex-col gap-1">
+                {sections.map((section, index) => {
+                  const active = isSectionActive(section);
+                  const expanded = expandedIndex === index;
+                  const panelId = `mobile-nav-section-${index}`;
+                  return (
+                    <li
+                      key={section.id}
+                      className="border-b border-nav-border pb-2 last:border-b-0"
                     >
-                      <span
-                        className={
-                          active
-                            ? "text-brand-900 dark:text-on-surface"
-                            : "text-nav-text dark:text-on-surface-variant"
-                        }
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-auto min-h-11 w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium uppercase tracking-wide hover:bg-transparent"
+                        aria-expanded={expanded}
+                        aria-controls={panelId}
+                        onClick={() => setExpandedIndex(expanded ? null : index)}
                       >
-                        {section.label}
-                      </span>
-                      <MarketingChevronDownIcon
-                        className={cn(
-                          "shrink-0 text-brand-900 transition-transform motion-reduce:transition-none dark:text-on-surface",
-                          expanded ? "rotate-180" : "rotate-0",
-                        )}
-                      />
-                    </Button>
-                    {expanded ? (
-                      <div
-                        id={panelId}
-                        className="mt-1 flex flex-col gap-1 border-l border-nav-border pl-3"
-                      >
-                        {section.items.length > 0 ? (
-                          <ul className="flex flex-col gap-1">
-                            {section.items.map((row) => (
-                              <li key={`${section.id}-${row.label}-${row.href}`}>
-                                <Link
-                                  href={row.href}
-                                  aria-current={isLinkCurrent?.(row.href) ? "page" : undefined}
-                                  className={cn(
-                                    "block rounded-sm py-1.5 font-body text-sm text-brand-900 aria-[current=page]:font-semibold dark:text-on-surface",
-                                    FOCUS_RING,
-                                  )}
-                                  onClick={close}
-                                >
-                                  {row.label}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="py-1 font-body text-xs text-brand-400 dark:text-on-surface-variant">
-                            Nothing to show yet.
-                          </p>
-                        )}
-                        {section.viewAllHref ? (
-                          <Link
-                            href={section.viewAllHref}
-                            className={cn(
-                              "rounded-sm py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface",
-                              FOCUS_RING,
-                            )}
-                            onClick={close}
-                          >
-                            {section.viewAllLabel ?? "View all"}
-                          </Link>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+                        <span
+                          className={
+                            active
+                              ? "text-brand-900 dark:text-on-surface"
+                              : "text-nav-text dark:text-on-surface-variant"
+                          }
+                        >
+                          {section.label}
+                        </span>
+                        <MarketingChevronDownIcon
+                          className={cn(
+                            "shrink-0 text-brand-900 transition-transform motion-reduce:transition-none dark:text-on-surface",
+                            expanded ? "rotate-180" : "rotate-0",
+                          )}
+                        />
+                      </Button>
+                      {expanded ? (
+                        <div
+                          id={panelId}
+                          className="mt-1 flex flex-col gap-1 border-l border-nav-border pl-3"
+                        >
+                          {section.items.length > 0 ? (
+                            <ul className="flex flex-col gap-1">
+                              {section.items.map((row) => (
+                                <li key={`${section.id}-${row.label}-${row.href}`}>
+                                  <Link
+                                    href={row.href}
+                                    aria-current={isLinkCurrent?.(row.href) ? "page" : undefined}
+                                    className={cn(
+                                      "block rounded-sm py-1.5 font-body text-sm text-brand-900 aria-[current=page]:font-semibold dark:text-on-surface",
+                                      FOCUS_RING,
+                                    )}
+                                    onClick={close}
+                                  >
+                                    {row.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="py-1 font-body text-xs text-brand-400 dark:text-on-surface-variant">
+                              Nothing to show yet.
+                            </p>
+                          )}
+                          {section.viewAllHref ? (
+                            <Link
+                              href={section.viewAllHref}
+                              className={cn(
+                                "rounded-sm py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface",
+                                FOCUS_RING,
+                              )}
+                              onClick={close}
+                            >
+                              {section.viewAllLabel ?? "View all"}
+                            </Link>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          ) : null}
 
           {utilityLinks && utilityLinks.length > 0 ? (
             <ul className="flex flex-col gap-1 border-t border-nav-border pt-4">

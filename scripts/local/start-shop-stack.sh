@@ -81,7 +81,7 @@ if [[ "$START_ART" == "1" ]]; then
     export OIDC_CLIENT_ID=lax-art-web
     export OIDC_CLIENT_SECRET=\"$OIDC_CLIENT_SECRET_LAX_ART_WEB\"
     export OIDC_REDIRECT_URI=http://localhost:$ART_IDENTITY_PORT/auth/callback
-    export OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:$ART_PORT/
+    export OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:$ART_PORT/signed-out
     export SHOP_STOREFRONT_URL=\"$LAX_ART_PUBLIC_URL\"
     cd \"$ROOT/apps/shop-identity\"
     exec pnpm dev

@@ -18,12 +18,24 @@ test.describe("lax.art accessibility @a11y", () => {
   });
 
   for (const route of [
-    { path: "/", heading: "Original works and gallery-led sales" },
+    // Home h1 is the editorial hero headline when one is placed.
+    { path: "/", heading: process.env.ART_EDITORIAL_ENABLED === "true" ? "" : "Original works" },
     { path: "/artworks", heading: "Artworks" },
     { path: "/search", heading: "Search" },
     { path: "/search?q=zzqx-no-such-artwork-9271", heading: "Results for" },
+    { path: "/artworks?view=list", heading: "Artworks" },
+    { path: "/artists", heading: "Artists" },
+    { path: "/exhibitions", heading: "Exhibitions", editorial: true },
+    { path: "/art-hub", heading: "Art Hub", editorial: true },
+    { path: "/collector-hub", heading: "Collector Hub", editorial: true },
+    { path: "/visit", heading: "Visit", editorial: true },
+    { path: "/how-to-buy", heading: "How to buy", editorial: true },
   ]) {
     test(`${route.path} has no blocking axe violations in #main-content`, async ({ page }) => {
+      test.skip(
+        Boolean(route.editorial) && process.env.ART_EDITORIAL_ENABLED !== "true",
+        "editorial pages need ART_EDITORIAL_ENABLED=true",
+      );
       const response = await page.goto(route.path);
       expect(response?.ok()).toBeTruthy();
       await expect(page.getByRole("heading", { level: 1 })).toContainText(route.heading);
@@ -32,9 +44,12 @@ test.describe("lax.art accessibility @a11y", () => {
   }
 
   test("artwork detail has no blocking axe violations", async ({ page }) => {
-    const href = await firstArtworkHref(page);
-    test.skip(!href, "no art-channel artworks seeded");
-    await page.goto(href as string);
+    const seeded = await page.goto("/artworks/tidal-forms");
+    if (seeded?.status() === 404) {
+      const href = await firstArtworkHref(page);
+      test.skip(!href, "no art-channel artworks seeded");
+      await page.goto(href as string);
+    }
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expectNoBlockingViolations(page);
   });

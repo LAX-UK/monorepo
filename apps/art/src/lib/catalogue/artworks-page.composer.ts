@@ -9,6 +9,10 @@ import {
   parseArtworkCatalogueParams,
 } from "@/lib/catalogue/artwork-catalogue-params";
 import {
+  type ArtworkObjectTypeTileVm,
+  buildArtworkObjectTypeTiles,
+} from "@/lib/catalogue/artwork-object-type-tiles.vm";
+import {
   type CatalogueArtworkCardVm,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
@@ -28,6 +32,7 @@ export type ArtworksPageVm = {
   resultCount: number;
   categories: FilterOption[];
   artists: FilterOption[];
+  objectTypeTiles: ArtworkObjectTypeTileVm[];
   nextPageHref: string | null;
   failed: boolean;
   favoriteAuth: ArtFavoriteAuth;
@@ -43,13 +48,14 @@ export async function composeArtworksPage(
 ): Promise<ArtworksPageVm> {
   const state = parseArtworkCatalogueParams(searchParams);
   const favoritesPromise = loadViewerFavoriteContext(services, artworkCatalogueHref(state));
-  const [artworks, categories, artists] = await Promise.allSettled([
+  const [artworks, categories, artists, objectTypes] = await Promise.allSettled([
     services.catalogue.listArtworks({
       limit: ARTWORKS_PAGE_SIZE,
       ...artworkCatalogueFetchQuery(state),
     }),
     services.catalogue.listCategories({ limit: 50 }),
     services.catalogue.listArtists({ limit: 50 }),
+    services.catalogue.listArtworkObjectTypes(),
   ]);
   const favorites = await favoritesPromise;
   const list = artworks.status === "fulfilled" ? artworks.value : null;
@@ -67,6 +73,10 @@ export async function composeArtworksPage(
     artists:
       artists.status === "fulfilled"
         ? artists.value.items.map((item) => ({ slug: item.slug, label: item.name }))
+        : [],
+    objectTypeTiles:
+      objectTypes.status === "fulfilled"
+        ? buildArtworkObjectTypeTiles(objectTypes.value.items, state)
         : [],
     nextPageHref: list?.nextCursor
       ? artworkCataloguePagerHref(state, { cursor: list.nextCursor, back: state.cursor ?? null })

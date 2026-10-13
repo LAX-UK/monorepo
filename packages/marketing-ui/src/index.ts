@@ -13,7 +13,9 @@ export {
   MarketingInfoIcon,
   MarketingMenuIcon,
   MarketingMoonIcon,
+  MarketingPlayIcon,
   MarketingSearchIcon,
+  MarketingShareIcon,
   MarketingSunIcon,
   MarketingUserIcon,
   MarketingViewAllChevron,
@@ -31,13 +33,25 @@ export { MediaImage, type MediaImageProps } from "./media/media-image.js";
 export { MediaImageServer, type MediaImageServerProps } from "./media/media-image.server.js";
 export { MarketingCardMedia } from "./marketing-card-media.js";
 export { MarketingCardShell } from "./marketing-card-shell.js";
+export {
+  MarketingCategoryTile,
+  type MarketingCategoryTileProps,
+} from "./marketing-category-tile.js";
 export { MarketingCardReveal, MarketingReveal } from "./marketing-reveal.js";
 export { MarketingSectionHeader } from "./marketing-section-header.js";
 export {
   MarketingHorizontalRail,
+  type MarketingHorizontalRailControls,
   type MarketingHorizontalRailProps,
   type MarketingHorizontalRailScrollerTag,
 } from "./marketing-horizontal-rail.js";
+export {
+  MarketingUtilityBar,
+  type MarketingUtilityBarProps,
+  type MarketingUtilityBarItem,
+} from "./marketing-utility-bar.js";
+export { LaxLogo, type LaxLogoProps } from "./lax-logo.js";
+export { MarketingHero, type MarketingHeroProps } from "./marketing-hero.js";
 export { MarketingViewAllLink } from "./marketing-view-all-link.js";
 export { MarketingPageShell, type MarketingPageShellProps } from "./marketing-page-shell.js";
 export {
@@ -52,6 +66,12 @@ export {
   MarketingFooterSocials,
   type MarketingFooterSocialsProps,
 } from "./marketing-footer-socials.js";
+export {
+  MarketingFooter,
+  type MarketingFooterColumn,
+  type MarketingFooterLink,
+  type MarketingFooterProps,
+} from "./marketing-footer.js";
 export {
   MARKETING_CARD_REVEAL,
   MARKETING_SECTION_REVEAL,
@@ -153,3 +173,78 @@ export {
   MarketingSideSheet,
   type MarketingSideSheetProps,
 } from "./marketing-side-sheet.js";
+export {
+  MarketingPullQuote,
+  type MarketingPullQuoteProps,
+} from "./marketing-pull-quote.js";
+export {
+  MarketingInfoStrip,
+  type MarketingInfoStripProps,
+} from "./marketing-info-strip.js";
+export {
+  MarketingAuthenticatedAccountMenu,
+  MarketingGuestAccountMenu,
+  type MarketingAccountNavItem,
+  type MarketingAuthenticatedAccountMenuProps,
+  type MarketingGuestAccountMenuProps,
+} from "./marketing-account-menu.js";
+export {
+  MarketingVideoPoster,
+  type MarketingVideoPosterProps,
+} from "./marketing-video-poster.js";
+export {
+  MarketingAlphabetFilter,
+  type MarketingAlphabetFilterProps,
+  marketingAlphabetHref,
+} from "./marketing-alphabet-filter.js";
+export {
+  CATALOG_VIEW_PARAM,
+  type BuildViewQueryParamsOptions,
+  type CatalogLayoutView,
+  VIEW_CHANGE_CLEAR_PARAMS,
+  VIEW_COOKIE_MAX_AGE_SEC,
+  buildViewHref,
+  buildViewQueryParams,
+  parseLayoutViewCookie,
+  resolveCatalogLayoutView,
+  viewCookieName,
+  writeViewPreferenceCookie,
+} from "./catalog-view/catalog-view.js";
+export {
+  notifyMarketingViewUrlChanged,
+  readMarketingViewParam,
+  replaceMarketingViewUrl,
+  resetMarketingViewClientState,
+  subscribeMarketingViewUrl,
+} from "./catalog-view/catalog-view-url-store.js";
+export {
+  type UseCatalogViewNavigationOptions,
+  useCatalogLayoutView,
+  useCatalogViewNavigation,
+} from "./catalog-view/use-catalog-view.js";
+export {
+  MarketingCatalogView,
+  type MarketingCatalogViewProps,
+  MarketingCatalogViewSwitcher,
+  type MarketingCatalogViewSwitcherProps,
+} from "./catalog-view/marketing-catalog-view.js";
+export {
+  MarketingShareButton,
+  type MarketingShareButtonProps,
+} from "./marketing-share-button.js";
+export {
+  MarketingUnderlineTabsPanel,
+  type MarketingUnderlineTabsPanelItem,
+  type MarketingUnderlineTabsPanelProps,
+} from "./marketing-underline-tabs-panel.js";
+export {
+  MarketingDetailAccordion,
+  type MarketingDetailAccordionItem,
+  type MarketingDetailAccordionProps,
+} from "./marketing-detail-accordion.js";
+export {
+  MarketingCatalogList,
+  MarketingCatalogListRow,
+  type MarketingCatalogListProps,
+  type MarketingCatalogListRowProps,
+} from "./catalog-view/marketing-catalog-list.js";

@@ -68,3 +68,20 @@ describe("loadShopApiEnv Connect platform", () => {
     ).not.toThrow();
   });
 });
+
+describe("loadShopApiEnv editorial", () => {
+  it("requires a preview secret when editorial is enabled on a production build", () => {
+    expect(() => loadShopApiEnv(productionNodeBase({ SHOP_EDITORIAL_ENABLED: "true" }))).toThrow(
+      /SHOP_EDITORIAL_PREVIEW_SECRET is required/,
+    );
+    expect(() =>
+      loadShopApiEnv(
+        productionNodeBase({
+          SHOP_EDITORIAL_ENABLED: "true",
+          SHOP_EDITORIAL_PREVIEW_SECRET: "p".repeat(32),
+        }),
+      ),
+    ).not.toThrow();
+    expect(() => loadShopApiEnv(productionNodeBase())).not.toThrow();
+  });
+});

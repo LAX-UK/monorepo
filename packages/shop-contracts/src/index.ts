@@ -4,6 +4,7 @@ export { SHOP_API_ERROR_CODES, type ShopApiErrorCode } from "./errors.js";
 export {
   PublicArtistDetailSchema,
   PublicArtistListSchema,
+  PublicArtistSortSchema,
   PublicArtistSummarySchema,
   type PublicArtistDetail,
   type PublicArtistList,
@@ -22,6 +23,10 @@ export {
 export {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
+  PublicArtworkObjectTypeFacetListSchema,
+  PublicArtworkObjectTypeFacetSchema,
+  PublicArtworkObjectTypeSchema,
+  PublicArtworkRaritySchema,
   PublicArtworkSaleStateSchema,
   PublicArtworkSalesChannelSchema,
   PublicArtworkSortSchema,
@@ -31,6 +36,8 @@ export {
   ShopApiErrorBodySchema,
   type PublicArtworkDetail,
   type PublicArtworkList,
+  type PublicArtworkObjectTypeFacet,
+  type PublicArtworkObjectTypeFacetList,
   type PublicArtworkSummary,
 } from "./artwork-public.js";
 export {
@@ -39,6 +46,38 @@ export {
   type PublicCategoryList,
   type PublicCategorySummary,
 } from "./category-public.js";
+export {
+  EDITORIAL_SAFE_HREF_PATTERN,
+  EditorialBlockListSchema,
+  EditorialBlockSchema,
+  EditorialSafeHrefSchema,
+  isSafeEditorialHref,
+  mapEditorialBlockMedia,
+  parseEditorialBlocks,
+  type EditorialBlock,
+  type EditorialImageBlock,
+  type EditorialInlineSpan,
+} from "./editorial-blocks.js";
+export {
+  EditorialExhibitionDetailSchema,
+  EditorialExhibitionStatusFilterSchema,
+  EditorialExhibitionSummarySchema,
+  EditorialHomeResponseSchema,
+  EditorialPageDetailSchema,
+  EditorialStoryDetailSchema,
+  EditorialStoryKindSchema,
+  EditorialStorySummarySchema,
+  EditorialVenueDetailSchema,
+  EditorialVenueSummarySchema,
+  RegisterGeneralEnquiryRequestSchema,
+  GeneralEnquiryRowSchema,
+  PortalGeneralEnquiriesResponseSchema,
+  AdminGeneralEnquiryRowSchema,
+  AdminGeneralEnquiriesResponseSchema,
+  type EditorialHomeResponse,
+  type GeneralEnquiryRow,
+  type AdminGeneralEnquiryRow,
+} from "./editorial-public.js";
 export {
   PublicMerchandiseProductDetailSchema,
   PublicMerchandiseProductListSchema,
@@ -164,6 +203,7 @@ export {
   parsePublicArtistList,
   parsePublicArtworkDetail,
   parsePublicArtworkList,
+  parsePublicArtworkObjectTypeFacets,
   parsePublicCategoryList,
   parsePublicCategorySummary,
   parsePublicMerchandiseProductDetail,
@@ -175,6 +215,7 @@ export {
   parsePortalFollowedArtists,
   parsePortalSavedArtworks,
   parsePortalPayeeConnectConfig,
+  parsePortalGeneralEnquiries,
   parsePortalPayeeConnectSession,
   parsePortalPayeeConnectStatus,
   parsePortalPayouts,

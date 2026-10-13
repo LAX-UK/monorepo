@@ -13,12 +13,42 @@ export type ArtworkCatalogueSort = (typeof ARTWORK_CATALOGUE_SORTS)[number];
 export const ARTWORK_CATALOGUE_TYPES = ["all", "original", "edition"] as const;
 export type ArtworkCatalogueType = (typeof ARTWORK_CATALOGUE_TYPES)[number];
 
+export const ARTWORK_OBJECT_TYPES = [
+  "painting",
+  "work_on_paper",
+  "sculpture",
+  "photography",
+  "print",
+  "mixed_media",
+] as const;
+export type ArtworkObjectType = (typeof ARTWORK_OBJECT_TYPES)[number];
+
+export const ARTWORK_RARITIES = ["unique", "limited_edition", "open_edition"] as const;
+export type ArtworkRarity = (typeof ARTWORK_RARITIES)[number];
+
+export const ARTWORK_OBJECT_TYPE_LABELS: Record<ArtworkObjectType, string> = {
+  painting: "Paintings",
+  work_on_paper: "Works on paper",
+  sculpture: "Sculpture",
+  photography: "Photography",
+  print: "Prints",
+  mixed_media: "Mixed media",
+};
+
+export const ARTWORK_RARITY_LABELS: Record<ArtworkRarity, string> = {
+  unique: "Unique",
+  limited_edition: "Limited edition",
+  open_edition: "Open edition",
+};
+
 export type ArtworkCatalogueUrlState = {
   q?: string;
   categorySlug?: string;
   artistSlug?: string;
   saleState?: "for_sale" | "price_on_application" | "sold";
   type: ArtworkCatalogueType;
+  objectType?: ArtworkObjectType;
+  rarity?: ArtworkRarity;
   minPrice?: number;
   maxPrice?: number;
   sort: ArtworkCatalogueSort;
@@ -46,6 +76,13 @@ function parseSaleState(value: string | undefined): ArtworkCatalogueUrlState["sa
     return value;
   }
   return undefined;
+}
+
+function parseMember<T extends string>(
+  value: string | undefined,
+  allowed: readonly T[],
+): T | undefined {
+  return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
 }
 
 function parseSort(value: string | undefined): ArtworkCatalogueSort {
@@ -98,6 +135,10 @@ export function parseArtworkCatalogueParams(
   if (artistSlug) state.artistSlug = artistSlug;
   const saleState = parseSaleState(firstString(searchParams.saleState));
   if (saleState) state.saleState = saleState;
+  const objectType = parseMember(firstString(searchParams.objectType), ARTWORK_OBJECT_TYPES);
+  if (objectType) state.objectType = objectType;
+  const rarity = parseMember(firstString(searchParams.rarity), ARTWORK_RARITIES);
+  if (rarity) state.rarity = rarity;
   if (prices.minPrice !== undefined) state.minPrice = prices.minPrice;
   if (prices.maxPrice !== undefined) state.maxPrice = prices.maxPrice;
   const cursor = firstString(searchParams.cursor);
@@ -118,6 +159,8 @@ export function artworkCatalogueHref(
   if (next.artistSlug) params.set("artistSlug", next.artistSlug);
   if (next.saleState) params.set("saleState", next.saleState);
   if (next.type !== "all") params.set("type", next.type);
+  if (next.objectType) params.set("objectType", next.objectType);
+  if (next.rarity) params.set("rarity", next.rarity);
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
   if (next.sort !== "newest") params.set("sort", next.sort);
@@ -163,6 +206,8 @@ export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlSta
   if (state.artistSlug) count += 1;
   if (state.saleState) count += 1;
   if (state.type !== "all") count += 1;
+  if (state.objectType) count += 1;
+  if (state.rarity) count += 1;
   if (state.minPrice !== undefined) count += 1;
   if (state.maxPrice !== undefined) count += 1;
   return count;
@@ -207,6 +252,20 @@ export function buildArtworkCatalogueActiveChips(
       key: "saleState",
       label: SALE_STATE_LABELS[state.saleState],
       removeHref: artworkCatalogueFilterHref(state, { saleState: null }),
+    });
+  }
+  if (state.objectType) {
+    chips.push({
+      key: "objectType",
+      label: ARTWORK_OBJECT_TYPE_LABELS[state.objectType],
+      removeHref: artworkCatalogueFilterHref(state, { objectType: null }),
+    });
+  }
+  if (state.rarity) {
+    chips.push({
+      key: "rarity",
+      label: ARTWORK_RARITY_LABELS[state.rarity],
+      removeHref: artworkCatalogueFilterHref(state, { rarity: null }),
     });
   }
   if (state.categorySlug) {
@@ -261,6 +320,8 @@ export type ArtworkCatalogueFetchInput = {
   artistSlug?: string;
   saleState?: "for_sale" | "price_on_application" | "sold";
   type?: ArtworkCatalogueType;
+  objectType?: ArtworkObjectType;
+  rarity?: ArtworkRarity;
   minPrice?: number;
   maxPrice?: number;
   sort?: ArtworkCatalogueSort;
@@ -276,6 +337,8 @@ export function artworkCatalogueFetchQuery(
   if (state.artistSlug) query.artistSlug = state.artistSlug;
   if (state.saleState) query.saleState = state.saleState;
   if (state.type !== "all") query.type = state.type;
+  if (state.objectType) query.objectType = state.objectType;
+  if (state.rarity) query.rarity = state.rarity;
   if (state.minPrice !== undefined) query.minPrice = state.minPrice * 100;
   if (state.maxPrice !== undefined) query.maxPrice = state.maxPrice * 100;
   if (state.sort !== "newest") query.sort = state.sort;

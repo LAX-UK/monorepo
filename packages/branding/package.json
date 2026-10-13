@@ -9,7 +9,8 @@
       "default": "./dist/index.js"
     },
     "./brand-primitives.css": "./public/brand-primitives.css",
-    "./favicons/*": "./public/favicons/*"
+    "./favicons/*": "./public/favicons/*",
+    "./lax-logo.svg": "./public/lax-logo.svg"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

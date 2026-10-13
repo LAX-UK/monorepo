@@ -17,6 +17,8 @@ import {
   PublicArtworkDetailSchema,
   type PublicArtworkList,
   PublicArtworkListSchema,
+  type PublicArtworkObjectTypeFacetList,
+  PublicArtworkObjectTypeFacetListSchema,
 } from "./artwork-public.js";
 import {
   type PublicCategoryList,
@@ -36,6 +38,10 @@ import {
   type OrderSummary,
   OrderSummarySchema,
 } from "./commerce-public.js";
+import {
+  type GeneralEnquiryRow,
+  PortalGeneralEnquiriesResponseSchema,
+} from "./editorial-public.js";
 import {
   type PublicMerchandiseProductDetail,
   PublicMerchandiseProductDetailSchema,
@@ -91,6 +97,15 @@ export function parsePublicArtworkList(value: unknown): PublicArtworkList {
 export function parsePublicArtworkDetail(value: unknown): PublicArtworkDetail {
   if (!Value.Check(PublicArtworkDetailSchema, value)) {
     throw new ShopContractParseError("Invalid public artwork detail payload");
+  }
+  return value;
+}
+
+export function parsePublicArtworkObjectTypeFacets(
+  value: unknown,
+): PublicArtworkObjectTypeFacetList {
+  if (!Value.Check(PublicArtworkObjectTypeFacetListSchema, value)) {
+    throw new ShopContractParseError("Invalid public artwork object type facets payload");
   }
   return value;
 }
@@ -293,6 +308,13 @@ export function parsePortalPayeeConnectSession(value: unknown): { clientSecret: 
 export function parsePortalEnquiries(value: unknown): PortalEnquiry[] {
   if (!Value.Check(PortalEnquiriesResponseSchema, value)) {
     throw new ShopContractParseError("Invalid portal enquiries payload");
+  }
+  return value.items;
+}
+
+export function parsePortalGeneralEnquiries(value: unknown): GeneralEnquiryRow[] {
+  if (!Value.Check(PortalGeneralEnquiriesResponseSchema, value)) {
+    throw new ShopContractParseError("Invalid portal general enquiries payload");
   }
   return value.items;
 }

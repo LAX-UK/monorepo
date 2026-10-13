@@ -3,6 +3,8 @@
 import {
   ARTWORK_FILTER_DEFAULT_OPEN,
   ARTWORK_FILTER_GROUPS,
+  ARTWORK_OBJECT_TYPE_OPTIONS,
+  ARTWORK_RARITY_OPTIONS,
   ARTWORK_SALE_STATE_OPTIONS,
   ARTWORK_TYPE_OPTIONS,
   type ArtworkFilterGroupValue,
@@ -31,6 +33,8 @@ export type CatalogueFilterOption = {
 export type ArtworkCatalogueDraft = {
   q: string;
   type: ArtworkCatalogueUrlState["type"];
+  objectType: NonNullable<ArtworkCatalogueUrlState["objectType"]> | "";
+  rarity: NonNullable<ArtworkCatalogueUrlState["rarity"]> | "";
   saleState: ArtworkCatalogueUrlState["saleState"] | "";
   categorySlug: string;
   artistSlug: string;
@@ -42,6 +46,8 @@ export function artworkDraftFromState(state: ArtworkCatalogueUrlState): ArtworkC
   return {
     q: state.q ?? "",
     type: state.type,
+    objectType: state.objectType ?? "",
+    rarity: state.rarity ?? "",
     saleState: state.saleState ?? "",
     categorySlug: state.categorySlug ?? "",
     artistSlug: state.artistSlug ?? "",
@@ -56,6 +62,8 @@ export function draftToPartialState(draft: ArtworkCatalogueDraft): ArtworkCatalo
   return {
     q: draft.q.trim() ? draft.q.trim() : null,
     type: draft.type,
+    objectType: draft.objectType ? draft.objectType : null,
+    rarity: draft.rarity ? draft.rarity : null,
     saleState: draft.saleState ? draft.saleState : null,
     categorySlug: draft.categorySlug ? draft.categorySlug : null,
     artistSlug: draft.artistSlug ? draft.artistSlug : null,
@@ -158,6 +166,42 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               active={draft.type === option.value}
               label={option.label}
               onSelect={() => commitDraft(props, { ...draft, type: option.value })}
+            />
+          ))}
+        </div>
+      );
+    case "objectType":
+      return (
+        <div className="flex flex-col gap-1">
+          <RailOption
+            active={!draft.objectType}
+            label="Any medium"
+            onSelect={() => commitDraft(props, { ...draft, objectType: "" })}
+          />
+          {ARTWORK_OBJECT_TYPE_OPTIONS.map((option) => (
+            <RailOption
+              key={option.value}
+              active={draft.objectType === option.value}
+              label={option.label}
+              onSelect={() => commitDraft(props, { ...draft, objectType: option.value })}
+            />
+          ))}
+        </div>
+      );
+    case "rarity":
+      return (
+        <div className="flex flex-col gap-1">
+          <RailOption
+            active={!draft.rarity}
+            label="Any rarity"
+            onSelect={() => commitDraft(props, { ...draft, rarity: "" })}
+          />
+          {ARTWORK_RARITY_OPTIONS.map((option) => (
+            <RailOption
+              key={option.value}
+              active={draft.rarity === option.value}
+              label={option.label}
+              onSelect={() => commitDraft(props, { ...draft, rarity: option.value })}
             />
           ))}
         </div>

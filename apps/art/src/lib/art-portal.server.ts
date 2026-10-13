@@ -23,6 +23,7 @@ export const {
   fetchPortalEditions,
   fetchPortalCollection,
   fetchPortalEnquiries,
+  fetchPortalGeneralEnquiries,
   fetchPortalSavedArtworks,
   fetchPortalFollowedArtists,
   fetchPortalSaleAuthority,

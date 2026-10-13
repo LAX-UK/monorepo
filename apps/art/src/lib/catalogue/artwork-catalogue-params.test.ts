@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   artworkCatalogueFetchQuery,
   artworkCatalogueFilterHref,
+  buildArtworkCatalogueActiveChips,
   parseArtworkCatalogueParams,
 } from "./artwork-catalogue-params.js";
 
@@ -34,12 +35,16 @@ describe("artwork catalogue params", () => {
       categorySlug: "painting",
       artistSlug: "flora-powers",
       saleState: "for_sale",
+      objectType: "sculpture",
+      rarity: "unique",
       minPrice: "100",
       maxPrice: "500",
     });
     const cleared = draftToPartialState({
       q: "",
       type: "all",
+      objectType: "",
+      rarity: "",
       saleState: "",
       categorySlug: "",
       artistSlug: "",
@@ -53,5 +58,23 @@ describe("artwork catalogue params", () => {
     expect(href).not.toContain("saleState=");
     expect(href).not.toContain("minPrice=");
     expect(href).not.toContain("maxPrice=");
+    expect(href).not.toContain("objectType=");
+    expect(href).not.toContain("rarity=");
+  });
+
+  it("round-trips medium and rarity facets and ignores unknown values", () => {
+    const state = parseArtworkCatalogueParams({ objectType: "sculpture", rarity: "unique" });
+    expect(artworkCatalogueFetchQuery(state)).toMatchObject({
+      objectType: "sculpture",
+      rarity: "unique",
+    });
+    expect(artworkCatalogueFilterHref(state)).toBe("/artworks?objectType=sculpture&rarity=unique");
+    expect(
+      buildArtworkCatalogueActiveChips(state, { categories: [], artists: [] }).map((c) => c.label),
+    ).toEqual(["Sculpture", "Unique"]);
+
+    const bogus = parseArtworkCatalogueParams({ objectType: "nft", rarity: "rare" });
+    expect(bogus.objectType).toBeUndefined();
+    expect(bogus.rarity).toBeUndefined();
   });
 });

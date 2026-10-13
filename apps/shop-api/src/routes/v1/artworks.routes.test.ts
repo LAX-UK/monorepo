@@ -2,48 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import { createShopApiApp } from "../../app.js";
 import { createListPublicArtworksHandler } from "../../application/handlers/list-public-artworks.handler.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
+import {
+  mockArtworkDetail,
+  mockArtworkSummary,
+} from "../../test-support/mock-catalogue-read-models.js";
 
 function createCatalogueDeps() {
   return createMinimalShopApiTestDeps({
     catalogue: {
       listPublicArtworks: async () => ({
-        items: [
-          {
-            slug: "demo",
-            title: "Demo",
-            artistName: "Artist",
-            artistSlug: "artist",
-            imageUrl: null,
-            saleState: "for_sale",
-            dimensions: null,
-            medium: null,
-            yearCreated: null,
-            salesChannel: "shop",
-            eligibleForEditionAllocation: true,
-            printPricePence: 12000,
-            availability: { totalEditions: 24, editionsAvailable: 4 },
-          },
-        ],
+        items: [mockArtworkSummary()],
       }),
-      getPublicArtwork: async (slug) =>
-        slug === "demo"
-          ? {
-              slug: "demo",
-              title: "Demo",
-              artistName: "Artist",
-              artistSlug: "artist",
-              description: null,
-              imageUrl: null,
-              saleState: "for_sale",
-              dimensions: null,
-              medium: null,
-              yearCreated: null,
-              salesChannel: "shop",
-              eligibleForEditionAllocation: true,
-              printPricePence: 12000,
-              availability: { totalEditions: 24, editionsAvailable: 4 },
-            }
-          : null,
+      getPublicArtwork: async (slug) => (slug === "demo" ? mockArtworkDetail() : null),
+      listArtworkObjectTypeFacets: async () => [],
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),
@@ -62,6 +33,37 @@ describe("artworks routes", () => {
     expect(body.items[0]).not.toHaveProperty("ownerPartyId");
     expect(body.items[0]).not.toHaveProperty("allocation");
     expect(response.headers["cache-control"]).toMatch(/public/);
+    await app.close();
+  });
+
+  it("serves object type facets for a sales channel with public caching", async () => {
+    const deps = createCatalogueDeps();
+    const listFacets = vi.fn(async () => [
+      {
+        objectType: "painting" as const,
+        artworkCount: 3,
+        coverImageUrl: "https://cdn.test/p.webp",
+      },
+    ]);
+    deps.catalogue.listArtworkObjectTypeFacets = listFacets;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/artwork-object-types?salesChannel=art",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      items: [
+        { objectType: "painting", artworkCount: 3, coverImageUrl: "https://cdn.test/p.webp" },
+      ],
+    });
+    expect(listFacets).toHaveBeenCalledWith("art");
+    expect(response.headers["cache-control"]).toMatch(/public/);
+
+    const missingChannel = await app.inject({ method: "GET", url: "/v1/artwork-object-types" });
+    expect(missingChannel.statusCode).toBe(400);
     await app.close();
   });
 
@@ -160,6 +162,7 @@ describe("artworks routes", () => {
     deps.catalogue.listPublicArtworks = createListPublicArtworksHandler({
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtworkBySlug: async () => null,
+      listObjectTypeFacets: async () => [],
     });
     const app = createShopApiApp({ deps, logger: false });
     await app.ready();

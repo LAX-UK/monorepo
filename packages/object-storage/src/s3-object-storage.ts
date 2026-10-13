@@ -1,0 +1,175 @@
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { ObjectStoragePort } from "./object-storage-port.js";
+
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
+export type S3ObjectStorageConfig = {
+  bucket: string;
+  region: string;
+  endpoint?: string | undefined;
+  accessKeyId: string;
+  secretAccessKey: string;
+  /** Base URL returned to clients (no trailing slash). */
+  publicBaseUrl: string;
+};
+
+export class S3ObjectStorage implements ObjectStoragePort {
+  private readonly client: S3Client;
+  private readonly bucket: string;
+  private readonly publicBaseUrl: string;
+
+  constructor(cfg: S3ObjectStorageConfig) {
+    this.bucket = cfg.bucket;
+    this.publicBaseUrl = cfg.publicBaseUrl.replace(/\/$/, "");
+    this.client = new S3Client({
+      region: cfg.region,
+      ...(cfg.endpoint ? { endpoint: cfg.endpoint } : {}),
+      credentials: {
+        accessKeyId: cfg.accessKeyId,
+        secretAccessKey: cfg.secretAccessKey,
+      },
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
+    });
+  }
+
+  async putObject(key: string, body: Buffer, contentType: string): Promise<{ url: string }> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
+      }),
+    );
+    return { url: this.getPublicUrl(key) };
+  }
+
+  getPublicUrl(key: string): string {
+    return `${this.publicBaseUrl}/${key}`;
+  }
+
+  extractKey(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!hasUrlScheme(trimmed)) return trimmed.replace(/^\/+/, "");
+    const prefix = `${this.publicBaseUrl}/`;
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+    return null;
+  }
+
+  async createPresignedPut(args: {
+    key: string;
+    contentType: string;
+    byteSize: number;
+    expiresInSec: number;
+  }): Promise<{ url: string; requiredHeaders: Record<string, string> }> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: args.key,
+      ContentType: args.contentType,
+      ContentLength: args.byteSize,
+    });
+    // Signing content-type stops a holder of the URL storing e.g. text/html on the public media host.
+    const url = await getSignedUrl(this.client, command, {
+      expiresIn: args.expiresInSec,
+      signableHeaders: new Set(["content-type"]),
+    });
+    return {
+      url,
+      requiredHeaders: {
+        "content-type": args.contentType,
+      },
+    };
+  }
+
+  async createPresignedGet(args: {
+    key: string;
+    expiresInSec: number;
+    signingDate?: Date | undefined;
+    responseContentDisposition?: string;
+    responseContentType?: string;
+  }): Promise<{ url: string }> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: args.key,
+      ...(args.responseContentDisposition
+        ? { ResponseContentDisposition: args.responseContentDisposition }
+        : {}),
+      ...(args.responseContentType ? { ResponseContentType: args.responseContentType } : {}),
+    });
+    return {
+      url: await getSignedUrl(this.client, command, {
+        expiresIn: args.expiresInSec,
+        ...(args.signingDate ? { signingDate: args.signingDate } : {}),
+      }),
+    };
+  }
+
+  async headObject(
+    key: string,
+  ): Promise<{ contentType: string; byteSize: number; etag: string } | null> {
+    try {
+      const result = await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+      return {
+        contentType: result.ContentType ?? "application/octet-stream",
+        byteSize: result.ContentLength ?? 0,
+        etag: result.ETag ?? "",
+      };
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      throw err;
+    }
+  }
+
+  async getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null> {
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Range: `bytes=0-${Math.max(0, maxBytes - 1)}`,
+        }),
+      );
+      if (!result.Body) return Buffer.alloc(0);
+      const bytes = await result.Body.transformToByteArray();
+      return Buffer.from(bytes);
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      throw err;
+    }
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+}
+
+function isNotFoundError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    ("name" in err || "$metadata" in err) &&
+    ((err as { name?: string }).name === "NotFound" ||
+      (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404)
+  );
+}
+
+function hasUrlScheme(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+}

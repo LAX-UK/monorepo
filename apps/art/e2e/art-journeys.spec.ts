@@ -116,22 +116,28 @@ test.describe("lax.art journeys", () => {
     const credentials = artBuyerCredentials();
     test.skip(!credentials, "nav assertion needs ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");
     await signInArtBuyer(page, credentials as NonNullable<typeof credentials>, "/account");
-    const accountNav = page.getByRole("navigation", { name: "Account" });
+    const accountNav = page.getByRole("navigation", { name: "Account sections" });
     await expect(accountNav.getByRole("link", { name: "Favorites" })).toBeVisible();
     await expect(accountNav.getByRole("link", { name: "Payouts" })).toHaveCount(
       artPayoutsEnabled ? 1 : 0,
     );
   });
 
-  test("dark mode toggle persists across reloads", async ({ page }) => {
+  test("dark mode toggle persists across reloads", async ({ page }, testInfo) => {
+    const mobile = testInfo.project.name === "chromium-mobile";
+    const toggleTheme = async () => {
+      if (mobile) await page.getByRole("button", { name: "Open menu" }).click();
+      await page
+        .getByRole("button", { name: /Switch to (dark|light) theme/ })
+        .first()
+        .click();
+      if (mobile) await page.keyboard.press("Escape");
+    };
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     const html = page.locator("html");
     const startedDark = await html.evaluate((el) => el.classList.contains("dark"));
-    await page
-      .getByRole("button", { name: /Switch to (dark|light) theme/ })
-      .first()
-      .click();
+    await toggleTheme();
     await expect
       .poll(() => html.evaluate((el) => el.classList.contains("dark")))
       .toBe(!startedDark);
@@ -141,10 +147,7 @@ test.describe("lax.art journeys", () => {
       .poll(() => html.evaluate((el) => el.classList.contains("dark")))
       .toBe(!startedDark);
 
-    await page
-      .getByRole("button", { name: /Switch to (dark|light) theme/ })
-      .first()
-      .click();
+    await toggleTheme();
     await expect.poll(() => html.evaluate((el) => el.classList.contains("dark"))).toBe(startedDark);
   });
 
@@ -153,10 +156,65 @@ test.describe("lax.art journeys", () => {
     await page.goto("/search");
     const nav = page.getByTestId("art-mobile-bottom-nav");
     await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Search" })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link")).toHaveText(["Home", "Discover", "Favorites", "Account"]);
+    await expect(nav.getByRole("link", { name: "Discover" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     await expect(nav.getByRole("link", { name: "Home" })).not.toHaveAttribute(
       "aria-current",
       "page",
+    );
+  });
+
+  test("mobile menu drawer lists primary nav and guest auth, and Escape returns focus", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-mobile", "menu drawer is below lg only");
+    await page.goto("/artworks");
+    const trigger = page.getByRole("button", { name: "Open menu" });
+    await trigger.click();
+
+    const drawer = page.getByRole("dialog", { name: "Site navigation" });
+    await expect(drawer).toBeVisible();
+    await expect(
+      drawer.getByRole("navigation", { name: "Main menu" }).getByRole("link"),
+    ).toHaveText(["Artists", "Artworks", "Exhibitions", "Art Hub", "Collector Hub"]);
+    await expect(drawer.getByRole("link", { name: "Artworks" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(drawer.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login?returnTo=%2Fartworks",
+    );
+    await expect(drawer.getByRole("link", { name: "Create account" })).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
+  test("session status pages offer Sign in again with a safe return path", async ({ page }) => {
+    await page.goto("/signed-out?returnTo=%2Fartists&state=oidc-noise");
+    await expect(page.getByRole("heading", { level: 1, name: "Signed out" })).toBeVisible();
+    await expect(page).not.toHaveURL(/state=/);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    const main = page.locator("#main-content");
+    await expect(main.getByRole("link", { name: "Sign in again" })).toHaveAttribute(
+      "href",
+      "/login?returnTo=%2Fartists",
+    );
+    await expect(main.getByRole("link", { name: "Continue browsing" })).toHaveAttribute(
+      "href",
+      "/artworks",
+    );
+
+    await page.goto("/session-expired?returnTo=https%3A%2F%2Fevil.example");
+    await expect(page.getByRole("heading", { level: 1, name: "Session expired" })).toBeVisible();
+    await expect(main.getByRole("link", { name: "Sign in again" })).toHaveAttribute(
+      "href",
+      "/login?returnTo=%2Faccount",
     );
   });
 });

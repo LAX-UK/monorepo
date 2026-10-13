@@ -5,6 +5,7 @@ const fields = {
   importKey: " admin:1 ",
   slug: " harbour ",
   title: " Harbour ",
+  primaryImageUrl: "",
   medium: "",
   artistSlug: " ada ",
   artistDisplayName: " Ada ",

@@ -23,7 +23,10 @@ export function ArtAccountShell({ title, nav, children }: ArtAccountShellProps) 
     <div className={cn(MARKETING_PAGE_SHELL, "py-6 lg:py-10")}>
       <ArtPageHeader title={title} breadcrumbs={breadcrumbs} />
       <div className="mt-8 grid gap-8 lg:grid-cols-[12rem_1fr]">
-        <nav aria-label="Account" className="-mx-1 overflow-x-auto lg:mx-0 lg:overflow-visible">
+        <nav
+          aria-label="Account sections"
+          className="-mx-1 overflow-x-auto lg:mx-0 lg:overflow-visible"
+        >
           <ul className="flex flex-row gap-1 px-1 lg:flex-col lg:px-0">
             {nav.map((item) => (
               <li key={item.href}>

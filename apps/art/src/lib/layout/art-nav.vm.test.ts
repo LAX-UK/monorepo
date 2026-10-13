@@ -1,29 +1,67 @@
 import { describe, expect, it } from "vitest";
-import { buildArtNavItems, resolveArtNavKey } from "./art-nav.vm.js";
+import {
+  buildArtMobileNavItems,
+  buildArtNavItems,
+  resolveArtMobileNavKey,
+  resolveArtNavKey,
+} from "./art-nav.vm.js";
 
 describe("art navigation view model", () => {
   it.each([
-    ["/", "home"],
+    ["/artists", "artists"],
+    ["/artists/flora-powers", "artists"],
     ["/artworks", "artworks"],
     ["/artworks/warm-basket", "artworks"],
-    ["/artists/flora-powers", "artworks"],
-    ["/search", "search"],
-    ["/account/favorites", "account"],
-    ["/login", "account"],
-    ["/artworksx", null],
-    ["/health/live", null],
+    ["/exhibitions", "exhibitions"],
+    ["/exhibitions/spring-show", "exhibitions"],
+    ["/art-hub", "artHub"],
+    ["/collector-hub", "collectorHub"],
+    ["/search", null],
+    ["/account/favorites", null],
   ] as const)("maps %s to %s", (pathname, key) => {
     expect(resolveArtNavKey(pathname)).toBe(key);
   });
 
-  it("omits Home from the desktop header and keeps it on mobile", () => {
-    expect(buildArtNavItems("/search", { includeHome: false }).map((item) => item.label)).toEqual([
+  it("builds primary header nav labels", () => {
+    expect(buildArtNavItems("/exhibitions").map((item) => item.label)).toEqual([
+      "Artists",
       "Artworks",
-      "Search",
-      "Account",
+      "Exhibitions",
+      "Art Hub",
+      "Collector Hub",
     ]);
-    const mobile = buildArtNavItems("/search", { includeHome: true });
-    expect(mobile).toHaveLength(4);
-    expect(mobile.filter((item) => item.active).map((item) => item.key)).toEqual(["search"]);
+    expect(
+      buildArtNavItems("/exhibitions")
+        .filter((item) => item.active)
+        .map((item) => item.key),
+    ).toEqual(["exhibitions"]);
+  });
+
+  it.each([
+    ["/", "home"],
+    ["/artworks", "discover"],
+    ["/artists/flora-powers", "discover"],
+    ["/search", "discover"],
+    ["/account/favorites", "favorites"],
+    ["/account/inquiries", "account"],
+    ["/account", "account"],
+    ["/accounting", null],
+    ["/login", "account"],
+    ["/signed-out", "account"],
+    ["/session-expired", "account"],
+    ["/exhibitions", null],
+  ] as const)("maps mobile %s to %s", (pathname, key) => {
+    expect(resolveArtMobileNavKey(pathname)).toBe(key);
+  });
+
+  it("builds the Home, Discover, Favorites, Account tab bar with one active tab", () => {
+    const mobile = buildArtMobileNavItems("/account/favorites");
+    expect(mobile.map(({ label, href }) => [label, href])).toEqual([
+      ["Home", "/"],
+      ["Discover", "/artworks"],
+      ["Favorites", "/account/favorites"],
+      ["Account", "/account"],
+    ]);
+    expect(mobile.filter((item) => item.active).map((item) => item.key)).toEqual(["favorites"]);
   });
 });

@@ -1,4 +1,8 @@
 export {
+  formatArtworkDimensionsCm,
+  type ArtworkDimensionsCm,
+} from "./artwork-dimensions.js";
+export {
   ARTIST_ALLOCATION_COUNT,
   BUYER_ENTITLEMENT_COUNT,
   LAX_ALLOCATION_COUNT,

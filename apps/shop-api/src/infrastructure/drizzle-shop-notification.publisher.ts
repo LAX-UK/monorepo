@@ -21,6 +21,17 @@ function snapshotPurgeDate(now = new Date()): Date {
   return d;
 }
 
+const GENERAL_ENQUIRY_TOPIC_LABELS = {
+  general: "General enquiry",
+  private_viewing: "Private viewing",
+  art_advisory: "Art advisory",
+  selling: "Selling a work",
+  exhibition: "Exhibition enquiry",
+} as const satisfies Record<
+  Parameters<ShopNotificationPublisher["queueGeneralEnquiryAlert"]>[1]["topic"],
+  string
+>;
+
 function formatPence(pence: number): string {
   return `£${(pence / 100).toFixed(2)}`;
 }
@@ -98,8 +109,26 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
           artworkSlug: input.artworkSlug,
           artworkUrl: input.artworkUrl,
           buyerEmail: buyerEmail ?? "unknown",
+          storefront: input.salesChannel,
           ...(input.message ? { message: input.message } : {}),
           ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
+        },
+      });
+    },
+
+    async queueGeneralEnquiryAlert(tx, input) {
+      const db = asDb(tx);
+      const buyerEmail = await resolveShopUserEmail(db, input.identitySubjectId);
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to: input.opsEmail,
+        template: "art-general-enquiry-alert",
+        vars: {
+          topicLabel: GENERAL_ENQUIRY_TOPIC_LABELS[input.topic],
+          buyerEmail: buyerEmail ?? "unknown",
+          message: input.message,
+          ...(input.contextSlug ? { contextSlug: input.contextSlug } : {}),
+          ...(input.phone ? { contactPhone: input.phone } : {}),
         },
       });
     },

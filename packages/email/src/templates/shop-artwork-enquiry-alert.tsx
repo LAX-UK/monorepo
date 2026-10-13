@@ -2,7 +2,16 @@ import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
-export const subject = "New Shop artwork enquiry";
+type Vars = TemplateVarsByName["shop-artwork-enquiry-alert"];
+
+const STOREFRONT_LABEL = { shop: "Shop", art: "LAX Art" } as const;
+
+function storefrontLabel(storefront: Vars["storefront"]): string {
+  return STOREFRONT_LABEL[storefront ?? "shop"];
+}
+
+export const subject = ({ storefront }: Vars) =>
+  `New ${storefrontLabel(storefront)} artwork enquiry`;
 
 export default function ShopArtworkEnquiryAlertEmail({
   artworkTitle,
@@ -11,11 +20,12 @@ export default function ShopArtworkEnquiryAlertEmail({
   buyerEmail,
   message,
   contactPhone,
-}: TemplateVarsByName["shop-artwork-enquiry-alert"]) {
+  storefront,
+}: Vars) {
   return (
     <Layout
       category="alert"
-      eyebrow="Shop enquiry"
+      eyebrow={`${storefrontLabel(storefront)} enquiry`}
       preview={`Enquiry for ${artworkTitle}.`}
       title="Original artwork enquiry"
     >

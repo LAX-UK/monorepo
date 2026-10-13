@@ -5,6 +5,7 @@ export type ImportArtworkFormFields = {
   slug: string;
   title: string;
   medium: string;
+  primaryImageUrl: string | null;
   artistSlug: string;
   artistDisplayName: string;
   eligibleForEditionAllocation: boolean;
@@ -15,7 +16,7 @@ export type ImportArtworkFormInput = {
   slug: string;
   title: string;
   description: null;
-  primaryImageUrl: null;
+  primaryImageUrl: string | null;
   medium: string | null;
   artistSlug: string;
   artistDisplayName: string;
@@ -47,7 +48,7 @@ export function buildImportArtworkInput(fields: ImportArtworkFormFields): Import
       slug,
       title,
       description: null,
-      primaryImageUrl: null,
+      primaryImageUrl: fields.primaryImageUrl?.trim() || null,
       medium: medium.length > 0 ? medium : null,
       artistSlug,
       artistDisplayName,

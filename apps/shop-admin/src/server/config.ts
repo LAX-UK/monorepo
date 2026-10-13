@@ -16,6 +16,7 @@ const configSchema = z.object({
   sessionTtlSeconds: z.coerce.number().int().min(300).default(604_800),
   release: z.string().optional(),
   bidPublicUrl: z.string().url().optional(),
+  artPublicUrl: z.string().url().optional(),
 });
 
 export type ShopAdminConfig = z.infer<typeof configSchema>;
@@ -47,6 +48,7 @@ export function loadShopAdminConfig(source: NodeJS.ProcessEnv = process.env): Sh
     sessionTtlSeconds: source.SHOP_ADMIN_SESSION_TTL_SECONDS ?? "604800",
     release: source.SENTRY_RELEASE ?? source.GITHUB_SHA,
     bidPublicUrl: source.LAX_BID_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
+    artPublicUrl: source.LAX_ART_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
   });
   if (!parsed.success) {
     console.error(parsed.error.flatten());

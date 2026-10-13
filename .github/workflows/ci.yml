@@ -467,6 +467,8 @@ jobs:
       SHOP_THIRD_PARTY_ENABLED: "true"
       SHOP_ORIGINALS_ENABLED: "true"
       SHOP_MERCHANDISE_ENABLED: "true"
+      SHOP_EDITORIAL_ENABLED: "true"
+      SHOP_EDITORIAL_PREVIEW_SECRET: ci-editorial-preview-secret-minimum-32-chars
       SHOP_CANCELLATION_DAYS_AFTER_POSSESSION: "14"
       DOMAIN_EVENT_PUBLISH_VALIDATE: "enforce"
     steps:

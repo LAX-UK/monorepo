@@ -7,16 +7,20 @@ import { createGetPublicArtworkHandler } from "./application/handlers/get-public
 import { createGetPublicCategoryHandler } from "./application/handlers/get-public-category.handler.js";
 import { createGetPublicMerchandiseProductHandler } from "./application/handlers/get-public-merchandise-product.handler.js";
 import { createImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
+import { createListArtworkObjectTypeFacetsHandler } from "./application/handlers/list-artwork-object-type-facets.handler.js";
 import { createListPublicArtistsHandler } from "./application/handlers/list-public-artists.handler.js";
 import { createListPublicArtworksHandler } from "./application/handlers/list-public-artworks.handler.js";
 import { createListPublicCategoriesHandler } from "./application/handlers/list-public-categories.handler.js";
 import { createListPublicMerchandiseProductsHandler } from "./application/handlers/list-public-merchandise-products.handler.js";
 import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
+import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
+import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
+import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
@@ -24,6 +28,7 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
@@ -31,7 +36,9 @@ import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
+import { createDrizzleShopMediaAssetRepository } from "./infrastructure/drizzle-shop-media-asset.repository.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
+import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
 import { createDrizzleShopPayeeConnectService } from "./infrastructure/drizzle-shop-payee-connect.service.js";
 import {
   createDrizzleSaleFeeWriter,
@@ -61,24 +68,24 @@ import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/r
 import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
+import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
+import { createSharpImageProbe } from "./infrastructure/sharp-image-probe.js";
 import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
 import { resolveShopDocumentStorageConfig } from "./infrastructure/shop-document-storage-config.js";
 import { createShopFeatureFlagsReader } from "./infrastructure/shop-feature-flags-env.js";
+import { resolveShopMediaStorage } from "./infrastructure/shop-media-storage.js";
 import { assertShopVatPolicyWhenPayoutsEnabled } from "./infrastructure/shop-vat-policy.js";
+import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
 import { createStripeShopInvoiceGateway } from "./infrastructure/stripe-shop-invoice.gateway.js";
+import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
 import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
-
-import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
-import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
-import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
-import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
-import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
+import { resolveShopMediaPublicUrl } from "./presenters/resolve-shop-media-url.js";
 import type { StripeConnectWebhookDeps } from "./routes/webhooks/stripe-connect.routes.js";
 
 export type ShopApiAppDeps = {
@@ -102,6 +109,7 @@ export type ShopApiAppDeps = {
   payeeConnect: ShopPayeeConnectPort;
   stripeConnectWebhook: StripeConnectWebhookDeps;
   staffReader: AdminRoutesDeps["staffReader"];
+  editorial: EditorialRoutesDeps | null;
 };
 
 export type ShopApiContainer = {
@@ -133,10 +141,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   assertShopVatPolicyWhenPayoutsEnabled(env);
   const db: Database = createDb(env.DATABASE_URL_SHOP);
   const notifications = createDrizzleShopNotificationPublisher();
-  const catalogueReader = createDrizzleArtworkCatalogueRepository(db);
+  const shopMediaStorage = resolveShopMediaStorage(env);
+  const resolveMediaUrl = (value: string | null | undefined) =>
+    resolveShopMediaPublicUrl(shopMediaStorage?.storage ?? null, value);
+  const catalogueReader = createDrizzleArtworkCatalogueRepository(db, { resolveMediaUrl });
   const categoryReader = createDrizzleCategoryCatalogueRepository(db);
   const merchandiseReader = createDrizzleMerchandiseCatalogueRepository(db);
-  const artistReader = createDrizzleArtistDirectoryRepository(db);
+  const artistReader = createDrizzleArtistDirectoryRepository(db, { resolveMediaUrl });
   const artworkImportWriter = createDrizzleArtworkImportRepository(
     db,
     env.DOMAIN_EVENT_PUBLISH_VALIDATE,
@@ -227,6 +238,33 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     checkConnectivity: () => readiness.checkConnectivity(),
     checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
   };
+  const shopMediaUpload = shopMediaStorage
+    ? createShopMediaUploadHandlers({
+        storage: shopMediaStorage.storage,
+        repository: createDrizzleShopMediaAssetRepository(db),
+        imageProbe: createSharpImageProbe(),
+      })
+    : null;
+  const previewSecret =
+    env.SHOP_EDITORIAL_PREVIEW_SECRET ??
+    (env.NODE_ENV !== "production" ? env.SHOP_API_BFF_TOKEN : undefined);
+  const editorial: EditorialRoutesDeps | null =
+    env.SHOP_EDITORIAL_ENABLED && previewSecret
+      ? {
+          editorial: createDrizzleEditorialRepository(db, {
+            resolveMediaUrl,
+            ...(env.SHOP_ENQUIRY_NOTIFICATION_EMAIL
+              ? {
+                  generalEnquiryAlerts: {
+                    notifications,
+                    opsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL,
+                  },
+                }
+              : {}),
+          }),
+          previewSecret,
+        }
+      : null;
   return {
     db,
     app: {
@@ -268,6 +306,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         originalSales,
         linkArtistIdentity,
         unlinkArtistIdentity,
+        shopMediaUpload,
       },
       portal: { portalOwnership, portalSales, portalArtist, portalFavorites },
       payeeConnect,
@@ -279,6 +318,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       catalogue: {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),
+        listArtworkObjectTypeFacets: createListArtworkObjectTypeFacetsHandler(catalogueReader),
         listPublicCategories: createListPublicCategoriesHandler(categoryReader),
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),
@@ -293,6 +333,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         registerArtworkInterest: createRegisterArtworkInterestHandler(artworkInterestWriter),
         getArtworkInterest: createGetArtworkInterestHandler(artworkInterestWriter),
       },
+      editorial,
     },
     importArtwork,
     grantStaffRole: (input) => grantShopStaffRole(db, input),

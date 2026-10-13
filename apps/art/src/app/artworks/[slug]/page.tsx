@@ -1,8 +1,11 @@
 import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
+import { ArtArtworkDetailSections } from "@/components/artwork/art-artwork-detail-sections";
+import { ArtArtworkGallery } from "@/components/artwork/art-artwork-gallery.client";
+import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
 import { ArtArtworkFavoriteToggle } from "@/components/favorites/art-artwork-favorite-toggle.client";
-import { ArtMediaImage } from "@/components/media/art-media-image.server";
+import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
 import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import {
@@ -10,8 +13,8 @@ import {
   composeArtworkDetailMetadata,
   composeArtworkDetailPage,
 } from "@/lib/artwork/artwork-detail-page.composer";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingShareButton } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -71,33 +74,29 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
 
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "py-6 lg:py-10")}>
-      <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <div className="relative">
-          <div className="relative aspect-square overflow-hidden rounded-lg bg-surface-container">
-            <ArtMediaImage
-              src={vm.imageUrl}
-              alt={vm.imageAlt}
-              aspect={[1, 1]}
-              sizes="(min-width: 64rem) 50vw, 100vw"
-              label={ART_MEDIA_LABELS.artwork}
-              priority
-              className="absolute inset-0 size-full"
-              imgClassName="object-contain"
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+        <ArtArtworkGallery images={vm.galleryImages} priority />
+        <div className="flex min-w-0 flex-col gap-6">
           <div className="flex items-start justify-between gap-4">
-            <ArtPageHeader
-              title={vm.title}
-              breadcrumbs={[{ label: "Artworks", href: "/artworks" }, { label: vm.title }]}
-            />
-            <ArtArtworkFavoriteToggle
-              slug={vm.slug}
-              title={vm.title}
-              initialSaved={vm.saved}
-              auth={vm.favoriteAuth}
-            />
+            <div className="min-w-0 break-words">
+              <ArtPageHeader
+                title={vm.title}
+                breadcrumbs={[{ label: "Artworks", href: "/artworks" }, { label: vm.title }]}
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <MarketingShareButton
+                url={`/artworks/${encodeURIComponent(vm.slug)}`}
+                title={vm.title}
+                appearance="text"
+              />
+              <ArtArtworkFavoriteToggle
+                slug={vm.slug}
+                title={vm.title}
+                initialSaved={vm.saved}
+                auth={vm.favoriteAuth}
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking)] text-on-surface-variant">
@@ -119,6 +118,11 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             {vm.availability.detail ? (
               <p className="text-sm text-on-surface-variant">{vm.availability.detail}</p>
             ) : null}
+            {vm.certificateLine ? (
+              <p className="text-sm text-on-surface-variant" data-testid="art-artwork-certificate">
+                {vm.certificateLine}
+              </p>
+            ) : null}
           </div>
           <ArtEnquiryPanel
             slug={vm.slug}
@@ -126,19 +130,32 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             enquiry={vm.enquiry}
             loginHref={artStorefrontLoginHref(artworkEnquiryReturnTo(vm.slug))}
           />
-          {vm.description ? (
-            <section aria-labelledby="art-artwork-about" className="flex flex-col gap-2">
-              <h2
-                id="art-artwork-about"
-                className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking)] text-on-surface"
-              >
-                About this work
-              </h2>
-              <p className="whitespace-pre-wrap text-on-surface-variant">{vm.description}</p>
-            </section>
-          ) : null}
+          <ArtArtworkDetailSections
+            specs={vm.specs}
+            description={vm.description}
+            provenance={vm.provenance}
+            exhibitionHistory={vm.exhibitionHistory}
+          />
         </div>
       </div>
+
+      {vm.relatedArtworks.length > 0 ? (
+        <div className="mt-12">
+          <ArtSection
+            id="related-artworks"
+            title={vm.relatedSection.title}
+            viewAllHref={vm.relatedSection.viewAllHref}
+            viewAllSrLabel={vm.relatedSection.viewAllSrLabel}
+          >
+            <ArtArtworkRail
+              id="related-artworks-rail"
+              label={vm.relatedSection.title}
+              cards={vm.relatedArtworks}
+              favoriteAuth={vm.favoriteAuth}
+            />
+          </ArtSection>
+        </div>
+      ) : null}
     </div>
   );
 }

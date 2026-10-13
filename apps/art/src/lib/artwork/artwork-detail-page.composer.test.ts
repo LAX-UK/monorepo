@@ -1,4 +1,9 @@
-import { SIGNED_IN_VIEWER, artworkDetail, fakeArtServices } from "@/lib/testing/fake-art-services";
+import {
+  SIGNED_IN_VIEWER,
+  artworkDetail,
+  artworkSummary,
+  fakeArtServices,
+} from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
 import {
   composeArtworkDetailMetadata,
@@ -6,6 +11,87 @@ import {
 } from "./artwork-detail-page.composer.js";
 
 describe("composeArtworkDetailPage", () => {
+  it("relates works by category first, tops up with the artist's works and excludes itself", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.listArtworks.mockImplementation(async (query: { relatedTo?: string }) =>
+      query.relatedTo
+        ? { items: [artworkSummary({ slug: "cat-1" }), artworkSummary({ slug: "shared" })] }
+        : {
+            items: [
+              artworkSummary({ slug: "warm-basket" }),
+              artworkSummary({ slug: "shared" }),
+              artworkSummary({ slug: "artist-1" }),
+              artworkSummary({ slug: "artist-2" }),
+              artworkSummary({ slug: "artist-3" }),
+            ],
+          },
+    );
+
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+    });
+
+    expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
+      relatedTo: "warm-basket",
+      limit: 5,
+    });
+    expect(result.kind === "ok" && result.vm.relatedArtworks.map((card) => card.slug)).toEqual([
+      "cat-1",
+      "shared",
+      "artist-1",
+      "artist-2",
+    ]);
+  });
+
+  it("titles the related rail after where its works came from", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(
+      artworkDetail({ artistSlug: "ada", artistName: "Ada Lane" }),
+    );
+    services.catalogue.listArtworks.mockImplementation(async (query) =>
+      query.relatedTo
+        ? { items: [artworkSummary({ slug: "peer", artistSlug: "someone-else" })] }
+        : { items: [artworkSummary({ slug: "own", artistSlug: "ada" })] },
+    );
+    const collection = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+    });
+    expect(collection.kind === "ok" && collection.vm.relatedSection).toEqual({
+      title: "More in this collection",
+      viewAllHref: "/artworks",
+      viewAllSrLabel: "artworks",
+    });
+
+    services.catalogue.listArtworks.mockImplementation(async (query) =>
+      query.relatedTo
+        ? { items: [] }
+        : { items: [artworkSummary({ slug: "own", artistSlug: "ada" })] },
+    );
+    const artistOnly = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+    });
+    expect(artistOnly.kind === "ok" && artistOnly.vm.relatedSection).toEqual({
+      title: "More by Ada Lane",
+      viewAllHref: "/artists/ada",
+      viewAllSrLabel: "works by Ada Lane",
+    });
+  });
+
+  it("still renders when related reads fail", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.listArtworks.mockRejectedValue(new Error("down"));
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+    });
+    expect(result.kind === "ok" && result.vm.relatedArtworks).toEqual([]);
+  });
+
   it("returns not_found for unknown slugs", async () => {
     const services = fakeArtServices();
     await expect(

@@ -47,4 +47,71 @@ describe("composeArtHomePage", () => {
     expect(vm.featuredArtworks).toEqual([]);
     expect(vm.sectionErrors).toEqual(["artworks"]);
   });
+
+  it("falls back to the newest Art items when Shop-curated placements hold none", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtworks
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [artworkSummary()] });
+    services.catalogue.listArtists
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [artistSummary()] });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(services.catalogue.listArtworks).toHaveBeenLastCalledWith({
+      limit: 8,
+      type: "original",
+    });
+    expect(services.catalogue.listArtists).toHaveBeenLastCalledWith({ limit: 6 });
+    expect(vm.featuredArtworks).toHaveLength(1);
+    expect(vm.featuredArtists).toHaveLength(1);
+  });
+});
+
+describe("composeArtHomePage editorial", () => {
+  it("maps placements to hero and section cards", async () => {
+    const services = fakeArtServices();
+    services.editorial.home.mockResolvedValue({
+      status: "ok",
+      data: {
+        placements: [
+          {
+            slot: "home_hero",
+            position: 0,
+            headline: "Summer show",
+            mediaUrl: "https://cdn.test/hero.jpg",
+            linkUrl: null,
+            refKind: "exhibition",
+            refSlug: "summer-show",
+          },
+          {
+            slot: "home_whats_on",
+            position: 0,
+            headline: null,
+            mediaUrl: null,
+            linkUrl: "/visit",
+            refKind: "external",
+            refSlug: null,
+          },
+        ],
+      },
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.editorial).toMatchObject({
+      kind: "ok",
+      hero: { headline: "Summer show", href: "/exhibitions/summer-show" },
+      whatsOn: [{ headline: "What's on", href: "/visit" }],
+      stories: [],
+    });
+  });
+
+  it("hides editorial when disabled and flags failures", async () => {
+    const services = fakeArtServices();
+    expect((await composeArtHomePage(services)).editorial).toEqual({ kind: "hidden" });
+    services.editorial.home.mockResolvedValue({ status: "error" });
+    expect((await composeArtHomePage(services)).editorial).toEqual({ kind: "failed" });
+  });
 });

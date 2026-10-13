@@ -1,6 +1,8 @@
 import {
   PublicArtistDetailSchema,
   PublicArtistListSchema,
+  PublicArtistSortSchema,
+  PublicArtworkSalesChannelSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
@@ -14,6 +16,9 @@ const ListQuerySchema = Type.Object({
   cursor: Type.Optional(Type.String()),
   placement: Type.Optional(Type.Literal("featured_artists")),
   q: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
+  letter: Type.Optional(Type.String({ pattern: "^[A-Za-z]$" })),
+  sort: Type.Optional(PublicArtistSortSchema),
+  salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
 });
 
 export async function registerArtistRoutes(app: FastifyInstance, catalogue: CatalogueRoutesDeps) {
@@ -35,12 +40,18 @@ export async function registerArtistRoutes(app: FastifyInstance, catalogue: Cata
         cursor?: string;
         placement?: "featured_artists";
         q?: string;
+        letter?: string;
+        sort?: "newest" | "nameAsc" | "nameDesc";
+        salesChannel?: "shop" | "art";
       };
       const input = {
         limit: query.limit ?? 20,
         ...(query.cursor !== undefined ? { cursor: query.cursor } : {}),
         ...(query.placement !== undefined ? { placement: query.placement } : {}),
         ...(query.q !== undefined ? { q: query.q } : {}),
+        ...(query.letter !== undefined ? { letter: query.letter } : {}),
+        ...(query.sort !== undefined ? { sort: query.sort } : {}),
+        ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
       };
       return presentArtistList(await catalogue.listPublicArtists(input));
     },
