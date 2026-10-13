@@ -106,6 +106,21 @@ jobs:
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
       TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+      # --- ATG White Label (release-built; see docs/engineering/release-main-parity.md). ---
+      TF_VAR_atg_sync_enabled: ${{ vars.ATG_SYNC_ENABLED || 'false' }}
+      TF_VAR_atg_api_username: ${{ secrets.ATG_API_USERNAME }}
+      TF_VAR_atg_api_password: ${{ secrets.ATG_API_PASSWORD }}
+      TF_VAR_atg_client_id: ${{ vars.ATG_CLIENT_ID }}
+      TF_VAR_atg_platform_code: ${{ vars.ATG_PLATFORM_CODE }}
+      TF_VAR_atg_increment_set_id: ${{ vars.ATG_INCREMENT_SET_ID }}
+      TF_VAR_atg_default_category: ${{ vars.ATG_DEFAULT_CATEGORY }}
+      TF_VAR_atg_listing_private: ${{ vars.ATG_LISTING_PRIVATE || 'true' }}
+      TF_VAR_atg_white_label_base_url: ${{ vars.ATG_WHITE_LABEL_BASE_URL }}
+      # persistent layer: ATG's DNS-only ACM validation CNAME for auctions.lax.bid.
+      TF_VAR_atg_acm_validation_enabled: ${{ vars.ATG_ACM_VALIDATION_ENABLED || 'false' }}
+      # persistent layer: auctions.lax.bid proxied through the atg-cookie-shield Worker
+      # (token needs Workers Scripts + Workers Routes edit; see docs/integrations/atg.md).
+      TF_VAR_atg_white_label_enabled: ${{ vars.ATG_WHITE_LABEL_ENABLED || 'false' }}
       # --- Prebuilt-image deploys (DOCR). Set APP_DEPLOY_SOURCE_* repo variable to "image". ---
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_PROD || 'github' }}
       # persistent layer: create the account-level DOCR registry (prod state only).
