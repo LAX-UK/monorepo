@@ -328,7 +328,7 @@ pattern and the Worker tests.
   compromised ATG frontend code, and the impact is session fixation (planting a session for an
   attacker's account), not session theft. Host-only `__Host-` sessions remove it.
 - Third-party analytics cookies (`_ga*`, `_gcl_*`) still reach ATG. They are not credentials.
-- `lax.bid` zone settings apply to the White Label: security level "high" (some bidders may see a
+- `lax.bid` zone settings apply to the White Label: security level "medium" (some bidders may see a
   challenge), strict origin TLS, and Workers plan limits.
 - ATG sees Cloudflare IPs unless it reads `CF-Connecting-IP` (question 19).
 
