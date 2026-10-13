@@ -4,6 +4,11 @@ function emptyToUndefined(val: unknown): unknown {
   return val === "" || val === null ? undefined : val;
 }
 
+function envBoolean(val: unknown): unknown {
+  if (val === undefined || val === null || val === "") return undefined;
+  return val === "true" || val === true;
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -28,6 +33,32 @@ const envSchema = z
     ZOHO_REFRESH_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     ZOHO_CAMPAIGNS_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     ZOHO_CAMPAIGNS_LIST_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** ATG (GAP API) White Label sync — see docs/integrations/atg.md. */
+    ATG_SYNC_ENABLED: z.preprocess(envBoolean, z.boolean().default(false)),
+    ATG_API_BASE_URL: z.preprocess(
+      emptyToUndefined,
+      z.string().url().default("https://api.globalauctionplatform.com"),
+    ),
+    ATG_API_USERNAME: z.preprocess(emptyToUndefined, z.string().optional()),
+    ATG_API_PASSWORD: z.preprocess(emptyToUndefined, z.string().optional()),
+    ATG_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+    ATG_PLATFORM_CODE: z.preprocess(emptyToUndefined, z.string().optional()),
+    ATG_INCREMENT_SET_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+    ATG_DEFAULT_CATEGORY: z.preprocess(emptyToUndefined, z.string().optional()),
+    ATG_AUCTION_TYPE: z.preprocess(
+      emptyToUndefined,
+      z.enum(["Timed", "CatalogueTimed", "Live", "CatalogueLive"]).default("Timed"),
+    ),
+    /** Keep new ATG auctions private until ATG confirms production go-live. */
+    ATG_LISTING_PRIVATE: z.preprocess(envBoolean, z.boolean().default(true)),
+    ATG_ARTIST_PLACEMENT: z.preprocess(
+      emptyToUndefined,
+      z.enum(["title_prefix", "description"]).default("description"),
+    ),
+    ATG_APPROVE_BEFORE_PUBLISH: z.preprocess(envBoolean, z.boolean().default(false)),
+    ATG_TIMEZONE: z.preprocess(emptyToUndefined, z.string().default("Europe/London")),
+    /** Must stay under the 5-minute worker readiness heartbeat window. */
+    ATG_POLL_INTERVAL_MS: z.coerce.number().int().min(30_000).max(240_000).default(120_000),
     /** Interim marketing-contacts ESP for registered-user lifecycle campaigns (Plan B). */
     MARKETING_CONTACT_SYNC_PROVIDER: z.enum(["none", "brevo"]).default("none"),
     BREVO_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -84,6 +115,25 @@ const envSchema = z
           message:
             "BREVO_API_KEY and BREVO_LIST_ID are required when MARKETING_CONTACT_SYNC_PROVIDER=brevo",
           path: ["MARKETING_CONTACT_SYNC_PROVIDER"],
+        });
+      }
+    }
+    if (e.ATG_SYNC_ENABLED) {
+      const missing = (
+        [
+          "ATG_API_USERNAME",
+          "ATG_API_PASSWORD",
+          "ATG_PLATFORM_CODE",
+          "ATG_INCREMENT_SET_ID",
+          "ATG_DEFAULT_CATEGORY",
+          "S3_PUBLIC_BASE_URL",
+        ] as const
+      ).filter((key) => !e[key]);
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${missing.join(", ")} required when ATG_SYNC_ENABLED=true`,
+          path: ["ATG_SYNC_ENABLED"],
         });
       }
     }

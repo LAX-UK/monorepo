@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { atgSyncJobId } from "./exports.js";
 import { redactPayload } from "./redaction.js";
 import {
   ALL_QUEUE_NAMES,
@@ -8,6 +9,7 @@ import {
   listBullBoardQueues,
   listDlqSourceQueues,
   listEnabledQueues,
+  listWorkerHeartbeatKeys,
 } from "./registry.js";
 
 describe("QUEUE_REGISTRY", () => {
@@ -42,6 +44,25 @@ describe("QUEUE_REGISTRY", () => {
     const names = all.map((q) => q.name);
     expect(names).toContain("marketing-events");
     expect(names).toContain("payout-settlement");
+  });
+
+  it("enables atg-sync and its readiness heartbeat only behind the ATG flag", () => {
+    const base = { appEnv: "production" as const, marketingEventsEnabled: false };
+    expect(listEnabledQueues(base).map((q) => q.name)).not.toContain("atg-sync");
+    expect(listWorkerHeartbeatKeys(base)).not.toContain("worker:heartbeat:atg-sync");
+
+    const enabled = { ...base, atgSyncEnabled: true };
+    expect(listEnabledQueues(enabled).map((q) => q.name)).toContain("atg-sync");
+    expect(listWorkerHeartbeatKeys(enabled)).toContain("worker:heartbeat:atg-sync");
+  });
+
+  it("dedupes ATG jobs per target", () => {
+    const ids = [
+      atgSyncJobId({ name: "atg.push-sale", data: { saleId: "s1" } }),
+      atgSyncJobId({ name: "atg.delete-lot", data: { lotId: "l1" } }),
+    ];
+    expect(ids).toEqual(["atg.push-sale__s1", "atg.delete-lot__l1"]);
+    for (const id of ids) expect(id).not.toContain(":");
   });
 
   it("excludes hidden queues from Bull Board list", () => {

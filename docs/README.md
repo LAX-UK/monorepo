@@ -76,6 +76,7 @@ How each external system talks to TheAlx and what to configure on the external s
 - [Marketing contacts (Brevo)](./integrations/marketing-contacts.md) — interim registered-user sync to Brevo for lifecycle campaigns (`news.lax.bid`), webhook opt-outs
 - [Cloudflare](./integrations/cloudflare.md) — DNS records, page rules, WAF rules, full-strict TLS
 - [DigitalOcean](./integrations/digitalocean.md) — App Platform components, managed Postgres, migration job
+- [ATG White Label](./integrations/atg.md) — GAP API push of sales/lots/images, publish/close, results polling, prod runbook, open questions for ATG
 
 ## Auction-domain reference
 

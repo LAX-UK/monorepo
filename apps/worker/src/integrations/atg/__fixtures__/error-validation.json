@@ -1,0 +1,13 @@
+{
+  "ResponseStatus": {
+    "ErrorCode": "NotEmpty",
+    "Message": "'Currency' must not be empty.",
+    "Errors": [
+      {
+        "ErrorCode": "NotEmpty",
+        "FieldName": "Currency",
+        "Message": "'Currency' must not be empty."
+      }
+    ]
+  }
+}

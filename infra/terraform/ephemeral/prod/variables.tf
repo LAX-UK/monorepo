@@ -577,3 +577,76 @@ variable "ga4_measurement_id" {
   default     = ""
   description = "GA4 measurement ID for server-side Measurement Protocol (sGTM publisher). Required when marketing events are enabled."
 }
+
+# ─── ATG White Label (GAP API) ──────────────────────────────────────────────
+# Sync stays off until ATG supplies production ids; see auction docs/integrations/atg.md.
+
+variable "atg_sync_enabled" {
+  type        = string
+  default     = "false"
+  description = "When \"true\", the API enqueues and the worker runs atg-sync jobs. Requires the ATG ids and credentials below."
+  validation {
+    condition     = contains(["true", "false"], var.atg_sync_enabled)
+    error_message = "atg_sync_enabled must be \"true\" or \"false\"."
+  }
+}
+
+variable "atg_api_base_url" {
+  type        = string
+  default     = "https://api.globalauctionplatform.com"
+  description = "GAP API origin. Production only; the staging origin is still to be confirmed by ATG."
+}
+
+variable "atg_api_username" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "GAP API Basic auth username issued by ATG."
+}
+
+variable "atg_api_password" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "GAP API Basic auth password issued by ATG."
+}
+
+variable "atg_client_id" {
+  type        = string
+  default     = ""
+  description = "ATG ClientId GUID for LAX (optional when the API user is bound to one client)."
+}
+
+variable "atg_platform_code" {
+  type        = string
+  default     = ""
+  description = "ATG PlatformCode for the LAX White Label."
+}
+
+variable "atg_increment_set_id" {
+  type        = string
+  default     = ""
+  description = "ATG IncrementSetId GUID applied to every auction."
+}
+
+variable "atg_default_category" {
+  type        = string
+  default     = ""
+  description = "ATG CategoryName sent on each auction listing."
+}
+
+variable "atg_listing_private" {
+  type        = string
+  default     = "true"
+  description = "When \"true\", auctions are listed Private (White Label only) rather than on the-saleroom marketplace."
+  validation {
+    condition     = contains(["true", "false"], var.atg_listing_private)
+    error_message = "atg_listing_private must be \"true\" or \"false\"."
+  }
+}
+
+variable "atg_white_label_base_url" {
+  type        = string
+  default     = ""
+  description = "Public White Label origin linked from the admin ATG tab. Empty hides the link."
+}

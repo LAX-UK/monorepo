@@ -9,5 +9,6 @@ export function queueRuntimeEnvFromWorkerEnv(env: WorkerEnv): QueueRuntimeEnv {
     appEnv: env.APP_ENV ?? "development",
     cronInternalSecret: env.CRON_INTERNAL_SECRET,
     marketingEventsEnabled: isMarketingEventsEnabled(env),
+    atgSyncEnabled: env.ATG_SYNC_ENABLED,
   };
 }

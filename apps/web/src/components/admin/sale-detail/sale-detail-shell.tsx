@@ -161,6 +161,15 @@ export function SaleDetailShell({
       label: "Press",
       href: saleDetailTabHref(saleId, "press"),
     },
+    ...(canManageSales
+      ? [
+          {
+            id: "atg",
+            label: "ATG",
+            href: saleDetailTabHref(saleId, "atg"),
+          },
+        ]
+      : []),
     {
       id: "activity",
       label: "Activity",

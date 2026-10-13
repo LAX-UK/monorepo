@@ -3,12 +3,31 @@ on:
   pull_request:
     paths:
       - infra/terraform/**
+      - infra/workers/**
       - .github/workflows/terraform-*.yml
       - .github/actions/terraform-*/**
 permissions:
   contents: read
   pull-requests: write
 jobs:
+  atg-white-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cookie-shield Worker tests
+        working-directory: infra/workers/atg-cookie-shield
+        run: node --test
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: ATG White Label module contract
+        working-directory: infra/terraform/modules/atg-white-label
+        run: |
+          terraform init -backend=false -input=false
+          terraform test
   plan:
     strategy:
       fail-fast: false
@@ -53,6 +72,9 @@ jobs:
       TF_VAR_next_public_marketing_attribution_enabled: ${{ vars.NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED || 'false' }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
       TF_VAR_strict_bid_eligibility_enabled: ${{ vars.STRICT_BID_ELIGIBILITY_ENABLED || (matrix.env == 'test' && 'true' || 'false') }}
+      # persistent prod: ATG White Label records (docs/integrations/atg.md); must match apply.
+      TF_VAR_atg_acm_validation_enabled: ${{ vars.ATG_ACM_VALIDATION_ENABLED || 'false' }}
+      TF_VAR_atg_white_label_enabled: ${{ vars.ATG_WHITE_LABEL_ENABLED || 'false' }}
       TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}

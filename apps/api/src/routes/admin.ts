@@ -134,6 +134,7 @@ import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
 import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
+import { createAdminAtgRoutes } from "./atg-admin.js";
 import { createAdminTelephoneBookingRoutes } from "./telephone-bookings.js";
 import { attachXeroAdminRoutes } from "./xero-admin.js";
 
@@ -1034,6 +1035,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.use("/event-rsvps", requireAuctionManage);
   platform.use("/event-rsvps/*", requireAuctionManage);
   platform.route("/event-rsvps", createAdminOnsiteEventRoutes(container));
+
+  platform.use("/integrations/atg", requireAuctionManage);
+  platform.use("/integrations/atg/*", requireAuctionManage);
+  platform.route("/integrations/atg", createAdminAtgRoutes(container.atgAdmin));
 
   platform.get(
     "/saleroom/sessions",

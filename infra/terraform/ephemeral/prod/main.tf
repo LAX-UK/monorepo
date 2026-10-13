@@ -261,6 +261,8 @@ locals {
         { key = "XERO_POST_CONNECT_WEB_REDIRECT", value = var.xero_post_connect_web_redirect, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_USE_LEGAL_ENTITY_CONTACT", value = var.xero_use_legal_entity_contact, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_PAYOUT_BILL_ACCOUNT_CODE", value = var.xero_payout_bill_account_code, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_SYNC_ENABLED", value = var.atg_sync_enabled, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_WHITE_LABEL_BASE_URL", value = var.atg_white_label_base_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "AUTH_DEK_KEY", value = var.auth_dek_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "TURNSTILE_SECRET_KEY", value = var.turnstile_secret_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "VERIFY_ORIGIN", value = var.verify_origin, type = "GENERAL", scope = "RUN_TIME" },
@@ -399,7 +401,16 @@ locals {
         { key = "META_CAPI_TEST_EVENT_CODE", value = var.meta_capi_test_event_code, type = "SECRET", scope = "RUN_TIME" },
         { key = "GA4_MEASUREMENT_ID", value = var.ga4_measurement_id, type = "GENERAL", scope = "RUN_TIME" },
         { key = "MARKETING_EVENT_WORKER_CONCURRENCY", value = "5", type = "GENERAL", scope = "RUN_TIME" },
-        { key = "CLAMAV_URL", value = "http://clamav:9000", type = "GENERAL", scope = "RUN_TIME" }
+        { key = "CLAMAV_URL", value = "http://clamav:9000", type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_SYNC_ENABLED", value = var.atg_sync_enabled, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_API_BASE_URL", value = var.atg_api_base_url, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_API_USERNAME", value = var.atg_api_username, type = "SECRET", scope = "RUN_TIME" },
+        { key = "ATG_API_PASSWORD", value = var.atg_api_password, type = "SECRET", scope = "RUN_TIME" },
+        { key = "ATG_CLIENT_ID", value = var.atg_client_id, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_PLATFORM_CODE", value = var.atg_platform_code, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_INCREMENT_SET_ID", value = var.atg_increment_set_id, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_DEFAULT_CATEGORY", value = var.atg_default_category, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ATG_LISTING_PRIVATE", value = var.atg_listing_private, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {

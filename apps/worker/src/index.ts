@@ -15,6 +15,8 @@ import {
 } from "@auction/marketing-events";
 import { captureBackgroundError, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import {
+  ATG_SYNC_JOB_NAMES,
+  ATG_SYNC_QUEUE_NAME,
   DATA_EXPORT_QUEUE_NAME,
   DEAD_LETTER_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
@@ -45,7 +47,7 @@ import {
 import type { DataExportJobPayload, QrCodeScanJobPayload } from "@auction/queues";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
-import { type Job, Queue, Worker } from "bullmq";
+import { type Job, Queue, UnrecoverableError, Worker } from "bullmq";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { Redis } from "ioredis";
@@ -53,6 +55,11 @@ import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
+import { loadAtgRuntimeConfig } from "./integrations/atg/atg-config.js";
+import { isPermanentAtgJobError, processAtgSyncJob } from "./integrations/atg/atg-sync-job.js";
+import { AtgSyncService } from "./integrations/atg/atg-sync-service.js";
+import { DrizzleAtgSyncStore } from "./integrations/atg/drizzle-atg-sync-store.js";
+import { GapHttpAdapter } from "./integrations/atg/gap-http-adapter.js";
 import { runBulkPayoutSettlementJob } from "./jobs/bulk-payout-settlement.js";
 import { runCleanupDisplayPairingsJob } from "./jobs/cleanup-display-pairings.js";
 import { dataExportJob } from "./jobs/data-export.js";
@@ -642,6 +649,52 @@ void dataExportQueue.add(
   },
 );
 
+let atgSyncQueue: Queue | undefined;
+let atgSyncWorker: Worker | undefined;
+const atgRuntime = loadAtgRuntimeConfig(env);
+if (atgRuntime) {
+  const atgSyncService = new AtgSyncService({
+    gateway: new GapHttpAdapter(atgRuntime.adapter),
+    store: new DrizzleAtgSyncStore(db),
+    config: atgRuntime.sync,
+  });
+  atgSyncQueue = new Queue(ATG_SYNC_QUEUE_NAME, queueOpts(ATG_SYNC_QUEUE_NAME));
+  atgSyncWorker = new Worker(
+    ATG_SYNC_QUEUE_NAME,
+    async (job) => {
+      try {
+        const result = await processAtgSyncJob(job, atgSyncService);
+        log.info({ jobId: job.id, name: job.name, result }, "atg-sync job completed");
+        await heartbeat("atg-sync");
+        return result;
+      } catch (err) {
+        if (isPermanentAtgJobError(err)) {
+          throw new UnrecoverableError(err instanceof Error ? err.message : String(err));
+        }
+        throw err;
+      }
+    },
+    { ...bullConnection, concurrency: 1 },
+  );
+  atgSyncWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(ATG_SYNC_QUEUE_NAME, job, err);
+  });
+  void atgSyncQueue.add(
+    ATG_SYNC_JOB_NAMES.tick,
+    {},
+    {
+      jobId: "atg-sync-tick",
+      repeat: { every: atgRuntime.pollIntervalMs },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+  );
+  log.info(
+    { pollIntervalMs: atgRuntime.pollIntervalMs, listingPrivate: atgRuntime.sync.listingPrivate },
+    "atg-sync enabled",
+  );
+}
+
 type LegalEntityArchiveJobData = { legalEntityId: string };
 const legalEntityArchiveQueue = new Queue<LegalEntityArchiveJobData>(
   LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
@@ -1031,6 +1084,7 @@ registerWorkerErrorHandlers([
   { worker: purgeVerificationsWorker, queue: PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME },
   { worker: purgeSoftDeletedUsersWorker, queue: PURGE_SOFT_DELETED_USERS_QUEUE_NAME },
   { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
+  ...(atgSyncWorker ? [{ worker: atgSyncWorker, queue: ATG_SYNC_QUEUE_NAME }] : []),
   ...(marketingCapiBatchWorker
     ? [{ worker: marketingCapiBatchWorker, queue: MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME }]
     : []),
@@ -1264,6 +1318,8 @@ function shutdown(signal: NodeJS.Signals) {
         ...(staleSubmissionDraftRemindersQueue ? [staleSubmissionDraftRemindersQueue.close()] : []),
         ...(lotLifecycleTickWorker ? [lotLifecycleTickWorker.close()] : []),
         ...(lotLifecycleTickQueue ? [lotLifecycleTickQueue.close()] : []),
+        ...(atgSyncWorker ? [atgSyncWorker.close()] : []),
+        ...(atgSyncQueue ? [atgSyncQueue.close()] : []),
         deadLetterQueue.close(),
         projectorRunner.stop(),
       ]),

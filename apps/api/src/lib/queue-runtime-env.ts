@@ -7,5 +7,6 @@ export function queueRuntimeEnvFromApiEnv(env: Env): QueueRuntimeEnv {
     appEnv: env.APP_ENV,
     cronInternalSecret: env.CRON_INTERNAL_SECRET,
     marketingEventsEnabled: isMarketingEventsEnabled(env),
+    atgSyncEnabled: env.ATG_SYNC_ENABLED,
   };
 }
