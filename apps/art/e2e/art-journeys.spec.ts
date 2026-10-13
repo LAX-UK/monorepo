@@ -116,7 +116,7 @@ test.describe("lax.art journeys", () => {
     const credentials = artBuyerCredentials();
     test.skip(!credentials, "nav assertion needs ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");
     await signInArtBuyer(page, credentials as NonNullable<typeof credentials>, "/account");
-    const accountNav = page.getByRole("navigation", { name: "Account" });
+    const accountNav = page.getByRole("navigation", { name: "Account sections" });
     await expect(accountNav.getByRole("link", { name: "Favorites" })).toBeVisible();
     await expect(accountNav.getByRole("link", { name: "Payouts" })).toHaveCount(
       artPayoutsEnabled ? 1 : 0,
