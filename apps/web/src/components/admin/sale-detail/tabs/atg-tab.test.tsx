@@ -60,6 +60,11 @@ function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
   };
 }
 
+/** The polling interval starts in a passive effect, which may commit after the text renders. */
+async function flushEffects() {
+  await act(async () => {});
+}
+
 describe("SaleAtgTab", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -149,6 +154,7 @@ describe("SaleAtgTab", () => {
 
     expect(await screen.findByText("Syncing with ATG…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Push to ATG" })).toBeDisabled();
+    await flushEffects();
     refresh.mockClear();
     await act(async () => {
       vi.advanceTimersByTime(6_000);
@@ -178,6 +184,7 @@ describe("SaleAtgTab", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
     await screen.findByText("Syncing with ATG…");
+    await flushEffects();
     await act(async () => {
       vi.advanceTimersByTime(63_000);
     });
