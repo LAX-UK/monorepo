@@ -10,6 +10,7 @@ const LOT_ID = "22222222-2222-4222-8222-222222222222";
 function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
   return {
     saleId: SALE_ID,
+    saleCancelled: false,
     linked: false,
     atgAuctionId: null,
     remoteStatus: null,
@@ -85,6 +86,32 @@ describe("AtgAdminService", () => {
         "close",
       ),
     ).toMatchObject({ ok: true });
+  });
+
+  it("refuses to push or publish cancelled sales but still lets a linked one be closed", async () => {
+    const cancelled = view({ saleCancelled: true, linked: true, atgAuctionId: "a" });
+    for (const action of ["push", "publish"] as const) {
+      expect(
+        await setup({ sale: cancelled }).service.enqueueSaleAction(SALE_ID, action),
+      ).toMatchObject({ ok: false, error: { status: 409, code: "sale_cancelled" } });
+    }
+    expect(
+      await setup({ sale: cancelled }).service.enqueueSaleAction(SALE_ID, "close"),
+    ).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("refuses every action once the ATG auction is closed", async () => {
+    const closed = view({ linked: true, atgAuctionId: "a", remoteStatus: "closed" });
+    for (const action of ["push", "publish", "close"] as const) {
+      const { service, queue } = setup({ sale: closed });
+      expect(await service.enqueueSaleAction(SALE_ID, action)).toMatchObject({
+        ok: false,
+        error: { status: 409, code: "atg_closed" },
+      });
+      expect(queue.add).not.toHaveBeenCalled();
+    }
   });
 
   it("deletes only lots that exist on ATG", async () => {

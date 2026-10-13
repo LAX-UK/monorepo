@@ -52,8 +52,10 @@ export type AtgSaleSnapshot = {
   locationCity: string | null;
   locationPostcode: string | null;
   locationCountry: string | null;
+  /** Cancelled in LAX: no further pushes; the auction can only be closed on ATG. */
+  cancelled: boolean;
   updatedAt: Date;
-  /** Non-deleted lots currently in the sale, ordered by lot number. */
+  /** Non-deleted, non-cancelled lots currently in the sale, ordered by lot number. */
   lots: AtgLotSnapshot[];
 };
 

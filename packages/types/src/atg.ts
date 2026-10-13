@@ -28,6 +28,7 @@ export type AtgLotSyncView = {
   imageCount: number;
   lastSyncedAt: string | null;
   lastError: string | null;
+  /** Raw GAP lot status code; GAP does not document its values, so do not display it. */
   remoteStatus: string | null;
   sold: boolean | null;
   hammerPrice: string | null;
@@ -38,6 +39,8 @@ export type AtgLotSyncView = {
 
 export type AtgSaleSyncView = {
   saleId: string;
+  /** Cancelled in LAX: push and publish are refused; a linked auction can still be closed. */
+  saleCancelled: boolean;
   linked: boolean;
   atgAuctionId: string | null;
   remoteStatus: AtgRemoteStatus | null;

@@ -13,6 +13,7 @@ const lotIds = [
   "a7a00000-0000-4000-8000-000000000011",
   "a7a00000-0000-4000-8000-000000000012",
   "a7a00000-0000-4000-8000-000000000013",
+  "a7a00000-0000-4000-8000-000000000014",
 ] as const;
 
 async function withSeededSale(run: (store: DrizzleAtgSyncStore, db: Database) => Promise<void>) {
@@ -65,6 +66,7 @@ async function withSeededSale(run: (store: DrizzleAtgSyncStore, db: Database) =>
         { ...base, id: lotIds[0], lotNumber: 2, title: "Second" },
         { ...base, id: lotIds[1], lotNumber: 1, title: "First" },
         { ...base, id: lotIds[2], lotNumber: 3, title: "Deleted", deletedAt: t },
+        { ...base, id: lotIds[3], lotNumber: 4, title: "Cancelled", status: "cancelled" as const },
       ]);
       const txDb = tx as unknown as Database;
       await run(new DrizzleAtgSyncStore(txDb), txDb);
@@ -76,11 +78,26 @@ async function withSeededSale(run: (store: DrizzleAtgSyncStore, db: Database) =>
 }
 
 describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
-  it("loads non-deleted lots in lot-number order", async () => {
-    await withSeededSale(async (store) => {
+  it("loads non-deleted, non-cancelled lots in lot-number order", async () => {
+    await withSeededSale(async (store, db) => {
       const snapshot = await store.loadSale(saleId);
       expect(snapshot?.lots.map((l) => l.title)).toEqual(["First", "Second"]);
       expect(snapshot?.buyerPremiumRate).toBe("0.2500");
+      expect(snapshot?.cancelled).toBe(false);
+
+      await db.update(sale).set({ status: "cancelled" }).where(eq(sale.id, saleId));
+      expect((await store.loadSale(saleId))?.cancelled).toBe(true);
+    });
+  });
+
+  it("finds lot links across sales", async () => {
+    await withSeededSale(async (store) => {
+      expect(await store.findLotLinks([])).toEqual([]);
+      await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "created" });
+      await store.insertLotLink({ lotId: lotIds[0], saleId, atgLotId: "atg-l1", payloadHash: "h" });
+      expect(await store.findLotLinks([lotIds[0], lotIds[1]])).toEqual([
+        { lotId: lotIds[0], saleId, atgLotId: "atg-l1", imageNames: [], payloadHash: "h" },
+      ]);
     });
   });
 

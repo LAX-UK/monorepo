@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { atgAuctionLink, atgLotLink, lot, sale } from "@auction/db/schema";
 import type { AtgRemoteStatus, AtgSaleResultRow, AtgSaleSyncView } from "@auction/types";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { IAtgLinkReader } from "./interfaces/atg-link.reader.js";
 
 const iso = (value: Date | null): string | null => value?.toISOString() ?? null;
@@ -12,7 +12,7 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
 
   async getSaleView(saleId: string): Promise<AtgSaleSyncView | null> {
     const [row] = await this.db
-      .select({ saleId: sale.id, link: atgAuctionLink })
+      .select({ saleId: sale.id, saleStatus: sale.status, link: atgAuctionLink })
       .from(sale)
       .leftJoin(atgAuctionLink, eq(atgAuctionLink.saleId, sale.id))
       .where(and(eq(sale.id, saleId), saleNotDeleted()))
@@ -28,12 +28,13 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
       })
       .from(lot)
       .leftJoin(atgLotLink, eq(atgLotLink.lotId, lot.id))
-      .where(and(eq(lot.saleId, saleId), lotNotDeleted()))
+      .where(and(eq(lot.saleId, saleId), lotNotDeleted(), ne(lot.status, "cancelled")))
       .orderBy(sql`${lot.lotNumber} asc nulls last`, asc(lot.createdAt));
 
     const link = row.link;
     return {
       saleId: row.saleId,
+      saleCancelled: row.saleStatus === "cancelled",
       linked: Boolean(link?.atgAuctionId),
       atgAuctionId: link?.atgAuctionId ?? null,
       remoteStatus: (link?.remoteStatus as AtgRemoteStatus | undefined) ?? null,

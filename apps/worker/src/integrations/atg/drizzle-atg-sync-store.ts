@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { artistProfile, atgAuctionLink, atgLotLink, lot, sale } from "@auction/db/schema";
-import { and, asc, eq, gt, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import type { AtgRemoteLot } from "./atg-gateway.js";
 import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "./atg-sync-store.js";
 import type { AtgAuctionLink, AtgLotLink, AtgRemoteStatus, AtgSaleSnapshot } from "./atg-types.js";
@@ -48,7 +48,7 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       .select({ lot, artistName: artistProfile.displayName })
       .from(lot)
       .leftJoin(artistProfile, eq(artistProfile.id, lot.artistId))
-      .where(and(eq(lot.saleId, saleId), lotNotDeleted()))
+      .where(and(eq(lot.saleId, saleId), lotNotDeleted(), ne(lot.status, "cancelled")))
       .orderBy(sql`${lot.lotNumber} asc nulls last`, asc(lot.createdAt));
 
     return {
@@ -64,6 +64,7 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       locationCity: saleRow.locationCity,
       locationPostcode: saleRow.locationPostcode,
       locationCountry: saleRow.locationCountry,
+      cancelled: saleRow.status === "cancelled",
       updatedAt: saleRow.updatedAt,
       lots: lotRows.map(({ lot: row, artistName }) => ({
         id: row.id,
@@ -116,6 +117,12 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       .where(eq(atgLotLink.lotId, lotId))
       .limit(1);
     return row ? toLotLink(row) : null;
+  }
+
+  async findLotLinks(lotIds: string[]): Promise<AtgLotLink[]> {
+    if (lotIds.length === 0) return [];
+    const rows = await this.db.select().from(atgLotLink).where(inArray(atgLotLink.lotId, lotIds));
+    return rows.map(toLotLink);
   }
 
   async insertLotLink(

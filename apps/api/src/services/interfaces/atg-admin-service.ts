@@ -2,7 +2,13 @@ import type { AtgIntegrationStatus, AtgSaleSyncView, AtgSyncAction } from "@auct
 
 export type AtgAdminError = {
   status: 404 | 409 | 503;
-  code: "atg_disabled" | "sale_not_found" | "not_linked" | "lot_not_linked";
+  code:
+    | "atg_disabled"
+    | "sale_not_found"
+    | "not_linked"
+    | "lot_not_linked"
+    | "atg_closed"
+    | "sale_cancelled";
   message: string;
 };
 

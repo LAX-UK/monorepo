@@ -4,6 +4,9 @@ import { LotOverviewTab } from "@/components/admin/lot-detail/tabs/overview-tab"
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { getAtgLotSyncView } from "@/lib/data/http/atg.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -13,11 +16,14 @@ type Props = {
 export default async function AdminLotOverviewPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const [bundle, bids] = await Promise.all([
+  const [bundle, bids, user] = await Promise.all([
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),
+    getServerSessionUser(),
   ]);
-  const atgLot = await getAtgLotSyncView(bundle.auction.saleId, id);
+  const canSeeAtg =
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+  const atgLot = canSeeAtg ? await getAtgLotSyncView(bundle.auction.saleId, id) : null;
   return (
     <>
       {sp.error && sp.error_code !== "connect_required" ? (

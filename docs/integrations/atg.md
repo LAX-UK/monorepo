@@ -38,8 +38,8 @@ flowchart LR
 
 | Job | Trigger | Behaviour |
 | --- | --- | --- |
-| `atg.push-sale` | Admin "Push to ATG" | Create or update the auction, then create / update / delete lots and append images. Refuses closed auctions. |
-| `atg.publish-sale` | Admin "Publish on ATG" | Push first, optionally `ApproveAuction` (`ATG_APPROVE_BEFORE_PUBLISH`), then `PublishAuction`. Idempotent. |
+| `atg.push-sale` | Admin "Push to ATG" | Create or update the auction, then create / update / delete lots and append images. Refuses closed auctions and cancelled sales. |
+| `atg.publish-sale` | Admin "Publish on ATG" | Push first; if any lot failed, stop without publishing and list the lots. Otherwise optionally `ApproveAuction` (`ATG_APPROVE_BEFORE_PUBLISH`), then `PublishAuction`. Idempotent. |
 | `atg.close-sale` | Admin "Close on ATG" | `CloseAuction`, then one results poll. |
 | `atg.delete-lot` | API only (`DELETE /admin/integrations/atg/lots/:id`) | `DeleteLot` for one linked lot (404 from ATG counts as done). |
 | `atg.tick` | Repeatable, every `ATG_POLL_INTERVAL_MS` | Re-push linked, non-closed sales with catalogue changes; poll lots and results for published sales and sales closed in the last 7 days. |
@@ -114,7 +114,24 @@ back to LAX bids, invoices or Xero in this release.
   up to five (`Lot N: message`). If any failure was retryable the job retries; otherwise the
   error stays visible on the ATG tab until the lot is fixed.
 - **Closed is final.** Pushes are refused once LAX recorded the auction as closed, because ATG
-  has no reopen or unpublish endpoint.
+  has no reopen or unpublish endpoint. The API returns 409 `atg_closed`.
+- **Cancelled lots and sales.** Cancelled and deleted lots are not sent; if a cancelled lot was
+  already on ATG, the next push deletes it there. A cancelled sale is never pushed or published
+  (API 409 `sale_cancelled`); staff can still close its ATG auction.
+- **Publishing is all-or-nothing.** If any lot fails during the publish job's push, the auction
+  is not published and `last_error` starts with "Not published: fix these lots first."
+- **Lost create responses.** GAP has no lookup by our sale ID, so a timeout or 5xx on
+  `CreateAuction` is not retried automatically: ATG may have created the auction. The ATG tab
+  asks staff to check the ATG admin before pushing again. For lots, a retry first reads
+  `GetLots` and adopts an unlinked ATG lot with the same lot number instead of creating a
+  duplicate.
+- **Lots moved between sales.** When a lot moves from one ATG-linked sale to another, the push
+  deletes the copy on the old ATG auction before creating it on the new one.
+- **Lots deleted in the ATG admin.** Not detected: later updates fail with an ATG error on that
+  lot. Remove the lot in LAX (or ask ATG to restore it).
+- **Lot status codes.** `GetLots` returns `Status` as an undocumented integer. It is stored in
+  `atg_lot_link.status` but never shown; the UI derives labels from `Sold`, `NumberOfBids` and
+  sync errors (question 15).
 - **Dates.** GAP returns `/Date(ms±zzzz)/`; `gap-date.ts` parses that and ISO strings.
 - **No fixed outbound IP.** If ATG requires IP allowlisting, the worker needs egress through a
   static IP first.
@@ -295,3 +312,11 @@ login on `secure-login.globalauctionplatform.com`).
     need?
 14. Can native sign-up and password login be disabled on our tenant? Will you create GAP
     customers just-in-time with our `sub` as `ExternalReference`? How should logout work?
+
+### Robustness (not blocking)
+
+15. **Lot status values.** What do the integer values of `GetLotResponse.Status` mean? The
+    Swagger has no enum.
+16. **Idempotent creates.** Can we look up an auction by `ClientsAuctionId`, or is
+    `CreateAuction` idempotent on it? What does `GetAuctionByReference` expect, and what does
+    `GetAuctionsByClientId` return? This would let us retry a timed-out create safely.

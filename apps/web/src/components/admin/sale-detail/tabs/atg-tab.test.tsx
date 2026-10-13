@@ -1,8 +1,8 @@
 import { SaleAtgTab } from "@/components/admin/sale-detail/tabs/atg-tab";
 import { renderWithViewer } from "@/test/render-with-viewer";
-import type { AtgSaleSyncView } from "@auction/types";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AtgLotSyncView, AtgSaleSyncView } from "@auction/types";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const adminAtgSaleActionResultAction = vi.fn();
 
@@ -10,8 +10,10 @@ vi.mock("@/lib/actions/admin-atg", () => ({
   adminAtgSaleActionResultAction: (...args: unknown[]) => adminAtgSaleActionResultAction(...args),
 }));
 
+const refresh = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh }),
 }));
 
 vi.mock("@/lib/ui/notify", () => ({
@@ -21,9 +23,29 @@ vi.mock("@/lib/ui/notify", () => ({
 const SALE_ID = "11111111-1111-4111-8111-111111111111";
 const ENABLED = { enabled: true, whiteLabelBaseUrl: "https://wl.example" };
 
+function lot(overrides: Partial<AtgLotSyncView> = {}): AtgLotSyncView {
+  return {
+    lotId: "lot-1",
+    lotNumber: 1,
+    title: "Untitled",
+    atgLotId: null,
+    imageCount: 0,
+    lastSyncedAt: null,
+    lastError: null,
+    remoteStatus: null,
+    sold: null,
+    hammerPrice: null,
+    currentMaxBid: null,
+    numberOfBids: null,
+    lastPolledAt: null,
+    ...overrides,
+  };
+}
+
 function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
   return {
     saleId: SALE_ID,
+    saleCancelled: false,
     linked: false,
     atgAuctionId: null,
     remoteStatus: null,
@@ -33,29 +55,18 @@ function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
     lastPolledAt: null,
     lastError: null,
     results: [],
-    lots: [
-      {
-        lotId: "lot-1",
-        lotNumber: 1,
-        title: "Untitled",
-        atgLotId: null,
-        imageCount: 0,
-        lastSyncedAt: null,
-        lastError: null,
-        remoteStatus: null,
-        sold: null,
-        hammerPrice: null,
-        currentMaxBid: null,
-        numberOfBids: null,
-        lastPolledAt: null,
-      },
-    ],
+    lots: [lot()],
     ...overrides,
   };
 }
 
 describe("SaleAtgTab", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
+    refresh.mockReset();
     adminAtgSaleActionResultAction.mockReset();
     adminAtgSaleActionResultAction.mockResolvedValue({ ok: true, data: { jobId: "j" } });
   });
@@ -125,5 +136,122 @@ describe("SaleAtgTab", () => {
       />,
     );
     expect(screen.getByText("Lot 3: Title required")).toBeInTheDocument();
+  });
+
+  it("keeps refreshing after an action until the worker result arrives", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const initial = view();
+    const { rerender } = renderWithViewer(
+      <SaleAtgTab saleId={SALE_ID} status={ENABLED} view={initial} canManage />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
+
+    expect(await screen.findByText("Syncing with ATG…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Push to ATG" })).toBeDisabled();
+    refresh.mockClear();
+    await act(async () => {
+      vi.advanceTimersByTime(6_000);
+    });
+    expect(refresh).toHaveBeenCalledTimes(2);
+
+    rerender(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({
+          linked: true,
+          atgAuctionId: "a",
+          remoteStatus: "created",
+          lastSyncedAt: "2026-10-13T12:00:00.000Z",
+        })}
+        canManage
+      />,
+    );
+    await waitFor(() => expect(screen.queryByText("Syncing with ATG…")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Push changes to ATG" })).toBeEnabled();
+  });
+
+  it("stops refreshing after a minute and says so", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
+    await screen.findByText("Syncing with ATG…");
+    await act(async () => {
+      vi.advanceTimersByTime(63_000);
+    });
+
+    expect(screen.getByText(/taking longer than usual/)).toBeInTheDocument();
+    refresh.mockClear();
+    await act(async () => {
+      vi.advanceTimersByTime(9_000);
+    });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Push to ATG" })).toBeEnabled();
+  });
+
+  it("blocks push and publish for cancelled sales but still allows closing on ATG", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({
+          saleCancelled: true,
+          linked: true,
+          atgAuctionId: "a",
+          remoteStatus: "published",
+        })}
+        canManage
+      />,
+    );
+
+    expect(screen.getByText("Sale cancelled")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Push changes to ATG" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Published" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Close on ATG" })).toBeEnabled();
+    expect(screen.getByText(/Close the ATG auction if it is still open/)).toBeInTheDocument();
+  });
+
+  it("shows lot states in words, never GAP status codes, and sums results once live", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({
+          linked: true,
+          atgAuctionId: "a",
+          remoteStatus: "published",
+          lots: [
+            lot({
+              lotId: "l1",
+              atgLotId: "x1",
+              remoteStatus: "7",
+              sold: true,
+              hammerPrice: "1500.00",
+            }),
+            lot({
+              lotId: "l2",
+              atgLotId: "x2",
+              remoteStatus: "3",
+              numberOfBids: 4,
+              currentMaxBid: "200.00",
+            }),
+            lot({ lotId: "l3", atgLotId: "x3", lastError: "ATG updateLot failed with HTTP 400" }),
+            lot({ lotId: "l4" }),
+          ],
+        })}
+        canManage
+      />,
+    );
+
+    expect(screen.getByText("Sold")).toBeInTheDocument();
+    expect(screen.getByText("4 bids")).toBeInTheDocument();
+    expect(screen.getByText("Sync error")).toBeInTheDocument();
+    expect(screen.getByText("ATG updateLot failed with HTTP 400")).toBeInTheDocument();
+    expect(screen.getByText("Not pushed")).toBeInTheDocument();
+    expect(screen.queryByText("7")).not.toBeInTheDocument();
+    expect(screen.getByText("1 of 3 lots")).toBeInTheDocument();
+    expect(screen.getAllByText("£1,500.00").length).toBeGreaterThan(0);
   });
 });

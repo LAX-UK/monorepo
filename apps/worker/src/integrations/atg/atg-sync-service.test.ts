@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { testAtgConfig, testLot, testSale } from "./__fixtures__/atg-snapshots.js";
 import { FakeAtgGateway, InMemoryAtgSyncStore } from "./__fixtures__/fakes.js";
-import { AtgGatewayError } from "./atg-gateway.js";
+import { AtgGatewayError, type AtgRemoteLot } from "./atg-gateway.js";
 import {
   AtgPartialSyncError,
   AtgSyncPreconditionError,
@@ -17,6 +17,20 @@ function transient(op: string) {
 
 function rejected(op: string) {
   return new AtgGatewayError(`ATG ${op} failed with HTTP 400: invalid`, false, 400, op);
+}
+
+function remoteLot(atgLotId: string): AtgRemoteLot {
+  return {
+    atgLotId,
+    lotNumber: null,
+    status: 1,
+    sold: false,
+    hammerPrice: null,
+    currentMaxBid: null,
+    numberOfBids: 0,
+    winningBidderId: null,
+    endTimeUtc: null,
+  };
 }
 
 describe("AtgSyncService", () => {
@@ -194,8 +208,67 @@ describe("AtgSyncService", () => {
       gateway.calls.length = 0;
       const summary = await service.pushSale("sale-1");
 
-      expect(gateway.ops()).toEqual(["createLot", "addLotImageUrl", "addLotImageUrl"]);
+      expect(gateway.ops()).toEqual(["getLots", "createLot", "addLotImageUrl", "addLotImageUrl"]);
       expect(summary).toMatchObject({ created: 1, unchanged: 1, failed: 0 });
+    });
+
+    it("adopts an ATG lot whose create response was lost instead of creating a duplicate", async () => {
+      gateway.failNext("createLot", transient("createLot"));
+      await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgPartialSyncError);
+      gateway.remoteLots = [
+        { ...remoteLot("atg-lot-2"), lotNumber: "2" },
+        { ...remoteLot("atg-lot-orphan"), lotNumber: "1" },
+      ];
+      gateway.calls.length = 0;
+
+      const summary = await service.pushSale("sale-1");
+
+      expect(gateway.ops()).toEqual(["getLots", "updateLot", "addLotImageUrl", "addLotImageUrl"]);
+      expect(gateway.calls[1]?.arg).toMatchObject({ LotId: "atg-lot-orphan", LotNumber: "1" });
+      expect(store.lotLinks.get("lot-1")).toMatchObject({
+        atgLotId: "atg-lot-orphan",
+        imageNames: ["1", "1-1"],
+      });
+      expect(summary).toMatchObject({ updated: 1, unchanged: 1, failed: 0 });
+    });
+
+    it("removes the old ATG copy of a lot moved here from another pushed sale", async () => {
+      await store.insertLotLink({
+        lotId: "lot-2",
+        saleId: "sale-old",
+        atgLotId: "atg-old",
+        payloadHash: "x",
+      });
+
+      const summary = await service.pushSale("sale-1");
+
+      expect(gateway.calls.slice(0, 2)).toEqual([
+        expect.objectContaining({ op: "createAuction" }),
+        { op: "deleteLot", arg: "atg-old" },
+      ]);
+      expect(store.lotLinks.get("lot-2")).toMatchObject({ saleId: "sale-1" });
+      expect(summary).toMatchObject({ created: 2, failed: 0 });
+    });
+
+    it("skips a moved lot when its old ATG copy cannot be removed", async () => {
+      await store.insertLotLink({
+        lotId: "lot-2",
+        saleId: "sale-old",
+        atgLotId: "atg-old",
+        payloadHash: "x",
+      });
+      gateway.failNext("deleteLot", rejected("deleteLot"));
+
+      const summary = await service.pushSale("sale-1");
+
+      expect(summary).toMatchObject({ created: 1, failed: 1 });
+      expect(store.lotLinks.get("lot-2")).toMatchObject({
+        saleId: "sale-old",
+        lastError: "ATG deleteLot failed with HTTP 400: invalid",
+      });
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
+        "Moved lot atg-old: ATG deleteLot failed with HTTP 400: invalid",
+      );
     });
 
     it("records image progress so a failed image upload resumes without duplicates", async () => {
@@ -249,6 +322,32 @@ describe("AtgSyncService", () => {
       });
     });
 
+    it("does not auto-retry a create ATG may have processed, to avoid duplicate auctions", async () => {
+      gateway.failNext("createAuction", transient("createAuction"));
+
+      const err = await service.pushSale("sale-1").catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(AtgSyncPreconditionError);
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
+        'ATG did not confirm the new auction (ATG createAuction failed with HTTP 503: busy). Check the ATG admin for "Autumn Contemporary" before pushing again, to avoid a duplicate.',
+      );
+    });
+
+    it("refuses cancelled sales and stops the tick from re-pushing them", async () => {
+      await service.pushSale("sale-1");
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("missing sale");
+      store.sales.set("sale-1", { ...sale, cancelled: true });
+      gateway.calls.length = 0;
+
+      await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+      expect(gateway.ops()).toEqual([]);
+      expect(store.auctionLinks.get("sale-1")).toMatchObject({
+        lastSyncedAt: NOW,
+        lastError: "Sale is cancelled in LAX, so it is no longer pushed. Close it on ATG.",
+      });
+    });
+
     it("refuses to touch closed auctions or missing sales", async () => {
       await expect(service.pushSale("missing")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
       await store.saveAuctionLink("sale-1", { atgAuctionId: "a", remoteStatus: "closed" });
@@ -271,6 +370,19 @@ describe("AtgSyncService", () => {
       expect(store.auctionLinks.get("sale-1")).toMatchObject({
         remoteStatus: "published",
         publishedAt: NOW,
+      });
+    });
+
+    it("does not publish while any lot failed to sync", async () => {
+      gateway.failNext("createLot", rejected("createLot"));
+
+      await expect(service.publishSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+
+      expect(gateway.ops()).not.toContain("publishAuction");
+      expect(store.auctionLinks.get("sale-1")).toMatchObject({
+        remoteStatus: "created",
+        lastError:
+          "Not published: fix these lots first. Lot 1: ATG createLot failed with HTTP 400: invalid",
       });
     });
 

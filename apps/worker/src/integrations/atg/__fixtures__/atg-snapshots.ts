@@ -51,6 +51,7 @@ export function testSale(overrides: Partial<AtgSaleSnapshot> = {}): AtgSaleSnaps
     locationCity: "London",
     locationPostcode: "W1 1AA",
     locationCountry: "United Kingdom",
+    cancelled: false,
     updatedAt: new Date("2026-10-01T00:00:00Z"),
     lots: [testLot()],
     ...overrides,

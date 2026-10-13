@@ -24,6 +24,22 @@ const DISABLED: AtgAdminError = {
   message: "ATG sync is not enabled in this environment",
 };
 
+function saleActionConflict(
+  view: AtgSaleSyncView,
+  action: AtgSyncAction,
+): Pick<AtgAdminError, "code" | "message"> | null {
+  if (view.remoteStatus === "closed") {
+    return { code: "atg_closed", message: "The ATG auction is closed and can no longer change" };
+  }
+  if (action === "close") {
+    return view.linked ? null : { code: "not_linked", message: "Sale has not been pushed to ATG" };
+  }
+  if (view.saleCancelled) {
+    return { code: "sale_cancelled", message: "Cancelled sales cannot be pushed to ATG" };
+  }
+  return null;
+}
+
 export class AtgAdminService implements IAtgAdminService {
   constructor(
     private readonly reader: IAtgLinkReader,
@@ -49,12 +65,8 @@ export class AtgAdminService implements IAtgAdminService {
         error: { status: 404, code: "sale_not_found", message: "Sale not found" },
       };
     }
-    if (action === "close" && !view.linked) {
-      return {
-        ok: false,
-        error: { status: 409, code: "not_linked", message: "Sale has not been pushed to ATG" },
-      };
-    }
+    const conflict = saleActionConflict(view, action);
+    if (conflict) return { ok: false, error: { status: 409, ...conflict } };
     return this.enqueue(this.queue, { name: SALE_ACTION_JOB[action], data: { saleId } });
   }
 

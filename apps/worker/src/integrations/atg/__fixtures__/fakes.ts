@@ -108,6 +108,9 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
   async getLotLink(lotId: string) {
     return this.lotLinks.get(lotId) ?? null;
   }
+  async findLotLinks(lotIds: string[]) {
+    return [...this.lotLinks.values()].filter((l) => lotIds.includes(l.lotId));
+  }
   async insertLotLink(
     link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & { payloadHash: string },
   ) {

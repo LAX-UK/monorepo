@@ -29,6 +29,8 @@ export interface AtgSyncStore {
   saveAuctionLink(saleId: string, patch: AtgAuctionLinkPatch): Promise<void>;
   listLotLinks(saleId: string): Promise<AtgLotLink[]>;
   getLotLink(lotId: string): Promise<AtgLotLink | null>;
+  /** Links for the given LAX lots, whichever sale they were pushed under. */
+  findLotLinks(lotIds: string[]): Promise<AtgLotLink[]>;
   insertLotLink(
     link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & { payloadHash: string },
   ): Promise<void>;

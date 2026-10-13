@@ -1,5 +1,6 @@
 import { type Database, createDb } from "@auction/db";
 import { atgAuctionLink, atgLotLink, legalEntity, lot, sale, user } from "@auction/db/schema";
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleAtgLinkReader } from "./drizzle-atg-link.reader.js";
 
@@ -11,8 +12,9 @@ describe.skipIf(!HAS_DB)("DrizzleAtgLinkReader (integration)", () => {
   const sellerLeId = "a7b00000-0000-4000-8000-000000000002";
   const linkedLotId = "a7b00000-0000-4000-8000-000000000011";
   const unlinkedLotId = "a7b00000-0000-4000-8000-000000000012";
+  const cancelledLotId = "a7b00000-0000-4000-8000-000000000013";
 
-  it("returns sale link state with every non-deleted lot, linked or not", async () => {
+  it("returns sale link state with every live lot, linked or not", async () => {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) throw new Error("DATABASE_URL required");
     const db = createDb(databaseUrl);
@@ -58,10 +60,21 @@ describe.skipIf(!HAS_DB)("DrizzleAtgLinkReader (integration)", () => {
         await tx.insert(lot).values([
           { ...base, id: linkedLotId, lotNumber: 1, title: "Linked" },
           { ...base, id: unlinkedLotId, lotNumber: 2, title: "Unlinked" },
+          {
+            ...base,
+            id: cancelledLotId,
+            lotNumber: 3,
+            title: "Cancelled",
+            status: "cancelled" as const,
+          },
         ]);
 
         const reader = new DrizzleAtgLinkReader(tx as unknown as Database);
-        expect(await reader.getSaleView(saleId)).toMatchObject({ linked: false, results: [] });
+        expect(await reader.getSaleView(saleId)).toMatchObject({
+          saleCancelled: false,
+          linked: false,
+          results: [],
+        });
 
         await tx.insert(atgAuctionLink).values({
           saleId,
@@ -97,6 +110,8 @@ describe.skipIf(!HAS_DB)("DrizzleAtgLinkReader (integration)", () => {
           }),
           expect.objectContaining({ lotId: unlinkedLotId, atgLotId: null, imageCount: 0 }),
         ]);
+        await tx.update(sale).set({ status: "cancelled" }).where(eq(sale.id, saleId));
+        expect((await reader.getSaleView(saleId))?.saleCancelled).toBe(true);
         expect(await reader.findAtgLotId(linkedLotId)).toBe("atg-l1");
         expect(await reader.findAtgLotId(unlinkedLotId)).toBeNull();
         expect(await reader.getSaleView("a7b00000-0000-4000-8000-0000000000ff")).toBeNull();
