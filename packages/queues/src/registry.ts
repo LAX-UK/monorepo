@@ -24,8 +24,10 @@ export const PAYOUT_SETTLEMENT_QUEUE_NAME = "payout-settlement" as const;
 export const PAYOUT_STATEMENTS_QUEUE_NAME = "payout-statements" as const;
 export const LEGAL_ENTITY_ARCHIVE_QUEUE_NAME = "legal-entity-archive" as const;
 export const DATA_EXPORT_QUEUE_NAME = "data-export" as const;
+export const ATG_SYNC_QUEUE_NAME = "atg-sync" as const;
 
 const marketingEnabled = (env: QueueRuntimeEnv) => env.marketingEventsEnabled;
+const atgSyncEnabled = (env: QueueRuntimeEnv) => env.atgSyncEnabled === true;
 const cronEnabled = (env: QueueRuntimeEnv) => Boolean(env.cronInternalSecret?.trim());
 
 /**
@@ -415,6 +417,25 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 200,
     },
     description: "Async CSV data exports",
+  },
+  [ATG_SYNC_QUEUE_NAME]: {
+    producers: ["api", "worker"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    heartbeatKey: "atg-sync",
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: true,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 4,
+      backoff: { type: "exponential", delay: 30_000 },
+      removeOnComplete: { age: 7 * 24 * 3600, count: 500 },
+      removeOnFail: 500,
+    },
+    description: "ATG White Label push/publish/close and results polling",
+    enabledWhen: atgSyncEnabled,
   },
   [DEAD_LETTER_QUEUE_NAME]: {
     producers: ["api", "worker"],

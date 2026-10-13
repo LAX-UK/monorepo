@@ -151,6 +151,12 @@ const envSchema = z
       .min(60_000)
       .max(86_400_000)
       .default(1_800_000),
+    /** ATG White Label sync: the API only enqueues `atg-sync` jobs; the worker calls ATG. */
+    ATG_SYNC_ENABLED: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    /** White Label origin linked from the admin ATG tab (e.g. https://lax-preview.atgportals.net). */
+    ATG_WHITE_LABEL_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Xero OAuth app (optional). When set with secret + redirect, admins can connect Xero. */
     XERO_CLIENT_ID: z.string().optional(),
     XERO_CLIENT_SECRET: z.string().optional(),

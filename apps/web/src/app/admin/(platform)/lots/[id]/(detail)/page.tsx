@@ -1,6 +1,8 @@
+import { AtgLotStatus } from "@/components/admin/atg/atg-lot-status";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
 import { LotOverviewTab } from "@/components/admin/lot-detail/tabs/overview-tab";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
+import { getAtgLotSyncView } from "@/lib/data/http/atg.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 
 type Props = {
@@ -15,11 +17,13 @@ export default async function AdminLotOverviewPage({ params, searchParams }: Pro
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),
   ]);
+  const atgLot = await getAtgLotSyncView(bundle.auction.saleId, id);
   return (
     <>
       {sp.error && sp.error_code !== "connect_required" ? (
         <CatalogDetailActionError error={sp.error} />
       ) : null}
+      {atgLot ? <AtgLotStatus lot={atgLot} /> : null}
       <LotOverviewTab
         lotId={id}
         auction={bundle.auction}

@@ -20,6 +20,7 @@ import {
 } from "@auction/marketing-events";
 import { getBullMqTelemetry } from "@auction/observability";
 import {
+  ATG_SYNC_QUEUE_NAME,
   DATA_EXPORT_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
@@ -33,6 +34,7 @@ import {
   QR_CODE_SCAN_QUEUE_NAME,
   type QueueName,
   VALIDATE_UPLOAD_QUEUE_NAME,
+  bindAtgSyncQueue,
   bindLegalEntityArchiveQueue,
   createBullQueueOptions,
 } from "@auction/queues";
@@ -136,6 +138,7 @@ import {
 import { DrizzleAntiShillingRepository } from "./repositories/drizzle-anti-shilling.repository.js";
 import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
+import { DrizzleAtgLinkReader } from "./repositories/drizzle-atg-link.reader.js";
 import { DrizzleCategoryInterestsRepository } from "./repositories/drizzle-category-interests.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleConveyorPipelineReader } from "./repositories/drizzle-conveyor-pipeline.reader.js";
@@ -210,6 +213,7 @@ import { AdminPaymentsKpiTrendService } from "./services/admin/admin-payments-kp
 import { AdminPayoutsKpiTrendService } from "./services/admin/admin-payouts-kpi-trend.service.js";
 import { AdminSalesKpiTrendService } from "./services/admin/admin-sales-kpi-trend.service.js";
 import { AdminSourceOfFundsQueryService } from "./services/admin/admin-source-of-funds-query.service.js";
+import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
 import { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
@@ -247,6 +251,7 @@ import { ImpersonationSessionService } from "./services/impersonation-session.se
 import type { AdminRouteServices } from "./services/interfaces/admin-routes.js";
 import type { IAntiShillingGuard } from "./services/interfaces/anti-shilling.js";
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
+import type { IAtgAdminService } from "./services/interfaces/atg-admin-service.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { ICategoryInterestsRepository } from "./services/interfaces/category-interests.js";
@@ -558,6 +563,8 @@ export type Container = {
   payoutStatementQueue: Queue;
   /** cascade work when a legal entity is archived (proxies, lots flag, member email). */
   legalEntityArchiveQueue: LegalEntityArchiveQueueProducer;
+  /** Staff ATG White Label controls (enqueue-only; worker performs the sync). */
+  atgAdmin: IAtgAdminService;
   /** Service for handling Stripe payment webhooks (disputes, refunds). */
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   /** Shared Stripe SDK client (pinned API version). */
@@ -1014,6 +1021,14 @@ export function createContainer(env: Env): Container {
     queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
   );
   const dataExportQueue = new Queue(DATA_EXPORT_QUEUE_NAME, queueOpts(DATA_EXPORT_QUEUE_NAME));
+  const atgSyncQueue = env.ATG_SYNC_ENABLED
+    ? bindAtgSyncQueue(new Queue(ATG_SYNC_QUEUE_NAME, queueOpts(ATG_SYNC_QUEUE_NAME)))
+    : null;
+  const atgAdmin = new AtgAdminService(
+    new DrizzleAtgLinkReader(db),
+    atgSyncQueue,
+    env.ATG_WHITE_LABEL_BASE_URL ?? null,
+  );
   const exportProviderDeps = createExportProviderDeps(db);
   const exportProviders = createExportProviders(exportProviderDeps);
   const exportService = new ExportService(
@@ -1727,6 +1742,7 @@ export function createContainer(env: Env): Container {
       marketingEventsBullQueue.close(),
       payoutStatementQueue.close(),
       dataExportQueue.close(),
+      ...(atgSyncQueue ? [atgSyncQueue.close()] : []),
       queueAdmin.close(),
     ]);
   };
@@ -1923,6 +1939,7 @@ export function createContainer(env: Env): Container {
     dataExportQueue,
     exportService,
     legalEntityArchiveQueue,
+    atgAdmin,
     stripePaymentWebhookService: stripePaymentWebhookServiceResolved,
     stripeClientFactory,
     stripeWebhookVerifier,

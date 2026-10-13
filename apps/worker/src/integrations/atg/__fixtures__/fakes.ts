@@ -1,0 +1,141 @@
+import type { AtgGateway, AtgRemoteLot, AtgSaleResult } from "../atg-gateway.js";
+import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "../atg-sync-store.js";
+import type { AtgAuctionLink, AtgLotLink, AtgSaleSnapshot } from "../atg-types.js";
+import type {
+  GapAddUrlImageToLotRequest,
+  GapCreateAuctionRequest,
+  GapCreateLotRequest,
+  GapUpdateAuctionRequest,
+  GapUpdateLotRequest,
+} from "../gap-types.js";
+
+type GatewayCall = { op: keyof AtgGateway; arg: unknown };
+
+/** Records calls; `failNext` makes a later call to an operation throw. */
+export class FakeAtgGateway implements AtgGateway {
+  readonly calls: GatewayCall[] = [];
+  remoteLots: AtgRemoteLot[] = [];
+  saleResults: AtgSaleResult[] = [];
+  private seq = 0;
+  private readonly failures = new Map<keyof AtgGateway, Array<Error | null>>();
+
+  /** Fails the call to `op` that comes after `afterCalls` successful ones. */
+  failNext(op: keyof AtgGateway, err: Error, afterCalls = 0): void {
+    const passes: null[] = Array.from({ length: afterCalls }, () => null);
+    this.failures.set(op, [...(this.failures.get(op) ?? []), ...passes, err]);
+  }
+
+  ops(): Array<keyof AtgGateway> {
+    return this.calls.map((c) => c.op);
+  }
+
+  private record(op: keyof AtgGateway, arg: unknown): void {
+    this.calls.push({ op, arg });
+    const queued = this.failures.get(op);
+    const err = queued?.shift();
+    if (err) throw err;
+  }
+
+  async createAuction(request: GapCreateAuctionRequest) {
+    this.record("createAuction", request);
+    return { auctionId: "atg-auction-1" };
+  }
+  async updateAuction(request: GapUpdateAuctionRequest) {
+    this.record("updateAuction", request);
+  }
+  async approveAuction(auctionId: string) {
+    this.record("approveAuction", auctionId);
+  }
+  async publishAuction(auctionId: string) {
+    this.record("publishAuction", auctionId);
+  }
+  async closeAuction(auctionId: string) {
+    this.record("closeAuction", auctionId);
+  }
+  async createLot(request: GapCreateLotRequest) {
+    this.record("createLot", request);
+    this.seq += 1;
+    return { lotId: `atg-lot-${this.seq}` };
+  }
+  async updateLot(request: GapUpdateLotRequest) {
+    this.record("updateLot", request);
+  }
+  async deleteLot(atgLotId: string) {
+    this.record("deleteLot", atgLotId);
+  }
+  async addLotImageUrl(request: GapAddUrlImageToLotRequest) {
+    this.record("addLotImageUrl", request);
+  }
+  async getLots(auctionId: string) {
+    this.record("getLots", auctionId);
+    return this.remoteLots;
+  }
+  async getSaleResults(auctionId: string) {
+    this.record("getSaleResults", auctionId);
+    return this.saleResults;
+  }
+}
+
+type StoredAuctionLink = AtgAuctionLink & Omit<AtgAuctionLinkPatch, keyof AtgAuctionLink>;
+type StoredLotLink = AtgLotLink & AtgLotLinkPatch & Partial<Omit<AtgRemoteLot, "atgLotId">>;
+
+export class InMemoryAtgSyncStore implements AtgSyncStore {
+  readonly sales = new Map<string, AtgSaleSnapshot>();
+  readonly auctionLinks = new Map<string, StoredAuctionLink>();
+  readonly lotLinks = new Map<string, StoredLotLink>();
+  changedSales = new Set<string>();
+
+  async loadSale(saleId: string) {
+    return this.sales.get(saleId) ?? null;
+  }
+  async getAuctionLink(saleId: string) {
+    return this.auctionLinks.get(saleId) ?? null;
+  }
+  async saveAuctionLink(saleId: string, patch: AtgAuctionLinkPatch) {
+    const current: StoredAuctionLink = this.auctionLinks.get(saleId) ?? {
+      saleId,
+      atgAuctionId: null,
+      remoteStatus: "pending",
+      payloadHash: null,
+      lastSyncedAt: null,
+      closedAt: null,
+    };
+    this.auctionLinks.set(saleId, { ...current, ...patch });
+  }
+  async listLotLinks(saleId: string) {
+    return [...this.lotLinks.values()].filter((l) => l.saleId === saleId);
+  }
+  async getLotLink(lotId: string) {
+    return this.lotLinks.get(lotId) ?? null;
+  }
+  async insertLotLink(
+    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & { payloadHash: string },
+  ) {
+    this.lotLinks.set(link.lotId, { ...link, imageNames: [] });
+  }
+  async updateLotLink(lotId: string, patch: AtgLotLinkPatch) {
+    const current = this.lotLinks.get(lotId);
+    if (current) this.lotLinks.set(lotId, { ...current, ...patch });
+  }
+  async deleteLotLink(lotId: string) {
+    this.lotLinks.delete(lotId);
+  }
+  async applyRemoteLots(saleId: string, lots: AtgRemoteLot[]) {
+    for (const link of this.lotLinks.values()) {
+      if (link.saleId !== saleId) continue;
+      const remote = lots.find((l) => l.atgLotId === link.atgLotId);
+      if (remote) Object.assign(link, remote);
+    }
+  }
+  async listActiveAuctionLinks(closedSince: Date) {
+    return [...this.auctionLinks.values()].filter(
+      (l) =>
+        l.atgAuctionId &&
+        (["created", "approved", "published"].includes(l.remoteStatus) ||
+          (l.remoteStatus === "closed" && l.closedAt != null && l.closedAt >= closedSince)),
+    );
+  }
+  async hasCatalogueChangesSince(saleId: string) {
+    return this.changedSales.has(saleId);
+  }
+}
