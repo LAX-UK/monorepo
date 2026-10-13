@@ -39,7 +39,7 @@ test.describe("lax.art discovery", () => {
     test.skip((await tiles.count()) === 0, "fewer than two art-channel media seeded");
     const first = tiles.getByRole("link").first();
     await first.click();
-    await expect(page).toHaveURL(/[?&]objectType=/);
+    await expect(page).toHaveURL(/\/(paintings|prints|sculptures)(\?|$)|[?&]objectType=/);
     await expect(
       page.getByTestId("art-object-type-tiles").locator('[aria-current="true"]'),
     ).toHaveCount(1);
