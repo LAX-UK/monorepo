@@ -64,6 +64,7 @@ export {
   EditorialExhibitionSummarySchema,
   EditorialHomeResponseSchema,
   EditorialPageDetailSchema,
+  EditorialPageSummarySchema,
   EditorialStoryDetailSchema,
   EditorialStoryKindSchema,
   EditorialStorySummarySchema,
@@ -225,3 +226,12 @@ export {
   parsePortalArtistArtworks,
   parsePortalArtistSales,
 } from "./parse-public.js";
+export {
+  ArtistSeoWriteBodySchema,
+  PublicSeoFieldsProperties,
+  SEO_DESCRIPTION_MAX_LENGTH,
+  SEO_TITLE_MAX_LENGTH,
+  SeoFieldsWriteProperties,
+  type ArtistSeoWriteBody,
+  type SeoFields,
+} from "./seo-fields.js";

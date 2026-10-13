@@ -1,3 +1,13 @@
+export type ImportArtworkObjectType =
+  | "painting"
+  | "work_on_paper"
+  | "sculpture"
+  | "photography"
+  | "print"
+  | "mixed_media";
+
+export type ImportArtworkRarity = "unique" | "limited_edition" | "open_edition";
+
 export type ImportArtworkCommand = {
   importKey: string;
   slug: string;
@@ -15,6 +25,18 @@ export type ImportArtworkCommand = {
   artistPortraitUrl?: string | null;
   eligibleForEditionAllocation: boolean;
   printPricePence?: number | null;
+  /** Fields below follow `medium`: omitted leaves the stored value unchanged. */
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  salesChannel?: "shop" | "art";
+  objectType?: ImportArtworkObjectType | null;
+  rarity?: ImportArtworkRarity | null;
+  heightCm?: number | null;
+  widthCm?: number | null;
+  depthCm?: number | null;
+  hasCertificate?: boolean;
+  /** Replaces the gallery (in order) when provided. */
+  images?: ReadonlyArray<{ mediaKey: string; alt: string | null }>;
 };
 
 export type ImportArtworkResult = {

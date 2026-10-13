@@ -9,6 +9,9 @@ import {
   loadViewerFavoriteContext,
 } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
+import { artistJsonLd } from "@/lib/seo/art-structured-data";
+import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
+import type { JsonLd } from "@auction/branding";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
 
 export type ArtistPageVm = {
@@ -22,6 +25,7 @@ export type ArtistPageVm = {
   worksFailed: boolean;
   following: boolean;
   favoriteAuth: ArtFavoriteAuth;
+  structuredData: JsonLd[];
 };
 
 export type ArtistPageResult =
@@ -32,6 +36,7 @@ export type ArtistPageResult =
 export async function composeArtistPage(
   services: { catalogue: ArtCataloguePort; viewer: ArtViewerPort; favorites: ArtFavoritesReadPort },
   slug: string,
+  siteUrl: URL,
 ): Promise<ArtistPageResult> {
   const favoritesPromise = loadViewerFavoriteContext(services, artistHref(slug)).then(
     async (context) => ({
@@ -64,14 +69,34 @@ export async function composeArtistPage(
       worksFailed: works.status === "rejected",
       following: favorites.followedSlugs.has(detail.slug),
       favoriteAuth: favorites.favoriteAuth,
+      structuredData: artistJsonLd(detail, siteUrl),
     },
   };
 }
 
-export async function composeArtistMetadataTitle(
+export type ArtistMetadataVm =
+  | { kind: "ok"; title: string; description: string; canonicalPath: string }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function composeArtistMetadata(
   catalogue: ArtCataloguePort,
   slug: string,
-): Promise<string> {
-  const artist = await catalogue.getArtist(slug).catch(() => null);
-  return artist ? `${artist.name} | LAX Art` : "Artist | LAX Art";
+): Promise<ArtistMetadataVm> {
+  let artist: PublicArtistDetail | null;
+  try {
+    artist = await catalogue.getArtist(slug);
+  } catch {
+    return { kind: "unavailable" };
+  }
+  if (!artist) return { kind: "not_found" };
+  const description =
+    seoMetadataDescription(artist, artist.shortBio ?? artist.bio) ??
+    `Discover works by ${artist.name} at LAX Art.`;
+  return {
+    kind: "ok",
+    title: seoMetadataTitle(artist, artist.name),
+    description,
+    canonicalPath: artistHref(artist.slug),
+  };
 }

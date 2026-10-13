@@ -100,6 +100,56 @@ describe("admin artwork import route medium", () => {
     await app.close();
   });
 
+  it("forwards trimmed SEO overrides and rejects an over-long SEO title", async () => {
+    const { app, importArtwork } = await buildApp();
+    const ok = await app.inject({
+      method: "POST",
+      url: "/admin/v1/artworks/import",
+      headers,
+      payload: { ...baseBody, seoTitle: "  Harbour at Dusk | LAX  ", seoDescription: "   " },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(importArtwork).toHaveBeenLastCalledWith(
+      expect.objectContaining({ seoTitle: "Harbour at Dusk | LAX", seoDescription: null }),
+    );
+
+    const tooLong = await app.inject({
+      method: "POST",
+      url: "/admin/v1/artworks/import",
+      headers: { ...headers, "idempotency-key": "import-artwork-key-3" },
+      payload: { ...baseBody, seoTitle: "x".repeat(121) },
+    });
+    expect(tooLong.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("updates artist SEO overrides and 404s an unknown artist", async () => {
+    const { app } = await buildApp();
+    const seo = { seoTitle: "Ada Artist | LAX", seoDescription: null };
+    const ok = await app.inject({
+      method: "PUT",
+      url: "/admin/v1/artists/00000000-0000-4000-8000-000000000020/seo",
+      headers,
+      payload: seo,
+    });
+    expect(ok.statusCode).toBe(204);
+    const missing = await app.inject({
+      method: "PUT",
+      url: "/admin/v1/artists/00000000-0000-4000-8000-000000000099/seo",
+      headers,
+      payload: seo,
+    });
+    expect(missing.statusCode).toBe(404);
+    const invalid = await app.inject({
+      method: "PUT",
+      url: "/admin/v1/artists/00000000-0000-4000-8000-000000000020/seo",
+      headers,
+      payload: { seoTitle: "Only title" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    await app.close();
+  });
+
   it("rejects a medium longer than 200 characters", async () => {
     const { app, importArtwork } = await buildApp();
     const response = await app.inject({

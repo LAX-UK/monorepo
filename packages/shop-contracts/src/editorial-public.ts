@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { EditorialBlockListSchema } from "./editorial-blocks.js";
+import { PublicSeoFieldsProperties } from "./seo-fields.js";
 
 export const EditorialExhibitionStatusFilterSchema = Type.Union([
   Type.Literal("current"),
@@ -100,6 +101,8 @@ export const EditorialStorySummarySchema = Type.Object({
   standfirst: Type.Union([Type.String(), Type.Null()]),
   coverUrl: Type.Union([Type.String(), Type.Null()]),
   featured: Type.Boolean(),
+  /** Sitemap `lastmod`; optional so storefronts parse responses from an older shop-api. */
+  updatedAt: Type.Optional(Type.String({ format: "date-time" })),
 });
 
 export const EditorialStoryDetailSchema = Type.Object({
@@ -111,12 +114,20 @@ export const EditorialStoryDetailSchema = Type.Object({
   featured: Type.Boolean(),
   videoUrl: Type.Union([Type.String(), Type.Null()]),
   body: EditorialBlockListSchema,
+  ...PublicSeoFieldsProperties,
+});
+
+export const EditorialPageSummarySchema = Type.Object({
+  slug: Type.String(),
+  title: Type.String(),
+  updatedAt: Type.String({ format: "date-time" }),
 });
 
 export const EditorialPageDetailSchema = Type.Object({
   slug: Type.String(),
   title: Type.String(),
   body: EditorialBlockListSchema,
+  ...PublicSeoFieldsProperties,
 });
 
 export const RegisterGeneralEnquiryRequestSchema = Type.Object({

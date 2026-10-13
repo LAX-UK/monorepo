@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopArtist, shopArtwork, shopEdition } from "@auction/db/schema";
+import { shopArtist, shopArtwork, shopArtworkImage, shopEdition } from "@auction/db/schema";
 import { assertValidEditionPlan, planEditionsForArtwork } from "@auction/shop-domain";
 import { eq, sql } from "drizzle-orm";
 import { assertArtworkImportIdentityUnchanged } from "../application/artwork-import-policy.js";
@@ -14,6 +14,48 @@ import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js
 import { updateShopArtist, upsertShopArtist } from "./upsert-shop-artist.js";
 
 type Db = Database;
+
+function numericColumn(value: number | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  return value === null ? null : value.toFixed(2);
+}
+
+/** Optional command fields: only those provided are written. */
+function optionalArtworkColumns(command: ImportArtworkCommand) {
+  const columns = {
+    seoTitle: command.seoTitle,
+    seoDescription: command.seoDescription,
+    salesChannel: command.salesChannel,
+    objectType: command.objectType,
+    rarity: command.rarity,
+    heightCm: numericColumn(command.heightCm),
+    widthCm: numericColumn(command.widthCm),
+    depthCm: numericColumn(command.depthCm),
+    hasCertificate: command.hasCertificate,
+  };
+  return Object.fromEntries(
+    Object.entries(columns).filter(([, value]) => value !== undefined),
+  ) as Partial<typeof shopArtwork.$inferInsert>;
+}
+
+async function replaceArtworkImages(
+  tx: Db,
+  artworkId: string,
+  images: ImportArtworkCommand["images"],
+): Promise<void> {
+  if (images === undefined) return;
+  await tx.delete(shopArtworkImage).where(eq(shopArtworkImage.artworkId, artworkId));
+  const unique = [...new Map(images.map((image) => [image.mediaKey, image])).values()];
+  if (unique.length === 0) return;
+  await tx.insert(shopArtworkImage).values(
+    unique.map((image, position) => ({
+      artworkId,
+      mediaKey: image.mediaKey,
+      position,
+      alt: image.alt,
+    })),
+  );
+}
 
 export function createDrizzleArtworkImportRepository(
   db: Db,
@@ -49,9 +91,11 @@ export function createDrizzleArtworkImportRepository(
               yearCreated: command.yearCreated ?? null,
               saleState: command.saleState ?? "for_sale",
               printPricePence: command.printPricePence ?? null,
+              ...optionalArtworkColumns(command),
               updatedAt: new Date(),
             })
             .where(eq(shopArtwork.id, existingRow.id));
+          await replaceArtworkImages(tx as Database, existingRow.id, command.images);
           await updateShopArtist(tx as Database, existingRow.artistId, {
             displayName: command.artistDisplayName,
             discipline: command.artistDiscipline ?? null,
@@ -90,9 +134,11 @@ export function createDrizzleArtworkImportRepository(
             eligibleForEditionAllocation: command.eligibleForEditionAllocation,
             printPricePence: command.printPricePence ?? null,
             importKey: command.importKey,
+            ...optionalArtworkColumns(command),
           })
           .returning({ id: shopArtwork.id });
         if (!artwork) throw new Error("Failed to create shop artwork");
+        await replaceArtworkImages(tx as Database, artwork.id, command.images);
 
         await events.insertInTransaction(tx as Database, {
           aggregateType: "shop_artwork",

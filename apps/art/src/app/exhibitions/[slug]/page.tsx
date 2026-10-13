@@ -1,17 +1,16 @@
 import { ArtEditorialHeader } from "@/components/editorial/art-editorial-header";
-import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
 import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import { composeExhibitionDetailPage } from "@/lib/editorial/editorial-pages.composer";
+import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingInfoStrip } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { cache } from "react";
 
 type ExhibitionPageProps = {
@@ -23,7 +22,7 @@ const loadExhibition = cache((slug: string) => composeExhibitionDetailPage(artSe
 export async function generateMetadata({ params }: ExhibitionPageProps): Promise<Metadata> {
   const { slug } = await params;
   const result = await loadExhibition(slug);
-  if (result.status !== "ok") return { title: "Exhibition | LAX Art" };
+  if (result.status !== "ok") notFoundOrUnavailable(result.status, "Exhibition");
   const { exhibition } = result.data;
   return {
     title: `${exhibition.title} | LAX Art`,
@@ -40,20 +39,7 @@ export async function generateMetadata({ params }: ExhibitionPageProps): Promise
 export default async function ExhibitionDetailPage({ params }: ExhibitionPageProps) {
   const { slug } = await params;
   const result = await loadExhibition(slug);
-  if (result.status === "not_found" || result.status === "disabled") notFound();
-  if (result.status !== "ok") {
-    return (
-      <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
-        <ArtEditorialStatus
-          result={result}
-          disabledTitle="Exhibition unavailable"
-          disabledDescription="Editorial content is not enabled in this environment yet."
-          emptyTitle="Exhibition not found"
-          emptyDescription="This exhibition may have ended or the link is incorrect."
-        />
-      </div>
-    );
-  }
+  if (result.status !== "ok") notFoundOrUnavailable(result.status, "Exhibition");
 
   const { exhibition, kicker, dateLabel, venueName, venueHref, hoursLabel, body } = result.data;
   const returnTo = `/exhibitions/${encodeURIComponent(exhibition.slug)}`;

@@ -1,5 +1,11 @@
 import type { EditorialBlock } from "@auction/shop-contracts";
 import { isEditorialSlug, isHttpsUrl, validateEditorialBlocks } from "./editorial-validation";
+import {
+  SEO_FIELDS_ERROR_MESSAGES,
+  type SeoFieldsFormValues,
+  parseSeoFields,
+  seoFieldsFormValues,
+} from "./seo-fields-form";
 
 export type EditorialEntityKind = "pages" | "venues" | "exhibitions" | "stories";
 export type EditorialPreviewEntity = "page" | "venue" | "exhibition" | "story";
@@ -24,8 +30,10 @@ export const EXHIBITION_KINDS = ["exhibition", "film", "event"] as const;
 export type ExhibitionKind = (typeof EXHIBITION_KINDS)[number];
 
 type DetailBase = EditorialAdminRow & { body: unknown[] };
+type SeoDetail = { seoTitle?: string | null; seoDescription?: string | null };
+type SeoWrite = { seoTitle: string | null; seoDescription: string | null };
 
-export type PageDetail = DetailBase & { title: string };
+export type PageDetail = DetailBase & SeoDetail & { title: string };
 export type VenueDetail = DetailBase & {
   name: string;
   address: string | null;
@@ -36,14 +44,15 @@ export type VenueDetail = DetailBase & {
   mapUrl: string | null;
   coverMediaKey: string | null;
 };
-export type StoryDetail = DetailBase & {
-  kind: StoryKind;
-  title: string;
-  standfirst: string | null;
-  coverMediaKey: string | null;
-  videoUrl: string | null;
-  featured: boolean;
-};
+export type StoryDetail = DetailBase &
+  SeoDetail & {
+    kind: StoryKind;
+    title: string;
+    standfirst: string | null;
+    coverMediaKey: string | null;
+    videoUrl: string | null;
+    featured: boolean;
+  };
 export type ExhibitionDetail = DetailBase & {
   kind: ExhibitionKind;
   title: string;
@@ -56,7 +65,7 @@ export type ExhibitionDetail = DetailBase & {
   featured: boolean;
 };
 
-export type PageForm = { slug: string; title: string };
+export type PageForm = SeoFieldsFormValues & { slug: string; title: string };
 export type VenueForm = {
   slug: string;
   name: string;
@@ -68,7 +77,7 @@ export type VenueForm = {
   mapUrl: string;
   coverMediaKey: string | null;
 };
-export type StoryForm = {
+export type StoryForm = SeoFieldsFormValues & {
   slug: string;
   kind: StoryKind;
   title: string;
@@ -90,7 +99,7 @@ export type ExhibitionForm = {
   featured: boolean;
 };
 
-export type PageWriteBody = { slug: string; title: string; body: EditorialBlock[] };
+export type PageWriteBody = SeoWrite & { slug: string; title: string; body: EditorialBlock[] };
 export type VenueWriteBody = {
   slug: string;
   name: string;
@@ -103,7 +112,7 @@ export type VenueWriteBody = {
   coverMediaKey: string | null;
   body: EditorialBlock[];
 };
-export type StoryWriteBody = {
+export type StoryWriteBody = SeoWrite & {
   slug: string;
   kind: StoryKind;
   title: string;
@@ -159,6 +168,14 @@ function checkRequired(value: string, label: string, errors: string[]) {
   if (!value) errors.push(`${label} is required.`);
 }
 
+/** Blank SEO fields clear the override so the page falls back to generated metadata. */
+function checkSeo(form: SeoFieldsFormValues, errors: string[]): SeoWrite {
+  const parsed = parseSeoFields(form);
+  if (parsed.ok) return parsed.fields;
+  errors.push(SEO_FIELDS_ERROR_MESSAGES[parsed.error]);
+  return { seoTitle: null, seoDescription: null };
+}
+
 function finish<T>(
   errors: string[],
   blocks: readonly EditorialBlock[],
@@ -169,11 +186,11 @@ function finish<T>(
 }
 
 export function emptyPageForm(): PageForm {
-  return { slug: "", title: "" };
+  return { slug: "", title: "", ...seoFieldsFormValues(null) };
 }
 
 export function pageFormFromDetail(detail: PageDetail): PageForm {
-  return { slug: detail.slug, title: detail.title };
+  return { slug: detail.slug, title: detail.title, ...seoFieldsFormValues(detail) };
 }
 
 export function buildPagePayload(
@@ -185,7 +202,8 @@ export function buildPagePayload(
   const title = form.title.trim();
   checkSlug(slug, errors);
   checkRequired(title, "Title", errors);
-  return finish(errors, blocks, { slug, title, body: blocks });
+  const seo = checkSeo(form, errors);
+  return finish(errors, blocks, { slug, title, body: blocks, ...seo });
 }
 
 export function emptyVenueForm(): VenueForm {
@@ -263,6 +281,7 @@ export function emptyStoryForm(): StoryForm {
     coverMediaKey: null,
     videoUrl: "",
     featured: false,
+    ...seoFieldsFormValues(null),
   };
 }
 
@@ -275,6 +294,7 @@ export function storyFormFromDetail(detail: StoryDetail): StoryForm {
     coverMediaKey: detail.coverMediaKey,
     videoUrl: detail.videoUrl ?? "",
     featured: detail.featured,
+    ...seoFieldsFormValues(detail),
   };
 }
 
@@ -289,6 +309,7 @@ export function buildStoryPayload(
   checkRequired(title, "Title", errors);
   const videoUrl = blankToNull(form.videoUrl);
   if (videoUrl && !isHttpsUrl(videoUrl)) errors.push("Video URL must start with https://.");
+  const seo = checkSeo(form, errors);
   return finish(errors, blocks, {
     slug,
     kind: form.kind,
@@ -298,6 +319,7 @@ export function buildStoryPayload(
     videoUrl,
     featured: form.featured,
     body: blocks,
+    ...seo,
   });
 }
 

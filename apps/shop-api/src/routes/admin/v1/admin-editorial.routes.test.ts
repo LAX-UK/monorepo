@@ -65,4 +65,58 @@ describe("admin editorial routes", () => {
     expect(res.json().items).toHaveLength(1);
     await app.close();
   });
+
+  it("passes SEO overrides through when an editor creates a page", async () => {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "editor",
+      payload: {
+        scope: "shop.admin",
+        acr: OIDC_ACR_SILVER,
+        auth_time: Math.floor(Date.now() / 1000),
+      },
+    } as never);
+    const createPage = vi.fn(async () => ({ id: "22222222-2222-4222-8222-222222222222" }));
+    const deps = createMinimalShopApiTestDeps({
+      env: {
+        ...createMinimalShopApiTestDeps().env,
+        SHOP_ADMIN_ENABLED: true,
+        SHOP_EDITORIAL_ENABLED: true,
+      },
+      staffReader: {
+        findActiveByIdentitySubject: async (s) => ({
+          role: "catalogue_editor",
+          identitySubjectId: s,
+        }),
+        brokerCanAccessClientParty: async () => false,
+      },
+      editorial: {
+        previewSecret: "test-preview-secret-minimum-32-chars",
+        editorial: createStubEditorialRepository({ createPage }),
+      },
+    });
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const res = await app.inject({
+      method: "POST",
+      url: "/admin/v1/editorial/pages",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: {
+        slug: "about-us",
+        title: "About us",
+        body: [],
+        seoTitle: "About LAX Art | London Gallery",
+        seoDescription: null,
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(createPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slug: "about-us",
+        seoTitle: "About LAX Art | London Gallery",
+        seoDescription: null,
+        updatedBy: "editor",
+      }),
+    );
+    await app.close();
+  });
 });

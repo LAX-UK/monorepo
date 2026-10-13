@@ -12,7 +12,9 @@ type LegalPageProps = {
 const legalRoute = (slug: string) => `/legal/${encodeURIComponent(slug)}`;
 
 export async function generateMetadata({ params }: LegalPageProps): Promise<Metadata> {
-  return editorialPageMetadata(await loadEditorialPage((await params).slug), "Legal");
+  return editorialPageMetadata(await loadEditorialPage((await params).slug), "Legal", {
+    notFoundWhenDisabled: true,
+  });
 }
 
 export default async function LegalPage({ params }: LegalPageProps) {

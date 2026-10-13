@@ -24,6 +24,7 @@ import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
+import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
 import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
@@ -200,6 +201,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const revokeStaffRoleHandler = createRevokeStaffRoleHandler({ uow: shopUow });
   const linkArtistIdentity = createLinkArtistIdentityHandler({ uow: shopUow });
   const unlinkArtistIdentity = createUnlinkArtistIdentityHandler({ uow: shopUow });
+  const artistSeoWriter = createDrizzleArtistSeoWriter(db);
   const stockHolds = createDrizzleStockHoldWriter(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const createStockHold = createCreateStockHoldHandler({ stockHolds, staffReader });
   const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
@@ -306,6 +308,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         originalSales,
         linkArtistIdentity,
         unlinkArtistIdentity,
+        updateArtistSeo: (artistId, fields) => artistSeoWriter.updateArtistSeo(artistId, fields),
         shopMediaUpload,
       },
       portal: { portalOwnership, portalSales, portalArtist, portalFavorites },

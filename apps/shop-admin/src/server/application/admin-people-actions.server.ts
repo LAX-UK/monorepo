@@ -88,3 +88,17 @@ export async function unlinkArtistIdentity(input: { artistId: string; idempotenc
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
   });
 }
+
+export async function updateArtistSeo(input: {
+  artistId: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  idempotencyKey?: string;
+}) {
+  return forwardAdminJsonMutation({
+    bffPath: `artists/${encodeURIComponent(input.artistId)}/seo`,
+    method: "PUT",
+    jsonBody: { seoTitle: input.seoTitle, seoDescription: input.seoDescription },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}

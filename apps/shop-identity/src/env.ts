@@ -5,7 +5,7 @@ import {
 } from "@auction/identity-contracts";
 import { z } from "zod";
 
-/** One shop-identity deployment per storefront hostname (D37): shop.lax.art and lax.art. */
+/** One shop-identity deployment per storefront hostname (D37): shop.lax.art and www.thelax.art. */
 const STOREFRONT_OIDC_CLIENT_IDS = [
   REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB,
   REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB,

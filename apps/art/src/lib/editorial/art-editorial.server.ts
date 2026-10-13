@@ -3,6 +3,7 @@ import { isArtEditorialEnabled } from "@/lib/art-runtime-flags";
 import type {
   ArtEditorialExhibitionList,
   ArtEditorialFetchResult,
+  ArtEditorialPageList,
   ArtEditorialPreview,
   ArtEditorialStoryList,
   ArtEditorialVenueList,
@@ -12,6 +13,7 @@ import {
   EditorialExhibitionSummarySchema,
   EditorialHomeResponseSchema,
   EditorialPageDetailSchema,
+  EditorialPageSummarySchema,
   EditorialStoryDetailSchema,
   EditorialStorySummarySchema,
   EditorialVenueDetailSchema,
@@ -23,6 +25,7 @@ import { Value } from "@sinclair/typebox/value";
 const ExhibitionListSchema = Type.Object({ items: Type.Array(EditorialExhibitionSummarySchema) });
 const VenueListSchema = Type.Object({ items: Type.Array(EditorialVenueSummarySchema) });
 const StoryListSchema = Type.Object({ items: Type.Array(EditorialStorySummarySchema) });
+const PageListSchema = Type.Object({ items: Type.Array(EditorialPageSummarySchema) });
 
 /** Published content is cached briefly; drafts must always be read fresh. */
 const PUBLISHED_CACHE: RequestInit = { next: { revalidate: 120, tags: ["art:editorial"] } };
@@ -81,6 +84,10 @@ export function fetchEditorialStories(
 
 export function fetchEditorialStoryBySlug(slug: string) {
   return fetchEditorial(slugPath("/v1/editorial/stories", slug), EditorialStoryDetailSchema);
+}
+
+export function fetchEditorialPages(): Promise<ArtEditorialFetchResult<ArtEditorialPageList>> {
+  return fetchEditorial("/v1/editorial/pages", PageListSchema);
 }
 
 export function fetchEditorialPageBySlug(slug: string) {

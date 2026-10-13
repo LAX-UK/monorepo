@@ -57,13 +57,13 @@ describe("registered OIDC clients", () => {
     expect(shop.consentPolicy).toBe("implicit");
   });
 
-  it("lets lax.art return to its signed-out page after logout", () => {
+  it("lets the Art storefront return to its signed-out page after logout", () => {
     const art = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB];
     expect(art.postLogoutRedirectUris).toEqual([
       "http://localhost:3050/",
       "http://localhost:3050/signed-out",
-      "https://lax.art/",
-      "https://lax.art/signed-out",
+      "https://www.thelax.art/",
+      "https://www.thelax.art/signed-out",
       "https://test-art.lax.bid/",
       "https://test-art.lax.bid/signed-out",
     ]);
@@ -81,14 +81,14 @@ describe("registered OIDC clients", () => {
     );
   });
 
-  it("registers the lax.art storefront for the commerce API only, with its own hosts", () => {
+  it("registers the Art storefront for the commerce API only, with its own hosts", () => {
     const art = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB];
     expect(art.kind).toBe(OidcClientKind.Confidential);
     expect(art.allowedResources).toEqual(["lax-shop-api"]);
     expect(art.allowedScopes).not.toContain("shop.admin");
     expect(art.redirectUris).toEqual([
       "http://localhost:3051/auth/callback",
-      "https://lax.art/auth/callback",
+      "https://www.thelax.art/auth/callback",
       "https://test-art.lax.bid/auth/callback",
     ]);
     expect(art.testBackchannelLogoutUri).toBe(

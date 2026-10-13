@@ -18,15 +18,15 @@ describe("loadShopIdentityEnv", () => {
     expect("DATABASE_URL_AUTH" in env).toBe(false);
   });
 
-  it("accepts the lax-art-web client for the lax.art deployment in production", () => {
+  it("accepts the lax-art-web client for the www.thelax.art deployment in production", () => {
     const env = loadShopIdentityEnv({
       NODE_ENV: "production",
       OIDC_ISSUER_URL: "https://auth.lax.bid",
       OIDC_CLIENT_ID: "lax-art-web",
       OIDC_CLIENT_SECRET: "super-secret-client-value-32-characters",
-      OIDC_REDIRECT_URI: "https://lax.art/auth/callback",
-      OIDC_POST_LOGOUT_REDIRECT_URI: "https://lax.art/",
-      SHOP_STOREFRONT_URL: "https://lax.art",
+      OIDC_REDIRECT_URI: "https://www.thelax.art/auth/callback",
+      OIDC_POST_LOGOUT_REDIRECT_URI: "https://www.thelax.art/",
+      SHOP_STOREFRONT_URL: "https://www.thelax.art",
       SHOP_API_BFF_TOKEN: "bff-token-value-with-at-least-32-characters",
       SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY: "token-encryption-key",
       DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",
@@ -41,7 +41,7 @@ describe("loadShopIdentityEnv", () => {
         OIDC_CLIENT_ID: "lax-art-web",
         OIDC_CLIENT_SECRET: "super-secret-client-value-32-characters",
         OIDC_REDIRECT_URI: "https://shop.lax.art/auth/callback",
-        OIDC_POST_LOGOUT_REDIRECT_URI: "https://lax.art/",
+        OIDC_POST_LOGOUT_REDIRECT_URI: "https://www.thelax.art/",
         DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",
       }),
     ).toThrow("Invalid shop identity environment variables");

@@ -22,6 +22,9 @@ import {
   artworkCertificateLine,
   buildArtworkSpecGroups,
 } from "@/lib/presenters/artwork-spec.presenter";
+import { artworkJsonLd } from "@/lib/seo/art-structured-data";
+import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
+import type { JsonLd } from "@auction/branding";
 import type { PublicArtworkDetail, PublicArtworkSummary } from "@auction/shop-contracts";
 
 export type ArtEnquiryContact = {
@@ -61,6 +64,7 @@ export type ArtworkDetailVm = {
   enquiry: ArtworkEnquiryVm;
   saved: boolean;
   favoriteAuth: ArtFavoriteAuth;
+  structuredData: JsonLd[];
 };
 
 export type ArtworkDetailPageResult =
@@ -102,7 +106,7 @@ function resolveEnquiry(
 
 export async function composeArtworkDetailPage(
   services: { catalogue: ArtCataloguePort; viewer: ArtViewerPort; favorites: ArtFavoritesReadPort },
-  input: { slug: string; enquireRequested: boolean },
+  input: { slug: string; enquireRequested: boolean; siteUrl: URL },
 ): Promise<ArtworkDetailPageResult> {
   const favoritesPromise = loadViewerFavoriteContext(services, artworkHref(input.slug));
   let artwork: PublicArtworkDetail | null;
@@ -151,6 +155,7 @@ export async function composeArtworkDetailPage(
       enquiry: resolveEnquiry(artwork, favorites.viewer, input.enquireRequested),
       saved: favorites.savedArtworkSlugs.has(artwork.slug),
       favoriteAuth: favorites.favoriteAuth,
+      structuredData: artworkJsonLd(artwork, input.siteUrl),
     },
   };
 }
@@ -224,8 +229,10 @@ export async function composeArtworkDetailMetadata(
     if (!artwork) return { kind: "not_found" };
     return {
       kind: "ok",
-      title: artwork.title,
-      description: artwork.description ?? `${artwork.title} by ${artwork.artistName} at LAX Art.`,
+      title: seoMetadataTitle(artwork, artwork.title),
+      description:
+        seoMetadataDescription(artwork, artwork.description) ??
+        `${artwork.title} by ${artwork.artistName} at LAX Art.`,
       canonicalPath: artworkHref(artwork.slug),
       imageUrl: artwork.imageUrl,
     };

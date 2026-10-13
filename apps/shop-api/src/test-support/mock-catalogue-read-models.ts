@@ -23,6 +23,7 @@ export function mockArtworkSummary(
     eligibleForEditionAllocation: true,
     printPricePence: 12000,
     availability: { totalEditions: 24, editionsAvailable: 4 },
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -40,6 +41,8 @@ export function mockArtworkDetail(
     hasCertificate: false,
     provenance: null,
     exhibitionHistory: null,
+    seoTitle: null,
+    seoDescription: null,
     ...overrides,
   };
 }

@@ -13,7 +13,8 @@
       "**/.next/**",
       "**/e2e/.auth/**",
       "**/pnpm-lock.yaml",
-      "**/.terraform/**"
+      "**/.terraform/**",
+      "docs/seo/legacy-thelax-*.json"
     ]
   },
   "formatter": {

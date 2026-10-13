@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   artworkCatalogueFetchQuery,
   artworkCatalogueFilterHref,
+  artworkCatalogueHref,
+  artworkCataloguePageTitle,
   buildArtworkCatalogueActiveChips,
   parseArtworkCatalogueParams,
 } from "./artwork-catalogue-params.js";
@@ -68,7 +70,7 @@ describe("artwork catalogue params", () => {
       objectType: "sculpture",
       rarity: "unique",
     });
-    expect(artworkCatalogueFilterHref(state)).toBe("/artworks?objectType=sculpture&rarity=unique");
+    expect(artworkCatalogueFilterHref(state)).toBe("/sculptures?rarity=unique");
     expect(
       buildArtworkCatalogueActiveChips(state, { categories: [], artists: [] }).map((c) => c.label),
     ).toEqual(["Sculpture", "Unique"]);
@@ -76,5 +78,18 @@ describe("artwork catalogue params", () => {
     const bogus = parseArtworkCatalogueParams({ objectType: "nft", rarity: "rare" });
     expect(bogus.objectType).toBeUndefined();
     expect(bogus.rarity).toBeUndefined();
+  });
+
+  it("routes landing media to their legacy URLs and keeps other media on /artworks", () => {
+    const painting = parseArtworkCatalogueParams({ objectType: "painting" });
+    expect(artworkCatalogueHref(painting)).toBe("/paintings");
+    expect(artworkCatalogueHref(painting, { cursor: "c2", sort: "priceAsc" })).toBe(
+      "/paintings?sort=priceAsc&cursor=c2",
+    );
+    expect(artworkCatalogueFilterHref(painting, { objectType: null })).toBe("/artworks");
+    expect(artworkCatalogueHref(parseArtworkCatalogueParams({ objectType: "photography" }))).toBe(
+      "/artworks?objectType=photography",
+    );
+    expect(artworkCataloguePageTitle(painting)).toBe("Paintings");
   });
 });

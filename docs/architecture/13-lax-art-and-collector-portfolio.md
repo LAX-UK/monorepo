@@ -10,7 +10,7 @@ Related decisions: **D17** (Shop at `shop.lax.art`), **D37** (lax.art channel), 
 
 | Surface | Domain (production) | Interim (test) | Primary catalogue |
 | --- | --- | --- | --- |
-| lax.art | `lax.art` | `test-art.lax.bid` | Originals and gallery-led sales (enquiry → invoice) |
+| LAX Art | `www.thelax.art` (apex `thelax.art`, `lax.art`, `www.lax.art` → 301) | `test-art.lax.bid` | Originals and gallery-led sales (enquiry → invoice) |
 | shop.lax.art | `shop.lax.art` | `test-shop.lax.bid` | Edition prints and merchandise (Stripe Checkout) |
 | lax.bid | `lax.bid` | `test.lax.bid` | Auctions (separate product; Bid API and Stripe account) |
 

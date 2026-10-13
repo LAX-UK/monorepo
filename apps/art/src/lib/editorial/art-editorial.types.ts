@@ -4,6 +4,7 @@ import type {
   EditorialExhibitionSummarySchema,
   EditorialHomeResponse,
   EditorialPageDetailSchema,
+  EditorialPageSummarySchema,
   EditorialStoryDetailSchema,
   EditorialStorySummarySchema,
   EditorialVenueDetailSchema,
@@ -21,12 +22,14 @@ export type ArtEditorialExhibitionDetail = typeof EditorialExhibitionDetailSchem
 export type ArtEditorialStorySummary = typeof EditorialStorySummarySchema.static;
 export type ArtEditorialStoryDetail = typeof EditorialStoryDetailSchema.static;
 export type ArtEditorialPageDetail = typeof EditorialPageDetailSchema.static;
+export type ArtEditorialPageSummary = typeof EditorialPageSummarySchema.static;
 export type ArtEditorialVenueSummary = typeof EditorialVenueSummarySchema.static;
 export type ArtEditorialVenueDetail = typeof EditorialVenueDetailSchema.static;
 export type ArtEditorialPlacement = EditorialHomeResponse["placements"][number];
 
 export type ArtEditorialExhibitionList = { items: ArtEditorialExhibitionSummary[] };
 export type ArtEditorialStoryList = { items: ArtEditorialStorySummary[] };
+export type ArtEditorialPageList = { items: ArtEditorialPageSummary[] };
 export type ArtEditorialVenueList = { items: ArtEditorialVenueSummary[] };
 
 /** Draft preview normalised across venue, exhibition, story and page entities. */

@@ -4,6 +4,7 @@ export * from "./marketing-chrome.js";
 export * from "./lax-social-links.js";
 export * from "./email.js";
 export * from "./site.js";
+export * from "./structured-data.js";
 export * from "./favicons.js";
 export * from "./tokens.js";
 export * from "./lax-logo-path.js";

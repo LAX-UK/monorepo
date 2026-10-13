@@ -5,26 +5,24 @@ import {
   SITE_NAME,
   SITE_TAGLINE,
   SITE_TELEPHONE_SCHEMA,
+  localBusinessJsonLd as sharedLocalBusinessJsonLd,
+  organizationJsonLd as sharedOrganizationJsonLd,
+  personJsonLd as sharedPersonJsonLd,
+  websiteJsonLd as sharedWebsiteJsonLd,
 } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
 
 export function organizationJsonLd(): Record<string, unknown> {
   const base = getSiteUrl();
-  return {
-    "@context": "https://schema.org",
-    "@type": "Organization",
+  return sharedOrganizationJsonLd({
     name: SITE_NAME,
     alternateName: SITE_ALTERNATE_NAMES,
     url: base,
     description: SITE_TAGLINE,
     logo: `${base}/logo.svg`,
-    address: {
-      "@type": "PostalAddress",
-      ...SITE_BUSINESS_ADDRESS,
-    },
+    address: SITE_BUSINESS_ADDRESS,
     contactPoint: [
       {
-        "@type": "ContactPoint",
         contactType: "customer support",
         email: SITE_CONTACT_EMAIL,
         telephone: SITE_TELEPHONE_SCHEMA,
@@ -32,7 +30,7 @@ export function organizationJsonLd(): Record<string, unknown> {
         availableLanguage: ["English"],
       },
     ],
-  };
+  });
 }
 
 export function personJsonLd(opts: {
@@ -41,57 +39,33 @@ export function personJsonLd(opts: {
   image?: string;
   description?: string;
 }) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: opts.name,
-    url: opts.url,
-    ...(opts.image ? { image: opts.image } : {}),
-    ...(opts.description ? { description: opts.description } : {}),
-  };
+  return sharedPersonJsonLd(opts);
 }
 
 export function localBusinessJsonLd(): Record<string, unknown> {
-  const base = getSiteUrl();
-  return {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+  return sharedLocalBusinessJsonLd({
     name: SITE_NAME,
     alternateName: SITE_ALTERNATE_NAMES,
-    url: base,
+    url: getSiteUrl(),
     description: SITE_TAGLINE,
-    address: {
-      "@type": "PostalAddress",
-      ...SITE_BUSINESS_ADDRESS,
-    },
+    address: SITE_BUSINESS_ADDRESS,
     telephone: SITE_TELEPHONE_SCHEMA,
     email: SITE_CONTACT_EMAIL,
-    openingHoursSpecification: {
-      "@type": "OpeningHoursSpecification",
+    openingHours: {
       dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
       opens: "09:00",
       closes: "18:00",
     },
-  };
+  });
 }
 
 export function websiteJsonLd(): Record<string, unknown> {
   const base = getSiteUrl();
-  return {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
+  return sharedWebsiteJsonLd({
     name: SITE_NAME,
     alternateName: SITE_ALTERNATE_NAMES,
     url: base,
     description: SITE_TAGLINE,
-    publisher: { "@type": "Organization", name: SITE_NAME, url: base },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${base}/search?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
-  };
+    searchUrlTemplate: `${base}/search?q={search_term_string}`,
+  });
 }

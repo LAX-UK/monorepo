@@ -4,13 +4,15 @@ import { ArtArtworkGrid } from "@/components/catalogue/art-artwork-grid";
 import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-button.client";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image.server";
+import { ArtJsonLd } from "@/components/seo/art-json-ld";
+import { loadArtStorefrontBaseUrl } from "@/env.server";
 import { artServices } from "@/lib/art-services.server";
-import { composeArtistMetadataTitle, composeArtistPage } from "@/lib/artist/artist-page.composer";
+import { composeArtistMetadata, composeArtistPage } from "@/lib/artist/artist-page.composer";
 import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
+import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 type ArtistPageProps = {
   params: Promise<{ slug: string }>;
@@ -18,34 +20,24 @@ type ArtistPageProps = {
 
 export async function generateMetadata({ params }: ArtistPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const meta = await composeArtistMetadata(artServices.catalogue, slug);
+  if (meta.kind !== "ok") notFoundOrUnavailable(meta.kind, "Artist");
   return {
-    title: await composeArtistMetadataTitle(artServices.catalogue, slug),
-    alternates: { canonical: `/artists/${encodeURIComponent(slug)}` },
+    title: meta.title,
+    description: meta.description,
+    alternates: { canonical: meta.canonicalPath },
   };
 }
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { slug } = await params;
-  const result = await composeArtistPage(artServices, slug);
-  if (result.kind === "not_found") notFound();
-  if (result.kind === "unavailable") {
-    return (
-      <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
-        <ArtStatusState
-          variant="error"
-          layout="page"
-          titleAs="h1"
-          title="Artist unavailable"
-          description="We could not load this artist. Try again shortly."
-          actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
-        />
-      </div>
-    );
-  }
+  const result = await composeArtistPage(artServices, slug, loadArtStorefrontBaseUrl());
+  if (result.kind !== "ok") notFoundOrUnavailable(result.kind, "Artist");
 
   const { vm } = result;
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 py-6 lg:py-10")}>
+      <ArtJsonLd data={vm.structuredData} />
       <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
         <div className="relative size-32 shrink-0 overflow-hidden rounded-full bg-surface-container">
           <ArtMediaImage

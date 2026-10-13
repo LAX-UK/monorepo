@@ -1,3 +1,5 @@
+import { type SeoFieldsFormError, parseSeoFieldsPatch } from "./seo-fields-form";
+
 export const ARTWORK_MEDIUM_MAX_LENGTH = 200;
 
 export type ImportArtworkFormFields = {
@@ -9,6 +11,8 @@ export type ImportArtworkFormFields = {
   artistSlug: string;
   artistDisplayName: string;
   eligibleForEditionAllocation: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 export type ImportArtworkFormInput = {
@@ -21,13 +25,18 @@ export type ImportArtworkFormInput = {
   artistSlug: string;
   artistDisplayName: string;
   eligibleForEditionAllocation: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 export type ImportArtworkFormResult =
   | { ok: true; input: ImportArtworkFormInput }
-  | { ok: false; error: "missing_required" | "medium_too_long" };
+  | { ok: false; error: "missing_required" | "medium_too_long" | SeoFieldsFormError };
 
-/** A blank medium is sent as `null`, which clears any stored value on re-import. */
+/**
+ * A blank medium is sent as `null`, which clears any stored value on re-import.
+ * Blank SEO overrides are omitted so a re-import keeps imported legacy metadata.
+ */
 export function buildImportArtworkInput(fields: ImportArtworkFormFields): ImportArtworkFormResult {
   const importKey = fields.importKey.trim();
   const slug = fields.slug.trim();
@@ -41,6 +50,11 @@ export function buildImportArtworkInput(fields: ImportArtworkFormFields): Import
   if (medium.length > ARTWORK_MEDIUM_MAX_LENGTH) {
     return { ok: false, error: "medium_too_long" };
   }
+  const seo = parseSeoFieldsPatch({
+    seoTitle: fields.seoTitle ?? "",
+    seoDescription: fields.seoDescription ?? "",
+  });
+  if (!seo.ok) return seo;
   return {
     ok: true,
     input: {
@@ -53,6 +67,7 @@ export function buildImportArtworkInput(fields: ImportArtworkFormFields): Import
       artistSlug,
       artistDisplayName,
       eligibleForEditionAllocation: fields.eligibleForEditionAllocation,
+      ...seo.fields,
     },
   };
 }

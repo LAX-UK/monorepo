@@ -1,3 +1,4 @@
+import { breadcrumbJsonLd as sharedBreadcrumbJsonLd } from "@/lib/brand";
 import { getSiteUrl } from "@/lib/site-url";
 
 export function itemListJsonLd(items: { name: string; url: string }[]): Record<string, unknown> {
@@ -17,18 +18,7 @@ export function breadcrumbJsonLd(
   items: { name: string; path: string }[],
   opts?: { graphId?: string },
 ): Record<string, unknown> {
-  const base = getSiteUrl();
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    ...(opts?.graphId ? { "@id": opts.graphId } : {}),
-    itemListElement: items.map((item, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: item.name,
-      item: `${base}${item.path.startsWith("/") ? item.path : `/${item.path}`}`,
-    })),
-  };
+  return sharedBreadcrumbJsonLd(getSiteUrl(), items, opts);
 }
 
 export function faqPageJsonLd(

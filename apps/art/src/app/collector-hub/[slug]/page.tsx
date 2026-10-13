@@ -15,7 +15,9 @@ type CollectorServicePageProps = {
 const collectorRoute = (slug: string) => `/collector-hub/${encodeURIComponent(slug)}`;
 
 export async function generateMetadata({ params }: CollectorServicePageProps): Promise<Metadata> {
-  return editorialPageMetadata(await loadEditorialPage((await params).slug), "Collector Hub");
+  return editorialPageMetadata(await loadEditorialPage((await params).slug), "Collector Hub", {
+    notFoundWhenDisabled: true,
+  });
 }
 
 export default async function CollectorServicePage({ params }: CollectorServicePageProps) {

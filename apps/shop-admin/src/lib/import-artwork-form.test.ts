@@ -44,6 +44,18 @@ describe("buildImportArtworkInput", () => {
     });
   });
 
+  it("omits blank SEO overrides so re-import keeps stored metadata", () => {
+    const blank = buildImportArtworkInput({ ...fields, seoTitle: "  ", seoDescription: "" });
+    expect(blank.ok && blank.input).not.toHaveProperty("seoTitle");
+    expect(blank.ok && blank.input).not.toHaveProperty("seoDescription");
+    const set = buildImportArtworkInput({ ...fields, seoTitle: " Harbour | LAX " });
+    expect(set.ok && set.input.seoTitle).toBe("Harbour | LAX");
+    expect(buildImportArtworkInput({ ...fields, seoDescription: "x".repeat(321) })).toEqual({
+      ok: false,
+      error: "seo_description_too_long",
+    });
+  });
+
   it("rejects missing required fields", () => {
     expect(buildImportArtworkInput({ ...fields, title: "   " })).toEqual({
       ok: false,

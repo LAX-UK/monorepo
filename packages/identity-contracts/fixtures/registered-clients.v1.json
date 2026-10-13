@@ -18,7 +18,7 @@
       "shop.read",
       "shop.write"
     ],
-    "backchannelLogoutUri": "https://lax.art/api/auth/backchannel-logout"
+    "backchannelLogoutUri": "https://www.thelax.art/api/auth/backchannel-logout"
   },
   "bidWeb": {
     "allowedResources": ["lax-bid-api", "lax-ws"],

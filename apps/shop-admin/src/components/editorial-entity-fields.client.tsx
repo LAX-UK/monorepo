@@ -16,6 +16,11 @@ import {
   type StoryForm,
   type VenueForm,
 } from "@/lib/editorial-entity-forms";
+import {
+  SEO_DESCRIPTION_MAX_LENGTH,
+  SEO_TITLE_MAX_LENGTH,
+  type SeoFieldsFormValues,
+} from "@/lib/seo-fields-form";
 
 export type EntityFieldsProps<F> = {
   form: F;
@@ -47,6 +52,36 @@ function SlugField({
   );
 }
 
+const SEO_HINT = "Optional. Leave blank to use the page title and summary.";
+
+function SeoFields<F extends SeoFieldsFormValues>({
+  form,
+  onChange,
+  disabled,
+}: EntityFieldsProps<F>) {
+  return (
+    <fieldset className="grid gap-3 sm:col-span-2">
+      <legend className="text-sm font-medium text-neutral-700">Search metadata</legend>
+      <EditorialTextField
+        label={`SEO title (${form.seoTitle.trim().length}/${SEO_TITLE_MAX_LENGTH})`}
+        hint={SEO_HINT}
+        value={form.seoTitle}
+        maxLength={SEO_TITLE_MAX_LENGTH}
+        disabled={disabled}
+        onChange={(seoTitle) => onChange({ ...form, seoTitle })}
+      />
+      <EditorialTextArea
+        label={`SEO description (${form.seoDescription.trim().length}/${SEO_DESCRIPTION_MAX_LENGTH})`}
+        rows={2}
+        value={form.seoDescription}
+        maxLength={SEO_DESCRIPTION_MAX_LENGTH}
+        disabled={disabled}
+        onChange={(seoDescription) => onChange({ ...form, seoDescription })}
+      />
+    </fieldset>
+  );
+}
+
 export function PageFields({ form, onChange, disabled }: EntityFieldsProps<PageForm>) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -63,6 +98,7 @@ export function PageFields({ form, onChange, disabled }: EntityFieldsProps<PageF
         disabled={disabled}
         onChange={(title) => onChange({ ...form, title })}
       />
+      <SeoFields form={form} disabled={disabled} onChange={onChange} />
     </div>
   );
 }
@@ -198,6 +234,7 @@ export function StoryFields({ form, onChange, disabled }: EntityFieldsProps<Stor
         disabled={disabled}
         onChange={(key) => set("coverMediaKey", key)}
       />
+      <SeoFields form={form} disabled={disabled} onChange={onChange} />
     </div>
   );
 }

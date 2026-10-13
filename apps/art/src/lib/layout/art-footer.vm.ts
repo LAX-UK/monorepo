@@ -1,3 +1,4 @@
+import { ART_COOKIE_SETTINGS_HASH } from "@/lib/analytics/art-consent";
 import type { ArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingFooterColumn } from "@auction/marketing-ui";
@@ -10,6 +11,8 @@ export type ArtFooterVm = {
 export function buildArtFooterVm(input: {
   crossProductLinks: LaxProductLinkVm[];
   accountState: ArtFooterAccountState;
+  /** Shows the link that reopens the analytics consent banner. */
+  cookieSettings: boolean;
 }): ArtFooterVm {
   const exploreLinks = [
     { label: "Artists", href: "/artists" },
@@ -26,6 +29,9 @@ export function buildArtFooterVm(input: {
     { label: "Visit", href: "/visit" },
     { label: "Contact", href: "/contact" },
   ];
+  if (input.cookieSettings) {
+    discoverLinks.push({ label: "Cookie settings", href: ART_COOKIE_SETTINGS_HASH });
+  }
 
   const accountLinks: Array<{ label: string; href: string }> = [];
   if (input.accountState.kind === "guest") {

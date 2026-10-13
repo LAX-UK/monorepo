@@ -1,10 +1,9 @@
-import { loadArtStorefrontBaseUrl } from "@/env.server";
+import { isArtIndexingAllowed, loadArtStorefrontBaseUrl } from "@/env.server";
+import { composeArtRobots } from "@/lib/seo/art-robots";
 import type { MetadataRoute } from "next";
 
+export const dynamic = "force-dynamic";
+
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = loadArtStorefrontBaseUrl();
-  return {
-    rules: { userAgent: "*", allow: "/" },
-    sitemap: new URL("/sitemap.xml", baseUrl).toString(),
-  };
+  return composeArtRobots(loadArtStorefrontBaseUrl(), isArtIndexingAllowed());
 }

@@ -14,6 +14,8 @@ export type ArtistDirectoryRow = {
   nationality: string | null;
   birthYear: number | null;
   deathYear: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
   artworkCount: number;
   portraitUrl: string | null;
   heroUrl: string | null;
@@ -38,5 +40,7 @@ export function toPublicArtistDetail(row: ArtistDirectoryRow): ArtistDetailReadM
     nationality: row.nationality,
     birthYear: row.birthYear,
     deathYear: row.deathYear,
+    seoTitle: row.seoTitle,
+    seoDescription: row.seoDescription,
   };
 }

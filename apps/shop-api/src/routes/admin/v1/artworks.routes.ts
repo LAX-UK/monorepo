@@ -1,4 +1,4 @@
-import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import { SeoFieldsWriteProperties, ShopApiErrorBodySchema } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -31,6 +31,7 @@ const ImportArtworkBodySchema = Type.Object({
   artistPortraitUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   eligibleForEditionAllocation: Type.Boolean(),
   printPricePence: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
+  ...SeoFieldsWriteProperties,
 });
 
 const ImportArtworkResponseSchema = Type.Object({

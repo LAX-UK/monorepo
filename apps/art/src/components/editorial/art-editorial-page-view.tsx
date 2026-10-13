@@ -5,10 +5,11 @@ import type {
   ArtEditorialPageResult,
   EditorialPageVm,
 } from "@/lib/editorial/editorial-pages.composer";
+import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export type ArtEditorialPageViewProps = {
@@ -30,8 +31,9 @@ export function ArtEditorialPageView({
   aside,
   notFoundWhenDisabled = false,
 }: ArtEditorialPageViewProps) {
-  if (result.status === "not_found") notFound();
-  if (result.status === "disabled" && notFoundWhenDisabled) notFound();
+  if (result.status !== "ok" && (result.status !== "disabled" || notFoundWhenDisabled)) {
+    notFoundOrUnavailable(result.status, "Page");
+  }
   if (result.status !== "ok") {
     return (
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
@@ -68,12 +70,15 @@ export function ArtEditorialPageView({
 export function editorialPageMetadata(
   result: ArtEditorialPageResult<EditorialPageVm>,
   fallbackTitle: string,
+  { notFoundWhenDisabled = false }: { notFoundWhenDisabled?: boolean } = {},
 ): Metadata {
-  if (result.status !== "ok") {
+  if (result.status === "disabled" && !notFoundWhenDisabled) {
     return { title: `${fallbackTitle} | LAX Art`, robots: { index: false, follow: false } };
   }
+  if (result.status !== "ok") notFoundOrUnavailable(result.status, fallbackTitle);
   return {
-    title: `${result.data.title} | LAX Art`,
+    title: result.data.metaTitle,
+    ...(result.data.metaDescription ? { description: result.data.metaDescription } : {}),
     alternates: { canonical: result.data.canonicalPath },
   };
 }

@@ -1,6 +1,6 @@
 import { SIGNED_IN_VIEWER, artworkSummary, fakeArtServices } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
-import { composeArtworksPage } from "./artworks-page.composer.js";
+import { composeArtworksPage, composeArtworksPageMetadata } from "./artworks-page.composer.js";
 
 describe("composeArtworksPage", () => {
   it("passes URL filters to the catalogue in pence and builds the pager", async () => {
@@ -66,5 +66,23 @@ describe("composeArtworksPage", () => {
 
     services.catalogue.listArtworkObjectTypes.mockRejectedValue(new Error("down"));
     expect((await composeArtworksPage(services, {})).objectTypeTiles).toEqual([]);
+  });
+});
+
+describe("composeArtworksPageMetadata", () => {
+  it("canonicalises landing media to their legacy URL with their own copy", () => {
+    expect(composeArtworksPageMetadata({ objectType: "print", sort: "priceAsc" })).toEqual({
+      title: "Art Prints for Sale | LAX Art",
+      description: expect.stringContaining("art prints"),
+      canonical: "/prints",
+    });
+  });
+
+  it("keeps every other view on /artworks", () => {
+    expect(composeArtworksPageMetadata({ type: "edition" })).toEqual({
+      title: "Prints & Multiples | LAX Art",
+      canonical: "/artworks",
+    });
+    expect(composeArtworksPageMetadata({ objectType: "photography" }).canonical).toBe("/artworks");
   });
 });

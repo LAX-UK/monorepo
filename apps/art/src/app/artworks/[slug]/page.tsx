@@ -1,11 +1,12 @@
 import { ArtPageHeader } from "@/components/art-page-header";
-import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import { ArtArtworkDetailSections } from "@/components/artwork/art-artwork-detail-sections";
 import { ArtArtworkGallery } from "@/components/artwork/art-artwork-gallery.client";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
 import { ArtArtworkFavoriteToggle } from "@/components/favorites/art-artwork-favorite-toggle.client";
 import { ArtSection } from "@/components/layout/art-section";
+import { ArtJsonLd } from "@/components/seo/art-json-ld";
+import { loadArtStorefrontBaseUrl } from "@/env.server";
 import { artServices } from "@/lib/art-services.server";
 import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import {
@@ -13,12 +14,13 @@ import {
   composeArtworkDetailMetadata,
   composeArtworkDetailPage,
 } from "@/lib/artwork/artwork-detail-page.composer";
+import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingShareButton } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
@@ -28,19 +30,13 @@ type ArtworkPageProps = {
 export async function generateMetadata({ params }: ArtworkPageProps): Promise<Metadata> {
   const { slug } = await params;
   const meta = await composeArtworkDetailMetadata(artServices.catalogue, slug);
-  switch (meta.kind) {
-    case "ok":
-      return {
-        title: `${meta.title} | LAX Art`,
-        description: meta.description,
-        alternates: { canonical: meta.canonicalPath },
-        ...(meta.imageUrl ? { openGraph: { images: [meta.imageUrl] } } : {}),
-      };
-    case "not_found":
-      return { title: "Artwork not found | LAX Art", robots: { index: false, follow: false } };
-    case "unavailable":
-      return { title: "Artwork | LAX Art", robots: { index: false, follow: false } };
-  }
+  if (meta.kind !== "ok") notFoundOrUnavailable(meta.kind, "Artwork");
+  return {
+    title: meta.title,
+    description: meta.description,
+    alternates: { canonical: meta.canonicalPath },
+    ...(meta.imageUrl ? { openGraph: { images: [meta.imageUrl] } } : {}),
+  };
 }
 
 export default async function ArtworkDetailPage({ params, searchParams }: ArtworkPageProps) {
@@ -48,32 +44,16 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
   const result = await composeArtworkDetailPage(artServices, {
     slug,
     enquireRequested: query.enquire === "1",
+    siteUrl: loadArtStorefrontBaseUrl(),
   });
-  if (result.kind === "not_found") notFound();
-  if (result.kind === "unavailable") {
-    return (
-      <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
-        <ArtStatusState
-          variant="error"
-          layout="page"
-          titleAs="h1"
-          title="Artwork unavailable"
-          description="We could not load this artwork. Try again shortly."
-          actions={
-            <ArtStatusStateLink href={`/artworks/${encodeURIComponent(slug)}`}>
-              Retry
-            </ArtStatusStateLink>
-          }
-        />
-      </div>
-    );
-  }
+  if (result.kind !== "ok") notFoundOrUnavailable(result.kind, "Artwork");
 
   const { vm } = result;
   if (vm.enquiry.kind === "sign_in" && query.enquire === "1") redirect(vm.enquiry.loginHref);
 
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "py-6 lg:py-10")}>
+      <ArtJsonLd data={vm.structuredData} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
         <ArtArtworkGallery images={vm.galleryImages} priority />
         <div className="flex min-w-0 flex-col gap-6">

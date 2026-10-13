@@ -96,6 +96,9 @@ type SelectedArtworkRow = {
   hasCertificate: boolean;
   provenance: string | null;
   exhibitionHistory: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  updatedAt: Date;
   salesChannel: "shop" | "art";
   artistName: string;
   artistSlug: string;
@@ -135,6 +138,9 @@ function mapRow(
     hasCertificate: row.hasCertificate,
     provenance: row.provenance,
     exhibitionHistory: row.exhibitionHistory,
+    seoTitle: row.seoTitle,
+    seoDescription: row.seoDescription,
+    updatedAt: row.updatedAt,
     salesChannel: row.salesChannel,
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,
@@ -351,6 +357,9 @@ export function createDrizzleArtworkCatalogueRepository(
         hasCertificate: shopArtwork.hasCertificate,
         provenance: shopArtwork.provenance,
         exhibitionHistory: shopArtwork.exhibitionHistory,
+        seoTitle: shopArtwork.seoTitle,
+        seoDescription: shopArtwork.seoDescription,
+        updatedAt: shopArtwork.updatedAt,
         salesChannel: shopArtwork.salesChannel,
         artistName: shopParty.displayName,
         artistSlug: shopArtist.slug,
@@ -478,6 +487,9 @@ export function createDrizzleArtworkCatalogueRepository(
           hasCertificate: shopArtwork.hasCertificate,
           provenance: shopArtwork.provenance,
           exhibitionHistory: shopArtwork.exhibitionHistory,
+          seoTitle: shopArtwork.seoTitle,
+          seoDescription: shopArtwork.seoDescription,
+          updatedAt: shopArtwork.updatedAt,
           salesChannel: shopArtwork.salesChannel,
           artistName: shopParty.displayName,
           artistSlug: shopArtist.slug,

@@ -32,6 +32,8 @@ function createDeps() {
               discipline: null,
               bio: null,
               shortBio: null,
+              seoTitle: null,
+              seoDescription: null,
               portraitUrl: null,
               heroUrl: null,
               nationality: null,
