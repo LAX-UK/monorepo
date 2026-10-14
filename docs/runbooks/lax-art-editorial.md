@@ -79,7 +79,18 @@ Idempotently publishes, when editorial tables exist (migration `0216`):
 
 `seed:catalogue` adds eight Art-channel originals across painting, works on paper, sculpture, photography and print (with specs, provenance and exhibition history) and three Art featured artists at `featured_artists` positions 3–5.
 
-Seed images are root-relative `/art/seed/*` files served from `apps/art/public`. They resolve only while object storage is off (local and CI); on environments with `SHOP_MEDIA_PUBLIC_BASE_URL`, upload real media in shop-admin instead.
+Seed images are root-relative `/art/seed/*` files served from `apps/art/public`. shop-api passes root-relative values through unchanged, so they keep resolving when `SHOP_MEDIA_PUBLIC_BASE_URL` is set.
+
+## Test demo seed (test-art.lax.bid)
+
+`scripts/test-env/seed-art-demo.sh --email <acceptance-account-email>` seeds the **test** cluster for demos. It resolves the cluster, owner credentials and CA through `doctl` at run time, refuses any cluster other than `lax-test-postgres`, and runs, in order:
+
+1. `seed:catalogue`: the foundation catalogue plus Art originals.
+2. `import:legacy-thelax` from `.tmp/seo/legacy-thelax-export.json`: the real www.thelax.art content. Images go to `lax-media` through a temporary bucket-scoped Spaces key that is deleted on exit, and the redirect map is written to a temp dir rather than the repo.
+3. `seed:editorial-showcase`.
+4. The acceptance portal, commerce and staff-operations fixtures for `--email`.
+
+Skip steps with `--skip catalogue|legacy|editorial|account`. Editorial content stays hidden until the GitHub `test` environment variables `SHOP_EDITORIAL_ENABLED` and `ART_EDITORIAL_ENABLED` are `true` and App deploy test has run. Imported images need the `shop/*` public-read prefixes on `lax-media` (auction-infra `digitalocean-spaces` module).
 
 ## Staff workflows
 
