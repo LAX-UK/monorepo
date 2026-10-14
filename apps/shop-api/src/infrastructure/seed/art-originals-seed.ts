@@ -55,7 +55,8 @@ const GALLERY_PROVENANCE = "Acquired directly from the artist's studio by London
 
 /**
  * lax.art originals across every medium so tiles, related rails and filters have data.
- * Root-relative `/art/seed/*` images are served by `apps/art/public`, so they resolve only on Art.
+ * Root-relative `/art/seed/*` images are served by `apps/art/public`. Artist portraits also appear
+ * in Shop's artist directory, so `apps/shop/public/art/seed` carries copies of the `artist-*` files.
  */
 const ART_SEED_ORIGINALS: readonly ArtSeedOriginal[] = [
   {

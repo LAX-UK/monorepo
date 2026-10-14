@@ -63,7 +63,7 @@ async function seedShopStorefrontCurationTransaction(
   const artCategoryId = await upsertCategory(db, {
     slug: "art",
     label: "Art",
-    coverImageUrl: "/shop/home/category-coins.webp",
+    coverImageUrl: "/shop/home/original-2.webp",
     sortOrder: 0,
   });
   const watchesCategoryId = await upsertCategory(db, {

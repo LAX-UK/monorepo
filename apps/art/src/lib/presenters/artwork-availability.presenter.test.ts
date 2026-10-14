@@ -86,4 +86,16 @@ describe("presentArtworkAvailability", () => {
       meter: null,
     });
   });
+
+  it("does not call an editioned original one of one", () => {
+    const view = presentArtworkAvailability(
+      artwork({
+        eligibleForEditionAllocation: false,
+        rarity: "limited_edition",
+        availability: { totalEditions: 0, editionsAvailable: 0 },
+      }),
+    );
+    expect(view.headline).toBe("Original work from a limited edition");
+    expect(view.detail).not.toMatch(/unique/i);
+  });
 });
