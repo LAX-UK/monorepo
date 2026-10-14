@@ -59,6 +59,7 @@ import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
+import { assertLotMovableOnAtg } from "./sale-channel-guards.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
@@ -139,6 +140,9 @@ export type LotServiceOptions = {
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
   qrCodeService?: QrCodeService | null;
   telephoneBidBookingService?: ITelephoneBidBookingService | null;
+  saleChannelReader?:
+    | import("../repositories/interfaces/sale-channel.reader.js").ISaleChannelReader
+    | null;
 };
 
 export class LotService {
@@ -161,6 +165,9 @@ export class LotService {
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
   private readonly qrCodeService: QrCodeService | null;
   private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
+  private readonly saleChannelReader:
+    | import("../repositories/interfaces/sale-channel.reader.js").ISaleChannelReader
+    | null;
 
   constructor(opts: LotServiceOptions) {
     this.lotRepo = opts.lotRepo;
@@ -182,6 +189,7 @@ export class LotService {
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
     this.qrCodeService = opts.qrCodeService ?? null;
     this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
+    this.saleChannelReader = opts.saleChannelReader ?? null;
   }
 
   returnToInventory(
@@ -522,6 +530,10 @@ export class LotService {
       return err(timingPatchResult.error);
     }
     const patch = timingPatchResult.value;
+    if (patch.saleId !== undefined && patch.saleId !== a.saleId) {
+      const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lotId, a.saleId);
+      if (lotAtgConflict) return err(lotAtgConflict);
+    }
     const nextStart = patch.startTime ?? a.startTime;
     const nextEnd = patch.endTime ?? a.endTime;
     if (nextEnd <= nextStart) {

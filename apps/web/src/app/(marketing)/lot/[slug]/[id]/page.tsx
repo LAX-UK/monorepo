@@ -3,6 +3,10 @@ import { shouldShowBidStickyMobileBar } from "@/components/bid/bid-sticky-mobile
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
 import { ActingEntityCookieReconciler } from "@/components/legal-entity/acting-entity-cookie-reconciler";
 import { classifyLotTimerState } from "@/components/lot-timer";
+import {
+  AtgExternalBiddingPanel,
+  isAtgReadOnlyCatalogSale,
+} from "@/components/marketing/atg-external-bidding";
 import { LotPager } from "@/components/marketing/lot-pager";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
@@ -401,40 +405,45 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const isOwnLot = computeIsOwnLot(auction, session, actingCtx.acting);
   const actingLegalEntityId = actingCtx.acting?.id ?? null;
 
-  const onlineBidPanel = (
-    <OnlineBidsView
-      lotId={auction.id}
-      lot={auction}
-      currentUserId={session?.id ?? null}
-      watcherCount={watcherCount > 0 ? watcherCount : null}
-      compactFeedHeader
-      initialOutbid={initialOutbid}
-    >
-      <ArtworkBidPanel
-        auction={auction}
-        initialHistory={initialHistory}
-        initialLeadingBidderId={initialLeadingBidderId}
-        sessionUser={session}
-        summarySeed={summarySeed}
-        initialAutoBidSettings={initialAutoBidSettings}
-        initialOutbid={initialOutbid}
-        initialUserHasBid={initialUserHasBid}
-        initialWatching={watching}
-        loginNextPath={lotPath(auction)}
-        omitPricingHeader
-        kycSummary={kycSummary}
-        saleRegistrationBidGate={saleRegistrationBidGate}
-        saleRegistrationPath={parentSale ? salePath(parentSale) : null}
-        orgModuleEnabled={orgModuleEnabled}
-        saleForLifecycle={saleLifecyclePick}
-        isOwnLot={isOwnLot}
-        actingLegalEntityId={actingLegalEntityId}
-        strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
-      />
-    </OnlineBidsView>
-  );
+  const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(saleBundle?.sale ?? null);
 
-  const followSlot = (
+  const onlineBidPanel =
+    atgReadOnlyCatalog && saleBundle ? (
+      <AtgExternalBiddingPanel sale={saleBundle.sale} compact />
+    ) : (
+      <OnlineBidsView
+        lotId={auction.id}
+        lot={auction}
+        currentUserId={session?.id ?? null}
+        watcherCount={watcherCount > 0 ? watcherCount : null}
+        compactFeedHeader
+        initialOutbid={initialOutbid}
+      >
+        <ArtworkBidPanel
+          auction={auction}
+          initialHistory={initialHistory}
+          initialLeadingBidderId={initialLeadingBidderId}
+          sessionUser={session}
+          summarySeed={summarySeed}
+          initialAutoBidSettings={initialAutoBidSettings}
+          initialOutbid={initialOutbid}
+          initialUserHasBid={initialUserHasBid}
+          initialWatching={watching}
+          loginNextPath={lotPath(auction)}
+          omitPricingHeader
+          kycSummary={kycSummary}
+          saleRegistrationBidGate={saleRegistrationBidGate}
+          saleRegistrationPath={parentSale ? salePath(parentSale) : null}
+          orgModuleEnabled={orgModuleEnabled}
+          saleForLifecycle={saleLifecyclePick}
+          isOwnLot={isOwnLot}
+          actingLegalEntityId={actingLegalEntityId}
+          strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
+        />
+      </OnlineBidsView>
+    );
+
+  const followSlot = atgReadOnlyCatalog ? null : (
     <ArtworkWatchToggle
       lotId={auction.id}
       initialWatching={watching}

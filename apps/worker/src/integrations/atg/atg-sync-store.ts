@@ -1,5 +1,11 @@
 import type { AtgRemoteLot, AtgSaleResult } from "./atg-gateway.js";
-import type { AtgAuctionLink, AtgLotLink, AtgRemoteStatus, AtgSaleSnapshot } from "./atg-types.js";
+import type {
+  AtgAuctionLink,
+  AtgLotLink,
+  AtgRemoteStatus,
+  AtgSaleOwnershipSnapshot,
+  AtgSaleSnapshot,
+} from "./atg-types.js";
 
 export type AtgAuctionLinkPatch = Partial<{
   atgAuctionId: string;
@@ -24,6 +30,7 @@ export type AtgLotLinkPatch = Partial<{
 /** Persistence port for ATG link state and the LAX catalogue reads the sync needs. */
 export interface AtgSyncStore {
   loadSale(saleId: string): Promise<AtgSaleSnapshot | null>;
+  loadOwnershipState(saleId: string): Promise<AtgSaleOwnershipSnapshot | null>;
   getAuctionLink(saleId: string): Promise<AtgAuctionLink | null>;
   /** Inserts the link row when missing, then applies the patch. */
   saveAuctionLink(saleId: string, patch: AtgAuctionLinkPatch): Promise<void>;

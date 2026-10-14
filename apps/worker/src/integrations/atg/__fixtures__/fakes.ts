@@ -1,6 +1,12 @@
+import type { SaleStatus } from "@auction/types";
 import type { AtgGateway, AtgRemoteLot, AtgSaleResult } from "../atg-gateway.js";
 import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "../atg-sync-store.js";
-import type { AtgAuctionLink, AtgLotLink, AtgSaleSnapshot } from "../atg-types.js";
+import type {
+  AtgAuctionLink,
+  AtgLotLink,
+  AtgSaleOwnershipSnapshot,
+  AtgSaleSnapshot,
+} from "../atg-types.js";
 import type {
   GapAddUrlImageToLotRequest,
   GapCreateAuctionRequest,
@@ -88,6 +94,20 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
   async loadSale(saleId: string) {
     return this.sales.get(saleId) ?? null;
   }
+  async loadOwnershipState(saleId: string): Promise<AtgSaleOwnershipSnapshot | null> {
+    const sale = this.sales.get(saleId);
+    if (!sale) return null;
+    const link = this.auctionLinks.get(saleId);
+    const sold = [...this.lotLinks.values()].filter(
+      (l) => l.saleId === saleId && l.sold === true,
+    ).length;
+    return {
+      saleStatus: (sale.saleStatus ?? "draft") as SaleStatus,
+      atgRemoteStatus: link?.remoteStatus ?? null,
+      atgLinked: Boolean(link?.atgAuctionId),
+      atgSoldLotCount: sold,
+    };
+  }
   async getAuctionLink(saleId: string) {
     return this.auctionLinks.get(saleId) ?? null;
   }
@@ -99,6 +119,7 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
       payloadHash: null,
       lastSyncedAt: null,
       closedAt: null,
+      lastError: null,
     };
     this.auctionLinks.set(saleId, { ...current, ...patch });
   }
@@ -138,7 +159,7 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
           (l.remoteStatus === "closed" && l.closedAt != null && l.closedAt >= closedSince)),
     );
   }
-  async hasCatalogueChangesSince(saleId: string) {
+  async hasCatalogueChangesSince(saleId: string, _since: Date) {
     return this.changedSales.has(saleId);
   }
 }

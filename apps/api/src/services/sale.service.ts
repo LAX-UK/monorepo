@@ -14,7 +14,7 @@ import type {
   CreateSaleInput as ValidatorCreateSale,
 } from "@auction/validators";
 import {
-  PUBLIC_LOT_STATUSES,
+  PUBLIC_BROWSE_SALE_STATUSES,
   englishOnlyAdminLotAuctionTypeViolation,
   formatPostalAddress,
   getSaleModeCapabilities,
@@ -65,6 +65,7 @@ import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
+import { assertCanPublishOnLax, assertLotMovableOnAtg } from "./sale-channel-guards.js";
 
 /** Optional follow state for public sale detail responses. */
 export type SaleFollowReader = {
@@ -114,6 +115,9 @@ export type SaleServiceOptions = {
   venueRepository?: IVenueRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
   qrCodeService?: QrCodeService | null;
+  saleChannelReader?:
+    | import("../repositories/interfaces/sale-channel.reader.js").ISaleChannelReader
+    | null;
 };
 
 export class SaleService {
@@ -134,6 +138,9 @@ export class SaleService {
   private readonly venueRepository: IVenueRepository | null;
   private readonly enforceIndividualConnectOnPublish: boolean;
   private readonly qrCodeService: QrCodeService | null;
+  private readonly saleChannelReader:
+    | import("../repositories/interfaces/sale-channel.reader.js").ISaleChannelReader
+    | null;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -153,6 +160,21 @@ export class SaleService {
     this.venueRepository = opts.venueRepository ?? null;
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
     this.qrCodeService = opts.qrCodeService ?? null;
+    this.saleChannelReader = opts.saleChannelReader ?? null;
+  }
+
+  private async withSellingPlatform(sale: Sale): Promise<Sale> {
+    if (!this.saleChannelReader) return sale;
+    const ownership = await this.saleChannelReader.getSaleOwnership(sale.id);
+    if (!ownership) return sale;
+    return { ...sale, sellingPlatform: ownership.sellingPlatform };
+  }
+
+  /** Sale row plus computed ATG/LAX selling platform for public catalogue guards. */
+  async getByIdForPublicCatalog(saleId: string): Promise<Sale | null> {
+    const sale = await this.saleRepo.findById(saleId);
+    if (!sale) return null;
+    return this.withSellingPlatform(sale);
   }
 
   private publishSingleLotDeps() {
@@ -372,20 +394,21 @@ export class SaleService {
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return null;
 
+    const saleWithPlatform = await this.withSellingPlatform(bundle.sale);
     const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
-    if (!canPreview && !isPublicCatalogSale(bundle.sale)) return null;
+    if (!canPreview && !isPublicCatalogSale(saleWithPlatform)) return null;
 
     const isFollowing =
       viewerUserId && this.saleFollowReader
         ? await this.saleFollowReader.isFollowing(viewerUserId, saleId)
         : false;
     const [sale, lots] = await Promise.all([
-      presentSaleImages(this.mediaUrlResolver, bundle.sale, this.mediaAssetEnricher),
+      presentSaleImages(this.mediaUrlResolver, saleWithPlatform, this.mediaAssetEnricher),
       presentLotsImages(this.mediaUrlResolver, bundle.lots, this.mediaAssetEnricher),
     ]);
     const visibleLots = canPreview
       ? lots
-      : lots.filter((lot) => isPublicCatalogLot(lot, bundle.sale));
+      : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform));
     return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
   }
 
@@ -399,13 +422,20 @@ export class SaleService {
       statuses: filter.statuses,
       viewerCanSeeNonPublic: canPreview,
     });
+    const isDefaultBrowse =
+      !canPreview &&
+      resolved.statuses != null &&
+      resolved.statuses.length === PUBLIC_BROWSE_SALE_STATUSES.length &&
+      PUBLIC_BROWSE_SALE_STATUSES.every((status) => resolved.statuses?.includes(status));
     const queryFilter = {
       ...filter,
-      ...(resolved.statuses !== undefined
-        ? { statuses: resolved.statuses, status: undefined }
-        : resolved.status !== undefined
-          ? { status: resolved.status, statuses: undefined }
-          : {}),
+      ...(isDefaultBrowse
+        ? { publicBrowseOnly: true as const, status: undefined, statuses: undefined }
+        : resolved.statuses !== undefined
+          ? { statuses: resolved.statuses, status: undefined }
+          : resolved.status !== undefined
+            ? { status: resolved.status, statuses: undefined }
+            : {}),
     };
     const rows = await this.list(queryFilter);
     const data = await presentSalesWithLotsImages(
@@ -414,8 +444,14 @@ export class SaleService {
       this.mediaAssetEnricher,
     );
     if (canPreview) return { data };
+    const enriched = await Promise.all(
+      data.map(async ({ sale, lots }) => ({
+        sale: await this.withSellingPlatform(sale),
+        lots,
+      })),
+    );
     return {
-      data: data
+      data: enriched
         .filter(({ sale }) => isPublicCatalogSale(sale))
         .map(({ sale, lots }) => ({
           sale,
@@ -437,8 +473,9 @@ export class SaleService {
       sort: typeof opts.sort;
     };
   } | null> {
-    const sale = await this.saleRepo.findById(saleId);
-    if (!sale) return null;
+    const saleRow = await this.saleRepo.findById(saleId);
+    if (!saleRow) return null;
+    const sale = await this.withSellingPlatform(saleRow);
 
     const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
     if (!canPreview && !isPublicCatalogSale(sale)) return null;
@@ -451,7 +488,6 @@ export class SaleService {
       ...(canPreview
         ? {}
         : {
-            lotStatuses: [...PUBLIC_LOT_STATUSES],
             requirePublicSale: true,
           }),
     });
@@ -523,6 +559,8 @@ export class SaleService {
     if (sale.status !== "draft") {
       return err(new LotError("Only draft sales can be published"));
     }
+    const atgConflict = await assertCanPublishOnLax(this.saleChannelReader, saleId);
+    if (atgConflict) return err(atgConflict);
     if (!isStartInFutureForPublish(sale.startTime)) {
       return err(new LotError("startTime must be in the future to publish"));
     }
@@ -1005,6 +1043,8 @@ export class SaleService {
     if (!l || l.saleId !== saleId) {
       return err(new LotError("Lot not found in this sale", 404));
     }
+    const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lotId, saleId);
+    if (lotAtgConflict) return err(lotAtgConflict);
     if (l.status !== "draft") {
       return err(new LotError("Only draft lots can be moved between sales"));
     }

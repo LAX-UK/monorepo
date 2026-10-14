@@ -12,6 +12,7 @@ import {
 } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ISaleChannelReader } from "../repositories/interfaces/sale-channel.reader.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -19,6 +20,7 @@ import type {
   ISaleSoftDeleteSideEffects,
   SaleSoftDeleteGuardCounts,
 } from "./interfaces/sale-soft-delete.js";
+import { assertCanSoftDeleteSaleOnAtg } from "./sale-channel-guards.js";
 import {
   type SaleSoftDeleteContext,
   canSaleSoftDelete,
@@ -53,6 +55,7 @@ export class SaleSoftDeleteService {
     private readonly jobScheduler: ILotJobScheduler | null,
     private readonly db: Database | null,
     private readonly domainEventPublisher: DomainEventPublisher | null,
+    private readonly saleChannelReader: ISaleChannelReader | null = null,
   ) {}
 
   async getDeleteEligibility(saleId: string): Promise<SaleDeleteEligibility | null> {
@@ -127,6 +130,9 @@ export class SaleSoftDeleteService {
     if (confirmationPhrase !== expected) {
       return err(new LotError(`Type exactly: ${expected}`, 400));
     }
+
+    const atgConflict = await assertCanSoftDeleteSaleOnAtg(this.saleChannelReader, saleId);
+    if (atgConflict) return err(atgConflict);
 
     return this.executeSoftDelete(actorUserId, sale);
   }

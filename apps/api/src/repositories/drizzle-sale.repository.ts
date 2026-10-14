@@ -5,6 +5,7 @@ import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { mapSaleRow } from "../lib/mappers.js";
 import type { ISaleRepository, ListSalesFilter } from "../services/interfaces/repositories.js";
+import { publicBrowseSaleCondition } from "./atg-public-catalog.sql.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 /** Sold lot without captured/refunded buyer payment. */
@@ -25,7 +26,9 @@ function soldLotMissingSettledPayment() {
 
 function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [saleNotDeleted()];
-  if (input.statuses?.length) conditions.push(inArray(sale.status, input.statuses));
+  if (input.publicBrowseOnly) {
+    conditions.push(publicBrowseSaleCondition());
+  } else if (input.statuses?.length) conditions.push(inArray(sale.status, input.statuses));
   else if (input.status) conditions.push(eq(sale.status, input.status));
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds

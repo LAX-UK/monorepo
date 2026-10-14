@@ -33,6 +33,7 @@ import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
+import type { AtgOwnershipState } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ReactNode } from "react";
@@ -50,6 +51,8 @@ type Props = {
   connectRequiredByLotId?: ConnectRequiredByLotId;
   /** Precomputed in layout — avoids duplicate readiness work in rail and overview. */
   draftSetupReadiness?: CatalogReadinessResult | null;
+  /** From ATG link state when sync is enabled. */
+  sellingPlatform?: AtgOwnershipState | null;
   children: ReactNode;
 };
 
@@ -64,6 +67,7 @@ export function SaleDetailShell({
   canManageSales = false,
   connectRequiredByLotId,
   draftSetupReadiness: draftSetupReadinessProp,
+  sellingPlatform = null,
   children,
 }: Props) {
   const { sale, lots } = bundle;
@@ -72,7 +76,12 @@ export function SaleDetailShell({
   const publicHref = salePath({ id: sale.id, title: sale.title });
 
   const canEditDraftSale = sale.status === "draft" && canManageSales;
-  const canPublish = sale.status === "draft" && canManageSales;
+  const blockedByAtg = sellingPlatform === "atg";
+  const canPublishOnLax = sale.status === "draft" && canManageSales;
+  const canPublish = canPublishOnLax && !blockedByAtg;
+  const publishBlockedReason = blockedByAtg
+    ? "This sale is live on ATG. Close the ATG auction (with no lots sold) before publishing on lax.bid."
+    : undefined;
   const canUnpublish = sale.status === "scheduled" && canManageSales;
   const canCancel =
     canManageSales &&
@@ -217,6 +226,11 @@ export function SaleDetailShell({
             <Badge variant="secondary" className="capitalize">
               {sale.deliveryMode}
             </Badge>
+            {sellingPlatform === "atg" ? (
+              <Badge variant="secondary">Selling on ATG</Badge>
+            ) : sellingPlatform === "lax" ? (
+              <Badge variant="secondary">Selling on lax.bid</Badge>
+            ) : null}
             {sale.status === "draft" && setupReadiness && draftSetupHref ? (
               <SaleSetupProgressChip readiness={setupReadiness} setupHref={draftSetupHref} />
             ) : null}
@@ -233,7 +247,9 @@ export function SaleDetailShell({
               saleTitle={sale.title}
               canEdit={canEditDraftSale}
               canPublish={canPublish}
+              showPublishMenuItem={canPublishOnLax}
               publishReady={publishReady}
+              publishBlockedReason={publishBlockedReason}
               canUnpublish={canUnpublish}
               canCancel={canCancel}
               canDelete={canDelete}
@@ -248,7 +264,9 @@ export function SaleDetailShell({
             saleId={saleId}
             saleTitle={sale.title}
             canPublish={canPublish}
+            showPublishMenuItem={canPublishOnLax}
             publishReady={publishReady}
+            publishBlockedReason={publishBlockedReason}
             canUnpublish={canUnpublish}
             canCancel={canCancel}
             canDelete={canDelete}

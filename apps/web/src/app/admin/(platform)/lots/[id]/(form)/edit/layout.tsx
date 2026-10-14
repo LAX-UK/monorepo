@@ -1,3 +1,4 @@
+import { AtgEditAlert } from "@/components/admin/atg/atg-edit-alert";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { AdminLotForm } from "@/components/admin/lot-form";
 import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
@@ -6,11 +7,15 @@ import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { loadAdminLotRecord } from "@/lib/admin/load-lot-detail";
 import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
+import { getAtgIntegrationStatus, getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -43,8 +48,28 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
   const canEditCore = isDraft || auction.status === "scheduled";
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
+  let atgEditAlert: ReactNode = null;
+  if (auction.saleId) {
+    const user = await requireAdminCapability(SALES_ACCESS).catch(() => null);
+    const canSeeAtg =
+      user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+    if (canSeeAtg) {
+      const atgStatus = await getAtgIntegrationStatus().catch(() => ({
+        enabled: false,
+        whiteLabelBaseUrl: null,
+      }));
+      if (atgStatus.enabled) {
+        const platform = await getAtgSaleSellingPlatform(auction.saleId);
+        if (platform === "atg") {
+          atgEditAlert = <AtgEditAlert saleId={auction.saleId} />;
+        }
+      }
+    }
+  }
+
   return (
     <Suspense fallback={<LotEditFormLayoutFallback />}>
+      {atgEditAlert}
       <LotEditFormLayout
         lotId={id}
         canEditCore={canEditCore}

@@ -1,4 +1,8 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import {
+  AtgExternalBiddingPanel,
+  isAtgReadOnlyCatalogSale,
+} from "@/components/marketing/atg-external-bidding";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
@@ -398,6 +402,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       }))
     : { status: "none" as const, currentLotId: null };
 
+  const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(bundle.sale);
+
   const catalogLotRefs = lotsPage.items.map((lot) => ({
     id: lot.id,
     lotNumber: lot.lotNumber,
@@ -472,24 +478,28 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             explainerContext={saleFormatExplainerContextFromSale(bundle.sale)}
             toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
             actions={
-              <SaleroomHeroActionRow
-                hero={heroVM}
-                isAuthenticated={isAuthenticated}
-                deliveryMode={bundle.sale.deliveryMode}
-                saleId={bundle.sale.id}
-                saleHref={basePath}
-                initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
-                registerToBid={{
-                  show: registerToBidShow,
-                  buyerEntities,
-                  myRegistrations,
-                  kycApproved,
-                  kycFeedback,
-                  orgModuleEnabled,
-                  saleCurrency: "GBP",
-                }}
-                hasApprovedRegistration={myRegistrations.some((r) => r.status === "approved")}
-              />
+              atgReadOnlyCatalog ? (
+                <AtgExternalBiddingPanel sale={bundle.sale} />
+              ) : (
+                <SaleroomHeroActionRow
+                  hero={heroVM}
+                  isAuthenticated={isAuthenticated}
+                  deliveryMode={bundle.sale.deliveryMode}
+                  saleId={bundle.sale.id}
+                  saleHref={basePath}
+                  initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
+                  registerToBid={{
+                    show: registerToBidShow,
+                    buyerEntities,
+                    myRegistrations,
+                    kycApproved,
+                    kycFeedback,
+                    orgModuleEnabled,
+                    saleCurrency: "GBP",
+                  }}
+                  hasApprovedRegistration={myRegistrations.some((r) => r.status === "approved")}
+                />
+              )
             }
           />
         }

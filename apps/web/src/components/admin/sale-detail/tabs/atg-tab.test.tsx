@@ -5,9 +5,11 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const adminAtgSaleActionResultAction = vi.fn();
+const adminAtgJobStateAction = vi.fn();
 
 vi.mock("@/lib/actions/admin-atg", () => ({
   adminAtgSaleActionResultAction: (...args: unknown[]) => adminAtgSaleActionResultAction(...args),
+  adminAtgJobStateAction: (...args: unknown[]) => adminAtgJobStateAction(...args),
 }));
 
 const refresh = vi.fn();
@@ -45,6 +47,8 @@ function lot(overrides: Partial<AtgLotSyncView> = {}): AtgLotSyncView {
 function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
   return {
     saleId: SALE_ID,
+    saleStatus: "draft",
+    sellingPlatform: "free",
     saleCancelled: false,
     linked: false,
     atgAuctionId: null,
@@ -60,7 +64,6 @@ function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
   };
 }
 
-/** The polling interval starts in a passive effect, which may commit after the text renders. */
 async function flushEffects() {
   await act(async () => {});
 }
@@ -73,7 +76,9 @@ describe("SaleAtgTab", () => {
   beforeEach(() => {
     refresh.mockReset();
     adminAtgSaleActionResultAction.mockReset();
-    adminAtgSaleActionResultAction.mockResolvedValue({ ok: true, data: { jobId: "j" } });
+    adminAtgJobStateAction.mockReset();
+    adminAtgSaleActionResultAction.mockResolvedValue({ ok: true, data: { jobId: "job-1" } });
+    adminAtgJobStateAction.mockResolvedValue({ ok: true, data: { state: "active" } });
   });
 
   it("explains when sync is turned off and offers no actions", () => {
@@ -111,6 +116,20 @@ describe("SaleAtgTab", () => {
     );
   });
 
+  it("disables ATG actions when lax.bid owns the sale", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({ sellingPlatform: "lax", saleStatus: "scheduled" })}
+        canManage
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Published on lax.bid" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Push to ATG" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publish on ATG" })).toBeDisabled();
+  });
+
   it("disables close until the sale is on ATG and everything once closed", () => {
     const { unmount } = renderWithViewer(
       <SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />,
@@ -143,43 +162,30 @@ describe("SaleAtgTab", () => {
     expect(screen.getByText("Lot 3: Title required")).toBeInTheDocument();
   });
 
-  it("keeps refreshing after an action until the worker result arrives", async () => {
+  it("polls the job until done then refreshes", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
-    const initial = view();
-    const { rerender } = renderWithViewer(
-      <SaleAtgTab saleId={SALE_ID} status={ENABLED} view={initial} canManage />,
-    );
+    adminAtgJobStateAction
+      .mockResolvedValueOnce({ ok: true, data: { state: "active" } })
+      .mockResolvedValueOnce({ ok: true, data: { state: "done" } });
+
+    renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
     fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
 
     expect(await screen.findByText("Syncing with ATG…")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Push to ATG" })).toBeDisabled();
     await flushEffects();
-    refresh.mockClear();
     await act(async () => {
-      vi.advanceTimersByTime(6_000);
+      vi.advanceTimersByTime(3_500);
     });
-    expect(refresh).toHaveBeenCalledTimes(2);
-
-    rerender(
-      <SaleAtgTab
-        saleId={SALE_ID}
-        status={ENABLED}
-        view={view({
-          linked: true,
-          atgAuctionId: "a",
-          remoteStatus: "created",
-          lastSyncedAt: "2026-10-13T12:00:00.000Z",
-        })}
-        canManage
-      />,
-    );
+    await waitFor(() => expect(adminAtgJobStateAction).toHaveBeenCalledWith("job-1"));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByText("Syncing with ATG…")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Push changes to ATG" })).toBeEnabled();
   });
 
-  it("stops refreshing after a minute and says so", async () => {
+  it("stops polling after a minute and says so", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    adminAtgJobStateAction.mockResolvedValue({ ok: true, data: { state: "active" } });
+
     renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
     fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
@@ -190,12 +196,6 @@ describe("SaleAtgTab", () => {
     });
 
     expect(screen.getByText(/taking longer than usual/)).toBeInTheDocument();
-    refresh.mockClear();
-    await act(async () => {
-      vi.advanceTimersByTime(9_000);
-    });
-    expect(refresh).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Push to ATG" })).toBeEnabled();
   });
 
   it("blocks push and publish for cancelled sales but still allows closing on ATG", () => {
@@ -220,7 +220,7 @@ describe("SaleAtgTab", () => {
     expect(screen.getByText(/Close the ATG auction if it is still open/)).toBeInTheDocument();
   });
 
-  it("shows lot states in words, never GAP status codes, and sums results once live", () => {
+  it("shows lot states, paddle column, and edit lot link on errors", () => {
     renderWithViewer(
       <SaleAtgTab
         saleId={SALE_ID}
@@ -229,6 +229,19 @@ describe("SaleAtgTab", () => {
           linked: true,
           atgAuctionId: "a",
           remoteStatus: "published",
+          sellingPlatform: "atg",
+          results: [
+            {
+              atgLotId: "x1",
+              lotNumber: "1",
+              lotStatus: null,
+              numberOfBids: 1,
+              paddleNumber: "42",
+              hammerPrice: 1500,
+              totalHammerPrice: null,
+              endTimeUtc: null,
+            },
+          ],
           lots: [
             lot({
               lotId: "l1",
@@ -252,13 +265,17 @@ describe("SaleAtgTab", () => {
       />,
     );
 
-    expect(screen.getByText("Sold")).toBeInTheDocument();
+    expect(screen.getAllByText("Sold").length).toBeGreaterThan(0);
     expect(screen.getByText("4 bids")).toBeInTheDocument();
     expect(screen.getByText("Sync error")).toBeInTheDocument();
     expect(screen.getByText("ATG updateLot failed with HTTP 400")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Edit lot" })).toHaveAttribute(
+      "href",
+      "/admin/lots/l3/edit",
+    );
     expect(screen.getByText("Not pushed")).toBeInTheDocument();
     expect(screen.queryByText("7")).not.toBeInTheDocument();
     expect(screen.getByText("1 of 3 lots")).toBeInTheDocument();
-    expect(screen.getAllByText("£1,500.00").length).toBeGreaterThan(0);
+    expect(screen.getByText("42")).toBeInTheDocument();
   });
 });

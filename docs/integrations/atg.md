@@ -50,6 +50,45 @@ next click can enqueue again. Mapping errors, precondition errors and non-retrya
 responses become `UnrecoverableError` (no retries); network errors, 408/425/429 and 5xx (except
 501) get up to four attempts with exponential backoff starting at 30 s.
 
+### One platform per sale (ownership)
+
+A sale may take bids on **either** lax.bid **or** ATG, never both. Ownership is computed from
+`sale.status`, `atg_auction_link.remote_status`, and whether any `atg_lot_link.sold` row exists
+(no stored flag, no migration). SSOT: `resolveSaleSellingPlatform()` in
+`packages/types/src/atg.ts`.
+
+| State | lax.bid publish | ATG push / publish |
+| --- | --- | --- |
+| Free | allowed | allowed |
+| LAX-owned (`scheduled` / `active` / `ended`) | already on LAX | **409 `sale_on_lax`** |
+| ATG-owned (`published`, or `closed` with ≥1 sold lot) | **409 `sale_on_atg`** | push re-syncs |
+| Cancelled | not allowed | **409 `sale_cancelled`** |
+
+Release from ATG: **Close** with zero lots sold → free again. If any lot sold on ATG, the sale
+stays ATG-owned; duplicate the sale in LAX to relist unsold lots.
+
+**Guards (409 unless noted):**
+
+| Code | Where |
+| --- | --- |
+| `sale_on_atg` | `SaleService.publish`, sale soft delete |
+| `sale_on_lax` | ATG admin push / publish / close enqueue |
+| `lot_on_atg` | lot sale change, detach, lot soft delete (when linked + bids or sold) |
+| `queue_unavailable` | ATG enqueue (**503**) |
+
+**Public lax.bid:** ATG-owned sales stay LAX `draft` but appear in the catalogue as read-only;
+marketing pages hide bid UI and link to `ATG_WHITE_LABEL_BASE_URL` (auctions.lax.bid). SQL
+helpers: `apps/api/src/repositories/atg-public-catalog.sql.ts`.
+
+**Worker:** run a **single** `atg-sync` consumer at **concurrency 1** (BullMQ job de-duplication
+relies on stable job ids).
+
+**Images:** `AddUrlImageToLot` returns a `LotImageId`; GAP exposes **no** list-images endpoint,
+so the worker tracks sent `ImageName` values append-only.
+
+**White Label login:** the production White Label already uses `/Membership/SignUpOrIn` (not a
+legacy login path).
+
 ### Automatic re-sync (design note)
 
 The plan described enqueueing a push from API sale/lot update paths. The release build instead
@@ -407,6 +446,22 @@ login on `secure-login.globalauctionplatform.com`).
 21. **Cookies.** Please confirm the White Label never sets cookies named `lax_*`, `lax-*`,
     `_lax_*` or `better-auth*` (the proxy drops them) and does not rely on `Domain=` cookie
     attributes (the proxy makes every White Label cookie host-only).
+
+## Porting to `main`
+
+`main` does not yet include ATG. When porting from `release`, check:
+
+1. **Code:** worker integration, queues, API guards (`ISaleChannelReader`), admin ATG tab, public
+   read-only catalogue, and `resolveSaleSellingPlatform`.
+2. **Migration:** `0132_atg_sync_links` byte-identical (see `docs/engineering/release-main-parity.md`).
+3. **Grants:** keep `atg_auction_link` / `atg_lot_link` in worker full-table access; API SELECT for
+   ownership reads.
+4. **Guard sites:** re-verify publish, lot move, detach, soft deletes against `main`'s sale/lot services.
+5. **Visibility:** re-run the public-catalog grep on `main` and apply `publicSaleCondition()` /
+   `sellingPlatform` on DTOs.
+6. **Infra:** ATG env + cookie-shield Terraform (`auction-infra`) identical to `release`.
+7. **Open product questions:** banded premium, partial `UpdateLot`, field locks after bids, deep-link
+   URL pattern, `Terms` length.
 
 ### Robustness (not blocking)
 

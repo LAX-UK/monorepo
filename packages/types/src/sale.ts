@@ -1,3 +1,4 @@
+import type { AtgOwnershipState } from "./atg.js";
 import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
 import type { GalleryImage } from "./gallery.js";
@@ -126,6 +127,8 @@ export type Sale = {
   /** Reusable venue reference for onsite sales; location fields remain the publish snapshot. */
   venueId?: string | null;
   status: SaleStatus;
+  /** Populated on public API responses when ATG sync is configured. */
+  sellingPlatform?: AtgOwnershipState;
   startTime: Date;
   endTime: Date;
   previewStartTime: Date | null;

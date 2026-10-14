@@ -4,7 +4,13 @@ import {
   type AtgSyncQueueProducer,
   atgSyncJobId,
 } from "@auction/queues";
-import type { AtgIntegrationStatus, AtgSaleSyncView, AtgSyncAction } from "@auction/types";
+import {
+  type AtgIntegrationStatus,
+  type AtgSaleSyncView,
+  type AtgSyncAction,
+  type AtgSyncJobState,
+  canPushOrPublishSaleOnAtg,
+} from "@auction/types";
 import type { IAtgLinkReader } from "../../repositories/interfaces/atg-link.reader.js";
 import type {
   AtgAdminError,
@@ -36,6 +42,12 @@ function saleActionConflict(
   }
   if (view.saleCancelled) {
     return { code: "sale_cancelled", message: "Cancelled sales cannot be pushed to ATG" };
+  }
+  if (!canPushOrPublishSaleOnAtg(view.sellingPlatform)) {
+    return {
+      code: "sale_on_lax",
+      message: "This sale is published on lax.bid. Unpublish it there before pushing to ATG.",
+    };
   }
   return null;
 }
@@ -81,14 +93,28 @@ export class AtgAdminService implements IAtgAdminService {
     return this.enqueue(this.queue, { name: ATG_SYNC_JOB_NAMES.deleteLot, data: { lotId } });
   }
 
+  async getJobState(jobId: string): Promise<AtgSyncJobState | null> {
+    if (!this.queue) return null;
+    return this.queue.getJobState(jobId);
+  }
+
   private async enqueue(
     queue: AtgSyncQueueProducer,
     job: Exclude<AtgSyncJob, { name: "atg.tick" }>,
   ): Promise<AtgEnqueueResult> {
     const jobId = atgSyncJobId(job);
-    // Finished jobs must not keep the id, or the next click would be silently ignored;
-    // failures stay visible on the link rows and in Sentry.
-    await queue.add(job.name, job.data, { jobId, removeOnComplete: true, removeOnFail: true });
+    try {
+      await queue.add(job.name, job.data, { jobId, removeOnComplete: true, removeOnFail: true });
+    } catch {
+      return {
+        ok: false,
+        error: {
+          status: 503,
+          code: "queue_unavailable",
+          message: "ATG queue is unavailable. Try again shortly.",
+        },
+      };
+    }
     return { ok: true, jobId };
   }
 }

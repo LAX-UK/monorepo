@@ -1,4 +1,5 @@
 import {
+  type AtgOwnershipState,
   type Lot,
   type LotStatus,
   type Sale,
@@ -7,6 +8,10 @@ import {
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
+
+export type PublicCatalogSaleContext = Pick<Sale, "status"> & {
+  sellingPlatform?: AtgOwnershipState | null;
+};
 
 /** Browse surfaces: home strips, search default, new lots — not archive. */
 export const PUBLIC_BROWSE_LOT_STATUSES = [
@@ -51,15 +56,23 @@ export function isPublicSaleStatus(status: SaleStatus): boolean {
   return (PUBLIC_SALE_STATUSES as readonly SaleStatus[]).includes(status);
 }
 
-export function isPublicCatalogSale(sale: Pick<Sale, "status">): boolean {
-  return isPublicSaleStatus(sale.status);
+export function isAtgOwnedCatalogSale(sale: PublicCatalogSaleContext): boolean {
+  return sale.status === "draft" && sale.sellingPlatform === "atg";
+}
+
+export function isPublicCatalogSale(sale: PublicCatalogSaleContext): boolean {
+  return isPublicSaleStatus(sale.status) || isAtgOwnedCatalogSale(sale);
 }
 
 /** Lot is public when its status is public and any parent sale is public. */
 export function isPublicCatalogLot(
   lot: Pick<Lot, "status" | "saleId">,
-  parentSale?: Pick<Sale, "status"> | null,
+  parentSale?: PublicCatalogSaleContext | null,
 ): boolean {
+  if (lot.status === "cancelled" || lot.status === "voided") return false;
+  if (lot.status === "draft") {
+    return Boolean(lot.saleId && parentSale && isAtgOwnedCatalogSale(parentSale));
+  }
   if (!isPublicLotStatus(lot.status)) return false;
   if (lot.saleId && (!parentSale || !isPublicCatalogSale(parentSale))) return false;
   return true;

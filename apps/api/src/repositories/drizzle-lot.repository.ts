@@ -9,9 +9,9 @@ import {
   payment,
   sale,
 } from "@auction/db/schema";
-import type { CreateLotInput, Lot, LotStatus, SaleStatus } from "@auction/types";
+import type { CreateLotInput, Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
-import { PUBLIC_LOT_STATUSES, PUBLIC_SALE_STATUSES } from "@auction/validators";
+import { PUBLIC_SALE_STATUSES } from "@auction/validators";
 import {
   and,
   asc,
@@ -37,6 +37,11 @@ import type {
   ListLotsSort,
   SaleCatalogLotsSort,
 } from "../services/interfaces/repositories.js";
+import {
+  publicLotCondition,
+  publicSaleCondition,
+  saleIsAtgOwnedSql,
+} from "./atg-public-catalog.sql.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type ListWhereInput = Omit<ListLotsFilter, "limit" | "offset" | "sort">;
@@ -118,10 +123,13 @@ function publicParentSaleExists() {
       SELECT 1 FROM ${sale} AS parent_sale
       WHERE parent_sale.id = ${lot.saleId}
         AND parent_sale.deleted_at IS NULL
-        AND parent_sale.status IN (${sql.join(
-          PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
-          sql`, `,
-        )})
+        AND (
+          parent_sale.status IN (${sql.join(
+            PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
+            sql`, `,
+          )})
+          OR (parent_sale.status = 'draft' AND ${saleIsAtgOwnedSql(sql`parent_sale.id`)})
+        )
     )
   )`;
 }
@@ -152,7 +160,8 @@ function catalogLotsBySaleWhere(
   }
   if (input.requirePublicSale) {
     conditions.push(eq(sale.id, lot.saleId), saleNotDeleted());
-    conditions.push(inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]));
+    conditions.push(publicSaleCondition());
+    conditions.push(publicLotCondition());
   }
   return and(...conditions);
 }
@@ -631,8 +640,8 @@ export class DrizzleLotRepository implements ILotRepository {
           inArray(lot.saleId, saleIds),
           lotNotDeleted(),
           saleNotDeleted(),
-          inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-          inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+          publicLotCondition(),
+          publicSaleCondition(),
         )
       : and(inArray(lot.saleId, saleIds), lotNotDeleted());
     const rows = await (options?.publicOnly
@@ -675,8 +684,8 @@ export class DrizzleLotRepository implements ILotRepository {
           inArray(lot.saleId, saleIds),
           lotNotDeleted(),
           saleNotDeleted(),
-          inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-          inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+          publicLotCondition(),
+          publicSaleCondition(),
         )
       : and(inArray(lot.saleId, saleIds), lotNotDeleted());
 

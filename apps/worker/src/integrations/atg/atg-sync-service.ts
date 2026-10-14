@@ -1,3 +1,5 @@
+import { canPushOrPublishSaleOnAtg, resolveSaleSellingPlatform } from "@auction/types";
+import type pino from "pino";
 import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
 import {
   AtgMappingError,
@@ -41,6 +43,8 @@ export type AtgSyncServiceDeps = {
   store: AtgSyncStore;
   config: AtgSyncConfig;
   now?: () => Date;
+  /** Logs per-sale tick failures (optional; wired in the worker composition root). */
+  tickLog?: Pick<pino.Logger, "warn">;
 };
 
 const POLL_CLOSED_FOR_MS = 7 * 24 * 60 * 60 * 1000;
@@ -79,17 +83,22 @@ function failureSummary(failures: string[]): string | null {
  * record what ATG already has, and payload hashes skip unchanged updates, so jobs can be
  * retried safely.
  */
+const SALE_ON_LAX_MESSAGE =
+  "This sale is published on lax.bid. Unpublish it there before pushing to ATG.";
+
 export class AtgSyncService {
   private readonly gateway: AtgGateway;
   private readonly store: AtgSyncStore;
   private readonly config: AtgSyncConfig;
   private readonly now: () => Date;
+  private readonly tickLog: Pick<pino.Logger, "warn"> | undefined;
 
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
     this.store = deps.store;
     this.config = deps.config;
     this.now = deps.now ?? (() => new Date());
+    this.tickLog = deps.tickLog;
   }
 
   async pushSale(saleId: string): Promise<AtgPushSummary> {
@@ -112,6 +121,7 @@ export class AtgSyncService {
       }
       throw new AtgSyncPreconditionError(message);
     }
+    await this.assertCanPushToAtg(saleId);
 
     let auction: { auctionId: string; created: boolean };
     try {
@@ -146,6 +156,7 @@ export class AtgSyncService {
     }
     const link = await this.requireAuction(saleId);
     if (link.remoteStatus === "published") return;
+    await this.assertCanPushToAtg(saleId);
     try {
       if (this.config.approveBeforePublish && link.remoteStatus !== "approved") {
         await this.gateway.approveAuction(link.atgAuctionId);
@@ -196,6 +207,7 @@ export class AtgSyncService {
   async pollSale(saleId: string): Promise<void> {
     const link = await this.requireAuction(saleId);
     const polledAt = this.now();
+    const priorError = (await this.store.getAuctionLink(saleId))?.lastError;
     try {
       const [lots, results] = await Promise.all([
         this.gateway.getLots(link.atgAuctionId),
@@ -205,6 +217,7 @@ export class AtgSyncService {
       await this.store.saveAuctionLink(saleId, {
         lastPolledAt: polledAt,
         resultsSnapshot: results,
+        ...(priorError?.startsWith("Poll failed:") ? { lastError: null } : {}),
       });
     } catch (err) {
       await this.store.saveAuctionLink(saleId, { lastError: `Poll failed: ${errorText(err)}` });
@@ -226,9 +239,21 @@ export class AtgSyncService {
     let failed = 0;
     for (const link of links) {
       try {
+        const ownership = await this.store.loadOwnershipState(link.saleId);
+        const platform = ownership
+          ? resolveSaleSellingPlatform({
+              saleStatus: ownership.saleStatus,
+              atgRemoteStatus: ownership.atgRemoteStatus,
+              atgLinked: ownership.atgLinked,
+              atgSoldLotCount: ownership.atgSoldLotCount,
+            })
+          : "free";
         if (
           link.remoteStatus !== "closed" &&
+          platform !== "lax" &&
+          canPushOrPublishSaleOnAtg(platform) &&
           (!link.lastSyncedAt ||
+            link.lastError ||
             (await this.store.hasCatalogueChangesSince(link.saleId, link.lastSyncedAt)))
         ) {
           await this.pushSale(link.saleId);
@@ -238,11 +263,28 @@ export class AtgSyncService {
           await this.pollSale(link.saleId);
           polled += 1;
         }
-      } catch {
+      } catch (err) {
         failed += 1;
+        this.tickLog?.warn({ err, saleId: link.saleId }, "ATG tick failed for sale");
       }
     }
     return { pushed, polled, failed };
+  }
+
+  private async assertCanPushToAtg(saleId: string): Promise<void> {
+    const ownership = await this.store.loadOwnershipState(saleId);
+    if (!ownership) {
+      throw new AtgSyncPreconditionError(`Sale ${saleId} not found`);
+    }
+    const platform = resolveSaleSellingPlatform({
+      saleStatus: ownership.saleStatus,
+      atgRemoteStatus: ownership.atgRemoteStatus,
+      atgLinked: ownership.atgLinked,
+      atgSoldLotCount: ownership.atgSoldLotCount,
+    });
+    if (platform === "lax") {
+      throw new AtgSyncPreconditionError(SALE_ON_LAX_MESSAGE);
+    }
   }
 
   private async requireAuction(saleId: string): Promise<AtgAuctionLink & { atgAuctionId: string }> {

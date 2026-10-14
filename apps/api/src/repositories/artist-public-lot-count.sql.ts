@@ -34,7 +34,27 @@ function parentSaleIsPublicSql(saleStatusesSql: ReturnType<typeof sql.join>) {
       from sale parent_sale
       where parent_sale.id = lot.sale_id
         and parent_sale.deleted_at is null
-        and parent_sale.status in (${saleStatusesSql})
+        and (
+          parent_sale.status in (${saleStatusesSql})
+          or (
+            parent_sale.status = 'draft'
+            and exists (
+              select 1 from atg_auction_link al
+              where al.sale_id = parent_sale.id
+                and al.atg_auction_id is not null
+                and (
+                  al.remote_status = 'published'
+                  or (
+                    al.remote_status = 'closed'
+                    and exists (
+                      select 1 from atg_lot_link ll
+                      where ll.sale_id = al.sale_id and ll.sold = true
+                    )
+                  )
+                )
+            )
+          )
+        )
     )
   `;
 }
@@ -44,7 +64,19 @@ function artistPublicBrowseLotPredicatesSql(): SQL {
   return sql`
     lot.artist_id = artist_profile.id
     and lot.deleted_at is null
-    and lot.status in (${publicBrowseLotStatusesSql})
+    and (
+      lot.status in (${publicBrowseLotStatusesSql})
+      or (
+        lot.status = 'draft'
+        and lot.sale_id is not null
+        and exists (
+          select 1 from atg_auction_link al
+          where al.sale_id = lot.sale_id
+            and al.atg_auction_id is not null
+            and al.remote_status = 'published'
+        )
+      )
+    )
     and (${parentSaleIsPublicSql(publicBrowseSaleStatusesSql)})
   `;
 }
@@ -54,7 +86,28 @@ function artistPublicCatalogLotPredicatesSql(): SQL {
   return sql`
     lot.artist_id = artist_profile.id
     and lot.deleted_at is null
-    and lot.status in (${publicCatalogLotStatusesSql})
+    and (
+      lot.status in (${publicCatalogLotStatusesSql})
+      or (
+        lot.status = 'draft'
+        and lot.sale_id is not null
+        and exists (
+          select 1 from atg_auction_link al
+          where al.sale_id = lot.sale_id
+            and al.atg_auction_id is not null
+            and (
+              al.remote_status = 'published'
+              or (
+                al.remote_status = 'closed'
+                and exists (
+                  select 1 from atg_lot_link ll
+                  where ll.sale_id = al.sale_id and ll.sold = true
+                )
+              )
+            )
+        )
+      )
+    )
     and (${parentSaleIsPublicSql(publicCatalogSaleStatusesSql)})
   `;
 }

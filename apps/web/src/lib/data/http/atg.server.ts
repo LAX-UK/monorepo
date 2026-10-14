@@ -1,5 +1,11 @@
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import type { AtgIntegrationStatus, AtgLotSyncView, AtgSaleSyncView } from "@auction/types";
+import type {
+  AtgIntegrationStatus,
+  AtgLotSyncView,
+  AtgOwnershipState,
+  AtgSaleSyncView,
+  AtgSyncJobState,
+} from "@auction/types";
 
 const ATG_BASE = "/admin/integrations/atg";
 
@@ -29,4 +35,20 @@ export async function getAtgLotSyncView(
   const view = await getAtgSaleSyncView(saleId).catch(() => null);
   const lot = view?.lots.find((row) => row.lotId === lotId);
   return lot?.atgLotId ? lot : null;
+}
+
+export async function getAtgJobState(jobId: string): Promise<AtgSyncJobState | null> {
+  const res = await authedServerFetch(`${ATG_BASE}/jobs/${encodeURIComponent(jobId)}`, {
+    skipActingLegalEntityHeader: true,
+  });
+  if (res.status === 404) return "done";
+  if (!res.ok) return null;
+  const body = (await res.json()) as { data: { state: AtgSyncJobState } };
+  return body.data.state;
+}
+
+/** Selling platform for header chips and publish guards (null when ATG is off or sale missing). */
+export async function getAtgSaleSellingPlatform(saleId: string): Promise<AtgOwnershipState | null> {
+  const view = await getAtgSaleSyncView(saleId).catch(() => null);
+  return view?.sellingPlatform ?? null;
 }
