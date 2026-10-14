@@ -50,7 +50,7 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     expect(basket.lines[0]?.artworkSlug).toBe(imported.slug);
   });
 
-  it("merges anonymous artwork lines into a subject basket via the same partial index", async () => {
+  it("merges anonymous artwork lines into a subject basket, keeping the larger quantity", async () => {
     const db = createShopDb(shopPool);
     const imported = await importTestArtwork(db, "basket-merge");
     await grantLaxSaleAuthority(db, imported.artworkId, 4);
@@ -69,11 +69,11 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     const merged = await repo.mergeBaskets({ from: fromOwner, to: toOwner });
 
     expect(merged.lines).toHaveLength(1);
-    expect(merged.lines[0]?.quantity).toBe(3);
+    expect(merged.lines[0]?.quantity).toBe(2);
     expect(merged.lines[0]?.artworkSlug).toBe(imported.slug);
   });
 
-  it("merges anonymous variant lines into a subject basket", async () => {
+  it("merges anonymous variant lines into a subject basket, keeping the larger quantity", async () => {
     const db = createShopDb(shopPool);
     const merch = await insertTestMerchandise(db, "basket-variant-merge", { onHand: 6 });
     const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
@@ -100,7 +100,7 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
 
     expect(merged.lines).toHaveLength(1);
     expect(merged.lines[0]?.productVariantId).toBe(merch.variantId);
-    expect(merged.lines[0]?.quantity).toBe(3);
+    expect(merged.lines[0]?.quantity).toBe(2);
   });
 
   it("refuses variant upsert when available stock is insufficient", async () => {

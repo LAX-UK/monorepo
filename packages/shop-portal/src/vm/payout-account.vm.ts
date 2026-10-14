@@ -45,7 +45,7 @@ export function buildPayoutAccountViewModel(
   return {
     stage: "ready",
     title: "Payout account ready",
-    description: "Eligible payouts are sent to your bank account automatically.",
+    description: "LAX pays eligible sales into this bank account once each sale settles.",
     tone: "success",
     statusLabel: "Ready",
     actionLabel: "Manage payout details",

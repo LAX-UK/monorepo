@@ -85,7 +85,7 @@ export function ShopOrderSummary({ order, heading, showLineLinks = true }: Props
 
       <dl className="shop-order-card__totals">
         <div>
-          <dt>Merchandise</dt>
+          <dt>Subtotal</dt>
           <dd>{formatGbpPence(order.merchandiseSubtotalPence)}</dd>
         </div>
         <div>

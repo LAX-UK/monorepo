@@ -1,5 +1,9 @@
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
-import type { EditionCustodyStatus, EditionListingStatus } from "@auction/shop-domain";
+import type {
+  EditionCustodyStatus,
+  EditionListingStatus,
+  ShopOriginalSaleStatus,
+} from "@auction/shop-domain";
 import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 
 type PublicArtworkSaleState = PublicArtworkSummary["saleState"];
@@ -132,6 +136,24 @@ export function resolvePortalCustodyStatusPresentation(
 ): ShopStatusPresentation {
   if (custodyStatus in PORTAL_CUSTODY_STATUS) {
     return PORTAL_CUSTODY_STATUS[custodyStatus as EditionCustodyStatus];
+  }
+  return unknownPortalStatus;
+}
+
+const PORTAL_ORIGINAL_SALE_STATUS: Record<ShopOriginalSaleStatus, ShopStatusPresentation> = {
+  reserved: { label: "Reserved", tone: "pending" },
+  deposit_due: { label: "Deposit due", tone: "warning" },
+  invoiced: { label: "Invoiced", tone: "pending" },
+  paid: { label: "Paid", tone: "success" },
+  assigned: { label: "Yours", tone: "accent" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+};
+
+export function resolvePortalOriginalSaleStatusPresentation(
+  status: string,
+): ShopStatusPresentation {
+  if (status in PORTAL_ORIGINAL_SALE_STATUS) {
+    return PORTAL_ORIGINAL_SALE_STATUS[status as ShopOriginalSaleStatus];
   }
   return unknownPortalStatus;
 }
