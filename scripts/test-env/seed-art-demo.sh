@@ -14,11 +14,16 @@
 #   --email <email>        auth account that receives portal/commerce/staff fixtures
 #   --skip <step>          skip a step (repeatable): catalogue|legacy|editorial|account
 #   --export <file>        legacy export JSON (default .tmp/seo/legacy-thelax-export.json)
+#   --temporary-full-access-key
+#                          legacy media: mint an account-wide Spaces key, deleted on exit
+#                          (DigitalOcean allows only those on buckets with a policy)
 #   --yes                  do not prompt for confirmation
 #
-# Legacy media goes to the shared lax-media bucket with a temporary bucket-scoped
-# Spaces key that is deleted on exit. Requires doctl (authenticated), node, pnpm.
+# Legacy media goes to the shared lax-media bucket using MEDIA_SPACES_ACCESS_KEY_ID /
+# MEDIA_SPACES_SECRET_ACCESS_KEY from the environment, or --temporary-full-access-key.
+# Requires doctl (authenticated), node, pnpm.
 set -euo pipefail
+trap 'echo "seed-art-demo: failed at line $LINENO" >&2' ERR
 
 readonly EXPECTED_CLUSTER="lax-test-postgres"
 readonly DATABASE_NAME="auction"
@@ -31,6 +36,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 email=""
 export_file=".tmp/seo/legacy-thelax-export.json"
 assume_yes=false
+temporary_full_access_key=false
 skip=" "
 
 die() {
@@ -45,7 +51,8 @@ while [[ $# -gt 0 ]]; do
     --skip) skip+="${2:-} "; shift 2 ;;
     --export) export_file="${2:-}"; shift 2 ;;
     --yes) assume_yes=true; shift ;;
-    -h | --help) sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --temporary-full-access-key) temporary_full_access_key=true; shift ;;
+    -h | --help) sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -60,6 +67,10 @@ if runs account && [[ -z "$email" ]]; then
 fi
 if runs legacy && [[ ! -f "$repo_root/$export_file" ]]; then
   die "legacy export not found at $export_file (run scripts/seo/crawl-legacy-thelax.mjs or --skip legacy)"
+fi
+if runs legacy && [[ "$temporary_full_access_key" != true ]] &&
+  [[ -z "${MEDIA_SPACES_ACCESS_KEY_ID:-}" || -z "${MEDIA_SPACES_SECRET_ACCESS_KEY:-}" ]]; then
+  die "legacy media needs MEDIA_SPACES_ACCESS_KEY_ID/MEDIA_SPACES_SECRET_ACCESS_KEY, --temporary-full-access-key, or --skip legacy"
 fi
 
 json_field() {
@@ -172,26 +183,32 @@ if runs catalogue; then
 fi
 
 if runs legacy; then
-  log "[legacy] creating temporary Spaces key scoped to $MEDIA_BUCKET"
-  key_json="$(
-    doctl spaces keys create "seed-art-demo-$(date +%Y%m%d%H%M%S)" \
-      --grants "bucket=$MEDIA_BUCKET;permission=readwrite" -o json
-  )"
-  spaces_key_id="$(json_field access_key <<<"$key_json")"
-  spaces_secret="$(json_field secret_key <<<"$key_json")"
-  unset key_json
+  media_key_id="${MEDIA_SPACES_ACCESS_KEY_ID:-}"
+  media_secret="${MEDIA_SPACES_SECRET_ACCESS_KEY:-}"
+  if [[ -z "$media_key_id" || -z "$media_secret" ]]; then
+    # lax-media has a bucket policy, which DigitalOcean only allows for account-wide keys.
+    log "[legacy] creating temporary account-wide Spaces key (deleted on exit)"
+    key_json="$(
+      doctl spaces keys create "seed-art-demo-$(date +%Y%m%d%H%M%S)" \
+        --grants "bucket=;permission=fullaccess" -o json 2>&1
+    )" || die "[legacy] could not create Spaces key: $(node -e 'try{const j=JSON.parse(process.argv[1]);console.log(JSON.stringify(j.errors??j))}catch{console.log("unparseable doctl output")}' "$key_json")"
+    spaces_key_id="$(json_field access_key <<<"$key_json")" || die "[legacy] unexpected doctl key response"
+    media_key_id="$spaces_key_id"
+    media_secret="$(json_field secret_key <<<"$key_json")"
+    unset key_json
+  fi
   log "[legacy] importing $export_file"
   shop_api import:legacy-thelax \
     "S3_BUCKET=$MEDIA_BUCKET" \
     "S3_REGION=$MEDIA_REGION" \
     "S3_ENDPOINT=https://$MEDIA_REGION.digitaloceanspaces.com" \
-    "S3_ACCESS_KEY_ID=$spaces_key_id" \
-    "S3_SECRET_ACCESS_KEY=$spaces_secret" \
+    "S3_ACCESS_KEY_ID=$media_key_id" \
+    "S3_SECRET_ACCESS_KEY=$media_secret" \
     "SHOP_MEDIA_PUBLIC_BASE_URL=$MEDIA_PUBLIC_BASE_URL" \
     -- --export "$export_file" \
     --redirects-out "$work_dir/legacy-redirects.json" \
     --report-out "$work_dir/legacy-report.json" | tail -n 40
-  unset spaces_secret
+  unset media_secret
 fi
 
 if runs editorial; then

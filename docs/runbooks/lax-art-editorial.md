@@ -86,7 +86,7 @@ Seed images are root-relative `/art/seed/*` files served from `apps/art/public`.
 `scripts/test-env/seed-art-demo.sh --email <acceptance-account-email>` seeds the **test** cluster for demos. It resolves the cluster, owner credentials and CA through `doctl` at run time, refuses any cluster other than `lax-test-postgres`, and runs, in order:
 
 1. `seed:catalogue`: the foundation catalogue plus Art originals.
-2. `import:legacy-thelax` from `.tmp/seo/legacy-thelax-export.json`: the real www.thelax.art content. Images go to `lax-media` through a temporary bucket-scoped Spaces key that is deleted on exit, and the redirect map is written to a temp dir rather than the repo.
+2. `import:legacy-thelax` from `.tmp/seo/legacy-thelax-export.json`: the real www.thelax.art content. Images go to `lax-media`, using `MEDIA_SPACES_ACCESS_KEY_ID` and `MEDIA_SPACES_SECRET_ACCESS_KEY` from the environment. Alternatively, `--temporary-full-access-key` mints an account-wide key that is deleted on exit, because DigitalOcean only allows account-wide keys on buckets that have a policy. The redirect map is written to a temp dir rather than the repo.
 3. `seed:editorial-showcase`.
 4. The acceptance portal, commerce and staff-operations fixtures for `--email`.
 
