@@ -25,6 +25,17 @@ test.describe("Shop artwork detail @a11y", () => {
     expect(blocking).toEqual([]);
   });
 
+  test("lays media and copy side by side on desktop", async ({ page }, testInfo) => {
+    test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "desktop layout only");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/artworks/vessel-study");
+    const media = await page.locator(".shop-detail__media").boundingBox();
+    const copy = await page.locator(".shop-detail__content").boundingBox();
+    expect(media?.width ?? 0).toBeGreaterThan(400);
+    expect((media?.x ?? 0) + (media?.width ?? 0)).toBeLessThanOrEqual(copy?.x ?? 0);
+  });
+
   test("keeps artwork content available without JavaScript", async ({ browser }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "no-JS contract once on desktop");

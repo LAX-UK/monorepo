@@ -113,7 +113,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
             { label: artwork.title },
           ],
         }}
-        contentClassName="shop-detail"
+        contentClassName="shop-detail-route"
       >
         <article className="shop-detail">
           <div className="shop-detail__media shop-detail__media--image">

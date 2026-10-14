@@ -26,6 +26,20 @@ test.describe("Shop viewport audit @a11y", () => {
     });
   }
 
+  test("home rail cards keep their column width on desktop", async ({ page }, testInfo) => {
+    test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "viewport sizes assigned explicitly");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await expect(page.locator("#main-content")).toBeVisible();
+    for (const selector of [".shop-home__original-card", ".shop-home__category-card"]) {
+      const card = page.locator(selector).first();
+      await expect(card).toBeAttached();
+      const box = await card.boundingBox();
+      expect(box?.width ?? 0, selector).toBeGreaterThan(200);
+    }
+  });
+
   test("hero discover CTA is in viewport on mobile", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "viewport sizes assigned explicitly");

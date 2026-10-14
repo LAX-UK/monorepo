@@ -41,7 +41,7 @@ export function OriginalsSection({ section, cards, errorMessage }: OriginalsSect
       }
     >
       {cards.map((card, index) => (
-        <MarketingCardReveal key={card.id} index={index}>
+        <MarketingCardReveal key={card.id} index={index} className="shop-home__rail-item">
           <OriginalCard card={card} />
         </MarketingCardReveal>
       ))}
