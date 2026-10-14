@@ -105,6 +105,7 @@ export function ArtHeaderClient({ account, productLinks }: ArtHeaderClientProps)
         {utilityItems.length > 0 ? (
           <div className="hidden lg:block">
             <MarketingUtilityBar
+              className="justify-start"
               items={utilityItems}
               resolveLinkClassName={(item: MarketingUtilityBarItem) =>
                 headerProductLinkClass(headerTone, item.current ?? false)
