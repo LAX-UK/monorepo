@@ -10,7 +10,7 @@ test.describe("Shop catalogue routes @a11y", () => {
     { path: "/artists", heading: "Artists" },
     { path: "/categories", heading: "Categories" },
     { path: "/artists/emmett-king", heading: "Emmett King" },
-    { path: "/categories/art", heading: "Art" },
+    { path: "/categories/prints", heading: "Limited edition prints" },
   ]) {
     test(`${route.path} renders its catalogue contract`, async ({ page }, testInfo) => {
       test.skip(!enabled, skipReason);
