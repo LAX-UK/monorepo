@@ -1,4 +1,5 @@
 import { loadShopEnv } from "@/env";
+import { isShopIndexingAllowedForHost } from "@/lib/seo/shop-indexing";
 import {
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
@@ -41,9 +42,24 @@ export function loadShopCrossProductFooterLinks(): LaxProductLinkVm[] {
 }
 
 export function loadShopStorefrontBaseUrl(): URL {
-  const raw = readShopStorefrontUrl() ?? "http://localhost:3020";
+  const isNextProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
+  const raw =
+    readShopStorefrontUrl() ??
+    (process.env.NODE_ENV === "production" && !isNextProductionBuild
+      ? undefined
+      : "http://localhost:3020");
+  if (!raw) {
+    throw new Error("LAX_SHOP_STOREFRONT_URL is required in production.");
+  }
   if (!isAllowedLaxProductUrl(raw)) {
     throw new Error("LAX_SHOP_STOREFRONT_URL must be HTTPS or a localhost URL");
   }
   return new URL(normalizeProductBaseUrl(raw));
+}
+
+export function isShopIndexingAllowed(): boolean {
+  return isShopIndexingAllowedForHost(
+    loadShopStorefrontBaseUrl().hostname,
+    loadShopEnv().SHOP_ALLOW_INDEXING,
+  );
 }

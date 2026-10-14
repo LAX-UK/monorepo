@@ -5,11 +5,13 @@ import { ShopHeader } from "@/components/shop-header";
 import { ShopTransientNotices } from "@/components/shop-transient-notices.client";
 import { SilentSignInNotice } from "@/components/silent-sign-in-notice.client";
 import {
+  isShopIndexingAllowed,
   loadShopCrossProductFooterLinks,
   loadShopStorefrontBaseUrl,
 } from "@/lib/ecosystem/product-directory.server";
 import { resolveShopSilentFedcmBootstrapProps } from "@/lib/fedcm/resolve-silent-fedcm-props.server";
 import { ShopSilentFedcmBootstrap } from "@/lib/fedcm/silent-fedcm-bootstrap.client";
+import { NOINDEX_ROBOTS } from "@/lib/seo/shop-indexing";
 import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
@@ -42,8 +44,9 @@ const outfit = Outfit({
   display: "swap",
 });
 
-export const metadata: Metadata = {
+export const generateMetadata = (): Metadata => ({
   metadataBase: loadShopStorefrontBaseUrl(),
+  ...(isShopIndexingAllowed() ? {} : { robots: NOINDEX_ROBOTS }),
   title: "LAX Shop",
   description: "London Art Exchange — collect contemporary art editions.",
   icons: laxFaviconMetadataIcons(),
@@ -59,7 +62,7 @@ export const metadata: Metadata = {
     title: "LAX Shop",
     description: "London Art Exchange — collect contemporary art editions.",
   },
-};
+});
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [crossProductFooterLinks, viewer, cookieStore] = await Promise.all([

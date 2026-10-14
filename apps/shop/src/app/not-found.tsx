@@ -1,5 +1,8 @@
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { MarketingDetailShell } from "@auction/marketing-ui";
+
+export const metadata = shopPrivatePageTitle("Page not found");
 
 export default function ShopNotFoundPage() {
   return (

@@ -1,10 +1,12 @@
-import { loadShopStorefrontBaseUrl } from "@/lib/ecosystem/product-directory.server";
+import {
+  isShopIndexingAllowed,
+  loadShopStorefrontBaseUrl,
+} from "@/lib/ecosystem/product-directory.server";
+import { composeShopRobots } from "@/lib/seo/shop-indexing";
 import type { MetadataRoute } from "next";
 
+export const dynamic = "force-dynamic";
+
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = loadShopStorefrontBaseUrl();
-  return {
-    rules: { userAgent: "*", allow: "/" },
-    sitemap: new URL("/sitemap.xml", baseUrl).toString(),
-  };
+  return composeShopRobots(loadShopStorefrontBaseUrl(), isShopIndexingAllowed());
 }
