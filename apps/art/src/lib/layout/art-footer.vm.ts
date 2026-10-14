@@ -4,10 +4,10 @@ import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingFooterColumn } from "@auction/marketing-ui";
 
 export type ArtFooterVm = {
-  tagline: string;
   columns: MarketingFooterColumn[];
 };
 
+/** Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by the shell). */
 export function buildArtFooterVm(input: {
   crossProductLinks: LaxProductLinkVm[];
   accountState: ArtFooterAccountState;
@@ -29,13 +29,13 @@ export function buildArtFooterVm(input: {
     { label: "Visit", href: "/visit" },
     { label: "Contact", href: "/contact" },
   ];
-  if (input.cookieSettings) {
-    discoverLinks.push({ label: "Cookie settings", href: ART_COOKIE_SETTINGS_HASH });
-  }
 
   const accountLinks: Array<{ label: string; href: string }> = [];
   if (input.accountState.kind === "guest") {
-    accountLinks.push({ label: "Sign in", href: "/login" }, { label: "Join", href: "/register" });
+    accountLinks.push(
+      { label: "Sign in", href: "/login" },
+      { label: "Create account", href: "/register" },
+    );
   } else if (input.accountState.kind === "authenticated") {
     accountLinks.push(
       { label: "Your account", href: "/account" },
@@ -64,17 +64,14 @@ export function buildArtFooterVm(input: {
     columns.push({ id: "lax-products", title: "LAX products", links: laxProductLinks });
   }
 
-  columns.push({
-    id: "legal",
-    title: "Legal",
-    links: [
-      { label: "Privacy notice", href: "/legal/privacy" },
-      { label: "Terms of use", href: "/legal/terms" },
-    ],
-  });
+  const legalLinks = [
+    { label: "Terms of use", href: "/legal/terms" },
+    { label: "Privacy notice", href: "/legal/privacy" },
+  ];
+  if (input.cookieSettings) {
+    legalLinks.push({ label: "Cookie preferences", href: ART_COOKIE_SETTINGS_HASH });
+  }
+  columns.push({ id: "legal", title: "Legal", links: legalLinks });
 
-  return {
-    tagline: "Original works and gallery-led sales from London Art Exchange.",
-    columns,
-  };
+  return { columns };
 }

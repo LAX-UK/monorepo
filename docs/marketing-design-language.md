@@ -300,17 +300,26 @@ Transparent home hero (`/`): header uses `data-header-tone="on-dark"` at scroll 
 
 ### Site footer
 
+Bid, Shop and Art all render `MarketingFooter` from `@auction/marketing-ui`; only
+the column contents differ. No tagline, no second logo, sentence-case labels.
+
 ```
 ┌─────────────────────────────────────────────────────────────
-│ [Logo + tagline]
+│ [Logo → home]
 │ ─────────────────────────────────────────────────────────── (divider)
-│ Auctions   Company    Legal              Our Services
-│ (links)    (links)    (links +           (links +
-│                        Cookie prefs)      social icons)
+│ Site nav …   Account*   LAX products   Legal            Connect
+│ (links)      (links)    (links)        (links +         (social
+│                                         Cookie prefs)    icons)
 │ ───────────────────────────────────────────────────────────
-│ [Logo]                                   © …  ·  London
+│ © …
 └─────────────────────────────────────────────────────────────
 ```
+
+- Column order is fixed: the site's own navigation columns, then Account
+  (Shop and Art only), LAX products, Legal, Connect. The desktop grid sizes
+  itself so every column sits on one row.
+- Guest account links are "Sign in" and "Create account".
+- "Cookie preferences" is the last Legal entry wherever a consent dialog exists.
 
 ### Home `/`
 

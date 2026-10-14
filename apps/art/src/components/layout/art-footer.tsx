@@ -57,7 +57,6 @@ export function ArtFooter({ vm }: ArtFooterProps) {
           <LaxLogo variant="footer" src="/brand/lax-logo.svg" className="art-footer__logo" />
         </Link>
       }
-      tagline={vm.tagline}
       columns={vm.columns}
       socials={<MarketingFooterSocials />}
       copyright={siteCopyrightLine()}
