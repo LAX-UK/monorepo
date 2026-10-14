@@ -4,6 +4,8 @@ import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import type { FavoriteMutationOutcome } from "@/lib/favorites/favorite-mutation";
 import { useEffect, useState, useTransition } from "react";
 
+const ERROR_VISIBLE_MS = 6000;
+
 export type FavoriteToggleMessages = {
   on: string;
   off: string;
@@ -28,6 +30,12 @@ export function useFavoriteToggle(input: {
   useEffect(() => {
     setActive(initialActive);
   }, [initialActive]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(null), ERROR_VISIBLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   const toggle = (next: boolean) => {
     if (!auth.signedIn) {

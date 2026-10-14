@@ -7,6 +7,7 @@ import {
 } from "@/lib/favorites/art-favorites-actions.server";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { MarketingHeartToggle } from "@auction/marketing-ui";
+import { createPortal } from "react-dom";
 
 export type ArtArtworkFavoriteToggleProps = {
   slug: string;
@@ -23,7 +24,7 @@ export function ArtArtworkFavoriteToggle({
   auth,
   className,
 }: ArtArtworkFavoriteToggleProps) {
-  const { active, pending, announcement, toggle } = useFavoriteToggle({
+  const { active, pending, announcement, error, toggle } = useFavoriteToggle({
     initialActive: initialSaved,
     auth,
     mutate: (next) => (next ? saveArtworkFavorite(slug) : removeArtworkFavorite(slug)),
@@ -42,6 +43,17 @@ export function ArtArtworkFavoriteToggle({
       <output className="sr-only" aria-live="polite">
         {announcement}
       </output>
+      {error
+        ? createPortal(
+            <p
+              className="fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-md bg-on-surface px-4 py-3 text-center text-sm text-surface shadow-lg md:bottom-6"
+              aria-hidden
+            >
+              {error}
+            </p>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

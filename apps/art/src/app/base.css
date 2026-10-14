@@ -102,7 +102,7 @@
   --color-scrim-hero-mid: rgba(0, 0, 0, 0.4);
   --color-scrim-hero-strong: rgba(0, 0, 0, 0.88);
   /* THEME_FIXED_CONTRAST: home hero panel sits on photography in both themes (Figma Cream/200). */
-  --color-hero-panel: rgb(194 193 177 / 0.5);
+  --color-hero-panel: rgb(232 231 220 / 0.92);
   --color-hero-panel-border: #c2c1b1;
   --color-hero-panel-ink: #17150f;
   --color-hero-panel-body: var(--color-brand-obsidian);
@@ -249,6 +249,11 @@ html.dark {
   --color-on-error: #690005;
   --color-error-container: #93000a;
   --color-on-error-container: #ffdad6;
+  --color-hero-panel: rgb(18 20 20 / 0.88);
+  --color-hero-panel-border: #5c5a54;
+  --color-hero-panel-ink: var(--color-brand-light-cream);
+  --color-hero-panel-body: #c9c5bc;
+  --color-hero-panel-cta: var(--color-secondary);
   --color-alert-surface: color-mix(
     in srgb,
     var(--color-surface-container-low) 85%,

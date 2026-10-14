@@ -62,19 +62,17 @@ export default async function VisitPage() {
                 className="flex flex-col gap-5"
                 data-testid="art-venue-card"
               >
-                <Link href={card.href} aria-hidden="true" tabIndex={-1} className="block">
-                  <MarketingCardMedia className="aspect-[4/3] rounded-md bg-surface-container">
-                    <ArtMediaImage
-                      src={card.venue.coverUrl}
-                      alt=""
-                      label="Gallery"
-                      priority={index === 0}
-                      sizes="(min-width: 48rem) 45vw, 100vw"
-                      className="absolute inset-0 size-full"
-                      imgClassName="object-cover"
-                    />
-                  </MarketingCardMedia>
-                </Link>
+                <MarketingCardMedia className="aspect-[4/3] rounded-md bg-surface-container">
+                  <ArtMediaImage
+                    src={card.venue.coverUrl}
+                    alt=""
+                    label="Gallery"
+                    priority={index === 0}
+                    sizes="(min-width: 48rem) 45vw, 100vw"
+                    className="absolute inset-0 size-full"
+                    imgClassName="object-cover"
+                  />
+                </MarketingCardMedia>
                 <h2 className="font-headline text-2xl font-semibold text-on-surface">
                   <Link href={card.href} className="art-focus-ring rounded-sm hover:underline">
                     {card.venue.name}
