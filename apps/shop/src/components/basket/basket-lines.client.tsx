@@ -68,6 +68,18 @@ export function BasketLinesClient({ basket, summary }: Props) {
     });
   }
 
+  function removeLine(lineId: string) {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await removeBasketLine(lineId);
+      if (!result.ok) {
+        setMessage(errorMessage(result.error));
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   return (
     <div className="shop-basket__layout">
       <div className="shop-basket__lines-panel">
@@ -114,22 +126,36 @@ export function BasketLinesClient({ basket, summary }: Props) {
                       </ShopCommerceButton>
                     </ShopNotice>
                   ) : null}
-                  {line.outOfStock ? (
-                    <ShopNotice tone="warning" title="Not enough stock">
-                      <p>This line exceeds available stock.</p>
+                  {line.outOfStock && line.sellableCount < 1 ? (
+                    <ShopNotice tone="warning" title="Sold out">
+                      <p>This item is no longer available. Remove it to continue to checkout.</p>
                       <ShopCommerceButton
                         type="button"
                         variant="outline"
                         size="sm"
                         className="mt-2"
-                        disabled={pending || line.sellableCount < 1}
+                        disabled={pending}
+                        onClick={() => removeLine(line.lineId)}
+                      >
+                        Remove from basket
+                      </ShopCommerceButton>
+                    </ShopNotice>
+                  ) : line.outOfStock ? (
+                    <ShopNotice tone="warning" title="Not enough stock">
+                      <p>Only {line.sellableCount} available.</p>
+                      <ShopCommerceButton
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        disabled={pending}
                         onClick={() => {
-                          const next = Math.max(1, line.sellableCount);
+                          const next = line.sellableCount;
                           setQuantities((current) => ({ ...current, [line.lineId]: next }));
                           commitQuantity(line.lineId, line, next, quantity, maxQuantity);
                         }}
                       >
-                        Set quantity to {Math.max(1, line.sellableCount)}
+                        Set quantity to {line.sellableCount}
                       </ShopCommerceButton>
                     </ShopNotice>
                   ) : null}
@@ -137,8 +163,8 @@ export function BasketLinesClient({ basket, summary }: Props) {
                     Line total {formatGbpPence(line.unitPricePence * quantity)}
                   </p>
                   <div className="shop-basket__line-actions">
+                    <span className="shop-basket__qty-label">Qty</span>
                     <div className="shop-basket__stepper">
-                      <span className="shop-basket__qty-label">Qty</span>
                       <button
                         type="button"
                         className="shop-basket__stepper-btn shop-focus-ring"
@@ -173,17 +199,7 @@ export function BasketLinesClient({ basket, summary }: Props) {
                       type="button"
                       className="shop-basket__remove shop-focus-ring"
                       disabled={pending}
-                      onClick={() => {
-                        setMessage(null);
-                        startTransition(async () => {
-                          const result = await removeBasketLine(line.lineId);
-                          if (!result.ok) {
-                            setMessage(errorMessage(result.error));
-                            return;
-                          }
-                          router.refresh();
-                        });
-                      }}
+                      onClick={() => removeLine(line.lineId)}
                     >
                       Remove
                     </button>

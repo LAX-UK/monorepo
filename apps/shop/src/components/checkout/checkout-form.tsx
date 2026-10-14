@@ -5,6 +5,7 @@ import { CheckoutBasketSummary } from "@/components/checkout/checkout-basket-sum
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { ShopStatusState } from "@/components/shop-status-state";
+import { internationalQuoteMailto } from "@/lib/international-quote-mailto";
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
 import { isValidUkPostcode } from "@/lib/uk-postcode";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
@@ -247,10 +248,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
                   : {}),
               });
               if (result.kind === "enquiry") {
-                window.open(
-                  `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("International delivery quotation")}`,
-                  "_self",
-                );
+                window.open(internationalQuoteMailto(SITE_SUPPORT_EMAIL, basket), "_self");
                 return;
               }
               if (result.kind === "error") {
