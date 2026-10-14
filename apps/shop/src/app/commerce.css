@@ -83,6 +83,10 @@
   }
 }
 
+.shop-commerce-content.shop-detail-route {
+  max-width: none;
+}
+
 .shop-commerce-content.shop-account-route {
   align-items: stretch;
   max-width: var(--auth-column, 33rem);

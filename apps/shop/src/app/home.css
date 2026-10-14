@@ -521,8 +521,14 @@
     overflow-x: visible;
   }
 
-  .shop-home__scroll-row--originals .shop-home__original-card {
+  /* Rail items are the flex children (cards sit inside a reveal wrapper), so the column width lives here. */
+  .shop-home__scroll-row--originals > .shop-home__rail-item {
     width: calc((100% - 5rem) / 3);
+    min-width: 0;
+  }
+
+  .shop-home__scroll-row--originals .shop-home__original-card {
+    width: 100%;
     height: 40rem;
     min-height: 40rem;
     min-width: 0;
@@ -532,8 +538,13 @@
     overflow-x: visible;
   }
 
-  .shop-home__scroll-row--categories .shop-home__category-card {
+  .shop-home__scroll-row--categories > .shop-home__rail-item {
     width: calc((100% - 3.75rem) / 4);
+    min-width: 0;
+  }
+
+  .shop-home__scroll-row--categories .shop-home__category-card {
+    width: 100%;
     min-width: 0;
   }
 

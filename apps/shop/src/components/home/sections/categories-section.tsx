@@ -41,7 +41,7 @@ export function CategoriesSection({ section, cards, errorMessage }: CategoriesSe
       }
     >
       {cards.map((card, index) => (
-        <MarketingCardReveal key={card.id} index={index}>
+        <MarketingCardReveal key={card.id} index={index} className="shop-home__rail-item">
           <CategoryCard card={card} />
         </MarketingCardReveal>
       ))}
