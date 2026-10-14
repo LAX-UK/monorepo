@@ -18,7 +18,7 @@ import type {
 
 export type ArtHomeSection = "artworks" | "artists";
 
-export const HERO_HEADLINE = "Original works and gallery-led sales";
+import { ART_HOME_HERO_HEADLINE } from "@/lib/home/art-home-hero.vm";
 
 export type ArtHomeEditorialVm =
   | { kind: "hidden" }
@@ -81,8 +81,11 @@ export async function composeArtHomePage(services: {
         ? {
             kind: "ok",
             hero:
-              buildPlacementCards(editorialResult.data.placements, "home_hero", HERO_HEADLINE)[0] ??
-              null,
+              buildPlacementCards(
+                editorialResult.data.placements,
+                "home_hero",
+                ART_HOME_HERO_HEADLINE,
+              )[0] ?? null,
             whatsOn: buildPlacementCards(
               editorialResult.data.placements,
               "home_whats_on",

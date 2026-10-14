@@ -19,7 +19,10 @@ test.describe("lax.art accessibility @a11y", () => {
 
   for (const route of [
     // Home h1 is the editorial hero headline when one is placed.
-    { path: "/", heading: process.env.ART_EDITORIAL_ENABLED === "true" ? "" : "Original works" },
+    {
+      path: "/",
+      heading: process.env.ART_EDITORIAL_ENABLED === "true" ? "" : "Art For a New Generation",
+    },
     { path: "/artworks", heading: "Artworks" },
     { path: "/search", heading: "Search" },
     { path: "/search?q=zzqx-no-such-artwork-9271", heading: "Results for" },

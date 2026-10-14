@@ -12,7 +12,7 @@ This inventory maps shipped MVP routes in `apps/art` to Figma frames referenced 
 
 | Route / surface | Figma area (plan) | Page | Composer (`apps/art/src/lib/…`) | Key components |
 | --- | --- | --- | --- | --- |
-| Home `/` | Hero + featured originals rail + artists | `app/page.tsx` | `home/home-page.composer.ts` | `ArtSection`, `ArtArtworkGrid`, `ArtArtistGrid` |
+| Home `/` | Hero (`473:8994` desktop, `314:6636` mobile) + featured originals rail + artists | `app/(home)/page.tsx` | `home/home-page.composer.ts`, `home/art-home-hero.vm.ts` | `ArtHomeHero`, `ArtSection`, `ArtArtworkGrid`, `ArtArtistGrid` |
 | Artworks hub `/artworks` | Catalogue browse (grid, filters, sort) | `app/artworks/page.tsx` | `catalogue/artworks-page.composer.ts` | `ArtworkCatalogueBrowse`, `ArtworkCatalogueFilterBody`, `MarketingFilterSheet` / `MarketingFilterSidebar` |
 | Artwork detail `/artworks/[slug]` | PDP + enquiry sheet | `app/artworks/[slug]/page.tsx` | `artwork/artwork-detail-page.composer.ts` | `ArtEnquiryPanel`, `ArtEnquirySheet` (`MarketingSideSheet`), `ArtArtworkFavoriteToggle` |
 | Artist profile `/artists/[slug]` | Artist header + works grid | `app/artists/[slug]/page.tsx` | `artist/artist-page.composer.ts` | `ArtArtistFollowButton`, `ArtArtworkGrid` |
