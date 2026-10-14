@@ -10,7 +10,7 @@ Operational notes for **Shop Admin → Editorial (lax.art)** and public editoria
 | `SHOP_EDITORIAL_PREVIEW_SECRET` | shop-api | Signs 15-minute draft preview tokens (≥ 32 chars; rotate to revoke all live links). Required whenever `NODE_ENV=production` (test and prod) and editorial is enabled — shop-api refuses to boot without it |
 | `SHOP_MEDIA_PUBLIC_BASE_URL` | shop-api | Public origin for uploaded media; editorial media keys are resolved to absolute URLs on public reads |
 | `ART_EDITORIAL_ENABLED` | apps/art | BFF reads against shop-api editorial endpoints |
-| `SHOP_IMAGE_REMOTE_HOSTS` | apps/art | Must include the media CDN host so `next/image` can optimise editorial and catalogue media |
+| `SHOP_IMAGE_REMOTE_HOSTS` | apps/art | Build-time extra `next/image` hosts; the `lax-media` CDN host is always allowed |
 | `LAX_ART_PUBLIC_URL` | shop-admin | Builds the full lax.art preview link; without it staff only get the raw token to copy |
 | `SHOP_ENQUIRY_NOTIFICATION_EMAIL` | shop-api | Staff inbox for enquiry alerts: artwork enquiries (subject says "LAX Art" or "Shop" by sales channel) and lax.art general enquiries ("New LAX Art enquiry: <topic>"). Alerts are queued in the outbox inside the enquiry transaction; unset means no alert |
 
