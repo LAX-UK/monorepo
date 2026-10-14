@@ -58,7 +58,6 @@ export function ShopFooter({
           <ShopLaxLogo variant="footer" className="shop-footer__logo" />
         </Link>
       }
-      tagline={vm.tagline}
       columns={vm.columns}
       socials={<MarketingFooterSocials />}
       copyright={siteCopyrightLine()}

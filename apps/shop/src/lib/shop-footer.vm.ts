@@ -4,31 +4,54 @@ import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingFooterColumn } from "@auction/marketing-ui";
 
 export type ShopFooterVm = {
-  tagline: string;
   columns: MarketingFooterColumn[];
 };
 
-function accountColumnEntry(
-  state: ShopFooterAccountState,
-): Pick<MarketingFooterColumn, "links" | "note"> {
+function accountColumn(state: ShopFooterAccountState): MarketingFooterColumn {
+  const column = { id: "account", title: "Account" };
   switch (state.kind) {
     case "guest":
-      return { links: [{ label: "Join us", href: "/register" }] };
+      return {
+        ...column,
+        links: [
+          { label: "Sign in", href: "/login" },
+          { label: "Create account", href: "/register" },
+        ],
+      };
     case "authenticated":
-      return { links: [{ label: "Your account", href: "/account" }] };
+      return {
+        ...column,
+        links: [
+          { label: "Your account", href: "/account" },
+          { label: "Orders", href: "/account/orders" },
+          { label: "Collection", href: "/account/collection" },
+        ],
+      };
     case "disabled":
-      return { links: [{ label: "Account status", href: state.accountHref }] };
+      return { ...column, links: [{ label: "Account status", href: state.accountHref }] };
     case "unavailable":
-      return { links: [], note: "Sign-in status unavailable" };
+      return { ...column, links: [], note: "Sign-in status unavailable" };
   }
 }
 
-/** Column order matches the Shop footer design: products, policies, shop, then socials. */
+/** Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by the shell). */
 export function buildShopFooterVm(input: {
   crossProductLinks: readonly LaxProductLinkVm[];
   accountState: ShopFooterAccountState;
 }): ShopFooterVm {
-  const columns: MarketingFooterColumn[] = [];
+  const columns: MarketingFooterColumn[] = [
+    {
+      id: "shop",
+      title: "Shop",
+      links: [
+        { label: "Artworks", href: "/artworks" },
+        { label: "Artists", href: "/artists" },
+        { label: "Categories", href: "/categories" },
+        { label: "Basket", href: "/basket" },
+      ],
+    },
+    accountColumn(input.accountState),
+  ];
   if (input.crossProductLinks.length > 0) {
     columns.push({
       id: "lax-products",
@@ -38,22 +61,7 @@ export function buildShopFooterVm(input: {
   }
   const bidLink = input.crossProductLinks.find((link) => link.id === "bid");
   if (bidLink) {
-    columns.push({ id: "policies", title: "Policies", links: buildShopPolicyLinks(bidLink.href) });
+    columns.push({ id: "legal", title: "Legal", links: buildShopPolicyLinks(bidLink.href) });
   }
-  const account = accountColumnEntry(input.accountState);
-  columns.push({
-    id: "shop",
-    title: "Shop",
-    links: [
-      { label: "Artworks", href: "/artworks" },
-      { label: "Artists", href: "/artists" },
-      { label: "Categories", href: "/categories" },
-      ...account.links,
-    ],
-    ...(account.note ? { note: account.note } : {}),
-  });
-  return {
-    tagline: "Collect contemporary art editions from London Art Exchange.",
-    columns,
-  };
+  return { columns };
 }

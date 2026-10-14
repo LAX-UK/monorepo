@@ -14,7 +14,6 @@ export type MarketingFooterLink = { label: string; href: string };
 
 export type MarketingFooterProps = {
   logo: ReactNode;
-  tagline: ReactNode;
   columns: ReadonlyArray<MarketingFooterColumn>;
   socials?: ReactNode;
   copyright: ReactNode;
@@ -24,9 +23,18 @@ export type MarketingFooterProps = {
   renderLink?: (link: MarketingFooterLink) => ReactNode;
 };
 
+/** One desktop row: columns plus the Connect column when socials are present. */
+const DESKTOP_GRID_COLUMNS: Record<number, string> = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+  5: "lg:grid-cols-5",
+  6: "lg:grid-cols-6",
+};
+
 export function MarketingFooter({
   logo,
-  tagline,
   columns,
   socials,
   copyright,
@@ -55,20 +63,15 @@ export function MarketingFooter({
           MARKETING_PAGE_GUTTER_X,
         )}
       >
-        <div className="flex flex-wrap items-center justify-between gap-8">
-          {logo}
-          <div className="font-headline text-lg font-light italic text-on-surface-variant">
-            {tagline}
-          </div>
-        </div>
+        <div className="flex items-center">{logo}</div>
         <div
           className="h-px w-full max-w-[var(--container-inner,86rem)] bg-border-hairline"
           aria-hidden
         />
         <div
           className={cn(
-            "grid max-w-[var(--container-inner,86rem)] grid-cols-1 gap-12",
-            columns.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2",
+            "grid max-w-[var(--container-inner,86rem)] grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 md:grid-cols-3",
+            DESKTOP_GRID_COLUMNS[Math.min(columns.length + (socials ? 1 : 0), 6)],
           )}
         >
           {columns.map((column) => (
@@ -99,9 +102,9 @@ export function MarketingFooter({
             </nav>
           ))}
           {socials ? (
-            <div className="flex flex-col gap-4">
+            <div>
               <h3 className={headingClass}>Connect</h3>
-              <div className="mt-1">{socials}</div>
+              <div className="mt-4">{socials}</div>
             </div>
           ) : null}
         </div>

@@ -110,7 +110,7 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Share | `@auction/marketing-ui` `MarketingShareButton` | — | — | 1 (artwork detail) | Native share sheet when available, otherwise copies the absolute URL and announces it; cancel is silent |
 | In-page tabs | `@auction/marketing-ui` `MarketingUnderlineTabsPanel` | — | route tabs use local `MarketingUnderlineTabs` (same underline) | 1 (artwork about / exhibition history) | A single panel renders as a titled region with no tablist. Tabs wrap rather than scroll, so no unfocusable scroll region exists before hydration |
 | Detail accordion | `@auction/marketing-ui` `MarketingDetailAccordion` | — | — | 1 (details, medium & dimensions, provenance) | First item open by default; empty when given no items |
-| Footer | `@auction/marketing-ui` `MarketingFooter` | 1 | — (product-owned) | 1 | Columns accept `note` for a non-link line (e.g. "Sign-in status unavailable") |
+| Footer | `@auction/marketing-ui` `MarketingFooter` | 1 | 1 | 1 | No tagline. Column order: site nav, Account, LAX products, Legal, Connect. Columns accept `note` for a non-link line (e.g. "Sign-in status unavailable") |
 
 ## Token layers (web)
 
