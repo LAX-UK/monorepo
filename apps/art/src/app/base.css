@@ -101,6 +101,14 @@
   --color-hero-foreground: #ffffff;
   --color-scrim-hero-mid: rgba(0, 0, 0, 0.4);
   --color-scrim-hero-strong: rgba(0, 0, 0, 0.88);
+  /* THEME_FIXED_CONTRAST: home hero panel sits on photography in both themes (Figma Cream/200). */
+  --color-hero-panel: rgb(194 193 177 / 0.5);
+  --color-hero-panel-border: #c2c1b1;
+  --color-hero-panel-ink: #17150f;
+  --color-hero-panel-body: var(--color-brand-obsidian);
+  --color-hero-panel-cta: var(--color-brand-midnight);
+  --animate-art-hero-panel-in: art-hero-panel-in 650ms ease-out both;
+  --animate-art-hero-drift: art-hero-drift 18s ease-in-out infinite alternate;
   --text-display-lg: clamp(2rem, 4vw, 3rem);
   --text-display-md: clamp(1.5rem, 3vw, 2rem);
   --text-display-sm: clamp(1.125rem, 2vw, 1.375rem);
@@ -110,6 +118,27 @@
   --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+
+  /* Same motion as the Shop home hero (apps/shop/src/app/home.css). */
+  @keyframes art-hero-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes art-hero-drift {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.02);
+    }
+  }
 }
 
 :root {

@@ -2,18 +2,14 @@ import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-stat
 import { ArtArtistGrid } from "@/components/catalogue/art-artist-grid";
 import { ArtArtworkGrid } from "@/components/catalogue/art-artwork-grid";
 import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
-import { ArtEditorialLink } from "@/components/editorial/art-editorial-link";
+import { ArtHomeHero } from "@/components/home/art-home-hero";
 import { ArtSection } from "@/components/layout/art-section";
-import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
-import { HERO_HEADLINE, composeArtHomePage } from "@/lib/home/home-page.composer";
+import { buildArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
+import { composeArtHomePage } from "@/lib/home/home-page.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingHero } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
-import Link from "next/link";
-import type { ReactNode } from "react";
 
 /** Keeps the legacy www.thelax.art home page's ranking intent ("London art gallery", "art for sale"). */
 export const metadata: Metadata = {
@@ -23,89 +19,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const HERO_SUPPORTING =
-  "Discover originals from the London Art Exchange and enquire directly with our gallery team.";
-
-function HeroActions({ featured }: { featured: { href: string; label: string } | null }) {
-  return (
-    <div className="mt-8 flex flex-wrap gap-3">
-      {featured ? (
-        <Button asChild size="lg" className="min-h-11 font-label uppercase tracking-wide">
-          <ArtEditorialLink href={featured.href}>{featured.label}</ArtEditorialLink>
-        </Button>
-      ) : null}
-      <Button
-        asChild
-        size="lg"
-        variant={featured ? "outline" : "default"}
-        className="min-h-11 font-label uppercase tracking-wide"
-      >
-        <Link href="/artworks">View artworks</Link>
-      </Button>
-      {featured ? null : (
-        <Button
-          asChild
-          size="lg"
-          variant="outline"
-          className="min-h-11 font-label uppercase tracking-wide"
-        >
-          <Link href="/exhibitions">Exhibitions</Link>
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function HeroCopy({ kicker, headline }: { kicker: string; headline: string }): ReactNode {
-  return (
-    <>
-      <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking)] text-on-surface-variant">
-        {kicker}
-      </p>
-      <h1
-        id="art-home-title"
-        className="mt-3 max-w-2xl font-headline text-[length:var(--text-display-lg)] font-semibold leading-tight tracking-tight text-on-surface"
-      >
-        {headline}
-      </h1>
-    </>
-  );
-}
-
 export default async function ArtHomePage() {
   const vm = await composeArtHomePage(artServices);
   const editorial = vm.editorial.kind === "ok" ? vm.editorial : null;
   const hero = editorial?.hero ?? null;
-  const featured = hero?.href ? { href: hero.href, label: "Discover more" } : null;
 
   return (
     <div className="flex flex-col gap-[var(--section-spacing-tight)] pb-16">
-      {hero?.imageUrl ? (
-        <MarketingHero
-          media={
-            <ArtMediaImage
-              src={hero.imageUrl}
-              alt=""
-              priority
-              sizes="100vw"
-              className="size-full"
-              imgClassName="object-cover"
-            />
-          }
-        >
-          <HeroCopy kicker={hero.kicker ?? "London Art Exchange"} headline={hero.headline} />
-          <HeroActions featured={featured} />
-        </MarketingHero>
-      ) : (
-        <section
-          className={cn(MARKETING_PAGE_SHELL, "pt-6 lg:pt-12")}
-          aria-labelledby="art-home-title"
-        >
-          <HeroCopy kicker="London Art Exchange" headline={hero?.headline ?? HERO_HEADLINE} />
-          <p className="mt-4 max-w-xl text-lg text-on-surface-variant">{HERO_SUPPORTING}</p>
-          <HeroActions featured={featured} />
-        </section>
-      )}
+      <ArtHomeHero hero={buildArtHomeHeroVm(hero)} />
 
       <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-[var(--section-spacing-tight)]")}>
         {editorial && editorial.whatsOn.length > 0 ? (
@@ -132,11 +53,7 @@ export default async function ArtHomePage() {
               actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
             />
           ) : (
-            <ArtArtworkGrid
-              cards={vm.featuredArtworks}
-              favoriteAuth={vm.favoriteAuth}
-              priorityCount={hero?.imageUrl ? 0 : 2}
-            />
+            <ArtArtworkGrid cards={vm.featuredArtworks} favoriteAuth={vm.favoriteAuth} />
           )}
         </ArtSection>
 
