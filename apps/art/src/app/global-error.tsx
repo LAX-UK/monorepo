@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@auction/ui/components/button";
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
@@ -22,10 +23,12 @@ export default function ArtGlobalError({
           <h1>Something went wrong</h1>
           <p>We could not load LAX Art. Try again or return home.</p>
           <p style={{ display: "flex", gap: "1rem" }}>
-            <button type="button" onClick={reset}>
+            <Button type="button" variant="default" onClick={reset}>
               Try again
-            </button>
-            <a href="/">Return home</a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="/">Return home</a>
+            </Button>
           </p>
         </main>
       </body>
