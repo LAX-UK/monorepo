@@ -4,10 +4,18 @@ import {
   ShopAccountShell,
 } from "@/components/account/shop-account-shell";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 
 export const metadata = shopPrivatePageMetadata;
 
-export default function ShopSessionExpiredPage() {
+type ShopSessionExpiredPageProps = {
+  searchParams: Promise<{ returnTo?: string | string[] }>;
+};
+
+export default async function ShopSessionExpiredPage({
+  searchParams,
+}: ShopSessionExpiredPageProps) {
+  const { returnTo } = await searchParams;
   return (
     <ShopAccountShell
       title="Session expired"
@@ -18,7 +26,11 @@ export default function ShopSessionExpiredPage() {
       }}
     >
       <ShopAccountBodyText>Pick up where you left off after signing in.</ShopAccountBodyText>
-      <ShopAccountLinkButton href="/login?returnTo=%2Faccount" label="Sign in" />
+      <ShopAccountLinkButton
+        href={shopStorefrontLoginHref(typeof returnTo === "string" ? returnTo : "/account")}
+        label="Sign in again"
+      />
+      <ShopAccountLinkButton href="/artworks" label="Continue browsing" variant="outline" />
     </ShopAccountShell>
   );
 }
