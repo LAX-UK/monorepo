@@ -13,6 +13,7 @@ import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SalesBrowsePageData } from "@/lib/marketing/load-sales-browse-page";
 import { calendarClearFiltersHref } from "@/lib/marketing/sales-calendar-params";
+import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { Button, cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -48,7 +49,10 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
         </section>
       }
     >
-      <div className="flex flex-col gap-6 pb-8 sm:gap-8 sm:pb-10 lg:gap-10 lg:pb-10">
+      <MarketingSectionReveal
+        index={0}
+        className="flex flex-col gap-6 pb-8 sm:gap-8 sm:pb-10 lg:gap-10 lg:pb-10"
+      >
         <SalesPrimaryTabs state={vm.calendarState} hasLiveSales={vm.hasLiveSales} />
 
         {vm.err ? (
@@ -159,7 +163,7 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             />
           </SalesCalendarBrowse>
         ) : null}
-      </div>
+      </MarketingSectionReveal>
     </MarketingCatalogHubShell>
   );
 }

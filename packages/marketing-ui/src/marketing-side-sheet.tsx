@@ -97,7 +97,9 @@ export function MarketingSideSheet({
               {description ?? title}
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5" data-lenis-prevent>
+            {children}
+          </div>
           {footer ? <div className="shrink-0 border-t border-border-hairline">{footer}</div> : null}
         </SheetContent>
       </Sheet>

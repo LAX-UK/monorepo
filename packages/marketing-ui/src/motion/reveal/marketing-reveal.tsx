@@ -1,12 +1,39 @@
 "use client";
 
-import { RevealInView, RevealOnMount } from "@/components/ui/reveal";
+import type { ReactNode } from "react";
 import {
   MARKETING_CARD_REVEAL,
   MARKETING_SECTION_REVEAL,
   marketingStaggerDelay,
-} from "@/lib/marketing/motion";
-import type { ReactNode } from "react";
+} from "../presets.js";
+import { RevealInView, RevealOnMount } from "./reveal.js";
+
+type MarketingRevealProps = {
+  index?: number;
+  children: ReactNode;
+  className?: string;
+  innerClassName?: string;
+  preset?: typeof MARKETING_SECTION_REVEAL;
+};
+
+export function MarketingReveal({
+  index = 0,
+  children,
+  className,
+  innerClassName,
+  preset = MARKETING_SECTION_REVEAL,
+}: MarketingRevealProps) {
+  return (
+    <RevealInView
+      variant={preset.variant}
+      delayMs={marketingStaggerDelay(index, preset)}
+      {...(className !== undefined ? { className } : {})}
+      {...(innerClassName !== undefined ? { innerClassName } : {})}
+    >
+      {children}
+    </RevealInView>
+  );
+}
 
 type MarketingCardRevealProps = {
   index: number;

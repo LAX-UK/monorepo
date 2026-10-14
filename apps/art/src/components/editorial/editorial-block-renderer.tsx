@@ -6,6 +6,7 @@ import type { EditorialBodyVm, EditorialRailVm } from "@/lib/editorial/editorial
 import {
   MarketingInfoStrip,
   MarketingPullQuote,
+  MarketingReveal,
   MarketingVideoPoster,
 } from "@auction/marketing-ui";
 import {
@@ -263,7 +264,11 @@ export function EditorialBlockRenderer({
     <div className={cn("flex flex-col gap-8", className)}>
       {body.blocks.map((block, index) => {
         const node = renderBlock(block, { idPrefix, index, rail: body.rails[index] });
-        return node ? <div key={`${block.type}-${index}`}>{node}</div> : null;
+        return node ? (
+          <MarketingReveal key={`${block.type}-${index}`} index={index}>
+            {node}
+          </MarketingReveal>
+        ) : null;
       })}
     </div>
   );

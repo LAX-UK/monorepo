@@ -1,10 +1,10 @@
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleCardGrid } from "@/components/marketing/sale-card";
 import { SaleMetaBadges } from "@/components/marketing/sale-meta-badges";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
 import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { FeaturedAuctionCardVM } from "@/components/sections/sales/sales-view-models";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 type Props = {
   vm: FeaturedAuctionCardVM;

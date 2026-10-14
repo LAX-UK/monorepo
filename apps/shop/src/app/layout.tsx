@@ -1,3 +1,4 @@
+import { ShopSmoothScroll } from "@/components/layout/shop-smooth-scroll.client";
 import { ShopThemeInit } from "@/components/layout/shop-theme-init";
 import { ShopFooter } from "@/components/shop-footer";
 import { ShopHeader } from "@/components/shop-header";
@@ -81,26 +82,28 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ShopThemeInit />
       </head>
       <body>
-        <a href="#main-content" className="shop-skip-link">
-          Skip to content
-        </a>
-        <div className="overflow-x-clip">
-          <ShopHeader />
-          <Suspense fallback={null}>
-            <ShopSilentFedcmBootstrap fedcm={silentFedcmProps} />
-            <SilentSignInNotice
-              logoutActionUrl={shopIdentityUrl("/logout")}
-              displayName={viewer.kind === "authenticated" ? viewer.displayName : null}
-              email={viewer.kind === "authenticated" ? viewer.email : null}
-            />
-            <ShopTransientNotices />
-          </Suspense>
-          {children}
-        </div>
-        <ShopFooter
-          crossProductLinks={crossProductFooterLinks}
-          accountState={toShopFooterAccountState(viewer)}
-        />
+        <ShopSmoothScroll>
+          <a href="#main-content" className="shop-skip-link">
+            Skip to content
+          </a>
+          <div className="overflow-x-clip">
+            <ShopHeader />
+            <Suspense fallback={null}>
+              <ShopSilentFedcmBootstrap fedcm={silentFedcmProps} />
+              <SilentSignInNotice
+                logoutActionUrl={shopIdentityUrl("/logout")}
+                displayName={viewer.kind === "authenticated" ? viewer.displayName : null}
+                email={viewer.kind === "authenticated" ? viewer.email : null}
+              />
+              <ShopTransientNotices />
+            </Suspense>
+            {children}
+          </div>
+          <ShopFooter
+            crossProductLinks={crossProductFooterLinks}
+            accountState={toShopFooterAccountState(viewer)}
+          />
+        </ShopSmoothScroll>
       </body>
     </html>
   );

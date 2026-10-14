@@ -93,6 +93,7 @@ export function MarketingHorizontalRail({
     id,
     className: scrollerClassName,
     "aria-label": ariaLabel,
+    "data-lenis-prevent": true,
     children,
   };
 

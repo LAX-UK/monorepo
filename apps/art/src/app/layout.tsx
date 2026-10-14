@@ -2,6 +2,7 @@ import { ArtAnalyticsConsent } from "@/components/analytics/art-analytics-consen
 import { ArtHeader } from "@/components/header/art-header";
 import { ArtFooter } from "@/components/layout/art-footer";
 import { ArtMobileBottomNav } from "@/components/layout/art-mobile-bottom-nav.client";
+import { ArtSmoothScroll } from "@/components/layout/art-smooth-scroll.client";
 import { ArtThemeInit } from "@/components/layout/art-theme-init";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
 import { isArtIndexingAllowed, loadArtEnv, loadArtStorefrontBaseUrl } from "@/env.server";
@@ -68,25 +69,27 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ArtJsonLd data={artSiteJsonLd(loadArtStorefrontBaseUrl())} />
       </head>
       <body className="bg-page-bg text-on-surface">
-        <a href="#main-content" className="art-skip-link">
-          Skip to content
-        </a>
-        <ArtHeader />
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="min-h-[calc(100dvh-var(--header-height))] pb-12 pt-[calc(var(--header-height)+env(safe-area-inset-top,0px))] outline-none"
-        >
-          {children}
-        </main>
-        <ArtFooter vm={chrome.footer} />
-        <ArtMobileBottomNav />
-        {measurementId ? (
-          <ArtAnalyticsConsent
-            measurementId={measurementId}
-            initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
-          />
-        ) : null}
+        <ArtSmoothScroll>
+          <a href="#main-content" className="art-skip-link">
+            Skip to content
+          </a>
+          <ArtHeader />
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="min-h-[calc(100dvh-var(--header-height))] pb-12 pt-[calc(var(--header-height)+env(safe-area-inset-top,0px))] outline-none"
+          >
+            {children}
+          </main>
+          <ArtFooter vm={chrome.footer} />
+          <ArtMobileBottomNav />
+          {measurementId ? (
+            <ArtAnalyticsConsent
+              measurementId={measurementId}
+              initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
+            />
+          ) : null}
+        </ArtSmoothScroll>
       </body>
     </html>
   );

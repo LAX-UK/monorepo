@@ -1,7 +1,7 @@
 import { ArtEditorialLink } from "@/components/editorial/art-editorial-link";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { EditorialCardVm } from "@/lib/editorial/editorial-card.vm";
-import { MarketingCardMedia, MarketingCardShell } from "@auction/marketing-ui";
+import { MarketingCardMedia, MarketingCardReveal, MarketingCardShell } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 
 type ArtEditorialCardProps = {
@@ -79,11 +79,13 @@ export function ArtEditorialCardGrid({
     <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3" aria-label={ariaLabel}>
       {cards.map((card, index) => (
         <li key={card.key}>
-          <ArtEditorialCard
-            card={card}
-            priority={index < priorityCount}
-            {...(aspect ? { aspect } : {})}
-          />
+          <MarketingCardReveal index={index}>
+            <ArtEditorialCard
+              card={card}
+              priority={index < priorityCount}
+              {...(aspect ? { aspect } : {})}
+            />
+          </MarketingCardReveal>
         </li>
       ))}
     </ul>

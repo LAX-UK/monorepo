@@ -10,6 +10,7 @@ import {
   parseExhibitionStatus,
 } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { SectionTabs } from "@auction/ui/components/section-tabs";
 import type { Metadata } from "next";
@@ -43,15 +44,17 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
         </p>
       </header>
       {result.status === "ok" && result.data.featured.length > 0 ? (
-        <ArtSection id="featured-exhibitions" title="Featured">
-          <ArtRail id="featured-exhibitions-rail" label="Featured exhibitions">
-            {result.data.featured.map((card, index) => (
-              <ArtRailItem key={card.key} size="feature">
-                <ArtEditorialCard card={card} priority={index === 0} />
-              </ArtRailItem>
-            ))}
-          </ArtRail>
-        </ArtSection>
+        <MarketingReveal index={0}>
+          <ArtSection id="featured-exhibitions" title="Featured">
+            <ArtRail id="featured-exhibitions-rail" label="Featured exhibitions">
+              {result.data.featured.map((card, index) => (
+                <ArtRailItem key={card.key} size="feature">
+                  <ArtEditorialCard card={card} priority={index === 0} />
+                </ArtRailItem>
+              ))}
+            </ArtRail>
+          </ArtSection>
+        </MarketingReveal>
       ) : null}
       {result.status === "disabled" ? null : (
         <SectionTabs
@@ -80,7 +83,13 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
           description={EMPTY_COPY[status]}
         />
       ) : (
-        <ArtEditorialCardGrid cards={result.data.cards} ariaLabel="Exhibitions" priorityCount={3} />
+        <MarketingReveal index={1}>
+          <ArtEditorialCardGrid
+            cards={result.data.cards}
+            ariaLabel="Exhibitions"
+            priorityCount={3}
+          />
+        </MarketingReveal>
       )}
     </div>
   );

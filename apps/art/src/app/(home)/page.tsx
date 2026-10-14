@@ -8,6 +8,7 @@ import { artServices } from "@/lib/art-services.server";
 import { buildArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
 import { composeArtHomePage } from "@/lib/home/home-page.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 
@@ -30,49 +31,59 @@ export default async function ArtHomePage() {
 
       <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-[var(--section-spacing-tight)]")}>
         {editorial && editorial.whatsOn.length > 0 ? (
-          <ArtSection id="home-whats-on" title="What's on" viewAllHref="/exhibitions">
-            <ArtEditorialCardGrid cards={editorial.whatsOn} ariaLabel="What's on" />
-          </ArtSection>
+          <MarketingReveal index={0}>
+            <ArtSection id="home-whats-on" title="What's on" viewAllHref="/exhibitions">
+              <ArtEditorialCardGrid cards={editorial.whatsOn} ariaLabel="What's on" />
+            </ArtSection>
+          </MarketingReveal>
         ) : null}
 
-        <ArtSection id="featured-originals" title="Featured originals" viewAllHref="/artworks">
-          {vm.sectionErrors.includes("artworks") ? (
-            <ArtStatusState
-              variant="error"
-              title="Featured works are unavailable"
-              description="We could not load featured originals. Try again shortly."
-              actions={
-                <ArtStatusStateLink href="/artworks">Browse all artworks</ArtStatusStateLink>
-              }
-            />
-          ) : vm.featuredArtworks.length === 0 ? (
-            <ArtStatusState
-              variant="empty"
-              title="New originals are on the way"
-              description="There are no featured originals right now. Browse the full catalogue in the meantime."
-              actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
-            />
-          ) : (
-            <ArtArtworkGrid cards={vm.featuredArtworks} favoriteAuth={vm.favoriteAuth} />
-          )}
-        </ArtSection>
+        <MarketingReveal index={1}>
+          <ArtSection id="featured-originals" title="Featured originals" viewAllHref="/artworks">
+            {vm.sectionErrors.includes("artworks") ? (
+              <ArtStatusState
+                variant="error"
+                title="Featured works are unavailable"
+                description="We could not load featured originals. Try again shortly."
+                actions={
+                  <ArtStatusStateLink href="/artworks">Browse all artworks</ArtStatusStateLink>
+                }
+              />
+            ) : vm.featuredArtworks.length === 0 ? (
+              <ArtStatusState
+                variant="empty"
+                title="New originals are on the way"
+                description="There are no featured originals right now. Browse the full catalogue in the meantime."
+                actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
+              />
+            ) : (
+              <ArtArtworkGrid cards={vm.featuredArtworks} favoriteAuth={vm.favoriteAuth} />
+            )}
+          </ArtSection>
+        </MarketingReveal>
 
         {editorial && editorial.stories.length > 0 ? (
-          <ArtSection id="home-stories" title="Stories" viewAllHref="/art-hub">
-            <ArtEditorialCardGrid cards={editorial.stories} ariaLabel="Stories" />
-          </ArtSection>
+          <MarketingReveal index={2}>
+            <ArtSection id="home-stories" title="Stories" viewAllHref="/art-hub">
+              <ArtEditorialCardGrid cards={editorial.stories} ariaLabel="Stories" />
+            </ArtSection>
+          </MarketingReveal>
         ) : null}
 
         {vm.featuredArtists.length > 0 ? (
-          <ArtSection id="featured-artists" title="Featured artists" viewAllHref="/artists">
-            <ArtArtistGrid cards={vm.featuredArtists} />
-          </ArtSection>
+          <MarketingReveal index={3}>
+            <ArtSection id="featured-artists" title="Featured artists" viewAllHref="/artists">
+              <ArtArtistGrid cards={vm.featuredArtists} />
+            </ArtSection>
+          </MarketingReveal>
         ) : null}
 
         {editorial && editorial.guide.length > 0 ? (
-          <ArtSection id="home-guide" title="Collector guide" viewAllHref="/collector-hub">
-            <ArtEditorialCardGrid cards={editorial.guide} ariaLabel="Collector guide" />
-          </ArtSection>
+          <MarketingReveal index={4}>
+            <ArtSection id="home-guide" title="Collector guide" viewAllHref="/collector-hub">
+              <ArtEditorialCardGrid cards={editorial.guide} ariaLabel="Collector guide" />
+            </ArtSection>
+          </MarketingReveal>
         ) : null}
       </div>
     </div>

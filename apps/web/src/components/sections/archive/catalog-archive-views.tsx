@@ -1,4 +1,3 @@
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { ArchiveLotCardHero } from "@/components/sections/archive/archive-lot-card-hero";
 import { PastAuctionCard } from "@/components/sections/archive/past-auction-card";
 import { MediaImage } from "@/components/ui/media-image";
@@ -11,6 +10,7 @@ import {
   MARKETING_PAGE_INNER,
 } from "@/lib/marketing/chrome";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";

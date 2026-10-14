@@ -1,6 +1,7 @@
 import { ArtArtworkCard } from "@/components/catalogue/art-artwork-card";
 import type { CatalogueArtworkCardVm } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 export type ArtArtworkGridProps = {
   cards: readonly CatalogueArtworkCardVm[];
@@ -23,11 +24,13 @@ export function ArtArtworkGrid({
     <ul className={ART_ARTWORK_GRID_CLASS} aria-label={ariaLabel} data-testid="art-artwork-grid">
       {cards.map((card, index) => (
         <li key={card.slug}>
-          <ArtArtworkCard
-            card={card}
-            favoriteAuth={favoriteAuth}
-            priority={index < priorityCount}
-          />
+          <MarketingCardReveal index={index}>
+            <ArtArtworkCard
+              card={card}
+              favoriteAuth={favoriteAuth}
+              priority={index < priorityCount}
+            />
+          </MarketingCardReveal>
         </li>
       ))}
     </ul>

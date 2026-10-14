@@ -90,13 +90,13 @@ Load fonts in `apps/web/src/app/layout.tsx` via `next/font/google`. Components M
 
 ## Motion (marketing)
 
-Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and presets in `apps/web/src/lib/marketing/motion.ts`. Do **not** sprinkle `RevealInView` + `index * N` delay at call sites.
+Use `@auction/marketing-ui` (`MarketingReveal`, `MarketingCardReveal`, `MarketingSectionReveal`) and presets in `packages/marketing-ui/src/motion/presets.ts`. Bid may re-export presets from `apps/web/src/lib/marketing/motion.ts`. Do **not** sprinkle `RevealInView` + `index * N` delay at call sites. See [Design system — Motion](./DESIGN_SYSTEM.md#motion-auctionmarketing-ui).
 
 | Surface | Primitive | Variant | Stagger |
 |---------|-----------|---------|---------|
-| Card grids, card rails, archive rows | `MarketingCardReveal` | `fadeUp` | 50 ms step, 150 ms cap |
-| Section copy columns (CTA bands) | `MarketingSectionReveal` | `fadeUp` | 60 ms step, 120 ms cap |
-| Hero media (above fold) | `MarketingHeroReveal` / `RevealOnMount fadeUp` | `fadeUp` | optional `delayMs` |
+| Card grids, card rails, archive rows | `MarketingCardReveal` | `rise` | 70 ms step, 420 ms cap |
+| Section copy columns (CTA bands) | `MarketingSectionReveal` | `rise` | 80 ms step, 160 ms cap |
+| Hero media (above fold) | `MarketingHeroReveal` / `RevealOnMount` | `wipe` / `zoom` (Bid hero only) | optional `delayMs` |
 | Hero copy choreography | legacy `.fade-up-d1…d4` inside hero shells only | — | fixed 150–550 ms presets |
 
 - **`wipeZoom` / `wipe`:** not used on marketing surfaces.

@@ -1,6 +1,6 @@
 "use client";
 
-import { RevealOnMount } from "@/components/ui/reveal";
+import { RevealOnMount } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 
 /** Soft entrance for auth flows — pairs with `AuthLayout` without changing chrome. */

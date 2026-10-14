@@ -2,6 +2,7 @@ import { ArtistCard } from "@/components/home/cards/artist-card";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopSectionHeader } from "@/components/home/shop-section-header";
 import type { HomePageViewModel } from "@/lib/home/home-page.vm";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 type FeaturedArtistsSectionProps = {
   section: HomePageViewModel["sections"]["artists"];
@@ -22,8 +23,10 @@ export function FeaturedArtistsSection({
       <ShopSectionHeader headingId="artists-heading" {...section} />
       {cards.length > 0 ? (
         <div id="artists" className="shop-home__artists-grid">
-          {cards.map((card) => (
-            <ArtistCard key={card.id} card={card} />
+          {cards.map((card, index) => (
+            <MarketingCardReveal key={card.id} index={index}>
+              <ArtistCard card={card} />
+            </MarketingCardReveal>
           ))}
         </div>
       ) : errorMessage ? (

@@ -1,4 +1,3 @@
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { PressDayMediaSaleVM } from "@/components/sections/press/mappers";
 import { HorizontalCarousel } from "@/components/ui/horizontal-carousel";
@@ -9,6 +8,7 @@ import {
   MARKETING_CARD_MEDIA_HOVER,
   MARKETING_PROSE_LINK,
 } from "@/lib/marketing/chrome";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import { DisplayHeading, cn } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";

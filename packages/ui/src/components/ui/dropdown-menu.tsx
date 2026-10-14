@@ -56,6 +56,7 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      data-lenis-prevent
       className={cn(
         "z-[var(--z-floating,70)] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-md",
         className,

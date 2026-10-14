@@ -4,24 +4,24 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import type { RevealTrigger } from "./triggers.js";
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
-const FALLBACK_MS = 2500;
 
 export function useReveal<T extends HTMLElement>(trigger: RevealTrigger) {
   const ref = useRef<T | null>(null);
+  const staticRef = useRef(false);
 
   useIsoLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight && rect.bottom > 0) {
-      el.setAttribute("data-revealed", "true");
+    if (trigger.isSatisfiedOnArm?.(el)) {
+      staticRef.current = true;
+      return;
     }
     el.setAttribute("data-reveal-init", "true");
   }, []);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || staticRef.current) return;
     let revealed = false;
     const reveal = () => {
       if (revealed) return;
@@ -29,9 +29,7 @@ export function useReveal<T extends HTMLElement>(trigger: RevealTrigger) {
       el.setAttribute("data-revealed", "true");
     };
     const cleanup = trigger.bind(el, reveal);
-    const safety = window.setTimeout(reveal, FALLBACK_MS);
     return () => {
-      window.clearTimeout(safety);
       cleanup();
     };
   }, [trigger]);

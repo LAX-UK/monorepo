@@ -184,6 +184,25 @@ Email hex mirrors live in [`packages/branding/src/tokens.ts`](../packages/brandi
 | `packages/branding` tests | Token drift vs `globals.css`; event `brand-tokens.css` alignment |
 | Playwright axe | Marketing smoke + admin a11y (WCAG 2a/2aa); Art `@a11y` axe on `#main-content` + viewport overflow audit (375/1024/1440) in `.github/workflows/art-e2e-pr.yml` |
 
+## Motion (`@auction/marketing-ui`)
+
+Shared scroll feel and reveal primitives for **Art**, **Shop**, and **Bid marketing** routes. Saleroom, live bidding, account, admin, and Bid `(task)` routes stay on native scrolling.
+
+| Piece | Use when |
+|-------|----------|
+| **`SmoothScroll`** | Mount once per app root (Art/Shop `layout.tsx`, Bid `app/(marketing)/layout.tsx`). Respects `prefers-reduced-motion` (native scroll). |
+| **`MarketingReveal`** | Below-the-fold **sections** (home rails, hub copy, editorial blocks). Pass `index` for stagger. Default variant: **`rise`**. |
+| **`MarketingSectionReveal`** | Prose / CTA bands on marketing hubs (sell, about, private sale). |
+| **`MarketingCardReveal`** | Grid or carousel **cards** (`index={i}`). |
+| **`CountUpInView`** | Numeric stats that should count up when scrolled into view (composes `@auction/ui` `CountUp`). |
+| **`RevealOnMount` / `wipe` / `zoom`** | Bid hero accents only — not for catalogue grids. |
+
+**Do not wrap above-the-fold heroes** (LCP). In-view reveals that are already on screen at hydration keep their server-rendered paint and do not animate, so only content scrolled into view rises. Apps with an in-app motion override pass it as `<SmoothScroll reducedMotion={…}>` (Bid does). Reveal CSS lives in [`packages/marketing-ui/src/marketing-ui.css`](../packages/marketing-ui/src/marketing-ui.css); presets in [`packages/marketing-ui/src/motion/presets.ts`](../packages/marketing-ui/src/motion/presets.ts).
+
+**Inner scroll areas** (dialogs, sheets, horizontal rails, mega-menu panels) must expose `data-lenis-prevent` so Lenis does not smooth-scroll nested overflow. See `packages/ui` sheet/dialog viewports and `marketing-horizontal-rail.tsx`.
+
+**Programmatic scroll:** `useSmoothScroll().scrollTo(target, { offset })` — offset should clear the sticky marketing header (`--marketing-header-height`).
+
 ## Adding components
 
 1. Prefer an existing primitive from `@auction/ui/components/*`.

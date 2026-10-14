@@ -2,7 +2,7 @@ import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import { buildCatalogueArtworkCards } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
-import { MarketingCardMedia, MarketingCardShell } from "@auction/marketing-ui";
+import { MarketingCardMedia, MarketingCardReveal, MarketingCardShell } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
@@ -32,39 +32,41 @@ export function CatalogueGrid({ items }: CatalogueGridProps) {
 
   return (
     <ul className="shop-catalogue__list">
-      {cards.map((card) => (
+      {cards.map((card, index) => (
         <li key={card.slug}>
-          <MarketingCardShell interactive className="shop-catalogue__card">
-            <Link href={card.href} className="shop-catalogue__card-link">
-              <span className="sr-only">
-                {card.title} by {card.artistName}
-              </span>
-            </Link>
-            <MarketingCardMedia className="shop-catalogue__media">
-              <ShopMediaImage
-                src={card.imageUrl}
-                alt={card.imageAlt}
-                label={SHOP_MEDIA_LABELS.artwork}
-                sizes="(min-width: 64rem) 25vw, (min-width: 40rem) 50vw, 100vw"
-                className="absolute inset-0 size-full"
-              />
-            </MarketingCardMedia>
-            <div className="shop-catalogue__body">
-              <h2 className="shop-catalogue__title">{card.title}</h2>
-              {card.status ? (
-                <div className="shop-catalogue__status">
-                  <DotStatusPill label={card.status.label} tone={card.status.tone} />
-                </div>
-              ) : null}
-              <Link href={`/artists/${card.artistSlug}`} className="shop-catalogue__artist-link">
-                {card.artistName}
+          <MarketingCardReveal index={index}>
+            <MarketingCardShell interactive className="shop-catalogue__card">
+              <Link href={card.href} className="shop-catalogue__card-link">
+                <span className="sr-only">
+                  {card.title} by {card.artistName}
+                </span>
               </Link>
-              {card.dimensions ? (
-                <p className="shop-catalogue__dimensions">{card.dimensions}</p>
-              ) : null}
-              <p className="shop-catalogue__meta">{card.metaLine}</p>
-            </div>
-          </MarketingCardShell>
+              <MarketingCardMedia className="shop-catalogue__media">
+                <ShopMediaImage
+                  src={card.imageUrl}
+                  alt={card.imageAlt}
+                  label={SHOP_MEDIA_LABELS.artwork}
+                  sizes="(min-width: 64rem) 25vw, (min-width: 40rem) 50vw, 100vw"
+                  className="absolute inset-0 size-full"
+                />
+              </MarketingCardMedia>
+              <div className="shop-catalogue__body">
+                <h2 className="shop-catalogue__title">{card.title}</h2>
+                {card.status ? (
+                  <div className="shop-catalogue__status">
+                    <DotStatusPill label={card.status.label} tone={card.status.tone} />
+                  </div>
+                ) : null}
+                <Link href={`/artists/${card.artistSlug}`} className="shop-catalogue__artist-link">
+                  {card.artistName}
+                </Link>
+                {card.dimensions ? (
+                  <p className="shop-catalogue__dimensions">{card.dimensions}</p>
+                ) : null}
+                <p className="shop-catalogue__meta">{card.metaLine}</p>
+              </div>
+            </MarketingCardShell>
+          </MarketingCardReveal>
         </li>
       ))}
     </ul>

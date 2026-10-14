@@ -24,6 +24,7 @@ import { MARKETING_FILTER_RAIL_STICKY } from "@/lib/marketing/filter-rail";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { artistPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { AlphabetJumpBar, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -143,7 +144,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
             </MarketingFilterSidebar>
           </div>
 
-          <div className={MARKETING_CATALOG_MAIN_COLUMN}>
+          <MarketingSectionReveal index={0} className={MARKETING_CATALOG_MAIN_COLUMN}>
             <MarketingListToolbar
               className="mb-6 rounded-none border-x-0"
               countLabel={pagination.countLabel}
@@ -272,7 +273,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                 }
               />
             </div>
-          </div>
+          </MarketingSectionReveal>
         </div>
       </section>
     </MarketingCatalogHubShell>

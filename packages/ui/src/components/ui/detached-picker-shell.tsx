@@ -149,6 +149,7 @@ function DetachedPickerShell({
                 role="dialog"
                 aria-modal="true"
                 data-placement={desktopLayout?.placement ?? "below"}
+                data-lenis-prevent
                 className={cn(
                   "fixed overflow-y-auto overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md outline-hidden",
                   desktopLayout?.placement === "above" ? "origin-bottom" : "origin-top",
@@ -197,7 +198,12 @@ function DetachedPickerShell({
                     <X className="size-5" aria-hidden />
                   </Button>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{panel}</div>
+                <div
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                  data-lenis-prevent
+                >
+                  {panel}
+                </div>
                 {footer ? (
                   <div className="shrink-0 border-t border-outline-variant/25 p-3">{footer}</div>
                 ) : null}

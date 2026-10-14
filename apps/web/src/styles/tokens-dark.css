@@ -153,29 +153,6 @@ html.dark {
   }
 }
 
-@keyframes revealWipeIn {
-  from {
-    clip-path: inset(0 100% 0 0);
-    opacity: 0;
-  }
-  60% {
-    opacity: 1;
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-  }
-}
-
-@keyframes revealZoomIn {
-  from {
-    transform: scale(1.08);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
 @keyframes pulse-dot {
   0%,
   100% {

@@ -1,9 +1,9 @@
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
-import { MarketingSectionReveal } from "@/components/marketing/marketing-reveal";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { CONSIGN_COPY } from "@/components/sections/home/home-copy";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { LabelCaps } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";

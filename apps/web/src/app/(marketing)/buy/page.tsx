@@ -10,6 +10,7 @@ import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { Button } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -77,7 +78,9 @@ export default function BuyPage() {
           <h2 className="font-headline text-[length:var(--text-display-sm)] font-semibold text-on-surface">
             How buying works
           </h2>
-          <BuyJourneySection />
+          <MarketingSectionReveal index={0}>
+            <BuyJourneySection />
+          </MarketingSectionReveal>
         </div>
 
         <MarketingPromoCta

@@ -1,7 +1,7 @@
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { PressCoverageCard } from "@/components/sections/press/press-coverage-card";
 import type { PressCoverageVM } from "@/components/sections/saleroom/view-models";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import { DisplayHeading, cn } from "@auction/ui";
 
 type Props = {
