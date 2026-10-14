@@ -1,5 +1,12 @@
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import type { AtgIntegrationStatus, AtgLotSyncView, AtgSaleSyncView } from "@auction/types";
+import {
+  type AtgIntegrationStatus,
+  type AtgLotSyncView,
+  type AtgOwnershipState,
+  type AtgSaleSyncView,
+  type SaleStatus,
+  resolveSaleSellingPlatform,
+} from "@auction/types";
 
 const ATG_BASE = "/admin/integrations/atg";
 
@@ -29,4 +36,26 @@ export async function getAtgLotSyncView(
   const view = await getAtgSaleSyncView(saleId).catch(() => null);
   const lot = view?.lots.find((row) => row.lotId === lotId);
   return lot?.atgLotId ? lot : null;
+}
+
+/**
+ * Selling platform for header chips, publish guards and edit alerts. Null when ATG sync is off
+ * or the lookup fails. Only draft sales can belong to ATG, so other statuses skip the fetch.
+ */
+export async function getAtgSaleSellingPlatform(sale: {
+  id: string;
+  status: SaleStatus;
+}): Promise<AtgOwnershipState | null> {
+  const status = await getAtgIntegrationStatus().catch(() => null);
+  if (!status?.enabled) return null;
+  if (sale.status !== "draft") {
+    return resolveSaleSellingPlatform({
+      saleStatus: sale.status,
+      atgRemoteStatus: null,
+      atgLinked: false,
+      atgSoldLotCount: 0,
+    });
+  }
+  const view = await getAtgSaleSyncView(sale.id).catch(() => null);
+  return view?.sellingPlatform ?? null;
 }

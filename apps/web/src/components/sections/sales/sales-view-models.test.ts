@@ -117,3 +117,23 @@ describe("mapSaleToFeaturedAuctionCardVM", () => {
     expect(vm.itemsLabel).toBe("2 Items");
   });
 });
+
+describe("ATG-owned sales on calendar cards", () => {
+  const past = new Date(Date.now() - 86_400_000);
+
+  it("shows live and ended ATG sales instead of the LAX draft status", () => {
+    const live = makeSale({
+      status: "draft",
+      sellingPlatform: "atg",
+      atgAuctionState: "live",
+      startTime: past,
+    });
+    const ended = { ...live, atgAuctionState: "ended" as const };
+    const row = saleListRow(live, []);
+
+    expect(mapSaleToCalendarGridCardVM(row, { showRegisterButton: false }).status).toBe("active");
+    expect(mapSaleToAuctionRowVM(row, { showRegisterButton: false }).status).toBe("active");
+    expect(mapSaleToAgendaItemVM(row).status).toBe("active");
+    expect(mapSaleToFeaturedAuctionCardVM(saleListRow(ended, [])).status).toBe("ended");
+  });
+});

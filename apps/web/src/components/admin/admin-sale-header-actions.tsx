@@ -33,8 +33,11 @@ type Props = {
   saleTitle: string;
   canEdit: boolean;
   canPublish: boolean;
+  /** Show publish menu row for draft sales even when ATG blocks publishing. */
+  showPublishMenuItem?: boolean;
   /** When false, publish is disabled until setup checklist passes. */
   publishReady?: boolean;
+  publishBlockedReason?: string;
   canUnpublish: boolean;
   canCancel: boolean;
   canDelete: boolean;
@@ -47,7 +50,9 @@ export function AdminSaleHeaderActions({
   saleTitle,
   canEdit,
   canPublish,
+  showPublishMenuItem = canPublish,
   publishReady = true,
+  publishBlockedReason,
   canUnpublish,
   canCancel,
   canDelete,
@@ -60,7 +65,12 @@ export function AdminSaleHeaderActions({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null);
 
-  const hasMoreActions = canPublish || canUnpublish || canMarkOnsiteEnded || canCancel || canDelete;
+  const hasMoreActions =
+    showPublishMenuItem || canUnpublish || canMarkOnsiteEnded || canCancel || canDelete;
+  const publishMenuDisabled = pending || !canPublish || !publishReady;
+  const publishMenuTitle =
+    publishBlockedReason ??
+    (!publishReady ? "Complete sale setup on the review step before publishing" : undefined);
   const copy = confirmKind ? saleLifecycleConfirmCopy(confirmKind) : null;
 
   return (
@@ -84,24 +94,20 @@ export function AdminSaleHeaderActions({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            {canPublish ? (
+            {showPublishMenuItem ? (
               <DropdownMenuItem
-                disabled={pending || !publishReady}
-                title={
-                  !publishReady
-                    ? "Complete sale setup on the review step before publishing"
-                    : undefined
-                }
+                disabled={publishMenuDisabled}
+                title={publishMenuTitle}
                 onSelect={(e) => {
                   e.preventDefault();
-                  if (!publishReady) return;
+                  if (publishMenuDisabled) return;
                   setPublishOpen(true);
                 }}
               >
                 Publish sale
               </DropdownMenuItem>
             ) : null}
-            {canPublish && !publishReady ? (
+            {showPublishMenuItem && !publishReady && canPublish ? (
               <DropdownMenuItem asChild>
                 <Link href={adminSaleSetupHref(saleId, "review")}>Continue setup</Link>
               </DropdownMenuItem>

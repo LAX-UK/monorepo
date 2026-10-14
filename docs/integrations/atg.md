@@ -50,6 +50,58 @@ next click can enqueue again. Mapping errors, precondition errors and non-retrya
 responses become `UnrecoverableError` (no retries); network errors, 408/425/429 and 5xx (except
 501) get up to four attempts with exponential backoff starting at 30 s.
 
+### One platform per sale (ownership)
+
+A sale may take bids on **either** lax.bid **or** ATG, never both. Ownership is computed from
+`sale.status`, `atg_auction_link.remote_status`, and whether any `atg_lot_link.sold` row exists
+(no stored flag, no migration). SSOT: `resolveSaleSellingPlatform()` in
+`packages/types/src/atg.ts`.
+
+| State | lax.bid publish | ATG push / publish |
+| --- | --- | --- |
+| Free | allowed | allowed |
+| LAX-owned (`scheduled` / `active` / `ended`) | already on LAX | **409 `sale_on_lax`** |
+| ATG-owned (`published`, or `closed` with ≥1 sold lot) | **409 `sale_on_atg`** | push re-syncs |
+| Cancelled | not allowed | **409 `sale_cancelled`** |
+
+Release from ATG: **Close** with zero lots sold → free again. If any lot sold on ATG, the sale
+stays ATG-owned; duplicate the sale in LAX to relist unsold lots.
+
+**Guards (409 unless noted):**
+
+| Code | Where |
+| --- | --- |
+| `sale_on_atg` | sale publish, cancel and soft delete (single and bulk) while the sale is ATG-owned |
+| `sale_on_lax` | ATG admin push / publish / close enqueue |
+| `lot_on_atg` | lot sale change, detach, cancel and soft delete (single and bulk), only when the lot is linked on ATG **and** has bids or sold; lots without bids can still be moved or removed |
+| `queue_unavailable` | ATG enqueue (**503**) |
+
+Guard messages say what to do next: a live auction must be closed on ATG first; a sale or lot
+that sold on ATG stays as it is and is settled through ATG. SSOT:
+`apps/api/src/services/sale-channel-guards.ts`. The admin sale page hides Publish, Cancel and
+Delete for ATG-owned sales and explains why.
+
+**Public lax.bid:** ATG-owned sales stay LAX `draft` but appear in the catalogue as read-only.
+Public reads add `sellingPlatform` and `atgAuctionState` (`live` while published, `ended`
+once closed with sales) to the sale, `atgSold` to its lots after it ends, and `atgSaleState` to
+lots in public lot lists. Status filters include them (`scheduled`/`active` → live on ATG,
+`ended` → ended on ATG). The web shows them as upcoming, live or ended
+(`apps/web/src/lib/catalog/atg-catalog-display.ts`), hides LAX register, telephone and bid
+UI, and links to `ATG_WHITE_LABEL_BASE_URL` (default `https://auctions.lax.bid`; the web app
+reads it server-side). Lot cards show "On ATG" or Sold / No sale instead of LAX prices. SQL
+helpers: `apps/api/src/repositories/atg-public-catalog.sql.ts`.
+
+**Worker:** run a **single** `atg-sync` consumer at **concurrency 1** (BullMQ job de-duplication
+relies on stable job ids). Tick failures for one sale are logged and sent to Sentry
+(`atg-sync-tick`) without stopping the tick for other sales.
+
+**Images:** `AddUrlImageToLot` returns a `LotImageId`, but GAP has **no** endpoint to list a
+lot's images, and the worker does not store the returned ids. It tracks sent `ImageName` values
+and sends only new positions (append-only; see Gotchas).
+
+**White Label login:** the production White Label already uses `/Membership/SignUpOrIn` for
+sign-up and login.
+
 ### Automatic re-sync (design note)
 
 The plan described enqueueing a push from API sale/lot update paths. The release build instead
@@ -104,10 +156,10 @@ back to LAX bids, invoices or Xero in this release.
 
 ## Gotchas
 
-- **Images are append-only.** GAP has no endpoint that returns `LotImageId`, which
-  `RemoveLotImage` needs. We record sent image names per lot and only send new positions, so
-  reordering or removing images in LAX does not change ATG. Fix manually in the ATG admin until
-  ATG answers question 8.
+- **Images are append-only.** `RemoveLotImage` needs a `LotImageId`. `AddUrlImageToLot`
+  returns one, but we do not store it, and GAP cannot list a lot's images to recover ids.
+  We record sent image names per lot and only send new positions, so reordering or removing
+  images in LAX does not change ATG. Fix manually in the ATG admin until ATG answers question 8.
 - **Unchanged payloads are skipped.** Auction and lot updates are only sent when the sha256 of
   the mapped payload changes (`payload_hash`).
 - **Partial pushes.** Lot failures do not stop the push; the auction link's `last_error` lists
@@ -153,7 +205,7 @@ back to LAX bids, invoices or Xero in this release.
 | `ATG_APPROVE_BEFORE_PUBLISH` | worker | `false` | Call `ApproveAuction` before publishing. |
 | `ATG_TIMEZONE` | worker | `Europe/London` | IANA; must have a Windows mapping. |
 | `ATG_POLL_INTERVAL_MS` | worker | `120000` | 30000–240000 (queue readiness goes stale after 5 minutes). |
-| `ATG_WHITE_LABEL_BASE_URL` | api | — | Link shown on the ATG tab. Production: `https://auctions.lax.bid` once the hostname is live (see below). |
+| `ATG_WHITE_LABEL_BASE_URL` | api, web | — (web: `https://auctions.lax.bid`) | Link shown on the ATG tab and on public ATG sale and lot pages. Production: `https://auctions.lax.bid` once the hostname is live (see below). |
 
 The worker also needs `S3_PUBLIC_BASE_URL` when enabled. Production values come from the
 `atg_*` Terraform variables in `terraform/ephemeral/prod`. "Terraform apply prod" runs the copy
@@ -335,10 +387,9 @@ pattern and the Worker tests.
 **Later, on `main`.** Once D15's host-only sessions reach production, the Worker becomes defence
 in depth. Tracked in `docs/engineering/release-main-parity.md` on `main`.
 
-**Related: header login link.** The cloned White Label header's "Log in" link points at
-`lax.bid/login`, which does not sign users into the White Label. ATG only allows header
-changes once a year after Step 7, so the link must be settled during Steps 3–4 (point it at
-the White Label's own login until SSO, Step 9, exists).
+**Related: header login link.** The White Label header's login already goes to its own
+`/Membership/SignUpOrIn` page, not `lax.bid/login`. ATG only allows header changes once a year
+after Step 7, so keep it that way until SSO (Step 9) exists.
 
 ## Questions for ATG
 
@@ -368,8 +419,8 @@ login on `secure-login.globalauctionplatform.com`).
 7. **Edit rules.** Does PATCH `UpdateLot` change only the fields sent? How does it differ
    from `UpdateLotCatalogue`? Is PUT `UpdateAuction` a full replace? Which fields lock after
    publish, after the first bid, and after close? When is `DeleteLot` allowed?
-8. **Lot images.** No endpoint returns the `LotImageId` that `RemoveLotImage` needs — how do
-   we replace or reorder images? Does `ImageName` ("1", "1-1") set the order? Size/format
+8. **Lot images.** `AddUrlImageToLot` returns a `LotImageId`, but nothing lists a lot's
+   images — how do we replace or reorder images added before we stored ids? Does `ImageName` ("1", "1-1") set the order? Size/format
    limits? Must the source URL stay reachable after upload?
 9. **Rate limits and IP allowlist.** Request limits and an acceptable polling interval for
    `v2/GetLots` and `GetSaleResults`? Do you allowlist caller IPs? (Our worker has no fixed
@@ -407,6 +458,22 @@ login on `secure-login.globalauctionplatform.com`).
 21. **Cookies.** Please confirm the White Label never sets cookies named `lax_*`, `lax-*`,
     `_lax_*` or `better-auth*` (the proxy drops them) and does not rely on `Domain=` cookie
     attributes (the proxy makes every White Label cookie host-only).
+
+## Porting to `main`
+
+`main` does not yet include ATG. When porting from `release`, check:
+
+1. **Code:** worker integration, queues, API guards (`ISaleChannelReader`), admin ATG tab, public
+   read-only catalogue, and `resolveSaleSellingPlatform`.
+2. **Migration:** `0132_atg_sync_links` byte-identical (see `docs/engineering/release-main-parity.md`).
+3. **Grants:** keep `atg_auction_link` / `atg_lot_link` in worker full-table access; API SELECT for
+   ownership reads.
+4. **Guard sites:** re-verify publish, lot move, detach, soft deletes against `main`'s sale/lot services.
+5. **Visibility:** re-run the public-catalog grep on `main` and apply `publicSaleCondition()` /
+   `sellingPlatform` on DTOs.
+6. **Infra:** ATG env + cookie-shield Terraform (`auction-infra`) identical to `release`.
+7. **Open product questions:** banded premium, partial `UpdateLot`, field locks after bids, deep-link
+   URL pattern, `Terms` length.
 
 ### Robustness (not blocking)
 

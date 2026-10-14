@@ -1021,11 +1021,12 @@ export function createContainer(env: Env): Container {
     queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
   );
   const dataExportQueue = new Queue(DATA_EXPORT_QUEUE_NAME, queueOpts(DATA_EXPORT_QUEUE_NAME));
+  const atgLinkReader = new DrizzleAtgLinkReader(db);
   const atgSyncQueue = env.ATG_SYNC_ENABLED
     ? bindAtgSyncQueue(new Queue(ATG_SYNC_QUEUE_NAME, queueOpts(ATG_SYNC_QUEUE_NAME)))
     : null;
   const atgAdmin = new AtgAdminService(
-    new DrizzleAtgLinkReader(db),
+    atgLinkReader,
     atgSyncQueue,
     env.ATG_WHITE_LABEL_BASE_URL ?? null,
   );
@@ -1237,6 +1238,7 @@ export function createContainer(env: Env): Container {
     lotTransitionOrchestrator,
     qrCodeService,
     telephoneBidBookingService,
+    saleChannelReader: atgLinkReader,
   });
 
   const conditionReportService = new ConditionReportService(
@@ -1272,12 +1274,14 @@ export function createContainer(env: Env): Container {
     venueRepository: venueRepo,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
+    saleChannelReader: atgLinkReader,
   });
   const saleListReadService = new SaleListReadService(
     saleRepo,
     lotRepo,
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
+    atgLinkReader,
   );
   const pressArchiveRepo = new SalePressArchiveRepository(saleRepo);
   const pressArchiveReadService = new PressArchiveReadService(pressArchiveRepo);
@@ -1289,6 +1293,7 @@ export function createContainer(env: Env): Container {
     lotJobScheduler,
     db,
     domainEventPublisher,
+    atgLinkReader,
   );
   const lotSoftDeleteSideEffects = new DrizzleLotSoftDeleteSideEffects(db, lotLifecycleRecording);
   const lotSoftDeleteService = new LotSoftDeleteService(
@@ -1298,6 +1303,7 @@ export function createContainer(env: Env): Container {
     lotJobScheduler,
     db,
     domainEventPublisher,
+    atgLinkReader,
   );
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,

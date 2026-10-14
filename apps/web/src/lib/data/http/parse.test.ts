@@ -1,5 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { coerceToIsoString, parseBid, parseItemSubmission } from "./parse";
+import { coerceToIsoString, parseBid, parseItemSubmission, parseLot, parseSale } from "./parse";
+
+describe("ATG fields", () => {
+  const saleRow = {
+    id: "s1",
+    title: "Sale",
+    status: "draft",
+    startTime: "2026-06-01T12:00:00.000Z",
+    endTime: "2026-06-02T12:00:00.000Z",
+  };
+  const lotRow = {
+    id: "l1",
+    title: "Lot",
+    status: "draft",
+    currentPrice: "10.00",
+    startTime: "2026-06-01T12:00:00.000Z",
+    endTime: "2026-06-02T12:00:00.000Z",
+  };
+
+  it("keeps sellingPlatform and atgAuctionState on sales", () => {
+    expect(
+      parseSale({ ...saleRow, sellingPlatform: "atg", atgAuctionState: "ended" }),
+    ).toMatchObject({ sellingPlatform: "atg", atgAuctionState: "ended" });
+  });
+
+  it("drops unknown values", () => {
+    const sale = parseSale({ ...saleRow, sellingPlatform: "ebay", atgAuctionState: "open" });
+    expect(sale).not.toHaveProperty("sellingPlatform");
+    expect(sale).not.toHaveProperty("atgAuctionState");
+  });
+
+  it("keeps atgSold and atgSaleState on lots", () => {
+    expect(parseLot({ ...lotRow, atgSold: true, atgSaleState: "ended" })).toMatchObject({
+      atgSold: true,
+      atgSaleState: "ended",
+    });
+    expect(parseLot(lotRow)).not.toHaveProperty("atgSaleState");
+  });
+});
 
 describe("coerceToIsoString", () => {
   it("returns ISO strings for valid dates", () => {

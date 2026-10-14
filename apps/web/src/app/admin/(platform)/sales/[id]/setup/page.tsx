@@ -1,3 +1,4 @@
+import { AtgEditAlert } from "@/components/admin/atg/atg-edit-alert";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
@@ -11,6 +12,7 @@ import {
 import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -48,18 +50,25 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
 
   const stepParam = firstString(sp.step)?.trim() as SaleSetupStepId | undefined;
 
-  const [categories, artistResult, venuesResult, pendingRegistrationCount, connectRequiredByLotId] =
-    await Promise.all([
-      (await getServerCategoryReader()).tree(),
-      getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
-      getWriteContainer()
-        .adminVenues.list({
-          ...(sale.createdByLegalEntityId ? { legalEntityId: sale.createdByLegalEntityId } : {}),
-        })
-        .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
-      loadAdminSalePendingRegistrationCount(id, sale),
-      Promise.resolve(connectRequiredFromLots(lots)),
-    ]);
+  const [
+    categories,
+    artistResult,
+    venuesResult,
+    pendingRegistrationCount,
+    connectRequiredByLotId,
+    sellingPlatform,
+  ] = await Promise.all([
+    (await getServerCategoryReader()).tree(),
+    getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
+    getWriteContainer()
+      .adminVenues.list({
+        ...(sale.createdByLegalEntityId ? { legalEntityId: sale.createdByLegalEntityId } : {}),
+      })
+      .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
+    loadAdminSalePendingRegistrationCount(id, sale),
+    Promise.resolve(connectRequiredFromLots(lots)),
+    canManageSale ? getAtgSaleSellingPlatform(sale) : Promise.resolve(null),
+  ]);
 
   const initialStep =
     stepParam ??
@@ -95,6 +104,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         cancelHref: `/admin/sales/${id}`,
       }}
     >
+      {sellingPlatform === "atg" ? <AtgEditAlert saleId={id} /> : null}
       <SaleSetupWizard
         saleId={id}
         initialStep={initialStep}

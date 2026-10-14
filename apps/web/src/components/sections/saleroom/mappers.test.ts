@@ -326,6 +326,26 @@ describe("mapLotToCardVM", () => {
     expect(vm.closingLabel).toBeNull();
     expect(vm.isLive).toBe(false);
   });
+
+  it("shows where to bid instead of LAX prices for lots selling on ATG", () => {
+    const vm = mapLotToCardVM(baseLot, { viewerUserId: null, now, atgState: "live" });
+    expect(vm.currentBidLabel).toBe("Bidding");
+    expect(vm.currentBidValue).toBe("On ATG");
+  });
+
+  it("shows the ATG result for lots of an ended ATG sale", () => {
+    const ended = { ...baseLot, status: "ended" as const };
+    const sold = mapLotToCardVM(
+      { ...ended, hasWinner: true },
+      { viewerUserId: null, now, atgState: "ended" },
+    );
+    const unsold = mapLotToCardVM(
+      { ...ended, hasWinner: false },
+      { viewerUserId: null, now, atgState: "ended" },
+    );
+    expect([sold.currentBidLabel, sold.currentBidValue]).toEqual(["Result", "Sold"]);
+    expect(unsold.currentBidValue).toBe("No sale");
+  });
 });
 
 describe("mapSaleToRelatedVM", () => {

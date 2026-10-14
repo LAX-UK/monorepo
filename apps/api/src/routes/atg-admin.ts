@@ -9,6 +9,8 @@ const saleActionParamSchema = saleIdParamSchema.extend({
   action: z.enum(["push", "publish", "close"]),
 });
 
+const jobIdParamSchema = z.object({ jobId: z.string().min(1) });
+
 /**
  * Staff-only ATG White Label controls, mounted at `/admin/integrations/atg`. Mutations only
  * enqueue `atg-sync` jobs; the worker talks to ATG.
@@ -17,6 +19,15 @@ export function createAdminAtgRoutes(atg: IAtgAdminService) {
   const r = new Hono();
 
   r.get("/status", (c) => c.json({ data: atg.status() }));
+
+  r.get("/jobs/:jobId", zValidator("param", jobIdParamSchema), async (c) => {
+    const { jobId } = c.req.valid("param");
+    const state = await atg.getJobState(jobId);
+    if (state == null) {
+      return c.json({ error: "ATG sync is not enabled", code: "atg_disabled" }, 503);
+    }
+    return c.json({ data: { jobId, state } });
+  });
 
   r.get("/sales/:id", zValidator("param", saleIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");

@@ -475,5 +475,93 @@ describe("AtgSyncService", () => {
       expect(await service.tick()).toEqual({ pushed: 0, polled: 0, failed: 0 });
       expect(gateway.ops()).toEqual([]);
     });
+
+    it("re-pushes a sale whose last sync failed even without catalogue changes", async () => {
+      await service.pushSale("sale-1");
+      await store.saveAuctionLink("sale-1", { lastError: "ATG updateAuction failed" });
+      gateway.calls.length = 0;
+
+      expect(await service.tick()).toMatchObject({ pushed: 1, failed: 0 });
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBeNull();
+    });
+
+    it("leaves sales published on lax.bid alone", async () => {
+      await service.pushSale("sale-1");
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("fixture missing");
+      store.sales.set("sale-1", { ...sale, saleStatus: "scheduled" });
+      store.changedSales = new Set(["sale-1"]);
+      gateway.calls.length = 0;
+
+      expect(await service.tick()).toEqual({ pushed: 0, polled: 0, failed: 0 });
+      expect(gateway.ops()).toEqual([]);
+    });
+
+    it("reports each failing sale and carries on", async () => {
+      const errors: Array<[string, unknown]> = [];
+      service = new AtgSyncService({
+        gateway,
+        store,
+        config: testAtgConfig,
+        now: () => NOW,
+        onTickError: (saleId, err) => errors.push([saleId, err]),
+      });
+      await service.publishSale("sale-1");
+      gateway.failNext("getLots", transient("getLots"));
+
+      expect(await service.tick()).toMatchObject({ failed: 1 });
+      expect(errors).toEqual([["sale-1", expect.objectContaining({ retryable: true })]]);
+    });
+  });
+
+  describe("one platform per sale", () => {
+    it("refuses to create an ATG auction for a sale published on lax.bid", async () => {
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("fixture missing");
+      store.sales.set("sale-1", { ...sale, saleStatus: "scheduled" });
+
+      await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+      expect(gateway.ops()).not.toContain("createAuction");
+    });
+
+    it("re-checks ownership before publishing on ATG", async () => {
+      await service.pushSale("sale-1");
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("fixture missing");
+      store.sales.set("sale-1", { ...sale, saleStatus: "scheduled" });
+      gateway.calls.length = 0;
+
+      await expect(service.publishSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+      expect(gateway.ops()).not.toContain("publishAuction");
+    });
+
+    it("refuses banded buyer's premium before calling ATG", async () => {
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("fixture missing");
+      store.sales.set("sale-1", {
+        ...sale,
+        buyerPremiumTiers: [{ hammerThresholdMinor: 100_000, rate: "0.25" }],
+      });
+
+      await expect(service.pushSale("sale-1")).rejects.toThrow(
+        "Banded buyer's premium isn't supported on ATG yet.",
+      );
+      expect(gateway.ops()).toEqual([]);
+    });
+  });
+
+  describe("pollSale error recovery", () => {
+    it("clears its own poll error after a successful poll but keeps push errors", async () => {
+      await service.publishSale("sale-1");
+      gateway.failNext("getLots", transient("getLots"));
+      await expect(service.pollSale("sale-1")).rejects.toBeDefined();
+
+      await service.pollSale("sale-1");
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBeNull();
+
+      await store.saveAuctionLink("sale-1", { lastError: "lot 2: rejected" });
+      await service.pollSale("sale-1");
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe("lot 2: rejected");
+    });
   });
 });

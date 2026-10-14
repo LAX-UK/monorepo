@@ -5,6 +5,7 @@ import {
 } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ISaleChannelReader } from "../repositories/interfaces/sale-channel.reader.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -272,5 +273,45 @@ describe("SaleSoftDeleteService", () => {
       expect(result.value.errors[0]?.saleId).toBe("s2");
       expect(softDeleteCascade).toHaveBeenCalledTimes(1);
     }
+  });
+});
+
+describe("SaleSoftDeleteService ATG guard", () => {
+  it("blocks deleting a sale that is live on ATG", async () => {
+    const softDeleteCascade = vi.fn();
+    const svc = new SaleSoftDeleteService(
+      { findById: vi.fn().mockResolvedValue(baseSale()) } as unknown as ISaleRepository,
+      { findBySaleId: vi.fn().mockResolvedValue([baseLot()]) } as unknown as ILotRepository,
+      {
+        countGuardsForSale: vi
+          .fn()
+          .mockResolvedValue({ bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }),
+        softDeleteCascade,
+      } as unknown as ISaleSoftDeleteSideEffects,
+      { cancelLotJobs: vi.fn() } as unknown as ILotJobScheduler,
+      {} as never,
+      { publish: vi.fn() } as unknown as DomainEventPublisher,
+      {
+        getSaleOwnership: vi.fn().mockResolvedValue({
+          saleStatus: "draft",
+          atgRemoteStatus: "published",
+          atgLinked: true,
+          atgSoldLotCount: 0,
+          sellingPlatform: "atg",
+        }),
+        getSaleOwnerships: vi.fn(),
+        getLotAtgState: vi.fn(),
+      } as unknown as ISaleChannelReader,
+    );
+
+    const result = await svc.softDelete(
+      "admin-1",
+      "staff",
+      "s1",
+      saleDeleteConfirmationPhrase("Evening"),
+      "auction_manager",
+    );
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
+    expect(softDeleteCascade).not.toHaveBeenCalled();
   });
 });

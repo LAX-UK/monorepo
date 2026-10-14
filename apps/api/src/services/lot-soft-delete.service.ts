@@ -3,6 +3,7 @@ import { type Lot, type UserRole, normalizeUserStaffRole, roleHasCapability } fr
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ISaleChannelReader } from "../repositories/interfaces/sale-channel.reader.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotSoftDeleteSideEffects } from "./interfaces/lot-soft-delete.js";
@@ -13,6 +14,7 @@ import {
   listLotSoftDeleteBlockers,
   validateLotSoftDelete,
 } from "./lot-soft-delete.policy.js";
+import { assertLotMovableOnAtg } from "./sale-channel-guards.js";
 
 export type LotDeleteEligibility = {
   canDelete: boolean;
@@ -41,6 +43,7 @@ export class LotSoftDeleteService {
     private readonly jobScheduler: ILotJobScheduler | null,
     private readonly db: Database | null,
     private readonly domainEventPublisher: DomainEventPublisher | null,
+    private readonly saleChannelReader: ISaleChannelReader | null = null,
   ) {}
 
   async getDeleteEligibility(lotId: string): Promise<LotDeleteEligibility | null> {
@@ -240,6 +243,8 @@ export class LotSoftDeleteService {
     lot: Lot,
     ctx?: LotSoftDeleteContext,
   ): Promise<Result<void, LotError>> {
+    const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lot.id, lot.saleId);
+    if (lotAtgConflict) return err(lotAtgConflict);
     const resolvedCtx =
       ctx ??
       (await (async () => {

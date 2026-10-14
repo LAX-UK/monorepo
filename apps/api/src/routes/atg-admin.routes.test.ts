@@ -57,6 +57,29 @@ describe("admin ATG routes", () => {
     expect(status).not.toHaveBeenCalled();
   });
 
+  it("reports job state to auction managers and 503 when ATG is off", async () => {
+    const getJobState = vi.fn().mockResolvedValue("active");
+    const app = buildApp("auction_manager", { getJobState });
+
+    const res = await app.request("http://test/admin/integrations/atg/jobs/atg.push-sale__abc");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ data: { jobId: "atg.push-sale__abc", state: "active" } });
+
+    getJobState.mockResolvedValue(null);
+    const off = await app.request("http://test/admin/integrations/atg/jobs/atg.push-sale__abc");
+    expect(off.status).toBe(503);
+    expect(await off.json()).toMatchObject({ code: "atg_disabled" });
+  });
+
+  it("forbids job status for staff without auction.manage", async () => {
+    const getJobState = vi.fn();
+    const app = buildApp("finance_ops", { getJobState });
+
+    const res = await app.request("http://test/admin/integrations/atg/jobs/atg.push-sale__abc");
+    expect(res.status).toBe(403);
+    expect(getJobState).not.toHaveBeenCalled();
+  });
+
   it("maps service errors to HTTP status codes", async () => {
     const enqueueSaleAction = vi.fn().mockResolvedValue({
       ok: false,

@@ -1,3 +1,4 @@
+import type { BuyerPremiumTier, SaleStatus } from "@auction/types";
 import type { GapAuctionTypeAndListing } from "./gap-types.js";
 
 /** Business settings for the mapping; transport settings live with the adapter. */
@@ -46,7 +47,9 @@ export type AtgSaleSnapshot = {
   terms: string | null;
   startTime: Date;
   endTime: Date;
+  saleStatus: SaleStatus;
   buyerPremiumRate: string;
+  buyerPremiumTiers: BuyerPremiumTier[] | null;
   locationAddressLine1: string | null;
   locationAddressLine2: string | null;
   locationCity: string | null;
@@ -61,6 +64,13 @@ export type AtgSaleSnapshot = {
 
 export type AtgRemoteStatus = "pending" | "created" | "approved" | "published" | "closed";
 
+export type AtgSaleOwnershipSnapshot = {
+  saleStatus: SaleStatus;
+  atgRemoteStatus: AtgRemoteStatus | null;
+  atgLinked: boolean;
+  atgSoldLotCount: number;
+};
+
 export type AtgAuctionLink = {
   saleId: string;
   atgAuctionId: string | null;
@@ -68,6 +78,7 @@ export type AtgAuctionLink = {
   payloadHash: string | null;
   lastSyncedAt: Date | null;
   closedAt: Date | null;
+  lastError: string | null;
 };
 
 export type AtgLotLink = {

@@ -45,10 +45,17 @@ function isTimed(config: AtgSyncConfig): boolean {
   return config.auctionType === "Timed" || config.auctionType === "CatalogueTimed";
 }
 
+export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
+  if (sale.buyerPremiumTiers && sale.buyerPremiumTiers.length > 0) {
+    throw new AtgMappingError("Banded buyer's premium isn't supported on ATG yet.");
+  }
+}
+
 export function mapSaleToAuctionFields(
   sale: AtgSaleSnapshot,
   config: AtgSyncConfig,
 ): GapAuctionFields {
+  assertSaleMappableForAtg(sale);
   const fields: GapAuctionFields = {
     Title: clip(sale.title.trim(), AUCTION_TITLE_MAX),
     AuctionListings: [

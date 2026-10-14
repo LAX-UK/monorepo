@@ -10,6 +10,8 @@ const LOT_ID = "22222222-2222-4222-8222-222222222222";
 function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
   return {
     saleId: SALE_ID,
+    saleStatus: "draft",
+    sellingPlatform: "free",
     saleCancelled: false,
     linked: false,
     atgAuctionId: null,
@@ -29,12 +31,23 @@ function setup(opts: {
   enabled?: boolean;
   sale?: AtgSaleSyncView | null;
   atgLotId?: string | null;
+  queueDown?: boolean;
 }) {
   const reader: IAtgLinkReader = {
     getSaleView: vi.fn().mockResolvedValue(opts.sale === undefined ? view() : opts.sale),
     findAtgLotId: vi.fn().mockResolvedValue(opts.atgLotId ?? null),
+    getSaleOwnership: vi.fn(),
+    getSaleOwnerships: vi.fn(),
+    getLotAtgState: vi.fn(),
+    getSoldLotIds: vi.fn(),
   };
-  const queue: AtgSyncQueueProducer = { add: vi.fn().mockResolvedValue({}), close: vi.fn() };
+  const queue: AtgSyncQueueProducer = {
+    add: opts.queueDown
+      ? vi.fn().mockRejectedValue(new Error("ECONNREFUSED"))
+      : vi.fn().mockResolvedValue({}),
+    getJobState: vi.fn().mockResolvedValue("active"),
+    close: vi.fn(),
+  };
   const service = new AtgAdminService(
     reader,
     opts.enabled === false ? null : queue,
@@ -112,6 +125,44 @@ describe("AtgAdminService", () => {
       });
       expect(queue.add).not.toHaveBeenCalled();
     }
+  });
+
+  it("refuses to push or publish a sale that is selling on lax.bid, but still allows close", async () => {
+    const onLax = view({
+      saleStatus: "scheduled",
+      sellingPlatform: "lax",
+      linked: true,
+      atgAuctionId: "a",
+    });
+    for (const action of ["push", "publish"] as const) {
+      const { service, queue } = setup({ sale: onLax });
+      expect(await service.enqueueSaleAction(SALE_ID, action)).toMatchObject({
+        ok: false,
+        error: { status: 409, code: "sale_on_lax" },
+      });
+      expect(queue.add).not.toHaveBeenCalled();
+    }
+    expect(await setup({ sale: onLax }).service.enqueueSaleAction(SALE_ID, "close")).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("returns 503 queue_unavailable when Redis rejects the job", async () => {
+    expect(await setup({ queueDown: true }).service.enqueueSaleAction(SALE_ID, "push")).toEqual({
+      ok: false,
+      error: {
+        status: 503,
+        code: "queue_unavailable",
+        message: "ATG queue is unavailable. Try again shortly.",
+      },
+    });
+  });
+
+  it("reports job state from the queue, or null when ATG is disabled", async () => {
+    const { service, queue } = setup({});
+    expect(await service.getJobState("job-1")).toBe("active");
+    expect(queue.getJobState).toHaveBeenCalledWith("job-1");
+    expect(await setup({ enabled: false }).service.getJobState("job-1")).toBeNull();
   });
 
   it("deletes only lots that exist on ATG", async () => {

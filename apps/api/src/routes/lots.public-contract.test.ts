@@ -60,7 +60,7 @@ function mount(
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     lotService: { getById, listLotsForPublicApi },
     saleService: {
-      getById: vi.fn().mockResolvedValue(null),
+      getByIdForPublicCatalog: vi.fn().mockResolvedValue(null),
       findByIds: vi.fn().mockResolvedValue([]),
     },
     mediaUrlResolver: {
@@ -117,7 +117,7 @@ describe("lots public contract", () => {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       lotService: { getById, listLotsForPublicApi: vi.fn() },
       saleService: {
-        getById: vi.fn().mockResolvedValue({
+        getByIdForPublicCatalog: vi.fn().mockResolvedValue({
           id: saleId,
           status: "active",
           deliveryMode: "online",

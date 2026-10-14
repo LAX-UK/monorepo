@@ -1,10 +1,17 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { artistProfile, atgAuctionLink, atgLotLink, lot, sale } from "@auction/db/schema";
-import { and, asc, eq, gt, gte, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import type { SaleStatus } from "@auction/types";
+import { and, asc, count, eq, gt, gte, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import type { AtgRemoteLot } from "./atg-gateway.js";
 import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "./atg-sync-store.js";
-import type { AtgAuctionLink, AtgLotLink, AtgRemoteStatus, AtgSaleSnapshot } from "./atg-types.js";
+import type {
+  AtgAuctionLink,
+  AtgLotLink,
+  AtgRemoteStatus,
+  AtgSaleOwnershipSnapshot,
+  AtgSaleSnapshot,
+} from "./atg-types.js";
 
 const LIVE_STATUSES: AtgRemoteStatus[] = ["created", "approved", "published"];
 
@@ -20,6 +27,7 @@ function toAuctionLink(row: typeof atgAuctionLink.$inferSelect): AtgAuctionLink 
     payloadHash: row.payloadHash,
     lastSyncedAt: row.lastSyncedAt,
     closedAt: row.closedAt,
+    lastError: row.lastError,
   };
 }
 
@@ -58,7 +66,9 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       terms: saleRow.terms,
       startTime: saleRow.startTime,
       endTime: saleRow.endTime,
+      saleStatus: saleRow.status as SaleStatus,
       buyerPremiumRate: saleRow.buyerPremiumRate,
+      buyerPremiumTiers: saleRow.buyerPremiumTiers,
       locationAddressLine1: saleRow.locationAddressLine1,
       locationAddressLine2: saleRow.locationAddressLine2,
       locationCity: saleRow.locationCity,
@@ -83,6 +93,31 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
         marketingDetails: row.marketingDetails,
         updatedAt: row.updatedAt,
       })),
+    };
+  }
+
+  async loadOwnershipState(saleId: string): Promise<AtgSaleOwnershipSnapshot | null> {
+    const [row] = await this.db
+      .select({
+        saleStatus: sale.status,
+        remoteStatus: atgAuctionLink.remoteStatus,
+        atgAuctionId: atgAuctionLink.atgAuctionId,
+      })
+      .from(sale)
+      .leftJoin(atgAuctionLink, eq(atgAuctionLink.saleId, sale.id))
+      .where(and(eq(sale.id, saleId), saleNotDeleted()))
+      .limit(1);
+    if (!row) return null;
+    const [soldRow] = await this.db
+      .select({ n: count() })
+      .from(atgLotLink)
+      .where(and(eq(atgLotLink.saleId, saleId), eq(atgLotLink.sold, true)));
+    const sold = Number(soldRow?.n ?? 0);
+    return {
+      saleStatus: row.saleStatus as SaleStatus,
+      atgRemoteStatus: row.remoteStatus as AtgRemoteStatus | null,
+      atgLinked: Boolean(row.atgAuctionId),
+      atgSoldLotCount: sold,
     };
   }
 
@@ -165,10 +200,12 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
 
   async listActiveAuctionLinks(closedSince: Date): Promise<AtgAuctionLink[]> {
     const rows = await this.db
-      .select()
+      .select({ link: atgAuctionLink })
       .from(atgAuctionLink)
+      .innerJoin(sale, eq(sale.id, atgAuctionLink.saleId))
       .where(
         and(
+          saleNotDeleted(),
           isNotNull(atgAuctionLink.atgAuctionId),
           or(
             inArray(atgAuctionLink.remoteStatus, LIVE_STATUSES),
@@ -179,7 +216,7 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
           ),
         ),
       );
-    return rows.map(toAuctionLink);
+    return rows.map(({ link }) => toAuctionLink(link));
   }
 
   async hasCatalogueChangesSince(saleId: string, since: Date): Promise<boolean> {
@@ -189,6 +226,27 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       .where(and(eq(sale.id, saleId), gt(sale.updatedAt, since)))
       .limit(1);
     if (saleChanged) return true;
+    const [artistChanged] = await this.db
+      .select({ id: lot.id })
+      .from(lot)
+      .innerJoin(artistProfile, eq(artistProfile.id, lot.artistId))
+      .where(
+        and(
+          or(
+            eq(lot.saleId, saleId),
+            inArray(
+              lot.id,
+              this.db
+                .select({ id: atgLotLink.lotId })
+                .from(atgLotLink)
+                .where(eq(atgLotLink.saleId, saleId)),
+            ),
+          ),
+          gt(artistProfile.updatedAt, since),
+        ),
+      )
+      .limit(1);
+    if (artistChanged) return true;
     const [lotChanged] = await this.db
       .select({ id: lot.id })
       .from(lot)

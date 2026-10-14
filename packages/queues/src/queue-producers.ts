@@ -1,3 +1,4 @@
+import type { AtgSyncJobState } from "@auction/types";
 import type { JobsOptions, Queue } from "bullmq";
 import {
   type AtgSyncJob,
@@ -31,10 +32,23 @@ export interface AtgSyncQueueProducer {
     data: AtgSyncJob["data"],
     opts?: JobsOptions | undefined,
   ): Promise<unknown>;
+  getJobState(jobId: string): Promise<AtgSyncJobState>;
   close(): Promise<void>;
 }
 
 /** Adapts a BullMQ queue for {@link AtgSyncQueueProducer}. */
 export function bindAtgSyncQueue(queue: Queue): AtgSyncQueueProducer {
-  return queue as AtgSyncQueueProducer;
+  return {
+    add: (name, data, opts) => queue.add(name, data, opts),
+    close: () => queue.close(),
+    async getJobState(jobId: string): Promise<AtgSyncJobState> {
+      const job = await queue.getJob(jobId);
+      if (!job) return "done";
+      const state = await job.getState();
+      if (state === "completed" || state === "unknown") return "done";
+      if (state === "failed") return "failed";
+      if (state === "active") return "active";
+      return "waiting";
+    },
+  };
 }

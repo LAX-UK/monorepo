@@ -657,6 +657,10 @@ if (atgRuntime) {
     gateway: new GapHttpAdapter(atgRuntime.adapter),
     store: new DrizzleAtgSyncStore(db),
     config: atgRuntime.sync,
+    onTickError: (saleId, err) => {
+      log.warn({ err, saleId }, "ATG tick failed for sale");
+      captureBackgroundError("atg-sync-tick", err, { extra: { saleId } });
+    },
   });
   atgSyncQueue = new Queue(ATG_SYNC_QUEUE_NAME, queueOpts(ATG_SYNC_QUEUE_NAME));
   atgSyncWorker = new Worker(

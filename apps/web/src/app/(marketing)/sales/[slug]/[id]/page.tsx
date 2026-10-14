@@ -1,4 +1,8 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import {
+  AtgExternalBiddingPanel,
+  isAtgReadOnlyCatalogSale,
+} from "@/components/marketing/atg-external-bidding";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
@@ -24,6 +28,7 @@ import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-her
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomPressCoverage } from "@/components/sections/saleroom/saleroom-press-coverage";
 import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
+import { atgCatalogState, atgDisplayLot, atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import {
   isPublicCatalogSale,
   viewerCanSeeNonPublicCatalog,
@@ -203,7 +208,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const shareUrl = `${base}${basePath}`;
 
   const now = new Date();
-  const liveLotsCount = lotsPage.items.filter((l) => l.status === "active").length;
+  const atgState = atgCatalogState(bundle.sale);
+  /** Badges, timers and filters only; bidding/registration gates keep `bundle.sale`. */
+  const displaySale = atgDisplaySale(bundle.sale, now);
+  const displayLots = lotsPage.items.map((lot) => atgDisplayLot(lot, bundle.sale, now));
+  const liveLotsCount = displayLots.filter((l) => l.status === "active").length;
   const allLotsLoaded = isCatalogLoadAll && lotsPage.items.length >= lotsPage.total;
   const estimatedTotalLabel = allLotsLoaded
     ? aggregateSaleEstimateTotal(lotsPage.items, {
@@ -221,7 +230,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const registeredBidderCount = await getServerSaleBidderCount(bundle.sale.id).catch(() => null);
   const coverBlurDataURL = bundle.sale.coverImageAssets?.[0]?.blurDataURL ?? null;
 
-  const heroVM = mapSaleToHeroVM(bundle.sale, {
+  const heroVM = mapSaleToHeroVM(displaySale, {
     totalLots: lotsPage.total,
     shareUrl,
     now,
@@ -258,7 +267,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const searchNeedle = catalogSearch.toLowerCase();
   const accumulatedLotIds = new Set<string>();
-  const lotVMs = lotsPage.items
+  const lotVMs = displayLots
     .filter((lot) => {
       if (accumulatedLotIds.has(lot.id)) return false;
       accumulatedLotIds.add(lot.id);
@@ -274,6 +283,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         now,
         initialWatching: watchedLotIds.has(lot.id),
         catalogLinkParams: lotLinkParams,
+        ...(atgState ? { atgState } : {}),
       }),
     );
 
@@ -398,6 +408,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       }))
     : { status: "none" as const, currentLotId: null };
 
+  const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(bundle.sale);
+
   const catalogLotRefs = lotsPage.items.map((lot) => ({
     id: lot.id,
     lotNumber: lot.lotNumber,
@@ -428,14 +440,14 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           <SaleMobileSummaryBar
             start={bundle.sale.startTime}
             end={bundle.sale.endTime}
-            status={bundle.sale.status}
+            status={displaySale.status}
             saleTitle={bundle.sale.title}
             deliveryMode={bundle.sale.deliveryMode}
             directionsUrl={directionsUrl}
             streamUrl={bundle.sale.streamUrl}
             sale={bundle.sale}
             locationLine={locationLine}
-            canParticipate={viewer.canParticipateAsBuyer}
+            canParticipate={viewer.canParticipateAsBuyer && !atgState}
             {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
             {...(isSaleroomSale ? { saleroomLotRefs } : {})}
           />
@@ -472,24 +484,28 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             explainerContext={saleFormatExplainerContextFromSale(bundle.sale)}
             toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
             actions={
-              <SaleroomHeroActionRow
-                hero={heroVM}
-                isAuthenticated={isAuthenticated}
-                deliveryMode={bundle.sale.deliveryMode}
-                saleId={bundle.sale.id}
-                saleHref={basePath}
-                initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
-                registerToBid={{
-                  show: registerToBidShow,
-                  buyerEntities,
-                  myRegistrations,
-                  kycApproved,
-                  kycFeedback,
-                  orgModuleEnabled,
-                  saleCurrency: "GBP",
-                }}
-                hasApprovedRegistration={myRegistrations.some((r) => r.status === "approved")}
-              />
+              atgReadOnlyCatalog ? (
+                <AtgExternalBiddingPanel sale={bundle.sale} />
+              ) : (
+                <SaleroomHeroActionRow
+                  hero={heroVM}
+                  isAuthenticated={isAuthenticated}
+                  deliveryMode={bundle.sale.deliveryMode}
+                  saleId={bundle.sale.id}
+                  saleHref={basePath}
+                  initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
+                  registerToBid={{
+                    show: registerToBidShow,
+                    buyerEntities,
+                    myRegistrations,
+                    kycApproved,
+                    kycFeedback,
+                    orgModuleEnabled,
+                    saleCurrency: "GBP",
+                  }}
+                  hasApprovedRegistration={myRegistrations.some((r) => r.status === "approved")}
+                />
+              )
             }
           />
         }
@@ -539,7 +555,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             view={layoutView}
             lots={lotVMs}
             isAuthenticated={isAuthenticated}
-            canParticipate={viewer.canParticipateAsBuyer}
+            canParticipate={viewer.canParticipateAsBuyer && !atgState}
             emptyMessage={catalogEmptyMessage}
             clearFiltersHref={catalogClearFiltersHref}
           />

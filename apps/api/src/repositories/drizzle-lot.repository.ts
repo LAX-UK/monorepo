@@ -9,9 +9,9 @@ import {
   payment,
   sale,
 } from "@auction/db/schema";
-import type { CreateLotInput, Lot, LotStatus, SaleStatus } from "@auction/types";
+import type { CreateLotInput, Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
-import { PUBLIC_LOT_STATUSES, PUBLIC_SALE_STATUSES } from "@auction/validators";
+import { PUBLIC_SALE_STATUSES } from "@auction/validators";
 import {
   and,
   asc,
@@ -25,6 +25,7 @@ import {
   lt,
   lte,
   notExists,
+  or,
   sql,
 } from "drizzle-orm";
 import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
@@ -37,6 +38,12 @@ import type {
   ListLotsSort,
   SaleCatalogLotsSort,
 } from "../services/interfaces/repositories.js";
+import {
+  atgOwnedDraftLotForStatusesSql,
+  publicLotCondition,
+  publicSaleCondition,
+  saleIsAtgOwnedSql,
+} from "./atg-public-catalog.sql.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type ListWhereInput = Omit<ListLotsFilter, "limit" | "offset" | "sort">;
@@ -50,14 +57,17 @@ function endYearBoundsUtc(year: number): { start: Date; end: Date } {
 
 function listWhere(input: ListWhereInput) {
   const conditions = [lotNotDeleted()];
-  if (input.statuses !== undefined) {
-    if (input.statuses.length === 0) {
+  const statuses = input.statuses ?? (input.status ? [input.status] : undefined);
+  if (statuses !== undefined) {
+    if (statuses.length === 0) {
       conditions.push(sql`false`);
     } else {
-      conditions.push(inArray(lot.status, input.statuses));
+      const byStatus = inArray(lot.status, statuses);
+      const atgDrafts = input.requirePublicParentSale
+        ? atgOwnedDraftLotForStatusesSql(statuses)
+        : undefined;
+      conditions.push(atgDrafts ? (or(byStatus, atgDrafts) ?? byStatus) : byStatus);
     }
-  } else if (input.status) {
-    conditions.push(eq(lot.status, input.status));
   }
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds
@@ -118,10 +128,13 @@ function publicParentSaleExists() {
       SELECT 1 FROM ${sale} AS parent_sale
       WHERE parent_sale.id = ${lot.saleId}
         AND parent_sale.deleted_at IS NULL
-        AND parent_sale.status IN (${sql.join(
-          PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
-          sql`, `,
-        )})
+        AND (
+          parent_sale.status IN (${sql.join(
+            PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
+            sql`, `,
+          )})
+          OR (parent_sale.status = 'draft' AND ${saleIsAtgOwnedSql(sql`parent_sale.id`)})
+        )
     )
   )`;
 }
@@ -152,7 +165,8 @@ function catalogLotsBySaleWhere(
   }
   if (input.requirePublicSale) {
     conditions.push(eq(sale.id, lot.saleId), saleNotDeleted());
-    conditions.push(inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]));
+    conditions.push(publicSaleCondition());
+    conditions.push(publicLotCondition());
   }
   return and(...conditions);
 }
@@ -631,8 +645,8 @@ export class DrizzleLotRepository implements ILotRepository {
           inArray(lot.saleId, saleIds),
           lotNotDeleted(),
           saleNotDeleted(),
-          inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-          inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+          publicLotCondition(),
+          publicSaleCondition(),
         )
       : and(inArray(lot.saleId, saleIds), lotNotDeleted());
     const rows = await (options?.publicOnly
@@ -675,8 +689,8 @@ export class DrizzleLotRepository implements ILotRepository {
           inArray(lot.saleId, saleIds),
           lotNotDeleted(),
           saleNotDeleted(),
-          inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-          inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+          publicLotCondition(),
+          publicSaleCondition(),
         )
       : and(inArray(lot.saleId, saleIds), lotNotDeleted());
 

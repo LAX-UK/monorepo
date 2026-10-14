@@ -11,18 +11,25 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { adminAtgSaleActionResultAction } from "@/lib/actions/admin-atg";
+import { adminAtgJobStateAction, adminAtgSaleActionResultAction } from "@/lib/actions/admin-atg";
+import { adminLotEditHref } from "@/lib/admin/catalog-route-helpers";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
-import type { AtgIntegrationStatus, AtgSaleSyncView, AtgSyncAction } from "@auction/types";
+import type {
+  AtgIntegrationStatus,
+  AtgSaleResultRow,
+  AtgSaleSyncView,
+  AtgSyncAction,
+} from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ExternalLinkIcon, Loader2Icon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 type Props = {
   saleId: string;
@@ -31,8 +38,8 @@ type Props = {
   canManage: boolean;
 };
 
-const ATG_REFRESH_INTERVAL_MS = 3_000;
-const ATG_REFRESH_TIMEOUT_MS = 60_000;
+const ATG_JOB_POLL_MS = 3_000;
+const ATG_JOB_TIMEOUT_MS = 60_000;
 
 const CONFIRM_COPY: Record<
   Exclude<AtgSyncAction, "push">,
@@ -40,13 +47,13 @@ const CONFIRM_COPY: Record<
 > = {
   publish: {
     title: "Publish on ATG?",
-    body: "Pushes the latest catalogue, then publishes the auction on the ATG White Label so bidders can see it. If any lot fails to sync, nothing is published and the failing lots are listed here.",
+    body: "Pushes the latest catalogue, then publishes the auction on the ATG White Label so bidders can see it. If any lot fails to sync, nothing is published and the failing lots are listed here. ATG has no unpublish — only Close ends the auction, and Close is permanent.",
     label: "Publish",
     tone: "warning",
   },
   close: {
     title: "Close on ATG?",
-    body: "Closes the auction on ATG. This cannot be undone from LAX. Results keep updating for 7 days afterwards.",
+    body: "Closes the auction on ATG. This cannot be undone from LAX. Results keep updating for 7 days afterwards. If no lots sold, this sale becomes free to publish on lax.bid.",
     label: "Close auction",
     tone: "danger",
   },
@@ -58,16 +65,12 @@ const QUEUED_COPY: Record<AtgSyncAction, string> = {
   close: "Closing on ATG",
 };
 
-type Waiting = { baseline: string; until: number; slow: boolean };
-
-/** Changes whenever a worker job finishes, successfully or not. */
-function syncSignature(view: AtgSaleSyncView): string {
-  return [view.remoteStatus, view.lastSyncedAt, view.lastError, view.publishedAt, view.closedAt]
-    .map((part) => part ?? "")
-    .join("|");
-}
+type Waiting = { jobId: string; until: number; slow: boolean };
 
 function actionHint(view: AtgSaleSyncView): string {
+  if (view.sellingPlatform === "lax") {
+    return "Published on lax.bid. Unpublish it on the sale overview to move bidding to ATG.";
+  }
   if (view.remoteStatus === "closed") {
     return "The ATG auction is closed, so nothing more can be sent. Results keep updating for 7 days after closing.";
   }
@@ -92,29 +95,57 @@ function resultsSummary(view: AtgSaleSyncView): { sold: number; total: number; h
   return { sold: sold.length, total: linked.length, hammer };
 }
 
+function resultsByAtgLotId(results: AtgSaleResultRow[]): Map<string, AtgSaleResultRow> {
+  const map = new Map<string, AtgSaleResultRow>();
+  for (const row of results) {
+    if (row.atgLotId) map.set(row.atgLotId, row);
+  }
+  return map;
+}
+
 export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<Exclude<AtgSyncAction, "push"> | null>(null);
   const [waiting, setWaiting] = useState<Waiting | null>(null);
-  const signature = syncSignature(view);
+  const laxOwned = view.sellingPlatform === "lax";
+  const resultMap = useMemo(() => resultsByAtgLotId(view.results), [view.results]);
 
   useEffect(() => {
     if (!waiting) return;
-    if (signature !== waiting.baseline) {
-      setWaiting(null);
-      return;
-    }
     if (waiting.slow) return;
-    const timer = setInterval(() => {
-      if (Date.now() >= waiting.until) {
-        setWaiting({ ...waiting, slow: true });
+
+    let cancelled = false;
+
+    const poll = async () => {
+      const result = await adminAtgJobStateAction(waiting.jobId);
+      if (cancelled) return;
+      const state = result.ok ? result.data?.state : undefined;
+      if (state === "done") {
+        setWaiting(null);
+        router.refresh();
         return;
       }
-      router.refresh();
-    }, ATG_REFRESH_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [waiting, signature, router]);
+      if (state === "failed") {
+        setWaiting(null);
+        notify.error("The ATG job failed. Check the last error below.");
+        router.refresh();
+        return;
+      }
+      if (Date.now() >= waiting.until) {
+        setWaiting({ ...waiting, slow: true });
+      }
+    };
+
+    void poll();
+    const timer = setInterval(() => {
+      void poll();
+    }, ATG_JOB_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [waiting, router]);
 
   if (!status.enabled) {
     return (
@@ -134,6 +165,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
   const linkedLots = view.lots.filter((lot) => lot.atgLotId).length;
   const showResults = view.linked && (published || closed);
   const results = showResults ? resultsSummary(view) : null;
+  const atgActionsBlocked = laxOwned || closed || view.saleCancelled;
 
   function run(action: AtgSyncAction) {
     startTransition(async () => {
@@ -147,8 +179,15 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
       notify.success(QUEUED_COPY[action], {
         description: "This page updates when ATG has finished.",
       });
-      setWaiting({ baseline: signature, until: Date.now() + ATG_REFRESH_TIMEOUT_MS, slow: false });
-      router.refresh();
+      if (!result.data) {
+        router.refresh();
+        return;
+      }
+      setWaiting({
+        jobId: result.data.jobId,
+        until: Date.now() + ATG_JOB_TIMEOUT_MS,
+        slow: false,
+      });
     });
   }
 
@@ -162,6 +201,9 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <AtgStatusBadge status={view.linked ? view.remoteStatus : null} />
+          {view.sellingPlatform === "atg" ? (
+            <StatusBadge variant="info">Selling on ATG</StatusBadge>
+          ) : null}
           {view.saleCancelled ? <StatusBadge variant="warning">Sale cancelled</StatusBadge> : null}
           {status.whiteLabelBaseUrl ? (
             <a
@@ -175,6 +217,22 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
             </a>
           ) : null}
         </div>
+
+        {laxOwned ? (
+          <Alert variant="warning">
+            <AlertTitle>Published on lax.bid</AlertTitle>
+            <AlertDescription>
+              Unpublish the sale on the{" "}
+              <Link
+                href={`/admin/sales/${saleId}`}
+                className="font-medium text-link underline-offset-4 hover:underline"
+              >
+                overview
+              </Link>{" "}
+              before pushing or publishing on ATG.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Detail label="ATG auction ID" value={view.atgAuctionId ?? "—"} mono />
@@ -203,7 +261,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                disabled={busy || closed || view.saleCancelled}
+                disabled={busy || atgActionsBlocked || (closed && !view.saleCancelled)}
                 onClick={() => run("push")}
               >
                 {view.linked ? "Push changes to ATG" : "Push to ATG"}
@@ -211,7 +269,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
               <Button
                 type="button"
                 variant="secondary"
-                disabled={busy || closed || published || view.saleCancelled}
+                disabled={busy || atgActionsBlocked || published}
                 onClick={() => setConfirm("publish")}
               >
                 {published ? "Published" : "Publish on ATG"}
@@ -244,11 +302,18 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
                 <TableHeaderCell>ATG</TableHeaderCell>
                 <TableHeaderCell>Images</TableHeaderCell>
                 <TableHeaderCell>Current / hammer</TableHeaderCell>
+                {showResults ? (
+                  <>
+                    <TableHeaderCell>Result</TableHeaderCell>
+                    <TableHeaderCell>Paddle</TableHeaderCell>
+                  </>
+                ) : null}
               </TableRow>
             </TableHead>
             <TableBody>
               {view.lots.map((lot) => {
                 const state = atgLotState(lot);
+                const resultRow = lot.atgLotId ? resultMap.get(lot.atgLotId) : undefined;
                 return (
                   <TableRow key={lot.lotId}>
                     <TableCell>{lot.lotNumber ?? "—"}</TableCell>
@@ -258,6 +323,14 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
                         <span className="line-clamp-2 text-xs text-error" title={lot.lastError}>
                           {lot.lastError}
                         </span>
+                      ) : null}
+                      {lot.lastError && canManage ? (
+                        <Link
+                          href={adminLotEditHref(lot.lotId)}
+                          className="text-xs font-medium text-link underline-offset-4 hover:underline"
+                        >
+                          Edit lot
+                        </Link>
                       ) : null}
                     </TableCell>
                     <TableCell>
@@ -271,6 +344,18 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
                           ? formatMoney(lot.currentMaxBid)
                           : "—"}
                     </TableCell>
+                    {showResults ? (
+                      <>
+                        <TableCell>
+                          {lot.sold === true
+                            ? "Sold"
+                            : lot.sold === false && lot.atgLotId
+                              ? "Unsold"
+                              : "—"}
+                        </TableCell>
+                        <TableCell>{resultRow?.paddleNumber ?? "—"}</TableCell>
+                      </>
+                    ) : null}
                   </TableRow>
                 );
               })}

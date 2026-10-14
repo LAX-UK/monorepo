@@ -1,4 +1,9 @@
-import type { AtgIntegrationStatus, AtgSaleSyncView, AtgSyncAction } from "@auction/types";
+import type {
+  AtgIntegrationStatus,
+  AtgSaleSyncView,
+  AtgSyncAction,
+  AtgSyncJobState,
+} from "@auction/types";
 
 export type AtgAdminError = {
   status: 404 | 409 | 503;
@@ -8,7 +13,9 @@ export type AtgAdminError = {
     | "not_linked"
     | "lot_not_linked"
     | "atg_closed"
-    | "sale_cancelled";
+    | "sale_cancelled"
+    | "sale_on_lax"
+    | "queue_unavailable";
   message: string;
 };
 
@@ -20,4 +27,5 @@ export interface IAtgAdminService {
   getSale(saleId: string): Promise<AtgSaleSyncView | null>;
   enqueueSaleAction(saleId: string, action: AtgSyncAction): Promise<AtgEnqueueResult>;
   enqueueLotDelete(lotId: string): Promise<AtgEnqueueResult>;
+  getJobState(jobId: string): Promise<AtgSyncJobState | null>;
 }

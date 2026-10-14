@@ -85,8 +85,14 @@ describe("isPublicCatalogLot", () => {
       status,
     }) as Sale;
 
-  it("rejects draft lots", () => {
+  it("rejects draft lots on non-ATG sales", () => {
     expect(isPublicCatalogLot(lot("draft"), sale("active"))).toBe(false);
+  });
+
+  it("accepts draft lots on ATG-owned sales", () => {
+    expect(
+      isPublicCatalogLot(lot("draft"), { status: "draft", sellingPlatform: "atg" } as Sale),
+    ).toBe(true);
   });
 
   it("rejects scheduled lot on draft sale", () => {
@@ -107,8 +113,12 @@ describe("isPublicCatalogLot", () => {
 });
 
 describe("isPublicCatalogSale", () => {
-  it("rejects draft sales", () => {
+  it("rejects plain draft sales", () => {
     expect(isPublicCatalogSale({ status: "draft" } as Sale)).toBe(false);
+  });
+
+  it("accepts ATG-owned draft sales", () => {
+    expect(isPublicCatalogSale({ status: "draft", sellingPlatform: "atg" } as Sale)).toBe(true);
   });
 
   it("accepts scheduled sales", () => {

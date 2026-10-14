@@ -516,7 +516,9 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       lot,
       container.mediaAssetEnricher,
     );
-    const sale = lot.saleId ? await container.saleService.getById(lot.saleId) : null;
+    const sale = lot.saleId
+      ? await container.saleService.getByIdForPublicCatalog(lot.saleId)
+      : null;
     const canPreview = viewerCanSeeNonPublicCatalog(role, staffRole);
     if (!canPreview && !isPublicCatalogLot(presented, sale)) {
       return c.json({ error: "Not found" }, 404);
