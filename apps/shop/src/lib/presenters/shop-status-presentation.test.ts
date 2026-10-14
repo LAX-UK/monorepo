@@ -3,6 +3,7 @@ import {
   resolveArtworkSaleStatePresentation,
   resolveCatalogueArtworkBadgePresentation,
   resolveEditionAvailabilityPresentation,
+  resolvePortalOriginalSaleStatusPresentation,
   resolveShopOrderStatusPresentation,
 } from "./shop-status-presentation.js";
 
@@ -32,6 +33,15 @@ describe("shop status presentation", () => {
     expect(resolveShopOrderStatusPresentation("paid").tone).toBe("success");
     expect(resolveShopOrderStatusPresentation("cancelled").tone).toBe("critical");
     expect(resolveShopOrderStatusPresentation("payment_failed").tone).toBe("critical");
+  });
+
+  it("labels original sale statuses and tolerates unknown values", () => {
+    expect(resolvePortalOriginalSaleStatusPresentation("deposit_due")).toEqual({
+      label: "Deposit due",
+      tone: "warning",
+    });
+    expect(resolvePortalOriginalSaleStatusPresentation("assigned").label).toBe("Yours");
+    expect(resolvePortalOriginalSaleStatusPresentation("future_state").label).toBe("Unknown");
   });
 
   it("derives edition availability", () => {

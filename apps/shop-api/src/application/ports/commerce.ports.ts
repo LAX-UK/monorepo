@@ -105,6 +105,7 @@ export interface BasketRepository {
   getBasket(owner: BasketOwner): Promise<BasketRecord | null>;
   addOrUpdateLine(input: UpsertBasketLineInput): Promise<BasketRecord>;
   removeLine(input: { owner: BasketOwner; lineId: string }): Promise<BasketRecord>;
+  /** A line in both baskets keeps the larger quantity, so signing in never doubles a limited edition. */
   mergeBaskets(input: {
     from: BasketOwner;
     to: { kind: "subject"; identitySubjectId: string };

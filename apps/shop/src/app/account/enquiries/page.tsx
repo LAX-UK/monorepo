@@ -74,15 +74,36 @@ export default async function ShopAccountEnquiriesPage() {
             </ShopStatusStateLink>
           }
         />
-      ) : result.status !== "ok" ? (
-        <ShopCatalogueStateRetryButton />
+      ) : result.status === "commerce_unavailable" ? (
+        <ShopStatusState
+          layout="page"
+          variant="error"
+          title="Enquiries not available yet"
+          titleAs="h2"
+          description="This environment has not turned on the owner portal yet."
+          actions={<ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>}
+        />
+      ) : result.status === "failed" ? (
+        <ShopStatusState
+          layout="page"
+          variant="error"
+          title="Could not load your enquiries"
+          titleAs="h2"
+          description="Try again later or contact support if this persists."
+          actions={<ShopCatalogueStateRetryButton />}
+        />
       ) : rows.length === 0 ? (
         <ShopStatusState
           layout="page"
           variant="empty"
           title="No enquiries yet"
           titleAs="h2"
-          description="Original and viewing enquiries from LAX Shop and lax.art appear here."
+          description="Enquiries about originals and viewings on LAX Shop and LAX Art appear here."
+          actions={
+            <ShopStatusStateLink href="/artworks" priority="primary">
+              Explore artworks
+            </ShopStatusStateLink>
+          }
         />
       ) : (
         <ul className="divide-y divide-outline-variant/40 rounded-lg border border-outline-variant/40 bg-surface">

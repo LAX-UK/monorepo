@@ -109,7 +109,7 @@ export function createDrizzleBasketRepository(
                 target: [shopBasketLine.basketId, shopBasketLine.artworkId],
                 targetWhere: sql`${shopBasketLine.artworkId} IS NOT NULL`,
                 set: {
-                  quantity: sql`${shopBasketLine.quantity} + ${line.quantity}`,
+                  quantity: sql`GREATEST(${shopBasketLine.quantity}, ${line.quantity})`,
                   updatedAt: new Date(),
                 },
               });
@@ -126,7 +126,7 @@ export function createDrizzleBasketRepository(
                 target: [shopBasketLine.basketId, shopBasketLine.productVariantId],
                 targetWhere: sql`${shopBasketLine.productVariantId} IS NOT NULL`,
                 set: {
-                  quantity: sql`${shopBasketLine.quantity} + ${line.quantity}`,
+                  quantity: sql`GREATEST(${shopBasketLine.quantity}, ${line.quantity})`,
                   updatedAt: new Date(),
                 },
               });
