@@ -1,7 +1,7 @@
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
 import type { SaleLotCardVM } from "./view-models";

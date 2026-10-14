@@ -1,10 +1,10 @@
 "use client";
 
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import { MarketingHorizontalRail } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
 import { EditorsPickMarketingCard } from "./editors-pick-marketing-card";

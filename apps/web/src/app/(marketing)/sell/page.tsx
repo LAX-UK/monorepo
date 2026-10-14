@@ -18,6 +18,7 @@ import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { Button } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -76,22 +77,30 @@ export default function SellPage() {
         <LegalH2 id="departments" className="scroll-mt-28 mt-10">
           What we accept
         </LegalH2>
-        <SellDepartmentsSection />
+        <MarketingSectionReveal index={0}>
+          <SellDepartmentsSection />
+        </MarketingSectionReveal>
 
         <LegalH2 id="how-it-works" className="scroll-mt-28">
           How consignment works
         </LegalH2>
-        <SellProcessSection />
+        <MarketingSectionReveal index={1}>
+          <SellProcessSection />
+        </MarketingSectionReveal>
 
         <LegalH2 id="prepare" className="scroll-mt-28">
           Prepare your submission
         </LegalH2>
-        <SellPrepareSection />
+        <MarketingSectionReveal index={2}>
+          <SellPrepareSection />
+        </MarketingSectionReveal>
 
         <LegalH2 id="photos" className="scroll-mt-28">
           Photographing your item
         </LegalH2>
-        <SellPhotosSection />
+        <MarketingSectionReveal index={3}>
+          <SellPhotosSection />
+        </MarketingSectionReveal>
 
         <LegalH2 id="fees" className="scroll-mt-28">
           Fees &amp; specialist support
@@ -113,9 +122,13 @@ export default function SellPage() {
         <LegalH2 id="valuation" className="scroll-mt-28">
           Get a valuation
         </LegalH2>
-        <SellValuationSection />
+        <MarketingSectionReveal index={4}>
+          <SellValuationSection />
+        </MarketingSectionReveal>
 
-        <SellPageClosingPromo />
+        <MarketingSectionReveal index={5}>
+          <SellPageClosingPromo />
+        </MarketingSectionReveal>
       </LegalPage>
     </PolicyHubLayout>
   );

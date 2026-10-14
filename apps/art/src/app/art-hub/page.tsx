@@ -5,6 +5,7 @@ import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
 import { composeArtHubPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 
@@ -49,18 +50,22 @@ export default async function ArtHubPage() {
         />
       ) : null}
       {spotlight.length > 0 ? (
-        <ArtSection id="art-hub-spotlight" title="Spotlight">
-          <ArtEditorialCardGrid cards={spotlight} ariaLabel="Spotlight" priorityCount={3} />
-        </ArtSection>
+        <MarketingReveal index={0}>
+          <ArtSection id="art-hub-spotlight" title="Spotlight">
+            <ArtEditorialCardGrid cards={spotlight} ariaLabel="Spotlight" priorityCount={3} />
+          </ArtSection>
+        </MarketingReveal>
       ) : null}
       {stories.length > 0 ? (
-        <ArtSection id="art-hub-stories" title="Stories, films and guides">
-          <ArtEditorialCardGrid
-            cards={stories}
-            ariaLabel="Stories, films and guides"
-            {...(spotlight.length === 0 ? { priorityCount: 3 } : {})}
-          />
-        </ArtSection>
+        <MarketingReveal index={1}>
+          <ArtSection id="art-hub-stories" title="Stories, films and guides">
+            <ArtEditorialCardGrid
+              cards={stories}
+              ariaLabel="Stories, films and guides"
+              {...(spotlight.length === 0 ? { priorityCount: 3 } : {})}
+            />
+          </ArtSection>
+        </MarketingReveal>
       ) : null}
     </div>
   );

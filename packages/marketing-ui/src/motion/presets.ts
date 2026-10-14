@@ -1,13 +1,16 @@
+import type { RevealVariant } from "./reveal/variants.js";
+
+/** Locked marketing motion presets — do not sprinkle index * N at call sites. */
 export const MARKETING_CARD_REVEAL = {
-  variant: "fadeUp",
-  stepMs: 50,
-  maxDelayMs: 150,
+  variant: "rise" satisfies RevealVariant,
+  stepMs: 70,
+  maxDelayMs: 420,
 } as const;
 
 export const MARKETING_SECTION_REVEAL = {
-  variant: "fadeUp",
-  stepMs: 60,
-  maxDelayMs: 120,
+  variant: "rise" satisfies RevealVariant,
+  stepMs: 80,
+  maxDelayMs: 160,
 } as const;
 
 export type MarketingRevealPreset = typeof MARKETING_CARD_REVEAL | typeof MARKETING_SECTION_REVEAL;

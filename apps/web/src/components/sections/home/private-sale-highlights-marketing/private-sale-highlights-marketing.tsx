@@ -1,11 +1,8 @@
-import {
-  MarketingCardReveal,
-  MarketingSectionReveal,
-} from "@/components/marketing/marketing-reveal";
 import { PRIVATE_SALE_COPY } from "@/components/sections/home/home-copy";
 import type { PrivateSaleHighlightVM } from "@/components/sections/home/home-view-models";
 import { MediaImage } from "@/components/ui/media-image";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { MarketingCardReveal, MarketingSectionReveal } from "@auction/marketing-ui";
 import { DisplayHeading, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";

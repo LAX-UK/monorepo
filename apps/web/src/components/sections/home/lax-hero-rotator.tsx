@@ -13,10 +13,10 @@ import {
 } from "@/components/sections/home/home-view-models";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
-import { RevealOnMount } from "@/components/ui/reveal";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
+import { RevealOnMount } from "@auction/marketing-ui";
 import { Carousel, CarouselContent, CarouselItem, cn, useCarousel } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";

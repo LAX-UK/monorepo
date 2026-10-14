@@ -2,6 +2,7 @@ import { CategoryCard } from "@/components/home/cards/category-card";
 import { HorizontalRailSection } from "@/components/home/horizontal-rail-section";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import type { HomePageViewModel } from "@/lib/home/home-page.vm";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 type CategoriesSectionProps = {
   section: HomePageViewModel["sections"]["categories"];
@@ -39,8 +40,10 @@ export function CategoriesSection({ section, cards, errorMessage }: CategoriesSe
         )
       }
     >
-      {cards.map((card) => (
-        <CategoryCard key={card.id} card={card} />
+      {cards.map((card, index) => (
+        <MarketingCardReveal key={card.id} index={index}>
+          <CategoryCard card={card} />
+        </MarketingCardReveal>
       ))}
     </HorizontalRailSection>
   );

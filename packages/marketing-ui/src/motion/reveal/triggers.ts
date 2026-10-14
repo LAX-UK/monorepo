@@ -1,6 +1,8 @@
 export type RevealTrigger = {
   readonly id: string;
   bind(el: HTMLElement, onReveal: () => void): () => void;
+  /** True when the element should keep its server-rendered paint instead of being hidden and animated. */
+  isSatisfiedOnArm?(el: HTMLElement): boolean;
 };
 
 export const eagerTrigger: RevealTrigger = {
@@ -25,6 +27,7 @@ function isElementInViewport(el: HTMLElement): boolean {
 export function inViewTrigger(options?: IntersectionObserverInit): RevealTrigger {
   return {
     id: "in-view",
+    isSatisfiedOnArm: isElementInViewport,
     bind: (el, onReveal) => {
       if (typeof IntersectionObserver === "undefined") {
         onReveal();

@@ -1,4 +1,3 @@
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleCardActions } from "@/components/sections/sales/card/sale-card-actions";
 import { SaleCardHeader } from "@/components/sections/sales/card/sale-card-header";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
@@ -7,6 +6,7 @@ import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell"
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
 import type { SaleAuctionRowVM } from "@/components/sections/sales/sales-view-models";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 type Props = {
   vm: SaleAuctionRowVM;

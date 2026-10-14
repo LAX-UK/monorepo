@@ -2,6 +2,7 @@ import { OriginalCard } from "@/components/home/cards/original-card";
 import { HorizontalRailSection } from "@/components/home/horizontal-rail-section";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import type { HomePageViewModel } from "@/lib/home/home-page.vm";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 type OriginalsSectionProps = {
   section: HomePageViewModel["sections"]["originals"];
@@ -39,8 +40,10 @@ export function OriginalsSection({ section, cards, errorMessage }: OriginalsSect
         )
       }
     >
-      {cards.map((card) => (
-        <OriginalCard key={card.id} card={card} />
+      {cards.map((card, index) => (
+        <MarketingCardReveal key={card.id} index={index}>
+          <OriginalCard card={card} />
+        </MarketingCardReveal>
       ))}
     </HorizontalRailSection>
   );

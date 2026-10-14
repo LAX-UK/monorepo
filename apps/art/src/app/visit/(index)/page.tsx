@@ -7,7 +7,7 @@ import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { composeVisitPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingCardMedia } from "@auction/marketing-ui";
+import { MarketingCardMedia, MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -54,37 +54,43 @@ export default async function VisitPage() {
           description="Visit details will appear here when venues are published."
         />
       ) : (
-        <ul className="grid gap-x-6 gap-y-12 md:grid-cols-2" aria-label="Galleries">
-          {venues.map((card, index) => (
-            <li key={card.venue.slug} className="flex flex-col gap-5" data-testid="art-venue-card">
-              <Link href={card.href} aria-hidden="true" tabIndex={-1} className="block">
-                <MarketingCardMedia className="aspect-[4/3] rounded-md bg-surface-container">
-                  <ArtMediaImage
-                    src={card.venue.coverUrl}
-                    alt=""
-                    label="Gallery"
-                    priority={index === 0}
-                    sizes="(min-width: 48rem) 45vw, 100vw"
-                    className="absolute inset-0 size-full"
-                    imgClassName="object-cover"
-                  />
-                </MarketingCardMedia>
-              </Link>
-              <h2 className="font-headline text-2xl font-semibold text-on-surface">
-                <Link href={card.href} className="art-focus-ring rounded-sm hover:underline">
-                  {card.venue.name}
-                </Link>
-              </h2>
-              <ArtVenueFacts facts={card} compact />
-              <Link
-                href={card.href}
-                className="art-focus-ring w-fit rounded-sm font-label text-sm font-semibold uppercase tracking-wide text-on-surface underline underline-offset-4 hover:no-underline"
+        <MarketingReveal index={0}>
+          <ul className="grid gap-x-6 gap-y-12 md:grid-cols-2" aria-label="Galleries">
+            {venues.map((card, index) => (
+              <li
+                key={card.venue.slug}
+                className="flex flex-col gap-5"
+                data-testid="art-venue-card"
               >
-                Plan your visit<span className="sr-only"> to {card.venue.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                <Link href={card.href} aria-hidden="true" tabIndex={-1} className="block">
+                  <MarketingCardMedia className="aspect-[4/3] rounded-md bg-surface-container">
+                    <ArtMediaImage
+                      src={card.venue.coverUrl}
+                      alt=""
+                      label="Gallery"
+                      priority={index === 0}
+                      sizes="(min-width: 48rem) 45vw, 100vw"
+                      className="absolute inset-0 size-full"
+                      imgClassName="object-cover"
+                    />
+                  </MarketingCardMedia>
+                </Link>
+                <h2 className="font-headline text-2xl font-semibold text-on-surface">
+                  <Link href={card.href} className="art-focus-ring rounded-sm hover:underline">
+                    {card.venue.name}
+                  </Link>
+                </h2>
+                <ArtVenueFacts facts={card} compact />
+                <Link
+                  href={card.href}
+                  className="art-focus-ring w-fit rounded-sm font-label text-sm font-semibold uppercase tracking-wide text-on-surface underline underline-offset-4 hover:no-underline"
+                >
+                  Plan your visit<span className="sr-only"> to {card.venue.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </MarketingReveal>
       )}
 
       <ArtPrivateViewingSection viewer={viewer} returnTo="/visit" />

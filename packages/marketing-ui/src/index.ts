@@ -37,7 +37,34 @@ export {
   MarketingCategoryTile,
   type MarketingCategoryTileProps,
 } from "./marketing-category-tile.js";
-export { MarketingCardReveal, MarketingReveal } from "./marketing-reveal.js";
+export {
+  MarketingCardReveal,
+  MarketingHeroReveal,
+  MarketingReveal,
+  MarketingSectionReveal,
+  Reveal,
+  RevealInView,
+  RevealOnMount,
+  RevealStagger,
+  defaultInViewTrigger,
+  eagerTrigger,
+  inViewTrigger,
+  REVEAL_VARIANTS,
+  revealVariantClass,
+  type RevealFacadeProps,
+  type RevealProps,
+  type RevealStaggerProps,
+  type RevealTrigger,
+  type RevealVariant,
+  SmoothScroll,
+  useSmoothScroll,
+  CountUpInView,
+  type CountUpInViewProps,
+  type ScrollTarget,
+  type ScrollToOptions,
+  type SmoothScrollEngine,
+  type SmoothScrollEngineFactory,
+} from "./motion/index.js";
 export { MarketingSectionHeader } from "./marketing-section-header.js";
 export {
   MarketingHorizontalRail,
@@ -77,7 +104,7 @@ export {
   MARKETING_SECTION_REVEAL,
   marketingStaggerDelay,
   type MarketingRevealPreset,
-} from "./motion.js";
+} from "./motion/index.js";
 export {
   MARKETING_HEADER_CHROME,
   type MarketingHeaderTone,

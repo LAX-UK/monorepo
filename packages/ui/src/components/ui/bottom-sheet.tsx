@@ -77,7 +77,9 @@ const BottomSheetContent = React.forwardRef<
             </DrawerPrimitive.Close>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-lenis-prevent>
+          {children}
+        </div>
         {footer ? (
           <div className="shrink-0 border-t border-outline-variant/20 bg-surface-container-lowest">
             {footer}

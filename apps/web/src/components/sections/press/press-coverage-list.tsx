@@ -1,7 +1,7 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { EMPTY_STATE_VOICE } from "@/lib/ui/empty-state-copy";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";

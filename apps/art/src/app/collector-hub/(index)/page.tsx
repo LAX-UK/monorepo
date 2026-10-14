@@ -4,6 +4,7 @@ import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status"
 import { artServices } from "@/lib/art-services.server";
 import { composeCollectorHubPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -50,7 +51,9 @@ export default async function CollectorHubPage() {
           description="Guides and advisory notes will appear here when they are published."
         />
       ) : (
-        <ArtEditorialCardGrid cards={result.data.cards} ariaLabel="Collector resources" />
+        <MarketingReveal index={0}>
+          <ArtEditorialCardGrid cards={result.data.cards} ariaLabel="Collector resources" />
+        </MarketingReveal>
       )}
     </div>
   );

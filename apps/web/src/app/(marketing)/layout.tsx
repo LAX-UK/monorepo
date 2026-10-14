@@ -1,4 +1,5 @@
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
+import { MarketingSmoothScroll } from "@/components/layout/marketing-smooth-scroll.client";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AuthRequiredToast } from "@/components/marketing/auth-required-toast";
@@ -20,7 +21,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
   const crossProductFooterLinks = loadBidCrossProductFooterLinks();
 
   return (
-    <>
+    <MarketingSmoothScroll>
       <div className="overflow-x-clip">
         <MarketingLotQuickLookShell>
           <MarketingHeaderTitleProvider>
@@ -36,6 +37,6 @@ export default async function MarketingLayout({ children }: { children: ReactNod
       <Suspense fallback={null}>
         <MarketingPromptOrchestrator enabled={areMarketingPromptsEnabled()} />
       </Suspense>
-    </>
+    </MarketingSmoothScroll>
   );
 }

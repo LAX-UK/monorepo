@@ -2,6 +2,7 @@ import { PrintCard } from "@/components/home/cards/print-card";
 import { HorizontalRailSection } from "@/components/home/horizontal-rail-section";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import type { HomePageViewModel } from "@/lib/home/home-page.vm";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 
 type PrintsSectionProps = {
   section: HomePageViewModel["sections"]["prints"];
@@ -40,8 +41,10 @@ export function PrintsSection({ section, cards, errorMessage }: PrintsSectionPro
         )
       }
     >
-      {cards.map((card) => (
-        <PrintCard key={card.id} card={card} />
+      {cards.map((card, index) => (
+        <MarketingCardReveal key={card.id} index={index}>
+          <PrintCard card={card} />
+        </MarketingCardReveal>
       ))}
     </HorizontalRailSection>
   );

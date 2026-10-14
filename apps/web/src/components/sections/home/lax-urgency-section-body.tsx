@@ -1,11 +1,11 @@
 "use client";
 
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import type { UrgencySectionVariant } from "@/components/sections/home/lax-urgency-section";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { catalogViewCarryParams, lotCatalogHref } from "@/lib/marketing/catalog-links";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import { UrgencyLotCard } from "./urgency-lot-card";
 import { UrgencyLotRow } from "./urgency-lot-row";
 

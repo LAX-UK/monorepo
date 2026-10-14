@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { eagerTrigger, inViewTrigger } from "./triggers";
+import { eagerTrigger, inViewTrigger } from "./triggers.js";
 
 describe("eagerTrigger", () => {
   it("calls onReveal synchronously when bind runs", () => {

@@ -1,4 +1,3 @@
-import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { SaleCardActions } from "@/components/sections/sales/card/sale-card-actions";
@@ -7,6 +6,7 @@ import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell"
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
 import type { CalendarGridCardVM } from "@/components/sections/sales/sales-view-models";
+import { MarketingCardReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 
 type Props = {

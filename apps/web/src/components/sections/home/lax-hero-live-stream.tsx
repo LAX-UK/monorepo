@@ -4,9 +4,9 @@ import { LaxHeroLiveOverlayContent } from "@/components/sections/home/lax-hero-l
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
-import { RevealOnMount } from "@/components/ui/reveal";
 import { HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
+import { RevealOnMount } from "@auction/marketing-ui";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
