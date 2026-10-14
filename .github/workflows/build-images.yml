@@ -169,6 +169,8 @@ jobs:
           build-args: |
             IMAGE_SHA=${{ env.SHA }}
             ${{ steps.webargs.outputs.args }}
+            ${{ matrix.component == 'art' && format('NEXT_PUBLIC_SENTRY_DSN_ART={0}', secrets.SENTRY_DSN_ART) || '' }}
+            ${{ matrix.component == 'shop' && format('NEXT_PUBLIC_SENTRY_DSN_SHOP={0}', secrets.SENTRY_DSN_SHOP) || '' }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
