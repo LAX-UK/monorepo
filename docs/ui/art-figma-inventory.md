@@ -18,9 +18,9 @@ This inventory maps shipped MVP routes in `apps/art` to Figma frames referenced 
 | Artist profile `/artists/[slug]` | Artist header + works grid | `app/artists/[slug]/page.tsx` | `artist/artist-page.composer.ts` | `ArtArtistFollowButton`, `ArtArtworkGrid` |
 | Search `/search?q=` | Search entry + results | `app/search/page.tsx` | `search/search-page.composer.ts` | `ArtSearchForm`, artwork + artist grids |
 | Account profile `/account` | Account profile (read-only) | `app/account/page.tsx` | `account/account-page.composer.ts` | `ArtAccountShell`, LAX Account link (env-configured) |
-| Inquiries `/account/inquiries` | Inquiries tab | `app/account/inquiries/page.tsx` | same | `ArtAccountListStateView`, `DotStatusPill` |
+| Enquiries `/account/enquiries` | Enquiries tab | `app/account/enquiries/page.tsx` | same | `ArtAccountListStateView`, `DotStatusPill` |
 | Collection `/account/collection` | Collection tab | `app/account/collection/page.tsx` | same | `ArtAccountListStateView` |
-| Favorites `/account/favorites` | Saved works / Followed artists | `app/account/favorites/page.tsx` | same | `ArtArtworkGrid`, `ArtArtistGrid` |
+| Favourites `/account/favourites` | Saved works / Followed artists | `app/account/favourites/page.tsx` | same | `ArtArtworkGrid`, `ArtArtistGrid` |
 | Payouts `/account/payouts` | Mobile payouts (flagged: `SHOP_PAYOUTS_ENABLED`) | `app/account/payouts/page.tsx` | same (404 when flag off) | `ArtPayoutAccountPanel` + `@auction/shop-portal` VM |
 | Login / register | Hosted identity handoff | `app/login/page.tsx`, `app/register/page.tsx` | `auth/art-auth-start.ts` | Redirects to art-identity with `returnTo` |
 | Header + mobile bottom nav | Global chrome | `app/layout.tsx` | `layout/art-nav.vm.ts` | `ArtHeader`, `ArtMobileBottomNav` (`MarketingBottomTabBar`), `LaxProductSwitcher` |

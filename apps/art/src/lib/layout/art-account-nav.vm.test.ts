@@ -9,8 +9,8 @@ import {
 describe("art account navigation view model", () => {
   it("lists favorites, inquiries, and collection for the desktop menu", () => {
     expect(ART_ACCOUNT_LINKS.map((link) => link.label)).toEqual([
-      "Favorites",
-      "Inquiries",
+      "Favourites",
+      "Enquiries",
       "Collection",
     ]);
   });
@@ -18,16 +18,16 @@ describe("art account navigation view model", () => {
   it("puts My account first in the drawer list", () => {
     expect(buildArtMobileAccountLinks("/account", "/").map((link) => link.label)).toEqual([
       "My account",
-      "Favorites",
-      "Inquiries",
+      "Favourites",
+      "Enquiries",
       "Collection",
     ]);
   });
 
   it.each([
     ["/account", ["My account"]],
-    ["/account/favorites", ["Favorites"]],
-    ["/account/inquiries/abc", ["Inquiries"]],
+    ["/account/favourites", ["Favourites"]],
+    ["/account/enquiries/abc", ["Enquiries"]],
     ["/account/payouts", []],
     ["/artworks", []],
   ] as const)("marks %s as current: %j", (pathname, expected) => {

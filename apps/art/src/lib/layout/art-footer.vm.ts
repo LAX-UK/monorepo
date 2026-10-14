@@ -39,7 +39,7 @@ export function buildArtFooterVm(input: {
   } else if (input.accountState.kind === "authenticated") {
     accountLinks.push(
       { label: "Your account", href: "/account" },
-      { label: "Favorites", href: "/account/favorites" },
+      { label: "Favourites", href: "/account/favourites" },
       { label: "Collection", href: "/account/collection" },
     );
   } else if (input.accountState.kind === "disabled") {

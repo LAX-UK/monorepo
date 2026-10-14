@@ -4,7 +4,7 @@ import { artSignInHref, buildArtReauthVm, resolveArtReauthReturnTo } from "./art
 describe("resolveArtReauthReturnTo", () => {
   it.each([
     ["/artworks/warm-basket", "/artworks/warm-basket"],
-    ["/account/favorites?tab=saved", "/account/favorites?tab=saved"],
+    ["/account/favourites?tab=saved", "/account/favourites?tab=saved"],
     [["/artists", "/account"], "/artists"],
   ] as const)("keeps same-origin relative path %j", (raw, expected) => {
     expect(resolveArtReauthReturnTo(raw as string | string[], "/")).toBe(expected);
@@ -49,8 +49,8 @@ describe("artSignInHref", () => {
 
 describe("buildArtReauthVm", () => {
   it("sends Sign in again through the storefront login route with the safe return path", () => {
-    expect(buildArtReauthVm("/account/inquiries", "/")).toEqual({
-      signInHref: "/login?returnTo=%2Faccount%2Finquiries",
+    expect(buildArtReauthVm("/account/enquiries", "/")).toEqual({
+      signInHref: "/login?returnTo=%2Faccount%2Fenquiries",
       continueHref: "/artworks",
     });
   });

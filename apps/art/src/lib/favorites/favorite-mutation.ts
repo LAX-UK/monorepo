@@ -25,8 +25,8 @@ const FAILURE_MESSAGES: Record<FavoriteTarget, Record<FavoriteMutationFailure, s
     sign_in_required: "Sign in to save artworks.",
     session_expired: "Your session expired. Refresh the page and try again.",
     not_found: "This artwork is no longer available.",
-    invalid: "We could not update your favorites.",
-    unavailable: "We could not update your favorites. Try again shortly.",
+    invalid: "We could not update your favourites.",
+    unavailable: "We could not update your favourites. Try again shortly.",
   },
   artist: {
     sign_in_required: "Sign in to follow artists.",

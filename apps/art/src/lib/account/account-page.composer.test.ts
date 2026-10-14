@@ -46,9 +46,9 @@ describe("account page composers", () => {
     });
     expect(result.nav.map((item) => item.label)).toEqual([
       "Profile",
-      "Inquiries",
+      "Enquiries",
       "Collection",
-      "Favorites",
+      "Favourites",
     ]);
   });
 
@@ -80,7 +80,7 @@ describe("account page composers", () => {
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(result.vm.artworks).toMatchObject({ kind: "ok", items: [{ slug: "a", saved: true }] });
     expect(result.vm.artists).toEqual({ kind: "empty" });
-    expect(result.nav.find((item) => item.active)?.href).toBe("/account/favorites");
+    expect(result.nav.find((item) => item.active)?.href).toBe("/account/favourites");
   });
 
   it("asks for sign-in again when the BFF session lapsed", async () => {
@@ -90,7 +90,7 @@ describe("account page composers", () => {
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(result.vm.enquiries).toEqual({
       kind: "sign_in",
-      loginHref: "/login?returnTo=%2Faccount%2Finquiries",
+      loginHref: "/login?returnTo=%2Faccount%2Fenquiries",
     });
   });
 

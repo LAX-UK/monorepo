@@ -11,7 +11,7 @@ export type FavoriteToggleMessages = {
 
 /**
  * Optimistic favorite state: flips immediately, settles on the server answer, and rolls back
- * with an announced error. Signed-out viewers go to sign-in instead of mutating.
+ * with an announced error that callers can also show. Signed-out viewers go to sign-in instead of mutating.
  */
 export function useFavoriteToggle(input: {
   initialActive: boolean;
@@ -22,6 +22,7 @@ export function useFavoriteToggle(input: {
   const { initialActive, auth, mutate, messages } = input;
   const [active, setActive] = useState(initialActive);
   const [announcement, setAnnouncement] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function useFavoriteToggle(input: {
     }
     const previous = active;
     setActive(next);
+    setError(null);
     startTransition(async () => {
       try {
         const outcome = await mutate(next);
@@ -49,12 +51,14 @@ export function useFavoriteToggle(input: {
           return;
         }
         setAnnouncement(outcome.message);
+        setError(outcome.message);
       } catch {
         setActive(previous);
         setAnnouncement("Something went wrong. Try again.");
+        setError("Something went wrong. Try again.");
       }
     });
   };
 
-  return { active, pending, announcement, toggle };
+  return { active, pending, announcement, error, toggle };
 }

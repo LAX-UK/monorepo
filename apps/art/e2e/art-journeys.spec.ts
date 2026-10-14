@@ -88,7 +88,7 @@ test.describe("lax.art journeys", () => {
     const card = page.getByTestId("art-artwork-card").first();
     test.skip((await card.count()) === 0, "no art-channel artworks seeded");
 
-    const heart = card.getByRole("button", { name: /^Save .* to favorites$/ });
+    const heart = card.getByRole("button", { name: /^Save .* to favourites$/ });
     const initiallySaved = (await heart.getAttribute("aria-pressed")) === "true";
     await heart.click();
     await expect(heart).toHaveAttribute("aria-pressed", String(!initiallySaved));
@@ -98,7 +98,7 @@ test.describe("lax.art journeys", () => {
     const reloaded = page
       .getByTestId("art-artwork-card")
       .first()
-      .getByRole("button", { name: /^Save .* to favorites$/ });
+      .getByRole("button", { name: /^Save .* to favourites$/ });
     await expect(reloaded).toHaveAttribute("aria-pressed", String(!initiallySaved));
 
     await reloaded.click();
@@ -117,7 +117,7 @@ test.describe("lax.art journeys", () => {
     test.skip(!credentials, "nav assertion needs ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");
     await signInArtBuyer(page, credentials as NonNullable<typeof credentials>, "/account");
     const accountNav = page.getByRole("navigation", { name: "Account sections" });
-    await expect(accountNav.getByRole("link", { name: "Favorites" })).toBeVisible();
+    await expect(accountNav.getByRole("link", { name: "Favourites" })).toBeVisible();
     await expect(accountNav.getByRole("link", { name: "Payouts" })).toHaveCount(
       artPayoutsEnabled ? 1 : 0,
     );
@@ -156,7 +156,7 @@ test.describe("lax.art journeys", () => {
     await page.goto("/search");
     const nav = page.getByTestId("art-mobile-bottom-nav");
     await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link")).toHaveText(["Home", "Discover", "Favorites", "Account"]);
+    await expect(nav.getByRole("link")).toHaveText(["Home", "Discover", "Favourites", "Account"]);
     await expect(nav.getByRole("link", { name: "Discover" })).toHaveAttribute(
       "aria-current",
       "page",

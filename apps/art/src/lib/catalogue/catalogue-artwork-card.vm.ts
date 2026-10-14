@@ -60,7 +60,7 @@ export function buildCatalogueArtworkCards(
   return items.map((item) => toCatalogueArtworkCardVm(item, savedSlugs));
 }
 
-/** Saved favorites carry no sale facts; the detail page resolves price and availability. */
+/** Saved favourites carry no sale facts; the detail page resolves price and availability. */
 export function toSavedArtworkCardVm(item: PortalSavedArtwork): CatalogueArtworkCardVm {
   return {
     slug: item.artworkSlug,

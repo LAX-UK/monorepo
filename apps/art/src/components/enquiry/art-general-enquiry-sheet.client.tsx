@@ -72,8 +72,8 @@ export function ArtGeneralEnquirySheet({
           <Alert data-testid="art-general-enquire-sent">
             <AlertTitle>Message sent</AlertTitle>
             <AlertDescription>
-              Thank you — the gallery team will be in touch. You can follow up from your account
-              inquiries.
+              Thank you — the gallery team will be in touch. You can follow up from Enquiries in
+              your account.
             </AlertDescription>
           </Alert>
         ) : (

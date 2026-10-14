@@ -125,7 +125,7 @@ export type ArtAccountFavoritesVm = {
 export function composeArtAccountFavoritesPage(
   services: AccountServices & { favorites: ArtFavoritesReadPort },
 ): Promise<ArtAccountPageResult<ArtAccountFavoritesVm>> {
-  const path = "/account/favorites";
+  const path = "/account/favourites";
   return gateAccountPage(services, path, async (viewer) => {
     const [saved, followed] = await Promise.all([
       services.favorites.listSavedArtworks(),
@@ -165,7 +165,7 @@ function buildGeneralEnquiryRows(items: readonly GeneralEnquiryRow[]): ArtGenera
 export function composeArtAccountInquiriesPage(
   services: AccountServices & { portal: ArtPortalReadPort },
 ): Promise<ArtAccountPageResult<ArtAccountInquiriesVm>> {
-  const path = "/account/inquiries";
+  const path = "/account/enquiries";
   return gateAccountPage(services, path, async () => {
     const [enquiries, generalEnquiries] = await Promise.all([
       services.portal.listEnquiries(),
