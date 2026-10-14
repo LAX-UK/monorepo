@@ -12,7 +12,7 @@ import {
 import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
-import { getAtgIntegrationStatus, getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -56,7 +56,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
     venuesResult,
     pendingRegistrationCount,
     connectRequiredByLotId,
-    atgStatus,
+    sellingPlatform,
   ] = await Promise.all([
     (await getServerCategoryReader()).tree(),
     getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
@@ -67,11 +67,8 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
       .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
     loadAdminSalePendingRegistrationCount(id, sale),
     Promise.resolve(connectRequiredFromLots(lots)),
-    getAtgIntegrationStatus().catch(() => ({ enabled: false, whiteLabelBaseUrl: null })),
+    canManageSale ? getAtgSaleSellingPlatform(sale) : Promise.resolve(null),
   ]);
-
-  const sellingPlatform =
-    canManageSale && atgStatus.enabled ? await getAtgSaleSellingPlatform(id) : null;
 
   const initialStep =
     stepParam ??

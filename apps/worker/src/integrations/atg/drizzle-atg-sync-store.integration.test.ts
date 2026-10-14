@@ -1,5 +1,5 @@
 import { type Database, createDb } from "@auction/db";
-import { atgLotLink, legalEntity, lot, sale, user } from "@auction/db/schema";
+import { artistProfile, atgLotLink, legalEntity, lot, sale, user } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleAtgSyncStore } from "./drizzle-atg-sync-store.js";
@@ -190,6 +190,80 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
         .set({ saleId: null, deletedAt: new Date("2026-10-08T00:00:00Z") })
         .where(eq(lot.id, lotIds[1]));
       expect(await store.hasCatalogueChangesSince(saleId, later)).toBe(true);
+    });
+  });
+
+  it("detects artist edits on lots in the sale", async () => {
+    await withSeededSale(async (store, db) => {
+      const syncedAt = new Date("2026-10-05T00:00:00Z");
+      const [artist] = await db
+        .insert(artistProfile)
+        .values({
+          displayName: "Artist",
+          slug: "atg-store-artist",
+          createdAt: syncedAt,
+          updatedAt: syncedAt,
+        })
+        .returning({ id: artistProfile.id });
+      if (!artist) throw new Error("artist insert failed");
+      await db.update(lot).set({ artistId: artist.id }).where(eq(lot.id, lotIds[0]));
+      expect(await store.hasCatalogueChangesSince(saleId, new Date("2026-10-06T00:00:00Z"))).toBe(
+        false,
+      );
+
+      await db
+        .update(artistProfile)
+        .set({ updatedAt: new Date("2026-10-07T00:00:00Z") })
+        .where(eq(artistProfile.id, artist.id));
+      expect(await store.hasCatalogueChangesSince(saleId, new Date("2026-10-06T00:00:00Z"))).toBe(
+        true,
+      );
+    });
+  });
+
+  it("loads ownership state, counting sold ATG lots", async () => {
+    await withSeededSale(async (store) => {
+      expect(await store.loadOwnershipState(saleId)).toEqual({
+        saleStatus: "draft",
+        atgRemoteStatus: null,
+        atgLinked: false,
+        atgSoldLotCount: 0,
+      });
+      await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "closed" });
+      await store.insertLotLink({ lotId: lotIds[0], saleId, atgLotId: "atg-l1", payloadHash: "h" });
+      await store.applyRemoteLots(
+        saleId,
+        [
+          {
+            atgLotId: "atg-l1",
+            lotNumber: "2",
+            status: 3,
+            sold: true,
+            hammerPrice: 1500,
+            currentMaxBid: 1500,
+            numberOfBids: 4,
+            winningBidderId: "b1",
+            endTimeUtc: null,
+          },
+        ],
+        new Date("2026-10-09T00:00:00Z"),
+      );
+      expect(await store.loadOwnershipState(saleId)).toMatchObject({
+        atgRemoteStatus: "closed",
+        atgLinked: true,
+        atgSoldLotCount: 1,
+      });
+      expect(await store.loadOwnershipState("a7a00000-0000-4000-8000-0000000000ff")).toBeNull();
+    });
+  });
+
+  it("stops listing links for soft-deleted sales", async () => {
+    await withSeededSale(async (store, db) => {
+      await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "published" });
+      const since = new Date("2026-09-01T00:00:00Z");
+      expect(await store.listActiveAuctionLinks(since)).toHaveLength(1);
+      await db.update(sale).set({ deletedAt: new Date() }).where(eq(sale.id, saleId));
+      expect(await store.listActiveAuctionLinks(since)).toHaveLength(0);
     });
   });
 });

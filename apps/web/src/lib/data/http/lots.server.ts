@@ -1,5 +1,6 @@
 import "server-only";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
+import { atgDisplayListLot } from "@/lib/catalog/atg-catalog-display";
 import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import type {
   ArchiveEndedSummary,
@@ -154,7 +155,7 @@ async function listLotsViaCatalogueFetch(params: ListLotsParams): Promise<Lot[]>
   );
   await throwIfNotOk(res, "sellerLots");
   const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseLot);
+  return body.data.map((raw) => atgDisplayListLot(parseLot(raw)));
 }
 
 export async function getServerLotReader(): Promise<LotReader> {
@@ -168,7 +169,7 @@ export async function getServerLotReader(): Promise<LotReader> {
       const res = await client.lots.$get({ query: buildLotListQuery(params) });
       await throwIfNotOk(res, "sellerLots");
       const body = (await res.json()) as { data: unknown[] };
-      return body.data.map(parseLot);
+      return body.data.map((raw) => atgDisplayListLot(parseLot(raw)));
     },
     async getById(id: string): Promise<Lot | PublicLotView | null> {
       const res = await client.lots[":id"].$get({ param: { id } });

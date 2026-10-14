@@ -131,9 +131,6 @@ export class SaleSoftDeleteService {
       return err(new LotError(`Type exactly: ${expected}`, 400));
     }
 
-    const atgConflict = await assertCanSoftDeleteSaleOnAtg(this.saleChannelReader, saleId);
-    if (atgConflict) return err(atgConflict);
-
     return this.executeSoftDelete(actorUserId, sale);
   }
 
@@ -215,6 +212,8 @@ export class SaleSoftDeleteService {
     sale: Sale,
     ctx?: SaleSoftDeleteContext,
   ): Promise<Result<void, LotError>> {
+    const atgConflict = await assertCanSoftDeleteSaleOnAtg(this.saleChannelReader, sale.id);
+    if (atgConflict) return err(atgConflict);
     const resolvedCtx =
       ctx ??
       (await (async () => {

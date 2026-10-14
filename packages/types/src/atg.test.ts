@@ -56,6 +56,15 @@ const rows: Row[] = [
   },
   {
     saleStatus: "draft",
+    atgRemoteStatus: "published",
+    atgLinked: false,
+    atgSoldLotCount: 0,
+    expected: "free",
+    laxPublish: true,
+    atgPush: true,
+  },
+  {
+    saleStatus: "draft",
     atgRemoteStatus: "closed",
     atgLinked: true,
     atgSoldLotCount: 2,

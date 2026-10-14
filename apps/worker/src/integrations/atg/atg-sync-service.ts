@@ -1,5 +1,4 @@
 import { canPushOrPublishSaleOnAtg, resolveSaleSellingPlatform } from "@auction/types";
-import type pino from "pino";
 import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
 import {
   AtgMappingError,
@@ -43,8 +42,8 @@ export type AtgSyncServiceDeps = {
   store: AtgSyncStore;
   config: AtgSyncConfig;
   now?: () => Date;
-  /** Logs per-sale tick failures (optional; wired in the worker composition root). */
-  tickLog?: Pick<pino.Logger, "warn">;
+  /** Per-sale tick failure; the tick carries on with the next sale. */
+  onTickError?: (saleId: string, err: unknown) => void;
 };
 
 const POLL_CLOSED_FOR_MS = 7 * 24 * 60 * 60 * 1000;
@@ -78,27 +77,27 @@ function failureSummary(failures: string[]): string | null {
   return more > 0 ? `${listed}; +${more} more` : listed;
 }
 
+const SALE_ON_LAX_MESSAGE =
+  "This sale is published on lax.bid. Unpublish it there before pushing to ATG.";
+
 /**
  * Pushes LAX sales to ATG and pulls results back. Every operation is idempotent: link rows
  * record what ATG already has, and payload hashes skip unchanged updates, so jobs can be
  * retried safely.
  */
-const SALE_ON_LAX_MESSAGE =
-  "This sale is published on lax.bid. Unpublish it there before pushing to ATG.";
-
 export class AtgSyncService {
   private readonly gateway: AtgGateway;
   private readonly store: AtgSyncStore;
   private readonly config: AtgSyncConfig;
   private readonly now: () => Date;
-  private readonly tickLog: Pick<pino.Logger, "warn"> | undefined;
+  private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
 
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
     this.store = deps.store;
     this.config = deps.config;
     this.now = deps.now ?? (() => new Date());
-    this.tickLog = deps.tickLog;
+    this.onTickError = deps.onTickError;
   }
 
   async pushSale(saleId: string): Promise<AtgPushSummary> {
@@ -207,7 +206,7 @@ export class AtgSyncService {
   async pollSale(saleId: string): Promise<void> {
     const link = await this.requireAuction(saleId);
     const polledAt = this.now();
-    const priorError = (await this.store.getAuctionLink(saleId))?.lastError;
+    const priorError = link.lastError;
     try {
       const [lots, results] = await Promise.all([
         this.gateway.getLots(link.atgAuctionId),
@@ -250,7 +249,6 @@ export class AtgSyncService {
           : "free";
         if (
           link.remoteStatus !== "closed" &&
-          platform !== "lax" &&
           canPushOrPublishSaleOnAtg(platform) &&
           (!link.lastSyncedAt ||
             link.lastError ||
@@ -265,7 +263,7 @@ export class AtgSyncService {
         }
       } catch (err) {
         failed += 1;
-        this.tickLog?.warn({ err, saleId: link.saleId }, "ATG tick failed for sale");
+        this.onTickError?.(link.saleId, err);
       }
     }
     return { pushed, polled, failed };

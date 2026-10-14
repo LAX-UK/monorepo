@@ -25,6 +25,7 @@ import {
   lt,
   lte,
   notExists,
+  or,
   sql,
 } from "drizzle-orm";
 import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
@@ -38,6 +39,7 @@ import type {
   SaleCatalogLotsSort,
 } from "../services/interfaces/repositories.js";
 import {
+  atgOwnedDraftLotForStatusesSql,
   publicLotCondition,
   publicSaleCondition,
   saleIsAtgOwnedSql,
@@ -55,14 +57,17 @@ function endYearBoundsUtc(year: number): { start: Date; end: Date } {
 
 function listWhere(input: ListWhereInput) {
   const conditions = [lotNotDeleted()];
-  if (input.statuses !== undefined) {
-    if (input.statuses.length === 0) {
+  const statuses = input.statuses ?? (input.status ? [input.status] : undefined);
+  if (statuses !== undefined) {
+    if (statuses.length === 0) {
       conditions.push(sql`false`);
     } else {
-      conditions.push(inArray(lot.status, input.statuses));
+      const byStatus = inArray(lot.status, statuses);
+      const atgDrafts = input.requirePublicParentSale
+        ? atgOwnedDraftLotForStatusesSql(statuses)
+        : undefined;
+      conditions.push(atgDrafts ? (or(byStatus, atgDrafts) ?? byStatus) : byStatus);
     }
-  } else if (input.status) {
-    conditions.push(eq(lot.status, input.status));
   }
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds

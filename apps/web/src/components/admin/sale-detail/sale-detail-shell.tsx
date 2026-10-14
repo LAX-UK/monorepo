@@ -79,17 +79,21 @@ export function SaleDetailShell({
   const blockedByAtg = sellingPlatform === "atg";
   const canPublishOnLax = sale.status === "draft" && canManageSales;
   const canPublish = canPublishOnLax && !blockedByAtg;
-  const publishBlockedReason = blockedByAtg
-    ? "This sale is live on ATG. Close the ATG auction (with no lots sold) before publishing on lax.bid."
-    : undefined;
+  const publishBlockedProps = blockedByAtg
+    ? { publishBlockedReason: "This sale is selling on ATG, so it can't be published on lax.bid." }
+    : {};
   const canUnpublish = sale.status === "scheduled" && canManageSales;
   const canCancel =
     canManageSales &&
+    !blockedByAtg &&
     (sale.status === "draft" || sale.status === "scheduled" || sale.status === "active");
-  const canDelete = canManageSales && bundle.deleteEligibility?.canDelete === true;
+  const canDelete = canManageSales && !blockedByAtg && bundle.deleteEligibility?.canDelete === true;
   const deleteBlockers =
     sale.status === "draft" || sale.status === "scheduled"
-      ? (bundle.deleteEligibility?.blockers ?? [])
+      ? [
+          ...(blockedByAtg ? ["This sale is selling on ATG. Close it on ATG first."] : []),
+          ...(bundle.deleteEligibility?.blockers ?? []),
+        ]
       : [];
   const isSaleroom = isSaleroomDeliveryMode(sale.deliveryMode);
   const canMarkOnsiteEnded =
@@ -249,7 +253,7 @@ export function SaleDetailShell({
               canPublish={canPublish}
               showPublishMenuItem={canPublishOnLax}
               publishReady={publishReady}
-              publishBlockedReason={publishBlockedReason}
+              {...publishBlockedProps}
               canUnpublish={canUnpublish}
               canCancel={canCancel}
               canDelete={canDelete}
@@ -266,7 +270,7 @@ export function SaleDetailShell({
             canPublish={canPublish}
             showPublishMenuItem={canPublishOnLax}
             publishReady={publishReady}
-            publishBlockedReason={publishBlockedReason}
+            {...publishBlockedProps}
             canUnpublish={canUnpublish}
             canCancel={canCancel}
             canDelete={canDelete}

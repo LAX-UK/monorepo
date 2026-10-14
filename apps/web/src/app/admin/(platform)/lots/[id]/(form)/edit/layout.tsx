@@ -7,11 +7,11 @@ import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { loadAdminLotRecord } from "@/lib/admin/load-lot-detail";
 import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
-import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
-import { getAtgIntegrationStatus, getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -49,21 +49,15 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   let atgEditAlert: ReactNode = null;
-  if (auction.saleId) {
-    const user = await requireAdminCapability(SALES_ACCESS).catch(() => null);
+  if (auction.saleId && isDraft) {
+    const user = await getServerSessionUser();
     const canSeeAtg =
       user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
-    if (canSeeAtg) {
-      const atgStatus = await getAtgIntegrationStatus().catch(() => ({
-        enabled: false,
-        whiteLabelBaseUrl: null,
-      }));
-      if (atgStatus.enabled) {
-        const platform = await getAtgSaleSellingPlatform(auction.saleId);
-        if (platform === "atg") {
-          atgEditAlert = <AtgEditAlert saleId={auction.saleId} />;
-        }
-      }
+    if (
+      canSeeAtg &&
+      (await getAtgSaleSellingPlatform({ id: auction.saleId, status: "draft" })) === "atg"
+    ) {
+      atgEditAlert = <AtgEditAlert saleId={auction.saleId} />;
     }
   }
 

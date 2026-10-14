@@ -120,12 +120,13 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
     const poll = async () => {
       const result = await adminAtgJobStateAction(waiting.jobId);
       if (cancelled) return;
-      if (result.ok && result.data.state === "done") {
+      const state = result.ok ? result.data?.state : undefined;
+      if (state === "done") {
         setWaiting(null);
         router.refresh();
         return;
       }
-      if (result.ok && result.data.state === "failed") {
+      if (state === "failed") {
         setWaiting(null);
         notify.error("The ATG job failed. Check the last error below.");
         router.refresh();
@@ -178,6 +179,10 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
       notify.success(QUEUED_COPY[action], {
         description: "This page updates when ATG has finished.",
       });
+      if (!result.data) {
+        router.refresh();
+        return;
+      }
       setWaiting({
         jobId: result.data.jobId,
         until: Date.now() + ATG_JOB_TIMEOUT_MS,

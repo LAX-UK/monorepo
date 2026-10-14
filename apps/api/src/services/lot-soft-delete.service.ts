@@ -123,9 +123,6 @@ export class LotSoftDeleteService {
       return err(new LotError(`Type exactly: ${expected}`, 400));
     }
 
-    const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lotId, lot.saleId);
-    if (lotAtgConflict) return err(lotAtgConflict);
-
     return this.executeSoftDelete(actorUserId, lot);
   }
 
@@ -246,6 +243,8 @@ export class LotSoftDeleteService {
     lot: Lot,
     ctx?: LotSoftDeleteContext,
   ): Promise<Result<void, LotError>> {
+    const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lot.id, lot.saleId);
+    if (lotAtgConflict) return err(lotAtgConflict);
     const resolvedCtx =
       ctx ??
       (await (async () => {

@@ -60,6 +60,7 @@ import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
 import { assertLotMovableOnAtg } from "./sale-channel-guards.js";
+import { withAtgLotStates } from "./sale-selling-platform.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
@@ -433,6 +434,8 @@ export class LotService {
     if (!CANCELLABLE.has(a.status)) {
       return err(new LotError("This lot cannot be cancelled"));
     }
+    const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lotId, a.saleId);
+    if (lotAtgConflict) return err(lotAtgConflict);
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
@@ -815,7 +818,10 @@ export class LotService {
       );
     }
 
-    const rows = await this.lotRepo.list(queryFilter);
+    const rows = await withAtgLotStates(
+      viewerCanSeeNonPublic ? null : this.saleChannelReader,
+      await this.lotRepo.list(queryFilter),
+    );
 
     const resolveImages = filter.resolveImages !== false;
     const presented = resolveImages

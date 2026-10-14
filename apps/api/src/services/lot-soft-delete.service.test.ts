@@ -2,6 +2,7 @@ import type { Lot, Sale } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ISaleChannelReader } from "../repositories/interfaces/sale-channel.reader.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotSoftDeleteSideEffects } from "./interfaces/lot-soft-delete.js";
@@ -337,5 +338,83 @@ describe("LotSoftDeleteService", () => {
     if (result.isErr()) {
       expect(result.error.status).toBe(400);
     }
+  });
+});
+
+describe("LotSoftDeleteService ATG guard", () => {
+  const atgReader = (numberOfBids: number) =>
+    ({
+      getSaleOwnership: vi.fn().mockResolvedValue({
+        saleStatus: "draft",
+        atgRemoteStatus: "published",
+        atgLinked: true,
+        atgSoldLotCount: 0,
+        sellingPlatform: "atg",
+      }),
+      getSaleOwnerships: vi.fn(),
+      getLotAtgState: vi.fn().mockResolvedValue({ linked: true, numberOfBids, sold: false }),
+    }) as unknown as ISaleChannelReader;
+
+  function setup(numberOfBids: number) {
+    const softDeleteLot = vi.fn().mockResolvedValue(undefined);
+    const guards = { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 };
+    const svc = new LotSoftDeleteService(
+      {
+        findById: vi.fn().mockResolvedValue(baseLot()),
+        findBySaleId: vi.fn().mockResolvedValue([baseLot(), baseLot({ id: "l2" })]),
+      } as unknown as ILotRepository,
+      {
+        findById: vi.fn().mockResolvedValue(baseSale()),
+        findByIds: vi.fn().mockResolvedValue([baseSale()]),
+      } as unknown as ISaleRepository,
+      {
+        countGuardsForLot: vi.fn().mockResolvedValue(guards),
+        countGuardsForLots: vi.fn().mockResolvedValue(new Map([["l1", guards]])),
+        softDeleteLot,
+      } as unknown as ILotSoftDeleteSideEffects,
+      { cancelLotJobs: vi.fn() } as unknown as ILotJobScheduler,
+      {} as never,
+      { publish: vi.fn() } as unknown as DomainEventPublisher,
+      atgReader(numberOfBids),
+    );
+    return { svc, softDeleteLot };
+  }
+
+  it("blocks single and bulk delete of a lot with ATG bids", async () => {
+    const { svc, softDeleteLot } = setup(1);
+    const single = await svc.softDelete(
+      "admin-1",
+      "staff",
+      "l1",
+      lotDeleteConfirmationPhrase("Evening lot"),
+      "auction_manager",
+    );
+    expect(single._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
+
+    const bulk = await svc.bulkSoftDelete(
+      "admin-1",
+      "staff",
+      ["l1"],
+      bulkLotDeleteConfirmationPhrase(1),
+      "auction_manager",
+    );
+    expect(bulk._unsafeUnwrap()).toMatchObject({
+      failed: 1,
+      errors: [{ lotId: "l1", message: expect.stringContaining("has bids on ATG") }],
+    });
+    expect(softDeleteLot).not.toHaveBeenCalled();
+  });
+
+  it("deletes a linked lot without ATG bids", async () => {
+    const { svc, softDeleteLot } = setup(0);
+    const result = await svc.softDelete(
+      "admin-1",
+      "staff",
+      "l1",
+      lotDeleteConfirmationPhrase("Evening lot"),
+      "auction_manager",
+    );
+    expect(result.isOk()).toBe(true);
+    expect(softDeleteLot).toHaveBeenCalled();
   });
 });

@@ -119,6 +119,10 @@ export type Lot = {
   winnerId: string | null;
   /** Present on list rows derived from summaries — sold outcome without exposing buyer id. */
   hasWinner?: boolean;
+  /** Public reads of a sale that ended on ATG: whether this lot sold there. */
+  atgSold?: boolean;
+  /** Public lot lists: set when the parent sale is selling (or sold) on ATG. */
+  atgSaleState?: "live" | "ended";
   /** winner's acting legal entity at win time */
   buyerLegalEntityId?: string | null;
   createdAt: Date;

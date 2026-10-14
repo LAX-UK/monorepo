@@ -127,8 +127,10 @@ export type Sale = {
   /** Reusable venue reference for onsite sales; location fields remain the publish snapshot. */
   venueId?: string | null;
   status: SaleStatus;
-  /** Populated on public API responses when ATG sync is configured. */
+  /** Set on public reads of draft sales (the only status ATG can own). */
   sellingPlatform?: AtgOwnershipState;
+  /** With `sellingPlatform: "atg"`: whether bidding is open or closed on the White Label. */
+  atgAuctionState?: "live" | "ended";
   startTime: Date;
   endTime: Date;
   previewStartTime: Date | null;

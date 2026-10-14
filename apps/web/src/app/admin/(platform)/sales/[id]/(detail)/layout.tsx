@@ -12,11 +12,10 @@ import {
   getAdminDomainEventsForAggregate,
   getAdminTelephoneBookings,
 } from "@/lib/data/http/admin.server";
-import { getAtgIntegrationStatus, getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
-import type { AtgOwnershipState } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ReactNode } from "react";
 
@@ -35,7 +34,6 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
   );
   const bundle = await loadAdminSaleDetail(id);
   const isSaleroom = isSaleroomDeliveryMode(bundle.sale.deliveryMode);
-  let sellingPlatform: AtgOwnershipState | null = null;
   const [
     registrationCount,
     pendingRegistrationCount,
@@ -43,7 +41,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     activityEvents,
     connectRequiredByLotId,
     pendingTelephoneBookings,
-    atgStatus,
+    sellingPlatform,
   ] = await Promise.all([
     loadAdminSaleRegistrationCount(id, bundle.sale),
     loadAdminSalePendingRegistrationCount(id, bundle.sale),
@@ -53,11 +51,8 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     ),
     loadSaleConnectRequiredByLotId(id),
     isSaleroom ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
-    getAtgIntegrationStatus().catch(() => ({ enabled: false, whiteLabelBaseUrl: null })),
+    canManageSales ? getAtgSaleSellingPlatform(bundle.sale) : Promise.resolve(null),
   ]);
-  if (canManageSales && atgStatus.enabled) {
-    sellingPlatform = await getAtgSaleSellingPlatform(id);
-  }
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0

@@ -1281,6 +1281,7 @@ export function createContainer(env: Env): Container {
     lotRepo,
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
+    atgLinkReader,
   );
   const pressArchiveRepo = new SalePressArchiveRepository(saleRepo);
   const pressArchiveReadService = new PressArchiveReadService(pressArchiveRepo);

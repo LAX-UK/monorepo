@@ -66,8 +66,8 @@ export type ListSalesFilter = {
   settlementStatus?: "settled" | "unsettled" | undefined;
   /** Draft sales missing lots or onsite venue details. */
   needsSetup?: boolean | undefined;
-  /** Public browse lists: scheduled/active LAX sales plus ATG-owned drafts. */
-  publicBrowseOnly?: boolean | undefined;
+  /** Public lists: also match draft sales owned by ATG (live → scheduled/active, sold → ended). */
+  includeAtgOwnedDrafts?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;

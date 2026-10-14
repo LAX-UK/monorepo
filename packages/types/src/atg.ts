@@ -25,11 +25,12 @@ export type ResolveSaleSellingPlatformInput = {
 export function resolveSaleSellingPlatform(
   input: ResolveSaleSellingPlatformInput,
 ): AtgOwnershipState {
-  const { saleStatus, atgRemoteStatus, atgSoldLotCount } = input;
+  const { saleStatus, atgRemoteStatus, atgLinked, atgSoldLotCount } = input;
   if (saleStatus === "cancelled") return "cancelled";
   if (saleStatus === "scheduled" || saleStatus === "active" || saleStatus === "ended") {
     return "lax";
   }
+  if (!atgLinked) return "free";
   if (atgRemoteStatus === "published") return "atg";
   if (atgRemoteStatus === "closed" && atgSoldLotCount >= 1) return "atg";
   return "free";

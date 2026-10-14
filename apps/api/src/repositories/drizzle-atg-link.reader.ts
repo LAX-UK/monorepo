@@ -10,7 +10,7 @@ import {
   type SaleStatus,
   resolveSaleSellingPlatform,
 } from "@auction/types";
-import { and, asc, count, eq, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, ne, sql } from "drizzle-orm";
 import type { IAtgLinkReader } from "./interfaces/atg-link.reader.js";
 
 const iso = (value: Date | null): string | null => value?.toISOString() ?? null;
@@ -40,13 +40,18 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
       .orderBy(sql`${lot.lotNumber} asc nulls last`, asc(lot.createdAt));
 
     const link = row.link;
-    const ownership = await this.getSaleOwnership(saleId);
-    const sellingPlatform = ownership?.sellingPlatform ?? "free";
+    const saleStatus = row.saleStatus as SaleStatus;
+    const sellingPlatform = resolveSaleSellingPlatform({
+      saleStatus,
+      atgRemoteStatus: (link?.remoteStatus as AtgRemoteStatus | undefined) ?? null,
+      atgLinked: Boolean(link?.atgAuctionId),
+      atgSoldLotCount: lotRows.filter((r) => r.link?.sold === true).length,
+    });
     return {
       saleId: row.saleId,
-      saleStatus: row.saleStatus as SaleStatus,
+      saleStatus,
       sellingPlatform,
-      saleCancelled: row.saleStatus === "cancelled",
+      saleCancelled: saleStatus === "cancelled",
       linked: Boolean(link?.atgAuctionId),
       atgAuctionId: link?.atgAuctionId ?? null,
       remoteStatus: (link?.remoteStatus as AtgRemoteStatus | undefined) ?? null,
@@ -75,32 +80,51 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
   }
 
   async getSaleOwnership(saleId: string): Promise<AtgSaleOwnershipSnapshot | null> {
-    const [row] = await this.db
+    return (await this.getSaleOwnerships([saleId])).get(saleId) ?? null;
+  }
+
+  async getSaleOwnerships(saleIds: string[]): Promise<Map<string, AtgSaleOwnershipSnapshot>> {
+    const out = new Map<string, AtgSaleOwnershipSnapshot>();
+    if (saleIds.length === 0) return out;
+    const rows = await this.db
       .select({
+        saleId: sale.id,
         saleStatus: sale.status,
         remoteStatus: atgAuctionLink.remoteStatus,
         atgAuctionId: atgAuctionLink.atgAuctionId,
       })
       .from(sale)
       .leftJoin(atgAuctionLink, eq(atgAuctionLink.saleId, sale.id))
-      .where(and(eq(sale.id, saleId), saleNotDeleted()))
-      .limit(1);
-    if (!row) return null;
-    const [soldRow] = await this.db
-      .select({ n: count() })
-      .from(atgLotLink)
-      .where(and(eq(atgLotLink.saleId, saleId), eq(atgLotLink.sold, true)));
-    const atgSoldLotCount = Number(soldRow?.n ?? 0);
-    const saleStatus = row.saleStatus as SaleStatus;
-    const atgRemoteStatus = (row.remoteStatus as AtgRemoteStatus | undefined) ?? null;
-    const atgLinked = Boolean(row.atgAuctionId);
-    const sellingPlatform = resolveSaleSellingPlatform({
-      saleStatus,
-      atgRemoteStatus,
-      atgLinked,
-      atgSoldLotCount,
-    });
-    return { saleStatus, atgRemoteStatus, atgLinked, atgSoldLotCount, sellingPlatform };
+      .where(and(inArray(sale.id, saleIds), saleNotDeleted()));
+    const linkedIds = rows.filter((r) => r.atgAuctionId).map((r) => r.saleId);
+    const soldRows =
+      linkedIds.length === 0
+        ? []
+        : await this.db
+            .select({ saleId: atgLotLink.saleId, n: count() })
+            .from(atgLotLink)
+            .where(and(inArray(atgLotLink.saleId, linkedIds), eq(atgLotLink.sold, true)))
+            .groupBy(atgLotLink.saleId);
+    const soldBySale = new Map(soldRows.map((r) => [r.saleId, Number(r.n)]));
+    for (const row of rows) {
+      const saleStatus = row.saleStatus as SaleStatus;
+      const atgRemoteStatus = (row.remoteStatus as AtgRemoteStatus | undefined) ?? null;
+      const atgLinked = Boolean(row.atgAuctionId);
+      const atgSoldLotCount = soldBySale.get(row.saleId) ?? 0;
+      out.set(row.saleId, {
+        saleStatus,
+        atgRemoteStatus,
+        atgLinked,
+        atgSoldLotCount,
+        sellingPlatform: resolveSaleSellingPlatform({
+          saleStatus,
+          atgRemoteStatus,
+          atgLinked,
+          atgSoldLotCount,
+        }),
+      });
+    }
+    return out;
   }
 
   async getLotAtgState(lotId: string): Promise<AtgLotChannelState> {
@@ -121,6 +145,14 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
       numberOfBids: row.numberOfBids ?? 0,
       sold: row.sold ?? false,
     };
+  }
+
+  async getSoldLotIds(saleId: string): Promise<Set<string>> {
+    const rows = await this.db
+      .select({ lotId: atgLotLink.lotId })
+      .from(atgLotLink)
+      .where(and(eq(atgLotLink.saleId, saleId), eq(atgLotLink.sold, true)));
+    return new Set(rows.map((r) => r.lotId));
   }
 
   async findAtgLotId(lotId: string): Promise<string | null> {

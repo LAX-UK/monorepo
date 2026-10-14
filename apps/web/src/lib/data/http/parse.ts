@@ -219,7 +219,17 @@ export function parseSale(raw: unknown): Sale {
     createdBy: String(o.createdBy ?? ""),
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
+    ...(isSellingPlatform(o.sellingPlatform) ? { sellingPlatform: o.sellingPlatform } : {}),
+    ...(isAtgState(o.atgAuctionState) ? { atgAuctionState: o.atgAuctionState } : {}),
   };
+}
+
+function isSellingPlatform(v: unknown): v is NonNullable<Sale["sellingPlatform"]> {
+  return v === "atg" || v === "lax" || v === "free";
+}
+
+function isAtgState(v: unknown): v is "live" | "ended" {
+  return v === "live" || v === "ended";
 }
 
 function parseMarketingDetails(raw: unknown): LotMarketingDetails {
@@ -299,6 +309,8 @@ export function parseLot(raw: unknown): Lot {
     status: o.status as Lot["status"],
     winnerId: o.winnerId == null ? null : String(o.winnerId),
     ...(typeof o.hasWinner === "boolean" ? { hasWinner: o.hasWinner } : {}),
+    ...(typeof o.atgSold === "boolean" ? { atgSold: o.atgSold } : {}),
+    ...(isAtgState(o.atgSaleState) ? { atgSaleState: o.atgSaleState } : {}),
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
     marketingDetails: parseMarketingDetails(o.marketingDetails),
