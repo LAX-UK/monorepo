@@ -219,6 +219,8 @@ html.dark {
   --color-on-background: var(--color-brand-light-cream);
   --color-primary: var(--color-brand-light-cream);
   --color-on-primary: var(--color-brand-obsidian);
+  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-on: var(--color-brand-obsidian);
   --color-secondary: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
   --color-on-secondary: #ffffff;
   --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 25%, black);
