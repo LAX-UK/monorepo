@@ -20,6 +20,17 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
   }
 
   if (!artwork.eligibleForEditionAllocation) {
+    if (artwork.rarity === "limited_edition" || artwork.rarity === "open_edition") {
+      return {
+        status: { label: "Original", tone: "neutral" },
+        headline:
+          artwork.rarity === "limited_edition"
+            ? "Original work from a limited edition"
+            : "Original work from an open edition",
+        detail: "This impression is sold by the gallery rather than allocated online.",
+        meter: null,
+      };
+    }
     return {
       status: { label: "Original", tone: "neutral" },
       headline: "Original work — one of one",

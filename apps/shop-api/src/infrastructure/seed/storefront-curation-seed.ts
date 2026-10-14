@@ -5,11 +5,19 @@ import {
   type PlannedPlacement,
   assertValidPlacementSet,
 } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, like } from "drizzle-orm";
 import type { StorefrontCurationWriter } from "../../application/ports/storefront-curation.writer.js";
 import { upsertShopArtist } from "../upsert-shop-artist.js";
+import { SHOP_SEED_BUYER_FIXTURE_SLUG } from "./catalogue-seed.js";
 
 const publishedAt = new Date("2026-01-01T00:00:00.000Z");
+
+/**
+ * Bid's auction taxonomy, seeded before Shop had its own. Re-seeds remove these only while they
+ * still use a bundled seed cover, so a staff-curated category with the same slug survives.
+ */
+const RETIRED_CATEGORY_SLUGS = ["art", "watches", "coins-medals"];
+const SEED_COVER_PREFIX = "/shop/home/";
 
 async function upsertCategory(
   db: Database,
@@ -60,23 +68,25 @@ async function seedShopStorefrontCurationTransaction(
   db: Database,
   curationWriter: StorefrontCurationWriter,
 ): Promise<void> {
-  const artCategoryId = await upsertCategory(db, {
-    slug: "art",
-    label: "Art",
-    coverImageUrl: "/shop/home/category-coins.webp",
+  await db
+    .delete(shopCategory)
+    .where(
+      and(
+        inArray(shopCategory.slug, RETIRED_CATEGORY_SLUGS),
+        like(shopCategory.coverImageUrl, `${SEED_COVER_PREFIX}%`),
+      ),
+    );
+  const printsCategoryId = await upsertCategory(db, {
+    slug: "prints",
+    label: "Limited edition prints",
+    coverImageUrl: "/shop/home/artwork-warm-basket.webp",
     sortOrder: 0,
   });
-  const watchesCategoryId = await upsertCategory(db, {
-    slug: "watches",
-    label: "Watches",
-    coverImageUrl: "/shop/home/category-watches.webp",
+  const originalsCategoryId = await upsertCategory(db, {
+    slug: "originals",
+    label: "Original works",
+    coverImageUrl: "/shop/home/original-2.webp",
     sortOrder: 1,
-  });
-  const coinsCategoryId = await upsertCategory(db, {
-    slug: "coins-medals",
-    label: "Coins & Medals",
-    coverImageUrl: "/shop/home/category-coins.webp",
-    sortOrder: 2,
   });
 
   const emmettId = await upsertShopArtist(db, {
@@ -102,23 +112,16 @@ async function seedShopStorefrontCurationTransaction(
   const stringId = await artworkIdBySlug(db, "string-study");
   const reedId = await artworkIdBySlug(db, "reed-study");
 
-  if (vesselId) {
-    await db
-      .insert(shopArtworkCategory)
-      .values({ artworkId: vesselId, categoryId: artCategoryId })
-      .onConflictDoNothing();
-  }
-  if (stringId) {
-    await db
-      .insert(shopArtworkCategory)
-      .values({ artworkId: stringId, categoryId: artCategoryId })
-      .onConflictDoNothing();
-  }
-  if (reedId) {
-    await db
-      .insert(shopArtworkCategory)
-      .values({ artworkId: reedId, categoryId: coinsCategoryId })
-      .onConflictDoNothing();
+  const harborId = await artworkIdBySlug(db, SHOP_SEED_BUYER_FIXTURE_SLUG);
+  const categoryLinks = [
+    [vesselId, printsCategoryId],
+    [reedId, printsCategoryId],
+    [harborId, printsCategoryId],
+    [stringId, originalsCategoryId],
+  ] as const;
+  for (const [artworkId, categoryId] of categoryLinks) {
+    if (!artworkId) continue;
+    await db.insert(shopArtworkCategory).values({ artworkId, categoryId }).onConflictDoNothing();
   }
 
   const placements: Array<{
@@ -134,9 +137,8 @@ async function seedShopStorefrontCurationTransaction(
   }
 
   placements.push(
-    { slot: "featured_categories", position: 0, categoryId: artCategoryId },
-    { slot: "featured_categories", position: 1, categoryId: watchesCategoryId },
-    { slot: "featured_categories", position: 2, categoryId: coinsCategoryId },
+    { slot: "featured_categories", position: 0, categoryId: printsCategoryId },
+    { slot: "featured_categories", position: 1, categoryId: originalsCategoryId },
   );
 
   if (vesselId) {
