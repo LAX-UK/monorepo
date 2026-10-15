@@ -17,6 +17,7 @@ export default function ShopSignedOutPage() {
       </Suspense>
       <ShopAccountBodyText>Your Shop session has ended.</ShopAccountBodyText>
       <ShopAccountLinkButton href="/login?returnTo=%2F" label="Sign in again" />
+      <ShopAccountLinkButton href="/artworks" label="Continue browsing" variant="outline" />
     </ShopAccountShell>
   );
 }

@@ -177,6 +177,12 @@
   cursor: not-allowed;
 }
 
+.shop-basket__qty-label {
+  margin-right: -0.25rem;
+  font-size: 0.875rem;
+  color: var(--color-on-surface-variant);
+}
+
 .shop-basket__stepper-value {
   min-width: 1.5rem;
   text-align: center;
