@@ -1,4 +1,8 @@
-import { artCatalogueApiBaseUrl, artCatalogueFetch } from "@/lib/art-catalogue.server";
+import {
+  ART_SLUG_LOOKUP,
+  artCatalogueApiBaseUrl,
+  artCatalogueFetch,
+} from "@/lib/art-catalogue.server";
 import { isArtEditorialEnabled } from "@/lib/art-runtime-flags";
 import type {
   ArtEditorialExhibitionList,
@@ -27,7 +31,7 @@ const VenueListSchema = Type.Object({ items: Type.Array(EditorialVenueSummarySch
 const StoryListSchema = Type.Object({ items: Type.Array(EditorialStorySummarySchema) });
 const PageListSchema = Type.Object({ items: Type.Array(EditorialPageSummarySchema) });
 
-/** Published content is cached briefly; drafts must always be read fresh. */
+/** Published lists are cached briefly; drafts and slug lookups are always read fresh. */
 const PUBLISHED_CACHE: RequestInit = { next: { revalidate: 120, tags: ["art:editorial"] } };
 const DRAFT_CACHE: RequestInit = { cache: "no-store" };
 
@@ -72,6 +76,7 @@ export function fetchEditorialExhibitionBySlug(slug: string) {
   return fetchEditorial(
     slugPath("/v1/editorial/exhibitions", slug),
     EditorialExhibitionDetailSchema,
+    ART_SLUG_LOOKUP,
   );
 }
 
@@ -83,7 +88,11 @@ export function fetchEditorialStories(
 }
 
 export function fetchEditorialStoryBySlug(slug: string) {
-  return fetchEditorial(slugPath("/v1/editorial/stories", slug), EditorialStoryDetailSchema);
+  return fetchEditorial(
+    slugPath("/v1/editorial/stories", slug),
+    EditorialStoryDetailSchema,
+    ART_SLUG_LOOKUP,
+  );
 }
 
 export function fetchEditorialPages(): Promise<ArtEditorialFetchResult<ArtEditorialPageList>> {
@@ -91,7 +100,11 @@ export function fetchEditorialPages(): Promise<ArtEditorialFetchResult<ArtEditor
 }
 
 export function fetchEditorialPageBySlug(slug: string) {
-  return fetchEditorial(slugPath("/v1/editorial/pages", slug), EditorialPageDetailSchema);
+  return fetchEditorial(
+    slugPath("/v1/editorial/pages", slug),
+    EditorialPageDetailSchema,
+    ART_SLUG_LOOKUP,
+  );
 }
 
 export function fetchEditorialVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>> {
@@ -99,7 +112,11 @@ export function fetchEditorialVenues(): Promise<ArtEditorialFetchResult<ArtEdito
 }
 
 export function fetchEditorialVenueBySlug(slug: string) {
-  return fetchEditorial(slugPath("/v1/editorial/venues", slug), EditorialVenueDetailSchema);
+  return fetchEditorial(
+    slugPath("/v1/editorial/venues", slug),
+    EditorialVenueDetailSchema,
+    ART_SLUG_LOOKUP,
+  );
 }
 
 const PreviewSchema = Type.Union([
