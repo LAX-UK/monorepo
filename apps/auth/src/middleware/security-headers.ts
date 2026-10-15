@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createMiddleware } from "hono/factory";
+import { applyHostedAuthCspNonceToResponse } from "../lib/apply-hosted-auth-csp-nonce.js";
 
 /** Hono context key for per-request hosted-auth CSP nonces (Cloudflare JS Detections). */
 export const HOSTED_AUTH_CSP_NONCE_KEY = "hostedAuthCspNonce";
@@ -55,6 +56,7 @@ export function createSecurityHeadersMiddleware(options?: { turnstileEnabled?: b
     const cspNonce = hostedAuthCspNonce();
     c.set(HOSTED_AUTH_CSP_NONCE_KEY, cspNonce);
     await next();
+    c.res = await applyHostedAuthCspNonceToResponse(c.res, cspNonce);
     c.header("X-Content-Type-Options", "nosniff");
     c.header("X-Frame-Options", "DENY");
     const isHtml = (c.res.headers.get("content-type") ?? "").includes("text/html");
