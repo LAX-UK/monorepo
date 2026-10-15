@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@auction/ui", "@auction/marketing-ui", "@auction/shop-portal"],
   images: {
+    // Uploads get a fresh UUID key and seed assets never change, so a cached optimisation stays valid.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: imageRemoteHosts.map((hostname) => ({
       protocol: "https" as const,
       hostname,

@@ -19,6 +19,10 @@
     "./next-error-digest": {
       "types": "./dist/next-error-digest.d.ts",
       "default": "./dist/next-error-digest.js"
+    },
+    "./next-sentry-options": {
+      "types": "./dist/next-sentry-options.d.ts",
+      "default": "./dist/next-sentry-options.js"
     }
   },
   "scripts": {
