@@ -170,7 +170,11 @@ jobs:
             IMAGE_SHA=${{ env.SHA }}
             ${{ steps.webargs.outputs.args }}
             ${{ matrix.component == 'art' && format('NEXT_PUBLIC_SENTRY_DSN_ART={0}', secrets.SENTRY_DSN_ART) || '' }}
+            ${{ matrix.component == 'art' && format('SENTRY_PROJECT=lax-{0}-art', env.ENVIRONMENT) || '' }}
+            ${{ matrix.component == 'art' && format('SENTRY_RELEASE={0}', env.SHA) || '' }}
             ${{ matrix.component == 'shop' && format('NEXT_PUBLIC_SENTRY_DSN_SHOP={0}', secrets.SENTRY_DSN_SHOP) || '' }}
+            ${{ matrix.component == 'shop' && format('SENTRY_PROJECT=lax-{0}-shop', env.ENVIRONMENT) || '' }}
+            ${{ matrix.component == 'shop' && format('SENTRY_RELEASE={0}', env.SHA) || '' }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |

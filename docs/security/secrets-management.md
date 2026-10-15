@@ -41,6 +41,7 @@ The shape of every secret in this list:
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; Stripe dashboard; 1Password | `apps/api`; ops team | Quarterly for live keys, on suspected leak |
 | `SENTRY_DSN_API` / `SENTRY_DSN_AUTH` / `SENTRY_DSN_WS` / `SENTRY_DSN_WORKER` / `SENTRY_DSN_WEB` | DO App Platform env per app; Sentry; 1Password | The respective app; ops team | On suspected leak |
 | `SENTRY_DSN_WEB` (GitHub env secret) | Optional mirror of web client DSN for CI prebuilt image builds | `.github/workflows/build-images.yml` (`NEXT_PUBLIC_SENTRY_DSN_WEB` build arg) | When Sentry web project is rotated |
+| `SENTRY_DSN_SHOP` / `SENTRY_DSN_ART` (GitHub **test** env secrets) | Client DSN baked into Shop/Art images at build (`NEXT_PUBLIC_SENTRY_DSN_*`); server DSN remains DO env from Terraform | `.github/workflows/build-images.yml` | When `lax-test-shop` / `lax-test-art` keys rotate |
 | `REDIS_URL` | DO App Platform env on `apps/api`, `apps/auth`, `apps/ws`, `apps/worker`; 1Password | The respective apps; ops team | On Redis cluster rotation |
 | `POSTMARK_SERVER_TOKEN` | DO App Platform env on `apps/worker`; Postmark server settings; 1Password | `apps/worker`; ops team | Annual or on suspected leak |
 | `POSTMARK_TRANSACTIONAL_STREAM` / `POSTMARK_BROADCAST_STREAM` | DO App Platform env on `apps/worker` | `apps/worker`; ops team | Not a secret, listed for completeness — change only when Postmark stream ids change |
