@@ -4,12 +4,12 @@ import { buildArtAccountNavItems } from "./account-nav.vm.js";
 describe("buildArtAccountNavItems", () => {
   it("lists lax.art account tabs without payouts by default", () => {
     expect(
-      buildArtAccountNavItems({ payoutsEnabled: false, activeHref: "/account/favorites" }),
+      buildArtAccountNavItems({ payoutsEnabled: false, activeHref: "/account/favourites" }),
     ).toEqual([
       { href: "/account", label: "Profile", active: false },
-      { href: "/account/inquiries", label: "Inquiries", active: false },
+      { href: "/account/enquiries", label: "Enquiries", active: false },
       { href: "/account/collection", label: "Collection", active: false },
-      { href: "/account/favorites", label: "Favorites", active: true },
+      { href: "/account/favourites", label: "Favourites", active: true },
     ]);
   });
 

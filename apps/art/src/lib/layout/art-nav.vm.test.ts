@@ -17,7 +17,7 @@ describe("art navigation view model", () => {
     ["/art-hub", "artHub"],
     ["/collector-hub", "collectorHub"],
     ["/search", null],
-    ["/account/favorites", null],
+    ["/account/favourites", null],
   ] as const)("maps %s to %s", (pathname, key) => {
     expect(resolveArtNavKey(pathname)).toBe(key);
   });
@@ -42,8 +42,8 @@ describe("art navigation view model", () => {
     ["/artworks", "discover"],
     ["/artists/flora-powers", "discover"],
     ["/search", "discover"],
-    ["/account/favorites", "favorites"],
-    ["/account/inquiries", "account"],
+    ["/account/favourites", "favorites"],
+    ["/account/enquiries", "account"],
     ["/account", "account"],
     ["/accounting", null],
     ["/login", "account"],
@@ -55,11 +55,11 @@ describe("art navigation view model", () => {
   });
 
   it("builds the Home, Discover, Favorites, Account tab bar with one active tab", () => {
-    const mobile = buildArtMobileNavItems("/account/favorites");
+    const mobile = buildArtMobileNavItems("/account/favourites");
     expect(mobile.map(({ label, href }) => [label, href])).toEqual([
       ["Home", "/"],
       ["Discover", "/artworks"],
-      ["Favorites", "/account/favorites"],
+      ["Favourites", "/account/favourites"],
       ["Account", "/account"],
     ]);
     expect(mobile.filter((item) => item.active).map((item) => item.key)).toEqual(["favorites"]);

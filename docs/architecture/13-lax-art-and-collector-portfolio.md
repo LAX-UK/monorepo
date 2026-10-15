@@ -33,7 +33,7 @@ Collectors think in **my works and my money**, not in which hostname they used.
 | --- | --- | --- | --- |
 | **Collection** | Owned originals and editions, documents, provenance | To be designed | `/account/editions` (partial) |
 | **Enquiries** | Open and historical purchase / viewing enquiries | Inquiries tab | Interest / enquiry (partial) |
-| **Favorites** | Saved artworks and followed artists | Saved / Followed | Unified in `shop-api`; lax.art `/account/favorites` is the first consumer |
+| **Favorites** | Saved artworks and followed artists | Saved / Followed | Unified in `shop-api`; lax.art `/account/favourites` is the first consumer |
 | **Orders** | Paid commerce orders (prints, merch) | N/A for originals invoice path | `/account/orders` |
 | **Payouts** | LAX Art business payout account (Connect) | Payouts (mobile designs) | `/account/payouts` when enabled |
 
@@ -64,7 +64,7 @@ PUT and DELETE are idempotent: repeating one returns `200` with the `already_*` 
 - **OIDC client:** `lax-art-web` (confidential BFF pattern, same family as Shop). Its redirect on test is `https://test-art.lax.bid/auth/callback`.
 - **Public URL:** from env only (`LAX_ART_PUBLIC_URL`); never hard-code production host in code. `shop-api` reads the same variable (`StorefrontOrigins`) to pick the origin for art-channel artwork links in enquiry and notify-me emails, and to allow lax.art Connect return URLs.
 - **BFF (art-identity):** a second deployment of the **`apps/shop-identity`** codebase (see **D37**), configured with `OIDC_CLIENT_ID=lax-art-web` and `SHOP_STOREFRONT_URL=<LAX_ART_PUBLIC_URL>`. Ingress on the art hostname routes exactly the `SHOP_IDENTITY_OWNED_PREFIXES` (`/login`, `/logout`, `/register`, `/auth`, `/api`, `/me`, `/commerce`) to art-identity and everything else to `apps/art`. `apps/art` calls art-identity server-side (`ART_IDENTITY_INTERNAL_BASE_URL`, falling back to `ART_IDENTITY_BASE_URL`).
-- **Routes:** `/`, `/artworks`, `/artworks/[slug]`, `/artists/[slug]`, `/search`, and the signed-in `/account` area with `/account/collection`, `/account/inquiries`, `/account/favorites` and `/account/payouts`. Health checks are `/health/live` and `/health/ready`.
+- **Routes:** `/`, `/artworks`, `/artworks/[slug]`, `/artists/[slug]`, `/search`, and the signed-in `/account` area with `/account/collection`, `/account/enquiries`, `/account/favourites` and `/account/payouts` (the US spellings redirect). Health checks are `/health/live` and `/health/ready`.
 
 Editorial pages (exhibitions, stories, Arthub, press) may ship after commerce and account MVP.
 

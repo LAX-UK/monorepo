@@ -27,7 +27,7 @@ export function ArtArtworkFavoriteToggle({
     initialActive: initialSaved,
     auth,
     mutate: (next) => (next ? saveArtworkFavorite(slug) : removeArtworkFavorite(slug)),
-    messages: { on: `${title} saved to favorites.`, off: `${title} removed from favorites.` },
+    messages: { on: `${title} saved to favourites.`, off: `${title} removed from favourites.` },
   });
 
   return (
@@ -36,7 +36,7 @@ export function ArtArtworkFavoriteToggle({
         pressed={active}
         onPressedChange={toggle}
         busy={pending}
-        label={auth.signedIn ? `Save ${title} to favorites` : `Sign in to save ${title}`}
+        label={auth.signedIn ? `Save ${title} to favourites` : `Sign in to save ${title}`}
         {...(className ? { className } : {})}
       />
       <output className="sr-only" aria-live="polite">

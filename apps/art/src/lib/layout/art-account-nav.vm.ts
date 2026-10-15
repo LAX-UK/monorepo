@@ -2,8 +2,8 @@ export type ArtAccountLink = { href: string; label: string };
 
 /** Signed-in destinations shared by the desktop account menu and the mobile drawer. */
 export const ART_ACCOUNT_LINKS: readonly ArtAccountLink[] = [
-  { href: "/account/favorites", label: "Favorites" },
-  { href: "/account/inquiries", label: "Inquiries" },
+  { href: "/account/favourites", label: "Favourites" },
+  { href: "/account/enquiries", label: "Enquiries" },
   { href: "/account/collection", label: "Collection" },
 ];
 

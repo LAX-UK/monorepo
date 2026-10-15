@@ -11,6 +11,7 @@ import {
   LaxLogo,
   MARKETING_HEADER_CHROME,
   MarketingChromeIconButton,
+  MarketingCloseIcon,
   MarketingMenuIcon,
   MarketingSearchIcon,
   MarketingUtilityBar,
@@ -146,7 +147,7 @@ export function ArtHeaderClient({ account, productLinks }: ArtHeaderClientProps)
             >
               <MarketingSearchIcon className="size-5" aria-hidden />
             </Link>
-            {/* Below md the bottom tab bar carries Favorites. */}
+            {/* Below md the bottom tab bar carries Favourites. */}
             <div className="hidden md:flex">
               <ArtHeaderFavoritesLink />
             </div>
@@ -158,13 +159,13 @@ export function ArtHeaderClient({ account, productLinks }: ArtHeaderClientProps)
             </div>
             <MarketingChromeIconButton
               ref={menuButtonRef}
-              label="Open menu"
+              label={menuOpen ? "Close menu" : "Open menu"}
               className={cn("lg:hidden", headerChromeIconClass(headerTone))}
               aria-haspopup="dialog"
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(true)}
+              onClick={() => setMenuOpen((open) => !open)}
             >
-              <MarketingMenuIcon />
+              {menuOpen ? <MarketingCloseIcon /> : <MarketingMenuIcon />}
             </MarketingChromeIconButton>
           </div>
         </div>

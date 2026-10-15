@@ -49,7 +49,7 @@ export type ArtMobileNavItem = {
 const MOBILE_ITEMS: ReadonlyArray<Omit<ArtMobileNavItem, "active">> = [
   { key: "home", href: "/", label: "Home" },
   { key: "discover", href: "/artworks", label: "Discover" },
-  { key: "favorites", href: "/account/favorites", label: "Favorites" },
+  { key: "favorites", href: "/account/favourites", label: "Favourites" },
   { key: "account", href: "/account", label: "Account" },
 ];
 
@@ -63,7 +63,7 @@ const ACCOUNT_TAB_PREFIXES = [
 
 export function resolveArtMobileNavKey(pathname: string): ArtMobileNavKey | null {
   if (pathname === "/") return "home";
-  if (matches(pathname, "/account/favorites")) return "favorites";
+  if (matches(pathname, "/account/favourites")) return "favorites";
   if (
     matches(pathname, "/artworks") ||
     matches(pathname, "/artists") ||

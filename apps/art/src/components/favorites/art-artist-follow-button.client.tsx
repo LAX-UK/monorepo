@@ -18,7 +18,7 @@ export function ArtArtistFollowButton({
   initialFollowing,
   auth,
 }: ArtArtistFollowButtonProps) {
-  const { active, pending, announcement, toggle } = useFavoriteToggle({
+  const { active, pending, announcement, error, toggle } = useFavoriteToggle({
     initialActive: initialFollowing,
     auth,
     mutate: (next) => (next ? followArtist(slug) : unfollowArtist(slug)),
@@ -44,6 +44,11 @@ export function ArtArtistFollowButton({
       <output className="sr-only" aria-live="polite">
         {announcement}
       </output>
+      {error ? (
+        <p className="mt-2 text-sm text-error" aria-hidden>
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }

@@ -8,12 +8,12 @@ import { artPrivatePageTitle } from "@/lib/art-private-page-metadata";
 import { artServices } from "@/lib/art-services.server";
 
 export const dynamic = "force-dynamic";
-export const metadata = artPrivatePageTitle("Favorites");
+export const metadata = artPrivatePageTitle("Favourites");
 
 export default async function ArtAccountFavoritesPage() {
   const result = await composeArtAccountFavoritesPage(artServices);
   return (
-    <ArtAccountPage result={result} title="Favorites">
+    <ArtAccountPage result={result} title="Favourites">
       {(vm) => (
         <div className="flex flex-col gap-12">
           <ArtSection id="saved-artworks" title="Saved artworks">

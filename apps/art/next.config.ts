@@ -29,6 +29,13 @@ const nextConfig: NextConfig = {
       hostname,
     })),
   },
+  // UK spelling; the US routes stay reachable for bookmarks and old emails.
+  async redirects() {
+    return [
+      { source: "/account/favorites", destination: "/account/favourites", permanent: true },
+      { source: "/account/inquiries", destination: "/account/enquiries", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

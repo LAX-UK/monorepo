@@ -14,7 +14,7 @@ async function runFavoriteMutation(
   active: boolean,
 ): Promise<FavoriteMutationOutcome> {
   const outcome = await mutateFavorite(artCommerceMutationClient, { target, slug, active });
-  if (outcome.ok) revalidatePath("/account/favorites");
+  if (outcome.ok) revalidatePath("/account/favourites");
   return outcome;
 }
 

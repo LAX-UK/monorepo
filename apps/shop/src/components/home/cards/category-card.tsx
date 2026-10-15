@@ -16,7 +16,7 @@ export function CategoryCard({ card }: CategoryCardProps) {
       image={
         <ShopMediaImage
           src={card.image}
-          alt={card.imageAlt}
+          alt=""
           label={SHOP_MEDIA_LABELS.category}
           aspect={[4, 5]}
           sizes="(min-width: 64rem) 25vw, 70vw"

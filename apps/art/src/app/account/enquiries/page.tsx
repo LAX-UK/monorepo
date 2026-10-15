@@ -6,12 +6,12 @@ import { artServices } from "@/lib/art-services.server";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-export const metadata = artPrivatePageTitle("Inquiries");
+export const metadata = artPrivatePageTitle("Enquiries");
 
 export default async function ArtAccountInquiriesPage() {
   const result = await composeArtAccountInquiriesPage(artServices);
   return (
-    <ArtAccountPage result={result} title="Inquiries">
+    <ArtAccountPage result={result} title="Enquiries">
       {(vm) => (
         <div className="flex flex-col gap-10">
           <section aria-labelledby="artwork-enquiries-heading" className="flex flex-col gap-4">

@@ -12,7 +12,7 @@ export function CatalogueStatusSection({ message }: CatalogueStatusSectionProps)
       <ShopStatusState
         variant="error"
         title="Catalogue temporarily unavailable"
-        description="Live artwork links and availability are hidden for now. You can still explore editorial content below, try again, or browse the catalogue directly."
+        description="Live artwork links and availability are hidden for now. Try again, or browse the catalogue directly."
         className="shop-status-state--banner"
         actions={
           <>

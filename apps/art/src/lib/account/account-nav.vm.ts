@@ -1,8 +1,8 @@
 export type ArtAccountNavHref =
   | "/account"
-  | "/account/inquiries"
+  | "/account/enquiries"
   | "/account/collection"
-  | "/account/favorites"
+  | "/account/favourites"
   | "/account/payouts";
 
 export type ArtAccountNavItem = {
@@ -17,9 +17,9 @@ export function buildArtAccountNavItems(input: {
 }): ArtAccountNavItem[] {
   const items: Array<Omit<ArtAccountNavItem, "active">> = [
     { href: "/account", label: "Profile" },
-    { href: "/account/inquiries", label: "Inquiries" },
+    { href: "/account/enquiries", label: "Enquiries" },
     { href: "/account/collection", label: "Collection" },
-    { href: "/account/favorites", label: "Favorites" },
+    { href: "/account/favourites", label: "Favourites" },
   ];
   if (input.payoutsEnabled) items.push({ href: "/account/payouts", label: "Payouts" });
   return items.map((item) => ({ ...item, active: item.href === input.activeHref }));

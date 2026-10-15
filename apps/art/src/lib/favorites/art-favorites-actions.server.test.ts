@@ -25,7 +25,7 @@ describe("art favorites server actions", () => {
     expect(bff.mutate).toHaveBeenCalledWith("/commerce/me/favorites/artworks/work", {
       method: "PUT",
     });
-    expect(cache.revalidatePath).toHaveBeenCalledWith("/account/favorites");
+    expect(cache.revalidatePath).toHaveBeenCalledWith("/account/favourites");
   });
 
   it("removes an artwork", async () => {
