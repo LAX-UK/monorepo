@@ -3,10 +3,10 @@ import {
   ShopAccountLinkButton,
   ShopAccountShell,
 } from "@/components/account/shop-account-shell";
-import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 
-export const metadata = shopPrivatePageMetadata;
+export const metadata = shopPrivatePageTitle("Session expired");
 
 type ShopSessionExpiredPageProps = {
   searchParams: Promise<{ returnTo?: string | string[] }>;

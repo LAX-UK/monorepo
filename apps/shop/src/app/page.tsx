@@ -2,6 +2,7 @@ import { ShopHomePage } from "@/components/shop-home-page";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  title: "Contemporary art editions | LAX Shop",
   alternates: { canonical: "/" },
 };
 

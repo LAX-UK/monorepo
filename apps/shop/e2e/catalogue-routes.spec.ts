@@ -30,4 +30,13 @@ test.describe("Shop catalogue routes @a11y", () => {
       ).toEqual([]);
     });
   }
+
+  for (const path of ["/artists/no-such-artist", "/categories/no-such-category"]) {
+    test(`${path} answers with HTTP 404`, async ({ request }, testInfo) => {
+      test.skip(!enabled, skipReason);
+      test.skip(testInfo.project.name !== "chromium-desktop", "status matrix on desktop only");
+      const response = await request.get(path);
+      expect(response.status()).toBe(404);
+    });
+  }
 });

@@ -1,3 +1,9 @@
+import { loadShopEnv } from "@/env";
+import {
+  X_ROBOTS_TAG_NOINDEX,
+  isShopIndexingAllowedForHost,
+  publicRequestHost,
+} from "@/lib/seo/shop-indexing";
 import {
   SHOP_IDENTITY_FETCH_TIMEOUT_MS,
   SHOP_IDENTITY_SESSION_COOKIE,
@@ -26,6 +32,15 @@ const SKIP_PREFIXES = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const response = await resolveSessionResponse(request);
+  const host = publicRequestHost(request.headers);
+  if (!isShopIndexingAllowedForHost(host, loadShopEnv().SHOP_ALLOW_INDEXING)) {
+    response.headers.set("X-Robots-Tag", X_ROBOTS_TAG_NOINDEX);
+  }
+  return response;
+}
+
+async function resolveSessionResponse(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   if (SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
