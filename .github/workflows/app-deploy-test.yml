@@ -115,6 +115,7 @@ jobs:
         always() &&
         !cancelled() &&
         needs.ci-gate.result == 'success' &&
+        needs.sentry-release.result == 'success' &&
         needs.plan.outputs.deploy == 'true' &&
         needs.build-images.result != 'failure' &&
         needs.build-images.result != 'cancelled'
