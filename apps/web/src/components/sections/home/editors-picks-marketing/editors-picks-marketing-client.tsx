@@ -39,7 +39,7 @@ function EditorsPicksCarousel({
       forwardAriaLabel="Scroll to see more editor's picks"
       forwardButtonClassName="top-[170px]"
       scrollerAs="ul"
-      scrollerClassName="m-0 flex list-none snap-x snap-mandatory gap-6 overflow-x-auto p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      scrollerClassName="m-0 flex list-none snap-x snap-mandatory gap-6 overflow-x-auto overflow-y-hidden overscroll-x-contain p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {lots.map((lot, index) => (
         <li

@@ -89,11 +89,12 @@ export function MarketingHorizontalRail({
     });
   }
 
+  // Card reveals translate children below the row; a vertically scrollable rail would swallow page scroll.
   const scrollerProps = {
     id,
-    className: scrollerClassName,
+    className: cn("overflow-y-hidden overscroll-x-contain", scrollerClassName),
     "aria-label": ariaLabel,
-    "data-lenis-prevent": true,
+    "data-lenis-prevent-horizontal": true,
     children,
   };
 
