@@ -35,6 +35,12 @@ export function artCatalogueApiServerUrl(path: string): string {
   return `${artCatalogueApiBaseUrl()}${normalized}`;
 }
 
+/**
+ * Next only writes 200s to the data cache, so a cached slug lookup keeps serving after the
+ * entity is deleted (the 404 never replaces it). Slug lookups bypass the cache.
+ */
+export const ART_SLUG_LOOKUP: RequestInit = { cache: "no-store" };
+
 export async function artCatalogueFetch(path: string, init?: RequestInit): Promise<Response> {
   const resource = path.split(/[/?]/).filter(Boolean)[1] ?? "catalogue";
   const url = `${artCatalogueApiBaseUrl()}${path}`;
@@ -108,6 +114,7 @@ export async function fetchArtChannelArtworkBySlug(
 ): Promise<PublicArtworkDetail | null> {
   const response = await artCatalogueFetch(
     `/v1/artworks/${encodeURIComponent(slug)}?salesChannel=${ART_SALES_CHANNEL}`,
+    ART_SLUG_LOOKUP,
   );
   if (response.status === 404) {
     return null;
@@ -162,7 +169,10 @@ export async function fetchArtChannelArtists(input: ArtArtistListQuery): Promise
 export async function fetchArtChannelArtistBySlug(
   slug: string,
 ): Promise<PublicArtistDetail | null> {
-  const response = await artCatalogueFetch(`/v1/artists/${encodeURIComponent(slug)}`);
+  const response = await artCatalogueFetch(
+    `/v1/artists/${encodeURIComponent(slug)}`,
+    ART_SLUG_LOOKUP,
+  );
   if (response.status === 404) {
     return null;
   }

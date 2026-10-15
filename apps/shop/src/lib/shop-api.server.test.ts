@@ -1,6 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ShopApiBffError } from "./shop-api-bff-error.js";
-import { fetchPublicArtworkCatalogue, shopApiBaseUrl } from "./shop-api.server.js";
+import {
+  fetchPublicArtworkCatalogue,
+  fetchPublicCategoryBySlug,
+  shopApiBaseUrl,
+} from "./shop-api.server.js";
+
+describe("fetchPublicCategoryBySlug", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("bypasses the data cache so a deleted category returns not found", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPublicCategoryBySlug("watches")).resolves.toBeNull();
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.cache).toBe("no-store");
+    expect(init).not.toHaveProperty("next");
+  });
+});
 
 describe("shopApiBaseUrl", () => {
   afterEach(() => {

@@ -37,11 +37,22 @@ export function shopApiServerUrl(path: string): string {
   return `${shopApiBaseUrl()}${normalized}`;
 }
 
+/**
+ * Next only writes 200s to the data cache, so a cached slug lookup keeps serving after the
+ * entity is deleted (the 404 never replaces it). Slug lookups bypass the cache.
+ */
+const SLUG_LOOKUP: RequestInit = { cache: "no-store" };
+
 async function shopApiFetch(path: string, init?: RequestInit): Promise<Response> {
   const resource = path.split(/[/?]/).filter(Boolean)[1] ?? "catalogue";
-  return fetch(`${shopApiBaseUrl()}${path}`, {
+  const url = `${shopApiBaseUrl()}${path}`;
+  const signal = AbortSignal.timeout(SHOP_FETCH_TIMEOUT_MS);
+  if (init?.cache === "no-store") {
+    return fetch(url, { ...init, signal });
+  }
+  return fetch(url, {
     ...init,
-    signal: AbortSignal.timeout(SHOP_FETCH_TIMEOUT_MS),
+    signal,
     next: {
       revalidate: SHOP_HOME_REVALIDATE_SECONDS,
       tags: ["shop:catalogue", `shop:${resource}`],
@@ -114,7 +125,7 @@ export async function fetchPublicArtworkCatalogue(): Promise<PublicArtworkList> 
 }
 
 export async function fetchPublicArtworkBySlug(slug: string): Promise<PublicArtworkDetail | null> {
-  const response = await shopApiFetch(`/v1/artworks/${encodeURIComponent(slug)}`);
+  const response = await shopApiFetch(`/v1/artworks/${encodeURIComponent(slug)}`, SLUG_LOOKUP);
   if (response.status === 404) {
     return null;
   }
@@ -142,7 +153,7 @@ export async function fetchPublicCategories(input?: {
 export async function fetchPublicCategoryBySlug(
   slug: string,
 ): Promise<PublicCategorySummary | null> {
-  const response = await shopApiFetch(`/v1/categories/${encodeURIComponent(slug)}`);
+  const response = await shopApiFetch(`/v1/categories/${encodeURIComponent(slug)}`, SLUG_LOOKUP);
   if (response.status === 404) {
     return null;
   }
@@ -169,7 +180,7 @@ export async function fetchPublicArtists(input: {
 }
 
 export async function fetchPublicArtistBySlug(slug: string): Promise<PublicArtistDetail | null> {
-  const response = await shopApiFetch(`/v1/artists/${encodeURIComponent(slug)}`);
+  const response = await shopApiFetch(`/v1/artists/${encodeURIComponent(slug)}`, SLUG_LOOKUP);
   if (response.status === 404) {
     return null;
   }
@@ -193,7 +204,10 @@ export async function fetchPublicMerchandiseProducts(): Promise<PublicMerchandis
 export async function fetchPublicMerchandiseProduct(
   slug: string,
 ): Promise<PublicMerchandiseProductDetail | null> {
-  const response = await shopApiFetch(`/v1/merchandise/products/${encodeURIComponent(slug)}`);
+  const response = await shopApiFetch(
+    `/v1/merchandise/products/${encodeURIComponent(slug)}`,
+    SLUG_LOOKUP,
+  );
   if (response.status === 404) {
     return null;
   }
