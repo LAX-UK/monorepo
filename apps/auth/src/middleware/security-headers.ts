@@ -1,4 +1,16 @@
+import { randomBytes } from "node:crypto";
 import { createMiddleware } from "hono/factory";
+
+/** Hono context key for per-request hosted-auth CSP nonces (Cloudflare JS Detections). */
+export const HOSTED_AUTH_CSP_NONCE_KEY = "hostedAuthCspNonce";
+
+function hostedAuthCspNonce(): string {
+  return randomBytes(16).toString("base64");
+}
+
+function scriptSrcWithNonce(base: string, nonce: string): string {
+  return base.replace("script-src 'self'", `script-src 'self' 'nonce-${nonce}'`);
+}
 
 /** JSON/API responses — no document execution surface. */
 export const AUTH_API_CSP =
@@ -31,19 +43,25 @@ export const AUTH_HOSTED_HTML_CSP_TURNSTILE = [
   "base-uri 'none'",
 ].join("; ");
 
-export function hostedHtmlCsp(turnstileEnabled: boolean): string {
-  return turnstileEnabled ? AUTH_HOSTED_HTML_CSP_TURNSTILE : AUTH_HOSTED_HTML_CSP;
+export function hostedHtmlCsp(turnstileEnabled: boolean, cspNonce?: string): string {
+  const base = turnstileEnabled ? AUTH_HOSTED_HTML_CSP_TURNSTILE : AUTH_HOSTED_HTML_CSP;
+  if (!cspNonce) return base;
+  return scriptSrcWithNonce(base, cspNonce);
 }
 
 /** Baseline security headers for the auth issuer. */
 export function createSecurityHeadersMiddleware(options?: { turnstileEnabled?: boolean }) {
-  const hostedCsp = hostedHtmlCsp(Boolean(options?.turnstileEnabled));
   return createMiddleware(async (c, next) => {
+    const cspNonce = hostedAuthCspNonce();
+    c.set(HOSTED_AUTH_CSP_NONCE_KEY, cspNonce);
     await next();
     c.header("X-Content-Type-Options", "nosniff");
     c.header("X-Frame-Options", "DENY");
     const isHtml = (c.res.headers.get("content-type") ?? "").includes("text/html");
-    c.header("Content-Security-Policy", isHtml ? hostedCsp : AUTH_API_CSP);
+    c.header(
+      "Content-Security-Policy",
+      isHtml ? hostedHtmlCsp(Boolean(options?.turnstileEnabled), cspNonce) : AUTH_API_CSP,
+    );
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
     c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     if (c.req.header("x-forwarded-proto") === "https" || c.req.url.startsWith("https:")) {

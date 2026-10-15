@@ -23,7 +23,7 @@ describe("auth issuer security headers", () => {
     const response = await app.request("https://auth.example.com/login");
     const csp = response.headers.get("content-security-policy") ?? "";
     expect(csp).toContain("style-src 'self' https://fonts.googleapis.com");
-    expect(csp).toContain("script-src 'self'");
+    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+'/);
     expect(csp).toContain("font-src https://fonts.gstatic.com");
     expect(csp).toContain("img-src 'self'");
     expect(csp).not.toContain("unsafe-inline");

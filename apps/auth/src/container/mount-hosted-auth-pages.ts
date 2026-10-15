@@ -16,7 +16,15 @@ import {
   parseTwoFactorSetupRequiredBy,
 } from "@auction/auth";
 import type { Context, Hono } from "hono";
+import { applyHostedAuthCspNonce } from "../lib/apply-hosted-auth-csp-nonce.js";
+import { HOSTED_AUTH_CSP_NONCE_KEY } from "../middleware/security-headers.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
+
+function hostedAuthHtml(c: Context, html: string): Response {
+  const nonce = c.get(HOSTED_AUTH_CSP_NONCE_KEY);
+  const body = typeof nonce === "string" ? applyHostedAuthCspNonce(html, nonce) : html;
+  return c.html(body);
+}
 
 export type HostedAuthPageMountOptions = HostedAuthCapabilities & {
   getSession?: (headers: Headers) => Promise<unknown>;
@@ -116,7 +124,7 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
         if (redirected) return redirected;
       }
       c.header("Cache-Control", "no-store");
-      return c.html(render(viewFromRequest(c.req.url, capabilities)));
+      return hostedAuthHtml(c, render(viewFromRequest(c.req.url, capabilities)));
     });
   };
 
@@ -128,7 +136,7 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     const redirected = await redirectSignedInIfNeeded(c, capabilities);
     if (redirected) return redirected;
     c.header("Cache-Control", "no-store");
-    return c.html(buildHostedLoginHtml(viewFromRequest(c.req.url, capabilities)));
+    return hostedAuthHtml(c, buildHostedLoginHtml(viewFromRequest(c.req.url, capabilities)));
   });
   html("/sign-up", buildHostedSignUpHtml, true);
   html("/forgot-password", buildHostedForgotPasswordHtml);
@@ -140,17 +148,18 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
       new URL(c.req.url).searchParams.get("required_by"),
     );
     c.header("Cache-Control", "no-store");
-    if (!capabilities.getSession) return c.html(buildHostedTwoFactorSetupHtml(view, requiredBy));
+    if (!capabilities.getSession)
+      return hostedAuthHtml(c, buildHostedTwoFactorSetupHtml(view, requiredBy));
     let session: unknown;
     try {
       session = await capabilities.getSession(c.req.raw.headers);
     } catch {
-      return c.html(buildHostedTwoFactorSetupHtml(view, requiredBy));
+      return hostedAuthHtml(c, buildHostedTwoFactorSetupHtml(view, requiredBy));
     }
     if (!session) return c.redirect(view.flow.loginPath, 302);
     // Enabling again would immediately replace the working authenticator secret.
     if (sessionHasTwoFactor(session)) return c.redirect(manageUrl(c.req.url), 302);
-    return c.html(buildHostedTwoFactorSetupHtml(view, requiredBy));
+    return hostedAuthHtml(c, buildHostedTwoFactorSetupHtml(view, requiredBy));
   });
   app.get("/two-factor/manage", async (c) => {
     const view = viewFromRequest(c.req.url, capabilities);
@@ -166,7 +175,8 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     if (!sessionHasTwoFactor(session)) {
       return c.redirect(`/two-factor/setup${new URL(c.req.url).search}`, 302);
     }
-    return c.html(
+    return hostedAuthHtml(
+      c,
       buildHostedTwoFactorManageHtml(view, await policyRequiredBy(capabilities, subjectId)),
     );
   });
