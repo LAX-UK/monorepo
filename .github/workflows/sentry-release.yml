@@ -51,13 +51,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          existing_projects="$(sentry-cli projects list -o "${SENTRY_ORG}" | rg -o 'lax-[a-z0-9-]+' | sort -u || true)"
+          existing_projects="$(sentry-cli projects list -o "${SENTRY_ORG}" | grep -Eo 'lax-[a-z0-9-]+' | sort -u || true)"
           IFS=',' read -ra apps <<< "${SENTRY_APPS}"
           project_args=()
           anchor_project=""
           for app in "${apps[@]}"; do
             project="lax-${ENV_SUFFIX}-${app}"
-            if echo "${existing_projects}" | rg -Fxq "${project}"; then
+            if echo "${existing_projects}" | grep -Fxq "${project}"; then
               project_args+=(-p "$project")
               if [ -z "${anchor_project}" ] && [ "${app}" = "api" ]; then
                 anchor_project="${project}"
@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
           if [ -z "${anchor_project}" ]; then
-            anchor_project="$(echo "${existing_projects}" | rg "^lax-${ENV_SUFFIX}-" | head -1)"
+            anchor_project="$(echo "${existing_projects}" | grep "^lax-${ENV_SUFFIX}-" | head -1)"
           fi
 
           if sentry-cli releases info "$RELEASE" -p "$anchor_project" >/dev/null 2>&1; then
