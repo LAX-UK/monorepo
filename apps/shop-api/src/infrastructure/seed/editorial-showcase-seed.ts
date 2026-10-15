@@ -349,6 +349,23 @@ const PAGES: readonly SeedPage[] = [
       ),
     ]),
   },
+  ...(
+    [
+      ["cookies", "Cookie policy"],
+      ["shipping", "Shipping and delivery"],
+      ["returns", "Returns policy"],
+      ["accessibility", "Accessibility statement"],
+      ["modern-slavery", "Modern slavery statement"],
+    ] as const
+  ).map(([slug, title]) => ({
+    slug,
+    title,
+    body: blocks([
+      prose(
+        `This placeholder ${title.toLowerCase()} is seeded for local development. Replace it in the admin editorial workspace before launch.`,
+      ),
+    ]),
+  })),
 ];
 
 async function upsertPage(db: Database, page: SeedPage, now: Date): Promise<string | undefined> {

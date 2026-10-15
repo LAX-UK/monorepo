@@ -88,6 +88,7 @@ test.describe("lax.art discovery", () => {
     const card = page.getByTestId("art-venue-card").first();
     test.skip((await card.count()) === 0, "no venues seeded");
     const name = (await card.getByRole("heading", { level: 2 }).textContent())?.trim() ?? "";
+    await expect(card.locator("a[aria-hidden]")).toHaveCount(0);
     await card.getByRole("heading", { level: 2 }).getByRole("link").click();
     await expect(page).toHaveURL(/\/visit\/[^/]+$/);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();

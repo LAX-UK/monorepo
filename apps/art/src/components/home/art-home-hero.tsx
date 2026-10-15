@@ -22,7 +22,7 @@ export function ArtHomeHero({ hero }: { hero: ArtHomeHeroVm }) {
         />
       </div>
       <div className={cn(MARKETING_PAGE_SHELL, "flex items-end pt-24 pb-10 sm:pb-16")}>
-        <div className="flex w-full max-w-[37.5rem] flex-col gap-4 border border-hero-panel-border bg-hero-panel p-5 motion-safe:animate-art-hero-panel-in sm:gap-3 sm:p-10">
+        <div className="flex w-full max-w-[37.5rem] flex-col gap-4 border border-hero-panel-border bg-hero-panel p-5 backdrop-blur-sm motion-safe:animate-art-hero-panel-in sm:gap-3 sm:p-10">
           <div className="flex flex-col gap-3">
             {hero.kicker ? (
               <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking)] text-hero-panel-ink">
