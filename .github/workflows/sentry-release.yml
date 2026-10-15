@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 env:
-  SENTRY_APPS: web,api,auth,ws,worker
+  SENTRY_APPS: web,api,auth,ws,worker,art,shop,shop-api,shop-identity
   SENTRY_ORG: lax-bid
   SENTRY_URL: https://sentry.io
 
