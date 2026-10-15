@@ -54,9 +54,27 @@ jobs:
           IFS=',' read -ra apps <<< "${SENTRY_APPS}"
           project_args=()
           for app in "${apps[@]}"; do
-            project_args+=(-p "lax-${ENV_SUFFIX}-${app}")
+            project="lax-${ENV_SUFFIX}-${app}"
+            if sentry-cli projects info "$project" >/dev/null 2>&1; then
+              project_args+=(-p "$project")
+            else
+              echo "::warning::Sentry project ${project} not found; skipping (apply terraform sentry layer to create it)"
+            fi
           done
+          if [ "${#project_args[@]}" -eq 0 ]; then
+            echo "::error::No Sentry projects found for environment ${ENV_SUFFIX}"
+            exit 1
+          fi
           anchor_project="lax-${ENV_SUFFIX}-api"
+          if ! sentry-cli projects info "$anchor_project" >/dev/null 2>&1; then
+            for app in "${apps[@]}"; do
+              candidate="lax-${ENV_SUFFIX}-${app}"
+              if sentry-cli projects info "$candidate" >/dev/null 2>&1; then
+                anchor_project="$candidate"
+                break
+              fi
+            done
+          fi
 
           if sentry-cli releases info "$RELEASE" -p "$anchor_project" >/dev/null 2>&1; then
             echo "Release ${RELEASE} already exists"
