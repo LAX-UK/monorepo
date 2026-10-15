@@ -51,12 +51,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          existing_projects="$(sentry-cli projects list -o "${SENTRY_ORG}" | rg -o 'lax-[a-z0-9-]+' | sort -u || true)"
           IFS=',' read -ra apps <<< "${SENTRY_APPS}"
           project_args=()
+          anchor_project=""
           for app in "${apps[@]}"; do
             project="lax-${ENV_SUFFIX}-${app}"
-            if sentry-cli projects info "$project" >/dev/null 2>&1; then
+            if echo "${existing_projects}" | rg -Fxq "${project}"; then
               project_args+=(-p "$project")
+              if [ -z "${anchor_project}" ] && [ "${app}" = "api" ]; then
+                anchor_project="${project}"
+              fi
             else
               echo "::warning::Sentry project ${project} not found; skipping (apply terraform sentry layer to create it)"
             fi
@@ -65,15 +70,8 @@ jobs:
             echo "::error::No Sentry projects found for environment ${ENV_SUFFIX}"
             exit 1
           fi
-          anchor_project="lax-${ENV_SUFFIX}-api"
-          if ! sentry-cli projects info "$anchor_project" >/dev/null 2>&1; then
-            for app in "${apps[@]}"; do
-              candidate="lax-${ENV_SUFFIX}-${app}"
-              if sentry-cli projects info "$candidate" >/dev/null 2>&1; then
-                anchor_project="$candidate"
-                break
-              fi
-            done
+          if [ -z "${anchor_project}" ]; then
+            anchor_project="$(echo "${existing_projects}" | rg "^lax-${ENV_SUFFIX}-" | head -1)"
           fi
 
           if sentry-cli releases info "$RELEASE" -p "$anchor_project" >/dev/null 2>&1; then
