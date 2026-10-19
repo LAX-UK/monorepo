@@ -16,6 +16,7 @@ Main is the future source of truth. Release-only work is re-expressed in main’
 | Forgot-password Turnstile gating                     | `6f104296`, `00231d4a`                                      | Hosted recovery page `turnstileHost()`                                                                                                                                                                                      | Superseded     | Bid web no longer renders forgot-password; Identity owns the form                                                                                |
 | No default marketing footer tagline                  | `85ce35ba` (#459)                                           | `apps/web/src/components/layout/site-footer.tsx`                                                                                                                                                                            | Ported         | None                                                                                                                                             |
 | ATG White Label sync (GAP API)                       | `92ace4faf` + `2d9baca9b` on `fix/atg-audit-pr1` ([#512](https://github.com/LAX-UK/monorepo/pull/512): ownership guards, admin UX, public read-only catalogue; SHAs change on squash-merge) | Not yet on main. Follow **Porting to `main`** in `docs/integrations/atg.md` on `release` (worker, queues, API guards, admin ATG tab, public catalogue, `resolveSaleSellingPlatform`, migration `0132`) | Pending        | Re-sync is tick-driven (no enqueue hooks in sale/lot services); one-platform-per-sale rule is computed from link tables (no new migration)     |
+| ATG production readiness                             | `feat/atg-production-readiness` (PR to `release`; SHAs change on squash-merge) | Per-sale ATG auction type (`Timed`/`Live`) and distribution (`private_test`/`public_marketplace`) on the admin ATG tab and `PUT /admin/integrations/atg/sales/:id/settings`; no `ApproveAuction` (ATG approves); post-bid field locks; flat premium only; JPG/10 MB image preflight; migration `0133`; retired `ATG_AUCTION_TYPE`, `ATG_LISTING_PRIVATE`, `ATG_APPROVE_BEFORE_PUBLISH`; manual settlement runbook `docs/runbooks/atg-manual-settlement.md` | Pending        | Port with the ATG integration row above; `auction-infra` still passes `atg_listing_private` (ignored) until removed in both Terraform copies |
 | ATG White Label cookie isolation                     | `efa2683a`, `3043c67f` (`feat/atg-integration-release`, not yet merged), `auction-infra` #41 | `auctions.lax.bid` is proxied through the `atg-cookie-shield` Worker, which strips LAX cookies (release `docs/integrations/atg.md`, decision record). With D15's host-only `__Host-lax-bid-session`, sessions never reach ATG and the Worker becomes defence in depth. Still to do on main: make `lax_acting_legal_entity_id` host-only (`acting-context.actions.ts` passes `COOKIE_DOMAIN`); register ATG as an OIDC client in `packages/identity-contracts/src/clients.ts` for White Label SSO (ATG Step 9); update the `auction-infra` `atg-white-label` comments once D15 is in prod. Workflows pass `ATG_ACM_VALIDATION_ENABLED` / `ATG_WHITE_LABEL_ENABLED` (done). Release mirrors the same Terraform and Worker in its in-repo `infra/`; main reads `auction-infra` | Pending        | Release keeps shared `.lax.bid` sessions and relies on the Worker; main removes that dependency |
 
 Terraform `variable` blocks for `strict_bid_eligibility_enabled`, `kyc_onboarding_enabled`, `full_buyer_onboarding_enabled`, and `marketing_prompts_enabled` live in the private `.infra-config` repo. In-repo wiring is workflows, env examples, `docker-compose.prod.yml`, and `turbo.json` only.
@@ -57,12 +58,17 @@ Release adds `0132_atg_sync_links` (tables `atg_auction_link`, `atg_lot_link`; a
 (`1788000007000`) and before main's `0132_domain_event_delivery` (`1788000008000`), so it
 does not shadow any main migration under the "apply newer than last `created_at`" rule.
 
-Once it ships, the production ledger has one more release-only row. Main must:
+Release then adds `0133_atg_sale_settings` (per-sale ATG auction type and distribution on
+`atg_auction_link`, `locked_fields_hash` on `atg_lot_link`; additive, `IF NOT EXISTS`, constraint
+`DO` blocks that ignore `duplicate_object`) with journal `when` **`1788000007750`**, still before
+main's `1788000008000`.
 
-1. add the release SQL file **byte-identical** (so its hash matches the production row),
+Once they ship, the production ledger has two more release-only rows. Main must:
+
+1. add both release SQL files **byte-identical** (so their hashes match the production rows),
    registered in `_journal.json` between main's `0131` and `0132` entries with the same
-   `when` (`1788000007500`) and a non-colliding tag;
-2. extend the ledger-normalization step above to expect and keep this row;
+   `when` values (`1788000007500`, `1788000007750`) and non-colliding tags;
+2. extend the ledger-normalization step above to expect and keep these rows;
 3. keep `atg_auction_link` and `atg_lot_link` in `WORKER_FULL_TABLES`
    (`packages/db/src/migrate-roles.ts`).
 
