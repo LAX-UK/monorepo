@@ -1,4 +1,6 @@
+import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
+import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
 import { loadArtStorefrontBaseUrl } from "@/env.server";
@@ -9,6 +11,7 @@ import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
+  MarketingAudioPlayer,
   MarketingPageTitle,
   MarketingShareButton,
   MarketingSubNav,
@@ -49,12 +52,21 @@ export default async function StoryPage({ params }: StoryPageProps) {
   const result = await loadStory(slug);
   if (result.status !== "ok") notFoundOrUnavailable(result.status, "Story");
 
-  const { story, kicker, body } = result.data;
+  const { story, kicker, byline, body, related } = result.data;
   const film = isSafeEditorialHref(story.videoUrl) && story.videoUrl.startsWith("https://");
   const path = `/stories/${encodeURIComponent(story.slug)}`;
   // A film's cover is its video poster below, so the title stays plain rather than repeat it.
   const heroImage = film ? null : story.coverUrl;
-  const title = { title: story.title, eyebrow: kicker, subtitle: story.standfirst };
+  const title = {
+    title: story.title,
+    eyebrow: kicker,
+    subtitle: story.standfirst,
+    ...(byline ? { meta: [byline] } : {}),
+  };
+  const audioUrl =
+    isSafeEditorialHref(story.audioUrl) && story.audioUrl.startsWith("https://")
+      ? story.audioUrl
+      : null;
 
   return (
     <article className="flex flex-col pb-10 lg:pb-16">
@@ -95,7 +107,20 @@ export default async function StoryPage({ params }: StoryPageProps) {
               : {})}
           />
         ) : null}
-        <EditorialBlockRenderer body={body} className="mx-auto w-full max-w-3xl" />
+        {audioUrl ? (
+          <MarketingAudioPlayer
+            src={audioUrl}
+            title={story.title}
+            durationSeconds={story.durationSeconds ?? null}
+            className="mx-auto max-w-[53.75rem]"
+          />
+        ) : null}
+        <EditorialBlockRenderer body={body} wideMedia className="mx-auto w-full max-w-[53.75rem]" />
+        {related ? (
+          <ArtSection id="story-related" title={related.heading}>
+            <ArtEditorialCardGrid cards={related.cards} ariaLabel={related.heading} />
+          </ArtSection>
+        ) : null}
       </div>
     </article>
   );

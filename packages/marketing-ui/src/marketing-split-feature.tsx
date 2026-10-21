@@ -13,7 +13,8 @@ export type MarketingSplitFeatureProps = {
   /** Desktop side of the media; on small screens media always sits above the panel. */
   mediaSide?: "left" | "right";
   tone?: MarketingSurfaceTone;
-  headingLevel?: "h2" | "h3";
+  /** `h1` when the feature leads the page. */
+  headingLevel?: "h1" | "h2" | "h3";
   className?: string;
 };
 

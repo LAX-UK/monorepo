@@ -7,22 +7,40 @@ import { Button } from "@auction/ui/components/button";
  * Cream band with the LAX Bid and LAX Shop cards (Figma home `299:4535`). Figma's illustrations are
  * CMS content with no placement slot yet, so the cards are text-only on the feature surface.
  */
-export function ArtHomeEcosystemBand({ cards }: { cards: readonly ArtHomeEcosystemCardVm[] }) {
+export function ArtHomeEcosystemBand({
+  cards,
+  heading,
+}: {
+  cards: readonly ArtHomeEcosystemCardVm[];
+  /** Adds a section heading above the cards (Art Hub `980:26767`); card titles then drop to h3. */
+  heading?: { title: string; subtitle?: string };
+}) {
+  const CardHeading = heading ? "h3" : "h2";
   return (
     <section
-      aria-label="Across LAX"
+      aria-label={heading?.title ?? "Across LAX"}
       className="bg-surface-feature py-16 text-on-surface-feature md:py-24"
       data-testid="art-home-ecosystem"
     >
+      {heading ? (
+        <div className={cn(MARKETING_PAGE_SHELL, "mb-12 flex flex-col gap-2")}>
+          <h2 className="font-headline text-[length:var(--text-title-section)] font-medium leading-[1.2]">
+            {heading.title}
+          </h2>
+          {heading.subtitle ? (
+            <p className="max-w-[45rem] text-base text-on-surface-variant">{heading.subtitle}</p>
+          ) : null}
+        </div>
+      ) : null}
       <ul className={cn(MARKETING_PAGE_SHELL, "grid gap-12 md:grid-cols-2 md:gap-10")}>
         {cards.map((card) => (
           <li key={card.id} className="flex flex-col gap-4">
             <p className="font-label text-xs font-medium uppercase tracking-[var(--text-label-caps-tracking)]">
               {card.eyebrow}
             </p>
-            <h2 className="font-headline text-[length:var(--text-display-md)] font-normal leading-tight">
+            <CardHeading className="font-headline text-[length:var(--text-display-md)] font-normal leading-tight">
               {card.title}
-            </h2>
+            </CardHeading>
             <p className="max-w-[41rem] text-base leading-relaxed text-on-surface-variant">
               {card.body}
             </p>

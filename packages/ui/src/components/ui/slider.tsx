@@ -5,14 +5,20 @@ import type * as React from "react";
 
 import { cn } from "../../lib/utils.js";
 
+type SliderProps = React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** Accessible name of the thumb; Radix names thumbs, not the root, so a bare slider has none. */
+  thumbLabel?: string;
+};
+
 function Slider({
   className,
   defaultValue,
   value,
   min = 0,
   max = 100,
+  thumbLabel,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: SliderProps) {
   const thumbValues = value ?? defaultValue ?? [min];
 
   return (
@@ -35,6 +41,7 @@ function Slider({
         <SliderPrimitive.Thumb
           key={`thumb-${String(index)}`}
           data-slot="slider-thumb"
+          {...(thumbLabel ? { "aria-label": thumbLabel } : {})}
           className="block size-4 rounded-full border border-primary/50 bg-surface-container-lowest shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
         />
       ))}

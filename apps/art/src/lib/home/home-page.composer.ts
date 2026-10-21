@@ -95,7 +95,7 @@ async function loadGalleryEntries(
 }
 
 /** Home placements are curated in Shop admin and may hold no Art-channel items yet. */
-async function curatedOrNewest<T extends { items: readonly unknown[] }>(
+export async function curatedOrNewest<T extends { items: readonly unknown[] }>(
   curated: () => Promise<T>,
   newest: () => Promise<T>,
 ): Promise<T> {

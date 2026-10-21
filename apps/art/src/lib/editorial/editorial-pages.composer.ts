@@ -9,6 +9,7 @@ import type {
   ArtEditorialFetchResult,
   ArtEditorialPreview,
   ArtEditorialStoryDetail,
+  ArtEditorialStorySummary,
   ArtEditorialVenueDetail,
   ArtExhibitionStatus,
 } from "@/lib/editorial/art-editorial.types";
@@ -18,11 +19,9 @@ import {
 } from "@/lib/editorial/editorial-body.composer";
 import {
   type EditorialCardVm,
-  buildPlacementCards,
   exhibitionCard,
   exhibitionKindLabel,
   formatExhibitionDates,
-  storyCard,
 } from "@/lib/editorial/editorial-card.vm";
 import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
 import {
@@ -30,6 +29,15 @@ import {
   exhibitionHasEnded,
   exhibitionMetaLine,
 } from "@/lib/editorial/editorial-page-title.vm";
+import {
+  type RelatedContentVm,
+  currentOrUpcomingExhibitions,
+  newestFirst,
+  selectRelatedContent,
+  storyByline,
+  storyCategory,
+  storyCategoryLabel,
+} from "@/lib/editorial/editorial-story.vm";
 import {
   type ExhibitionArtistVm,
   type ExhibitionFactsVm,
@@ -240,21 +248,55 @@ export async function composeExhibitionDetailPage(
   };
 }
 
+export type StoryPageVm = {
+  story: ArtEditorialStoryDetail;
+  /** Category label shown above the title, e.g. "Artist interview". */
+  kicker: string;
+  /** “By <author> · <date>” (Figma `687:17324`). */
+  byline: string | null;
+  body: EditorialBodyVm;
+  related: RelatedContentVm | null;
+};
+
 export async function composeStoryPage(
-  services: Services<"getStory">,
+  services: Services<"getStory" | "listStories">,
   slug: string,
-): Promise<
-  ArtEditorialPageResult<{ story: ArtEditorialStoryDetail; kicker: string; body: EditorialBodyVm }>
-> {
+  now: Date = new Date(),
+): Promise<ArtEditorialPageResult<StoryPageVm>> {
   const result = await services.editorial.getStory(slug);
   if (result.status !== "ok") return passThrough(result);
   const story = result.data;
-  const body = await composeEditorialBody(
-    story.body,
-    services,
-    `/stories/${encodeURIComponent(story.slug)}`,
-  );
-  return { status: "ok", data: { story, kicker: storyCard(story).kicker ?? "Story", body } };
+  const exhibitions = story.related?.exhibitions ?? [];
+  const [body, storyGroups] = await Promise.all([
+    composeEditorialBody(story.body, services, `/stories/${encodeURIComponent(story.slug)}`),
+    // Related stories are only fetched when no exhibition takes the slot.
+    currentOrUpcomingExhibitions(exhibitions, now).length > 0
+      ? []
+      : loadSameSeriesAndCategory(services.editorial, story),
+  ]);
+  return {
+    status: "ok",
+    data: {
+      story,
+      kicker: storyCategoryLabel(story),
+      byline: storyByline(story),
+      body,
+      related: selectRelatedContent({ exhibitions, storyGroups, currentSlug: story.slug, now }),
+    },
+  };
+}
+
+/** Same series first, then same category; a failed read just means that group is empty. */
+async function loadSameSeriesAndCategory(
+  editorial: Pick<ArtEditorialPort, "listStories">,
+  story: ArtEditorialStoryDetail,
+): Promise<ArtEditorialStorySummary[][]> {
+  const filters = [
+    ...(story.series ? [{ series: story.series }] : []),
+    { category: storyCategory(story) },
+  ];
+  const results = await Promise.all(filters.map((filter) => editorial.listStories(filter)));
+  return results.map((r) => (r.status === "ok" ? newestFirst(r.data.items) : []));
 }
 
 export type EditorialPageVm = {
@@ -420,28 +462,6 @@ export async function composeVenuePage(
       hasLocation,
       exhibitions,
       sectionTabs: venueSectionTabs({ location: hasLocation, exhibitions: exhibitions.length > 0 }),
-    },
-  };
-}
-
-export type HubPageVm = { spotlight: EditorialCardVm[]; stories: EditorialCardVm[] };
-
-export async function composeArtHubPage(
-  services: Pick<Services<"home" | "listStories">, "editorial">,
-): Promise<ArtEditorialPageResult<HubPageVm>> {
-  const [home, stories] = await Promise.all([
-    services.editorial.home(),
-    services.editorial.listStories(),
-  ]);
-  if (home.status !== "ok" && stories.status !== "ok") return passThrough(home);
-  return {
-    status: "ok",
-    data: {
-      spotlight:
-        home.status === "ok"
-          ? buildPlacementCards(home.data.placements, "art_hub_spotlight", "Featured story")
-          : [],
-      stories: stories.status === "ok" ? stories.data.items.map(storyCard) : [],
     },
   };
 }

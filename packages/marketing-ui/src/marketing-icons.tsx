@@ -22,6 +22,7 @@ import {
   MapPin,
   Menu,
   Moon,
+  Pause,
   Phone,
   Play,
   Search,
@@ -119,6 +120,10 @@ export function MarketingShareIcon({ className, ...props }: MarketingIconProps) 
 
 export function MarketingPlayIcon({ className, ...props }: MarketingIconProps) {
   return <Play className={cn("size-6", className)} aria-hidden {...props} />;
+}
+
+export function MarketingPauseIcon({ className, ...props }: MarketingIconProps) {
+  return <Pause className={cn("size-6", className)} aria-hidden {...props} />;
 }
 
 export function MarketingMoreIcon({ className, ...props }: MarketingIconProps) {

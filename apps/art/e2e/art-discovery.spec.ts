@@ -146,4 +146,19 @@ test.describe("lax.art discovery", () => {
     test.skip((await featured.count()) === 0, "no featured exhibitions seeded");
     await expect(featured.getByRole("link", { name: "View exhibition" }).first()).toBeVisible();
   });
+
+  test("stories tabs are routes and the podcast tab has a playable lead", async ({ page }) => {
+    test.skip(!editorialEnabled, "stories need ART_EDITORIAL_ENABLED=true");
+    await page.goto("/stories");
+    const tabs = page.getByRole("navigation", { name: "Story types" });
+    await expect(tabs.getByRole("link", { name: "All" })).toHaveAttribute("aria-current", "page");
+    await tabs.getByRole("link", { name: "Press" }).click();
+    await expect(page).toHaveURL(/\/stories\/press$/);
+    await tabs.getByRole("link", { name: "LAX's Podcast" }).click();
+    await expect(page).toHaveURL(/\/stories\/podcast$/);
+    const play = page.getByRole("button", { name: /^Play / });
+    test.skip((await play.count()) === 0, "no podcast episode with audio seeded");
+    await play.click();
+    await expect(page.getByRole("button", { name: /^Pause / })).toBeVisible();
+  });
 });
