@@ -44,25 +44,7 @@ function Placeholders({ count, className }: { count: number; className: string }
   ));
 }
 
-export function ArtArtistDirectorySkeleton() {
-  return (
-    <LoadingRegion label="Loading artists">
-      <Skeleton className="mb-6 h-9 w-40" />
-      <Skeleton className="mb-8 h-10 w-full max-w-2xl" />
-      <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-6">
-        {Array.from({ length: 12 }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders
-          <div key={index} className="flex flex-col items-center gap-3">
-            <Skeleton className="aspect-square w-full max-w-40 rounded-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-        ))}
-      </div>
-    </LoadingRegion>
-  );
-}
-
-/** Exhibitions, Art Hub and Collector Hub: header, tabs row, landscape editorial cards. */
+/** Art Hub and Collector Hub: header, tabs row, landscape editorial cards. */
 export function ArtEditorialListSkeleton({ label }: { label: string }) {
   return (
     <LoadingRegion label={label}>

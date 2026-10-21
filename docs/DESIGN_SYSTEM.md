@@ -68,7 +68,10 @@ lax.art (`apps/art`) is the first product built **composition-only** on shared p
 - **Shared presenters.** Money/date formatting and portal row VMs come from `@auction/shop-portal/vm`; Art does not copy Shop presenters.
 - **Theme contract.** Semantic tokens only (`apps/art/src/app/base.css`); palette utilities and raw hex outside `base.css` fail `scripts/ci/verify-art-theme.test.mjs`.
 - **Layering.** `page.tsx` composes, `lib/<area>/*-page.composer.ts` orchestrates via injected ports (`lib/ports.ts`, wired in `lib/art-services.server.ts`), `*.server.ts` does I/O, `*.vm.ts` is pure and unit-tested, client islands are `*.client.tsx`.
-- **Loading skeletons only on list routes.** Route skeletons live in `(home)`/`(index)` route groups; slug routes (`[slug]`) render without a `loading.tsx` above them so a missing record answers a real 404 (not a 200 soft 404) and an outage a 500. `apps/art/src/lib/seo/page-status.test.ts` enforces this.
+- **Loading skeletons only on list routes that never rewrite their own query string.**
+  - Route skeletons live in `(home)`/`(index)` route groups.
+  - Slug routes (`[slug]`) render without a `loading.tsx` above them, so a missing record answers a real 404 (not a 200 soft 404) and an outage a 500. `apps/art/src/lib/seo/page-status.test.ts` enforces this.
+  - Routes that navigate by query string (the artwork catalogues, artists A–Z, exhibition tabs, search) have no `loading.tsx` either. With the React build in Next 15.5, a query-only navigation inside an already visible loading boundary can lose its retry and never commit in production. `apps/art/src/lib/routing/query-navigation-routes.test.ts` enforces this.
 
 ### Primitive audit (Shop · Bid · Art)
 
