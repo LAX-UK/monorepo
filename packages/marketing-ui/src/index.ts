@@ -3,6 +3,7 @@ export {
   MarketingBellIcon,
   MarketingBellRingIcon,
   MarketingCarouselNextIcon,
+  MarketingCertificateIcon,
   MarketingCarouselPreviousIcon,
   MarketingChevronDownIcon,
   MarketingCircleAlertIcon,
@@ -10,9 +11,12 @@ export {
   MarketingGridIcon,
   MarketingHeartIcon,
   MarketingHomeIcon,
+  MarketingImageIcon,
   MarketingInfoIcon,
   MarketingMenuIcon,
   MarketingMoonIcon,
+  MarketingMoreIcon,
+  MarketingPhoneIcon,
   MarketingPlayIcon,
   MarketingSearchIcon,
   MarketingShareIcon,
@@ -310,3 +314,17 @@ export {
   type MarketingCatalogListProps,
   type MarketingCatalogListRowProps,
 } from "./catalog-view/marketing-catalog-list.js";
+export {
+  MarketingSpecList,
+  type MarketingSpecListItem,
+  type MarketingSpecListProps,
+} from "./marketing-spec-list.js";
+export { MarketingReadMore, type MarketingReadMoreProps } from "./marketing-read-more.js";
+export {
+  MarketingArtistSummary,
+  type MarketingArtistSummaryProps,
+} from "./marketing-artist-summary.js";
+export {
+  MarketingStickyActionBar,
+  type MarketingStickyActionBarProps,
+} from "./marketing-sticky-action-bar.js";
