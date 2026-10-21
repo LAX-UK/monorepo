@@ -20,6 +20,7 @@ export default async function HowToBuyPage() {
     <ArtEditorialPageView
       result={await loadEditorialPage(SLUG)}
       routeFor={route}
+      titleBand={{}}
       aside={
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg" className="min-h-11 font-label uppercase tracking-wide">

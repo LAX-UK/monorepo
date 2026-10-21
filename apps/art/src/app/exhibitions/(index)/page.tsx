@@ -10,9 +10,8 @@ import {
   parseExhibitionStatus,
 } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingReveal } from "@auction/marketing-ui";
+import { MarketingReveal, MarketingSubNav } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { SectionTabs } from "@auction/ui/components/section-tabs";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -57,7 +56,7 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
         </MarketingReveal>
       ) : null}
       {result.status === "disabled" ? null : (
-        <SectionTabs
+        <MarketingSubNav
           ariaLabel="Exhibition dates"
           active={status}
           items={EXHIBITION_STATUS_TABS.map((tab) => ({
