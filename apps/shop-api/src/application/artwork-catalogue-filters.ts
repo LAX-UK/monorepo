@@ -55,6 +55,9 @@ export type RawArtworkCatalogueFilters = {
   editionEligible?: boolean;
 };
 
+/** Bounds the SQL `IN (…)` a single public request can build; no real facet selection gets close. */
+export const MAX_FILTER_LIST_VALUES = 50;
+
 /** Trimmed, de-duplicated values; only `allowed` members survive when given. */
 function normalizeList<T extends string>(
   values: readonly string[] | undefined,
@@ -62,6 +65,7 @@ function normalizeList<T extends string>(
 ): T[] {
   const out: T[] = [];
   for (const raw of values ?? []) {
+    if (out.length === MAX_FILTER_LIST_VALUES) break;
     const value = raw.trim();
     if (!value || out.includes(value as T)) continue;
     if (allowed && !(allowed as readonly string[]).includes(value)) continue;
