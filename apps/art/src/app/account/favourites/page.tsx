@@ -44,7 +44,13 @@ export default async function ArtAccountFavoritesPage() {
               }}
               failedDescription="We could not load the artists you follow. Try again shortly."
             >
-              {(cards) => <ArtArtistGrid cards={cards} aria-label="Followed artists" />}
+              {(cards) => (
+                <ArtArtistGrid
+                  cards={cards}
+                  favoriteAuth={vm.favoriteAuth}
+                  aria-label="Followed artists"
+                />
+              )}
             </ArtAccountListStateView>
           </ArtSection>
         </div>

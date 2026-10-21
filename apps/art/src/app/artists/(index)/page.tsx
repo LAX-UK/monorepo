@@ -29,7 +29,7 @@ export async function generateMetadata({ searchParams }: ArtistsPageProps): Prom
 }
 
 export default async function ArtistsIndexPage({ searchParams }: ArtistsPageProps) {
-  const vm = await composeArtistsPage(artServices.catalogue, await searchParams);
+  const vm = await composeArtistsPage(artServices, await searchParams);
 
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 py-6 lg:py-10")}>
@@ -39,7 +39,11 @@ export default async function ArtistsIndexPage({ searchParams }: ArtistsPageProp
       />
       {vm.featured.length > 0 ? (
         <ArtSection id="featured-artists" title="Featured artists">
-          <ArtArtistGrid cards={vm.featured} aria-label="Featured artists" />
+          <ArtArtistGrid
+            cards={vm.featured}
+            favoriteAuth={vm.favoriteAuth}
+            aria-label="Featured artists"
+          />
         </ArtSection>
       ) : null}
       <MarketingAlphabetFilter basePath="/artists" active={vm.letter} />
@@ -76,6 +80,7 @@ export default async function ArtistsIndexPage({ searchParams }: ArtistsPageProp
       ) : (
         <ArtArtistGrid
           cards={vm.cards}
+          favoriteAuth={vm.favoriteAuth}
           aria-label={vm.letter ? `Artists starting with ${vm.letter}` : "Artists"}
         />
       )}

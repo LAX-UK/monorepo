@@ -21,6 +21,7 @@ describe("composeArtHomePage", () => {
       type: "original",
     });
     expect(services.favorites.savedArtworkSlugs).not.toHaveBeenCalled();
+    expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
     expect(vm.featuredArtworks[0]).toMatchObject({ slug: "warm-basket", saved: false });
     expect(vm.featuredArtists[0]).toMatchObject({ href: "/artists/flora-powers" });
     expect(vm.favoriteAuth).toEqual({ signedIn: false, loginHref: "/login?returnTo=%2F" });
@@ -36,6 +37,17 @@ describe("composeArtHomePage", () => {
 
     expect(vm.featuredArtworks[0]?.saved).toBe(true);
     expect(vm.favoriteAuth.signedIn).toBe(true);
+  });
+
+  it("marks followed featured artists from one read for signed-in viewers", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.catalogue.listArtists.mockResolvedValue({ items: [artistSummary()] });
+    services.favorites.followedArtistSlugs.mockResolvedValue(new Set(["flora-powers"]));
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.featuredArtists[0]?.following).toBe(true);
+    expect(services.favorites.followedArtistSlugs).toHaveBeenCalledTimes(1);
   });
 
   it("degrades per section when the catalogue fails", async () => {
