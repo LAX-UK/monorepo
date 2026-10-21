@@ -52,12 +52,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
             <MarketingFeatureGrid
               variant="lead-plus-row"
               aria-label="What's on"
-              // The editorial card is 4:3; capping the lead keeps it from filling the viewport.
-              lead={
-                <div className="mx-auto w-full max-w-[56rem]">
-                  <ArtEditorialCard card={lead} priority />
-                </div>
-              }
+              lead={<ArtEditorialCard card={lead} aspect="wide" priority />}
             >
               {rest.map((card) => (
                 <ArtEditorialCard key={card.key} card={card} />

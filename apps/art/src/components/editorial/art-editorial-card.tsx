@@ -1,21 +1,37 @@
 import { ArtEditorialLink } from "@/components/editorial/art-editorial-link";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { EditorialCardVm } from "@/lib/editorial/editorial-card.vm";
-import { MarketingCardReveal, MarketingEditorialCard } from "@auction/marketing-ui";
+import {
+  MarketingCardReveal,
+  MarketingEditorialCard,
+  type MarketingEditorialCardProps,
+} from "@auction/marketing-ui";
 
 type ArtEditorialCardProps = {
   card: EditorialCardVm;
   priority?: boolean;
+  /** `wide` is for a lead that spans the content width. */
+  aspect?: Extract<MarketingEditorialCardProps["aspect"], "landscape" | "wide">;
 };
+
+const SIZES = {
+  landscape: "(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw",
+  wide: "(min-width: 90rem) 1360px, 100vw",
+} as const;
 
 /**
  * Maps Art's editorial VM onto the shared card. CMS links go through `ArtEditorialLink`. The
  * heart slot stays empty until exhibitions and stories can be saved.
  */
-export function ArtEditorialCard({ card, priority = false }: ArtEditorialCardProps) {
+export function ArtEditorialCard({
+  card,
+  priority = false,
+  aspect = "landscape",
+}: ArtEditorialCardProps) {
   return (
     <MarketingEditorialCard
       data-testid="art-editorial-card"
+      aspect={aspect}
       href={card.href}
       linkAs={ArtEditorialLink}
       title={card.headline}
@@ -26,7 +42,7 @@ export function ArtEditorialCard({ card, priority = false }: ArtEditorialCardPro
           src={card.imageUrl}
           alt=""
           label={card.kicker ?? "LAX Art"}
-          sizes="(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw"
+          sizes={SIZES[aspect]}
           priority={priority}
           className="absolute inset-0 size-full"
           imgClassName="object-cover"
