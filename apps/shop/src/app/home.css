@@ -274,7 +274,6 @@
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1.75rem;
-  transition: color var(--motion-duration-md, 320ms) ease;
 }
 
 .shop-home__original-status {
@@ -285,7 +284,8 @@
 
 .shop-home__original-card:hover .shop-home__original-title,
 .shop-home__original-card:focus-within .shop-home__original-title {
-  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .shop-home__badge {
@@ -381,12 +381,12 @@
   font-weight: 600;
   line-height: 1.5rem;
   color: var(--color-on-surface);
-  transition: color var(--motion-duration-md, 320ms) ease;
 }
 
 .shop-home__print-card:hover .shop-home__print-title,
 .shop-home__print-card:focus-within .shop-home__print-title {
-  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .shop-home__print-artist {
@@ -446,12 +446,12 @@
   font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.625rem;
-  transition: color var(--motion-duration-md, 320ms) ease;
 }
 
 .shop-home__artist-card:hover .shop-home__artist-name,
 .shop-home__artist-card:focus-within .shop-home__artist-name {
-  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .shop-home__artist-discipline {

@@ -56,10 +56,7 @@ export default async function ArtistDetailPage({ params, searchParams }: ArtistD
   return (
     <MarketingDetailShell
       wayfinding={
-        <Link
-          href="/artists"
-          className={cn("text-link underline-offset-4 hover:underline", FOCUS_RING)}
-        >
+        <Link href="/artists" className={cn("text-link underline underline-offset-4", FOCUS_RING)}>
           ← Back to artists
         </Link>
       }

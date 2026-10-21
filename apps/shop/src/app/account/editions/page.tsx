@@ -122,7 +122,7 @@ export default async function ShopAccountEditionsPage() {
                 <p className="font-medium text-on-surface">
                   <Link
                     href={`/artworks/${encodeURIComponent(edition.artworkSlug)}`}
-                    className={cn("text-link underline-offset-4 hover:underline", FOCUS_RING)}
+                    className={cn("text-link underline underline-offset-4", FOCUS_RING)}
                   >
                     {edition.artworkTitle}
                   </Link>

@@ -22,6 +22,10 @@
   --color-cta-bg: var(--brand-obsidian);
   --color-cta-on: var(--brand-light-cream);
   --color-accent-brand: var(--brand-obsidian);
+  /* LAX colour rule (docs/DESIGN_SYSTEM.md): shared neutrals only; navy is Bid's accent.
+     LAX Account has no accent yet, so the product accent is the primary neutral.
+     Links stay underlined (they share the text colour), so colour is never the only cue. */
+  --color-product-accent: var(--color-primary);
   --color-link: var(--brand-obsidian);
   --color-ring: var(--brand-obsidian);
   --color-surface-container: #eeeeee;

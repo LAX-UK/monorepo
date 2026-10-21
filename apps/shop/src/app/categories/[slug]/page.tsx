@@ -59,7 +59,7 @@ export default async function CategoryDetailPage({
       wayfinding={
         <Link
           href="/categories"
-          className={cn("text-link underline-offset-4 hover:underline", FOCUS_RING)}
+          className={cn("text-link underline underline-offset-4", FOCUS_RING)}
         >
           ← Back to categories
         </Link>

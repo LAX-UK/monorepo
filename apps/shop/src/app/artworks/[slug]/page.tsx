@@ -134,7 +134,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
               <p className="shop-detail__artist">
                 <Link
                   href={`/artists/${encodeURIComponent(artwork.artistSlug)}`}
-                  className={cn("text-link underline-offset-4 hover:underline", FOCUS_RING)}
+                  className={cn("text-link underline underline-offset-4", FOCUS_RING)}
                 >
                   {artwork.artistName}
                 </Link>
