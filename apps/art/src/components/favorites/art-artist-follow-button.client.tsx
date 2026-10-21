@@ -11,6 +11,8 @@ export type ArtArtistFollowButtonProps = {
   name: string;
   initialFollowing: boolean;
   auth: ArtFavoriteAuth;
+  /** Followed-artist lists keep the outline treatment once following (Figma 867:15613). */
+  followingVariant?: "default" | "outline";
   className?: string;
 };
 
@@ -19,6 +21,7 @@ export function ArtArtistFollowButton({
   name,
   initialFollowing,
   auth,
+  followingVariant = "default",
   className,
 }: ArtArtistFollowButtonProps) {
   const { active, pending, announcement, error, toggle } = useFavoriteToggle({
@@ -32,7 +35,7 @@ export function ArtArtistFollowButton({
     <>
       <Button
         type="button"
-        variant={active ? "default" : "outline"}
+        variant={active ? followingVariant : "outline"}
         aria-pressed={active}
         aria-busy={pending || undefined}
         data-testid="art-artist-follow"

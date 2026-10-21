@@ -105,19 +105,18 @@ export function ArtVisitSkeleton() {
 export function ArtAccountSkeleton() {
   return (
     <LoadingRegion label="Loading account">
-      <Skeleton className="mb-8 h-9 w-40" />
-      <div className="grid gap-8 lg:grid-cols-[12rem_1fr]">
-        <div className="flex gap-2 lg:flex-col">
-          {Array.from({ length: 4 }, (_, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders
-            <Skeleton key={index} className="h-11 w-28" />
-          ))}
-        </div>
-        <div className="flex flex-col gap-4">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-        </div>
+      <div className="flex flex-col items-center gap-4 py-10">
+        <Skeleton className="size-20 rounded-full" />
+        <Skeleton className="h-9 w-56" />
+      </div>
+      <div className="mb-8 flex justify-center gap-6">
+        <Skeleton className="h-11 w-24" />
+        <Skeleton className="h-11 w-24" />
+      </div>
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
       </div>
     </LoadingRegion>
   );

@@ -331,6 +331,14 @@ export {
 } from "./marketing-spec-list.js";
 export { MarketingReadMore, type MarketingReadMoreProps } from "./marketing-read-more.js";
 export {
+  MarketingFollowRow,
+  type MarketingFollowRowProps,
+} from "./marketing-follow-row.js";
+export {
+  MarketingEnquiryListItem,
+  type MarketingEnquiryListItemProps,
+} from "./marketing-enquiry-list-item.js";
+export {
   MarketingArtistSummary,
   type MarketingArtistSummaryProps,
 } from "./marketing-artist-summary.js";

@@ -182,10 +182,31 @@ test.describe("lax.art journeys", () => {
     test.skip(!credentials, "nav assertion needs ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");
     await signInArtBuyer(page, credentials as NonNullable<typeof credentials>, "/account");
     const accountNav = page.getByRole("navigation", { name: "Account sections" });
-    await expect(accountNav.getByRole("link", { name: "Favourites" })).toBeVisible();
-    await expect(accountNav.getByRole("link", { name: "Payouts" })).toHaveCount(
+    await expect(accountNav.getByRole("link", { name: "Profile" })).toBeVisible();
+    await expect(accountNav.getByRole("link", { name: "Enquiries" })).toBeVisible();
+    // Collection and Payouts are not tabs; the profile links to them.
+    await expect(page.getByRole("link", { name: "Your collection" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Payouts" })).toHaveCount(
       artPayoutsEnabled ? 1 : 0,
     );
+  });
+
+  test("favourites tabs are signed-in routes", async ({ page }) => {
+    await expectSignInRedirect(page, "/account/favourites", "/account/favourites");
+    await expectSignInRedirect(page, "/account/favourites/follows", "/account/favourites/follows");
+    await expectSignInRedirect(page, "/account/enquiries", "/account/enquiries");
+
+    const credentials = artBuyerCredentials();
+    test.skip(!credentials, "tab assertions need ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");
+    await signInArtBuyer(
+      page,
+      credentials as NonNullable<typeof credentials>,
+      "/account/favourites",
+    );
+    const tabs = page.getByRole("navigation", { name: "Favourites sections" });
+    await expect(tabs.getByRole("link", { name: "Saves" })).toHaveAttribute("aria-current", "page");
+    await tabs.getByRole("link", { name: "Follows" }).click();
+    await expect(page).toHaveURL(/\/account\/favourites\/follows$/);
   });
 
   test("dark mode toggle persists across reloads", async ({ page }, testInfo) => {
