@@ -40,7 +40,7 @@ export function MarketingUnderlineTabs({
       <div
         className={cn(
           isAnchor
-            ? "mx-auto flex max-w-[var(--container-max,1440px)] gap-1 overflow-x-auto px-8 [scrollbar-width:none] md:px-10 lg:px-14"
+            ? "mx-auto flex max-w-[var(--container-max,1440px)] gap-1 overflow-x-auto px-4 [scrollbar-width:none] md:px-6 lg:px-10"
             : "inline-flex min-w-full items-start gap-5 border-b border-outline-variant pb-0 sm:gap-8 lg:min-w-0 lg:gap-12",
           listClassName,
         )}

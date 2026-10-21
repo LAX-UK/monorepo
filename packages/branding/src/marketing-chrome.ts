@@ -30,8 +30,8 @@ export const INLINE_LINK = `text-link underline-offset-4 hover:underline ${FOCUS
 export const LABEL_LINK =
   "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:underline";
 
-/** Horizontal padding rhythm shared by all marketing shells. */
-export const MARKETING_PAGE_GUTTER_X = "px-8 md:px-10 lg:px-14";
+/** Horizontal padding rhythm shared by all LAX shells: 16 / 24 / 40px (lax.art Figma). */
+export const MARKETING_PAGE_GUTTER_X = "px-4 md:px-6 lg:px-10";
 
 /** Centered full-width column with standard horizontal gutters. */
 export const MARKETING_PAGE_GUTTER = `mx-auto w-full ${MARKETING_PAGE_GUTTER_X}`;
@@ -46,7 +46,7 @@ export const MARKETING_PAGE_INNER = `${MARKETING_PAGE_GUTTER} max-w-[var(--conta
 export const MARKETING_CATALOG_GUTTER = MARKETING_PAGE_GUTTER;
 
 /** Negative margin to bleed sticky list toolbars to the shell edge (pairs with MARKETING_CATALOG_GUTTER). */
-export const MARKETING_LIST_TOOLBAR_BLEED = "-mx-8 md:-mx-10 lg:-mx-14";
+export const MARKETING_LIST_TOOLBAR_BLEED = "-mx-4 md:-mx-6 lg:-mx-10";
 
 /** Top padding for catalogue hubs with sticky toolbars (aligns with site header). */
 export const MARKETING_CATALOG_PT = "pt-[var(--header-height)]";
