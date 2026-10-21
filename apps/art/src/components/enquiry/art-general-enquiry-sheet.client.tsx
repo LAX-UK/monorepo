@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Textarea } from "@auction/ui/components/textarea";
-import { useActionState, useId, useMemo, useState } from "react";
+import { type ReactNode, useActionState, useId, useMemo, useState } from "react";
 
 const INITIAL: ArtGeneralEnquiryState = { status: "idle" };
 
@@ -31,6 +31,8 @@ type Props = {
   contextLabel?: string | null;
   loginHref: string;
   triggerLabel?: string;
+  /** Replaces the default button, e.g. with the header's text-sized "Enquire" control. */
+  renderTrigger?: (open: () => void) => ReactNode;
 };
 
 export function ArtGeneralEnquirySheet({
@@ -40,6 +42,7 @@ export function ArtGeneralEnquirySheet({
   contextLabel = null,
   loginHref,
   triggerLabel = "Send a message",
+  renderTrigger,
 }: Props) {
   const [open, setOpen] = useState(autoOpen);
   const [topic, setTopic] = useState<ArtGeneralEnquiryTopic>(defaultTopic);
@@ -49,15 +52,19 @@ export function ArtGeneralEnquirySheet({
 
   return (
     <>
-      <Button
-        type="button"
-        size="lg"
-        className="min-h-11 w-fit font-label uppercase"
-        onClick={() => setOpen(true)}
-        data-testid="art-general-enquire-trigger"
-      >
-        {triggerLabel}
-      </Button>
+      {renderTrigger ? (
+        renderTrigger(() => setOpen(true))
+      ) : (
+        <Button
+          type="button"
+          size="lg"
+          className="min-h-11 w-fit font-label uppercase"
+          onClick={() => setOpen(true)}
+          data-testid="art-general-enquire-trigger"
+        >
+          {triggerLabel}
+        </Button>
+      )}
       <MarketingSideSheet
         open={open}
         onOpenChange={setOpen}

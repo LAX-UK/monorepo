@@ -46,6 +46,23 @@ test.describe("lax.art accessibility @a11y", () => {
     });
   }
 
+  test("header, open search shelf and footer have no blocking axe violations", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    if (testInfo.project.name === "chromium-desktop") {
+      await page.getByTestId("art-header").getByRole("button", { name: "Search" }).click();
+      await expect(page.getByRole("dialog", { name: "Search" })).toBeVisible();
+    }
+    const axe = await new AxeBuilder({ page })
+      .include("[data-testid='art-header']")
+      .include("footer")
+      .include("[data-testid='art-mobile-bottom-nav']")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    expect(axe.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ""))).toEqual([]);
+  });
+
   test("artwork detail has no blocking axe violations", async ({ page }) => {
     const seeded = await page.goto("/artworks/tidal-forms");
     if (seeded?.status() === 404) {

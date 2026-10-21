@@ -52,13 +52,21 @@ export function ArtFooter({ vm }: ArtFooterProps) {
 
   return (
     <MarketingFooter
+      className="pb-[var(--art-bottom-nav-height)] md:pb-0"
       logo={
         <Link href="/" className={cn("inline-flex", FOCUS_RING)} aria-label="LAX Art home">
           <LaxLogo variant="footer" src="/brand/lax-logo.svg" className="art-footer__logo" />
         </Link>
       }
       columns={vm.columns}
-      socials={<MarketingFooterSocials />}
+      socials={
+        <div className="flex flex-col gap-4">
+          <Link href="/contact" className={cn(linkClass, "w-fit")}>
+            Contact us
+          </Link>
+          <MarketingFooterSocials />
+        </div>
+      }
       copyright={siteCopyrightLine()}
       renderLink={renderLink}
     />
