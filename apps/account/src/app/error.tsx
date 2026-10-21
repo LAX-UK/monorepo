@@ -1,21 +1,24 @@
 "use client";
 
-import { AccountShell, primaryButton, textLink } from "@/components/account-ui";
+import { AccountShell } from "@/components/account-shell";
+import { Button } from "@auction/ui/components/button";
 
 export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
   return (
     <AccountShell>
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 py-10" role="alert">
-        <h1 className="text-2xl font-semibold tracking-tight">Something went wrong</h1>
+        <h1 className="font-headline text-2xl font-semibold tracking-tight">
+          Something went wrong
+        </h1>
         <p className="text-sm text-on-surface-variant">
           We couldn't load your account just now. Please try again in a moment.
         </p>
-        <button type="button" onClick={reset} className={primaryButton}>
+        <Button type="button" variant="cta" size="lg" onClick={reset}>
           Try again
-        </button>
-        <a href="/" className={textLink}>
-          Back to sign in
-        </a>
+        </Button>
+        <Button asChild variant="link" size="inline" className="self-start">
+          <a href="/">Back to sign in</a>
+        </Button>
       </div>
     </AccountShell>
   );
