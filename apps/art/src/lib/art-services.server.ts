@@ -18,6 +18,10 @@ import {
 import { isArtPayoutsEnabled } from "@/lib/art-runtime-flags";
 import { loadArtViewerState } from "@/lib/art-viewer-state.server";
 import {
+  searchEditorialExhibitions,
+  searchEditorialStories,
+} from "@/lib/editorial/art-editorial-search.server";
+import {
   artEditorialFeatureEnabled,
   fetchEditorialExhibitionBySlug,
   fetchEditorialExhibitions,
@@ -39,6 +43,7 @@ import type {
   ArtAccountConfigPort,
   ArtCataloguePort,
   ArtEditorialPort,
+  ArtEditorialSearchPort,
   ArtFavoritesReadPort,
   ArtPortalReadPort,
   ArtViewerPort,
@@ -51,6 +56,7 @@ export type ArtServices = {
   portal: ArtPortalReadPort;
   account: ArtAccountConfigPort;
   editorial: ArtEditorialPort;
+  editorialSearch: ArtEditorialSearchPort;
 };
 
 /** Composition root: binds page composers to the shop-api and art-identity adapters. */
@@ -93,5 +99,9 @@ export const artServices: ArtServices = {
     listVenues: fetchEditorialVenues,
     getVenue: fetchEditorialVenueBySlug,
     preview: fetchEditorialPreview,
+  },
+  editorialSearch: {
+    searchExhibitions: searchEditorialExhibitions,
+    searchStories: searchEditorialStories,
   },
 };

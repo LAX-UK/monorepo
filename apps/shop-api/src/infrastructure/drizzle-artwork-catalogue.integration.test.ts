@@ -113,6 +113,39 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
     expect(result.items.some((item) => item.slug === `integration-search-${suffix}`)).toBe(true);
   });
 
+  it("lists available works as for sale plus price on request, excluding sold", async () => {
+    const db = createDbFromPool(shopPool);
+    const writer = createDrizzleArtworkImportRepository(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const artist = `Availability Artist ${suffix}`;
+    const states = ["for_sale", "price_on_application", "sold"] as const;
+    for (const state of states) {
+      const { artworkId } = await writer.importArtwork({
+        importKey: `integration:available:${suffix}:${state}`,
+        slug: `integration-available-${suffix}-${state}`,
+        title: `Availability ${state}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-available-artist-${suffix}`,
+        artistDisplayName: artist,
+        eligibleForEditionAllocation: false,
+      });
+      await db.update(shopArtwork).set({ saleState: state }).where(eq(shopArtwork.id, artworkId));
+    }
+
+    const result = await repository.listPublicArtworks({
+      limit: 10,
+      filter: { q: artist, saleState: "available", artworkType: "all", sort: "titleAsc" },
+    });
+
+    expect(result.items.map((item) => item.saleState)).toEqual([
+      "for_sale",
+      "price_on_application",
+    ]);
+    expect(result.totalCount).toBe(2);
+  });
+
   it("aggregates object type facets per sales channel with the newest cover", async () => {
     const db = createDbFromPool(shopPool);
     const ownerDb = createDbFromPool(ownerPool);

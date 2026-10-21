@@ -44,11 +44,36 @@ test.describe("lax.art journeys", () => {
 
     await page.goto(`/search?q=${encodeURIComponent(title)}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(title);
-    await expect(page.getByTestId("art-artwork-card").first()).toBeVisible();
+    const tabs = page.getByRole("navigation", { name: "Search results" });
+    await expect(tabs.getByRole("link", { name: /^Available/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(page.getByTestId("art-search-count")).toBeVisible();
+
+    await tabs.getByRole("link", { name: /^Sold/ }).click();
+    await expect(page).toHaveURL(/[?&]tab=sold/);
+    await expect(tabs.getByRole("link", { name: /^Sold/ })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/search?q=zzqx-no-such-artwork-9271");
     await expect(page.getByTestId("art-search-no-results")).toBeVisible();
-    await expect(page.getByText("No results for “zzqx-no-such-artwork-9271”")).toBeVisible();
+    await expect(page.getByText("No available items")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Browse all artworks" })).toHaveAttribute(
+      "href",
+      "/artworks",
+    );
+  });
+
+  test("empty search offers a search field and a way to browse everything", async ({ page }) => {
+    await page.goto("/search");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Search by artist or artwork" }),
+    ).toBeVisible();
+    const field = page.getByTestId("art-search-input");
+    await field.fill("zzqx-no-such-artwork-9271");
+    await field.press("Enter");
+    await expect(page).toHaveURL(/\/search\?q=zzqx-no-such-artwork-9271/);
+    await expect(page.getByTestId("art-search-no-results")).toBeVisible();
   });
 
   test("signed-out enquiry redirects to sign-in and returns to the open sheet", async ({

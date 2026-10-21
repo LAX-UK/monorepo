@@ -26,16 +26,18 @@ import {
 import { type TSchema, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
-const ExhibitionListSchema = Type.Object({ items: Type.Array(EditorialExhibitionSummarySchema) });
+export const ExhibitionListSchema = Type.Object({
+  items: Type.Array(EditorialExhibitionSummarySchema),
+});
 const VenueListSchema = Type.Object({ items: Type.Array(EditorialVenueSummarySchema) });
-const StoryListSchema = Type.Object({ items: Type.Array(EditorialStorySummarySchema) });
+export const StoryListSchema = Type.Object({ items: Type.Array(EditorialStorySummarySchema) });
 const PageListSchema = Type.Object({ items: Type.Array(EditorialPageSummarySchema) });
 
 /** Published lists are cached briefly; drafts and slug lookups are always read fresh. */
 const PUBLISHED_CACHE: RequestInit = { next: { revalidate: 120, tags: ["art:editorial"] } };
 const DRAFT_CACHE: RequestInit = { cache: "no-store" };
 
-async function fetchEditorial<S extends TSchema>(
+export async function fetchEditorial<S extends TSchema>(
   path: string,
   schema: S,
   init: RequestInit = PUBLISHED_CACHE,

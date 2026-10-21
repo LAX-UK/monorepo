@@ -35,7 +35,8 @@ export type ArtArtworkListQuery = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
   artistSlug?: string;
-  saleState?: "for_sale" | "price_on_application" | "sold";
+  /** `available` is every work that is not sold: for sale or price on request. */
+  saleState?: "for_sale" | "price_on_application" | "sold" | "available";
   editionEligible?: boolean;
   type?: "all" | "original" | "edition";
   objectType?: "painting" | "work_on_paper" | "sculpture" | "photography" | "print" | "mixed_media";
@@ -110,4 +111,10 @@ export type ArtEditorialPort = {
   listVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>>;
   getVenue(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialVenueDetail>>;
   preview(token: string): Promise<ArtEditorialFetchResult<ArtEditorialPreview>>;
+};
+
+/** Site search over published editorial (shop-api `?q=` on the exhibition and story lists). */
+export type ArtEditorialSearchPort = {
+  searchExhibitions(query: string): Promise<ArtEditorialFetchResult<ArtEditorialExhibitionList>>;
+  searchStories(query: string): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>>;
 };

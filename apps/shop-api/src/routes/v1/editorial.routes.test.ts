@@ -9,14 +9,19 @@ vi.mock("@auction/auth/token-verifier", () => ({
 }));
 
 import { createShopApiApp } from "../../app.js";
+import type { EditorialSearchReader } from "../../application/ports/editorial-search.reader.js";
 import type { EditorialRepository } from "../../application/ports/editorial.repository.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 import { createStubEditorialRepository } from "../../test-support/stub-editorial-repository.js";
+import { createStubEditorialSearchReader } from "../../test-support/stub-editorial-search-reader.js";
 
 const userHeaders = { authorization: "Bearer user-token" };
 const ENQUIRY_ID = "6f1c1f0e-7f1a-4a43-9a51-0c1b1d2e3f40";
 
-async function buildApp(overrides: Partial<EditorialRepository> = {}) {
+async function buildApp(
+  overrides: Partial<EditorialRepository> = {},
+  searchOverrides: Partial<EditorialSearchReader> = {},
+) {
   const base = createMinimalShopApiTestDeps();
   const app = createShopApiApp({
     deps: createMinimalShopApiTestDeps({
@@ -24,6 +29,7 @@ async function buildApp(overrides: Partial<EditorialRepository> = {}) {
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
         editorial: createStubEditorialRepository(overrides),
+        search: createStubEditorialSearchReader(searchOverrides),
       },
     }),
     logger: false,
@@ -79,6 +85,56 @@ describe("editorial routes", () => {
     });
     const stories = await app.inject({ method: "GET", url: "/v1/editorial/stories" });
     expect(stories.json().items[0].updatedAt).toBe("2026-03-02T10:00:00.000Z");
+    await app.close();
+  });
+
+  it("searches exhibitions across every status when q is set", async () => {
+    const listExhibitions = vi.fn(async () => []);
+    const searchExhibitions = vi.fn(async () => [
+      {
+        slug: "summer-show",
+        kind: "exhibition" as const,
+        title: "Summer Show",
+        summary: null,
+        startsOn: "2025-06-01",
+        endsOn: "2025-08-01",
+        coverUrl: null,
+        featured: false,
+      },
+    ]);
+    const app = await buildApp({ listExhibitions }, { searchExhibitions });
+    const res = await app.inject({
+      method: "GET",
+      url: "/v1/editorial/exhibitions?q=summer&status=current",
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items.map((item: { slug: string }) => item.slug)).toEqual(["summer-show"]);
+    expect(searchExhibitions).toHaveBeenCalledWith("summer");
+    expect(listExhibitions).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("searches stories by q and keeps the kind filter", async () => {
+    const searchStories = vi.fn(async () => []);
+    const app = await buildApp({}, { searchStories });
+    const res = await app.inject({ method: "GET", url: "/v1/editorial/stories?q=gold&kind=press" });
+    expect(res.statusCode).toBe(200);
+    expect(searchStories).toHaveBeenCalledWith("gold", "press");
+    await app.close();
+  });
+
+  it("lists as before when q is blank and rejects an over-long q", async () => {
+    const listStories = vi.fn(async () => []);
+    const searchStories = vi.fn(async () => []);
+    const app = await buildApp({ listStories }, { searchStories });
+    await app.inject({ method: "GET", url: "/v1/editorial/stories?q=%20" });
+    expect(listStories).toHaveBeenCalled();
+    expect(searchStories).not.toHaveBeenCalled();
+    const tooLong = await app.inject({
+      method: "GET",
+      url: `/v1/editorial/stories?q=${"a".repeat(121)}`,
+    });
+    expect(tooLong.statusCode).toBe(400);
     await app.close();
   });
 

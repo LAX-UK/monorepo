@@ -24,6 +24,12 @@ import type { EditorialRoutesDeps } from "../../editorial-route-deps.js";
 import { notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
 
+/**
+ * Site-search term for the exhibitions and stories lists. With `q`, exhibitions match across
+ * every status and `status` is ignored; stories still honour `kind`.
+ */
+const EditorialSearchQuerySchema = Type.String({ minLength: 1, maxLength: 120 });
+
 export async function registerEditorialRoutes(app: FastifyInstance, deps: EditorialRoutesDeps) {
   app.get(
     "/v1/editorial/home",
@@ -76,6 +82,7 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
         tags: ["editorial"],
         querystring: Type.Object({
           status: Type.Optional(EditorialExhibitionStatusFilterSchema),
+          q: Type.Optional(EditorialSearchQuerySchema),
         }),
         response: {
           200: Type.Object({ items: Type.Array(EditorialExhibitionSummarySchema) }),
@@ -83,7 +90,10 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
       },
     },
     async (request) => {
-      const query = request.query as { status?: "current" | "upcoming" | "past" };
+      const query = request.query as { status?: "current" | "upcoming" | "past"; q?: string };
+      if (query.q?.trim()) {
+        return { items: await deps.search.searchExhibitions(query.q) };
+      }
       const items = await deps.editorial.listExhibitions(query.status ?? "current");
       return { items };
     },
@@ -113,6 +123,7 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
         tags: ["editorial"],
         querystring: Type.Object({
           kind: Type.Optional(EditorialStoryKindSchema),
+          q: Type.Optional(EditorialSearchQuerySchema),
         }),
         response: {
           200: Type.Object({ items: Type.Array(EditorialStorySummarySchema) }),
@@ -120,7 +131,10 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
       },
     },
     async (request) => {
-      const query = request.query as { kind?: "article" | "film" | "press" | "guide" };
+      const query = request.query as { kind?: "article" | "film" | "press" | "guide"; q?: string };
+      if (query.q?.trim()) {
+        return { items: await deps.search.searchStories(query.q, query.kind) };
+      }
       return { items: await deps.editorial.listStories(query.kind) };
     },
   );
