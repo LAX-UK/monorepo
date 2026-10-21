@@ -93,7 +93,7 @@ describe("composeArtHubPage", () => {
     });
     services.ecosystem.crossProductLinks.mockReturnValue([
       { id: "bid", label: "LAX.bid", href: "https://lax.bid" },
-      { id: "shop", label: "LAX.shop", href: "https://lax.shop" },
+      { id: "shop", label: "LAX Shop", href: "https://shop.example" },
     ]);
 
     const result = await composeArtHubPage(services);
