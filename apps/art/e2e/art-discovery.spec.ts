@@ -134,11 +134,12 @@ test.describe("lax.art discovery", () => {
     await expect(page.getByRole("heading", { name: "Book a private viewing" })).toBeVisible();
   });
 
-  test("exhibitions feature current and upcoming shows above the tabs", async ({ page }) => {
+  test("exhibitions open with a featured hero above the date tabs", async ({ page }) => {
     test.skip(!editorialEnabled, "exhibitions need ART_EDITORIAL_ENABLED=true");
     await page.goto("/exhibitions?status=past");
-    const featured = page.getByRole("region", { name: "Featured" });
+    await expect(page.getByRole("heading", { level: 1, name: "Exhibitions" })).toBeAttached();
+    const featured = page.getByRole("region", { name: "Featured exhibitions" });
     test.skip((await featured.count()) === 0, "no featured exhibitions seeded");
-    await expect(featured.getByTestId("art-editorial-card").first()).toBeVisible();
+    await expect(featured.getByRole("link", { name: "View exhibition" }).first()).toBeVisible();
   });
 });

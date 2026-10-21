@@ -11,6 +11,8 @@ export type EditorialCardVm = {
   href: string | null;
   headline: string;
   kicker: string | null;
+  /** Venue shown after the kicker ("Exhibition | LAX Marylebone"); only exhibitions set it. */
+  place?: string | null;
   meta: string | null;
   imageUrl: string | null;
 };
@@ -111,6 +113,7 @@ export function exhibitionCard(item: ArtEditorialExhibitionSummary): EditorialCa
     href: `/exhibitions/${encodeURIComponent(item.slug)}`,
     headline: item.title,
     kicker: EXHIBITION_KICKERS[item.kind],
+    place: item.venue?.name ?? null,
     meta: formatExhibitionDates(item.startsOn, item.endsOn),
     imageUrl: item.coverUrl,
   };
