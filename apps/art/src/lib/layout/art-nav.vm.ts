@@ -3,6 +3,7 @@ import {
   type ArtworkCatalogueUrlState,
   type ArtworkObjectType,
   artworkCatalogueHref,
+  emptyArtworkCatalogueState,
 } from "@/lib/catalogue/artwork-catalogue-params";
 import type {
   MarketingHeaderSearchSuggestion,
@@ -66,7 +67,7 @@ const EXHIBITION_LINKS = [
 ] as const;
 
 function catalogueHref(patch: Partial<ArtworkCatalogueUrlState>): string {
-  return artworkCatalogueHref({ type: "all", sort: "newest", ...patch });
+  return artworkCatalogueHref(emptyArtworkCatalogueState(), patch);
 }
 
 function plainSection(item: Omit<ArtNavItem, "active">): ArtMegaNavSection {
@@ -119,7 +120,7 @@ function artworksSection(
       id: "medium",
       title: "By medium",
       items: objectTypes.map((objectType) => ({
-        href: catalogueHref({ objectType }),
+        href: catalogueHref({ objectTypes: [objectType] }),
         label: ARTWORK_OBJECT_TYPE_LABELS[objectType],
       })),
     });

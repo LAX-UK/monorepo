@@ -265,8 +265,13 @@ export function venueHref(slug: string): string {
   return `/visit/${encodeURIComponent(slug)}`;
 }
 
+/** Street, then postcode; blank parts are dropped. */
+export function venueAddressParts(venue: Pick<ArtEditorialVenueDetail, "address" | "postcode">) {
+  return [venue.address, venue.postcode].flatMap((part) => (part?.trim() ? [part.trim()] : []));
+}
+
 function venueFacts(venue: ArtEditorialVenueDetail): VenueFactsVm {
-  const addressLine = [venue.address, venue.postcode].filter(Boolean).join(", ");
+  const addressLine = venueAddressParts(venue).join(", ");
   return {
     venue,
     hours: presentOpeningHours(venue.openingHours),

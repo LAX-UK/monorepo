@@ -14,6 +14,7 @@ import type {
   ArtExhibitionStatus,
   ArtStoryKind,
 } from "@/lib/editorial/art-editorial.types";
+import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type {
   EditorialHomeResponse,
   GeneralEnquiryRow,
@@ -118,4 +119,9 @@ export type ArtEditorialPort = {
   listVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>>;
   getVenue(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialVenueDetail>>;
   preview(token: string): Promise<ArtEditorialFetchResult<ArtEditorialPreview>>;
+};
+
+/** Other LAX products, resolved from env by `@auction/lax-ecosystem`; empty when misconfigured. */
+export type ArtEcosystemPort = {
+  crossProductLinks(): LaxProductLinkVm[];
 };
