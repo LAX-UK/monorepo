@@ -88,8 +88,39 @@ describe("catalogue artist card view model", () => {
       { slug: "a", name: "A", discipline: "Painter", portraitUrl: null, artworkCount: 2 },
       { slug: "b", name: "B", discipline: null, portraitUrl: null, artworkCount: 1 },
     ]);
-    expect(withDiscipline).toMatchObject({ href: "/artists/a", caption: "Painter" });
+    expect(withDiscipline).toMatchObject({
+      href: "/artists/a",
+      caption: "Painter",
+      following: false,
+    });
     expect(withoutDiscipline?.caption).toBe("1 work");
+  });
+
+  it("prefers nationality and years when the record carries them", () => {
+    const base = { name: "A", discipline: "Painter", portraitUrl: null, artworkCount: 2 };
+    const cards = buildCatalogueArtistCards([
+      { ...base, slug: "a", nationality: "British", birthYear: 1924, deathYear: 2001 },
+      { ...base, slug: "b", nationality: " ", birthYear: 1960, deathYear: null },
+      { ...base, slug: "c", nationality: "French", birthYear: null, deathYear: null },
+      { ...base, slug: "d", nationality: null, birthYear: null, deathYear: 1990 },
+    ]);
+    expect(cards.map((card) => card.caption)).toEqual([
+      "British, 1924–2001",
+      "b. 1960",
+      "French",
+      "Painter",
+    ]);
+  });
+
+  it("marks followed artists from one slug set", () => {
+    const cards = buildCatalogueArtistCards(
+      [
+        { slug: "a", name: "A", discipline: null, portraitUrl: null, artworkCount: 0 },
+        { slug: "b", name: "B", discipline: null, portraitUrl: null, artworkCount: 0 },
+      ],
+      new Set(["b"]),
+    );
+    expect(cards.map((card) => card.following)).toEqual([false, true]);
   });
 
   it("maps followed artists", () => {
@@ -97,6 +128,11 @@ describe("catalogue artist card view model", () => {
       buildFollowedArtistCards([
         { artistSlug: "a", artistName: "A", portraitUrl: null, followedAt: "2026-01-01" },
       ])[0],
-    ).toMatchObject({ href: "/artists/a", imageAlt: "Portrait of A", caption: null });
+    ).toMatchObject({
+      href: "/artists/a",
+      imageAlt: "Portrait of A",
+      caption: null,
+      following: true,
+    });
   });
 });

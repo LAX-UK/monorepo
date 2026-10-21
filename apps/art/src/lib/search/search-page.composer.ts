@@ -38,7 +38,10 @@ export async function composeSearchPage(
   searchParams: Record<string, string | string[] | undefined>,
 ): Promise<SearchPageVm> {
   const query = parseSearchQuery(searchParams.q);
-  const favoritesPromise = loadViewerFavoriteContext(services, searchPageHref(query));
+  const favoritesPromise = loadViewerFavoriteContext(services, searchPageHref(query), {
+    savedArtworks: true,
+    followedArtists: Boolean(query),
+  });
   if (!query) {
     const favorites = await favoritesPromise;
     return {
@@ -61,7 +64,9 @@ export async function composeSearchPage(
       ? buildCatalogueArtworkCards(artworks.value.items, favorites.savedArtworkSlugs)
       : [];
   const artistCards =
-    artists.status === "fulfilled" ? buildCatalogueArtistCards(artists.value.items) : [];
+    artists.status === "fulfilled"
+      ? buildCatalogueArtistCards(artists.value.items, favorites.followedArtistSlugs)
+      : [];
 
   let status: SearchPageStatus = "results";
   if (artworks.status === "rejected" && artists.status === "rejected") status = "unavailable";

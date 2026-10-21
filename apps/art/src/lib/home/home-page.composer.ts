@@ -55,7 +55,10 @@ export async function composeArtHomePage(services: {
   favorites: ArtFavoritesReadPort;
   editorial: Pick<ArtEditorialPort, "home">;
 }): Promise<ArtHomePageVm> {
-  const favoritesPromise = loadViewerFavoriteContext(services, "/");
+  const favoritesPromise = loadViewerFavoriteContext(services, "/", {
+    savedArtworks: true,
+    followedArtists: true,
+  });
   const editorialPromise = services.editorial.home();
   const [artworks, artists] = await Promise.allSettled([
     curatedOrNewest(
@@ -106,7 +109,9 @@ export async function composeArtHomePage(services: {
         ? buildCatalogueArtworkCards(artworks.value.items, favorites.savedArtworkSlugs)
         : [],
     featuredArtists:
-      artists.status === "fulfilled" ? buildCatalogueArtistCards(artists.value.items) : [],
+      artists.status === "fulfilled"
+        ? buildCatalogueArtistCards(artists.value.items, favorites.followedArtistSlugs)
+        : [],
     favoriteAuth: favorites.favoriteAuth,
     editorial,
     sectionErrors,

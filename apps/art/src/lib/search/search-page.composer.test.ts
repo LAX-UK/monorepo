@@ -1,4 +1,9 @@
-import { artistSummary, artworkSummary, fakeArtServices } from "@/lib/testing/fake-art-services";
+import {
+  SIGNED_IN_VIEWER,
+  artistSummary,
+  artworkSummary,
+  fakeArtServices,
+} from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
 import { composeSearchPage, parseSearchQuery } from "./search-page.composer.js";
 
@@ -25,6 +30,19 @@ describe("composeSearchPage", () => {
       allArtworksHref: "/artworks?q=basket",
     });
     expect(vm.favoriteAuth.loginHref).toBe("/login?returnTo=%2Fsearch%3Fq%3Dbasket");
+  });
+
+  it("marks followed artists for signed-in viewers, and skips that read with no query", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.catalogue.listArtists.mockResolvedValue({ items: [artistSummary()] });
+    services.favorites.followedArtistSlugs.mockResolvedValue(new Set(["flora-powers"]));
+
+    await composeSearchPage(services, {});
+    expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
+
+    const vm = await composeSearchPage(services, { q: "flora" });
+    expect(vm.artists[0]?.following).toBe(true);
+    expect(services.favorites.followedArtistSlugs).toHaveBeenCalledTimes(1);
   });
 
   it("reports no results", async () => {

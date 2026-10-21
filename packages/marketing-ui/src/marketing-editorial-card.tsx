@@ -1,0 +1,100 @@
+import { FOCUS_RING } from "@auction/branding";
+import { cn } from "@auction/ui";
+import Link from "next/link";
+import type { ComponentType, ReactNode } from "react";
+import { MarketingCardMedia } from "./marketing-card-media.js";
+
+type EditorialCardLinkProps = { href: string; className?: string; children: ReactNode };
+
+export type MarketingEditorialCardProps = {
+  /** Fills the media slot (`absolute inset-0 size-full`). */
+  media: ReactNode;
+  /** `landscape` 4:3 for features and rails; `portrait` 8:11 for story grids (Figma `251:1312`). */
+  aspect?: "landscape" | "portrait";
+  /** Uppercase parts divided by a rule, e.g. ["Exhibition", "London"] or ["Article", "16 Apr 2026"]. */
+  kicker?: readonly string[];
+  title: string;
+  /** Secondary lines under the title (date range, time and place, standfirst). */
+  details?: readonly ReactNode[];
+  /** Beside the title, outside the link, so a nested control (heart) stays its own tab stop. */
+  trailing?: ReactNode;
+  /** Missing href renders the title as plain text. */
+  href?: string | null;
+  /** Products route CMS links through their own safe-link component; defaults to `next/link`. */
+  linkAs?: ComponentType<EditorialCardLinkProps>;
+  "data-testid"?: string;
+};
+
+/**
+ * Exhibition, story and placement card with square corners (Figma `263:1922`, `251:1312`). The
+ * title link stretches over the whole card so media and text share one tab stop.
+ */
+export function MarketingEditorialCard({
+  media,
+  aspect = "landscape",
+  kicker = [],
+  title,
+  details = [],
+  trailing,
+  href,
+  linkAs: LinkComponent = Link,
+  "data-testid": testId,
+}: MarketingEditorialCardProps) {
+  return (
+    <article className="group relative flex h-full flex-col gap-4" data-testid={testId}>
+      <MarketingCardMedia
+        className={cn(
+          "bg-surface-container",
+          aspect === "portrait" ? "aspect-[8/11]" : "aspect-[4/3]",
+        )}
+      >
+        {media}
+      </MarketingCardMedia>
+      <div className="flex flex-col gap-1">
+        {kicker.length > 0 ? (
+          <p className="flex flex-wrap items-center font-label text-xs uppercase leading-[1.125rem] text-on-surface-variant">
+            {kicker.map((part, index) => (
+              <span
+                key={part}
+                className={cn(
+                  index > 0 && "pl-3",
+                  index < kicker.length - 1 && "border-r border-current pr-3",
+                )}
+              >
+                {part}
+              </span>
+            ))}
+          </p>
+        ) : null}
+        <div className="flex items-start gap-4">
+          <h3 className="min-w-0 flex-1 font-headline text-lg font-medium leading-7 text-on-surface md:text-xl">
+            {href ? (
+              <LinkComponent
+                href={href}
+                className={cn(
+                  "rounded-sm underline-offset-4 after:absolute after:inset-0 group-hover:underline",
+                  FOCUS_RING,
+                )}
+              >
+                {title}
+              </LinkComponent>
+            ) : (
+              title
+            )}
+          </h3>
+          {trailing ? <div className="relative z-[1] -mt-2 shrink-0">{trailing}</div> : null}
+        </div>
+      </div>
+      {details.length > 0 ? (
+        <div className="flex flex-col gap-1 text-sm text-on-surface-variant">
+          {details.map((line, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: detail lines are positional.
+            <p key={index} className="line-clamp-2">
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
