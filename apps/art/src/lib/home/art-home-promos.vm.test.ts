@@ -8,7 +8,7 @@ function link(id: LaxProductLinkVm["id"], href: string): LaxProductLinkVm {
 }
 
 describe("buildArtHomeEcosystemCards", () => {
-  it("orders LAX.bid before LAX.shop and links each to its storefront", () => {
+  it("orders LAX Bid before LAX Shop and links each to its storefront", () => {
     const cards = buildArtHomeEcosystemCards([
       link("shop", "https://shop.test"),
       link("bid", "https://bid.test"),
@@ -17,13 +17,13 @@ describe("buildArtHomeEcosystemCards", () => {
     expect(cards).toEqual([
       expect.objectContaining({
         id: "bid",
-        eyebrow: "LAX.BID",
+        eyebrow: "LAX Bid",
         title: "Bid in auctions",
         cta: { label: "Explore auctions", href: "https://bid.test" },
       }),
       expect.objectContaining({
         id: "shop",
-        eyebrow: "LAX.SHOP",
+        eyebrow: "LAX Shop",
         title: "Collect with certainty",
         cta: { label: "Explore editions", href: "https://shop.test" },
       }),

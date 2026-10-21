@@ -41,7 +41,7 @@
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #e8e8e8;
-  /* Promo bands (Figma Cream/100 behind the LAX.bid + LAX.shop band and the guide promo). */
+  /* Promo bands (Figma Cream/100 behind the LAX Bid and LAX Shop band and the guide promo). */
   --color-surface-feature: var(--color-brand-light-cream);
   --color-on-surface-feature: var(--color-on-surface);
   --color-surface-inverse: var(--color-brand-obsidian);

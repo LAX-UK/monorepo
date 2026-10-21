@@ -12,23 +12,23 @@ export type ArtHomeEcosystemCardVm = {
 
 type EcosystemCopy = Omit<ArtHomeEcosystemCardVm, "id" | "cta"> & { ctaLabel: string };
 
-/** Product-owned copy for the LAX.bid + LAX.shop band (Figma home `299:4535`), in band order. */
+/** Product-owned copy for the LAX Bid and LAX Shop band (Figma home `299:4535`), in band order. */
 const ECOSYSTEM_COPY: ReadonlyArray<[BandProductId, EcosystemCopy]> = [
   [
     "bid",
     {
-      eyebrow: "LAX.BID",
+      eyebrow: "LAX Bid",
       title: "Bid in auctions",
-      body: "LAX.BID is the dedicated auction destination within the wider LAX ecosystem. Exceptional works, considered curation, open to all.",
+      body: "LAX Bid is the dedicated auction destination within the wider LAX ecosystem. Exceptional works, considered curation, open to all.",
       ctaLabel: "Explore auctions",
     },
   ],
   [
     "shop",
     {
-      eyebrow: "LAX.SHOP",
+      eyebrow: "LAX Shop",
       title: "Collect with certainty",
-      body: "LAX.SHOP is the dedicated editions destination: a considered selection of artist originals and prints.",
+      body: "LAX Shop is the dedicated editions destination: a considered selection of artist originals and prints.",
       ctaLabel: "Explore editions",
     },
   ],

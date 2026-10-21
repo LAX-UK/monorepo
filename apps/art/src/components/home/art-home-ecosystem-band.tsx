@@ -4,7 +4,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 
 /**
- * Cream band with the LAX.bid and LAX.shop cards (Figma home `299:4535`). Figma's illustrations are
+ * Cream band with the LAX Bid and LAX Shop cards (Figma home `299:4535`). Figma's illustrations are
  * CMS content with no placement slot yet, so the cards are text-only on the feature surface.
  */
 export function ArtHomeEcosystemBand({ cards }: { cards: readonly ArtHomeEcosystemCardVm[] }) {
