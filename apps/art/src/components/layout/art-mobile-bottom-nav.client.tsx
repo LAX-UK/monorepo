@@ -27,5 +27,7 @@ export function ArtMobileBottomNav() {
     active: item.active,
   }));
 
-  return <MarketingBottomTabBar items={items} data-testid="art-mobile-bottom-nav" />;
+  return (
+    <MarketingBottomTabBar variant="floating" items={items} data-testid="art-mobile-bottom-nav" />
+  );
 }

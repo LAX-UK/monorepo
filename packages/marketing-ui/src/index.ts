@@ -127,9 +127,15 @@ export { computeMegaMenuContentShift } from "./header/compute-mega-menu-content-
 export {
   MarketingHeaderMegaNav,
   type MarketingHeaderMegaNavProps,
+  type MarketingMegaNavColumn,
   type MarketingMegaNavItem,
   type MarketingMegaNavSection,
 } from "./header/marketing-header-mega-nav.js";
+export {
+  MarketingHeaderSearch,
+  type MarketingHeaderSearchProps,
+  type MarketingHeaderSearchSuggestion,
+} from "./header/marketing-header-search.js";
 export {
   MarketingMobileNavDrawer,
   type MarketingMobileNavDrawerProps,

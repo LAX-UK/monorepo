@@ -101,7 +101,8 @@
   --container-inner: 86rem;
   --header-height: 3.5rem;
   --page-bottom-padding: 3rem;
-  --color-footer-bg: #ededef;
+  /* Figma footer `235:226` (light only; dark keeps its own surface). */
+  --color-footer-bg: #f8f8f8;
   --color-nav-border: #e6e8eb;
   --color-nav-text: var(--color-brand-obsidian);
   --color-hero-foreground: #ffffff;
@@ -159,8 +160,8 @@
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
   --art-page-gutter: 1rem;
-  /* Mobile bottom tab bar height (MarketingBottomTabBar min-h-14) plus safe area. */
-  --art-bottom-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  /* Space reserved below content for the floating MarketingBottomTabBar: 66px pill + 1rem inset + safe area. */
+  --art-bottom-nav-height: calc(4.125rem + 1rem + env(safe-area-inset-bottom, 0px));
   --motion-duration-sm: 200ms;
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;

@@ -160,6 +160,81 @@ test.describe("lax.art journeys", () => {
     await expect.poll(() => html.evaluate((el) => el.classList.contains("dark"))).toBe(startedDark);
   });
 
+  test("desktop header offers Log in, Enquire and keyboard mega menus", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "mega menus are lg+ only");
+    await page.goto("/artworks");
+    const header = page.getByTestId("art-header");
+    await expect(header.getByRole("link", { name: "Log in" })).toHaveAttribute(
+      "href",
+      "/login?returnTo=%2Fartworks",
+    );
+    await expect(header.getByRole("link", { name: "Enquire" })).toHaveAttribute("href", "/contact");
+
+    const primary = header.getByRole("navigation", { name: "Primary" });
+    await expect(primary.getByRole("link", { name: "Art Hub" })).toHaveAttribute(
+      "href",
+      "/art-hub",
+    );
+    const exhibitions = primary.getByRole("button", { name: "Exhibitions" });
+    // Without catalogue data every item degrades to a plain link.
+    test.skip((await exhibitions.count()) === 0, "header catalogue data unavailable");
+
+    await exhibitions.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(exhibitions).toHaveAttribute("aria-expanded", "true");
+    const panel = page.locator("#art-header-megamenu");
+    await expect(panel.getByRole("link", { name: "Current" })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(panel.getByRole("link", { name: "Upcoming" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(exhibitions).toHaveAttribute("aria-expanded", "false");
+    await expect(exhibitions).toBeFocused();
+  });
+
+  test("header search shelf submits, remembers the query and closes on Escape", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "inline search is desktop-only");
+    await page.goto("/");
+    const trigger = page.getByTestId("art-header").getByRole("button", { name: "Search" });
+    await trigger.click();
+    const shelf = page.getByRole("dialog", { name: "Search" });
+    const input = shelf.getByRole("textbox", { name: "Search" });
+    await expect(input).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(shelf).toBeHidden();
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await input.fill("zzqx-no-such-artwork-9271");
+    await input.press("Enter");
+    await expect(page).toHaveURL(/\/search\?q=zzqx-no-such-artwork-9271/);
+
+    await trigger.click();
+    await expect(shelf.getByRole("link", { name: "zzqx-no-such-artwork-9271" })).toBeVisible();
+    await shelf.getByRole("button", { name: "Clear all" }).click();
+    await expect(shelf.getByRole("heading", { name: "Recent searches" })).toHaveCount(0);
+  });
+
+  test("footer carries the Figma columns in the shared order", async ({ page }) => {
+    await page.goto("/");
+    const footer = page.getByRole("contentinfo");
+    // Account and LAX products depend on sign-in and product directory config.
+    const titles = await footer.getByRole("heading", { level: 3 }).allTextContents();
+    expect(titles.slice(0, 2)).toEqual(["About us", "Our services"]);
+    expect(titles.slice(-2)).toEqual(["Legal", "Connect"]);
+    await expect(footer.getByRole("link", { name: "How to sell" })).toHaveAttribute(
+      "href",
+      "/how-to-sell",
+    );
+    await expect(footer.getByRole("link", { name: "Contact us" })).toHaveAttribute(
+      "href",
+      "/contact",
+    );
+  });
+
   test("mobile bottom nav marks the current tab", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-mobile", "bottom nav is mobile-only");
     await page.goto("/search");

@@ -7,27 +7,27 @@ export type ArtFooterVm = {
   columns: MarketingFooterColumn[];
 };
 
-/** Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by the shell). */
+/**
+ * Figma footer (`235:226`) content inside the shared LAX column order: site navigation (About us,
+ * Our services), Account, LAX products, Legal (Figma "Policies"), then Connect, which the footer
+ * component appends. Figma links without an Art route (Our history, Careers, Press, Sitemap,
+ * Bidding policy) are left out.
+ */
 export function buildArtFooterVm(input: {
   crossProductLinks: LaxProductLinkVm[];
   accountState: ArtFooterAccountState;
   /** Shows the link that reopens the analytics consent banner. */
   cookieSettings: boolean;
 }): ArtFooterVm {
-  const exploreLinks = [
-    { label: "Artists", href: "/artists" },
-    { label: "Artworks", href: "/artworks" },
-    { label: "Exhibitions", href: "/exhibitions" },
-    { label: "Search", href: "/search" },
-  ];
-
-  const discoverLinks = [
-    { label: "Art Hub", href: "/art-hub" },
-    { label: "Collector Hub", href: "/collector-hub" },
-    { label: "How to buy", href: "/how-to-buy" },
-    { label: "How to sell", href: "/how-to-sell" },
+  const aboutLinks = [
     { label: "Visit", href: "/visit" },
     { label: "Contact", href: "/contact" },
+  ];
+
+  const servicesLinks = [
+    { label: "How to buy", href: "/how-to-buy" },
+    { label: "How to sell", href: "/how-to-sell" },
+    { label: "Collector Hub", href: "/collector-hub" },
   ];
 
   const accountLinks: Array<{ label: string; href: string }> = [];
@@ -52,8 +52,8 @@ export function buildArtFooterVm(input: {
   }));
 
   const columns: MarketingFooterColumn[] = [
-    { id: "explore", title: "Explore", links: exploreLinks },
-    { id: "discover", title: "Discover", links: discoverLinks },
+    { id: "about", title: "About us", links: aboutLinks },
+    { id: "services", title: "Our services", links: servicesLinks },
   ];
 
   if (accountLinks.length > 0) {
@@ -65,8 +65,13 @@ export function buildArtFooterVm(input: {
   }
 
   const legalLinks = [
-    { label: "Terms of use", href: "/legal/terms" },
-    { label: "Privacy notice", href: "/legal/privacy" },
+    { label: "Privacy policy", href: "/legal/privacy" },
+    { label: "Cookie policy", href: "/legal/cookies" },
+    { label: "Returns policy", href: "/legal/returns" },
+    { label: "Shipping & delivery", href: "/legal/shipping" },
+    { label: "Terms & conditions", href: "/legal/terms" },
+    { label: "Accessibility", href: "/legal/accessibility" },
+    { label: "Modern slavery statement", href: "/legal/modern-slavery" },
   ];
   if (input.cookieSettings) {
     legalLinks.push({ label: "Cookie preferences", href: ART_COOKIE_SETTINGS_HASH });
