@@ -2,6 +2,12 @@ import type { Database } from "@auction/db";
 import { shopEditorialExhibition, shopEditorialStory } from "@auction/db/schema";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import type { EditorialSearchReader } from "../application/ports/editorial-search.reader.js";
+import {
+  selectExhibitionSummaries,
+  selectStorySummaries,
+  toExhibitionSummary,
+  toStorySummary,
+} from "./drizzle-editorial-relations.js";
 
 /** Search returns one bounded page; storefronts show matches without pagination. */
 export const EDITORIAL_SEARCH_LIMIT = 50;
@@ -11,6 +17,7 @@ export function containsPattern(query: string): string {
   return `%${query.trim().replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
+/** Reuses the editorial summary selects so search results carry the same fields as the lists. */
 export function createDrizzleEditorialSearchReader(
   db: Database,
   options: { resolveMediaUrl: (value: string | null | undefined) => string | null },
@@ -19,18 +26,7 @@ export function createDrizzleEditorialSearchReader(
   return {
     async searchExhibitions(query) {
       const pattern = containsPattern(query);
-      const rows = await db
-        .select({
-          slug: shopEditorialExhibition.slug,
-          kind: shopEditorialExhibition.kind,
-          title: shopEditorialExhibition.title,
-          summary: shopEditorialExhibition.summary,
-          startsOn: shopEditorialExhibition.startsOn,
-          endsOn: shopEditorialExhibition.endsOn,
-          coverMediaKey: shopEditorialExhibition.coverMediaKey,
-          featured: shopEditorialExhibition.featured,
-        })
-        .from(shopEditorialExhibition)
+      const rows = await selectExhibitionSummaries(db)
         .where(
           and(
             eq(shopEditorialExhibition.status, "published"),
@@ -42,25 +38,12 @@ export function createDrizzleEditorialSearchReader(
         )
         .orderBy(desc(shopEditorialExhibition.startsOn), desc(shopEditorialExhibition.createdAt))
         .limit(EDITORIAL_SEARCH_LIMIT);
-      return rows.map(({ coverMediaKey, ...row }) => ({
-        ...row,
-        coverUrl: resolveMediaUrl(coverMediaKey),
-      }));
+      return rows.map((row) => toExhibitionSummary(row, resolveMediaUrl));
     },
 
     async searchStories(query, kind) {
       const pattern = containsPattern(query);
-      const rows = await db
-        .select({
-          slug: shopEditorialStory.slug,
-          kind: shopEditorialStory.kind,
-          title: shopEditorialStory.title,
-          standfirst: shopEditorialStory.standfirst,
-          coverMediaKey: shopEditorialStory.coverMediaKey,
-          featured: shopEditorialStory.featured,
-          updatedAt: shopEditorialStory.updatedAt,
-        })
-        .from(shopEditorialStory)
+      const rows = await selectStorySummaries(db)
         .where(
           and(
             eq(shopEditorialStory.status, "published"),
@@ -73,10 +56,9 @@ export function createDrizzleEditorialSearchReader(
         )
         .orderBy(desc(shopEditorialStory.publishedAt), desc(shopEditorialStory.createdAt))
         .limit(EDITORIAL_SEARCH_LIMIT);
-      return rows.map(({ coverMediaKey, updatedAt, ...row }) => ({
-        ...row,
-        coverUrl: resolveMediaUrl(coverMediaKey),
-        updatedAt: updatedAt.toISOString(),
+      return rows.map((row) => ({
+        ...toStorySummary(row, resolveMediaUrl),
+        updatedAt: row.updatedAt.toISOString(),
       }));
     },
   };

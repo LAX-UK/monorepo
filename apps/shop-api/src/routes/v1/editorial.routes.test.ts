@@ -159,6 +159,7 @@ describe("editorial routes", () => {
         endsOn: "2025-08-01",
         coverUrl: null,
         featured: false,
+        venue: null,
       },
     ]);
     const app = await buildApp({ listExhibitions }, { searchExhibitions });
