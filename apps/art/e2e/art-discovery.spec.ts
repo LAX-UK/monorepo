@@ -116,10 +116,9 @@ test.describe("lax.art discovery", () => {
     await page.goto("/legal/how-to-buy");
     await expect(page).toHaveURL(/\/how-to-buy$/);
 
+    // The guide opens with the Figma page title band, which has no visual breadcrumb.
     await page.goto("/collector-hub/101-guide");
-    await expect(page.getByRole("navigation", { name: "breadcrumb" })).toContainText(
-      "Collector Hub",
-    );
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
   test("visit lists venues that open their own page", async ({ page }) => {
