@@ -29,6 +29,7 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
@@ -264,6 +265,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
                 }
               : {}),
           }),
+          search: createDrizzleEditorialSearchReader(db, { resolveMediaUrl }),
           previewSecret,
         }
       : null;

@@ -20,6 +20,7 @@ import {
   gt,
   gte,
   ilike,
+  inArray,
   isNotNull,
   lt,
   lte,
@@ -97,7 +98,9 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   } else if (filter.editionEligible !== undefined) {
     conditions.push(eq(shopArtwork.eligibleForEditionAllocation, filter.editionEligible));
   }
-  if (filter.saleState) {
+  if (filter.saleState === "available") {
+    conditions.push(inArray(shopArtwork.saleState, ["for_sale", "price_on_application"]));
+  } else if (filter.saleState) {
     conditions.push(eq(shopArtwork.saleState, filter.saleState));
   }
   if (filter.salesChannel) {

@@ -19,6 +19,7 @@ import {
   Phone,
   Play,
   Search,
+  SearchX,
   Share2,
   ShoppingBag,
   Sun,
@@ -43,6 +44,11 @@ export function MarketingCarouselNextIcon({ className, ...props }: MarketingIcon
 
 export function MarketingSearchIcon({ className, ...props }: MarketingIconProps) {
   return <Search className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+/** Search with a cross: a search that found nothing. */
+export function MarketingSearchRemoveIcon({ className, ...props }: MarketingIconProps) {
+  return <SearchX className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }
 
 export function MarketingHomeIcon({ className, ...props }: MarketingIconProps) {

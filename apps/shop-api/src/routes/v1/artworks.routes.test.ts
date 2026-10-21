@@ -113,6 +113,25 @@ describe("artworks routes", () => {
     await app.close();
   });
 
+  it("accepts the available sale-state filter and rejects unknown states", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const response = await app.inject({ method: "GET", url: "/v1/artworks?saleState=available" });
+    const invalid = await app.inject({ method: "GET", url: "/v1/artworks?saleState=reserved" });
+
+    expect(response.statusCode).toBe(200);
+    expect(listPublicArtworks).toHaveBeenCalledWith({
+      limit: 20,
+      filter: { saleState: "available" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    await app.close();
+  });
+
   it("forwards validated filters and rejects incompatible placement slots", async () => {
     const deps = createCatalogueDeps();
     const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);

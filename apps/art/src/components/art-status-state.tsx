@@ -11,7 +11,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type ArtStatusStateVariant = "empty" | "error";
-export type ArtStatusStateIcon = "search" | "gallery";
+export type ArtStatusStateIcon = "search" | "search-remove" | "gallery";
 
 type ArtStatusStateProps = {
   variant: ArtStatusStateVariant;

@@ -117,5 +117,9 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
       preview: vi.fn().mockResolvedValue({ status: "disabled" }),
     },
     ecosystem: { crossProductLinks: vi.fn().mockReturnValue([]) },
+    editorialSearch: {
+      searchExhibitions: vi.fn().mockResolvedValue({ status: "disabled" }),
+      searchStories: vi.fn().mockResolvedValue({ status: "disabled" }),
+    },
   } satisfies ArtServices;
 }
