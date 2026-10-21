@@ -3,7 +3,7 @@ import type {
   ArtEditorialVenueDetail,
 } from "@/lib/editorial/art-editorial.types";
 import { fakeArtServices } from "@/lib/testing/fake-art-services";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   composeArtHubPage,
   composeEditorialPage,
@@ -151,6 +151,28 @@ describe("composeExhibitionDetailPage", () => {
     });
     const withNote = await composeExhibitionDetailPage(services, "summer-show");
     expect(withNote.status === "ok" && withNote.data.hoursLabel).toBe("Late opening Thursdays");
+  });
+
+  it("builds the title byline and marks the show closed after its end date", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const services = fakeArtServices();
+      services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
+      services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
+
+      vi.setSystemTime(new Date("2026-08-30T22:00:00Z"));
+      const lastDay = await composeExhibitionDetailPage(services, "summer-show");
+      expect(lastDay.status === "ok" && lastDay.data).toMatchObject({
+        metaLine: "Exhibition · 1 Jun – 30 Aug 2026",
+        ended: false,
+      });
+
+      vi.setSystemTime(new Date("2026-08-31T00:00:00Z"));
+      const after = await composeExhibitionDetailPage(services, "summer-show");
+      expect(after.status === "ok" && after.data.ended).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("passes through not found and tolerates a missing venue", async () => {

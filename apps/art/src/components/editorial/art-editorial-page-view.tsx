@@ -7,6 +7,7 @@ import type {
 } from "@/lib/editorial/editorial-pages.composer";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingPageTitle, type MarketingPageTitleChip } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
@@ -17,6 +18,11 @@ export type ArtEditorialPageViewProps = {
   /** Path this route serves for the API's slug; other canonical paths redirect permanently. */
   routeFor: (slug: string) => string;
   breadcrumbs?: { label: string; href?: string }[];
+  /**
+   * Figma's centred page title band (875:19061) instead of the breadcrumb header, for pages that
+   * have a Figma frame; others keep `ArtPageHeader`.
+   */
+  titleBand?: { subtitle?: string; chip?: MarketingPageTitleChip };
   /** Call to action rendered after the body (e.g. enquiry panel). */
   aside?: ReactNode;
   /** Slug routes 404 when editorial is off; fixed guide routes keep a "coming soon" state. */
@@ -28,6 +34,7 @@ export function ArtEditorialPageView({
   result,
   routeFor,
   breadcrumbs,
+  titleBand,
   aside,
   notFoundWhenDisabled = false,
 }: ArtEditorialPageViewProps) {
@@ -51,15 +58,27 @@ export function ArtEditorialPageView({
     permanentRedirect(result.data.canonicalPath);
   }
 
+  // The centred band reads best over a centred column.
+  const column = titleBand ? "mx-auto w-full max-w-3xl" : "max-w-3xl";
   return (
-    <article className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 py-6 lg:py-10")}>
-      <ArtPageHeader
-        title={result.data.title}
-        {...(breadcrumbs ? { breadcrumbs: [...breadcrumbs, { label: result.data.title }] } : {})}
-      />
-      <EditorialBlockRenderer body={result.data.body} className="max-w-3xl" />
+    <article
+      className={cn(
+        MARKETING_PAGE_SHELL,
+        "flex flex-col gap-8",
+        titleBand ? "pb-10 lg:pb-16" : "py-6 lg:py-10",
+      )}
+    >
+      {titleBand ? (
+        <MarketingPageTitle title={result.data.title} {...titleBand} />
+      ) : (
+        <ArtPageHeader
+          title={result.data.title}
+          {...(breadcrumbs ? { breadcrumbs: [...breadcrumbs, { label: result.data.title }] } : {})}
+        />
+      )}
+      <EditorialBlockRenderer body={result.data.body} className={column} />
       {aside ? (
-        <div className="flex max-w-3xl flex-col gap-3 border-t border-border-hairline pt-8">
+        <div className={cn(column, "flex flex-col gap-3 border-t border-border-hairline pt-8")}>
           {aside}
         </div>
       ) : null}

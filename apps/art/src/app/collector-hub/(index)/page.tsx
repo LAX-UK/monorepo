@@ -4,7 +4,7 @@ import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status"
 import { artServices } from "@/lib/art-services.server";
 import { composeCollectorHubPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingReveal } from "@auction/marketing-ui";
+import { MarketingPageTitle, MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -33,16 +33,11 @@ export default async function CollectorHubPage() {
   }
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 py-10")}>
-      <header className="flex max-w-3xl flex-col gap-4">
-        <h1 className="font-headline text-3xl font-semibold text-on-surface">Collector Hub</h1>
-        <p className="text-on-surface-variant">
-          Advisory notes, collection care, and ways to work with the gallery team.
-        </p>
-        <Button asChild size="lg" className="min-h-11 w-fit font-label uppercase tracking-wide">
-          <Link href="/contact">Talk to an advisor</Link>
-        </Button>
-      </header>
+    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 pb-10 lg:pb-16")}>
+      <MarketingPageTitle
+        title="Collector Hub"
+        subtitle="From discovering your first work to exploring a more established art practice, LAX offers guidance at every stage."
+      />
       {result.data.cards.length === 0 ? (
         <ArtStatusState
           variant="empty"
@@ -55,6 +50,14 @@ export default async function CollectorHubPage() {
           <ArtEditorialCardGrid cards={result.data.cards} ariaLabel="Collector resources" />
         </MarketingReveal>
       )}
+      {/* Figma closes the hub with a "Get in touch" band (782:11154). */}
+      <Button
+        asChild
+        size="lg"
+        className="mx-auto min-h-11 w-fit font-label uppercase tracking-wide"
+      >
+        <Link href="/contact">Get in touch</Link>
+      </Button>
     </div>
   );
 }

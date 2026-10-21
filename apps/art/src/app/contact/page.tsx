@@ -2,6 +2,7 @@ import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry
 import { artServices } from "@/lib/art-services.server";
 import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingPageTitle } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 
@@ -16,16 +17,14 @@ export default async function ArtContactPage() {
   const loginHref = artStorefrontLoginHref("/contact");
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex max-w-xl flex-col gap-6 py-10")}>
-      <header>
-        <h1 className="font-headline text-3xl font-semibold text-on-surface">
-          Contact the gallery
-        </h1>
-        <p className="mt-2 text-on-surface-variant">
-          Send a general enquiry about viewings, advisory, or selling with LAX Art.
-        </p>
-      </header>
-      <ArtGeneralEnquiryPanel viewer={viewer} loginHref={loginHref} />
+    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-6 pb-10 lg:pb-16")}>
+      <MarketingPageTitle
+        title="Contact the gallery"
+        subtitle="Send a general enquiry about viewings, advisory, or selling with LAX Art."
+      />
+      <div className="mx-auto flex w-full max-w-xl flex-col">
+        <ArtGeneralEnquiryPanel viewer={viewer} loginHref={loginHref} />
+      </div>
     </div>
   );
 }

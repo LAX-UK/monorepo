@@ -265,6 +265,22 @@ export {
   type MarketingUnderlineTabsPanelProps,
 } from "./marketing-underline-tabs-panel.js";
 export {
+  MarketingPageTitle,
+  type MarketingPageTitleChip,
+  type MarketingPageTitleProps,
+} from "./marketing-page-title.js";
+export {
+  MarketingSubNav,
+  type MarketingSubNavLinkItem,
+  type MarketingSubNavLinkProps,
+  type MarketingSubNavProps,
+} from "./marketing-sub-nav.js";
+export type {
+  MarketingSubNavAnchorItem,
+  MarketingSubNavAnchorProps,
+  MarketingSubNavIdentity,
+} from "./marketing-sub-nav-anchor.js";
+export {
   MarketingDetailAccordion,
   type MarketingDetailAccordionItem,
   type MarketingDetailAccordionProps,
