@@ -120,7 +120,7 @@
   --section-spacing: 5rem;
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
-  --shop-page-gutter: clamp(2rem, 4vw, 3.5rem);
+  --shop-page-gutter: 1rem;
   --shop-section-gap: 2.5rem;
   --shop-section-spacing: var(--section-spacing-tight, 3rem);
   --shop-motion-duration: 0.45s;
@@ -137,6 +137,19 @@
   --motion-duration-xl: 900ms;
   --motion-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
+}
+
+/* Page gutter 16 / 24 / 40px — pairs with MARKETING_PAGE_GUTTER_X (@auction/branding). */
+@media (min-width: 48rem) {
+  :root {
+    --shop-page-gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --shop-page-gutter: 2.5rem;
+  }
 }
 
 .shop-home-shell {

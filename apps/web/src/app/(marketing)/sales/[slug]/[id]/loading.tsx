@@ -41,7 +41,7 @@ export default async function SaleroomCatalogLoading() {
         className={cn(SALE_ANCHOR_STICKY_CLASS, "border-b border-outline-variant/30 bg-page-bg/90")}
         aria-hidden
       >
-        <div className="mx-auto flex max-w-[var(--container-max,1440px)] gap-4 px-8 py-3 md:px-10 lg:px-14">
+        <div className="mx-auto flex max-w-[var(--container-max,1440px)] gap-4 px-4 py-3 md:px-6 lg:px-10">
           <div className={cn(pulse, "h-5 w-20")} />
           <div className={cn(pulse, "h-5 w-24")} />
           <div className={cn(pulse, "h-5 w-20")} />

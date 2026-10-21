@@ -25,7 +25,7 @@ export function MarketingCatalogToolbarSkeleton({
     <>
       <div
         className={cn(
-          "-mx-8 border-b border-border-hairline bg-surface/85 py-1.5 md:-mx-10 md:py-2 lg:-mx-14",
+          "-mx-4 border-b border-border-hairline bg-surface/85 py-1.5 md:-mx-6 md:py-2 lg:-mx-10",
           className,
         )}
       >

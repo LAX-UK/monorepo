@@ -13,7 +13,7 @@ export function HomeSkeleton() {
       <div className={HOME_HERO_BLEED}>
         <Skeleton className={cn("w-full rounded-none shimmer-sweep", HOME_HERO_MIN_H)} />
       </div>
-      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-8 py-12 md:px-10 lg:px-14">
+      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-12 md:px-6 lg:px-10">
         <Skeleton className="mb-8 h-10 w-64" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {["a", "b", "c", "d", "e", "f"].map((slot) => (
@@ -21,7 +21,7 @@ export function HomeSkeleton() {
           ))}
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-8 pt-10 md:px-10 lg:px-14">
+      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 pt-10 md:px-6 lg:px-10">
         <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <Skeleton className="h-[60px] w-[min(100%,420px)] rounded-sm shimmer-sweep" />
           <div className="flex flex-wrap gap-4">
@@ -43,7 +43,7 @@ export function HomeSkeleton() {
           ))}
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-8 pt-10 md:px-10 lg:px-14">
+      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 pt-10 md:px-6 lg:px-10">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-[60px] w-[min(100%,360px)] rounded-sm shimmer-sweep" />
@@ -62,7 +62,7 @@ export function HomeSkeleton() {
           ))}
         </div>
       </div>
-      <div className="mx-auto flex w-full max-w-[var(--container-inner,1376px)] flex-col gap-8 px-8 pt-10 md:px-10 lg:flex-row lg:items-center lg:gap-14 lg:px-14">
+      <div className="mx-auto flex w-full max-w-[var(--container-inner,1376px)] flex-col gap-8 px-4 pt-10 md:px-6 lg:flex-row lg:items-center lg:gap-14 lg:px-10">
         <div className="flex max-w-xl flex-1 flex-col gap-4">
           <Skeleton className="h-12 w-[min(100%,340px)] rounded-sm shimmer-sweep" />
           <Skeleton className="h-24 w-full rounded-sm shimmer-sweep" />

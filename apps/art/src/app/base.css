@@ -153,7 +153,7 @@
   --section-spacing: 5rem;
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
-  --art-page-gutter: clamp(1rem, 4vw, 3.5rem);
+  --art-page-gutter: 1rem;
   /* Mobile bottom tab bar height (MarketingBottomTabBar min-h-14) plus safe area. */
   --art-bottom-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
   --motion-duration-sm: 200ms;
@@ -168,6 +168,19 @@
 @media (min-width: 64rem) {
   :root {
     --header-height: 4rem;
+  }
+}
+
+/* Page gutter 16 / 24 / 40px — pairs with MARKETING_PAGE_GUTTER_X (@auction/branding). */
+@media (min-width: 48rem) {
+  :root {
+    --art-page-gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --art-page-gutter: 2.5rem;
   }
 }
 
