@@ -23,6 +23,7 @@ export default async function HowToSellPage() {
     <ArtEditorialPageView
       result={result}
       routeFor={route}
+      titleBand={{}}
       aside={
         <>
           <h2 className="font-headline text-xl font-semibold text-on-surface">

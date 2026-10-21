@@ -1,12 +1,12 @@
-import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtVenueFacts } from "@/components/editorial/art-venue-facts";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
 import { ArtPrivateViewingSection } from "@/components/enquiry/art-private-viewing-section";
-import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
+import { venueMetaLines } from "@/lib/editorial/editorial-page-title.vm";
 import { composeVenuePage, venueHref } from "@/lib/editorial/editorial-pages.composer";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingPageTitle } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { cache } from "react";
@@ -36,36 +36,34 @@ export default async function VenuePage({ params }: VenuePageProps) {
   const [result, viewer] = await Promise.all([loadVenue(slug), artServices.viewer.load()]);
   if (result.status !== "ok") notFoundOrUnavailable(result.status, "Venue");
 
-  const { venue, body } = result.data;
+  const { venue, body, addressLine, hours } = result.data;
+  const meta = venueMetaLines(addressLine, hours);
   return (
-    <article className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 py-6 lg:py-10")}>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12">
-        <div className="flex flex-col gap-8">
-          <ArtPageHeader
-            title={venue.name}
-            breadcrumbs={[{ label: "Visit", href: "/visit" }, { label: venue.name }]}
-          />
-          <ArtVenueFacts facts={result.data} />
-        </div>
-        {venue.coverUrl ? (
-          <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
-            <ArtMediaImage
-              src={venue.coverUrl}
-              alt={`${venue.name} gallery`}
-              priority
-              sizes="(min-width: 64rem) 50vw, 100vw"
-              className="absolute inset-0 size-full"
-              imgClassName="object-cover"
-            />
-          </div>
-        ) : null}
+    <article className="flex flex-col gap-12 pb-10 lg:pb-16">
+      {venue.coverUrl ? (
+        <MarketingPageTitle
+          variant="media"
+          title={venue.name}
+          image={{ src: venue.coverUrl, alt: `${venue.name} gallery` }}
+          priority
+          meta={meta}
+        />
+      ) : (
+        <MarketingPageTitle title={venue.name} meta={meta} />
+      )}
+      <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12")}>
+        <ArtVenueFacts facts={result.data} />
+        <EditorialBlockRenderer
+          body={body}
+          idPrefix={`venue-${venue.slug}`}
+          className="max-w-3xl"
+        />
+        <ArtPrivateViewingSection
+          viewer={viewer}
+          returnTo={venueHref(venue.slug)}
+          venue={{ slug: venue.slug, name: venue.name }}
+        />
       </div>
-      <EditorialBlockRenderer body={body} idPrefix={`venue-${venue.slug}`} className="max-w-3xl" />
-      <ArtPrivateViewingSection
-        viewer={viewer}
-        returnTo={venueHref(venue.slug)}
-        venue={{ slug: venue.slug, name: venue.name }}
-      />
     </article>
   );
 }

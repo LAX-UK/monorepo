@@ -1,4 +1,3 @@
-import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState } from "@/components/art-status-state";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
 import { ArtVenueFacts } from "@/components/editorial/art-venue-facts";
@@ -7,7 +6,7 @@ import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { composeVisitPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingCardMedia, MarketingReveal } from "@auction/marketing-ui";
+import { MarketingCardMedia, MarketingPageTitle, MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -40,10 +39,10 @@ export default async function VisitPage() {
   const { venues } = result.data;
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 py-6 lg:py-10")}>
-      <ArtPageHeader
-        title="Visit"
-        description="Plan your visit to London Art Exchange gallery spaces, or book a private viewing."
+    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 pb-10 lg:pb-16")}>
+      <MarketingPageTitle
+        title="LAX's Locations"
+        subtitle="Plan your visit to London Art Exchange gallery spaces, or book a private viewing."
       />
 
       {venues.length === 0 ? (

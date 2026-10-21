@@ -1,4 +1,3 @@
-import { ArtEditorialHeader } from "@/components/editorial/art-editorial-header";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
@@ -9,7 +8,12 @@ import { storyJsonLd } from "@/lib/seo/art-structured-data";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingVideoPoster } from "@auction/marketing-ui";
+import {
+  MarketingPageTitle,
+  MarketingShareButton,
+  MarketingSubNav,
+  MarketingVideoPoster,
+} from "@auction/marketing-ui";
 import { isSafeEditorialHref } from "@auction/shop-contracts";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
@@ -47,38 +51,52 @@ export default async function StoryPage({ params }: StoryPageProps) {
 
   const { story, kicker, body } = result.data;
   const film = isSafeEditorialHref(story.videoUrl) && story.videoUrl.startsWith("https://");
+  const path = `/stories/${encodeURIComponent(story.slug)}`;
+  // A film's cover is its video poster below, so the title stays plain rather than repeat it.
+  const heroImage = film ? null : story.coverUrl;
+  const title = { title: story.title, eyebrow: kicker, subtitle: story.standfirst };
 
   return (
-    <article className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 py-10")}>
+    <article className="flex flex-col pb-10 lg:pb-16">
       <ArtJsonLd data={storyJsonLd(story, loadArtStorefrontBaseUrl())} />
-      <ArtEditorialHeader
-        kicker={kicker}
-        title={story.title}
-        standfirst={story.standfirst}
-        coverUrl={film ? null : story.coverUrl}
+      {heroImage ? (
+        <MarketingPageTitle variant="media" image={{ src: heroImage }} priority {...title} />
+      ) : (
+        <MarketingPageTitle {...title} />
+      )}
+      <MarketingSubNav
+        mode="anchor"
+        sticky
+        ariaLabel="Reading"
+        items={[]}
+        identity={{ title: story.title, imageSrc: story.coverUrl }}
+        progressTargetId="story-body"
+        actions={<MarketingShareButton url={path} title={story.title} appearance="text" />}
       />
-      {film && story.videoUrl ? (
-        <MarketingVideoPoster
-          href={story.videoUrl}
-          title={story.title}
-          className="max-w-5xl"
-          {...(story.coverUrl
-            ? {
-                poster: (
-                  <ArtMediaImage
-                    src={story.coverUrl}
-                    alt=""
-                    priority
-                    sizes="(min-width: 64rem) 64rem, 100vw"
-                    className="absolute inset-0 size-full"
-                    imgClassName="object-cover"
-                  />
-                ),
-              }
-            : {})}
-        />
-      ) : null}
-      <EditorialBlockRenderer body={body} className="max-w-3xl" />
+      <div id="story-body" className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 pt-10")}>
+        {film && story.videoUrl ? (
+          <MarketingVideoPoster
+            href={story.videoUrl}
+            title={story.title}
+            className="mx-auto w-full max-w-5xl"
+            {...(story.coverUrl
+              ? {
+                  poster: (
+                    <ArtMediaImage
+                      src={story.coverUrl}
+                      alt=""
+                      priority
+                      sizes="(min-width: 64rem) 64rem, 100vw"
+                      className="absolute inset-0 size-full"
+                      imgClassName="object-cover"
+                    />
+                  ),
+                }
+              : {})}
+          />
+        ) : null}
+        <EditorialBlockRenderer body={body} className="mx-auto w-full max-w-3xl" />
+      </div>
     </article>
   );
 }
