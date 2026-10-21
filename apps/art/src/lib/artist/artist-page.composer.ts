@@ -1,15 +1,27 @@
+import type { ArtViewerState } from "@/lib/art-viewer-state";
 import {
   type CatalogueArtworkCardVm,
   artistHref,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import { type EditorialCardVm, exhibitionCard, storyCard } from "@/lib/editorial/editorial-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
-import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
+import type {
+  ArtCataloguePort,
+  ArtEditorialPort,
+  ArtFavoritesReadPort,
+  ArtViewerPort,
+} from "@/lib/ports";
 import { artistJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import type { JsonLd } from "@auction/branding";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
+import {
+  type ArtistSectionTab,
+  artistSectionTabs,
+  formatArtistLifeLine,
+} from "./artist-profile.vm";
 
 export type ArtistPageVm = {
   slug: string;
@@ -18,8 +30,19 @@ export type ArtistPageVm = {
   bio: string | null;
   portraitUrl: string | null;
   portraitAlt: string;
+  /** Full-bleed hero image; null falls back to the plain title band. */
+  heroUrl: string | null;
+  /** "French, 1869–1954"; null when nothing is known. */
+  lifeLine: string | null;
   works: CatalogueArtworkCardVm[];
   worksFailed: boolean;
+  /** Works sold as originals; empty hides the band. */
+  originals: CatalogueArtworkCardVm[];
+  exhibitions: EditorialCardVm[];
+  /** Stories, films and press that feature the artist. */
+  stories: EditorialCardVm[];
+  sectionTabs: ArtistSectionTab[];
+  viewer: ArtViewerState;
   following: boolean;
   favoriteAuth: ArtFavoriteAuth;
   structuredData: JsonLd[];
@@ -30,8 +53,16 @@ export type ArtistPageResult =
   | { kind: "not_found" }
   | { kind: "unavailable" };
 
+const FEATURED_WORKS_LIMIT = 8;
+const ORIGINALS_LIMIT = 4;
+
 export async function composeArtistPage(
-  services: { catalogue: ArtCataloguePort; viewer: ArtViewerPort; favorites: ArtFavoritesReadPort },
+  services: {
+    catalogue: ArtCataloguePort;
+    viewer: ArtViewerPort;
+    favorites: ArtFavoritesReadPort;
+    editorial: ArtEditorialPort;
+  },
   slug: string,
   siteUrl: URL,
 ): Promise<ArtistPageResult> {
@@ -39,14 +70,36 @@ export async function composeArtistPage(
     savedArtworks: true,
     followedArtists: true,
   });
-  const [artist, works] = await Promise.allSettled([
+  const [artist, works, originals, relations] = await Promise.allSettled([
     services.catalogue.getArtist(slug),
-    services.catalogue.listArtworks({ artistSlugs: [slug], limit: 24 }),
+    services.catalogue.listArtworks({ artistSlugs: [slug], limit: FEATURED_WORKS_LIMIT }),
+    services.catalogue.listArtworks({
+      artistSlugs: [slug],
+      type: "original",
+      limit: ORIGINALS_LIMIT,
+    }),
+    services.editorial.getArtistRelations(slug),
   ]);
   const favorites = await favoritesPromise;
   if (artist.status === "rejected") return { kind: "unavailable" };
   const detail: PublicArtistDetail | null = artist.value;
   if (!detail) return { kind: "not_found" };
+
+  const workCards =
+    works.status === "fulfilled"
+      ? buildCatalogueArtworkCards(works.value.items, favorites.savedArtworkSlugs)
+      : [];
+  const originalCards =
+    originals.status === "fulfilled"
+      ? buildCatalogueArtworkCards(originals.value.items, favorites.savedArtworkSlugs)
+      : [];
+  // A failed or disabled editorial read hides only the exhibition and story sections.
+  const related =
+    relations.status === "fulfilled" && relations.value.status === "ok"
+      ? relations.value.data
+      : null;
+  const exhibitions = related?.exhibitions.map(exhibitionCard) ?? [];
+  const stories = related?.stories.map(storyCard) ?? [];
 
   return {
     kind: "ok",
@@ -57,11 +110,20 @@ export async function composeArtistPage(
       bio: detail.bio,
       portraitUrl: detail.portraitUrl,
       portraitAlt: `Portrait of ${detail.name}`,
-      works:
-        works.status === "fulfilled"
-          ? buildCatalogueArtworkCards(works.value.items, favorites.savedArtworkSlugs)
-          : [],
+      heroUrl: detail.heroUrl ?? null,
+      lifeLine: formatArtistLifeLine(detail),
+      works: workCards,
       worksFailed: works.status === "rejected",
+      originals: originalCards,
+      exhibitions,
+      stories,
+      sectionTabs: artistSectionTabs({
+        works: true,
+        originals: originalCards.length > 0,
+        exhibitions: exhibitions.length > 0,
+        stories: stories.length > 0,
+      }),
+      viewer: favorites.viewer,
       following: favorites.followedArtistSlugs.has(detail.slug),
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artistJsonLd(detail, siteUrl),

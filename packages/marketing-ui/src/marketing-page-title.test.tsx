@@ -66,4 +66,11 @@ describe("MarketingPageTitle", () => {
       "aria-hidden",
     );
   });
+
+  it("renders actions under the text", () => {
+    render(
+      <MarketingPageTitle title="Claude Monet" actions={<button type="button">Follow</button>} />,
+    );
+    expect(screen.getByRole("button", { name: "Follow" })).toBeVisible();
+  });
 });

@@ -30,7 +30,12 @@ describe("composeArtistPage", () => {
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
       artistSlugs: ["flora-powers"],
-      limit: 24,
+      limit: 8,
+    });
+    expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
+      artistSlugs: ["flora-powers"],
+      type: "original",
+      limit: 4,
     });
     expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
     expect(result.vm).toMatchObject({
@@ -53,6 +58,97 @@ describe("composeArtistPage", () => {
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(result.vm.following).toBe(true);
     expect(result.vm.worksFailed).toBe(true);
+  });
+
+  it("maps hero, life line, exhibitions and stories into the profile", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue({
+      ...artist,
+      heroUrl: "https://cdn.example.test/hero.jpg",
+      nationality: "French",
+      birthYear: 1869,
+      deathYear: 1954,
+    });
+    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
+    services.editorial.getArtistRelations.mockResolvedValue({
+      status: "ok",
+      data: {
+        exhibitions: [
+          {
+            slug: "water-lilies",
+            kind: "exhibition",
+            title: "Water Lilies",
+            summary: null,
+            startsOn: "2026-03-12",
+            endsOn: "2026-05-04",
+            coverUrl: null,
+            featured: false,
+          },
+        ],
+        stories: [
+          {
+            slug: "in-the-studio",
+            kind: "film",
+            title: "In the studio",
+            standfirst: null,
+            coverUrl: null,
+            featured: false,
+          },
+        ],
+      },
+    });
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(services.editorial.getArtistRelations).toHaveBeenCalledWith("flora-powers");
+    expect(result.vm).toMatchObject({
+      heroUrl: "https://cdn.example.test/hero.jpg",
+      lifeLine: "French, 1869–1954",
+    });
+    expect(result.vm.exhibitions.map((card) => card.headline)).toEqual(["Water Lilies"]);
+    expect(result.vm.stories.map((card) => card.headline)).toEqual(["In the studio"]);
+    expect(result.vm.originals).toHaveLength(1);
+    expect(result.vm.sectionTabs.map((tab) => tab.label)).toEqual([
+      "Featured works",
+      "Originals",
+      "Exhibitions",
+      "Films & stories",
+    ]);
+  });
+
+  it.each([
+    ["is disabled", () => Promise.resolve({ status: "disabled" as const })],
+    ["errors", () => Promise.resolve({ status: "error" as const })],
+    ["rejects", () => Promise.reject(new Error("down"))],
+  ])("hides only the editorial sections when relations %s", async (_label, relations) => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
+    services.editorial.getArtistRelations.mockImplementation(relations);
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.exhibitions).toEqual([]);
+    expect(result.vm.stories).toEqual([]);
+    expect(result.vm.works).toHaveLength(1);
+    expect(result.vm.heroUrl).toBeNull();
+    expect(result.vm.lifeLine).toBeNull();
+  });
+
+  it("hides the originals band when the artist has none", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.catalogue.listArtworks.mockImplementation(async (query: { type?: string }) => ({
+      items: query.type === "original" ? [] : [artworkSummary()],
+    }));
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.originals).toEqual([]);
+    expect(result.vm.sectionTabs).toEqual([]);
   });
 
   it("builds generated metadata", async () => {
