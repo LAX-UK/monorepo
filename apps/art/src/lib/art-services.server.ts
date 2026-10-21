@@ -17,6 +17,7 @@ import {
 } from "@/lib/art-portal.server";
 import { isArtPayoutsEnabled } from "@/lib/art-runtime-flags";
 import { loadArtViewerState } from "@/lib/art-viewer-state.server";
+import { loadArtCrossProductFooterLinks } from "@/lib/ecosystem/product-directory.server";
 import {
   artEditorialFeatureEnabled,
   fetchEditorialExhibitionBySlug,
@@ -38,6 +39,7 @@ import { laxAccountPortalHref } from "@/lib/lax-account-url";
 import type {
   ArtAccountConfigPort,
   ArtCataloguePort,
+  ArtEcosystemPort,
   ArtEditorialPort,
   ArtFavoritesReadPort,
   ArtPortalReadPort,
@@ -51,6 +53,7 @@ export type ArtServices = {
   portal: ArtPortalReadPort;
   account: ArtAccountConfigPort;
   editorial: ArtEditorialPort;
+  ecosystem: ArtEcosystemPort;
 };
 
 /** Composition root: binds page composers to the shop-api and art-identity adapters. */
@@ -94,4 +97,5 @@ export const artServices: ArtServices = {
     getVenue: fetchEditorialVenueBySlug,
     preview: fetchEditorialPreview,
   },
+  ecosystem: { crossProductLinks: loadArtCrossProductFooterLinks },
 };

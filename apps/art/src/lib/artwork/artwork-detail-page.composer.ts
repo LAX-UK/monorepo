@@ -58,7 +58,7 @@ export type ArtworkDetailVm = {
   provenance: string | null;
   exhibitionHistory: string | null;
   relatedArtworks: CatalogueArtworkCardVm[];
-  /** Heading and "See all" target matching where the related works came from. */
+  /** Heading and "View all" target matching where the related works came from. */
   relatedSection: { title: string; viewAllHref: string; viewAllSrLabel: string };
   availability: ArtworkAvailabilityView;
   enquiry: ArtworkEnquiryVm;

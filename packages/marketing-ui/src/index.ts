@@ -275,3 +275,15 @@ export {
   type MarketingCatalogListProps,
   type MarketingCatalogListRowProps,
 } from "./catalog-view/marketing-catalog-list.js";
+export type { MarketingSurfaceTone } from "./marketing-surface-tone.js";
+export {
+  MarketingSplitFeature,
+  type MarketingSplitFeatureProps,
+} from "./marketing-split-feature.js";
+export { MarketingCtaBand, type MarketingCtaBandProps } from "./marketing-cta-band.js";
+export { MarketingVenueCard, type MarketingVenueCardProps } from "./marketing-venue-card.js";
+export {
+  MarketingFeatureGrid,
+  type MarketingFeatureGridProps,
+  type MarketingFeatureGridVariant,
+} from "./marketing-feature-grid.js";

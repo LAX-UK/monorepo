@@ -9,6 +9,32 @@ export type ArtArtistGridProps = {
   "aria-label"?: string;
 };
 
+/** Circular portrait, name and caption; shared by the artist grid and the home artist rail. */
+export function ArtArtistCard({ card }: { card: CatalogueArtistCardVm }) {
+  return (
+    <MarketingCardShell asChild className="bg-transparent">
+      <Link href={card.href} className="flex flex-col items-center gap-3 text-center">
+        <MarketingCardMedia className="aspect-square w-full max-w-40 rounded-full bg-surface-container">
+          <ArtMediaImage
+            src={card.image}
+            alt={card.imageAlt}
+            label={ART_MEDIA_LABELS.artistPortrait}
+            aspect={[1, 1]}
+            shape="circle"
+            sizes="10rem"
+            className="absolute inset-0 size-full"
+            imgClassName="object-cover"
+          />
+        </MarketingCardMedia>
+        <span className="font-headline text-sm font-semibold text-on-surface">{card.name}</span>
+        {card.caption ? (
+          <span className="-mt-2 text-xs text-on-surface-variant">{card.caption}</span>
+        ) : null}
+      </Link>
+    </MarketingCardShell>
+  );
+}
+
 export function ArtArtistGrid({ cards, "aria-label": ariaLabel }: ArtArtistGridProps) {
   return (
     <ul
@@ -19,28 +45,7 @@ export function ArtArtistGrid({ cards, "aria-label": ariaLabel }: ArtArtistGridP
       {cards.map((card, index) => (
         <li key={card.slug}>
           <MarketingCardReveal index={index}>
-            <MarketingCardShell asChild className="bg-transparent">
-              <Link href={card.href} className="flex flex-col items-center gap-3 text-center">
-                <MarketingCardMedia className="aspect-square w-full max-w-40 rounded-full bg-surface-container">
-                  <ArtMediaImage
-                    src={card.image}
-                    alt={card.imageAlt}
-                    label={ART_MEDIA_LABELS.artistPortrait}
-                    aspect={[1, 1]}
-                    shape="circle"
-                    sizes="10rem"
-                    className="absolute inset-0 size-full"
-                    imgClassName="object-cover"
-                  />
-                </MarketingCardMedia>
-                <span className="font-headline text-sm font-semibold text-on-surface">
-                  {card.name}
-                </span>
-                {card.caption ? (
-                  <span className="-mt-2 text-xs text-on-surface-variant">{card.caption}</span>
-                ) : null}
-              </Link>
-            </MarketingCardShell>
+            <ArtArtistCard card={card} />
           </MarketingCardReveal>
         </li>
       ))}
