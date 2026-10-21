@@ -138,8 +138,65 @@ describe("composeArtworkDetailPage", () => {
       loginHref: "/login?returnTo=%2Fartworks%2Fwarm-basket%3Fenquire%3D1",
     });
     expect(result.vm.priceLabel).toBe("Price on request");
-    expect(result.vm.metaLine).toBe("2024 · Oil on linen · 40 × 50 cm");
+    expect(result.vm.keySpecs).toEqual([
+      { label: "Year", lines: ["2024"] },
+      { label: "Medium", lines: ["Oil on linen"] },
+      { label: "Dimensions", lines: ["40 × 50 cm"] },
+    ]);
     expect(result.vm.favoriteAuth.loginHref).toBe("/login?returnTo=%2Fartworks%2Fwarm-basket");
+    expect(result.vm.specialistContact).toEqual({
+      kind: "sign_in",
+      loginHref: "/login?returnTo=%2Fartworks%2Fwarm-basket",
+    });
+  });
+
+  it("loads the artist block with the viewer's follow state", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.getArtist.mockResolvedValue({
+      slug: "flora-powers",
+      name: "Flora Powers",
+      discipline: "Painter",
+      bio: "Flora Powers paints still lifes.",
+      portraitUrl: "/flora.webp",
+      artworkCount: 3,
+    });
+    services.favorites.followedArtistSlugs.mockResolvedValue(new Set(["flora-powers"]));
+
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+
+    expect(services.catalogue.getArtist).toHaveBeenCalledWith("flora-powers");
+    expect(result.kind === "ok" && result.vm.artist).toEqual({
+      slug: "flora-powers",
+      name: "Flora Powers",
+      href: "/artists/flora-powers",
+      portraitUrl: "/flora.webp",
+      bio: "Flora Powers paints still lifes.",
+      following: true,
+    });
+    expect(result.kind === "ok" && result.vm.specialistContact).toEqual({
+      kind: "ready",
+      loginHref: "/login?returnTo=%2Fartworks%2Fwarm-basket",
+    });
+  });
+
+  it("hides the artist block when the artist read fails", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.getArtist.mockRejectedValue(new Error("down"));
+
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+
+    expect(result.kind).toBe("ok");
+    expect(result.kind === "ok" && result.vm.artist).toBeNull();
   });
 
   it("prefills the enquiry contact and saved state for signed-in viewers", async () => {
