@@ -6,10 +6,7 @@ import {
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import {
-  loadFollowedArtistSlugs,
-  loadViewerFavoriteContext,
-} from "@/lib/favorites/viewer-favorites";
+import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
 import { presentArtworkAvailability } from "@/lib/presenters/artwork-availability.presenter";
 import {
@@ -166,7 +163,10 @@ export async function composeArtworkDetailPage(
   services: { catalogue: ArtCataloguePort; viewer: ArtViewerPort; favorites: ArtFavoritesReadPort },
   input: { slug: string; enquireRequested: boolean; siteUrl: URL },
 ): Promise<ArtworkDetailPageResult> {
-  const favoritesPromise = loadViewerFavoriteContext(services, artworkHref(input.slug));
+  const favoritesPromise = loadViewerFavoriteContext(services, artworkHref(input.slug), {
+    savedArtworks: true,
+    followedArtists: true,
+  });
   let artwork: PublicArtworkDetail | null;
   try {
     artwork = await services.catalogue.getArtwork(input.slug);
@@ -182,11 +182,7 @@ export async function composeArtworkDetailPage(
   // The artist block is optional: a failed read hides it instead of failing the page.
   const artistPromise = services.catalogue.getArtist(artwork.artistSlug).catch(() => null);
   const favorites = await favoritesPromise;
-  const [relatedPage, artist, followedArtistSlugs] = await Promise.all([
-    relatedPromise,
-    artistPromise,
-    loadFollowedArtistSlugs(services.favorites, favorites.viewer),
-  ]);
+  const [relatedPage, artist] = await Promise.all([relatedPromise, artistPromise]);
   const availability = presentArtworkAvailability(artwork);
 
   return {
@@ -218,7 +214,7 @@ export async function composeArtworkDetailPage(
           },
       enquiry: resolveEnquiry(artwork, favorites.viewer, input.enquireRequested),
       specialistContact: resolveSpecialistContact(artwork.slug, favorites.viewer),
-      artist: artist ? buildArtistVm(artist, followedArtistSlugs) : null,
+      artist: artist ? buildArtistVm(artist, favorites.followedArtistSlugs) : null,
       saved: favorites.savedArtworkSlugs.has(artwork.slug),
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artworkJsonLd(artwork, input.siteUrl),
