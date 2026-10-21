@@ -11,7 +11,7 @@ import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
 import type {
   EditorialBlock,
-  PublicArtistSummary,
+  PublicArtistDetail,
   PublicArtworkSummary,
 } from "@auction/shop-contracts";
 
@@ -22,7 +22,12 @@ export type EditorialRailVm =
       cards: CatalogueArtworkCardVm[];
       favoriteAuth: ArtFavoriteAuth;
     }
-  | { kind: "artists"; headline: string | null; cards: CatalogueArtistCardVm[] };
+  | {
+      kind: "artists";
+      headline: string | null;
+      cards: CatalogueArtistCardVm[];
+      favoriteAuth: ArtFavoriteAuth;
+    };
 
 export type EditorialBodyVm = {
   blocks: EditorialBlock[];
@@ -84,17 +89,20 @@ export async function composeEditorialBody(
       distinctSlugs(artworkRails.map(({ block }) => block.artworkSlugs)),
       (slug) => services.catalogue.getArtwork(slug),
     ),
-    lookupAll<PublicArtistSummary>(
+    lookupAll<PublicArtistDetail>(
       distinctSlugs(artistRails.map(({ block }) => block.artistSlugs)),
       (slug) => services.catalogue.getArtist(slug),
     ),
-    artworkRails.length > 0 ? loadViewerFavoriteContext(services, returnTo) : null,
+    loadViewerFavoriteContext(services, returnTo, {
+      savedArtworks: artworkRails.length > 0,
+      followedArtists: artistRails.length > 0,
+    }),
   ]);
 
   const rails: Record<number, EditorialRailVm> = {};
   for (const { index, block } of artworkRails) {
     const items = pick(block.artworkSlugs, artworks);
-    if (items.length === 0 || !favorites) continue;
+    if (items.length === 0) continue;
     rails[index] = {
       kind: "artworks",
       headline: block.headline ?? null,
@@ -108,7 +116,8 @@ export async function composeEditorialBody(
     rails[index] = {
       kind: "artists",
       headline: block.headline ?? null,
-      cards: buildCatalogueArtistCards(items),
+      cards: buildCatalogueArtistCards(items, favorites.followedArtistSlugs),
+      favoriteAuth: favorites.favoriteAuth,
     };
   }
   return { blocks: [...blocks], rails };

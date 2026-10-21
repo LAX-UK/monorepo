@@ -110,7 +110,7 @@ function RailSection({
           favoriteAuth={rail.favoriteAuth}
         />
       ) : (
-        <ArtArtistGrid cards={rail.cards} aria-label={headline} />
+        <ArtArtistGrid cards={rail.cards} favoriteAuth={rail.favoriteAuth} aria-label={headline} />
       )}
     </section>
   );

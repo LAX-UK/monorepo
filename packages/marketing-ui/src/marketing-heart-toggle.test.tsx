@@ -34,4 +34,58 @@ describe("MarketingHeartToggle", () => {
     expect(onPressedChange).not.toHaveBeenCalled();
     expect(button).toHaveAttribute("aria-busy", "true");
   });
+
+  it("keeps the bordered circle as the default appearance", () => {
+    render(<MarketingHeartToggle pressed onPressedChange={() => {}} label="Saved" />);
+    const button = screen.getByRole("button", { name: "Saved" });
+    expect(button).toHaveAttribute("data-appearance", "circle");
+    const visual = button.querySelector("span");
+    expect(visual?.className).toContain("border");
+    expect(visual?.className).toContain("bg-[color:var(--color-favorite,var(--color-primary))]");
+  });
+
+  it("renders a bare 24px glyph that keeps the 44px hit area", () => {
+    render(
+      <MarketingHeartToggle
+        pressed={false}
+        onPressedChange={() => {}}
+        label="Save Untitled"
+        appearance="bare"
+        size="sm"
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Save Untitled" });
+    expect(button.className).toContain("size-11");
+    const visual = button.querySelector("span");
+    expect(visual?.className).toContain("size-6");
+    expect(visual?.className).not.toContain("border");
+    expect(visual?.className).not.toContain("rounded-full");
+    expect(button.querySelector("svg")?.getAttribute("class")).toContain("size-6");
+  });
+
+  it("fills a saved bare glyph with the favourite colour", () => {
+    render(
+      <MarketingHeartToggle pressed onPressedChange={() => {}} label="Saved" appearance="bare" />,
+    );
+    const button = screen.getByRole("button", { name: "Saved" });
+    expect(button.querySelector("span")?.className).toContain(
+      "text-[color:var(--color-favorite,var(--color-primary))]",
+    );
+    expect(button.querySelector("svg")?.getAttribute("class")).toContain("fill-current");
+  });
+
+  it("puts the on-media glyph on a translucent disc", () => {
+    render(
+      <MarketingHeartToggle
+        pressed={false}
+        onPressedChange={() => {}}
+        label="Save"
+        appearance="onMedia"
+      />,
+    );
+    const visual = screen.getByRole("button", { name: "Save" }).querySelector("span");
+    expect(visual?.className).toContain("size-10");
+    expect(visual?.className).toContain("bg-surface/80");
+    expect(visual?.className).toContain("rounded-full");
+  });
 });

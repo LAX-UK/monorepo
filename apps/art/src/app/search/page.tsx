@@ -63,7 +63,7 @@ export default async function ArtSearchPage({ searchParams }: SearchPageProps) {
         <>
           {vm.artists.length > 0 ? (
             <ArtSection id="search-artists" title="Artists">
-              <ArtArtistGrid cards={vm.artists} />
+              <ArtArtistGrid cards={vm.artists} favoriteAuth={vm.favoriteAuth} />
             </ArtSection>
           ) : null}
           {vm.artworks.length > 0 ? (

@@ -34,6 +34,10 @@ export { MediaImageServer, type MediaImageServerProps } from "./media/media-imag
 export { MarketingCardMedia } from "./marketing-card-media.js";
 export { MarketingCardShell } from "./marketing-card-shell.js";
 export {
+  MarketingEditorialCard,
+  type MarketingEditorialCardProps,
+} from "./marketing-editorial-card.js";
+export {
   MarketingCategoryTile,
   type MarketingCategoryTileProps,
 } from "./marketing-category-tile.js";
