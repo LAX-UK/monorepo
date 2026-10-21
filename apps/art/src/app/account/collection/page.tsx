@@ -11,7 +11,7 @@ export const metadata = artPrivatePageTitle("Collection");
 export default async function ArtAccountCollectionPage() {
   const result = await composeArtAccountCollectionPage(artServices);
   return (
-    <ArtAccountPage result={result} title="Collection">
+    <ArtAccountPage result={result} title="Collection" layout="standalone">
       {(vm) => (
         <ArtAccountListStateView
           state={vm.collection}
