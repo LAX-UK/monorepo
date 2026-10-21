@@ -2,6 +2,7 @@ import {
   ARTWORK_OBJECT_TYPE_LABELS,
   ARTWORK_RARITY_LABELS,
   artworkCatalogueHref,
+  emptyArtworkCatalogueState,
 } from "@/lib/catalogue/artwork-catalogue-params";
 import { isArtworkEnquiryAvailable } from "@/lib/presenters/artwork-commerce.presenter";
 import type { PublicArtworkDetail } from "@auction/shop-contracts";
@@ -73,7 +74,7 @@ export function artworkCategoryHref(
   artwork: Pick<PublicArtworkDetail, "objectType">,
 ): string | null {
   if (!artwork.objectType) return null;
-  return artworkCatalogueHref({ type: "all", sort: "newest" }, { objectType: artwork.objectType });
+  return artworkCatalogueHref(emptyArtworkCatalogueState(), { objectTypes: [artwork.objectType] });
 }
 
 /**
