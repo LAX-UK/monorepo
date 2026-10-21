@@ -7,6 +7,7 @@ import type {
   EditorialPageDetailSchema,
   EditorialPageSummarySchema,
   EditorialStoryDetailSchema,
+  EditorialStoryListQuery,
   EditorialStorySummarySchema,
   EditorialVenueDetailSchema,
   EditorialVenueSummarySchema,
@@ -43,4 +44,5 @@ export type ArtEditorialPreview = {
 };
 
 export type ArtExhibitionStatus = "current" | "upcoming" | "past";
-export type ArtStoryKind = "article" | "film" | "press" | "guide";
+/** Story list filters: format (`kind`), editorial `category` and `series`; combined with AND. */
+export type ArtStoryListFilter = EditorialStoryListQuery;

@@ -12,7 +12,7 @@ import type {
   ArtEditorialVenueDetail,
   ArtEditorialVenueList,
   ArtExhibitionStatus,
-  ArtStoryKind,
+  ArtStoryListFilter,
 } from "@/lib/editorial/art-editorial.types";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type {
@@ -111,7 +111,7 @@ export type ArtEditorialPort = {
     status: ArtExhibitionStatus,
   ): Promise<ArtEditorialFetchResult<ArtEditorialExhibitionList>>;
   getExhibition(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialExhibitionDetail>>;
-  listStories(kind?: ArtStoryKind): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>>;
+  listStories(filter?: ArtStoryListFilter): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>>;
   getStory(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialStoryDetail>>;
   /** Exhibitions and stories that feature the artist; `not_found` for an unknown slug. */
   getArtistRelations(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialArtistRelations>>;

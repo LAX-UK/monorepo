@@ -36,6 +36,7 @@ const STORY_KICKERS: Record<ArtEditorialStorySummary["kind"], string> = {
   film: "Film",
   press: "Press",
   guide: "Guide",
+  podcast: "Podcast",
 };
 
 const EXHIBITION_KICKERS: Record<ArtEditorialExhibitionSummary["kind"], string> = {

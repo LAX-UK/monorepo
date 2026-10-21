@@ -1,4 +1,10 @@
-import type { EditorialBlock, SeoFields } from "@auction/shop-contracts";
+import type {
+  EditorialBlock,
+  EditorialStoryCategory,
+  EditorialStoryKind,
+  EditorialStoryListQuery,
+  SeoFields,
+} from "@auction/shop-contracts";
 import type { EnquirySender } from "../enquiry-sender.js";
 import type {
   ArtistDetailReadModel,
@@ -17,17 +23,23 @@ export type EditorialHomePlacementReadModel = {
   linkUrl: string | null;
   refKind: string;
   refSlug: string | null;
+  body: string | null;
+  ctaLabel: string | null;
 };
 
 export type EditorialVenueSummaryReadModel = {
   slug: string;
   name: string;
   coverUrl: string | null;
+  streetLine: string | null;
+  postcode: string | null;
+  city: string | null;
 };
 
 export type EditorialVenueDetailReadModel = EditorialVenueSummaryReadModel & {
   address: string | null;
-  postcode: string | null;
+  latitude: number | null;
+  longitude: number | null;
   openingHours: unknown | null;
   phone: string | null;
   email: string | null;
@@ -44,24 +56,44 @@ export type EditorialExhibitionSummaryReadModel = {
   endsOn: string | null;
   coverUrl: string | null;
   featured: boolean;
+  subtitle: string | null;
   /** Only a published venue, so the storefront never links to a 404. */
   venue: { slug: string; name: string } | null;
 };
 
+export type EditorialExhibitionContactReadModel = {
+  name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+};
+
 export type EditorialStorySummaryReadModel = {
   slug: string;
-  kind: "article" | "film" | "press" | "guide";
+  kind: EditorialStoryKind;
+  /** The editor's category, or the default for `kind` when left blank. */
+  category: EditorialStoryCategory;
   title: string;
   standfirst: string | null;
   coverUrl: string | null;
   featured: boolean;
   publishedAt: string | null;
+  authorName: string | null;
+  readMinutes: number | null;
+  series: string | null;
+  episodeNumber: number | null;
+  durationSeconds: number | null;
+  publicationName: string | null;
+  externalUrl: string | null;
 };
 
 /** Related records are published only, even on a draft preview. */
 export type EditorialExhibitionDetailReadModel = EditorialExhibitionSummaryReadModel & {
   timesNote: string | null;
   venueSlug: string | null;
+  /** Null when the editor named no contact. */
+  contact: EditorialExhibitionContactReadModel | null;
   body: EditorialBlock[];
   installationMedia: { url: string; caption: string | null }[];
   artworks: ArtworkSummaryReadModel[];
@@ -87,6 +119,7 @@ export type EditorialPageSummaryReadModel = {
 export type EditorialStoryDetailReadModel = EditorialStorySummaryReadModel &
   SeoFields & {
     videoUrl: string | null;
+    audioUrl: string | null;
     body: EditorialBlock[];
     related: {
       artists: ArtistSummaryReadModel[];
@@ -114,21 +147,54 @@ export type EditorialPageAdminDetail = EditorialAdminRow &
     body: EditorialBlock[];
   };
 
-export type EditorialVenueAdminDetail = EditorialAdminRow & {
-  name: string;
-  address: string | null;
-  postcode: string | null;
-  openingHours: unknown | null;
-  phone: string | null;
-  email: string | null;
-  mapUrl: string | null;
-  coverMediaKey: string | null;
-  body: EditorialBlock[];
+/** Content fields added after launch: omitted on write leaves the stored value; `null` clears it. */
+export type EditorialVenueExtraFields = {
+  streetLine: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
+export type EditorialStoryExtraFields = {
+  /** Null means "derive from kind". */
+  category: EditorialStoryCategory | null;
+  authorName: string | null;
+  /** Null asks the repository to estimate from the body. */
+  readMinutes: number | null;
+  series: string | null;
+  episodeNumber: number | null;
+  audioUrl: string | null;
+  durationSeconds: number | null;
+  publicationName: string | null;
+  externalUrl: string | null;
+};
+
+export type EditorialExhibitionExtraFields = {
+  subtitle: string | null;
+  contactName: string | null;
+  contactRole: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactAvatarMediaKey: string | null;
+};
+
+export type EditorialVenueAdminDetail = EditorialAdminRow &
+  EditorialVenueExtraFields & {
+    name: string;
+    address: string | null;
+    postcode: string | null;
+    openingHours: unknown | null;
+    phone: string | null;
+    email: string | null;
+    mapUrl: string | null;
+    coverMediaKey: string | null;
+    body: EditorialBlock[];
+  };
+
 export type EditorialStoryAdminDetail = EditorialAdminRow &
-  SeoFields & {
-    kind: "article" | "film" | "press" | "guide";
+  SeoFields &
+  EditorialStoryExtraFields & {
+    kind: EditorialStoryKind;
     title: string;
     standfirst: string | null;
     coverMediaKey: string | null;
@@ -137,18 +203,19 @@ export type EditorialStoryAdminDetail = EditorialAdminRow &
     body: EditorialBlock[];
   };
 
-export type EditorialExhibitionAdminDetail = EditorialAdminRow & {
-  kind: "exhibition" | "film" | "event";
-  title: string;
-  summary: string | null;
-  venueId: string | null;
-  startsOn: string | null;
-  endsOn: string | null;
-  timesNote: string | null;
-  coverMediaKey: string | null;
-  featured: boolean;
-  body: EditorialBlock[];
-};
+export type EditorialExhibitionAdminDetail = EditorialAdminRow &
+  EditorialExhibitionExtraFields & {
+    kind: "exhibition" | "film" | "event";
+    title: string;
+    summary: string | null;
+    venueId: string | null;
+    startsOn: string | null;
+    endsOn: string | null;
+    timesNote: string | null;
+    coverMediaKey: string | null;
+    featured: boolean;
+    body: EditorialBlock[];
+  };
 
 export type EditorialPlacementAdminRow = {
   id: string;
@@ -159,6 +226,8 @@ export type EditorialPlacementAdminRow = {
   headline: string | null;
   mediaKey: string | null;
   linkUrl: string | null;
+  body: string | null;
+  ctaLabel: string | null;
   publishedAt: string | null;
 };
 
@@ -180,9 +249,7 @@ export type EditorialRepository = {
     slug: string,
     options?: { includeDraft?: boolean },
   ): Promise<EditorialExhibitionDetailReadModel | null>;
-  listStories(
-    kind?: "article" | "film" | "press" | "guide",
-  ): Promise<EditorialStoryListItemReadModel[]>;
+  listStories(filter?: EditorialStoryListQuery): Promise<EditorialStoryListItemReadModel[]>;
   getStoryBySlug(
     slug: string,
     options?: { includeDraft?: boolean },
@@ -254,22 +321,24 @@ export type EditorialRepository = {
   ): Promise<void>;
   setPagePublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminVenueById(id: string): Promise<EditorialVenueAdminDetail | null>;
-  createVenue(input: {
-    slug: string;
-    name: string;
-    address: string | null;
-    postcode: string | null;
-    openingHours: unknown | null;
-    phone: string | null;
-    email: string | null;
-    mapUrl: string | null;
-    coverMediaKey: string | null;
-    body: EditorialBlock[];
-    updatedBy: string;
-  }): Promise<{ id: string }>;
+  createVenue(
+    input: Partial<EditorialVenueExtraFields> & {
+      slug: string;
+      name: string;
+      address: string | null;
+      postcode: string | null;
+      openingHours: unknown | null;
+      phone: string | null;
+      email: string | null;
+      mapUrl: string | null;
+      coverMediaKey: string | null;
+      body: EditorialBlock[];
+      updatedBy: string;
+    },
+  ): Promise<{ id: string }>;
   updateVenue(
     id: string,
-    input: {
+    input: Partial<EditorialVenueExtraFields> & {
       slug: string;
       name: string;
       address: string | null;
@@ -286,51 +355,55 @@ export type EditorialRepository = {
   setVenuePublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminStoryById(id: string): Promise<EditorialStoryAdminDetail | null>;
   createStory(
-    input: SeoFieldsInput & {
+    input: SeoFieldsInput &
+      Partial<EditorialStoryExtraFields> & {
+        slug: string;
+        kind: EditorialStoryKind;
+        title: string;
+        standfirst: string | null;
+        coverMediaKey: string | null;
+        videoUrl: string | null;
+        featured: boolean;
+        body: EditorialBlock[];
+        updatedBy: string;
+      },
+  ): Promise<{ id: string }>;
+  updateStory(
+    id: string,
+    input: SeoFieldsInput &
+      Partial<EditorialStoryExtraFields> & {
+        slug: string;
+        kind: EditorialStoryKind;
+        title: string;
+        standfirst: string | null;
+        coverMediaKey: string | null;
+        videoUrl: string | null;
+        featured: boolean;
+        body: EditorialBlock[];
+        updatedBy: string;
+      },
+  ): Promise<void>;
+  setStoryPublication(id: string, published: boolean, updatedBy: string): Promise<void>;
+  getAdminExhibitionById(id: string): Promise<EditorialExhibitionAdminDetail | null>;
+  createExhibition(
+    input: Partial<EditorialExhibitionExtraFields> & {
       slug: string;
-      kind: "article" | "film" | "press" | "guide";
+      kind: "exhibition" | "film" | "event";
       title: string;
-      standfirst: string | null;
+      summary: string | null;
+      venueId: string | null;
+      startsOn: string | null;
+      endsOn: string | null;
+      timesNote: string | null;
       coverMediaKey: string | null;
-      videoUrl: string | null;
       featured: boolean;
       body: EditorialBlock[];
       updatedBy: string;
     },
   ): Promise<{ id: string }>;
-  updateStory(
-    id: string,
-    input: SeoFieldsInput & {
-      slug: string;
-      kind: "article" | "film" | "press" | "guide";
-      title: string;
-      standfirst: string | null;
-      coverMediaKey: string | null;
-      videoUrl: string | null;
-      featured: boolean;
-      body: EditorialBlock[];
-      updatedBy: string;
-    },
-  ): Promise<void>;
-  setStoryPublication(id: string, published: boolean, updatedBy: string): Promise<void>;
-  getAdminExhibitionById(id: string): Promise<EditorialExhibitionAdminDetail | null>;
-  createExhibition(input: {
-    slug: string;
-    kind: "exhibition" | "film" | "event";
-    title: string;
-    summary: string | null;
-    venueId: string | null;
-    startsOn: string | null;
-    endsOn: string | null;
-    timesNote: string | null;
-    coverMediaKey: string | null;
-    featured: boolean;
-    body: EditorialBlock[];
-    updatedBy: string;
-  }): Promise<{ id: string }>;
   updateExhibition(
     id: string,
-    input: {
+    input: Partial<EditorialExhibitionExtraFields> & {
       slug: string;
       kind: "exhibition" | "film" | "event";
       title: string;
@@ -356,6 +429,8 @@ export type EditorialRepository = {
       headline: string | null;
       mediaKey: string | null;
       linkUrl: string | null;
+      body?: string | null;
+      ctaLabel?: string | null;
     }>,
     updatedBy: string,
   ): Promise<void>;

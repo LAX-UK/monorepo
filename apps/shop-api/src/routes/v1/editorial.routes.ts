@@ -8,7 +8,8 @@ import {
   EditorialPageDetailSchema,
   EditorialPageSummarySchema,
   EditorialStoryDetailSchema,
-  EditorialStoryKindSchema,
+  type EditorialStoryListQuery,
+  EditorialStoryListQuerySchema,
   EditorialStorySummarySchema,
   EditorialVenueDetailSchema,
   EditorialVenueSummarySchema,
@@ -125,7 +126,7 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
       schema: {
         tags: ["editorial"],
         querystring: Type.Object({
-          kind: Type.Optional(EditorialStoryKindSchema),
+          ...EditorialStoryListQuerySchema.properties,
           q: Type.Optional(EditorialSearchQuerySchema),
         }),
         response: {
@@ -134,11 +135,11 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
       },
     },
     async (request) => {
-      const query = request.query as { kind?: "article" | "film" | "press" | "guide"; q?: string };
-      if (query.q?.trim()) {
-        return { items: await deps.search.searchStories(query.q, query.kind) };
+      const { q, ...filters } = request.query as EditorialStoryListQuery & { q?: string };
+      if (q?.trim()) {
+        return { items: await deps.search.searchStories(q, filters.kind) };
       }
-      return { items: await deps.editorial.listStories(query.kind) };
+      return { items: await deps.editorial.listStories(filters) };
     },
   );
 

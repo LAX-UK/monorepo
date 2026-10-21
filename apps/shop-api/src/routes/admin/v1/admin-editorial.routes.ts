@@ -1,5 +1,7 @@
 import {
   AdminGeneralEnquiriesResponseSchema,
+  EditorialStoryCategorySchema,
+  EditorialStoryKindSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
@@ -60,6 +62,9 @@ const AdminPageDetailSchema = Type.Intersect([
   }),
 ]);
 
+const NullableString = Type.Union([Type.String(), Type.Null()]);
+const NullableInteger = Type.Union([Type.Integer(), Type.Null()]);
+
 const AdminVenueDetailSchema = Type.Intersect([
   AdminRowSchema,
   Type.Object({
@@ -72,6 +77,10 @@ const AdminVenueDetailSchema = Type.Intersect([
     mapUrl: Type.Union([Type.String(), Type.Null()]),
     coverMediaKey: Type.Union([Type.String(), Type.Null()]),
     body: Type.Array(Type.Unknown()),
+    streetLine: NullableString,
+    city: NullableString,
+    latitude: Type.Union([Type.Number(), Type.Null()]),
+    longitude: Type.Union([Type.Number(), Type.Null()]),
   }),
 ]);
 
@@ -79,18 +88,22 @@ const AdminStoryDetailSchema = Type.Intersect([
   AdminRowSchema,
   AdminSeoFieldsSchema,
   Type.Object({
-    kind: Type.Union([
-      Type.Literal("article"),
-      Type.Literal("film"),
-      Type.Literal("press"),
-      Type.Literal("guide"),
-    ]),
+    kind: EditorialStoryKindSchema,
     title: Type.String(),
     standfirst: Type.Union([Type.String(), Type.Null()]),
     coverMediaKey: Type.Union([Type.String(), Type.Null()]),
     videoUrl: Type.Union([Type.String(), Type.Null()]),
     featured: Type.Boolean(),
     body: Type.Array(Type.Unknown()),
+    category: Type.Union([EditorialStoryCategorySchema, Type.Null()]),
+    authorName: NullableString,
+    readMinutes: NullableInteger,
+    series: NullableString,
+    episodeNumber: NullableInteger,
+    audioUrl: NullableString,
+    durationSeconds: NullableInteger,
+    publicationName: NullableString,
+    externalUrl: NullableString,
   }),
 ]);
 
@@ -107,6 +120,12 @@ const AdminExhibitionDetailSchema = Type.Intersect([
     coverMediaKey: Type.Union([Type.String(), Type.Null()]),
     featured: Type.Boolean(),
     body: Type.Array(Type.Unknown()),
+    subtitle: NullableString,
+    contactName: NullableString,
+    contactRole: NullableString,
+    contactEmail: NullableString,
+    contactPhone: NullableString,
+    contactAvatarMediaKey: NullableString,
   }),
 ]);
 
@@ -119,6 +138,8 @@ const PlacementRowSchema = Type.Object({
   headline: Type.Union([Type.String(), Type.Null()]),
   mediaKey: Type.Union([Type.String(), Type.Null()]),
   linkUrl: Type.Union([Type.String(), Type.Null()]),
+  body: NullableString,
+  ctaLabel: NullableString,
   publishedAt: Type.Union([Type.String(), Type.Null()]),
 });
 

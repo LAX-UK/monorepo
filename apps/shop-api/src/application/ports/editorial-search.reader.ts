@@ -1,3 +1,4 @@
+import type { EditorialStoryKind } from "@auction/shop-contracts";
 import type {
   EditorialExhibitionSummaryReadModel,
   EditorialStoryListItemReadModel,
@@ -10,6 +11,6 @@ export type EditorialSearchReader = {
   /** Published stories whose title or standfirst matches, optionally of one kind. */
   searchStories(
     query: string,
-    kind?: "article" | "film" | "press" | "guide",
+    kind?: EditorialStoryKind,
   ): Promise<EditorialStoryListItemReadModel[]>;
 };

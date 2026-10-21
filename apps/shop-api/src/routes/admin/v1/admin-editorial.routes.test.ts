@@ -128,4 +128,96 @@ describe("admin editorial routes", () => {
     );
     await app.close();
   });
+  it("saves a podcast story with its new fields and returns them to the editor", async () => {
+    const editorAuth = () =>
+      vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+        subject: "editor",
+        payload: {
+          scope: "shop.admin",
+          acr: OIDC_ACR_SILVER,
+          auth_time: Math.floor(Date.now() / 1000),
+        },
+      } as never);
+    const storyId = "33333333-3333-4333-8333-333333333333";
+    const podcastFields = {
+      category: "podcast" as const,
+      authorName: "Clara Hutchins",
+      readMinutes: null,
+      series: "In the studio",
+      episodeNumber: 4,
+      audioUrl: "https://media.lax.art/podcast/episode-4.mp3",
+      durationSeconds: 2760,
+      publicationName: null,
+      externalUrl: null,
+    };
+    const createStory = vi.fn(async () => ({ id: storyId }));
+    const deps = createMinimalShopApiTestDeps({
+      env: {
+        ...createMinimalShopApiTestDeps().env,
+        SHOP_ADMIN_ENABLED: true,
+        SHOP_EDITORIAL_ENABLED: true,
+      },
+      staffReader: {
+        findActiveByIdentitySubject: async (s) => ({
+          role: "catalogue_editor",
+          identitySubjectId: s,
+        }),
+        brokerCanAccessClientParty: async () => false,
+      },
+      editorial: {
+        previewSecret: "test-preview-secret-minimum-32-chars",
+        search: createStubEditorialSearchReader(),
+        enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
+        editorial: createStubEditorialRepository({
+          createStory,
+          getAdminStoryById: async () => ({
+            id: storyId,
+            slug: "episode-4",
+            status: "draft",
+            label: "Episode 4",
+            kind: "podcast",
+            title: "Episode 4",
+            standfirst: null,
+            coverMediaKey: null,
+            videoUrl: null,
+            featured: false,
+            body: [],
+            seoTitle: null,
+            seoDescription: null,
+            ...podcastFields,
+          }),
+        }),
+      },
+    });
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    editorAuth();
+    const created = await app.inject({
+      method: "POST",
+      url: "/admin/v1/editorial/stories",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: {
+        slug: "episode-4",
+        kind: "podcast",
+        title: "Episode 4",
+        standfirst: null,
+        coverMediaKey: null,
+        videoUrl: null,
+        featured: false,
+        body: [],
+        ...podcastFields,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(createStory).toHaveBeenCalledWith(expect.objectContaining(podcastFields));
+    editorAuth();
+    const read = await app.inject({
+      method: "GET",
+      url: `/admin/v1/editorial/stories/${storyId}`,
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({ kind: "podcast", ...podcastFields });
+    await app.close();
+  });
 });

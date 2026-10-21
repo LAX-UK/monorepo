@@ -9,18 +9,42 @@ import {
   shopGeneralEnquiry,
 } from "@auction/db/schema";
 import {
+  EDITORIAL_STORY_DEFAULT_CATEGORIES,
   type EditorialBlock,
+  type EditorialStoryCategory,
   SHOP_API_ERROR_CODES,
+  estimateEditorialReadMinutes,
   mapEditorialBlockMedia,
   parseEditorialBlocks,
 } from "@auction/shop-contracts";
-import { type SQL, and, asc, desc, eq, gt, gte, isNotNull, lt, lte, or, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { enquirySenderColumns } from "../application/enquiry-sender.js";
-import type { EditorialRepository } from "../application/ports/editorial.repository.js";
+import type {
+  EditorialExhibitionExtraFields,
+  EditorialRepository,
+  EditorialStoryExtraFields,
+  EditorialVenueExtraFields,
+} from "../application/ports/editorial.repository.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 import {
+  blankToNull,
   createEditorialRelationQueries,
   exhibitionSummaryOrder,
   selectExhibitionSummaries,
@@ -44,6 +68,66 @@ function seoColumns(input: { seoTitle?: string | null; seoDescription?: string |
   return {
     ...(input.seoTitle !== undefined ? { seoTitle: input.seoTitle } : {}),
     ...(input.seoDescription !== undefined ? { seoDescription: input.seoDescription } : {}),
+  };
+}
+
+/** Drops keys whose value is `undefined`, so an omitted field leaves the stored column unchanged. */
+function definedOnly<T extends Record<string, unknown>>(values: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
+/** Matches a story's category, treating a blank category as the default for its kind. */
+function storyCategoryIs(category: EditorialStoryCategory): SQL {
+  const defaultingKinds = EDITORIAL_STORY_DEFAULT_CATEGORIES.filter(
+    ([, fallback]) => fallback === category,
+  ).map(([kind]) => kind);
+  const explicit = eq(shopEditorialStory.category, category);
+  if (defaultingKinds.length === 0) return explicit;
+  return or(
+    explicit,
+    and(isNull(shopEditorialStory.category), inArray(shopEditorialStory.kind, defaultingKinds)),
+  ) as SQL;
+}
+
+type VenueRow = typeof shopEditorialVenue.$inferSelect;
+
+function venueExtraColumns(input: Partial<EditorialVenueExtraFields>) {
+  return definedOnly({
+    streetLine: input.streetLine,
+    city: input.city,
+    latitude: input.latitude,
+    longitude: input.longitude,
+  });
+}
+
+function exhibitionExtraColumns(input: Partial<EditorialExhibitionExtraFields>) {
+  return definedOnly({
+    subtitle: input.subtitle,
+    contactName: input.contactName,
+    contactRole: input.contactRole,
+    contactEmail: input.contactEmail,
+    contactPhone: input.contactPhone,
+    contactAvatarMediaKey: input.contactAvatarMediaKey,
+  });
+}
+
+/** The read-time estimate always follows the saved body; the editor's override is separate. */
+function storyExtraColumns(input: Partial<EditorialStoryExtraFields>, body: EditorialBlock[]) {
+  return {
+    ...definedOnly({
+      category: input.category,
+      authorName: input.authorName,
+      readMinutes: input.readMinutes,
+      series: input.series,
+      episodeNumber: input.episodeNumber,
+      audioUrl: input.audioUrl,
+      durationSeconds: input.durationSeconds,
+      publicationName: input.publicationName,
+      externalUrl: input.externalUrl,
+    }),
+    readMinutesEstimate: estimateEditorialReadMinutes(body),
   };
 }
 
@@ -144,6 +228,22 @@ export function createDrizzleEditorialRepository(
   const readPublicBlocks = (value: unknown): EditorialBlock[] =>
     mapEditorialBlockMedia(readBlocks(value), resolveMediaUrl);
   const relations = createEditorialRelationQueries(db, resolveMediaUrl);
+  const toVenueDetail = (row: VenueRow) => ({
+    slug: row.slug,
+    name: row.name,
+    coverUrl: resolveMediaUrl(row.coverMediaKey),
+    streetLine: row.streetLine,
+    postcode: row.postcode,
+    city: row.city,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    openingHours: row.openingHours,
+    phone: row.phone,
+    email: row.email,
+    mapUrl: row.mapUrl,
+    body: readPublicBlocks(row.bodyBlocks),
+  });
 
   const repository: EditorialRepository = {
     async listAdminVenues() {
@@ -234,6 +334,8 @@ export function createDrizzleEditorialRepository(
           linkUrl: row.linkUrl,
           refKind: row.refKind,
           refSlug: await refSlugForPlacement(db, row.refKind, row.refId),
+          body: row.body,
+          ctaLabel: row.ctaLabel,
         });
       }
       return placements;
@@ -245,6 +347,9 @@ export function createDrizzleEditorialRepository(
           slug: shopEditorialVenue.slug,
           name: shopEditorialVenue.name,
           coverMediaKey: shopEditorialVenue.coverMediaKey,
+          streetLine: shopEditorialVenue.streetLine,
+          postcode: shopEditorialVenue.postcode,
+          city: shopEditorialVenue.city,
         })
         .from(shopEditorialVenue)
         .where(eq(shopEditorialVenue.status, "published"))
@@ -253,6 +358,9 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         name: row.name,
         coverUrl: resolveMediaUrl(row.coverMediaKey),
+        streetLine: row.streetLine,
+        postcode: row.postcode,
+        city: row.city,
       }));
     },
 
@@ -267,19 +375,7 @@ export function createDrizzleEditorialRepository(
           ),
         )
         .limit(1);
-      if (!row) return null;
-      return {
-        slug: row.slug,
-        name: row.name,
-        coverUrl: resolveMediaUrl(row.coverMediaKey),
-        address: row.address,
-        postcode: row.postcode,
-        openingHours: row.openingHours,
-        phone: row.phone,
-        email: row.email,
-        mapUrl: row.mapUrl,
-        body: readPublicBlocks(row.bodyBlocks),
-      };
+      return row ? toVenueDetail(row) : null;
     },
 
     async listExhibitions(status) {
@@ -347,9 +443,19 @@ export function createDrizzleEditorialRepository(
         endsOn: row.endsOn,
         coverUrl: resolveMediaUrl(row.coverMediaKey),
         featured: row.featured,
+        subtitle: blankToNull(row.subtitle),
         venue: venue?.status === "published" ? { slug: venue.slug, name: venue.name } : null,
         timesNote: row.timesNote,
         venueSlug: venue?.slug ?? null,
+        contact: blankToNull(row.contactName)
+          ? {
+              name: row.contactName as string,
+              role: row.contactRole,
+              email: row.contactEmail,
+              phone: row.contactPhone,
+              avatarUrl: resolveMediaUrl(row.contactAvatarMediaKey),
+            }
+          : null,
         ...related,
         body: readPublicBlocks(row.bodyBlocks),
         installationMedia: mediaRows
@@ -361,12 +467,14 @@ export function createDrizzleEditorialRepository(
       };
     },
 
-    async listStories(kind) {
+    async listStories(filter) {
       const rows = await selectStorySummaries(db)
         .where(
           and(
             eq(shopEditorialStory.status, "published"),
-            kind ? eq(shopEditorialStory.kind, kind) : undefined,
+            filter?.kind ? eq(shopEditorialStory.kind, filter.kind) : undefined,
+            filter?.category ? storyCategoryIs(filter.category) : undefined,
+            filter?.series ? eq(shopEditorialStory.series, filter.series) : undefined,
           ),
         )
         .orderBy(...storySummaryOrder);
@@ -388,16 +496,15 @@ export function createDrizzleEditorialRepository(
         )
         .limit(1);
       if (!row) return null;
+      const body = readPublicBlocks(row.bodyBlocks);
+      const summary = toStorySummary(row, resolveMediaUrl);
       return {
-        slug: row.slug,
-        kind: row.kind,
-        title: row.title,
-        standfirst: row.standfirst,
-        coverUrl: resolveMediaUrl(row.coverMediaKey),
-        featured: row.featured,
-        publishedAt: row.publishedAt?.toISOString() ?? null,
+        ...summary,
+        // Stories saved before the estimate column existed get one from the body here.
+        readMinutes: summary.readMinutes ?? estimateEditorialReadMinutes(body),
         videoUrl: row.videoUrl,
-        body: readPublicBlocks(row.bodyBlocks),
+        audioUrl: row.audioUrl,
+        body,
         related: await relations.storyRelations(row.id),
         seoTitle: row.seoTitle,
         seoDescription: row.seoDescription,
@@ -518,19 +625,7 @@ export function createDrizzleEditorialRepository(
             .from(shopEditorialVenue)
             .where(eq(shopEditorialVenue.id, id))
             .limit(1);
-          if (!row) return null;
-          return {
-            slug: row.slug,
-            name: row.name,
-            coverUrl: resolveMediaUrl(row.coverMediaKey),
-            address: row.address,
-            postcode: row.postcode,
-            openingHours: row.openingHours,
-            phone: row.phone,
-            email: row.email,
-            mapUrl: row.mapUrl,
-            body: readPublicBlocks(row.bodyBlocks),
-          };
+          return row ? toVenueDetail(row) : null;
         }
         case "exhibition":
           return this.getExhibitionBySlug(
@@ -653,6 +748,10 @@ export function createDrizzleEditorialRepository(
         mapUrl: row.mapUrl,
         coverMediaKey: row.coverMediaKey,
         body: readBlocks(row.bodyBlocks),
+        streetLine: row.streetLine,
+        city: row.city,
+        latitude: row.latitude,
+        longitude: row.longitude,
       };
     },
 
@@ -671,6 +770,7 @@ export function createDrizzleEditorialRepository(
           mapUrl: input.mapUrl,
           coverMediaKey: input.coverMediaKey,
           bodyBlocks: body,
+          ...venueExtraColumns(input),
           updatedBy: input.updatedBy,
         })
         .returning({ id: shopEditorialVenue.id });
@@ -693,6 +793,7 @@ export function createDrizzleEditorialRepository(
           mapUrl: input.mapUrl,
           coverMediaKey: input.coverMediaKey,
           bodyBlocks: body,
+          ...venueExtraColumns(input),
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })
@@ -732,6 +833,15 @@ export function createDrizzleEditorialRepository(
         body: readBlocks(row.bodyBlocks),
         seoTitle: row.seoTitle,
         seoDescription: row.seoDescription,
+        category: row.category,
+        authorName: row.authorName,
+        readMinutes: row.readMinutes,
+        series: row.series,
+        episodeNumber: row.episodeNumber,
+        audioUrl: row.audioUrl,
+        durationSeconds: row.durationSeconds,
+        publicationName: row.publicationName,
+        externalUrl: row.externalUrl,
       };
     },
 
@@ -749,6 +859,7 @@ export function createDrizzleEditorialRepository(
           featured: input.featured,
           bodyBlocks: body,
           ...seoColumns(input),
+          ...storyExtraColumns(input, body),
           updatedBy: input.updatedBy,
         })
         .returning({ id: shopEditorialStory.id });
@@ -770,6 +881,7 @@ export function createDrizzleEditorialRepository(
           featured: input.featured,
           bodyBlocks: body,
           ...seoColumns(input),
+          ...storyExtraColumns(input, body),
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })
@@ -810,6 +922,12 @@ export function createDrizzleEditorialRepository(
         coverMediaKey: row.coverMediaKey,
         featured: row.featured,
         body: readBlocks(row.bodyBlocks),
+        subtitle: row.subtitle,
+        contactName: row.contactName,
+        contactRole: row.contactRole,
+        contactEmail: row.contactEmail,
+        contactPhone: row.contactPhone,
+        contactAvatarMediaKey: row.contactAvatarMediaKey,
       };
     },
 
@@ -829,6 +947,7 @@ export function createDrizzleEditorialRepository(
           coverMediaKey: input.coverMediaKey,
           featured: input.featured,
           bodyBlocks: body,
+          ...exhibitionExtraColumns(input),
           updatedBy: input.updatedBy,
         })
         .returning({ id: shopEditorialExhibition.id });
@@ -852,6 +971,7 @@ export function createDrizzleEditorialRepository(
           coverMediaKey: input.coverMediaKey,
           featured: input.featured,
           bodyBlocks: body,
+          ...exhibitionExtraColumns(input),
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })
@@ -884,6 +1004,8 @@ export function createDrizzleEditorialRepository(
         headline: row.headline,
         mediaKey: row.mediaKey,
         linkUrl: row.linkUrl,
+        body: row.body,
+        ctaLabel: row.ctaLabel,
         publishedAt: row.publishedAt?.toISOString() ?? null,
       }));
     },
@@ -903,6 +1025,8 @@ export function createDrizzleEditorialRepository(
             headline: item.headline,
             mediaKey: item.mediaKey,
             linkUrl: item.linkUrl,
+            body: item.body ?? null,
+            ctaLabel: item.ctaLabel ?? null,
             publishedAt: new Date(),
             updatedAt: new Date(),
           })),
