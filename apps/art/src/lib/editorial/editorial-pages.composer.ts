@@ -15,10 +15,12 @@ import {
   type EditorialCardVm,
   buildPlacementCards,
   exhibitionCard,
+  exhibitionKindLabel,
   formatExhibitionDates,
   storyCard,
 } from "@/lib/editorial/editorial-card.vm";
 import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
+import { exhibitionHasEnded, exhibitionMetaLine } from "@/lib/editorial/editorial-page-title.vm";
 import type {
   ArtCataloguePort,
   ArtEditorialPort,
@@ -87,7 +89,7 @@ function weekdayRank(label: string): number {
 }
 
 export const EXHIBITION_STATUS_TABS: readonly { value: ArtExhibitionStatus; label: string }[] = [
-  { value: "current", label: "Now on" },
+  { value: "current", label: "Current" },
   { value: "upcoming", label: "Upcoming" },
   { value: "past", label: "Past" },
 ];
@@ -138,7 +140,10 @@ export async function composeExhibitionsPage(
 
 export type ExhibitionDetailVm = {
   exhibition: ArtEditorialExhibitionDetail;
-  kicker: string;
+  /** Page title byline, e.g. "Exhibition · 18 Aug – 27 Aug 2026". */
+  metaLine: string;
+  /** Past its end date: the title shows "Closed" (Figma 737:20593). */
+  ended: boolean;
   dateLabel: string | null;
   venueName: string | null;
   venueHref: string | null;
@@ -164,12 +169,14 @@ export async function composeExhibitionDetailPage(
           .map((row) => `${row.label} ${row.value}`)
           .join(" · ")
       : "";
+  const dateLabel = formatExhibitionDates(exhibition.startsOn, exhibition.endsOn);
   return {
     status: "ok",
     data: {
       exhibition,
-      kicker: exhibitionCard(exhibition).kicker ?? "Exhibition",
-      dateLabel: formatExhibitionDates(exhibition.startsOn, exhibition.endsOn),
+      metaLine: exhibitionMetaLine(exhibitionKindLabel(exhibition.kind), dateLabel),
+      ended: exhibitionHasEnded(exhibition.endsOn, new Date()),
+      dateLabel,
       venueName: venueResult?.status === "ok" ? venueResult.data.name : null,
       venueHref: venueResult?.status === "ok" ? venueHref(venueResult.data.slug) : null,
       hoursLabel: exhibition.timesNote?.trim() || venueHours || null,
