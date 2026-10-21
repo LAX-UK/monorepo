@@ -6,7 +6,7 @@ import {
   saveArtworkFavorite,
 } from "@/lib/favorites/art-favorites-actions.server";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import { MarketingHeartToggle } from "@auction/marketing-ui";
+import { MarketingHeartToggle, type MarketingHeartToggleProps } from "@auction/marketing-ui";
 import { createPortal } from "react-dom";
 
 export type ArtArtworkFavoriteToggleProps = {
@@ -14,6 +14,8 @@ export type ArtArtworkFavoriteToggleProps = {
   title: string;
   initialSaved: boolean;
   auth: ArtFavoriteAuth;
+  appearance?: MarketingHeartToggleProps["appearance"];
+  size?: MarketingHeartToggleProps["size"];
   className?: string;
 };
 
@@ -22,6 +24,8 @@ export function ArtArtworkFavoriteToggle({
   title,
   initialSaved,
   auth,
+  appearance,
+  size,
   className,
 }: ArtArtworkFavoriteToggleProps) {
   const { active, pending, announcement, error, toggle } = useFavoriteToggle({
@@ -38,6 +42,8 @@ export function ArtArtworkFavoriteToggle({
         onPressedChange={toggle}
         busy={pending}
         label={auth.signedIn ? `Save ${title} to favourites` : `Sign in to save ${title}`}
+        {...(appearance ? { appearance } : {})}
+        {...(size ? { size } : {})}
         {...(className ? { className } : {})}
       />
       <output className="sr-only" aria-live="polite">

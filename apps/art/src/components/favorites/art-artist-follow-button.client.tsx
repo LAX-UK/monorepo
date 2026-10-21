@@ -3,6 +3,7 @@
 import { useFavoriteToggle } from "@/components/favorites/use-favorite-toggle.client";
 import { followArtist, unfollowArtist } from "@/lib/favorites/art-favorites-actions.server";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 
 export type ArtArtistFollowButtonProps = {
@@ -10,6 +11,7 @@ export type ArtArtistFollowButtonProps = {
   name: string;
   initialFollowing: boolean;
   auth: ArtFavoriteAuth;
+  className?: string;
 };
 
 export function ArtArtistFollowButton({
@@ -17,6 +19,7 @@ export function ArtArtistFollowButton({
   name,
   initialFollowing,
   auth,
+  className,
 }: ArtArtistFollowButtonProps) {
   const { active, pending, announcement, error, toggle } = useFavoriteToggle({
     initialActive: initialFollowing,
@@ -33,7 +36,7 @@ export function ArtArtistFollowButton({
         aria-pressed={active}
         aria-busy={pending || undefined}
         data-testid="art-artist-follow"
-        className="min-h-11 min-w-32 font-label uppercase tracking-wide"
+        className={cn("min-h-11 min-w-32 font-label uppercase tracking-wide", className)}
         onClick={() => {
           if (!pending) toggle(!active);
         }}

@@ -13,7 +13,11 @@ export type ArtArtworkListProps = {
   "aria-label"?: string;
 };
 
-/** List layout for the artworks catalogue — Bid's list row with Art's card content. */
+/**
+ * Figma list row (`881:21543`): landscape media, title and artist, then a divided column with
+ * price, heart and an outline Enquire. The mobile row (`905:22299`) keeps only thumb, title,
+ * artist and price, so the heart and Enquire appear from `md`.
+ */
 export function ArtArtworkList({
   cards,
   favoriteAuth,
@@ -24,6 +28,7 @@ export function ArtArtworkList({
       {cards.map((card) => (
         <MarketingCatalogListRow
           key={card.slug}
+          size="lg"
           href={card.href}
           linkLabel={`${card.title} by ${card.artistName}`}
           data-testid="art-artwork-row"
@@ -32,41 +37,47 @@ export function ArtArtworkList({
               src={card.imageUrl}
               alt=""
               label={ART_MEDIA_LABELS.artwork}
-              aspect={[1, 1]}
-              sizes="96px"
+              aspect={[4, 3]}
+              sizes="(min-width: 64rem) 260px, (min-width: 48rem) 192px, 80px"
               className="absolute inset-0 size-full"
               imgClassName="object-cover"
             />
           }
           title={card.title}
           subtitle={
-            <div className="flex flex-col gap-0.5">
-              <Link
-                href={card.artistHref}
-                className="art-focus-ring w-fit rounded-sm hover:text-on-surface"
-              >
-                {card.artistName}
-              </Link>
-              {card.metaLine ? <p className="line-clamp-1">{card.metaLine}</p> : null}
-            </div>
+            <Link
+              href={card.artistHref}
+              className="art-focus-ring w-fit rounded-sm hover:text-on-surface"
+            >
+              {card.artistName}
+            </Link>
           }
-          trailing={
-            <ArtArtworkFavoriteToggle
-              slug={card.slug}
-              title={card.title}
-              initialSaved={card.saved}
-              auth={favoriteAuth}
-            />
-          }
-          footer={
+          aside={
             <>
-              {card.priceLabel ? (
-                <p className="text-sm font-medium text-on-surface">{card.priceLabel}</p>
-              ) : (
-                <span />
-              )}
+              <div className="flex items-center justify-between gap-3 md:min-h-11">
+                {card.priceLabel ? (
+                  <p className="text-xs font-medium text-on-surface md:text-sm md:font-semibold">
+                    {card.priceLabel}
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <ArtArtworkFavoriteToggle
+                  slug={card.slug}
+                  title={card.title}
+                  initialSaved={card.saved}
+                  auth={favoriteAuth}
+                  appearance="bare"
+                  size="sm"
+                  className="-mr-2.5 hidden md:inline-flex"
+                />
+              </div>
               {card.enquireHref ? (
-                <Button variant="underline" asChild>
+                <Button
+                  variant="outline"
+                  className="hidden min-h-11 w-full text-sm font-medium md:inline-flex"
+                  asChild
+                >
                   <Link href={card.enquireHref}>
                     Enquire<span className="sr-only"> about {card.title}</span>
                   </Link>

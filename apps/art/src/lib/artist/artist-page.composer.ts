@@ -4,10 +4,7 @@ import {
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import {
-  loadFollowedArtistSlugs,
-  loadViewerFavoriteContext,
-} from "@/lib/favorites/viewer-favorites";
+import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
 import { artistJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
@@ -38,12 +35,10 @@ export async function composeArtistPage(
   slug: string,
   siteUrl: URL,
 ): Promise<ArtistPageResult> {
-  const favoritesPromise = loadViewerFavoriteContext(services, artistHref(slug)).then(
-    async (context) => ({
-      ...context,
-      followedSlugs: await loadFollowedArtistSlugs(services.favorites, context.viewer),
-    }),
-  );
+  const favoritesPromise = loadViewerFavoriteContext(services, artistHref(slug), {
+    savedArtworks: true,
+    followedArtists: true,
+  });
   const [artist, works] = await Promise.allSettled([
     services.catalogue.getArtist(slug),
     services.catalogue.listArtworks({ artistSlug: slug, limit: 24 }),
@@ -67,7 +62,7 @@ export async function composeArtistPage(
           ? buildCatalogueArtworkCards(works.value.items, favorites.savedArtworkSlugs)
           : [],
       worksFailed: works.status === "rejected",
-      following: favorites.followedSlugs.has(detail.slug),
+      following: favorites.followedArtistSlugs.has(detail.slug),
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artistJsonLd(detail, siteUrl),
     },

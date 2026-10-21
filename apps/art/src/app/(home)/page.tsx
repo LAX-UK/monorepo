@@ -73,7 +73,7 @@ export default async function ArtHomePage() {
         {vm.featuredArtists.length > 0 ? (
           <MarketingReveal index={3}>
             <ArtSection id="featured-artists" title="Featured artists" viewAllHref="/artists">
-              <ArtArtistGrid cards={vm.featuredArtists} />
+              <ArtArtistGrid cards={vm.featuredArtists} favoriteAuth={vm.favoriteAuth} />
             </ArtSection>
           </MarketingReveal>
         ) : null}
