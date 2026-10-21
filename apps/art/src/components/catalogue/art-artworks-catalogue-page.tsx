@@ -20,7 +20,16 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
-/** Shared body of `/artworks` and the medium landings (`/paintings`, `/prints`, `/sculptures`). */
+/**
+ * Shared body of `/artworks` and the medium landings (`/paintings`, `/prints`, `/sculptures`).
+ *
+ * These routes deliberately have no `loading.tsx`. Filters, sort and pagination only change the
+ * query string, so Next re-renders the page inside the same, already visible loading boundary.
+ * When a streamed RSC row lands mid-render there, the React build bundled with Next 15.5 drops
+ * the retry and the transition never commits (production only): the URL and results stay put.
+ * Without the boundary the pending render suspends at the root, which React does retry, and the
+ * browse toolbar's transition keeps the old results dimmed until the new ones are ready.
+ */
 export async function ArtArtworksCataloguePage({
   params,
 }: {
