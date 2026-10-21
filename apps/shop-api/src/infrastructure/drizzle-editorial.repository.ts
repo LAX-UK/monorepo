@@ -19,6 +19,15 @@ import type { EditorialRepository } from "../application/ports/editorial.reposit
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-errors.js";
+import {
+  createEditorialRelationQueries,
+  exhibitionSummaryOrder,
+  selectExhibitionSummaries,
+  selectStorySummaries,
+  storySummaryOrder,
+  toExhibitionSummary,
+  toStorySummary,
+} from "./drizzle-editorial-relations.js";
 
 type RepoOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
@@ -133,6 +142,7 @@ export function createDrizzleEditorialRepository(
   const { resolveMediaUrl } = options;
   const readPublicBlocks = (value: unknown): EditorialBlock[] =>
     mapEditorialBlockMedia(readBlocks(value), resolveMediaUrl);
+  const relations = createEditorialRelationQueries(db, resolveMediaUrl);
 
   const repository: EditorialRepository = {
     async listAdminVenues() {
@@ -290,30 +300,10 @@ export function createDrizzleEditorialRepository(
           ),
         );
       }
-      const rows = await db
-        .select({
-          slug: shopEditorialExhibition.slug,
-          kind: shopEditorialExhibition.kind,
-          title: shopEditorialExhibition.title,
-          summary: shopEditorialExhibition.summary,
-          startsOn: shopEditorialExhibition.startsOn,
-          endsOn: shopEditorialExhibition.endsOn,
-          coverMediaKey: shopEditorialExhibition.coverMediaKey,
-          featured: shopEditorialExhibition.featured,
-        })
-        .from(shopEditorialExhibition)
+      const rows = await selectExhibitionSummaries(db)
         .where(and(eq(shopEditorialExhibition.status, "published"), dateFilter))
-        .orderBy(desc(shopEditorialExhibition.startsOn), desc(shopEditorialExhibition.createdAt));
-      return rows.map((row) => ({
-        slug: row.slug,
-        kind: row.kind,
-        title: row.title,
-        summary: row.summary,
-        startsOn: row.startsOn,
-        endsOn: row.endsOn,
-        coverUrl: resolveMediaUrl(row.coverMediaKey),
-        featured: row.featured,
-      }));
+        .orderBy(...exhibitionSummaryOrder);
+      return rows.map((row) => toExhibitionSummary(row, resolveMediaUrl));
     },
 
     async getExhibitionBySlug(slug, opts) {
@@ -328,20 +318,25 @@ export function createDrizzleEditorialRepository(
         )
         .limit(1);
       if (!row) return null;
-      let venueSlug: string | null = null;
-      if (row.venueId) {
-        const [venue] = await db
-          .select({ slug: shopEditorialVenue.slug })
-          .from(shopEditorialVenue)
-          .where(eq(shopEditorialVenue.id, row.venueId))
-          .limit(1);
-        venueSlug = venue?.slug ?? null;
-      }
-      const mediaRows = await db
-        .select()
-        .from(shopEditorialExhibitionMedia)
-        .where(eq(shopEditorialExhibitionMedia.exhibitionId, row.id))
-        .orderBy(asc(shopEditorialExhibitionMedia.position));
+      const [venue] = row.venueId
+        ? await db
+            .select({
+              slug: shopEditorialVenue.slug,
+              name: shopEditorialVenue.name,
+              status: shopEditorialVenue.status,
+            })
+            .from(shopEditorialVenue)
+            .where(eq(shopEditorialVenue.id, row.venueId))
+            .limit(1)
+        : [];
+      const [mediaRows, related] = await Promise.all([
+        db
+          .select()
+          .from(shopEditorialExhibitionMedia)
+          .where(eq(shopEditorialExhibitionMedia.exhibitionId, row.id))
+          .orderBy(asc(shopEditorialExhibitionMedia.position)),
+        relations.exhibitionRelations(row.id),
+      ]);
       return {
         slug: row.slug,
         kind: row.kind,
@@ -351,8 +346,10 @@ export function createDrizzleEditorialRepository(
         endsOn: row.endsOn,
         coverUrl: resolveMediaUrl(row.coverMediaKey),
         featured: row.featured,
+        venue: venue?.status === "published" ? { slug: venue.slug, name: venue.name } : null,
         timesNote: row.timesNote,
-        venueSlug,
+        venueSlug: venue?.slug ?? null,
+        ...related,
         body: readPublicBlocks(row.bodyBlocks),
         installationMedia: mediaRows
           .map((m) => {
@@ -364,31 +361,16 @@ export function createDrizzleEditorialRepository(
     },
 
     async listStories(kind) {
-      const rows = await db
-        .select({
-          slug: shopEditorialStory.slug,
-          kind: shopEditorialStory.kind,
-          title: shopEditorialStory.title,
-          standfirst: shopEditorialStory.standfirst,
-          coverMediaKey: shopEditorialStory.coverMediaKey,
-          featured: shopEditorialStory.featured,
-          updatedAt: shopEditorialStory.updatedAt,
-        })
-        .from(shopEditorialStory)
+      const rows = await selectStorySummaries(db)
         .where(
           and(
             eq(shopEditorialStory.status, "published"),
             kind ? eq(shopEditorialStory.kind, kind) : undefined,
           ),
         )
-        .orderBy(desc(shopEditorialStory.publishedAt), desc(shopEditorialStory.createdAt));
+        .orderBy(...storySummaryOrder);
       return rows.map((row) => ({
-        slug: row.slug,
-        kind: row.kind,
-        title: row.title,
-        standfirst: row.standfirst,
-        coverUrl: resolveMediaUrl(row.coverMediaKey),
-        featured: row.featured,
+        ...toStorySummary(row, resolveMediaUrl),
         updatedAt: row.updatedAt.toISOString(),
       }));
     },
@@ -412,12 +394,16 @@ export function createDrizzleEditorialRepository(
         standfirst: row.standfirst,
         coverUrl: resolveMediaUrl(row.coverMediaKey),
         featured: row.featured,
+        publishedAt: row.publishedAt?.toISOString() ?? null,
         videoUrl: row.videoUrl,
         body: readPublicBlocks(row.bodyBlocks),
+        related: await relations.storyRelations(row.id),
         seoTitle: row.seoTitle,
         seoDescription: row.seoDescription,
       };
     },
+
+    getArtistRelations: (artistSlug) => relations.artistRelations(artistSlug),
 
     async listPages() {
       const rows = await db

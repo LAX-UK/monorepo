@@ -14,6 +14,64 @@ import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 import { createStubEditorialRepository } from "../../test-support/stub-editorial-repository.js";
 
 const userHeaders = { authorization: "Bearer user-token" };
+
+const artworkSummary = {
+  slug: "tidal-forms",
+  title: "Tidal Forms",
+  artistName: "Mara Ellison",
+  artistSlug: "mara-ellison",
+  imageUrl: null,
+  saleState: "price_on_application" as const,
+  dimensions: null,
+  dimensionsCmDisplay: null,
+  medium: null,
+  yearCreated: null,
+  objectType: null,
+  rarity: null,
+  salesChannel: "art" as const,
+  eligibleForEditionAllocation: false,
+  printPricePence: null,
+  availability: { totalEditions: 0, editionsAvailable: 0 },
+  updatedAt: "2026-03-01T10:00:00.000Z",
+};
+
+const artistDetail = {
+  slug: "mara-ellison",
+  name: "Mara Ellison",
+  discipline: "Painter",
+  portraitUrl: null,
+  artworkCount: 1,
+  bio: "Paints tides.",
+  shortBio: null,
+  heroUrl: null,
+  nationality: "British",
+  birthYear: 1980,
+  deathYear: null,
+  seoTitle: null,
+  seoDescription: null,
+};
+
+const storySummary = {
+  slug: "welcome",
+  kind: "article" as const,
+  title: "Welcome",
+  standfirst: null,
+  coverUrl: null,
+  featured: false,
+  publishedAt: "2026-03-01T09:00:00.000Z",
+};
+
+const exhibitionSummary = {
+  slug: "new-originals",
+  kind: "exhibition" as const,
+  title: "New Originals",
+  summary: null,
+  startsOn: "2026-03-01",
+  endsOn: null,
+  coverUrl: null,
+  featured: true,
+  venue: { slug: "lax-marylebone", name: "LAX Marylebone" },
+};
 const ENQUIRY_ID = "6f1c1f0e-7f1a-4a43-9a51-0c1b1d2e3f40";
 
 async function buildApp(overrides: Partial<EditorialRepository> = {}) {
@@ -68,6 +126,7 @@ describe("editorial routes", () => {
           standfirst: null,
           coverUrl: null,
           featured: false,
+          publishedAt: "2026-03-01T09:00:00.000Z",
           updatedAt: "2026-03-02T10:00:00.000Z",
         },
       ],
@@ -144,6 +203,80 @@ describe("editorial routes", () => {
       payload: { topic: "general", message: "   " },
     });
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("returns exhibition venue, works, artists and stories", async () => {
+    const app = await buildApp({
+      listExhibitions: async () => [exhibitionSummary],
+      getExhibitionBySlug: async () => ({
+        ...exhibitionSummary,
+        timesNote: null,
+        venueSlug: "lax-marylebone",
+        body: [],
+        installationMedia: [],
+        artworks: [artworkSummary],
+        artists: [artistDetail],
+        stories: [storySummary],
+      }),
+    });
+    const list = await app.inject({ method: "GET", url: "/v1/editorial/exhibitions" });
+    expect(list.json().items[0].venue).toEqual({ slug: "lax-marylebone", name: "LAX Marylebone" });
+    const res = await app.inject({ method: "GET", url: "/v1/editorial/exhibitions/new-originals" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.artworks.map((a: { slug: string }) => a.slug)).toEqual(["tidal-forms"]);
+    expect(body.artists[0]).toMatchObject({ slug: "mara-ellison", nationality: "British" });
+    expect(body.stories[0]).toMatchObject({
+      slug: "welcome",
+      publishedAt: storySummary.publishedAt,
+    });
+    await app.close();
+  });
+
+  it("returns story publishedAt and related content", async () => {
+    const app = await buildApp({
+      getStoryBySlug: async () => ({
+        ...storySummary,
+        videoUrl: null,
+        body: [],
+        seoTitle: null,
+        seoDescription: null,
+        related: {
+          artists: [artistDetail],
+          artworks: [artworkSummary],
+          exhibitions: [exhibitionSummary],
+        },
+      }),
+    });
+    const res = await app.inject({ method: "GET", url: "/v1/editorial/stories/welcome" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.publishedAt).toBe(storySummary.publishedAt);
+    // Related artists are summaries: the public summary contract omits biography fields.
+    expect(body.related.artists[0]).toEqual({
+      slug: "mara-ellison",
+      name: "Mara Ellison",
+      discipline: "Painter",
+      portraitUrl: null,
+      artworkCount: 1,
+    });
+    expect(body.related.exhibitions[0].slug).toBe("new-originals");
+    await app.close();
+  });
+
+  it("returns an artist's exhibitions and stories, or 404 for an unknown artist", async () => {
+    const getArtistRelations = vi.fn(async (slug: string) =>
+      slug === "mara-ellison"
+        ? { exhibitions: [exhibitionSummary], stories: [storySummary] }
+        : null,
+    );
+    const app = await buildApp({ getArtistRelations });
+    const res = await app.inject({ method: "GET", url: "/v1/editorial/artists/mara-ellison" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ exhibitions: [exhibitionSummary], stories: [storySummary] });
+    const missing = await app.inject({ method: "GET", url: "/v1/editorial/artists/nobody" });
+    expect(missing.statusCode).toBe(404);
     await app.close();
   });
 });

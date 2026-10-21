@@ -1,4 +1,5 @@
 import type {
+  EditorialArtistRelationsSchema,
   EditorialBlock,
   EditorialExhibitionDetailSchema,
   EditorialExhibitionSummarySchema,
@@ -26,6 +27,7 @@ export type ArtEditorialPageSummary = typeof EditorialPageSummarySchema.static;
 export type ArtEditorialVenueSummary = typeof EditorialVenueSummarySchema.static;
 export type ArtEditorialVenueDetail = typeof EditorialVenueDetailSchema.static;
 export type ArtEditorialPlacement = EditorialHomeResponse["placements"][number];
+export type ArtEditorialArtistRelations = typeof EditorialArtistRelationsSchema.static;
 
 export type ArtEditorialExhibitionList = { items: ArtEditorialExhibitionSummary[] };
 export type ArtEditorialStoryList = { items: ArtEditorialStorySummary[] };
