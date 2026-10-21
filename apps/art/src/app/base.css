@@ -292,3 +292,12 @@ html.dark {
   --color-destructive: var(--color-error);
   --color-destructive-foreground: var(--color-on-error);
 }
+
+/* The page action bar (artwork detail) is fixed above the bottom tab bar below `md`. The footer
+   sits outside <main>, so the page cannot pad for it; reserve the bar and tab bar height at the end of
+   the document instead so the footer's last row stays reachable. */
+@media (max-width: 47.99rem) {
+  body:has(.art-action-bar) {
+    padding-bottom: calc(var(--art-bottom-nav-height) + 4.5rem);
+  }
+}

@@ -3,15 +3,24 @@ import { ArtEnquirySheet } from "@/components/enquiry/art-enquiry-sheet.client";
 import type { ArtworkEnquiryVm } from "@/lib/artwork/artwork-detail-page.composer";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import type { ReactNode } from "react";
 
 export type ArtEnquiryPanelProps = {
   slug: string;
   title: string;
   enquiry: ArtworkEnquiryVm;
   loginHref: string;
+  /** Text for the enquiry sheet trigger; the sheet defaults to "Enquire". */
+  triggerLabel?: ReactNode;
 };
 
-export function ArtEnquiryPanel({ slug, title, enquiry, loginHref }: ArtEnquiryPanelProps) {
+export function ArtEnquiryPanel({
+  slug,
+  title,
+  enquiry,
+  loginHref,
+  triggerLabel,
+}: ArtEnquiryPanelProps) {
   switch (enquiry.kind) {
     case "ready":
       return (
@@ -21,6 +30,7 @@ export function ArtEnquiryPanel({ slug, title, enquiry, loginHref }: ArtEnquiryP
           contact={enquiry.contact}
           autoOpen={enquiry.autoOpen}
           loginHref={loginHref}
+          {...(triggerLabel ? { triggerLabel } : {})}
         />
       );
     case "sign_in":

@@ -10,6 +10,7 @@ import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { Textarea } from "@auction/ui/components/textarea";
+import type { ReactNode } from "react";
 import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 
 export type ArtEnquirySheetProps = {
@@ -19,6 +20,8 @@ export type ArtEnquirySheetProps = {
   /** Opened from a card “Enquire” link or a sign-in round trip (`?enquire=1`). */
   autoOpen: boolean;
   loginHref: string;
+  /** Trigger text; defaults to "Enquire". */
+  triggerLabel?: ReactNode;
 };
 
 const INITIAL_STATE: ArtEnquiryState = { status: "idle" };
@@ -36,6 +39,7 @@ export function ArtEnquirySheet({
   contact,
   autoOpen,
   loginHref,
+  triggerLabel = "Enquire",
 }: ArtEnquirySheetProps) {
   const [open, setOpen] = useState(autoOpen);
   const [message, setMessage] = useState("");
@@ -76,7 +80,7 @@ export function ArtEnquirySheet({
         onClick={() => setOpen(true)}
         data-testid="art-enquire-trigger"
       >
-        Enquire
+        {triggerLabel}
       </Button>
       <MarketingSideSheet
         open={open}

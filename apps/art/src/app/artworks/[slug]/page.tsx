@@ -1,6 +1,9 @@
-import { ArtPageHeader } from "@/components/art-page-header";
+import { ArtArtworkArtistSummary } from "@/components/artwork/art-artwork-artist-summary";
+import { ArtArtworkBreadcrumb } from "@/components/artwork/art-artwork-breadcrumb";
 import { ArtArtworkDetailSections } from "@/components/artwork/art-artwork-detail-sections";
 import { ArtArtworkGallery } from "@/components/artwork/art-artwork-gallery.client";
+import { ArtArtworkMobileGallery } from "@/components/artwork/art-artwork-mobile-gallery.client";
+import { ArtSpecList } from "@/components/artwork/art-spec-list";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
 import { ArtArtworkFavoriteToggle } from "@/components/favorites/art-artwork-favorite-toggle.client";
@@ -16,7 +19,11 @@ import {
 } from "@/lib/artwork/artwork-detail-page.composer";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingShareButton } from "@auction/marketing-ui";
+import {
+  MarketingCertificateIcon,
+  MarketingShareButton,
+  MarketingStickyActionBar,
+} from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -50,92 +57,148 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
 
   const { vm } = result;
   if (vm.enquiry.kind === "sign_in" && query.enquire === "1") redirect(vm.enquiry.loginHref);
+  const shareUrl = `/artworks/${encodeURIComponent(vm.slug)}`;
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "py-6 lg:py-10")}>
+    <div>
       <ArtJsonLd data={vm.structuredData} />
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
-        <ArtArtworkGallery images={vm.galleryImages} priority />
-        <div className="flex min-w-0 flex-col gap-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 break-words">
-              <ArtPageHeader
-                title={vm.title}
-                breadcrumbs={[{ label: "Artworks", href: "/artworks" }, { label: vm.title }]}
-              />
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <MarketingShareButton
-                url={`/artworks/${encodeURIComponent(vm.slug)}`}
-                title={vm.title}
-                appearance="text"
-              />
-              <ArtArtworkFavoriteToggle
-                slug={vm.slug}
-                title={vm.title}
-                initialSaved={vm.saved}
-                auth={vm.favoriteAuth}
-              />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking)] text-on-surface-variant">
-              {vm.kindLabel}
-            </p>
-            <Link
-              href={vm.artistHref}
-              className="art-focus-ring w-fit rounded-sm text-lg text-on-surface hover:underline"
-            >
-              {vm.artistName}
-            </Link>
-            {vm.metaLine ? <p className="text-sm text-on-surface-variant">{vm.metaLine}</p> : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-xl font-medium text-on-surface" data-testid="art-artwork-price">
-              {vm.priceLabel}
-            </p>
-            <p className="text-sm text-on-surface-variant">{vm.availability.headline}</p>
-            {vm.availability.detail ? (
-              <p className="text-sm text-on-surface-variant">{vm.availability.detail}</p>
-            ) : null}
-            {vm.certificateLine ? (
-              <p className="text-sm text-on-surface-variant" data-testid="art-artwork-certificate">
-                {vm.certificateLine}
-              </p>
-            ) : null}
-          </div>
-          <ArtEnquiryPanel
-            slug={vm.slug}
-            title={vm.title}
-            enquiry={vm.enquiry}
-            loginHref={artStorefrontLoginHref(artworkEnquiryReturnTo(vm.slug))}
-          />
-          <ArtArtworkDetailSections
-            specs={vm.specs}
-            description={vm.description}
-            provenance={vm.provenance}
-            exhibitionHistory={vm.exhibitionHistory}
-          />
-        </div>
+      <div className={cn(MARKETING_PAGE_SHELL, "py-4 lg:py-8")}>
+        <ArtArtworkBreadcrumb items={vm.breadcrumb} />
       </div>
+      <ArtArtworkMobileGallery
+        images={vm.galleryImages}
+        slug={vm.slug}
+        title={vm.title}
+        shareUrl={shareUrl}
+        categoryHref={vm.categoryHref}
+        specialistContact={vm.specialistContact}
+      />
 
-      {vm.relatedArtworks.length > 0 ? (
-        <div className="mt-12">
-          <ArtSection
-            id="related-artworks"
-            title={vm.relatedSection.title}
-            viewAllHref={vm.relatedSection.viewAllHref}
-            viewAllSrLabel={vm.relatedSection.viewAllSrLabel}
+      <div className={cn(MARKETING_PAGE_SHELL, "pt-6 md:pt-0")}>
+        {/* Figma 426:2581: 800 / 520 split at 1440. The info column spans both rows and
+            sticks below the header while the media and details scroll (Figma 433:4845). */}
+        <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,800fr)_minmax(0,520fr)] lg:grid-rows-[auto_1fr]">
+          <div className="hidden md:block lg:col-start-1 lg:row-start-1">
+            <ArtArtworkGallery images={vm.galleryImages} priority />
+          </div>
+
+          <section
+            aria-label="Artwork summary"
+            className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-[calc(var(--header-height)+2rem)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start"
           >
-            <ArtArtworkRail
-              id="related-artworks-rail"
-              label={vm.relatedSection.title}
-              cards={vm.relatedArtworks}
-              favoriteAuth={vm.favoriteAuth}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="min-w-0 break-words font-headline text-2xl font-normal leading-tight text-on-surface lg:text-[1.75rem]">
+                  {vm.title}
+                </h1>
+                <div className="-mt-1 hidden shrink-0 md:block">
+                  <ArtArtworkFavoriteToggle
+                    slug={vm.slug}
+                    title={vm.title}
+                    initialSaved={vm.saved}
+                    auth={vm.favoriteAuth}
+                  />
+                </div>
+              </div>
+              <Link
+                href={vm.artistHref}
+                className="art-focus-ring w-fit rounded-sm text-base text-on-surface hover:underline"
+              >
+                {vm.artistName}
+              </Link>
+            </div>
+
+            {vm.keySpecs.length > 0 || vm.certificateLine ? (
+              <div className="flex flex-col gap-5 border-t border-outline-variant/60 pt-6">
+                <ArtSpecList rows={vm.keySpecs} />
+                {vm.certificateLine ? (
+                  <p
+                    className="flex items-center gap-2 text-sm text-on-surface"
+                    data-testid="art-artwork-certificate"
+                  >
+                    <MarketingCertificateIcon className="size-5" />
+                    {vm.certificateLine}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-3 border-t border-outline-variant/60 pt-6">
+              <p className="text-base font-medium text-on-surface" data-testid="art-artwork-price">
+                {vm.priceLabel}
+              </p>
+              {vm.availabilityNote ? (
+                <p className="text-sm text-on-surface-variant">{vm.availabilityNote}</p>
+              ) : null}
+              {vm.priceNote ? (
+                <p className="text-sm leading-6 text-on-surface-variant">{vm.priceNote}</p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-3 md:pt-4">
+              {/* One enquiry control for both layouts: fixed above the bottom nav on mobile,
+                  in flow from `md`, so a single sheet answers `?enquire=1`. */}
+              <MarketingStickyActionBar
+                ariaLabel="Artwork actions"
+                bottomOffset="var(--art-bottom-nav-height)"
+                inlineFromMd
+                className="art-action-bar"
+              >
+                <div className="shrink-0 md:hidden">
+                  <ArtArtworkFavoriteToggle
+                    slug={vm.slug}
+                    title={vm.title}
+                    initialSaved={vm.saved}
+                    auth={vm.favoriteAuth}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 *:w-full">
+                  <ArtEnquiryPanel
+                    slug={vm.slug}
+                    title={vm.title}
+                    enquiry={vm.enquiry}
+                    loginHref={artStorefrontLoginHref(artworkEnquiryReturnTo(vm.slug))}
+                    triggerLabel="Enquire to purchase"
+                  />
+                </div>
+              </MarketingStickyActionBar>
+              <div className="hidden md:block">
+                <MarketingShareButton url={shareUrl} title={vm.title} className="min-h-11 w-full" />
+              </div>
+            </div>
+          </section>
+
+          <div className="flex min-w-0 flex-col gap-12 lg:col-start-1 lg:row-start-2 lg:max-w-[37.5rem]">
+            <ArtArtworkDetailSections
+              description={vm.description}
+              mediumSpecs={vm.mediumSpecs}
+              provenance={vm.provenance}
+              exhibitionHistory={vm.exhibitionHistory}
             />
-          </ArtSection>
+            {vm.artist ? (
+              <ArtArtworkArtistSummary artist={vm.artist} favoriteAuth={vm.favoriteAuth} />
+            ) : null}
+          </div>
         </div>
-      ) : null}
+
+        {vm.relatedArtworks.length > 0 ? (
+          <div className="mt-16">
+            <ArtSection
+              id="related-artworks"
+              title={vm.relatedSection.title}
+              viewAllHref={vm.relatedSection.viewAllHref}
+              viewAllSrLabel={vm.relatedSection.viewAllSrLabel}
+            >
+              <ArtArtworkRail
+                id="related-artworks-rail"
+                label={vm.relatedSection.title}
+                cards={vm.relatedArtworks}
+                favoriteAuth={vm.favoriteAuth}
+              />
+            </ArtSection>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
