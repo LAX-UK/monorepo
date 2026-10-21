@@ -56,6 +56,13 @@ describe("MarketingEditorialCard", () => {
     expect(screen.getByTestId("media").parentElement?.className).toContain("aspect-[8/11]");
   });
 
+  it("supports wide media for a full-width lead", () => {
+    render(
+      <MarketingEditorialCard media={<span data-testid="media" />} aspect="wide" title="Lead" />,
+    );
+    expect(screen.getByTestId("media").parentElement?.className).toContain("aspect-[21/10]");
+  });
+
   it("renders a plain title without an href", () => {
     render(<MarketingEditorialCard media={null} title="Untitled" />);
     expect(screen.queryByRole("link")).toBeNull();
