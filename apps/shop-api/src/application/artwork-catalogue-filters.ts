@@ -20,14 +20,17 @@ export type ArtworkRarityFilter = (typeof ARTWORK_RARITIES)[number];
 export type NormalizedArtworkCatalogueFilters = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
-  artistSlug?: string;
+  /** Any of these artists (OR). */
+  artistSlugs?: string[];
   relatedToSlug?: string;
   salesChannel?: "shop" | "art";
   saleState?: "for_sale" | "price_on_application" | "sold";
   q?: string;
   artworkType: ArtworkCatalogueType;
-  objectType?: ArtworkObjectTypeFilter;
-  rarity?: ArtworkRarityFilter;
+  /** Any of these object types (OR). */
+  objectTypes?: ArtworkObjectTypeFilter[];
+  /** Any of these rarities (OR). */
+  rarities?: ArtworkRarityFilter[];
   minPricePence?: number;
   maxPricePence?: number;
   sort: ArtworkCatalogueSort;
@@ -38,19 +41,38 @@ export type NormalizedArtworkCatalogueFilters = {
 export type RawArtworkCatalogueFilters = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
-  artistSlug?: string;
+  artistSlugs?: readonly string[];
   relatedToSlug?: string;
   salesChannel?: "shop" | "art";
   saleState?: "for_sale" | "price_on_application" | "sold";
   q?: string;
   artworkType?: ArtworkCatalogueType;
-  objectType?: ArtworkObjectTypeFilter;
-  rarity?: ArtworkRarityFilter;
+  objectTypes?: readonly string[];
+  rarities?: readonly string[];
   minPricePence?: number;
   maxPricePence?: number;
   sort?: ArtworkCatalogueSort;
   editionEligible?: boolean;
 };
+
+/** Bounds the SQL `IN (…)` a single public request can build; no real facet selection gets close. */
+export const MAX_FILTER_LIST_VALUES = 50;
+
+/** Trimmed, de-duplicated values; only `allowed` members survive when given. */
+function normalizeList<T extends string>(
+  values: readonly string[] | undefined,
+  allowed?: readonly T[],
+): T[] {
+  const out: T[] = [];
+  for (const raw of values ?? []) {
+    if (out.length === MAX_FILTER_LIST_VALUES) break;
+    const value = raw.trim();
+    if (!value || out.includes(value as T)) continue;
+    if (allowed && !(allowed as readonly string[]).includes(value)) continue;
+    out.push(value as T);
+  }
+  return out;
+}
 
 function parseInteger(value: unknown): number | undefined {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
@@ -81,26 +103,21 @@ export function normalizeArtworkCatalogueFilters(
     salesChannel = undefined;
   }
 
-  let objectType = raw.objectType;
-  if (objectType && !(ARTWORK_OBJECT_TYPES as readonly string[]).includes(objectType)) {
-    objectType = undefined;
-  }
-  let rarity = raw.rarity;
-  if (rarity && !(ARTWORK_RARITIES as readonly string[]).includes(rarity)) {
-    rarity = undefined;
-  }
+  const artistSlugs = normalizeList<string>(raw.artistSlugs);
+  const objectTypes = normalizeList(raw.objectTypes, ARTWORK_OBJECT_TYPES);
+  const rarities = normalizeList(raw.rarities, ARTWORK_RARITIES);
 
   return {
     ...(raw.placement !== undefined ? { placement: raw.placement } : {}),
     ...(raw.categorySlug ? { categorySlug: raw.categorySlug } : {}),
-    ...(raw.artistSlug ? { artistSlug: raw.artistSlug } : {}),
+    ...(artistSlugs.length > 0 ? { artistSlugs } : {}),
     ...(raw.relatedToSlug ? { relatedToSlug: raw.relatedToSlug } : {}),
     ...(salesChannel ? { salesChannel } : {}),
     ...(raw.saleState ? { saleState: raw.saleState } : {}),
     ...(raw.q?.trim() ? { q: raw.q.trim() } : {}),
     artworkType,
-    ...(objectType ? { objectType } : {}),
-    ...(rarity ? { rarity } : {}),
+    ...(objectTypes.length > 0 ? { objectTypes } : {}),
+    ...(rarities.length > 0 ? { rarities } : {}),
     ...(minPricePence !== undefined ? { minPricePence } : {}),
     ...(maxPricePence !== undefined ? { maxPricePence } : {}),
     sort: raw.sort ?? DEFAULT_ARTWORK_CATALOGUE_SORT,

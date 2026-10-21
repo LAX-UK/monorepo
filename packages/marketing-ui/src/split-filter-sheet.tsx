@@ -12,6 +12,7 @@ import {
 import { Button } from "@auction/ui/components/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -80,7 +81,15 @@ export function SplitFilterSheetFooter({
   );
 }
 
+/**
+ * `catalogue` follows the browse drawer in Figma (541:6507 desktop, 551:10071 mobile): a 600px
+ * full-height drawer with Cancel + Apply, and a bottom sheet with "Reset all" in its header and
+ * one full-width results button.
+ */
+export type SplitFilterSheetVariant = "default" | "catalogue";
+
 export type SplitFilterSheetProps = {
+  variant?: SplitFilterSheetVariant;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   title?: string;
@@ -93,8 +102,77 @@ export type SplitFilterSheetProps = {
   applyDisabledHint?: string;
   onReset?: () => void;
   resetLabel?: string;
+  /** `catalogue` only: desktop footer button that closes without applying. */
+  cancelLabel?: string;
+  /** `catalogue` only: mobile results button text (defaults to `applyLabel`). */
+  mobileApplyLabel?: string;
   className?: string;
 };
+
+function CatalogueDesktopFooter({
+  cancelLabel,
+  onApply,
+  applyLabel,
+  applyDisabled,
+}: {
+  cancelLabel: string;
+  onApply?: (() => void) | undefined;
+  applyLabel: string;
+  applyDisabled?: boolean | undefined;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-3 px-10 py-6">
+      <SheetClose asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11 px-4 font-label text-sm font-semibold"
+        >
+          {cancelLabel}
+        </Button>
+      </SheetClose>
+      {onApply ? (
+        <Button
+          type="button"
+          variant="cta"
+          className="min-h-11 px-8 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={applyDisabled}
+          onClick={onApply}
+        >
+          {applyLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function CatalogueMobileFooter({
+  onApply,
+  label,
+  applyDisabled,
+}: {
+  onApply?: (() => void) | undefined;
+  label: string;
+  applyDisabled?: boolean | undefined;
+}) {
+  if (!onApply) return null;
+  return (
+    <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <Button
+        type="button"
+        variant="cta"
+        className="min-h-11 w-full disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={applyDisabled}
+        onClick={onApply}
+      >
+        {label}
+      </Button>
+    </div>
+  );
+}
+
+const titleClass =
+  "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface";
 
 function mergeRefs<T>(...refs: Array<Ref<T> | undefined>) {
   return (value: T) => {
@@ -117,6 +195,7 @@ function attachTriggerRef(node: ReactNode, ref: Ref<HTMLElement>): ReactNode {
 
 /** Bottom sheet below `lg`, right drawer at `lg+` — aligns with shell chrome breakpoint. */
 export function SplitFilterSheet({
+  variant = "default",
   open,
   onOpenChange,
   title = "Filters",
@@ -129,8 +208,11 @@ export function SplitFilterSheet({
   applyDisabledHint,
   onReset,
   resetLabel = "Reset",
+  cancelLabel = "Cancel",
+  mobileApplyLabel,
   className,
 }: SplitFilterSheetProps) {
+  const catalogue = variant === "catalogue";
   const triggerRef = useRef<HTMLElement | null>(null);
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -170,24 +252,55 @@ export function SplitFilterSheet({
           </BottomSheetTrigger>
         ) : null}
         <BottomSheetContent
-          footer={footer}
+          footer={
+            catalogue ? (
+              <CatalogueMobileFooter
+                onApply={onApply}
+                label={mobileApplyLabel ?? applyLabel}
+                applyDisabled={applyDisabled}
+              />
+            ) : (
+              footer
+            )
+          }
           overlayClassName="lg:hidden"
           className={cn(
             "h-[min(90dvh,640px)] max-h-[min(90dvh,640px)] border-border-hairline bg-surface-container-lowest lg:hidden",
             className,
           )}
         >
-          <BottomSheetHeader className="shrink-0 border-b border-border-hairline px-6 py-4 text-left">
-            <BottomSheetTitle className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
-              {title}
-            </BottomSheetTitle>
-            <BottomSheetDescription
-              className={cn("text-sm text-on-surface-variant", !onApply && "sr-only")}
-            >
-              {resolvedDescription}
-            </BottomSheetDescription>
-          </BottomSheetHeader>
-          <div className="px-6 py-4">{children}</div>
+          {catalogue ? (
+            <BottomSheetHeader className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center space-y-0 border-b border-border-hairline px-4 pb-3">
+              <div className="justify-self-start">
+                {onReset ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onReset}
+                    className="min-h-11 px-0 font-body text-sm font-normal text-on-surface-variant hover:bg-transparent hover:text-on-surface"
+                  >
+                    {resetLabel}
+                  </Button>
+                ) : null}
+              </div>
+              <BottomSheetTitle className="font-body text-base font-semibold text-on-surface">
+                {title}
+              </BottomSheetTitle>
+              <BottomSheetDescription className="sr-only">
+                {resolvedDescription}
+              </BottomSheetDescription>
+            </BottomSheetHeader>
+          ) : (
+            <BottomSheetHeader className="shrink-0 border-b border-border-hairline px-6 py-4 text-left">
+              <BottomSheetTitle className={titleClass}>{title}</BottomSheetTitle>
+              <BottomSheetDescription
+                className={cn("text-sm text-on-surface-variant", !onApply && "sr-only")}
+              >
+                {resolvedDescription}
+              </BottomSheetDescription>
+            </BottomSheetHeader>
+          )}
+          <div className={catalogue ? "px-4 py-2" : "px-6 py-4"}>{children}</div>
         </BottomSheetContent>
       </BottomSheet>
 
@@ -201,22 +314,49 @@ export function SplitFilterSheet({
           side="right"
           overlayClassName="hidden lg:block"
           className={cn(
-            "hidden max-h-[min(90dvh,640px)] max-w-sm flex-col gap-0 border-border-hairline bg-surface-container-lowest p-0 lg:flex",
+            "hidden flex-col gap-0 border-border-hairline bg-surface-container-lowest p-0 lg:flex",
+            catalogue
+              ? "h-full w-full sm:max-w-none lg:w-[37.5rem] lg:max-w-[37.5rem]"
+              : "max-h-[min(90dvh,640px)] max-w-sm",
             className,
           )}
         >
-          <SheetHeader className="shrink-0 border-b border-border-hairline px-6 py-4 pr-12 text-left">
-            <SheetTitle className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
-              {title}
-            </SheetTitle>
+          <SheetHeader
+            className={cn(
+              "shrink-0 text-left",
+              catalogue
+                ? "px-10 pt-6 pb-2 pr-14"
+                : "border-b border-border-hairline px-6 py-4 pr-12",
+            )}
+          >
+            <SheetTitle className={cn(titleClass, catalogue && "sr-only")}>{title}</SheetTitle>
             <SheetDescription
-              className={cn("text-sm text-on-surface-variant", !onApply && "sr-only")}
+              className={cn(
+                "text-sm text-on-surface-variant",
+                (catalogue || !onApply) && "sr-only",
+              )}
             >
               {resolvedDescription}
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
-          <div className="shrink-0 border-t border-border-hairline">{footer}</div>
+          <div
+            className={cn("min-h-0 flex-1 overflow-y-auto", catalogue ? "px-10 py-4" : "px-6 py-4")}
+            {...(catalogue ? { "data-lenis-prevent": true } : {})}
+          >
+            {children}
+          </div>
+          <div className={cn("shrink-0", !catalogue && "border-t border-border-hairline")}>
+            {catalogue ? (
+              <CatalogueDesktopFooter
+                cancelLabel={cancelLabel}
+                onApply={onApply}
+                applyLabel={applyLabel}
+                applyDisabled={applyDisabled}
+              />
+            ) : (
+              footer
+            )}
+          </div>
         </SheetContent>
       </Sheet>
     </>

@@ -1,0 +1,68 @@
+import { describe, expect, it } from "vitest";
+import {
+  EMPTY_ARTWORK_CATALOGUE_DRAFT,
+  artworkDraftFromState,
+  artworkDraftToPatch,
+} from "./artwork-catalogue-draft";
+import {
+  artworkCatalogueFilterHref,
+  parseArtworkCatalogueParams,
+} from "./artwork-catalogue-params";
+
+describe("artwork catalogue draft", () => {
+  it("round-trips applied filters through the draft without touching search", () => {
+    const state = parseArtworkCatalogueParams({
+      q: "vessel",
+      type: "original",
+      sort: "priceAsc",
+      artistSlug: "ada,bo",
+      objectType: "painting,print",
+      rarity: "unique",
+      categorySlug: "abstract",
+      saleState: "for_sale",
+      minPrice: "100",
+      maxPrice: "500",
+      cursor: "c2",
+    });
+    const href = artworkCatalogueFilterHref(
+      state,
+      artworkDraftToPatch(artworkDraftFromState(state)),
+    );
+    expect(href).toBe(
+      "/artworks?q=vessel&categorySlug=abstract&artistSlug=ada,bo&saleState=for_sale&type=original&objectType=painting,print&rarity=unique&minPrice=100&maxPrice=500&sort=priceAsc",
+    );
+  });
+
+  it("clears every drawer facet on reset but keeps the search query", () => {
+    const state = parseArtworkCatalogueParams({
+      q: "vessel",
+      artistSlug: "ada",
+      objectType: "sculpture",
+      rarity: "unique",
+      saleState: "sold",
+      categorySlug: "abstract",
+      minPrice: "100",
+      sort: "titleAsc",
+    });
+    expect(
+      artworkCatalogueFilterHref(state, artworkDraftToPatch(EMPTY_ARTWORK_CATALOGUE_DRAFT)),
+    ).toBe("/artworks?q=vessel");
+  });
+
+  it("drops a price that is not a number", () => {
+    const patch = artworkDraftToPatch({
+      ...EMPTY_ARTWORK_CATALOGUE_DRAFT,
+      minPrice: "abc",
+      maxPrice: " ",
+    });
+    expect(patch.minPrice).toBeNull();
+    expect(patch.maxPrice).toBeNull();
+  });
+
+  it("copies list facets so draft edits never mutate the applied state", () => {
+    const state = parseArtworkCatalogueParams({ rarity: "unique" });
+    const draft = artworkDraftFromState(state);
+    draft.rarities.push("open_edition");
+    expect(state.rarities).toEqual(["unique"]);
+  });
+});

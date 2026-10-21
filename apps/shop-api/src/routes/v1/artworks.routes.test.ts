@@ -177,4 +177,43 @@ describe("artworks routes", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     await app.close();
   });
+
+  it("accepts single and comma-separated object type, rarity and artist filters", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const single = await app.inject({
+      method: "GET",
+      url: "/v1/artworks?objectType=painting&rarity=unique&artistSlug=ada",
+    });
+    expect(single.statusCode).toBe(200);
+    expect(listPublicArtworks).toHaveBeenLastCalledWith({
+      limit: 20,
+      filter: { artistSlugs: ["ada"], objectTypes: ["painting"], rarities: ["unique"] },
+    });
+
+    const multi = await app.inject({
+      method: "GET",
+      url: "/v1/artworks?objectType=painting,print&rarity=unique,open_edition&artistSlug=ada,bo",
+    });
+    expect(multi.statusCode).toBe(200);
+    expect(listPublicArtworks).toHaveBeenLastCalledWith({
+      limit: 20,
+      filter: {
+        artistSlugs: ["ada", "bo"],
+        objectTypes: ["painting", "print"],
+        rarities: ["unique", "open_edition"],
+      },
+    });
+
+    const invalid = await app.inject({
+      method: "GET",
+      url: "/v1/artworks?objectType=painting,nft",
+    });
+    expect(invalid.statusCode).toBe(400);
+    await app.close();
+  });
 });

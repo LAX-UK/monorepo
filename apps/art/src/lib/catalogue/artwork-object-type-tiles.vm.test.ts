@@ -44,4 +44,12 @@ describe("buildArtworkObjectTypeTiles", () => {
     const state = parseArtworkCatalogueParams({});
     expect(buildArtworkObjectTypeTiles(FACETS.slice(0, 1), state)).toEqual([]);
   });
+
+  it("replaces a multi-medium selection with the tile's medium", () => {
+    const state = parseArtworkCatalogueParams({ objectType: "painting,sculpture" });
+    const [painting] = buildArtworkObjectTypeTiles(FACETS, state);
+
+    expect(painting?.active).toBe(false);
+    expect(painting?.href).toBe("/paintings");
+  });
 });

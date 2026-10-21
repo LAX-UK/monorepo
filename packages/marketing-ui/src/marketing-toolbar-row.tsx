@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 export type MarketingToolbarRowProps = {
   /** Result count or context line (e.g. "24 lots"). */
   countLabel?: string;
+  /** Hide the count from `lg` up, where the toolbar carries facet dropdowns instead. */
+  countMobileOnly?: boolean;
   /** Desktop-only inline filters (`hidden` below `lg` when `mobileFilterTrigger` is set). */
   filters?: ReactNode;
   sort?: ReactNode;
@@ -24,6 +26,7 @@ export type MarketingToolbarRowProps = {
 /** Shared count + filter + sort + trailing row for marketing toolbars. */
 export function MarketingToolbarRow({
   countLabel,
+  countMobileOnly = false,
   filters,
   sort,
   trailing,
@@ -48,7 +51,9 @@ export function MarketingToolbarRow({
   return (
     <div className="flex flex-col gap-2 md:gap-0">
       <div className="flex min-w-0 min-h-11 items-center gap-2 md:gap-3">
-        {countLabel ? <p className={countClassName}>{countLabel}</p> : null}
+        {countLabel ? (
+          <p className={cn(countClassName, countMobileOnly && "lg:hidden")}>{countLabel}</p>
+        ) : null}
         {filters ? (
           <div
             className={cn(

@@ -40,9 +40,49 @@ test.describe("lax.art discovery", () => {
     const first = tiles.getByRole("link").first();
     await first.click();
     await expect(page).toHaveURL(/\/(paintings|prints|sculptures)(\?|$)|[?&]objectType=/);
-    await expect(
-      page.getByTestId("art-object-type-tiles").locator('[aria-current="true"]'),
-    ).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // Landings drop the tile rail; media without a landing keep it on `/artworks`.
+    if (!page.url().includes("objectType=")) {
+      await expect(page.getByTestId("art-object-type-tiles")).toHaveCount(0);
+    }
+  });
+
+  test("toolbar dropdown applies several mediums and resets the cursor", async ({ page }) => {
+    await page.goto("/artworks?cursor=stale");
+    const medium = page.getByRole("button", { name: /^Medium/ });
+    test.skip((await medium.count()) === 0, "medium facet unavailable");
+    await medium.click();
+    const panel = page.getByRole("dialog");
+    const boxes = panel.getByRole("checkbox");
+    test.skip((await boxes.count()) < 2, "fewer than two media seeded");
+    await boxes.nth(0).check();
+    await boxes.nth(1).check();
+    await panel.getByRole("button", { name: "Apply" }).click();
+    await expect(page).toHaveURL(/objectType=[^&]+(%2C|,)[^&]+/);
+    await expect(page).not.toHaveURL(/cursor=/);
+  });
+
+  test("filters drawer opens on desktop, sorts via radio and cancels without navigating", async ({
+    page,
+  }) => {
+    await page.goto("/artworks");
+    await page
+      .getByRole("button", { name: /^Filters/ })
+      .first()
+      .click();
+    const drawer = page.getByRole("dialog", { name: "Filters" });
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole("radio", { name: "Title (A–Z)" }).check();
+    await drawer.getByRole("button", { name: "Cancel" }).click();
+    await expect(page).not.toHaveURL(/sort=/);
+
+    await page
+      .getByRole("button", { name: /^Filters/ })
+      .first()
+      .click();
+    await drawer.getByRole("radio", { name: "Title (A–Z)" }).check();
+    await drawer.getByRole("button", { name: "Apply" }).click();
+    await expect(page).toHaveURL(/sort=title/);
   });
 
   test("artwork detail groups specs in accordions and offers share", async ({ page }) => {

@@ -70,10 +70,12 @@ export const ARTWORK_MEDIUM_LANDINGS = [
   },
 ] as const satisfies readonly ArtworkMediumLanding[];
 
+/** The legacy landing that owns this medium selection: exactly one medium with its own URL. */
 export function artworkMediumLanding(
-  objectType: ArtworkObjectType | undefined,
+  objectTypes: readonly ArtworkObjectType[],
 ): ArtworkMediumLanding | undefined {
-  return ARTWORK_MEDIUM_LANDINGS.find((landing) => landing.objectType === objectType);
+  if (objectTypes.length !== 1) return undefined;
+  return ARTWORK_MEDIUM_LANDINGS.find((landing) => landing.objectType === objectTypes[0]);
 }
 
 export const ARTWORK_RARITY_LABELS: Record<ArtworkRarity, string> = {
@@ -82,14 +84,18 @@ export const ARTWORK_RARITY_LABELS: Record<ArtworkRarity, string> = {
   open_edition: "Open edition",
 };
 
+/**
+ * Medium, rarity and artist are multi-select (any of, via shop-api comma lists); the URL keeps
+ * the singular `objectType` / `rarity` / `artistSlug` names so existing links stay valid.
+ */
 export type ArtworkCatalogueUrlState = {
   q?: string;
   categorySlug?: string;
-  artistSlug?: string;
+  artistSlugs: string[];
   saleState?: "for_sale" | "price_on_application" | "sold";
   type: ArtworkCatalogueType;
-  objectType?: ArtworkObjectType;
-  rarity?: ArtworkRarity;
+  objectTypes: ArtworkObjectType[];
+  rarities: ArtworkRarity[];
   minPrice?: number;
   maxPrice?: number;
   sort: ArtworkCatalogueSort;
@@ -119,11 +125,20 @@ function parseSaleState(value: string | undefined): ArtworkCatalogueUrlState["sa
   return undefined;
 }
 
-function parseMember<T extends string>(
-  value: string | undefined,
-  allowed: readonly T[],
-): T | undefined {
-  return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+/** Accepts `a,b` and repeated params; keeps known values once, in first-seen order. */
+function parseList<T extends string>(
+  value: string | string[] | undefined,
+  allowed?: readonly T[],
+): T[] {
+  const raw = (Array.isArray(value) ? value : value ? [value] : []).flatMap((v) => v.split(","));
+  const out: T[] = [];
+  for (const part of raw) {
+    const item = part.trim();
+    if (!item || out.includes(item as T)) continue;
+    if (allowed && !(allowed as readonly string[]).includes(item)) continue;
+    out.push(item as T);
+  }
+  return out;
 }
 
 function parseSort(value: string | undefined): ArtworkCatalogueSort {
@@ -167,19 +182,16 @@ export function parseArtworkCatalogueParams(
   const state: ArtworkCatalogueUrlState = {
     type: parseType(firstString(searchParams.type), firstString(searchParams.editionEligible)),
     sort: parseSort(firstString(searchParams.sort)),
+    artistSlugs: parseList<string>(searchParams.artistSlug),
+    objectTypes: parseList(searchParams.objectType, ARTWORK_OBJECT_TYPES),
+    rarities: parseList(searchParams.rarity, ARTWORK_RARITIES),
   };
   const q = firstString(searchParams.q)?.trim();
   if (q) state.q = q;
   const categorySlug = firstString(searchParams.categorySlug);
   if (categorySlug) state.categorySlug = categorySlug;
-  const artistSlug = firstString(searchParams.artistSlug);
-  if (artistSlug) state.artistSlug = artistSlug;
   const saleState = parseSaleState(firstString(searchParams.saleState));
   if (saleState) state.saleState = saleState;
-  const objectType = parseMember(firstString(searchParams.objectType), ARTWORK_OBJECT_TYPES);
-  if (objectType) state.objectType = objectType;
-  const rarity = parseMember(firstString(searchParams.rarity), ARTWORK_RARITIES);
-  if (rarity) state.rarity = rarity;
   if (prices.minPrice !== undefined) state.minPrice = prices.minPrice;
   if (prices.maxPrice !== undefined) state.maxPrice = prices.maxPrice;
   const cursor = firstString(searchParams.cursor);
@@ -194,31 +206,36 @@ export function artworkCatalogueHref(
   overrides: Partial<ArtworkCatalogueUrlState> = {},
 ): string {
   const next = { ...state, ...overrides };
-  const landing = artworkMediumLanding(next.objectType);
+  const landing = artworkMediumLanding(next.objectTypes);
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
   if (next.categorySlug) params.set("categorySlug", next.categorySlug);
-  if (next.artistSlug) params.set("artistSlug", next.artistSlug);
+  if (next.artistSlugs.length > 0) params.set("artistSlug", next.artistSlugs.join(","));
   if (next.saleState) params.set("saleState", next.saleState);
   if (next.type !== "all") params.set("type", next.type);
-  if (next.objectType && !landing) params.set("objectType", next.objectType);
-  if (next.rarity) params.set("rarity", next.rarity);
+  if (next.objectTypes.length > 0 && !landing) {
+    params.set("objectType", next.objectTypes.join(","));
+  }
+  if (next.rarities.length > 0) params.set("rarity", next.rarities.join(","));
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
   if (next.sort !== "newest") params.set("sort", next.sort);
   if (next.cursor) params.set("cursor", next.cursor);
   if (next.back) params.set("back", next.back);
-  const qs = params.toString();
+  // Commas stay literal so shared links read `objectType=painting,print`.
+  const qs = params.toString().replaceAll("%2C", ",");
   const path = landing?.path ?? "/artworks";
   return qs ? `${path}?${qs}` : path;
 }
 
+type ArtworkCatalogueFilterFields = Omit<ArtworkCatalogueUrlState, "cursor" | "back">;
+
+/** `null` clears a field; list fields clear with `null` or `[]`. */
 export type ArtworkCatalogueFilterPatch = {
-  [K in keyof Omit<ArtworkCatalogueUrlState, "cursor" | "back">]?:
-    | Omit<ArtworkCatalogueUrlState, "cursor" | "back">[K]
-    | null
-    | undefined;
+  [K in keyof ArtworkCatalogueFilterFields]?: ArtworkCatalogueFilterFields[K] | null | undefined;
 };
+
+const EMPTY_LISTS = { artistSlugs: [], objectTypes: [], rarities: [] } as const;
 
 /** Filter/sort changes clear cursor history. */
 export function artworkCatalogueFilterHref(
@@ -226,31 +243,39 @@ export function artworkCatalogueFilterHref(
   overrides: ArtworkCatalogueFilterPatch = {},
 ): string {
   const { cursor: _c, back: _b, ...rest } = state;
-  const next: Omit<ArtworkCatalogueUrlState, "cursor" | "back"> = { ...rest };
+  const next: ArtworkCatalogueFilterFields = { ...rest };
   for (const key of Object.keys(overrides) as Array<keyof typeof overrides>) {
     const value = overrides[key];
-    if (value === null || value === undefined) {
-      delete next[key];
-    } else {
+    if (value !== null && value !== undefined) {
       next[key] = value as never;
+    } else if (key in EMPTY_LISTS) {
+      next[key as keyof typeof EMPTY_LISTS] = [];
+    } else {
+      delete next[key];
     }
   }
   return artworkCatalogueHref(next);
 }
 
 export function artworkCatalogueClearHref(): string {
-  return artworkCatalogueHref({ type: "all", sort: "newest" });
+  return artworkCatalogueHref({
+    type: "all",
+    sort: "newest",
+    artistSlugs: [],
+    objectTypes: [],
+    rarities: [],
+  });
 }
 
 export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlState): number {
   let count = 0;
   if (state.q) count += 1;
   if (state.categorySlug) count += 1;
-  if (state.artistSlug) count += 1;
+  count += state.artistSlugs.length;
   if (state.saleState) count += 1;
   if (state.type !== "all") count += 1;
-  if (state.objectType) count += 1;
-  if (state.rarity) count += 1;
+  count += state.objectTypes.length;
+  count += state.rarities.length;
   if (state.minPrice !== undefined) count += 1;
   if (state.maxPrice !== undefined) count += 1;
   return count;
@@ -297,18 +322,22 @@ export function buildArtworkCatalogueActiveChips(
       removeHref: artworkCatalogueFilterHref(state, { saleState: null }),
     });
   }
-  if (state.objectType) {
+  for (const objectType of state.objectTypes) {
     chips.push({
-      key: "objectType",
-      label: ARTWORK_OBJECT_TYPE_LABELS[state.objectType],
-      removeHref: artworkCatalogueFilterHref(state, { objectType: null }),
+      key: `objectType:${objectType}`,
+      label: ARTWORK_OBJECT_TYPE_LABELS[objectType],
+      removeHref: artworkCatalogueFilterHref(state, {
+        objectTypes: state.objectTypes.filter((value) => value !== objectType),
+      }),
     });
   }
-  if (state.rarity) {
+  for (const rarity of state.rarities) {
     chips.push({
-      key: "rarity",
-      label: ARTWORK_RARITY_LABELS[state.rarity],
-      removeHref: artworkCatalogueFilterHref(state, { rarity: null }),
+      key: `rarity:${rarity}`,
+      label: ARTWORK_RARITY_LABELS[rarity],
+      removeHref: artworkCatalogueFilterHref(state, {
+        rarities: state.rarities.filter((value) => value !== rarity),
+      }),
     });
   }
   if (state.categorySlug) {
@@ -320,13 +349,13 @@ export function buildArtworkCatalogueActiveChips(
       removeHref: artworkCatalogueFilterHref(state, { categorySlug: null }),
     });
   }
-  if (state.artistSlug) {
-    const label =
-      lookups.artists.find((a) => a.slug === state.artistSlug)?.label ?? state.artistSlug;
+  for (const artistSlug of state.artistSlugs) {
     chips.push({
-      key: "artist",
-      label,
-      removeHref: artworkCatalogueFilterHref(state, { artistSlug: null }),
+      key: `artist:${artistSlug}`,
+      label: lookups.artists.find((a) => a.slug === artistSlug)?.label ?? artistSlug,
+      removeHref: artworkCatalogueFilterHref(state, {
+        artistSlugs: state.artistSlugs.filter((value) => value !== artistSlug),
+      }),
     });
   }
   if (state.minPrice !== undefined || state.maxPrice !== undefined) {
@@ -352,7 +381,7 @@ export function artworkCatalogueHasActiveFilters(state: ArtworkCatalogueUrlState
 }
 
 export function artworkCataloguePageTitle(state: ArtworkCatalogueUrlState): string {
-  const landing = artworkMediumLanding(state.objectType);
+  const landing = artworkMediumLanding(state.objectTypes);
   if (landing) return landing.title;
   if (state.type === "edition") return "Prints & Multiples";
   return "Artworks";
@@ -362,11 +391,11 @@ export type ArtworkCatalogueFetchInput = {
   limit?: number;
   cursor?: string;
   categorySlug?: string;
-  artistSlug?: string;
+  artistSlugs?: string[];
   saleState?: "for_sale" | "price_on_application" | "sold";
   type?: ArtworkCatalogueType;
-  objectType?: ArtworkObjectType;
-  rarity?: ArtworkRarity;
+  objectTypes?: ArtworkObjectType[];
+  rarities?: ArtworkRarity[];
   minPrice?: number;
   maxPrice?: number;
   sort?: ArtworkCatalogueSort;
@@ -379,11 +408,11 @@ export function artworkCatalogueFetchQuery(
   const query: ArtworkCatalogueFetchInput = {};
   if (state.q) query.q = state.q;
   if (state.categorySlug) query.categorySlug = state.categorySlug;
-  if (state.artistSlug) query.artistSlug = state.artistSlug;
+  if (state.artistSlugs.length > 0) query.artistSlugs = state.artistSlugs;
   if (state.saleState) query.saleState = state.saleState;
   if (state.type !== "all") query.type = state.type;
-  if (state.objectType) query.objectType = state.objectType;
-  if (state.rarity) query.rarity = state.rarity;
+  if (state.objectTypes.length > 0) query.objectTypes = state.objectTypes;
+  if (state.rarities.length > 0) query.rarities = state.rarities;
   if (state.minPrice !== undefined) query.minPrice = state.minPrice * 100;
   if (state.maxPrice !== undefined) query.maxPrice = state.maxPrice * 100;
   if (state.sort !== "newest") query.sort = state.sort;
