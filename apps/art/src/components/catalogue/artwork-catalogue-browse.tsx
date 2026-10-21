@@ -1,14 +1,24 @@
 "use client";
 
 import {
-  type ArtworkCatalogueDraft,
   ArtworkCatalogueFilterBody,
   type CatalogueFilterOption,
-  artworkDraftFromState,
-  draftToPartialState,
 } from "@/components/catalogue/artwork-catalogue-filter-body";
-import { ARTWORK_SORT_OPTIONS } from "@/lib/catalogue/artwork-catalogue-filter-config";
 import {
+  type ArtworkCatalogueDraft,
+  EMPTY_ARTWORK_CATALOGUE_DRAFT,
+  artworkDraftFromState,
+  artworkDraftToPatch,
+} from "@/lib/catalogue/artwork-catalogue-draft";
+import {
+  ARTWORK_PRICE_BAND_OPTIONS,
+  ARTWORK_RARITY_OPTIONS,
+  type ArtworkFilterOption,
+  artworkPriceBandPatch,
+  artworkPriceBandValue,
+} from "@/lib/catalogue/artwork-catalogue-filter-config";
+import {
+  type ArtworkCatalogueFilterPatch,
   type ArtworkCatalogueUrlState,
   artworkCatalogueClearHref,
   artworkCatalogueFilterHref,
@@ -19,47 +29,26 @@ import {
   ART_ARTWORKS_VIEW_ROUTE_KEY,
   ART_CATALOGUE_VIEW_MODES,
 } from "@/lib/catalogue/catalogue-view";
-import {
-  MARKETING_CATALOG_FILTER_GRID,
-  MARKETING_CATALOG_FILTER_RAIL_SLOT,
-  MARKETING_CATALOG_MAIN_COLUMN,
-  MARKETING_LIST_TOOLBAR_BLEED,
-} from "@auction/branding";
+import { MARKETING_LIST_TOOLBAR_BLEED } from "@auction/branding";
 import {
   CatalogActiveFilterChips,
   type CatalogLayoutView,
-  MARKETING_FILTER_RAIL_IN_SHEET,
-  MARKETING_FILTER_RAIL_STICKY,
   MarketingCatalogViewSwitcher,
-  MarketingFilterSheet,
+  MarketingFilterDropdown,
   MarketingFilterTrigger,
   MarketingListToolbar,
+  SplitFilterSheet,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
 import { useRouter } from "next/navigation";
-import {
-  type FormEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useState,
-  useTransition,
-} from "react";
+import { type ReactNode, useCallback, useState, useTransition } from "react";
 
 type Props = {
   state: ArtworkCatalogueUrlState;
   resultCount: number;
   categories: CatalogueFilterOption[];
   artists: CatalogueFilterOption[];
+  mediumOptions: ArtworkFilterOption[];
   /** Server-resolved layout; the switcher keeps it in sync with `?view=`. */
   view: CatalogLayoutView;
   children: ReactNode;
@@ -68,24 +57,24 @@ type Props = {
 /** Cursor pagination survives a layout switch — the page itself does not change. */
 const KEEP_CURSOR: readonly string[] = [];
 
+/**
+ * Figma 538:4885 browse pattern: Filters opens a drawer on every breakpoint, and the toolbar
+ * carries Medium / Rarity / Price range dropdowns from `lg`. The URL is the only applied state;
+ * every apply builds a new href, which also drops the pagination cursor.
+ */
 export function ArtworkCatalogueBrowse({
   state,
   resultCount,
   categories,
   artists,
+  mediumOptions,
   view,
   children,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [draft, setDraft] = useState(() => artworkDraftFromState(state));
-  const [searchDraft, setSearchDraft] = useState(state.q ?? "");
-
-  useEffect(() => {
-    setDraft(artworkDraftFromState(state));
-    setSearchDraft(state.q ?? "");
-  }, [state]);
+  const [draft, setDraft] = useState<ArtworkCatalogueDraft>(() => artworkDraftFromState(state));
 
   const navigate = useCallback(
     (href: string) => {
@@ -96,73 +85,64 @@ export function ArtworkCatalogueBrowse({
     [router],
   );
 
-  const countLabel = `${resultCount} artwork${resultCount === 1 ? "" : "s"}`;
-  const applyLabel = "Apply filters";
+  function applyPatch(patch: ArtworkCatalogueFilterPatch) {
+    navigate(artworkCatalogueFilterHref(state, patch));
+  }
+
+  // Opening always starts from the applied URL state, so a cancelled draft never lingers.
+  function handleSheetOpenChange(open: boolean) {
+    if (open) setDraft(artworkDraftFromState(state));
+    setSheetOpen(open);
+  }
+
   const activeCount = countActiveArtworkCatalogueFilters(state);
   const chips = buildArtworkCatalogueActiveChips(state, { categories, artists });
+  const priceBand = artworkPriceBandValue(state);
+  const openSheet = () => handleSheetOpenChange(true);
 
-  function applyDraft(next: ArtworkCatalogueDraft) {
-    setDraft(next);
-    navigate(artworkCatalogueFilterHref(state, draftToPartialState(next)));
-  }
-
-  function onSearchSubmit(event: FormEvent) {
-    event.preventDefault();
-    navigate(
-      artworkCatalogueFilterHref(state, {
-        q: searchDraft.trim() ? searchDraft.trim() : null,
-      }),
-    );
-  }
-
-  const sortControl = (
-    <Select
-      value={state.sort}
-      disabled={pending}
-      onValueChange={(value) =>
-        navigate(
-          artworkCatalogueFilterHref(state, { sort: value as ArtworkCatalogueUrlState["sort"] }),
-        )
-      }
-    >
-      <SelectTrigger
-        aria-label="Sort artworks"
-        data-testid="art-catalogue-sort"
-        className="min-h-11 w-[11rem] rounded-full border-outline-variant/50 bg-surface-container-lowest"
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {ARTWORK_SORT_OPTIONS.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const searchControl = (
-    <form className="hidden min-w-0 flex-1 lg:flex" onSubmit={onSearchSubmit}>
-      <Input
-        type="search"
-        aria-label="Search title or artist"
-        value={searchDraft}
-        onChange={(event) => setSearchDraft(event.target.value)}
-        placeholder="Search title or artist"
-        className="min-h-11 w-full max-w-md rounded-full"
+  const desktopFilters = (
+    <div className="flex min-w-0 items-center">
+      <MarketingFilterTrigger activeCount={activeCount} onClick={openSheet} />
+      <span aria-hidden className="mx-4 h-6 w-px shrink-0 bg-outline-variant" />
+      <MarketingFilterDropdown
+        label="Medium"
+        idPrefix="art-toolbar-medium"
+        options={mediumOptions}
+        selected={state.objectTypes}
+        onApply={(values) =>
+          applyPatch({ objectTypes: values as ArtworkCatalogueUrlState["objectTypes"] })
+        }
       />
-    </form>
+      <MarketingFilterDropdown
+        label="Rarity"
+        idPrefix="art-toolbar-rarity"
+        options={ARTWORK_RARITY_OPTIONS}
+        selected={state.rarities}
+        onApply={(values) =>
+          applyPatch({ rarities: values as ArtworkCatalogueUrlState["rarities"] })
+        }
+      />
+      <MarketingFilterDropdown
+        label="Price range"
+        idPrefix="art-toolbar-price"
+        selection="single"
+        options={ARTWORK_PRICE_BAND_OPTIONS}
+        selected={priceBand ? [priceBand] : []}
+        onApply={([band = ""]) => applyPatch(artworkPriceBandPatch(band))}
+      />
+    </div>
   );
 
   return (
     <div className="relative flex w-full flex-col gap-6">
       <div className={cn(MARKETING_LIST_TOOLBAR_BLEED, "-mt-2")}>
         <MarketingListToolbar
-          countLabel={countLabel}
-          sort={sortControl}
-          filters={searchControl}
-          stackTrailingOnMobile
+          countLabel={`${resultCount} available`}
+          countMobileOnly
+          filters={desktopFilters}
+          mobileFilterTrigger={
+            <MarketingFilterTrigger activeCount={activeCount} onClick={openSheet} />
+          }
           trailing={
             <MarketingCatalogViewSwitcher
               routeKey={ART_ARTWORKS_VIEW_ROUTE_KEY}
@@ -170,46 +150,6 @@ export function ArtworkCatalogueBrowse({
               modes={ART_CATALOGUE_VIEW_MODES}
               clearParams={KEEP_CURSOR}
             />
-          }
-          mobileFilterTrigger={
-            <MarketingFilterSheet
-              open={sheetOpen}
-              onOpenChange={setSheetOpen}
-              title="Filters"
-              trigger={<MarketingFilterTrigger activeCount={activeCount} />}
-              applyLabel={applyLabel}
-              onApply={() => {
-                navigate(artworkCatalogueFilterHref(state, draftToPartialState(draft)));
-                setSheetOpen(false);
-              }}
-              onReset={() => {
-                navigate(artworkCatalogueClearHref());
-                setSheetOpen(false);
-              }}
-            >
-              <div className="mb-4 flex flex-col gap-1 lg:hidden">
-                <Label htmlFor="art-sheet-search" className="font-body text-sm">
-                  Search
-                </Label>
-                <Input
-                  id="art-sheet-search"
-                  type="search"
-                  value={draft.q}
-                  onChange={(event) => setDraft({ ...draft, q: event.target.value })}
-                  placeholder="Search title or artist"
-                  className="min-h-11"
-                />
-              </div>
-              <ArtworkCatalogueFilterBody
-                idPrefix="art-sheet"
-                draft={draft}
-                onDraftChange={setDraft}
-                categories={categories}
-                artists={artists}
-                showResultCount={false}
-                className={MARKETING_FILTER_RAIL_IN_SHEET}
-              />
-            </MarketingFilterSheet>
           }
           activeFiltersRow={
             chips.length > 0 ? (
@@ -224,21 +164,31 @@ export function ArtworkCatalogueBrowse({
         />
       </div>
 
-      <div className={MARKETING_CATALOG_FILTER_GRID}>
-        <div className={MARKETING_CATALOG_FILTER_RAIL_SLOT}>
-          <ArtworkCatalogueFilterBody
-            idPrefix="art-rail"
-            draft={draft}
-            onDraftChange={setDraft}
-            onFilterCommit={applyDraft}
-            categories={categories}
-            artists={artists}
-            showResultCount={false}
-            className={MARKETING_FILTER_RAIL_STICKY}
-          />
-        </div>
-        <div className={cn(MARKETING_CATALOG_MAIN_COLUMN, pending && "opacity-70")}>{children}</div>
-      </div>
+      <SplitFilterSheet
+        variant="catalogue"
+        open={sheetOpen}
+        onOpenChange={handleSheetOpenChange}
+        title="Filters"
+        description="Choose filters, then apply them to update the artworks."
+        applyLabel="Apply"
+        mobileApplyLabel="Show results"
+        onApply={() => {
+          applyPatch(artworkDraftToPatch(draft));
+          setSheetOpen(false);
+        }}
+        resetLabel="Reset all"
+        onReset={() => setDraft(EMPTY_ARTWORK_CATALOGUE_DRAFT)}
+      >
+        <ArtworkCatalogueFilterBody
+          draft={draft}
+          onDraftChange={setDraft}
+          categories={categories}
+          artists={artists}
+          mediumOptions={mediumOptions}
+        />
+      </SplitFilterSheet>
+
+      <div className={cn("min-w-0", pending && "opacity-70")}>{children}</div>
     </div>
   );
 }

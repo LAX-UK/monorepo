@@ -50,7 +50,7 @@ describe("composeArtworksPage", () => {
     expect(vm.nextPageHref).toBeNull();
   });
 
-  it("builds medium tiles from facets and degrades to none when facets fail", async () => {
+  it("builds medium tiles and medium options from facets, degrading when facets fail", async () => {
     const services = fakeArtServices();
     services.catalogue.listArtworkObjectTypes.mockResolvedValue({
       items: [
@@ -58,14 +58,44 @@ describe("composeArtworksPage", () => {
         { objectType: "print", artworkCount: 5, coverImageUrl: null },
       ],
     });
-    const vm = await composeArtworksPage(services, { objectType: "print" });
+    const vm = await composeArtworksPage(services, { type: "edition" });
     expect(vm.objectTypeTiles.map((tile) => [tile.label, tile.active])).toEqual([
       ["Paintings", false],
-      ["Prints", true],
+      ["Prints", false],
     ]);
+    expect(vm.mediumOptions.map((option) => option.value)).toEqual(["painting", "print"]);
+    expect(vm.landingHero).toBeNull();
 
     services.catalogue.listArtworkObjectTypes.mockRejectedValue(new Error("down"));
-    expect((await composeArtworksPage(services, {})).objectTypeTiles).toEqual([]);
+    const degraded = await composeArtworksPage(services, {});
+    expect(degraded.objectTypeTiles).toEqual([]);
+    expect(degraded.mediumOptions).toHaveLength(6);
+  });
+
+  it("gives a medium landing an image hero from its cover and no tile rail", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtworkObjectTypes.mockResolvedValue({
+      items: [
+        { objectType: "painting", artworkCount: 2, coverImageUrl: "https://cdn.test/p.webp" },
+        { objectType: "print", artworkCount: 5, coverImageUrl: null },
+      ],
+    });
+
+    const paintings = await composeArtworksPage(services, { objectType: "painting" });
+    expect(paintings.landingHero).toEqual({
+      title: "Paintings",
+      description: expect.stringContaining("Original paintings"),
+      imageUrl: "https://cdn.test/p.webp",
+    });
+    expect(paintings.objectTypeTiles).toEqual([]);
+    expect(services.catalogue.listArtworks).toHaveBeenLastCalledWith({
+      limit: 24,
+      objectTypes: ["painting"],
+    });
+
+    const prints = await composeArtworksPage(services, { objectType: "print" });
+    expect(prints.landingHero).toBeNull();
+    expect(prints.title).toBe("Prints");
   });
 });
 

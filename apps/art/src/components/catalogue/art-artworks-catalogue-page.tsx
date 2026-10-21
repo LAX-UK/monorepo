@@ -2,6 +2,7 @@ import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import { ArtArtworkGrid } from "@/components/catalogue/art-artwork-grid";
 import { ArtArtworkList } from "@/components/catalogue/art-artwork-list";
+import { ArtArtworksLandingHero } from "@/components/catalogue/art-artworks-landing-hero";
 import { ArtObjectTypeTiles } from "@/components/catalogue/art-object-type-tiles";
 import { ArtworkCatalogueBrowse } from "@/components/catalogue/artwork-catalogue-browse";
 import { artServices } from "@/lib/art-services.server";
@@ -19,7 +20,16 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
-/** Shared body of `/artworks` and the medium landings (`/paintings`, `/prints`, `/sculptures`). */
+/**
+ * Shared body of `/artworks` and the medium landings (`/paintings`, `/prints`, `/sculptures`).
+ *
+ * These routes deliberately have no `loading.tsx`. Filters, sort and pagination only change the
+ * query string, so Next re-renders the page inside the same, already visible loading boundary.
+ * When a streamed RSC row lands mid-render there, the React build bundled with Next 15.5 drops
+ * the retry and the transition never commits (production only): the URL and results stay put.
+ * Without the boundary the pending render suspends at the root, which React does retry, and the
+ * browse toolbar's transition keeps the old results dimmed until the new ones are ready.
+ */
 export async function ArtArtworksCataloguePage({
   params,
 }: {
@@ -31,70 +41,80 @@ export async function ArtArtworksCataloguePage({
   ]);
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 py-6 lg:py-10")}>
-      <ArtPageHeader title={vm.title} />
+    <>
+      {vm.landingHero ? <ArtArtworksLandingHero hero={vm.landingHero} /> : null}
+      <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 py-6 lg:py-10")}>
+        {vm.landingHero ? null : <ArtPageHeader title={vm.title} />}
 
-      <ArtObjectTypeTiles tiles={vm.objectTypeTiles} />
+        <ArtObjectTypeTiles tiles={vm.objectTypeTiles} />
 
-      <ArtworkCatalogueBrowse
-        state={vm.state}
-        categories={vm.categories}
-        artists={vm.artists}
-        resultCount={vm.resultCount}
-        view={view}
-      >
-        <section aria-labelledby="art-artworks-results">
-          <h2 id="art-artworks-results" className="sr-only">
-            Results
-          </h2>
-          {vm.failed ? (
-            <ArtStatusState
-              variant="error"
-              title="Catalogue unavailable"
-              description="We could not load artworks. Try again shortly."
-              actions={
-                <ArtStatusStateLink href={artworkCatalogueHref(vm.state)}>Retry</ArtStatusStateLink>
-              }
-            />
-          ) : vm.cards.length === 0 ? (
-            <ArtStatusState
-              variant="empty"
-              icon="search"
-              title="No artworks match"
-              description={
-                vm.hasActiveFilters
-                  ? "Try removing a filter or searching for another title or artist."
-                  : "There are no published works yet. Check back soon."
-              }
-              {...(vm.hasActiveFilters
-                ? {
-                    actions: (
-                      <ArtStatusStateLink href={artworkCatalogueClearHref()}>
-                        Clear filters
-                      </ArtStatusStateLink>
-                    ),
-                  }
-                : {})}
-            />
-          ) : (
-            <MarketingCatalogView
-              value={view}
-              grid={
-                <ArtArtworkGrid cards={vm.cards} favoriteAuth={vm.favoriteAuth} priorityCount={2} />
-              }
-              list={<ArtArtworkList cards={vm.cards} favoriteAuth={vm.favoriteAuth} />}
-            />
-          )}
-        </section>
-      </ArtworkCatalogueBrowse>
+        <ArtworkCatalogueBrowse
+          state={vm.state}
+          categories={vm.categories}
+          artists={vm.artists}
+          mediumOptions={vm.mediumOptions}
+          resultCount={vm.resultCount}
+          view={view}
+        >
+          <section aria-labelledby="art-artworks-results">
+            <h2 id="art-artworks-results" className="sr-only">
+              Results
+            </h2>
+            {vm.failed ? (
+              <ArtStatusState
+                variant="error"
+                title="Catalogue unavailable"
+                description="We could not load artworks. Try again shortly."
+                actions={
+                  <ArtStatusStateLink href={artworkCatalogueHref(vm.state)}>
+                    Retry
+                  </ArtStatusStateLink>
+                }
+              />
+            ) : vm.cards.length === 0 ? (
+              <ArtStatusState
+                variant="empty"
+                icon="search"
+                title="No artworks match"
+                description={
+                  vm.hasActiveFilters
+                    ? "Try removing a filter or searching for another title or artist."
+                    : "There are no published works yet. Check back soon."
+                }
+                {...(vm.hasActiveFilters
+                  ? {
+                      actions: (
+                        <ArtStatusStateLink href={artworkCatalogueClearHref()}>
+                          Clear filters
+                        </ArtStatusStateLink>
+                      ),
+                    }
+                  : {})}
+              />
+            ) : (
+              <MarketingCatalogView
+                value={view}
+                grid={
+                  <ArtArtworkGrid
+                    cards={vm.cards}
+                    favoriteAuth={vm.favoriteAuth}
+                    priorityCount={2}
+                  />
+                }
+                list={<ArtArtworkList cards={vm.cards} favoriteAuth={vm.favoriteAuth} />}
+              />
+            )}
+          </section>
+        </ArtworkCatalogueBrowse>
 
-      {vm.nextPageHref ? (
-        <nav aria-label="Pagination" className="flex justify-center">
-          <Button asChild variant="outline" className="min-h-11 font-label uppercase">
-            <Link href={vm.nextPageHref}>Next page</Link>
-          </Button>
-        </nav>
-      ) : null}
-    </div>
+        {vm.nextPageHref ? (
+          <nav aria-label="Pagination" className="flex justify-center">
+            <Button asChild variant="outline" className="min-h-11 font-label uppercase">
+              <Link href={vm.nextPageHref}>Next page</Link>
+            </Button>
+          </nav>
+        ) : null}
+      </div>
+    </>
   );
 }

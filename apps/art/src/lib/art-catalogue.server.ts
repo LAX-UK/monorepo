@@ -89,13 +89,13 @@ export async function fetchArtChannelArtworks(
   if (input.cursor) params.set("cursor", input.cursor);
   if (input.placement) params.set("placement", input.placement);
   if (input.categorySlug) params.set("categorySlug", input.categorySlug);
-  if (input.artistSlug) params.set("artistSlug", input.artistSlug);
+  if (input.artistSlugs?.length) params.set("artistSlug", input.artistSlugs.join(","));
   if (input.editionEligible !== undefined) {
     params.set("editionEligible", String(input.editionEligible));
   }
   if (input.type && input.type !== "all") params.set("type", input.type);
-  if (input.objectType) params.set("objectType", input.objectType);
-  if (input.rarity) params.set("rarity", input.rarity);
+  if (input.objectTypes?.length) params.set("objectType", input.objectTypes.join(","));
+  if (input.rarities?.length) params.set("rarity", input.rarities.join(","));
   if (input.relatedTo) params.set("relatedTo", input.relatedTo);
   if (input.minPrice !== undefined) params.set("minPrice", String(input.minPrice));
   if (input.maxPrice !== undefined) params.set("maxPrice", String(input.maxPrice));

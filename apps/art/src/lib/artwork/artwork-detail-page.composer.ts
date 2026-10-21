@@ -174,7 +174,7 @@ async function loadRelatedArtworks(
       .listArtworks({ relatedTo: artwork.slug, limit: RELATED_ARTWORKS_LIMIT + 1 })
       .catch(() => ({ items: [] })),
     catalogue
-      .listArtworks({ artistSlug: artwork.artistSlug, limit: RELATED_ARTWORKS_LIMIT + 1 })
+      .listArtworks({ artistSlugs: [artwork.artistSlug], limit: RELATED_ARTWORKS_LIMIT + 1 })
       .catch(() => ({ items: [] })),
   ]);
   const seen = new Set([artwork.slug]);
