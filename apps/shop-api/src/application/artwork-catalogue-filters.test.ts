@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { normalizeArtworkCatalogueFilters } from "./artwork-catalogue-filters.js";
+import {
+  MAX_FILTER_LIST_VALUES,
+  normalizeArtworkCatalogueFilters,
+} from "./artwork-catalogue-filters.js";
 
 describe("normalizeArtworkCatalogueFilters", () => {
   it("swaps inverted price bounds", () => {
@@ -35,6 +38,16 @@ describe("normalizeArtworkCatalogueFilters", () => {
     expect(normalized.objectTypes).toEqual(["painting", "print"]);
     expect(normalized.rarities).toEqual(["unique"]);
     expect(normalized.artistSlugs).toEqual(["ada", "bo"]);
+  });
+
+  it("caps multi-value filters so one request cannot build an unbounded IN list", () => {
+    const artistSlugs = Array.from(
+      { length: MAX_FILTER_LIST_VALUES + 10 },
+      (_, i) => `artist-${i}`,
+    );
+    const normalized = normalizeArtworkCatalogueFilters({ artistSlugs });
+    expect(normalized.artistSlugs).toHaveLength(MAX_FILTER_LIST_VALUES);
+    expect(normalized.artistSlugs?.[0]).toBe("artist-0");
   });
 
   it("omits multi-value filters with no valid members", () => {

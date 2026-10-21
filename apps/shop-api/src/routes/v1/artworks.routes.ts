@@ -37,7 +37,7 @@ const ListQuerySchema = Type.Object({
   ),
   categorySlug: Type.Optional(Type.String({ minLength: 1 })),
   /** One slug or a comma-separated list. */
-  artistSlug: Type.Optional(Type.String({ minLength: 1 })),
+  artistSlug: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
   relatedTo: Type.Optional(Type.String({ minLength: 1 })),
   objectType: Type.Optional(commaListOf(ARTWORK_OBJECT_TYPES)),
   rarity: Type.Optional(commaListOf(ARTWORK_RARITIES)),
