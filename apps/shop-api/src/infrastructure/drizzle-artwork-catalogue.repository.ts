@@ -20,6 +20,7 @@ import {
   gt,
   gte,
   ilike,
+  inArray,
   isNotNull,
   lt,
   lte,
