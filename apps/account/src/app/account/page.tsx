@@ -1,11 +1,6 @@
-import {
-  AccountShell,
-  Card,
-  Row,
-  StatusPill,
-  secondaryButton,
-  textLink,
-} from "@/components/account-ui";
+import { AccountShell } from "@/components/account-shell";
+import { AccountPageHeader, SettingsGroup } from "@/components/account-ui";
+import { CompleteAccountBanner } from "@/components/complete-account-banner.client";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import {
@@ -13,167 +8,70 @@ import {
   buildPayoutLaunchLinks,
   buildStaffPlatformLinks,
 } from "@/server/domain/account-links";
+import {
+  ACCOUNT_ROUTES,
+  accountInitials,
+  buildSettingsGroups,
+} from "@/server/domain/account-settings.vm";
+import { profileGaps } from "@/server/domain/profile-completeness";
+import { Avatar, AvatarFallback } from "@auction/ui/components/avatar";
+import { Button } from "@auction/ui/components/button";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-function SignOutButton() {
-  return (
-    <form method="post" action="/api/auth/logout">
-      <button type="submit" className={textLink}>
-        Sign out
-      </button>
-    </form>
-  );
-}
-
-export default async function AccountPage() {
+/** Account settings (Figma 930:14289; with the completion prompt, 930:15435). */
+export default async function AccountSettingsPage() {
   const session = await loadAccountSession();
-  if (session.status !== "ok") redirect("/api/auth/login?returnTo=/account");
+  if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.settings}`);
   const { overview } = session;
   const { config } = getLaxAccountContainer();
   const links = buildAccountLinks(config, { email: overview.email });
-  const staffPlatforms = buildStaffPlatformLinks(config, overview.staffPlatforms);
-  const payoutLinks = buildPayoutLaunchLinks(config);
-  const editProfile = links.editProfile ? (
-    <a href={links.editProfile} className={textLink}>
-      Edit in LAX Bid
-    </a>
-  ) : null;
+  const groups = buildSettingsGroups({
+    overview,
+    links,
+    payoutLinks: buildPayoutLaunchLinks(config),
+    staffPlatforms: buildStaffPlatformLinks(config, overview.staffPlatforms),
+  });
+  const gaps = profileGaps(overview, { profileEditable: links.bidSettings !== null });
+  const initials = accountInitials(overview);
 
   return (
-    <AccountShell actions={<SignOutButton />}>
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Hi, {overview.displayName}</h1>
-        <p className="text-sm text-on-surface-variant">
-          These details are shared by LAX Bid, LAX Shop and every product you sign in to with this
-          account.
-        </p>
+    <AccountShell>
+      <AccountPageHeader title="Account settings" />
+
+      <div className="flex flex-col items-center gap-3 text-center">
+        {initials ? (
+          <Avatar className="size-14 rounded-none border border-dashed border-outline-variant">
+            <AvatarFallback className="rounded-none bg-surface font-headline text-lg font-semibold text-on-surface">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        ) : null}
+        <div className="flex flex-col gap-1">
+          <p className="font-headline text-base font-semibold text-on-surface">
+            {overview.displayName}
+          </p>
+          <p className="max-w-md text-sm text-on-surface-variant">
+            These details are shared by LAX Bid, LAX Art and every product you sign in to with this
+            account.
+          </p>
+        </div>
       </div>
 
-      <Card id="profile" title="Profile">
-        <dl>
-          <Row label="Name" action={editProfile}>
-            {overview.name ?? <span className="text-on-surface-variant">Not added</span>}
-          </Row>
-          <Row
-            label="Email"
-            action={
-              overview.email && !overview.emailVerified ? (
-                <a href={links.verifyEmail} className={secondaryButton}>
-                  Verify email
-                </a>
-              ) : null
-            }
-          >
-            {overview.email ?? <span className="text-on-surface-variant">Not added</span>}
-            {overview.email ? (
-              <StatusPill tone={overview.emailVerified ? "ok" : "muted"}>
-                {overview.emailVerified ? "Verified" : "Not verified"}
-              </StatusPill>
-            ) : null}
-          </Row>
-          <Row label="Mobile number">
-            {overview.phone ?? <span className="text-on-surface-variant">Not added</span>}
-            {overview.phone ? (
-              <StatusPill tone={overview.phoneVerified ? "ok" : "muted"}>
-                {overview.phoneVerified ? "Verified" : "Not verified"}
-              </StatusPill>
-            ) : null}
-          </Row>
-        </dl>
-      </Card>
-
-      <Card
-        id="security"
-        title="Security"
-        description="Keep your account protected on every LAX product."
-      >
-        <dl>
-          <Row
-            label="Password"
-            action={
-              <a href={links.changePassword} className={secondaryButton}>
-                Change password
-              </a>
-            }
-          >
-            We'll email you a secure link. Changing it signs you out on your other devices.
-          </Row>
-          <Row
-            label="Two-step verification"
-            action={
-              <a href={links.manageTwoStep} className={secondaryButton}>
-                {overview.signedInWithAuthenticator ? "Manage" : "Set up or manage"}
-              </a>
-            }
-          >
-            {overview.signedInWithAuthenticator ? (
-              <>
-                On
-                <StatusPill tone="ok">Used for this sign-in</StatusPill>
-                <span className="mt-1 block text-on-surface-variant">
-                  Lost your authenticator? Contact LAX support to reset it.
-                </span>
-              </>
-            ) : (
-              <span className="text-on-surface-variant">
-                Add an authenticator app so signing in needs a code as well as your password. If you
-                already have one, you can manage or turn it off there — unless your organisation or
-                LAX requires it.
-              </span>
-            )}
-          </Row>
-        </dl>
-      </Card>
-
-      {payoutLinks.length > 0 ? (
-        <Card
-          id="payouts"
-          title="Payout accounts"
-          description="Manage bank and tax details on each LAX business product. LAX Account does not store payout balances."
-        >
-          <dl>
-            {payoutLinks.map((link) => (
-              <Row
-                key={link.href}
-                label={link.label}
-                action={
-                  <a href={link.href} className={secondaryButton}>
-                    Open payouts
-                  </a>
-                }
-              >
-                Launch the product payout screen to complete or update Connect onboarding.
-              </Row>
-            ))}
-          </dl>
-        </Card>
+      {gaps.length > 0 ? (
+        <CompleteAccountBanner gapsKey={gaps.join(",")} href={ACCOUNT_ROUTES.profile} />
       ) : null}
 
-      {staffPlatforms.length > 0 ? (
-        <Card
-          id="lax-access"
-          title="Your LAX access"
-          description="LAX team tools you can use with this account. Your role on each one is managed by a LAX admin."
-        >
-          <dl>
-            {staffPlatforms.map((platform) => (
-              <Row
-                key={platform.product}
-                label={platform.label}
-                action={
-                  <a href={platform.href} className={secondaryButton}>
-                    Open
-                  </a>
-                }
-              >
-                <StatusPill tone="ok">Staff access</StatusPill>
-              </Row>
-            ))}
-          </dl>
-        </Card>
-      ) : null}
+      {groups.map((group) => (
+        <SettingsGroup key={group.id} group={group} />
+      ))}
+
+      <form method="post" action="/api/auth/logout">
+        <Button type="submit" variant="outline" size="lg" className="w-full border-border-hairline">
+          Sign out
+        </Button>
+      </form>
     </AccountShell>
   );
 }

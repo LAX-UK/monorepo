@@ -1,12 +1,38 @@
 import type { LaxStaffPlatformsClaim } from "@auction/identity-contracts";
 import type { LaxAccountConfig } from "../config";
 
+/**
+ * Settings that Bid's API owns. LAX Account has no API resource (its OIDC client lists no
+ * `allowedResources`), so it links to Bid's screens instead of writing this data itself.
+ */
+export type BidSettingsLinksVm = {
+  /** Name and mobile number. */
+  profile: string;
+  /** Email change with confirmation to both addresses. */
+  email: string;
+  addresses: string;
+  notifications: string;
+  /** Account deletion lives in Bid security settings behind a step-up check. */
+  deleteAccount: string;
+};
+
+/**
+ * Account sign-in runs on lax.bid (auth.lax.bid, account.lax.bid), so Bid's published support
+ * and policy pages are the ones that cover the LAX account.
+ */
+export type SupportLinksVm = {
+  helpCentre: string;
+  contact: string;
+  terms: string;
+  privacyPolicy: string;
+};
+
 export type AccountLinksVm = {
   manageTwoStep: string;
   changePassword: string;
   verifyEmail: string;
-  /** Bid owns profile edits until the portal gains its own editor. */
-  editProfile: string | null;
+  bidSettings: BidSettingsLinksVm | null;
+  support: SupportLinksVm | null;
 };
 
 export function buildAccountLinks(
@@ -19,12 +45,28 @@ export function buildAccountLinks(
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
     return url.toString();
   };
+  const bidUrl = config.bidPublicUrl;
+  const bid = (path: string) => new URL(path, bidUrl).toString();
   return {
     manageTwoStep: hosted("/two-factor/manage"),
     changePassword: hosted("/forgot-password"),
     verifyEmail: hosted("/resend-verification", account.email ? { email: account.email } : {}),
-    editProfile: config.bidPublicUrl
-      ? new URL("/dashboard/settings/profile", config.bidPublicUrl).toString()
+    bidSettings: bidUrl
+      ? {
+          profile: bid("/dashboard/settings/profile"),
+          email: bid("/dashboard/settings/account"),
+          addresses: bid("/dashboard/settings/addresses"),
+          notifications: bid("/dashboard/settings/notifications"),
+          deleteAccount: bid("/dashboard/settings/security"),
+        }
+      : null,
+    support: bidUrl
+      ? {
+          helpCentre: bid("/faq"),
+          contact: bid("/contact"),
+          terms: bid("/terms"),
+          privacyPolicy: bid("/privacy"),
+        }
       : null,
   };
 }

@@ -12,6 +12,8 @@ const alertVariants = cva(
         warning:
           "border-warning/50 bg-warning-container/30 text-on-surface [&>svg]:text-warning-on-surface",
         success: "border-success/50 bg-success-container/25 text-on-surface [&>svg]:text-success",
+        /** High-emphasis prompt on the CTA fill, e.g. lax.art "You're almost ready" (Figma 930:14088). */
+        inverse: "border-transparent bg-cta-bg text-cta-on [&>svg]:text-cta-on",
       },
     },
     defaultVariants: {
