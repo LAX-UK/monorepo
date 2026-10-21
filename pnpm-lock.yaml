@@ -78,6 +78,15 @@ importers:
       '@auction/identity-rp':
         specifier: workspace:*
         version: link:../../packages/identity-rp
+      '@auction/lax-ecosystem':
+        specifier: workspace:*
+        version: link:../../packages/lax-ecosystem
+      '@auction/marketing-ui':
+        specifier: workspace:*
+        version: link:../../packages/marketing-ui
+      '@auction/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       ioredis:
         specifier: ^5.6.1
         version: 5.10.1

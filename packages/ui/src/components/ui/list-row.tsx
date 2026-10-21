@@ -9,6 +9,8 @@ export type ListRowProps = {
   subtitle?: React.ReactNode;
   value?: React.ReactNode;
   trailing?: React.ReactNode;
+  /** Renders the row as a link; takes precedence over `onAction`. */
+  href?: string;
   onAction?: () => void;
   disabled?: boolean;
   className?: string;
@@ -20,11 +22,12 @@ export function ListRow({
   subtitle,
   value,
   trailing,
+  href,
   onAction,
   disabled,
   className,
 }: ListRowProps) {
-  const interactive = Boolean(onAction) && !disabled;
+  const interactive = Boolean(href || onAction) && !disabled;
 
   const rowClass = cn(
     "flex w-full min-h-[var(--tap-target-min,44px)] items-center gap-3 px-4 py-3 text-left",
@@ -50,6 +53,14 @@ export function ListRow({
       {trailing ? <span className="shrink-0">{trailing}</span> : null}
     </>
   );
+
+  if (interactive && href) {
+    return (
+      <a href={href} className={rowClass}>
+        {inner}
+      </a>
+    );
+  }
 
   if (interactive) {
     return (
