@@ -2,6 +2,7 @@
 
 import { cn } from "@auction/ui";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 export type MarketingUtilityBarItem = {
   label: string;
@@ -14,6 +15,8 @@ export type MarketingUtilityBarProps = {
   className?: string;
   linkClassName?: string;
   resolveLinkClassName?: (item: MarketingUtilityBarItem) => string | undefined;
+  /** Right-aligned actions (sign-in, enquire); rendered after, and outside, the utility landmark. */
+  trailing?: ReactNode;
 };
 
 function isExternalHref(href: string): boolean {
@@ -25,8 +28,9 @@ export function MarketingUtilityBar({
   className,
   linkClassName,
   resolveLinkClassName,
+  trailing,
 }: MarketingUtilityBarProps) {
-  return (
+  const nav = (
     <nav
       aria-label="Utility"
       className={cn("flex flex-wrap items-center justify-end gap-6", className)}
@@ -55,5 +59,12 @@ export function MarketingUtilityBar({
         );
       })}
     </nav>
+  );
+  if (!trailing) return nav;
+  return (
+    <div className="flex items-center justify-between gap-6">
+      {nav}
+      <div className="flex shrink-0 items-center gap-6">{trailing}</div>
+    </div>
   );
 }

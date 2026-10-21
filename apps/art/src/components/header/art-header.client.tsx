@@ -1,10 +1,16 @@
 "use client";
 
-import { ArtHeaderAccountMenu } from "@/components/header/art-header-account-menu";
 import { ArtHeaderFavoritesLink } from "@/components/header/art-header-favorites-link";
+import { ArtHeaderUtilityActions } from "@/components/header/art-header-utility-actions";
 import { ArtMobileNavDrawer } from "@/components/header/art-mobile-nav-drawer";
 import { ArtThemeToggle } from "@/components/header/art-theme-toggle";
-import { buildArtNavItems } from "@/lib/layout/art-nav.vm";
+import {
+  type ArtHeaderNavData,
+  buildArtMegaNavSections,
+  buildArtNavItems,
+  buildArtSearchSuggestions,
+  resolveArtNavKey,
+} from "@/lib/layout/art-nav.vm";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
 import {
@@ -12,27 +18,34 @@ import {
   MARKETING_HEADER_CHROME,
   MarketingChromeIconButton,
   MarketingCloseIcon,
+  MarketingHeaderMegaNav,
+  MarketingHeaderSearch,
   MarketingMenuIcon,
   MarketingSearchIcon,
   MarketingUtilityBar,
   type MarketingUtilityBarItem,
   headerChromeIconClass,
   headerProductLinkClass,
-  headerUtilityLinkClass,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+const RECENT_SEARCHES_KEY = "lax-art:recent-searches";
 
 type ArtHeaderClientProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
+  headerNav: ArtHeaderNavData | null;
 };
 
-export function ArtHeaderClient({ account, productLinks }: ArtHeaderClientProps) {
+export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderClientProps) {
   const pathname = usePathname();
   const nav = buildArtNavItems(pathname);
+  const activeKey = resolveArtNavKey(pathname);
+  const megaSections = useMemo(() => buildArtMegaNavSections(headerNav), [headerNav]);
+  const searchSuggestions = useMemo(() => buildArtSearchSuggestions(headerNav), [headerNav]);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasMenuOpenRef = useRef(false);
@@ -98,77 +111,86 @@ export function ArtHeaderClient({ account, productLinks }: ArtHeaderClientProps)
     >
       <div
         className={cn(
-          "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-3 py-2 lg:gap-4 lg:pt-3 lg:pb-4",
+          "mx-auto flex max-w-[var(--container-max,1440px)] flex-col py-2 lg:pt-1 lg:pb-0",
           MARKETING_PAGE_GUTTER_X,
         )}
       >
-        {utilityItems.length > 0 ? (
-          <div className="hidden lg:block">
-            <MarketingUtilityBar
-              className="justify-start"
-              items={utilityItems}
-              resolveLinkClassName={(item: MarketingUtilityBarItem) =>
-                headerProductLinkClass(headerTone, item.current ?? false)
-              }
-            />
-          </div>
-        ) : null}
+        <div className="hidden lg:block">
+          <MarketingUtilityBar
+            className="justify-start"
+            items={utilityItems}
+            resolveLinkClassName={(item: MarketingUtilityBarItem) =>
+              headerProductLinkClass(headerTone, item.current ?? false)
+            }
+            trailing={
+              <>
+                {/* Figma has no theme control; the utility row keeps it out of the busy nav row. */}
+                <ArtThemeToggle headerTone={headerTone} />
+                <ArtHeaderUtilityActions
+                  account={account}
+                  productLinks={productLinks}
+                  pathname={pathname}
+                />
+              </>
+            }
+          />
+        </div>
 
-        <div className="flex h-14 items-center justify-between gap-4 lg:h-16">
-          <Link
-            href="/"
-            className={cn("min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
-            aria-label="LAX Art home"
-          >
-            <LaxLogo variant="header" src="/brand/lax-logo.svg" className="art-header__logo" />
-          </Link>
-
-          <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
-            {nav.map((item) => (
+        <div className="flex h-14 items-center lg:h-auto">
+          <MarketingHeaderMegaNav
+            sections={megaSections}
+            isSectionActive={(section) => section.key === activeKey}
+            resetKey={pathname}
+            panelId="art-header-megamenu"
+            headerTone={headerTone}
+            logo={
               <Link
-                key={item.href}
-                href={item.href}
-                aria-current={item.active ? "page" : undefined}
-                className={headerUtilityLinkClass(headerTone, item.active)}
+                href="/"
+                className={cn("min-w-[76px] shrink-0 rounded-sm lg:py-2.5", FOCUS_RING)}
+                aria-label="LAX Art home"
               >
-                {item.label}
+                <LaxLogo variant="header" src="/brand/lax-logo.svg" className="art-header__logo" />
               </Link>
-            ))}
-          </nav>
-
-          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
-            <Link
-              href="/search"
-              aria-label="Search"
-              className={cn(
-                "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm",
-                headerChromeIconClass(headerTone),
-                FOCUS_RING,
-              )}
-            >
-              <MarketingSearchIcon className="size-5" aria-hidden />
-            </Link>
-            {/* Below md the bottom tab bar carries Favourites. */}
-            <div className="hidden md:flex">
-              <ArtHeaderFavoritesLink />
-            </div>
-            <div className="hidden lg:flex">
-              <ArtThemeToggle headerTone={headerTone} />
-            </div>
-            <div className="hidden lg:flex" data-testid="art-header-desktop-account">
-              <ArtHeaderAccountMenu account={account} productLinks={productLinks} />
-            </div>
-            <MarketingChromeIconButton
-              ref={menuButtonRef}
-              label={menuOpen ? "Close menu" : "Open menu"}
-              className={cn("lg:hidden", headerChromeIconClass(headerTone))}
-              aria-haspopup="dialog"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {menuOpen ? <MarketingCloseIcon /> : <MarketingMenuIcon />}
-            </MarketingChromeIconButton>
-          </div>
+            }
+            trailing={
+              <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
+                {/* Narrower desktops cannot fit the five nav labels and the 231px field. */}
+                <div className="hidden min-[88rem]:flex">
+                  <MarketingHeaderSearch
+                    action="/search"
+                    recentStorageKey={RECENT_SEARCHES_KEY}
+                    suggestions={searchSuggestions}
+                    headerTone={headerTone}
+                  />
+                </div>
+                <Link
+                  href="/search"
+                  aria-label="Search"
+                  className={cn(
+                    "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm min-[88rem]:hidden",
+                    headerChromeIconClass(headerTone),
+                    FOCUS_RING,
+                  )}
+                >
+                  <MarketingSearchIcon className="size-5" aria-hidden />
+                </Link>
+                {/* Below md the bottom tab bar carries Favourites. */}
+                <div className="hidden md:flex">
+                  <ArtHeaderFavoritesLink />
+                </div>
+                <MarketingChromeIconButton
+                  ref={menuButtonRef}
+                  label={menuOpen ? "Close menu" : "Open menu"}
+                  className={cn("lg:hidden", headerChromeIconClass(headerTone))}
+                  aria-haspopup="dialog"
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((open) => !open)}
+                >
+                  {menuOpen ? <MarketingCloseIcon /> : <MarketingMenuIcon />}
+                </MarketingChromeIconButton>
+              </div>
+            }
+          />
         </div>
 
         <ArtMobileNavDrawer

@@ -1,5 +1,5 @@
 import { ArtAnalyticsConsent } from "@/components/analytics/art-analytics-consent.client";
-import { ArtHeader } from "@/components/header/art-header";
+import { ArtHeaderClient } from "@/components/header/art-header.client";
 import { ArtFooter } from "@/components/layout/art-footer";
 import { ArtMobileBottomNav } from "@/components/layout/art-mobile-bottom-nav.client";
 import { ArtSmoothScroll } from "@/components/layout/art-smooth-scroll.client";
@@ -73,7 +73,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <a href="#main-content" className="art-skip-link">
             Skip to content
           </a>
-          <ArtHeader />
+          <ArtHeaderClient
+            account={chrome.account}
+            productLinks={chrome.productLinks}
+            headerNav={chrome.headerNav}
+          />
           <main
             id="main-content"
             tabIndex={-1}

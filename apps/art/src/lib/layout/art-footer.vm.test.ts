@@ -34,8 +34,8 @@ describe("buildArtFooterVm", () => {
       cookieSettings: false,
     });
     expect(vm.columns.map((column) => column.id)).toEqual([
-      "explore",
-      "discover",
+      "about",
+      "services",
       "account",
       "lax-products",
       "legal",
@@ -43,6 +43,39 @@ describe("buildArtFooterVm", () => {
     expect(vm.columns[2]?.links).toEqual([
       { label: "Sign in", href: "/login" },
       { label: "Create account", href: "/register" },
+    ]);
+  });
+
+  it("fills the columns with Figma's links that have Art routes", () => {
+    const vm = buildArtFooterVm({
+      crossProductLinks: [],
+      accountState: { kind: "authenticated" },
+      cookieSettings: false,
+    });
+    const linksOf = (id: string) => vm.columns.find((column) => column.id === id)?.links ?? [];
+    expect(vm.columns.map((column) => column.title)).toEqual([
+      "About us",
+      "Our services",
+      "Account",
+      "Legal",
+    ]);
+    expect(linksOf("about")).toEqual([
+      { label: "Visit", href: "/visit" },
+      { label: "Contact", href: "/contact" },
+    ]);
+    expect(linksOf("services").map((link) => link.href)).toEqual([
+      "/how-to-buy",
+      "/how-to-sell",
+      "/collector-hub",
+    ]);
+    expect(linksOf("legal").map((link) => link.href)).toEqual([
+      "/legal/privacy",
+      "/legal/cookies",
+      "/legal/returns",
+      "/legal/shipping",
+      "/legal/terms",
+      "/legal/accessibility",
+      "/legal/modern-slavery",
     ]);
   });
 });
