@@ -105,7 +105,7 @@ describe("summary cards", () => {
         featured: false,
         venue: { slug: "marylebone", name: "LAX Marylebone" },
       }),
-    ).toMatchObject({ kicker: "Exhibition", place: "LAX Marylebone" });
+    ).toMatchObject({ kicker: "Exhibition", kickerDetail: "LAX Marylebone" });
     expect(
       storyCard({
         slug: "studio-visit",

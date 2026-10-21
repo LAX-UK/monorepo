@@ -25,7 +25,11 @@ import {
   storyCard,
 } from "@/lib/editorial/editorial-card.vm";
 import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
-import { exhibitionHasEnded, exhibitionMetaLine } from "@/lib/editorial/editorial-page-title.vm";
+import {
+  type PageSectionTab,
+  exhibitionHasEnded,
+  exhibitionMetaLine,
+} from "@/lib/editorial/editorial-page-title.vm";
 import {
   type ExhibitionArtistVm,
   type ExhibitionFactsVm,
@@ -36,6 +40,13 @@ import {
   buildExhibitionPress,
   buildExhibitionReveals,
 } from "@/lib/editorial/exhibition-page.vm";
+import { type HubFeatureCardVm, guideCard, hubFeatureCards } from "@/lib/editorial/hub-card.vm";
+import {
+  exhibitionsAtVenue,
+  venueCardAddressLines,
+  venueMapsHref,
+  venueSectionTabs,
+} from "@/lib/editorial/venue.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
@@ -299,11 +310,34 @@ export type VenueFactsVm = {
   addressLine: string | null;
 };
 
-export type VenueCardVm = VenueFactsVm & { href: string };
+/** A listed venue as the `/visit` index card shows it. */
+export type VenueIndexCardVm = {
+  slug: string;
+  name: string;
+  href: string;
+  imageUrl: string | null;
+  addressLines: string[];
+};
 
-export type VisitPageVm = { venues: VenueCardVm[] };
+export type VisitPageVm = {
+  /** The CMS "visit" page title when one is published. */
+  title: string;
+  /** First paragraph of the CMS "visit" page; null without one. */
+  intro: string | null;
+  venues: VenueIndexCardVm[];
+};
 
-export type VenuePageVm = VenueFactsVm & { body: EditorialBodyVm };
+export type VenuePageVm = VenueFactsVm & {
+  body: EditorialBodyVm;
+  /** Google Maps directions; null when the venue has no coordinates, address or map link. */
+  mapsHref: string | null;
+  /** Whether any location fact (address, hours, phone, email, directions) can be shown. */
+  hasLocation: boolean;
+  /** Current exhibitions held at this venue. */
+  exhibitions: EditorialCardVm[];
+  /** Jump-to tabs for the sections that render. */
+  sectionTabs: PageSectionTab[];
+};
 
 export function venueHref(slug: string): string {
   return `/visit/${encodeURIComponent(slug)}`;
@@ -324,35 +358,70 @@ function venueFacts(venue: ArtEditorialVenueDetail): VenueFactsVm {
 }
 
 const VISIT_VENUES_LIMIT = 6;
+const VISIT_PAGE_SLUG = "visit";
+const VISIT_DEFAULT_TITLE = "LAX's Locations";
 
-/** Published venues with address and hours; venues whose detail read fails are skipped. */
+/**
+ * Published venues straight from the list (it carries the card address, so there are no
+ * per-venue reads). An optional CMS page with slug "visit" supplies the title and intro.
+ */
 export async function composeVisitPage(
-  services: Pick<Services<"listVenues" | "getVenue">, "editorial">,
+  services: Pick<Services<"listVenues" | "getPage">, "editorial">,
 ): Promise<ArtEditorialPageResult<VisitPageVm>> {
-  const list = await services.editorial.listVenues();
+  const [list, page] = await Promise.all([
+    services.editorial.listVenues(),
+    services.editorial.getPage(VISIT_PAGE_SLUG),
+  ]);
   if (list.status !== "ok") return passThrough(list);
-  const details = await Promise.all(
-    list.data.items
-      .slice(0, VISIT_VENUES_LIMIT)
-      .map((item) => services.editorial.getVenue(item.slug)),
-  );
-  const venues = details.flatMap((detail) =>
-    detail.status === "ok"
-      ? [{ ...venueFacts(detail.data), href: venueHref(detail.data.slug) }]
-      : [],
-  );
-  if (list.data.items.length > 0 && venues.length === 0) return { status: "error" };
-  return { status: "ok", data: { venues } };
+  const venues = list.data.items.slice(0, VISIT_VENUES_LIMIT).map((item) => ({
+    slug: item.slug,
+    name: item.name,
+    href: venueHref(item.slug),
+    imageUrl: item.coverUrl,
+    addressLines: venueCardAddressLines(item),
+  }));
+  return {
+    status: "ok",
+    data: {
+      title: page.status === "ok" ? page.data.title : VISIT_DEFAULT_TITLE,
+      intro: page.status === "ok" ? firstParagraphText(page.data.body) : null,
+      venues,
+    },
+  };
 }
 
 export async function composeVenuePage(
-  services: Services<"getVenue">,
+  services: Services<"getVenue" | "listExhibitions">,
   slug: string,
 ): Promise<ArtEditorialPageResult<VenuePageVm>> {
-  const result = await services.editorial.getVenue(slug);
+  const [result, current] = await Promise.all([
+    services.editorial.getVenue(slug),
+    services.editorial.listExhibitions("current"),
+  ]);
   if (result.status !== "ok") return passThrough(result);
+  const facts = venueFacts(result.data);
   const body = await composeEditorialBody(result.data.body, services, venueHref(result.data.slug));
-  return { status: "ok", data: { ...venueFacts(result.data), body } };
+  const mapsHref = venueMapsHref(result.data);
+  const exhibitions =
+    current.status === "ok" ? exhibitionsAtVenue(current.data.items, result.data.slug) : [];
+  const hasLocation = Boolean(
+    facts.addressLine ||
+      facts.hours.length > 0 ||
+      result.data.phone ||
+      result.data.email ||
+      mapsHref,
+  );
+  return {
+    status: "ok",
+    data: {
+      ...facts,
+      body,
+      mapsHref,
+      hasLocation,
+      exhibitions,
+      sectionTabs: venueSectionTabs({ location: hasLocation, exhibitions: exhibitions.length > 0 }),
+    },
+  };
 }
 
 export type HubPageVm = { spotlight: EditorialCardVm[]; stories: EditorialCardVm[] };
@@ -379,13 +448,29 @@ export async function composeArtHubPage(
 
 export async function composeCollectorHubPage(
   services: Pick<Services<"home">, "editorial">,
-): Promise<ArtEditorialPageResult<{ cards: EditorialCardVm[] }>> {
+): Promise<ArtEditorialPageResult<{ cards: HubFeatureCardVm[] }>> {
   const home = await services.editorial.home();
   if (home.status !== "ok") return passThrough(home);
+  return { status: "ok", data: { cards: hubFeatureCards(home.data.placements) } };
+}
+
+export type GuideIndexVm = { page: EditorialPageVm; guides: EditorialCardVm[] };
+
+/** The guide index page plus every published story of kind `guide`; a failed list shows none. */
+export async function composeGuideIndexPage(
+  services: Services<"getPage" | "listStories">,
+  slug: string,
+): Promise<ArtEditorialPageResult<GuideIndexVm>> {
+  const [page, stories] = await Promise.all([
+    composeEditorialPage(services, slug),
+    services.editorial.listStories({ kind: "guide" }),
+  ]);
+  if (page.status !== "ok") return page;
   return {
     status: "ok",
     data: {
-      cards: buildPlacementCards(home.data.placements, "collector_hub_card", "Collector resource"),
+      page: page.data,
+      guides: stories.status === "ok" ? stories.data.items.map(guideCard) : [],
     },
   };
 }

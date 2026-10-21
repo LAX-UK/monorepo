@@ -2,11 +2,15 @@ import {
   ArtEditorialPageView,
   editorialPageMetadata,
 } from "@/components/editorial/art-editorial-page-view";
+import { ArtHowToBuySteps } from "@/components/editorial/art-how-to-buy-steps";
+import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
 import { EDITORIAL_GUIDE_ROUTES } from "@/lib/editorial/editorial-page-routes";
 import { loadEditorialPage } from "@/lib/editorial/editorial-page.loader.server";
-import { Button } from "@auction/ui/components/button";
+import { howToBuySteps } from "@/lib/editorial/how-to-buy.vm";
+import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingPageTitle } from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 const SLUG = "how-to-buy";
 const route = () => EDITORIAL_GUIDE_ROUTES[SLUG];
@@ -16,26 +20,27 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HowToBuyPage() {
+  const result = await loadEditorialPage(SLUG);
+  const mapped =
+    result.status === "ok" && result.data.canonicalPath === route()
+      ? howToBuySteps(result.data.body.blocks)
+      : null;
+
+  // Bodies that do not follow the heading + prose + FAQ structure keep their authored layout.
+  if (result.status !== "ok" || !mapped) {
+    return <ArtEditorialPageView result={result} routeFor={route} titleBand={{}} />;
+  }
+
   return (
-    <ArtEditorialPageView
-      result={await loadEditorialPage(SLUG)}
-      routeFor={route}
-      titleBand={{}}
-      aside={
-        <div className="flex flex-wrap gap-3">
-          <Button asChild size="lg" className="min-h-11 font-label uppercase tracking-wide">
-            <Link href="/artworks">Browse artworks</Link>
-          </Button>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="min-h-11 font-label uppercase tracking-wide"
-          >
-            <Link href="/contact">Talk to an advisor</Link>
-          </Button>
-        </div>
-      }
-    />
+    <article className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 pb-10 lg:pb-16")}>
+      <MarketingPageTitle title={result.data.title} />
+      {mapped.preamble.length > 0 ? (
+        <EditorialBlockRenderer
+          body={{ blocks: mapped.preamble, rails: result.data.body.rails }}
+          className="mx-auto w-full max-w-3xl"
+        />
+      ) : null}
+      <ArtHowToBuySteps steps={mapped.steps} />
+    </article>
   );
 }

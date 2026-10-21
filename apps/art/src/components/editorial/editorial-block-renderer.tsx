@@ -32,7 +32,7 @@ type RenderContext = { idPrefix: string; index: number; rail: EditorialRailVm | 
 const PROSE = "max-w-prose text-base leading-relaxed text-on-surface";
 const INLINE_LINK = "text-link underline underline-offset-4 hover:no-underline art-focus-ring";
 
-function InlineSpans({ spans }: { spans: readonly EditorialInlineSpan[] }) {
+export function InlineSpans({ spans }: { spans: readonly EditorialInlineSpan[] }) {
   return spans.map((span, index) => {
     const marks = span.marks ?? [];
     let node: ReactNode = span.text;

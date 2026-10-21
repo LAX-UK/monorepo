@@ -25,6 +25,8 @@ export type ArtEditorialPageViewProps = {
   titleBand?: { subtitle?: string; chip?: MarketingPageTitleChip };
   /** Call to action rendered after the body (e.g. enquiry panel). */
   aside?: ReactNode;
+  /** Full-width section between the body and `aside` (e.g. the guide card grid). */
+  afterBody?: ReactNode;
   /** Slug routes 404 when editorial is off; fixed guide routes keep a "coming soon" state. */
   notFoundWhenDisabled?: boolean;
 };
@@ -36,6 +38,7 @@ export function ArtEditorialPageView({
   breadcrumbs,
   titleBand,
   aside,
+  afterBody,
   notFoundWhenDisabled = false,
 }: ArtEditorialPageViewProps) {
   if (result.status !== "ok" && (result.status !== "disabled" || notFoundWhenDisabled)) {
@@ -77,6 +80,7 @@ export function ArtEditorialPageView({
         />
       )}
       <EditorialBlockRenderer body={result.data.body} className={column} />
+      {afterBody}
       {aside ? (
         <div className={cn(column, "flex flex-col gap-3 border-t border-border-hairline pt-8")}>
           {aside}

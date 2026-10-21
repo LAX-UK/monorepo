@@ -8,9 +8,11 @@ import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   composeArtHubPage,
+  composeCollectorHubPage,
   composeEditorialPage,
   composeExhibitionDetailPage,
   composeExhibitionsPage,
+  composeGuideIndexPage,
   composeVenuePage,
   composeVisitPage,
   parseExhibitionStatus,
@@ -308,26 +310,82 @@ describe("composeExhibitionDetailPage", () => {
 });
 
 describe("composeVisitPage", () => {
-  it("loads every venue detail and reports error only when all details fail", async () => {
-    const services = fakeArtServices();
-    services.editorial.listVenues.mockResolvedValue({
-      status: "ok",
-      data: { items: [{ slug: "mayfair", name: "LAX Mayfair", coverUrl: null }] },
-    });
-    services.editorial.getVenue.mockResolvedValue({ status: "ok", data: venue() });
-    const ok = await composeVisitPage(services);
-    expect(ok.status === "ok" && ok.data.venues[0]).toMatchObject({
-      href: "/visit/mayfair",
-      addressLine: "1 Bond Street, W1",
-      hours: [{ label: "Tue – Sat", value: "10:00 – 18:00" }],
-    });
+  const listed = {
+    slug: "mayfair",
+    name: "LAX Mayfair",
+    coverUrl: null,
+    streetLine: "1 Bond Street",
+    postcode: "W1S 1AA",
+    city: "London",
+  };
 
-    services.editorial.getVenue.mockResolvedValue({ status: "error" });
+  it("builds cards from the list alone, without per-venue reads", async () => {
+    const services = fakeArtServices();
+    services.editorial.listVenues.mockResolvedValue({ status: "ok", data: { items: [listed] } });
+    const result = await composeVisitPage(services);
+    expect(result).toEqual({
+      status: "ok",
+      data: {
+        title: "LAX's Locations",
+        intro: null,
+        venues: [
+          {
+            slug: "mayfair",
+            name: "LAX Mayfair",
+            href: "/visit/mayfair",
+            imageUrl: null,
+            addressLines: ["1 Bond Street", "London W1S 1AA"],
+          },
+        ],
+      },
+    });
+    expect(services.editorial.getVenue).not.toHaveBeenCalled();
+  });
+
+  it("takes the title and intro from a published visit page", async () => {
+    const services = fakeArtServices();
+    services.editorial.listVenues.mockResolvedValue({ status: "ok", data: { items: [] } });
+    services.editorial.getPage.mockResolvedValue({
+      status: "ok",
+      data: {
+        slug: "visit",
+        title: "Visit LAX",
+        body: [
+          {
+            type: "richText",
+            spans: [{ text: "Two galleries in the heart of London, open to everyone." }],
+          },
+        ],
+      },
+    });
+    const result = await composeVisitPage(services);
+    expect(result.status === "ok" && result.data).toMatchObject({
+      title: "Visit LAX",
+      intro: "Two galleries in the heart of London, open to everyone.",
+      venues: [],
+    });
+  });
+
+  it("passes through a failed venue list", async () => {
+    const services = fakeArtServices();
+    services.editorial.listVenues.mockResolvedValue({ status: "error" });
     expect(await composeVisitPage(services)).toEqual({ status: "error" });
   });
 });
 
 describe("composeVenuePage", () => {
+  const exhibitionAt = (slug: string, venueSlug: string | null) => ({
+    slug,
+    kind: "exhibition" as const,
+    title: slug,
+    summary: null,
+    startsOn: null,
+    endsOn: null,
+    coverUrl: null,
+    featured: false,
+    venue: venueSlug ? { slug: venueSlug, name: venueSlug } : null,
+  });
+
   it("returns the venue facts and body, and passes through not found", async () => {
     const services = fakeArtServices();
     services.editorial.getVenue.mockResolvedValue({
@@ -343,6 +401,154 @@ describe("composeVenuePage", () => {
 
     services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
     expect(await composeVenuePage(services, "nowhere")).toEqual({ status: "not_found" });
+  });
+
+  it("lists current exhibitions at the venue from one list read", async () => {
+    const services = fakeArtServices();
+    services.editorial.getVenue.mockResolvedValue({ status: "ok", data: venue() });
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          exhibitionAt("here", "mayfair"),
+          exhibitionAt("there", "soho"),
+          exhibitionAt("x", null),
+        ],
+      },
+    });
+    const result = await composeVenuePage(services, "mayfair");
+    expect(result.status === "ok" && result.data.exhibitions.map((c) => c.href)).toEqual([
+      "/exhibitions/here",
+    ]);
+    expect(result.status === "ok" && result.data.sectionTabs.map((t) => t.id)).toEqual([
+      "location",
+      "exhibitions",
+    ]);
+    expect(services.editorial.listExhibitions).toHaveBeenCalledTimes(1);
+    expect(services.editorial.listExhibitions).toHaveBeenCalledWith("current");
+  });
+
+  it("hides exhibitions and the jump-to bar when there is nothing to jump to", async () => {
+    const services = fakeArtServices();
+    services.editorial.getVenue.mockResolvedValue({ status: "ok", data: venue() });
+    services.editorial.listExhibitions.mockResolvedValue({ status: "error" });
+    const result = await composeVenuePage(services, "mayfair");
+    expect(result.status === "ok" && result.data).toMatchObject({
+      exhibitions: [],
+      sectionTabs: [],
+      hasLocation: true,
+    });
+  });
+
+  it("hides the location section when the venue has no facts at all", async () => {
+    const services = fakeArtServices();
+    services.editorial.getVenue.mockResolvedValue({
+      status: "ok",
+      data: venue({ address: null, postcode: null, openingHours: null }),
+    });
+    const result = await composeVenuePage(services, "mayfair");
+    expect(result.status === "ok" && result.data).toMatchObject({
+      hasLocation: false,
+      mapsHref: null,
+    });
+  });
+});
+
+describe("composeCollectorHubPage", () => {
+  it("maps collector_hub_card placements to feature cards with body and CTA label", async () => {
+    const services = fakeArtServices();
+    services.editorial.home.mockResolvedValue({
+      status: "ok",
+      data: {
+        placements: [
+          {
+            slot: "collector_hub_card",
+            position: 1,
+            headline: "Art advisory",
+            body: "Guidance.",
+            ctaLabel: null,
+            mediaUrl: "/a.webp",
+            linkUrl: null,
+            refKind: "page",
+            refSlug: "art-advisory",
+          },
+          {
+            slot: "home_hero",
+            position: 0,
+            headline: "Other slot",
+            mediaUrl: null,
+            linkUrl: null,
+            refKind: "page",
+            refSlug: null,
+          },
+        ],
+      },
+    });
+    const result = await composeCollectorHubPage(services);
+    expect(result).toEqual({
+      status: "ok",
+      data: {
+        cards: [
+          {
+            key: "collector_hub_card-1",
+            href: "/collector-hub/art-advisory",
+            title: "Art advisory",
+            body: "Guidance.",
+            ctaLabel: null,
+            imageUrl: "/a.webp",
+          },
+        ],
+      },
+    });
+  });
+});
+
+describe("composeGuideIndexPage", () => {
+  const page = {
+    status: "ok" as const,
+    data: { slug: "101-guide", title: "Collecting 101", body: [] },
+  };
+
+  it("returns the page and guide cards with read time, asking only for guides", async () => {
+    const services = fakeArtServices();
+    services.editorial.getPage.mockResolvedValue(page);
+    services.editorial.listStories.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          {
+            slug: "first",
+            kind: "guide",
+            title: "First guide",
+            standfirst: "x",
+            coverUrl: null,
+            featured: false,
+            readMinutes: 5,
+          },
+        ],
+      },
+    });
+    const result = await composeGuideIndexPage(services, "101-guide");
+    expect(result.status === "ok" && result.data.guides).toEqual([
+      expect.objectContaining({
+        href: "/stories/first",
+        kicker: "LAX Guide",
+        kickerDetail: "5 min read",
+        meta: null,
+      }),
+    ]);
+    expect(services.editorial.listStories).toHaveBeenCalledWith({ kind: "guide" });
+  });
+
+  it("shows no guides when the story list fails, and passes a missing page through", async () => {
+    const services = fakeArtServices();
+    services.editorial.getPage.mockResolvedValue(page);
+    services.editorial.listStories.mockResolvedValue({ status: "error" });
+    const result = await composeGuideIndexPage(services, "101-guide");
+    expect(result.status === "ok" && result.data.guides).toEqual([]);
+
+    services.editorial.getPage.mockResolvedValue({ status: "not_found" });
+    expect(await composeGuideIndexPage(services, "101-guide")).toEqual({ status: "not_found" });
   });
 });
 
