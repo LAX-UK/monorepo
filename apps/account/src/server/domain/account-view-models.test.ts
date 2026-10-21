@@ -56,7 +56,19 @@ describe("buildAccountLinks", () => {
       manageTwoStep: "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
       changePassword: "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
       verifyEmail: "https://test-auth.lax.bid/resend-verification?client_id=lax-account-web",
-      editProfile: "https://test.lax.bid/dashboard/settings/profile",
+      bidSettings: {
+        profile: "https://test.lax.bid/dashboard/settings/profile",
+        email: "https://test.lax.bid/dashboard/settings/account",
+        addresses: "https://test.lax.bid/dashboard/settings/addresses",
+        notifications: "https://test.lax.bid/dashboard/settings/notifications",
+        deleteAccount: "https://test.lax.bid/dashboard/settings/security",
+      },
+      support: {
+        helpCentre: "https://test.lax.bid/faq",
+        contact: "https://test.lax.bid/contact",
+        terms: "https://test.lax.bid/terms",
+        privacyPolicy: "https://test.lax.bid/privacy",
+      },
     });
   });
 
@@ -71,11 +83,13 @@ describe("buildAccountLinks", () => {
     expect(url.searchParams.get("email")).toBe("collector@example.com");
   });
 
-  it("omits the profile link when Bid is not configured", () => {
-    expect(
-      buildAccountLinks({ oidcIssuer: "http://localhost:3002", oidcClientId: "lax-account-web" })
-        .editProfile,
-    ).toBeNull();
+  it("omits Bid-hosted settings and support links when Bid is not configured", () => {
+    const links = buildAccountLinks({
+      oidcIssuer: "http://localhost:3002",
+      oidcClientId: "lax-account-web",
+    });
+    expect(links.bidSettings).toBeNull();
+    expect(links.support).toBeNull();
   });
 });
 

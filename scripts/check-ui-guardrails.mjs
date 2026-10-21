@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * UI guardrails for apps/web and apps/art — multiline-aware checks.
+ * UI guardrails for apps/web, apps/art and apps/account — multiline-aware checks.
  * Native form controls are also enforced by apps/web/scripts/check-native-form-controls.mjs (web lint).
  * apps/art follows the Apple model: primitives come from @auction/ui, @auction/marketing-ui, and
  * @auction/branding; the app owns layout, composition, and copy only (docs/DESIGN_SYSTEM.md).
+ * apps/account follows the same model, so it gets the same checks.
  */
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -11,6 +12,7 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const WEB_SRC = path.join(ROOT, "apps/web/src");
 const ART_SRC = path.join(ROOT, "apps/art/src");
+const ACCOUNT_SRC = path.join(ROOT, "apps/account/src");
 const SKIP_SUFFIX = [".test.ts", ".test.tsx"];
 const ALLOWED_FILE_INPUT = new Set([
   "document-upload-field.tsx",
@@ -126,6 +128,7 @@ function checkArtFile(rel, _base, text, violations) {
 const SURFACES = [
   { label: "apps/web/src", src: WEB_SRC, check: checkWebFile },
   { label: "apps/art/src", src: ART_SRC, check: checkArtFile },
+  { label: "apps/account/src", src: ACCOUNT_SRC, check: checkArtFile },
 ];
 
 let failed = false;
