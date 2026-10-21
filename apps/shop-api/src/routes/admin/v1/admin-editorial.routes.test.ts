@@ -9,6 +9,7 @@ vi.mock("@auction/auth/token-verifier", () => ({
 import { createShopApiApp } from "../../../app.js";
 import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
 import { createStubEditorialRepository } from "../../../test-support/stub-editorial-repository.js";
+import { createStubEditorialSearchReader } from "../../../test-support/stub-editorial-search-reader.js";
 
 const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 
@@ -39,6 +40,7 @@ describe("admin editorial routes", () => {
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        search: createStubEditorialSearchReader(),
         editorial: createStubEditorialRepository({
           listAdminGeneralEnquiries: async () => [
             {
@@ -91,6 +93,7 @@ describe("admin editorial routes", () => {
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        search: createStubEditorialSearchReader(),
         editorial: createStubEditorialRepository({ createPage }),
       },
     });

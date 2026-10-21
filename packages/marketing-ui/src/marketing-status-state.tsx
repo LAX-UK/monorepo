@@ -7,11 +7,12 @@ import {
   MarketingBagIcon,
   MarketingCircleAlertIcon,
   MarketingSearchIcon,
+  MarketingSearchRemoveIcon,
 } from "./marketing-icons.js";
 
 export type MarketingStatusStateLayout = "inline" | "page" | "banner";
 export type MarketingStatusStateVariant = "empty" | "error";
-export type MarketingStatusStateMotif = "search" | "bag" | "gallery" | "alert";
+export type MarketingStatusStateMotif = "search" | "search-remove" | "bag" | "gallery" | "alert";
 export type MarketingStatusStateAnnouncement = "none" | "polite" | "assertive";
 
 export type MarketingStatusStateProps = {
@@ -35,6 +36,7 @@ export type MarketingStatusMotifProps = {
 
 const MOTIF_ICONS = {
   search: MarketingSearchIcon,
+  "search-remove": MarketingSearchRemoveIcon,
   bag: MarketingBagIcon,
   alert: MarketingCircleAlertIcon,
 } as const;

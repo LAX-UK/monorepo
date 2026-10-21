@@ -14,6 +14,7 @@ import {
   ARTWORK_OBJECT_TYPES,
   ARTWORK_RARITIES,
 } from "../../application/artwork-catalogue-filters.js";
+import type { ArtworkSaleStateFilter } from "../../application/artwork-catalogue-filters.js";
 import type { CatalogueRoutesDeps } from "../../catalogue-route-deps.js";
 import { notFound } from "../../errors/shop-api-error.js";
 import { presentArtworkDetail, presentArtworkList } from "../../presenters/catalogue.presenter.js";
@@ -42,7 +43,11 @@ const ListQuerySchema = Type.Object({
   objectType: Type.Optional(commaListOf(ARTWORK_OBJECT_TYPES)),
   rarity: Type.Optional(commaListOf(ARTWORK_RARITIES)),
   salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
-  saleState: Type.Optional(PublicArtworkSaleStateSchema),
+  saleState: Type.Optional(
+    Type.Union([PublicArtworkSaleStateSchema, Type.Literal("available")], {
+      description: "`available` returns every work that is not sold (for sale or POA).",
+    }),
+  ),
   editionEligible: Type.Optional(Type.Boolean()),
   type: Type.Optional(PublicArtworkTypeFilterSchema),
   minPrice: Type.Optional(Type.Integer({ minimum: 0 })),
@@ -75,7 +80,7 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         objectType?: string;
         rarity?: string;
         salesChannel?: "shop" | "art";
-        saleState?: "for_sale" | "price_on_application" | "sold";
+        saleState?: ArtworkSaleStateFilter;
         editionEligible?: boolean;
         type?: "all" | "original" | "edition";
         minPrice?: number;

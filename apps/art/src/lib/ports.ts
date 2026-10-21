@@ -37,7 +37,8 @@ export type ArtArtworkListQuery = {
   categorySlug?: string;
   /** Works by any of these artists. */
   artistSlugs?: readonly string[];
-  saleState?: "for_sale" | "price_on_application" | "sold";
+  /** `available` is every work that is not sold: for sale or price on request. */
+  saleState?: "for_sale" | "price_on_application" | "sold" | "available";
   editionEligible?: boolean;
   type?: "all" | "original" | "edition";
   /** Works of any of these media. */
@@ -118,4 +119,10 @@ export type ArtEditorialPort = {
   listVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>>;
   getVenue(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialVenueDetail>>;
   preview(token: string): Promise<ArtEditorialFetchResult<ArtEditorialPreview>>;
+};
+
+/** Site search over published editorial (shop-api `?q=` on the exhibition and story lists). */
+export type ArtEditorialSearchPort = {
+  searchExhibitions(query: string): Promise<ArtEditorialFetchResult<ArtEditorialExhibitionList>>;
+  searchStories(query: string): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>>;
 };
