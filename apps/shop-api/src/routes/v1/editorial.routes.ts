@@ -1,4 +1,5 @@
 import {
+  EditorialArtistRelationsSchema,
   EditorialExhibitionDetailSchema,
   EditorialExhibitionStatusFilterSchema,
   EditorialExhibitionSummarySchema,
@@ -139,6 +140,23 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
       const story = await deps.editorial.getStoryBySlug(slug);
       if (!story) throw notFound("Story not found");
       return story;
+    },
+  );
+
+  app.get(
+    "/v1/editorial/artists/:slug",
+    {
+      schema: {
+        tags: ["editorial"],
+        params: Type.Object({ slug: Type.String() }),
+        response: { 200: EditorialArtistRelationsSchema, 404: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      const { slug } = request.params as { slug: string };
+      const relations = await deps.editorial.getArtistRelations(slug);
+      if (!relations) throw notFound("Artist not found");
+      return relations;
     },
   );
 

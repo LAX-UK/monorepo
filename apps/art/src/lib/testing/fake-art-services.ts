@@ -109,6 +109,7 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
       getExhibition: vi.fn().mockResolvedValue({ status: "disabled" }),
       listStories: vi.fn().mockResolvedValue({ status: "disabled" }),
       getStory: vi.fn().mockResolvedValue({ status: "disabled" }),
+      getArtistRelations: vi.fn().mockResolvedValue({ status: "disabled" }),
       listPages: vi.fn().mockResolvedValue({ status: "disabled" }),
       getPage: vi.fn().mockResolvedValue({ status: "disabled" }),
       listVenues: vi.fn().mockResolvedValue({ status: "disabled" }),

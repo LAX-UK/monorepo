@@ -59,6 +59,7 @@ export {
   type EditorialInlineSpan,
 } from "./editorial-blocks.js";
 export {
+  EditorialArtistRelationsSchema,
   EditorialExhibitionDetailSchema,
   EditorialExhibitionStatusFilterSchema,
   EditorialExhibitionSummarySchema,

@@ -1,4 +1,9 @@
 import type { EditorialBlock, SeoFields } from "@auction/shop-contracts";
+import type {
+  ArtistDetailReadModel,
+  ArtistSummaryReadModel,
+  ArtworkSummaryReadModel,
+} from "../read-models/catalogue.read-model.js";
 
 /** Omitted leaves the stored value unchanged on update; `null` clears it. */
 type SeoFieldsInput = Partial<SeoFields>;
@@ -38,13 +43,8 @@ export type EditorialExhibitionSummaryReadModel = {
   endsOn: string | null;
   coverUrl: string | null;
   featured: boolean;
-};
-
-export type EditorialExhibitionDetailReadModel = EditorialExhibitionSummaryReadModel & {
-  timesNote: string | null;
-  venueSlug: string | null;
-  body: EditorialBlock[];
-  installationMedia: { url: string; caption: string | null }[];
+  /** Only a published venue, so the storefront never links to a 404. */
+  venue: { slug: string; name: string } | null;
 };
 
 export type EditorialStorySummaryReadModel = {
@@ -54,6 +54,23 @@ export type EditorialStorySummaryReadModel = {
   standfirst: string | null;
   coverUrl: string | null;
   featured: boolean;
+  publishedAt: string | null;
+};
+
+/** Related records are published only, even on a draft preview. */
+export type EditorialExhibitionDetailReadModel = EditorialExhibitionSummaryReadModel & {
+  timesNote: string | null;
+  venueSlug: string | null;
+  body: EditorialBlock[];
+  installationMedia: { url: string; caption: string | null }[];
+  artworks: ArtworkSummaryReadModel[];
+  artists: ArtistDetailReadModel[];
+  stories: EditorialStorySummaryReadModel[];
+};
+
+export type EditorialArtistRelationsReadModel = {
+  exhibitions: EditorialExhibitionSummaryReadModel[];
+  stories: EditorialStorySummaryReadModel[];
 };
 
 export type EditorialStoryListItemReadModel = EditorialStorySummaryReadModel & {
@@ -70,6 +87,11 @@ export type EditorialStoryDetailReadModel = EditorialStorySummaryReadModel &
   SeoFields & {
     videoUrl: string | null;
     body: EditorialBlock[];
+    related: {
+      artists: ArtistSummaryReadModel[];
+      artworks: ArtworkSummaryReadModel[];
+      exhibitions: EditorialExhibitionSummaryReadModel[];
+    };
   };
 
 export type EditorialPageDetailReadModel = SeoFields & {
@@ -164,6 +186,8 @@ export type EditorialRepository = {
     slug: string,
     options?: { includeDraft?: boolean },
   ): Promise<EditorialStoryDetailReadModel | null>;
+  /** Null when no artist has this slug. */
+  getArtistRelations(artistSlug: string): Promise<EditorialArtistRelationsReadModel | null>;
   listPages(): Promise<EditorialPageSummaryReadModel[]>;
   getPageBySlug(
     slug: string,
