@@ -64,7 +64,11 @@ test.describe("lax.art discovery", () => {
 
   test("filters drawer opens on desktop, sorts via radio and cancels without navigating", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "chromium-desktop",
+      "the right-hand drawer is desktop-only",
+    );
     await page.goto("/artworks");
     await page
       .getByRole("button", { name: /^Filters/ })
