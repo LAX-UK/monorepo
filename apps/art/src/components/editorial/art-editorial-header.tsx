@@ -32,7 +32,7 @@ export function ArtEditorialHeader({
         {children}
       </div>
       {coverUrl ? (
-        <div className="relative aspect-[16/9] overflow-hidden rounded-md bg-surface-container lg:aspect-[21/9]">
+        <div className="relative aspect-[16/9] overflow-hidden bg-surface-container lg:aspect-[21/9]">
           <ArtMediaImage
             src={coverUrl}
             alt=""

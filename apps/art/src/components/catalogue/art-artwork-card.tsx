@@ -18,11 +18,11 @@ export function ArtArtworkCard({ card, favoriteAuth, priority = false }: ArtArtw
   return (
     <MarketingCardShell
       interactive={false}
-      className="flex h-full flex-col bg-transparent"
+      className="flex h-full flex-col rounded-none bg-transparent"
       data-testid="art-artwork-card"
     >
       <div className="relative">
-        <MarketingCardMedia className="aspect-square rounded-md bg-surface-container">
+        <MarketingCardMedia className="aspect-square bg-surface-container">
           <Link href={card.href} tabIndex={-1} className="absolute inset-0 block">
             <ArtMediaImage
               src={card.imageUrl}

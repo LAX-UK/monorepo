@@ -45,6 +45,19 @@ describe("Art theme contract", () => {
     }
   });
 
+  it("never uses LAX Bid's navy accent (LAX colour rule in docs/DESIGN_SYSTEM.md)", () => {
+    const BID_ACCENT = /brand-midnight|#0[89]1f5b\b/i;
+    for (const file of walk(artSrc)) {
+      const text = readFileSync(file, "utf8");
+      const match = text.match(BID_ACCENT);
+      assert.equal(
+        match,
+        null,
+        `${rel(file)} uses Bid's accent (${match?.[0]}); use neutral tokens.`,
+      );
+    }
+  });
+
   it("declares semantic tokens only in base.css among art stylesheets", () => {
     const files = walk(artSrc).filter((f) => f.endsWith(".css") && rel(f) !== TOKEN_FILE);
     for (const file of files) {

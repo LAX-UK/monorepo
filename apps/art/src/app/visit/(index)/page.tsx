@@ -62,7 +62,7 @@ export default async function VisitPage() {
                 className="flex flex-col gap-5"
                 data-testid="art-venue-card"
               >
-                <MarketingCardMedia className="aspect-[4/3] rounded-md bg-surface-container">
+                <MarketingCardMedia className="aspect-[4/3] bg-surface-container">
                   <ArtMediaImage
                     src={card.venue.coverUrl}
                     alt=""

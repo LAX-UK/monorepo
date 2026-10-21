@@ -63,7 +63,7 @@ function Figure({
     <figure className="flex flex-col gap-2">
       <div
         className={cn(
-          "relative overflow-hidden rounded-sm bg-surface-container",
+          "relative overflow-hidden bg-surface-container",
           aspect === "square" ? "aspect-square" : "aspect-[3/2]",
         )}
       >
@@ -197,7 +197,7 @@ const RENDERERS: {
             className="art-focus-ring group flex h-full flex-col gap-3 rounded-sm"
           >
             {item.mediaKey ? (
-              <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-surface-container">
+              <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
                 <ArtMediaImage
                   src={item.mediaKey}
                   alt=""

@@ -28,7 +28,7 @@ export function ArtSection({
         heading={
           <h2
             id={headingId}
-            className="font-headline text-[length:var(--text-title-section)] font-semibold text-on-surface"
+            className="font-headline text-[length:var(--text-title-section)] font-medium leading-[1.2] text-on-surface"
           >
             {title}
           </h2>
