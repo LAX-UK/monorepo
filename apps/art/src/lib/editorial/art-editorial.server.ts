@@ -5,6 +5,7 @@ import {
 } from "@/lib/art-catalogue.server";
 import { isArtEditorialEnabled } from "@/lib/art-runtime-flags";
 import type {
+  ArtEditorialArtistRelations,
   ArtEditorialExhibitionList,
   ArtEditorialFetchResult,
   ArtEditorialPageList,
@@ -13,6 +14,7 @@ import type {
   ArtEditorialVenueList,
 } from "@/lib/editorial/art-editorial.types";
 import {
+  EditorialArtistRelationsSchema,
   EditorialExhibitionDetailSchema,
   EditorialExhibitionSummarySchema,
   EditorialHomeResponseSchema,
@@ -91,6 +93,17 @@ export function fetchEditorialStoryBySlug(slug: string) {
   return fetchEditorial(
     slugPath("/v1/editorial/stories", slug),
     EditorialStoryDetailSchema,
+    ART_SLUG_LOOKUP,
+  );
+}
+
+/** Published exhibitions and stories featuring an artist; read fresh like other slug lookups. */
+export function fetchEditorialArtistRelations(
+  slug: string,
+): Promise<ArtEditorialFetchResult<ArtEditorialArtistRelations>> {
+  return fetchEditorial(
+    slugPath("/v1/editorial/artists", slug),
+    EditorialArtistRelationsSchema,
     ART_SLUG_LOOKUP,
   );
 }

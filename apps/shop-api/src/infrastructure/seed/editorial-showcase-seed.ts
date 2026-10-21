@@ -1,13 +1,20 @@
 import type { Database } from "@auction/db";
 import {
+  shopArtist,
+  shopArtwork,
   shopEditorialExhibition,
+  shopEditorialExhibitionArtist,
+  shopEditorialExhibitionArtwork,
   shopEditorialPage,
   shopEditorialPlacement,
   shopEditorialStory,
+  shopEditorialStoryArtist,
+  shopEditorialStoryArtwork,
+  shopEditorialStoryExhibition,
   shopEditorialVenue,
 } from "@auction/db/schema";
 import { type EditorialBlock, parseEditorialBlocks } from "@auction/shop-contracts";
-import { sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 const SEED_ACTOR = "seed:editorial-showcase";
 const VENUE_SLUG = "lax-marylebone";
@@ -417,7 +424,103 @@ async function upsertStory(
 
 type SeedPlacement = typeof shopEditorialPlacement.$inferInsert;
 
-/** Idempotent venue, exhibitions, stories, pages and placements for local lax.art demos. */
+async function idsBySlug(
+  db: Database,
+  table: typeof shopArtwork | typeof shopArtist,
+  slugs: readonly string[],
+): Promise<string[]> {
+  const rows = await db
+    .select({ id: table.id, slug: table.slug })
+    .from(table)
+    .where(inArray(table.slug, [...slugs]));
+  const idBySlug = new Map(rows.map((row) => [row.slug, row.id]));
+  return slugs.flatMap((slug) => idBySlug.get(slug) ?? []);
+}
+
+/** A show features the artists whose works hang in it. */
+async function artistIdsForWorks(db: Database, artworkIds: string[]): Promise<string[]> {
+  if (artworkIds.length === 0) return [];
+  const rows = await db
+    .selectDistinct({ artistId: shopArtwork.artistId })
+    .from(shopArtwork)
+    .where(inArray(shopArtwork.id, artworkIds));
+  return rows.map((row) => row.artistId);
+}
+
+/**
+ * Replaces the showcase's curated works, artists and cross-links so the exhibition and story
+ * pages have related content locally. Works and artists missing from `seed:catalogue` are skipped.
+ */
+async function seedEditorialJoins(
+  db: Database,
+  ids: { exhibitionId: string; upcomingId: string; storyId: string },
+): Promise<void> {
+  const [currentWorks, upcomingWorks, storyArtists] = await Promise.all([
+    idsBySlug(db, shopArtwork, SEED_ARTWORK_SLUGS),
+    idsBySlug(db, shopArtwork, SCULPTURE_ARTWORK_SLUGS),
+    idsBySlug(db, shopArtist, SEED_ARTIST_SLUGS),
+  ]);
+  const [currentArtists, upcomingArtists] = await Promise.all([
+    artistIdsForWorks(db, currentWorks),
+    artistIdsForWorks(db, upcomingWorks),
+  ]);
+  const exhibitionIds = [ids.exhibitionId, ids.upcomingId];
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(shopEditorialExhibitionArtwork)
+      .where(inArray(shopEditorialExhibitionArtwork.exhibitionId, exhibitionIds));
+    await tx
+      .delete(shopEditorialExhibitionArtist)
+      .where(inArray(shopEditorialExhibitionArtist.exhibitionId, exhibitionIds));
+    await tx
+      .delete(shopEditorialStoryArtist)
+      .where(eq(shopEditorialStoryArtist.storyId, ids.storyId));
+    await tx
+      .delete(shopEditorialStoryArtwork)
+      .where(eq(shopEditorialStoryArtwork.storyId, ids.storyId));
+    await tx
+      .delete(shopEditorialStoryExhibition)
+      .where(eq(shopEditorialStoryExhibition.storyId, ids.storyId));
+
+    const exhibitionWorks = [
+      ...currentWorks.map((artworkId, position) => ({
+        exhibitionId: ids.exhibitionId,
+        artworkId,
+        position,
+      })),
+      ...upcomingWorks.map((artworkId, position) => ({
+        exhibitionId: ids.upcomingId,
+        artworkId,
+        position,
+      })),
+    ];
+    const exhibitionArtists = [
+      ...currentArtists.map((artistId) => ({ exhibitionId: ids.exhibitionId, artistId })),
+      ...upcomingArtists.map((artistId) => ({ exhibitionId: ids.upcomingId, artistId })),
+    ];
+    if (exhibitionWorks.length > 0) {
+      await tx.insert(shopEditorialExhibitionArtwork).values(exhibitionWorks);
+    }
+    if (exhibitionArtists.length > 0) {
+      await tx.insert(shopEditorialExhibitionArtist).values(exhibitionArtists);
+    }
+    if (storyArtists.length > 0) {
+      await tx
+        .insert(shopEditorialStoryArtist)
+        .values(storyArtists.map((artistId) => ({ storyId: ids.storyId, artistId })));
+    }
+    if (currentWorks.length > 0) {
+      await tx
+        .insert(shopEditorialStoryArtwork)
+        .values(currentWorks.slice(0, 2).map((artworkId) => ({ storyId: ids.storyId, artworkId })));
+    }
+    await tx
+      .insert(shopEditorialStoryExhibition)
+      .values(exhibitionIds.map((exhibitionId) => ({ storyId: ids.storyId, exhibitionId })));
+  });
+}
+
+/** Idempotent venue, exhibitions, stories, pages, placements and joins for local lax.art demos. */
 export async function seedEditorialShowcase(db: Database): Promise<void> {
   const now = new Date();
   const venueId = await upsertVenue(db, now);
@@ -460,6 +563,7 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
   if (!exhibitionId || !upcomingId || !storyId || !guideId || !collectingGuideId || !advisoryId) {
     return;
   }
+  await seedEditorialJoins(db, { exhibitionId, upcomingId, storyId });
 
   const placements: SeedPlacement[] = [
     {

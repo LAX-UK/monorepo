@@ -1,84 +1,20 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopHomePlacement, shopParty } from "@auction/db/schema";
 import { maxItemsForPlacement } from "@auction/shop-domain";
-import { and, asc, count, desc, eq, exists, ilike, inArray, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, ilike, lt, or, sql } from "drizzle-orm";
 import type {
   ArtistDirectoryReader,
   ListPublicArtistsInput,
   ListPublicArtistsResult,
   PublicArtistSort,
 } from "../application/ports/artist-directory.reader.js";
-import {
-  type ArtistDirectoryRow,
-  toPublicArtistDetail,
-  toPublicArtistSummary,
-} from "./map-public-artist.js";
+import { toPublicArtistDetail, toPublicArtistSummary } from "./map-public-artist.js";
+import { artworkCountByArtistId, mapArtistRow } from "./public-artist-rows.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
 type ArtistDirectoryRepositoryOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
 };
-
-async function artworkCountByArtistId(
-  db: Database,
-  artistIds: string[],
-  salesChannel?: "shop" | "art",
-): Promise<Map<string, number>> {
-  if (artistIds.length === 0) {
-    return new Map();
-  }
-  const rows = await db
-    .select({
-      artistId: shopArtwork.artistId,
-      artworkCount: count(),
-    })
-    .from(shopArtwork)
-    .where(
-      and(
-        inArray(shopArtwork.artistId, artistIds),
-        salesChannel ? eq(shopArtwork.salesChannel, salesChannel) : undefined,
-      ),
-    )
-    .groupBy(shopArtwork.artistId);
-  return new Map(rows.map((row) => [row.artistId, row.artworkCount]));
-}
-
-function mapArtistRow(
-  row: {
-    slug: string;
-    name: string;
-    discipline: string | null;
-    bio: string | null;
-    shortBio: string | null;
-    portraitImageUrl: string | null;
-    heroMediaKey: string | null;
-    nationality: string | null;
-    birthYear: number | null;
-    deathYear: number | null;
-    seoTitle?: string | null;
-    seoDescription?: string | null;
-    artworkCount: number;
-  },
-  resolveMediaUrl: ArtistDirectoryRepositoryOptions["resolveMediaUrl"],
-): ArtistDirectoryRow {
-  return {
-    slug: row.slug,
-    name: row.name,
-    discipline: row.discipline,
-    bio: row.bio,
-    shortBio: row.shortBio,
-    portraitImageUrl: row.portraitImageUrl,
-    heroMediaKey: row.heroMediaKey,
-    nationality: row.nationality,
-    birthYear: row.birthYear,
-    deathYear: row.deathYear,
-    seoTitle: row.seoTitle ?? null,
-    seoDescription: row.seoDescription ?? null,
-    artworkCount: row.artworkCount,
-    portraitUrl: resolveMediaUrl(row.portraitImageUrl),
-    heroUrl: resolveMediaUrl(row.heroMediaKey),
-  };
-}
 
 function orderByForArtistSort(sort: PublicArtistSort | undefined) {
   switch (sort) {

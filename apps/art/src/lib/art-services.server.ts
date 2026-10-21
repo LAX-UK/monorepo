@@ -19,6 +19,7 @@ import { isArtPayoutsEnabled } from "@/lib/art-runtime-flags";
 import { loadArtViewerState } from "@/lib/art-viewer-state.server";
 import {
   artEditorialFeatureEnabled,
+  fetchEditorialArtistRelations,
   fetchEditorialExhibitionBySlug,
   fetchEditorialExhibitions,
   fetchEditorialHomePlacements,
@@ -88,6 +89,7 @@ export const artServices: ArtServices = {
     getExhibition: fetchEditorialExhibitionBySlug,
     listStories: fetchEditorialStories,
     getStory: fetchEditorialStoryBySlug,
+    getArtistRelations: fetchEditorialArtistRelations,
     listPages: fetchEditorialPages,
     getPage: fetchEditorialPageBySlug,
     listVenues: fetchEditorialVenues,
