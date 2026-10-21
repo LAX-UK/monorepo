@@ -15,14 +15,23 @@ test.describe("lax.art journeys", () => {
   });
 
   test("browse, filter, and open an artwork", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium-desktop", "filter rail is desktop-only");
+    test.skip(testInfo.project.name !== "chromium-desktop", "drawer copy is checked on desktop");
     await page.goto("/artworks");
     await expect(page.getByRole("heading", { level: 1, name: "Artworks" })).toBeVisible();
 
-    const originals = () => page.getByRole("button", { name: "Originals", exact: true }).first();
-    await originals().click();
+    const openFilters = () =>
+      page
+        .getByRole("button", { name: /^Filters/ })
+        .first()
+        .click();
+    const drawer = page.getByRole("dialog", { name: "Filters" });
+    await openFilters();
+    await drawer.getByRole("radio", { name: "Originals", exact: true }).check();
+    await drawer.getByRole("button", { name: "Apply" }).click();
     await expect(page).toHaveURL(/[?&]type=original/);
-    await expect(originals()).toHaveAttribute("aria-pressed", "true");
+    await openFilters();
+    await expect(drawer.getByRole("radio", { name: "Originals", exact: true })).toBeChecked();
+    await drawer.getByRole("button", { name: "Cancel" }).click();
 
     const cards = page.getByTestId("art-artwork-card");
     test.skip((await cards.count()) === 0, "no art-channel originals seeded");
