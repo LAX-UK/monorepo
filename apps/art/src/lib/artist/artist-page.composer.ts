@@ -46,7 +46,7 @@ export async function composeArtistPage(
   );
   const [artist, works] = await Promise.allSettled([
     services.catalogue.getArtist(slug),
-    services.catalogue.listArtworks({ artistSlug: slug, limit: 24 }),
+    services.catalogue.listArtworks({ artistSlugs: [slug], limit: 24 }),
   ]);
   const favorites = await favoritesPromise;
   if (artist.status === "rejected") return { kind: "unavailable" };

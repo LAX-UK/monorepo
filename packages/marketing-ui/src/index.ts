@@ -161,7 +161,22 @@ export {
   SplitFilterSheetFooter,
   type SplitFilterSheetFooterProps,
   type SplitFilterSheetProps,
+  type SplitFilterSheetVariant,
 } from "./split-filter-sheet.js";
+export type {
+  MarketingFilterOption,
+  MarketingFilterSelection,
+} from "./marketing-filter-option-list.js";
+export {
+  MarketingFilterAccordionSection,
+  type MarketingFilterAccordionSectionProps,
+  MarketingFilterFacetGroup,
+  type MarketingFilterFacetGroupProps,
+} from "./marketing-filter-facet-group.js";
+export {
+  MarketingFilterDropdown,
+  type MarketingFilterDropdownProps,
+} from "./marketing-filter-dropdown.js";
 export {
   CatalogFilterLiveRegion,
   type CatalogFilterLiveRegionProps,

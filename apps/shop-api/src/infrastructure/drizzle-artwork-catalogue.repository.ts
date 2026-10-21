@@ -197,8 +197,8 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   if (filter.salesChannel) {
     conditions.push(eq(shopArtwork.salesChannel, filter.salesChannel));
   }
-  if (filter.artistSlug) {
-    conditions.push(eq(shopArtist.slug, filter.artistSlug));
+  if (filter.artistSlugs) {
+    conditions.push(inArray(shopArtist.slug, filter.artistSlugs));
   }
   if (filter.categorySlug) {
     conditions.push(eq(shopCategory.slug, filter.categorySlug));
@@ -219,11 +219,11 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
       ) as SQL,
     );
   }
-  if (filter.objectType) {
-    conditions.push(eq(shopArtwork.objectType, filter.objectType));
+  if (filter.objectTypes) {
+    conditions.push(inArray(shopArtwork.objectType, filter.objectTypes));
   }
-  if (filter.rarity) {
-    conditions.push(eq(shopArtwork.rarity, filter.rarity));
+  if (filter.rarities) {
+    conditions.push(inArray(shopArtwork.rarity, filter.rarities));
   }
   if (filter.relatedToSlug) {
     conditions.push(

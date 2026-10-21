@@ -34,12 +34,17 @@ export type ArtArtworkListQuery = {
   cursor?: string;
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
-  artistSlug?: string;
+  /** Works by any of these artists. */
+  artistSlugs?: readonly string[];
   saleState?: "for_sale" | "price_on_application" | "sold";
   editionEligible?: boolean;
   type?: "all" | "original" | "edition";
-  objectType?: "painting" | "work_on_paper" | "sculpture" | "photography" | "print" | "mixed_media";
-  rarity?: "unique" | "limited_edition" | "open_edition";
+  /** Works of any of these media. */
+  objectTypes?: ReadonlyArray<
+    "painting" | "work_on_paper" | "sculpture" | "photography" | "print" | "mixed_media"
+  >;
+  /** Works of any of these rarities. */
+  rarities?: ReadonlyArray<"unique" | "limited_edition" | "open_edition">;
   /** Works sharing a category with this artwork slug (the anchor itself is excluded). */
   relatedTo?: string;
   minPrice?: number;

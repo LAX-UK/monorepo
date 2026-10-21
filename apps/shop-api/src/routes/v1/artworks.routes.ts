@@ -2,8 +2,6 @@ import {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
   PublicArtworkObjectTypeFacetListSchema,
-  PublicArtworkObjectTypeSchema,
-  PublicArtworkRaritySchema,
   PublicArtworkSaleStateSchema,
   PublicArtworkSalesChannelSchema,
   PublicArtworkSortSchema,
@@ -12,9 +10,24 @@ import {
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
+import {
+  ARTWORK_OBJECT_TYPES,
+  ARTWORK_RARITIES,
+} from "../../application/artwork-catalogue-filters.js";
 import type { CatalogueRoutesDeps } from "../../catalogue-route-deps.js";
 import { notFound } from "../../errors/shop-api-error.js";
 import { presentArtworkDetail, presentArtworkList } from "../../presenters/catalogue.presenter.js";
+
+/** One value or a comma-separated list of `values` (e.g. `painting,print`); matches any of them. */
+function commaListOf(values: readonly string[]) {
+  const one = `(?:${values.join("|")})`;
+  return Type.String({ pattern: `^${one}(?:,${one})*$` });
+}
+
+/** Comma-separated query value as a list; empty segments are dropped. */
+function splitCommaList(value: string): string[] {
+  return value.split(",").filter((part) => part.length > 0);
+}
 
 const ListQuerySchema = Type.Object({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, default: 20 })),
@@ -23,10 +36,11 @@ const ListQuerySchema = Type.Object({
     Type.Union([Type.Literal("featured_originals"), Type.Literal("featured_prints")]),
   ),
   categorySlug: Type.Optional(Type.String({ minLength: 1 })),
+  /** One slug or a comma-separated list. */
   artistSlug: Type.Optional(Type.String({ minLength: 1 })),
   relatedTo: Type.Optional(Type.String({ minLength: 1 })),
-  objectType: Type.Optional(PublicArtworkObjectTypeSchema),
-  rarity: Type.Optional(PublicArtworkRaritySchema),
+  objectType: Type.Optional(commaListOf(ARTWORK_OBJECT_TYPES)),
+  rarity: Type.Optional(commaListOf(ARTWORK_RARITIES)),
   salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
   saleState: Type.Optional(PublicArtworkSaleStateSchema),
   editionEligible: Type.Optional(Type.Boolean()),
@@ -58,14 +72,8 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         categorySlug?: string;
         artistSlug?: string;
         relatedTo?: string;
-        objectType?:
-          | "painting"
-          | "work_on_paper"
-          | "sculpture"
-          | "photography"
-          | "print"
-          | "mixed_media";
-        rarity?: "unique" | "limited_edition" | "open_edition";
+        objectType?: string;
+        rarity?: string;
         salesChannel?: "shop" | "art";
         saleState?: "for_sale" | "price_on_application" | "sold";
         editionEligible?: boolean;
@@ -78,10 +86,14 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
       const filter = {
         ...(query.placement !== undefined ? { placement: query.placement } : {}),
         ...(query.categorySlug !== undefined ? { categorySlug: query.categorySlug } : {}),
-        ...(query.artistSlug !== undefined ? { artistSlug: query.artistSlug } : {}),
+        ...(query.artistSlug !== undefined
+          ? { artistSlugs: splitCommaList(query.artistSlug) }
+          : {}),
         ...(query.relatedTo !== undefined ? { relatedToSlug: query.relatedTo } : {}),
-        ...(query.objectType !== undefined ? { objectType: query.objectType } : {}),
-        ...(query.rarity !== undefined ? { rarity: query.rarity } : {}),
+        ...(query.objectType !== undefined
+          ? { objectTypes: splitCommaList(query.objectType) }
+          : {}),
+        ...(query.rarity !== undefined ? { rarities: splitCommaList(query.rarity) } : {}),
         ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
         ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
         ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),

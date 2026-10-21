@@ -113,6 +113,55 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
     expect(result.items.some((item) => item.slug === `integration-search-${suffix}`)).toBe(true);
   });
 
+  it("matches any of several artists and object types", async () => {
+    const db = createDbFromPool(shopPool);
+    const ownerDb = createDbFromPool(ownerPool);
+    const writer = createDrizzleArtworkImportRepository(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const seeded = [
+      { artist: "a", objectType: "painting" as const },
+      { artist: "b", objectType: "print" as const },
+      { artist: "c", objectType: "sculpture" as const },
+    ];
+    const ids: string[] = [];
+    for (const [index, row] of seeded.entries()) {
+      const created = await writer.importArtwork({
+        importKey: `integration:multi:${suffix}:${index}`,
+        slug: `integration-multi-${suffix}-${index}`,
+        title: `Multi artwork ${index}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-multi-${row.artist}-${suffix}`,
+        artistDisplayName: `Multi Artist ${row.artist}`,
+        eligibleForEditionAllocation: false,
+      });
+      ids.push(created.artworkId);
+      await ownerDb
+        .update(shopArtwork)
+        .set({ objectType: row.objectType })
+        .where(eq(shopArtwork.id, created.artworkId));
+    }
+
+    try {
+      const result = await repository.listPublicArtworks({
+        limit: 10,
+        filter: {
+          artistSlugs: seeded.map((row) => `integration-multi-${row.artist}-${suffix}`),
+          objectTypes: ["painting", "print"],
+          artworkType: "all",
+          sort: "newest",
+        },
+      });
+      expect(result.items.map((item) => item.slug).sort()).toEqual([
+        `integration-multi-${suffix}-0`,
+        `integration-multi-${suffix}-1`,
+      ]);
+    } finally {
+      await ownerDb.delete(shopArtwork).where(inArray(shopArtwork.id, ids));
+    }
+  });
+
   it("aggregates object type facets per sales channel with the newest cover", async () => {
     const db = createDbFromPool(shopPool);
     const ownerDb = createDbFromPool(ownerPool);

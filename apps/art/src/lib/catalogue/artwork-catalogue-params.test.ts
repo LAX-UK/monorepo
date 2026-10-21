@@ -1,11 +1,12 @@
-import { draftToPartialState } from "@/components/catalogue/artwork-catalogue-filter-body";
 import { describe, expect, it } from "vitest";
 import {
+  artworkCatalogueClearHref,
   artworkCatalogueFetchQuery,
   artworkCatalogueFilterHref,
   artworkCatalogueHref,
   artworkCataloguePageTitle,
   buildArtworkCatalogueActiveChips,
+  countActiveArtworkCatalogueFilters,
   parseArtworkCatalogueParams,
 } from "./artwork-catalogue-params.js";
 
@@ -31,44 +32,26 @@ describe("artwork catalogue params", () => {
     });
   });
 
-  it("clears facets when draft fields are emptied", () => {
+  it("clears list facets with null or an empty list", () => {
     const state = parseArtworkCatalogueParams({
-      q: "vessel",
-      categorySlug: "painting",
       artistSlug: "flora-powers",
-      saleState: "for_sale",
       objectType: "sculpture",
       rarity: "unique",
-      minPrice: "100",
-      maxPrice: "500",
     });
-    const cleared = draftToPartialState({
-      q: "",
-      type: "all",
-      objectType: "",
-      rarity: "",
-      saleState: "",
-      categorySlug: "",
-      artistSlug: "",
-      minPrice: "",
-      maxPrice: "",
+    const href = artworkCatalogueFilterHref(state, {
+      artistSlugs: null,
+      objectTypes: [],
+      rarities: null,
     });
-    const href = artworkCatalogueFilterHref(state, cleared);
-    expect(href).not.toContain("q=");
-    expect(href).not.toContain("categorySlug=");
-    expect(href).not.toContain("artistSlug=");
-    expect(href).not.toContain("saleState=");
-    expect(href).not.toContain("minPrice=");
-    expect(href).not.toContain("maxPrice=");
-    expect(href).not.toContain("objectType=");
-    expect(href).not.toContain("rarity=");
+    expect(href).toBe("/artworks");
+    expect(artworkCatalogueClearHref()).toBe("/artworks");
   });
 
-  it("round-trips medium and rarity facets and ignores unknown values", () => {
+  it("round-trips single medium and rarity links and ignores unknown values", () => {
     const state = parseArtworkCatalogueParams({ objectType: "sculpture", rarity: "unique" });
     expect(artworkCatalogueFetchQuery(state)).toMatchObject({
-      objectType: "sculpture",
-      rarity: "unique",
+      objectTypes: ["sculpture"],
+      rarities: ["unique"],
     });
     expect(artworkCatalogueFilterHref(state)).toBe("/sculptures?rarity=unique");
     expect(
@@ -76,20 +59,56 @@ describe("artwork catalogue params", () => {
     ).toEqual(["Sculpture", "Unique"]);
 
     const bogus = parseArtworkCatalogueParams({ objectType: "nft", rarity: "rare" });
-    expect(bogus.objectType).toBeUndefined();
-    expect(bogus.rarity).toBeUndefined();
+    expect(bogus.objectTypes).toEqual([]);
+    expect(bogus.rarities).toEqual([]);
   });
 
-  it("routes landing media to their legacy URLs and keeps other media on /artworks", () => {
+  it("reads comma lists and repeated params, and writes comma lists", () => {
+    const state = parseArtworkCatalogueParams({
+      objectType: ["painting,print", "painting", "nft"],
+      rarity: "unique,open_edition",
+      artistSlug: ["ada", "bo"],
+    });
+    expect(state.objectTypes).toEqual(["painting", "print"]);
+    expect(state.rarities).toEqual(["unique", "open_edition"]);
+    expect(state.artistSlugs).toEqual(["ada", "bo"]);
+    expect(artworkCatalogueHref(state)).toBe(
+      "/artworks?artistSlug=ada,bo&objectType=painting,print&rarity=unique,open_edition",
+    );
+    expect(artworkCatalogueFetchQuery(state)).toMatchObject({
+      artistSlugs: ["ada", "bo"],
+      objectTypes: ["painting", "print"],
+      rarities: ["unique", "open_edition"],
+    });
+    expect(countActiveArtworkCatalogueFilters(state)).toBe(6);
+  });
+
+  it("gives every selected value its own removable chip", () => {
+    const state = parseArtworkCatalogueParams({ objectType: "painting,print", artistSlug: "ada" });
+    const chips = buildArtworkCatalogueActiveChips(state, {
+      categories: [],
+      artists: [{ slug: "ada", label: "Ada Lane" }],
+    });
+    expect(chips.map((chip) => [chip.label, chip.removeHref])).toEqual([
+      ["Paintings", "/prints?artistSlug=ada"],
+      ["Prints", "/paintings?artistSlug=ada"],
+      ["Ada Lane", "/artworks?objectType=painting,print"],
+    ]);
+  });
+
+  it("routes a single landing medium to its legacy URL and keeps other selections on /artworks", () => {
     const painting = parseArtworkCatalogueParams({ objectType: "painting" });
     expect(artworkCatalogueHref(painting)).toBe("/paintings");
     expect(artworkCatalogueHref(painting, { cursor: "c2", sort: "priceAsc" })).toBe(
       "/paintings?sort=priceAsc&cursor=c2",
     );
-    expect(artworkCatalogueFilterHref(painting, { objectType: null })).toBe("/artworks");
+    expect(artworkCatalogueFilterHref(painting, { objectTypes: null })).toBe("/artworks");
     expect(artworkCatalogueHref(parseArtworkCatalogueParams({ objectType: "photography" }))).toBe(
       "/artworks?objectType=photography",
     );
     expect(artworkCataloguePageTitle(painting)).toBe("Paintings");
+    expect(
+      artworkCataloguePageTitle(parseArtworkCatalogueParams({ objectType: "painting,print" })),
+    ).toBe("Artworks");
   });
 });
