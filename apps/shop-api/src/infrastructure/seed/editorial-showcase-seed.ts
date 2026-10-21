@@ -762,7 +762,8 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       headline: "Collect with certainty",
       body: "Editions and prints made to be lived with.",
       ctaLabel: "Explore editions",
-      linkUrl: "https://lax.shop",
+      // Local Shop storefront; lax.art resolves the real cross-product links from the LAX product directory.
+      linkUrl: "http://localhost:3020",
     },
     {
       slot: "art_hub_podcast",
