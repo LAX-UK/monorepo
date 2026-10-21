@@ -56,11 +56,25 @@ describe("venue lines", () => {
 });
 
 describe("exhibitionSectionTabs", () => {
-  it("lists rendered sections and drops the bar when only one renders", () => {
-    expect(exhibitionSectionTabs({ overview: true, installationViews: true })).toEqual([
+  const none = { overview: false, works: false, artists: false, press: false };
+
+  it("lists only the sections that render, in page order", () => {
+    expect(
+      exhibitionSectionTabs({ overview: true, works: true, artists: true, press: true }),
+    ).toEqual([
       { id: "overview", label: "Overview" },
-      { id: "installation-views", label: "Installation views" },
+      { id: "works", label: "Works" },
+      { id: "featured-artists", label: "Featured artists" },
+      { id: "press", label: "Press" },
     ]);
-    expect(exhibitionSectionTabs({ overview: true, installationViews: false })).toEqual([]);
+    expect(exhibitionSectionTabs({ ...none, works: true, press: true })).toEqual([
+      { id: "works", label: "Works" },
+      { id: "press", label: "Press" },
+    ]);
+  });
+
+  it("drops the bar when fewer than two sections render", () => {
+    expect(exhibitionSectionTabs({ ...none, overview: true })).toEqual([]);
+    expect(exhibitionSectionTabs(none)).toEqual([]);
   });
 });

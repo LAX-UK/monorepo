@@ -10,7 +10,7 @@ type ArtEditorialCardProps = {
 
 /**
  * Maps Art's editorial VM onto the shared card. CMS links go through `ArtEditorialLink`. The
- * heart slot stays empty until exhibitions and stories can be saved.
+ * heart slot stays empty until exhibitions and stories can be saved (no backend yet).
  */
 export function ArtEditorialCard({ card, priority = false }: ArtEditorialCardProps) {
   return (
@@ -19,7 +19,7 @@ export function ArtEditorialCard({ card, priority = false }: ArtEditorialCardPro
       href={card.href}
       linkAs={ArtEditorialLink}
       title={card.headline}
-      kicker={card.kicker ? [card.kicker] : []}
+      kicker={[card.kicker, card.place].filter((part): part is string => Boolean(part))}
       details={card.meta ? [card.meta] : []}
       media={
         <ArtMediaImage

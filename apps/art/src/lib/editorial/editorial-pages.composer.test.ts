@@ -1,8 +1,10 @@
 import type {
   ArtEditorialExhibitionDetail,
+  ArtEditorialStorySummary,
   ArtEditorialVenueDetail,
 } from "@/lib/editorial/art-editorial.types";
 import { fakeArtServices } from "@/lib/testing/fake-art-services";
+import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   composeArtHubPage,
@@ -32,6 +34,40 @@ function exhibition(
     body: [],
     installationMedia: [],
     ...overrides,
+  };
+}
+
+function artworkSummary(slug: string): PublicArtworkSummary {
+  return {
+    slug,
+    title: `Work ${slug}`,
+    artistName: "Elena Marchetti",
+    artistSlug: "elena-marchetti",
+    imageUrl: null,
+    saleState: "price_on_application",
+    dimensions: null,
+    yearCreated: null,
+    medium: null,
+    salesChannel: "art",
+    eligibleForEditionAllocation: false,
+    printPricePence: null,
+    availability: { totalEditions: 0, editionsAvailable: 0 },
+  };
+}
+
+function storySummary(
+  slug: string,
+  kind: ArtEditorialStorySummary["kind"],
+  publishedAt: string | null,
+): ArtEditorialStorySummary {
+  return {
+    slug,
+    kind,
+    title: `Story ${slug}`,
+    standfirst: null,
+    coverUrl: null,
+    featured: false,
+    publishedAt,
   };
 }
 
@@ -129,19 +165,33 @@ describe("composeExhibitionsPage", () => {
 });
 
 describe("composeExhibitionDetailPage", () => {
-  it("joins venue name and hours, preferring the exhibition times note", async () => {
+  it("builds facts from the venue, preferring the exhibition times note for viewing", async () => {
     const services = fakeArtServices();
     services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
-    services.editorial.getVenue.mockResolvedValue({ status: "ok", data: venue() });
+    services.editorial.getVenue.mockResolvedValue({
+      status: "ok",
+      data: venue({
+        phone: "020 7000 0000",
+        email: "hello@lax.test",
+        mapUrl: "https://maps.test/x",
+      }),
+    });
 
     const result = await composeExhibitionDetailPage(services, "summer-show");
     expect(result).toMatchObject({
       status: "ok",
       data: {
         dateLabel: "1 Jun – 30 Aug 2026",
-        venueName: "LAX Mayfair",
-        venueHref: "/visit/mayfair",
-        hoursLabel: "Tue – Sat 10:00 – 18:00",
+        facts: {
+          location: {
+            name: "LAX Mayfair",
+            href: "/visit/mayfair",
+            addressLine: "1 Bond Street, W1",
+            mapUrl: "https://maps.test/x",
+          },
+          viewing: ["1 Jun – 30 Aug 2026", "Tue – Sat 10:00 – 18:00"],
+          contact: { phone: "020 7000 0000", email: "hello@lax.test" },
+        },
       },
     });
 
@@ -150,7 +200,77 @@ describe("composeExhibitionDetailPage", () => {
       data: exhibition({ timesNote: "Late opening Thursdays" }),
     });
     const withNote = await composeExhibitionDetailPage(services, "summer-show");
-    expect(withNote.status === "ok" && withNote.data.hoursLabel).toBe("Late opening Thursdays");
+    expect(withNote.status === "ok" && withNote.data.facts.viewing).toEqual([
+      "1 Jun – 30 Aug 2026",
+      "Late opening Thursdays",
+    ]);
+  });
+
+  it("falls back to the exhibition's venue summary when the venue read fails", async () => {
+    const services = fakeArtServices();
+    services.editorial.getExhibition.mockResolvedValue({
+      status: "ok",
+      data: exhibition({ venue: { slug: "mayfair", name: "LAX Mayfair" } }),
+    });
+    services.editorial.getVenue.mockResolvedValue({ status: "error" });
+
+    const result = await composeExhibitionDetailPage(services, "summer-show");
+    expect(result.status === "ok" && result.data.facts).toMatchObject({
+      location: { name: "LAX Mayfair", href: "/visit/mayfair", addressLine: null, mapUrl: null },
+      contact: null,
+    });
+  });
+
+  it("maps artworks, artists and press stories, ignoring other story kinds", async () => {
+    const services = fakeArtServices();
+    services.editorial.getExhibition.mockResolvedValue({
+      status: "ok",
+      data: exhibition({
+        artworks: [artworkSummary("blue-field")],
+        artists: [
+          {
+            slug: "elena-marchetti",
+            name: "Elena Marchetti",
+            discipline: null,
+            bio: "Works with land art.",
+            portraitUrl: null,
+            nationality: "Italian",
+            birthYear: 1978,
+            deathYear: null,
+            artworkCount: 3,
+          },
+        ],
+        stories: [
+          storySummary("review", "press", "2026-09-14T10:00:00.000Z"),
+          storySummary("film", "film", null),
+        ],
+      }),
+    });
+    services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
+
+    const result = await composeExhibitionDetailPage(services, "summer-show");
+    expect(result.status === "ok" && result.data).toMatchObject({
+      works: [{ slug: "blue-field", href: "/artworks/blue-field" }],
+      artists: [
+        { name: "Elena Marchetti", lifeLine: "Italian, b. 1978", bio: "Works with land art." },
+      ],
+      press: [{ href: "/stories/review", title: "Story review", dateLabel: "14 September 2026" }],
+      favoriteAuth: { signedIn: false },
+    });
+  });
+
+  it("returns empty sections when the relations are missing", async () => {
+    const services = fakeArtServices();
+    services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
+    services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
+
+    const result = await composeExhibitionDetailPage(services, "summer-show");
+    expect(result.status === "ok" && result.data).toMatchObject({
+      works: [],
+      artists: [],
+      press: [],
+      facts: { location: null, viewing: ["1 Jun – 30 Aug 2026"], contact: null },
+    });
   });
 
   it("builds the title byline and marks the show closed after its end date", async () => {
@@ -183,10 +303,7 @@ describe("composeExhibitionDetailPage", () => {
     services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
     services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
     const result = await composeExhibitionDetailPage(services, "summer-show");
-    expect(result.status === "ok" && result.data).toMatchObject({
-      venueName: null,
-      venueHref: null,
-    });
+    expect(result.status === "ok" && result.data.facts.location).toBeNull();
   });
 });
 

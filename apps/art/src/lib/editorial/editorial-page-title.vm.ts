@@ -33,11 +33,15 @@ export type PageSectionTab = { id: string; label: string };
 /** Sub-navigation tabs for the exhibition sections that render; none when fewer than two. */
 export function exhibitionSectionTabs(sections: {
   overview: boolean;
-  installationViews: boolean;
+  works: boolean;
+  artists: boolean;
+  press: boolean;
 }): PageSectionTab[] {
   const tabs = [
     sections.overview ? { id: "overview", label: "Overview" } : null,
-    sections.installationViews ? { id: "installation-views", label: "Installation views" } : null,
+    sections.works ? { id: "works", label: "Works" } : null,
+    sections.artists ? { id: "featured-artists", label: "Featured artists" } : null,
+    sections.press ? { id: "press", label: "Press" } : null,
   ].filter((tab): tab is PageSectionTab => tab != null);
   return tabs.length > 1 ? tabs : [];
 }
