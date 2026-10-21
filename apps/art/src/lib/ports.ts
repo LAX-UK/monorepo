@@ -1,5 +1,6 @@
 import type { ArtViewerState } from "@/lib/art-viewer-state";
 import type {
+  ArtEditorialArtistRelations,
   ArtEditorialExhibitionDetail,
   ArtEditorialExhibitionList,
   ArtEditorialFetchResult,
@@ -105,6 +106,8 @@ export type ArtEditorialPort = {
   getExhibition(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialExhibitionDetail>>;
   listStories(kind?: ArtStoryKind): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>>;
   getStory(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialStoryDetail>>;
+  /** Exhibitions and stories that feature the artist; `not_found` for an unknown slug. */
+  getArtistRelations(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialArtistRelations>>;
   listPages(): Promise<ArtEditorialFetchResult<ArtEditorialPageList>>;
   getPage(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialPageDetail>>;
   listVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>>;

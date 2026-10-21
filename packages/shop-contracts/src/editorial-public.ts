@@ -1,4 +1,6 @@
 import { Type } from "@sinclair/typebox";
+import { PublicArtistDetailSchema, PublicArtistSummarySchema } from "./artist-public.js";
+import { PublicArtworkSummarySchema } from "./artwork-public.js";
 import { EditorialBlockListSchema } from "./editorial-blocks.js";
 import { PublicSeoFieldsProperties } from "./seo-fields.js";
 
@@ -63,6 +65,15 @@ export const EditorialVenueDetailSchema = Type.Object({
   body: EditorialBlockListSchema,
 });
 
+/** Published venue an exhibition is held at; null when it has none or the venue is unpublished. */
+export const EditorialExhibitionVenueSchema = Type.Object({
+  slug: Type.String(),
+  name: Type.String(),
+});
+
+// Fields added after launch are optional so storefronts parse responses from an older shop-api.
+const NullableDateTime = Type.Union([Type.String({ format: "date-time" }), Type.Null()]);
+
 export const EditorialExhibitionSummarySchema = Type.Object({
   slug: Type.String(),
   kind: EditorialExhibitionKindSchema,
@@ -72,6 +83,19 @@ export const EditorialExhibitionSummarySchema = Type.Object({
   endsOn: Type.Union([Type.String(), Type.Null()]),
   coverUrl: Type.Union([Type.String(), Type.Null()]),
   featured: Type.Boolean(),
+  venue: Type.Optional(Type.Union([EditorialExhibitionVenueSchema, Type.Null()])),
+});
+
+export const EditorialStorySummarySchema = Type.Object({
+  slug: Type.String(),
+  kind: EditorialStoryKindSchema,
+  title: Type.String(),
+  standfirst: Type.Union([Type.String(), Type.Null()]),
+  coverUrl: Type.Union([Type.String(), Type.Null()]),
+  featured: Type.Boolean(),
+  publishedAt: Type.Optional(NullableDateTime),
+  /** Sitemap `lastmod`; optional so storefronts parse responses from an older shop-api. */
+  updatedAt: Type.Optional(Type.String({ format: "date-time" })),
 });
 
 export const EditorialExhibitionDetailSchema = Type.Object({
@@ -83,6 +107,7 @@ export const EditorialExhibitionDetailSchema = Type.Object({
   endsOn: Type.Union([Type.String(), Type.Null()]),
   coverUrl: Type.Union([Type.String(), Type.Null()]),
   featured: Type.Boolean(),
+  venue: Type.Optional(Type.Union([EditorialExhibitionVenueSchema, Type.Null()])),
   timesNote: Type.Union([Type.String(), Type.Null()]),
   venueSlug: Type.Union([Type.String(), Type.Null()]),
   body: EditorialBlockListSchema,
@@ -92,17 +117,17 @@ export const EditorialExhibitionDetailSchema = Type.Object({
       caption: Type.Union([Type.String(), Type.Null()]),
     }),
   ),
+  /** lax.art works in curated order. */
+  artworks: Type.Optional(Type.Array(PublicArtworkSummarySchema)),
+  /** Featured artists with biography, nationality and life dates. */
+  artists: Type.Optional(Type.Array(PublicArtistDetailSchema)),
+  stories: Type.Optional(Type.Array(EditorialStorySummarySchema)),
 });
 
-export const EditorialStorySummarySchema = Type.Object({
-  slug: Type.String(),
-  kind: EditorialStoryKindSchema,
-  title: Type.String(),
-  standfirst: Type.Union([Type.String(), Type.Null()]),
-  coverUrl: Type.Union([Type.String(), Type.Null()]),
-  featured: Type.Boolean(),
-  /** Sitemap `lastmod`; optional so storefronts parse responses from an older shop-api. */
-  updatedAt: Type.Optional(Type.String({ format: "date-time" })),
+export const EditorialStoryRelatedSchema = Type.Object({
+  artists: Type.Array(PublicArtistSummarySchema),
+  artworks: Type.Array(PublicArtworkSummarySchema),
+  exhibitions: Type.Array(EditorialExhibitionSummarySchema),
 });
 
 export const EditorialStoryDetailSchema = Type.Object({
@@ -112,9 +137,17 @@ export const EditorialStoryDetailSchema = Type.Object({
   standfirst: Type.Union([Type.String(), Type.Null()]),
   coverUrl: Type.Union([Type.String(), Type.Null()]),
   featured: Type.Boolean(),
+  publishedAt: Type.Optional(NullableDateTime),
   videoUrl: Type.Union([Type.String(), Type.Null()]),
   body: EditorialBlockListSchema,
+  related: Type.Optional(EditorialStoryRelatedSchema),
   ...PublicSeoFieldsProperties,
+});
+
+/** Published exhibitions and stories that feature an artist (`/v1/editorial/artists/:slug`). */
+export const EditorialArtistRelationsSchema = Type.Object({
+  exhibitions: Type.Array(EditorialExhibitionSummarySchema),
+  stories: Type.Array(EditorialStorySummarySchema),
 });
 
 export const EditorialPageSummarySchema = Type.Object({
