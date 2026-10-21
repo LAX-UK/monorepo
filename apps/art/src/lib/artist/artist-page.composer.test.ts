@@ -29,7 +29,7 @@ describe("composeArtistPage", () => {
 
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
-      artistSlug: "flora-powers",
+      artistSlugs: ["flora-powers"],
       limit: 24,
     });
     expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();

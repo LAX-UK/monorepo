@@ -1,116 +1,37 @@
 "use client";
 
+import type { ArtworkCatalogueDraft } from "@/lib/catalogue/artwork-catalogue-draft";
 import {
   ARTWORK_FILTER_DEFAULT_OPEN,
-  ARTWORK_FILTER_GROUPS,
-  ARTWORK_OBJECT_TYPE_OPTIONS,
   ARTWORK_RARITY_OPTIONS,
   ARTWORK_SALE_STATE_OPTIONS,
+  ARTWORK_SORT_OPTIONS,
   ARTWORK_TYPE_OPTIONS,
-  type ArtworkFilterGroupValue,
+  type ArtworkFilterOption,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
-import type {
-  ArtworkCatalogueFilterPatch,
-  ArtworkCatalogueUrlState,
-} from "@/lib/catalogue/artwork-catalogue-params";
-import {
-  MARKETING_FILTER_ACCORDION_TRIGGER,
-  MARKETING_FILTER_RESULT_COUNT,
-  MarketingFilterSidebar,
-  marketingFilterRailLink,
-} from "@auction/marketing-ui";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { MarketingFilterAccordionSection, MarketingFilterFacetGroup } from "@auction/marketing-ui";
+import { Accordion } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 export type CatalogueFilterOption = {
   slug: string;
   label: string;
 };
 
-export type ArtworkCatalogueDraft = {
-  q: string;
-  type: ArtworkCatalogueUrlState["type"];
-  objectType: NonNullable<ArtworkCatalogueUrlState["objectType"]> | "";
-  rarity: NonNullable<ArtworkCatalogueUrlState["rarity"]> | "";
-  saleState: ArtworkCatalogueUrlState["saleState"] | "";
-  categorySlug: string;
-  artistSlug: string;
-  minPrice: string;
-  maxPrice: string;
-};
-
-export function artworkDraftFromState(state: ArtworkCatalogueUrlState): ArtworkCatalogueDraft {
-  return {
-    q: state.q ?? "",
-    type: state.type,
-    objectType: state.objectType ?? "",
-    rarity: state.rarity ?? "",
-    saleState: state.saleState ?? "",
-    categorySlug: state.categorySlug ?? "",
-    artistSlug: state.artistSlug ?? "",
-    minPrice: state.minPrice !== undefined ? String(state.minPrice) : "",
-    maxPrice: state.maxPrice !== undefined ? String(state.maxPrice) : "",
-  };
-}
-
-export function draftToPartialState(draft: ArtworkCatalogueDraft): ArtworkCatalogueFilterPatch {
-  const minParsed = draft.minPrice.trim() ? Number.parseInt(draft.minPrice, 10) : undefined;
-  const maxParsed = draft.maxPrice.trim() ? Number.parseInt(draft.maxPrice, 10) : undefined;
-  return {
-    q: draft.q.trim() ? draft.q.trim() : null,
-    type: draft.type,
-    objectType: draft.objectType ? draft.objectType : null,
-    rarity: draft.rarity ? draft.rarity : null,
-    saleState: draft.saleState ? draft.saleState : null,
-    categorySlug: draft.categorySlug ? draft.categorySlug : null,
-    artistSlug: draft.artistSlug ? draft.artistSlug : null,
-    minPrice: minParsed !== undefined && !Number.isNaN(minParsed) ? minParsed : null,
-    maxPrice: maxParsed !== undefined && !Number.isNaN(maxParsed) ? maxParsed : null,
-  };
-}
-
 type Props = {
   draft: ArtworkCatalogueDraft;
   onDraftChange: (next: ArtworkCatalogueDraft) => void;
-  /** Applies draft to the URL (rail selections and price blur). */
-  onFilterCommit?: (next: ArtworkCatalogueDraft) => void;
-  categories: CatalogueFilterOption[];
-  artists: CatalogueFilterOption[];
-  resultCount?: number | undefined;
-  showResultCount?: boolean;
-  className?: string;
-  /** Distinguishes field ids when the rail and the mobile sheet render together. */
-  idPrefix: string;
+  categories: readonly CatalogueFilterOption[];
+  artists: readonly CatalogueFilterOption[];
+  mediumOptions: readonly ArtworkFilterOption[];
 };
 
-const itemBorderClass = "border-b border-outline-variant dark:border-outline-variant/30";
+const ID_PREFIX = "art-filters";
 
-function RailOption({
-  active,
-  label,
-  onSelect,
-}: {
-  active: boolean;
-  label: string;
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      aria-pressed={active}
-      className={cn(
-        "h-auto min-h-11 w-full justify-start whitespace-normal text-left",
-        marketingFilterRailLink(active),
-      )}
-      onClick={onSelect}
-    >
-      {label}
-    </Button>
-  );
+function slugOptions(items: readonly CatalogueFilterOption[]): ArtworkFilterOption[] {
+  return items.map((item) => ({ value: item.slug, label: item.label }));
 }
 
 function PriceInput({
@@ -118,17 +39,15 @@ function PriceInput({
   label,
   value,
   onChange,
-  onCommit,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  onCommit: (value: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <Label htmlFor={id} className="font-body text-sm">
+    <div className="flex flex-1 flex-col gap-1">
+      <Label htmlFor={id} className="font-body text-sm font-normal">
         {label}
       </Label>
       <Input
@@ -140,189 +59,126 @@ function PriceInput({
         className="min-h-11"
         value={value}
         onChange={(event) => onChange(event.target.value.replace(/[^0-9]/g, ""))}
-        onBlur={(event) => onCommit(event.currentTarget.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") onCommit(event.currentTarget.value);
-        }}
       />
     </div>
   );
 }
 
-function commitDraft(props: Props, next: ArtworkCatalogueDraft) {
-  props.onDraftChange(next);
-  props.onFilterCommit?.(next);
-}
+/**
+ * Drawer facets (Figma 541:6507). Every choice edits the draft; the drawer's Apply commits it.
+ * Multi-select where shop-api accepts several values (artist, medium, rarity), radio otherwise.
+ */
+export function ArtworkCatalogueFilterBody({
+  draft,
+  onDraftChange,
+  categories,
+  artists,
+  mediumOptions,
+}: Props) {
+  const [openSections, setOpenSections] = useState<string[]>(ARTWORK_FILTER_DEFAULT_OPEN);
+  const categoryOptions = [{ value: "", label: "Any category" }, ...slugOptions(categories)];
 
-function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
-  const { draft, onDraftChange, categories, artists } = props;
-  switch (group) {
-    case "type":
-      return (
-        <div className="flex flex-col gap-1">
-          {ARTWORK_TYPE_OPTIONS.map((option) => (
-            <RailOption
-              key={option.value}
-              active={draft.type === option.value}
-              label={option.label}
-              onSelect={() => commitDraft(props, { ...draft, type: option.value })}
-            />
-          ))}
-        </div>
-      );
-    case "objectType":
-      return (
-        <div className="flex flex-col gap-1">
-          <RailOption
-            active={!draft.objectType}
-            label="Any medium"
-            onSelect={() => commitDraft(props, { ...draft, objectType: "" })}
-          />
-          {ARTWORK_OBJECT_TYPE_OPTIONS.map((option) => (
-            <RailOption
-              key={option.value}
-              active={draft.objectType === option.value}
-              label={option.label}
-              onSelect={() => commitDraft(props, { ...draft, objectType: option.value })}
-            />
-          ))}
-        </div>
-      );
-    case "rarity":
-      return (
-        <div className="flex flex-col gap-1">
-          <RailOption
-            active={!draft.rarity}
-            label="Any rarity"
-            onSelect={() => commitDraft(props, { ...draft, rarity: "" })}
-          />
-          {ARTWORK_RARITY_OPTIONS.map((option) => (
-            <RailOption
-              key={option.value}
-              active={draft.rarity === option.value}
-              label={option.label}
-              onSelect={() => commitDraft(props, { ...draft, rarity: option.value })}
-            />
-          ))}
-        </div>
-      );
-    case "availability":
-      return (
-        <div className="flex flex-col gap-1">
-          {ARTWORK_SALE_STATE_OPTIONS.map((option) => (
-            <RailOption
-              key={option.value || "any"}
-              active={draft.saleState === option.value}
-              label={option.label}
-              onSelect={() =>
-                commitDraft(props, {
-                  ...draft,
-                  saleState: option.value as ArtworkCatalogueDraft["saleState"],
-                })
-              }
-            />
-          ))}
-        </div>
-      );
-    case "category":
-      return (
-        <div className="flex flex-col gap-1">
-          <RailOption
-            active={!draft.categorySlug}
-            label="Any category"
-            onSelect={() => commitDraft(props, { ...draft, categorySlug: "" })}
-          />
-          {categories.map((category) => (
-            <RailOption
-              key={category.slug}
-              active={draft.categorySlug === category.slug}
-              label={category.label}
-              onSelect={() => commitDraft(props, { ...draft, categorySlug: category.slug })}
-            />
-          ))}
-        </div>
-      );
-    case "artist":
-      return (
-        <div className="flex flex-col gap-1">
-          <RailOption
-            active={!draft.artistSlug}
-            label="Any artist"
-            onSelect={() => commitDraft(props, { ...draft, artistSlug: "" })}
-          />
-          {artists.map((artist) => (
-            <RailOption
-              key={artist.slug}
-              active={draft.artistSlug === artist.slug}
-              label={artist.label}
-              onSelect={() => commitDraft(props, { ...draft, artistSlug: artist.slug })}
-            />
-          ))}
-        </div>
-      );
-    case "price":
-      return (
-        <div className="flex flex-col gap-3">
-          <p className="font-body text-xs text-on-surface-variant">
-            Applies to works with a listed price. Price-on-request works are excluded from numeric
-            ranges.
-          </p>
+  return (
+    <Accordion type="multiple" value={openSections} onValueChange={setOpenSections}>
+      <MarketingFilterFacetGroup
+        value="type"
+        title="Department"
+        idPrefix={`${ID_PREFIX}-type`}
+        selection="single"
+        options={ARTWORK_TYPE_OPTIONS}
+        selected={[draft.type]}
+        onChange={([type]) =>
+          onDraftChange({ ...draft, type: type as ArtworkCatalogueDraft["type"] })
+        }
+      />
+      <MarketingFilterFacetGroup
+        value="sort"
+        title="Sort by"
+        idPrefix={`${ID_PREFIX}-sort`}
+        selection="single"
+        options={ARTWORK_SORT_OPTIONS}
+        selected={[draft.sort]}
+        onChange={([sort]) =>
+          onDraftChange({ ...draft, sort: sort as ArtworkCatalogueDraft["sort"] })
+        }
+      />
+      {artists.length > 0 ? (
+        <MarketingFilterFacetGroup
+          value="artist"
+          title="Artist"
+          idPrefix={`${ID_PREFIX}-artist`}
+          options={slugOptions(artists)}
+          selected={draft.artistSlugs}
+          onChange={(artistSlugs) => onDraftChange({ ...draft, artistSlugs })}
+        />
+      ) : null}
+      <MarketingFilterFacetGroup
+        value="objectType"
+        title="Medium"
+        idPrefix={`${ID_PREFIX}-medium`}
+        options={mediumOptions}
+        selected={draft.objectTypes}
+        onChange={(objectTypes) =>
+          onDraftChange({
+            ...draft,
+            objectTypes: objectTypes as ArtworkCatalogueDraft["objectTypes"],
+          })
+        }
+      />
+      <MarketingFilterFacetGroup
+        value="rarity"
+        title="Rarity"
+        idPrefix={`${ID_PREFIX}-rarity`}
+        options={ARTWORK_RARITY_OPTIONS}
+        selected={draft.rarities}
+        onChange={(rarities) =>
+          onDraftChange({ ...draft, rarities: rarities as ArtworkCatalogueDraft["rarities"] })
+        }
+      />
+      {categories.length > 0 ? (
+        <MarketingFilterFacetGroup
+          value="category"
+          title="Category"
+          idPrefix={`${ID_PREFIX}-category`}
+          selection="single"
+          options={categoryOptions}
+          selected={[draft.categorySlug]}
+          onChange={([categorySlug = ""]) => onDraftChange({ ...draft, categorySlug })}
+        />
+      ) : null}
+      <MarketingFilterFacetGroup
+        value="availability"
+        title="Availability"
+        idPrefix={`${ID_PREFIX}-availability`}
+        selection="single"
+        options={ARTWORK_SALE_STATE_OPTIONS}
+        selected={[draft.saleState]}
+        onChange={([saleState = ""]) =>
+          onDraftChange({
+            ...draft,
+            saleState: saleState as ArtworkCatalogueDraft["saleState"],
+          })
+        }
+      />
+      <MarketingFilterAccordionSection value="price" title="Price">
+        <p className="mb-3 font-body text-xs text-on-surface-variant">
+          Price-on-request works are left out of a price range.
+        </p>
+        <div className="flex gap-3">
           <PriceInput
-            id={`${props.idPrefix}-min-price`}
+            id={`${ID_PREFIX}-min-price`}
             label="Min (£)"
             value={draft.minPrice}
             onChange={(minPrice) => onDraftChange({ ...draft, minPrice })}
-            onCommit={(minPrice) => commitDraft(props, { ...draft, minPrice })}
           />
           <PriceInput
-            id={`${props.idPrefix}-max-price`}
+            id={`${ID_PREFIX}-max-price`}
             label="Max (£)"
             value={draft.maxPrice}
             onChange={(maxPrice) => onDraftChange({ ...draft, maxPrice })}
-            onCommit={(maxPrice) => commitDraft(props, { ...draft, maxPrice })}
           />
         </div>
-      );
-  }
-}
-
-/** Shared faceted filter body for desktop rail and mobile sheet. */
-export function ArtworkCatalogueFilterBody(props: Props) {
-  const { resultCount, showResultCount = true, className } = props;
-  const [openSections, setOpenSections] = useState<string[]>(ARTWORK_FILTER_DEFAULT_OPEN);
-
-  return (
-    <MarketingFilterSidebar
-      className={cn(
-        "space-y-4 pb-0 lg:border-outline-variant dark:lg:border-outline-variant/30",
-        className,
-      )}
-    >
-      {showResultCount && resultCount !== undefined ? (
-        <div className="border-b border-outline-variant pb-3 dark:border-outline-variant/30">
-          <p className={MARKETING_FILTER_RESULT_COUNT} aria-live="polite" aria-atomic="true">
-            Showing {resultCount} result{resultCount === 1 ? "" : "s"}
-          </p>
-        </div>
-      ) : null}
-
-      <Accordion
-        type="multiple"
-        className="w-full"
-        value={openSections}
-        onValueChange={setOpenSections}
-      >
-        {ARTWORK_FILTER_GROUPS.map((group) => (
-          <AccordionItem key={group.value} value={group.value} className={itemBorderClass}>
-            <AccordionTrigger className={MARKETING_FILTER_ACCORDION_TRIGGER}>
-              {group.title}
-            </AccordionTrigger>
-            <AccordionContent className="pb-4 pt-1">
-              {groupContent(group.value, props)}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </MarketingFilterSidebar>
+      </MarketingFilterAccordionSection>
+    </Accordion>
   );
 }

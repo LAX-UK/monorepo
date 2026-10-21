@@ -1,4 +1,8 @@
 import {
+  ARTWORK_OBJECT_TYPE_OPTIONS,
+  type ArtworkFilterOption,
+} from "@/lib/catalogue/artwork-catalogue-filter-config";
+import {
   type ArtworkCatalogueSearchParams,
   type ArtworkCatalogueUrlState,
   artworkCatalogueFetchQuery,
@@ -20,19 +24,31 @@ import {
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
+import type { PublicArtworkObjectTypeFacet } from "@auction/shop-contracts";
 
 export const ARTWORKS_PAGE_SIZE = 24;
 
 export type FilterOption = { slug: string; label: string };
 
+/** Image hero for the medium landings (Figma 587:9412). */
+export type ArtworksLandingHeroVm = {
+  title: string;
+  description: string;
+  imageUrl: string;
+};
+
 export type ArtworksPageVm = {
   state: ArtworkCatalogueUrlState;
   title: string;
+  /** Set on a medium landing whose medium has a cover image; otherwise the plain page title shows. */
+  landingHero: ArtworksLandingHeroVm | null;
   hasActiveFilters: boolean;
   cards: CatalogueArtworkCardVm[];
   resultCount: number;
   categories: FilterOption[];
   artists: FilterOption[];
+  /** Media with works on lax.art; every medium when the facet read fails. */
+  mediumOptions: ArtworkFilterOption[];
   objectTypeTiles: ArtworkObjectTypeTileVm[];
   nextPageHref: string | null;
   failed: boolean;
@@ -49,7 +65,7 @@ export function composeArtworksPageMetadata(
   searchParams: ArtworkCatalogueSearchParams,
 ): ArtworksPageMetadataVm {
   const state = parseArtworkCatalogueParams(searchParams);
-  const landing = artworkMediumLanding(state.objectType);
+  const landing = artworkMediumLanding(state.objectTypes);
   if (landing) {
     return {
       title: landing.metaTitle,
@@ -77,10 +93,19 @@ export async function composeArtworksPage(
   ]);
   const favorites = await favoritesPromise;
   const list = artworks.status === "fulfilled" ? artworks.value : null;
+  const facets = objectTypes.status === "fulfilled" ? objectTypes.value.items : [];
+  const landing = artworkMediumLanding(state.objectTypes);
+  const landingCover = landing
+    ? facets.find((facet) => facet.objectType === landing.objectType)?.coverImageUrl
+    : null;
 
   return {
     state,
     title: artworkCataloguePageTitle(state),
+    landingHero:
+      landing && landingCover
+        ? { title: landing.title, description: landing.metaDescription, imageUrl: landingCover }
+        : null,
     hasActiveFilters: artworkCatalogueHasActiveFilters(state),
     cards: list ? buildCatalogueArtworkCards(list.items, favorites.savedArtworkSlugs) : [],
     resultCount: list ? (list.totalCount ?? list.items.length) : 0,
@@ -92,14 +117,22 @@ export async function composeArtworksPage(
       artists.status === "fulfilled"
         ? artists.value.items.map((item) => ({ slug: item.slug, label: item.name }))
         : [],
-    objectTypeTiles:
-      objectTypes.status === "fulfilled"
-        ? buildArtworkObjectTypeTiles(objectTypes.value.items, state)
-        : [],
+    mediumOptions: buildMediumOptions(facets),
+    // Figma's medium landings carry a hero instead of the tile rail.
+    objectTypeTiles: landing ? [] : buildArtworkObjectTypeTiles(facets, state),
     nextPageHref: list?.nextCursor
       ? artworkCataloguePagerHref(state, { cursor: list.nextCursor, back: state.cursor ?? null })
       : null,
     failed: list === null,
     favoriteAuth: favorites.favoriteAuth,
   };
+}
+
+function buildMediumOptions(
+  facets: readonly PublicArtworkObjectTypeFacet[],
+): ArtworkFilterOption[] {
+  if (facets.length === 0) return [...ARTWORK_OBJECT_TYPE_OPTIONS];
+  return ARTWORK_OBJECT_TYPE_OPTIONS.filter((option) =>
+    facets.some((facet) => facet.objectType === option.value),
+  );
 }

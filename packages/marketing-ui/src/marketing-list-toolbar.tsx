@@ -8,6 +8,8 @@ import { MarketingToolbarRow } from "./marketing-toolbar-row.js";
 export type MarketingListToolbarProps = {
   /** Result count or context line (e.g. "24 lots"). */
   countLabel?: string;
+  /** Hide the count from `lg` up. */
+  countMobileOnly?: boolean;
   /** Desktop-only inline filters (`hidden` below `lg`). */
   filters?: ReactNode;
   sort?: ReactNode;
@@ -29,6 +31,7 @@ export type MarketingListToolbarProps = {
 /** Sticky glass toolbar for marketing catalogue pages. */
 export function MarketingListToolbar({
   countLabel,
+  countMobileOnly = false,
   filters,
   sort,
   trailing,
@@ -82,6 +85,7 @@ export function MarketingListToolbar({
         >
           <MarketingToolbarRow
             {...(countLabel ? { countLabel } : {})}
+            countMobileOnly={countMobileOnly}
             {...(filters ? { filters } : {})}
             {...(sort ? { sort } : {})}
             {...(trailing ? { trailing } : {})}

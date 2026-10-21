@@ -8,17 +8,14 @@ export type ArtObjectTypeTilesProps = {
   tiles: readonly ArtworkObjectTypeTileVm[];
 };
 
-/** "Browse by medium" tiles — Shop's category tile on the shared horizontal rail. */
+/**
+ * Medium tiles on the shared horizontal rail. Figma 538:4885 shows them without a heading; the
+ * rail's own label names them for assistive tech.
+ */
 export function ArtObjectTypeTiles({ tiles }: ArtObjectTypeTilesProps) {
   if (tiles.length === 0) return null;
   return (
-    <section aria-labelledby="art-artworks-media" data-testid="art-object-type-tiles">
-      <h2
-        id="art-artworks-media"
-        className="mb-4 font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
-      >
-        Browse by medium
-      </h2>
+    <div data-testid="art-object-type-tiles">
       <ArtRail id="art-artworks-media-rail" label="Browse by medium">
         {tiles.map((tile) => (
           <ArtRailItem key={tile.objectType} size="tile">
@@ -43,6 +40,6 @@ export function ArtObjectTypeTiles({ tiles }: ArtObjectTypeTilesProps) {
           </ArtRailItem>
         ))}
       </ArtRail>
-    </section>
+    </div>
   );
 }
