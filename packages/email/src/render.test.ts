@@ -29,6 +29,32 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Saturday morning?");
   });
 
+  it("names guest enquiry senders so staff know there is no account to look up", async () => {
+    const rendered = await renderEmail("art-general-enquiry-alert", {
+      topicLabel: "General enquiry",
+      buyerEmail: "grace@example.com",
+      buyerName: "Grace Hopper",
+      guest: true,
+      message: "Do you ship to Edinburgh?",
+    });
+    expect(rendered.text).toContain("Name: Grace Hopper");
+    expect(rendered.text).toContain(
+      "Contact email (sent without a LAX account): grace@example.com",
+    );
+
+    const artwork = await renderEmail("shop-artwork-enquiry-alert", {
+      artworkTitle: "Tidal Forms",
+      artworkSlug: "tidal-forms",
+      artworkUrl: "https://lax.art/artworks/tidal-forms",
+      buyerEmail: "grace@example.com",
+      buyerName: "Grace Hopper",
+      guest: true,
+      storefront: "art",
+    });
+    expect(artwork.text).toContain("Name: Grace Hopper");
+    expect(artwork.text).toContain("sent without a LAX account");
+  });
+
   it("renders auth templates to html and plaintext", async () => {
     const rendered = await renderEmail("verify-email", {
       verificationUrl: "https://lax.bid/verify",

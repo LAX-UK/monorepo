@@ -121,7 +121,7 @@ describe("composeArtworkDetailPage", () => {
     ).resolves.toEqual({ kind: "unavailable" });
   });
 
-  it("sends guests to sign in and back to the open enquiry sheet", async () => {
+  it("lets guests enquire with empty contact fields and no sign-in step", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
 
@@ -134,8 +134,11 @@ describe("composeArtworkDetailPage", () => {
     expect(result.kind).toBe("ok");
     if (result.kind !== "ok") return;
     expect(result.vm.enquiry).toEqual({
-      kind: "sign_in",
-      loginHref: "/login?returnTo=%2Fartworks%2Fwarm-basket%3Fenquire%3D1",
+      kind: "ready",
+      contact: { name: "", email: "", phone: "" },
+      artistName: "Flora Powers",
+      imageUrl: "/warm-basket.webp",
+      autoOpen: true,
     });
     expect(result.vm.priceLabel).toBe("Price on request");
     expect(result.vm.keySpecs).toEqual([
@@ -145,8 +148,8 @@ describe("composeArtworkDetailPage", () => {
     ]);
     expect(result.vm.favoriteAuth.loginHref).toBe("/login?returnTo=%2Fartworks%2Fwarm-basket");
     expect(result.vm.specialistContact).toEqual({
-      kind: "sign_in",
-      loginHref: "/login?returnTo=%2Fartworks%2Fwarm-basket",
+      kind: "ready",
+      contact: { name: "", email: "", phone: "" },
     });
   });
 
@@ -180,7 +183,7 @@ describe("composeArtworkDetailPage", () => {
     });
     expect(result.kind === "ok" && result.vm.specialistContact).toEqual({
       kind: "ready",
-      loginHref: "/login?returnTo=%2Fartworks%2Fwarm-basket",
+      contact: { name: "Ada Collector", email: "ada@example.com", phone: "+447700900123" },
     });
   });
 
@@ -214,6 +217,8 @@ describe("composeArtworkDetailPage", () => {
     expect(result.vm.enquiry).toEqual({
       kind: "ready",
       contact: { name: "Ada Collector", email: "ada@example.com", phone: "+447700900123" },
+      artistName: "Flora Powers",
+      imageUrl: "/warm-basket.webp",
       autoOpen: true,
     });
     expect(result.vm.saved).toBe(true);

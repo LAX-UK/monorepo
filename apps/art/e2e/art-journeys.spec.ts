@@ -85,18 +85,49 @@ test.describe("lax.art journeys", () => {
     await expect(page.getByTestId("art-search-no-results")).toBeVisible();
   });
 
-  test("signed-out enquiry redirects to sign-in and returns to the open sheet", async ({
+  test("a guest sees field errors, then sends an artwork enquiry without signing in", async ({
     page,
   }) => {
     const href = await firstArtworkHref(page);
     test.skip(!href, "no art-channel artworks seeded");
-    await expectSignInRedirect(page, `${href}?enquire=1`, `${href}?enquire=1`);
-
     await page.goto(href as string);
-    await expect(page.getByTestId("art-enquire-sign-in")).toHaveAttribute(
-      "href",
-      `/login?returnTo=${encodeURIComponent(`${href}?enquire=1`)}`,
-    );
+    await expect(page.getByTestId("art-enquire-sign-in")).toHaveCount(0);
+    await page.getByTestId("art-enquire-trigger").click();
+
+    const sheet = page.getByRole("dialog", { name: "Send an enquiry" });
+    await expect(sheet).toBeVisible();
+    const name = sheet.getByLabel("Name");
+    const email = sheet.getByLabel("Email");
+
+    await sheet.getByRole("button", { name: "Send enquiry" }).click();
+    await expect(name).toHaveAttribute("aria-invalid", "true");
+    await expect(name).toBeFocused();
+    await expect(email).toHaveAttribute("aria-invalid", "true");
+
+    await name.fill("Grace Hopper");
+    await email.fill("not-an-email");
+    await email.blur();
+    await expect(email).toHaveAttribute("aria-invalid", "true");
+    await expect(sheet.getByText(/valid email address/)).toBeVisible();
+
+    await email.fill(`grace+${Date.now()}@example.com`);
+    await sheet.getByLabel("Message (optional)").fill("Is this work still available to view?");
+    await sheet.getByRole("button", { name: "Send enquiry" }).click();
+    await expect(sheet.getByText("Enquiry sent")).toBeVisible({ timeout: 30_000 });
+    await expect(sheet.getByText("Our specialist will be in touch soon.")).toBeVisible();
+  });
+
+  test("a guest can send a general enquiry from the contact page", async ({ page }) => {
+    await page.goto("/contact");
+    await expect(page.getByTestId("art-general-enquire-sign-in")).toHaveCount(0);
+    await page.getByTestId("art-general-enquire-trigger").click();
+
+    const sheet = page.getByRole("dialog", { name: "Send an enquiry" });
+    await sheet.getByLabel("Name").fill("Grace Hopper");
+    await sheet.getByLabel("Email").fill(`grace+${Date.now()}@example.com`);
+    await sheet.getByLabel("Message", { exact: true }).fill("Do you offer private viewings?");
+    await sheet.getByRole("button", { name: "Send enquiry" }).click();
+    await expect(page.getByTestId("art-general-enquire-sent")).toBeVisible({ timeout: 30_000 });
   });
 
   test("signed-out heart sends the viewer to sign-in", async ({ page }) => {

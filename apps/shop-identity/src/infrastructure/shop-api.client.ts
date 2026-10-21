@@ -121,6 +121,8 @@ export async function shopApiFetch(
     basketToken?: string | null;
     body?: unknown;
     idempotencyKey?: string;
+    /** Browser address, for the API's per-visitor limits. Only honoured on BFF-token requests. */
+    clientIp?: string;
   },
 ): Promise<Response> {
   const bearer = await resolveShopApiBearerToken(options, {
@@ -138,6 +140,9 @@ export async function shopApiFetch(
   }
   if (input.idempotencyKey) {
     headers["idempotency-key"] = input.idempotencyKey;
+  }
+  if (input.clientIp && input.clientIp !== "unknown") {
+    headers["x-lax-client-ip"] = input.clientIp;
   }
   if (input.body !== undefined) {
     headers["content-type"] = "application/json";

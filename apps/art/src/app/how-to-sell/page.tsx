@@ -4,7 +4,6 @@ import {
 } from "@/components/editorial/art-editorial-page-view";
 import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
 import { artServices } from "@/lib/art-services.server";
-import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import { EDITORIAL_GUIDE_ROUTES } from "@/lib/editorial/editorial-page-routes";
 import { loadEditorialPage } from "@/lib/editorial/editorial-page.loader.server";
 import type { Metadata } from "next";
@@ -34,7 +33,6 @@ export default async function HowToSellPage() {
           </p>
           <ArtGeneralEnquiryPanel
             viewer={viewer}
-            loginHref={artStorefrontLoginHref(ROUTE)}
             defaultTopic="selling"
             triggerLabel="Start a selling enquiry"
           />

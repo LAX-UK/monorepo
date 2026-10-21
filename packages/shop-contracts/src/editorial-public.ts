@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { PublicArtistDetailSchema, PublicArtistSummarySchema } from "./artist-public.js";
 import { PublicArtworkSummarySchema } from "./artwork-public.js";
 import { EditorialBlockListSchema } from "./editorial-blocks.js";
+import { EnquiryContactProperties } from "./enquiry-contact.js";
 import { PublicSeoFieldsProperties } from "./seo-fields.js";
 
 export const EditorialExhibitionStatusFilterSchema = Type.Union([
@@ -174,6 +175,7 @@ export const RegisterGeneralEnquiryRequestSchema = Type.Object({
   contextSlug: Type.Optional(Type.String({ maxLength: 120 })),
   message: Type.String({ minLength: 1, maxLength: 4000, pattern: "\\S" }),
   phone: Type.Optional(Type.String({ maxLength: 40 })),
+  ...EnquiryContactProperties,
 });
 
 export const GeneralEnquiryTopicSchema = Type.Union([
@@ -199,7 +201,10 @@ export const PortalGeneralEnquiriesResponseSchema = Type.Object({
 
 export const AdminGeneralEnquiryRowSchema = Type.Object({
   enquiryId: Type.String({ format: "uuid" }),
-  identitySubjectId: Type.String(),
+  /** Null for guest enquiries; staff reply to `contactEmail`. */
+  identitySubjectId: Type.Union([Type.String(), Type.Null()]),
+  contactName: Type.Union([Type.String(), Type.Null()]),
+  contactEmail: Type.Union([Type.String(), Type.Null()]),
   topic: GeneralEnquiryTopicSchema,
   contextSlug: Type.Union([Type.String(), Type.Null()]),
   message: Type.String(),

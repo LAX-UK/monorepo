@@ -1520,6 +1520,13 @@
       "when": 1794124800000,
       "tag": "0217_shop_seo_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1794211200000,
+      "tag": "0218_shop_guest_enquiry_contact",
+      "breakpoints": true
     }
   ]
 }

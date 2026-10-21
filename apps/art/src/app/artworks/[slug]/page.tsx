@@ -11,9 +11,7 @@ import { ArtSection } from "@/components/layout/art-section";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
 import { loadArtStorefrontBaseUrl } from "@/env.server";
 import { artServices } from "@/lib/art-services.server";
-import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import {
-  artworkEnquiryReturnTo,
   composeArtworkDetailMetadata,
   composeArtworkDetailPage,
 } from "@/lib/artwork/artwork-detail-page.composer";
@@ -27,7 +25,6 @@ import {
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
@@ -56,7 +53,6 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
   if (result.kind !== "ok") notFoundOrUnavailable(result.kind, "Artwork");
 
   const { vm } = result;
-  if (vm.enquiry.kind === "sign_in" && query.enquire === "1") redirect(vm.enquiry.loginHref);
   const shareUrl = `/artworks/${encodeURIComponent(vm.slug)}`;
 
   return (
@@ -157,7 +153,6 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
                     slug={vm.slug}
                     title={vm.title}
                     enquiry={vm.enquiry}
-                    loginHref={artStorefrontLoginHref(artworkEnquiryReturnTo(vm.slug))}
                     triggerLabel="Enquire to purchase"
                   />
                 </div>

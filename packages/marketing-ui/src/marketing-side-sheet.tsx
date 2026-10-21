@@ -22,6 +22,8 @@ export type MarketingSideSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** `sentence` sets the title as a plain heading (Figma enquiry panels); `caps` is the default label style. */
+  titleCase?: "caps" | "sentence";
   description?: string;
   children: ReactNode;
   /** Sticky actions below the scroll body. */
@@ -31,14 +33,17 @@ export type MarketingSideSheetProps = {
   className?: string;
 };
 
-const titleClass =
-  "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface";
+const TITLE_CLASS = {
+  caps: "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface",
+  sentence: "text-2xl font-medium leading-8 text-on-surface",
+} as const;
 
 /** Bottom sheet below `lg`, 576px right side sheet at `lg+` — task panels (enquiry, forms). */
 export function MarketingSideSheet({
   open,
   onOpenChange,
   title,
+  titleCase = "caps",
   description,
   children,
   footer,
@@ -54,6 +59,7 @@ export function MarketingSideSheet({
     },
     [onOpenChange, returnFocusRef],
   );
+  const titleClass = TITLE_CLASS[titleCase];
   const { mobile, desktop } = useSplitOverlayOpenLg(open, handleOpenChange);
 
   return (

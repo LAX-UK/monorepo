@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -275,14 +277,21 @@ export const shopGeneralEnquiry = pgTable(
   "shop_general_enquiry",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    identitySubjectId: text("identity_subject_id").notNull(),
+    /** Null for guest enquiries, which carry `contactEmail` instead. */
+    identitySubjectId: text("identity_subject_id"),
     topic: shopGeneralEnquiryTopicEnum("topic").notNull(),
     contextSlug: text("context_slug"),
     message: text("message").notNull(),
     phone: text("phone"),
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index("shop_general_enquiry_subject_idx").on(table.identitySubjectId, table.createdAt),
+    check(
+      "shop_general_enquiry_subject_or_contact_ck",
+      sql`${table.identitySubjectId} IS NOT NULL OR ${table.contactEmail} IS NOT NULL`,
+    ),
   ],
 );

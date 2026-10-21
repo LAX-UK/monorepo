@@ -28,6 +28,10 @@ type ShopTemplateVars = {
     artworkSlug: string;
     artworkUrl: string;
     buyerEmail: string;
+    /** Name typed in the enquiry form. */
+    buyerName?: string;
+    /** True when the enquiry was sent without a LAX account. */
+    guest?: boolean;
     message?: string;
     contactPhone?: string;
     /** Storefront the enquiry came from; absent on alerts queued before LAX Art branding. */
@@ -69,6 +73,10 @@ type ShopTemplateVars = {
   "art-general-enquiry-alert": {
     topicLabel: string;
     buyerEmail: string;
+    /** Name typed in the enquiry form. */
+    buyerName?: string;
+    /** True when the enquiry was sent without a LAX account. */
+    guest?: boolean;
     message: string;
     contextSlug?: string;
     contactPhone?: string;

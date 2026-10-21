@@ -4,23 +4,18 @@ import type {
 } from "@/lib/art-commerce-mutation.server";
 import { isCatalogueSlug } from "@/lib/catalogue/catalogue-slug";
 import {
-  type EnquiryFormField,
+  type EnquiryFieldErrors,
   type EnquiryFormInput,
   validateEnquiryForm,
 } from "@/lib/enquiry/enquiry-form.validator";
 
 export type ArtEnquiryState =
   | { status: "idle" }
-  | { status: "sent"; message: string }
-  | { status: "invalid"; fieldErrors: Partial<Record<EnquiryFormField, string>> }
-  | { status: "sign_in_required"; message: string }
+  | { status: "sent" }
+  | { status: "invalid"; fieldErrors: EnquiryFieldErrors }
   | { status: "error"; message: string };
 
-export const ART_ENQUIRY_SENT_MESSAGE =
-  "Thank you. Our team will reply to your enquiry by email, usually within one working day.";
-
 const MESSAGES = {
-  signIn: "Sign in to send an enquiry.",
   sessionExpired: "Your session expired. Refresh the page and try again.",
   notFound: "This artwork is no longer available for enquiries.",
   conflict: "This artwork is no longer accepting enquiries.",
@@ -40,8 +35,7 @@ export function interpretArtEnquiryResult(result: ArtCommerceMutationResult): Ar
     return { status: "error", message: MESSAGES.sessionExpired };
   if (result.kind === "network_error") return { status: "error", message: MESSAGES.unavailable };
   const { status, body } = result;
-  if (status >= 200 && status < 300) return { status: "sent", message: ART_ENQUIRY_SENT_MESSAGE };
-  if (status === 401) return { status: "sign_in_required", message: MESSAGES.signIn };
+  if (status >= 200 && status < 300) return { status: "sent" };
   if (status === 403 && readError(body) === "csrf_failed") {
     return { status: "error", message: MESSAGES.sessionExpired };
   }
@@ -52,9 +46,14 @@ export function interpretArtEnquiryResult(result: ArtCommerceMutationResult): Ar
   return { status: "error", message: MESSAGES.unavailable };
 }
 
+/** Hidden field that only bots fill; the API drops the enquiry silently when it is set. */
+function honeypot(value: unknown): { website?: string } {
+  return typeof value === "string" && value.trim() ? { website: value } : {};
+}
+
 export async function submitArtEnquiry(
   client: ArtCommerceMutationClient,
-  input: { artworkSlug: unknown } & EnquiryFormInput,
+  input: { artworkSlug: unknown; website?: unknown } & EnquiryFormInput,
 ): Promise<ArtEnquiryState> {
   if (!isCatalogueSlug(input.artworkSlug)) {
     return { status: "error", message: MESSAGES.notFound };
@@ -63,7 +62,7 @@ export async function submitArtEnquiry(
   if (!validation.ok) return { status: "invalid", fieldErrors: validation.fieldErrors };
   const result = await client.mutate(
     `/commerce/artworks/${encodeURIComponent(input.artworkSlug.trim())}/interest`,
-    { method: "POST", body: validation.payload },
+    { method: "POST", body: { ...validation.payload, ...honeypot(input.website) } },
   );
   return interpretArtEnquiryResult(result);
 }

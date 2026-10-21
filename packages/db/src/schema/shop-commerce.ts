@@ -1277,10 +1277,13 @@ export const shopArtworkInterest = pgTable(
     artworkId: uuid("artwork_id")
       .notNull()
       .references(() => shopArtwork.id, { onDelete: "cascade" }),
-    identitySubjectId: text("identity_subject_id").notNull(),
+    /** Null for guest enquiries, which carry `contactEmail` instead. */
+    identitySubjectId: text("identity_subject_id"),
     intent: shopArtworkInterestIntentEnum("intent").default("notify_me").notNull(),
     message: text("message"),
     contactPhone: text("contact_phone"),
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     notifiedAt: timestamp("notified_at", { mode: "date", withTimezone: true }),
   },
@@ -1291,6 +1294,10 @@ export const shopArtworkInterest = pgTable(
       table.intent,
     ),
     index("shop_artwork_interest_subject_idx").on(table.identitySubjectId),
+    check(
+      "shop_artwork_interest_subject_or_contact_ck",
+      sql`${table.identitySubjectId} IS NOT NULL OR ${table.contactEmail} IS NOT NULL`,
+    ),
   ],
 );
 

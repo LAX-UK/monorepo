@@ -1,6 +1,7 @@
 import { isArtworkEligibleForEnquiry } from "../artwork-enquiry-policy.js";
 import type { ArtworkInterestIntent } from "../artwork-interest-intent.js";
 import { isArtworkEligibleForNotifyMeSubscription } from "../artwork-notify-me-policy.js";
+import type { EnquirySender } from "../enquiry-sender.js";
 import type { ArtworkInterestWriter } from "../ports/artwork-interest.writer.js";
 
 export type RegisterArtworkInterestHandlerResult =
@@ -35,7 +36,7 @@ function isEligibleForIntent(
 export function createRegisterArtworkInterestHandler(writer: ArtworkInterestWriter) {
   return async (input: {
     artworkSlug: string;
-    identitySubjectId: string;
+    sender: EnquirySender;
     intent: ArtworkInterestIntent;
     message?: string | undefined;
     contactPhone?: string | undefined;
@@ -51,7 +52,7 @@ export function createRegisterArtworkInterestHandler(writer: ArtworkInterestWrit
       artworkId: context.artworkId,
       artworkSlug: context.artworkSlug,
       salesChannel: context.salesChannel,
-      identitySubjectId: input.identitySubjectId,
+      sender: input.sender,
       intent: input.intent,
       ...(input.intent === "enquiry" && input.message ? { message: input.message } : {}),
       ...(input.intent === "enquiry" && input.contactPhone

@@ -1,16 +1,16 @@
 "use client";
 
-import { ArtAuthLink } from "@/components/art-auth-link";
+import { ArtEnquiryForm } from "@/components/enquiry/art-enquiry-form.client";
+import type { ArtEnquiryContact } from "@/lib/artwork/artwork-detail-page.composer";
 import { sendArtGeneralEnquiry } from "@/lib/enquiry/art-general-enquiry-actions.server";
 import {
   ART_GENERAL_ENQUIRY_TOPICS,
   type ArtGeneralEnquiryState,
   type ArtGeneralEnquiryTopic,
 } from "@/lib/enquiry/submit-general-enquiry";
-import { MarketingSideSheet } from "@auction/marketing-ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { MarketingSideSheet, MarketingSuccessState } from "@auction/marketing-ui";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
   Select,
@@ -19,28 +19,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
-import { Textarea } from "@auction/ui/components/textarea";
-import { type ReactNode, useActionState, useId, useMemo, useState } from "react";
+import { type ReactNode, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 
 const INITIAL: ArtGeneralEnquiryState = { status: "idle" };
+const MESSAGE_MAX_LENGTH = 4000;
 
 type Props = {
   autoOpen?: boolean;
   defaultTopic?: ArtGeneralEnquiryTopic;
   contextSlug?: string | null;
   contextLabel?: string | null;
-  loginHref: string;
+  /** Prefill for signed-in visitors; guests start empty. */
+  contact: ArtEnquiryContact;
   triggerLabel?: string;
   /** Replaces the default button, e.g. with the header's text-sized "Enquire" control. */
   renderTrigger?: (open: () => void) => ReactNode;
 };
 
+/** Figma 614:12257 (desktop panel), 533:9469 (mobile sheet), 616:12737 (sent). */
 export function ArtGeneralEnquirySheet({
   autoOpen = false,
   defaultTopic = "general",
   contextSlug = null,
   contextLabel = null,
-  loginHref,
+  contact,
   triggerLabel = "Send a message",
   renderTrigger,
 }: Props) {
@@ -48,7 +50,15 @@ export function ArtGeneralEnquirySheet({
   const [topic, setTopic] = useState<ArtGeneralEnquiryTopic>(defaultTopic);
   const action = useMemo(() => sendArtGeneralEnquiry.bind(null, contextSlug), [contextSlug]);
   const [state, formAction, pending] = useActionState(action, INITIAL);
-  const formId = useId();
+  const topicId = useId();
+  const sentRef = useRef<HTMLOutputElement>(null);
+  const sent = state.status === "sent";
+
+  useEffect(() => {
+    if (sent) sentRef.current?.focus();
+  }, [sent]);
+
+  const topicError = state.status === "invalid" ? state.fieldErrors.topic : undefined;
 
   return (
     <>
@@ -68,90 +78,78 @@ export function ArtGeneralEnquirySheet({
       <MarketingSideSheet
         open={open}
         onOpenChange={setOpen}
-        title="Contact the gallery"
-        description={
-          contextLabel
-            ? `About ${contextLabel}. We typically respond within one business day.`
-            : "We typically respond within one business day."
-        }
+        title="Send an enquiry"
+        titleCase="sentence"
       >
-        {state.status === "sent" ? (
-          <Alert data-testid="art-general-enquire-sent">
-            <AlertTitle>Message sent</AlertTitle>
-            <AlertDescription>
-              Thank you — the gallery team will be in touch. You can follow up from Enquiries in
-              your account.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <form action={formAction} className="flex flex-col gap-4" id={formId} noValidate>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={`${formId}-topic`}>Topic</Label>
-              <Select
-                name="topic"
-                value={topic}
-                onValueChange={(value) => setTopic(value as ArtGeneralEnquiryTopic)}
+        {sent ? (
+          <MarketingSuccessState
+            ref={sentRef}
+            tabIndex={-1}
+            title="Enquiry sent"
+            description="Our specialist will be in touch soon."
+            data-testid="art-general-enquire-sent"
+            actions={
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 w-full font-label uppercase"
+                onClick={() => setOpen(false)}
               >
-                <SelectTrigger id={`${formId}-topic`} className="min-h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ART_GENERAL_ENQUIRY_TOPICS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={`${formId}-message`}>Message</Label>
-              <Textarea
-                id={`${formId}-message`}
-                name="message"
-                required
-                maxLength={4000}
-                rows={6}
-                className="min-h-32"
-                aria-invalid={state.status === "invalid" ? true : undefined}
-                aria-describedby={state.status === "invalid" ? `${formId}-error` : undefined}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={`${formId}-phone`}>Phone (optional)</Label>
-              <Input
-                id={`${formId}-phone`}
-                name="contactPhone"
-                type="tel"
-                autoComplete="tel"
-                maxLength={40}
-              />
-            </div>
-            {state.status === "invalid" || state.status === "error" ? (
-              <Alert variant="destructive" id={`${formId}-error`} role="alert">
-                <AlertDescription>{state.message}</AlertDescription>
-              </Alert>
-            ) : null}
-            {state.status === "sign_in_required" ? (
-              <Alert variant="warning" role="alert">
-                <AlertDescription>
-                  Your session has ended.{" "}
-                  <ArtAuthLink href={loginHref} className="underline underline-offset-4">
-                    Sign in again
-                  </ArtAuthLink>{" "}
-                  to send your message.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <Button
-              type="submit"
-              size="lg"
-              className="min-h-11 font-label uppercase"
-              disabled={pending}
-            >
-              {pending ? "Sending…" : "Send enquiry"}
-            </Button>
-          </form>
+                Close
+              </Button>
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <p className="text-base leading-6 text-on-surface">
+              {contextLabel
+                ? `Thank you for your interest in ${contextLabel}. Please complete the form below and our specialist will follow up with you shortly.`
+                : "Thank you for your interest. Please complete the form below and our specialist will follow up with you shortly."}
+            </p>
+            <ArtEnquiryForm
+              action={formAction}
+              pending={pending}
+              contact={contact}
+              serverErrors={state.status === "invalid" ? state.fieldErrors : {}}
+              messageRequired
+              messageMaxLength={MESSAGE_MAX_LENGTH}
+              leading={
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor={topicId} className="text-sm font-normal text-on-surface-variant">
+                    Topic
+                  </Label>
+                  <Select
+                    name="topic"
+                    value={topic}
+                    onValueChange={(value) => setTopic(value as ArtGeneralEnquiryTopic)}
+                  >
+                    <SelectTrigger
+                      id={topicId}
+                      className="min-h-11"
+                      aria-invalid={topicError ? true : undefined}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ART_GENERAL_ENQUIRY_TOPICS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {topicError ? <p className="text-xs text-error">{topicError}</p> : null}
+                </div>
+              }
+              notice={
+                state.status === "error" ? (
+                  <Alert variant="destructive" role="alert">
+                    <AlertDescription>{state.message}</AlertDescription>
+                  </Alert>
+                ) : null
+              }
+            />
+          </div>
         )}
       </MarketingSideSheet>
     </>

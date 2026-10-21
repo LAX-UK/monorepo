@@ -1,23 +1,22 @@
-import { ArtAuthLink } from "@/components/art-auth-link";
 import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry-sheet.client";
 import type { ArtViewerState } from "@/lib/art-viewer-state";
 import type { ArtGeneralEnquiryTopic } from "@/lib/enquiry/submit-general-enquiry";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 
 type Props = {
   viewer: ArtViewerState;
-  loginHref: string;
   defaultTopic?: ArtGeneralEnquiryTopic;
   contextSlug?: string | null;
   contextLabel?: string | null;
   triggerLabel?: string;
 };
 
+const GUEST_CONTACT = { name: "", email: "", phone: "" };
+
+/** Guests can write to the gallery without an account; signed-in visitors get their details prefilled. */
 export function ArtGeneralEnquiryPanel({
   viewer,
-  loginHref,
   defaultTopic,
   contextSlug,
   contextLabel,
@@ -25,22 +24,23 @@ export function ArtGeneralEnquiryPanel({
 }: Props) {
   switch (viewer.kind) {
     case "authenticated":
+    case "guest":
       return (
         <ArtGeneralEnquirySheet
-          loginHref={loginHref}
+          contact={
+            viewer.kind === "authenticated"
+              ? {
+                  name: viewer.displayName ?? "",
+                  email: viewer.email ?? "",
+                  phone: viewer.verifiedPhone ?? "",
+                }
+              : GUEST_CONTACT
+          }
           {...(defaultTopic ? { defaultTopic } : {})}
           {...(contextSlug ? { contextSlug } : {})}
           {...(contextLabel ? { contextLabel } : {})}
           {...(triggerLabel ? { triggerLabel } : {})}
         />
-      );
-    case "guest":
-      return (
-        <Button asChild size="lg" className="min-h-11 w-fit font-label uppercase">
-          <ArtAuthLink href={loginHref} data-testid="art-general-enquire-sign-in">
-            Sign in to contact us
-          </ArtAuthLink>
-        </Button>
       );
     case "disabled":
       return (

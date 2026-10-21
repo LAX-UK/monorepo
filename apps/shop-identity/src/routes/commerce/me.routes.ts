@@ -1,9 +1,11 @@
 import type { Hono } from "hono";
+import { generalEnquiryBodySchema } from "../../commerce-bodies.js";
 import { resolveAuthenticatedCommerceContext } from "../../commerce-session.js";
 import { ShopIdentityReauthRequiredError } from "../../errors/shop-identity-reauth.error.js";
 import type { CommerceRoutesDeps } from "./commerce-route-types.js";
 import { portalDocumentsResponseSchema } from "./portal-documents.schema.js";
 import { proxyAuthenticatedCommerce } from "./proxy-authenticated-commerce.js";
+import { proxyEnquiry } from "./proxy-enquiry.js";
 import { proxyJson } from "./proxy-json.js";
 
 export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): void {
@@ -84,13 +86,14 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
   );
 
   app.post("/commerce/me/general-enquiries", async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    return proxyAuthenticatedCommerce(c, deps, {
-      method: "POST",
+    const parsed = generalEnquiryBodySchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return c.json({ error: "validation_failed" }, 400);
+    }
+    return proxyEnquiry(c, deps, {
       path: "/v1/me/general-enquiries",
-      scopes: "shop.write",
-      body,
-      requireCsrf: true,
+      body: parsed.data,
+      allowGuest: true,
     });
   });
 

@@ -5,7 +5,8 @@ const bff = vi.hoisted(() => ({ mutate: vi.fn() }));
 vi.mock("@/lib/art-commerce-mutation.server", () => ({ artCommerceMutationClient: bff }));
 
 import { sendArtEnquiry } from "./art-enquiry-actions.server.js";
-import { ART_ENQUIRY_SENT_MESSAGE } from "./submit-art-enquiry.js";
+
+const CONTACT = { name: "Grace Hopper", email: "grace@example.com" };
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -25,18 +26,44 @@ describe("sendArtEnquiry", () => {
     const state = await sendArtEnquiry(
       "warm basket",
       { status: "idle" },
-      form({ message: " Is it framed? ", contactPhone: "+44 7700 900123" }),
+      form({ ...CONTACT, message: " Is it framed? ", contactPhone: "+44 7700 900123" }),
     );
-    expect(state).toEqual({ status: "sent", message: ART_ENQUIRY_SENT_MESSAGE });
+    expect(state).toEqual({ status: "sent" });
     expect(bff.mutate).toHaveBeenCalledWith("/commerce/artworks/warm%20basket/interest", {
       method: "POST",
-      body: { intent: "enquiry", message: "Is it framed?", contactPhone: "+447700900123" },
+      body: {
+        intent: "enquiry",
+        ...CONTACT,
+        message: "Is it framed?",
+        contactPhone: "+447700900123",
+      },
     });
   });
 
+  it("forwards a filled honeypot and omits an empty one", async () => {
+    bff.mutate.mockResolvedValue({ kind: "response", status: 200, body: {} });
+    await sendArtEnquiry("work", { status: "idle" }, form({ ...CONTACT, website: "" }));
+    expect(bff.mutate.mock.calls[0]?.[1].body).not.toHaveProperty("website");
+    await sendArtEnquiry(
+      "work",
+      { status: "idle" },
+      form({ ...CONTACT, website: "https://spam.example" }),
+    );
+    expect(bff.mutate.mock.calls[1]?.[1].body).toMatchObject({ website: "https://spam.example" });
+  });
+
   it("rejects an empty slug without calling the BFF", async () => {
-    const state = await sendArtEnquiry(" ", { status: "idle" }, form({}));
+    const state = await sendArtEnquiry(" ", { status: "idle" }, form(CONTACT));
     expect(state.status).toBe("error");
+    expect(bff.mutate).not.toHaveBeenCalled();
+  });
+
+  it("requires name and email before calling the BFF", async () => {
+    const state = await sendArtEnquiry("work", { status: "idle" }, form({}));
+    expect(state).toMatchObject({
+      status: "invalid",
+      fieldErrors: { name: expect.any(String), email: expect.any(String) },
+    });
     expect(bff.mutate).not.toHaveBeenCalled();
   });
 
@@ -44,14 +71,14 @@ describe("sendArtEnquiry", () => {
     const state = await sendArtEnquiry(
       "work",
       { status: "idle" },
-      form({ contactPhone: "07700 900123" }),
+      form({ ...CONTACT, contactPhone: "07700 900123" }),
     );
     expect(state.status).toBe("invalid");
     expect(bff.mutate).not.toHaveBeenCalled();
   });
 
   it.each([
-    [{ kind: "response", status: 401, body: {} }, "sign_in_required", /Sign in/],
+    [{ kind: "response", status: 401, body: {} }, "error", /Try again shortly/],
     [{ kind: "response", status: 403, body: { error: "csrf_failed" } }, "error", /session expired/],
     [{ kind: "csrf_unavailable" }, "error", /session expired/],
     [{ kind: "response", status: 404, body: {} }, "error", /no longer available/],
@@ -62,7 +89,7 @@ describe("sendArtEnquiry", () => {
     [{ kind: "network_error" }, "error", /Try again shortly/],
   ] as const)("maps %o to a %s notice", async (result, status, message) => {
     bff.mutate.mockResolvedValue(result);
-    const state = await sendArtEnquiry("work", { status: "idle" }, form({}));
+    const state = await sendArtEnquiry("work", { status: "idle" }, form(CONTACT));
     expect(state.status).toBe(status);
     expect("message" in state ? state.message : "").toMatch(message);
   });

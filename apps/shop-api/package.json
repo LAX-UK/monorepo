@@ -44,6 +44,7 @@
     "@sentry/node": "10.51.0",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.6.1",
+    "ioredis": "^5.4.2",
     "pg": "^8.16.3",
     "pino": "^10.3.1",
     "prom-client": "^15.1.3",

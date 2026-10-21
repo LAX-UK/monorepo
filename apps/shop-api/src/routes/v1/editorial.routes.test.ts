@@ -9,8 +9,10 @@ vi.mock("@auction/auth/token-verifier", () => ({
 }));
 
 import { createShopApiApp } from "../../app.js";
+import { createEnquiryRateLimiter } from "../../application/enquiry-rate-limit.js";
 import type { EditorialSearchReader } from "../../application/ports/editorial-search.reader.js";
 import type { EditorialRepository } from "../../application/ports/editorial.repository.js";
+import { createInMemoryFixedWindowCounter } from "../../infrastructure/in-memory-fixed-window-counter.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 import { createStubEditorialRepository } from "../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../test-support/stub-editorial-search-reader.js";
@@ -74,6 +76,8 @@ const exhibitionSummary = {
   featured: true,
   venue: { slug: "lax-marylebone", name: "LAX Marylebone" },
 };
+
+const bffHeaders = { authorization: "Bearer test-bff-token-minimum-32-characters-long" };
 const ENQUIRY_ID = "6f1c1f0e-7f1a-4a43-9a51-0c1b1d2e3f40";
 
 async function buildApp(
@@ -86,6 +90,7 @@ async function buildApp(
       env: { ...base.env, SHOP_EDITORIAL_ENABLED: true },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
         editorial: createStubEditorialRepository(overrides),
         search: createStubEditorialSearchReader(searchOverrides),
       },
@@ -242,7 +247,12 @@ describe("editorial routes", () => {
     expect(res.statusCode).toBe(201);
     expect(res.json()).toEqual({ enquiryId: ENQUIRY_ID });
     expect(insertGeneralEnquiry).toHaveBeenCalledWith({
-      identitySubjectId: "collector-1",
+      sender: {
+        kind: "account",
+        identitySubjectId: "collector-1",
+        contactName: null,
+        contactEmail: null,
+      },
       topic: "private_viewing",
       contextSlug: null,
       message: "Viewing please",
@@ -291,6 +301,31 @@ describe("editorial routes", () => {
     await app.close();
   });
 
+  it("stores a guest enquiry sent through the BFF with the typed contact details", async () => {
+    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const app = await buildApp({ insertGeneralEnquiry });
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/me/general-enquiries",
+      headers: bffHeaders,
+      payload: {
+        topic: "general",
+        message: "Do you ship to Edinburgh?",
+        name: "Grace Hopper",
+        email: "grace@example.com",
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(insertGeneralEnquiry).toHaveBeenCalledWith({
+      sender: { kind: "guest", contactName: "Grace Hopper", contactEmail: "grace@example.com" },
+      topic: "general",
+      contextSlug: null,
+      message: "Do you ship to Edinburgh?",
+      phone: null,
+    });
+    await app.close();
+  });
+
   it("returns story publishedAt and related content", async () => {
     const app = await buildApp({
       getStoryBySlug: async () => ({
@@ -334,6 +369,41 @@ describe("editorial routes", () => {
     expect(res.json()).toEqual({ exhibitions: [exhibitionSummary], stories: [storySummary] });
     const missing = await app.inject({ method: "GET", url: "/v1/editorial/artists/nobody" });
     expect(missing.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("rejects a guest general enquiry without an email", async () => {
+    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const app = await buildApp({ insertGeneralEnquiry });
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/me/general-enquiries",
+      headers: bffHeaders,
+      payload: { topic: "general", message: "Hello", name: "Grace" },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(insertGeneralEnquiry).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("answers a honeypot general enquiry with a 201 and stores nothing", async () => {
+    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const app = await buildApp({ insertGeneralEnquiry });
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/me/general-enquiries",
+      headers: bffHeaders,
+      payload: {
+        topic: "general",
+        message: "Cheap watches",
+        name: "Bot",
+        email: "bot@example.com",
+        website: "https://spam.example",
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().enquiryId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(insertGeneralEnquiry).not.toHaveBeenCalled();
     await app.close();
   });
 });

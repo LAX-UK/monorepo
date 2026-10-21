@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopArtwork, shopArtworkInterest } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
+import { enquirySenderColumns } from "../application/enquiry-sender.js";
 import type {
   ArtworkInterestContext,
   ArtworkInterestWriter,
@@ -97,7 +98,7 @@ export function createDrizzleArtworkInterestRepository(
           .insert(shopArtworkInterest)
           .values({
             artworkId: input.artworkId,
-            identitySubjectId: input.identitySubjectId,
+            ...enquirySenderColumns(input.sender),
             intent: input.intent,
             ...(input.intent === "enquiry" && input.message ? { message: input.message } : {}),
             ...(input.intent === "enquiry" && input.contactPhone
@@ -116,18 +117,21 @@ export function createDrizzleArtworkInterestRepository(
           return "already_subscribed";
         }
 
-        await events.insertInTransaction(tx as Database, {
-          aggregateType: "shop_artwork",
-          aggregateId: input.artworkId,
-          eventType: "shop.artwork.interest_registered",
-          producer: "shop-api",
-          payload: {
-            schemaVersion: 1,
-            artworkId: input.artworkId,
-            identitySubjectId: input.identitySubjectId,
-            intent: input.intent,
-          },
-        });
+        // The event feeds account-keyed consumers (CRM deals); guests reach staff by the alert only.
+        if (input.sender.kind === "account") {
+          await events.insertInTransaction(tx as Database, {
+            aggregateType: "shop_artwork",
+            aggregateId: input.artworkId,
+            eventType: "shop.artwork.interest_registered",
+            producer: "shop-api",
+            payload: {
+              schemaVersion: 1,
+              artworkId: input.artworkId,
+              identitySubjectId: input.sender.identitySubjectId,
+              intent: input.intent,
+            },
+          });
+        }
 
         if (
           input.intent === "enquiry" &&
@@ -144,7 +148,7 @@ export function createDrizzleArtworkInterestRepository(
             artworkSlug: input.artworkSlug,
             artworkTitle: artwork?.title ?? input.artworkSlug,
             artworkUrl: artworkPublicUrl(storefrontOrigins, input.salesChannel, input.artworkSlug),
-            identitySubjectId: input.identitySubjectId,
+            sender: input.sender,
             opsEmail: options.enquiryOpsEmail.trim(),
             salesChannel: input.salesChannel,
             ...(input.message ? { message: input.message } : {}),

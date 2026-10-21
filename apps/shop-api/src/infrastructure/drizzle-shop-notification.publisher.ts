@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { Database } from "@auction/db";
 import { emailOutbox } from "@auction/db/schema";
+import type { EnquirySender } from "../application/enquiry-sender.js";
 import type {
   ShopNotificationPublisher,
   ShopNotificationTx,
@@ -31,6 +32,18 @@ const GENERAL_ENQUIRY_TOPIC_LABELS = {
   Parameters<ShopNotificationPublisher["queueGeneralEnquiryAlert"]>[1]["topic"],
   string
 >;
+
+/** Staff reply to the typed address; signed-in buyers who left it blank fall back to their account. */
+async function enquirySenderVars(db: Database, sender: EnquirySender) {
+  const buyerEmail =
+    sender.contactEmail ??
+    (sender.kind === "account" ? await resolveShopUserEmail(db, sender.identitySubjectId) : null);
+  return {
+    buyerEmail: buyerEmail ?? "unknown",
+    ...(sender.contactName ? { buyerName: sender.contactName } : {}),
+    ...(sender.kind === "guest" ? { guest: true } : {}),
+  };
+}
 
 function formatPence(pence: number): string {
   return `£${(pence / 100).toFixed(2)}`;
@@ -99,7 +112,6 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
 
     async queueEnquiryAlert(tx, input) {
       const db = asDb(tx);
-      const buyerEmail = await resolveShopUserEmail(db, input.identitySubjectId);
       await insertShopEmailOutbox(db, {
         idempotencyKey: input.idempotencyKey,
         to: input.opsEmail,
@@ -108,7 +120,7 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
           artworkTitle: input.artworkTitle,
           artworkSlug: input.artworkSlug,
           artworkUrl: input.artworkUrl,
-          buyerEmail: buyerEmail ?? "unknown",
+          ...(await enquirySenderVars(db, input.sender)),
           storefront: input.salesChannel,
           ...(input.message ? { message: input.message } : {}),
           ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
@@ -118,14 +130,13 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
 
     async queueGeneralEnquiryAlert(tx, input) {
       const db = asDb(tx);
-      const buyerEmail = await resolveShopUserEmail(db, input.identitySubjectId);
       await insertShopEmailOutbox(db, {
         idempotencyKey: input.idempotencyKey,
         to: input.opsEmail,
         template: "art-general-enquiry-alert",
         vars: {
           topicLabel: GENERAL_ENQUIRY_TOPIC_LABELS[input.topic],
-          buyerEmail: buyerEmail ?? "unknown",
+          ...(await enquirySenderVars(db, input.sender)),
           message: input.message,
           ...(input.contextSlug ? { contextSlug: input.contextSlug } : {}),
           ...(input.phone ? { contactPhone: input.phone } : {}),

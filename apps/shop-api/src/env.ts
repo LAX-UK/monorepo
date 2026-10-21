@@ -27,6 +27,8 @@ export const shopApiEnvSchema = z.object({
   OIDC_ISSUER_URL: z.string().url().default("http://localhost:3001"),
   OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
   SHOP_API_BFF_TOKEN: z.string().min(32).optional(),
+  /** Shares enquiry rate-limit counters across instances; without it each instance counts alone. */
+  REDIS_URL: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),
   STRIPE_SECRET_KEY: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.string().min(1).optional(),

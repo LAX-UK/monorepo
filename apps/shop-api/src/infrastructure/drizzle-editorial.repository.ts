@@ -15,6 +15,7 @@ import {
   parseEditorialBlocks,
 } from "@auction/shop-contracts";
 import { type SQL, and, asc, desc, eq, gt, gte, isNotNull, lt, lte, or, sql } from "drizzle-orm";
+import { enquirySenderColumns } from "../application/enquiry-sender.js";
 import type { EditorialRepository } from "../application/ports/editorial.repository.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
@@ -449,7 +450,7 @@ export function createDrizzleEditorialRepository(
         const [row] = await tx
           .insert(shopGeneralEnquiry)
           .values({
-            identitySubjectId: input.identitySubjectId,
+            ...enquirySenderColumns(input.sender),
             topic: input.topic,
             contextSlug: input.contextSlug,
             message: input.message,
@@ -460,7 +461,7 @@ export function createDrizzleEditorialRepository(
         if (alerts?.opsEmail.trim()) {
           await alerts.notifications.queueGeneralEnquiryAlert(tx, {
             idempotencyKey: `general-enquiry:${row.id}`,
-            identitySubjectId: input.identitySubjectId,
+            sender: input.sender,
             opsEmail: alerts.opsEmail.trim(),
             topic: input.topic,
             contextSlug: input.contextSlug,
@@ -499,6 +500,8 @@ export function createDrizzleEditorialRepository(
       return rows.map((row) => ({
         enquiryId: row.id,
         identitySubjectId: row.identitySubjectId,
+        contactName: row.contactName,
+        contactEmail: row.contactEmail,
         topic: row.topic,
         contextSlug: row.contextSlug,
         message: row.message,

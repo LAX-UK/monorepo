@@ -1,3 +1,5 @@
+import type { EnquirySender } from "../enquiry-sender.js";
+
 /** Opaque transaction handle passed from infrastructure (same DB tx as the business write). */
 export type ShopNotificationTx = unknown;
 
@@ -28,7 +30,7 @@ export type ShopNotificationPublisher = {
       artworkSlug: string;
       artworkTitle: string;
       artworkUrl: string;
-      identitySubjectId: string;
+      sender: EnquirySender;
       opsEmail: string;
       salesChannel: "shop" | "art";
       message?: string | undefined;
@@ -41,7 +43,7 @@ export type ShopNotificationPublisher = {
     tx: ShopNotificationTx,
     input: {
       idempotencyKey: string;
-      identitySubjectId: string;
+      sender: EnquirySender;
       opsEmail: string;
       topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
       contextSlug: string | null;

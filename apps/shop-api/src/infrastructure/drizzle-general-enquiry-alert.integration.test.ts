@@ -24,7 +24,7 @@ describe.skipIf(!hasShopIntegrationDb)("general enquiry staff alert", () => {
     await ownerPool.end();
   });
 
-  it("queues a LAX Art alert in the same transaction as the enquiry", async () => {
+  it("queues a LAX Art alert with the guest contact in the same transaction as the enquiry", async () => {
     const db = createShopDb(shopPool);
     const repo = createDrizzleEditorialRepository(db, {
       resolveMediaUrl: (value) => value ?? null,
@@ -36,7 +36,11 @@ describe.skipIf(!hasShopIntegrationDb)("general enquiry staff alert", () => {
     const subject = `it-general-enquiry-${crypto.randomUUID()}`;
 
     const { enquiryId } = await repo.insertGeneralEnquiry({
-      identitySubjectId: subject,
+      sender: {
+        kind: "guest",
+        contactName: "Grace Hopper",
+        contactEmail: `${subject}@example.com`,
+      },
       topic: "private_viewing",
       contextSlug: "lax-marylebone",
       message: "Could I visit on Saturday?",
@@ -56,6 +60,9 @@ describe.skipIf(!hasShopIntegrationDb)("general enquiry staff alert", () => {
       to: "gallery-ops@example.test",
       vars: {
         topicLabel: "Private viewing",
+        buyerEmail: `${subject}@example.com`,
+        buyerName: "Grace Hopper",
+        guest: true,
         contextSlug: "lax-marylebone",
         message: "Could I visit on Saturday?",
       },

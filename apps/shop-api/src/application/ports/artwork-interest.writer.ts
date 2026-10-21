@@ -9,6 +9,7 @@ export type ArtworkInterestContext = {
 };
 
 import type { ArtworkInterestIntent } from "../artwork-interest-intent.js";
+import type { EnquirySender } from "../enquiry-sender.js";
 
 export type RegisterArtworkInterestResult = "registered" | "already_subscribed" | "not_found";
 
@@ -18,7 +19,8 @@ export interface ArtworkInterestWriter {
     artworkId: string;
     artworkSlug: string;
     salesChannel: "shop" | "art";
-    identitySubjectId: string;
+    /** Guests may only register `enquiry` interest. */
+    sender: EnquirySender;
     intent: ArtworkInterestIntent;
     message?: string | undefined;
     contactPhone?: string | undefined;

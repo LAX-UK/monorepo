@@ -58,11 +58,7 @@ export default async function VenuePage({ params }: VenuePageProps) {
           idPrefix={`venue-${venue.slug}`}
           className="max-w-3xl"
         />
-        <ArtPrivateViewingSection
-          viewer={viewer}
-          returnTo={venueHref(venue.slug)}
-          venue={{ slug: venue.slug, name: venue.name }}
-        />
+        <ArtPrivateViewingSection viewer={viewer} venue={{ slug: venue.slug, name: venue.name }} />
       </div>
     </article>
   );

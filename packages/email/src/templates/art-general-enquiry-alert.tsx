@@ -10,6 +10,8 @@ export const subject = ({ topicLabel }: Vars) => `New LAX Art enquiry: ${topicLa
 export default function ArtGeneralEnquiryAlertEmail({
   topicLabel,
   buyerEmail,
+  buyerName,
+  guest,
   message,
   contextSlug,
   contactPhone,
@@ -21,7 +23,11 @@ export default function ArtGeneralEnquiryAlertEmail({
       preview={`${topicLabel} enquiry from ${buyerEmail}.`}
       title={topicLabel}
     >
-      <TextBlock>Contact email on file: {buyerEmail}</TextBlock>
+      {buyerName ? <TextBlock>Name: {buyerName}</TextBlock> : null}
+      <TextBlock>
+        {guest ? "Contact email (sent without a LAX account)" : "Contact email on file"}:{" "}
+        {buyerEmail}
+      </TextBlock>
       {contactPhone ? <TextBlock>Contact phone: {contactPhone}</TextBlock> : null}
       {contextSlug ? <TextBlock>Regarding: {contextSlug}</TextBlock> : null}
       <TextBlock>Message: {message}</TextBlock>

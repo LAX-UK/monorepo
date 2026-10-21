@@ -1,4 +1,5 @@
 import type { EditorialBlock, SeoFields } from "@auction/shop-contracts";
+import type { EnquirySender } from "../enquiry-sender.js";
 import type {
   ArtistDetailReadModel,
   ArtistSummaryReadModel,
@@ -194,7 +195,7 @@ export type EditorialRepository = {
     options?: { includeDraft?: boolean },
   ): Promise<EditorialPageDetailReadModel | null>;
   insertGeneralEnquiry(input: {
-    identitySubjectId: string;
+    sender: EnquirySender;
     topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
     contextSlug: string | null;
     message: string;
@@ -213,7 +214,9 @@ export type EditorialRepository = {
   listAdminGeneralEnquiries(input?: { limit?: number }): Promise<
     Array<{
       enquiryId: string;
-      identitySubjectId: string;
+      identitySubjectId: string | null;
+      contactName: string | null;
+      contactEmail: string | null;
       topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
       contextSlug: string | null;
       message: string;

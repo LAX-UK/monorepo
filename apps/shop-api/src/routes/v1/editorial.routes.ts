@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   EditorialArtistRelationsSchema,
   EditorialExhibitionDetailSchema,
@@ -24,6 +25,7 @@ import {
 import type { EditorialRoutesDeps } from "../../editorial-route-deps.js";
 import { notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
+import { type EnquiryContactBody, admitEnquiry } from "./enquiry-admission.js";
 
 /**
  * Site-search term for the exhibitions and stories lists. With `q`, exhibitions match across
@@ -262,20 +264,23 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
           400: ShopApiErrorBodySchema,
           401: ShopApiErrorBodySchema,
           403: ShopApiErrorBodySchema,
+          429: ShopApiErrorBodySchema,
         },
       },
     },
     async (request, reply) => {
-      requireShopScope(request, "shop.write");
-      const subject = requireShopSubject(request);
-      const body = request.body as {
+      const body = request.body as EnquiryContactBody & {
         topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
         contextSlug?: string;
         message: string;
         phone?: string;
       };
+      const admission = await admitEnquiry(request, reply, deps.enquiryRateLimiter, body);
+      if (admission.kind === "honeypot") {
+        return reply.status(201).send({ enquiryId: randomUUID() });
+      }
       const result = await deps.editorial.insertGeneralEnquiry({
-        identitySubjectId: subject,
+        sender: admission.sender,
         topic: body.topic,
         contextSlug: body.contextSlug?.trim() || null,
         message: body.message.trim(),

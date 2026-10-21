@@ -147,6 +147,8 @@ export async function registerAdminEditorialRoutes(
         items: items.map((row) => ({
           enquiryId: row.enquiryId,
           identitySubjectId: row.identitySubjectId,
+          contactName: row.contactName,
+          contactEmail: row.contactEmail,
           topic: row.topic,
           contextSlug: row.contextSlug,
           message: row.message,

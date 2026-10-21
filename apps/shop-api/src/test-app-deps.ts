@@ -1,4 +1,6 @@
+import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import type { ShopApiAppDeps } from "./container.js";
+import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 
 export function createMinimalShopApiTestDeps(
   overrides: Partial<ShopApiAppDeps> = {},
@@ -91,6 +93,7 @@ export function createMinimalShopApiTestDeps(
     interest: {
       registerArtworkInterest: async () => "registered" as const,
       getArtworkInterest: async () => ({ subscribed: false }),
+      enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
     },
     staffReader: {
       findActiveByIdentitySubject: async () => null,
