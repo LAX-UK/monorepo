@@ -83,7 +83,7 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
             {exhibition.installationMedia.map((media) => (
               <li key={media.url}>
                 <figure className="flex flex-col gap-2">
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-surface-container">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
                     <ArtMediaImage
                       src={media.url}
                       alt={media.caption ?? `Installation view of ${exhibition.title}`}

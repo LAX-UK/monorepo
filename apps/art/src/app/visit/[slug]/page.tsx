@@ -48,7 +48,7 @@ export default async function VenuePage({ params }: VenuePageProps) {
           <ArtVenueFacts facts={result.data} />
         </div>
         {venue.coverUrl ? (
-          <div className="relative aspect-[4/3] overflow-hidden rounded-md bg-surface-container">
+          <div className="relative aspect-[4/3] overflow-hidden bg-surface-container">
             <ArtMediaImage
               src={venue.coverUrl}
               alt={`${venue.name} gallery`}

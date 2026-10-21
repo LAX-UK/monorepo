@@ -23,7 +23,7 @@ export function ArtArtworkGallery({ images, priority = false }: Props) {
 
   return (
     <div className="flex flex-col gap-3" data-testid="art-artwork-gallery">
-      <div className="relative aspect-square overflow-hidden rounded-lg bg-surface-container">
+      <div className="relative aspect-square overflow-hidden bg-surface-container">
         <ArtMediaImage
           src={active.url}
           alt={active.alt}
@@ -46,7 +46,7 @@ export function ArtArtworkGallery({ images, priority = false }: Props) {
                 aria-label={`Show image ${index + 1} of ${images.length}`}
                 aria-pressed={index === activeIndex}
                 className={cn(
-                  "relative size-16 shrink-0 overflow-hidden rounded-sm border-2 p-0",
+                  "relative size-16 shrink-0 overflow-hidden rounded-none border-2 p-0",
                   index === activeIndex ? "border-on-surface" : "border-transparent",
                 )}
               >

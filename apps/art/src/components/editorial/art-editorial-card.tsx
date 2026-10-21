@@ -21,7 +21,7 @@ export function ArtEditorialCard({
   return (
     <MarketingCardShell
       interactive={false}
-      className="group h-full bg-transparent"
+      className="group h-full rounded-none bg-transparent"
       data-testid="art-editorial-card"
     >
       <ArtEditorialLink
@@ -31,7 +31,7 @@ export function ArtEditorialCard({
         <div aria-hidden="true">
           <MarketingCardMedia
             className={cn(
-              "rounded-md bg-surface-container",
+              "bg-surface-container",
               aspect === "portrait" ? "aspect-[4/5]" : "aspect-[4/3]",
             )}
           >

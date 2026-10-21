@@ -7,7 +7,7 @@ Index for TheAlx auction UI tokens, shared primitives, and enforcement. Detailed
 | Layer | Location |
 |-------|----------|
 | **Shared React primitives** | [`packages/ui`](../packages/ui/README.md) — shadcn (`new-york`) on Radix; 96+ components under `packages/ui/src/components/ui/` |
-| **Brand identity** | [`packages/branding`](../packages/branding/src/brand-identity.ts) — obsidian, midnight, light gray, light cream; Montserrat + Outfit |
+| **Brand identity** | [`packages/branding`](../packages/branding/src/brand-identity.ts) — obsidian, light gray, light cream (shared), midnight (Bid accent only; see [LAX colour rule](#lax-colour-rule-one-palette-one-accent-per-product)); Montserrat + Outfit |
 | **CSS tokens (web)** | [`apps/web/src/app/globals.css`](../apps/web/src/app/globals.css) — Tailwind v4 `@theme`: semantic colors (`on-surface`, `surface-container-*`), typography, spacing, motion, dark mode; imports [`marketing-header.css`](../packages/marketing-ui/src/marketing-header.css) for shared Bid/Shop header chrome |
 | **Event app mirror** | [`apps/event/public/brand-tokens.css`](../apps/event/public/brand-tokens.css) — static CSS subset for Vite event surfaces |
 | **Shared CSS primitives** | [`packages/branding/public/brand-primitives.css`](../packages/branding/public/brand-primitives.css) — importable brand hex + font roles |
@@ -119,6 +119,41 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 3. **UI / shadcn bridge** — `--color-foreground`, `--color-primary`, `--color-muted`, sidebar tokens
 
 Email hex mirrors live in [`packages/branding/src/tokens.ts`](../packages/branding/src/tokens.ts).
+
+## LAX colour rule: one palette, one accent per product
+
+Set by the product owner on 2026-10-21. It applies to every LAX product: Bid, Shop, Art, Account, and any later product.
+
+- **One shared palette.**
+  - Every product uses the same neutrals: obsidian, ink, light gray, light cream, and the surface and neutral scales.
+  - Every product uses the same status colours: success, info, warning, danger, live red.
+  - The shared typefaces are Montserrat (primary) and Outfit (secondary). No product adds another face, even when a Figma file uses one.
+- **One unique accent per product.** Each product owns exactly one accent colour, and no other product uses it.
+  - The accent marks the product's identity: the product word in its wordmark, and optionally its own highlights.
+  - The LAX wordmark is otherwise identical across products. For example, the Bid logo is the shared black and light-gray LAX mark with "BID" in navy (`packages/auth/src/hosted-auth/assets/lax-bid-logo.svg`).
+- **Assigned accents:**
+
+  | Product | Accent | Status |
+  | --- | --- | --- |
+  | LAX Bid | Midnight navy `--brand-midnight` #091F5B | Assigned |
+  | LAX Shop | — | To be chosen |
+  | lax.art | — | To be chosen |
+  | LAX Account | — | To be chosen |
+
+  Until a product's accent is chosen, that product uses the shared neutrals only. Primary actions, links and focus rings use obsidian or ink, never another product's accent.
+- **Shared controls stay neutral.**
+  - `Button` default, links, focus rings, tabs, toggles and form controls use shared neutral tokens, so they look the same in every product.
+  - A product accent may tint only product-identity moments: the wordmark, an optional active-nav underline, and editorial highlights. It never tints a control's meaning, and status colours never change per product.
+- **Where accents live.**
+  - Accents are declared once in `@auction/branding`, as a per-product accent token keyed by product id.
+  - Each app's `base.css` maps its own accent to a single semantic token, `--color-product-accent`.
+  - Components never reference `--brand-midnight` or another product's accent directly.
+
+Current deviations, still to migrate:
+- `apps/shop/src/app/base.css` maps midnight to `--color-secondary`, `--color-link`, `--color-ring` and the container tints.
+- `apps/account/src/app/globals.css` maps midnight to `--color-link` and `--color-ring`.
+
+Where a non-Bid Figma file draws navy (e.g. CTAs in the lax.art rebuild), build it with the shared neutral CTA. `scripts/ci/verify-art-theme.test.mjs` fails if Bid's accent appears in `apps/art/src`.
 
 ## Conventions (read before building UI)
 

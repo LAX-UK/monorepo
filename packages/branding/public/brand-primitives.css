@@ -4,6 +4,7 @@
  */
 :root {
   --brand-obsidian: #000000;
+  /* LAX Bid accent only (PRODUCT_ACCENTS in brand-identity.ts). */
   --brand-midnight: #091f5b;
   --brand-light-gray: #b8b9c0;
   --brand-light-cream: #f2f1df;

@@ -17,7 +17,7 @@
   --color-brand-800: #0a0a0a;
   --color-brand-900: var(--color-brand-obsidian);
   --color-brand-obsidian: var(--brand-obsidian);
-  --color-brand-midnight: var(--brand-midnight);
+  --color-brand-ink: var(--brand-ink);
   --color-brand-light-gray: var(--brand-light-gray);
   --color-brand-light-cream: var(--brand-light-cream);
   --color-accent-gold: var(--brand-accent-gold);
@@ -29,11 +29,14 @@
   --color-on-background: var(--color-on-surface);
   --color-primary: var(--color-brand-obsidian);
   --color-on-primary: #ffffff;
-  --color-secondary: var(--color-brand-midnight);
+  /* LAX colour rule (docs/DESIGN_SYSTEM.md): shared neutrals only; navy is Bid's accent.
+     lax.art has no accent yet, so the product accent is the primary neutral. */
+  --color-product-accent: var(--color-primary);
+  --color-secondary: var(--color-brand-ink);
   --color-on-secondary: #ffffff;
-  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 8%, white);
-  --color-on-secondary-container: var(--color-brand-midnight);
-  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 12%, white);
+  --color-secondary-container: var(--color-surface-container-low);
+  --color-on-secondary-container: var(--color-on-surface);
+  --color-primary-container: var(--color-surface-container-high);
   --color-surface-container: #eeeeee;
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
@@ -61,11 +64,12 @@
   );
   --color-alert-border: color-mix(
     in srgb,
-    var(--color-brand-midnight) 35%,
+    var(--color-brand-obsidian) 20%,
     var(--color-outline-variant)
   );
-  --color-link: var(--color-brand-midnight);
-  --color-ring: var(--color-brand-midnight);
+  /* Links stay underlined (they share the text colour), so colour is never the only cue. */
+  --color-link: var(--color-brand-obsidian);
+  --color-ring: var(--color-brand-obsidian);
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
@@ -106,13 +110,14 @@
   --color-hero-panel-border: #c2c1b1;
   --color-hero-panel-ink: #17150f;
   --color-hero-panel-body: var(--color-brand-obsidian);
-  --color-hero-panel-cta: var(--color-brand-midnight);
+  --color-hero-panel-cta: var(--color-hero-panel-ink);
   --animate-art-hero-panel-in: art-hero-panel-in 650ms ease-out both;
   --animate-art-hero-drift: art-hero-drift 18s ease-in-out infinite alternate;
   --text-display-lg: clamp(2rem, 4vw, 3rem);
   --text-display-md: clamp(1.5rem, 3vw, 2rem);
   --text-display-sm: clamp(1.125rem, 2vw, 1.375rem);
-  --text-title-section: clamp(1.25rem, 2.5vw, 1.75rem);
+  /* Figma section title: Montserrat Medium 40/48 at 1440 (DM Sans in the file is set in Montserrat). */
+  --text-title-section: clamp(1.5rem, 2.8vw, 2.5rem);
   --text-label-caps-tracking: 0.22em;
   --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
@@ -221,11 +226,12 @@ html.dark {
   --color-on-primary: var(--color-brand-obsidian);
   --color-cta-bg: var(--color-brand-light-cream);
   --color-cta-on: var(--color-brand-obsidian);
-  --color-secondary: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
-  --color-on-secondary: #ffffff;
-  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 25%, black);
+  --color-product-accent: var(--color-primary);
+  --color-secondary: var(--color-brand-light-cream);
+  --color-on-secondary: var(--color-brand-obsidian);
+  --color-secondary-container: var(--color-surface-container);
   --color-on-secondary-container: #e8e7e7;
-  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 35%, black);
+  --color-primary-container: var(--color-surface-container-high);
   --color-surface-container: #333534;
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;
@@ -240,7 +246,7 @@ html.dark {
   --color-info: color-mix(in srgb, var(--color-accent-blue) 72%, white);
   --color-info-container: color-mix(
     in srgb,
-    var(--color-brand-midnight) 45%,
+    var(--color-accent-blue) 25%,
     var(--color-surface-container)
   );
   --color-warning: oklch(0.78 0.12 85);
@@ -255,15 +261,15 @@ html.dark {
   --color-hero-panel-border: #5c5a54;
   --color-hero-panel-ink: var(--color-brand-light-cream);
   --color-hero-panel-body: #c9c5bc;
-  --color-hero-panel-cta: var(--color-secondary);
+  --color-hero-panel-cta: var(--color-hero-panel-ink);
   --color-alert-surface: color-mix(
     in srgb,
     var(--color-surface-container-low) 85%,
     var(--color-surface)
   );
   --color-alert-border: color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
-  --color-link: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
-  --color-ring: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
+  --color-link: var(--color-brand-light-cream);
+  --color-ring: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
   --color-input-border: var(--color-brand-light-gray);
   --color-footer-bg: #0d0f0f;
