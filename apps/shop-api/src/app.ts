@@ -6,6 +6,7 @@ import type { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import Fastify from "fastify";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 import type { ShopApiAppDeps } from "./container.js";
+import { noopArtCacheInvalidator } from "./infrastructure/http-art-cache-invalidator.js";
 import { registerPublicCatalogueCaching } from "./plugins/cache-control.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
@@ -16,6 +17,7 @@ import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.j
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
+import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
@@ -155,7 +157,14 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
-          void registerAdminEditorialRoutes(adminScope, options.deps.editorial);
+          const editorialDeps = options.deps.editorial;
+          void adminScope.register(async (editorialScope) => {
+            registerArtCacheInvalidation(
+              editorialScope,
+              editorialDeps.artCache ?? noopArtCacheInvalidator,
+            );
+            await registerAdminEditorialRoutes(editorialScope, editorialDeps);
+          });
         }
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
           void registerAdminOperationsRoutes(adminScope, options.deps.admin);

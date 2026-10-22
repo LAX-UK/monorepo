@@ -1,3 +1,4 @@
+import { ART_EDITORIAL_CACHE_TAG } from "@/lib/art-cache-tags";
 import {
   ART_SLUG_LOOKUP,
   artCatalogueApiBaseUrl,
@@ -37,7 +38,7 @@ export const StoryListSchema = Type.Object({ items: Type.Array(EditorialStorySum
 const PageListSchema = Type.Object({ items: Type.Array(EditorialPageSummarySchema) });
 
 /** Published lists are cached briefly; drafts and slug lookups are always read fresh. */
-const PUBLISHED_CACHE: RequestInit = { next: { revalidate: 120, tags: ["art:editorial"] } };
+const PUBLISHED_CACHE: RequestInit = { next: { revalidate: 120, tags: [ART_EDITORIAL_CACHE_TAG] } };
 const DRAFT_CACHE: RequestInit = { cache: "no-store" };
 
 export async function fetchEditorial<S extends TSchema>(

@@ -9,6 +9,8 @@ Operational notes for **Shop Admin → Editorial (lax.art)** and public editoria
 | `SHOP_EDITORIAL_ENABLED` | shop-api | Public `/v1/editorial/*`, admin editorial CRUD, general enquiries |
 | `SHOP_EDITORIAL_PREVIEW_SECRET` | shop-api | Signs 15-minute draft preview tokens (≥ 32 chars; rotate to revoke all live links). Required whenever `NODE_ENV=production` (test and prod) and editorial is enabled — shop-api refuses to boot without it |
 | `SHOP_MEDIA_PUBLIC_BASE_URL` | shop-api | Public origin for uploaded media; editorial media keys are resolved to absolute URLs on public reads |
+| `ART_REVALIDATE_SECRET` | shop-api, apps/art | Shared secret (>= 32 chars, same value on both) for Art's `POST /api/revalidate`. On Art, unset disables the endpoint (404) |
+| `ART_REVALIDATE_URL` | shop-api | Art's revalidation endpoint, e.g. `https://<art-host>/api/revalidate`. Must be set together with `ART_REVALIDATE_SECRET`; both unset means shop-api sends no notification |
 | `ART_EDITORIAL_ENABLED` | apps/art | BFF reads against shop-api editorial endpoints |
 | `SHOP_IMAGE_REMOTE_HOSTS` | apps/art | Build-time extra `next/image` hosts; the `lax-media` CDN host is always allowed |
 | `LAX_ART_PUBLIC_URL` | shop-admin | Builds the full lax.art preview link; without it staff only get the raw token to copy |
@@ -61,7 +63,7 @@ Venues live at `/visit/<slug>` and are listed on `/visit`. Placements that point
 
 ## Caching and preview
 
-- Published editorial reads are cached by Art for 120 seconds (`art:editorial` tag); publishes appear within two minutes.
+- Published editorial reads are cached by Art for 120 seconds (`art:editorial` tag). After every successful editorial write (publish, unpublish, edit, placement, link) shop-api calls Art's `POST /api/revalidate`, so changes show on the next request. If that call fails shop-api logs `lax.art editorial cache invalidation failed` and the 120 second expiry still applies; the staff request is never failed by it. List and home reads are cached; slug lookups are never cached.
 - Draft previews (`/preview/<token>`) are fetched with `no-store`, are `noindex`, and expire 15 minutes after issue.
 
 ## Local seed

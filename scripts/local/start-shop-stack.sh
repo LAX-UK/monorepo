@@ -45,6 +45,9 @@ ART_PORT=3050
 export LAX_ART_PUBLIC_URL="${LAX_ART_PUBLIC_URL:-http://localhost:$ART_PORT}"
 export ART_IDENTITY_BASE_URL="${ART_IDENTITY_BASE_URL:-http://localhost:$ART_IDENTITY_PORT}"
 export ART_IDENTITY_INTERNAL_BASE_URL="${ART_IDENTITY_INTERNAL_BASE_URL:-http://localhost:$ART_IDENTITY_PORT}"
+# Lets local publishes show on lax.art at once; shop-api only sends it when both are set.
+export ART_REVALIDATE_SECRET="${ART_REVALIDATE_SECRET:-local-art-revalidate-secret-32-chars-min}"
+export ART_REVALIDATE_URL="${ART_REVALIDATE_URL:-http://localhost:$ART_PORT/api/revalidate}"
 export OIDC_CLIENT_SECRET_LAX_ART_WEB="${OIDC_CLIENT_SECRET_LAX_ART_WEB:-local-lax-art-web-client-secret-32}"
 
 cd "$ROOT"
@@ -59,6 +62,7 @@ nohup bash -c "
   export SHOP_PORTAL_OWNERSHIP_ENABLED
   export SHOP_PAYOUTS_ENABLED
   export SHOP_ADMIN_ENABLED
+  export ART_REVALIDATE_SECRET ART_REVALIDATE_URL
   export SHOP_VAT_STANDARD_RATE_BP
   export REDIS_URL
   export SHOP_LOCAL_STACK
@@ -93,7 +97,7 @@ if [[ "$START_ART" == "1" ]]; then
 
   nohup bash -c "
     export SHOP_API_BASE_URL ART_IDENTITY_BASE_URL ART_IDENTITY_INTERNAL_BASE_URL LAX_ART_PUBLIC_URL
-    export SHOP_PORTAL_OWNERSHIP_ENABLED SHOP_PAYOUTS_ENABLED
+    export SHOP_PORTAL_OWNERSHIP_ENABLED SHOP_PAYOUTS_ENABLED ART_REVALIDATE_SECRET
     cd \"$ROOT\"
     exec pnpm --filter @auction/art dev
   " >"$LOG_DIR/dev-art.log" 2>&1 &

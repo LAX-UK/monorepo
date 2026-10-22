@@ -101,6 +101,16 @@ export const shopApiEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  /** lax.art endpoint that drops cached editorial reads, e.g. https://lax.art/api/revalidate. */
+  ART_REVALIDATE_URL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
+  /** Shared with lax.art, which authenticates `ART_REVALIDATE_URL` calls by this value. */
+  ART_REVALIDATE_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(32).optional(),
+  ),
   /** HMAC secret for draft preview tokens (defaults to SHOP_API_BFF_TOKEN in non-production). */
   SHOP_EDITORIAL_PREVIEW_SECRET: z.preprocess(
     (val) => (val === "" ? undefined : val),
@@ -155,6 +165,9 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
   if (!parsed.success) {
     console.error(parsed.error.flatten());
     throw new Error("Invalid Shop API environment variables");
+  }
+  if (Boolean(parsed.data.ART_REVALIDATE_URL) !== Boolean(parsed.data.ART_REVALIDATE_SECRET)) {
+    throw new Error("ART_REVALIDATE_URL and ART_REVALIDATE_SECRET must be set together");
   }
   if (parsed.data.NODE_ENV === "production") {
     if (!parsed.data.SHOP_API_BFF_TOKEN) {

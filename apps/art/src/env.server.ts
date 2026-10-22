@@ -20,6 +20,8 @@ const artEnvSchema = z.object({
     .string()
     .regex(/^G-[A-Z0-9]+$/)
     .optional(),
+  /** Shared with shop-api; authenticates its POST /api/revalidate calls. Unset disables the endpoint. */
+  ART_REVALIDATE_SECRET: z.string().min(32).optional(),
   /** Search Console HTML-tag token (DNS verification is preferred). */
   ART_GOOGLE_SITE_VERIFICATION: z.string().min(1).max(200).optional(),
 });
@@ -43,6 +45,7 @@ export function loadArtEnv(
     ART_ALLOW_INDEXING: source.ART_ALLOW_INDEXING?.trim() || undefined,
     ART_GA_MEASUREMENT_ID: source.ART_GA_MEASUREMENT_ID?.trim() || undefined,
     ART_GOOGLE_SITE_VERIFICATION: source.ART_GOOGLE_SITE_VERIFICATION?.trim() || undefined,
+    ART_REVALIDATE_SECRET: source.ART_REVALIDATE_SECRET?.trim() || undefined,
   });
   const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
   const hasBidPublicUrl = Boolean(parsed.LAX_BID_PUBLIC_URL ?? parsed.WEB_ORIGIN);

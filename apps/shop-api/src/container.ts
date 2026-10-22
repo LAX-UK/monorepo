@@ -75,6 +75,10 @@ import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handle
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
+import {
+  createHttpArtCacheInvalidator,
+  noopArtCacheInvalidator,
+} from "./infrastructure/http-art-cache-invalidator.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
@@ -285,6 +289,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           search: createDrizzleEditorialSearchReader(db, { resolveMediaUrl }),
           previewSecret,
           enquiryRateLimiter,
+          artCache:
+            env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
+              ? createHttpArtCacheInvalidator({
+                  url: env.ART_REVALIDATE_URL,
+                  secret: env.ART_REVALIDATE_SECRET,
+                })
+              : noopArtCacheInvalidator,
         }
       : null;
   return {

@@ -32,6 +32,35 @@ describe("loadShopApiEnv LAX_ART_PUBLIC_URL", () => {
   });
 });
 
+describe("loadShopApiEnv lax.art revalidation", () => {
+  const secret = "r".repeat(32);
+
+  it("is optional as a pair", () => {
+    const env = loadShopApiEnv(productionNodeBase());
+    expect(env.ART_REVALIDATE_URL).toBeUndefined();
+    expect(env.ART_REVALIDATE_SECRET).toBeUndefined();
+  });
+
+  it("accepts the URL and secret together", () => {
+    const env = loadShopApiEnv(
+      productionNodeBase({
+        ART_REVALIDATE_URL: "https://lax.art/api/revalidate",
+        ART_REVALIDATE_SECRET: secret,
+      }),
+    );
+    expect(env.ART_REVALIDATE_URL).toBe("https://lax.art/api/revalidate");
+  });
+
+  it("rejects one without the other", () => {
+    expect(() =>
+      loadShopApiEnv(productionNodeBase({ ART_REVALIDATE_URL: "https://lax.art/api/revalidate" })),
+    ).toThrow("must be set together");
+    expect(() => loadShopApiEnv(productionNodeBase({ ART_REVALIDATE_SECRET: secret }))).toThrow(
+      "must be set together",
+    );
+  });
+});
+
 describe("loadShopApiEnv Connect platform", () => {
   it("allows bid_sandbox payouts on test when NODE_ENV is production", () => {
     expect(() =>
