@@ -1,7 +1,8 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { CancelOrderLineForm, RefundOrderForm } from "@/components/admin-staff-action-forms.client";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { CancelOrderLineForm } from "@/components/forms/orders/cancel-order-line-form.client";
+import { RefundOrderForm } from "@/components/forms/orders/refund-form.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminOrderDetail } from "@auction/shop-contracts";

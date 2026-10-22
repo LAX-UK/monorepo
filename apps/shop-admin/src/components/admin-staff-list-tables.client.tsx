@@ -1,12 +1,10 @@
 "use client";
 
-import {
-  MarkPayoutPaidRowAction,
-  ReleaseStockHoldForm,
-  RevokeStaffRoleForm,
-} from "@/components/admin-staff-action-forms.client";
 import { AdminStaffDataTable } from "@/components/admin-staff-data-table";
-import { RequestDecisionForm } from "@/components/request-decision-form";
+import { MarkPayoutPaidRowAction } from "@/components/forms/finance/mark-payout-paid-row-action.client";
+import { DecideSaleAuthorityRequestForm } from "@/components/forms/people/decide-sale-authority-request-form.client";
+import { RevokeStaffRoleAction } from "@/components/forms/people/revoke-staff-role-action.client";
+import { ReleaseStockHoldAction } from "@/components/forms/sales/release-stock-hold-action.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -159,9 +157,11 @@ export function SaleAuthorityRequestsStaffListTable({ items }: { items: RequestR
         header: "Actions",
         cell: ({ row }) =>
           row.original.status === "pending" ? (
-            <RequestDecisionForm
+            <DecideSaleAuthorityRequestForm
               requestId={row.original.requestId}
               requestedCount={row.original.requestedCount}
+              artworkTitle={row.original.artworkTitle}
+              ownerDisplayName={row.original.ownerDisplayName}
             />
           ) : (
             "—"
@@ -213,7 +213,11 @@ export function StockHoldsStaffListTable({ items }: { items: HoldRow[] }) {
         header: "",
         cell: ({ row }) =>
           row.original.status === "active" ? (
-            <ReleaseStockHoldForm holdId={row.original.holdId} />
+            <ReleaseStockHoldAction
+              holdId={row.original.holdId}
+              artworkTitle={row.original.artworkTitle}
+              editionNumber={row.original.editionNumber}
+            />
           ) : (
             "—"
           ),
@@ -264,7 +268,11 @@ export function PayoutsStaffListTable({ items }: { items: PayoutRow[] }) {
         header: "",
         cell: ({ row }) =>
           row.original.status !== "paid" ? (
-            <MarkPayoutPaidRowAction payoutId={row.original.payoutId} />
+            <MarkPayoutPaidRowAction
+              payoutId={row.original.payoutId}
+              ownerDisplayName={row.original.ownerDisplayName}
+              netPence={row.original.netPence}
+            />
           ) : (
             "—"
           ),
@@ -405,7 +413,10 @@ export function StaffMembersListTable({ items }: { items: StaffRow[] }) {
           row.original.disabledAt ? (
             "—"
           ) : (
-            <RevokeStaffRoleForm identitySubjectId={row.original.identitySubjectId} />
+            <RevokeStaffRoleAction
+              identitySubjectId={row.original.identitySubjectId}
+              role={row.original.role}
+            />
           ),
       },
     ],

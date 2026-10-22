@@ -1,7 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { MarkPayoutPaidForm } from "@/components/admin-staff-action-forms.client";
 import { PayoutsStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { MarkPayoutPaidForm } from "@/components/forms/finance/mark-payout-paid-form.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { PageHeader } from "@auction/ui";

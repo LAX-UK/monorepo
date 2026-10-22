@@ -1,10 +1,8 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import {
-  ApproveSaleFeeForm,
-  RecordThirdPartySaleForm,
-} from "@/components/admin-staff-action-forms.client";
 import { ThirdPartySalesStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { ApproveSaleFeeForm } from "@/components/forms/sales/approve-sale-fee-form.client";
+import { RecordThirdPartySaleForm } from "@/components/forms/sales/record-third-party-sale-form.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { PageHeader } from "@auction/ui";

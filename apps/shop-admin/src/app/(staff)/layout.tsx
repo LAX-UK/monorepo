@@ -6,6 +6,7 @@ import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffReauthHref } from "@/lib/staff-layout-redirect";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
+import { Toaster } from "@auction/ui";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -34,11 +35,14 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     features: session.features,
   });
   return (
-    <ShopAdminShell
-      navGroups={navGroups}
-      account={<AdminAccountMenu roleLabel={staffRoleLabel(session.role)} />}
-    >
-      {children}
-    </ShopAdminShell>
+    <>
+      <ShopAdminShell
+        navGroups={navGroups}
+        account={<AdminAccountMenu roleLabel={staffRoleLabel(session.role)} />}
+      >
+        {children}
+      </ShopAdminShell>
+      <Toaster />
+    </>
   );
 }

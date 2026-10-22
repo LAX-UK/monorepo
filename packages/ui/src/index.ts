@@ -166,6 +166,7 @@ export type {
   DateRangeValue,
 } from "./components/ui/date-range-picker.js";
 export { Toaster } from "./components/ui/sonner.js";
+export { toast } from "sonner";
 export { SidebarInset, SidebarTrigger } from "./components/ui/sidebar.js";
 export { FilterChip } from "./components/ui/filter-chip.js";
 export type { FilterChipProps } from "./components/ui/filter-chip.js";

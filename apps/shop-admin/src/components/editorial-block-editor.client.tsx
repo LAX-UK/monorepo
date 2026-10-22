@@ -1,12 +1,7 @@
 "use client";
 
 import { EditorialBlockFields } from "@/components/editorial-block-fields.client";
-import {
-  EditorialSelect,
-  EditorialTextArea,
-  editorialButtonClass,
-  editorialSmallButtonClass,
-} from "@/components/editorial-form-controls";
+import { SelectField, TextAreaField } from "@/components/forms/fields";
 import {
   EDITORIAL_BLOCK_LABELS,
   EDITORIAL_BLOCK_TYPES,
@@ -21,6 +16,7 @@ import {
 } from "@/lib/editorial-blocks";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import type { EditorialBlock } from "@auction/shop-contracts";
+import { Button } from "@auction/ui";
 import { useState } from "react";
 
 type EditorialBlockEditorProps = {
@@ -49,10 +45,10 @@ function BlockJsonFields({
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="space-y-1">
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-on-surface-variant">
         This block has no simple form (or carries formatting the form would lose). Edit it as JSON.
       </p>
-      <EditorialTextArea
+      <TextAreaField
         label="Block JSON"
         rows={6}
         monospace
@@ -92,7 +88,7 @@ function AdvancedJsonEditor({
   const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   return (
     <div className="space-y-2">
-      <EditorialTextArea
+      <TextAreaField
         label="Body blocks (JSON array)"
         hint='Apply JSON replaces every block; unapplied edits are dropped when you switch back. Example: [{"type":"heading","level":2,"text":"Title"}]'
         rows={14}
@@ -105,9 +101,10 @@ function AdvancedJsonEditor({
         }}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <button
+        <Button
           type="button"
-          className={editorialButtonClass}
+          variant="outline"
+          size="sm"
           disabled={disabled}
           onClick={() => {
             const parsed = parseBlocksJson(text);
@@ -120,7 +117,7 @@ function AdvancedJsonEditor({
           }}
         >
           Apply JSON
-        </button>
+        </Button>
         {message ? (
           <p
             role={message.tone === "error" ? "alert" : "status"}
@@ -142,15 +139,16 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
     <section className="space-y-3" aria-label="Body blocks">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-base font-medium">Body blocks ({items.length})</h3>
-        <button
+        <Button
           type="button"
-          className={editorialSmallButtonClass}
+          variant="outline"
+          size="sm"
           aria-pressed={advanced}
           disabled={disabled}
           onClick={() => setAdvanced((value) => !value)}
         >
           {advanced ? "Back to block forms" : "Advanced JSON"}
-        </button>
+        </Button>
       </div>
 
       {advanced ? (
@@ -162,7 +160,7 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
       ) : (
         <>
           {items.length === 0 ? (
-            <p className="text-sm text-neutral-500">No blocks yet. Add one below.</p>
+            <p className="text-sm text-on-surface-variant">No blocks yet. Add one below.</p>
           ) : (
             <ol className="space-y-3">
               {items.map((item, index) => {
@@ -176,33 +174,36 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
                         {index + 1}. {EDITORIAL_BLOCK_LABELS[item.block.type] ?? item.block.type}
                       </p>
                       <div className="flex flex-wrap gap-1">
-                        <button
+                        <Button
                           type="button"
-                          className={editorialSmallButtonClass}
+                          variant="outline"
+                          size="sm"
                           disabled={disabled || index === 0}
                           aria-label={`Move ${label} up`}
                           onClick={() => onChange(moveItem(items, index, -1))}
                         >
                           Up
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className={editorialSmallButtonClass}
+                          variant="outline"
+                          size="sm"
                           disabled={disabled || index === items.length - 1}
                           aria-label={`Move ${label} down`}
                           onClick={() => onChange(moveItem(items, index, 1))}
                         >
                           Down
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className={editorialSmallButtonClass}
+                          variant="outline"
+                          size="sm"
                           disabled={disabled}
                           aria-label={`Remove ${label}`}
                           onClick={() => onChange(removeItem(items, index))}
                         >
                           Remove
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     {isStructuredBlock(item.block) ? (
@@ -225,7 +226,7 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
           )}
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[12rem]">
-              <EditorialSelect
+              <SelectField
                 label="New block type"
                 value={newType}
                 options={BLOCK_TYPE_OPTIONS}
@@ -233,16 +234,17 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
                 onChange={setNewType}
               />
             </div>
-            <button
+            <Button
               type="button"
-              className={editorialButtonClass}
+              variant="outline"
+              size="sm"
               disabled={disabled}
               onClick={() =>
                 onChange([...items, { key: newKey(), block: createEditorialBlock(newType) }])
               }
             >
               Add block
-            </button>
+            </Button>
           </div>
         </>
       )}

@@ -1,52 +1,49 @@
 "use client";
 
-import { adminFormFieldClass, adminFormLabelClass } from "@/components/admin-mutation-feedback";
 import {
   SEO_DESCRIPTION_MAX_LENGTH,
   SEO_TITLE_MAX_LENGTH,
   type SeoFieldsFormValues,
 } from "@/lib/seo-fields-form";
+import { TextAreaField, TextField } from "./forms/fields";
 
 export function SeoFieldsInputs({
   values,
   disabled,
   blankHint,
+  errors,
   onChange,
 }: {
   values: SeoFieldsFormValues;
   disabled: boolean;
   /** Explains what a blank field does for this form. */
   blankHint: string;
+  errors: { seoTitle?: string | undefined; seoDescription?: string | undefined };
   onChange: (values: SeoFieldsFormValues) => void;
 }) {
   return (
     <>
-      <label className={adminFormLabelClass}>
-        <span className="text-neutral-600">
-          SEO title ({values.seoTitle.trim().length}/{SEO_TITLE_MAX_LENGTH}; {blankHint})
-        </span>
-        <input
-          className={adminFormFieldClass}
-          value={values.seoTitle}
-          maxLength={SEO_TITLE_MAX_LENGTH}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...values, seoTitle: e.target.value })}
-        />
-      </label>
-      <label className={`${adminFormLabelClass} sm:col-span-2`}>
-        <span className="text-neutral-600">
-          SEO description ({values.seoDescription.trim().length}/{SEO_DESCRIPTION_MAX_LENGTH};{" "}
-          {blankHint})
-        </span>
-        <textarea
-          className={adminFormFieldClass}
-          rows={3}
-          value={values.seoDescription}
-          maxLength={SEO_DESCRIPTION_MAX_LENGTH}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...values, seoDescription: e.target.value })}
-        />
-      </label>
+      <TextField
+        name="seoTitle"
+        label="SEO title"
+        hint={`${values.seoTitle.trim().length}/${SEO_TITLE_MAX_LENGTH}; ${blankHint}`}
+        value={values.seoTitle}
+        error={errors.seoTitle}
+        maxLength={SEO_TITLE_MAX_LENGTH}
+        disabled={disabled}
+        onChange={(seoTitle) => onChange({ ...values, seoTitle })}
+      />
+      <TextAreaField
+        name="seoDescription"
+        label="SEO description"
+        hint={`${values.seoDescription.trim().length}/${SEO_DESCRIPTION_MAX_LENGTH}; ${blankHint}`}
+        className="sm:col-span-2"
+        value={values.seoDescription}
+        error={errors.seoDescription}
+        maxLength={SEO_DESCRIPTION_MAX_LENGTH}
+        disabled={disabled}
+        onChange={(seoDescription) => onChange({ ...values, seoDescription })}
+      />
     </>
   );
 }

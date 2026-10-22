@@ -1,10 +1,8 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import {
-  CreateOriginalSaleForm,
-  IssueOriginalSaleInvoiceForm,
-} from "@/components/admin-staff-action-forms.client";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { CreateOriginalSaleForm } from "@/components/forms/sales/create-original-sale-form.client";
+import { IssueOriginalSaleInvoiceForm } from "@/components/forms/sales/issue-original-sale-invoice-form.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";

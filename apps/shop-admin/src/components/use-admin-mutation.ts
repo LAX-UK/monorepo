@@ -2,9 +2,14 @@
 
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
+import { toast } from "@auction/ui";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
+/**
+ * Runs a server action for a form. A success is a passing toast and a data refresh; a failure stays
+ * in `message` so the form can show it inline until the next attempt.
+ */
 export function useAdminMutation() {
   const router = useRouter();
   const pathname = usePathname();
@@ -23,15 +28,21 @@ export function useAdminMutation() {
       setPending(true);
       setMessage(null);
       setStepUpRequired(false);
-      const result = await action();
-      setPending(false);
+      let result: AdminMutationResult<unknown>;
+      try {
+        result = await action();
+      } catch {
+        result = { ok: false, kind: "failed", message: "Action failed. Try again." };
+      } finally {
+        setPending(false);
+      }
       if (!result.ok) {
         setStepUpRequired(result.kind === "step_up_required");
         setMessage(adminMutationErrorMessage(result));
         return false;
       }
       setIdempotencyKey(crypto.randomUUID());
-      setMessage(successMessage);
+      toast.success(successMessage);
       router.refresh();
       return true;
     },
@@ -40,7 +51,6 @@ export function useAdminMutation() {
 
   return {
     message,
-    setMessage,
     stepUpRequired,
     stepUpHref,
     pending,
@@ -48,3 +58,5 @@ export function useAdminMutation() {
     run,
   };
 }
+
+export type AdminMutation = ReturnType<typeof useAdminMutation>;

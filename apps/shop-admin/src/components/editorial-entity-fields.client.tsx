@@ -1,11 +1,12 @@
 "use client";
 
 import {
-  EditorialCheckbox,
-  EditorialSelect,
-  EditorialTextArea,
-  EditorialTextField,
-} from "@/components/editorial-form-controls";
+  CheckboxField,
+  DateField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/components/forms/fields";
 import { MediaUploadField } from "@/components/media-upload-field";
 import {
   EXHIBITION_KINDS,
@@ -40,7 +41,7 @@ function SlugField({
   disabled: boolean;
 }) {
   return (
-    <EditorialTextField
+    <TextField
       label="Slug"
       hint={SLUG_HINT}
       value={value}
@@ -61,8 +62,8 @@ function SeoFields<F extends SeoFieldsFormValues>({
 }: EntityFieldsProps<F>) {
   return (
     <fieldset className="grid gap-3 sm:col-span-2">
-      <legend className="text-sm font-medium text-neutral-700">Search metadata</legend>
-      <EditorialTextField
+      <legend className="text-sm font-medium text-on-surface-variant">Search metadata</legend>
+      <TextField
         label={`SEO title (${form.seoTitle.trim().length}/${SEO_TITLE_MAX_LENGTH})`}
         hint={SEO_HINT}
         value={form.seoTitle}
@@ -70,7 +71,7 @@ function SeoFields<F extends SeoFieldsFormValues>({
         disabled={disabled}
         onChange={(seoTitle) => onChange({ ...form, seoTitle })}
       />
-      <EditorialTextArea
+      <TextAreaField
         label={`SEO description (${form.seoDescription.trim().length}/${SEO_DESCRIPTION_MAX_LENGTH})`}
         rows={2}
         value={form.seoDescription}
@@ -90,7 +91,7 @@ export function PageFields({ form, onChange, disabled }: EntityFieldsProps<PageF
         disabled={disabled}
         onChange={(slug) => onChange({ ...form, slug })}
       />
-      <EditorialTextField
+      <TextField
         label="Title"
         value={form.title}
         maxLength={300}
@@ -110,7 +111,7 @@ export function VenueFields({ form, onChange, disabled }: EntityFieldsProps<Venu
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <SlugField value={form.slug} disabled={disabled} onChange={(v) => set("slug", v)} />
-        <EditorialTextField
+        <TextField
           label="Name"
           value={form.name}
           maxLength={300}
@@ -118,21 +119,21 @@ export function VenueFields({ form, onChange, disabled }: EntityFieldsProps<Venu
           disabled={disabled}
           onChange={(v) => set("name", v)}
         />
-        <EditorialTextField
+        <TextField
           label="Address"
           value={form.address}
           maxLength={500}
           disabled={disabled}
           onChange={(v) => set("address", v)}
         />
-        <EditorialTextField
+        <TextField
           label="Postcode"
           value={form.postcode}
           maxLength={32}
           disabled={disabled}
           onChange={(v) => set("postcode", v)}
         />
-        <EditorialTextField
+        <TextField
           label="Phone"
           type="tel"
           value={form.phone}
@@ -140,7 +141,7 @@ export function VenueFields({ form, onChange, disabled }: EntityFieldsProps<Venu
           disabled={disabled}
           onChange={(v) => set("phone", v)}
         />
-        <EditorialTextField
+        <TextField
           label="Email"
           type="email"
           value={form.email}
@@ -149,7 +150,7 @@ export function VenueFields({ form, onChange, disabled }: EntityFieldsProps<Venu
           onChange={(v) => set("email", v)}
         />
         <div className="sm:col-span-2">
-          <EditorialTextField
+          <TextField
             label="Map URL"
             type="url"
             hint="Must start with https://"
@@ -160,7 +161,7 @@ export function VenueFields({ form, onChange, disabled }: EntityFieldsProps<Venu
           />
         </div>
       </div>
-      <EditorialTextArea
+      <TextAreaField
         label="Opening hours (JSON, optional)"
         hint='A list keeps your order, e.g. [{"label":"Tue – Sat","hours":"10:00 – 18:00"},{"label":"Sun","hours":"Closed"}]'
         rows={3}
@@ -187,7 +188,7 @@ export function StoryFields({ form, onChange, disabled }: EntityFieldsProps<Stor
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <SlugField value={form.slug} disabled={disabled} onChange={(v) => set("slug", v)} />
-        <EditorialSelect
+        <SelectField
           label="Kind"
           value={form.kind}
           options={STORY_KINDS.map((kind) => ({ value: kind, label: kind }))}
@@ -195,7 +196,7 @@ export function StoryFields({ form, onChange, disabled }: EntityFieldsProps<Stor
           onChange={(v) => set("kind", v)}
         />
         <div className="sm:col-span-2">
-          <EditorialTextField
+          <TextField
             label="Title"
             value={form.title}
             maxLength={300}
@@ -205,14 +206,14 @@ export function StoryFields({ form, onChange, disabled }: EntityFieldsProps<Stor
           />
         </div>
       </div>
-      <EditorialTextArea
+      <TextAreaField
         label="Standfirst (optional)"
         value={form.standfirst}
         maxLength={2000}
         disabled={disabled}
         onChange={(v) => set("standfirst", v)}
       />
-      <EditorialTextField
+      <TextField
         label="Video URL (optional)"
         type="url"
         hint="Must start with https://"
@@ -221,7 +222,7 @@ export function StoryFields({ form, onChange, disabled }: EntityFieldsProps<Stor
         disabled={disabled}
         onChange={(v) => set("videoUrl", v)}
       />
-      <EditorialCheckbox
+      <CheckboxField
         label="Featured"
         checked={form.featured}
         disabled={disabled}
@@ -261,7 +262,7 @@ export function ExhibitionFields({
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <SlugField value={form.slug} disabled={disabled} onChange={(v) => set("slug", v)} />
-        <EditorialSelect
+        <SelectField
           label="Kind"
           value={form.kind}
           options={EXHIBITION_KINDS.map((kind) => ({ value: kind, label: kind }))}
@@ -269,7 +270,7 @@ export function ExhibitionFields({
           onChange={(v) => set("kind", v)}
         />
         <div className="sm:col-span-2">
-          <EditorialTextField
+          <TextField
             label="Title"
             value={form.title}
             maxLength={300}
@@ -278,14 +279,14 @@ export function ExhibitionFields({
             onChange={(v) => set("title", v)}
           />
         </div>
-        <EditorialSelect
+        <SelectField
           label="Venue"
           value={form.venueId}
           options={venueOptions}
           disabled={disabled}
           onChange={(v) => set("venueId", v)}
         />
-        <EditorialTextField
+        <TextField
           label="Times note (optional)"
           hint="e.g. Late opening Thursdays until 21:00"
           value={form.timesNote}
@@ -293,29 +294,27 @@ export function ExhibitionFields({
           disabled={disabled}
           onChange={(v) => set("timesNote", v)}
         />
-        <EditorialTextField
+        <DateField
           label="Starts on"
-          type="date"
           value={form.startsOn}
           disabled={disabled}
           onChange={(v) => set("startsOn", v)}
         />
-        <EditorialTextField
+        <DateField
           label="Ends on"
-          type="date"
           value={form.endsOn}
           disabled={disabled}
           onChange={(v) => set("endsOn", v)}
         />
       </div>
-      <EditorialTextArea
+      <TextAreaField
         label="Summary (optional)"
         value={form.summary}
         maxLength={2000}
         disabled={disabled}
         onChange={(v) => set("summary", v)}
       />
-      <EditorialCheckbox
+      <CheckboxField
         label="Featured"
         checked={form.featured}
         disabled={disabled}

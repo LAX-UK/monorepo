@@ -3,22 +3,17 @@ import Link from "next/link";
 
 export function EditorialStatusMessage({ status }: { status: EditorialStatus }) {
   if (!status) return null;
-  const isError = status.tone === "error";
   return (
     <p
-      role={isError ? "alert" : "status"}
-      className={
-        isError
-          ? "rounded border border-error bg-error-container px-3 py-2 text-sm text-error"
-          : "rounded border border-success bg-success-container px-3 py-2 text-sm text-success"
-      }
+      role="alert"
+      className="rounded border border-error bg-error-container px-3 py-2 text-sm text-error"
     >
       {status.text}
       {status.stepUp ? (
         <>
           {" "}
           <Link href="/api/auth/login?returnTo=%2Feditorial" className="underline">
-            Sign in again with step-up
+            Sign in again
           </Link>
         </>
       ) : null}

@@ -1,7 +1,7 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { GrantSaleAuthorityForm } from "@/components/admin-staff-action-forms.client";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { GrantSaleAuthorityForm } from "@/components/forms/people/grant-sale-authority-form.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminClientDetail } from "@auction/shop-contracts";

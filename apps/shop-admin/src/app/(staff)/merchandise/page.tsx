@@ -1,7 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { AdjustMerchandiseStockForm } from "@/components/admin-staff-action-forms.client";
 import { MerchandiseStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { AdjustMerchandiseStockForm } from "@/components/forms/catalogue/adjust-merchandise-stock-form.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { PageHeader } from "@auction/ui";
