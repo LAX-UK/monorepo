@@ -1,9 +1,10 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import { AdjustMerchandiseStockForm } from "@/components/admin-staff-action-forms.client";
 import { MerchandiseStaffListTable } from "@/components/admin-staff-list-tables.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type MerchandiseList = {
@@ -18,6 +19,8 @@ type MerchandiseList = {
   nextCursor: string | null;
 };
 
+export const metadata = { title: "Products" };
+
 export default async function ShopAdminMerchandisePage({
   searchParams,
 }: {
@@ -29,22 +32,24 @@ export default async function ShopAdminMerchandisePage({
   );
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Merchandise</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Products" status={result.status} />;
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Merchandise</h1>
+      <PageHeader
+        title="Products"
+        description="Shop products with their variants and stock on hand."
+      />
       <div className="mb-6">
         <AdjustMerchandiseStockForm />
       </div>
       <MerchandiseStaffListTable items={result.data.items} />
-      <AdminListCursorNav pathname="/merchandise" nextCursor={result.data.nextCursor} />
+      <AdminListCursorNav
+        cursor={cursor}
+        pathname="/merchandise"
+        nextCursor={result.data.nextCursor}
+      />
     </div>
   );
 }

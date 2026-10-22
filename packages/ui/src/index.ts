@@ -397,5 +397,11 @@ export type {
   TimeFormString,
   ZonedInstant,
 } from "./lib/datetime/index.js";
-export { EntityList } from "./shell/index.js";
-export type { EntityListProps } from "./shell/index.js";
+export { AdminShell, EntityList } from "./shell/index.js";
+export type {
+  AdminShellLinkProps,
+  AdminShellNavGroup,
+  AdminShellNavItem,
+  AdminShellProps,
+  EntityListProps,
+} from "./shell/index.js";

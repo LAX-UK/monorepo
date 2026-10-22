@@ -287,6 +287,7 @@ export const AdminGeneralEnquiryRowSchema = Type.Object({
 
 export const AdminGeneralEnquiriesResponseSchema = Type.Object({
   items: Type.Array(AdminGeneralEnquiryRowSchema),
+  nextCursor: Type.Union([Type.String(), Type.Null()]),
 });
 
 export type EditorialHomeResponse = typeof EditorialHomeResponseSchema.static;

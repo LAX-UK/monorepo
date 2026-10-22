@@ -1,8 +1,9 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import { SaleAuthorityRequestsStaffListTable } from "@/components/admin-staff-list-tables.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type RequestList = {
@@ -15,6 +16,8 @@ type RequestList = {
   }>;
   nextCursor: string | null;
 };
+
+export const metadata = { title: "Sale limit requests" };
 
 export default async function RequestsPage({
   searchParams,
@@ -30,19 +33,21 @@ export default async function RequestsPage({
   );
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Sale limit requests</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Sale limit requests" status={result.status} />;
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Sale limit requests</h1>
+      <PageHeader
+        title="Sale limit requests"
+        description="Owners asking to sell more editions than they are authorised for. Approve or decline each request."
+      />
       <SaleAuthorityRequestsStaffListTable items={result.data.items} />
-      <AdminListCursorNav pathname="/requests" nextCursor={result.data.nextCursor} />
+      <AdminListCursorNav
+        cursor={cursor}
+        pathname="/requests"
+        nextCursor={result.data.nextCursor}
+      />
     </div>
   );
 }

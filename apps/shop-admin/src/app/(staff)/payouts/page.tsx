@@ -1,9 +1,10 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import { MarkPayoutPaidForm } from "@/components/admin-staff-action-forms.client";
 import { PayoutsStaffListTable } from "@/components/admin-staff-list-tables.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type PayoutList = {
@@ -17,6 +18,8 @@ type PayoutList = {
   nextCursor: string | null;
 };
 
+export const metadata = { title: "Payouts" };
+
 export default async function PayoutsPage({
   searchParams,
 }: {
@@ -26,22 +29,20 @@ export default async function PayoutsPage({
   const result = await fetchAdminJson<PayoutList>(adminListPath("payouts", { cursor }));
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Payouts</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Payouts" status={result.status} />;
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Payouts</h1>
+      <PageHeader
+        title="Payouts"
+        description="Money owed to artists and owners after a sale. Mark a payout as paid once the transfer has been made."
+      />
       <div className="mb-6 max-w-xl">
         <MarkPayoutPaidForm />
       </div>
       <PayoutsStaffListTable items={result.data.items} />
-      <AdminListCursorNav pathname="/payouts" nextCursor={result.data.nextCursor} />
+      <AdminListCursorNav cursor={cursor} pathname="/payouts" nextCursor={result.data.nextCursor} />
     </div>
   );
 }

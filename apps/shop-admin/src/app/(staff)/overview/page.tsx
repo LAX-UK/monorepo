@@ -1,24 +1,25 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminOverviewKpis } from "@auction/shop-contracts";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
+
+export const metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
   const result = await fetchAdminJson<AdminOverviewKpis>("overview/kpis");
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Overview</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Overview" status={result.status} />;
   }
   const kpis = result.data;
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Overview</h1>
+      <PageHeader
+        title="Overview"
+        description="What needs attention across lax.art and LAX Shop."
+      />
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["To fulfil", kpis.fulfilmentOpenCount],

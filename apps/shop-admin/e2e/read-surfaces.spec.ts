@@ -26,14 +26,14 @@ const CORE_ROUTES: SurfaceRoute[] = [
   { path: "/artists", heading: /^Artists$/ },
   { path: "/artworks", heading: /^Artworks$/ },
   { path: "/staff", heading: /^Staff$/ },
-  { path: "/production", heading: /^Production tasks$/ },
+  { path: "/production", heading: /^Production$/ },
 ];
 
 const FLAGGED_ROUTES: SurfaceRoute[] = [
   { path: "/payouts", heading: /^Payouts$/, feature: "payouts" },
   { path: "/third-party-sales", heading: /^Third-party sales$/, feature: "thirdPartySales" },
   { path: "/original-sales", heading: /^Original sales$/, feature: "originalSales" },
-  { path: "/merchandise", heading: /^Merchandise$/, feature: "merchandise" },
+  { path: "/merchandise", heading: /^Products$/, feature: "merchandise" },
 ];
 
 async function assertStaffSurface(

@@ -1,6 +1,11 @@
+import { AdminRetryButton } from "@/components/admin-retry-button.client";
 import type { AdminFetchResult } from "@/server/application/load-admin-data";
+import { Alert, AlertDescription, AlertTitle, PageHeader } from "@auction/ui";
 
-type AdminPageFailureStatus = Exclude<AdminFetchResult<unknown>["status"], "ok" | "unauthorized">;
+export type AdminPageFailureStatus = Exclude<
+  AdminFetchResult<unknown>["status"],
+  "ok" | "unauthorized"
+>;
 
 const COPY: Record<AdminPageFailureStatus, { title: string; body: string }> = {
   forbidden: {
@@ -20,9 +25,28 @@ const COPY: Record<AdminPageFailureStatus, { title: string; body: string }> = {
 export function AdminFetchState({ status }: { status: AdminPageFailureStatus }) {
   const copy = COPY[status];
   return (
-    <div className="space-y-2 rounded-md border border-outline-variant p-4">
-      <h2 className="text-lg font-semibold">{copy.title}</h2>
-      <p className="text-sm text-on-surface-variant">{copy.body}</p>
+    <Alert variant={status === "failed" ? "destructive" : "default"}>
+      <AlertTitle className="text-base">{copy.title}</AlertTitle>
+      <AlertDescription className="flex flex-col items-start gap-3">
+        <p>{copy.body}</p>
+        {status === "failed" ? <AdminRetryButton /> : null}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+/** A page whose data could not be loaded: its heading, so staff know where they are, then why. */
+export function AdminFailedPage({
+  title,
+  status,
+}: {
+  title: string;
+  status: AdminPageFailureStatus;
+}) {
+  return (
+    <div>
+      <PageHeader title={title} />
+      <AdminFetchState status={status} />
     </div>
   );
 }

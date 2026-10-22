@@ -1,4 +1,4 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import {
   ApproveSaleFeeForm,
@@ -7,6 +7,7 @@ import {
 import { ThirdPartySalesStaffListTable } from "@/components/admin-staff-list-tables.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type ThirdPartySaleList = {
@@ -20,6 +21,8 @@ type ThirdPartySaleList = {
   nextCursor: string | null;
 };
 
+export const metadata = { title: "Third-party sales" };
+
 export default async function ThirdPartySalesPage({
   searchParams,
 }: {
@@ -31,23 +34,25 @@ export default async function ThirdPartySalesPage({
   );
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Third-party sales</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Third-party sales" status={result.status} />;
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Third-party sales</h1>
+      <PageHeader
+        title="Third-party sales"
+        description="Sales made through partners outside the shop, and the fee approved for each."
+      />
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         <RecordThirdPartySaleForm />
         <ApproveSaleFeeForm />
       </div>
       <ThirdPartySalesStaffListTable items={result.data.items} />
-      <AdminListCursorNav pathname="/third-party-sales" nextCursor={result.data.nextCursor} />
+      <AdminListCursorNav
+        cursor={cursor}
+        pathname="/third-party-sales"
+        nextCursor={result.data.nextCursor}
+      />
     </div>
   );
 }

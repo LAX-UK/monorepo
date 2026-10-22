@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LAX Shop Admin",
-  description: "Staff administration for shop.lax.art",
+  title: { default: "LAX Admin", template: "%s · LAX Admin" },
+  description: "Staff administration for lax.art and LAX Shop",
   icons: laxFaviconMetadataIcons(),
 };
 

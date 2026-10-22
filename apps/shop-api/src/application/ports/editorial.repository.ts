@@ -278,7 +278,11 @@ export type EditorialRepository = {
       createdAt: Date;
     }>
   >;
-  listAdminGeneralEnquiries(input?: { limit?: number }): Promise<
+  /** Newest first; `before` is the keyset position of the last row already shown. */
+  listAdminGeneralEnquiries(input: {
+    limit: number;
+    before: { createdAt: Date; id: string } | null;
+  }): Promise<
     Array<{
       enquiryId: string;
       identitySubjectId: string | null;

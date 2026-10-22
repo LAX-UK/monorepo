@@ -27,35 +27,20 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
       items: [{ href: "/overview", label: "Overview", capability: "audit.read" }],
     },
     {
-      title: "People",
-      items: [
-        ...(hasCapability(caps, "client.read_all") || hasCapability(caps, "client.read_assigned")
-          ? [{ href: "/clients", label: "Clients" }]
-          : []),
-        { href: "/artists", label: "Artists", capability: "catalogue.write" },
-        { href: "/requests", label: "Limit requests", capability: "sale_authority.write" },
-        { href: "/staff", label: "Staff", capability: "settings.write" },
-      ],
-    },
-    {
-      title: "Catalogue",
+      title: "Gallery",
       items: [
         { href: "/artworks", label: "Artworks", capability: "catalogue.write" },
-        { href: "/editorial", label: "Editorial (lax.art)", capability: "editorial.write" },
-        ...(input.features.merchandise
-          ? [
-              {
-                href: "/merchandise",
-                label: "Merchandise",
-                capability: "merchandise.read" as const,
-              },
-            ]
-          : []),
+        { href: "/artists", label: "Artists", capability: "catalogue.write" },
+        { href: "/editorial", label: "Editorial", capability: "editorial.write" },
+        { href: "/general-enquiries", label: "Enquiries", capability: "enquiry.read" },
       ],
     },
     {
-      title: "Orders",
+      title: "Shop",
       items: [
+        ...(input.features.merchandise
+          ? [{ href: "/merchandise", label: "Products", capability: "merchandise.read" as const }]
+          : []),
         { href: "/orders", label: "Orders", capability: "order.read" },
         ...(input.features.payouts
           ? [
@@ -63,7 +48,41 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
               { href: "/fulfilment", label: "Fulfilment", capability: "fulfilment.write" as const },
             ]
           : []),
+        ...(input.features.thirdPartySales
+          ? [{ href: "/holds", label: "Stock holds", capability: "stock_hold.write" as const }]
+          : []),
       ],
+    },
+    {
+      title: "Sales",
+      items: [
+        ...(input.features.originalSales
+          ? [
+              {
+                href: "/original-sales",
+                label: "Original sales",
+                capability: "original_sale.write" as const,
+              },
+            ]
+          : []),
+        ...(input.features.thirdPartySales
+          ? [
+              {
+                href: "/third-party-sales",
+                label: "Third-party sales",
+                capability: "third_party_sale.write" as const,
+              },
+            ]
+          : []),
+        { href: "/requests", label: "Sale limit requests", capability: "sale_authority.write" },
+      ],
+    },
+    {
+      title: "Clients",
+      items:
+        hasCapability(caps, "client.read_all") || hasCapability(caps, "client.read_assigned")
+          ? [{ href: "/clients", label: "Clients" }]
+          : [],
     },
     {
       title: "Finance",
@@ -75,39 +94,11 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
       ],
     },
     {
-      title: "Operations",
+      title: "Admin",
       items: [
-        {
-          href: "/general-enquiries",
-          label: "General enquiries",
-          capability: "enquiry.read" as const,
-        },
+        { href: "/staff", label: "Staff", capability: "settings.write" },
         { href: "/audit", label: "Audit log", capability: "audit.read" as const },
         { href: "/settings", label: "Settings", capability: "settings.write" as const },
-      ],
-    },
-    {
-      title: "Sales",
-      items: [
-        ...(input.features.thirdPartySales
-          ? [
-              { href: "/holds", label: "Stock holds", capability: "stock_hold.write" as const },
-              {
-                href: "/third-party-sales",
-                label: "Third-party sales",
-                capability: "third_party_sale.write" as const,
-              },
-            ]
-          : []),
-        ...(input.features.originalSales
-          ? [
-              {
-                href: "/original-sales",
-                label: "Original sales",
-                capability: "original_sale.write" as const,
-              },
-            ]
-          : []),
       ],
     },
   ];
