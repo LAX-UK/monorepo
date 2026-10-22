@@ -17,6 +17,9 @@ export type ArtworkObjectTypeFilter = (typeof ARTWORK_OBJECT_TYPES)[number];
 export const ARTWORK_RARITIES = ["unique", "limited_edition", "open_edition"] as const;
 export type ArtworkRarityFilter = (typeof ARTWORK_RARITIES)[number];
 
+/** A single sale state, or `available` for every work that is not sold (for sale or POA). */
+export type ArtworkSaleStateFilter = "for_sale" | "price_on_application" | "sold" | "available";
+
 export type NormalizedArtworkCatalogueFilters = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
@@ -24,7 +27,7 @@ export type NormalizedArtworkCatalogueFilters = {
   artistSlugs?: string[];
   relatedToSlug?: string;
   salesChannel?: "shop" | "art";
-  saleState?: "for_sale" | "price_on_application" | "sold";
+  saleState?: ArtworkSaleStateFilter;
   q?: string;
   artworkType: ArtworkCatalogueType;
   /** Any of these object types (OR). */
@@ -44,7 +47,7 @@ export type RawArtworkCatalogueFilters = {
   artistSlugs?: readonly string[];
   relatedToSlug?: string;
   salesChannel?: "shop" | "art";
-  saleState?: "for_sale" | "price_on_application" | "sold";
+  saleState?: ArtworkSaleStateFilter;
   q?: string;
   artworkType?: ArtworkCatalogueType;
   objectTypes?: readonly string[];
