@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { safeReturnTo } from "./lib/safe-return-to";
-import { SHOP_ADMIN_SESSION_COOKIE } from "./lib/session-cookie";
+import { SHOP_ADMIN_SESSION_COOKIE_NAMES } from "./lib/session-cookie";
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
@@ -15,7 +15,7 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
-  if (!request.cookies.get(SHOP_ADMIN_SESSION_COOKIE)?.value) {
+  if (!SHOP_ADMIN_SESSION_COOKIE_NAMES.some((name) => request.cookies.get(name)?.value)) {
     const login = new URL("/api/auth/login", request.url);
     login.searchParams.set("returnTo", safeReturnTo(returnPath));
     return NextResponse.redirect(login);

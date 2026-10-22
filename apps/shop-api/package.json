@@ -18,6 +18,7 @@
     "rehearse:staging-stripe-webhook": "tsx src/scripts/rehearse-staging-stripe-webhook.ts",
     "seed:acceptance-staff-operations": "tsx src/scripts/seed-acceptance-staff-operations.ts",
     "staff:grant": "tsx src/scripts/staff-grant.ts",
+    "seed:local-admin-staff": "tsx src/scripts/seed-local-admin-staff.ts",
     "sale-authority": "tsx src/scripts/sale-authority.ts",
     "shop-ops": "tsx src/scripts/shop-ops.ts",
     "print:test-policy-env": "tsx src/scripts/print-test-policy-env.ts"

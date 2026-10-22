@@ -1,12 +1,12 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { SHOP_ADMIN_CSRF_COOKIE, SHOP_ADMIN_SESSION_COOKIE } from "../../../../lib/session-cookie";
+import { SHOP_ADMIN_CSRF_COOKIE, shopAdminSessionCookie } from "../../../../lib/session-cookie";
 import { getShopAdminContainer } from "../../../../server/container";
 
 async function handle(request: Request, pathSegments: string[]): Promise<Response> {
   const container = getShopAdminContainer();
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SHOP_ADMIN_SESSION_COOKIE)?.value ?? null;
+  const sessionId = cookieStore.get(shopAdminSessionCookie(container.config))?.value ?? null;
   const csrfCookie = cookieStore.get(SHOP_ADMIN_CSRF_COOKIE)?.value ?? null;
   const bffPath = `/api/admin/${pathSegments.join("/")}`;
   const forwardHeaders: Record<string, string> = {};

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { SHOP_ADMIN_CSRF_COOKIE, SHOP_ADMIN_SESSION_COOKIE } from "@/lib/session-cookie";
+import { SHOP_ADMIN_CSRF_COOKIE, shopAdminSessionCookie } from "@/lib/session-cookie";
 import { isIdentityRejected } from "@auction/identity-rp";
 import { cookies, headers } from "next/headers";
 import { getShopAdminContainer } from "../container";
@@ -33,7 +33,7 @@ export async function forwardAdminMutation<T = unknown>(
 ): Promise<AdminMutationResult<T>> {
   const container = getShopAdminContainer();
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SHOP_ADMIN_SESSION_COOKIE)?.value ?? null;
+  const sessionId = cookieStore.get(shopAdminSessionCookie(container.config))?.value ?? null;
   const csrfCookie = cookieStore.get(SHOP_ADMIN_CSRF_COOKIE)?.value ?? null;
   if (!sessionId || !csrfCookie) {
     return { ok: false, kind: "unauthorized" };

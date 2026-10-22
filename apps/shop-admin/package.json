@@ -11,7 +11,8 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test"
+    "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
+    "test:e2e:local-setup": "playwright test --config playwright.local.config.ts"
   },
   "dependencies": {
     "@auction/branding": "workspace:*",

@@ -5,6 +5,7 @@ import { createFetchTokenEndpoint, validateOAuthStateTimingSafe } from "@auction
 import type { ShopAdminConfig } from "../config";
 import { StaffLoginError } from "../domain/staff-login-failure";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
+import { exchangeForShopApiToken } from "./exchange-shop-api-token";
 import type { PendingStaffLogin } from "./start-staff-login";
 
 export async function completeStaffLogin(input: {
@@ -49,6 +50,10 @@ export async function completeStaffLogin(input: {
   if (!verified || verified.payload.nonce !== input.pending.nonce) {
     throw new StaffLoginError("invalid_id_token", "Invalid id_token");
   }
+  const shopApi = await exchangeForShopApiToken({
+    config: input.config,
+    idToken: token.id_token,
+  });
   const acr = typeof verified.payload.acr === "string" ? verified.payload.acr : undefined;
   const authTime =
     typeof verified.payload.auth_time === "number"
@@ -59,9 +64,9 @@ export async function completeStaffLogin(input: {
     subject: verified.subject,
     sid,
     idToken: token.id_token,
-    accessToken: token.access_token ?? "",
+    accessToken: shopApi.accessToken,
     refreshToken: token.refresh_token,
-    accessTokenExpiresAtMs: Date.now() + token.expires_in * 1000,
+    accessTokenExpiresAtMs: Date.now() + shopApi.expiresInSeconds * 1000,
     authTime,
     acr: acr ?? "",
   };

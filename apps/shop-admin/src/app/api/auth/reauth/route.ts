@@ -2,7 +2,7 @@ import { safeReturnTo } from "@/lib/safe-return-to";
 import {
   SHOP_ADMIN_CSRF_COOKIE,
   SHOP_ADMIN_LOGIN_ATTEMPT_COOKIE,
-  SHOP_ADMIN_SESSION_COOKIE,
+  shopAdminSessionCookie,
 } from "@/lib/session-cookie";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -15,7 +15,7 @@ export async function GET(request: Request): Promise<Response> {
   const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
   const reason = url.searchParams.get("reason");
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SHOP_ADMIN_SESSION_COOKIE)?.value ?? null;
+  const sessionId = cookieStore.get(shopAdminSessionCookie(container.config))?.value ?? null;
   if (sessionId) {
     await container.sessions.delete(sessionId);
   }
@@ -28,7 +28,7 @@ export async function GET(request: Request): Promise<Response> {
           new URL(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`, publicOrigin),
         );
 
-  response.cookies.delete(SHOP_ADMIN_SESSION_COOKIE);
+  response.cookies.delete(shopAdminSessionCookie(container.config));
   response.cookies.delete(SHOP_ADMIN_CSRF_COOKIE);
   response.cookies.delete(SHOP_ADMIN_LOGIN_ATTEMPT_COOKIE);
   return response;

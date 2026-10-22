@@ -1,12 +1,12 @@
 import { IdentityRejectedError } from "@auction/identity-rp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SHOP_ADMIN_CSRF_COOKIE, SHOP_ADMIN_SESSION_COOKIE } from "../../lib/session-cookie.js";
+import { SHOP_ADMIN_CSRF_COOKIE, shopAdminSessionCookie } from "../../lib/session-cookie.js";
 
 const forwardAdminRequest = vi.fn();
 
 vi.mock("../container", () => ({
   getShopAdminContainer: () => ({
-    config: { publicOrigin: "http://localhost:3030" },
+    config: { publicOrigin: "http://localhost:3030", NODE_ENV: "test" },
     forwardAdminRequest,
   }),
 }));
@@ -14,7 +14,7 @@ vi.mock("../container", () => ({
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => {
-      if (name === SHOP_ADMIN_SESSION_COOKIE) return { value: "session-1" };
+      if (name === shopAdminSessionCookie({ NODE_ENV: "test" })) return { value: "session-1" };
       if (name === SHOP_ADMIN_CSRF_COOKIE) return { value: "csrf-1" };
       return undefined;
     },
