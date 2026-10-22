@@ -257,14 +257,13 @@ export function artworkCatalogueFilterHref(
   return artworkCatalogueHref(next);
 }
 
+/** The unfiltered catalogue; a fresh object each call so callers may extend its lists. */
+export function emptyArtworkCatalogueState(): ArtworkCatalogueUrlState {
+  return { type: "all", sort: "newest", artistSlugs: [], objectTypes: [], rarities: [] };
+}
+
 export function artworkCatalogueClearHref(): string {
-  return artworkCatalogueHref({
-    type: "all",
-    sort: "newest",
-    artistSlugs: [],
-    objectTypes: [],
-    rarities: [],
-  });
+  return artworkCatalogueHref(emptyArtworkCatalogueState());
 }
 
 export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlState): number {

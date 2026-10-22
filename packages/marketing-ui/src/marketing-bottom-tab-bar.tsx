@@ -14,14 +14,44 @@ export type MarketingBottomTabBarProps = {
   items: readonly MarketingBottomTabItem[];
   /** Landmark name; defaults to “Mobile”. */
   ariaLabel?: string;
+  /**
+   * `floating` is an inset rounded pill with a filled active tab (lax.art Figma `546:9946`).
+   * It sits 1rem above the safe area and is 66px tall, so pages reserve that space below it.
+   */
+  variant?: "default" | "floating";
   className?: string;
   "data-testid"?: string;
 };
+
+const NAV_CLASS = {
+  default:
+    "fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/40 bg-surface pb-[env(safe-area-inset-bottom,0px)] md:hidden",
+  floating:
+    "fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 rounded-full border border-outline-variant/40 bg-surface/90 p-1 shadow-lg backdrop-blur-md md:hidden",
+} as const;
+
+function tabClass(variant: "default" | "floating", active: boolean): string {
+  if (variant === "floating") {
+    return cn(
+      "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full font-label text-xs font-medium transition-colors motion-reduce:transition-none",
+      active
+        ? "bg-surface-container-high text-on-surface"
+        : "text-on-surface-variant hover:text-on-surface",
+    );
+  }
+  return cn(
+    "relative flex min-h-14 flex-col items-center justify-center gap-1 font-label text-[0.65rem] uppercase tracking-wide transition-colors motion-reduce:transition-none",
+    active
+      ? "text-on-surface after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-full after:bg-primary"
+      : "text-on-surface-variant hover:text-on-surface",
+  );
+}
 
 /** Fixed mobile tab bar below `md`; active tab is exposed with `aria-current="page"`. */
 export function MarketingBottomTabBar({
   items,
   ariaLabel = "Mobile",
+  variant = "default",
   className,
   "data-testid": testId,
 }: MarketingBottomTabBarProps) {
@@ -29,10 +59,8 @@ export function MarketingBottomTabBar({
     <nav
       aria-label={ariaLabel}
       data-testid={testId}
-      className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/40 bg-surface pb-[env(safe-area-inset-bottom,0px)] md:hidden",
-        className,
-      )}
+      data-variant={variant}
+      className={cn(NAV_CLASS[variant], className)}
     >
       <ul
         className="grid"
@@ -43,13 +71,7 @@ export function MarketingBottomTabBar({
             <Link
               href={item.href}
               aria-current={item.active ? "page" : undefined}
-              className={cn(
-                "relative flex min-h-14 flex-col items-center justify-center gap-1 font-label text-[0.65rem] uppercase tracking-wide transition-colors motion-reduce:transition-none",
-                FOCUS_RING,
-                item.active
-                  ? "text-on-surface after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-full after:bg-primary"
-                  : "text-on-surface-variant hover:text-on-surface",
-              )}
+              className={cn(tabClass(variant, item.active), FOCUS_RING)}
             >
               {item.icon}
               <span>{item.label}</span>

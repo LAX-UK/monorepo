@@ -37,4 +37,35 @@ describe("MarketingBottomTabBar", () => {
     expect(list.style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
     expect(screen.getByRole("link", { name: "Search" }).className).toContain("min-h-14");
   });
+
+  it("keeps the full-width bar by default", () => {
+    render(<MarketingBottomTabBar items={[{ href: "/", label: "Home", active: true }]} />);
+    const nav = screen.getByRole("navigation", { name: "Mobile" });
+    expect(nav).toHaveAttribute("data-variant", "default");
+    expect(nav.className).toContain("inset-x-0");
+    expect(nav.className).toContain("border-t");
+  });
+
+  it("floats as an inset, safe-area aware pill with a filled active tab", () => {
+    render(
+      <MarketingBottomTabBar
+        variant="floating"
+        items={[
+          { href: "/", label: "Home", active: true },
+          { href: "/account", label: "Account", active: false },
+        ]}
+      />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Mobile" });
+    expect(nav).toHaveAttribute("data-variant", "floating");
+    expect(nav.className).toContain("inset-x-4");
+    expect(nav.className).toContain("rounded-full");
+    expect(nav.className).toContain("safe-area-inset-bottom");
+    const home = screen.getByRole("link", { name: "Home" });
+    expect(home.className).toContain("bg-surface-container-high");
+    expect(home.className).toContain("min-h-14");
+    expect(screen.getByRole("link", { name: "Account" }).className).not.toContain(
+      "bg-surface-container-high",
+    );
+  });
 });
