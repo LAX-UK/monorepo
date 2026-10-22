@@ -1,7 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { CreateProductionTaskForm } from "@/components/admin-staff-action-forms.client";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { CreateProductionTaskForm } from "@/components/forms/operations/create-production-task-form.client";
 import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";

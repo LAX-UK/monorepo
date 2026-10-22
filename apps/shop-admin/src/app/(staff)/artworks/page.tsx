@@ -1,7 +1,5 @@
-import {
-  GrantSaleAuthorityForm,
-  ImportArtworkForm,
-} from "@/components/admin-staff-action-forms.client";
+import { ImportArtworkForm } from "@/components/forms/catalogue/import-artwork-form.client";
+import { GrantSaleAuthorityForm } from "@/components/forms/people/grant-sale-authority-form.client";
 import { PageHeader } from "@auction/ui";
 
 export const metadata = { title: "Artworks" };

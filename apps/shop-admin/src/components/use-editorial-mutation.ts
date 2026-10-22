@@ -2,10 +2,12 @@
 
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
+import { toast } from "@auction/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-export type EditorialStatus = { tone: "success" | "error"; text: string; stepUp?: boolean } | null;
+/** A failed mutation. Successes are toasts, so only errors stay on the page. */
+export type EditorialStatus = { text: string; stepUp?: boolean } | null;
 
 export function useEditorialMutation() {
   const router = useRouter();
@@ -30,14 +32,13 @@ export function useEditorialMutation() {
       }
       if (!result.ok) {
         setStatus({
-          tone: "error",
           text: editorialMutationErrorMessage(result, copy.action),
           stepUp: result.kind === "step_up_required",
         });
         return null;
       }
       setIdempotencyKey(crypto.randomUUID());
-      if (copy.success) setStatus({ tone: "success", text: copy.success });
+      if (copy.success) toast.success(copy.success);
       if (copy.refresh !== false) router.refresh();
       return result.data;
     },

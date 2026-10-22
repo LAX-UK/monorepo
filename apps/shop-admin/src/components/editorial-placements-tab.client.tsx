@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  EditorialSelect,
-  EditorialTextField,
-  editorialPrimaryButtonClass,
-  editorialSmallButtonClass,
-} from "@/components/editorial-form-controls";
 import { EditorialErrorList, EditorialStatusMessage } from "@/components/editorial-status-message";
+import { SelectField, TextField } from "@/components/forms/fields";
 import { MediaUploadField } from "@/components/media-upload-field";
 import { useEditorialMutation } from "@/components/use-editorial-mutation";
+import { useUnsavedChangesGuard } from "@/components/use-unsaved-changes-guard";
 import type { EditorialAdminRow } from "@/lib/editorial-entity-forms";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import {
@@ -25,6 +21,7 @@ import {
   placementDraftsBySlot,
 } from "@/lib/editorial-placements";
 import { replaceEditorialPlacementSlot } from "@/server/application/admin-editorial-actions.server";
+import { Button } from "@auction/ui";
 import { useState } from "react";
 
 export type PlacementRefLists = Record<
@@ -75,37 +72,40 @@ function PlacementRowFields({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">Row {index + 1}</p>
         <div className="flex flex-wrap gap-1">
-          <button
+          <Button
             type="button"
-            className={editorialSmallButtonClass}
+            variant="outline"
+            size="sm"
             disabled={disabled || index === 0}
             aria-label={`Move ${label} up`}
             onClick={() => onMove(-1)}
           >
             Up
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={editorialSmallButtonClass}
+            variant="outline"
+            size="sm"
             disabled={disabled || index === count - 1}
             aria-label={`Move ${label} down`}
             onClick={() => onMove(1)}
           >
             Down
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={editorialSmallButtonClass}
+            variant="outline"
+            size="sm"
             disabled={disabled}
             aria-label={`Remove ${label}`}
             onClick={onRemove}
           >
             Remove
-          </button>
+          </Button>
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <EditorialSelect
+        <SelectField
           label="Links to"
           value={draft.refKind}
           options={REF_KIND_OPTIONS}
@@ -113,7 +113,7 @@ function PlacementRowFields({
           onChange={(refKind) => onChange({ ...draft, refKind, refId: "" })}
         />
         {draft.refKind === "external" ? null : (
-          <EditorialSelect
+          <SelectField
             label={`Featured ${draft.refKind}`}
             value={draft.refId}
             options={refOptions}
@@ -121,14 +121,14 @@ function PlacementRowFields({
             onChange={(refId) => onChange({ ...draft, refId })}
           />
         )}
-        <EditorialTextField
+        <TextField
           label="Headline (optional)"
           value={draft.headline}
           maxLength={300}
           disabled={disabled}
           onChange={(headline) => onChange({ ...draft, headline })}
         />
-        <EditorialTextField
+        <TextField
           label={draft.refKind === "external" ? "Link URL" : "Link URL (optional)"}
           hint="https://…, mailto:… or a site path such as /visit"
           value={draft.linkUrl}
@@ -161,6 +161,7 @@ function PlacementSlotEditor({
   const { status, setStatus, pending, run } = useEditorialMutation();
   const [drafts, setDrafts] = useState(initialDrafts);
   const [dirty, setDirty] = useState(false);
+  useUnsavedChangesGuard(dirty);
   const [errors, setErrors] = useState<string[]>([]);
   const headingId = `placement-${slot}-heading`;
 
@@ -193,12 +194,12 @@ function PlacementSlotEditor({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={headingId} className="text-lg font-medium">
           {PLACEMENT_SLOT_LABELS[slot]}{" "}
-          <span className="font-mono text-xs text-neutral-500">{slot}</span>
+          <span className="font-mono text-xs text-on-surface-variant">{slot}</span>
         </h2>
-        {dirty ? <span className="text-xs text-neutral-500">Unsaved changes</span> : null}
+        {dirty ? <span className="text-xs text-on-surface-variant">Unsaved changes</span> : null}
       </div>
       {drafts.length === 0 ? (
-        <p className="text-sm text-neutral-500">Nothing placed in this slot.</p>
+        <p className="text-sm text-on-surface-variant">Nothing placed in this slot.</p>
       ) : (
         <ol className="space-y-3">
           {drafts.map((draft, index) => (
@@ -218,22 +219,18 @@ function PlacementSlotEditor({
       )}
       <EditorialErrorList errors={errors} />
       <div className="flex flex-wrap items-center gap-2">
-        <button
+        <Button
           type="button"
-          className={editorialSmallButtonClass}
+          variant="outline"
+          size="sm"
           disabled={pending || drafts.length >= PLACEMENT_MAX_ROWS}
           onClick={() => update([...drafts, emptyPlacementDraft(newKey())])}
         >
           Add row
-        </button>
-        <button
-          type="button"
-          className={editorialPrimaryButtonClass}
-          disabled={pending}
-          onClick={() => void save()}
-        >
+        </Button>
+        <Button type="button" size="sm" disabled={pending} onClick={() => void save()}>
           {pending ? "Saving…" : "Save slot"}
-        </button>
+        </Button>
       </div>
       <EditorialStatusMessage status={status} />
     </section>
@@ -250,7 +247,7 @@ export function EditorialPlacementsTab({
   const [initial] = useState(() => placementDraftsBySlot(placements, newKey));
   return (
     <div className="space-y-6">
-      <p className="text-sm text-neutral-600">
+      <p className="text-sm text-on-surface-variant">
         Each slot is saved on its own and replaces everything in that slot. Rows show in the order
         listed.
       </p>

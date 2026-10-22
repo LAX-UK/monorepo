@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+/** Persistent inline failure message; a step-up result also offers the way back in. */
 export function AdminMutationFeedback({
   message,
   stepUpRequired,
@@ -11,20 +12,16 @@ export function AdminMutationFeedback({
 }) {
   if (!message) return null;
   return (
-    <p className="text-sm text-neutral-600">
+    <p role="alert" className="text-sm text-error">
       {message}
       {stepUpRequired ? (
         <>
           {" "}
-          <Link href={stepUpHref} className="underline">
-            Sign in again with step-up
+          <Link href={stepUpHref} className="font-medium underline underline-offset-2">
+            Sign in again
           </Link>
         </>
       ) : null}
     </p>
   );
 }
-
-export const adminFormFieldClass = "mt-1 w-full rounded border px-2 py-1 text-sm";
-export const adminFormLabelClass = "block text-sm";
-export const adminFormSectionClass = "space-y-3 rounded border p-3";

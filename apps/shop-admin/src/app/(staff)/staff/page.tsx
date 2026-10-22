@@ -1,7 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { GrantStaffRoleForm } from "@/components/admin-staff-action-forms.client";
 import { StaffMembersListTable } from "@/components/admin-staff-list-tables.client";
+import { GrantStaffRoleForm } from "@/components/forms/people/grant-staff-role-form.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";

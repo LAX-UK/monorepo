@@ -35,6 +35,7 @@ import {
   venueFormFromDetail,
 } from "@/lib/editorial-entity-forms";
 import type { AdminPlacementRow } from "@/lib/editorial-placements";
+import { Button } from "@auction/ui";
 import { type KeyboardEvent, type ReactNode, useId, useRef, useState } from "react";
 
 const TABS = [
@@ -157,18 +158,20 @@ export function EditorialWorkspace({
         {TABS.map((tab, index) => {
           const selected = tab.id === active;
           return (
-            <button
+            <Button
               key={tab.id}
               ref={(node) => {
                 tabRefs.current[tab.id] = node;
               }}
               type="button"
+              variant="ghost"
+              size="sm"
               role="tab"
               id={tabId(tab.id)}
               aria-selected={selected}
               aria-controls={panelId(tab.id)}
               tabIndex={selected ? 0 : -1}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm ${
+              className={`-mb-px rounded-none border-b-2 px-3 py-2 text-sm ${
                 selected
                   ? "border-primary font-medium text-on-surface"
                   : "border-transparent text-on-surface-variant hover:text-on-surface"
@@ -177,7 +180,7 @@ export function EditorialWorkspace({
               onKeyDown={(event) => onTabKeyDown(event, index)}
             >
               {tab.label}
-            </button>
+            </Button>
           );
         })}
       </div>

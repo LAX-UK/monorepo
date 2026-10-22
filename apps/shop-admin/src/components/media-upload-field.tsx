@@ -1,6 +1,7 @@
 "use client";
 
 import { type ShopMediaKind, uploadShopMediaFile } from "@/lib/shop-media-upload.client";
+import { Button, FileUploadTrigger, Input, Label, UploadProgress } from "@auction/ui";
 import { useCallback, useId, useState } from "react";
 
 export type MediaUploadItem = {
@@ -49,8 +50,8 @@ export function MediaUploadField({
   }, []);
 
   const onFiles = useCallback(
-    async (files: FileList | null) => {
-      const file = files?.[0];
+    async (files: FileList) => {
+      const file = files[0];
       if (!file || disabled) return;
       const id = newItemId();
       setQueue((items) => [
@@ -82,12 +83,10 @@ export function MediaUploadField({
   );
 
   return (
-    <div className="space-y-3 rounded-md border border-neutral-200 p-4">
+    <div className="space-y-3 rounded-md border border-border-hairline p-4">
       <div className="flex flex-col gap-1">
-        <label htmlFor={inputId} className="text-sm font-medium text-neutral-800">
-          {label}
-        </label>
-        <p className="text-xs text-neutral-500">
+        <Label htmlFor={inputId}>{label}</Label>
+        <p id={`${inputId}-hint`} className="text-xs text-on-surface-variant">
           JPEG, PNG or WebP. Upload goes directly to media storage.
         </p>
       </div>
@@ -98,78 +97,76 @@ export function MediaUploadField({
           <img
             src={previewSrc}
             alt={alt || label}
-            className="max-h-48 rounded border object-contain"
+            className="max-h-48 rounded border border-border-hairline object-contain"
           />
-          <button
+          <Button
             type="button"
-            className="text-sm text-neutral-600 underline disabled:opacity-50"
+            variant="link"
             disabled={disabled}
             onClick={() => onChange(null, null)}
           >
             Remove
-          </button>
+          </Button>
         </div>
       ) : null}
 
       {controlledAlt === undefined ? (
-        <label className="block text-sm text-neutral-700">
-          Alt text
-          <input
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${inputId}-alt`}>Alt text</Label>
+          <Input
+            id={`${inputId}-alt`}
             type="text"
-            className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             value={ownAlt}
             disabled={disabled}
             onChange={(e) => setAlt(e.target.value)}
             maxLength={500}
           />
-        </label>
+        </div>
       ) : null}
 
-      <input
-        id={inputId}
-        type="file"
+      <FileUploadTrigger
+        inputId={inputId}
         accept="image/jpeg,image/png,image/webp"
-        className="block w-full text-sm"
         disabled={disabled}
-        onChange={(e) => {
-          void onFiles(e.target.files);
-          e.target.value = "";
-        }}
-      />
+        dropzoneAriaLabel={label}
+        describedById={`${inputId}-hint`}
+        onFilesSelected={(files) => void onFiles(files)}
+      >
+        Choose image
+      </FileUploadTrigger>
 
       {queue.length > 0 ? (
         <ul className="space-y-2 text-sm">
           {queue.map((item) => (
-            <li key={item.id} className="rounded bg-neutral-50 px-3 py-2">
+            <li key={item.id} className="rounded bg-surface-container-low px-3 py-2">
               <div className="flex justify-between gap-2">
                 <span className="truncate">{item.fileName}</span>
-                <span className="text-neutral-500">{item.status}</span>
+                <span className="text-on-surface-variant">{item.status}</span>
               </div>
               {item.status === "uploading" ? (
-                <div className="mt-1 h-1.5 overflow-hidden rounded bg-neutral-200">
-                  <div
-                    className="h-full bg-neutral-800 transition-all"
-                    style={{ width: `${item.progress}%` }}
-                  />
-                </div>
+                <UploadProgress
+                  className="mt-1"
+                  value={item.progress}
+                  label={`Uploading ${item.fileName}`}
+                />
               ) : null}
-              {item.error ? <p className="mt-1 text-xs text-red-600">{item.error}</p> : null}
+              {item.error ? <p className="mt-1 text-xs text-error">{item.error}</p> : null}
             </li>
           ))}
         </ul>
       ) : null}
 
       {value && !previewSrc ? (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
           <span className="break-all">Stored key: {value}</span>
-          <button
+          <Button
             type="button"
-            className="text-sm text-neutral-600 underline disabled:opacity-50"
+            variant="link"
             disabled={disabled}
             onClick={() => onChange(null, null)}
           >
             Remove
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

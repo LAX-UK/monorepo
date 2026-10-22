@@ -2,13 +2,9 @@
 
 import { EditorialBlockEditor } from "@/components/editorial-block-editor.client";
 import type { EntityFieldsProps } from "@/components/editorial-entity-fields.client";
-import {
-  editorialButtonClass,
-  editorialPrimaryButtonClass,
-  editorialSmallButtonClass,
-} from "@/components/editorial-form-controls";
 import { EditorialErrorList, EditorialStatusMessage } from "@/components/editorial-status-message";
 import { useEditorialMutation } from "@/components/use-editorial-mutation";
+import { useUnsavedChangesGuard } from "@/components/use-unsaved-changes-guard";
 import { type EditorialBlockItem, fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
 import type {
   EditorialAdminRow,
@@ -23,6 +19,7 @@ import {
   setEditorialPublication,
 } from "@/server/application/admin-editorial-actions.server";
 import type { EditorialBlock } from "@auction/shop-contracts";
+import { Button, ConfirmDialog } from "@auction/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 export type EditorialEntityTabConfig<F, D> = {
@@ -51,7 +48,7 @@ function StatusBadge({ status }: { status: EditorialAdminRow["status"] }) {
       className={
         status === "published"
           ? "rounded bg-success-container px-2 py-0.5 text-xs text-success"
-          : "rounded bg-warning-container px-2 py-0.5 text-xs text-neutral-700"
+          : "rounded bg-warning-container px-2 py-0.5 text-xs text-on-surface-variant"
       }
     >
       {status === "published" ? "Published" : "Draft"}
@@ -69,11 +66,11 @@ function PreviewPanel({ preview, onClose }: { preview: PreviewState; onClose: ()
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">Preview for {preview.label}</p>
-        <button type="button" className={editorialSmallButtonClass} onClick={onClose}>
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>
           Dismiss
-        </button>
+        </Button>
       </div>
-      <p className="text-xs text-neutral-600">
+      <p className="text-xs text-on-surface-variant">
         Expires {new Date(preview.expiresAt).toLocaleString("en-GB")}. Anyone with the link can view
         the draft until then.
       </p>
@@ -87,7 +84,7 @@ function PreviewPanel({ preview, onClose }: { preview: PreviewState; onClose: ()
           {preview.url}
         </a>
       ) : (
-        <p className="text-xs text-neutral-600">
+        <p className="text-xs text-on-surface-variant">
           LAX_ART_PUBLIC_URL is not configured, so only the token is shown. Open{" "}
           <code>/preview/&lt;token&gt;</code> on lax.art.
         </p>
@@ -96,9 +93,10 @@ function PreviewPanel({ preview, onClose }: { preview: PreviewState; onClose: ()
         {preview.token}
       </code>
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
-          className={editorialSmallButtonClass}
+          variant="outline"
+          size="sm"
           onClick={() => {
             navigator.clipboard.writeText(copyValue).then(
               () => setCopied("copied"),
@@ -107,8 +105,8 @@ function PreviewPanel({ preview, onClose }: { preview: PreviewState; onClose: ()
           }}
         >
           {preview.url ? "Copy link" : "Copy token"}
-        </button>
-        <output className="text-xs text-neutral-600">
+        </Button>
+        <output className="text-xs text-on-surface-variant">
           {copied === "copied"
             ? "Copied."
             : copied === "failed"
@@ -136,6 +134,8 @@ export function EditorialEntityTab<F, D>({
   const [errors, setErrors] = useState<string[]>([]);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [session, setSession] = useState(0);
+  const [discardAction, setDiscardAction] = useState<(() => void) | null>(null);
+  const [publicationTarget, setPublicationTarget] = useState<EditorialAdminRow | null>(null);
   const editorHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -144,8 +144,12 @@ export function EditorialEntityTab<F, D>({
 
   const currentRow = editor?.id ? rows.find((row) => row.id === editor.id) : undefined;
 
-  function confirmDiscard(): boolean {
-    return !dirty || window.confirm(`Discard unsaved changes to this ${singular}?`);
+  useUnsavedChangesGuard(dirty);
+
+  /** Runs `proceed` straight away, or after the user agrees to drop unsaved edits. */
+  function guardDiscard(proceed: () => void) {
+    if (dirty) setDiscardAction(() => proceed);
+    else proceed();
   }
 
   function openEditor(next: EditorState<F>) {
@@ -156,13 +160,13 @@ export function EditorialEntityTab<F, D>({
   }
 
   function startCreate() {
-    if (!confirmDiscard()) return;
-    setStatus(null);
-    openEditor({ id: null, form: config.empty(), items: [] });
+    guardDiscard(() => {
+      setStatus(null);
+      openEditor({ id: null, form: config.empty(), items: [] });
+    });
   }
 
-  async function startEdit(row: EditorialAdminRow) {
-    if (!confirmDiscard()) return;
+  async function loadForEdit(row: EditorialAdminRow) {
     const detail = await run(() => getEditorialEntityDetail(kind, row.id), {
       action: `load the ${singular}`,
       refresh: false,
@@ -171,6 +175,10 @@ export function EditorialEntityTab<F, D>({
     const typed = detail as D & { body?: unknown };
     const body = Array.isArray(typed.body) ? (typed.body as EditorialBlock[]) : [];
     openEditor({ id: row.id, form: config.fromDetail(typed), items: toBlockItems(body, newKey) });
+  }
+
+  function startEdit(row: EditorialAdminRow) {
+    guardDiscard(() => void loadForEdit(row));
   }
 
   async function save() {
@@ -233,30 +241,25 @@ export function EditorialEntityTab<F, D>({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-on-surface-variant">
           {rows.length} {rows.length === 1 ? singular : plural}
         </p>
-        <button
-          type="button"
-          className={editorialPrimaryButtonClass}
-          disabled={pending}
-          onClick={startCreate}
-        >
+        <Button type="button" size="sm" disabled={pending} onClick={startCreate}>
           Create {singular}
-        </button>
+        </Button>
       </div>
 
       {editor ? null : <EditorialStatusMessage status={status} />}
       {preview ? <PreviewPanel preview={preview} onClose={() => setPreview(null)} /> : null}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-neutral-500">No {plural} yet.</p>
+        <p className="text-sm text-on-surface-variant">No {plural} yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">{capitalise(plural)}</caption>
             <thead>
-              <tr className="border-b text-left text-neutral-500">
+              <tr className="border-b text-left text-on-surface-variant">
                 <th scope="col" className="py-1 pr-4">
                   Name
                 </th>
@@ -275,7 +278,7 @@ export function EditorialEntityTab<F, D>({
               {rows.map((row) => (
                 <tr
                   key={row.id}
-                  className={`border-b border-neutral-100 ${editor?.id === row.id ? "bg-info-container" : ""}`}
+                  className={`border-b border-border-hairline ${editor?.id === row.id ? "bg-info-container" : ""}`}
                 >
                   <td className="py-2 pr-4">{row.label}</td>
                   <td className="py-2 pr-4 font-mono text-xs">{row.slug}</td>
@@ -284,33 +287,36 @@ export function EditorialEntityTab<F, D>({
                   </td>
                   <td className="py-2">
                     <div className="flex flex-wrap gap-1">
-                      <button
+                      <Button
                         type="button"
-                        className={editorialSmallButtonClass}
+                        variant="outline"
+                        size="sm"
                         disabled={pending}
                         aria-label={`Edit ${row.label}`}
-                        onClick={() => void startEdit(row)}
+                        onClick={() => startEdit(row)}
                       >
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className={editorialSmallButtonClass}
+                        variant="outline"
+                        size="sm"
                         disabled={pending}
                         aria-label={`${row.status === "published" ? "Unpublish" : "Publish"} ${row.label}`}
-                        onClick={() => void togglePublished(row)}
+                        onClick={() => setPublicationTarget(row)}
                       >
                         {row.status === "published" ? "Unpublish" : "Publish"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className={editorialSmallButtonClass}
+                        variant="outline"
+                        size="sm"
                         disabled={pending}
                         aria-label={`Preview ${row.label}`}
                         onClick={() => void issuePreview(row)}
                       >
                         Preview
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -349,54 +355,90 @@ export function EditorialEntityTab<F, D>({
           />
           <EditorialErrorList errors={errors} />
           <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-            <button
-              type="button"
-              className={editorialPrimaryButtonClass}
-              disabled={pending}
-              onClick={() => void save()}
-            >
+            <Button type="button" size="sm" disabled={pending} onClick={() => void save()}>
               {pending ? "Working…" : editor.id ? "Save changes" : `Create draft ${singular}`}
-            </button>
+            </Button>
             {currentRow ? (
               <>
-                <button
+                <Button
                   type="button"
-                  className={editorialButtonClass}
+                  variant="outline"
+                  size="sm"
                   disabled={pending || dirty}
                   title={dirty ? "Save your changes first" : undefined}
-                  onClick={() => void togglePublished(currentRow)}
+                  onClick={() => setPublicationTarget(currentRow)}
                 >
                   {currentRow.status === "published" ? "Unpublish" : "Publish"}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={editorialButtonClass}
+                  variant="outline"
+                  size="sm"
                   disabled={pending || dirty}
                   title={dirty ? "Save your changes first" : undefined}
                   onClick={() => void issuePreview(currentRow)}
                 >
                   Preview
-                </button>
+                </Button>
               </>
             ) : null}
-            <button
+            <Button
               type="button"
-              className={editorialButtonClass}
+              variant="outline"
+              size="sm"
               disabled={pending}
-              onClick={() => {
-                if (!confirmDiscard()) return;
-                setEditor(null);
-                setDirty(false);
-                setErrors([]);
-              }}
+              onClick={() =>
+                guardDiscard(() => {
+                  setEditor(null);
+                  setDirty(false);
+                  setErrors([]);
+                })
+              }
             >
               Close editor
-            </button>
-            {dirty ? <span className="text-xs text-neutral-500">Unsaved changes</span> : null}
+            </Button>
+            {dirty ? (
+              <span className="text-xs text-on-surface-variant">Unsaved changes</span>
+            ) : null}
           </div>
           <EditorialStatusMessage status={status} />
         </section>
       ) : null}
+
+      <ConfirmDialog
+        open={discardAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setDiscardAction(null);
+        }}
+        title={`Discard unsaved changes to this ${singular}?`}
+        body="Your edits have not been saved and cannot be recovered once discarded."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          discardAction?.();
+          setDiscardAction(null);
+        }}
+      />
+      <ConfirmDialog
+        open={publicationTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setPublicationTarget(null);
+        }}
+        title={`${publicationTarget?.status === "published" ? "Unpublish" : "Publish"} “${publicationTarget?.label ?? ""}”`}
+        body={
+          publicationTarget?.status === "published"
+            ? `This ${singular} is removed from lax.art straight away. You can publish it again later.`
+            : `This ${singular} goes live on lax.art straight away.`
+        }
+        confirmLabel={publicationTarget?.status === "published" ? "Unpublish" : "Publish"}
+        tone="warning"
+        loading={pending}
+        onConfirm={async () => {
+          if (!publicationTarget) return;
+          await togglePublished(publicationTarget);
+          setPublicationTarget(null);
+        }}
+      />
     </div>
   );
 }

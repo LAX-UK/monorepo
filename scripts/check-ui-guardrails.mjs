@@ -5,6 +5,8 @@
  * apps/art follows the Apple model: primitives come from @auction/ui, @auction/marketing-ui, and
  * @auction/branding; the app owns layout, composition, and copy only (docs/DESIGN_SYSTEM.md).
  * apps/account follows the same model, so it gets the same checks.
+ * apps/shop-admin (LAX Admin) is staff-only but follows the model too: no raw controls, no direct
+ * lucide-react or Radix imports, and uploads go through FileUploadTrigger.
  */
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -13,6 +15,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const WEB_SRC = path.join(ROOT, "apps/web/src");
 const ART_SRC = path.join(ROOT, "apps/art/src");
 const ACCOUNT_SRC = path.join(ROOT, "apps/account/src");
+const SHOP_ADMIN_SRC = path.join(ROOT, "apps/shop-admin/src");
 const SKIP_SUFFIX = [".test.ts", ".test.tsx"];
 const ALLOWED_FILE_INPUT = new Set([
   "document-upload-field.tsx",
@@ -125,10 +128,27 @@ function checkArtFile(rel, _base, text, violations) {
   }
 }
 
+function checkAdminFile(rel, _base, text, violations) {
+  checkSharedPrimitives(rel, text, violations);
+
+  if (/<input(?:\s|\/>|>)/.test(text)) {
+    violations.push(`${rel}: raw <input> — use Input, Checkbox or Switch from '@auction/ui'`);
+  }
+
+  if (/from ["']lucide-react["']/.test(text)) {
+    violations.push(`${rel}: direct lucide-react import — take icons from '@auction/ui'`);
+  }
+
+  if (/from ["']vaul["']/.test(text)) {
+    violations.push(`${rel}: direct vaul import — use Sheet or BottomSheet from '@auction/ui'`);
+  }
+}
+
 const SURFACES = [
   { label: "apps/web/src", src: WEB_SRC, check: checkWebFile },
   { label: "apps/art/src", src: ART_SRC, check: checkArtFile },
   { label: "apps/account/src", src: ACCOUNT_SRC, check: checkArtFile },
+  { label: "apps/shop-admin/src", src: SHOP_ADMIN_SRC, check: checkAdminFile },
 ];
 
 let failed = false;

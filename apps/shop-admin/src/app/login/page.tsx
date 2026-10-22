@@ -2,12 +2,11 @@ import { loadAdminSession } from "@/lib/admin-data.server";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { shopAdminLoginErrorView } from "@/server/domain/login-error.vm";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
+import { Button } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 const primaryButton =
   "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-on-primary transition-opacity hover:opacity-90";
-const secondaryButton =
-  "inline-flex min-h-11 w-full items-center justify-center rounded-md border border-outline bg-surface px-4 text-sm font-medium text-on-surface transition-colors hover:bg-page-bg";
 
 export default function ShopAdminLoginPage({
   searchParams,
@@ -74,12 +73,13 @@ async function ShopAdminLoginContent({
                 method="post"
                 action={`/api/auth/switch-account?returnTo=${encodeURIComponent(returnTo)}`}
               >
-                <button
+                <Button
                   type="submit"
-                  className={view.showRetrySignIn ? secondaryButton : primaryButton}
+                  variant={view.showRetrySignIn ? "outline" : "default"}
+                  className="w-full"
                 >
                   Use a different account
-                </button>
+                </Button>
               </form>
             ) : null}
           </div>

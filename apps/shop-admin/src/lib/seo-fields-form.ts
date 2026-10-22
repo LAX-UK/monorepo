@@ -19,6 +19,12 @@ export const SEO_FIELDS_ERROR_MESSAGES: Record<SeoFieldsFormError, string> = {
   seo_description_too_long: `SEO description must be ${SEO_DESCRIPTION_MAX_LENGTH} characters or fewer.`,
 };
 
+/** The same messages keyed by form field, for forms that show them next to the input. */
+export const SEO_FIELD_ERRORS = {
+  seoTitle: SEO_FIELDS_ERROR_MESSAGES.seo_title_too_long,
+  seoDescription: SEO_FIELDS_ERROR_MESSAGES.seo_description_too_long,
+};
+
 function validate(values: SeoFieldsFormValues): SeoFieldsFormError | null {
   if (values.seoTitle.trim().length > SEO_TITLE_MAX_LENGTH) return "seo_title_too_long";
   if (values.seoDescription.trim().length > SEO_DESCRIPTION_MAX_LENGTH) {

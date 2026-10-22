@@ -1,11 +1,9 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import {
-  ArtistSeoForm,
-  LinkArtistIdentityForm,
-  UnlinkArtistIdentityForm,
-} from "@/components/admin-staff-action-forms.client";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { ArtistSeoForm } from "@/components/forms/people/artist-seo-form.client";
+import { LinkArtistIdentityForm } from "@/components/forms/people/link-artist-identity-form.client";
+import { UnlinkArtistIdentityForm } from "@/components/forms/people/unlink-artist-identity-form.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminArtistDetail } from "@auction/shop-contracts";

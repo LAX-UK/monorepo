@@ -1,10 +1,8 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import {
-  RecordPossessionForm,
-  UpdateFulfilmentForm,
-} from "@/components/admin-staff-action-forms.client";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { RecordPossessionForm } from "@/components/forms/operations/record-possession-form.client";
+import { UpdateFulfilmentForm } from "@/components/forms/operations/update-fulfilment-form.client";
 import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
