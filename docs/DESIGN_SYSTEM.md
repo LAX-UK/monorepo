@@ -75,7 +75,7 @@ lax.art (`apps/art`) is the first product built **composition-only** on shared p
 
 ### Primitive audit (Shop · Bid · Art)
 
-Counts are files importing the primitive (excluding tests) at the time of the lax.art MVP pass; "—" means unused.
+Counts are files importing the primitive (excluding tests). Rows from the original lax.art pass are unchanged unless noted; rows added for the Figma parity work were counted on `main` after it. Rows marked (#551) or (#552) are built by those pull requests and were counted on their branches. "—" means unused.
 
 | Primitive | Shared package | Shop usage | Bid usage | Art usage | Notes / local duplicates |
 |-----------|----------------|------------|-----------|-----------|--------------------------|
@@ -87,9 +87,9 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Skeleton | `@auction/ui` | — | 29 | 1 (route skeletons) | Shop has local `shop-page-skeleton` / `shop-route-loading` |
 | DotStatusPill | `@auction/ui` | 10 | 32 | 1 | Registries emit tones only |
 | Sheet / Dialog | `@auction/ui` | Dialog 1 | Sheet 7, Dialog 18 | via `MarketingSideSheet` | Bid has product-specific sheets (iOS install, venue drawer, admin filters) |
-| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 2 (artwork + general enquiry) | New in this pass; Shop/Bid candidates to adopt |
+| Side sheet (576px desktop, bottom sheet mobile) | `@auction/marketing-ui` `MarketingSideSheet` | — | — | 3 (two enquiry sheets, artwork "More options" sheet) | `titleCase="sentence"` option; the default keeps the caps style. Shop/Bid candidates to adopt |
 | Pull quote | `@auction/marketing-ui` `MarketingPullQuote` | — | 1 (press) | 1 (editorial blocks) | Bid keeps local `pull-quote.tsx` until migrated |
-| Info strip | `@auction/marketing-ui` `MarketingInfoStrip` | — | — | 2 (editorial blocks, exhibition header) | Exhibition date/venue/hours row |
+| Info strip | `@auction/marketing-ui` `MarketingInfoStrip` | — | — | 1 (editorial blocks) | Exhibition date/venue/hours row; exhibition detail now uses `MarketingFactColumns` |
 | Hero | `@auction/marketing-ui` `MarketingHero` | — | 1 | 1 (home, editorial `home_hero` placement) | Art falls back to a text hero when the placement has no image |
 | Video poster | `@auction/marketing-ui` `MarketingVideoPoster` | — | — | 2 (editorial `video` block, story film) | 16:9 poster linking out in a new tab; no third-party iframe |
 | Alphabet filter | `@auction/marketing-ui` `MarketingAlphabetFilter` | — | — | 1 (artists A–Z) | Links (`?letter=x`) with `aria-current`, not buttons, so filters are crawlable and shareable |
@@ -97,8 +97,8 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Mobile nav drawer | `@auction/marketing-ui` `MarketingMobileNavDrawer` | 1 | 1 | 1 (header below `lg`, with auth section) | Art puts flat links in the top slot and passes no sections; the drawer then omits its "Mobile primary" landmark |
 | LAX wordmark | `@auction/marketing-ui` `LaxLogo` | 2 (via `ShopLaxLogo`) | 2 | 2 | `@auction/branding` ships canonical SVG path |
 | Account menu (guest + signed-in) | `@auction/marketing-ui` `MarketingGuestAccountMenu` / `MarketingAuthenticatedAccountMenu` | 2 (Shop-specific wrappers) | — | 1 | Art passes `ArtAuthLink` for OIDC entry |
-| Heart / save toggle | `@auction/marketing-ui` `MarketingHeartToggle` | — | — | 1 (artwork favorite) | Bid keeps local `watchlist-heart*` and `artist-watch-heart`; Shop has `artwork-notify-me-button` (different intent) |
-| Bottom tab bar | `@auction/marketing-ui` `MarketingBottomTabBar` | — | — | 1 (mobile nav) | Bid keeps local `layout/bottom-tab-bar` |
+| Heart / save toggle | `@auction/marketing-ui` `MarketingHeartToggle` | — | — | 1 (artwork favorite) | `appearance` (`circle` default, `bare`, `onMedia`) and `size` (`md`, `sm`); saved fill from `--color-favorite`. Bid keeps local `watchlist-heart*` and `artist-watch-heart`; Shop has `artwork-notify-me-button` (different intent) |
+| Bottom tab bar | `@auction/marketing-ui` `MarketingBottomTabBar` | — | — | 1 (mobile nav) | `variant="floating"` (inset pill) is Art's; default unchanged. Bid keeps local `layout/bottom-tab-bar` |
 | Card media / `MediaImage` | `@auction/marketing-ui` | 5 / 8 | — / 63 | 2 / 6 | |
 | Filter sheet / sidebar / active chips | `@auction/marketing-ui` | 1 / 1 / 1 | 7 / 4 / 8 | 1 / 1 / 1 | |
 | Section header / status state | `@auction/marketing-ui` | 1 / 1 | 11 / 1 | 1 / 2 | |
@@ -107,13 +107,41 @@ Counts are files importing the primitive (excluding tests) at the time of the la
 | Product switcher | `@auction/lax-ecosystem` via product wrapper | 2 | 2 | 2 | |
 | Money / date presenters | `@auction/shop-portal/vm` (`formatGbpPence`, `formatShopDate`) | 12 / 5 | — | 2 / 1 | Art's former copies of Shop presenters were deleted |
 | Grid / list view | `@auction/marketing-ui` `MarketingCatalogViewSwitcher` + `MarketingCatalogView` (`useCatalogViewNavigation`) | 1 (artworks) | local `CatalogViewSwitcher` (same `ViewSwitcher`) | 1 (artworks) | Bid's contract: `?view=` is the source of truth, `lax_view_<routeKey>` cookie remembers it, default view drops the param. Art/Shop pass `clearParams={[]}` so cursor pagination survives a switch |
-| List row | `@auction/marketing-ui` `MarketingCatalogListRow` | 1 | lot list rows (local) | 1 | Thumbnail, title, artist, meta, price and trailing actions in one row |
+| List row | `@auction/marketing-ui` `MarketingCatalogListRow` | 1 | lot list rows (local) | 1 | Thumbnail, title, artist, meta, price and trailing actions in one row. `size="lg"` (large landscape media) and an `aside` slot (price, heart, Enquire) are Art's |
 | Toolbar row | `@auction/marketing-ui` `MarketingListToolbar` / `MarketingToolbarRow` | 1 | 10 | 1 | With Filters + sort + view switcher, pass `stackTrailingOnMobile` (Bid's pattern) so the switcher drops to its own row below `lg` instead of overflowing at 375px |
 | Category tile | `@auction/marketing-ui` `MarketingCategoryTile` | 1 | — | 1 (artworks "Browse by medium") | Tiles are links with `aria-current` on the active filter, laid out in a horizontal rail |
 | Share | `@auction/marketing-ui` `MarketingShareButton` | — | — | 1 (artwork detail) | Native share sheet when available, otherwise copies the absolute URL and announces it; cancel is silent |
 | In-page tabs | `@auction/marketing-ui` `MarketingUnderlineTabsPanel` | — | route tabs use local `MarketingUnderlineTabs` (same underline) | 1 (artwork about / exhibition history) | A single panel renders as a titled region with no tablist. Tabs wrap rather than scroll, so no unfocusable scroll region exists before hydration |
 | Detail accordion | `@auction/marketing-ui` `MarketingDetailAccordion` | — | — | 1 (details, medium & dimensions, provenance) | First item open by default; empty when given no items |
 | Footer | `@auction/marketing-ui` `MarketingFooter` | 1 | 1 | 1 | No tagline. Column order: site nav, Account, LAX products, Legal, Connect. Columns accept `note` for a non-link line (e.g. "Sign-in status unavailable") |
+| Page title | `@auction/marketing-ui` `MarketingPageTitle` | — | — | 9 (collector hub, visit, contact, exhibition detail, stories, artist hero, account, editorial pages) | `plain` and `media` variants; `actions` slot for the artist Follow. `/artists` and `/artworks` still use the local left-aligned `ArtPageHeader` |
+| Sub-navigation | `@auction/marketing-ui` `MarketingSubNav` | — | — | 5 (exhibitions index and detail, stories reading bar, artist profile, account and favourites tabs) | Link and anchor modes, sticky identity bar, reading progress. Bid keeps local `marketing-underline-tabs`; Art's `SectionTabs` use on exhibitions is gone |
+| Split feature | `@auction/marketing-ui` `MarketingSplitFeature` | — | — | 2 (+1 with #552) | Home promos, artist sell prompt; `h1` option (#552) |
+| CTA band | `@auction/marketing-ui` `MarketingCtaBand` | — | — | 2 | Home closing band, exhibition private viewing; `media` option (#551) |
+| Feature grid | `@auction/marketing-ui` `MarketingFeatureGrid` | — | — | 1 | `lead-plus-row` and `lead-plus-stack` layouts for home What's on and stories |
+| Venue card | `@auction/marketing-ui` `MarketingVenueCard` | — | — | 1 | Home galleries and `/visit` |
+| Editorial card | `@auction/marketing-ui` `MarketingEditorialCard` | — | — | 1 (`ArtEditorialCard`) | Aspects `landscape` (default), `portrait`, `wide`; kicker, detail lines, trailing slot |
+| Editorial list row | `@auction/marketing-ui` `MarketingEditorialListRow` | — | — | 1 | Kicker, meta line, `linkAs`, inverse tone: exhibition press, Art hub press band (#552) |
+| Reveal carousel | `@auction/marketing-ui` `MarketingRevealCarousel` | — | — | 1 | Split slide with dots; never autoplays. Exhibitions hero |
+| Fact columns | `@auction/marketing-ui` `MarketingFactColumns` | — | — | 1 | Icon, label and links; centred columns, or `layout="list"` rows (#551). The local `ArtVenueFacts` is removed with #551 |
+| Filter dropdown / facet group | `@auction/marketing-ui` `MarketingFilterDropdown` / `MarketingFilterFacetGroup` | — | — | 1 / 1 | Draft state with Cancel / Apply on desktop, Reset all / Show results on mobile. Replaced Art's single-select rail options |
+| Header search | `@auction/marketing-ui` `MarketingHeaderSearch` | — | — | 1 | Inline field with recent searches (local storage) and suggestions |
+| Header mega nav | `@auction/marketing-ui` `MarketingHeaderMegaNav` | 1 | 1 | 1 | Extended with `columns`, `linkHref` and item `media`; defaults unchanged |
+| Spec list | `@auction/marketing-ui` `MarketingSpecList` | — | — | 1 | Artwork spec table |
+| Read more | `@auction/marketing-ui` `MarketingReadMore` | — | — | 2 | Clamped text with toggle: artist biography and exhibition artists |
+| Artist summary | `@auction/marketing-ui` `MarketingArtistSummary` | — | — | 1 | Avatar, name, Follow, clamped bio on artwork detail |
+| Sticky action bar | `@auction/marketing-ui` `MarketingStickyActionBar` | — | — | 1 | Mobile Follow and Enquire bar; candidate to generalise Bid's `StickyBidBar` |
+| Follow row | `@auction/marketing-ui` `MarketingFollowRow` | — | — | 1 | Followed artists |
+| Enquiry list item | `@auction/marketing-ui` `MarketingEnquiryListItem` | — | — | 1 | Default, artwork and compact variants |
+| Success state | `@auction/marketing-ui` `MarketingSuccessState` | — | — | 2 | Animated check, static under reduced motion (enquiry sheets) |
+| Status state motif | `@auction/marketing-ui` `MarketingStatusState` | 1 | 1 | 2 | New `search-remove` motif for empty search |
+| Feature card | `@auction/marketing-ui` `MarketingFeatureCard` | — | — | 1 (#551) | `split`, `vertical`, `text` variants: collector hub, Art hub |
+| Step card | `@auction/marketing-ui` `MarketingStepCard` | — | — | 1 (#551) | How to buy |
+| Audio player | `@auction/marketing-ui` `MarketingAudioPlayer` | — | — | 3 (#552) | Art hub podcast, stories podcast tab, podcast articles |
+| Link list | `@auction/marketing-ui` `MarketingLinkList` | — | — | 1 (#552) | Art hub quick links |
+| List row (link) | `@auction/ui` `ListRow` | — | 2 | 1 | `href` / `asChild`; LAX Account uses it in 2 files for settings and edit-account rows |
+| Alert (inverse) | `@auction/ui` `Alert` | 1 | 81 | 6 | `inverse` variant for the account "almost ready" banner; defaults unchanged |
+| Slider thumb label | `@auction/ui` `Slider` | — | — | 1 (via audio player, #552) | Optional `thumbLabel` for the accessible name of the scrubber |
 
 ## Token layers (web)
 
@@ -152,7 +180,7 @@ Set by the product owner on 2026-10-21. It applies to every LAX product: Bid, Sh
   - Each app's `base.css` maps its own accent to a single semantic token, `--color-product-accent`.
   - Components never reference `--brand-midnight` or another product's accent directly.
 
-Current deviations: none known. Shop, Art and Account map links, focus rings, `--color-secondary` and the container tints to shared neutrals, and each declares `--color-product-accent` as its primary neutral until its accent is chosen. Because links share the text colour, they stay underlined so colour is never the only cue (WCAG 1.4.1).
+All products comply with the colour rule; none is waiting to migrate. Each non-Bid app maps links, focus rings, `--color-secondary` and the container tints to shared neutrals and declares `--color-product-accent` as its primary neutral until its accent is chosen. Because links share the text colour, they stay underlined so colour is never the only cue (WCAG 1.4.1).
 
 Where a non-Bid Figma file draws navy (e.g. CTAs in the lax.art rebuild), build it with the shared neutral CTA. Three guards in `pnpm ci:shop-architecture` fail if Bid's accent (`brand-midnight`, #091F5B or #081F5B) appears in a non-Bid app: `scripts/ci/verify-shop-theme.test.mjs` for `apps/shop/src`, `scripts/ci/verify-art-theme.test.mjs` for `apps/art/src`, and `scripts/ci/verify-account-theme.test.mjs` for `apps/account/src`.
 
