@@ -6,7 +6,7 @@ export type AdminMutationResult<T> =
   | { ok: false; kind: "forbidden" }
   | { ok: false; kind: "csrf" }
   | { ok: false; kind: "step_up_required"; message: string }
-  | { ok: false; kind: "conflict"; message: string }
+  | { ok: false; kind: "conflict"; message: string; currentVersion?: string }
   | { ok: false; kind: "validation"; message: string }
   | { ok: false; kind: "failed"; message: string };
 
@@ -28,10 +28,12 @@ export function mapAdminMutationErrorBody(
     return { ok: false, kind: "forbidden" };
   }
   if (status === 409) {
+    const currentVersion = readErrorField(body, "currentVersion");
     return {
       ok: false,
       kind: "conflict",
       message: readErrorMessage(body) ?? "This action conflicts with current state.",
+      ...(currentVersion ? { currentVersion } : {}),
     };
   }
   if (status === 400) {
@@ -48,6 +50,13 @@ function readErrorCode(body: unknown): string | undefined {
   if (!body || typeof body !== "object") return undefined;
   const record = body as { code?: string };
   return typeof record.code === "string" ? record.code : undefined;
+}
+
+/** A string field some error bodies carry beyond `code` and `message`, such as `currentVersion`. */
+function readErrorField(body: unknown, field: string): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const value = (body as Record<string, unknown>)[field];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function readErrorMessage(body: unknown): string | undefined {

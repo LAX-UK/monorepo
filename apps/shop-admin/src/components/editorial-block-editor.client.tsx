@@ -2,6 +2,7 @@
 
 import { EditorialBlockFields } from "@/components/editorial-block-fields.client";
 import { SelectField, TextAreaField } from "@/components/forms/fields";
+import { useFieldControlId } from "@/components/forms/form-field";
 import {
   EDITORIAL_BLOCK_LABELS,
   EDITORIAL_BLOCK_TYPES,
@@ -15,14 +16,17 @@ import {
   toBlockItems,
 } from "@/lib/editorial-blocks";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
+import type { FieldErrors } from "@/lib/form-validation";
 import type { EditorialBlock } from "@auction/shop-contracts";
 import { Button } from "@auction/ui";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 type EditorialBlockEditorProps = {
   items: EditorialBlockItem[];
   onChange: (next: EditorialBlockItem[]) => void;
   disabled: boolean;
+  /** Save-time problems keyed `block-<n>`; each shows on its block and the summary can focus it. */
+  errors: FieldErrors;
 };
 
 const newKey = () => crypto.randomUUID();
@@ -131,7 +135,35 @@ function AdvancedJsonEditor({
   );
 }
 
-export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlockEditorProps) {
+/** A block's card. Its id is what the form's error summary focuses for that block's problem. */
+function BlockCard({
+  number,
+  error,
+  children,
+}: {
+  number: number;
+  error: string | undefined;
+  children: ReactNode;
+}) {
+  const id = useFieldControlId(`block-${number}`);
+  return (
+    <li
+      id={id}
+      tabIndex={-1}
+      className="space-y-3 rounded border bg-surface p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+    >
+      {children}
+      {error ? <p className="text-xs font-medium text-error">{error}</p> : null}
+    </li>
+  );
+}
+
+export function EditorialBlockEditor({
+  items,
+  onChange,
+  disabled,
+  errors,
+}: EditorialBlockEditorProps) {
   const [advanced, setAdvanced] = useState(false);
   const [newType, setNewType] = useState<EditorialBlockType>("richText");
 
@@ -168,7 +200,7 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
                 const updateBlock = (block: EditorialBlock) =>
                   onChange(replaceItem(items, index, { ...item, block }));
                 return (
-                  <li key={item.key} className="space-y-3 rounded border bg-surface p-3">
+                  <BlockCard key={item.key} number={index + 1} error={errors[`block-${index + 1}`]}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-medium">
                         {index + 1}. {EDITORIAL_BLOCK_LABELS[item.block.type] ?? item.block.type}
@@ -219,7 +251,7 @@ export function EditorialBlockEditor({ items, onChange, disabled }: EditorialBlo
                         disabled={disabled}
                       />
                     )}
-                  </li>
+                  </BlockCard>
                 );
               })}
             </ol>

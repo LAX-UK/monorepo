@@ -108,6 +108,7 @@ describe.skipIf(!hasShopIntegrationDb)("editorial content fields", () => {
         featured: false,
         body: [{ type: "richText", spans: [{ text: "short" }] }],
         readMinutes: 9,
+        expectedVersion: (await repo.getAdminStoryById(created.id))?.updatedAt ?? "",
         updatedBy: "test",
       });
       const admin = await repo.getAdminStoryById(created.id);
@@ -125,6 +126,7 @@ describe.skipIf(!hasShopIntegrationDb)("editorial content fields", () => {
         videoUrl: null,
         featured: false,
         body: [{ type: "richText", spans: [{ text: "short" }] }],
+        expectedVersion: (await repo.getAdminStoryById(created.id))?.updatedAt ?? "",
         updatedBy: "test",
       });
       expect((await repo.getAdminStoryById(created.id))?.readMinutes).toBe(9);

@@ -55,7 +55,12 @@ const PROBES: Probe[] = [
     name: "editorial update",
     method: "PUT",
     url: `/admin/v1/editorial/pages/${ENTITY_ID}`,
-    payload: { slug: "about", title: "About", body: [] },
+    payload: {
+      slug: "about",
+      title: "About",
+      body: [],
+      expectedVersion: "2026-01-01T00:00:00.000Z",
+    },
     allowed: ["shop_admin", "catalogue_editor"],
   },
   {
@@ -155,7 +160,7 @@ function buildApp(
       enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
       editorial: createStubEditorialRepository({
         createPage: async () => ({ id: ENTITY_ID }),
-        updatePage: async () => undefined,
+        updatePage: async () => ({ status: "updated", version: "2026-01-02T00:00:00.000Z" }),
         setPagePublication: async () => undefined,
         setStoryPublication: async () => undefined,
         replacePlacementSlot: async () => undefined,

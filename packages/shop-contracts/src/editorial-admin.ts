@@ -1,12 +1,11 @@
+import { type Static, type TSchema, Type } from "@sinclair/typebox";
+import { EditorialBlockListSchema, EditorialSafeHrefSchema } from "./editorial-blocks.js";
+import { EditorialPlacementSlotSchema } from "./editorial-public.js";
 import {
-  EditorialBlockListSchema,
-  EditorialPlacementSlotSchema,
-  EditorialSafeHrefSchema,
   EditorialStoryCategorySchema,
   EditorialStoryKindSchema,
-  SeoFieldsWriteProperties,
-} from "@auction/shop-contracts";
-import { type TSchema, Type } from "@sinclair/typebox";
+} from "./editorial-story-category.js";
+import { SeoFieldsWriteProperties } from "./seo-fields.js";
 
 export const EditorialSlugBodyField = Type.String({
   minLength: 1,
@@ -24,6 +23,15 @@ const optionalNullable = <T extends TSchema>(schema: T) =>
   Type.Optional(Type.Union([Type.Null(), schema]));
 const ShortText = Type.String({ maxLength: 300 });
 const PositiveInteger = Type.Integer({ minimum: 1, maximum: 100_000 });
+
+/**
+ * The row's `updatedAt` as an ISO string. Entity saves send it back unchanged so the API can
+ * refuse a save that would overwrite someone else's newer edit.
+ */
+export const EditorialVersionSchema = Type.String({ format: "date-time", maxLength: 40 });
+
+const withExpectedVersion = <T extends TSchema>(schema: T) =>
+  Type.Composite([schema, Type.Object({ expectedVersion: EditorialVersionSchema })]);
 
 export const EditorialPageWriteBodySchema = Type.Object({
   slug: EditorialSlugBodyField,
@@ -116,4 +124,22 @@ export const EditorialIdParamsSchema = Type.Object({
 
 export const EditorialCreateResponseSchema = Type.Object({
   id: Type.String({ format: "uuid" }),
+});
+
+export const EditorialPageUpdateBodySchema = withExpectedVersion(EditorialPageWriteBodySchema);
+export const EditorialVenueUpdateBodySchema = withExpectedVersion(EditorialVenueWriteBodySchema);
+export const EditorialStoryUpdateBodySchema = withExpectedVersion(EditorialStoryWriteBodySchema);
+export const EditorialExhibitionUpdateBodySchema = withExpectedVersion(
+  EditorialExhibitionWriteBodySchema,
+);
+
+export const EditorialUpdateResponseSchema = Type.Object({ version: EditorialVersionSchema });
+export type EditorialUpdateResponse = Static<typeof EditorialUpdateResponseSchema>;
+
+/** 409 from an entity save: a stale `expectedVersion` carries `currentVersion`; a slug clash does not. */
+export const EditorialEntityConflictBodySchema = Type.Object({
+  code: Type.String(),
+  message: Type.String(),
+  requestId: Type.Optional(Type.String()),
+  currentVersion: Type.Optional(EditorialVersionSchema),
 });
