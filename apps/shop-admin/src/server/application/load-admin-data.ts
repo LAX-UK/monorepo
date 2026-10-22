@@ -2,6 +2,7 @@ import { shopAdminSessionCookie } from "@/lib/session-cookie";
 import type { ShopApiErrorCode } from "@auction/shop-contracts";
 import { cookies } from "next/headers";
 import { getShopAdminContainer } from "../container";
+import { classifyAdminReadFailure } from "../domain/admin-read-failure";
 import { encodeAdminResourcePath } from "../domain/admin-resource-path";
 
 export type AdminFetchResult<T> =
@@ -62,7 +63,10 @@ export async function fetchAdminJson<T>(path: string): Promise<AdminFetchResult<
     const text = new TextDecoder().decode(body);
     if (!text.trim()) return { status: "failed" };
     return { status: "ok", data: JSON.parse(text) as T };
-  } catch {
+  } catch (error) {
+    const failure = classifyAdminReadFailure(error);
+    if (failure.kind === "unauthorized") return { status: "unauthorized" };
+    console.error("Admin read failed", { path, ...failure.log });
     return { status: "failed" };
   }
 }
