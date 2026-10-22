@@ -184,7 +184,10 @@ export function createMinimalShopApiTestDeps(
           }),
         },
         staff: { listStaffMembers: async () => ({ items: [], nextCursor: null }) },
-        catalogue: { listMerchandiseProducts: async () => ({ items: [], nextCursor: null }) },
+        catalogue: {
+          listMerchandiseProducts: async () => ({ items: [], nextCursor: null }),
+          getMerchandiseProduct: async () => null,
+        },
         overview: {
           readOverviewKpis: async () => ({
             fulfilmentOpenCount: 0,
@@ -241,6 +244,13 @@ export function createMinimalShopApiTestDeps(
         variantId: "00000000-0000-4000-8000-000000000018",
         slug: "test-product",
       }),
+      merchandiseCatalogue: {
+        updateProduct: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
+        setProductArchived: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
+        addVariant: async () => ({ variantId: "00000000-0000-4000-8000-000000000018" }),
+        updateVariant: async () => ({ variantId: "00000000-0000-4000-8000-000000000018" }),
+        setVariantArchived: async () => ({ variantId: "00000000-0000-4000-8000-000000000018" }),
+      },
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,

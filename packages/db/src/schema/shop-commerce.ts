@@ -474,6 +474,8 @@ export const shopProduct = pgTable(
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     description: text("description"),
+    /** Set when staff withdraw the product from sale. Rows are never deleted: order lines reference them. */
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
@@ -491,6 +493,8 @@ export const shopProductVariant = pgTable(
     pricePence: integer("price_pence").notNull(),
     onHand: integer("on_hand").default(0).notNull(),
     reserved: integer("reserved").default(0).notNull(),
+    /** Set when staff stop selling this variant; its SKU stays reserved because order lines point at it. */
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },

@@ -1,6 +1,8 @@
 export type AdjustMerchandiseVariantStockInput = {
   variantId: string;
   onHand: number;
+  /** Why the count changed; recorded in the audit entry that is the stock ledger. */
+  reason: string;
   actorSubjectId: string;
   idempotencyKey: string;
 };
@@ -13,7 +15,7 @@ export type AdjustMerchandiseVariantStockResult = {
 export type CreateMerchandiseProductInput = {
   slug: string;
   title: string;
-  description?: string | undefined;
+  description?: string | null | undefined;
   sku: string;
   pricePence: number;
   onHand: number;

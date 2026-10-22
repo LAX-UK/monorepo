@@ -3,6 +3,7 @@ import type { MerchandiseStockWriter } from "../../../application/ports/merchand
 export type AdjustMerchandiseStockCommand = {
   variantId: string;
   onHand: number;
+  reason: string;
   actorSubjectId: string;
   idempotencyKey: string;
 };

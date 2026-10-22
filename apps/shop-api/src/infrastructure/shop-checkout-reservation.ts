@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import { shopEdition, shopOrderLine, shopProductVariant } from "@auction/db/schema";
+import { shopEdition, shopOrderLine, shopProduct, shopProductVariant } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type VatPolicy, computeLineVat } from "@auction/shop-domain";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, notExists, sql } from "drizzle-orm";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgDeadlockDetected } from "../lib/pg-errors.js";
 import type { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
@@ -117,6 +117,18 @@ export async function reserveProductVariantsForCheckoutOrder(
         .where(
           and(
             eq(shopProductVariant.id, group.productVariantId),
+            isNull(shopProductVariant.archivedAt),
+            notExists(
+              tx
+                .select({ one: sql`1` })
+                .from(shopProduct)
+                .where(
+                  and(
+                    eq(shopProduct.id, shopProductVariant.productId),
+                    isNotNull(shopProduct.archivedAt),
+                  ),
+                ),
+            ),
             sql`${shopProductVariant.onHand} - ${shopProductVariant.reserved} >= ${group.quantity}`,
           ),
         )

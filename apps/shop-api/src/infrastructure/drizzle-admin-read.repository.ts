@@ -19,7 +19,7 @@ import {
   shopStockHold,
   shopThirdPartySale,
 } from "@auction/db/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, exists, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import {
   decodeCatalogueCursor,
   encodeCatalogueCursor,
@@ -30,6 +30,7 @@ import type { ShopApiEnv } from "../env.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
+import { escapeLikePattern } from "./escape-like-pattern.js";
 import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
 import { loadShopVatPolicy } from "./shop-vat-policy.js";
 
@@ -509,13 +510,36 @@ export function createDrizzleAdminReadRepository(
       async listMerchandiseProducts(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
+        const search = input.q?.trim();
+        const pattern = search ? `%${escapeLikePattern(search)}%` : null;
         const products = await db
           .select()
           .from(shopProduct)
           .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopProduct.createdAt, shopProduct.id, cursor)
-              : undefined,
+            and(
+              input.status === "active" ? isNull(shopProduct.archivedAt) : undefined,
+              input.status === "archived" ? isNotNull(shopProduct.archivedAt) : undefined,
+              pattern
+                ? or(
+                    ilike(shopProduct.title, pattern),
+                    ilike(shopProduct.slug, pattern),
+                    exists(
+                      db
+                        .select({ one: sql`1` })
+                        .from(shopProductVariant)
+                        .where(
+                          and(
+                            eq(shopProductVariant.productId, shopProduct.id),
+                            ilike(shopProductVariant.sku, pattern),
+                          ),
+                        ),
+                    ),
+                  )
+                : undefined,
+              cursor
+                ? keysetBeforeCreatedAtId(shopProduct.createdAt, shopProduct.id, cursor)
+                : undefined,
+            ),
           )
           .orderBy(...orderByMsTimestampIdDesc(shopProduct.createdAt, shopProduct.id))
           .limit(limit + 1);
@@ -528,7 +552,12 @@ export function createDrizzleAdminReadRepository(
             : await db
                 .select()
                 .from(shopProductVariant)
-                .where(inArray(shopProductVariant.productId, productIds));
+                .where(
+                  and(
+                    inArray(shopProductVariant.productId, productIds),
+                    isNull(shopProductVariant.archivedAt),
+                  ),
+                );
         const byProduct = new Map<string, typeof variants>();
         for (const variant of variants) {
           const bucket = byProduct.get(variant.productId) ?? [];
@@ -538,21 +567,54 @@ export function createDrizzleAdminReadRepository(
         const last = page.at(-1);
         return {
           items: page.map((product) => {
-            const productVariants = byProduct.get(product.id) ?? [];
-            const prices = productVariants.map((v) => v.pricePence);
+            const onSale = byProduct.get(product.id) ?? [];
+            const prices = onSale.map((v) => v.pricePence);
             return {
               productId: product.id,
               slug: product.slug,
               title: product.title,
-              variantCount: productVariants.length,
+              status: product.archivedAt ? ("archived" as const) : ("active" as const),
+              variantCount: onSale.length,
               fromPricePence: prices.length > 0 ? Math.min(...prices) : null,
-              totalOnHand: productVariants.reduce((sum, v) => sum + v.onHand, 0),
+              toPricePence: prices.length > 0 ? Math.max(...prices) : null,
+              totalOnHand: onSale.reduce((sum, v) => sum + v.onHand, 0),
             };
           }),
           nextCursor:
             hasMore && last
               ? encodeCatalogueCursor({ createdAt: last.createdAt, id: last.id })
               : null,
+        };
+      },
+
+      async getMerchandiseProduct(productId) {
+        const [product] = await db
+          .select()
+          .from(shopProduct)
+          .where(eq(shopProduct.id, productId))
+          .limit(1);
+        if (!product) return null;
+        const variants = await db
+          .select()
+          .from(shopProductVariant)
+          .where(eq(shopProductVariant.productId, productId))
+          .orderBy(asc(shopProductVariant.createdAt), asc(shopProductVariant.id));
+        return {
+          productId: product.id,
+          slug: product.slug,
+          title: product.title,
+          description: product.description,
+          status: product.archivedAt ? "archived" : "active",
+          version: product.updatedAt.toISOString(),
+          createdAt: product.createdAt.toISOString(),
+          variants: variants.map((v) => ({
+            variantId: v.id,
+            sku: v.sku,
+            pricePence: v.pricePence,
+            onHand: v.onHand,
+            reserved: v.reserved,
+            status: v.archivedAt ? ("archived" as const) : ("active" as const),
+          })),
         };
       },
     },

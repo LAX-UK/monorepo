@@ -38,6 +38,7 @@ import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-edi
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
+import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
 import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
@@ -226,6 +227,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const stockHolds = createDrizzleStockHoldWriter(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const createStockHold = createCreateStockHoldHandler({ stockHolds, staffReader });
   const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
+  const merchandiseCatalogue = createDrizzleMerchandiseCatalogueWriter(shopUow);
   const adjustMerchandiseStock = createAdjustMerchandiseStockHandler({ merchandiseStock });
   const createMerchandiseProduct = createCreateMerchandiseProductHandler({ merchandiseStock });
   const invoiceGateway = createStripeShopInvoiceGateway({ secretKey: env.STRIPE_SECRET_KEY });
@@ -341,6 +343,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         createStockHold,
         adjustMerchandiseStock,
         createMerchandiseProduct,
+        merchandiseCatalogue,
         thirdPartySales: createDrizzleThirdPartySaleWriter(db),
         originalSales,
         linkArtistIdentity,

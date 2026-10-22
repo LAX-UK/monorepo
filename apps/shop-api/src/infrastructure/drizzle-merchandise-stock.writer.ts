@@ -7,6 +7,7 @@ import type { MerchandiseStockWriter } from "../application/ports/merchandise-st
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "./drizzle-shop-transaction-effects.js";
+import { withUniqueValueConflict } from "./merchandise-unique-violation.js";
 
 export function createDrizzleMerchandiseStockWriter(
   uow: ShopUnitOfWorkFactory,
@@ -70,6 +71,7 @@ export function createDrizzleMerchandiseStockWriter(
               afterJson: {
                 onHand: updated.onHand,
                 reserved: variant.reserved,
+                reason: input.reason.trim(),
                 ...operatorContextAuditFields(undefined),
               },
             });
@@ -105,14 +107,16 @@ export function createDrizzleMerchandiseStockWriter(
                 400,
               );
             }
-            const [product] = await shopPhaseDbSession(tx)
-              .insert(shopProduct)
-              .values({
-                slug,
-                title,
-                ...(input.description?.trim() ? { description: input.description.trim() } : {}),
-              })
-              .returning({ id: shopProduct.id, slug: shopProduct.slug });
+            const [product] = await withUniqueValueConflict(() =>
+              shopPhaseDbSession(tx)
+                .insert(shopProduct)
+                .values({
+                  slug,
+                  title,
+                  ...(input.description?.trim() ? { description: input.description.trim() } : {}),
+                })
+                .returning({ id: shopProduct.id, slug: shopProduct.slug }),
+            );
             if (!product) {
               throw new ShopApiError(
                 SHOP_API_ERROR_CODES.INTERNAL,
@@ -120,15 +124,17 @@ export function createDrizzleMerchandiseStockWriter(
                 500,
               );
             }
-            const [variant] = await shopPhaseDbSession(tx)
-              .insert(shopProductVariant)
-              .values({
-                productId: product.id,
-                sku: input.sku.trim(),
-                pricePence: input.pricePence,
-                onHand: input.onHand,
-              })
-              .returning({ id: shopProductVariant.id });
+            const [variant] = await withUniqueValueConflict(() =>
+              shopPhaseDbSession(tx)
+                .insert(shopProductVariant)
+                .values({
+                  productId: product.id,
+                  sku: input.sku.trim(),
+                  pricePence: input.pricePence,
+                  onHand: input.onHand,
+                })
+                .returning({ id: shopProductVariant.id }),
+            );
             if (!variant) {
               throw new ShopApiError(
                 SHOP_API_ERROR_CODES.INTERNAL,
@@ -142,7 +148,13 @@ export function createDrizzleMerchandiseStockWriter(
               action: "create_merchandise_product",
               targetType: "shop_product",
               targetId: product.id,
-              afterJson: { slug: product.slug, variantId: variant.id, sku: input.sku.trim() },
+              afterJson: {
+                slug: product.slug,
+                variantId: variant.id,
+                sku: input.sku.trim(),
+                pricePence: input.pricePence,
+                onHand: input.onHand,
+              },
             });
             return { productId: product.id, variantId: variant.id, slug: product.slug };
           },

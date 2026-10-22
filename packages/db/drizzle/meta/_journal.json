@@ -1541,6 +1541,13 @@
       "when": 1794384000000,
       "tag": "0220_shop_enquiry_triage",
       "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1794470400000,
+      "tag": "0221_shop_product_archive",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopProduct, shopProductVariant } from "@auction/db/schema";
-import { and, asc, eq, gt, min, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, min, sql } from "drizzle-orm";
 import { encodeCatalogueCursor } from "../application/catalogue-cursor.js";
 import type { MerchandiseCatalogueReader } from "../application/ports/merchandise-catalogue.reader.js";
 import { MAX_PUBLIC_MERCH_LIMIT } from "../application/ports/merchandise-catalogue.reader.js";
@@ -30,6 +30,8 @@ export function createDrizzleMerchandiseCatalogueRepository(
         .innerJoin(shopProductVariant, eq(shopProductVariant.productId, shopProduct.id))
         .where(
           and(
+            isNull(shopProduct.archivedAt),
+            isNull(shopProductVariant.archivedAt),
             gt(availableStock, 0),
             cursor
               ? keysetBeforeCreatedAtId(shopProduct.createdAt, shopProduct.id, cursor)
@@ -63,7 +65,7 @@ export function createDrizzleMerchandiseCatalogueRepository(
           description: shopProduct.description,
         })
         .from(shopProduct)
-        .where(eq(shopProduct.slug, slug))
+        .where(and(eq(shopProduct.slug, slug), isNull(shopProduct.archivedAt)))
         .limit(1);
       if (!product) {
         return null;
@@ -78,7 +80,13 @@ export function createDrizzleMerchandiseCatalogueRepository(
         })
         .from(shopProductVariant)
         .innerJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
-        .where(and(eq(shopProduct.slug, slug), gt(availableStock, 0)))
+        .where(
+          and(
+            eq(shopProduct.slug, slug),
+            isNull(shopProductVariant.archivedAt),
+            gt(availableStock, 0),
+          ),
+        )
         .orderBy(asc(shopProductVariant.sku));
       if (variants.length === 0) {
         return null;

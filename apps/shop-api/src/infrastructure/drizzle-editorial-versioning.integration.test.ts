@@ -101,7 +101,8 @@ describe.skipIf(!hasShopIntegrationDb)("editorial saves compare the row version"
         .select({ action: shopAdminAudit.action })
         .from(shopAdminAudit)
         .where(and(eq(shopAdminAudit.actorSubjectId, ACTOR), eq(shopAdminAudit.targetId, id)));
-      expect(audited.map((entry) => entry.action)).toEqual([
+      // Without an ORDER BY Postgres may return the two rows either way round, so compare as a set.
+      expect(audited.map((entry) => entry.action).sort()).toEqual([
         "editorial.exhibition.create",
         "editorial.exhibition.update",
       ]);
