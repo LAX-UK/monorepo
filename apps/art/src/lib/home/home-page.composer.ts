@@ -7,6 +7,7 @@ import {
   type CatalogueArtworkCardVm,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import type { ArtEditorialPlacement } from "@/lib/editorial/art-editorial.types";
 import { type EditorialCardVm, buildPlacementCards } from "@/lib/editorial/editorial-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
@@ -50,6 +51,7 @@ type ArtHomeEditorialVm =
       whatsOn: EditorialCardVm[];
       stories: EditorialCardVm[];
       guide: EditorialCardVm[];
+      promos: ArtEditorialPlacement[];
     }
   | { kind: "failed" };
 
@@ -113,6 +115,7 @@ function homeEditorial(result: Awaited<ReturnType<ArtEditorialPort["home"]>>): A
     whatsOn: buildPlacementCards(placements, "home_whats_on", "What's on"),
     stories: buildPlacementCards(placements, "home_stories", "Story"),
     guide: buildPlacementCards(placements, "home_guide", "Guide"),
+    promos: placements,
   };
 }
 
@@ -157,7 +160,10 @@ export async function composeArtHomePage(services: {
     artists.status === "fulfilled"
       ? buildCatalogueArtistCards(artists.value.items, favorites.followedArtistSlugs)
       : [];
-  const ecosystem = buildArtHomeEcosystemCards(services.ecosystem.crossProductLinks());
+  const ecosystem = buildArtHomeEcosystemCards(
+    services.ecosystem.crossProductLinks(),
+    editorial.kind === "ok" ? editorial.promos : [],
+  );
   const galleries = buildArtHomeGalleryCards(venuesResult);
 
   const sectionErrors: ArtHomeSection[] = [];

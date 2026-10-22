@@ -3,6 +3,20 @@ import { describe, expect, it } from "vitest";
 import { MarketingFactColumns } from "./marketing-fact-columns.js";
 
 describe("MarketingFactColumns", () => {
+  it("applies a fact's className to its wrapper only", () => {
+    render(
+      <MarketingFactColumns
+        ariaLabel="Details"
+        facts={[
+          { id: "a", icon: <svg />, label: "A", lines: ["one"], className: "max-sm:hidden" },
+          { id: "b", icon: <svg />, label: "B", lines: ["two"] },
+        ]}
+      />,
+    );
+    expect(screen.getByText("A").closest("div.max-sm\\:hidden")).not.toBeNull();
+    expect(screen.getByText("B").closest("div.max-sm\\:hidden")).toBeNull();
+  });
+
   it("renders each fact with its label, icon and lines", () => {
     render(
       <MarketingFactColumns

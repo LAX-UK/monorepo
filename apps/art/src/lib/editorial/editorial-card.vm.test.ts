@@ -6,6 +6,7 @@ import {
   formatExhibitionDates,
   placementHref,
   storyCard,
+  venueKickerLabel,
 } from "./editorial-card.vm.js";
 
 function placement(overrides: Partial<ArtEditorialPlacement> = {}): ArtEditorialPlacement {
@@ -116,5 +117,31 @@ describe("summary cards", () => {
         featured: true,
       }),
     ).toMatchObject({ href: "/stories/studio-visit", kicker: "Film", meta: "Inside the studio" });
+  });
+});
+
+describe("venueKickerLabel", () => {
+  it("prefers the city, then the venue name, and is null without a venue", () => {
+    expect(venueKickerLabel({ name: "LAX Marylebone", city: "London" })).toBe("London");
+    expect(venueKickerLabel({ name: "LAX Marylebone", city: " " })).toBe("LAX Marylebone");
+    expect(venueKickerLabel({ name: "LAX Marylebone" })).toBe("LAX Marylebone");
+    expect(venueKickerLabel(null)).toBeNull();
+    expect(venueKickerLabel(undefined)).toBeNull();
+  });
+
+  it("feeds the exhibition card kicker detail", () => {
+    expect(
+      exhibitionCard({
+        slug: "s",
+        kind: "exhibition",
+        title: "S",
+        summary: null,
+        startsOn: null,
+        endsOn: null,
+        coverUrl: null,
+        featured: false,
+        venue: { slug: "m", name: "LAX Marylebone", city: "London" },
+      }).kickerDetail,
+    ).toBe("London");
   });
 });

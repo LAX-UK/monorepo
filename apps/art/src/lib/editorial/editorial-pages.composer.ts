@@ -221,11 +221,15 @@ export async function composeExhibitionDetailPage(
     status: "ok",
     data: {
       exhibition,
-      metaLine: exhibitionMetaLine(exhibitionKindLabel(exhibition.kind), dateLabel),
+      metaLine: exhibitionMetaLine(
+        exhibition.subtitle?.trim() || exhibitionKindLabel(exhibition.kind),
+        dateLabel,
+      ),
       ended: exhibitionHasEnded(exhibition.endsOn, new Date()),
       dateLabel,
       facts: buildExhibitionFacts({
         dateLabel,
+        contact: exhibition.contact,
         timesNote: exhibition.timesNote,
         hours: venueDetail ? presentOpeningHours(venueDetail.openingHours) : [],
         venue,

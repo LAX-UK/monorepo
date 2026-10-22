@@ -108,13 +108,21 @@ export function formatExhibitionDates(
   return null;
 }
 
+/** Cards name the venue's city (Figma "EXHIBITION | London"), or the venue name when it has none. */
+export function venueKickerLabel(
+  venue: { name: string; city?: string | null } | null | undefined,
+): string | null {
+  if (!venue) return null;
+  return venue.city?.trim() || venue.name;
+}
+
 export function exhibitionCard(item: ArtEditorialExhibitionSummary): EditorialCardVm {
   return {
     key: item.slug,
     href: `/exhibitions/${encodeURIComponent(item.slug)}`,
     headline: item.title,
     kicker: EXHIBITION_KICKERS[item.kind],
-    kickerDetail: item.venue?.name ?? null,
+    kickerDetail: venueKickerLabel(item.venue),
     meta: formatExhibitionDates(item.startsOn, item.endsOn),
     imageUrl: item.coverUrl,
   };
