@@ -61,6 +61,19 @@ describe("Shop theme contract", () => {
     }
   });
 
+  it("never uses LAX Bid's navy accent (LAX colour rule in docs/DESIGN_SYSTEM.md)", () => {
+    const BID_ACCENT = /brand-midnight|#0[89]1f5b\b/i;
+    for (const file of walk(shopSrc)) {
+      const text = readFileSync(file, "utf8");
+      const match = text.match(BID_ACCENT);
+      assert.equal(
+        match,
+        null,
+        `${rel(file)} uses Bid's accent (${match?.[0]}); use neutral tokens.`,
+      );
+    }
+  });
+
   it("documents theme contract in storefront SSOT", () => {
     const doc = readFileSync(join(root, "docs/ui/shop-storefront-architecture.md"), "utf8");
     assert.match(doc, /semantic.*token|light\/dark|theme contract/i);

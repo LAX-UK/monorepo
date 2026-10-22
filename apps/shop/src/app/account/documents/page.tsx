@@ -88,7 +88,10 @@ export default async function ShopAccountDocumentsPage() {
               <div className="shop-account-list__header">
                 <span className="font-medium">{resolvePortalDocumentKindLabel(doc.kind)}</span>
                 {doc.downloadUrl ? (
-                  <a href={doc.downloadUrl} className="text-link shop-focus-ring">
+                  <a
+                    href={doc.downloadUrl}
+                    className="text-link underline underline-offset-4 shop-focus-ring"
+                  >
                     Download
                   </a>
                 ) : (

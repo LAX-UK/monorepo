@@ -19,7 +19,7 @@ type ShopFooterProps = {
 };
 
 const LINK_CLASS = cn(
-  "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
+  "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 underline-offset-4 hover:underline",
   FOCUS_RING,
 );
 

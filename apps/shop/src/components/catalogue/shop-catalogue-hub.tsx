@@ -41,7 +41,7 @@ export function ShopCataloguePagerLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex min-h-11 items-center text-link underline-offset-4 hover:underline",
+        "inline-flex min-h-11 items-center text-link underline underline-offset-4",
         FOCUS_RING,
       )}
     >

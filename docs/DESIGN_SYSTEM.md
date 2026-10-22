@@ -152,11 +152,9 @@ Set by the product owner on 2026-10-21. It applies to every LAX product: Bid, Sh
   - Each app's `base.css` maps its own accent to a single semantic token, `--color-product-accent`.
   - Components never reference `--brand-midnight` or another product's accent directly.
 
-Current deviations, still to migrate:
-- `apps/shop/src/app/base.css` maps midnight to `--color-secondary`, `--color-link`, `--color-ring` and the container tints.
-- `apps/account/src/app/globals.css` maps midnight to `--color-link` and `--color-ring`.
+Current deviations: none known. Shop, Art and Account map links, focus rings, `--color-secondary` and the container tints to shared neutrals, and each declares `--color-product-accent` as its primary neutral until its accent is chosen. Because links share the text colour, they stay underlined so colour is never the only cue (WCAG 1.4.1).
 
-Where a non-Bid Figma file draws navy (e.g. CTAs in the lax.art rebuild), build it with the shared neutral CTA. `scripts/ci/verify-art-theme.test.mjs` fails if Bid's accent appears in `apps/art/src`.
+Where a non-Bid Figma file draws navy (e.g. CTAs in the lax.art rebuild), build it with the shared neutral CTA. Three guards in `pnpm ci:shop-architecture` fail if Bid's accent (`brand-midnight`, #091F5B or #081F5B) appears in a non-Bid app: `scripts/ci/verify-shop-theme.test.mjs` for `apps/shop/src`, `scripts/ci/verify-art-theme.test.mjs` for `apps/art/src`, and `scripts/ci/verify-account-theme.test.mjs` for `apps/account/src`.
 
 ## Conventions (read before building UI)
 
