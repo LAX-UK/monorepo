@@ -1,4 +1,4 @@
-import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
+import { type ArtViewerState, artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import {
   type CatalogueArtworkCardVm,
   artistHref,
@@ -8,24 +8,29 @@ import {
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
+import { presentArtworkAvailability } from "@/lib/presenters/artwork-availability.presenter";
 import {
-  type ArtworkAvailabilityView,
-  presentArtworkAvailability,
-} from "@/lib/presenters/artwork-availability.presenter";
-import {
-  formatArtworkMetaLine,
   isArtworkEnquiryAvailable,
   resolveArtworkPriceLabel,
 } from "@/lib/presenters/artwork-commerce.presenter";
-import {
-  type ArtworkSpecGroups,
-  artworkCertificateLine,
-  buildArtworkSpecGroups,
-} from "@/lib/presenters/artwork-spec.presenter";
 import { artworkJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import type { JsonLd } from "@auction/branding";
-import type { PublicArtworkDetail, PublicArtworkSummary } from "@auction/shop-contracts";
+import type {
+  PublicArtistDetail,
+  PublicArtworkDetail,
+  PublicArtworkSummary,
+} from "@auction/shop-contracts";
+import {
+  type ArtworkBreadcrumbItem,
+  type ArtworkSpecRow,
+  artworkCategoryHref,
+  artworkCertificateLine,
+  artworkPriceNote,
+  buildArtworkBreadcrumb,
+  buildArtworkKeySpecs,
+  buildArtworkMediumSpecs,
+} from "./artwork-detail.vm";
 
 export type ArtEnquiryContact = {
   name: string;
@@ -39,29 +44,50 @@ export type ArtworkEnquiryVm =
   | { kind: "account_unavailable"; message: string }
   | { kind: "ready"; contact: ArtEnquiryContact; autoOpen: boolean };
 
+/** "Contact a specialist" in the mobile options sheet opens the general enquiry form. */
+export type ArtworkSpecialistContactVm =
+  | { kind: "ready"; loginHref: string }
+  | { kind: "sign_in"; loginHref: string }
+  | { kind: "unavailable" };
+
 export type ArtworkGalleryImageVm = { url: string; alt: string };
+
+export type ArtworkArtistVm = {
+  slug: string;
+  name: string;
+  href: string;
+  portraitUrl: string | null;
+  bio: string | null;
+  following: boolean;
+};
 
 export type ArtworkDetailVm = {
   slug: string;
   title: string;
-  kindLabel: "Original" | "Edition";
+  breadcrumb: ArtworkBreadcrumbItem[];
+  /** Catalogue filtered to this work's object type ("More from this category"). */
+  categoryHref: string | null;
   artistName: string;
   artistHref: string;
-  imageUrl: string | null;
-  imageAlt: string;
   galleryImages: ArtworkGalleryImageVm[];
   priceLabel: string;
-  metaLine: string | null;
+  /** Discretion line under the price; null once the work is sold. */
+  priceNote: string | null;
+  /** Edition availability ("3 of 10 editions available"); null for originals. */
+  availabilityNote: string | null;
+  keySpecs: ArtworkSpecRow[];
+  mediumSpecs: ArtworkSpecRow[];
   description: string | null;
-  specs: ArtworkSpecGroups;
   certificateLine: string | null;
   provenance: string | null;
   exhibitionHistory: string | null;
   relatedArtworks: CatalogueArtworkCardVm[];
   /** Heading and "See all" target matching where the related works came from. */
   relatedSection: { title: string; viewAllHref: string; viewAllSrLabel: string };
-  availability: ArtworkAvailabilityView;
   enquiry: ArtworkEnquiryVm;
+  specialistContact: ArtworkSpecialistContactVm;
+  /** Null hides the artist block (the artist read failed or returned nothing). */
+  artist: ArtworkArtistVm | null;
   saved: boolean;
   favoriteAuth: ArtFavoriteAuth;
   structuredData: JsonLd[];
@@ -78,7 +104,7 @@ export function artworkEnquiryReturnTo(slug: string): string {
 
 function resolveEnquiry(
   artwork: PublicArtworkDetail,
-  viewer: Awaited<ReturnType<ArtViewerPort["load"]>>,
+  viewer: ArtViewerState,
   enquireRequested: boolean,
 ): ArtworkEnquiryVm {
   if (!isArtworkEnquiryAvailable(artwork)) return { kind: "unavailable" };
@@ -104,11 +130,43 @@ function resolveEnquiry(
   }
 }
 
+function resolveSpecialistContact(
+  slug: string,
+  viewer: ArtViewerState,
+): ArtworkSpecialistContactVm {
+  switch (viewer.kind) {
+    case "authenticated":
+      return { kind: "ready", loginHref: artStorefrontLoginHref(artworkHref(slug)) };
+    case "guest":
+      return { kind: "sign_in", loginHref: artStorefrontLoginHref(artworkHref(slug)) };
+    case "disabled":
+    case "unavailable":
+      return { kind: "unavailable" };
+  }
+}
+
+function buildArtistVm(
+  artist: PublicArtistDetail,
+  followedArtistSlugs: ReadonlySet<string>,
+): ArtworkArtistVm {
+  return {
+    slug: artist.slug,
+    name: artist.name,
+    href: artistHref(artist.slug),
+    portraitUrl: artist.portraitUrl,
+    bio: artist.bio || artist.shortBio || null,
+    following: followedArtistSlugs.has(artist.slug),
+  };
+}
+
 export async function composeArtworkDetailPage(
   services: { catalogue: ArtCataloguePort; viewer: ArtViewerPort; favorites: ArtFavoritesReadPort },
   input: { slug: string; enquireRequested: boolean; siteUrl: URL },
 ): Promise<ArtworkDetailPageResult> {
-  const favoritesPromise = loadViewerFavoriteContext(services, artworkHref(input.slug));
+  const favoritesPromise = loadViewerFavoriteContext(services, artworkHref(input.slug), {
+    savedArtworks: true,
+    followedArtists: true,
+  });
   let artwork: PublicArtworkDetail | null;
   try {
     artwork = await services.catalogue.getArtwork(input.slug);
@@ -116,30 +174,33 @@ export async function composeArtworkDetailPage(
     await favoritesPromise;
     return { kind: "unavailable" };
   }
-  const relatedPromise =
-    artwork != null
-      ? loadRelatedArtworks(services.catalogue, artwork)
-      : Promise.resolve<RelatedArtworks>({ items: [], fromCollection: false });
+  if (!artwork) {
+    await favoritesPromise;
+    return { kind: "not_found" };
+  }
+  const relatedPromise = loadRelatedArtworks(services.catalogue, artwork);
+  // The artist block is optional: a failed read hides it instead of failing the page.
+  const artistPromise = services.catalogue.getArtist(artwork.artistSlug).catch(() => null);
   const favorites = await favoritesPromise;
-  if (!artwork) return { kind: "not_found" };
-  const relatedPage = await relatedPromise;
-  const galleryImages = buildGalleryImages(artwork);
+  const [relatedPage, artist] = await Promise.all([relatedPromise, artistPromise]);
+  const availability = presentArtworkAvailability(artwork);
 
   return {
     kind: "ok",
     vm: {
       slug: artwork.slug,
       title: artwork.title,
-      kindLabel: artwork.eligibleForEditionAllocation ? "Edition" : "Original",
+      breadcrumb: buildArtworkBreadcrumb(artwork),
+      categoryHref: artworkCategoryHref(artwork),
       artistName: artwork.artistName,
       artistHref: artistHref(artwork.artistSlug),
-      imageUrl: artwork.imageUrl,
-      imageAlt: `${artwork.title} by ${artwork.artistName}`,
-      galleryImages,
+      galleryImages: buildGalleryImages(artwork),
       priceLabel: resolveArtworkPriceLabel(artwork),
-      metaLine: formatArtworkMetaLine(artwork),
+      priceNote: artworkPriceNote(artwork),
+      availabilityNote: availability.meter ? availability.headline : null,
+      keySpecs: buildArtworkKeySpecs(artwork),
+      mediumSpecs: buildArtworkMediumSpecs(artwork),
       description: artwork.description,
-      specs: buildArtworkSpecGroups(artwork),
       certificateLine: artworkCertificateLine(artwork),
       provenance: artwork.provenance ?? null,
       exhibitionHistory: artwork.exhibitionHistory ?? null,
@@ -151,8 +212,9 @@ export async function composeArtworkDetailPage(
             viewAllHref: artistHref(artwork.artistSlug),
             viewAllSrLabel: `works by ${artwork.artistName}`,
           },
-      availability: presentArtworkAvailability(artwork),
       enquiry: resolveEnquiry(artwork, favorites.viewer, input.enquireRequested),
+      specialistContact: resolveSpecialistContact(artwork.slug, favorites.viewer),
+      artist: artist ? buildArtistVm(artist, favorites.followedArtistSlugs) : null,
       saved: favorites.savedArtworkSlugs.has(artwork.slug),
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artworkJsonLd(artwork, input.siteUrl),

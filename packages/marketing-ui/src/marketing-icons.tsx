@@ -1,18 +1,22 @@
 import { cn } from "@auction/ui";
 import {
+  Award,
   Bell,
   BellRing,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
+  Ellipsis,
   Heart,
   House,
+  ImageIcon,
   Info,
   LayoutGrid,
   type LucideProps,
   Menu,
   Moon,
+  Phone,
   Play,
   Search,
   SearchX,
@@ -109,4 +113,20 @@ export function MarketingShareIcon({ className, ...props }: MarketingIconProps) 
 
 export function MarketingPlayIcon({ className, ...props }: MarketingIconProps) {
   return <Play className={cn("size-6", className)} aria-hidden {...props} />;
+}
+
+export function MarketingMoreIcon({ className, ...props }: MarketingIconProps) {
+  return <Ellipsis className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingCertificateIcon({ className, ...props }: MarketingIconProps) {
+  return <Award className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingImageIcon({ className, ...props }: MarketingIconProps) {
+  return <ImageIcon className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingPhoneIcon({ className, ...props }: MarketingIconProps) {
+  return <Phone className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }

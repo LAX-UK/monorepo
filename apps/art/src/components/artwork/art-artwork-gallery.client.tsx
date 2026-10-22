@@ -16,6 +16,7 @@ type Props = {
   priority?: boolean;
 };
 
+/** Desktop gallery: square-cornered portrait frame with thumbnails below (Figma 426:2581). */
 export function ArtArtworkGallery({ images, priority = false }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = images[activeIndex] ?? images[0];
@@ -23,12 +24,12 @@ export function ArtArtworkGallery({ images, priority = false }: Props) {
 
   return (
     <div className="flex flex-col gap-3" data-testid="art-artwork-gallery">
-      <div className="relative aspect-square overflow-hidden bg-surface-container">
+      <div className="relative aspect-[3/4] overflow-hidden bg-surface-container">
         <ArtMediaImage
           src={active.url}
           alt={active.alt}
-          aspect={[1, 1]}
-          sizes="(min-width: 64rem) 50vw, 100vw"
+          aspect={[3, 4]}
+          sizes="(min-width: 64rem) 55vw, 100vw"
           label={ART_MEDIA_LABELS.artwork}
           priority={priority}
           className="absolute inset-0 size-full"
@@ -46,15 +47,15 @@ export function ArtArtworkGallery({ images, priority = false }: Props) {
                 aria-label={`Show image ${index + 1} of ${images.length}`}
                 aria-pressed={index === activeIndex}
                 className={cn(
-                  "relative size-16 shrink-0 overflow-hidden rounded-none border-2 p-0",
+                  "relative h-24 w-20 shrink-0 overflow-hidden rounded-none border-2 p-0",
                   index === activeIndex ? "border-on-surface" : "border-transparent",
                 )}
               >
                 <ArtMediaImage
                   src={image.url}
                   alt=""
-                  aspect={[1, 1]}
-                  sizes="4rem"
+                  aspect={[5, 6]}
+                  sizes="5rem"
                   label={ART_MEDIA_LABELS.artwork}
                   className="absolute inset-0 size-full"
                   imgClassName="object-cover"
