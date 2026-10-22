@@ -1,6 +1,8 @@
+import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
+import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
 
 export function createMinimalShopApiTestDeps(
   overrides: Partial<ShopApiAppDeps> = {},
@@ -139,6 +141,13 @@ export function createMinimalShopApiTestDeps(
       }),
       grantStaffRole: async () => ({ subject: "sub_test" }),
       revokeStaffRole: async () => undefined,
+      enquiryInbox: createEnquiryInboxService({
+        repository: createStubEnquiryInboxRepository(),
+        staffReader: {
+          findActiveByIdentitySubject: async () => null,
+          brokerCanAccessClientParty: async () => false,
+        },
+      }),
       adminRead: {
         orders: {
           listOrders: async () => ({ items: [], nextCursor: null }),

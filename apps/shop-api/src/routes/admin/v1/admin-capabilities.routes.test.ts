@@ -90,9 +90,9 @@ const PROBES: Probe[] = [
     allowed: ["shop_admin", "catalogue_editor"],
   },
   {
-    name: "general enquiries list",
+    name: "enquiry inbox list",
     method: "GET",
-    url: "/admin/v1/general-enquiries",
+    url: "/admin/v1/enquiries",
     allowed: ["shop_admin", "account_manager", "broker", "operations"],
   },
   {

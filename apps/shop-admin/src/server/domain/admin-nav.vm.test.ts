@@ -30,7 +30,7 @@ describe("buildAdminNavGroups", () => {
   it("lets operations view orders and enquiries but not editorial or the audit log", () => {
     const hrefs = navHrefsFor("operations");
     expect(hrefs).toEqual(
-      expect.arrayContaining(["/orders", "/general-enquiries", "/production", "/fulfilment"]),
+      expect.arrayContaining(["/orders", "/enquiries", "/production", "/fulfilment"]),
     );
     expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
     expect(hrefs).not.toContain("/audit");
@@ -40,19 +40,19 @@ describe("buildAdminNavGroups", () => {
     const hrefs = navHrefsFor("finance");
     expect(hrefs).toContain("/orders");
     expect(hrefs).toContain("/audit");
-    expect(hrefs).not.toContain("/general-enquiries");
+    expect(hrefs).not.toContain("/enquiries");
     expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
   });
 
   it("lets account managers view orders and enquiries", () => {
     const hrefs = navHrefsFor("account_manager");
-    expect(hrefs).toEqual(expect.arrayContaining(["/orders", "/general-enquiries", "/clients"]));
+    expect(hrefs).toEqual(expect.arrayContaining(["/orders", "/enquiries", "/clients"]));
     expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
   });
 
   it("lets brokers read enquiries but not orders", () => {
     const hrefs = navHrefsFor("broker");
-    expect(hrefs).toContain("/general-enquiries");
+    expect(hrefs).toContain("/enquiries");
     expect(hrefs).not.toContain("/orders");
   });
 
@@ -65,7 +65,7 @@ describe("buildAdminNavGroups", () => {
         "/artworks",
         ...EDITORIAL_HREFS,
         "/orders",
-        "/general-enquiries",
+        "/enquiries",
         "/staff",
         "/settings",
         "/audit",
@@ -123,5 +123,29 @@ describe("buildAdminNavGroups", () => {
 
   it("shows nothing without capabilities", () => {
     expect(buildAdminNavGroups({ capabilities: [], features: ALL_FEATURES })).toEqual([]);
+  });
+
+  describe("enquiry attention count", () => {
+    const enquiriesItem = (role: ShopStaffRole, enquiryAttentionCount?: number) =>
+      flattenAdminNav(
+        buildAdminNavGroups({
+          capabilities: capabilitiesForRole(role),
+          features: ALL_FEATURES,
+          ...(enquiryAttentionCount !== undefined ? { enquiryAttentionCount } : {}),
+        }),
+      ).find((item) => item.href === "/enquiries");
+
+    it("shows the number of new, unassigned enquiries beside the Enquiries link", () => {
+      expect(enquiriesItem("account_manager", 4)).toMatchObject({ attentionCount: 4 });
+    });
+
+    it("omits the count when nothing needs attention or it is unknown", () => {
+      expect(enquiriesItem("account_manager", 0)).not.toHaveProperty("attentionCount");
+      expect(enquiriesItem("account_manager")).not.toHaveProperty("attentionCount");
+    });
+
+    it("never adds a link for a role that cannot read enquiries", () => {
+      expect(enquiriesItem("finance", 9)).toBeUndefined();
+    });
   });
 });

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
+import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
@@ -35,6 +36,7 @@ import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizz
 import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-editorial-links.repository.js";
 import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
+import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
@@ -323,6 +325,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         grantStaffRole: grantStaffRoleHandler,
         revokeStaffRole: revokeStaffRoleHandler,
         adminRead,
+        enquiryInbox: createEnquiryInboxService({
+          repository: createDrizzleEnquiryInboxRepository(db, { resolveMediaUrl }),
+          staffReader,
+        }),
         staffReader,
         createProductionTask,
         updateFulfilment,

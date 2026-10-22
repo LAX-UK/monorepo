@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@auction/ui"],
+  async redirects() {
+    // The inbox replaced the read-only list; keep bookmarks and emailed links working.
+    return [{ source: "/general-enquiries", destination: "/enquiries", permanent: true }];
+  },
 };
 
 export default nextConfig;

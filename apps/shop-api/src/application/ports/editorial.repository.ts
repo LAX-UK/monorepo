@@ -299,23 +299,6 @@ export type EditorialRepository = {
       createdAt: Date;
     }>
   >;
-  /** Newest first; `before` is the keyset position of the last row already shown. */
-  listAdminGeneralEnquiries(input: {
-    limit: number;
-    before: { createdAt: Date; id: string } | null;
-  }): Promise<
-    Array<{
-      enquiryId: string;
-      identitySubjectId: string | null;
-      contactName: string | null;
-      contactEmail: string | null;
-      topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
-      contextSlug: string | null;
-      message: string;
-      phone: string | null;
-      createdAt: Date;
-    }>
-  >;
   getDraftEntityById(
     entity: "venue" | "exhibition" | "story" | "page",
     id: string,

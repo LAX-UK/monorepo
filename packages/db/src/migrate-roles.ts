@@ -98,6 +98,7 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
   "shop_admin_audit",
   "shop_sale_authority_grant",
   "shop_edition_event",
+  "shop_enquiry_note",
 ] as const;
 export const API_DENY_TABLES = [
   "user",

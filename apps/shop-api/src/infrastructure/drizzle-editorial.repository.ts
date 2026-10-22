@@ -46,7 +46,6 @@ import type {
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-errors.js";
-import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
 import {
   blankToNull,
   createEditorialRelationQueries,
@@ -655,34 +654,6 @@ export function createDrizzleEditorialRepository(
         .limit(50);
       return rows.map((row) => ({
         enquiryId: row.id,
-        topic: row.topic,
-        contextSlug: row.contextSlug,
-        message: row.message,
-        phone: row.phone,
-        createdAt: row.createdAt,
-      }));
-    },
-
-    async listAdminGeneralEnquiries(input) {
-      const rows = await db
-        .select()
-        .from(shopGeneralEnquiry)
-        .where(
-          input.before
-            ? keysetBeforeCreatedAtId(
-                shopGeneralEnquiry.createdAt,
-                shopGeneralEnquiry.id,
-                input.before,
-              )
-            : undefined,
-        )
-        .orderBy(...orderByMsTimestampIdDesc(shopGeneralEnquiry.createdAt, shopGeneralEnquiry.id))
-        .limit(input.limit);
-      return rows.map((row) => ({
-        enquiryId: row.id,
-        identitySubjectId: row.identitySubjectId,
-        contactName: row.contactName,
-        contactEmail: row.contactEmail,
         topic: row.topic,
         contextSlug: row.contextSlug,
         message: row.message,

@@ -272,24 +272,5 @@ export const PortalGeneralEnquiriesResponseSchema = Type.Object({
   items: Type.Array(GeneralEnquiryRowSchema),
 });
 
-export const AdminGeneralEnquiryRowSchema = Type.Object({
-  enquiryId: Type.String({ format: "uuid" }),
-  /** Null for guest enquiries; staff reply to `contactEmail`. */
-  identitySubjectId: Type.Union([Type.String(), Type.Null()]),
-  contactName: Type.Union([Type.String(), Type.Null()]),
-  contactEmail: Type.Union([Type.String(), Type.Null()]),
-  topic: GeneralEnquiryTopicSchema,
-  contextSlug: Type.Union([Type.String(), Type.Null()]),
-  message: Type.String(),
-  phone: Type.Union([Type.String(), Type.Null()]),
-  createdAt: Type.String({ format: "date-time" }),
-});
-
-export const AdminGeneralEnquiriesResponseSchema = Type.Object({
-  items: Type.Array(AdminGeneralEnquiryRowSchema),
-  nextCursor: Type.Union([Type.String(), Type.Null()]),
-});
-
 export type EditorialHomeResponse = typeof EditorialHomeResponseSchema.static;
 export type GeneralEnquiryRow = typeof GeneralEnquiryRowSchema.static;
-export type AdminGeneralEnquiryRow = typeof AdminGeneralEnquiryRowSchema.static;

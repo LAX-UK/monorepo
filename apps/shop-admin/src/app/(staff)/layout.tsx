@@ -4,6 +4,7 @@ import { AdminAccountMenu } from "@/components/admin-account-menu";
 import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffReauthHref } from "@/lib/staff-layout-redirect";
+import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
 import { Toaster } from "@auction/ui";
@@ -30,9 +31,11 @@ export default async function StaffLayout({ children }: { children: ReactNode })
   }
 
   const session = sessionResult.data;
+  const enquirySummary = await loadEnquirySummary(session.capabilities);
   const navGroups = buildAdminNavGroups({
     capabilities: session.capabilities,
     features: session.features,
+    enquiryAttentionCount: enquirySummary?.needsAttentionCount ?? 0,
   });
   return (
     <>

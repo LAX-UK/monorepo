@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { shopArtist, shopArtwork } from "./shop-commerce.js";
+import { shopArtist, shopArtwork, shopEnquiryStatusEnum } from "./shop-commerce.js";
 
 export const shopEditorialStatusEnum = pgEnum("shop_editorial_status", ["draft", "published"]);
 
@@ -360,12 +360,28 @@ export const shopGeneralEnquiry = pgTable(
     contactName: text("contact_name"),
     contactEmail: text("contact_email"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    /** Triage state, as on shop_artwork_interest. */
+    status: shopEnquiryStatusEnum("status").default("new").notNull(),
+    /** Identity subject of the staff member handling it. */
+    assigneeSubject: text("assignee_subject"),
+    closedAt: timestamp("closed_at", { mode: "date", withTimezone: true }),
+    /** Changes with every triage edit; staff pass it back as the optimistic-concurrency version. */
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index("shop_general_enquiry_subject_idx").on(table.identitySubjectId, table.createdAt),
+    index("shop_general_enquiry_inbox_idx").on(
+      table.status,
+      table.createdAt.desc(),
+      table.id.desc(),
+    ),
     check(
       "shop_general_enquiry_subject_or_contact_ck",
       sql`${table.identitySubjectId} IS NOT NULL OR ${table.contactEmail} IS NOT NULL`,
+    ),
+    check(
+      "shop_general_enquiry_closed_at_ck",
+      sql`(${table.status} = 'closed') = (${table.closedAt} IS NOT NULL)`,
     ),
   ],
 );

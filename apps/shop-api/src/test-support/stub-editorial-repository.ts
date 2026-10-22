@@ -25,7 +25,6 @@ export function createStubEditorialRepository(
     getPageBySlug: async () => null,
     insertGeneralEnquiry: async () => ({ enquiryId: "11111111-1111-4111-8111-111111111111" }),
     listGeneralEnquiriesForSubject: async () => [],
-    listAdminGeneralEnquiries: async () => [],
     getDraftEntityById: async () => null,
     getAdminPageById: async () => null,
     createPage: notImplemented,
