@@ -13,26 +13,75 @@ import {
   shopPayoutLedger,
   shopProduct,
   shopProductVariant,
-  shopProductionTask,
   shopSaleAuthorityRequest,
   shopStaffMember,
   shopStockHold,
   shopThirdPartySale,
+  shopUserProfile,
 } from "@auction/db/schema";
-import { and, asc, eq, exists, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  count,
+  eq,
+  exists,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 import {
   decodeCatalogueCursor,
   encodeCatalogueCursor,
   truncateCatalogueCursorDate,
 } from "../application/catalogue-cursor.js";
-import type { AdminReadPorts } from "../application/ports/admin-readers.js";
+import type { AdminOrderListFilters, AdminReadPorts } from "../application/ports/admin-readers.js";
 import type { ShopApiEnv } from "../env.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
+import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { escapeLikePattern } from "./escape-like-pattern.js";
 import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
 import { loadShopVatPolicy } from "./shop-vat-policy.js";
+
+type OrderStatus = typeof shopOrder.$inferSelect.status;
+
+/**
+ * The filters that apply to the list and to the per-status counts alike (everything but status).
+ * Search matches the start of the order id because staff quote the first eight characters as the
+ * order number; names and emails match anywhere, with LIKE wildcards escaped.
+ */
+function orderFilterConditions(input: AdminOrderListFilters): SQL[] {
+  const conditions: SQL[] = [];
+  if (input.createdFrom) {
+    conditions.push(
+      sql`${shopOrder.createdAt} >= (${input.createdFrom}::date)::timestamp AT TIME ZONE 'Europe/London'`,
+    );
+  }
+  if (input.createdTo) {
+    conditions.push(
+      sql`${shopOrder.createdAt} < ((${input.createdTo}::date + 1))::timestamp AT TIME ZONE 'Europe/London'`,
+    );
+  }
+  const q = input.q?.trim().replace(/^#/, "");
+  if (q) {
+    const contains = containsPattern(q);
+    // Same escaping, without the leading wildcard.
+    const idPrefix = contains.slice(1);
+    const search = or(
+      sql`${shopOrder.id}::text ILIKE ${idPrefix}`,
+      sql`${shopUserProfile.email} ILIKE ${contains}`,
+      sql`${shopUserProfile.name} ILIKE ${contains}`,
+      sql`${shopOrder.deliveryRecipientName} ILIKE ${contains}`,
+    );
+    if (search) conditions.push(search);
+  }
+  return conditions;
+}
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -80,27 +129,60 @@ export function createDrizzleAdminReadRepository(
       async listOrders(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select()
+        const filters = orderFilterConditions(input);
+        const listed = db
+          .select({
+            order: shopOrder,
+            buyerName: shopUserProfile.name,
+            buyerEmail: shopUserProfile.email,
+          })
           .from(shopOrder)
-          .where(
-            cursor ? keysetBeforeCreatedAtId(shopOrder.createdAt, shopOrder.id, cursor) : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopOrder.createdAt, shopOrder.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(
-          rows.map((row) => ({ ...row, id: row.id })),
+          .leftJoin(
+            shopUserProfile,
+            eq(shopUserProfile.identitySubjectId, shopOrder.identitySubjectId),
+          );
+        const [rows, countRows] = await Promise.all([
+          listed
+            .where(
+              and(
+                ...filters,
+                input.status ? eq(shopOrder.status, input.status as OrderStatus) : undefined,
+                cursor
+                  ? keysetBeforeCreatedAtId(shopOrder.createdAt, shopOrder.id, cursor)
+                  : undefined,
+              ),
+            )
+            .orderBy(...orderByMsTimestampIdDesc(shopOrder.createdAt, shopOrder.id))
+            .limit(limit + 1),
+          db
+            .select({ status: shopOrder.status, total: count() })
+            .from(shopOrder)
+            .leftJoin(
+              shopUserProfile,
+              eq(shopUserProfile.identitySubjectId, shopOrder.identitySubjectId),
+            )
+            .where(and(...filters))
+            .groupBy(shopOrder.status),
+        ]);
+        const page = paginateByCreatedAtId(
+          rows.map((row) => ({ ...row, id: row.order.id, createdAt: row.order.createdAt })),
           limit,
-          (row) => ({
-            orderId: row.id,
-            status: row.status,
-            totalPence: row.totalPence,
-            fulfilment: row.fulfilment,
-            buyerSubjectId: row.identitySubjectId,
-            createdAt: row.createdAt.toISOString(),
-            paidAt: row.paidAt?.toISOString() ?? null,
+          ({ order, buyerName, buyerEmail }) => ({
+            orderId: order.id,
+            status: order.status,
+            totalPence: order.totalPence,
+            fulfilment: order.fulfilment,
+            buyerSubjectId: order.identitySubjectId,
+            buyerName: buyerName?.trim() || null,
+            buyerEmail: buyerEmail?.trim() || null,
+            createdAt: order.createdAt.toISOString(),
+            paidAt: order.paidAt?.toISOString() ?? null,
           }),
         );
+        return {
+          ...page,
+          counts: Object.fromEntries(countRows.map((row) => [row.status, row.total])),
+        };
       },
       getOrderDetail: detail.getOrderDetail,
     },
@@ -131,29 +213,6 @@ export function createDrizzleAdminReadRepository(
             updatedAt: row.updatedAt.toISOString(),
           }),
         );
-      },
-    },
-    production: {
-      async listProductionTasks(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select()
-          .from(shopProductionTask)
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopProductionTask.createdAt, shopProductionTask.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopProductionTask.createdAt, shopProductionTask.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(rows, limit, (row) => ({
-          taskId: row.id,
-          orderLineId: row.orderLineId,
-          editionId: row.editionId,
-          status: row.status,
-          createdAt: row.createdAt.toISOString(),
-        }));
       },
     },
     payouts: {

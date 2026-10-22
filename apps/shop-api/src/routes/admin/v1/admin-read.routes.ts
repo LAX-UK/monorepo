@@ -7,12 +7,13 @@ import {
   AdminEffectiveSettingsSchema,
   AdminFulfilmentListSchema,
   AdminOrderDetailSchema,
+  type AdminOrderListQuery,
+  AdminOrderListQuerySchema,
   AdminOrderListSchema,
   AdminOriginalSaleListSchema,
   AdminOverviewKpisSchema,
   AdminPartyListSchema,
   AdminPayoutListSchema,
-  AdminProductionTaskListSchema,
   AdminSaleAuthorityRequestListSchema,
   AdminStaffMemberListSchema,
   AdminStockHoldListSchema,
@@ -23,6 +24,7 @@ import {
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
+import { parseOrderListQuery } from "../../../application/admin-order-list-query.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
@@ -68,14 +70,19 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminOrderListSchema, 403: ShopApiErrorBodySchema },
+        querystring: AdminOrderListQuerySchema,
+        response: {
+          200: AdminOrderListSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+        },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "order.read");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.orders.listOrders(query);
+      return deps.adminRead.orders.listOrders(
+        parseOrderListQuery(request.query as AdminOrderListQuery),
+      );
     },
   );
 
@@ -113,22 +120,6 @@ export async function registerAdminReadRoutes(
         requireShopStaffCapability(request, "fulfilment.write");
         const query = request.query as { cursor?: string; limit?: number };
         return deps.adminRead.fulfilment.listFulfilment(query);
-      },
-    );
-
-    app.get(
-      "/production/tasks",
-      {
-        schema: {
-          tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
-          response: { 200: AdminProductionTaskListSchema, 403: ShopApiErrorBodySchema },
-        },
-      },
-      async (request) => {
-        requireShopStaffCapability(request, "production.write");
-        const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.production.listProductionTasks(query);
       },
     );
 

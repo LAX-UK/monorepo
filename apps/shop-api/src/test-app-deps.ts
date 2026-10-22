@@ -1,8 +1,10 @@
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
+import { createProductionTaskService } from "./application/production-task.service.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
+import { createStubProductionTaskRepository } from "./test-support/stub-production-task-repository.js";
 
 export function createMinimalShopApiTestDeps(
   overrides: Partial<ShopApiAppDeps> = {},
@@ -141,6 +143,13 @@ export function createMinimalShopApiTestDeps(
       }),
       grantStaffRole: async () => ({ subject: "sub_test" }),
       revokeStaffRole: async () => undefined,
+      productionTasks: createProductionTaskService({
+        repository: createStubProductionTaskRepository(),
+        staffReader: {
+          findActiveByIdentitySubject: async () => null,
+          brokerCanAccessClientParty: async () => false,
+        },
+      }),
       enquiryInbox: createEnquiryInboxService({
         repository: createStubEnquiryInboxRepository(),
         staffReader: {
@@ -150,13 +159,12 @@ export function createMinimalShopApiTestDeps(
       }),
       adminRead: {
         orders: {
-          listOrders: async () => ({ items: [], nextCursor: null }),
+          listOrders: async () => ({ items: [], nextCursor: null, counts: {} }),
           getOrderDetail: async () => {
             throw new Error("not implemented in test deps");
           },
         },
         fulfilment: { listFulfilment: async () => ({ items: [], nextCursor: null }) },
-        production: { listProductionTasks: async () => ({ items: [], nextCursor: null }) },
         payouts: { listPayouts: async () => ({ items: [], nextCursor: null }) },
         sales: {
           listStockHolds: async () => ({ items: [], nextCursor: null }),

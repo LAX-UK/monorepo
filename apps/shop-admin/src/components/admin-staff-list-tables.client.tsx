@@ -86,53 +86,6 @@ export function ClientsStaffListTable({ items }: { items: ClientRow[] }) {
   );
 }
 
-type OrderRow = {
-  orderId: string;
-  status: string;
-  totalPence: number;
-  createdAt: string;
-};
-
-export function OrdersStaffListTable({ items }: { items: OrderRow[] }) {
-  const columns = useMemo<ColumnDef<OrderRow, unknown>[]>(
-    () => [
-      {
-        id: "order",
-        header: "Order",
-        cell: ({ row }) => (
-          <Link href={`/orders/${row.original.orderId}`} className="underline">
-            {row.original.orderId.slice(0, 8)}
-          </Link>
-        ),
-      },
-      { accessorKey: "status", header: "Status" },
-      {
-        id: "total",
-        header: "Total",
-        cell: ({ row }) => `£${(row.original.totalPence / 100).toFixed(2)}`,
-      },
-      {
-        id: "created",
-        header: "Created",
-        cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString("en-GB"),
-      },
-    ],
-    [],
-  );
-  return (
-    <AdminStaffDataTable
-      columns={columns}
-      data={items}
-      getRowId={(row) => row.orderId}
-      empty={{
-        title: "No orders yet",
-        description: "Orders appear here as soon as a customer completes checkout.",
-      }}
-      ariaLabel="Orders"
-    />
-  );
-}
-
 type RequestRow = {
   requestId: string;
   artworkTitle: string;

@@ -1,17 +1,59 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { createCursorListResponseSchema } from "./cursor-list.js";
 
+/** The statuses an order moves through; `status` on the list query takes one of these. */
+export const ADMIN_ORDER_STATUSES = [
+  "pending_payment",
+  "paid",
+  "partially_refunded",
+  "refunded",
+  "payment_failed",
+  "cancelled",
+  "expired",
+] as const;
+export type AdminOrderStatus = (typeof ADMIN_ORDER_STATUSES)[number];
+
+export const ADMIN_ORDER_SEARCH_MAX_LENGTH = 100;
+export const ADMIN_ORDER_LIST_MAX_LIMIT = 100;
+
+const OrderStatusSchema = Type.Union(ADMIN_ORDER_STATUSES.map((status) => Type.Literal(status)));
+const CalendarDateSchema = Type.String({ pattern: "^\\d{4}-\\d{2}-\\d{2}$" });
+
+/**
+ * `createdFrom` and `createdTo` are inclusive calendar days in UK time. `q` matches the start of
+ * the order id (what staff see as the order number), the buyer's email or name, and the
+ * delivery recipient's name.
+ */
+export const AdminOrderListQuerySchema = Type.Object({
+  status: Type.Optional(OrderStatusSchema),
+  createdFrom: Type.Optional(CalendarDateSchema),
+  createdTo: Type.Optional(CalendarDateSchema),
+  q: Type.Optional(Type.String({ maxLength: ADMIN_ORDER_SEARCH_MAX_LENGTH })),
+  cursor: Type.Optional(Type.String({ maxLength: 512 })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: ADMIN_ORDER_LIST_MAX_LIMIT })),
+});
+export type AdminOrderListQuery = Static<typeof AdminOrderListQuerySchema>;
+
 export const AdminOrderListItemSchema = Type.Object({
   orderId: Type.String({ format: "uuid" }),
   status: Type.String(),
   totalPence: Type.Integer(),
   fulfilment: Type.String(),
   buyerSubjectId: Type.String(),
+  /** From the buyer's profile; null for a buyer who has none. */
+  buyerName: Type.Union([Type.String(), Type.Null()]),
+  buyerEmail: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
   paidAt: Type.Union([Type.String(), Type.Null()]),
 });
 
-export const AdminOrderListSchema = createCursorListResponseSchema(AdminOrderListItemSchema);
+export const AdminOrderListSchema = Type.Object({
+  items: Type.Array(AdminOrderListItemSchema),
+  nextCursor: Type.Union([Type.String(), Type.Null()]),
+  /** Matches per status under every active filter except `status`, so the chips add up. */
+  counts: Type.Record(Type.String(), Type.Integer()),
+});
+export type AdminOrderList = Static<typeof AdminOrderListSchema>;
 
 export const AdminFulfilmentListItemSchema = Type.Object({
   fulfilmentId: Type.String({ format: "uuid" }),
@@ -25,18 +67,6 @@ export const AdminFulfilmentListItemSchema = Type.Object({
 
 export const AdminFulfilmentListSchema = createCursorListResponseSchema(
   AdminFulfilmentListItemSchema,
-);
-
-export const AdminProductionTaskListItemSchema = Type.Object({
-  taskId: Type.String({ format: "uuid" }),
-  orderLineId: Type.String({ format: "uuid" }),
-  editionId: Type.String({ format: "uuid" }),
-  status: Type.String(),
-  createdAt: Type.String(),
-});
-
-export const AdminProductionTaskListSchema = createCursorListResponseSchema(
-  AdminProductionTaskListItemSchema,
 );
 
 export const AdminPayoutListItemSchema = Type.Object({

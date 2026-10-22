@@ -17,6 +17,7 @@ import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.ro
 import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
+import { registerAdminProductionRoutes } from "./routes/admin/v1/admin-production.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
 import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
@@ -169,6 +170,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         }
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
           void registerAdminOperationsRoutes(adminScope, options.deps.admin);
+          void registerAdminProductionRoutes(adminScope, options.deps.admin.productionTasks);
         }
         if (options.deps.env.SHOP_THIRD_PARTY_ENABLED) {
           void registerAdminThirdPartyRoutes(adminScope, options.deps.admin);
