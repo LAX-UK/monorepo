@@ -31,8 +31,9 @@ export function DecideSaleAuthorityRequestForm({
   const [declineReason, setDeclineReason] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [confirmingDecline, setConfirmingDecline] = useState(false);
+  const [confirmingApproval, setConfirmingApproval] = useState<number | null>(null);
 
-  function approve() {
+  function askToApprove() {
     const count = parseWholeNumber(
       authorisedCount,
       { min: 0, max: 10 },
@@ -44,17 +45,7 @@ export function DecideSaleAuthorityRequestForm({
     });
     setErrors(next);
     if (hasFieldErrors(next) || !count.ok) return;
-    void mutation.run(
-      () =>
-        decideSaleAuthorityRequest({
-          requestId,
-          decision: "approve",
-          authorisedCount: count.value,
-          evidenceNote: evidenceNote.trim(),
-          idempotencyKey: mutation.idempotencyKey,
-        }),
-      "Request approved",
-    );
+    setConfirmingApproval(count.value);
   }
 
   function askToDecline() {
@@ -72,7 +63,7 @@ export function DecideSaleAuthorityRequestForm({
         mutation={mutation}
         errors={errors}
         submitLabel="Approve"
-        onSubmit={approve}
+        onSubmit={askToApprove}
         secondaryAction={
           <Button
             type="button"
@@ -116,6 +107,31 @@ export function DecideSaleAuthorityRequestForm({
           onChange={setDeclineReason}
         />
       </AdminForm>
+      <ConfirmDialog
+        open={confirmingApproval !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmingApproval(null);
+        }}
+        title={`Approve ${ownerDisplayName}'s request`}
+        body={`${ownerDisplayName} will be authorised to sell ${confirmingApproval ?? 0} of ${artworkTitle}. The approval is audited with your evidence note.`}
+        confirmLabel="Approve request"
+        loading={mutation.pending}
+        onConfirm={async () => {
+          if (confirmingApproval === null) return;
+          await mutation.run(
+            () =>
+              decideSaleAuthorityRequest({
+                requestId,
+                decision: "approve",
+                authorisedCount: confirmingApproval,
+                evidenceNote: evidenceNote.trim(),
+                idempotencyKey: mutation.idempotencyKey,
+              }),
+            "Request approved",
+          );
+          setConfirmingApproval(null);
+        }}
+      />
       <ConfirmDialog
         open={confirmingDecline}
         onOpenChange={setConfirmingDecline}
