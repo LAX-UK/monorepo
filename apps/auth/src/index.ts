@@ -95,6 +95,7 @@ const identityLifecycle = createIdentityLifecycleService({
   logout: services.oidc.logout,
 });
 const authHandler = createAuthRequestHandler({
+  log,
   events: repositories.identityEventPublisher,
   sessionStampStore: identityPorts.sessionStampStore,
   readTwoFactorRequirement,

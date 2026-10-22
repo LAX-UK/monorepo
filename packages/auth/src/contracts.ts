@@ -29,9 +29,16 @@ export const AUTH_RATE_LIMIT_POLICY = {
   forgotEmailMax: 3,
   setupPasswordWindowSec: 60,
   setupPasswordMax: 3,
-  totpWindowSec: 15 * 60,
-  totpMax: 5,
-  totpLockoutSec: 30 * 60,
+  /**
+   * Failed 2FA code submissions only. Better Auth's per-factor lockout
+   * (`failedVerificationCount` / `lockedUntil`) is the primary brute-force
+   * control; these are backstops (NIST SP 800-63B 3.2.2). The per-IP ceiling is
+   * deliberately loose so one shared office address is not locked out.
+   */
+  twoFactorAccountWindowSec: 15 * 60,
+  twoFactorAccountMax: 10,
+  twoFactorIpWindowSec: 15 * 60,
+  twoFactorIpMax: 60,
   confirmEmailChangeWindowSec: 60,
   confirmEmailChangeMax: 10,
   magicLinkIpWindowSec: 60,

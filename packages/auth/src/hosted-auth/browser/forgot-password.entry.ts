@@ -1,17 +1,9 @@
-import { submitEnabled } from "./turnstile.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
 const form = document.getElementById("forgot-form");
 if (!(form instanceof HTMLFormElement)) {
   throw new Error("hosted forgot-password form missing");
-}
-
-function bindCaptchaGate(button: HTMLButtonElement | null): void {
-  auth.onTokenChange((token) => {
-    if (!button || button.getAttribute("aria-busy") === "true") return;
-    button.disabled = !submitEnabled({ captchaRequired: true, token });
-  });
 }
 
 form.addEventListener("submit", async (event) => {
@@ -31,13 +23,7 @@ form.addEventListener("submit", async (event) => {
       redirectTo: redirectTo.toString(),
     });
     if (!response.ok) {
-      auth.showError(auth.GENERIC_NETWORK);
-      return;
-    }
-    if (auth.isCaptchaRequired(data)) {
-      bindCaptchaGate(submit);
-      await auth.ensureTurnstile([submit]);
-      auth.showError(auth.CAPTCHA_REQUIRED);
+      auth.reportFailure({ response, data }, "other", auth.GENERIC_NETWORK);
       return;
     }
     auth.showSuccess(auth.GENERIC_RECOVERY);

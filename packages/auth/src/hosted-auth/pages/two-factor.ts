@@ -4,6 +4,9 @@ import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
 export { HOSTED_TWO_FACTOR_SCRIPT } from "../scripts.js";
 
+/** Room for "123 456" as an authenticator app shows it; the script strips the space as it lands. */
+const PASTED_CODE_MAXLENGTH = 12;
+
 export function buildHostedTwoFactorHtml(
   view: HostedAuthView = hostedAuthViewFromSearch(""),
 ): string {
@@ -20,15 +23,16 @@ export function buildHostedTwoFactorHtml(
           inputmode: "numeric",
           autocomplete: "one-time-code",
           minlength: HOSTED_AUTH_POLICY.otpLength,
-          maxlength: HOSTED_AUTH_POLICY.otpLength,
-          pattern: "[0-9]*",
+          maxlength: PASTED_CODE_MAXLENGTH,
+          pattern: `[0-9]{${String(HOSTED_AUTH_POLICY.otpLength)}}`,
+          exactEntry: true,
         })}
         <label class="field-check"><input id="trust-device" type="checkbox"> Trust this device for 30 days</label>
         ${hostedButton({ label: "Verify", loadingLabel: "Verifying…" })}
       </form>
       <p class="auth-divider"><span>or</span></p>
       <form id="backup-form" class="auth-form" novalidate>
-        ${floatingInput({ id: "backup-code", label: "Backup code", autocomplete: "off" })}
+        ${floatingInput({ id: "backup-code", label: "Backup code", autocomplete: "off", exactEntry: true })}
         ${hostedButton({ label: "Use backup code", kind: "secondary", loadingLabel: "Verifying…" })}
       </form>
       ${statusRegions()}

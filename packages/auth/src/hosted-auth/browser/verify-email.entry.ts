@@ -1,3 +1,4 @@
+import { isTransientFailure } from "./auth-failure.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { hostedAuth } from "./window-auth.js";
 
@@ -24,7 +25,11 @@ async function verifyToken(): Promise<void> {
     }
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      auth.showError(msg.VERIFY_FAILED);
+      if (isTransientFailure(response.status)) {
+        auth.reportFailure({ response, data: payload }, "other", msg.VERIFY_FAILED);
+      } else {
+        auth.showError(msg.VERIFY_FAILED);
+      }
       if (pendingEl) pendingEl.hidden = true;
       return;
     }

@@ -13,6 +13,7 @@ import type { IdentityDatabase } from "@auction/identity-db";
 import type { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Redis } from "ioredis";
+import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
@@ -32,6 +33,7 @@ import {
   type RefreshReplayRedis,
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
+import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
@@ -49,6 +51,7 @@ export type OidcRouteMountOptions = {
   sessionStampStore: SessionStampStore;
   readTwoFactorRequirement: TwoFactorRequirementReader;
   redis: Redis;
+  log: pino.Logger;
   auth: ReturnType<typeof createAuth>;
   webOrigins: string[];
   retryResponseCrypto?: { seal(value: string): string; open(value: string): string } | undefined;
@@ -90,20 +93,24 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     }),
   );
   app.use("/api/auth/*", createAuthNoStoreMiddleware());
+  const rateLimitStore = createResilientSlidingWindowStore(options.redis, options.log);
   app.use(
     "/api/auth/*",
-    createSendVerificationIssuerRateLimitMiddleware(options.redis, options.clientIp),
+    createSendVerificationIssuerRateLimitMiddleware(rateLimitStore, options.clientIp),
   );
   app.use(
     "/api/auth/*",
-    createAuthIssuerRateLimitMiddleware(options.redis, options.clientIp, {
+    createAuthIssuerRateLimitMiddleware(rateLimitStore, options.clientIp, {
       resolveSubjectId: async (headers) => {
         const session = await options.auth.api.getSession({ headers });
         return session?.user?.id ?? null;
       },
     }),
   );
-  app.use("/api/auth/*", createMagicLinkIssuerRateLimitMiddleware(options.redis, options.clientIp));
+  app.use(
+    "/api/auth/*",
+    createMagicLinkIssuerRateLimitMiddleware(rateLimitStore, options.clientIp),
+  );
   app.get("/.well-known/jwks.json", async (c) => {
     c.header("Cache-Control", "public, max-age=60");
     return c.json(await options.auth.api.getJwks());

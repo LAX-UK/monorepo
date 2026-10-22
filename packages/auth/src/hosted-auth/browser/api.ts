@@ -9,6 +9,6 @@ export type HostedAuthConfig = {
 };
 
 export type JsonResponse = {
-  response: { ok: boolean; status: number };
+  response: { ok: boolean; status: number; headers?: { get(name: string): string | null } };
   data: unknown;
 };

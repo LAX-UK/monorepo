@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isAllowedContinueUrl, productHintLoginUrl, resolveContinueUrl } from "./continue.js";
+import {
+  isAllowedContinueUrl,
+  magicLinkCallbackUrl,
+  productHintLoginUrl,
+  resolveContinueUrl,
+  verificationCallbackUrl,
+} from "./continue.js";
 
 const origin = "http://localhost:3003";
 const shopIdentity = "http://localhost:3010";
@@ -82,5 +88,47 @@ describe("resolveContinueUrl", () => {
         authorizeResumePath: null,
       }),
     ).toBe(shopRestart);
+  });
+});
+
+describe("magicLinkCallbackUrl", () => {
+  const authorize = "/api/auth/oauth2/authorize?client_id=lax-shop-web&state=abc";
+
+  it("returns the pending authorize request so the destination survives the link and any 2FA step", () => {
+    expect(
+      magicLinkCallbackUrl(origin, { authorizeResumePath: authorize, loginPath: "/login" }, []),
+    ).toBe(`${origin}${authorize}`);
+  });
+
+  it("falls back to the login page with the client hint", () => {
+    expect(
+      magicLinkCallbackUrl(
+        origin,
+        { authorizeResumePath: null, loginPath: "/login?client_id=lax-shop-web" },
+        [],
+      ),
+    ).toBe(`${origin}/login?client_id=lax-shop-web`);
+  });
+
+  it("refuses a resume path that is not an allowed continuation", () => {
+    expect(
+      magicLinkCallbackUrl(
+        origin,
+        { authorizeResumePath: "https://evil.example/x", loginPath: "/login" },
+        [],
+      ),
+    ).toBe(`${origin}/login`);
+  });
+});
+
+describe("verificationCallbackUrl", () => {
+  it("keeps the client hint of the current flow", () => {
+    expect(verificationCallbackUrl(origin, "/login?client_id=lax-art-web")).toBe(
+      `${origin}/verify-email?client_id=lax-art-web`,
+    );
+  });
+
+  it("omits it when the flow has none", () => {
+    expect(verificationCallbackUrl(origin, "/login")).toBe(`${origin}/verify-email`);
   });
 });

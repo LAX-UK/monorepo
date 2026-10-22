@@ -10,6 +10,9 @@ import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
 export { HOSTED_TWO_FACTOR_SETUP_SCRIPT, HOSTED_TWO_FACTOR_MANAGE_SCRIPT } from "../scripts.js";
 
+/** Room for "123 456" as an authenticator app shows it; the script strips the space as it lands. */
+const PASTED_CODE_MAXLENGTH = 12;
+
 export type TwoFactorSetupRequiredBy = "staff" | "org";
 
 export function parseTwoFactorSetupRequiredBy(
@@ -33,6 +36,18 @@ function setupDescription(
     : "Add an authenticator app so signing in to your LAX account needs a second step.";
 }
 
+/**
+ * Better Auth lets an account with no password enrol with this field blank, but the authorise
+ * gate only sends accounts that have a password here when a policy demands two-step
+ * verification (a bare session proves nothing a stolen one could not), so the copy says so.
+ */
+function passwordHint(requiredBy: TwoFactorSetupRequiredBy | null): string {
+  if (requiredBy) {
+    return "Confirm your password to start. This requirement needs an account with a password, so if you sign in only with Google or Apple, add a password first.";
+  }
+  return "Confirm your password to start. If you sign in only with Google or Apple and have no password, leave it blank.";
+}
+
 function continueHref(view: HostedAuthView): string {
   return view.config.authorizeResumePath ?? view.config.restartUrl;
 }
@@ -48,12 +63,13 @@ export function buildHostedTwoFactorSetupHtml(
     config: view.config,
     body: `<div class="auth-stack">
       <form id="setup-start" class="auth-form" novalidate>
-        <p class="auth-hint">Confirm your password to start. If you sign in only with Google or Apple, leave it blank.</p>
+        <p class="auth-hint">${escapeHostedHtml(passwordHint(requiredBy))}</p>
         ${floatingInput({
           id: "setup-password",
           label: "Password",
           type: "password",
           autocomplete: "current-password",
+          required: false,
         })}
         ${hostedButton({ id: "setup-enable-btn", label: "Continue", loadingLabel: "Preparing…" })}
       </form>
@@ -68,8 +84,9 @@ export function buildHostedTwoFactorSetupHtml(
             inputmode: "numeric",
             autocomplete: "one-time-code",
             minlength: HOSTED_AUTH_POLICY.otpLength,
-            maxlength: HOSTED_AUTH_POLICY.otpLength,
-            pattern: "[0-9]*",
+            maxlength: PASTED_CODE_MAXLENGTH,
+            pattern: `[0-9]{${String(HOSTED_AUTH_POLICY.otpLength)}}`,
+            exactEntry: true,
           })}
           ${hostedButton({ label: "Verify and continue", loadingLabel: "Verifying…" })}
         </form>

@@ -25,14 +25,20 @@ form.addEventListener("submit", async (event) => {
   auth.hideStatus();
   auth.setBusy(submit, true);
   try {
-    const { data } = await auth.postJson("/api/auth/sign-in/magic-link", {
+    const { response, data } = await auth.postJson("/api/auth/sign-in/magic-link", {
       email: inputValue("email").trim(),
-      callbackURL: auth.productHintLoginUrl(),
+      callbackURL: auth.magicLinkCallbackUrl(),
     });
     if (auth.isCaptchaRequired(data)) {
       bindCaptchaGate(submit);
       await auth.ensureTurnstile([submit]);
       auth.showError(auth.CAPTCHA_REQUIRED);
+      auth.setBusy(submit, false);
+      return;
+    }
+    if (!response.ok) {
+      auth.reportFailure({ response, data }, "other", auth.GENERIC_NETWORK);
+      auth.setBusy(submit, false);
       return;
     }
     auth.showSuccess(auth.GENERIC_MAGIC_LINK);

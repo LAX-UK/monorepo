@@ -3,6 +3,7 @@ import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { deleteSessionCookie, expireCookie } from "better-auth/cookies";
 import { generateRandomString } from "better-auth/crypto";
+import { appendOidcAuthorizeParams } from "./hosted-auth/flow-context.js";
 import { isSafeMagicLinkNextPath } from "./magic-link-callback.js";
 
 type AuthUser = { id: string; email: string; name: string; twoFactorEnabled?: boolean | null };
@@ -62,8 +63,23 @@ export function buildTwoFactorChallengeUrl(
   const params = new URLSearchParams();
   if (next) params.set("next", next);
   if (callbackURL) params.set("callbackURL", callbackURL);
+  // The hosted challenge page resumes the product's sign-in from its own query, so the client
+  // hint and any authorize request the callback carries must be repeated there.
+  const carried = new URL(base);
+  const callbackParams = callbackSearchParams(callbackURL);
+  if (callbackParams) appendOidcAuthorizeParams(carried, callbackParams);
+  for (const [key, value] of carried.searchParams) params.set(key, value);
   const query = params.toString();
   return query ? `${base}?${query}` : base;
+}
+
+function callbackSearchParams(callbackURL: string | null | undefined): URLSearchParams | null {
+  if (!callbackURL) return null;
+  try {
+    return new URL(callbackURL, "https://placeholder.invalid").searchParams;
+  } catch {
+    return null;
+  }
 }
 
 /** Hands a 2FA user off to the TOTP challenge instead of keeping a single-factor session:

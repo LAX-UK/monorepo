@@ -1,7 +1,6 @@
 import { showPasswordBreached } from "./password-breached.js";
 import { signUpOutcome } from "./sign-up-outcome.js";
 import { bindSocialCallbackError, bindSocialSignIn } from "./social-sign-in.js";
-import { submitEnabled } from "./turnstile.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
@@ -10,13 +9,6 @@ bindSocialSignIn(auth);
 const form = document.getElementById("signup-form");
 if (!(form instanceof HTMLFormElement)) {
   throw new Error("hosted sign-up form missing");
-}
-
-function bindCaptchaGate(button: HTMLButtonElement | null): void {
-  auth.onTokenChange((token) => {
-    if (!button || button.getAttribute("aria-busy") === "true") return;
-    button.disabled = !submitEnabled({ captchaRequired: true, token });
-  });
 }
 
 form.addEventListener("submit", async (event) => {
@@ -31,10 +23,8 @@ form.addEventListener("submit", async (event) => {
       email: inputValue("email").trim(),
       password: inputValue("password"),
     });
-    if (auth.isCaptchaRequired(data)) {
-      bindCaptchaGate(submit);
-      await auth.ensureTurnstile([submit]);
-      auth.showError(auth.CAPTCHA_REQUIRED);
+    if (response.status === 429 || response.status >= 500) {
+      auth.reportFailure({ response, data }, "other", auth.GENERIC_REGISTER);
       return;
     }
     const outcome = signUpOutcome({
