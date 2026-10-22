@@ -8,15 +8,24 @@ import {
 } from "./editorial-page-title.vm.js";
 
 describe("exhibitionHasEnded", () => {
-  const now = new Date("2026-08-28T09:00:00Z");
+  it("keeps the end date itself open and closes the day after", () => {
+    expect(exhibitionHasEnded("2026-08-27", new Date("2026-08-27T12:00:00Z"))).toBe(false);
+    expect(exhibitionHasEnded("2026-08-27", new Date("2026-08-28T12:00:00Z"))).toBe(true);
+    expect(exhibitionHasEnded("2026-09-01", new Date("2026-08-28T12:00:00Z"))).toBe(false);
+  });
 
-  it("is true only once the end date is before today (UTC)", () => {
-    expect(exhibitionHasEnded("2026-08-27", now)).toBe(true);
-    expect(exhibitionHasEnded("2026-08-28", now)).toBe(false);
-    expect(exhibitionHasEnded("2026-09-01", now)).toBe(false);
+  it("switches at London midnight in summer (BST, UTC+1)", () => {
+    expect(exhibitionHasEnded("2026-08-27", new Date("2026-08-27T22:59:00Z"))).toBe(false);
+    expect(exhibitionHasEnded("2026-08-27", new Date("2026-08-27T23:00:00Z"))).toBe(true);
+  });
+
+  it("switches at UTC midnight in winter (GMT)", () => {
+    expect(exhibitionHasEnded("2026-12-10", new Date("2026-12-10T23:59:00Z"))).toBe(false);
+    expect(exhibitionHasEnded("2026-12-10", new Date("2026-12-11T00:00:00Z"))).toBe(true);
   });
 
   it("is false when the end date is missing or malformed", () => {
+    const now = new Date("2026-08-28T09:00:00Z");
     expect(exhibitionHasEnded(null, now)).toBe(false);
     expect(exhibitionHasEnded("27 August", now)).toBe(false);
   });

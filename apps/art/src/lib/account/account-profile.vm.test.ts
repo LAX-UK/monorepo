@@ -15,39 +15,45 @@ describe("accountInitials", () => {
 
 describe("buildProfileIncompleteBanner", () => {
   const links = { verifyEmailHref: "/verify", laxAccountHref: "https://account.test" };
+  const complete = { name: "Ada Collector", emailVerified: true, phone: "+44 7700", ...links };
 
-  it("is hidden once email is verified and a phone exists", () => {
-    expect(
-      buildProfileIncompleteBanner({ emailVerified: true, phone: "+44 7700", ...links }),
-    ).toBeNull();
+  it("is hidden once name, verified email and phone are all present", () => {
+    expect(buildProfileIncompleteBanner(complete)).toBeNull();
   });
 
   it("treats unknown verification as not blocking", () => {
-    expect(
-      buildProfileIncompleteBanner({ emailVerified: null, phone: "+44 7700", ...links }),
-    ).toBeNull();
+    expect(buildProfileIncompleteBanner({ ...complete, emailVerified: null })).toBeNull();
   });
 
-  it("prompts to verify an unverified email first", () => {
+  it("prompts to verify an unverified email first, whatever else is missing", () => {
     expect(
-      buildProfileIncompleteBanner({ emailVerified: false, phone: null, ...links }),
-    ).toMatchObject({
-      action: { label: "Verify email", href: "/verify" },
-    });
+      buildProfileIncompleteBanner({ ...complete, name: null, emailVerified: false, phone: null }),
+    ).toMatchObject({ action: { label: "Verify email", href: "/verify" } });
   });
 
   it("prompts for a phone number via LAX Account when only the phone is missing", () => {
-    expect(
-      buildProfileIncompleteBanner({ emailVerified: true, phone: " ", ...links }),
-    ).toMatchObject({
+    expect(buildProfileIncompleteBanner({ ...complete, phone: " " })).toMatchObject({
       action: { label: "Add phone number", href: "https://account.test" },
+    });
+  });
+
+  it("prompts for a name via LAX Account when only the name is missing", () => {
+    expect(buildProfileIncompleteBanner({ ...complete, name: "  " })).toMatchObject({
+      action: { label: "Add your name", href: "https://account.test" },
+    });
+  });
+
+  it("uses the generic prompt when both name and phone are missing", () => {
+    expect(buildProfileIncompleteBanner({ ...complete, name: null, phone: null })).toMatchObject({
+      description: "Add a few more details to complete your account.",
+      action: { label: "Complete account", href: "https://account.test" },
     });
   });
 
   it("omits the action when no deep link is configured", () => {
     expect(
       buildProfileIncompleteBanner({
-        emailVerified: true,
+        ...complete,
         phone: null,
         verifyEmailHref: null,
         laxAccountHref: null,

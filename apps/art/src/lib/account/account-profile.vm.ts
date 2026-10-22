@@ -17,18 +17,22 @@ export type ArtProfileBannerVm = {
 };
 
 /**
- * "You're almost ready" prompt (Figma 930:14088). Shown while the email is unverified or no
- * verified phone is on file; email comes first because it blocks sign-in recovery.
+ * "You're almost ready" prompt (Figma 930:14088). LAX Account counts three gaps (name, verified
+ * email, phone; see `profileGaps` in apps/account). An unverified email comes first because it
+ * blocks sign-in recovery and has its own hosted page; any other gaps are completed in LAX
+ * Account, with Figma's generic wording when more than one remains.
  */
 export function buildProfileIncompleteBanner(input: {
+  name: string | null;
   emailVerified: boolean | null;
   phone: string | null;
   verifyEmailHref: string | null;
   laxAccountHref: string | null;
 }): ArtProfileBannerVm | null {
   const emailUnverified = input.emailVerified === false;
+  const nameMissing = !input.name?.trim();
   const phoneMissing = !input.phone?.trim();
-  if (!emailUnverified && !phoneMissing) return null;
+  if (!emailUnverified && !nameMissing && !phoneMissing) return null;
 
   const title = "You're almost ready";
   if (emailUnverified) {
@@ -38,11 +42,26 @@ export function buildProfileIncompleteBanner(input: {
       action: input.verifyEmailHref ? { label: "Verify email", href: input.verifyEmailHref } : null,
     };
   }
-  return {
-    title,
-    description: "Add a phone number so the gallery can reach you about your enquiries.",
-    action: input.laxAccountHref ? { label: "Add phone number", href: input.laxAccountHref } : null,
-  };
+  const toLaxAccount = (label: string) =>
+    input.laxAccountHref ? { label, href: input.laxAccountHref } : null;
+  if (nameMissing && phoneMissing) {
+    return {
+      title,
+      description: "Add a few more details to complete your account.",
+      action: toLaxAccount("Complete account"),
+    };
+  }
+  return nameMissing
+    ? {
+        title,
+        description: "Add your name so the gallery knows who is enquiring.",
+        action: toLaxAccount("Add your name"),
+      }
+    : {
+        title,
+        description: "Add a phone number so the gallery can reach you about your enquiries.",
+        action: toLaxAccount("Add phone number"),
+      };
 }
 
 export type ArtAccountPromoVm = { title: string; description: string; href: string; label: string };
