@@ -13,24 +13,10 @@ import { artSiteJsonLd } from "@/lib/seo/art-structured-data";
 import { ART_THEME_COOKIE, parseArtTheme } from "@/lib/theme/art-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
 import type { Metadata } from "next";
-import { Montserrat, Outfit } from "next/font/google";
 import { cookies } from "next/headers";
+import { montserrat, outfit } from "./fonts";
 import "./base.css";
 import "./footer.css";
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
 
 const SITE_DESCRIPTION = "London Art Exchange — gallery originals and enquiry-led sales.";
 

@@ -6,6 +6,7 @@
  * @auction/branding; the app owns layout, composition, and copy only (docs/DESIGN_SYSTEM.md).
  * apps/account follows the same model, so it gets the same checks.
  */
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -131,7 +132,36 @@ const SURFACES = [
   { label: "apps/account/src", src: ACCOUNT_SRC, check: checkArtFile },
 ];
 
+const GOOGLE_FONT_IMPORT = /from ["']next\/font\/google["']|require\(["']next\/font\/google["']\)/;
+
+/**
+ * Brand fonts are self-hosted (packages/branding/fonts, loaded with next/font/local). A Google
+ * Fonts import makes `next build` fetch fonts.googleapis.com, which fails intermittently in CI.
+ */
+async function checkNoGoogleFonts() {
+  const violations = [];
+  for (const ent of await readdir(path.join(ROOT, "apps"), { withFileTypes: true })) {
+    const src = path.join(ROOT, "apps", ent.name, "src");
+    if (!ent.isDirectory() || !existsSync(src)) continue;
+    for (const file of await walk(src)) {
+      if (!GOOGLE_FONT_IMPORT.test(await readFile(file, "utf8"))) continue;
+      violations.push(
+        `${path.relative(ROOT, file)}: next/font/google — self-host with next/font/local (see apps/art/src/app/fonts.ts)`,
+      );
+    }
+  }
+  return violations;
+}
+
 let failed = false;
+
+const fontViolations = await checkNoGoogleFonts();
+if (fontViolations.length > 0) {
+  failed = true;
+  console.error("error: Google Fonts imports are not allowed in apps/*/src:\n");
+  for (const v of fontViolations) console.error(`  ${v}`);
+  console.error("");
+}
 
 for (const surface of SURFACES) {
   const files = (await walk(surface.src)).filter((f) => !isSkipped(f));

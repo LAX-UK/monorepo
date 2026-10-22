@@ -21,13 +21,7 @@ ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV NEXT_PUBLIC_ART_IDENTITY_BASE_URL=$NEXT_PUBLIC_ART_IDENTITY_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY apps/art ./apps/art
-RUN set -e; \
-  for attempt in 1 2 3; do \
-    pnpm turbo run build --filter=@auction/art && exit 0; \
-    echo "Art build attempt ${attempt} failed; retrying in 15s..."; \
-    sleep 15; \
-  done; \
-  exit 1
+RUN pnpm turbo run build --filter=@auction/art
 
 FROM node:22-alpine AS runner
 WORKDIR /app
