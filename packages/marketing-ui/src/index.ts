@@ -92,6 +92,7 @@ export {
   type MarketingUtilityBarProps,
   type MarketingUtilityBarItem,
 } from "./marketing-utility-bar.js";
+export { LaxLockup, type LaxLockupProps } from "./lax-lockup.js";
 export { LaxLogo, type LaxLogoProps } from "./lax-logo.js";
 export { MarketingHero, type MarketingHeroProps } from "./marketing-hero.js";
 export { MarketingViewAllLink } from "./marketing-view-all-link.js";

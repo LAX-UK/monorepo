@@ -5,9 +5,10 @@
 @source "../../../../packages/marketing-ui/src/**/*.{ts,tsx}";
 
 /* Token names match apps/art/src/app/base.css so the shared @auction/ui primitives resolve.
-   LAX colour rule (docs/DESIGN_SYSTEM.md): Account is product-neutral, so it uses the shared
-   neutrals only; navy stays Bid's accent. The theme follows the system setting because no
-   theme preference is shared across LAX origins. */
+   LAX colour rule (docs/DESIGN_SYSTEM.md): Account's accent is deep teal (PRODUCT_ACCENTS in
+   @auction/branding) and navy stays Bid's. Teal marks the product only: the lockup descriptor,
+   the primary button and the focus ring. It never signals success; --color-success stays green.
+   The theme follows the system setting because no theme preference is shared across LAX origins. */
 @theme {
   --color-page-bg: #ffffff;
   --color-background: #ffffff;
@@ -19,15 +20,15 @@
   --color-primary-container: #e8e8e8;
   --color-secondary-container: #f3f3f3;
   --color-on-secondary-container: #1c170d;
-  --color-cta-bg: var(--brand-obsidian);
-  --color-cta-on: var(--brand-light-cream);
-  --color-accent-brand: var(--brand-obsidian);
-  /* LAX colour rule (docs/DESIGN_SYSTEM.md): shared neutrals only; navy is Bid's accent.
-     LAX Account has no accent yet, so the product accent is the primary neutral.
-     Links stay underlined (they share the text colour), so colour is never the only cue. */
-  --color-product-accent: var(--color-primary);
+  /* Teal on white is 5.47:1, so white button text and the focus ring both clear WCAG AA.
+     Do not set teal text on --color-surface-container-high: that pair is 4.47:1. */
+  --color-product-accent: #0f766e;
+  --color-cta-bg: var(--color-product-accent);
+  --color-cta-on: #ffffff;
+  --color-accent-brand: var(--color-product-accent);
+  /* Links stay neutral and underlined (they share the text colour), so colour is never the only cue. */
   --color-link: var(--brand-obsidian);
-  --color-ring: var(--brand-obsidian);
+  --color-ring: var(--color-product-accent);
   --color-surface-container: #eeeeee;
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
@@ -65,11 +66,12 @@
     --color-primary-container: #383a39;
     --color-secondary-container: #333534;
     --color-on-secondary-container: #e8e7e7;
-    --color-cta-bg: var(--brand-light-cream);
+    --color-product-accent: #2dd4bf;
+    --color-cta-bg: var(--color-product-accent);
     --color-cta-on: var(--brand-obsidian);
-    --color-accent-brand: var(--brand-light-cream);
+    --color-accent-brand: var(--color-product-accent);
     --color-link: var(--brand-light-cream);
-    --color-ring: var(--brand-light-cream);
+    --color-ring: var(--color-product-accent);
     --color-surface-container: #333534;
     --color-surface-container-low: #2d2f2e;
     --color-surface-container-lowest: #0f1111;

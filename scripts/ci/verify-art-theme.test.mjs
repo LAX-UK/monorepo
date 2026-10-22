@@ -58,6 +58,19 @@ describe("Art theme contract", () => {
     }
   });
 
+  it("never uses LAX Account's teal accent (LAX colour rule in docs/DESIGN_SYSTEM.md)", () => {
+    const ACCOUNT_ACCENT = /#0f766e\b|#2dd4bf\b/i;
+    for (const file of walk(artSrc)) {
+      const text = readFileSync(file, "utf8");
+      const match = text.match(ACCOUNT_ACCENT);
+      assert.equal(
+        match,
+        null,
+        `${rel(file)} uses Account's accent (${match?.[0]}); use neutral tokens.`,
+      );
+    }
+  });
+
   it("declares semantic tokens only in base.css among art stylesheets", () => {
     const files = walk(artSrc).filter((f) => f.endsWith(".css") && rel(f) !== TOKEN_FILE);
     for (const file of files) {
