@@ -83,6 +83,17 @@ describe("account page composers", () => {
     expect(result.vm.banner).toMatchObject({ title: "You're almost ready" });
   });
 
+  it("sends a missing name to LAX Account through the banner", async () => {
+    const result = await composeArtAccountProfilePage(
+      fakeArtServices({ ...SIGNED_IN_VIEWER, displayName: null }),
+    );
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.banner?.action).toEqual({
+      label: "Add your name",
+      href: "https://account.example.test/account",
+    });
+  });
+
   it("hides the LAX Account link when the env var is missing", async () => {
     const services = fakeArtServices(SIGNED_IN_VIEWER);
     services.account.laxAccountHref.mockReturnValue(null);
