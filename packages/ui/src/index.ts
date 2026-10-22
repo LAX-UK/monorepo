@@ -371,6 +371,12 @@ export { Combobox } from "./components/ui/combobox.js";
 export type { ComboboxOption, ComboboxProps } from "./components/ui/combobox.js";
 export { AsyncCombobox } from "./components/ui/async-combobox.js";
 export type { AsyncComboboxHit, AsyncComboboxProps } from "./components/ui/async-combobox.js";
+export { RelationPicker } from "./components/ui/relation-picker.js";
+export type {
+  RelationItem,
+  RelationPickerProps,
+  RelationSearchPage,
+} from "./components/ui/relation-picker.js";
 export { FileUploadTrigger } from "./components/ui/file-upload-trigger.js";
 export type { FileUploadTriggerProps } from "./components/ui/file-upload-trigger.js";
 export { UploadProgress } from "./components/ui/upload-progress.js";

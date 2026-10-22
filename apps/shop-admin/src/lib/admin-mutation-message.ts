@@ -14,6 +14,7 @@ export function adminMutationErrorMessage(
       return result.message;
     case "conflict":
     case "validation":
+    case "unknown_ids":
     case "failed":
       return result.message;
     default:

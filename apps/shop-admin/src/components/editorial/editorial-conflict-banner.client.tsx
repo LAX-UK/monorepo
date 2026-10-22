@@ -15,8 +15,8 @@ export function EditorialConflictBanner({
 }: {
   /** "exhibition", for the sentence "Someone else saved this exhibition". */
   singular: string;
-  /** Time of the other save, already formatted. */
-  savedAt: string;
+  /** Time of the other save, already formatted; omitted when only an opaque version is known. */
+  savedAt?: string;
   busy: boolean;
   onReload: () => void;
   onKeepMine: () => void;
@@ -24,7 +24,9 @@ export function EditorialConflictBanner({
   return (
     <Alert variant="warning">
       <AlertTitle className="text-base">
-        Someone else saved this {singular} at {savedAt}
+        {savedAt
+          ? `Someone else saved this ${singular} at ${savedAt}`
+          : `Someone else changed this ${singular}`}
       </AlertTitle>
       <AlertDescription className="space-y-3">
         <p>

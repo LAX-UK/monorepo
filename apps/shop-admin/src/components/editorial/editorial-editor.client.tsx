@@ -65,6 +65,14 @@ export type EditorialEditorConfig<F, D extends EditorialDetailBase> = {
   /** Lets a form record that it now matches what is stored (for example the saved story kind). */
   afterSave?: (form: F) => F;
   renderFields: (props: EntityFieldsProps<F>) => ReactNode;
+  /**
+   * Linked records, edited and saved apart from the entity's own Save. `onDirtyChange` reports
+   * unsaved edits so leaving the page is guarded. Only offered for saved items (`id` is set).
+   */
+  renderLinks?: (props: {
+    id: string | null;
+    onDirtyChange: (dirty: boolean) => void;
+  }) => ReactNode;
 };
 
 type Failure = { text: string; stepUp: boolean };
@@ -119,6 +127,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const [savedAt, setSavedAt] = useState<string | null>(detail?.updatedAt ?? null);
   const [status, setStatus] = useState<EditorialPublicationStatus>(detail?.status ?? "draft");
   const [dirty, setDirty] = useState(false);
+  const [linksDirty, setLinksDirty] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<Failure | null>(null);
   const [conflictVersion, setConflictVersion] = useState<string | null>(null);
@@ -126,7 +135,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [preview, setPreview] = useState<EditorialPreview | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
-  const { pendingHref, stay, leave } = useUnsavedNavigationGuard(dirty);
+  const { pendingHref, stay, leave } = useUnsavedNavigationGuard(dirty || linksDirty);
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -361,7 +370,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           </div>
         </FieldSection>
 
-        {/* Linked artworks, artists and stories are edited here for exhibitions and stories. */}
+        {config.renderLinks?.({ id, onDirtyChange: setLinksDirty })}
 
         <StickySaveBar>
           <div className="flex flex-wrap items-center gap-3">

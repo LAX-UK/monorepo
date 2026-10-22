@@ -17,6 +17,7 @@ import type {
 } from "@/lib/editorial-entity-forms";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
+import type { LinksPayload } from "@/server/domain/editorial-links.vm";
 import { PageHeader } from "@auction/ui";
 import { notFound, redirect } from "next/navigation";
 
@@ -34,23 +35,32 @@ export async function EditorialEditorPage({
   id: string | null;
 }) {
   const entity = EDITORIAL_ENTITIES[kind];
-  const [detailResult, venuesResult] = await Promise.all([
+  const hasLinks = id !== null && (kind === "exhibitions" || kind === "stories");
+  const [detailResult, venuesResult, linksResult] = await Promise.all([
     id ? fetchAdminJson<EditorialDetail>(`editorial/${kind}/${id}`) : null,
     kind === "exhibitions"
       ? fetchAdminJson<{ items: EditorialAdminRow[] }>("editorial/venues")
       : null,
+    hasLinks ? fetchAdminJson<LinksPayload>(`editorial/${kind}/${id}/links`) : null,
   ]);
-  if (detailResult?.status === "unauthorized" || venuesResult?.status === "unauthorized") {
+  if (
+    detailResult?.status === "unauthorized" ||
+    venuesResult?.status === "unauthorized" ||
+    linksResult?.status === "unauthorized"
+  ) {
     redirect("/login");
   }
   if (detailResult?.status === "not_found") notFound();
-  const failed = [detailResult, venuesResult].find((result) => result && result.status !== "ok");
+  const failed = [detailResult, venuesResult, linksResult].find(
+    (result) => result && result.status !== "ok",
+  );
   if (failed && failed.status !== "ok") {
     return <AdminFailedPage title={entity.title} status={failed.status} />;
   }
 
   const detail = detailResult?.status === "ok" ? detailResult.data : null;
   const venues = venuesResult?.status === "ok" ? venuesResult.data.items : [];
+  const links = linksResult?.status === "ok" ? linksResult.data : null;
   const artPublicUrl = getShopAdminContainer().config.artPublicUrl ?? null;
   const title = detail?.label ?? entity.newLabel;
 
@@ -71,12 +81,14 @@ export async function EditorialEditorPage({
           key={id ?? "new"}
           detail={detail as ExhibitionDetail | null}
           venues={venues}
+          links={links}
           artPublicUrl={artPublicUrl}
         />
       ) : kind === "stories" ? (
         <StoryEditor
           key={id ?? "new"}
           detail={detail as StoryDetail | null}
+          links={links}
           artPublicUrl={artPublicUrl}
         />
       ) : kind === "venues" ? (
