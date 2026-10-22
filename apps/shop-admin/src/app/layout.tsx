@@ -1,14 +1,7 @@
 import { laxFaviconMetadataIcons } from "@auction/branding";
 import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
+import { montserrat } from "./fonts";
 import "./globals.css";
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: { default: "LAX Admin", template: "%s · LAX Admin" },
