@@ -137,7 +137,7 @@ const RENDERERS: {
       {block.text}
     </MarketingPullQuote>
   ),
-  image: (block) => <Figure image={block} sizes="(min-width: 64rem) 48rem, 100vw" aspect="auto" />,
+  image: (block) => <Figure image={block} sizes="(min-width: 64rem) 75rem, 100vw" aspect="auto" />,
   imagePair: (block) => (
     <div className="grid gap-4 sm:grid-cols-2">
       <Figure image={block.left} sizes="(min-width: 40rem) 24rem, 100vw" aspect="square" />
@@ -252,13 +252,19 @@ type EditorialBlockRendererProps = {
   className?: string;
   /** Keeps rail element ids unique when a page renders more than one body. */
   idPrefix?: string;
+  /** Lets image and gallery blocks break out of a narrow prose column on large screens (Figma `687:17324`). */
+  wideMedia?: boolean;
 };
+
+// Centred on the viewport rather than the column, and capped below the viewport so the page never scrolls sideways.
+const WIDE_MEDIA = "lg:relative lg:left-1/2 lg:w-[min(75rem,calc(100vw-5rem))] lg:-translate-x-1/2";
 
 /** Typed block registry for CMS bodies; unknown or unresolvable blocks render nothing. */
 export function EditorialBlockRenderer({
   body,
   className,
   idPrefix = "editorial",
+  wideMedia = false,
 }: EditorialBlockRendererProps) {
   return (
     <div className={cn("flex flex-col gap-8", className)}>
@@ -266,7 +272,11 @@ export function EditorialBlockRenderer({
         const node = renderBlock(block, { idPrefix, index, rail: body.rails[index] });
         return node ? (
           <MarketingReveal key={`${block.type}-${index}`} index={index}>
-            {node}
+            {wideMedia && (block.type === "image" || block.type === "gallery") ? (
+              <div className={WIDE_MEDIA}>{node}</div>
+            ) : (
+              node
+            )}
           </MarketingReveal>
         ) : null;
       })}

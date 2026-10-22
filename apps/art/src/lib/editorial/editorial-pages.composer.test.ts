@@ -1,5 +1,6 @@
 import type {
   ArtEditorialExhibitionDetail,
+  ArtEditorialStoryDetail,
   ArtEditorialStorySummary,
   ArtEditorialVenueDetail,
 } from "@/lib/editorial/art-editorial.types";
@@ -7,12 +8,12 @@ import { fakeArtServices } from "@/lib/testing/fake-art-services";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
-  composeArtHubPage,
   composeCollectorHubPage,
   composeEditorialPage,
   composeExhibitionDetailPage,
   composeExhibitionsPage,
   composeGuideIndexPage,
+  composeStoryPage,
   composeVenuePage,
   composeVisitPage,
   parseExhibitionStatus,
@@ -59,8 +60,8 @@ function artworkSummary(slug: string): PublicArtworkSummary {
 
 function storySummary(
   slug: string,
-  kind: ArtEditorialStorySummary["kind"],
-  publishedAt: string | null,
+  kind: ArtEditorialStorySummary["kind"] = "article",
+  publishedAt: string | null = "2026-10-01T00:00:00.000Z",
 ): ArtEditorialStorySummary {
   return {
     slug,
@@ -552,30 +553,93 @@ describe("composeGuideIndexPage", () => {
   });
 });
 
-describe("composeArtHubPage", () => {
-  it("renders stories even when placements fail", async () => {
+function storyDetail(overrides: Partial<ArtEditorialStoryDetail> = {}): ArtEditorialStoryDetail {
+  return {
+    slug: "studio",
+    kind: "article",
+    title: "In the studio",
+    standfirst: null,
+    coverUrl: null,
+    featured: false,
+    videoUrl: null,
+    body: [],
+    publishedAt: "2026-10-21T10:00:00.000Z",
+    category: "artist_interview",
+    authorName: "Clara Hutchins",
+    series: "In the studio",
+    ...overrides,
+  };
+}
+
+describe("composeStoryPage", () => {
+  const now = new Date("2026-10-21T12:00:00Z");
+
+  it("labels the hero with the category and byline", async () => {
     const services = fakeArtServices();
-    services.editorial.home.mockResolvedValue({ status: "error" });
-    services.editorial.listStories.mockResolvedValue({
-      status: "ok",
-      data: {
-        items: [
-          {
-            slug: "studio",
-            kind: "guide",
-            title: "Studio guide",
-            standfirst: null,
-            coverUrl: null,
-            featured: false,
-          },
-        ],
-      },
-    });
-    const result = await composeArtHubPage(services);
+    services.editorial.getStory.mockResolvedValue({ status: "ok", data: storyDetail() });
+    services.editorial.listStories.mockResolvedValue({ status: "ok", data: { items: [] } });
+    const result = await composeStoryPage(services, "studio", now);
     expect(result).toMatchObject({
       status: "ok",
-      data: { spotlight: [], stories: [{ href: "/stories/studio", kicker: "Guide" }] },
+      data: {
+        kicker: "Artist interview",
+        byline: "By Clara Hutchins · 21 Oct 2026",
+        related: null,
+      },
     });
+  });
+
+  it("offers a current exhibition and does not read related stories", async () => {
+    const services = fakeArtServices();
+    services.editorial.getStory.mockResolvedValue({
+      status: "ok",
+      data: storyDetail({
+        related: {
+          artists: [],
+          artworks: [],
+          exhibitions: [
+            {
+              slug: "new-originals",
+              kind: "exhibition",
+              title: "New Originals",
+              summary: null,
+              startsOn: "2026-10-01",
+              endsOn: "2026-12-01",
+              coverUrl: null,
+              featured: false,
+            },
+          ],
+        },
+      }),
+    });
+    const result = await composeStoryPage(services, "studio", now);
+    expect(result).toMatchObject({
+      status: "ok",
+      data: { related: { kind: "exhibitions", heading: "Related exhibitions" } },
+    });
+    expect(services.editorial.listStories).not.toHaveBeenCalled();
+  });
+
+  it("falls back to same-series stories, then the same category, never the story itself", async () => {
+    const services = fakeArtServices();
+    services.editorial.getStory.mockResolvedValue({ status: "ok", data: storyDetail() });
+    services.editorial.listStories.mockImplementation(async (filter) => ({
+      status: "ok",
+      data: { items: filter?.series ? [storySummary("studio")] : [storySummary("other")] },
+    }));
+    const result = await composeStoryPage(services, "studio", now);
+    expect(services.editorial.listStories).toHaveBeenCalledWith({ series: "In the studio" });
+    expect(services.editorial.listStories).toHaveBeenCalledWith({ category: "artist_interview" });
+    expect(result).toMatchObject({
+      status: "ok",
+      data: { related: { kind: "stories", cards: [{ key: "other" }] } },
+    });
+  });
+
+  it("passes a missing story through", async () => {
+    const services = fakeArtServices();
+    services.editorial.getStory.mockResolvedValue({ status: "not_found" });
+    expect(await composeStoryPage(services, "nope", now)).toEqual({ status: "not_found" });
   });
 });
 

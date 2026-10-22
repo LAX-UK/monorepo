@@ -22,6 +22,7 @@ export {
   MarketingMenuIcon,
   MarketingMoonIcon,
   MarketingMoreIcon,
+  MarketingPauseIcon,
   MarketingPhoneIcon,
   MarketingPlayIcon,
   MarketingSearchIcon,
@@ -380,3 +381,12 @@ export {
 } from "./marketing-feature-grid.js";
 export { MarketingFeatureCard, type MarketingFeatureCardProps } from "./marketing-feature-card.js";
 export { MarketingStepCard, type MarketingStepCardProps } from "./marketing-step-card.js";
+export {
+  MarketingAudioPlayer,
+  type MarketingAudioPlayerProps,
+} from "./marketing-audio-player.js";
+export {
+  MarketingLinkList,
+  type MarketingLinkListItem,
+  type MarketingLinkListProps,
+} from "./marketing-link-list.js";

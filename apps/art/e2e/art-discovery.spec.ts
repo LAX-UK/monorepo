@@ -146,4 +146,44 @@ test.describe("lax.art discovery", () => {
     test.skip((await featured.count()) === 0, "no featured exhibitions seeded");
     await expect(featured.getByRole("link", { name: "View exhibition" }).first()).toBeVisible();
   });
+
+  test("stories tabs are routes and the podcast tab has a playable lead", async ({ page }) => {
+    test.skip(!editorialEnabled, "stories need ART_EDITORIAL_ENABLED=true");
+    await page.goto("/stories");
+    const tabs = page.getByRole("navigation", { name: "Story types" });
+    await expect(tabs.getByRole("link", { name: "All" })).toHaveAttribute("aria-current", "page");
+    await tabs.getByRole("link", { name: "Press" }).click();
+    await expect(page).toHaveURL(/\/stories\/press$/);
+    await tabs.getByRole("link", { name: "LAX's Podcast" }).click();
+    await expect(page).toHaveURL(/\/stories\/podcast$/);
+    const play = page.getByRole("button", { name: /^Play / });
+    test.skip((await play.count()) === 0, "no podcast episode with audio seeded");
+    // Serve one second of silence so playback never depends on the media host being reachable.
+    await page.route(/\.(mp3|m4a|wav|ogg)(\?.*)?$/, (route) =>
+      route.fulfill({ contentType: "audio/wav", body: silentWav(1) }),
+    );
+    await play.click();
+    await expect(page.getByRole("button", { name: /^Pause / })).toBeVisible();
+  });
 });
+
+/** A mono 8 kHz PCM WAV of silence, enough for the audio element to load and play. */
+function silentWav(seconds: number): Buffer {
+  const sampleRate = 8000;
+  const dataBytes = sampleRate * seconds;
+  const wav = Buffer.alloc(44 + dataBytes);
+  wav.write("RIFF", 0);
+  wav.writeUInt32LE(36 + dataBytes, 4);
+  wav.write("WAVEfmt ", 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(sampleRate, 24);
+  wav.writeUInt32LE(sampleRate, 28);
+  wav.writeUInt16LE(1, 32);
+  wav.writeUInt16LE(8, 34);
+  wav.write("data", 36);
+  wav.writeUInt32LE(dataBytes, 40);
+  wav.fill(128, 44);
+  return wav;
+}

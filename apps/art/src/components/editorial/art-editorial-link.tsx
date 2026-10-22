@@ -10,7 +10,8 @@ type ArtEditorialLinkProps = {
 
 /**
  * Single choke point for CMS-authored links: unsafe or missing hrefs render as plain text,
- * site paths use client navigation, external https links open in a new tab.
+ * site paths use client navigation, external https links open in a new tab and say so to
+ * screen readers.
  */
 export function ArtEditorialLink({ href, className, children }: ArtEditorialLinkProps) {
   if (!isSafeEditorialHref(href)) {
@@ -33,6 +34,7 @@ export function ArtEditorialLink({ href, className, children }: ArtEditorialLink
   return (
     <a href={href} className={className} target="_blank" rel="noopener noreferrer">
       {children}
+      <span className="sr-only"> (opens in a new tab)</span>
     </a>
   );
 }
