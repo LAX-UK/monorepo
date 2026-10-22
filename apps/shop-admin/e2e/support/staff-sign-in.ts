@@ -261,7 +261,7 @@ export async function signInStaffThroughIdentity(input: {
   await input.page.goto(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`, {
     waitUntil: "domcontentloaded",
   });
-  await input.page.waitForURL(/\/auth\/|test-auth\.lax\.bid/, { timeout: 60_000 });
+  await input.page.waitForURL(/\/auth\/|\/login|test-auth\.lax\.bid/, { timeout: 60_000 });
   await followAuthorizeToHostedLogin(input.page, authBase);
 
   const continueToCredentials = input.page.getByRole("button", { name: /^continue$/i });

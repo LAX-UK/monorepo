@@ -18,6 +18,7 @@ playwright-report
 test-results
 apps/web/.vitest-reports
 apps/web/e2e/.auth
+apps/shop-admin/e2e/.auth
 .cursor/
 .specify/
 specs/

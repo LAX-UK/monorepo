@@ -4,6 +4,7 @@ import { createFetchTokenEndpoint, mergeRefreshTokens } from "@auction/identity-
 import type { ShopAdminConfig } from "../config";
 import type { Clock } from "../ports/clock";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
+import { exchangeForShopApiToken } from "./exchange-shop-api-token";
 
 const REFRESH_SKEW_MS = 60_000;
 
@@ -59,13 +60,16 @@ export async function refreshStaffSessionIfNeeded(input: {
     const authTime =
       typeof verified.payload.auth_time === "number" ? verified.payload.auth_time : latest.authTime;
     const acr = typeof verified.payload.acr === "string" ? verified.payload.acr : latest.acr;
+    const shopApi = await exchangeForShopApiToken({
+      config: input.config,
+      idToken: merged.idToken,
+    });
     const updated: StaffSessionRecord = {
       ...latest,
       idToken: merged.idToken,
       refreshToken: merged.refreshToken,
-      accessToken: token.access_token ?? latest.accessToken,
-      accessTokenExpiresAtMs:
-        input.clock.nowMs() + (typeof token.expires_in === "number" ? token.expires_in * 1000 : 0),
+      accessToken: shopApi.accessToken,
+      accessTokenExpiresAtMs: input.clock.nowMs() + shopApi.expiresInSeconds * 1000,
       authTime,
       acr,
     };
