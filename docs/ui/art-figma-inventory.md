@@ -51,7 +51,7 @@ The Deltas column lists only what still differs from Figma. A "Built" row has no
 | --- | --- | --- | --- | --- |
 | Home page v1 | `235:225` | `/` | Built | Sections in Figma order: hero, What's on across LAX (full-width wide lead plus three), Curators' picks, Featured artists, LAX.bid and LAX.shop band, Featured stories, guide promo, Our galleries, closing enquiry band. Sections without data are hidden. The horizontal stacked-story card Figma draws beside the featured story is not built; the existing editorial card is used. |
 | Home page v1 (alternate) | `285:2928` | `/` | Built | The combined LAX.bid and LAX.shop cream band is built, and the closing band uses the plain tone where Figma draws midnight (decision 2). |
-| Versions | `614:12622` | `/` | Partial | Promo imagery is meant to come from the CMS. The placement slots `home_promo_bid` and `home_promo_shop` exist (#549), but Art's home reads the band copy from `@auction/lax-ecosystem` and does not read those slots. |
+| Versions | `614:12622` | `/` | Partial | The LAX Bid and LAX Shop band reads headline, copy, button text and image from the `home_promo_bid` and `home_promo_shop` placements (#557), falling back to product copy; links come from `@auction/lax-ecosystem`. The four illustration versions are CMS content, not code. |
 | Mobile app | `337:7878` | `/` (mobile) | Partial | One responsive page in desktop order (decision 5). Not built: Private Sales band, Auctions Picks (live Bid lots) and dot indicators on rails. |
 | Mobile app (viewport) | `396:11666` | `/` (mobile) | Partial | As `337:7878`; the different section order is not followed (decision 5). |
 | Mobile responsive (web app) | `314:4765` | `/` (mobile web) | Partial | "Next sale" line on the LAX.bid promo needs Bid auction data. |
@@ -117,10 +117,10 @@ The Deltas column lists only what still differs from Figma. A "Built" row has no
 | Figma frame | Node | Route | Status | Deltas |
 | --- | --- | --- | --- | --- |
 | Exhibitions | `561:7003` (dup `1066:15039`) | `/exhibitions` | Partial | Split-slide reveal hero with dots, Current / Upcoming / Past tabs and 3-column cards with "Exhibition \| venue" kicker and dates are built. Not built: Filters trigger (no real filter exists), card hearts (no backend), time of day and city on the reveal slide (summary lacks them). The page heading is visually hidden. |
-| Exhibition page (current) | `743:20964` | `/exhibitions/[slug]` | Partial | Built: media title hero, facts row, overview, works (first 8, then View more), featured artists, installation views, press rows, private-viewing band that opens the enquiry panel. Differences: the contact column shows the venue phone and email, not a named person (the API serves one since #549; Art does not read it yet); the location is a map link, not an embedded map; press rows have no publication kicker. |
+| Exhibition page (current) | `743:20964` | `/exhibitions/[slug]` | Partial | Built: media title hero, facts row, overview, works (first 8, then View more), featured artists, installation views, press rows, private-viewing band that opens the enquiry panel. The hero leads with the exhibition subtitle and the contact column names the specialist, falling back to the venue phone and email (#557). Differences: the location is a map link, not an embedded map; press rows have no publication kicker. |
 | Exhibition page (closed) | `737:20593` | `/exhibitions/[slug]` | Built | "Closed" eyebrow from the end date; plain CTA band. |
 | Exhibition page (scrolling) | `574:8039` | `/exhibitions/[slug]` | Built | Sticky sub-nav with identity and tabs Overview / Works / Featured artists / Press, only for sections that render. |
-| Exhibition Overview (mobile) | `599:7263` | `/exhibitions/[slug]` | Partial | Same tabs on one page. Not built: specialist card and "How to find us" map. |
+| Exhibition Overview (mobile) | `599:7263` | `/exhibitions/[slug]` | Partial | Same tabs on one page, with the "Exhibition specialist" card (#557). Not built: the "How to find us" map. |
 | Artworks & Artists (mobile) | `601:7820` | `/exhibitions/[slug]` | Partial | Works and artists sections are built; the count and filters row is not. |
 | Press (mobile) | `606:10398` | `/exhibitions/[slug]` | Partial | Press rows are built; the publication kicker needs a field. |
 | Collect (mobile) | `606:8465` | `/exhibitions` (mobile) | Partial | Mobile "Collect" hub with the Exhibitions tile selected; this is not an exhibition tab and has no separate route. |
@@ -282,8 +282,8 @@ The sections that depend on missing data render only once it exists, and are oth
 | --- | --- | --- |
 | Editorial joins (exhibition to artwork / artist, story to artist / artwork / exhibition) | Resolved (#535) | Served by shop-api with a new `GET /v1/editorial/artists/:slug`. Join order is curated through `position` columns (#549). Shop Admin cannot edit the joins yet |
 | Story `publishedAt`, author, read minutes, series / category, `podcast` kind, audio URL and duration, publication name | Resolved (#535, #549) | |
-| Venue on exhibition summary; venue address lines, city and coordinates; exhibition subtitle and contact person | Resolved in the API (#535, #549) | Art does not yet read the exhibition contact, subtitle or venue city |
-| Placement body and CTA label; slots for home promos, Art hub sections and hub feature | Resolved in the API (#549) | Collector hub cards use them (#551) and the Art hub uses the hub slots (#552). Art's home does not read `home_promo_*` |
+| Venue on exhibition summary; venue address lines, city and coordinates; exhibition subtitle and contact person | Resolved (#535, #549, #557) | Art shows the exhibition subtitle, specialist and venue city |
+| Placement body and CTA label; slots for home promos, Art hub sections and hub feature | Resolved in the API (#549) | Collector hub cards use them (#551) and the Art hub uses the hub slots (#552). and the home band reads `home_promo_*` (#557) |
 | Catalogue multi-value filters | Resolved (#539) | |
 | Catalogue department, technique, framed, facet counts, oldest / relevance sort, private-sale flag | Open | Filters and departments for these are not built |
 | Artist represented-by-LAX flag, original / non-original split, pagination, category and nationality filters | Open | Originals are fetched with one extra `type=original` read |
@@ -315,7 +315,6 @@ Everything below needs new data, a service, infrastructure or an owner decision.
 - Help centre / FAQ entity (question, answer blocks, category, slug, search), a `/help/[slug]` route, artwork FAQ pills and sheet, and real targets for the how-to-buy step-card links. #542, #551
 
 ### Exhibitions, venues and stories
-- Read the exhibition contact person and subtitle and the venue city in Art (served since #549). #554
 - Exhibition press kicker (publication name) and reveal-slide time of day. #554
 - Filters on `/exhibitions`. #554
 - Venue-to-story relation so the Location detail "Story" section can render. #551
