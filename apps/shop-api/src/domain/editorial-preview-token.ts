@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export type EditorialPreviewEntity = "venue" | "exhibition" | "story" | "page";
+export type EditorialPreviewEntity = "venue" | "exhibition" | "story" | "page" | "help_article";
 
 export type EditorialPreviewPayload = {
   entity: EditorialPreviewEntity;

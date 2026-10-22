@@ -1,7 +1,8 @@
 import { ARTWORK_MEDIUM_LANDINGS } from "@/lib/catalogue/artwork-catalogue-params";
 import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
 import { venueHref } from "@/lib/editorial/editorial-pages.composer";
-import type { ArtCataloguePort, ArtEditorialPort } from "@/lib/ports";
+import { helpArticleHref } from "@/lib/help/help.vm";
+import type { ArtCataloguePort, ArtEditorialPort, ArtHelpPort } from "@/lib/ports";
 import type { MetadataRoute } from "next";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
@@ -9,6 +10,7 @@ type SitemapEntry = MetadataRoute.Sitemap[number];
 export type ArtSitemapServices = {
   catalogue: Pick<ArtCataloguePort, "listArtworks" | "listArtists">;
   editorial: Pick<ArtEditorialPort, "listVenues" | "listExhibitions" | "listStories" | "listPages">;
+  help: Pick<ArtHelpPort, "listArticles">;
 };
 
 const PAGE_SIZE = 50;
@@ -28,6 +30,7 @@ const STATIC_PATHS = [
   "/collector-hub",
   "/contact",
   "/visit",
+  "/help",
 ];
 
 async function collectAll<T>(
@@ -73,8 +76,8 @@ export async function composeArtSitemap(
   add("/", { changeFrequency: "daily", priority: 1 });
   for (const path of STATIC_PATHS) add(path, { changeFrequency: "weekly", priority: 0.8 });
 
-  const { catalogue, editorial } = services;
-  const [artworks, artists, venues, current, upcoming, past, stories, pages] =
+  const { catalogue, editorial, help } = services;
+  const [artworks, artists, venues, current, upcoming, past, stories, pages, helpArticles] =
     await Promise.allSettled([
       collectAll((cursor) =>
         catalogue.listArtworks({ limit: PAGE_SIZE, ...(cursor ? { cursor } : {}) }),
@@ -88,6 +91,7 @@ export async function composeArtSitemap(
       editorial.listExhibitions("past"),
       editorial.listStories(),
       editorial.listPages(),
+      help.listArticles(),
     ]);
 
   for (const artwork of fulfilled(artworks)) {
@@ -113,6 +117,9 @@ export async function composeArtSitemap(
   for (const page of okItems(pages)) {
     add(editorialPageHref(page.slug), { priority: 0.5, lastModified: page.updatedAt });
   }
+
+  for (const article of okItems(helpArticles))
+    add(helpArticleHref(article.slug), { priority: 0.5 });
 
   return [...entries.values()];
 }

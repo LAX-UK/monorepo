@@ -43,6 +43,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
         { href: "/editorial/stories", label: "Stories", capability: "editorial.write" },
         { href: "/editorial/venues", label: "Venues", capability: "editorial.write" },
         { href: "/editorial/pages", label: "Pages", capability: "editorial.write" },
+        { href: "/help", label: "Help centre", capability: "editorial.write" },
         { href: "/editorial/home", label: "Home placements", capability: "editorial.write" },
         {
           href: "/enquiries",

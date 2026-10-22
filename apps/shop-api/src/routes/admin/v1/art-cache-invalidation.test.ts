@@ -15,6 +15,7 @@ import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
 import { createStubEditorialLinksService } from "../../../test-support/stub-editorial-links-service.js";
 import { createStubEditorialRepository } from "../../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../../test-support/stub-editorial-search-reader.js";
+import { createStubHelpRepository } from "../../../test-support/stub-help-repository.js";
 
 const PAGE_ID = "44444444-4444-4444-8444-444444444444";
 const headers = { authorization: "Bearer admin-token-placeholder-minimum-length" };
@@ -47,6 +48,7 @@ async function buildApp(
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        help: createStubHelpRepository(),
         links: createStubEditorialLinksService(),
         search: createStubEditorialSearchReader(),
         enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),

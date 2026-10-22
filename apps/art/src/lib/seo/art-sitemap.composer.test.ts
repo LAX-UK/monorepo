@@ -40,6 +40,19 @@ describe("composeArtSitemap", () => {
         ],
       },
     });
+    services.help.listArticles.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          {
+            slug: "how-do-i-pay",
+            question: "How do I pay?",
+            categorySlug: "buying",
+            categoryTitle: "Buying",
+          },
+        ],
+      },
+    });
 
     const sitemap = await composeArtSitemap(services, SITE);
     const byUrl = new Map(sitemap.map((entry) => [entry.url, entry]));
@@ -57,6 +70,8 @@ describe("composeArtSitemap", () => {
     expect(byUrl.has("https://www.thelax.art/legal/privacy")).toBe(true);
     expect(byUrl.has("https://www.thelax.art/how-to-buy")).toBe(true);
     expect(byUrl.has("https://www.thelax.art/paintings")).toBe(true);
+    expect(byUrl.has("https://www.thelax.art/help")).toBe(true);
+    expect(byUrl.has("https://www.thelax.art/help/how-do-i-pay")).toBe(true);
     expect([...byUrl.keys()].some((url) => url.includes("/search"))).toBe(false);
   });
 

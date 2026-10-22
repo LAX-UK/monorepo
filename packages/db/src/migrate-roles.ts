@@ -65,6 +65,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_editorial_story_artwork",
   "shop_editorial_story_exhibition",
   "shop_editorial_page",
+  "shop_help_category",
+  "shop_help_article",
   "shop_editorial_placement",
   "shop_general_enquiry",
   "shop_product",

@@ -67,6 +67,7 @@ describe("buildArtFooterVm", () => {
       "/how-to-buy",
       "/how-to-sell",
       "/collector-hub",
+      "/help",
     ]);
     expect(linksOf("legal").map((link) => link.href)).toEqual([
       "/legal/privacy",

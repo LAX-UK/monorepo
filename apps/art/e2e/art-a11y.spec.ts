@@ -36,6 +36,12 @@ test.describe("lax.art accessibility @a11y", () => {
     { path: "/collector-hub", heading: "Collector Hub", editorial: true },
     { path: "/visit", heading: "LAX's Locations", editorial: true },
     { path: "/how-to-buy", heading: "How to buy", editorial: true },
+    { path: "/help", heading: "Find your answer here", editorial: true },
+    {
+      path: "/help?q=zzqx-no-such-question-9271",
+      heading: "Find your answer here",
+      editorial: true,
+    },
   ]) {
     test(`${route.path} has no blocking axe violations in #main-content`, async ({ page }) => {
       test.skip(

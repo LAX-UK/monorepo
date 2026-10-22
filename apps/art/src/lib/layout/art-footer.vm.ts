@@ -28,6 +28,7 @@ export function buildArtFooterVm(input: {
     { label: "How to buy", href: "/how-to-buy" },
     { label: "How to sell", href: "/how-to-sell" },
     { label: "Collector Hub", href: "/collector-hub" },
+    { label: "Help centre", href: "/help" },
   ];
 
   const accountLinks: Array<{ label: string; href: string }> = [];

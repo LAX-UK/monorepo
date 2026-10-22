@@ -125,6 +125,37 @@ test.describe("lax.art discovery", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
+  test("help search finds a question and opens its answer", async ({ page }) => {
+    test.skip(!editorialEnabled, "the Help centre needs ART_EDITORIAL_ENABLED=true");
+    await page.goto("/help");
+    const firstQuestion = page.locator("main a[href^='/help/']").first();
+    test.skip((await firstQuestion.count()) === 0, "no help content seeded");
+
+    await page.getByRole("searchbox", { name: "Search the Help centre" }).fill("deliver");
+    await page.locator("main").getByRole("button", { name: "Search" }).click();
+    await expect(page).toHaveURL(/\/help\?q=deliver/);
+    await expect(
+      page.getByRole("heading", { level: 2, name: /results? for “deliver”/ }),
+    ).toBeVisible();
+
+    const result = page.locator("main a[href^='/help/']").first();
+    const question = (await result.locator("span").first().textContent())?.trim() ?? "";
+    await result.click();
+    await expect(page).toHaveURL(/\/help\/[^/?]+$/);
+    await expect(page.getByRole("heading", { level: 1, name: question })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Contact us" })).toHaveAttribute(
+      "href",
+      "/contact",
+    );
+  });
+
+  test("help search says so when nothing matches", async ({ page }) => {
+    test.skip(!editorialEnabled, "the Help centre needs ART_EDITORIAL_ENABLED=true");
+    await page.goto("/help?q=zzqx-no-such-question-9271");
+    await expect(page.getByRole("heading", { level: 2, name: /No results for/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Browse all questions" })).toBeVisible();
+  });
+
   test("visit lists venues that open their own page", async ({ page }) => {
     test.skip(!editorialEnabled, "venues need ART_EDITORIAL_ENABLED=true");
     await page.goto("/visit");

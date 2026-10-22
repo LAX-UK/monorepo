@@ -325,6 +325,53 @@ export const shopEditorialPage = pgTable(
   (table) => [uniqueIndex("shop_editorial_page_slug_uid").on(table.slug)],
 );
 
+/** Help centre grouping; shown on lax.art in `position` order. */
+export const shopHelpCategory = pgTable(
+  "shop_help_category",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    position: integer("position").default(0).notNull(),
+    status: shopEditorialStatusEnum("status").default("draft").notNull(),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("shop_help_category_slug_uid").on(table.slug)],
+);
+
+/**
+ * One question and its answer. A category with articles cannot be deleted (`restrict`), so
+ * removing a category is always a deliberate step after its questions are moved or removed.
+ */
+export const shopHelpArticle = pgTable(
+  "shop_help_article",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => shopHelpCategory.id, { onDelete: "restrict" }),
+    slug: text("slug").notNull(),
+    question: text("question").notNull(),
+    answerBlocks: jsonb("answer_blocks").default([]).notNull(),
+    /** Plain text of the answer, recomputed on every save, so search can match it without parsing JSON. */
+    answerText: text("answer_text").default("").notNull(),
+    position: integer("position").default(0).notNull(),
+    status: shopEditorialStatusEnum("status").default("draft").notNull(),
+    publishedAt: timestamp("published_at", { mode: "date", withTimezone: true }),
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_help_article_slug_uid").on(table.slug),
+    index("shop_help_article_category_idx").on(table.categoryId, table.position),
+  ],
+);
+
 export const shopEditorialPlacement = pgTable(
   "shop_editorial_placement",
   {

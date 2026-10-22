@@ -15,6 +15,7 @@ import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
 import { createStubEditorialLinksService } from "../../../test-support/stub-editorial-links-service.js";
 import { createStubEditorialRepository } from "../../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../../test-support/stub-editorial-search-reader.js";
+import { createStubHelpRepository } from "../../../test-support/stub-help-repository.js";
 
 const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 const ENTITY_ID = "44444444-4444-4444-8444-444444444444";
@@ -121,6 +122,25 @@ const PROBES: Probe[] = [
     allowed: ["shop_admin", "catalogue_editor"],
   },
   {
+    name: "help categories list",
+    method: "GET",
+    url: "/admin/v1/help/categories",
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
+    name: "help article publish",
+    method: "POST",
+    url: `/admin/v1/help/articles/${ENTITY_ID}/publish`,
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
+    name: "help category reorder",
+    method: "PUT",
+    url: "/admin/v1/help/categories/order",
+    payload: { ids: [ENTITY_ID] },
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
     name: "artists list",
     method: "GET",
     url: "/admin/v1/artists",
@@ -152,6 +172,10 @@ function buildApp(
     },
     editorial: {
       previewSecret: "test-preview-secret-minimum-32-chars",
+      help: createStubHelpRepository({
+        setArticlePublication: async () => true,
+        reorderCategories: async () => ({ status: "ok", value: null }),
+      }),
       links: createStubEditorialLinksService({
         getExhibitionLinks: async () => ({ artworks: [], artists: [], stories: [], version: "v1" }),
         replaceExhibitionLinks: async () => ({ status: "replaced", version: "v2" }),

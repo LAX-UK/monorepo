@@ -2,6 +2,8 @@ import {
   shopEditorialExhibition,
   shopEditorialPage,
   shopEditorialPlacement,
+  shopHelpArticle,
+  shopHelpCategory,
 } from "@auction/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type pg from "pg";
@@ -53,5 +55,33 @@ describe.skipIf(!hasShopIntegrationDb)("editorial showcase seed", () => {
       .from(shopEditorialPlacement)
       .where(eq(shopEditorialPlacement.slot, "collector_hub_card"));
     expect(hubCards.filter((card) => card.refKind === "page")).toHaveLength(2);
+  });
+
+  it("seeds five published help categories with their questions (idempotent)", async () => {
+    const db = createShopDb(shopPool);
+    await seedEditorialShowcase(db);
+    await seedEditorialShowcase(db);
+
+    const categories = await db
+      .select({ slug: shopHelpCategory.slug, status: shopHelpCategory.status })
+      .from(shopHelpCategory)
+      .where(
+        inArray(shopHelpCategory.slug, [
+          "buying",
+          "shipping-and-delivery",
+          "returns",
+          "private-viewings",
+          "your-account",
+        ]),
+      );
+    expect(categories).toHaveLength(5);
+    expect(categories.every((category) => category.status === "published")).toBe(true);
+
+    const questions = await db
+      .select({ slug: shopHelpArticle.slug, answerText: shopHelpArticle.answerText })
+      .from(shopHelpArticle)
+      .where(inArray(shopHelpArticle.slug, ["how-do-i-buy-an-artwork", "can-i-return-an-artwork"]));
+    expect(questions).toHaveLength(2);
+    expect(questions.every((question) => question.answerText.length > 0)).toBe(true);
   });
 });

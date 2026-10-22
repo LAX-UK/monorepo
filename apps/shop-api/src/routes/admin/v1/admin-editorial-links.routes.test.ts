@@ -16,6 +16,7 @@ import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
 import { createStubEditorialLinksService } from "../../../test-support/stub-editorial-links-service.js";
 import { createStubEditorialRepository } from "../../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../../test-support/stub-editorial-search-reader.js";
+import { createStubHelpRepository } from "../../../test-support/stub-help-repository.js";
 
 const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 const PARENT = "44444444-4444-4444-8444-444444444444";
@@ -42,6 +43,7 @@ async function buildApp(role: ShopStaffRole, links: Partial<EditorialLinksReposi
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        help: createStubHelpRepository(),
         links: createStubEditorialLinksService(links),
         search: createStubEditorialSearchReader(),
         enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),

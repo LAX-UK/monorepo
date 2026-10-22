@@ -1,6 +1,11 @@
 import { artworkDetail } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
-import { artSiteJsonLd, artworkJsonLd, storyJsonLd } from "./art-structured-data";
+import {
+  artSiteJsonLd,
+  artworkJsonLd,
+  helpArticleJsonLd,
+  storyJsonLd,
+} from "./art-structured-data";
 
 const SITE = new URL("https://www.thelax.art/");
 
@@ -73,5 +78,35 @@ describe("Art structured data", () => {
       image: ["https://cdn.test/cover.jpg"],
       url: "https://www.thelax.art/stories/news",
     });
+  });
+
+  it("marks a help answer up as a FAQ page with its plain-text answer", () => {
+    const [faq, breadcrumb] = helpArticleJsonLd(
+      {
+        slug: "how-do-i-pay",
+        question: "How do I pay?",
+        categorySlug: "buying",
+        categoryTitle: "Buying",
+        answer: [
+          { type: "heading", level: 2, text: "Cards" },
+          { type: "richText", spans: [{ text: "Pay by " }, { text: "card", marks: ["bold"] }] },
+          { type: "image", mediaKey: "https://example.test/a.webp" },
+        ],
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+      SITE,
+    );
+    expect(faq).toMatchObject({
+      "@type": "FAQPage",
+      url: "https://www.thelax.art/help/how-do-i-pay",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "How do I pay?",
+          acceptedAnswer: { "@type": "Answer", text: "Cards Pay by card" },
+        },
+      ],
+    });
+    expect(JSON.stringify(breadcrumb)).toContain("https://www.thelax.art/help?category=buying");
   });
 });

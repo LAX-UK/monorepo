@@ -300,7 +300,7 @@ export type EditorialRepository = {
     }>
   >;
   getDraftEntityById(
-    entity: "venue" | "exhibition" | "story" | "page",
+    entity: "venue" | "exhibition" | "story" | "page" | "help_article",
     id: string,
   ): Promise<
     | EditorialVenueDetailReadModel
@@ -447,7 +447,7 @@ export type EditorialRepository = {
     updatedBy: string,
   ): Promise<void> /** Preview tokens grant read access to drafts, so each issue is audited. */;
   recordPreviewTokenIssued(
-    entity: "venue" | "exhibition" | "story" | "page",
+    entity: "venue" | "exhibition" | "story" | "page" | "help_article",
     id: string,
     actorSubjectId: string,
   ): Promise<void>;

@@ -7,6 +7,7 @@ import {
   shopEditorialStory,
   shopEditorialVenue,
   shopGeneralEnquiry,
+  shopHelpArticle,
 } from "@auction/db/schema";
 import {
   EDITORIAL_STORY_DEFAULT_CATEGORIES,
@@ -132,7 +133,7 @@ function storyExtraColumns(input: Partial<EditorialStoryExtraFields>, body: Edit
 }
 
 /** Drops individual blocks that no longer satisfy the contract instead of blanking the body. */
-function readBlocks(value: unknown): EditorialBlock[] {
+export function readBlocks(value: unknown): EditorialBlock[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((block: unknown) => {
     try {
@@ -192,9 +193,11 @@ const SLUG_CONSTRAINTS = new Set([
   "shop_editorial_exhibition_slug_uid",
   "shop_editorial_story_slug_uid",
   "shop_editorial_page_slug_uid",
+  "shop_help_category_slug_uid",
+  "shop_help_article_slug_uid",
 ]);
 
-async function rethrowSlugConflict<T>(write: Promise<T>): Promise<T> {
+export async function rethrowSlugConflict<T>(write: Promise<T>): Promise<T> {
   try {
     return await write;
   } catch (error) {
@@ -206,10 +209,10 @@ async function rethrowSlugConflict<T>(write: Promise<T>): Promise<T> {
   }
 }
 
-type EditorialAuditExecutor = Pick<Database, "insert">;
+export type EditorialAuditExecutor = Pick<Database, "insert">;
 
 /** Written on the same executor as the change so the two commit or roll back together. */
-function auditEditorialWrite(
+export function auditEditorialWrite(
   executor: EditorialAuditExecutor,
   actorSubjectId: string,
   capability: "editorial.write" | "editorial.publish",
@@ -232,14 +235,14 @@ function auditEditorialWrite(
  * Postgres keeps microseconds but the version travels as a millisecond ISO string, so the stored
  * value is truncated before comparing; otherwise rows written by SQL `now()` could never match.
  */
-function sameVersion(updatedAt: AnyPgColumn, expectedVersion: string): SQL {
+export function sameVersion(updatedAt: AnyPgColumn, expectedVersion: string): SQL {
   return sql`date_trunc('milliseconds', ${updatedAt}) = ${new Date(expectedVersion)}`;
 }
 
 type VersionedTable = PgTable & { id: AnyPgColumn; updatedAt: AnyPgColumn };
 
 /** Runs on the transaction whose guarded UPDATE matched nothing, to say why. */
-async function resolveRejectedUpdate(
+export async function resolveRejectedUpdate(
   tx: EditorialAuditExecutor & Pick<Database, "select">,
   table: VersionedTable,
   id: string,
@@ -705,6 +708,24 @@ export function createDrizzleEditorialRepository(
             )[0]?.slug ?? "",
             { includeDraft: true },
           );
+        case "help_article": {
+          // A help answer previews as a page whose title is the question, so lax.art needs no
+          // separate preview layout for it.
+          const [row] = await db
+            .select()
+            .from(shopHelpArticle)
+            .where(eq(shopHelpArticle.id, id))
+            .limit(1);
+          return row
+            ? {
+                slug: row.slug,
+                title: row.question,
+                body: readPublicBlocks(row.answerBlocks),
+                seoTitle: row.seoTitle,
+                seoDescription: row.seoDescription,
+              }
+            : null;
+        }
         default:
           return null;
       }

@@ -1,5 +1,6 @@
 import { artistHref, artworkHref } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtEditorialStoryDetail } from "@/lib/editorial/art-editorial.types";
+import { helpArticleHref, helpCategoryHref } from "@/lib/help/help.vm";
 import {
   type JsonLd,
   LAX_SOCIAL_LINKS,
@@ -11,7 +12,12 @@ import {
   personJsonLd,
   websiteJsonLd,
 } from "@auction/branding";
-import type { PublicArtistDetail, PublicArtworkDetail } from "@auction/shop-contracts";
+import {
+  type HelpArticleDetail,
+  type PublicArtistDetail,
+  type PublicArtworkDetail,
+  editorialBlocksPlainText,
+} from "@auction/shop-contracts";
 
 export const ART_SITE_NAME = "LAX Art";
 const ART_SITE_DESCRIPTION =
@@ -161,6 +167,34 @@ export function storyJsonLd(story: ArtEditorialStoryDetail, siteUrl: URL): JsonL
     breadcrumbs(siteUrl, [
       { name: "Art Hub", path: "/art-hub" },
       { name: story.title, path },
+    ]),
+  ];
+}
+
+/**
+ * One answer is one FAQPage: Google shows a question and its answer together, and a page that
+ * answers exactly one question is the shape it expects. The answer text is the prose of the
+ * blocks, so it matches what the page shows.
+ */
+export function helpArticleJsonLd(article: HelpArticleDetail, siteUrl: URL): JsonLd[] {
+  const path = helpArticleHref(article.slug);
+  return [
+    {
+      "@context": SCHEMA,
+      "@type": "FAQPage",
+      url: absolute(siteUrl, path),
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: article.question,
+          acceptedAnswer: { "@type": "Answer", text: editorialBlocksPlainText(article.answer) },
+        },
+      ],
+    },
+    breadcrumbs(siteUrl, [
+      { name: "Help centre", path: "/help" },
+      { name: article.categoryTitle, path: helpCategoryHref(article.categorySlug) },
+      { name: article.question, path },
     ]),
   ];
 }

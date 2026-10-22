@@ -2,6 +2,7 @@
 
 import { EditorialBlockEditor } from "@/components/editorial-block-editor.client";
 import { EditorialConflictBanner } from "@/components/editorial/editorial-conflict-banner.client";
+import type { EditorialEditorApi } from "@/components/editorial/editorial-editor-api";
 import {
   type EntityFieldsProps,
   FieldSection,
@@ -15,22 +16,11 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormScopeProvider } from "@/components/forms/form-field";
 import { useUnsavedNavigationGuard } from "@/components/use-unsaved-changes-guard";
 import { type EditorialBlockItem, fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
-import type { EditorialEntityCopy } from "@/lib/editorial-entities";
-import type {
-  EditorialEntityKind,
-  EditorialPublicationStatus,
-  PayloadResult,
-} from "@/lib/editorial-entity-forms";
+import type { EditorialPublicationStatus, PayloadResult } from "@/lib/editorial-entity-forms";
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
 import { buildEditorialPreviewUrl } from "@/lib/editorial-preview";
 import { formatLondonTime } from "@/lib/editorial-time";
 import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
-import {
-  getEditorialEntityDetail,
-  issueEditorialPreviewToken,
-  saveEditorialEntity,
-  setEditorialPublication,
-} from "@/server/application/admin-editorial-actions.server";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
 import type { EditorialBlock } from "@auction/shop-contracts";
 import {
@@ -56,7 +46,12 @@ export type EditorialDetailBase = {
 };
 
 export type EditorialEditorConfig<F, D extends EditorialDetailBase> = {
-  entity: EditorialEntityCopy;
+  /** `singular` is lower case, for sentences such as "Someone else saved this exhibition". */
+  entity: { singular: string };
+  /** Where the entity is saved, published, previewed and reloaded from. */
+  api: EditorialEditorApi;
+  /** Heading and help text of the block editor; defaults suit a page. */
+  body?: { title: string; description: string };
   empty: () => F;
   fromDetail: (detail: D) => F;
   buildPayload: (form: F, blocks: EditorialBlock[]) => PayloadResult<unknown>;
@@ -79,6 +74,10 @@ type Failure = { text: string; stepUp: boolean };
 type Busy = "save" | "publish" | "reload" | "preview";
 type Dialog = "publish" | "reload" | "overwrite";
 
+const DEFAULT_BODY = {
+  title: "Body",
+  description: "The content of the page, built from blocks.",
+};
 const SLUG_IN_USE = "That slug is already in use. Choose a different slug.";
 const newKey = () => crypto.randomUUID();
 
@@ -111,8 +110,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   detail: D | null;
   artPublicUrl: string | null;
 }) {
-  const { entity } = config;
-  const kind: EditorialEntityKind = entity.kind;
+  const { entity, api } = config;
   const id = detail?.id ?? null;
   const router = useRouter();
   const pathname = usePathname();
@@ -170,8 +168,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     setBusy("save");
     const signature = JSON.stringify([id, expectedVersion, built.payload]);
     const result = await attemptMutation(() =>
-      saveEditorialEntity({
-        kind,
+      api.save({
         id,
         payload: built.payload,
         expectedVersion,
@@ -196,7 +193,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     if (id === null) {
       toast.success(`${capitalise(entity.singular)} created as a draft.`);
       await releaseGuard();
-      router.replace(`/editorial/${kind}/${result.data.id}`);
+      router.replace(api.detailHref(result.data.id));
       return;
     }
     setVersion(result.data.version);
@@ -210,8 +207,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     setBusy("publish");
     setFailure(null);
     const result = await attemptMutation(() =>
-      setEditorialPublication({
-        kind,
+      api.setPublication({
         id,
         published: publish,
         idempotencyKey: keyFor(`${id}:${publish}:${version}`),
@@ -237,9 +233,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     if (!id) return;
     setBusy("preview");
     setFailure(null);
-    const result = await attemptMutation(() =>
-      issueEditorialPreviewToken({ kind, id, idempotencyKey: newKey() }),
-    );
+    const result = await attemptMutation(() => api.createPreview({ id, idempotencyKey: newKey() }));
     setBusy(null);
     if (!result.ok) {
       setFailure(failureFrom(result, "create a preview link"));
@@ -256,7 +250,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   async function reloadFromStore() {
     if (!id) return;
     setBusy("reload");
-    const result = await attemptMutation(() => getEditorialEntityDetail(kind, id));
+    const result = await attemptMutation(() => api.reload(id));
     setBusy(null);
     setDialog(null);
     if (!result.ok) {
@@ -277,6 +271,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   }
 
   const disabled = busy !== null;
+  const body = config.body ?? DEFAULT_BODY;
   const name = config.nameOf(form);
   const publishing = status !== "published";
   const editField = (next: F) => {
@@ -361,7 +356,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
 
         {config.renderFields({ form, onChange: editField, disabled, errors })}
 
-        <FieldSection title="Body" description="The content of the page, built from blocks.">
+        <FieldSection title={body.title} description={body.description}>
           <div className="sm:col-span-2">
             <EditorialBlockEditor
               key={blockSession}
