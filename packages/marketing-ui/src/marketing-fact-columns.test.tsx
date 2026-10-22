@@ -54,4 +54,30 @@ describe("MarketingFactColumns", () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("stacks facts in a list layout with the icon beside the label and value", () => {
+    render(
+      <MarketingFactColumns
+        ariaLabel="Venue details"
+        layout="list"
+        facts={[
+          {
+            id: "phone",
+            icon: <svg data-testid="phone" />,
+            label: "Gallery enquiries",
+            lines: [
+              <a key="p" href="tel:+4420">
+                +44 20
+              </a>,
+            ],
+          },
+        ]}
+      />,
+    );
+    const list = screen.getByLabelText("Venue details");
+    expect(list).toHaveClass("flex-col");
+    expect(list).not.toHaveClass("text-center");
+    expect(screen.getByTestId("phone")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "+44 20" })).toHaveAttribute("href", "tel:+4420");
+  });
 });

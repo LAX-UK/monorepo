@@ -1,5 +1,6 @@
 export {
   MarketingArrowRightIcon,
+  MarketingArrowUpRightIcon,
   MarketingBagIcon,
   MarketingBellIcon,
   MarketingBellRingIcon,
@@ -9,12 +10,14 @@ export {
   MarketingCarouselPreviousIcon,
   MarketingChevronDownIcon,
   MarketingCircleAlertIcon,
+  MarketingClockIcon,
   MarketingCloseIcon,
   MarketingGridIcon,
   MarketingHeartIcon,
   MarketingHomeIcon,
   MarketingImageIcon,
   MarketingInfoIcon,
+  MarketingMailIcon,
   MarketingMapPinIcon,
   MarketingMenuIcon,
   MarketingMoonIcon,
@@ -375,3 +378,5 @@ export {
   type MarketingFeatureGridProps,
   type MarketingFeatureGridVariant,
 } from "./marketing-feature-grid.js";
+export { MarketingFeatureCard, type MarketingFeatureCardProps } from "./marketing-feature-card.js";
+export { MarketingStepCard, type MarketingStepCardProps } from "./marketing-step-card.js";

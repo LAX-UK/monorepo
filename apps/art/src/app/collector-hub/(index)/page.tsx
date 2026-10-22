@@ -1,10 +1,16 @@
 import { ArtStatusState } from "@/components/art-status-state";
-import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
+import { ArtHubFeatureCard } from "@/components/editorial/art-hub-feature-card";
+import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { composeCollectorHubPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingPageTitle, MarketingReveal } from "@auction/marketing-ui";
+import {
+  MarketingCardReveal,
+  MarketingCtaBand,
+  MarketingPageTitle,
+  MarketingReveal,
+} from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -32,13 +38,17 @@ export default async function CollectorHubPage() {
     );
   }
 
+  const { cards } = result.data;
+  // The closing banner borrows the hub's own imagery; without any it falls back to a plain band.
+  const bannerImage = cards.find((card) => card.imageUrl)?.imageUrl ?? null;
+
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 pb-10 lg:pb-16")}>
       <MarketingPageTitle
         title="Collector Hub"
         subtitle="From discovering your first work to exploring a more established art practice, LAX offers guidance at every stage."
       />
-      {result.data.cards.length === 0 ? (
+      {cards.length === 0 ? (
         <ArtStatusState
           variant="empty"
           layout="inline"
@@ -47,17 +57,47 @@ export default async function CollectorHubPage() {
         />
       ) : (
         <MarketingReveal index={0}>
-          <ArtEditorialCardGrid cards={result.data.cards} ariaLabel="Collector resources" />
+          <ul
+            className="m-0 grid list-none gap-6 p-0 md:grid-cols-2"
+            aria-label="Collector resources"
+          >
+            {cards.map((card, index) => (
+              <li key={card.key}>
+                <MarketingCardReveal index={index}>
+                  <ArtHubFeatureCard card={card} priority={index < 2} />
+                </MarketingCardReveal>
+              </li>
+            ))}
+          </ul>
         </MarketingReveal>
       )}
-      {/* Figma closes the hub with a "Get in touch" band (782:11154). */}
-      <Button
-        asChild
-        size="lg"
-        className="mx-auto min-h-11 w-fit font-label uppercase tracking-wide"
-      >
-        <Link href="/contact">Get in touch</Link>
-      </Button>
+      <MarketingCtaBand
+        title="Curious to learn more?"
+        tone="feature"
+        {...(bannerImage
+          ? {
+              media: (
+                <ArtMediaImage
+                  src={bannerImage}
+                  alt=""
+                  sizes="100vw"
+                  className="absolute inset-0 size-full"
+                  imgClassName="object-cover"
+                />
+              ),
+            }
+          : {})}
+        action={
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="min-h-11 border-current bg-transparent text-inherit hover:bg-transparent hover:text-inherit hover:underline"
+          >
+            <Link href="/contact">Get in touch</Link>
+          </Button>
+        }
+      />
     </div>
   );
 }

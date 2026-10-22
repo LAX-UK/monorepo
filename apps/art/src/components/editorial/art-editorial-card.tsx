@@ -35,7 +35,7 @@ export function ArtEditorialCard({
       href={card.href}
       linkAs={ArtEditorialLink}
       title={card.headline}
-      kicker={[card.kicker, card.place].filter((part): part is string => Boolean(part))}
+      kicker={[card.kicker, card.kickerDetail].filter((part): part is string => Boolean(part))}
       details={card.meta ? [card.meta] : []}
       media={
         <ArtMediaImage

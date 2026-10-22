@@ -1,15 +1,18 @@
 import { ArtStatusState } from "@/components/art-status-state";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
-import { ArtVenueFacts } from "@/components/editorial/art-venue-facts";
 import { ArtPrivateViewingSection } from "@/components/enquiry/art-private-viewing-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { composeVisitPage } from "@/lib/editorial/editorial-pages.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingCardMedia, MarketingPageTitle, MarketingReveal } from "@auction/marketing-ui";
+import {
+  MarketingCardReveal,
+  MarketingPageTitle,
+  MarketingReveal,
+  MarketingVenueCard,
+} from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Visit | LAX Art",
@@ -36,14 +39,17 @@ export default async function VisitPage() {
     );
   }
 
-  const { venues } = result.data;
+  const { title, intro, venues } = result.data;
 
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 pb-10 lg:pb-16")}>
-      <MarketingPageTitle
-        title="LAX's Locations"
-        subtitle="Plan your visit to London Art Exchange gallery spaces, or book a private viewing."
-      />
+      <MarketingPageTitle title={title} />
+
+      {intro ? (
+        <p className="m-0 mx-auto max-w-3xl text-center text-base leading-relaxed text-on-surface md:text-xl">
+          {intro}
+        </p>
+      ) : null}
 
       {venues.length === 0 ? (
         <ArtStatusState
@@ -54,39 +60,42 @@ export default async function VisitPage() {
         />
       ) : (
         <MarketingReveal index={0}>
-          <ul className="grid gap-x-6 gap-y-12 md:grid-cols-2" aria-label="Galleries">
-            {venues.map((card, index) => (
-              <li
-                key={card.venue.slug}
-                className="flex flex-col gap-5"
-                data-testid="art-venue-card"
-              >
-                <MarketingCardMedia className="aspect-[4/3] bg-surface-container">
-                  <ArtMediaImage
-                    src={card.venue.coverUrl}
-                    alt=""
-                    label="Gallery"
-                    priority={index === 0}
-                    sizes="(min-width: 48rem) 45vw, 100vw"
-                    className="absolute inset-0 size-full"
-                    imgClassName="object-cover"
-                  />
-                </MarketingCardMedia>
-                <h2 className="font-headline text-2xl font-semibold text-on-surface">
-                  <Link href={card.href} className="art-focus-ring rounded-sm hover:underline">
-                    {card.venue.name}
-                  </Link>
-                </h2>
-                <ArtVenueFacts facts={card} compact />
-                <Link
-                  href={card.href}
-                  className="art-focus-ring w-fit rounded-sm font-label text-sm font-semibold uppercase tracking-wide text-on-surface underline underline-offset-4 hover:no-underline"
-                >
-                  Plan your visit<span className="sr-only"> to {card.venue.name}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <section aria-labelledby="our-galleries" className="flex flex-col gap-6">
+            <h2
+              id="our-galleries"
+              className="m-0 font-headline text-3xl font-medium text-on-surface md:text-4xl"
+            >
+              Our galleries
+            </h2>
+            <ul
+              className="m-0 grid list-none gap-x-6 gap-y-10 p-0 md:grid-cols-2"
+              aria-label="Galleries"
+            >
+              {venues.map((venue, index) => (
+                <li key={venue.slug} data-testid="art-venue-card">
+                  <MarketingCardReveal index={index}>
+                    <MarketingVenueCard
+                      href={venue.href}
+                      name={venue.name}
+                      addressLines={venue.addressLines}
+                      headingLevel="h3"
+                      image={
+                        <ArtMediaImage
+                          src={venue.imageUrl}
+                          alt=""
+                          label="Gallery"
+                          priority={index === 0}
+                          sizes="(min-width: 48rem) 45vw, 100vw"
+                          className="absolute inset-0 size-full"
+                          imgClassName="object-cover"
+                        />
+                      }
+                    />
+                  </MarketingCardReveal>
+                </li>
+              ))}
+            </ul>
+          </section>
         </MarketingReveal>
       )}
 

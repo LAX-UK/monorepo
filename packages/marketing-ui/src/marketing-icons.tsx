@@ -1,6 +1,7 @@
 import { cn } from "@auction/ui";
 import {
   ArrowRight,
+  ArrowUpRight,
   Award,
   Bell,
   BellRing,
@@ -9,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleAlert,
+  Clock,
   Ellipsis,
   Heart,
   House,
@@ -16,6 +18,7 @@ import {
   Info,
   LayoutGrid,
   type LucideProps,
+  Mail,
   MapPin,
   Menu,
   Moon,
@@ -144,4 +147,16 @@ export function MarketingMapPinIcon({ className, ...props }: MarketingIconProps)
 
 export function MarketingCalendarIcon({ className, ...props }: MarketingIconProps) {
   return <CalendarDays className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingClockIcon({ className, ...props }: MarketingIconProps) {
+  return <Clock className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingMailIcon({ className, ...props }: MarketingIconProps) {
+  return <Mail className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingArrowUpRightIcon({ className, ...props }: MarketingIconProps) {
+  return <ArrowUpRight className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }
