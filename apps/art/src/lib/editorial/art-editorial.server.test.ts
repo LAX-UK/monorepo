@@ -15,6 +15,7 @@ vi.mock("@/lib/art-runtime-flags", () => ({ isArtEditorialEnabled }));
 import {
   fetchEditorialArtistRelations,
   fetchEditorialExhibitionBySlug,
+  fetchEditorialStories,
   fetchEditorialStoryBySlug,
 } from "@/lib/editorial/art-editorial.server";
 
@@ -64,6 +65,30 @@ describe("art editorial BFF", () => {
     expect(artCatalogueFetch).toHaveBeenCalledWith("/v1/editorial/artists/mara%20ellison", {
       cache: "no-store",
     });
+  });
+
+  it("passes story list filters as query parameters and keeps new story fields", async () => {
+    const podcast = {
+      ...storySummary,
+      slug: "studio-light",
+      kind: "podcast",
+      category: "podcast",
+      series: "In the studio",
+      episodeNumber: 4,
+      durationSeconds: 2778,
+    };
+    artCatalogueFetch.mockResolvedValue(jsonResponse({ items: [podcast] }));
+
+    const result = await fetchEditorialStories({ category: "podcast", series: "In the studio" });
+    expect(result).toEqual({ status: "ok", data: { items: [podcast] } });
+    expect(artCatalogueFetch.mock.calls[0]?.[0]).toBe(
+      "/v1/editorial/stories?category=podcast&series=In+the+studio",
+    );
+
+    artCatalogueFetch.mockClear();
+    artCatalogueFetch.mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchEditorialStories();
+    expect(artCatalogueFetch.mock.calls[0]?.[0]).toBe("/v1/editorial/stories");
   });
 
   it("reports an unknown artist as not_found and skips the read when editorial is off", async () => {

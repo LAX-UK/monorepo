@@ -70,8 +70,9 @@ export {
   EditorialHomeResponseSchema,
   EditorialPageDetailSchema,
   EditorialPageSummarySchema,
+  EditorialPlacementSlotSchema,
   EditorialStoryDetailSchema,
-  EditorialStoryKindSchema,
+  EditorialStoryListQuerySchema,
   EditorialStorySummarySchema,
   EditorialVenueDetailSchema,
   EditorialVenueSummarySchema,
@@ -81,9 +82,24 @@ export {
   AdminGeneralEnquiryRowSchema,
   AdminGeneralEnquiriesResponseSchema,
   type EditorialHomeResponse,
+  type EditorialPlacementSlot,
+  type EditorialStoryListQuery,
   type GeneralEnquiryRow,
   type AdminGeneralEnquiryRow,
 } from "./editorial-public.js";
+export {
+  EDITORIAL_STORY_CATEGORY_LABELS,
+  EDITORIAL_STORY_DEFAULT_CATEGORIES,
+  EDITORIAL_STORY_TAB_LABELS,
+  EditorialStoryCategorySchema,
+  EditorialStoryKindSchema,
+  defaultEditorialStoryCategory,
+  editorialStoryTab,
+  type EditorialStoryCategory,
+  type EditorialStoryKind,
+  type EditorialStoryTab,
+} from "./editorial-story-category.js";
+export { estimateEditorialReadMinutes } from "./editorial-read-time.js";
 export {
   PublicMerchandiseProductDetailSchema,
   PublicMerchandiseProductListSchema,

@@ -58,11 +58,19 @@ const artistDetail = {
 const storySummary = {
   slug: "welcome",
   kind: "article" as const,
+  category: "article" as const,
   title: "Welcome",
   standfirst: null,
   coverUrl: null,
   featured: false,
   publishedAt: "2026-03-01T09:00:00.000Z",
+  authorName: null,
+  readMinutes: null,
+  series: null,
+  episodeNumber: null,
+  durationSeconds: null,
+  publicationName: null,
+  externalUrl: null,
 };
 
 const exhibitionSummary = {
@@ -74,6 +82,7 @@ const exhibitionSummary = {
   endsOn: null,
   coverUrl: null,
   featured: true,
+  subtitle: null,
   venue: { slug: "lax-marylebone", name: "LAX Marylebone" },
 };
 
@@ -117,6 +126,8 @@ describe("editorial routes", () => {
           linkUrl: null,
           refKind: "external",
           refSlug: null,
+          body: null,
+          ctaLabel: null,
         },
       ],
     });
@@ -130,16 +141,7 @@ describe("editorial routes", () => {
     const app = await buildApp({
       listPages: async () => [{ slug: "faq", title: "FAQ", updatedAt: "2026-03-01T10:00:00.000Z" }],
       listStories: async () => [
-        {
-          slug: "news",
-          kind: "article",
-          title: "News",
-          standfirst: null,
-          coverUrl: null,
-          featured: false,
-          publishedAt: "2026-03-01T09:00:00.000Z",
-          updatedAt: "2026-03-02T10:00:00.000Z",
-        },
+        { ...storySummary, slug: "news", updatedAt: "2026-03-02T10:00:00.000Z" },
       ],
     });
     const pages = await app.inject({ method: "GET", url: "/v1/editorial/pages" });
@@ -164,6 +166,7 @@ describe("editorial routes", () => {
         endsOn: "2025-08-01",
         coverUrl: null,
         featured: false,
+        subtitle: null,
         venue: null,
       },
     ]);
@@ -280,6 +283,7 @@ describe("editorial routes", () => {
         ...exhibitionSummary,
         timesNote: null,
         venueSlug: "lax-marylebone",
+        contact: null,
         body: [],
         installationMedia: [],
         artworks: [artworkSummary],
@@ -331,6 +335,7 @@ describe("editorial routes", () => {
       getStoryBySlug: async () => ({
         ...storySummary,
         videoUrl: null,
+        audioUrl: null,
         body: [],
         seoTitle: null,
         seoDescription: null,
@@ -404,6 +409,67 @@ describe("editorial routes", () => {
     expect(res.statusCode).toBe(201);
     expect(res.json().enquiryId).toMatch(/^[0-9a-f-]{36}$/);
     expect(insertGeneralEnquiry).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("forwards story list filters and returns podcast and press fields", async () => {
+    const listStories = vi.fn(async () => [
+      {
+        ...storySummary,
+        slug: "episode-4",
+        kind: "podcast" as const,
+        category: "podcast" as const,
+        series: "In the studio",
+        episodeNumber: 4,
+        durationSeconds: 2760,
+        authorName: "Clara Hutchins",
+        updatedAt: "2026-03-02T10:00:00.000Z",
+      },
+    ]);
+    const app = await buildApp({ listStories });
+    const res = await app.inject({
+      method: "GET",
+      url: "/v1/editorial/stories?category=podcast&series=In%20the%20studio",
+    });
+    expect(res.statusCode).toBe(200);
+    expect(listStories).toHaveBeenCalledWith({ category: "podcast", series: "In the studio" });
+    expect(res.json().items[0]).toMatchObject({
+      kind: "podcast",
+      category: "podcast",
+      episodeNumber: 4,
+      durationSeconds: 2760,
+      authorName: "Clara Hutchins",
+    });
+    const invalid = await app.inject({ method: "GET", url: "/v1/editorial/stories?category=nope" });
+    expect(invalid.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("returns the exhibition subtitle and gallery contact", async () => {
+    const contact = {
+      name: "Elena Wendy",
+      role: "Exhibition specialist",
+      email: "elena@lax.art",
+      phone: null,
+      avatarUrl: null,
+    };
+    const app = await buildApp({
+      getExhibitionBySlug: async () => ({
+        ...exhibitionSummary,
+        subtitle: "Selling exhibition",
+        timesNote: null,
+        venueSlug: null,
+        contact,
+        body: [],
+        installationMedia: [],
+        artworks: [],
+        artists: [],
+        stories: [],
+      }),
+    });
+    const res = await app.inject({ method: "GET", url: "/v1/editorial/exhibitions/new-originals" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ subtitle: "Selling exhibition", contact });
     await app.close();
   });
 });

@@ -12,6 +12,7 @@ import type {
   ArtEditorialPreview,
   ArtEditorialStoryList,
   ArtEditorialVenueList,
+  ArtStoryListFilter,
 } from "@/lib/editorial/art-editorial.types";
 import {
   EditorialArtistRelationsSchema,
@@ -85,9 +86,13 @@ export function fetchEditorialExhibitionBySlug(slug: string) {
 }
 
 export function fetchEditorialStories(
-  kind?: "article" | "film" | "press" | "guide",
+  filter: ArtStoryListFilter = {},
 ): Promise<ArtEditorialFetchResult<ArtEditorialStoryList>> {
-  const query = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filter)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.size > 0 ? `?${params}` : "";
   return fetchEditorial(`/v1/editorial/stories${query}`, StoryListSchema);
 }
 

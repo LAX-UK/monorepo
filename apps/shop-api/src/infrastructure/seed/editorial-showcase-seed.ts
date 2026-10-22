@@ -13,7 +13,13 @@ import {
   shopEditorialStoryExhibition,
   shopEditorialVenue,
 } from "@auction/db/schema";
-import { type EditorialBlock, parseEditorialBlocks } from "@auction/shop-contracts";
+import {
+  type EditorialBlock,
+  type EditorialStoryCategory,
+  type EditorialStoryKind,
+  estimateEditorialReadMinutes,
+  parseEditorialBlocks,
+} from "@auction/shop-contracts";
 import { eq, inArray, sql } from "drizzle-orm";
 
 const SEED_ACTOR = "seed:editorial-showcase";
@@ -23,6 +29,8 @@ const UPCOMING_EXHIBITION_SLUG = "showcase-form-and-fold";
 const PAST_EXHIBITION_SLUG = "showcase-paper-rooms";
 const STORY_SLUG = "showcase-welcome";
 const GUIDE_SLUG = "showcase-collecting-guide";
+const PODCAST_SLUG = "showcase-podcast-studio-light";
+const PRESS_SLUG = "showcase-press-new-originals";
 /** Works and artist from `seed:catalogue`; rails skip slugs that are missing. */
 const SEED_ARTWORK_SLUGS = ["quiet-orchard", "tidal-forms", "harbour-light", "marylebone-dusk"];
 const SCULPTURE_ARTWORK_SLUGS = ["bronze-tide", "vessel-form-ii"];
@@ -143,6 +151,14 @@ const OPENING_HOURS = [
   { label: "Mon", hours: "Closed" },
 ];
 
+/** Card address lines and map pin for the seeded gallery. */
+const VENUE_LOCATION = {
+  streetLine: "12 Example Mews",
+  city: "London",
+  latitude: 51.520_3,
+  longitude: -0.153_2,
+};
+
 async function upsertVenue(db: Database, now: Date): Promise<string | undefined> {
   const [row] = await db
     .insert(shopEditorialVenue)
@@ -154,6 +170,7 @@ async function upsertVenue(db: Database, now: Date): Promise<string | undefined>
       name: "LAX Marylebone",
       address: "12 Example Mews, London",
       postcode: "W1U 1AA",
+      ...VENUE_LOCATION,
       openingHours: OPENING_HOURS,
       phone: "+44 20 0000 0000",
       email: "gallery@lax.art",
@@ -169,6 +186,7 @@ async function upsertVenue(db: Database, now: Date): Promise<string | undefined>
         updatedBy: SEED_ACTOR,
         openingHours: OPENING_HOURS,
         coverMediaKey: SEED_COVER.venue,
+        ...VENUE_LOCATION,
         updatedAt: now,
       },
     })
@@ -185,6 +203,8 @@ type SeedExhibition = {
   featured: boolean;
   cover: string;
   body: EditorialBlock[];
+  subtitle?: string;
+  contact?: { name: string; role: string; email: string; phone: string };
 };
 
 const EXHIBITIONS: readonly SeedExhibition[] = [
@@ -197,6 +217,13 @@ const EXHIBITIONS: readonly SeedExhibition[] = [
     featured: true,
     cover: SEED_COVER.current,
     body: EXHIBITION_BODY,
+    subtitle: "Selling exhibition",
+    contact: {
+      name: "Elena Wendy",
+      role: "Exhibition specialist",
+      email: "gallery@lax.art",
+      phone: "+44 20 0000 0001",
+    },
   },
   {
     slug: UPCOMING_EXHIBITION_SLUG,
@@ -250,6 +277,11 @@ async function upsertExhibition(
     featured: exhibition.featured,
     coverMediaKey: exhibition.cover,
     bodyBlocks: exhibition.body,
+    subtitle: exhibition.subtitle ?? null,
+    contactName: exhibition.contact?.name ?? null,
+    contactRole: exhibition.contact?.role ?? null,
+    contactEmail: exhibition.contact?.email ?? null,
+    contactPhone: exhibition.contact?.phone ?? null,
   };
   const [row] = await db
     .insert(shopEditorialExhibition)
@@ -391,18 +423,24 @@ async function upsertPage(db: Database, page: SeedPage, now: Date): Promise<stri
   return row?.id;
 }
 
-async function upsertStory(
-  db: Database,
-  story: {
-    slug: string;
-    kind: "article" | "guide";
-    title: string;
-    standfirst: string;
-    cover: string;
-    body: EditorialBlock[];
-  },
-  now: Date,
-): Promise<string | undefined> {
+type SeedStory = {
+  slug: string;
+  kind: EditorialStoryKind;
+  title: string;
+  standfirst: string;
+  cover: string;
+  body: EditorialBlock[];
+  category?: EditorialStoryCategory;
+  authorName?: string;
+  series?: string;
+  episodeNumber?: number;
+  audioUrl?: string;
+  durationSeconds?: number;
+  publicationName?: string;
+  externalUrl?: string;
+};
+
+async function upsertStory(db: Database, story: SeedStory, now: Date): Promise<string | undefined> {
   const values = {
     status: "published" as const,
     publishedAt: now,
@@ -413,6 +451,15 @@ async function upsertStory(
     featured: true,
     coverMediaKey: story.cover,
     bodyBlocks: story.body,
+    category: story.category ?? null,
+    authorName: story.authorName ?? null,
+    readMinutesEstimate: estimateEditorialReadMinutes(story.body),
+    series: story.series ?? null,
+    episodeNumber: story.episodeNumber ?? null,
+    audioUrl: story.audioUrl ?? null,
+    durationSeconds: story.durationSeconds ?? null,
+    publicationName: story.publicationName ?? null,
+    externalUrl: story.externalUrl ?? null,
   };
   const [row] = await db
     .insert(shopEditorialStory)
@@ -495,8 +542,16 @@ async function seedEditorialJoins(
       })),
     ];
     const exhibitionArtists = [
-      ...currentArtists.map((artistId) => ({ exhibitionId: ids.exhibitionId, artistId })),
-      ...upcomingArtists.map((artistId) => ({ exhibitionId: ids.upcomingId, artistId })),
+      ...currentArtists.map((artistId, position) => ({
+        exhibitionId: ids.exhibitionId,
+        artistId,
+        position,
+      })),
+      ...upcomingArtists.map((artistId, position) => ({
+        exhibitionId: ids.upcomingId,
+        artistId,
+        position,
+      })),
     ];
     if (exhibitionWorks.length > 0) {
       await tx.insert(shopEditorialExhibitionArtwork).values(exhibitionWorks);
@@ -507,12 +562,18 @@ async function seedEditorialJoins(
     if (storyArtists.length > 0) {
       await tx
         .insert(shopEditorialStoryArtist)
-        .values(storyArtists.map((artistId) => ({ storyId: ids.storyId, artistId })));
+        .values(
+          storyArtists.map((artistId, position) => ({ storyId: ids.storyId, artistId, position })),
+        );
     }
     if (currentWorks.length > 0) {
       await tx
         .insert(shopEditorialStoryArtwork)
-        .values(currentWorks.slice(0, 2).map((artworkId) => ({ storyId: ids.storyId, artworkId })));
+        .values(
+          currentWorks
+            .slice(0, 2)
+            .map((artworkId, position) => ({ storyId: ids.storyId, artworkId, position })),
+        );
     }
     await tx
       .insert(shopEditorialStoryExhibition)
@@ -545,6 +606,7 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       standfirst: "Gallery-led originals, sold directly by the London Art Exchange.",
       cover: SEED_COVER.story,
       body: STORY_BODY,
+      authorName: "Clara Hutchins",
     },
     now,
   );
@@ -557,10 +619,50 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       standfirst: "Three things to check before buying an original.",
       cover: SEED_COVER.guide,
       body: GUIDE_BODY,
+      series: "Collecting guide",
     },
     now,
   );
-  if (!exhibitionId || !upcomingId || !storyId || !guideId || !collectingGuideId || !advisoryId) {
+  const podcastId = await upsertStory(
+    db,
+    {
+      slug: PODCAST_SLUG,
+      kind: "podcast",
+      title: "Studio light with Ines Okafor",
+      standfirst: "How a painter chases the last hour of daylight across a London winter.",
+      cover: SEED_COVER.story,
+      body: blocks([prose("Episode notes: studio rituals, north light and the first sale.")]),
+      series: "In the studio",
+      episodeNumber: 4,
+      durationSeconds: 46 * 60 + 18,
+      audioUrl: "https://media.lax.art/podcast/studio-light.mp3",
+    },
+    now,
+  );
+  const pressId = await upsertStory(
+    db,
+    {
+      slug: PRESS_SLUG,
+      kind: "press",
+      title: "New Originals brings young painters to Marylebone",
+      standfirst: "A review of the gallery's autumn selling show.",
+      cover: SEED_COVER.current,
+      body: [],
+      publicationName: "Art Plugged",
+      externalUrl: "https://example.com/art-plugged/new-originals",
+    },
+    now,
+  );
+  if (
+    !exhibitionId ||
+    !upcomingId ||
+    !storyId ||
+    !guideId ||
+    !podcastId ||
+    !pressId ||
+    !collectingGuideId ||
+    !advisoryId
+  ) {
     return;
   }
   await seedEditorialJoins(db, { exhibitionId, upcomingId, storyId });
@@ -620,6 +722,8 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       refKind: "page",
       refId: collectingGuideId,
       headline: "Collecting 101",
+      body: "Start with what you respond to, then learn how to read a work and its edition.",
+      ctaLabel: "Learn more",
       linkUrl: null,
     },
     {
@@ -628,6 +732,8 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       refKind: "page",
       refId: advisoryId,
       headline: "Art advisory",
+      body: "Advisors who build a collection around your space, budget and taste.",
+      ctaLabel: "Learn more",
       linkUrl: null,
     },
     {
@@ -636,6 +742,43 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       refKind: "story",
       refId: guideId,
       headline: "A first-time collector’s guide",
+      linkUrl: null,
+    },
+    {
+      slot: "home_promo_bid",
+      position: 0,
+      refKind: "external",
+      refId: null,
+      headline: "Bid in auctions",
+      body: "Discover works through the auction room.",
+      ctaLabel: "Explore auctions",
+      linkUrl: "https://lax.bid",
+    },
+    {
+      slot: "home_promo_shop",
+      position: 0,
+      refKind: "external",
+      refId: null,
+      headline: "Collect with certainty",
+      body: "Editions and prints made to be lived with.",
+      ctaLabel: "Explore editions",
+      // Local Shop storefront; lax.art resolves the real cross-product links from the LAX product directory.
+      linkUrl: "http://localhost:3020",
+    },
+    {
+      slot: "art_hub_podcast",
+      position: 0,
+      refKind: "story",
+      refId: podcastId,
+      headline: "LAX's Podcast",
+      linkUrl: null,
+    },
+    {
+      slot: "art_hub_press",
+      position: 0,
+      refKind: "story",
+      refId: pressId,
+      headline: "Press",
       linkUrl: null,
     },
   ];
@@ -651,6 +794,8 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
           refId: sql`excluded.ref_id`,
           headline: sql`excluded.headline`,
           linkUrl: sql`excluded.link_url`,
+          body: sql`excluded.body`,
+          ctaLabel: sql`excluded.cta_label`,
           publishedAt: now,
           updatedAt: now,
         },

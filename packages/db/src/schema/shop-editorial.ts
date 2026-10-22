@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -29,6 +30,24 @@ export const shopEditorialStoryKindEnum = pgEnum("shop_editorial_story_kind", [
   "film",
   "press",
   "guide",
+  "podcast",
+]);
+
+/**
+ * Display category for stories. An enum rather than a lookup table: the categories come from the
+ * lax.art design and drive tab grouping in code, so a new one ships with a deploy either way.
+ * Null means "derive from kind" (`defaultEditorialStoryCategory` in `@auction/shop-contracts`).
+ */
+export const shopEditorialStoryCategoryEnum = pgEnum("shop_editorial_story_category", [
+  "article",
+  "artist_interview",
+  "artist_conversation",
+  "studio_visit",
+  "film",
+  "press",
+  "podcast",
+  "collecting_guide",
+  "exhibition",
 ]);
 
 export const shopEditorialPlacementSlotEnum = pgEnum("shop_editorial_placement_slot", [
@@ -38,6 +57,13 @@ export const shopEditorialPlacementSlotEnum = pgEnum("shop_editorial_placement_s
   "home_guide",
   "art_hub_spotlight",
   "collector_hub_card",
+  "home_promo_bid",
+  "home_promo_shop",
+  "art_hub_now_on",
+  "art_hub_podcast",
+  "art_hub_films",
+  "art_hub_press",
+  "art_hub_feature",
 ]);
 
 export const shopEditorialPlacementRefKindEnum = pgEnum("shop_editorial_placement_ref_kind", [
@@ -66,7 +92,12 @@ export const shopEditorialVenue = pgTable(
     updatedBy: text("updated_by"),
     name: text("name").notNull(),
     address: text("address"),
+    /** Short first address line for cards, which show street and postcode on separate lines. */
+    streetLine: text("street_line"),
+    city: text("city"),
     postcode: text("postcode"),
+    latitude: numeric("latitude", { precision: 9, scale: 6, mode: "number" }),
+    longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }),
     openingHours: jsonb("opening_hours"),
     phone: text("phone"),
     email: text("email"),
@@ -76,7 +107,13 @@ export const shopEditorialVenue = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("shop_editorial_venue_slug_uid").on(table.slug)],
+  (table) => [
+    uniqueIndex("shop_editorial_venue_slug_uid").on(table.slug),
+    check(
+      "shop_editorial_venue_coordinates_chk",
+      sql`(${table.latitude} IS NULL OR ${table.latitude} BETWEEN -90 AND 90) AND (${table.longitude} IS NULL OR ${table.longitude} BETWEEN -180 AND 180)`,
+    ),
+  ],
 );
 
 export const shopEditorialExhibition = pgTable(
@@ -90,6 +127,8 @@ export const shopEditorialExhibition = pgTable(
     kind: shopEditorialExhibitionKindEnum("kind").notNull(),
     venueId: uuid("venue_id").references(() => shopEditorialVenue.id, { onDelete: "set null" }),
     title: text("title").notNull(),
+    /** Short type line under the title, e.g. "Selling exhibition". */
+    subtitle: text("subtitle"),
     summary: text("summary"),
     startsOn: date("starts_on", { mode: "string" }),
     endsOn: date("ends_on", { mode: "string" }),
@@ -97,6 +136,12 @@ export const shopEditorialExhibition = pgTable(
     coverMediaKey: text("cover_media_key"),
     featured: boolean("featured").default(false).notNull(),
     bodyBlocks: jsonb("body_blocks").default([]).notNull(),
+    /** One named gallery contact per exhibition; the public contact is omitted without a name. */
+    contactName: text("contact_name"),
+    contactRole: text("contact_role"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    contactAvatarMediaKey: text("contact_avatar_media_key"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
@@ -131,6 +176,8 @@ export const shopEditorialExhibitionArtist = pgTable(
     artistId: uuid("artist_id")
       .notNull()
       .references(() => shopArtist.id, { onDelete: "cascade" }),
+    /** Editor-chosen order (0 first); ties fall back to the read model's own order. */
+    position: integer("position").default(0).notNull(),
   },
   (table) => [
     primaryKey({
@@ -169,8 +216,23 @@ export const shopEditorialStory = pgTable(
     kind: shopEditorialStoryKindEnum("kind").notNull(),
     title: text("title").notNull(),
     standfirst: text("standfirst"),
+    category: shopEditorialStoryCategoryEnum("category"),
+    authorName: text("author_name"),
+    /** Editor override; null falls back to `readMinutesEstimate`. */
+    readMinutes: integer("read_minutes"),
+    /** Recomputed from the body on every save, so lists show a read time without loading bodies. */
+    readMinutesEstimate: integer("read_minutes_estimate"),
+    /** Free text, e.g. "Collecting guide", so editors can start a series without a deploy. */
+    series: text("series"),
+    episodeNumber: integer("episode_number"),
     coverMediaKey: text("cover_media_key"),
     videoUrl: text("video_url"),
+    audioUrl: text("audio_url"),
+    /** Running time of a film or podcast. */
+    durationSeconds: integer("duration_seconds"),
+    /** Press coverage: the outlet and the original article. */
+    publicationName: text("publication_name"),
+    externalUrl: text("external_url"),
     featured: boolean("featured").default(false).notNull(),
     bodyBlocks: jsonb("body_blocks").default([]).notNull(),
     seoTitle: text("seo_title"),
@@ -178,7 +240,13 @@ export const shopEditorialStory = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("shop_editorial_story_slug_uid").on(table.slug)],
+  (table) => [
+    uniqueIndex("shop_editorial_story_slug_uid").on(table.slug),
+    check(
+      "shop_editorial_story_counts_chk",
+      sql`(${table.readMinutes} IS NULL OR ${table.readMinutes} > 0) AND (${table.readMinutesEstimate} IS NULL OR ${table.readMinutesEstimate} > 0) AND (${table.durationSeconds} IS NULL OR ${table.durationSeconds} > 0) AND (${table.episodeNumber} IS NULL OR ${table.episodeNumber} > 0)`,
+    ),
+  ],
 );
 
 export const shopEditorialStoryArtist = pgTable(
@@ -190,6 +258,8 @@ export const shopEditorialStoryArtist = pgTable(
     artistId: uuid("artist_id")
       .notNull()
       .references(() => shopArtist.id, { onDelete: "cascade" }),
+    /** Editor-chosen order (0 first); ties fall back to the read model's own order. */
+    position: integer("position").default(0).notNull(),
   },
   (table) => [
     primaryKey({
@@ -208,6 +278,8 @@ export const shopEditorialStoryArtwork = pgTable(
     artworkId: uuid("artwork_id")
       .notNull()
       .references(() => shopArtwork.id, { onDelete: "cascade" }),
+    /** Editor-chosen order (0 first); ties fall back to the read model's own order. */
+    position: integer("position").default(0).notNull(),
   },
   (table) => [
     primaryKey({
@@ -262,6 +334,8 @@ export const shopEditorialPlacement = pgTable(
     refKind: shopEditorialPlacementRefKindEnum("ref_kind").notNull(),
     refId: uuid("ref_id"),
     headline: text("headline"),
+    body: text("body"),
+    ctaLabel: text("cta_label"),
     mediaKey: text("media_key"),
     linkUrl: text("link_url"),
     publishedAt: timestamp("published_at", { mode: "date", withTimezone: true }),

@@ -12,6 +12,7 @@ import {
   shopEditorialVenue,
   shopParty,
 } from "@auction/db/schema";
+import { defaultEditorialStoryCategory } from "@auction/shop-contracts";
 import { type SQL, and, asc, desc, eq } from "drizzle-orm";
 import type {
   EditorialArtistRelationsReadModel,
@@ -47,6 +48,11 @@ export const storySummaryOrder = [
 ];
 const artistNameOrder = [asc(shopParty.displayName), asc(shopArtist.slug)];
 
+/** Editors can leave a text field as an empty string; storefronts get `null` either way. */
+export function blankToNull(value: string | null): string | null {
+  return value?.trim() ? value : null;
+}
+
 type ExhibitionSummaryRow = {
   slug: string;
   kind: EditorialExhibitionSummaryReadModel["kind"];
@@ -56,6 +62,7 @@ type ExhibitionSummaryRow = {
   endsOn: string | null;
   coverMediaKey: string | null;
   featured: boolean;
+  subtitle: string | null;
   venueSlug: string | null;
   venueName: string | null;
 };
@@ -63,12 +70,21 @@ type ExhibitionSummaryRow = {
 type StorySummaryRow = {
   slug: string;
   kind: EditorialStorySummaryReadModel["kind"];
+  category: EditorialStorySummaryReadModel["category"] | null;
   title: string;
   standfirst: string | null;
   coverMediaKey: string | null;
   featured: boolean;
   publishedAt: Date | null;
   updatedAt: Date;
+  authorName: string | null;
+  readMinutes: number | null;
+  readMinutesEstimate: number | null;
+  series: string | null;
+  episodeNumber: number | null;
+  durationSeconds: number | null;
+  publicationName: string | null;
+  externalUrl: string | null;
 };
 
 /** Venue is joined in the same query (published venues only) to avoid a lookup per card. */
@@ -83,6 +99,7 @@ export function selectExhibitionSummaries(db: Database) {
       endsOn: shopEditorialExhibition.endsOn,
       coverMediaKey: shopEditorialExhibition.coverMediaKey,
       featured: shopEditorialExhibition.featured,
+      subtitle: shopEditorialExhibition.subtitle,
       venueSlug: shopEditorialVenue.slug,
       venueName: shopEditorialVenue.name,
     })
@@ -110,6 +127,7 @@ export function toExhibitionSummary(
     endsOn: row.endsOn,
     coverUrl: resolveMediaUrl(row.coverMediaKey),
     featured: row.featured,
+    subtitle: blankToNull(row.subtitle),
     venue: row.venueSlug && row.venueName ? { slug: row.venueSlug, name: row.venueName } : null,
   };
 }
@@ -119,12 +137,21 @@ export function selectStorySummaries(db: Database) {
     .select({
       slug: shopEditorialStory.slug,
       kind: shopEditorialStory.kind,
+      category: shopEditorialStory.category,
       title: shopEditorialStory.title,
       standfirst: shopEditorialStory.standfirst,
       coverMediaKey: shopEditorialStory.coverMediaKey,
       featured: shopEditorialStory.featured,
       publishedAt: shopEditorialStory.publishedAt,
       updatedAt: shopEditorialStory.updatedAt,
+      authorName: shopEditorialStory.authorName,
+      readMinutes: shopEditorialStory.readMinutes,
+      readMinutesEstimate: shopEditorialStory.readMinutesEstimate,
+      series: shopEditorialStory.series,
+      episodeNumber: shopEditorialStory.episodeNumber,
+      durationSeconds: shopEditorialStory.durationSeconds,
+      publicationName: shopEditorialStory.publicationName,
+      externalUrl: shopEditorialStory.externalUrl,
     })
     .from(shopEditorialStory)
     .$dynamic();
@@ -137,11 +164,19 @@ export function toStorySummary(
   return {
     slug: row.slug,
     kind: row.kind,
+    category: row.category ?? defaultEditorialStoryCategory(row.kind),
     title: row.title,
     standfirst: row.standfirst,
     coverUrl: resolveMediaUrl(row.coverMediaKey),
     featured: row.featured,
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    authorName: blankToNull(row.authorName),
+    readMinutes: row.readMinutes ?? row.readMinutesEstimate,
+    series: blankToNull(row.series),
+    episodeNumber: row.episodeNumber,
+    durationSeconds: row.durationSeconds,
+    publicationName: blankToNull(row.publicationName),
+    externalUrl: blankToNull(row.externalUrl),
   };
 }
 
@@ -174,13 +209,14 @@ export function createEditorialRelationQueries(db: Database, resolveMediaUrl: Re
     join: typeof shopEditorialExhibitionArtist | typeof shopEditorialStoryArtist,
     condition: SQL,
   ) {
+    // Editors set `position`; artists they left at the default fall back to name order.
     const rows = await db
       .select(publicArtistColumns)
       .from(join)
       .innerJoin(shopArtist, eq(join.artistId, shopArtist.id))
       .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
       .where(condition)
-      .orderBy(...artistNameOrder)
+      .orderBy(asc(join.position), ...artistNameOrder)
       .limit(EDITORIAL_RELATED_LIMIT);
     return toArtistDirectoryRows(db, rows, { resolveMediaUrl, salesChannel: ART_SALES_CHANNEL });
   }
@@ -227,8 +263,9 @@ export function createEditorialRelationQueries(db: Database, resolveMediaUrl: Re
     async storyRelations(storyId: string): Promise<EditorialStoryDetailReadModel["related"]> {
       const [artists, artworks, exhibitions] = await Promise.all([
         artistRowsWhere(shopEditorialStoryArtist, eq(shopEditorialStoryArtist.storyId, storyId)),
-        // The story join has no position column, so newest works lead.
+        // Editor order first; works left at the default position show newest first.
         artworksWhere(shopEditorialStoryArtwork, eq(shopEditorialStoryArtwork.storyId, storyId), [
+          asc(shopEditorialStoryArtwork.position),
           desc(shopArtwork.createdAt),
           asc(shopArtwork.slug),
         ]),
