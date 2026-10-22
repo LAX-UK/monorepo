@@ -13,6 +13,7 @@ import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
+import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
@@ -153,6 +154,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
           merchandiseEnabled: options.deps.env.SHOP_MERCHANDISE_ENABLED,
         });
         void registerAdminPeopleRoutes(adminScope, options.deps.admin);
+        void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);

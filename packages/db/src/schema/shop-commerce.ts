@@ -58,6 +58,13 @@ export const shopArtworkInterestIntentEnum = pgEnum("shop_artwork_interest_inten
   "enquiry",
 ]);
 
+/** Where an enquiry stands in staff triage; shared by general enquiries and artwork enquiries. */
+export const shopEnquiryStatusEnum = pgEnum("shop_enquiry_status", [
+  "new",
+  "in_progress",
+  "closed",
+]);
+
 export const shopOrderStatusEnum = pgEnum("shop_order_status", [
   "pending_payment",
   "paid",
@@ -1286,8 +1293,18 @@ export const shopArtworkInterest = pgTable(
     contactEmail: text("contact_email"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     notifiedAt: timestamp("notified_at", { mode: "date", withTimezone: true }),
+    /** Triage state; only rows with intent `enquiry` appear in the staff inbox. */
+    status: shopEnquiryStatusEnum("status").default("new").notNull(),
+    /** Identity subject of the staff member handling it. */
+    assigneeSubject: text("assignee_subject"),
+    closedAt: timestamp("closed_at", { mode: "date", withTimezone: true }),
+    /** Changes with every triage edit; staff pass it back as the optimistic-concurrency version. */
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    index("shop_artwork_interest_inbox_idx")
+      .on(table.status, table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.intent} = 'enquiry'`),
     uniqueIndex("shop_artwork_interest_artwork_subject_intent_uid").on(
       table.artworkId,
       table.identitySubjectId,
@@ -1298,6 +1315,29 @@ export const shopArtworkInterest = pgTable(
       "shop_artwork_interest_subject_or_contact_ck",
       sql`${table.identitySubjectId} IS NOT NULL OR ${table.contactEmail} IS NOT NULL`,
     ),
+    check(
+      "shop_artwork_interest_closed_at_ck",
+      sql`(${table.status} = 'closed') = (${table.closedAt} IS NOT NULL)`,
+    ),
+  ],
+);
+
+/** Internal staff notes on an enquiry. Append-only: shop_app may INSERT and SELECT only. */
+export const shopEnquiryNote = pgTable(
+  "shop_enquiry_note",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** `general` is shop_general_enquiry, `artwork` is shop_artwork_interest; no FK as it spans both. */
+    enquiryKind: text("enquiry_kind").notNull(),
+    enquiryId: uuid("enquiry_id").notNull(),
+    authorSubject: text("author_subject").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("shop_enquiry_note_enquiry_idx").on(table.enquiryKind, table.enquiryId, table.createdAt),
+    check("shop_enquiry_note_kind_ck", sql`${table.enquiryKind} IN ('general', 'artwork')`),
+    check("shop_enquiry_note_body_ck", sql`char_length(${table.body}) BETWEEN 1 AND 5000`),
   ],
 );
 

@@ -1,6 +1,4 @@
 import {
-  AdminGeneralEnquiriesResponseSchema,
-  CursorListQuerySchema,
   EditorialCreateResponseSchema,
   EditorialEntityConflictBodySchema,
   EditorialExhibitionUpdateBodySchema,
@@ -22,10 +20,6 @@ import {
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import {
-  decodeCatalogueCursor,
-  encodeCatalogueCursor,
-} from "../../../application/catalogue-cursor.js";
 import type { EditorialUpdateOutcome } from "../../../application/ports/editorial.repository.js";
 import {
   type EditorialPreviewEntity,
@@ -37,8 +31,6 @@ import {
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
 import { registerAdminEditorialLinksRoutes } from "./admin-editorial-links.routes.js";
-
-const GENERAL_ENQUIRIES_PAGE_SIZE = 50;
 
 const PreviewTokenBodySchema = Type.Object({
   entity: Type.Union([
@@ -220,45 +212,6 @@ export async function registerAdminEditorialRoutes(
 ) {
   const repo = deps.editorial;
   await registerAdminEditorialLinksRoutes(app, deps.links);
-
-  app.get(
-    "/general-enquiries",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
-        response: { 200: AdminGeneralEnquiriesResponseSchema },
-      },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "enquiry.read");
-      const query = request.query as { cursor?: string; limit?: number };
-      const limit = query.limit ?? GENERAL_ENQUIRIES_PAGE_SIZE;
-      const rows = await repo.listAdminGeneralEnquiries({
-        limit: limit + 1,
-        before: decodeCatalogueCursor(query.cursor),
-      });
-      const items = rows.slice(0, limit);
-      const last = items.at(-1);
-      return {
-        nextCursor:
-          rows.length > limit && last
-            ? encodeCatalogueCursor({ createdAt: last.createdAt, id: last.enquiryId })
-            : null,
-        items: items.map((row) => ({
-          enquiryId: row.enquiryId,
-          identitySubjectId: row.identitySubjectId,
-          contactName: row.contactName,
-          contactEmail: row.contactEmail,
-          topic: row.topic,
-          contextSlug: row.contextSlug,
-          message: row.message,
-          phone: row.phone,
-          createdAt: row.createdAt.toISOString(),
-        })),
-      };
-    },
-  );
 
   app.get(
     "/editorial/venues",

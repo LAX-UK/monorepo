@@ -2,6 +2,7 @@ import { shopAdminSessionCookie } from "@/lib/session-cookie";
 import type { ShopApiErrorCode } from "@auction/shop-contracts";
 import { cookies } from "next/headers";
 import { getShopAdminContainer } from "../container";
+import { encodeAdminResourcePath } from "../domain/admin-resource-path";
 
 export type AdminFetchResult<T> =
   | { status: "ok"; data: T }
@@ -14,14 +15,6 @@ function readShopApiErrorCode(body: unknown): string | undefined {
   if (!body || typeof body !== "object") return undefined;
   const code = (body as { code?: unknown }).code;
   return typeof code === "string" ? code : undefined;
-}
-
-function encodeAdminResourcePath(path: string): string {
-  return path
-    .split("/")
-    .filter((segment) => segment.length > 0)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
 }
 
 async function forwardAdminGet(path: string): Promise<{ status: number; body: ArrayBuffer }> {

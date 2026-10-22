@@ -2,7 +2,13 @@ import type { ShopStaffCapability } from "@auction/shop-domain";
 
 export type AdminNavGroup = {
   title: string;
-  items: Array<{ href: string; label: string; capability?: ShopStaffCapability }>;
+  items: Array<{
+    href: string;
+    label: string;
+    capability?: ShopStaffCapability;
+    /** Records waiting for staff, shown as a count beside the label. */
+    attentionCount?: number;
+  }>;
 };
 
 export type AdminSessionNavInput = {
@@ -13,6 +19,8 @@ export type AdminSessionNavInput = {
     originalSales: boolean;
     merchandise: boolean;
   };
+  /** New enquiries nobody has picked up; 0 when unknown or the role cannot read enquiries. */
+  enquiryAttentionCount?: number;
 };
 
 function hasCapability(capabilities: readonly string[], capability: ShopStaffCapability): boolean {
@@ -36,7 +44,12 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
         { href: "/editorial/venues", label: "Venues", capability: "editorial.write" },
         { href: "/editorial/pages", label: "Pages", capability: "editorial.write" },
         { href: "/editorial/home", label: "Home placements", capability: "editorial.write" },
-        { href: "/general-enquiries", label: "Enquiries", capability: "enquiry.read" },
+        {
+          href: "/enquiries",
+          label: "Enquiries",
+          capability: "enquiry.read",
+          ...(input.enquiryAttentionCount ? { attentionCount: input.enquiryAttentionCount } : {}),
+        },
       ],
     },
     {

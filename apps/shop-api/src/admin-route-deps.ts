@@ -1,3 +1,4 @@
+import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { ImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
@@ -40,6 +41,7 @@ export type AdminRoutesDeps = {
   grantStaffRole: ReturnType<typeof createGrantStaffRoleHandler>;
   revokeStaffRole: ReturnType<typeof createRevokeStaffRoleHandler>;
   adminRead: AdminReadPorts;
+  enquiryInbox: EnquiryInboxService;
   staffReader: ShopStaffMemberReader;
   createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
   updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;
