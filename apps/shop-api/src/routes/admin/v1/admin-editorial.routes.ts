@@ -162,7 +162,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "audit.read");
+      requireShopStaffCapability(request, "enquiry.read");
       const items = await repo.listAdminGeneralEnquiries({ limit: 100 });
       return {
         items: items.map((row) => ({
@@ -189,7 +189,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       return { items: await repo.listAdminVenues() };
     },
   );
@@ -203,7 +203,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       return { items: await repo.listAdminExhibitions() };
     },
   );
@@ -217,7 +217,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       return { items: await repo.listAdminStories() };
     },
   );
@@ -231,7 +231,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       return { items: await repo.listAdminPages() };
     },
   );
@@ -245,7 +245,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       return { items: await repo.listAdminPlacements() };
     },
   );
@@ -261,7 +261,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { slot } = request.params as { slot: string };
       const body = request.body as {
@@ -292,7 +292,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminPageById(id);
       if (!row) {
@@ -312,7 +312,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const body = request.body as Omit<Parameters<typeof repo.createPage>[0], "updatedBy">;
       const created = await repo.createPage({ ...body, updatedBy: subject });
@@ -331,7 +331,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updatePage>[1], "updatedBy">;
@@ -350,7 +350,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setPagePublication(id, true, subject);
@@ -368,7 +368,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setPagePublication(id, false, subject);
@@ -386,7 +386,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminVenueById(id);
       if (!row) {
@@ -406,7 +406,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const body = request.body as Parameters<typeof repo.createVenue>[0];
       const created = await repo.createVenue({ ...body, updatedBy: subject });
@@ -425,7 +425,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateVenue>[1], "updatedBy">;
@@ -444,7 +444,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setVenuePublication(id, true, subject);
@@ -462,7 +462,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setVenuePublication(id, false, subject);
@@ -480,7 +480,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminStoryById(id);
       if (!row) {
@@ -500,7 +500,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const body = request.body as Omit<Parameters<typeof repo.createStory>[0], "updatedBy">;
       const created = await repo.createStory({ ...body, updatedBy: subject });
@@ -519,7 +519,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateStory>[1], "updatedBy">;
@@ -538,7 +538,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setStoryPublication(id, true, subject);
@@ -556,7 +556,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setStoryPublication(id, false, subject);
@@ -574,7 +574,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminExhibitionById(id);
       if (!row) {
@@ -594,7 +594,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const body = request.body as Omit<Parameters<typeof repo.createExhibition>[0], "updatedBy">;
       const created = await repo.createExhibition({ ...body, updatedBy: subject });
@@ -613,7 +613,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateExhibition>[1], "updatedBy">;
@@ -632,7 +632,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setExhibitionPublication(id, true, subject);
@@ -650,7 +650,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       await repo.setExhibitionPublication(id, false, subject);
@@ -671,9 +671,10 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
-      requireShopAdminSubject(request);
+      requireShopStaffCapability(request, "editorial.write");
+      const subject = adminSubject(request);
       const body = request.body as { entity: EditorialPreviewEntity; id: string };
+      await repo.recordPreviewTokenIssued(body.entity, body.id, subject);
       const exp = Math.floor(Date.now() / 1000) + 15 * 60;
       const token = signEditorialPreviewToken(deps.previewSecret, {
         entity: body.entity,

@@ -297,7 +297,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       staffReader,
       admin: {
         featureFlags: createShopFeatureFlagsReader(env),
-        financeMaxAuthAgeSeconds: env.SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS,
+        stepUpMaxAuthAgeSeconds: env.SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS,
         health: healthDeps,
         importArtwork,
         grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),

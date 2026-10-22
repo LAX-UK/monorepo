@@ -31,7 +31,7 @@ import type { HealthDeps } from "./routes/health.routes.js";
 
 export type AdminRoutesDeps = {
   featureFlags: ShopFeatureFlagsReader;
-  financeMaxAuthAgeSeconds: number;
+  stepUpMaxAuthAgeSeconds: number;
   health: HealthDeps;
   importArtwork: ImportArtworkHandler;
   grantSaleAuthority: SaleAuthorityWriter["grantSaleAuthority"];

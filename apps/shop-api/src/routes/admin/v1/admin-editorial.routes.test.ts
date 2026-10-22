@@ -15,7 +15,7 @@ import { createStubEditorialSearchReader } from "../../../test-support/stub-edit
 
 const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 
-function mockAuditReaderAuth() {
+function mockEnquiryReaderAuth() {
   vi.mocked(verifyBearerToken).mockResolvedValueOnce({
     subject: "audit-reader",
     payload: {
@@ -27,8 +27,8 @@ function mockAuditReaderAuth() {
 }
 
 describe("admin editorial routes", () => {
-  it("lists general enquiries for audit readers", async () => {
-    mockAuditReaderAuth();
+  it("lists general enquiries for staff with enquiry.read", async () => {
+    mockEnquiryReaderAuth();
     const deps = createMinimalShopApiTestDeps({
       env: {
         ...createMinimalShopApiTestDeps().env,
@@ -37,7 +37,7 @@ describe("admin editorial routes", () => {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) =>
-          s === "audit-reader" ? { role: "finance", identitySubjectId: s } : null,
+          s === "audit-reader" ? { role: "account_manager", identitySubjectId: s } : null,
         brokerCanAccessClientParty: async () => false,
       },
       editorial: {

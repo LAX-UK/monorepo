@@ -17,6 +17,11 @@ export const SHOP_STAFF_CAPABILITIES = [
   "merchandise.read",
   "merchandise.write",
   "stock_hold.override",
+  "editorial.write",
+  "editorial.publish",
+  "enquiry.read",
+  "enquiry.write",
+  "order.read",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -37,11 +42,25 @@ const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> =
     "stock_hold.write",
     "stock_hold.override",
     "client.read_all",
+    "enquiry.read",
+    "enquiry.write",
+    "order.read",
   ],
-  broker: ["stock_hold.write", "client.read_assigned", "purchase_price.read_assigned"],
-  operations: ["production.write", "fulfilment.write", "third_party_sale.write"],
-  finance: ["fee.approve", "refund.write", "payout.mark_paid", "audit.read"],
-  catalogue_editor: ["catalogue.write"],
+  broker: [
+    "stock_hold.write",
+    "client.read_assigned",
+    "purchase_price.read_assigned",
+    "enquiry.read",
+  ],
+  operations: [
+    "production.write",
+    "fulfilment.write",
+    "third_party_sale.write",
+    "order.read",
+    "enquiry.read",
+  ],
+  finance: ["fee.approve", "refund.write", "payout.mark_paid", "audit.read", "order.read"],
+  catalogue_editor: ["catalogue.write", "editorial.write", "editorial.publish"],
 };
 
 export function capabilitiesForRole(role: ShopStaffRole): readonly ShopStaffCapability[] {

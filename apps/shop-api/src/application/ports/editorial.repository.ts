@@ -433,5 +433,10 @@ export type EditorialRepository = {
       ctaLabel?: string | null;
     }>,
     updatedBy: string,
+  ): Promise<void> /** Preview tokens grant read access to drafts, so each issue is audited. */;
+  recordPreviewTokenIssued(
+    entity: "venue" | "exhibition" | "story" | "page",
+    id: string,
+    actorSubjectId: string,
   ): Promise<void>;
 };

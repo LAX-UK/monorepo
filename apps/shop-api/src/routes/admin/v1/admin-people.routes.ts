@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
+  requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
@@ -110,6 +111,7 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
     },
     async (request) => {
       requireShopStaffCapability(request, "settings.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const idempotencyKey = requireIdempotencyKey(request);
       const body = request.body as { role: import("@auction/shop-domain").ShopStaffRole } & (
@@ -141,6 +143,7 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
     },
     async (request, reply) => {
       requireShopStaffCapability(request, "settings.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const idempotencyKey = requireIdempotencyKey(request);
       const { identitySubjectId } = request.params as { identitySubjectId: string };

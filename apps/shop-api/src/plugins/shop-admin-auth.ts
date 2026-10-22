@@ -137,8 +137,8 @@ export function requireShopAdminSubject(request: FastifyRequest): string {
   return auth.subject;
 }
 
-/** D31: finance mutations require a recent authentication (`auth_time`). */
-export function requireRecentFinanceAuthentication(
+/** Money and role-change mutations require a recent sign-in (`auth_time`). */
+export function requireRecentAuthentication(
   request: FastifyRequest,
   maxAuthAgeSeconds: number,
 ): void {

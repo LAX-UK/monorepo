@@ -108,7 +108,7 @@ export function createMinimalShopApiTestDeps(
           merchandise: false,
         }),
       },
-      financeMaxAuthAgeSeconds: 900,
+      stepUpMaxAuthAgeSeconds: 900,
       health: {
         checkConnectivity: async () => undefined,
         checkCatalogueSchema: async () => undefined,
