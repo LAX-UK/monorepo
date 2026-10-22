@@ -143,19 +143,6 @@ export const AdminStaffMemberListSchema = createCursorListResponseSchema(
   AdminStaffMemberListItemSchema,
 );
 
-export const AdminMerchandiseProductListItemSchema = Type.Object({
-  productId: Type.String({ format: "uuid" }),
-  slug: Type.String(),
-  title: Type.String(),
-  variantCount: Type.Integer(),
-  fromPricePence: Type.Union([Type.Integer(), Type.Null()]),
-  totalOnHand: Type.Integer(),
-});
-
-export const AdminMerchandiseProductListSchema = createCursorListResponseSchema(
-  AdminMerchandiseProductListItemSchema,
-);
-
 export const AdminOverviewKpisSchema = Type.Object({
   fulfilmentOpenCount: Type.Integer(),
   payoutsDueCount: Type.Integer(),

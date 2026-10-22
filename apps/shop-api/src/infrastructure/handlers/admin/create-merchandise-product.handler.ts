@@ -3,7 +3,7 @@ import type { MerchandiseStockWriter } from "../../../application/ports/merchand
 export type CreateMerchandiseProductCommand = {
   slug: string;
   title: string;
-  description?: string;
+  description?: string | null | undefined;
   sku: string;
   pricePence: number;
   onHand: number;

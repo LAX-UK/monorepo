@@ -335,56 +335,6 @@ export function ThirdPartySalesStaffListTable({ items }: { items: ThirdPartySale
   );
 }
 
-type MerchandiseRow = {
-  productId: string;
-  slug: string;
-  title: string;
-  variantCount: number;
-  fromPricePence: number | null;
-  totalOnHand: number;
-};
-
-export function MerchandiseStaffListTable({ items }: { items: MerchandiseRow[] }) {
-  const columns = useMemo<ColumnDef<MerchandiseRow, unknown>[]>(
-    () => [
-      { accessorKey: "title", header: "Title" },
-      { accessorKey: "slug", header: "Slug" },
-      {
-        id: "variants",
-        header: "Variants",
-        cell: ({ row }) => String(row.original.variantCount),
-      },
-      {
-        id: "fromPrice",
-        header: "From price",
-        cell: ({ row }) =>
-          row.original.fromPricePence === null
-            ? "—"
-            : `£${(row.original.fromPricePence / 100).toFixed(2)}`,
-      },
-      {
-        id: "onHand",
-        header: "Total on hand",
-        cell: ({ row }) => String(row.original.totalOnHand),
-      },
-    ],
-    [],
-  );
-  return (
-    <AdminStaffDataTable
-      columns={columns}
-      data={items}
-      getRowId={(row) => row.productId}
-      empty={{
-        title: "No products yet",
-        description:
-          "Products are added from the catalogue. Once there are some, you can adjust their stock here.",
-      }}
-      ariaLabel="Merchandise products"
-    />
-  );
-}
-
 type StaffRow = {
   staffMemberId: string;
   identitySubjectId: string;

@@ -6,7 +6,6 @@ import {
   AdminDisputeListSchema,
   AdminEffectiveSettingsSchema,
   AdminFulfilmentListSchema,
-  AdminMerchandiseProductListSchema,
   AdminOrderDetailSchema,
   AdminOrderListSchema,
   AdminOriginalSaleListSchema,
@@ -43,7 +42,6 @@ export type AdminReadPhaseFlags = {
   payoutsEnabled: boolean;
   thirdPartyEnabled: boolean;
   originalsEnabled: boolean;
-  merchandiseEnabled: boolean;
 };
 
 export async function registerAdminReadRoutes(
@@ -357,22 +355,4 @@ export async function registerAdminReadRoutes(
       return deps.adminRead.compliance.readEffectiveSettings();
     },
   );
-
-  if (phaseFlags.merchandiseEnabled) {
-    app.get(
-      "/merchandise/products",
-      {
-        schema: {
-          tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
-          response: { 200: AdminMerchandiseProductListSchema, 403: ShopApiErrorBodySchema },
-        },
-      },
-      async (request) => {
-        requireShopStaffCapability(request, "merchandise.read");
-        const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.catalogue.listMerchandiseProducts(query);
-      },
-    );
-  }
 }

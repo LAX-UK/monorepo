@@ -6,6 +6,9 @@ import type {
   AdminEffectiveSettings,
   AdminOrderDetail,
   AdminOverviewKpis,
+  MerchandiseProductDetail,
+  MerchandiseProductListItem,
+  MerchandiseStatus,
 } from "@auction/shop-contracts";
 
 export type CursorListInput = {
@@ -124,15 +127,6 @@ export type AdminStaffMemberListItem = {
   createdAt: string;
 };
 
-export type AdminMerchandiseProductListItem = {
-  productId: string;
-  slug: string;
-  title: string;
-  variantCount: number;
-  fromPricePence: number | null;
-  totalOnHand: number;
-};
-
 export interface AdminOrderReader {
   listOrders(input: CursorListInput): Promise<CursorListResult<AdminOrderListItem>>;
   getOrderDetail(orderId: string): Promise<AdminOrderDetail>;
@@ -191,10 +185,17 @@ export interface AdminStaffReader {
   listStaffMembers(input: CursorListInput): Promise<CursorListResult<AdminStaffMemberListItem>>;
 }
 
+export type MerchandiseProductListInput = CursorListInput & {
+  /** Matches the title, slug or the SKU of any variant. */
+  q?: string | undefined;
+  status?: MerchandiseStatus | undefined;
+};
+
 export interface AdminCatalogueReader {
   listMerchandiseProducts(
-    input: CursorListInput,
-  ): Promise<CursorListResult<AdminMerchandiseProductListItem>>;
+    input: MerchandiseProductListInput,
+  ): Promise<CursorListResult<MerchandiseProductListItem>>;
+  getMerchandiseProduct(productId: string): Promise<MerchandiseProductDetail | null>;
 }
 
 export interface AdminOverviewReader {

@@ -49,16 +49,3 @@ export async function importArtwork(input: {
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
   });
 }
-
-export async function adjustMerchandiseStock(input: {
-  variantId: string;
-  onHand: number;
-  idempotencyKey?: string;
-}) {
-  return forwardAdminJsonMutation<{ variantId: string; onHand: number }>({
-    bffPath: `merchandise/variants/${encodeURIComponent(input.variantId)}/adjust-stock`,
-    method: "POST",
-    jsonBody: { onHand: input.onHand },
-    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
-  });
-}

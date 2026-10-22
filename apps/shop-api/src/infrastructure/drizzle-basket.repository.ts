@@ -7,7 +7,7 @@ import {
   shopProductVariant,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import type {
   BasketRepository,
   UpsertBasketLineInput,
@@ -204,7 +204,14 @@ async function upsertVariantLine(
     })
     .from(shopProductVariant)
     .innerJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
-    .where(and(eq(shopProductVariant.id, input.productVariantId), gt(availableStock, 0)))
+    .where(
+      and(
+        eq(shopProductVariant.id, input.productVariantId),
+        isNull(shopProductVariant.archivedAt),
+        isNull(shopProduct.archivedAt),
+        gt(availableStock, 0),
+      ),
+    )
     .limit(1);
   if (!variant) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Product variant not purchasable", 404);
