@@ -1,20 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { buildArtAccountNavItems } from "./account-nav.vm.js";
+import {
+  buildArtAccountSecondaryLinks,
+  buildArtAccountTabs,
+  buildArtFavouritesTabs,
+} from "./account-nav.vm.js";
 
-describe("buildArtAccountNavItems", () => {
-  it("lists lax.art account tabs without payouts by default", () => {
-    expect(
-      buildArtAccountNavItems({ payoutsEnabled: false, activeHref: "/account/favourites" }),
-    ).toEqual([
-      { href: "/account", label: "Profile", active: false },
-      { href: "/account/enquiries", label: "Enquiries", active: false },
-      { href: "/account/collection", label: "Collection", active: false },
-      { href: "/account/favourites", label: "Favourites", active: true },
+describe("account tabs", () => {
+  it("lists Profile and Enquiries as route tabs and marks the active one", () => {
+    expect(buildArtAccountTabs("/account/enquiries")).toEqual([
+      { id: "profile", href: "/account", label: "Profile", active: false },
+      { id: "enquiries", href: "/account/enquiries", label: "Enquiries", active: true },
+    ]);
+  });
+});
+
+describe("favourites tabs", () => {
+  it("uses separate routes for Saves and Follows", () => {
+    expect(buildArtFavouritesTabs("/account/favourites/follows")).toEqual([
+      { id: "saves", href: "/account/favourites", label: "Saves", active: false },
+      { id: "follows", href: "/account/favourites/follows", label: "Follows", active: true },
+    ]);
+  });
+});
+
+describe("buildArtAccountSecondaryLinks", () => {
+  it("keeps collection and favourites reachable without payouts by default", () => {
+    expect(buildArtAccountSecondaryLinks({ payoutsEnabled: false }).map((l) => l.href)).toEqual([
+      "/account/collection",
+      "/account/favourites",
     ]);
   });
 
   it("adds payouts only when the flag is on", () => {
-    const items = buildArtAccountNavItems({ payoutsEnabled: true, activeHref: "/account" });
-    expect(items.at(-1)).toEqual({ href: "/account/payouts", label: "Payouts", active: false });
+    expect(buildArtAccountSecondaryLinks({ payoutsEnabled: true }).at(-1)).toEqual({
+      href: "/account/payouts",
+      label: "Payouts",
+    });
   });
 });

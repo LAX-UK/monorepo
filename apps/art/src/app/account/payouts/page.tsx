@@ -11,7 +11,7 @@ export const metadata = artPrivatePageTitle("Payouts");
 export default async function ArtAccountPayoutsPage() {
   const result = await composeArtAccountPayoutsPage(artServices);
   return (
-    <ArtAccountPage result={result} title="Payouts">
+    <ArtAccountPage result={result} title="Payouts" layout="standalone">
       {({ payouts }) => {
         switch (payouts.kind) {
           case "ok":

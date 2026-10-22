@@ -1,88 +1,53 @@
 import { ArtAccountListStateView } from "@/components/account/art-account-list-state";
 import { ArtAccountPage } from "@/components/account/art-account-shell";
-import { composeArtAccountInquiriesPage } from "@/lib/account/account-page.composer";
+import { composeArtAccountEnquiriesPage } from "@/lib/account/account-page.composer";
 import { artPrivatePageTitle } from "@/lib/art-private-page-metadata";
 import { artServices } from "@/lib/art-services.server";
-import Link from "next/link";
+import { MarketingEnquiryListItem } from "@auction/marketing-ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 
 export const dynamic = "force-dynamic";
 export const metadata = artPrivatePageTitle("Enquiries");
 
-export default async function ArtAccountInquiriesPage() {
-  const result = await composeArtAccountInquiriesPage(artServices);
+export default async function ArtAccountEnquiriesPage() {
+  const result = await composeArtAccountEnquiriesPage(artServices);
   return (
-    <ArtAccountPage result={result} title="Enquiries">
+    <ArtAccountPage result={result} title="Enquiries" layout="account">
       {(vm) => (
-        <div className="flex flex-col gap-10">
-          <section aria-labelledby="artwork-enquiries-heading" className="flex flex-col gap-4">
-            <h2
-              id="artwork-enquiries-heading"
-              className="font-headline text-lg font-semibold text-on-surface"
-            >
-              Artwork enquiries
-            </h2>
-            <ArtAccountListStateView
-              state={vm.enquiries}
-              empty={{
-                title: "No artwork enquiries yet",
-                description: "Enquiries you send from an artwork page appear here.",
-                action: { href: "/artworks", label: "Browse artworks" },
-              }}
-              failedDescription="We could not load your artwork enquiries. Try again shortly."
-            >
-              {(rows) => (
-                <ul className="divide-y divide-border-hairline rounded-lg border border-border-hairline">
-                  {rows.map((row) => (
-                    <li key={row.id} className="flex flex-col gap-1 px-4 py-4">
-                      <Link
-                        href={row.artworkHref}
-                        className="art-focus-ring w-fit rounded-sm font-medium text-on-surface hover:underline"
-                      >
-                        {row.artworkTitle}
-                      </Link>
-                      <p className="text-sm capitalize text-on-surface-variant">
-                        {row.statusLabel} ·{" "}
-                        <time dateTime={row.createdAtIso}>{row.createdAtLabel}</time>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </ArtAccountListStateView>
-          </section>
-
-          <section aria-labelledby="general-enquiries-heading" className="flex flex-col gap-4">
-            <h2
-              id="general-enquiries-heading"
-              className="font-headline text-lg font-semibold text-on-surface"
-            >
-              General enquiries
-            </h2>
-            <ArtAccountListStateView
-              state={vm.generalEnquiries}
-              empty={{
-                title: "No general enquiries yet",
-                description: "Messages you send from Contact appear here.",
-                action: { href: "/contact", label: "Contact the gallery" },
-              }}
-              failedDescription="We could not load your general enquiries. Try again shortly."
-            >
-              {(rows) => (
-                <ul className="divide-y divide-border-hairline rounded-lg border border-border-hairline">
-                  {rows.map((row) => (
-                    <li key={row.id} className="flex flex-col gap-1 px-4 py-4">
-                      <p className="font-medium capitalize text-on-surface">{row.topicLabel}</p>
-                      <p className="text-sm text-on-surface-variant">{row.messagePreview}</p>
-                      <p className="text-sm text-on-surface-variant">
-                        <time dateTime={row.createdAtIso}>{row.createdAtLabel}</time>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </ArtAccountListStateView>
-          </section>
-        </div>
+        <section aria-label="Your enquiries" className="mx-auto max-w-3xl">
+          <ArtAccountListStateView
+            state={vm.enquiries}
+            empty={{
+              title: "No enquiries yet",
+              description:
+                "Enquiries you send from an artwork page, or through Contact, appear here.",
+              action: { href: "/artworks", label: "Browse artworks" },
+            }}
+            failedDescription="We could not load your enquiries. Try again shortly."
+          >
+            {(items) => (
+              <ul data-testid="art-account-enquiries">
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <MarketingEnquiryListItem
+                      variant={item.variant}
+                      typeLabel={item.typeLabel}
+                      title={item.title}
+                      description={item.description}
+                      href={item.href}
+                      status={
+                        item.status ? (
+                          <DotStatusPill label={item.status.label} tone={item.status.tone} />
+                        ) : null
+                      }
+                      date={<time dateTime={item.createdAtIso}>{item.createdAtLabel}</time>}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ArtAccountListStateView>
+        </section>
       )}
     </ArtAccountPage>
   );
