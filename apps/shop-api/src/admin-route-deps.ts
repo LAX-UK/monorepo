@@ -11,6 +11,7 @@ import type { ShopFeatureFlagsReader } from "./application/ports/shop-feature-fl
 import type { ShopStaffMemberReader } from "./application/ports/staff-member.reader.js";
 import type { StockHoldWriter } from "./application/ports/stock-hold.writer.js";
 import type { ThirdPartySaleWriter } from "./application/ports/third-party-sale.writer.js";
+import type { ProductionTaskService } from "./application/production-task.service.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import type { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import type { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
@@ -43,6 +44,7 @@ export type AdminRoutesDeps = {
   revokeStaffRole: ReturnType<typeof createRevokeStaffRoleHandler>;
   adminRead: AdminReadPorts;
   enquiryInbox: EnquiryInboxService;
+  productionTasks: ProductionTaskService;
   staffReader: ShopStaffMemberReader;
   createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
   updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;

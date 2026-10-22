@@ -117,6 +117,12 @@ export {
   canTransitionFulfilmentStatus,
   type ShopFulfilmentStatus,
 } from "./fulfilment-state.js";
+export {
+  SHOP_PRODUCTION_TASK_STATUSES,
+  canTransitionProductionTask,
+  productionTaskNextSteps,
+  type ShopProductionTaskStatus,
+} from "./production-task-state.js";
 export { isPayeeConnectReady, type PayeeConnectReadinessInput } from "./payee-connect-readiness.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";

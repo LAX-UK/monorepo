@@ -26,6 +26,11 @@ export type DateRangePickerProps = {
   zone?: string;
   /** Called when a preset is chosen (from/to already applied) */
   onPreset?: (preset: DateRangePreset) => void;
+  /**
+   * Which control starts highlighted. Defaults to "30d"; pass null when the value did not come
+   * from a preset, such as an empty filter, so no preset looks applied.
+   */
+  initialPreset?: DateRangePreset | null;
 };
 
 function toYmd(d: Date, zone: string): string {
@@ -65,8 +70,9 @@ export function DateRangePicker({
   className,
   zone = DEFAULT_AUCTION_ZONE,
   onPreset,
+  initialPreset = "30d",
 }: DateRangePickerProps) {
-  const [mode, setMode] = React.useState<DateRangePreset>("30d");
+  const [mode, setMode] = React.useState<DateRangePreset | null>(initialPreset);
 
   const apply = (preset: DateRangePreset) => {
     if (preset === "custom") {

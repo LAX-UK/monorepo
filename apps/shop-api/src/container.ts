@@ -20,6 +20,7 @@ import { createPortalFavoritesHandlers } from "./application/handlers/portal-fav
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
+import { createProductionTaskService } from "./application/production-task.service.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
@@ -44,6 +45,7 @@ import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-po
 import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
+import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleShopMediaAssetRepository } from "./infrastructure/drizzle-shop-media-asset.repository.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
@@ -329,6 +331,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         adminRead,
         enquiryInbox: createEnquiryInboxService({
           repository: createDrizzleEnquiryInboxRepository(db, { resolveMediaUrl }),
+          staffReader,
+        }),
+        productionTasks: createProductionTaskService({
+          repository: createDrizzleProductionTaskRepository(db),
           staffReader,
         }),
         staffReader,

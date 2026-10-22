@@ -21,12 +21,31 @@ export type CursorListResult<T> = {
   nextCursor: string | null;
 };
 
+export type AdminOrderListFilters = {
+  status?: string;
+  /** Inclusive first calendar day (UK time) an order may have been created on. */
+  createdFrom?: string;
+  /** Inclusive last calendar day (UK time) an order may have been created on. */
+  createdTo?: string;
+  /** Free text: order number prefix, buyer email or name, delivery recipient name. */
+  q?: string;
+};
+
+export type AdminOrderListInput = CursorListInput & AdminOrderListFilters;
+
+export type AdminOrderListResult = CursorListResult<AdminOrderListItem> & {
+  /** Matches per status under every filter except `status`. */
+  counts: Record<string, number>;
+};
+
 export type AdminOrderListItem = {
   orderId: string;
   status: string;
   totalPence: number;
   fulfilment: string;
   buyerSubjectId: string;
+  buyerName: string | null;
+  buyerEmail: string | null;
   createdAt: string;
   paidAt: string | null;
 };
@@ -39,14 +58,6 @@ export type AdminFulfilmentListItem = {
   carrier: string | null;
   trackingNumber: string | null;
   updatedAt: string;
-};
-
-export type AdminProductionTaskListItem = {
-  taskId: string;
-  orderLineId: string;
-  editionId: string;
-  status: string;
-  createdAt: string;
 };
 
 export type AdminPayoutListItem = {
@@ -128,18 +139,12 @@ export type AdminStaffMemberListItem = {
 };
 
 export interface AdminOrderReader {
-  listOrders(input: CursorListInput): Promise<CursorListResult<AdminOrderListItem>>;
+  listOrders(input: AdminOrderListInput): Promise<AdminOrderListResult>;
   getOrderDetail(orderId: string): Promise<AdminOrderDetail>;
 }
 
 export interface AdminFulfilmentReader {
   listFulfilment(input: CursorListInput): Promise<CursorListResult<AdminFulfilmentListItem>>;
-}
-
-export interface AdminProductionReader {
-  listProductionTasks(
-    input: CursorListInput,
-  ): Promise<CursorListResult<AdminProductionTaskListItem>>;
 }
 
 export interface AdminPayoutReader {
@@ -211,7 +216,6 @@ export interface AdminComplianceReader {
 export type AdminReadPorts = {
   orders: AdminOrderReader;
   fulfilment: AdminFulfilmentReader;
-  production: AdminProductionReader;
   payouts: AdminPayoutReader;
   sales: AdminSalesReader;
   parties: AdminPartyReader;
