@@ -1,16 +1,32 @@
 import {
   AdminGeneralEnquiriesResponseSchema,
   CursorListQuerySchema,
+  EditorialCreateResponseSchema,
+  EditorialEntityConflictBodySchema,
+  EditorialExhibitionUpdateBodySchema,
+  EditorialExhibitionWriteBodySchema,
+  EditorialIdParamsSchema,
+  EditorialPageUpdateBodySchema,
+  EditorialPageWriteBodySchema,
+  EditorialPlacementItemSchema,
+  EditorialPlacementSlotParamSchema,
   EditorialStoryCategorySchema,
   EditorialStoryKindSchema,
+  EditorialStoryUpdateBodySchema,
+  EditorialStoryWriteBodySchema,
+  EditorialUpdateResponseSchema,
+  EditorialVenueUpdateBodySchema,
+  EditorialVenueWriteBodySchema,
+  SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   decodeCatalogueCursor,
   encodeCatalogueCursor,
 } from "../../../application/catalogue-cursor.js";
+import type { EditorialUpdateOutcome } from "../../../application/ports/editorial.repository.js";
 import {
   type EditorialPreviewEntity,
   signEditorialPreviewToken,
@@ -21,16 +37,6 @@ import {
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
 import { registerAdminEditorialLinksRoutes } from "./admin-editorial-links.routes.js";
-import {
-  EditorialCreateResponseSchema,
-  EditorialExhibitionWriteBodySchema,
-  EditorialIdParamsSchema,
-  EditorialPageWriteBodySchema,
-  EditorialPlacementItemSchema,
-  EditorialPlacementSlotParamSchema,
-  EditorialStoryWriteBodySchema,
-  EditorialVenueWriteBodySchema,
-} from "./editorial-admin-schemas.js";
 
 const GENERAL_ENQUIRIES_PAGE_SIZE = 50;
 
@@ -54,7 +60,27 @@ const AdminRowSchema = Type.Object({
   slug: Type.String(),
   status: Type.Union([Type.Literal("draft"), Type.Literal("published")]),
   label: Type.String(),
+  updatedAt: Type.String({ format: "date-time" }),
 });
+
+const AdminVenueListRowSchema = Type.Intersect([
+  AdminRowSchema,
+  Type.Object({ city: Type.Union([Type.String(), Type.Null()]) }),
+]);
+
+const AdminStoryListRowSchema = Type.Intersect([
+  AdminRowSchema,
+  Type.Object({ kind: EditorialStoryKindSchema }),
+]);
+
+const AdminExhibitionListRowSchema = Type.Intersect([
+  AdminRowSchema,
+  Type.Object({
+    kind: Type.Union([Type.Literal("exhibition"), Type.Literal("film"), Type.Literal("event")]),
+    startsOn: Type.Union([Type.String(), Type.Null()]),
+    endsOn: Type.Union([Type.String(), Type.Null()]),
+  }),
+]);
 
 const AdminSeoFieldsSchema = Type.Object({
   seoTitle: Type.Union([Type.String(), Type.Null()]),
@@ -155,6 +181,39 @@ function adminSubject(request: FastifyRequest): string {
   return requireShopAdminSubject(request);
 }
 
+/**
+ * A stale save is a 409 that carries the row's current version so the editor can offer to
+ * reload or to save again on top of it.
+ */
+function sendUpdateOutcome(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  label: string,
+  outcome: EditorialUpdateOutcome,
+) {
+  switch (outcome.status) {
+    case "updated":
+      return reply.status(200).send({ version: outcome.version });
+    case "not_found":
+      return reply
+        .status(404)
+        .send({ code: SHOP_API_ERROR_CODES.NOT_FOUND, message: `${label} not found` });
+    case "stale":
+      return reply.status(409).send({
+        code: SHOP_API_ERROR_CODES.CONFLICT,
+        message: `${label} was changed by someone else since it was opened`,
+        requestId: request.id,
+        currentVersion: outcome.currentVersion,
+      });
+  }
+}
+
+const UpdateResponses = {
+  200: EditorialUpdateResponseSchema,
+  404: ShopApiErrorBodySchema,
+  409: EditorialEntityConflictBodySchema,
+} as const;
+
 export async function registerAdminEditorialRoutes(
   app: FastifyInstance,
   deps: EditorialRoutesDeps,
@@ -206,7 +265,7 @@ export async function registerAdminEditorialRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        response: { 200: Type.Object({ items: Type.Array(AdminRowSchema) }) },
+        response: { 200: Type.Object({ items: Type.Array(AdminVenueListRowSchema) }) },
       },
     },
     async (request) => {
@@ -220,7 +279,7 @@ export async function registerAdminEditorialRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        response: { 200: Type.Object({ items: Type.Array(AdminRowSchema) }) },
+        response: { 200: Type.Object({ items: Type.Array(AdminExhibitionListRowSchema) }) },
       },
     },
     async (request) => {
@@ -234,7 +293,7 @@ export async function registerAdminEditorialRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        response: { 200: Type.Object({ items: Type.Array(AdminRowSchema) }) },
+        response: { 200: Type.Object({ items: Type.Array(AdminStoryListRowSchema) }) },
       },
     },
     async (request) => {
@@ -347,8 +406,8 @@ export async function registerAdminEditorialRoutes(
       schema: {
         tags: ["shop-admin"],
         params: EditorialIdParamsSchema,
-        body: EditorialPageWriteBodySchema,
-        response: { 204: Type.Null(), 403: ShopApiErrorBodySchema },
+        body: EditorialPageUpdateBodySchema,
+        response: { ...UpdateResponses, 403: ShopApiErrorBodySchema },
       },
     },
     async (request, reply) => {
@@ -356,8 +415,8 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updatePage>[1], "updatedBy">;
-      await repo.updatePage(id, { ...body, updatedBy: subject });
-      return reply.status(204).send();
+      const outcome = await repo.updatePage(id, { ...body, updatedBy: subject });
+      return sendUpdateOutcome(request, reply, "Page", outcome);
     },
   );
 
@@ -441,8 +500,8 @@ export async function registerAdminEditorialRoutes(
       schema: {
         tags: ["shop-admin"],
         params: EditorialIdParamsSchema,
-        body: EditorialVenueWriteBodySchema,
-        response: { 204: Type.Null() },
+        body: EditorialVenueUpdateBodySchema,
+        response: { ...UpdateResponses, 403: ShopApiErrorBodySchema },
       },
     },
     async (request, reply) => {
@@ -450,8 +509,8 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateVenue>[1], "updatedBy">;
-      await repo.updateVenue(id, { ...body, updatedBy: subject });
-      return reply.status(204).send();
+      const outcome = await repo.updateVenue(id, { ...body, updatedBy: subject });
+      return sendUpdateOutcome(request, reply, "Venue", outcome);
     },
   );
 
@@ -535,8 +594,8 @@ export async function registerAdminEditorialRoutes(
       schema: {
         tags: ["shop-admin"],
         params: EditorialIdParamsSchema,
-        body: EditorialStoryWriteBodySchema,
-        response: { 204: Type.Null() },
+        body: EditorialStoryUpdateBodySchema,
+        response: { ...UpdateResponses, 403: ShopApiErrorBodySchema },
       },
     },
     async (request, reply) => {
@@ -544,8 +603,8 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateStory>[1], "updatedBy">;
-      await repo.updateStory(id, { ...body, updatedBy: subject });
-      return reply.status(204).send();
+      const outcome = await repo.updateStory(id, { ...body, updatedBy: subject });
+      return sendUpdateOutcome(request, reply, "Story", outcome);
     },
   );
 
@@ -629,8 +688,8 @@ export async function registerAdminEditorialRoutes(
       schema: {
         tags: ["shop-admin"],
         params: EditorialIdParamsSchema,
-        body: EditorialExhibitionWriteBodySchema,
-        response: { 204: Type.Null() },
+        body: EditorialExhibitionUpdateBodySchema,
+        response: { ...UpdateResponses, 403: ShopApiErrorBodySchema },
       },
     },
     async (request, reply) => {
@@ -638,8 +697,8 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateExhibition>[1], "updatedBy">;
-      await repo.updateExhibition(id, { ...body, updatedBy: subject });
-      return reply.status(204).send();
+      const outcome = await repo.updateExhibition(id, { ...body, updatedBy: subject });
+      return sendUpdateOutcome(request, reply, "Exhibition", outcome);
     },
   );
 

@@ -139,7 +139,28 @@ export type EditorialAdminRow = {
   slug: string;
   status: "draft" | "published";
   label: string;
+  /** The row's `updatedAt` as ISO text; send it back as `expectedVersion` when saving. */
+  updatedAt: string;
 };
+
+export type EditorialVenueListRow = EditorialAdminRow & { city: string | null };
+export type EditorialStoryListRow = EditorialAdminRow & { kind: EditorialStoryKind };
+export type EditorialExhibitionListRow = EditorialAdminRow & {
+  kind: "exhibition" | "film" | "event";
+  startsOn: string | null;
+  endsOn: string | null;
+};
+
+/**
+ * `stale` means the row changed since `expectedVersion` and nothing was written. Saves compare
+ * the version inside the UPDATE itself, so two concurrent saves cannot both succeed.
+ */
+export type EditorialUpdateOutcome =
+  | { status: "updated"; version: string }
+  | { status: "not_found" }
+  | { status: "stale"; currentVersion: string };
+
+type ExpectedVersion = { expectedVersion: string };
 
 export type EditorialPageAdminDetail = EditorialAdminRow &
   SeoFields & {
@@ -232,9 +253,9 @@ export type EditorialPlacementAdminRow = {
 };
 
 export type EditorialRepository = {
-  listAdminVenues(): Promise<EditorialAdminRow[]>;
-  listAdminExhibitions(): Promise<EditorialAdminRow[]>;
-  listAdminStories(): Promise<EditorialAdminRow[]>;
+  listAdminVenues(): Promise<EditorialVenueListRow[]>;
+  listAdminExhibitions(): Promise<EditorialExhibitionListRow[]>;
+  listAdminStories(): Promise<EditorialStoryListRow[]>;
   listAdminPages(): Promise<EditorialAdminRow[]>;
   getHomePlacements(): Promise<EditorialHomePlacementReadModel[]>;
   listVenues(): Promise<EditorialVenueSummaryReadModel[]>;
@@ -316,13 +337,14 @@ export type EditorialRepository = {
   ): Promise<{ id: string }>;
   updatePage(
     id: string,
-    input: SeoFieldsInput & {
-      slug: string;
-      title: string;
-      body: EditorialBlock[];
-      updatedBy: string;
-    },
-  ): Promise<void>;
+    input: ExpectedVersion &
+      SeoFieldsInput & {
+        slug: string;
+        title: string;
+        body: EditorialBlock[];
+        updatedBy: string;
+      },
+  ): Promise<EditorialUpdateOutcome>;
   setPagePublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminVenueById(id: string): Promise<EditorialVenueAdminDetail | null>;
   createVenue(
@@ -342,20 +364,21 @@ export type EditorialRepository = {
   ): Promise<{ id: string }>;
   updateVenue(
     id: string,
-    input: Partial<EditorialVenueExtraFields> & {
-      slug: string;
-      name: string;
-      address: string | null;
-      postcode: string | null;
-      openingHours: unknown | null;
-      phone: string | null;
-      email: string | null;
-      mapUrl: string | null;
-      coverMediaKey: string | null;
-      body: EditorialBlock[];
-      updatedBy: string;
-    },
-  ): Promise<void>;
+    input: ExpectedVersion &
+      Partial<EditorialVenueExtraFields> & {
+        slug: string;
+        name: string;
+        address: string | null;
+        postcode: string | null;
+        openingHours: unknown | null;
+        phone: string | null;
+        email: string | null;
+        mapUrl: string | null;
+        coverMediaKey: string | null;
+        body: EditorialBlock[];
+        updatedBy: string;
+      },
+  ): Promise<EditorialUpdateOutcome>;
   setVenuePublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminStoryById(id: string): Promise<EditorialStoryAdminDetail | null>;
   createStory(
@@ -374,7 +397,8 @@ export type EditorialRepository = {
   ): Promise<{ id: string }>;
   updateStory(
     id: string,
-    input: SeoFieldsInput &
+    input: ExpectedVersion &
+      SeoFieldsInput &
       Partial<EditorialStoryExtraFields> & {
         slug: string;
         kind: EditorialStoryKind;
@@ -386,7 +410,7 @@ export type EditorialRepository = {
         body: EditorialBlock[];
         updatedBy: string;
       },
-  ): Promise<void>;
+  ): Promise<EditorialUpdateOutcome>;
   setStoryPublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   getAdminExhibitionById(id: string): Promise<EditorialExhibitionAdminDetail | null>;
   createExhibition(
@@ -407,21 +431,22 @@ export type EditorialRepository = {
   ): Promise<{ id: string }>;
   updateExhibition(
     id: string,
-    input: Partial<EditorialExhibitionExtraFields> & {
-      slug: string;
-      kind: "exhibition" | "film" | "event";
-      title: string;
-      summary: string | null;
-      venueId: string | null;
-      startsOn: string | null;
-      endsOn: string | null;
-      timesNote: string | null;
-      coverMediaKey: string | null;
-      featured: boolean;
-      body: EditorialBlock[];
-      updatedBy: string;
-    },
-  ): Promise<void>;
+    input: ExpectedVersion &
+      Partial<EditorialExhibitionExtraFields> & {
+        slug: string;
+        kind: "exhibition" | "film" | "event";
+        title: string;
+        summary: string | null;
+        venueId: string | null;
+        startsOn: string | null;
+        endsOn: string | null;
+        timesNote: string | null;
+        coverMediaKey: string | null;
+        featured: boolean;
+        body: EditorialBlock[];
+        updatedBy: string;
+      },
+  ): Promise<EditorialUpdateOutcome>;
   setExhibitionPublication(id: string, published: boolean, updatedBy: string): Promise<void>;
   listAdminPlacements(): Promise<EditorialPlacementAdminRow[]>;
   replacePlacementSlot(

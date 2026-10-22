@@ -2,6 +2,14 @@ import { type ShopStaffRole, capabilitiesForRole } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { buildAdminNavGroups, flattenAdminNav } from "./admin-nav.vm";
 
+const EDITORIAL_HREFS = [
+  "/editorial/exhibitions",
+  "/editorial/stories",
+  "/editorial/venues",
+  "/editorial/pages",
+  "/editorial/home",
+];
+
 const ALL_FEATURES = {
   payouts: true,
   thirdPartySales: true,
@@ -16,7 +24,7 @@ function navHrefsFor(role: ShopStaffRole, features = ALL_FEATURES): string[] {
 
 describe("buildAdminNavGroups", () => {
   it("shows catalogue editors the catalogue and editorial areas only", () => {
-    expect(navHrefsFor("catalogue_editor")).toEqual(["/artworks", "/artists", "/editorial"]);
+    expect(navHrefsFor("catalogue_editor")).toEqual(["/artworks", "/artists", ...EDITORIAL_HREFS]);
   });
 
   it("lets operations view orders and enquiries but not editorial or the audit log", () => {
@@ -24,7 +32,7 @@ describe("buildAdminNavGroups", () => {
     expect(hrefs).toEqual(
       expect.arrayContaining(["/orders", "/general-enquiries", "/production", "/fulfilment"]),
     );
-    expect(hrefs).not.toContain("/editorial");
+    expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
     expect(hrefs).not.toContain("/audit");
   });
 
@@ -33,13 +41,13 @@ describe("buildAdminNavGroups", () => {
     expect(hrefs).toContain("/orders");
     expect(hrefs).toContain("/audit");
     expect(hrefs).not.toContain("/general-enquiries");
-    expect(hrefs).not.toContain("/editorial");
+    expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
   });
 
   it("lets account managers view orders and enquiries", () => {
     const hrefs = navHrefsFor("account_manager");
     expect(hrefs).toEqual(expect.arrayContaining(["/orders", "/general-enquiries", "/clients"]));
-    expect(hrefs).not.toContain("/editorial");
+    expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
   });
 
   it("lets brokers read enquiries but not orders", () => {
@@ -55,7 +63,7 @@ describe("buildAdminNavGroups", () => {
         "/overview",
         "/artists",
         "/artworks",
-        "/editorial",
+        ...EDITORIAL_HREFS,
         "/orders",
         "/general-enquiries",
         "/staff",
@@ -84,7 +92,19 @@ describe("buildAdminNavGroups", () => {
     });
     expect(groups.map((group) => [group.title, group.items.map((item) => item.label)])).toEqual([
       ["Overview", ["Overview"]],
-      ["Gallery", ["Artworks", "Artists", "Editorial", "Enquiries"]],
+      [
+        "Gallery",
+        [
+          "Artworks",
+          "Artists",
+          "Exhibitions",
+          "Stories",
+          "Venues",
+          "Pages",
+          "Home placements",
+          "Enquiries",
+        ],
+      ],
       ["Shop", ["Products", "Orders", "Production", "Fulfilment", "Stock holds"]],
       ["Sales", ["Original sales", "Third-party sales", "Sale limit requests"]],
       ["Clients", ["Clients"]],

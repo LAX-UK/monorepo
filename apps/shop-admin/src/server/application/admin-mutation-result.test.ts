@@ -20,4 +20,19 @@ describe("mapAdminMutationErrorBody", () => {
       message: "Already pending",
     });
   });
+
+  it("carries the current version of a row that someone else saved first", () => {
+    expect(
+      mapAdminMutationErrorBody(
+        409,
+        { message: "Exhibition was changed", currentVersion: "2026-03-01T11:30:00.000Z" },
+        "x",
+      ),
+    ).toEqual({
+      ok: false,
+      kind: "conflict",
+      message: "Exhibition was changed",
+      currentVersion: "2026-03-01T11:30:00.000Z",
+    });
+  });
 });

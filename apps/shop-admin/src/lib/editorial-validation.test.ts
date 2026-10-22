@@ -1,6 +1,7 @@
 import type { EditorialBlock } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
+  editorialBlockErrors,
   isAllowedEditorialHref,
   isEditorialSlug,
   isHttpsUrl,
@@ -98,5 +99,29 @@ describe("validateEditorialBlocks", () => {
     expect(validateEditorialBlocks([{ type: "marquee" } as unknown as EditorialBlock])).toEqual([
       "Block 1: unknown block type.",
     ]);
+  });
+});
+
+describe("editorialBlockErrors", () => {
+  it("keys the first problem of each invalid block by its position", () => {
+    expect(
+      editorialBlockErrors([
+        { type: "quote", text: "ok" },
+        { type: "cta", title: "", buttonLabel: "", href: "" },
+        { type: "video", url: "/local.mp4" },
+      ]),
+    ).toEqual({
+      "block-2": "Block 2 (Call to action): title is required.",
+      "block-3": "Block 3 (Video): video URL must start with https://.",
+    });
+  });
+
+  it("is empty for valid blocks and reports an over-long body once", () => {
+    expect(editorialBlockErrors([{ type: "quote", text: "ok" }])).toEqual({});
+    const many = Array.from(
+      { length: 201 },
+      () => ({ type: "quote", text: "ok" }) as EditorialBlock,
+    );
+    expect(editorialBlockErrors(many)).toEqual({ body: "A body can hold at most 200 blocks." });
   });
 });

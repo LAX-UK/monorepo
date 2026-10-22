@@ -88,6 +88,25 @@ export {
   type AdminGeneralEnquiryRow,
 } from "./editorial-public.js";
 export {
+  EditorialCreateResponseSchema,
+  EditorialEntityConflictBodySchema,
+  EditorialExhibitionUpdateBodySchema,
+  EditorialExhibitionWriteBodySchema,
+  EditorialIdParamsSchema,
+  EditorialPageUpdateBodySchema,
+  EditorialPageWriteBodySchema,
+  EditorialPlacementItemSchema,
+  EditorialPlacementSlotParamSchema,
+  EditorialSlugBodyField,
+  EditorialStoryUpdateBodySchema,
+  EditorialStoryWriteBodySchema,
+  EditorialUpdateResponseSchema,
+  EditorialVenueUpdateBodySchema,
+  EditorialVenueWriteBodySchema,
+  EditorialVersionSchema,
+  type EditorialUpdateResponse,
+} from "./editorial-admin.js";
+export {
   EDITORIAL_LINKS_MAX_IDS,
   EDITORIAL_LINK_CANDIDATES_DEFAULT_LIMIT,
   EDITORIAL_LINK_CANDIDATES_MAX_LIMIT,

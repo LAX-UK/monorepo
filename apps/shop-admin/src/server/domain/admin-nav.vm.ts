@@ -31,7 +31,11 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
       items: [
         { href: "/artworks", label: "Artworks", capability: "catalogue.write" },
         { href: "/artists", label: "Artists", capability: "catalogue.write" },
-        { href: "/editorial", label: "Editorial", capability: "editorial.write" },
+        { href: "/editorial/exhibitions", label: "Exhibitions", capability: "editorial.write" },
+        { href: "/editorial/stories", label: "Stories", capability: "editorial.write" },
+        { href: "/editorial/venues", label: "Venues", capability: "editorial.write" },
+        { href: "/editorial/pages", label: "Pages", capability: "editorial.write" },
+        { href: "/editorial/home", label: "Home placements", capability: "editorial.write" },
         { href: "/general-enquiries", label: "Enquiries", capability: "enquiry.read" },
       ],
     },

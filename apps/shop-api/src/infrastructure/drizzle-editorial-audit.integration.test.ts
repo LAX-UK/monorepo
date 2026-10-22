@@ -48,7 +48,14 @@ describe.skipIf(!hasShopIntegrationDb)("editorial writes are audited", () => {
       body: [],
       updatedBy: ACTOR,
     });
-    await repo.updatePage(id, { slug: slug(), title: "Audited", body: [], updatedBy: ACTOR });
+    const loaded = await repo.getAdminPageById(id);
+    await repo.updatePage(id, {
+      slug: slug(),
+      title: "Audited",
+      body: [],
+      expectedVersion: loaded?.updatedAt ?? "",
+      updatedBy: ACTOR,
+    });
     await repo.setPagePublication(id, true, ACTOR);
     await repo.setPagePublication(id, false, ACTOR);
 
@@ -63,7 +70,14 @@ describe.skipIf(!hasShopIntegrationDb)("editorial writes are audited", () => {
   it("writes no audit row when the update matches no record", async () => {
     const { repo, auditRows } = setup();
     const missing = "55555555-5555-4555-8555-555555555555";
-    await repo.updatePage(missing, { slug: slug(), title: "Nope", body: [], updatedBy: ACTOR });
+    const outcome = await repo.updatePage(missing, {
+      slug: slug(),
+      title: "Nope",
+      body: [],
+      expectedVersion: new Date().toISOString(),
+      updatedBy: ACTOR,
+    });
+    expect(outcome).toEqual({ status: "not_found" });
     expect(await auditRows(missing)).toEqual([]);
   });
 

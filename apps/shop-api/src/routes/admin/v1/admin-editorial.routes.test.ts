@@ -247,6 +247,7 @@ describe("admin editorial routes", () => {
             slug: "episode-4",
             status: "draft",
             label: "Episode 4",
+            updatedAt: "2026-01-01T00:00:00.000Z",
             kind: "podcast",
             title: "Episode 4",
             standfirst: null,
@@ -291,5 +292,121 @@ describe("admin editorial routes", () => {
     expect(read.statusCode).toBe(200);
     expect(read.json()).toMatchObject({ kind: "podcast", ...podcastFields });
     await app.close();
+  });
+});
+
+describe("entity saves are versioned", () => {
+  const ENTITY_ID = "44444444-4444-4444-8444-444444444444";
+  const VERSION = "2026-03-01T10:00:00.000Z";
+  const CURRENT = "2026-03-01T11:30:00.000Z";
+  const exhibitionBody = {
+    slug: "summer-show",
+    kind: "exhibition",
+    title: "Summer show",
+    summary: null,
+    venueId: null,
+    startsOn: null,
+    endsOn: null,
+    timesNote: null,
+    coverMediaKey: null,
+    featured: false,
+    body: [],
+    subtitle: "A subtitle",
+    contactEmail: "curator@example.com",
+  };
+
+  async function putExhibition(
+    updateExhibition: ReturnType<typeof vi.fn>,
+    payload: Record<string, unknown>,
+  ) {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "editor",
+      payload: {
+        scope: "shop.admin",
+        acr: OIDC_ACR_SILVER,
+        auth_time: Math.floor(Date.now() / 1000),
+      },
+    } as never);
+    const deps = createMinimalShopApiTestDeps({
+      env: {
+        ...createMinimalShopApiTestDeps().env,
+        SHOP_ADMIN_ENABLED: true,
+        SHOP_EDITORIAL_ENABLED: true,
+      },
+      staffReader: {
+        findActiveByIdentitySubject: async (s) => ({
+          role: "catalogue_editor",
+          identitySubjectId: s,
+        }),
+        brokerCanAccessClientParty: async () => false,
+      },
+      editorial: {
+        previewSecret: "test-preview-secret-minimum-32-chars",
+        links: createStubEditorialLinksService(),
+        search: createStubEditorialSearchReader(),
+        enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
+        editorial: createStubEditorialRepository({ updateExhibition } as never),
+      },
+    });
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const res = await app.inject({
+      method: "PUT",
+      url: `/admin/v1/editorial/exhibitions/${ENTITY_ID}`,
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload,
+    });
+    await app.close();
+    return res;
+  }
+
+  it("passes the expected version through and returns the new one", async () => {
+    const updateExhibition = vi.fn(async () => ({ status: "updated", version: CURRENT }));
+    const res = await putExhibition(updateExhibition, {
+      ...exhibitionBody,
+      expectedVersion: VERSION,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ version: CURRENT });
+    expect(updateExhibition).toHaveBeenCalledWith(
+      ENTITY_ID,
+      expect.objectContaining({ expectedVersion: VERSION, subtitle: "A subtitle" }),
+    );
+  });
+
+  it("answers 409 with the current version when the row has moved on", async () => {
+    const updateExhibition = vi.fn(async () => ({ status: "stale", currentVersion: CURRENT }));
+    const res = await putExhibition(updateExhibition, {
+      ...exhibitionBody,
+      expectedVersion: VERSION,
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ currentVersion: CURRENT });
+  });
+
+  it("answers 404 when the exhibition no longer exists", async () => {
+    const updateExhibition = vi.fn(async () => ({ status: "not_found" }));
+    const res = await putExhibition(updateExhibition, {
+      ...exhibitionBody,
+      expectedVersion: VERSION,
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("rejects a save without an expected version before touching the repository", async () => {
+    const updateExhibition = vi.fn();
+    const res = await putExhibition(updateExhibition, exhibitionBody);
+    expect(res.statusCode).toBe(400);
+    expect(updateExhibition).not.toHaveBeenCalled();
+  });
+
+  it("rejects an expected version that is not a timestamp", async () => {
+    const updateExhibition = vi.fn();
+    const res = await putExhibition(updateExhibition, {
+      ...exhibitionBody,
+      expectedVersion: "yesterday",
+    });
+    expect(res.statusCode).toBe(400);
+    expect(updateExhibition).not.toHaveBeenCalled();
   });
 });

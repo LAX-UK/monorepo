@@ -45,44 +45,57 @@ export async function getEditorialEntityDetail(
   }
 }
 
+/** The id, and the row's new version when an existing row was updated. */
+export type EditorialSaveResult = { id: string; version: string | null };
+
 export async function saveEditorialEntity(input: {
   kind: EditorialEntityKind;
   id: string | null;
   payload: unknown;
+  /** Required to update: the version the editor opened, or the one it chose to overwrite. */
+  expectedVersion: string | null;
   idempotencyKey: string;
-}): Promise<AdminMutationResult<{ id: string }>> {
+}): Promise<AdminMutationResult<EditorialSaveResult>> {
   const path = entityPath(input.kind, input.id);
   if (!path) return invalidInput;
   if (input.id) {
-    const result = await forwardAdminJsonMutation({
+    if (!input.expectedVersion) return invalidInput;
+    const result = await forwardAdminJsonMutation<{ version: string }>({
       bffPath: path,
       method: "PUT",
-      jsonBody: input.payload,
+      jsonBody: { ...(input.payload as object), expectedVersion: input.expectedVersion },
       idempotencyKey: input.idempotencyKey,
     });
-    return result.ok ? { ok: true, data: { id: input.id } } : result;
+    return result.ok ? { ok: true, data: { id: input.id, version: result.data.version } } : result;
   }
-  return forwardAdminJsonMutation<{ id: string }>({
+  const created = await forwardAdminJsonMutation<{ id: string }>({
     bffPath: path,
     method: "POST",
     jsonBody: input.payload,
     idempotencyKey: input.idempotencyKey,
   });
+  return created.ok ? { ok: true, data: { id: created.data.id, version: null } } : created;
 }
 
+/** Publishing changes the row's version, so the editor is handed the new one to save against. */
 export async function setEditorialPublication(input: {
   kind: EditorialEntityKind;
   id: string;
   published: boolean;
   idempotencyKey: string;
-}): Promise<AdminMutationResult<unknown>> {
+}): Promise<AdminMutationResult<{ version: string }>> {
   const path = entityPath(input.kind, input.id);
   if (!path) return invalidInput;
-  return forwardAdminJsonMutation({
+  const changed = await forwardAdminJsonMutation({
     bffPath: `${path}/${input.published ? "publish" : "unpublish"}`,
     method: "POST",
     idempotencyKey: input.idempotencyKey,
   });
+  if (!changed.ok) return changed;
+  const detail = await fetchAdminJson<{ updatedAt: string }>(path);
+  return detail.status === "ok"
+    ? { ok: true, data: { version: detail.data.updatedAt } }
+    : { ok: false, kind: "failed", message: "Could not reload this item." };
 }
 
 export async function issueEditorialPreviewToken(input: {

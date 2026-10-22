@@ -5,6 +5,7 @@ import {
   type EditorialBlockType,
   type EditorialInlineSpan,
 } from "./editorial-blocks";
+import type { FieldErrors } from "./form-validation";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HTTPS_PATTERN = /^https:\/\/[^\s/?#]+[^\s]*$/;
@@ -143,17 +144,40 @@ function blockIssues(block: EditorialBlock): string[] {
   return issues;
 }
 
-/** Returns human-readable problems; an empty list means the blocks are ready to save. */
-export function validateEditorialBlocks(blocks: readonly EditorialBlock[]): string[] {
-  if (blocks.length > EDITORIAL_MAX_BLOCKS) {
-    return [`A body can hold at most ${EDITORIAL_MAX_BLOCKS} blocks.`];
-  }
+type BlockProblem = { index: number; message: string };
+
+function blockProblems(blocks: readonly EditorialBlock[]): BlockProblem[] {
   return blocks.flatMap((block, index) => {
     const type = (block as { type?: unknown } | null)?.type as EditorialBlockType;
     if (!EDITORIAL_BLOCK_TYPES.includes(type)) {
-      return [`Block ${index + 1}: unknown block type.`];
+      return [{ index, message: `Block ${index + 1}: unknown block type.` }];
     }
     const label = EDITORIAL_BLOCK_LABELS[type];
-    return blockIssues(block).map((issue) => `Block ${index + 1} (${label}): ${issue}.`);
+    return blockIssues(block).map((issue) => ({
+      index,
+      message: `Block ${index + 1} (${label}): ${issue}.`,
+    }));
   });
+}
+
+const TOO_MANY_BLOCKS = `A body can hold at most ${EDITORIAL_MAX_BLOCKS} blocks.`;
+
+/** Returns human-readable problems; an empty list means the blocks are ready to save. */
+export function validateEditorialBlocks(blocks: readonly EditorialBlock[]): string[] {
+  if (blocks.length > EDITORIAL_MAX_BLOCKS) return [TOO_MANY_BLOCKS];
+  return blockProblems(blocks).map((problem) => problem.message);
+}
+
+/**
+ * The same checks as field errors: the first problem of each invalid block under `block-<n>`
+ * (1-based, matching the block's card), so the error summary can name and focus the block.
+ */
+export function editorialBlockErrors(blocks: readonly EditorialBlock[]): FieldErrors {
+  if (blocks.length > EDITORIAL_MAX_BLOCKS) return { body: TOO_MANY_BLOCKS };
+  const errors: FieldErrors = {};
+  for (const { index, message } of blockProblems(blocks)) {
+    const key = `block-${index + 1}`;
+    if (!(key in errors)) errors[key] = message;
+  }
+  return errors;
 }

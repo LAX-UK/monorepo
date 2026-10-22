@@ -33,12 +33,14 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { londonIsoDate } from "../application/editorial-calendar-date.js";
 import { enquirySenderColumns } from "../application/enquiry-sender.js";
 import type {
   EditorialExhibitionExtraFields,
   EditorialRepository,
   EditorialStoryExtraFields,
+  EditorialUpdateOutcome,
   EditorialVenueExtraFields,
 } from "../application/ports/editorial.repository.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
@@ -227,6 +229,31 @@ function auditEditorialWrite(
   });
 }
 
+/**
+ * Postgres keeps microseconds but the version travels as a millisecond ISO string, so the stored
+ * value is truncated before comparing; otherwise rows written by SQL `now()` could never match.
+ */
+function sameVersion(updatedAt: AnyPgColumn, expectedVersion: string): SQL {
+  return sql`date_trunc('milliseconds', ${updatedAt}) = ${new Date(expectedVersion)}`;
+}
+
+type VersionedTable = PgTable & { id: AnyPgColumn; updatedAt: AnyPgColumn };
+
+/** Runs on the transaction whose guarded UPDATE matched nothing, to say why. */
+async function resolveRejectedUpdate(
+  tx: EditorialAuditExecutor & Pick<Database, "select">,
+  table: VersionedTable,
+  id: string,
+): Promise<EditorialUpdateOutcome> {
+  const [current] = await tx
+    .select({ updatedAt: table.updatedAt })
+    .from(table)
+    .where(eq(table.id, id))
+    .limit(1);
+  if (!current) return { status: "not_found" };
+  return { status: "stale", currentVersion: (current.updatedAt as Date).toISOString() };
+}
+
 export function withSlugConflicts(repository: EditorialRepository): EditorialRepository {
   return {
     ...repository,
@@ -273,6 +300,8 @@ export function createDrizzleEditorialRepository(
           id: shopEditorialVenue.id,
           slug: shopEditorialVenue.slug,
           status: shopEditorialVenue.status,
+          updatedAt: shopEditorialVenue.updatedAt,
+          city: shopEditorialVenue.city,
           name: shopEditorialVenue.name,
         })
         .from(shopEditorialVenue)
@@ -282,6 +311,8 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.name,
+        updatedAt: row.updatedAt.toISOString(),
+        city: row.city,
       }));
     },
 
@@ -291,6 +322,10 @@ export function createDrizzleEditorialRepository(
           id: shopEditorialExhibition.id,
           slug: shopEditorialExhibition.slug,
           status: shopEditorialExhibition.status,
+          updatedAt: shopEditorialExhibition.updatedAt,
+          kind: shopEditorialExhibition.kind,
+          startsOn: shopEditorialExhibition.startsOn,
+          endsOn: shopEditorialExhibition.endsOn,
           title: shopEditorialExhibition.title,
         })
         .from(shopEditorialExhibition)
@@ -300,6 +335,10 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.title,
+        updatedAt: row.updatedAt.toISOString(),
+        kind: row.kind,
+        startsOn: row.startsOn,
+        endsOn: row.endsOn,
       }));
     },
 
@@ -309,6 +348,8 @@ export function createDrizzleEditorialRepository(
           id: shopEditorialStory.id,
           slug: shopEditorialStory.slug,
           status: shopEditorialStory.status,
+          updatedAt: shopEditorialStory.updatedAt,
+          kind: shopEditorialStory.kind,
           title: shopEditorialStory.title,
         })
         .from(shopEditorialStory)
@@ -318,6 +359,8 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.title,
+        updatedAt: row.updatedAt.toISOString(),
+        kind: row.kind,
       }));
     },
 
@@ -327,6 +370,7 @@ export function createDrizzleEditorialRepository(
           id: shopEditorialPage.id,
           slug: shopEditorialPage.slug,
           status: shopEditorialPage.status,
+          updatedAt: shopEditorialPage.updatedAt,
           title: shopEditorialPage.title,
         })
         .from(shopEditorialPage)
@@ -336,6 +380,7 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.title,
+        updatedAt: row.updatedAt.toISOString(),
       }));
     },
 
@@ -706,6 +751,7 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.title,
+        updatedAt: row.updatedAt.toISOString(),
         title: row.title,
         body: readBlocks(row.bodyBlocks),
         seoTitle: row.seoTitle,
@@ -741,7 +787,7 @@ export function createDrizzleEditorialRepository(
 
     async updatePage(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const [row] = await tx
           .update(shopEditorialPage)
           .set({
@@ -752,17 +798,23 @@ export function createDrizzleEditorialRepository(
             updatedBy: input.updatedBy,
             updatedAt: new Date(),
           })
-          .where(eq(shopEditorialPage.id, id))
-          .returning({ id: shopEditorialPage.id });
-        if (row)
-          await auditEditorialWrite(
-            tx,
-            input.updatedBy,
-            "editorial.write",
-            "editorial.page.update",
-            "editorial_page",
-            row.id,
-          );
+          .where(
+            and(
+              eq(shopEditorialPage.id, id),
+              sameVersion(shopEditorialPage.updatedAt, input.expectedVersion),
+            ),
+          )
+          .returning({ id: shopEditorialPage.id, updatedAt: shopEditorialPage.updatedAt });
+        if (!row) return resolveRejectedUpdate(tx, shopEditorialPage, id);
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.page.update",
+          "editorial_page",
+          row.id,
+        );
+        return { status: "updated", version: row.updatedAt.toISOString() };
       });
     },
 
@@ -802,6 +854,7 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.name,
+        updatedAt: row.updatedAt.toISOString(),
         name: row.name,
         address: row.address,
         postcode: row.postcode,
@@ -853,7 +906,7 @@ export function createDrizzleEditorialRepository(
 
     async updateVenue(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const [row] = await tx
           .update(shopEditorialVenue)
           .set({
@@ -871,17 +924,23 @@ export function createDrizzleEditorialRepository(
             updatedBy: input.updatedBy,
             updatedAt: new Date(),
           })
-          .where(eq(shopEditorialVenue.id, id))
-          .returning({ id: shopEditorialVenue.id });
-        if (row)
-          await auditEditorialWrite(
-            tx,
-            input.updatedBy,
-            "editorial.write",
-            "editorial.venue.update",
-            "editorial_venue",
-            row.id,
-          );
+          .where(
+            and(
+              eq(shopEditorialVenue.id, id),
+              sameVersion(shopEditorialVenue.updatedAt, input.expectedVersion),
+            ),
+          )
+          .returning({ id: shopEditorialVenue.id, updatedAt: shopEditorialVenue.updatedAt });
+        if (!row) return resolveRejectedUpdate(tx, shopEditorialVenue, id);
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.venue.update",
+          "editorial_venue",
+          row.id,
+        );
+        return { status: "updated", version: row.updatedAt.toISOString() };
       });
     },
 
@@ -921,6 +980,7 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.title,
+        updatedAt: row.updatedAt.toISOString(),
         kind: row.kind,
         title: row.title,
         standfirst: row.standfirst,
@@ -976,7 +1036,7 @@ export function createDrizzleEditorialRepository(
 
     async updateStory(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const [row] = await tx
           .update(shopEditorialStory)
           .set({
@@ -993,17 +1053,23 @@ export function createDrizzleEditorialRepository(
             updatedBy: input.updatedBy,
             updatedAt: new Date(),
           })
-          .where(eq(shopEditorialStory.id, id))
-          .returning({ id: shopEditorialStory.id });
-        if (row)
-          await auditEditorialWrite(
-            tx,
-            input.updatedBy,
-            "editorial.write",
-            "editorial.story.update",
-            "editorial_story",
-            row.id,
-          );
+          .where(
+            and(
+              eq(shopEditorialStory.id, id),
+              sameVersion(shopEditorialStory.updatedAt, input.expectedVersion),
+            ),
+          )
+          .returning({ id: shopEditorialStory.id, updatedAt: shopEditorialStory.updatedAt });
+        if (!row) return resolveRejectedUpdate(tx, shopEditorialStory, id);
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.story.update",
+          "editorial_story",
+          row.id,
+        );
+        return { status: "updated", version: row.updatedAt.toISOString() };
       });
     },
 
@@ -1043,6 +1109,7 @@ export function createDrizzleEditorialRepository(
         slug: row.slug,
         status: row.status,
         label: row.title,
+        updatedAt: row.updatedAt.toISOString(),
         kind: row.kind,
         title: row.title,
         summary: row.summary,
@@ -1098,7 +1165,7 @@ export function createDrizzleEditorialRepository(
 
     async updateExhibition(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const [row] = await tx
           .update(shopEditorialExhibition)
           .set({
@@ -1117,17 +1184,26 @@ export function createDrizzleEditorialRepository(
             updatedBy: input.updatedBy,
             updatedAt: new Date(),
           })
-          .where(eq(shopEditorialExhibition.id, id))
-          .returning({ id: shopEditorialExhibition.id });
-        if (row)
-          await auditEditorialWrite(
-            tx,
-            input.updatedBy,
-            "editorial.write",
-            "editorial.exhibition.update",
-            "editorial_exhibition",
-            row.id,
-          );
+          .where(
+            and(
+              eq(shopEditorialExhibition.id, id),
+              sameVersion(shopEditorialExhibition.updatedAt, input.expectedVersion),
+            ),
+          )
+          .returning({
+            id: shopEditorialExhibition.id,
+            updatedAt: shopEditorialExhibition.updatedAt,
+          });
+        if (!row) return resolveRejectedUpdate(tx, shopEditorialExhibition, id);
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.exhibition.update",
+          "editorial_exhibition",
+          row.id,
+        );
+        return { status: "updated", version: row.updatedAt.toISOString() };
       });
     },
 

@@ -1,6 +1,7 @@
 import {
   EditorialExhibitionLinkListSchema,
   EditorialExhibitionLinksResponseSchema,
+  EditorialIdParamsSchema,
   EditorialLinkCandidatesQuerySchema,
   EditorialLinkCandidatesResponseSchema,
   EditorialLinksConflictBodySchema,
@@ -24,7 +25,6 @@ import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
-import { EditorialIdParamsSchema } from "./editorial-admin-schemas.js";
 
 /** The app-wide 1 KiB body cap would reject any list over about 25 ids; 200 uuids need about 8 KiB. */
 const REPLACE_BODY_LIMIT_BYTES = 16_384;
