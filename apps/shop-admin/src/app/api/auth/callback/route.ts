@@ -7,7 +7,7 @@ import {
   SHOP_ADMIN_LOGIN_ATTEMPT_COOKIE,
   SHOP_ADMIN_LOGIN_COOKIE,
   SHOP_ADMIN_LOGIN_RETRY_COOKIE,
-  SHOP_ADMIN_SESSION_COOKIE,
+  shopAdminSessionCookie,
 } from "../../../../lib/session-cookie";
 import { resolveStaffOAuthCallback } from "../../../../server/application/handle-staff-oauth-callback";
 import { getShopAdminContainer } from "../../../../server/container";
@@ -82,7 +82,7 @@ export async function GET(request: Request): Promise<Response> {
     });
     cookieStore.delete(SHOP_ADMIN_LOGIN_COOKIE);
     cookieStore.delete(SHOP_ADMIN_LOGIN_RETRY_COOKIE);
-    cookieStore.set(SHOP_ADMIN_SESSION_COOKIE, result.sessionId, {
+    cookieStore.set(shopAdminSessionCookie(container.config), result.sessionId, {
       httpOnly: true,
       secure,
       sameSite: "lax",

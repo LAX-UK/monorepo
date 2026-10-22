@@ -5,7 +5,7 @@ import {
   SHOP_ADMIN_CSRF_COOKIE,
   SHOP_ADMIN_LOGIN_COOKIE,
   SHOP_ADMIN_LOGIN_RETRY_COOKIE,
-  SHOP_ADMIN_SESSION_COOKIE,
+  shopAdminSessionCookie,
 } from "../../../../lib/session-cookie";
 import { getShopAdminContainer } from "../../../../server/container";
 
@@ -18,13 +18,13 @@ export async function POST(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const returnTo = safeReturnTo(url.searchParams.get("returnTo"), "/");
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SHOP_ADMIN_SESSION_COOKIE)?.value ?? null;
+  const sessionId = cookieStore.get(shopAdminSessionCookie(container.config))?.value ?? null;
   cookieStore.delete(SHOP_ADMIN_LOGIN_COOKIE);
   cookieStore.delete(SHOP_ADMIN_LOGIN_RETRY_COOKIE);
   cookieStore.delete(SHOP_ADMIN_CSRF_COOKIE);
   if (sessionId) {
     await container.sessions.delete(sessionId);
-    cookieStore.delete(SHOP_ADMIN_SESSION_COOKIE);
+    cookieStore.delete(shopAdminSessionCookie(container.config));
   }
   const { authorizeUrl, pending } = container.startStaffLogin({
     config: container.config,

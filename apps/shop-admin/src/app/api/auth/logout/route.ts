@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { SHOP_ADMIN_CSRF_COOKIE, SHOP_ADMIN_SESSION_COOKIE } from "../../../../lib/session-cookie";
+import { SHOP_ADMIN_CSRF_COOKIE, shopAdminSessionCookie } from "../../../../lib/session-cookie";
 import { getShopAdminContainer } from "../../../../server/container";
 
 function wantsJsonResponse(request: Request): boolean {
@@ -16,13 +16,13 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: "invalid_origin" }, { status: 403 });
   }
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SHOP_ADMIN_SESSION_COOKIE)?.value ?? null;
+  const sessionId = cookieStore.get(shopAdminSessionCookie(container.config))?.value ?? null;
   const result = await container.endStaffSession({
     config: container.config,
     sessions: container.sessions,
     sessionId,
   });
-  cookieStore.delete(SHOP_ADMIN_SESSION_COOKIE);
+  cookieStore.delete(shopAdminSessionCookie(container.config));
   cookieStore.delete(SHOP_ADMIN_CSRF_COOKIE);
   if (wantsJsonResponse(request)) {
     const response = NextResponse.json({ redirectTo: result.redirectTo });

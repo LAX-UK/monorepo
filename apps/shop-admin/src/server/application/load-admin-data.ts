@@ -1,4 +1,4 @@
-import { SHOP_ADMIN_SESSION_COOKIE } from "@/lib/session-cookie";
+import { shopAdminSessionCookie } from "@/lib/session-cookie";
 import type { ShopApiErrorCode } from "@auction/shop-contracts";
 import { cookies } from "next/headers";
 import { getShopAdminContainer } from "../container";
@@ -27,7 +27,7 @@ function encodeAdminResourcePath(path: string): string {
 async function forwardAdminGet(path: string): Promise<{ status: number; body: ArrayBuffer }> {
   const container = getShopAdminContainer();
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SHOP_ADMIN_SESSION_COOKIE)?.value ?? null;
+  const sessionId = cookieStore.get(shopAdminSessionCookie(container.config))?.value ?? null;
   if (!sessionId) {
     return { status: 401, body: new ArrayBuffer(0) };
   }
