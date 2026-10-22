@@ -7,6 +7,8 @@ export type MarketingFact = {
   label: string;
   /** One entry per line; entries may be links. */
   lines: readonly ReactNode[];
+  /** Extra classes on the fact's wrapper, e.g. to hide it at one breakpoint. */
+  className?: string;
 };
 
 export type MarketingFactColumnsProps = {
@@ -46,7 +48,11 @@ export function MarketingFactColumns({
       {shown.map((fact) => (
         <div
           key={fact.id}
-          className={cn("flex", stacked ? "items-start gap-4" : "flex-col items-center")}
+          className={cn(
+            "flex",
+            stacked ? "items-start gap-4" : "flex-col items-center",
+            fact.className,
+          )}
         >
           {stacked ? <span className="mt-0.5 text-on-surface-variant">{fact.icon}</span> : null}
           <div className={cn("flex min-w-0 flex-col", stacked ? "gap-1" : "items-center gap-3")}>

@@ -1,11 +1,12 @@
+import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtHomeEcosystemCardVm } from "@/lib/home/art-home-ecosystem.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 
 /**
- * Cream band with the LAX Bid and LAX Shop cards (Figma home `299:4535`). Figma's illustrations are
- * CMS content with no placement slot yet, so the cards are text-only on the feature surface.
+ * Cream band with the LAX Bid and LAX Shop cards (Figma home `299:4535`). A card shows its
+ * illustration only when the CMS promo placement supplies one.
  */
 export function ArtHomeEcosystemBand({
   cards,
@@ -35,6 +36,18 @@ export function ArtHomeEcosystemBand({
       <ul className={cn(MARKETING_PAGE_SHELL, "grid gap-12 md:grid-cols-2 md:gap-10")}>
         {cards.map((card) => (
           <li key={card.id} className="flex flex-col gap-4">
+            {card.imageUrl ? (
+              <div className="relative mb-2 aspect-[4/3] w-full overflow-hidden">
+                <ArtMediaImage
+                  src={card.imageUrl}
+                  alt=""
+                  label={card.eyebrow}
+                  sizes="(min-width: 48rem) 45vw, 100vw"
+                  className="absolute inset-0 size-full"
+                  imgClassName="object-cover"
+                />
+              </div>
+            ) : null}
             <p className="font-label text-xs font-medium uppercase tracking-[var(--text-label-caps-tracking)]">
               {card.eyebrow}
             </p>

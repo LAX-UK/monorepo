@@ -345,3 +345,52 @@ describe("composeArtHomePage editorial", () => {
     }
   });
 });
+
+describe("composeArtHomePage promo placements", () => {
+  it("dresses the LAX Bid card from home_promo_bid and keeps the directory link", async () => {
+    const services = fakeArtServices();
+    services.ecosystem.crossProductLinks.mockReturnValue([
+      { id: "bid", label: "LAX Bid", href: "https://bid.test", current: false, external: true },
+    ]);
+    services.editorial.home.mockResolvedValue({
+      status: "ok",
+      data: {
+        placements: [
+          {
+            slot: "home_promo_bid",
+            position: 0,
+            headline: "Live auctions",
+            body: "Bid on works.",
+            ctaLabel: "See auctions",
+            mediaUrl: "https://cdn.test/bid.jpg",
+            linkUrl: "https://elsewhere.test",
+            refKind: "external",
+            refSlug: null,
+          },
+        ],
+      },
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.ecosystem).toEqual([
+      expect.objectContaining({
+        title: "Live auctions",
+        cta: { label: "See auctions", href: "https://bid.test" },
+        imageUrl: "https://cdn.test/bid.jpg",
+      }),
+    ]);
+  });
+
+  it("keeps the static copy when the editorial read is disabled", async () => {
+    const services = fakeArtServices();
+    services.ecosystem.crossProductLinks.mockReturnValue([
+      { id: "bid", label: "LAX Bid", href: "https://bid.test", current: false, external: true },
+    ]);
+    services.editorial.home.mockResolvedValue({ status: "disabled" });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.ecosystem[0]).toMatchObject({ title: "Bid in auctions", imageUrl: null });
+  });
+});

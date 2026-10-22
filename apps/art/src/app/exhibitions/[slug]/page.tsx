@@ -4,6 +4,7 @@ import { ArtExhibitionArtists } from "@/components/exhibition/art-exhibition-art
 import { ArtExhibitionFacts } from "@/components/exhibition/art-exhibition-facts";
 import { ArtExhibitionInstallationViews } from "@/components/exhibition/art-exhibition-installation-views";
 import { ArtExhibitionPress } from "@/components/exhibition/art-exhibition-press";
+import { ArtExhibitionSpecialist } from "@/components/exhibition/art-exhibition-specialist";
 import { ArtExhibitionWorks } from "@/components/exhibition/art-exhibition-works.client";
 import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
@@ -89,6 +90,7 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
       ) : null}
       <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 py-10 lg:gap-16 lg:pb-16")}>
         <ArtExhibitionFacts facts={facts} />
+        <ArtExhibitionSpecialist contact={facts.contact} />
         {hasOverview ? (
           <div id="overview" className="mx-auto w-full max-w-3xl">
             <EditorialBlockRenderer body={body} />

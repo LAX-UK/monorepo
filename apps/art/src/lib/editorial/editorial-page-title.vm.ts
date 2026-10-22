@@ -7,8 +7,8 @@ export function exhibitionHasEnded(endsOn: string | null, now: Date): boolean {
 }
 
 /** "Exhibition · 18 Aug – 27 Aug 2026"; the kind alone when undated. */
-export function exhibitionMetaLine(kindLabel: string, dateLabel: string | null): string {
-  return dateLabel ? `${kindLabel} · ${dateLabel}` : kindLabel;
+export function exhibitionMetaLine(leadLabel: string, dateLabel: string | null): string {
+  return dateLabel ? `${leadLabel} · ${dateLabel}` : leadLabel;
 }
 
 /** "Opening hours: Tue – Sat 10:00 – 18:00 · Sun 12:00 – 17:00"; null without hours. */

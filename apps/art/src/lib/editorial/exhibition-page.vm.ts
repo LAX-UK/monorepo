@@ -4,12 +4,22 @@ import type {
   ArtEditorialExhibitionSummary,
   ArtEditorialStorySummary,
 } from "@/lib/editorial/art-editorial.types";
-import { formatExhibitionDates } from "@/lib/editorial/editorial-card.vm";
+import { formatExhibitionDates, venueKickerLabel } from "@/lib/editorial/editorial-card.vm";
 import type { OpeningHoursRow } from "@/lib/editorial/editorial-pages.composer";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
 
+/** The exhibition's named gallery contact, as the API returns it. */
+export type ExhibitionContactInput = {
+  name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+};
+
 export type ExhibitionFactsInput = {
   dateLabel: string | null;
+  contact?: ExhibitionContactInput | null | undefined;
   timesNote: string | null;
   hours: readonly OpeningHoursRow[];
   venue: {
@@ -31,15 +41,27 @@ export type ExhibitionFactsVm = {
   } | null;
   /** Dates, then the times note or one line per opening-hours row. */
   viewing: string[];
-  contact: { phone: string | null; email: string | null } | null;
+  /** `name` is set when a named specialist is shown; otherwise the venue's phone and email. */
+  contact: {
+    name: string | null;
+    role: string | null;
+    phone: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  } | null;
 };
 
+function trimmed(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
 /**
- * Location, viewing and contact for the facts row (Figma `743:20964`). A named contact person
- * has no data yet, so contact is the venue's phone and email.
+ * Location, viewing and contact for the facts row (Figma `743:20964`). The exhibition's named
+ * contact leads; the venue's phone and email stand in when none is set.
  */
 export function buildExhibitionFacts({
   dateLabel,
+  contact,
   timesNote,
   hours,
   venue,
@@ -48,8 +70,9 @@ export function buildExhibitionFacts({
   const hoursLines = note
     ? [note]
     : hours.map((row) => (row.label === "Opening hours" ? row.value : `${row.label} ${row.value}`));
-  const phone = venue?.phone?.trim() || null;
-  const email = venue?.email?.trim() || null;
+  const specialistName = trimmed(contact?.name);
+  const phone = trimmed(specialistName ? contact?.phone : venue?.phone);
+  const email = trimmed(specialistName ? contact?.email : venue?.email);
   return {
     location: venue
       ? {
@@ -60,7 +83,16 @@ export function buildExhibitionFacts({
         }
       : null,
     viewing: [dateLabel, ...hoursLines].filter((line): line is string => Boolean(line)),
-    contact: phone || email ? { phone, email } : null,
+    contact:
+      specialistName || phone || email
+        ? {
+            name: specialistName,
+            role: specialistName ? trimmed(contact?.role) : null,
+            phone,
+            email,
+            avatarUrl: specialistName ? trimmed(contact?.avatarUrl) : null,
+          }
+        : null,
   };
 }
 
@@ -138,8 +170,8 @@ export function buildExhibitionReveals(
     const dates = formatExhibitionDates(item.startsOn, item.endsOn);
     return {
       key: item.slug,
-      eyebrow: ["Featured exhibition", item.venue?.name].filter((part): part is string =>
-        Boolean(part),
+      eyebrow: ["Featured exhibition", venueKickerLabel(item.venue)].filter(
+        (part): part is string => Boolean(part),
       ),
       meta: dates ? [dates] : [],
       title: item.title,

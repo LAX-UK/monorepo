@@ -224,6 +224,41 @@ describe("composeExhibitionDetailPage", () => {
     });
   });
 
+  it("leads the byline with the subtitle and shows the named contact", async () => {
+    const services = fakeArtServices();
+    services.editorial.getExhibition.mockResolvedValue({
+      status: "ok",
+      data: exhibition({
+        subtitle: "Selling exhibition",
+        contact: {
+          name: "Amelia Hart",
+          role: "Exhibition specialist",
+          email: "amelia@lax.test",
+          phone: null,
+          avatarUrl: null,
+        },
+      }),
+    });
+    services.editorial.getVenue.mockResolvedValue({
+      status: "ok",
+      data: venue({ phone: "020 7000 0000", email: "hello@lax.test" }),
+    });
+
+    const result = await composeExhibitionDetailPage(services, "summer-show");
+
+    expect(result.status === "ok" && result.data).toMatchObject({
+      metaLine: "Selling exhibition · 1 Jun – 30 Aug 2026",
+      facts: { contact: { name: "Amelia Hart", email: "amelia@lax.test", phone: null } },
+    });
+
+    services.editorial.getExhibition.mockResolvedValue({
+      status: "ok",
+      data: exhibition({ subtitle: "  " }),
+    });
+    const blank = await composeExhibitionDetailPage(services, "summer-show");
+    expect(blank.status === "ok" && blank.data.metaLine).toBe("Exhibition · 1 Jun – 30 Aug 2026");
+  });
+
   it("maps artworks, artists and press stories, ignoring other story kinds", async () => {
     const services = fakeArtServices();
     services.editorial.getExhibition.mockResolvedValue({

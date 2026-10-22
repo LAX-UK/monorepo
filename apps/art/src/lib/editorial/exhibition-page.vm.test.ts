@@ -35,7 +35,13 @@ describe("buildExhibitionFacts", () => {
         mapUrl: "https://maps.test/lax",
       },
       viewing: ["18 – 30 Sep 2026", "Mon – Sat 10:00 – 17:00", "Sun 12:00 – 17:00"],
-      contact: { phone: "020 7000 0000", email: "hello@lax.test" },
+      contact: {
+        name: null,
+        role: null,
+        phone: "020 7000 0000",
+        email: "hello@lax.test",
+        avatarUrl: null,
+      },
     });
   });
 
@@ -70,6 +76,48 @@ describe("buildExhibitionFacts", () => {
     expect(
       buildExhibitionFacts({ dateLabel: null, timesNote: null, hours: [], venue: null }),
     ).toEqual({ location: null, viewing: [], contact: null });
+  });
+});
+
+describe("buildExhibitionFacts contact", () => {
+  const specialist = {
+    name: " Amelia Hart ",
+    role: "Exhibition specialist",
+    email: "amelia@lax.test",
+    phone: "020 7111 1111",
+    avatarUrl: "https://cdn.test/amelia.jpg",
+  };
+  const base = { dateLabel: null, timesNote: null, hours: [], venue };
+
+  it("shows the named contact in place of the venue's phone and email", () => {
+    expect(buildExhibitionFacts({ ...base, contact: specialist }).contact).toEqual({
+      name: "Amelia Hart",
+      role: "Exhibition specialist",
+      phone: "020 7111 1111",
+      email: "amelia@lax.test",
+      avatarUrl: "https://cdn.test/amelia.jpg",
+    });
+  });
+
+  it("falls back to the venue details when the contact is null or absent", () => {
+    const venueOnly = {
+      name: null,
+      role: null,
+      phone: "020 7000 0000",
+      email: "hello@lax.test",
+      avatarUrl: null,
+    };
+    expect(buildExhibitionFacts({ ...base, contact: null }).contact).toEqual(venueOnly);
+    expect(buildExhibitionFacts(base).contact).toEqual(venueOnly);
+  });
+
+  it("keeps a contact with only a name and drops blank fields", () => {
+    expect(
+      buildExhibitionFacts({
+        ...base,
+        contact: { name: "Amelia Hart", role: " ", email: null, phone: "", avatarUrl: null },
+      }).contact,
+    ).toEqual({ name: "Amelia Hart", role: null, phone: null, email: null, avatarUrl: null });
   });
 });
 
@@ -162,6 +210,14 @@ describe("buildExhibitionReveals", () => {
         imageUrl: "/cover.jpg",
       },
     ]);
+  });
+
+  it("names the venue's city when the summary carries one", () => {
+    expect(
+      buildExhibitionReveals([
+        { ...summary, venue: { slug: "marylebone", name: "LAX Marylebone", city: "London" } },
+      ])[0]?.eyebrow,
+    ).toEqual(["Featured exhibition", "London"]);
   });
 
   it("drops the venue, dates and summary when unknown", () => {
