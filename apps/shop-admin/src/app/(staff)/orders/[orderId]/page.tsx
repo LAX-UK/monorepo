@@ -1,10 +1,14 @@
+import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { CancelOrderLineForm, RefundOrderForm } from "@/components/admin-staff-action-forms.client";
-import { AdminTable } from "@/components/shop-admin-shell";
+import { AdminRecordTable } from "@/components/admin-staff-data-table";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminOrderDetail } from "@auction/shop-contracts";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { PageHeader } from "@auction/ui";
+import { notFound, redirect } from "next/navigation";
+
+export const metadata = { title: "Order" };
 
 export default async function OrderDetailPage({
   params,
@@ -13,9 +17,10 @@ export default async function OrderDetailPage({
 }) {
   const { orderId } = await params;
   const result = await fetchAdminJson<AdminOrderDetail>(`orders/${orderId}`);
+  if (result.status === "unauthorized") redirect("/login");
   if (result.status === "not_found") notFound();
   if (result.status !== "ok") {
-    return <p className="text-sm text-red-700">Could not load order ({result.status}).</p>;
+    return <AdminFailedPage title="Order" status={result.status} />;
   }
   const data = result.data;
   const orderLineOptions = data.lines.map((line) => ({
@@ -27,28 +32,33 @@ export default async function OrderDetailPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <Link href="/orders" className="text-sm text-neutral-600 underline">
-          ← Orders
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Order {data.orderId.slice(0, 8)}</h1>
-        <p className="text-sm text-neutral-600">
-          {data.status} · {formatAdminDetailGbpPence(data.totalPence)} · {data.fulfilment}
-        </p>
-        {data.paidAt ? (
-          <p className="text-sm text-neutral-600">Paid {formatAdminDetailDateTime(data.paidAt)}</p>
-        ) : null}
-      </div>
+      <PageHeader
+        breadcrumbs={
+          <AdminBreadcrumbs
+            list={{ label: "Orders", href: "/orders" }}
+            current={`Order ${data.orderId.slice(0, 8)}`}
+          />
+        }
+        title={`Order ${data.orderId.slice(0, 8)}`}
+        description={`${data.status} · ${formatAdminDetailGbpPence(data.totalPence)} · ${data.fulfilment}${
+          data.paidAt ? ` · Paid ${formatAdminDetailDateTime(data.paidAt)}` : ""
+        }`}
+      />
 
       <section>
         <h2 className="mb-3 text-lg font-medium">Lines</h2>
-        <AdminTable
+        <AdminRecordTable
+          ariaLabel="Order lines"
           columns={["Line", "Edition", "Unit price"]}
-          rows={data.lines.map((row) => [
-            row.artworkTitle ?? row.orderLineId.slice(0, 8),
-            row.editionNumber == null ? "—" : String(row.editionNumber),
-            formatAdminDetailGbpPence(row.unitPricePence),
-          ])}
+          empty={{ title: "No lines", description: "This order has no lines." }}
+          rows={data.lines.map((row) => ({
+            id: row.orderLineId,
+            cells: [
+              row.artworkTitle ?? row.orderLineId.slice(0, 8),
+              row.editionNumber == null ? "—" : String(row.editionNumber),
+              formatAdminDetailGbpPence(row.unitPricePence),
+            ],
+          }))}
         />
       </section>
 
@@ -73,14 +83,22 @@ export default async function OrderDetailPage({
 
       <section>
         <h2 className="mb-3 text-lg font-medium">Refunds</h2>
-        <AdminTable
+        <AdminRecordTable
+          ariaLabel="Refunds"
           columns={["Amount", "Status", "Source", "Created"]}
-          rows={data.refunds.map((row) => [
-            formatAdminDetailGbpPence(row.amountPence),
-            row.status,
-            row.source,
-            formatAdminDetailDateTime(row.createdAt),
-          ])}
+          empty={{
+            title: "No refunds",
+            description: "Refunds issued against this order will be listed here.",
+          }}
+          rows={data.refunds.map((row) => ({
+            id: row.refundId,
+            cells: [
+              formatAdminDetailGbpPence(row.amountPence),
+              row.status,
+              row.source,
+              formatAdminDetailDateTime(row.createdAt),
+            ],
+          }))}
         />
       </section>
     </div>

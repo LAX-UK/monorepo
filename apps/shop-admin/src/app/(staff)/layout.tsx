@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import { ShopAdminShell } from "@/components/shop-admin-shell";
+import { AdminAccountMenu } from "@/components/admin-account-menu";
+import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffReauthHref } from "@/lib/staff-layout-redirect";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
+import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -31,9 +33,11 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     capabilities: session.capabilities,
     features: session.features,
   });
-  const staffLabel = `${session.role.replaceAll("_", " ")} · ${session.subject.slice(0, 8)}…`;
   return (
-    <ShopAdminShell navGroups={navGroups} staffLabel={staffLabel}>
+    <ShopAdminShell
+      navGroups={navGroups}
+      account={<AdminAccountMenu roleLabel={staffRoleLabel(session.role)} />}
+    >
       {children}
     </ShopAdminShell>
   );

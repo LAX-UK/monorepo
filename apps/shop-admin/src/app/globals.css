@@ -1,27 +1,51 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
 
+/* The shared @auction/ui controls (dialogs, selects, toasts) are compiled to dist, which Tailwind
+   does not scan on its own; without this their layout classes are never generated. */
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+/* Token names match apps/account so the shared @auction/ui primitives resolve. LAX colour rule
+   (docs/DESIGN_SYSTEM.md): LAX Admin is product-neutral, so it uses the shared neutrals only and
+   navy stays Bid's accent. */
 @theme {
   --color-page-bg: #f6f5f2;
+  --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-on-surface: #1c170d;
-  --color-on-surface-variant: #5c5c5c;
+  --color-on-surface-variant: #474747;
   --color-primary: var(--brand-obsidian);
   --color-on-primary: var(--brand-light-cream);
-  --color-link: var(--brand-midnight);
-  --color-ring: var(--brand-midnight);
+  --color-primary-container: #e8e8e8;
+  --color-on-primary-container: #1c170d;
+  --color-secondary-container: #f3f3f3;
+  --color-on-secondary-container: #1c170d;
+  --color-link: var(--brand-obsidian);
+  --color-ring: var(--brand-obsidian);
+  --color-surface-container: #eeeeee;
+  --color-surface-container-low: #f3f3f3;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #e8e8e8;
+  --color-surface-container-highest: #e2e2e2;
   --color-outline: color-mix(in srgb, var(--brand-light-gray) 70%, white);
+  --color-outline-variant: color-mix(in srgb, var(--brand-light-gray) 50%, white);
+  --color-border-hairline: color-mix(in srgb, var(--brand-light-gray) 60%, white);
   --color-success: #1f7a35;
+  --color-on-success: #ffffff;
   --color-success-container: #e6f4ea;
   --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
   --color-error-container: #ffdad6;
   --color-warning-container: #fff4d6;
   --color-info-container: #eef2fb;
+  --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   body {
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: var(--font-body);
   }
 
   :focus-visible {

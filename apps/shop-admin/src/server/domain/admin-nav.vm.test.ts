@@ -16,7 +16,7 @@ function navHrefsFor(role: ShopStaffRole, features = ALL_FEATURES): string[] {
 
 describe("buildAdminNavGroups", () => {
   it("shows catalogue editors the catalogue and editorial areas only", () => {
-    expect(navHrefsFor("catalogue_editor")).toEqual(["/artists", "/artworks", "/editorial"]);
+    expect(navHrefsFor("catalogue_editor")).toEqual(["/artworks", "/artists", "/editorial"]);
   });
 
   it("lets operations view orders and enquiries but not editorial or the audit log", () => {
@@ -75,6 +75,30 @@ describe("buildAdminNavGroups", () => {
     for (const hidden of ["/payouts", "/fulfilment", "/holds", "/original-sales", "/merchandise"]) {
       expect(hrefs).not.toContain(hidden);
     }
+  });
+
+  it("groups links by job, in staff-facing order, with the labels staff see", () => {
+    const groups = buildAdminNavGroups({
+      capabilities: capabilitiesForRole("shop_admin"),
+      features: ALL_FEATURES,
+    });
+    expect(groups.map((group) => [group.title, group.items.map((item) => item.label)])).toEqual([
+      ["Overview", ["Overview"]],
+      ["Gallery", ["Artworks", "Artists", "Editorial", "Enquiries"]],
+      ["Shop", ["Products", "Orders", "Production", "Fulfilment", "Stock holds"]],
+      ["Sales", ["Original sales", "Third-party sales", "Sale limit requests"]],
+      ["Clients", ["Clients"]],
+      ["Finance", ["Payouts", "Disputes"]],
+      ["Admin", ["Staff", "Audit log", "Settings"]],
+    ]);
+  });
+
+  it("hides groups that have no visible links", () => {
+    const titles = buildAdminNavGroups({
+      capabilities: capabilitiesForRole("catalogue_editor"),
+      features: ALL_FEATURES,
+    }).map((group) => group.title);
+    expect(titles).toEqual(["Gallery"]);
   });
 
   it("shows nothing without capabilities", () => {

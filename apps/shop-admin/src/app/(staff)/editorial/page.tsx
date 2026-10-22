@@ -4,9 +4,12 @@ import type { EditorialAdminRow } from "@/lib/editorial-entity-forms";
 import type { AdminPlacementRow } from "@/lib/editorial-placements";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type RowList = { items: EditorialAdminRow[] };
+
+export const metadata = { title: "Editorial" };
 
 export default async function ShopAdminEditorialPage() {
   const [pages, venues, exhibitions, stories, placements] = await Promise.all([
@@ -20,13 +23,10 @@ export default async function ShopAdminEditorialPage() {
   if (statuses.includes("unauthorized")) redirect("/login");
 
   const header = (
-    <div>
-      <h1 className="mb-2 text-2xl font-semibold">Editorial (lax.art)</h1>
-      <p className="text-sm text-on-surface-variant">
-        Venues, exhibitions, stories, fixed pages, and home placements. Requires{" "}
-        <code className="text-xs">SHOP_EDITORIAL_ENABLED</code> on shop-api.
-      </p>
-    </div>
+    <PageHeader
+      title="Editorial"
+      description="Venues, exhibitions, stories, fixed pages and home placements for lax.art."
+    />
   );
 
   if (

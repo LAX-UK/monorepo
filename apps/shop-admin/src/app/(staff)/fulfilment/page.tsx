@@ -1,13 +1,14 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import {
   RecordPossessionForm,
   UpdateFulfilmentForm,
 } from "@/components/admin-staff-action-forms.client";
-import { AdminTable } from "@/components/shop-admin-shell";
+import { AdminRecordTable } from "@/components/admin-staff-data-table";
 import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { PageHeader } from "@auction/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -24,6 +25,8 @@ type FulfilmentList = {
   nextCursor: string | null;
 };
 
+export const metadata = { title: "Fulfilment" };
+
 export default async function ShopAdminFulfilmentPage({
   searchParams,
 }: {
@@ -33,12 +36,7 @@ export default async function ShopAdminFulfilmentPage({
   const result = await fetchAdminJson<FulfilmentList>(adminListPath("fulfilment", { cursor }));
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Fulfilment</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Fulfilment" status={result.status} />;
   }
 
   const selectedFulfilmentId = fulfilmentId?.trim() || result.data.items[0]?.fulfilmentId;
@@ -48,35 +46,46 @@ export default async function ShopAdminFulfilmentPage({
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Fulfilment</h1>
+      <PageHeader
+        title="Fulfilment"
+        description="Track what is still to be shipped or collected, and record tracking and possession."
+      />
       <UpdateFulfilmentForm {...fulfilmentFormProps} />
       <RecordPossessionForm {...fulfilmentFormProps} />
       <section>
         <h2 className="mb-3 text-lg font-medium">Open fulfilments</h2>
-        <AdminTable
+        <AdminRecordTable
+          ariaLabel="Open fulfilments"
           columns={["Order", "Status", "Option", "Tracking", "Updated", ""]}
-          rows={result.data.items.map((row) => [
-            <Link
-              key={`${row.fulfilmentId}-order`}
-              href={`/orders/${row.orderId}`}
-              className="underline"
-            >
-              {row.orderId.slice(0, 8)}
-            </Link>,
-            row.status,
-            row.option,
-            row.trackingNumber ? `${row.carrier ?? "carrier"} ${row.trackingNumber}` : "—",
-            formatAdminDetailDateTime(row.updatedAt),
-            <Link
-              key={`${row.fulfilmentId}-edit`}
-              href={`/fulfilment?fulfilmentId=${encodeURIComponent(row.fulfilmentId)}`}
-              className="underline"
-            >
-              Use in forms
-            </Link>,
-          ])}
+          empty={{
+            title: "Nothing to fulfil",
+            description: "Paid orders that still need shipping or collection will appear here.",
+          }}
+          rows={result.data.items.map((row) => ({
+            id: row.fulfilmentId,
+            cells: [
+              <Link key="order" href={`/orders/${row.orderId}`} className="underline">
+                {row.orderId.slice(0, 8)}
+              </Link>,
+              row.status,
+              row.option,
+              row.trackingNumber ? `${row.carrier ?? "carrier"} ${row.trackingNumber}` : "—",
+              formatAdminDetailDateTime(row.updatedAt),
+              <Link
+                key="edit"
+                href={`/fulfilment?fulfilmentId=${encodeURIComponent(row.fulfilmentId)}`}
+                className="underline"
+              >
+                Use in forms
+              </Link>,
+            ],
+          }))}
         />
-        <AdminListCursorNav pathname="/fulfilment" nextCursor={result.data.nextCursor} />
+        <AdminListCursorNav
+          cursor={cursor}
+          pathname="/fulfilment"
+          nextCursor={result.data.nextCursor}
+        />
       </section>
     </div>
   );

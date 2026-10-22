@@ -7,6 +7,7 @@ import {
 } from "@/components/admin-staff-action-forms.client";
 import { AdminStaffDataTable } from "@/components/admin-staff-data-table";
 import { RequestDecisionForm } from "@/components/request-decision-form";
+import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -45,6 +46,10 @@ export function ArtistsStaffListTable({ items }: { items: ArtistRow[] }) {
       columns={columns}
       data={items}
       getRowId={(row) => row.artistId}
+      empty={{
+        title: "No artists yet",
+        description: "Artists appear here once they are imported with their first artwork.",
+      }}
       ariaLabel="Artists"
     />
   );
@@ -74,6 +79,10 @@ export function ClientsStaffListTable({ items }: { items: ClientRow[] }) {
       columns={columns}
       data={items}
       getRowId={(row) => row.partyId}
+      empty={{
+        title: "No clients yet",
+        description: "Collectors and owners appear here after their first order or purchase.",
+      }}
       ariaLabel="Clients"
     />
   );
@@ -117,6 +126,10 @@ export function OrdersStaffListTable({ items }: { items: OrderRow[] }) {
       columns={columns}
       data={items}
       getRowId={(row) => row.orderId}
+      empty={{
+        title: "No orders yet",
+        description: "Orders appear here as soon as a customer completes checkout.",
+      }}
       ariaLabel="Orders"
     />
   );
@@ -162,6 +175,11 @@ export function SaleAuthorityRequestsStaffListTable({ items }: { items: RequestR
       columns={columns}
       data={items}
       getRowId={(row) => row.requestId}
+      empty={{
+        title: "No requests waiting",
+        description:
+          "Artists ask for a higher sale limit from their account. New requests will be listed here for review.",
+      }}
       ariaLabel="Sale limit requests"
     />
   );
@@ -208,6 +226,11 @@ export function StockHoldsStaffListTable({ items }: { items: HoldRow[] }) {
       columns={columns}
       data={items}
       getRowId={(row) => row.holdId}
+      empty={{
+        title: "No stock holds",
+        description:
+          "Hold an edition for a client with the form above, and it will be listed here until it is released or expires.",
+      }}
       ariaLabel="Stock holds"
     />
   );
@@ -254,6 +277,11 @@ export function PayoutsStaffListTable({ items }: { items: PayoutRow[] }) {
       columns={columns}
       data={items}
       getRowId={(row) => row.payoutId}
+      empty={{
+        title: "No payouts due",
+        description:
+          "Payouts are created when a sale completes. Anything waiting to be paid will be listed here.",
+      }}
       ariaLabel="Payouts"
     />
   );
@@ -290,6 +318,10 @@ export function ThirdPartySalesStaffListTable({ items }: { items: ThirdPartySale
       columns={columns}
       data={items}
       getRowId={(row) => row.saleId}
+      empty={{
+        title: "No third-party sales recorded",
+        description: "Record a sale made outside the shop with the form above to see it here.",
+      }}
       ariaLabel="Third-party sales"
     />
   );
@@ -335,6 +367,11 @@ export function MerchandiseStaffListTable({ items }: { items: MerchandiseRow[] }
       columns={columns}
       data={items}
       getRowId={(row) => row.productId}
+      empty={{
+        title: "No products yet",
+        description:
+          "Products are added from the catalogue. Once there are some, you can adjust their stock here.",
+      }}
       ariaLabel="Merchandise products"
     />
   );
@@ -379,7 +416,117 @@ export function StaffMembersListTable({ items }: { items: StaffRow[] }) {
       columns={columns}
       data={items}
       getRowId={(row) => row.staffMemberId}
+      empty={{
+        title: "No other staff yet",
+        description: "Give someone a role with the form above and they will be listed here.",
+      }}
       ariaLabel="Staff members"
+    />
+  );
+}
+
+type AuditRow = {
+  auditId: string;
+  actorSubjectId: string;
+  capability: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  createdAt: string;
+};
+
+export function AuditStaffListTable({ items }: { items: AuditRow[] }) {
+  const columns = useMemo<ColumnDef<AuditRow, unknown>[]>(
+    () => [
+      {
+        id: "when",
+        header: "When",
+        cell: ({ row }) => (
+          <time dateTime={row.original.createdAt}>
+            {formatAdminDetailDateTime(row.original.createdAt)}
+          </time>
+        ),
+      },
+      {
+        id: "actor",
+        header: "Actor",
+        cell: ({ row }) => (
+          <span title={row.original.actorSubjectId}>{row.original.actorSubjectId.slice(0, 8)}</span>
+        ),
+      },
+      { accessorKey: "action", header: "Action" },
+      {
+        id: "target",
+        header: "Target",
+        cell: ({ row }) => (
+          <span title={row.original.targetId}>
+            {row.original.targetType} {row.original.targetId.slice(0, 8)}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+  return (
+    <AdminStaffDataTable
+      columns={columns}
+      data={items}
+      getRowId={(row) => row.auditId}
+      empty={{
+        title: "No audit entries yet",
+        description: "Changes made by staff are recorded here, newest first.",
+      }}
+      ariaLabel="Audit log"
+    />
+  );
+}
+
+type DisputeRow = {
+  disputeId: string;
+  orderId: string;
+  stripeDisputeId: string;
+  status: string;
+  amountPence: number;
+  openedAt: string;
+};
+
+export function DisputesStaffListTable({ items }: { items: DisputeRow[] }) {
+  const columns = useMemo<ColumnDef<DisputeRow, unknown>[]>(
+    () => [
+      { accessorKey: "status", header: "Status" },
+      {
+        id: "amount",
+        header: "Amount",
+        cell: ({ row }) => formatAdminDetailGbpPence(row.original.amountPence),
+      },
+      {
+        id: "order",
+        header: "Order",
+        cell: ({ row }) => (
+          <Link href={`/orders/${row.original.orderId}`} className="underline">
+            {row.original.orderId.slice(0, 8)}
+          </Link>
+        ),
+      },
+      { accessorKey: "stripeDisputeId", header: "Stripe dispute" },
+      {
+        id: "opened",
+        header: "Opened",
+        cell: ({ row }) => formatAdminDetailDateTime(row.original.openedAt),
+      },
+    ],
+    [],
+  );
+  return (
+    <AdminStaffDataTable
+      columns={columns}
+      data={items}
+      getRowId={(row) => row.disputeId}
+      empty={{
+        title: "No disputes",
+        description: "Card disputes raised with the payment provider will be listed here.",
+      }}
+      ariaLabel="Disputes"
     />
   );
 }

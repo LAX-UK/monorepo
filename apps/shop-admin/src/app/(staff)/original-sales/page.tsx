@@ -1,13 +1,14 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import {
   CreateOriginalSaleForm,
   IssueOriginalSaleInvoiceForm,
 } from "@/components/admin-staff-action-forms.client";
-import { AdminTable } from "@/components/shop-admin-shell";
+import { AdminRecordTable } from "@/components/admin-staff-data-table";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type OriginalSaleList = {
@@ -22,6 +23,8 @@ type OriginalSaleList = {
   nextCursor: string | null;
 };
 
+export const metadata = { title: "Original sales" };
+
 export default async function ShopAdminOriginalSalesPage({
   searchParams,
 }: {
@@ -33,35 +36,43 @@ export default async function ShopAdminOriginalSalesPage({
   );
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Original sales</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Original sales" status={result.status} />;
   }
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Original sales</h1>
+      <PageHeader
+        title="Original sales"
+        description="Sell the original of an artwork: reserve it, issue the buyer an invoice, and it is assigned once they pay."
+      />
       <CreateOriginalSaleForm />
       <IssueOriginalSaleInvoiceForm />
       <section>
         <h2 className="mb-3 text-lg font-medium">Pipeline</h2>
-        <p className="mb-3 text-sm text-neutral-600">
-          Workflow: reserve → issue invoice → buyer pays (webhook assigns original + editions).
-        </p>
-        <AdminTable
+        <AdminRecordTable
+          ariaLabel="Original sales pipeline"
           columns={["Sale ID", "Artwork", "Price", "Status", "Created"]}
-          rows={result.data.items.map((row) => [
-            row.saleId,
-            row.artworkTitle,
-            formatAdminDetailGbpPence(row.salePricePence),
-            row.status,
-            formatAdminDetailDateTime(row.createdAt),
-          ])}
+          empty={{
+            title: "No original sales yet",
+            description:
+              "Create a sale with the form above and it will appear here as it moves towards payment.",
+          }}
+          rows={result.data.items.map((row) => ({
+            id: row.saleId,
+            cells: [
+              row.saleId,
+              row.artworkTitle,
+              formatAdminDetailGbpPence(row.salePricePence),
+              row.status,
+              formatAdminDetailDateTime(row.createdAt),
+            ],
+          }))}
         />
-        <AdminListCursorNav pathname="/original-sales" nextCursor={result.data.nextCursor} />
+        <AdminListCursorNav
+          cursor={cursor}
+          pathname="/original-sales"
+          nextCursor={result.data.nextCursor}
+        />
       </section>
     </div>
   );

@@ -1,24 +1,41 @@
+import { AdminFailedPage } from "@/components/admin-fetch-state";
+import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import { generalEnquirySenderLabel } from "@/lib/general-enquiry-sender";
+import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminGeneralEnquiryRow } from "@auction/shop-contracts";
+import { EmptyState, PageHeader } from "@auction/ui";
+import { redirect } from "next/navigation";
 
-export default async function GeneralEnquiriesAdminPage() {
-  const result = await fetchAdminJson<{ items: AdminGeneralEnquiryRow[] }>("general-enquiries");
+export const metadata = { title: "Enquiries" };
+
+export default async function GeneralEnquiriesAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
+  const { cursor } = await searchParams;
+  const result = await fetchAdminJson<{
+    items: AdminGeneralEnquiryRow[];
+    nextCursor: string | null;
+  }>(adminListPath("general-enquiries", { cursor }));
+  if (result.status === "unauthorized") redirect("/login");
+  if (result.status !== "ok") {
+    return <AdminFailedPage title="Enquiries" status={result.status} />;
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="mb-2 text-2xl font-semibold">General enquiries</h1>
-        <p className="text-sm text-on-surface-variant">
-          Messages submitted from lax.art contact and editorial general-enquiry flows.
-        </p>
-      </div>
-      {result.status !== "ok" ? (
-        <p className="text-sm text-on-surface-variant">
-          Could not load enquiries ({result.status}).
-        </p>
-      ) : result.data.items.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">No general enquiries yet.</p>
+    <div>
+      <PageHeader
+        title="Enquiries"
+        description="Messages sent from the lax.art contact page and editorial enquiry forms, newest first."
+      />
+      {result.data.items.length === 0 ? (
+        <EmptyState
+          headingLevel="h2"
+          title="No enquiries yet"
+          description="When a visitor writes to us from lax.art, their message will appear here."
+        />
       ) : (
         <ul className="divide-y divide-border-hairline rounded-lg border border-border-hairline">
           {result.data.items.map((row) => (
@@ -41,6 +58,11 @@ export default async function GeneralEnquiriesAdminPage() {
           ))}
         </ul>
       )}
+      <AdminListCursorNav
+        pathname="/general-enquiries"
+        cursor={cursor}
+        nextCursor={result.data.nextCursor}
+      />
     </div>
   );
 }

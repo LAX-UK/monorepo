@@ -1,10 +1,11 @@
-import { AdminFetchState } from "@/components/admin-fetch-state";
+import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import { GrantStaffRoleForm } from "@/components/admin-staff-action-forms.client";
 import { StaffMembersListTable } from "@/components/admin-staff-list-tables.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
+import { PageHeader } from "@auction/ui";
 import { redirect } from "next/navigation";
 
 type StaffList = {
@@ -17,6 +18,8 @@ type StaffList = {
   nextCursor: string | null;
 };
 
+export const metadata = { title: "Staff" };
+
 export default async function StaffPage({
   searchParams,
 }: {
@@ -26,12 +29,7 @@ export default async function StaffPage({
   const result = await fetchAdminJson<StaffList>(adminListPath("staff", { cursor }));
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-semibold">Staff</h1>
-        <AdminFetchState status={result.status} />
-      </div>
-    );
+    return <AdminFailedPage title="Staff" status={result.status} />;
   }
 
   const { bidPublicUrl } = getShopAdminContainer().config;
@@ -39,12 +37,15 @@ export default async function StaffPage({
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Staff</h1>
+      <PageHeader
+        title="Staff"
+        description="People who can sign in to LAX Admin, and the role each one holds."
+      />
       <div className="mb-6">
         <GrantStaffRoleForm bidStaffUrl={bidStaffUrl} />
       </div>
       <StaffMembersListTable items={result.data.items} />
-      <AdminListCursorNav pathname="/staff" nextCursor={result.data.nextCursor} />
+      <AdminListCursorNav cursor={cursor} pathname="/staff" nextCursor={result.data.nextCursor} />
     </div>
   );
 }
