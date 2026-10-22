@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
-  requireRecentFinanceAuthentication,
+  requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
@@ -127,7 +127,7 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "fulfilment.write");
-      requireRecentFinanceAuthentication(request, deps.financeMaxAuthAgeSeconds);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         fulfilmentId: string;
@@ -162,7 +162,7 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "refund.write");
-      requireRecentFinanceAuthentication(request, deps.financeMaxAuthAgeSeconds);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const body = request.body as { orderLineId: string; editionId: string };
       const idempotencyKey = requireIdempotencyKey(request);
@@ -191,7 +191,7 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "refund.write");
-      requireRecentFinanceAuthentication(request, deps.financeMaxAuthAgeSeconds);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         orderId: string;
@@ -225,7 +225,7 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "payout.mark_paid");
-      requireRecentFinanceAuthentication(request, deps.financeMaxAuthAgeSeconds);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const body = request.body as { payoutId: string; paidReference: string };
       const idempotencyKey = requireIdempotencyKey(request);

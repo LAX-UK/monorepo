@@ -46,4 +46,36 @@ describe("staff capabilities matrix", () => {
     expect(roleHasCapability("broker", "stock_hold.override")).toBe(false);
     expect(roleHasCapability("operations", "stock_hold.override")).toBe(false);
   });
+
+  it.each<[ShopStaffRole, ShopStaffCapability[]]>([
+    [
+      "shop_admin",
+      ["editorial.write", "editorial.publish", "enquiry.read", "enquiry.write", "order.read"],
+    ],
+    ["catalogue_editor", ["editorial.write", "editorial.publish"]],
+    ["account_manager", ["enquiry.read", "enquiry.write", "order.read"]],
+    ["broker", ["enquiry.read"]],
+    ["operations", ["order.read", "enquiry.read"]],
+    ["finance", ["order.read"]],
+  ])("%s holds %j from the editorial, enquiry and order capabilities", (role, expected) => {
+    const scoped = [
+      "editorial.write",
+      "editorial.publish",
+      "enquiry.read",
+      "enquiry.write",
+      "order.read",
+    ];
+    const held = capabilitiesForRole(role).filter((capability) => scoped.includes(capability));
+    expect([...held].sort()).toEqual([...expected].sort());
+  });
+
+  it("keeps editorial publishing out of every role except admins and catalogue editors", () => {
+    for (const role of ["account_manager", "broker", "operations", "finance"] as ShopStaffRole[]) {
+      expect(roleHasCapability(role, "editorial.publish")).toBe(false);
+    }
+  });
+
+  it("keeps catalogue.write for catalogue editors so artworks and artists stay editable", () => {
+    expect(roleHasCapability("catalogue_editor", "catalogue.write")).toBe(true);
+  });
 });

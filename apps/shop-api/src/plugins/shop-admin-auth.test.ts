@@ -2,9 +2,9 @@ import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import type { FastifyRequest } from "fastify";
 import { describe, expect, it } from "vitest";
 import { ShopApiError } from "../errors/shop-api-error.js";
-import { requireRecentFinanceAuthentication } from "./shop-admin-auth.js";
+import { requireRecentAuthentication } from "./shop-admin-auth.js";
 
-describe("requireRecentFinanceAuthentication", () => {
+describe("requireRecentAuthentication", () => {
   it("rejects missing auth_time", () => {
     const request = {
       shopAdminAuth: {
@@ -14,9 +14,9 @@ describe("requireRecentFinanceAuthentication", () => {
         authTime: undefined,
       },
     } as unknown as FastifyRequest;
-    expect(() => requireRecentFinanceAuthentication(request, 900)).toThrow(ShopApiError);
+    expect(() => requireRecentAuthentication(request, 900)).toThrow(ShopApiError);
     try {
-      requireRecentFinanceAuthentication(request, 900);
+      requireRecentAuthentication(request, 900);
     } catch (err) {
       expect(err).toBeInstanceOf(ShopApiError);
       expect((err as ShopApiError).code).toBe(SHOP_API_ERROR_CODES.STEP_UP_REQUIRED);
@@ -33,6 +33,6 @@ describe("requireRecentFinanceAuthentication", () => {
         authTime: nowSec - 60,
       },
     } as unknown as FastifyRequest;
-    expect(() => requireRecentFinanceAuthentication(request, 900)).not.toThrow();
+    expect(() => requireRecentAuthentication(request, 900)).not.toThrow();
   });
 });

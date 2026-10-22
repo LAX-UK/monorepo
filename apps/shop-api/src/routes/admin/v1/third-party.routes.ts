@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
-  requireRecentFinanceAuthentication,
+  requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
@@ -144,7 +144,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "fee.approve");
-      requireRecentFinanceAuthentication(request, deps.financeMaxAuthAgeSeconds);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const params = request.params as { feeId: string };

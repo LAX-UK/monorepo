@@ -28,6 +28,27 @@ describe("resolveAdminProxyTarget", () => {
     expect(write?.requiresRecentAuth).toBe(true);
   });
 
+  it.each([
+    ["POST", "/api/admin/staff/grants"],
+    ["DELETE", "/api/admin/staff/grants/subject-1"],
+  ])("requires recent auth for staff role change %s %s", (method, bffPath) => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath,
+      shopApiBaseUrl: "http://shop-api:3011",
+      method,
+    });
+    expect(resolved?.requiresRecentAuth).toBe(true);
+  });
+
+  it("does not require recent auth to list staff", () => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath: "/api/admin/staff",
+      shopApiBaseUrl: "http://shop-api:3011",
+      method: "GET",
+    });
+    expect(resolved?.requiresRecentAuth).toBe(false);
+  });
+
   it("rejects path traversal segments", () => {
     expect(
       resolveAdminProxyTarget({

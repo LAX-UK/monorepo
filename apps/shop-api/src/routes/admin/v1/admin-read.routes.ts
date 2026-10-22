@@ -75,7 +75,7 @@ export async function registerAdminReadRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "audit.read");
+      requireShopStaffCapability(request, "order.read");
       const query = request.query as { cursor?: string; limit?: number };
       return deps.adminRead.orders.listOrders(query);
     },
@@ -95,7 +95,7 @@ export async function registerAdminReadRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "audit.read");
+      requireShopStaffCapability(request, "order.read");
       const { orderId } = request.params as { orderId: string };
       return deps.adminRead.orders.getOrderDetail(orderId);
     },

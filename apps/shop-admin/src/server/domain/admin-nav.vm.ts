@@ -41,7 +41,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
       title: "Catalogue",
       items: [
         { href: "/artworks", label: "Artworks", capability: "catalogue.write" },
-        { href: "/editorial", label: "Editorial (lax.art)", capability: "catalogue.write" },
+        { href: "/editorial", label: "Editorial (lax.art)", capability: "editorial.write" },
         ...(input.features.merchandise
           ? [
               {
@@ -56,7 +56,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
     {
       title: "Orders",
       items: [
-        { href: "/orders", label: "Orders", capability: "audit.read" },
+        { href: "/orders", label: "Orders", capability: "order.read" },
         ...(input.features.payouts
           ? [
               { href: "/production", label: "Production", capability: "production.write" as const },
@@ -80,7 +80,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
         {
           href: "/general-enquiries",
           label: "General enquiries",
-          capability: "audit.read" as const,
+          capability: "enquiry.read" as const,
         },
         { href: "/audit", label: "Audit log", capability: "audit.read" as const },
         { href: "/settings", label: "Settings", capability: "settings.write" as const },

@@ -53,6 +53,7 @@ import {
   toExhibitionSummary,
   toStorySummary,
 } from "./drizzle-editorial-relations.js";
+import { insertShopAdminAudit } from "./shop-admin-audit.js";
 
 type RepoOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
@@ -204,6 +205,28 @@ async function rethrowSlugConflict<T>(write: Promise<T>): Promise<T> {
     }
     throw error;
   }
+}
+
+type EditorialAuditExecutor = Pick<Database, "insert">;
+
+/** Written on the same executor as the change so the two commit or roll back together. */
+function auditEditorialWrite(
+  executor: EditorialAuditExecutor,
+  actorSubjectId: string,
+  capability: "editorial.write" | "editorial.publish",
+  action: string,
+  targetType: string,
+  targetId: string,
+  afterJson?: Record<string, unknown>,
+): Promise<void> {
+  return insertShopAdminAudit(executor as Database, {
+    actorSubjectId,
+    capability,
+    action,
+    targetType,
+    targetId,
+    ...(afterJson ? { afterJson } : {}),
+  });
 }
 
 export function withSlugConflicts(repository: EditorialRepository): EditorialRepository {
@@ -686,45 +709,79 @@ export function createDrizzleEditorialRepository(
 
     async createPage(input) {
       const body = parseEditorialBlocks(input.body);
-      const [row] = await db
-        .insert(shopEditorialPage)
-        .values({
-          slug: input.slug,
-          title: input.title,
-          bodyBlocks: body,
-          ...seoColumns(input),
-          updatedBy: input.updatedBy,
-        })
-        .returning({ id: shopEditorialPage.id });
-      if (!row) throw new Error("editorial_page_create_failed");
-      return { id: row.id };
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(shopEditorialPage)
+          .values({
+            slug: input.slug,
+            title: input.title,
+            bodyBlocks: body,
+            ...seoColumns(input),
+            updatedBy: input.updatedBy,
+          })
+          .returning({ id: shopEditorialPage.id });
+        if (!row) throw new Error("editorial_page_create_failed");
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.page.create",
+          "editorial_page",
+          row.id,
+        );
+        return { id: row.id };
+      });
     },
 
     async updatePage(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db
-        .update(shopEditorialPage)
-        .set({
-          slug: input.slug,
-          title: input.title,
-          bodyBlocks: body,
-          ...seoColumns(input),
-          updatedBy: input.updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialPage.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialPage)
+          .set({
+            slug: input.slug,
+            title: input.title,
+            bodyBlocks: body,
+            ...seoColumns(input),
+            updatedBy: input.updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialPage.id, id))
+          .returning({ id: shopEditorialPage.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            input.updatedBy,
+            "editorial.write",
+            "editorial.page.update",
+            "editorial_page",
+            row.id,
+          );
+      });
     },
 
     async setPagePublication(id, published, updatedBy) {
-      await db
-        .update(shopEditorialPage)
-        .set({
-          status: published ? "published" : "draft",
-          publishedAt: published ? new Date() : null,
-          updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialPage.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialPage)
+          .set({
+            status: published ? "published" : "draft",
+            publishedAt: published ? new Date() : null,
+            updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialPage.id, id))
+          .returning({ id: shopEditorialPage.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            updatedBy,
+            "editorial.publish",
+            published ? "editorial.page.publish" : "editorial.page.unpublish",
+            "editorial_page",
+            row.id,
+          );
+      });
     },
 
     async getAdminVenueById(id) {
@@ -757,59 +814,93 @@ export function createDrizzleEditorialRepository(
 
     async createVenue(input) {
       const body = parseEditorialBlocks(input.body);
-      const [row] = await db
-        .insert(shopEditorialVenue)
-        .values({
-          slug: input.slug,
-          name: input.name,
-          address: input.address,
-          postcode: input.postcode,
-          openingHours: input.openingHours,
-          phone: input.phone,
-          email: input.email,
-          mapUrl: input.mapUrl,
-          coverMediaKey: input.coverMediaKey,
-          bodyBlocks: body,
-          ...venueExtraColumns(input),
-          updatedBy: input.updatedBy,
-        })
-        .returning({ id: shopEditorialVenue.id });
-      if (!row) throw new Error("editorial_venue_create_failed");
-      return { id: row.id };
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(shopEditorialVenue)
+          .values({
+            slug: input.slug,
+            name: input.name,
+            address: input.address,
+            postcode: input.postcode,
+            openingHours: input.openingHours,
+            phone: input.phone,
+            email: input.email,
+            mapUrl: input.mapUrl,
+            coverMediaKey: input.coverMediaKey,
+            bodyBlocks: body,
+            ...venueExtraColumns(input),
+            updatedBy: input.updatedBy,
+          })
+          .returning({ id: shopEditorialVenue.id });
+        if (!row) throw new Error("editorial_venue_create_failed");
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.venue.create",
+          "editorial_venue",
+          row.id,
+        );
+        return { id: row.id };
+      });
     },
 
     async updateVenue(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db
-        .update(shopEditorialVenue)
-        .set({
-          slug: input.slug,
-          name: input.name,
-          address: input.address,
-          postcode: input.postcode,
-          openingHours: input.openingHours,
-          phone: input.phone,
-          email: input.email,
-          mapUrl: input.mapUrl,
-          coverMediaKey: input.coverMediaKey,
-          bodyBlocks: body,
-          ...venueExtraColumns(input),
-          updatedBy: input.updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialVenue.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialVenue)
+          .set({
+            slug: input.slug,
+            name: input.name,
+            address: input.address,
+            postcode: input.postcode,
+            openingHours: input.openingHours,
+            phone: input.phone,
+            email: input.email,
+            mapUrl: input.mapUrl,
+            coverMediaKey: input.coverMediaKey,
+            bodyBlocks: body,
+            ...venueExtraColumns(input),
+            updatedBy: input.updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialVenue.id, id))
+          .returning({ id: shopEditorialVenue.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            input.updatedBy,
+            "editorial.write",
+            "editorial.venue.update",
+            "editorial_venue",
+            row.id,
+          );
+      });
     },
 
     async setVenuePublication(id, published, updatedBy) {
-      await db
-        .update(shopEditorialVenue)
-        .set({
-          status: published ? "published" : "draft",
-          publishedAt: published ? new Date() : null,
-          updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialVenue.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialVenue)
+          .set({
+            status: published ? "published" : "draft",
+            publishedAt: published ? new Date() : null,
+            updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialVenue.id, id))
+          .returning({ id: shopEditorialVenue.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            updatedBy,
+            "editorial.publish",
+            published ? "editorial.venue.publish" : "editorial.venue.unpublish",
+            "editorial_venue",
+            row.id,
+          );
+      });
     },
 
     async getAdminStoryById(id) {
@@ -847,57 +938,91 @@ export function createDrizzleEditorialRepository(
 
     async createStory(input) {
       const body = parseEditorialBlocks(input.body);
-      const [row] = await db
-        .insert(shopEditorialStory)
-        .values({
-          slug: input.slug,
-          kind: input.kind,
-          title: input.title,
-          standfirst: input.standfirst,
-          coverMediaKey: input.coverMediaKey,
-          videoUrl: input.videoUrl,
-          featured: input.featured,
-          bodyBlocks: body,
-          ...seoColumns(input),
-          ...storyExtraColumns(input, body),
-          updatedBy: input.updatedBy,
-        })
-        .returning({ id: shopEditorialStory.id });
-      if (!row) throw new Error("editorial_story_create_failed");
-      return { id: row.id };
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(shopEditorialStory)
+          .values({
+            slug: input.slug,
+            kind: input.kind,
+            title: input.title,
+            standfirst: input.standfirst,
+            coverMediaKey: input.coverMediaKey,
+            videoUrl: input.videoUrl,
+            featured: input.featured,
+            bodyBlocks: body,
+            ...seoColumns(input),
+            ...storyExtraColumns(input, body),
+            updatedBy: input.updatedBy,
+          })
+          .returning({ id: shopEditorialStory.id });
+        if (!row) throw new Error("editorial_story_create_failed");
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.story.create",
+          "editorial_story",
+          row.id,
+        );
+        return { id: row.id };
+      });
     },
 
     async updateStory(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db
-        .update(shopEditorialStory)
-        .set({
-          slug: input.slug,
-          kind: input.kind,
-          title: input.title,
-          standfirst: input.standfirst,
-          coverMediaKey: input.coverMediaKey,
-          videoUrl: input.videoUrl,
-          featured: input.featured,
-          bodyBlocks: body,
-          ...seoColumns(input),
-          ...storyExtraColumns(input, body),
-          updatedBy: input.updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialStory.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialStory)
+          .set({
+            slug: input.slug,
+            kind: input.kind,
+            title: input.title,
+            standfirst: input.standfirst,
+            coverMediaKey: input.coverMediaKey,
+            videoUrl: input.videoUrl,
+            featured: input.featured,
+            bodyBlocks: body,
+            ...seoColumns(input),
+            ...storyExtraColumns(input, body),
+            updatedBy: input.updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialStory.id, id))
+          .returning({ id: shopEditorialStory.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            input.updatedBy,
+            "editorial.write",
+            "editorial.story.update",
+            "editorial_story",
+            row.id,
+          );
+      });
     },
 
     async setStoryPublication(id, published, updatedBy) {
-      await db
-        .update(shopEditorialStory)
-        .set({
-          status: published ? "published" : "draft",
-          publishedAt: published ? new Date() : null,
-          updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialStory.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialStory)
+          .set({
+            status: published ? "published" : "draft",
+            publishedAt: published ? new Date() : null,
+            updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialStory.id, id))
+          .returning({ id: shopEditorialStory.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            updatedBy,
+            "editorial.publish",
+            published ? "editorial.story.publish" : "editorial.story.unpublish",
+            "editorial_story",
+            row.id,
+          );
+      });
     },
 
     async getAdminExhibitionById(id) {
@@ -933,61 +1058,95 @@ export function createDrizzleEditorialRepository(
 
     async createExhibition(input) {
       const body = parseEditorialBlocks(input.body);
-      const [row] = await db
-        .insert(shopEditorialExhibition)
-        .values({
-          slug: input.slug,
-          kind: input.kind,
-          title: input.title,
-          summary: input.summary,
-          venueId: input.venueId,
-          startsOn: input.startsOn,
-          endsOn: input.endsOn,
-          timesNote: input.timesNote,
-          coverMediaKey: input.coverMediaKey,
-          featured: input.featured,
-          bodyBlocks: body,
-          ...exhibitionExtraColumns(input),
-          updatedBy: input.updatedBy,
-        })
-        .returning({ id: shopEditorialExhibition.id });
-      if (!row) throw new Error("editorial_exhibition_create_failed");
-      return { id: row.id };
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(shopEditorialExhibition)
+          .values({
+            slug: input.slug,
+            kind: input.kind,
+            title: input.title,
+            summary: input.summary,
+            venueId: input.venueId,
+            startsOn: input.startsOn,
+            endsOn: input.endsOn,
+            timesNote: input.timesNote,
+            coverMediaKey: input.coverMediaKey,
+            featured: input.featured,
+            bodyBlocks: body,
+            ...exhibitionExtraColumns(input),
+            updatedBy: input.updatedBy,
+          })
+          .returning({ id: shopEditorialExhibition.id });
+        if (!row) throw new Error("editorial_exhibition_create_failed");
+        await auditEditorialWrite(
+          tx,
+          input.updatedBy,
+          "editorial.write",
+          "editorial.exhibition.create",
+          "editorial_exhibition",
+          row.id,
+        );
+        return { id: row.id };
+      });
     },
 
     async updateExhibition(id, input) {
       const body = parseEditorialBlocks(input.body);
-      await db
-        .update(shopEditorialExhibition)
-        .set({
-          slug: input.slug,
-          kind: input.kind,
-          title: input.title,
-          summary: input.summary,
-          venueId: input.venueId,
-          startsOn: input.startsOn,
-          endsOn: input.endsOn,
-          timesNote: input.timesNote,
-          coverMediaKey: input.coverMediaKey,
-          featured: input.featured,
-          bodyBlocks: body,
-          ...exhibitionExtraColumns(input),
-          updatedBy: input.updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialExhibition.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialExhibition)
+          .set({
+            slug: input.slug,
+            kind: input.kind,
+            title: input.title,
+            summary: input.summary,
+            venueId: input.venueId,
+            startsOn: input.startsOn,
+            endsOn: input.endsOn,
+            timesNote: input.timesNote,
+            coverMediaKey: input.coverMediaKey,
+            featured: input.featured,
+            bodyBlocks: body,
+            ...exhibitionExtraColumns(input),
+            updatedBy: input.updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialExhibition.id, id))
+          .returning({ id: shopEditorialExhibition.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            input.updatedBy,
+            "editorial.write",
+            "editorial.exhibition.update",
+            "editorial_exhibition",
+            row.id,
+          );
+      });
     },
 
     async setExhibitionPublication(id, published, updatedBy) {
-      await db
-        .update(shopEditorialExhibition)
-        .set({
-          status: published ? "published" : "draft",
-          publishedAt: published ? new Date() : null,
-          updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(shopEditorialExhibition.id, id));
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(shopEditorialExhibition)
+          .set({
+            status: published ? "published" : "draft",
+            publishedAt: published ? new Date() : null,
+            updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopEditorialExhibition.id, id))
+          .returning({ id: shopEditorialExhibition.id });
+        if (row)
+          await auditEditorialWrite(
+            tx,
+            updatedBy,
+            "editorial.publish",
+            published ? "editorial.exhibition.publish" : "editorial.exhibition.unpublish",
+            "editorial_exhibition",
+            row.id,
+          );
+      });
     },
 
     async listAdminPlacements() {
@@ -1015,24 +1174,46 @@ export function createDrizzleEditorialRepository(
         await tx
           .delete(shopEditorialPlacement)
           .where(eq(shopEditorialPlacement.slot, slot as never));
-        if (items.length === 0) return;
-        await tx.insert(shopEditorialPlacement).values(
-          items.map((item) => ({
-            slot: slot as never,
-            position: item.position,
-            refKind: item.refKind as never,
-            refId: item.refId,
-            headline: item.headline,
-            mediaKey: item.mediaKey,
-            linkUrl: item.linkUrl,
-            body: item.body ?? null,
-            ctaLabel: item.ctaLabel ?? null,
-            publishedAt: new Date(),
-            updatedAt: new Date(),
-          })),
+        if (items.length > 0) {
+          await tx.insert(shopEditorialPlacement).values(
+            items.map((item) => ({
+              slot: slot as never,
+              position: item.position,
+              refKind: item.refKind as never,
+              refId: item.refId,
+              headline: item.headline,
+              mediaKey: item.mediaKey,
+              linkUrl: item.linkUrl,
+              body: item.body ?? null,
+              ctaLabel: item.ctaLabel ?? null,
+              publishedAt: new Date(),
+              updatedAt: new Date(),
+            })),
+          );
+        }
+        await auditEditorialWrite(
+          tx,
+          updatedBy,
+          "editorial.publish",
+          "editorial.placement.replace",
+          "editorial_placement",
+          slot,
+          {
+            items: items.length,
+          },
         );
-        void updatedBy;
       });
+    },
+
+    async recordPreviewTokenIssued(entity, id, actorSubjectId) {
+      await auditEditorialWrite(
+        db,
+        actorSubjectId,
+        "editorial.write",
+        "editorial.preview_token.issue",
+        `editorial_${entity}`,
+        id,
+      );
     },
   };
   return withSlugConflicts(repository);

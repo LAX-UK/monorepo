@@ -45,6 +45,7 @@ export function createStubEditorialRepository(
     setExhibitionPublication: notImplemented,
     listAdminPlacements: async () => [],
     replacePlacementSlot: notImplemented,
+    recordPreviewTokenIssued: async () => {},
     ...overrides,
   };
 }

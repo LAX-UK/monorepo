@@ -10,12 +10,17 @@ export const ADMIN_PROXY_RULES: readonly AdminProxyRule[] = [
   { bffPrefix: "/api/admin", upstreamPrefix: "/admin/v1", requiresRecentAuth: false },
 ];
 
-const FINANCE_PATH_PREFIXES = [
+/**
+ * Mutations under these prefixes move money or change who has access, so the
+ * session must have authenticated recently. Mirrors the checks in shop-api.
+ */
+const STEP_UP_PATH_PREFIXES = [
   "/admin/v1/refunds",
   "/admin/v1/payouts",
   "/admin/v1/sale-fees",
   "/admin/v1/fulfilment/possession",
   "/admin/v1/cancellations",
+  "/admin/v1/staff/grants",
 ] as const;
 
 function segmentIsUnsafe(segment: string): boolean {
@@ -68,10 +73,10 @@ export function resolveAdminProxyTarget(input: {
   }
   const upstreamPath = `${rule.upstreamPrefix}${suffix}`;
   const normalizedPathname = new URL(upstreamPath, "http://admin.local").pathname;
-  const isFinanceRoute = FINANCE_PATH_PREFIXES.some((prefix) =>
+  const isStepUpRoute = STEP_UP_PATH_PREFIXES.some((prefix) =>
     normalizedPathname.startsWith(prefix),
   );
-  const requiresRecentAuth = input.method.toUpperCase() !== "GET" && isFinanceRoute;
+  const requiresRecentAuth = input.method.toUpperCase() !== "GET" && isStepUpRoute;
   return {
     upstreamUrl: new URL(upstreamPath, `${input.shopApiBaseUrl}/`),
     requiresRecentAuth,
