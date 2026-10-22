@@ -207,6 +207,10 @@ export const twoFactor = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     verified: boolean("verified").notNull().default(true),
+    /** Better Auth's brute-force lockout: failed code attempts since the last success. */
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    /** Set by Better Auth when too many codes fail; verification is refused until then. */
+    lockedUntil: timestamp("locked_until", { mode: "date", withTimezone: true }),
   },
   (table) => [uniqueIndex("two_factor_user_id_uidx").on(table.userId)],
 );
