@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import type { EnquirySender } from "../enquiry-sender.js";
 import { createRegisterArtworkInterestHandler } from "./register-artwork-interest.handler.js";
+
+const ACCOUNT: EnquirySender = {
+  kind: "account",
+  identitySubjectId: "sub-1",
+  contactName: null,
+  contactEmail: null,
+};
 
 describe("createRegisterArtworkInterestHandler", () => {
   it("evaluates notify-me policy before registering interest", async () => {
@@ -18,13 +26,13 @@ describe("createRegisterArtworkInterestHandler", () => {
       getInterestStatus: vi.fn(),
     });
     await expect(
-      handler({ artworkSlug: "warm-basket", identitySubjectId: "sub-1", intent: "notify_me" }),
+      handler({ artworkSlug: "warm-basket", sender: ACCOUNT, intent: "notify_me" }),
     ).resolves.toBe("registered");
     expect(registerInterest).toHaveBeenCalledWith({
       artworkId: "art-1",
       artworkSlug: "warm-basket",
       salesChannel: "shop",
-      identitySubjectId: "sub-1",
+      sender: ACCOUNT,
       intent: "notify_me",
     });
   });

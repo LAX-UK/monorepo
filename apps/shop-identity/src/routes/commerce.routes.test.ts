@@ -663,3 +663,149 @@ describe("commerce favorites proxy routes", () => {
     expect(await response.json()).toMatchObject({ code: "shop.feature_disabled" });
   });
 });
+
+describe("commerce enquiry routes", () => {
+  const GUEST = { name: "Grace Hopper", email: "grace@example.com" };
+  const loopbackPeer = { incoming: { socket: { remoteAddress: "127.0.0.1" } } };
+
+  async function csrfHeaders(app: Hono, extra: Record<string, string> = {}) {
+    const csrf = await app.request("/commerce/csrf");
+    const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+    const cookie = csrf.headers.get("set-cookie") ?? "";
+    return {
+      "content-type": "application/json",
+      "x-shop-csrf": csrfToken,
+      ...extra,
+      cookie: [extra.cookie, cookie].filter(Boolean).join("; "),
+    };
+  }
+
+  it("sends a guest artwork enquiry on the BFF token with the browser address", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ status: "registered" }));
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request(
+      "/commerce/artworks/reed-study/interest",
+      {
+        method: "POST",
+        headers: await csrfHeaders(app, { "x-forwarded-for": "203.0.113.9" }),
+        body: JSON.stringify({ intent: "enquiry", message: "Is it framed?", ...GUEST }),
+      },
+      loopbackPeer,
+    );
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/artworks/reed-study/interest",
+        method: "POST",
+        scopes: "shop.write",
+        idToken: null,
+        clientIp: "203.0.113.9",
+        body: { intent: "enquiry", message: "Is it framed?", ...GUEST },
+      }),
+    );
+  });
+
+  it("keeps availability alerts behind sign-in for guests", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/artworks/reed-study/interest", {
+      method: "POST",
+      headers: await csrfHeaders(app),
+      body: JSON.stringify({ intent: "notify_me" }),
+    });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "sign_in_required" });
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["without name and email", { intent: "enquiry", message: "Hello" }],
+    ["with an invalid email", { intent: "enquiry", message: "Hello", ...GUEST, email: "nope" }],
+  ])("rejects a guest artwork enquiry %s", async (_label, body) => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/artworks/reed-study/interest", {
+      method: "POST",
+      headers: await csrfHeaders(app),
+      body: JSON.stringify(body),
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "validation_failed" });
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("sends a guest general enquiry", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ enquiryId: "e1" }, { status: 201 }));
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/general-enquiries", {
+      method: "POST",
+      headers: await csrfHeaders(app),
+      body: JSON.stringify({ topic: "selling", message: "I have a painting", ...GUEST }),
+    });
+    expect(response.status).toBe(201);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/general-enquiries",
+        idToken: null,
+        body: { topic: "selling", message: "I have a painting", ...GUEST },
+      }),
+    );
+  });
+
+  it("requires CSRF for guest enquiries", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/general-enquiries", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ topic: "general", message: "Hello", ...GUEST }),
+    });
+    expect(response.status).toBe(403);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the account linkage for a signed-in general enquiry, with name and email optional", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ enquiryId: "e1" }, { status: 201 }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/general-enquiries", {
+      method: "POST",
+      headers: await csrfHeaders(app, { cookie: AUTH_COOKIE }),
+      body: JSON.stringify({ topic: "general", message: "Hello" }),
+    });
+    expect(response.status).toBe(201);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        idToken: ID_TOKEN,
+        body: { topic: "general", message: "Hello" },
+      }),
+    );
+    expect(shopApiFetch).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ clientIp: expect.anything() }),
+    );
+  });
+
+  it("passes a filled honeypot through for the API to drop", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ enquiryId: "e1" }, { status: 201 }));
+    const app = createGuestCommerceApp(shopApiFetch);
+    await app.request("/commerce/me/general-enquiries", {
+      method: "POST",
+      headers: await csrfHeaders(app),
+      body: JSON.stringify({
+        topic: "general",
+        message: "Hello",
+        website: "https://spam.example",
+        ...GUEST,
+      }),
+    });
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        body: expect.objectContaining({ website: "https://spam.example" }),
+      }),
+    );
+  });
+});

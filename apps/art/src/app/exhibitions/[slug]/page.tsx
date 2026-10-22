@@ -2,7 +2,6 @@ import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-r
 import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
-import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import { exhibitionSectionTabs } from "@/lib/editorial/editorial-page-title.vm";
 import { composeExhibitionDetailPage } from "@/lib/editorial/editorial-pages.composer";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
@@ -43,7 +42,6 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
 
   const { exhibition, metaLine, ended, dateLabel, venueName, venueHref, hoursLabel, body } =
     result.data;
-  const returnTo = `/exhibitions/${encodeURIComponent(exhibition.slug)}`;
   const viewer = await artServices.viewer.load();
   const hasOverview = body.blocks.length > 0;
   const hasInstallationViews = exhibition.installationMedia.length > 0;
@@ -157,7 +155,6 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
           </p>
           <ArtGeneralEnquiryPanel
             viewer={viewer}
-            loginHref={artStorefrontLoginHref(returnTo)}
             defaultTopic="exhibition"
             contextSlug={exhibition.slug}
             contextLabel={exhibition.title}

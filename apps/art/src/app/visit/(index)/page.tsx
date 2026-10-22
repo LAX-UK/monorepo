@@ -90,7 +90,7 @@ export default async function VisitPage() {
         </MarketingReveal>
       )}
 
-      <ArtPrivateViewingSection viewer={viewer} returnTo="/visit" />
+      <ArtPrivateViewingSection viewer={viewer} />
     </div>
   );
 }

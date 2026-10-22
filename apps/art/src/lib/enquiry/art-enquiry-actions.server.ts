@@ -11,7 +11,10 @@ export async function sendArtEnquiry(
 ): Promise<ArtEnquiryState> {
   return submitArtEnquiry(artCommerceMutationClient, {
     artworkSlug,
+    name: formData.get("name"),
+    email: formData.get("email"),
     message: formData.get("message"),
+    website: formData.get("website"),
     contactPhone: formData.get("contactPhone"),
   });
 }

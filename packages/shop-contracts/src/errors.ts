@@ -20,6 +20,7 @@ export const SHOP_API_ERROR_CODES = {
   STAFF_FORBIDDEN: "shop.staff_forbidden",
   FEATURE_DISABLED: "shop.feature_disabled",
   IDEMPOTENCY_CONFLICT: "shop.idempotency_conflict",
+  RATE_LIMITED: "shop.rate_limited",
 } as const;
 
 export type ShopApiErrorCode = (typeof SHOP_API_ERROR_CODES)[keyof typeof SHOP_API_ERROR_CODES];

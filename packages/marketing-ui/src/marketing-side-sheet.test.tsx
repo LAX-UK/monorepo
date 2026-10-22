@@ -39,4 +39,23 @@ describe("MarketingSideSheet", () => {
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("keeps the caps title by default and sets a sentence-case title on request", () => {
+    const { rerender } = render(
+      <MarketingSideSheet open onOpenChange={() => {}} title="Send an enquiry">
+        <p>Body</p>
+      </MarketingSideSheet>,
+    );
+    expect(screen.getByRole("heading", { name: "Send an enquiry" }).className).toContain(
+      "uppercase",
+    );
+    rerender(
+      <MarketingSideSheet open onOpenChange={() => {}} title="Send an enquiry" titleCase="sentence">
+        <p>Body</p>
+      </MarketingSideSheet>,
+    );
+    expect(screen.getByRole("heading", { name: "Send an enquiry" }).className).not.toContain(
+      "uppercase",
+    );
+  });
 });

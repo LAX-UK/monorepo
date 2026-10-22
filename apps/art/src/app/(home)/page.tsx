@@ -9,7 +9,6 @@ import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
-import { artStorefrontLoginHref } from "@/lib/art-viewer-state";
 import { buildArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
 import { ART_HOME_CLOSING_CTA } from "@/lib/home/art-home-promos.vm";
 import {
@@ -205,7 +204,6 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
           action={
             <ArtGeneralEnquiryPanel
               viewer={vm.viewer}
-              loginHref={artStorefrontLoginHref("/")}
               triggerLabel={ART_HOME_CLOSING_CTA.triggerLabel}
             />
           }

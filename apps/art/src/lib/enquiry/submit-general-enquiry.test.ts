@@ -16,6 +16,7 @@ function recordingClient(result: ArtCommerceMutationResult) {
   return { client, calls };
 }
 
+const CONTACT = { name: "Grace Hopper", email: "grace@example.com" };
 const SENT: ArtCommerceMutationResult = { kind: "response", status: 201, body: {} };
 
 describe("submitGeneralEnquiry", () => {
@@ -23,6 +24,7 @@ describe("submitGeneralEnquiry", () => {
     const { client, calls } = recordingClient(SENT);
     const state = await submitGeneralEnquiry(client, {
       topic: "exhibition",
+      ...CONTACT,
       message: "  Is the show open on Sunday?  ",
       phone: " +44 20 0000 ",
       contextSlug: "summer-show",
@@ -33,6 +35,7 @@ describe("submitGeneralEnquiry", () => {
         path: "/commerce/me/general-enquiries",
         body: {
           topic: "exhibition",
+          ...CONTACT,
           message: "Is the show open on Sunday?",
           phone: "+44 20 0000",
           contextSlug: "summer-show",
@@ -44,10 +47,20 @@ describe("submitGeneralEnquiry", () => {
   it("rejects whitespace-only messages and unknown topics without calling the API", async () => {
     const { client, calls } = recordingClient(SENT);
     expect(
-      await submitGeneralEnquiry(client, { topic: "general", message: "   ", phone: "" }),
+      await submitGeneralEnquiry(client, {
+        topic: "general",
+        ...CONTACT,
+        message: "   ",
+        phone: "",
+      }),
     ).toMatchObject({ status: "invalid" });
     expect(
-      await submitGeneralEnquiry(client, { topic: "refunds", message: "Hi", phone: "" }),
+      await submitGeneralEnquiry(client, {
+        topic: "refunds",
+        ...CONTACT,
+        message: "Hi",
+        phone: "",
+      }),
     ).toMatchObject({ status: "invalid" });
     expect(calls).toHaveLength(0);
   });
@@ -56,26 +69,54 @@ describe("submitGeneralEnquiry", () => {
     const { client, calls } = recordingClient(SENT);
     await submitGeneralEnquiry(client, {
       topic: "general",
+      ...CONTACT,
       message: "Hello",
       phone: null,
       contextSlug: "../admin",
     });
-    expect(calls[0]?.body).toEqual({ topic: "general", message: "Hello" });
+    expect(calls[0]?.body).toEqual({ topic: "general", ...CONTACT, message: "Hello" });
   });
 
-  it("maps 401 to sign-in required and other failures to a retryable error", async () => {
-    expect(
-      await submitGeneralEnquiry(
-        recordingClient({ kind: "response", status: 401, body: null }).client,
-        { topic: "general", message: "Hello", phone: "" },
-      ),
-    ).toEqual({ status: "sign_in_required" });
-    expect(
-      await submitGeneralEnquiry(recordingClient({ kind: "csrf_unavailable" }).client, {
-        topic: "general",
-        message: "Hello",
-        phone: "",
-      }),
-    ).toMatchObject({ status: "error" });
+  it("requires a valid name and email and reports each field", async () => {
+    const { client, calls } = recordingClient(SENT);
+    const state = await submitGeneralEnquiry(client, {
+      topic: "general",
+      name: "",
+      email: "nope",
+      message: "Hello",
+      phone: "",
+    });
+    expect(state).toMatchObject({
+      status: "invalid",
+      fieldErrors: { name: expect.any(String), email: expect.any(String) },
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("forwards a filled honeypot for the API to drop", async () => {
+    const { client, calls } = recordingClient(SENT);
+    await submitGeneralEnquiry(client, {
+      topic: "general",
+      ...CONTACT,
+      message: "Hello",
+      phone: "",
+      website: "https://spam.example",
+    });
+    expect(calls[0]?.body).toMatchObject({ website: "https://spam.example" });
+  });
+
+  it.each([
+    [{ kind: "response", status: 429, body: null }, /few minutes/],
+    [{ kind: "response", status: 401, body: null }, /Try again shortly/],
+    [{ kind: "csrf_unavailable" }, /session expired/],
+    [{ kind: "network_error" }, /Try again shortly/],
+  ] as const)("maps %o to a retryable error", async (result, message) => {
+    const state = await submitGeneralEnquiry(recordingClient(result).client, {
+      topic: "general",
+      ...CONTACT,
+      message: "Hello",
+      phone: "",
+    });
+    expect(state).toMatchObject({ status: "error", message: expect.stringMatching(message) });
   });
 });

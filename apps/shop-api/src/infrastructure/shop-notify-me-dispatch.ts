@@ -39,6 +39,9 @@ export async function dispatchShopNotifyMeEmails(
   let dispatched = 0;
   for (const row of pending) {
     if ((sellable.get(row.artworkId) ?? 0) <= 0) continue;
+    // Notify-me is account-only; only guest enquiries leave the subject empty.
+    const identitySubjectId = row.identitySubjectId;
+    if (!identitySubjectId) continue;
 
     await db.transaction(async (tx) => {
       const [locked] = await tx
@@ -51,7 +54,7 @@ export async function dispatchShopNotifyMeEmails(
 
       await input.notifications.queueEditionAvailable(tx as Database, {
         idempotencyKey: `edition-available:${row.interestId}`,
-        identitySubjectId: row.identitySubjectId,
+        identitySubjectId,
         artworkSlug: row.artworkSlug,
         artworkTitle: row.artworkTitle,
         artworkUrl: artworkPublicUrl(input.storefrontOrigins, row.salesChannel, row.artworkSlug),

@@ -18,6 +18,8 @@ export default function ShopArtworkEnquiryAlertEmail({
   artworkSlug,
   artworkUrl,
   buyerEmail,
+  buyerName,
+  guest,
   message,
   contactPhone,
   storefront,
@@ -33,7 +35,11 @@ export default function ShopArtworkEnquiryAlertEmail({
         A buyer registered interest in {artworkTitle} ({artworkSlug}).
       </TextBlock>
       <TextBlock>View artwork: {artworkUrl}</TextBlock>
-      <TextBlock>Contact email on file: {buyerEmail}</TextBlock>
+      {buyerName ? <TextBlock>Name: {buyerName}</TextBlock> : null}
+      <TextBlock>
+        {guest ? "Contact email (sent without a LAX account)" : "Contact email on file"}:{" "}
+        {buyerEmail}
+      </TextBlock>
       {contactPhone ? <TextBlock>Contact phone: {contactPhone}</TextBlock> : null}
       {message ? <TextBlock>Message: {message}</TextBlock> : null}
     </Layout>

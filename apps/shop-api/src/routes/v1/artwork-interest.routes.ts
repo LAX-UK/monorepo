@@ -10,9 +10,11 @@ import { Type } from "@sinclair/typebox";
 import type { Static } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import { normalizeArtworkInterestIntent } from "../../application/artwork-interest-intent.js";
+import type { EnquirySender } from "../../application/enquiry-sender.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import type { InterestRoutesDeps } from "../../interest-route-deps.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
+import { type EnquiryContactBody, admitEnquiry } from "./enquiry-admission.js";
 
 type ArtworkInterestIntent = Static<typeof ArtworkInterestIntentSchema>;
 
@@ -76,26 +78,41 @@ export async function registerArtworkInterestRoutes(
         body: RegisterArtworkInterestRequestSchema,
         response: {
           200: RegisterArtworkInterestResponseSchema,
+          400: ShopApiErrorBodySchema,
           401: ShopApiErrorBodySchema,
           403: ShopApiErrorBodySchema,
           404: ShopApiErrorBodySchema,
           409: ShopApiErrorBodySchema,
+          429: ShopApiErrorBodySchema,
         },
       },
     },
-    async (request) => {
-      requireShopScope(request, "shop.write");
-      const subject = requireShopSubject(request);
+    async (request, reply) => {
       const { slug } = request.params as { slug: string };
-      const body = (request.body ?? {}) as {
+      const body = (request.body ?? {}) as EnquiryContactBody & {
         intent?: ArtworkInterestIntent;
         message?: string;
         contactPhone?: string;
       };
       const intent = normalizeArtworkInterestIntent(body.intent);
+      let sender: EnquirySender;
+      if (intent === "enquiry") {
+        const admission = await admitEnquiry(request, reply, deps.enquiryRateLimiter, body);
+        if (admission.kind === "honeypot") return { status: "registered" as const };
+        sender = admission.sender;
+      } else {
+        // Availability alerts are delivered to the account, so they still need sign-in.
+        requireShopScope(request, "shop.write");
+        sender = {
+          kind: "account",
+          identitySubjectId: requireShopSubject(request),
+          contactName: null,
+          contactEmail: null,
+        };
+      }
       const status = await deps.registerArtworkInterest({
         artworkSlug: slug,
-        identitySubjectId: subject,
+        sender,
         intent,
         ...(intent === "enquiry" && body.message ? { message: body.message } : {}),
         ...(intent === "enquiry" && body.contactPhone ? { contactPhone: body.contactPhone } : {}),

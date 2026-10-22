@@ -1,6 +1,8 @@
 import { type Database, closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
+import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
 import { createGetPublicArtworkHandler } from "./application/handlers/get-public-artwork.handler.js";
@@ -71,7 +73,9 @@ import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handle
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
+import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
+import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
@@ -169,6 +173,14 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       ? { enquiryOpsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL }
       : {}),
   });
+  const rateLimitRedis = env.REDIS_URL
+    ? new Redis(env.REDIS_URL, { enableOfflineQueue: false, maxRetriesPerRequest: 1 })
+    : null;
+  const enquiryRateLimiter = createEnquiryRateLimiter(
+    rateLimitRedis
+      ? createRedisFixedWindowCounter(rateLimitRedis)
+      : createInMemoryFixedWindowCounter(),
+  );
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
   const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
   const staffReader = createDrizzleShopStaffMemberReader(db);
@@ -267,6 +279,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           }),
           search: createDrizzleEditorialSearchReader(db, { resolveMediaUrl }),
           previewSecret,
+          enquiryRateLimiter,
         }
       : null;
   return {
@@ -337,6 +350,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       interest: {
         registerArtworkInterest: createRegisterArtworkInterestHandler(artworkInterestWriter),
         getArtworkInterest: createGetArtworkInterestHandler(artworkInterestWriter),
+        enquiryRateLimiter,
       },
       editorial,
     },
@@ -393,6 +407,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       `);
       return result.rows as unknown[];
     },
-    close: () => closeDb(db),
+    async close() {
+      await rateLimitRedis?.quit();
+      await closeDb(db);
+    },
   };
 }

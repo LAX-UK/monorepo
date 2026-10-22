@@ -1,6 +1,5 @@
 "use client";
 
-import { ArtAuthLink } from "@/components/art-auth-link";
 import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry-sheet.client";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type {
@@ -173,16 +172,6 @@ export function ArtArtworkMobileGallery({
               </Button>
             </li>
           ) : null}
-          {specialistContact.kind === "sign_in" ? (
-            <li>
-              <Button asChild variant="ghost" className={optionRowClass}>
-                <ArtAuthLink href={specialistContact.loginHref}>
-                  <MarketingPhoneIcon />
-                  Sign in to contact a specialist
-                </ArtAuthLink>
-              </Button>
-            </li>
-          ) : null}
         </ul>
       </MarketingSideSheet>
 
@@ -196,7 +185,7 @@ export function ArtArtworkMobileGallery({
             defaultTopic="art_advisory"
             contextSlug={slug}
             contextLabel={title}
-            loginHref={specialistContact.loginHref}
+            contact={specialistContact.contact}
           />
         </div>
       ) : null}

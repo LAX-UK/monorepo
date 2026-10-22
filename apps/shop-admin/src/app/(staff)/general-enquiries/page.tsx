@@ -1,3 +1,4 @@
+import { generalEnquirySenderLabel } from "@/lib/general-enquiry-sender";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminGeneralEnquiryRow } from "@auction/shop-contracts";
 
@@ -32,7 +33,7 @@ export default async function GeneralEnquiriesAdminPage() {
               </div>
               <p className="text-on-surface-variant">{row.message}</p>
               <p className="text-xs text-on-surface-variant">
-                Subject {row.identitySubjectId}
+                {generalEnquirySenderLabel(row)}
                 {row.phone ? ` · ${row.phone}` : ""}
                 {row.contextSlug ? ` · ${row.contextSlug}` : ""}
               </p>

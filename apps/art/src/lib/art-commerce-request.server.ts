@@ -2,7 +2,7 @@ import { applyUpstreamSetCookies } from "@/lib/apply-upstream-set-cookies.server
 import { ART_COMMERCE_COOKIE_NAMES } from "@/lib/art-commerce-cookies.server";
 import { ART_IDENTITY_FETCH_TIMEOUT_MS, artIdentityServerUrl } from "@/lib/art-identity.server";
 import { type CommerceBffRequestOptions, createCommerceBffClient } from "@auction/shop-portal/bff";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export type ArtCommerceRequestOptions = CommerceBffRequestOptions;
 
@@ -21,6 +21,7 @@ const commerceBffClient = createCommerceBffClient({
   commerceCookieNames: ART_COMMERCE_COOKIE_NAMES,
   timeoutMs: ART_IDENTITY_FETCH_TIMEOUT_MS,
   applyUpstreamSetCookies,
+  requestHeaders: headers,
 });
 
 export async function artCommerceRequest(

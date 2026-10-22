@@ -25,8 +25,8 @@ type ArtHeaderUtilityActionsProps = {
 
 /**
  * Right side of the utility row (Figma `521:7889`): Log in, or the account menu once signed in,
- * then Enquire. Only signed-in viewers can send a general enquiry, so everyone else is taken to
- * /contact, which explains how to get in touch.
+ * then Enquire. Signed-in viewers send a general enquiry from the sheet with their details
+ * prefilled; everyone else is taken to /contact, where guests can write to the gallery too.
  */
 export function ArtHeaderUtilityActions({
   account,
@@ -48,7 +48,11 @@ export function ArtHeaderUtilityActions({
       )}
       {account.kind === "authenticated" ? (
         <ArtGeneralEnquirySheet
-          loginHref={loginHref}
+          contact={{
+            name: account.displayName,
+            email: account.email,
+            phone: account.verifiedPhone ?? "",
+          }}
           renderTrigger={(open) => (
             <Button type="button" variant="link" className={ACTION_CLASS} onClick={open}>
               Enquire

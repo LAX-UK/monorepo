@@ -1,14 +1,12 @@
 import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
-import { type ArtViewerState, artStorefrontLoginHref } from "@/lib/art-viewer-state";
+import type { ArtViewerState } from "@/lib/art-viewer-state";
 
 /** "Book a private viewing" call to action shared by the Visit index and venue pages. */
 export function ArtPrivateViewingSection({
   viewer,
-  returnTo,
   venue,
 }: {
   viewer: ArtViewerState;
-  returnTo: string;
   venue?: { slug: string; name: string };
 }) {
   return (
@@ -24,7 +22,6 @@ export function ArtPrivateViewingSection({
       </p>
       <ArtGeneralEnquiryPanel
         viewer={viewer}
-        loginHref={artStorefrontLoginHref(returnTo)}
         defaultTopic="private_viewing"
         triggerLabel="Request a viewing"
         {...(venue ? { contextSlug: venue.slug, contextLabel: venue.name } : {})}

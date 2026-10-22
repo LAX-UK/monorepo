@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { EnquiryContactProperties } from "./enquiry-contact.js";
 
 export const ArtworkInterestIntentSchema = Type.Union([
   Type.Literal("notify_me"),
@@ -13,6 +14,7 @@ export const RegisterArtworkInterestRequestSchema = Type.Object(
     contactPhone: Type.Optional(
       Type.String({ minLength: 8, maxLength: 20, pattern: "^\\+?[0-9][0-9 ()-]{6,19}$" }),
     ),
+    ...EnquiryContactProperties,
   },
   { additionalProperties: false },
 );

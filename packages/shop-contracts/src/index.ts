@@ -21,6 +21,10 @@ export {
   type RegisterArtworkInterestResponse,
 } from "./artwork-interest-public.js";
 export {
+  ENQUIRY_CONTACT_EMAIL_MAX_LENGTH,
+  ENQUIRY_CONTACT_NAME_MAX_LENGTH,
+} from "./enquiry-contact.js";
+export {
   PublicArtworkDetailSchema,
   PublicArtworkListSchema,
   PublicArtworkObjectTypeFacetListSchema,

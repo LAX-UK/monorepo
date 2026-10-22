@@ -1,25 +1,26 @@
 "use client";
 
+import { ArtEnquiryForm } from "@/components/enquiry/art-enquiry-form.client";
+import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtEnquiryContact } from "@/lib/artwork/artwork-detail-page.composer";
 import { sendArtEnquiry } from "@/lib/enquiry/art-enquiry-actions.server";
 import { ENQUIRY_MESSAGE_MAX_LENGTH } from "@/lib/enquiry/enquiry-form.validator";
 import type { ArtEnquiryState } from "@/lib/enquiry/submit-art-enquiry";
-import { MarketingSideSheet } from "@auction/marketing-ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
+import { MarketingSideSheet, MarketingSuccessState } from "@auction/marketing-ui";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import { Textarea } from "@auction/ui/components/textarea";
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 export type ArtEnquirySheetProps = {
   artworkSlug: string;
   artworkTitle: string;
+  artistName: string;
+  imageUrl: string | null;
   contact: ArtEnquiryContact;
-  /** Opened from a card “Enquire” link or a sign-in round trip (`?enquire=1`). */
+  /** Opened from a card “Enquire” link (`?enquire=1`). */
   autoOpen: boolean;
-  loginHref: string;
   /** Trigger text; defaults to "Enquire". */
   triggerLabel?: ReactNode;
 };
@@ -33,37 +34,26 @@ function clearEnquireParam() {
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
+/** Figma 531:8496 (desktop panel), 531:9043 (mobile sheet), 616:12737 (sent). */
 export function ArtEnquirySheet({
   artworkSlug,
   artworkTitle,
+  artistName,
+  imageUrl,
   contact,
   autoOpen,
-  loginHref,
   triggerLabel = "Enquire",
 }: ArtEnquirySheetProps) {
   const [open, setOpen] = useState(autoOpen);
-  const [message, setMessage] = useState("");
-  const [phone, setPhone] = useState(contact.phone);
   const action = useMemo(() => sendArtEnquiry.bind(null, artworkSlug), [artworkSlug]);
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const noticeRef = useRef<HTMLDivElement>(null);
-  const formId = useId();
-  const phoneErrorId = `${formId}-phone-error`;
-  const messageErrorId = `${formId}-message-error`;
-  const messageCountId = `${formId}-message-count`;
-  const fieldErrors = state.status === "invalid" ? state.fieldErrors : {};
+  const sentRef = useRef<HTMLOutputElement>(null);
   const sent = state.status === "sent";
 
   useEffect(() => {
-    if (
-      state.status === "sent" ||
-      state.status === "error" ||
-      state.status === "sign_in_required"
-    ) {
-      noticeRef.current?.focus();
-    }
-  }, [state]);
+    if (sent) sentRef.current?.focus();
+  }, [sent]);
 
   const onOpenChange = (next: boolean) => {
     setOpen(next);
@@ -85,130 +75,67 @@ export function ArtEnquirySheet({
       <MarketingSideSheet
         open={open}
         onOpenChange={onOpenChange}
-        title="Enquire about this work"
-        description={artworkTitle}
+        title="Send an enquiry"
+        titleCase="sentence"
         returnFocusRef={triggerRef}
-        footer={
-          sent ? (
-            <div className="px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11 w-full font-label uppercase"
-                onClick={() => onOpenChange(false)}
-              >
-                Close
-              </Button>
-            </div>
-          ) : (
-            <div className="px-6 py-4">
-              <Button
-                type="submit"
-                form={formId}
-                disabled={pending}
-                aria-disabled={pending}
-                className="min-h-11 w-full font-label uppercase tracking-wide"
-              >
-                {pending ? "Sending…" : "Send enquiry"}
-              </Button>
-            </div>
-          )
-        }
       >
-        <div className="flex flex-col gap-5" data-testid="art-enquiry-sheet">
-          {state.status === "sent" ? (
-            <Alert variant="success" ref={noticeRef} tabIndex={-1}>
-              <AlertTitle>Enquiry sent</AlertTitle>
-              <AlertDescription>{state.message}</AlertDescription>
-            </Alert>
-          ) : null}
-          {state.status === "error" ? (
-            <Alert variant="destructive" ref={noticeRef} tabIndex={-1}>
-              <AlertTitle>Enquiry not sent</AlertTitle>
-              <AlertDescription>{state.message}</AlertDescription>
-            </Alert>
-          ) : null}
-          {state.status === "sign_in_required" ? (
-            <Alert variant="warning" ref={noticeRef} tabIndex={-1}>
-              <AlertTitle>Sign in required</AlertTitle>
-              <AlertDescription>
-                {state.message}{" "}
-                <a href={loginHref} className="art-focus-ring font-medium underline">
-                  Sign in
-                </a>
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {sent ? null : (
-            <form id={formId} action={formAction} className="flex flex-col gap-5" noValidate>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${formId}-name`}>Name</Label>
-                <Input id={`${formId}-name`} value={contact.name} readOnly autoComplete="name" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${formId}-email`}>Email</Label>
-                <Input
-                  id={`${formId}-email`}
-                  type="email"
-                  value={contact.email}
-                  readOnly
-                  autoComplete="email"
+        <div data-testid="art-enquiry-sheet">
+          {sent ? (
+            <MarketingSuccessState
+              ref={sentRef}
+              tabIndex={-1}
+              title="Enquiry sent"
+              description="Our specialist will be in touch soon."
+              actions={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full font-label uppercase"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+              }
+            />
+          ) : (
+            <div className="flex flex-col gap-6">
+              <p className="text-base leading-6 text-on-surface">
+                Thank you for your interest. Please complete the form below and our specialist will
+                follow up with you shortly.
+              </p>
+              <div className="flex items-center gap-4 border-y border-border-hairline py-4">
+                <ArtMediaImage
+                  src={imageUrl}
+                  alt=""
+                  label={ART_MEDIA_LABELS.artwork}
+                  aspect={[1, 1]}
+                  sizes="80px"
+                  className="size-16 shrink-0"
+                  imgClassName="object-cover"
                 />
-                <p className="text-xs text-on-surface-variant">
-                  Name and email come from your LAX account.
-                </p>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${formId}-phone`}>Phone (optional)</Label>
-                <Input
-                  id={`${formId}-phone`}
-                  name="contactPhone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  maxLength={40}
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+44 20 7946 0958"
-                  aria-invalid={fieldErrors.contactPhone ? true : undefined}
-                  aria-describedby={fieldErrors.contactPhone ? phoneErrorId : undefined}
-                />
-                {fieldErrors.contactPhone ? (
-                  <p id={phoneErrorId} className="text-xs text-error">
-                    {fieldErrors.contactPhone}
+                <div className="min-w-0">
+                  <p className="font-headline text-lg font-medium leading-6 text-on-surface">
+                    {artworkTitle}
                   </p>
-                ) : null}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${formId}-message`}>Message (optional)</Label>
-                <Textarea
-                  id={`${formId}-message`}
-                  name="message"
-                  rows={6}
-                  maxLength={ENQUIRY_MESSAGE_MAX_LENGTH}
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  placeholder="Ask about framing, provenance, viewing, or delivery."
-                  aria-invalid={fieldErrors.message ? true : undefined}
-                  aria-describedby={
-                    fieldErrors.message ? `${messageErrorId} ${messageCountId}` : messageCountId
-                  }
-                />
-                <div className="flex justify-between gap-3 text-xs text-on-surface-variant">
-                  {fieldErrors.message ? (
-                    <p id={messageErrorId} className="text-error">
-                      {fieldErrors.message}
-                    </p>
-                  ) : (
-                    <span />
-                  )}
-                  <p id={messageCountId}>
-                    {message.length}/{ENQUIRY_MESSAGE_MAX_LENGTH}
-                  </p>
+                  <p className="text-sm text-on-surface-variant">{artistName}</p>
                 </div>
               </div>
-            </form>
+              <ArtEnquiryForm
+                action={formAction}
+                pending={pending}
+                contact={contact}
+                serverErrors={state.status === "invalid" ? state.fieldErrors : {}}
+                messageRequired={false}
+                messageMaxLength={ENQUIRY_MESSAGE_MAX_LENGTH}
+                notice={
+                  state.status === "error" ? (
+                    <Alert variant="destructive" role="alert">
+                      <AlertDescription>{state.message}</AlertDescription>
+                    </Alert>
+                  ) : null
+                }
+              />
+            </div>
           )}
         </div>
       </MarketingSideSheet>

@@ -4,6 +4,7 @@ import { domainEvent, shopArtwork, shopArtworkInterest, shopEdition } from "@auc
 import { eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { EnquirySender } from "../application/enquiry-sender.js";
 import { createGetArtworkInterestHandler } from "../application/handlers/get-artwork-interest.handler.js";
 import { createRegisterArtworkInterestHandler } from "../application/handlers/register-artwork-interest.handler.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
@@ -14,6 +15,10 @@ import { createDrizzlePortalOwnershipRepository } from "./drizzle-portal-ownersh
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
+
+function account(identitySubjectId: string): EnquirySender {
+  return { kind: "account", identitySubjectId, contactName: null, contactEmail: null };
+}
 const shopUrl = process.env.DATABASE_URL_SHOP;
 
 describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", () => {
@@ -61,14 +66,14 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
 
     const first = await registerInterest({
       artworkSlug: slug,
-      identitySubjectId: subject,
+      sender: account(subject),
       intent: "notify_me",
     });
     expect(first).toBe("registered");
 
     const second = await registerInterest({
       artworkSlug: slug,
-      identitySubjectId: subject,
+      sender: account(subject),
       intent: "notify_me",
     });
     expect(second).toBe("already_subscribed");
@@ -137,7 +142,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     await expect(
       registerInterest({
         artworkSlug: slug,
-        identitySubjectId: `subject-${suffix}`,
+        sender: account(`subject-${suffix}`),
         intent: "notify_me",
       }),
     ).resolves.toBe("not_subscribable");
@@ -177,7 +182,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     await expect(
       registerInterest({
         artworkSlug: slug,
-        identitySubjectId: subject,
+        sender: account(subject),
         intent: "enquiry",
         message: "Could I view this in person?",
         contactPhone: "+44 20 7946 0000",
@@ -207,6 +212,64 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     ]);
   });
 
+  it("stores a guest enquiry with contact details, alerts staff and emits no account event", async () => {
+    const db = createDbFromPool(shopPool);
+    const suffix = Date.now();
+    const slug = `integration-guest-enquiry-${suffix}`;
+    const imported = await createDrizzleArtworkImportRepository(db).importArtwork({
+      importKey: `integration:guest-enquiry:${suffix}`,
+      slug,
+      title: "Guest enquiry original",
+      description: null,
+      primaryImageUrl: null,
+      artistSlug: `integration-guest-enquiry-artist-${suffix}`,
+      artistDisplayName: "Guest Enquiry Artist",
+      eligibleForEditionAllocation: false,
+      printPricePence: null,
+      saleState: "price_on_application",
+    });
+    const queueEnquiryAlert = vi.fn(async () => undefined);
+    const registerInterest = createRegisterArtworkInterestHandler(
+      createDrizzleArtworkInterestRepository(db, {
+        notifications: { queueEnquiryAlert } as unknown as ShopNotificationPublisher,
+        enquiryOpsEmail: "ops@example.test",
+        storefrontOrigins: { shop: "https://shop.example", art: "https://lax.art" },
+      }),
+    );
+    const sender: EnquirySender = {
+      kind: "guest",
+      contactName: "Grace Hopper",
+      contactEmail: "grace@example.com",
+    };
+
+    await expect(
+      registerInterest({ artworkSlug: slug, sender, intent: "enquiry", message: "Hello" }),
+    ).resolves.toBe("registered");
+    await expect(
+      registerInterest({ artworkSlug: slug, sender, intent: "enquiry", message: "Again" }),
+    ).resolves.toBe("registered");
+
+    const rows = await db
+      .select()
+      .from(shopArtworkInterest)
+      .where(eq(shopArtworkInterest.artworkId, imported.artworkId));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      identitySubjectId: null,
+      contactName: "Grace Hopper",
+      contactEmail: "grace@example.com",
+    });
+    expect(queueEnquiryAlert).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sender }),
+    );
+    const events = await db
+      .select()
+      .from(domainEvent)
+      .where(eq(domainEvent.aggregateId, imported.artworkId));
+    expect(events.filter((e) => e.eventType === "shop.artwork.interest_registered")).toEqual([]);
+  });
+
   it("returns not found for unknown artwork slug on read and write", async () => {
     const writer = createDrizzleArtworkInterestRepository(createDbFromPool(shopPool), {
       storefrontOrigins: { shop: "http://localhost:3020", art: "http://localhost:3050" },
@@ -218,7 +281,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
       getInterestStatus({ artworkSlug: slug, identitySubjectId: "subject", intent: "notify_me" }),
     ).resolves.toBe("artwork_not_found");
     await expect(
-      registerInterest({ artworkSlug: slug, identitySubjectId: "subject", intent: "notify_me" }),
+      registerInterest({ artworkSlug: slug, sender: account("subject"), intent: "notify_me" }),
     ).resolves.toBe("artwork_not_found");
   });
 
@@ -247,7 +310,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     await expect(
       registerInterest({
         artworkSlug: slug,
-        identitySubjectId: `grants-subject-${suffix}`,
+        sender: account(`grants-subject-${suffix}`),
         intent: "notify_me",
       }),
     ).resolves.toBe("registered");

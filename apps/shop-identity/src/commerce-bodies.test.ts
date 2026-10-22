@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createCheckoutBodySchema } from "./commerce-bodies.js";
+import {
+  artworkInterestBodySchema,
+  createCheckoutBodySchema,
+  generalEnquiryBodySchema,
+} from "./commerce-bodies.js";
 
 describe("createCheckoutBodySchema", () => {
   const storefrontOrigin = "http://localhost:3020";
@@ -27,5 +31,62 @@ describe("createCheckoutBodySchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("enquiry body schemas", () => {
+  const contact = { name: " Grace Hopper ", email: "grace@example.com" };
+
+  it("trims contact fields and drops blank optional ones", () => {
+    const parsed = artworkInterestBodySchema.parse({
+      intent: "enquiry",
+      message: "  Is it framed?  ",
+      contactPhone: "",
+      website: "",
+      ...contact,
+    });
+    expect(parsed).toEqual({
+      intent: "enquiry",
+      message: "Is it framed?",
+      name: "Grace Hopper",
+      email: "grace@example.com",
+    });
+  });
+
+  it("accepts an empty artwork body for availability alerts", () => {
+    expect(artworkInterestBodySchema.safeParse({}).success).toBe(true);
+  });
+
+  it.each([
+    ["an invalid email", { email: "not-an-email" }],
+    ["an email over 254 characters", { email: `${"a".repeat(250)}@example.com` }],
+    ["a name over 120 characters", { name: "n".repeat(121) }],
+    ["a malformed phone number", { contactPhone: "abc" }],
+    ["a message over 2000 characters", { message: "m".repeat(2001) }],
+    ["an unknown field", { role: "admin" }],
+  ])("rejects %s on an artwork enquiry", (_label, override) => {
+    expect(artworkInterestBodySchema.safeParse({ intent: "enquiry", ...override }).success).toBe(
+      false,
+    );
+  });
+
+  it("requires a topic and a non-blank message on general enquiries", () => {
+    expect(generalEnquiryBodySchema.safeParse({ message: "Hello" }).success).toBe(false);
+    expect(generalEnquiryBodySchema.safeParse({ topic: "general", message: "   " }).success).toBe(
+      false,
+    );
+    expect(
+      generalEnquiryBodySchema.safeParse({ topic: "selling", message: "Hello", ...contact })
+        .success,
+    ).toBe(true);
+  });
+
+  it("keeps a filled honeypot so the API can drop the enquiry", () => {
+    const parsed = generalEnquiryBodySchema.parse({
+      topic: "general",
+      message: "Hello",
+      website: "https://spam.example",
+    });
+    expect(parsed.website).toBe("https://spam.example");
   });
 });

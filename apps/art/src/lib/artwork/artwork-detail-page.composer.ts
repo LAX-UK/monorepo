@@ -1,4 +1,4 @@
-import { type ArtViewerState, artStorefrontLoginHref } from "@/lib/art-viewer-state";
+import type { ArtViewerState } from "@/lib/art-viewer-state";
 import {
   type CatalogueArtworkCardVm,
   artistHref,
@@ -40,14 +40,18 @@ export type ArtEnquiryContact = {
 
 export type ArtworkEnquiryVm =
   | { kind: "unavailable" }
-  | { kind: "sign_in"; loginHref: string }
   | { kind: "account_unavailable"; message: string }
-  | { kind: "ready"; contact: ArtEnquiryContact; autoOpen: boolean };
+  | {
+      kind: "ready";
+      contact: ArtEnquiryContact;
+      artistName: string;
+      imageUrl: string | null;
+      autoOpen: boolean;
+    };
 
 /** "Contact a specialist" in the mobile options sheet opens the general enquiry form. */
 export type ArtworkSpecialistContactVm =
-  | { kind: "ready"; loginHref: string }
-  | { kind: "sign_in"; loginHref: string }
+  | { kind: "ready"; contact: ArtEnquiryContact }
   | { kind: "unavailable" };
 
 export type ArtworkGalleryImageVm = { url: string; alt: string };
@@ -98,8 +102,15 @@ export type ArtworkDetailPageResult =
   | { kind: "not_found" }
   | { kind: "unavailable" };
 
-export function artworkEnquiryReturnTo(slug: string): string {
-  return `${artworkHref(slug)}?enquire=1`;
+function resolveContact(viewer: ArtViewerState): ArtEnquiryContact {
+  // Guests enquire with the details they type; signed-in visitors get theirs prefilled.
+  return viewer.kind === "authenticated"
+    ? {
+        name: viewer.displayName ?? "",
+        email: viewer.email ?? "",
+        phone: viewer.verifiedPhone ?? "",
+      }
+    : { name: "", email: "", phone: "" };
 }
 
 function resolveEnquiry(
@@ -110,19 +121,13 @@ function resolveEnquiry(
   if (!isArtworkEnquiryAvailable(artwork)) return { kind: "unavailable" };
   switch (viewer.kind) {
     case "authenticated":
-      return {
-        kind: "ready",
-        contact: {
-          name: viewer.displayName ?? "",
-          email: viewer.email ?? "",
-          phone: viewer.verifiedPhone ?? "",
-        },
-        autoOpen: enquireRequested,
-      };
     case "guest":
       return {
-        kind: "sign_in",
-        loginHref: artStorefrontLoginHref(artworkEnquiryReturnTo(artwork.slug)),
+        kind: "ready",
+        contact: resolveContact(viewer),
+        artistName: artwork.artistName,
+        imageUrl: artwork.imageUrl,
+        autoOpen: enquireRequested,
       };
     case "disabled":
     case "unavailable":
@@ -130,15 +135,11 @@ function resolveEnquiry(
   }
 }
 
-function resolveSpecialistContact(
-  slug: string,
-  viewer: ArtViewerState,
-): ArtworkSpecialistContactVm {
+function resolveSpecialistContact(viewer: ArtViewerState): ArtworkSpecialistContactVm {
   switch (viewer.kind) {
     case "authenticated":
-      return { kind: "ready", loginHref: artStorefrontLoginHref(artworkHref(slug)) };
     case "guest":
-      return { kind: "sign_in", loginHref: artStorefrontLoginHref(artworkHref(slug)) };
+      return { kind: "ready", contact: resolveContact(viewer) };
     case "disabled":
     case "unavailable":
       return { kind: "unavailable" };
@@ -213,7 +214,7 @@ export async function composeArtworkDetailPage(
             viewAllSrLabel: `works by ${artwork.artistName}`,
           },
       enquiry: resolveEnquiry(artwork, favorites.viewer, input.enquireRequested),
-      specialistContact: resolveSpecialistContact(artwork.slug, favorites.viewer),
+      specialistContact: resolveSpecialistContact(favorites.viewer),
       artist: artist ? buildArtistVm(artist, favorites.followedArtistSlugs) : null,
       saved: favorites.savedArtworkSlugs.has(artwork.slug),
       favoriteAuth: favorites.favoriteAuth,

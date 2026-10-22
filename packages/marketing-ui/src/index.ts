@@ -196,6 +196,10 @@ export {
   type CatalogFilterLiveRegionProps,
 } from "./catalog-filter-live-region.js";
 export {
+  MarketingSuccessState,
+  type MarketingSuccessStateProps,
+} from "./marketing-success-state.js";
+export {
   MarketingStatusAction,
   MarketingStatusMotif,
   MarketingStatusState,
