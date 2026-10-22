@@ -1,6 +1,7 @@
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { MediaImage } from "./media/media-image.js";
 
 export type MarketingPageTitleChip = {
@@ -16,6 +17,8 @@ type MarketingPageTitleContent = {
   chip?: MarketingPageTitleChip | null;
   /** Byline or facts, one line each (e.g. "Exhibition · 18 Aug – 27 Aug 2026"). */
   meta?: readonly string[];
+  /** Controls under the text (e.g. a Follow button); they inherit the band's foreground colour. */
+  actions?: ReactNode;
   className?: string;
 };
 
@@ -68,7 +71,7 @@ function TitleChip({ chip, onMedia }: { chip: MarketingPageTitleChip; onMedia: b
 
 /** Centred page title band: `plain` (300px) or `media` (image with scrim, 400px mobile / 500px desktop). */
 export function MarketingPageTitle(props: MarketingPageTitleProps) {
-  const { title, eyebrow, subtitle, chip, meta, className } = props;
+  const { title, eyebrow, subtitle, chip, meta, actions, className } = props;
   const media = props.variant === "media" ? props : null;
   const lines = meta?.filter((line) => line.trim()) ?? [];
 
@@ -133,6 +136,7 @@ export function MarketingPageTitle(props: MarketingPageTitleProps) {
         </div>
       ) : null}
       {chip ? <TitleChip chip={chip} onMedia={Boolean(media)} /> : null}
+      {actions}
     </header>
   );
 }

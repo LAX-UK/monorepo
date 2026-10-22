@@ -1,16 +1,18 @@
-import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
+import { ArtArtistBiography } from "@/components/artist/art-artist-biography";
+import { ArtArtistHero } from "@/components/artist/art-artist-hero";
 import { ArtArtworkGrid } from "@/components/catalogue/art-artwork-grid";
-import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-button.client";
+import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
+import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
 import { ArtSection } from "@/components/layout/art-section";
-import { ArtMediaImage } from "@/components/media/art-media-image.server";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
 import { loadArtStorefrontBaseUrl } from "@/env.server";
 import { artServices } from "@/lib/art-services.server";
 import { composeArtistMetadata, composeArtistPage } from "@/lib/artist/artist-page.composer";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
+import { ARTIST_SECTION_IDS } from "@/lib/artist/artist-profile.vm";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingSplitFeature, MarketingSubNav } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 
@@ -29,66 +31,102 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
   };
 }
 
+const SECTION = cn(MARKETING_PAGE_SHELL, "py-8 lg:py-12");
+
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { slug } = await params;
   const result = await composeArtistPage(artServices, slug, loadArtStorefrontBaseUrl());
   if (result.kind !== "ok") notFoundOrUnavailable(result.kind, "Artist");
 
   const { vm } = result;
+  const worksHref = `/artworks?artistSlug=${encodeURIComponent(vm.slug)}`;
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 py-6 lg:py-10")}>
+    <article className="flex flex-col pb-10 lg:pb-16">
       <ArtJsonLd data={vm.structuredData} />
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
-        <div className="relative size-32 shrink-0 overflow-hidden rounded-full bg-surface-container">
-          <ArtMediaImage
-            src={vm.portraitUrl}
-            alt={vm.portraitAlt}
-            aspect={[1, 1]}
-            shape="circle"
-            sizes="8rem"
-            label={ART_MEDIA_LABELS.artistPortrait}
-            className="absolute inset-0 size-full"
-            imgClassName="object-cover"
-          />
+      <ArtArtistHero vm={vm} />
+      {vm.sectionTabs.length > 0 ? (
+        <MarketingSubNav
+          mode="anchor"
+          sticky
+          ariaLabel="Artist sections"
+          items={vm.sectionTabs}
+          identity={{ title: vm.name, meta: vm.lifeLine, imageSrc: vm.portraitUrl }}
+        />
+      ) : null}
+      {vm.bio ? (
+        <div className={SECTION}>
+          <ArtArtistBiography vm={vm} />
         </div>
-        <div className="flex flex-1 flex-col gap-4">
-          <ArtPageHeader
-            title={vm.name}
-            breadcrumbs={[{ label: "Artworks", href: "/artworks" }, { label: vm.name }]}
-            {...(vm.discipline ? { description: vm.discipline } : {})}
-            action={
-              <ArtArtistFollowButton
-                slug={vm.slug}
-                name={vm.name}
-                initialFollowing={vm.following}
-                auth={vm.favoriteAuth}
-              />
-            }
-          />
-          {vm.bio ? (
-            <p className="max-w-2xl whitespace-pre-wrap text-on-surface-variant">{vm.bio}</p>
-          ) : null}
-        </div>
+      ) : null}
+
+      <div id={ARTIST_SECTION_IDS.works} className={SECTION}>
+        <ArtSection id="artist-works-list" title="Featured works" viewAllHref={worksHref}>
+          {vm.worksFailed ? (
+            <ArtStatusState
+              variant="error"
+              title="Works unavailable"
+              description="We could not load this artist's works. Try again shortly."
+            />
+          ) : vm.works.length === 0 ? (
+            <ArtStatusState
+              variant="empty"
+              title="No works listed yet"
+              description="Follow this artist to hear when new works arrive."
+              actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
+            />
+          ) : (
+            <ArtArtworkGrid cards={vm.works} favoriteAuth={vm.favoriteAuth} />
+          )}
+        </ArtSection>
       </div>
 
-      <ArtSection id="artist-works" title="Works on lax.art">
-        {vm.worksFailed ? (
-          <ArtStatusState
-            variant="error"
-            title="Works unavailable"
-            description="We could not load this artist's works. Try again shortly."
+      {vm.originals.length > 0 ? (
+        <div
+          id={ARTIST_SECTION_IDS.originals}
+          className="bg-[var(--color-surface-feature,var(--color-surface-container-low))] text-[var(--color-on-surface-feature,var(--color-on-surface))]"
+        >
+          <div className={SECTION}>
+            <ArtSection
+              id="artist-originals-list"
+              title="Originals"
+              viewAllHref={`${worksHref}&type=original`}
+            >
+              <ArtArtworkGrid cards={vm.originals} favoriteAuth={vm.favoriteAuth} />
+            </ArtSection>
+          </div>
+        </div>
+      ) : null}
+
+      {vm.exhibitions.length > 0 ? (
+        <div id={ARTIST_SECTION_IDS.exhibitions} className={SECTION}>
+          <ArtSection id="artist-exhibitions-list" title="Exhibitions">
+            <ArtEditorialCardGrid cards={vm.exhibitions} ariaLabel="Exhibitions featuring artist" />
+          </ArtSection>
+        </div>
+      ) : null}
+
+      {vm.stories.length > 0 ? (
+        <div id={ARTIST_SECTION_IDS.stories} className={SECTION}>
+          <ArtSection id="artist-stories-list" title="Films & stories">
+            <ArtEditorialCardGrid cards={vm.stories} ariaLabel="Films and stories" />
+          </ArtSection>
+        </div>
+      ) : null}
+
+      <MarketingSplitFeature
+        className="mt-8 lg:mt-12"
+        title={`Interested in selling a work by ${vm.name}?`}
+        body="Tell us about the work and our specialists will come back with an estimate."
+        action={
+          <ArtGeneralEnquiryPanel
+            viewer={vm.viewer}
+            defaultTopic="selling"
+            contextSlug={vm.slug}
+            contextLabel={vm.name}
+            triggerLabel="Request estimate"
           />
-        ) : vm.works.length === 0 ? (
-          <ArtStatusState
-            variant="empty"
-            title="No works listed yet"
-            description="Follow this artist to hear when new works arrive."
-            actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
-          />
-        ) : (
-          <ArtArtworkGrid cards={vm.works} favoriteAuth={vm.favoriteAuth} />
-        )}
-      </ArtSection>
-    </div>
+        }
+      />
+    </article>
   );
 }
