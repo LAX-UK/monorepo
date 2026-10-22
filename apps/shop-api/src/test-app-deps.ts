@@ -197,12 +197,7 @@ export function createMinimalShopApiTestDeps(
           getMerchandiseProduct: async () => null,
         },
         overview: {
-          readOverviewKpis: async () => ({
-            fulfilmentOpenCount: 0,
-            payoutsDueCount: 0,
-            activeHoldsCount: 0,
-            pendingAuthorityRequestsCount: 0,
-          }),
+          readOverviewKpis: async (keys) => Object.fromEntries(keys.map((key) => [key, 0])),
         },
         compliance: {
           listAuditEntries: async () => ({ items: [], nextCursor: null }),

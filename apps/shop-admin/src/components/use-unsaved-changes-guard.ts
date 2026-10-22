@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Asks the browser to confirm before the tab is closed, reloaded or navigated away while there
@@ -40,14 +40,35 @@ function leavingHref(event: MouseEvent): string | null {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+/** Marks the history entry pushed while dirty; Back from it stays on the page. */
+const SENTINEL_KEY = "__unsavedChangesGuard";
+
+function isSentinel(state: unknown): boolean {
+  return typeof state === "object" && state !== null && SENTINEL_KEY in state;
+}
+
+function pushSentinel(): void {
+  window.history.pushState({ ...window.history.state, [SENTINEL_KEY]: true }, "");
+}
+
+type Pending = { kind: "link"; href: string } | { kind: "history" };
+
 /**
  * Guards leaving an editor with unsaved edits: the browser prompt for closing or reloading the
- * tab, plus a held destination for clicks on in-app links (breadcrumbs, navigation). The caller
- * shows its own confirmation while `pendingHref` is set, then calls `leave` or `stay`.
+ * tab, a held destination for clicks on in-app links (breadcrumbs, navigation), and the browser
+ * Back button. The App Router has no route blocker, so while dirty an extra history entry is
+ * pushed: Back then pops that entry (the URL does not change) and is turned into the same
+ * confirmation. The caller shows its own confirmation while `pending` is true, then calls
+ * `leave` or `stay`.
  */
 export function useUnsavedNavigationGuard(dirty: boolean) {
   const router = useRouter();
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
+  // True while this hook owns a sentinel entry. A ref rather than history.state alone, so a
+  // reload that restores a stale sentinel is never mistaken for one this mount pushed.
+  const armed = useRef(false);
+  // Set once the user has confirmed leaving, so the Back we trigger is not intercepted again.
+  const leaving = useRef(false);
   useUnsavedChangesGuard(dirty);
 
   useEffect(() => {
@@ -58,17 +79,87 @@ export function useUnsavedNavigationGuard(dirty: boolean) {
       if (!href) return;
       event.preventDefault();
       event.stopPropagation();
-      setPendingHref(href);
+      setPending({ kind: "link", href });
     };
     document.addEventListener("click", hold, true);
     return () => document.removeEventListener("click", hold, true);
   }, [dirty]);
 
-  const stay = useCallback(() => setPendingHref(null), []);
-  const leave = useCallback(() => {
-    if (pendingHref) router.push(pendingHref);
-    setPendingHref(null);
-  }, [pendingHref, router]);
+  useEffect(() => {
+    if (!dirty) {
+      // Saved or reverted: drop the extra entry so Back behaves normally again.
+      if (armed.current && !leaving.current) {
+        armed.current = false;
+        if (isSentinel(window.history.state)) window.history.back();
+      }
+      return;
+    }
+    // Strict Mode mounts twice; never stack a second entry on top of ours.
+    if (!armed.current || !isSentinel(window.history.state)) {
+      pushSentinel();
+      armed.current = true;
+    }
+    const onPopState = () => {
+      if (leaving.current || isSentinel(window.history.state)) return;
+      setPending({ kind: "history" });
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [dirty]);
 
-  return { pendingHref, stay, leave };
+  const stay = useCallback(() => {
+    if (pending?.kind === "history") pushSentinel();
+    setPending(null);
+  }, [pending]);
+
+  const leave = useCallback(() => {
+    if (pending?.kind === "history") {
+      // Back already popped the sentinel; one more Back leaves the page for real.
+      leaving.current = true;
+      armed.current = false;
+      window.history.back();
+    } else if (pending?.kind === "link") {
+      const { href } = pending;
+      if (armed.current && isSentinel(window.history.state)) {
+        // Step off the sentinel first so it does not linger behind the destination.
+        leaving.current = true;
+        armed.current = false;
+        window.addEventListener("popstate", () => router.push(href), { once: true });
+        window.history.back();
+      } else {
+        router.push(href);
+      }
+    }
+    setPending(null);
+  }, [pending, router]);
+
+  /**
+   * Removes the extra history entry and resolves once the browser has settled on the page's own
+   * entry. A caller about to navigate on its own (for example to a record it just created) must
+   * wait for this first: the entry is removed with an asynchronous Back, which would otherwise
+   * cancel the navigation that follows it.
+   */
+  const release = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        if (!armed.current || !isSentinel(window.history.state)) {
+          resolve();
+          return;
+        }
+        leaving.current = true;
+        armed.current = false;
+        window.addEventListener(
+          "popstate",
+          () => {
+            leaving.current = false;
+            resolve();
+          },
+          { once: true },
+        );
+        window.history.back();
+      }),
+    [],
+  );
+
+  return { pending: pending !== null, stay, leave, release };
 }

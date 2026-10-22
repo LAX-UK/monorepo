@@ -19,6 +19,7 @@ import {
   shopThirdPartySale,
   shopUserProfile,
 } from "@auction/db/schema";
+import type { OverviewKpiKey } from "@auction/shop-domain";
 import {
   type SQL,
   and,
@@ -678,37 +679,49 @@ export function createDrizzleAdminReadRepository(
       },
     },
     overview: {
-      async readOverviewKpis() {
-        const [fulfilmentOpen, payoutsDue, activeHolds, pendingRequests] = await Promise.all([
-          db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(shopFulfilment)
-            .where(
-              inArray(shopFulfilment.status, [
-                "pending_production",
-                "in_production",
-                "awaiting_dispatch",
-              ]),
+      async readOverviewKpis(keys) {
+        const count = async (query: PromiseLike<Array<{ count: number }>>) =>
+          (await query)[0]?.count ?? 0;
+        const counters: Record<OverviewKpiKey, () => Promise<number>> = {
+          fulfilmentOpenCount: () =>
+            count(
+              db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(shopFulfilment)
+                .where(
+                  inArray(shopFulfilment.status, [
+                    "pending_production",
+                    "in_production",
+                    "awaiting_dispatch",
+                  ]),
+                ),
             ),
-          db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(shopPayoutLedger)
-            .where(eq(shopPayoutLedger.status, "due")),
-          db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(shopStockHold)
-            .where(eq(shopStockHold.status, "active")),
-          db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(shopSaleAuthorityRequest)
-            .where(eq(shopSaleAuthorityRequest.status, "pending")),
-        ]);
-        return {
-          fulfilmentOpenCount: fulfilmentOpen[0]?.count ?? 0,
-          payoutsDueCount: payoutsDue[0]?.count ?? 0,
-          activeHoldsCount: activeHolds[0]?.count ?? 0,
-          pendingAuthorityRequestsCount: pendingRequests[0]?.count ?? 0,
+          payoutsDueCount: () =>
+            count(
+              db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(shopPayoutLedger)
+                .where(eq(shopPayoutLedger.status, "due")),
+            ),
+          activeHoldsCount: () =>
+            count(
+              db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(shopStockHold)
+                .where(eq(shopStockHold.status, "active")),
+            ),
+          pendingAuthorityRequestsCount: () =>
+            count(
+              db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(shopSaleAuthorityRequest)
+                .where(eq(shopSaleAuthorityRequest.status, "pending")),
+            ),
         };
+        const entries = await Promise.all(
+          keys.map(async (key) => [key, await counters[key]()] as const),
+        );
+        return Object.fromEntries(entries);
       },
     },
     compliance: {

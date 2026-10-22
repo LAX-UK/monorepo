@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { shopAdminAudit, shopEditorialPage } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type pg from "pg";
@@ -9,7 +10,9 @@ import {
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleEditorialRepository } from "./drizzle-editorial.repository.js";
 
-const ACTOR = "audit-test-editor";
+// Ids are generated per run, and every assertion is scoped to them, so a second run against the
+// same database never sees the first run's audit rows.
+const ACTOR = `audit-test-editor-${randomUUID()}`;
 
 describe.skipIf(!hasShopIntegrationDb)("editorial writes are audited", () => {
   let shopPool: pg.Pool;
@@ -69,7 +72,7 @@ describe.skipIf(!hasShopIntegrationDb)("editorial writes are audited", () => {
 
   it("writes no audit row when the update matches no record", async () => {
     const { repo, auditRows } = setup();
-    const missing = "55555555-5555-4555-8555-555555555555";
+    const missing = randomUUID();
     const outcome = await repo.updatePage(missing, {
       slug: slug(),
       title: "Nope",
@@ -84,13 +87,12 @@ describe.skipIf(!hasShopIntegrationDb)("editorial writes are audited", () => {
   it("audits a placement replacement and a preview token", async () => {
     const { repo, auditRows } = setup();
     await repo.replacePlacementSlot("home_hero", [], ACTOR);
-    // The slot id is a fixed enum value, so earlier runs may have left rows of their own.
-    expect((await auditRows("home_hero")).at(-1)).toEqual({
-      action: "editorial.placement.replace",
-      capability: "editorial.publish",
-    });
+    // The slot id is a fixed enum value; the per-run actor keeps other runs' rows out of view.
+    expect(await auditRows("home_hero")).toEqual([
+      { action: "editorial.placement.replace", capability: "editorial.publish" },
+    ]);
 
-    const pageId = "66666666-6666-4666-8666-666666666666";
+    const pageId = randomUUID();
     await repo.recordPreviewTokenIssued("page", pageId, ACTOR);
     expect(await auditRows(pageId)).toEqual([
       { action: "editorial.preview_token.issue", capability: "editorial.write" },

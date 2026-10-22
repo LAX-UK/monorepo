@@ -100,7 +100,12 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
   const [busy, setBusy] = useState<Busy | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
-  const { pendingHref, stay, leave } = useUnsavedNavigationGuard(dirty);
+  const {
+    pending: leavePending,
+    stay,
+    leave,
+    release: releaseGuard,
+  } = useUnsavedNavigationGuard(dirty);
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -161,6 +166,8 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
     attempt.current = null;
     setDirty(false);
     toast.success("Product created.");
+    // Drop the Back-button sentinel first; its clean-up history.back() would cancel this replace.
+    await releaseGuard();
     router.replace(`/merchandise/${result.data.productId}`);
   }
 
@@ -481,7 +488,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
         }}
       />
       <ConfirmDialog
-        open={pendingHref !== null}
+        open={leavePending}
         onOpenChange={(open) => {
           if (!open) stay();
         }}

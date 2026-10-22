@@ -173,11 +173,12 @@ export const AdminStaffMemberListSchema = createCursorListResponseSchema(
   AdminStaffMemberListItemSchema,
 );
 
+/** Each figure is present only when the caller's role may open the list it counts. */
 export const AdminOverviewKpisSchema = Type.Object({
-  fulfilmentOpenCount: Type.Integer(),
-  payoutsDueCount: Type.Integer(),
-  activeHoldsCount: Type.Integer(),
-  pendingAuthorityRequestsCount: Type.Integer(),
+  fulfilmentOpenCount: Type.Optional(Type.Integer()),
+  payoutsDueCount: Type.Optional(Type.Integer()),
+  activeHoldsCount: Type.Optional(Type.Integer()),
+  pendingAuthorityRequestsCount: Type.Optional(Type.Integer()),
 });
 
 export type AdminOverviewKpis = Static<typeof AdminOverviewKpisSchema>;

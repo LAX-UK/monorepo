@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  OVERVIEW_KPI_CAPABILITY,
   SHOP_STAFF_CAPABILITIES,
   type ShopStaffCapability,
   type ShopStaffRole,
   capabilitiesForRole,
+  overviewKpiKeysForRole,
   roleHasCapability,
 } from "./staff-capabilities.js";
 
@@ -77,5 +79,22 @@ describe("staff capabilities matrix", () => {
 
   it("keeps catalogue.write for catalogue editors so artworks and artists stay editable", () => {
     expect(roleHasCapability("catalogue_editor", "catalogue.write")).toBe(true);
+  });
+});
+
+describe("overviewKpiKeysForRole", () => {
+  it("offers a figure only to roles that hold the capability for its list", () => {
+    for (const role of ROLES) {
+      for (const key of overviewKpiKeysForRole(role)) {
+        expect(roleHasCapability(role, OVERVIEW_KPI_CAPABILITY[key])).toBe(true);
+      }
+    }
+  });
+
+  it("offers nothing to roles with no overview list, and every figure to admins", () => {
+    expect(overviewKpiKeysForRole("catalogue_editor")).toEqual([]);
+    expect(overviewKpiKeysForRole("shop_admin")).toHaveLength(
+      Object.keys(OVERVIEW_KPI_CAPABILITY).length,
+    );
   });
 });

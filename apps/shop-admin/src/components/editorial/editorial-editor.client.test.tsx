@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ExhibitionDetail } from "@/lib/editorial-entity-forms";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const saveEditorialEntity = vi.fn();
@@ -267,6 +267,56 @@ describe("exhibition editor publishing and leaving", () => {
     expect(push).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Leave without saving" }));
-    expect(push).toHaveBeenCalledWith("/editorial/exhibitions");
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/editorial/exhibitions"));
+  });
+
+  describe("browser Back", () => {
+    const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+
+    async function pressBack() {
+      await act(async () => {
+        window.history.back();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+    }
+
+    beforeEach(async () => {
+      saveEditorialEntity.mockResolvedValue({ ok: true, data: { id: detail.id, version: MINE } });
+      // Entries left by earlier tests' unsaved editors would swallow this test's Back.
+      cleanup();
+      while ("__unsavedChangesGuard" in ((window.history.state as object | null) ?? {})) {
+        await pressBack();
+      }
+    });
+
+    it("asks before leaving with unsaved changes, and stays when told to", async () => {
+      renderEditor();
+      editTitle("Changed");
+      await pressBack();
+      expect(
+        await screen.findByRole("dialog", { name: "Leave without saving?" }),
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+      expect(screen.queryByRole("dialog", { name: "Leave without saving?" })).toBeNull();
+      expect(screen.getByLabelText("Title")).toHaveValue("Changed");
+
+      // The guard re-armed, so a second Back asks again.
+      await pressBack();
+      expect(
+        await screen.findByRole("dialog", { name: "Leave without saving?" }),
+      ).toBeInTheDocument();
+    });
+
+    it("goes back once the editor has been saved, without asking", async () => {
+      renderEditor();
+      editTitle("Changed");
+      save();
+      await screen.findByText("Saved 11:45");
+      await settle();
+
+      await pressBack();
+      expect(screen.queryByRole("dialog", { name: "Leave without saving?" })).toBeNull();
+    });
   });
 });

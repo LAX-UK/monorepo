@@ -115,6 +115,15 @@ export async function registerShopAdminScope(
   );
 }
 
+/** Any signed-in staff member; for routes that filter their response by capability instead. */
+export function requireShopStaffAuth(request: FastifyRequest): ShopAdminAuthContext {
+  const auth = request.shopAdminAuth;
+  if (!auth) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.UNAUTHORIZED, "Unauthorized", 401);
+  }
+  return auth;
+}
+
 export function requireShopStaffCapability(
   request: FastifyRequest,
   capability: ShopStaffCapability,
