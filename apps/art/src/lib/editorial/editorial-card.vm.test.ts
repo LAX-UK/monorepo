@@ -94,6 +94,19 @@ describe("summary cards", () => {
       }),
     ).toMatchObject({ href: "/exhibitions/summer-show", kicker: "Event", meta: "From 1 Jun 2026" });
     expect(
+      exhibitionCard({
+        slug: "venue-show",
+        kind: "exhibition",
+        title: "Venue show",
+        summary: null,
+        startsOn: null,
+        endsOn: null,
+        coverUrl: null,
+        featured: false,
+        venue: { slug: "marylebone", name: "LAX Marylebone" },
+      }),
+    ).toMatchObject({ kicker: "Exhibition", place: "LAX Marylebone" });
+    expect(
       storyCard({
         slug: "studio-visit",
         kind: "film",

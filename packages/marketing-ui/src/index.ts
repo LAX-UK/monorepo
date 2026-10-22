@@ -1,7 +1,9 @@
 export {
+  MarketingArrowRightIcon,
   MarketingBagIcon,
   MarketingBellIcon,
   MarketingBellRingIcon,
+  MarketingCalendarIcon,
   MarketingCarouselNextIcon,
   MarketingCertificateIcon,
   MarketingCarouselPreviousIcon,
@@ -13,6 +15,7 @@ export {
   MarketingHomeIcon,
   MarketingImageIcon,
   MarketingInfoIcon,
+  MarketingMapPinIcon,
   MarketingMenuIcon,
   MarketingMoonIcon,
   MarketingMoreIcon,
@@ -344,6 +347,20 @@ export {
   type MarketingSplitFeatureProps,
 } from "./marketing-split-feature.js";
 export { MarketingCtaBand, type MarketingCtaBandProps } from "./marketing-cta-band.js";
+export {
+  MarketingRevealCarousel,
+  type MarketingRevealCarouselProps,
+  type MarketingRevealSlide,
+} from "./marketing-reveal-carousel.js";
+export {
+  MarketingEditorialListRow,
+  type MarketingEditorialListRowProps,
+} from "./marketing-editorial-list-row.js";
+export {
+  MarketingFactColumns,
+  type MarketingFact,
+  type MarketingFactColumnsProps,
+} from "./marketing-fact-columns.js";
 export { MarketingVenueCard, type MarketingVenueCardProps } from "./marketing-venue-card.js";
 export {
   MarketingFeatureGrid,

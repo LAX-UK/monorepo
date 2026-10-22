@@ -1,8 +1,7 @@
 import { ArtStatusState } from "@/components/art-status-state";
-import { ArtEditorialCard, ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
+import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
-import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
-import { ArtSection } from "@/components/layout/art-section";
+import { ArtExhibitionReveal } from "@/components/exhibition/art-exhibition-reveal";
 import { artServices } from "@/lib/art-services.server";
 import {
   EXHIBITION_STATUS_TABS,
@@ -35,61 +34,49 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
   const result = await composeExhibitionsPage(artServices, status);
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 py-10")}>
-      <header className="flex flex-col gap-2">
-        <h1 className="font-headline text-3xl font-semibold text-on-surface">Exhibitions</h1>
-        <p className="max-w-2xl text-on-surface-variant">
-          Exhibitions, films and events from the London Art Exchange gallery programme.
-        </p>
-      </header>
+    <div className="flex flex-col gap-8 pb-10">
+      {/* Figma has no page title here; the hero carries the visual title, so the h1 is for assistive tech. */}
+      <h1 className="sr-only">Exhibitions</h1>
       {result.status === "ok" && result.data.featured.length > 0 ? (
-        <MarketingReveal index={0}>
-          <ArtSection id="featured-exhibitions" title="Featured">
-            <ArtRail id="featured-exhibitions-rail" label="Featured exhibitions">
-              {result.data.featured.map((card, index) => (
-                <ArtRailItem key={card.key} size="feature">
-                  <ArtEditorialCard card={card} priority={index === 0} />
-                </ArtRailItem>
-              ))}
-            </ArtRail>
-          </ArtSection>
-        </MarketingReveal>
+        <ArtExhibitionReveal items={result.data.featured} />
       ) : null}
-      {result.status === "disabled" ? null : (
-        <MarketingSubNav
-          ariaLabel="Exhibition dates"
-          active={status}
-          items={EXHIBITION_STATUS_TABS.map((tab) => ({
-            id: tab.value,
-            label: tab.label,
-            href: tab.value === "current" ? "/exhibitions" : `/exhibitions?status=${tab.value}`,
-          }))}
-        />
-      )}
-      {result.status !== "ok" ? (
-        <ArtEditorialStatus
-          result={result}
-          disabledTitle="Exhibitions coming soon"
-          disabledDescription="Editorial exhibitions are not enabled in this environment yet."
-          emptyTitle="No exhibitions found"
-          emptyDescription={EMPTY_COPY[status]}
-        />
-      ) : result.data.cards.length === 0 ? (
-        <ArtStatusState
-          variant="empty"
-          layout="inline"
-          title="Nothing to show yet"
-          description={EMPTY_COPY[status]}
-        />
-      ) : (
-        <MarketingReveal index={1}>
-          <ArtEditorialCardGrid
-            cards={result.data.cards}
-            ariaLabel="Exhibitions"
-            priorityCount={3}
+      <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8")}>
+        {result.status === "disabled" ? null : (
+          <MarketingSubNav
+            ariaLabel="Exhibition dates"
+            active={status}
+            items={EXHIBITION_STATUS_TABS.map((tab) => ({
+              id: tab.value,
+              label: tab.label,
+              href: tab.value === "current" ? "/exhibitions" : `/exhibitions?status=${tab.value}`,
+            }))}
           />
-        </MarketingReveal>
-      )}
+        )}
+        {result.status !== "ok" ? (
+          <ArtEditorialStatus
+            result={result}
+            disabledTitle="Exhibitions coming soon"
+            disabledDescription="Editorial exhibitions are not enabled in this environment yet."
+            emptyTitle="No exhibitions found"
+            emptyDescription={EMPTY_COPY[status]}
+          />
+        ) : result.data.cards.length === 0 ? (
+          <ArtStatusState
+            variant="empty"
+            layout="inline"
+            title="Nothing to show yet"
+            description={EMPTY_COPY[status]}
+          />
+        ) : (
+          <MarketingReveal index={1}>
+            <ArtEditorialCardGrid
+              cards={result.data.cards}
+              ariaLabel="Exhibitions"
+              priorityCount={3}
+            />
+          </MarketingReveal>
+        )}
+      </div>
     </div>
   );
 }

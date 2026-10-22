@@ -1,3 +1,8 @@
+import type { ArtViewerState } from "@/lib/art-viewer-state";
+import {
+  type CatalogueArtworkCardVm,
+  buildCatalogueArtworkCards,
+} from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type {
   ArtEditorialExhibitionDetail,
   ArtEditorialExhibitionSummary,
@@ -21,6 +26,18 @@ import {
 } from "@/lib/editorial/editorial-card.vm";
 import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
 import { exhibitionHasEnded, exhibitionMetaLine } from "@/lib/editorial/editorial-page-title.vm";
+import {
+  type ExhibitionArtistVm,
+  type ExhibitionFactsVm,
+  type ExhibitionPressVm,
+  type ExhibitionRevealVm,
+  buildExhibitionArtists,
+  buildExhibitionFacts,
+  buildExhibitionPress,
+  buildExhibitionReveals,
+} from "@/lib/editorial/exhibition-page.vm";
+import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
+import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
   ArtCataloguePort,
   ArtEditorialPort,
@@ -105,8 +122,8 @@ const FEATURED_EXHIBITIONS_LIMIT = 6;
 export type ExhibitionsPageVm = {
   status: ArtExhibitionStatus;
   cards: EditorialCardVm[];
-  /** Featured current and upcoming shows, whichever tab is active. */
-  featured: EditorialCardVm[];
+  /** Featured current and upcoming shows for the hero, whichever tab is active. */
+  featured: ExhibitionRevealVm[];
 };
 
 export async function composeExhibitionsPage(
@@ -129,9 +146,9 @@ export async function composeExhibitionsPage(
       if (item.featured && !featuredBySlug.has(item.slug)) featuredBySlug.set(item.slug, item);
     }
   }
-  const featured = [...featuredBySlug.values()]
-    .slice(0, FEATURED_EXHIBITIONS_LIMIT)
-    .map(exhibitionCard);
+  const featured = buildExhibitionReveals(
+    [...featuredBySlug.values()].slice(0, FEATURED_EXHIBITIONS_LIMIT),
+  );
   return {
     status: "ok",
     data: { status, cards: result.data.items.map(exhibitionCard), featured },
@@ -142,13 +159,16 @@ export type ExhibitionDetailVm = {
   exhibition: ArtEditorialExhibitionDetail;
   /** Page title byline, e.g. "Exhibition · 18 Aug – 27 Aug 2026". */
   metaLine: string;
-  /** Past its end date: the title shows "Closed" (Figma 737:20593). */
+  /** Past its end date: the title shows "Closed" and the CTA band is plain (Figma 737:20593). */
   ended: boolean;
   dateLabel: string | null;
-  venueName: string | null;
-  venueHref: string | null;
-  hoursLabel: string | null;
+  facts: ExhibitionFactsVm;
   body: EditorialBodyVm;
+  works: CatalogueArtworkCardVm[];
+  artists: ExhibitionArtistVm[];
+  press: ExhibitionPressVm[];
+  viewer: ArtViewerState;
+  favoriteAuth: ArtFavoriteAuth;
 };
 
 export async function composeExhibitionDetailPage(
@@ -159,17 +179,33 @@ export async function composeExhibitionDetailPage(
   if (result.status !== "ok") return passThrough(result);
   const exhibition = result.data;
   const returnTo = `/exhibitions/${encodeURIComponent(exhibition.slug)}`;
-  const [venueResult, body] = await Promise.all([
+  const [venueResult, body, favorites] = await Promise.all([
     exhibition.venueSlug ? services.editorial.getVenue(exhibition.venueSlug) : null,
     composeEditorialBody(exhibition.body, services, returnTo),
+    loadViewerFavoriteContext(services, returnTo),
   ]);
-  const venueHours =
-    venueResult?.status === "ok"
-      ? presentOpeningHours(venueResult.data.openingHours)
-          .map((row) => `${row.label} ${row.value}`)
-          .join(" · ")
-      : "";
   const dateLabel = formatExhibitionDates(exhibition.startsOn, exhibition.endsOn);
+  const venueDetail = venueResult?.status === "ok" ? venueResult.data : null;
+  // The detail's own venue summary still names the venue when the full venue read fails.
+  const venue = venueDetail
+    ? {
+        name: venueDetail.name,
+        href: venueHref(venueDetail.slug),
+        addressLine: venueAddressParts(venueDetail).join(", ") || null,
+        mapUrl: venueDetail.mapUrl,
+        phone: venueDetail.phone,
+        email: venueDetail.email,
+      }
+    : exhibition.venue
+      ? {
+          name: exhibition.venue.name,
+          href: venueHref(exhibition.venue.slug),
+          addressLine: null,
+          mapUrl: null,
+          phone: null,
+          email: null,
+        }
+      : null;
   return {
     status: "ok",
     data: {
@@ -177,10 +213,18 @@ export async function composeExhibitionDetailPage(
       metaLine: exhibitionMetaLine(exhibitionKindLabel(exhibition.kind), dateLabel),
       ended: exhibitionHasEnded(exhibition.endsOn, new Date()),
       dateLabel,
-      venueName: venueResult?.status === "ok" ? venueResult.data.name : null,
-      venueHref: venueResult?.status === "ok" ? venueHref(venueResult.data.slug) : null,
-      hoursLabel: exhibition.timesNote?.trim() || venueHours || null,
+      facts: buildExhibitionFacts({
+        dateLabel,
+        timesNote: exhibition.timesNote,
+        hours: venueDetail ? presentOpeningHours(venueDetail.openingHours) : [],
+        venue,
+      }),
       body,
+      works: buildCatalogueArtworkCards(exhibition.artworks ?? [], favorites.savedArtworkSlugs),
+      artists: buildExhibitionArtists(exhibition.artists ?? []),
+      press: buildExhibitionPress(exhibition.stories ?? []),
+      viewer: favorites.viewer,
+      favoriteAuth: favorites.favoriteAuth,
     },
   };
 }

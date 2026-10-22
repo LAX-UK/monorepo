@@ -1,8 +1,10 @@
 import { cn } from "@auction/ui";
 import {
+  ArrowRight,
   Award,
   Bell,
   BellRing,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -14,6 +16,7 @@ import {
   Info,
   LayoutGrid,
   type LucideProps,
+  MapPin,
   Menu,
   Moon,
   Phone,
@@ -129,4 +132,16 @@ export function MarketingImageIcon({ className, ...props }: MarketingIconProps) 
 
 export function MarketingPhoneIcon({ className, ...props }: MarketingIconProps) {
   return <Phone className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingArrowRightIcon({ className, ...props }: MarketingIconProps) {
+  return <ArrowRight className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingMapPinIcon({ className, ...props }: MarketingIconProps) {
+  return <MapPin className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingCalendarIcon({ className, ...props }: MarketingIconProps) {
+  return <CalendarDays className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }
