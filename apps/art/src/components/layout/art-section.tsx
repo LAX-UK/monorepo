@@ -1,4 +1,8 @@
-import { MarketingSectionHeader, MarketingViewAllLink } from "@auction/marketing-ui";
+import {
+  MarketingSectionHeader,
+  MarketingViewAllChevron,
+  MarketingViewAllLink,
+} from "@auction/marketing-ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -7,7 +11,7 @@ export type ArtSectionProps = {
   title: string;
   subtitle?: string;
   viewAllHref?: string;
-  /** Screen-reader destination after "See all"; defaults to the lowercased title. */
+  /** Screen-reader destination after "View all"; defaults to the lowercased title. */
   viewAllSrLabel?: string;
   children: ReactNode;
 };
@@ -39,8 +43,9 @@ export function ArtSection({
               action: (
                 <MarketingViewAllLink asChild>
                   <Link href={viewAllHref}>
-                    See all
+                    View all
                     <span className="sr-only"> {viewAllSrLabel ?? title.toLowerCase()}</span>
+                    <MarketingViewAllChevron />
                   </Link>
                 </MarketingViewAllLink>
               ),
