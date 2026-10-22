@@ -12,6 +12,7 @@ import { createShopApiApp } from "../../../app.js";
 import { createEnquiryRateLimiter } from "../../../application/enquiry-rate-limit.js";
 import { createInMemoryFixedWindowCounter } from "../../../infrastructure/in-memory-fixed-window-counter.js";
 import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
+import { createStubEditorialLinksService } from "../../../test-support/stub-editorial-links-service.js";
 import { createStubEditorialRepository } from "../../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../../test-support/stub-editorial-search-reader.js";
 
@@ -96,6 +97,25 @@ const PROBES: Probe[] = [
     allowed: ["shop_admin", "account_manager", "operations", "finance"],
   },
   {
+    name: "editorial links read",
+    method: "GET",
+    url: `/admin/v1/editorial/exhibitions/${ENTITY_ID}/links`,
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
+    name: "editorial links write",
+    method: "PUT",
+    url: `/admin/v1/editorial/exhibitions/${ENTITY_ID}/links/artworks`,
+    payload: { ids: [], expectedVersion: "v1" },
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
+    name: "editorial link candidates",
+    method: "GET",
+    url: "/admin/v1/editorial/link-candidates?kind=artist",
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
     name: "artists list",
     method: "GET",
     url: "/admin/v1/artists",
@@ -127,6 +147,10 @@ function buildApp(
     },
     editorial: {
       previewSecret: "test-preview-secret-minimum-32-chars",
+      links: createStubEditorialLinksService({
+        getExhibitionLinks: async () => ({ artworks: [], artists: [], stories: [], version: "v1" }),
+        replaceExhibitionLinks: async () => ({ status: "replaced", version: "v2" }),
+      }),
       search: createStubEditorialSearchReader(),
       enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
       editorial: createStubEditorialRepository({

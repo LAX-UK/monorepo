@@ -2,6 +2,7 @@ import { type Database, closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { createEditorialLinksService } from "./application/editorial-links.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
@@ -31,6 +32,7 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-editorial-links.repository.js";
 import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
@@ -277,6 +279,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
                 }
               : {}),
           }),
+          links: createEditorialLinksService(
+            createDrizzleEditorialLinksRepository(db, { resolveMediaUrl }),
+          ),
           search: createDrizzleEditorialSearchReader(db, { resolveMediaUrl }),
           previewSecret,
           enquiryRateLimiter,
