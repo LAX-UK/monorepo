@@ -1,9 +1,20 @@
 import type { OpeningHoursRow } from "@/lib/editorial/editorial-pages.composer";
 
-/** An exhibition has ended once its last day (a UTC calendar date) is before today's. */
+const LONDON_DATE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * An exhibition has ended once its last day (a calendar date, no time) is before today in London,
+ * so the end date itself is still open and the show reads as closed from London midnight, in both
+ * GMT and BST. The clock is injected so callers stay deterministic.
+ */
 export function exhibitionHasEnded(endsOn: string | null, now: Date): boolean {
   if (!endsOn || !/^\d{4}-\d{2}-\d{2}$/.test(endsOn)) return false;
-  return endsOn < now.toISOString().slice(0, 10);
+  return endsOn < LONDON_DATE.format(now);
 }
 
 /** "Exhibition · 18 Aug – 27 Aug 2026"; the kind alone when undated. */

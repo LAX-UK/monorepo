@@ -193,6 +193,7 @@ export type ExhibitionDetailVm = {
 export async function composeExhibitionDetailPage(
   services: Services<"getExhibition" | "getVenue">,
   slug: string,
+  now: Date = new Date(),
 ): Promise<ArtEditorialPageResult<ExhibitionDetailVm>> {
   const result = await services.editorial.getExhibition(slug);
   if (result.status !== "ok") return passThrough(result);
@@ -233,7 +234,7 @@ export async function composeExhibitionDetailPage(
         exhibition.subtitle?.trim() || exhibitionKindLabel(exhibition.kind),
         dateLabel,
       ),
-      ended: exhibitionHasEnded(exhibition.endsOn, new Date()),
+      ended: exhibitionHasEnded(exhibition.endsOn, now),
       dateLabel,
       facts: buildExhibitionFacts({
         dateLabel,

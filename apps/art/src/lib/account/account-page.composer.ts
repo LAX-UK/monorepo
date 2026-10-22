@@ -148,6 +148,7 @@ export function composeArtAccountProfilePage(
       laxAccountHref,
       verifyEmailHref,
       banner: buildProfileIncompleteBanner({
+        name: viewer.displayName ?? null,
         emailVerified: viewer.emailVerified ?? null,
         phone: viewer.verifiedPhone ?? null,
         verifyEmailHref,

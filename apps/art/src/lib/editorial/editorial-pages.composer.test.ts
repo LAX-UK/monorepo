@@ -6,7 +6,7 @@ import type {
 } from "@/lib/editorial/art-editorial.types";
 import { fakeArtServices } from "@/lib/testing/fake-art-services";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   composeCollectorHubPage,
   composeEditorialPage,
@@ -311,26 +311,28 @@ describe("composeExhibitionDetailPage", () => {
     });
   });
 
-  it("builds the title byline and marks the show closed after its end date", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    try {
-      const services = fakeArtServices();
-      services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
-      services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
+  it("builds the title byline and marks the show closed the day after its end date", async () => {
+    const services = fakeArtServices();
+    services.editorial.getExhibition.mockResolvedValue({ status: "ok", data: exhibition() });
+    services.editorial.getVenue.mockResolvedValue({ status: "not_found" });
 
-      vi.setSystemTime(new Date("2026-08-30T22:00:00Z"));
-      const lastDay = await composeExhibitionDetailPage(services, "summer-show");
-      expect(lastDay.status === "ok" && lastDay.data).toMatchObject({
-        metaLine: "Exhibition · 1 Jun – 30 Aug 2026",
-        ended: false,
-      });
+    const lastDay = await composeExhibitionDetailPage(
+      services,
+      "summer-show",
+      new Date("2026-08-30T22:00:00Z"),
+    );
+    expect(lastDay.status === "ok" && lastDay.data).toMatchObject({
+      metaLine: "Exhibition · 1 Jun – 30 Aug 2026",
+      ended: false,
+    });
 
-      vi.setSystemTime(new Date("2026-08-31T00:00:00Z"));
-      const after = await composeExhibitionDetailPage(services, "summer-show");
-      expect(after.status === "ok" && after.data.ended).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
+    // 23:00 UTC is already 31 August in London during BST.
+    const after = await composeExhibitionDetailPage(
+      services,
+      "summer-show",
+      new Date("2026-08-30T23:00:00Z"),
+    );
+    expect(after.status === "ok" && after.data.ended).toBe(true);
   });
 
   it("passes through not found and tolerates a missing venue", async () => {
