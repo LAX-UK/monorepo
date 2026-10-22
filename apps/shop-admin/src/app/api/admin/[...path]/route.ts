@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SHOP_ADMIN_CSRF_COOKIE, shopAdminSessionCookie } from "../../../../lib/session-cookie";
 import { getShopAdminContainer } from "../../../../server/container";
+import { classifyAdminReadFailure } from "../../../../server/domain/admin-read-failure";
 
 async function handle(request: Request, pathSegments: string[]): Promise<Response> {
   const container = getShopAdminContainer();
@@ -40,7 +41,7 @@ async function handle(request: Request, pathSegments: string[]): Promise<Respons
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "error";
-    if (message === "Unauthorized") {
+    if (classifyAdminReadFailure(error).kind === "unauthorized") {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
     if (message === "Not found") {
