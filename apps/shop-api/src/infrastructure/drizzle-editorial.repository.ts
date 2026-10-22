@@ -33,6 +33,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { londonIsoDate } from "../application/editorial-calendar-date.js";
 import { enquirySenderColumns } from "../application/enquiry-sender.js";
 import type {
   EditorialExhibitionExtraFields,
@@ -60,10 +61,6 @@ type RepoOptions = {
   /** Staff alert queued in the same transaction as each general enquiry. */
   generalEnquiryAlerts?: { notifications: ShopNotificationPublisher; opsEmail: string };
 };
-
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function seoColumns(input: { seoTitle?: string | null; seoDescription?: string | null }) {
   return {
@@ -402,7 +399,7 @@ export function createDrizzleEditorialRepository(
     },
 
     async listExhibitions(status) {
-      const today = todayIsoDate();
+      const today = londonIsoDate(new Date());
       let dateFilter: SQL | undefined;
       if (status === "upcoming") {
         dateFilter = gt(shopEditorialExhibition.startsOn, today);
