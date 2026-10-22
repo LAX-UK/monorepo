@@ -10,6 +10,7 @@ import { createShopApiApp } from "../../../app.js";
 import { createEnquiryRateLimiter } from "../../../application/enquiry-rate-limit.js";
 import { createInMemoryFixedWindowCounter } from "../../../infrastructure/in-memory-fixed-window-counter.js";
 import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
+import { createStubEditorialLinksService } from "../../../test-support/stub-editorial-links-service.js";
 import { createStubEditorialRepository } from "../../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../../test-support/stub-editorial-search-reader.js";
 
@@ -42,6 +43,7 @@ describe("admin editorial routes", () => {
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        links: createStubEditorialLinksService(),
         search: createStubEditorialSearchReader(),
         enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
         editorial: createStubEditorialRepository({
@@ -98,6 +100,7 @@ describe("admin editorial routes", () => {
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        links: createStubEditorialLinksService(),
         search: createStubEditorialSearchReader(),
         enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
         editorial: createStubEditorialRepository({ createPage }),
@@ -166,6 +169,7 @@ describe("admin editorial routes", () => {
       },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        links: createStubEditorialLinksService(),
         search: createStubEditorialSearchReader(),
         enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
         editorial: createStubEditorialRepository({

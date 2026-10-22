@@ -15,6 +15,7 @@ import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { registerAdminEditorialLinksRoutes } from "./admin-editorial-links.routes.js";
 import {
   EditorialCreateResponseSchema,
   EditorialExhibitionWriteBodySchema,
@@ -152,6 +153,7 @@ export async function registerAdminEditorialRoutes(
   deps: EditorialRoutesDeps,
 ) {
   const repo = deps.editorial;
+  await registerAdminEditorialLinksRoutes(app, deps.links);
 
   app.get(
     "/general-enquiries",
