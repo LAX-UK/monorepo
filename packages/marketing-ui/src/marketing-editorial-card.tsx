@@ -4,13 +4,22 @@ import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { MarketingCardMedia } from "./marketing-card-media.js";
 
+const ASPECT_CLASS = {
+  landscape: "aspect-[4/3]",
+  portrait: "aspect-[8/11]",
+  wide: "aspect-[21/10]",
+} as const;
+
 type EditorialCardLinkProps = { href: string; className?: string; children: ReactNode };
 
 export type MarketingEditorialCardProps = {
   /** Fills the media slot (`absolute inset-0 size-full`). */
   media: ReactNode;
-  /** `landscape` 4:3 for features and rails; `portrait` 8:11 for story grids (Figma `251:1312`). */
-  aspect?: "landscape" | "portrait";
+  /**
+   * `landscape` 4:3 for features and rails; `portrait` 8:11 for story grids (Figma `251:1312`);
+   * `wide` 21:10 for a full-width lead (Figma `285:3008`, drawn about 1200×568).
+   */
+  aspect?: "landscape" | "portrait" | "wide";
   /** Uppercase parts divided by a rule, e.g. ["Exhibition", "London"] or ["Article", "16 Apr 2026"]. */
   kicker?: readonly string[];
   title: string;
@@ -42,12 +51,7 @@ export function MarketingEditorialCard({
 }: MarketingEditorialCardProps) {
   return (
     <article className="group relative flex h-full flex-col gap-4" data-testid={testId}>
-      <MarketingCardMedia
-        className={cn(
-          "bg-surface-container",
-          aspect === "portrait" ? "aspect-[8/11]" : "aspect-[4/3]",
-        )}
-      >
+      <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
         {media}
       </MarketingCardMedia>
       <div className="flex flex-col gap-1">
