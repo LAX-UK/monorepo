@@ -8,6 +8,8 @@ export type AdminMutationResult<T> =
   | { ok: false; kind: "step_up_required"; message: string }
   | { ok: false; kind: "conflict"; message: string; currentVersion?: string }
   | { ok: false; kind: "validation"; message: string }
+  /** 422: the request named records that do not exist, so nothing was written. */
+  | { ok: false; kind: "unknown_ids"; message: string; missingIds: string[] }
   | { ok: false; kind: "failed"; message: string };
 
 export function mapAdminMutationErrorBody(
@@ -36,6 +38,17 @@ export function mapAdminMutationErrorBody(
       ...(currentVersion ? { currentVersion } : {}),
     };
   }
+  if (status === 422) {
+    const missingIds = readStringArray(body, "missingIds");
+    if (missingIds.length > 0) {
+      return {
+        ok: false,
+        kind: "unknown_ids",
+        message: readErrorMessage(body) ?? fallbackMessage,
+        missingIds,
+      };
+    }
+  }
   if (status === 400) {
     return {
       ok: false,
@@ -57,6 +70,14 @@ function readErrorField(body: unknown, field: string): string | undefined {
   if (!body || typeof body !== "object") return undefined;
   const value = (body as Record<string, unknown>)[field];
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function readStringArray(body: unknown, field: string): string[] {
+  if (!body || typeof body !== "object") return [];
+  const value = (body as Record<string, unknown>)[field];
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 function readErrorMessage(body: unknown): string | undefined {

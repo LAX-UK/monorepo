@@ -35,4 +35,18 @@ describe("mapAdminMutationErrorBody", () => {
       currentVersion: "2026-03-01T11:30:00.000Z",
     });
   });
+
+  it("lists the records a 422 says do not exist", () => {
+    expect(
+      mapAdminMutationErrorBody(422, { message: "Unknown ids", missingIds: ["a", "b"] }, "x"),
+    ).toEqual({ ok: false, kind: "unknown_ids", message: "Unknown ids", missingIds: ["a", "b"] });
+  });
+
+  it("treats a 422 without missing ids as a plain failure", () => {
+    expect(mapAdminMutationErrorBody(422, { message: "Nope" }, "x")).toEqual({
+      ok: false,
+      kind: "failed",
+      message: "Nope",
+    });
+  });
 });
