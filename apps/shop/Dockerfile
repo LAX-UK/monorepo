@@ -21,14 +21,7 @@ ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV NEXT_PUBLIC_SHOP_IDENTITY_BASE_URL=$NEXT_PUBLIC_SHOP_IDENTITY_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY apps/shop ./apps/shop
-# next/font/google can fail intermittently when fonts.googleapis.com returns a non-CSS body in CI.
-RUN set -e; \
-  for attempt in 1 2 3; do \
-    pnpm turbo run build --filter=@auction/shop && exit 0; \
-    echo "Shop build attempt ${attempt} failed; retrying in 15s..."; \
-    sleep 15; \
-  done; \
-  exit 1
+RUN pnpm turbo run build --filter=@auction/shop
 
 FROM node:22-alpine AS runner
 WORKDIR /app
