@@ -38,21 +38,44 @@ function mockAdminAuth(subject: string, role: import("@auction/shop-domain").Sho
 }
 
 describe("admin read routes", () => {
-  it("returns overview KPIs for finance staff", async () => {
-    const deps = mockAdminAuth("finance-subject", "finance");
-    const app = createShopApiApp({ deps, logger: false });
-    await app.ready();
-    const response = await app.inject({
-      method: "GET",
-      url: "/admin/v1/overview/kpis",
-      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+  describe("overview KPIs", () => {
+    async function readKpis(role: import("@auction/shop-domain").ShopStaffRole) {
+      const deps = mockAdminAuth(`${role}-subject`, role);
+      const readOverviewKpis = vi.fn(async (keys: readonly string[]) =>
+        Object.fromEntries(keys.map((key) => [key, 7])),
+      );
+      deps.admin.adminRead.overview.readOverviewKpis = readOverviewKpis;
+      const app = createShopApiApp({ deps, logger: false });
+      await app.ready();
+      const response = await app.inject({
+        method: "GET",
+        url: "/admin/v1/overview/kpis",
+        headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      });
+      await app.close();
+      return { response, readOverviewKpis };
+    }
+
+    it.each([
+      ["finance", ["payoutsDueCount"]],
+      ["operations", ["fulfilmentOpenCount"]],
+      ["broker", ["activeHoldsCount"]],
+      ["catalogue_editor", []],
+      [
+        "shop_admin",
+        [
+          "fulfilmentOpenCount",
+          "payoutsDueCount",
+          "activeHoldsCount",
+          "pendingAuthorityRequestsCount",
+        ],
+      ],
+    ] as const)("%s staff are sent, and the database is asked for, only %j", async (role, keys) => {
+      const { response, readOverviewKpis } = await readKpis(role);
+      expect(response.statusCode).toBe(200);
+      expect(Object.keys(response.json()).sort()).toEqual([...keys].sort());
+      expect([...(readOverviewKpis.mock.calls[0]?.[0] ?? [])].sort()).toEqual([...keys].sort());
     });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      fulfilmentOpenCount: 0,
-      payoutsDueCount: 0,
-    });
-    await app.close();
   });
 
   it("returns order detail for audit staff", async () => {

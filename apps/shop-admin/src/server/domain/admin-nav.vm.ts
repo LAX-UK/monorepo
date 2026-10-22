@@ -32,7 +32,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
   const groups: AdminNavGroup[] = [
     {
       title: "Overview",
-      items: [{ href: "/overview", label: "Overview", capability: "audit.read" }],
+      items: [{ href: "/overview", label: "Overview" }],
     },
     {
       title: "Gallery",

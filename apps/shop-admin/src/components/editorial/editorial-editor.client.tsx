@@ -135,7 +135,12 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [preview, setPreview] = useState<EditorialPreview | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
-  const { pendingHref, stay, leave } = useUnsavedNavigationGuard(dirty || linksDirty);
+  const {
+    pending: leavePending,
+    stay,
+    leave,
+    release: releaseGuard,
+  } = useUnsavedNavigationGuard(dirty || linksDirty);
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -190,6 +195,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     if (config.afterSave) setForm(config.afterSave(form));
     if (id === null) {
       toast.success(`${capitalise(entity.singular)} created as a draft.`);
+      await releaseGuard();
       router.replace(`/editorial/${kind}/${result.data.id}`);
       return;
     }
@@ -438,7 +444,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
         }}
       />
       <ConfirmDialog
-        open={pendingHref !== null}
+        open={leavePending}
         onOpenChange={(open) => {
           if (!open) stay();
         }}

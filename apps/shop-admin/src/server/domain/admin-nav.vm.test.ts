@@ -23,8 +23,24 @@ function navHrefsFor(role: ShopStaffRole, features = ALL_FEATURES): string[] {
 }
 
 describe("buildAdminNavGroups", () => {
+  it.each([
+    "shop_admin",
+    "account_manager",
+    "broker",
+    "operations",
+    "finance",
+    "catalogue_editor",
+  ] as const)("shows the overview to %s staff, the landing page every role reaches", (role) => {
+    expect(navHrefsFor(role)).toContain("/overview");
+  });
+
   it("shows catalogue editors the catalogue and editorial areas only", () => {
-    expect(navHrefsFor("catalogue_editor")).toEqual(["/artworks", "/artists", ...EDITORIAL_HREFS]);
+    expect(navHrefsFor("catalogue_editor")).toEqual([
+      "/overview",
+      "/artworks",
+      "/artists",
+      ...EDITORIAL_HREFS,
+    ]);
   });
 
   it("lets operations view orders and enquiries but not editorial or the audit log", () => {
@@ -118,11 +134,13 @@ describe("buildAdminNavGroups", () => {
       capabilities: capabilitiesForRole("catalogue_editor"),
       features: ALL_FEATURES,
     }).map((group) => group.title);
-    expect(titles).toEqual(["Gallery"]);
+    expect(titles).toEqual(["Overview", "Gallery"]);
   });
 
-  it("shows nothing without capabilities", () => {
-    expect(buildAdminNavGroups({ capabilities: [], features: ALL_FEATURES })).toEqual([]);
+  it("shows only the overview without capabilities", () => {
+    expect(
+      flattenAdminNav(buildAdminNavGroups({ capabilities: [], features: ALL_FEATURES })),
+    ).toEqual([{ href: "/overview", label: "Overview" }]);
   });
 
   describe("enquiry attention count", () => {

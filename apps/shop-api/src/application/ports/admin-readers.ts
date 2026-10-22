@@ -10,6 +10,7 @@ import type {
   MerchandiseProductListItem,
   MerchandiseStatus,
 } from "@auction/shop-contracts";
+import type { OverviewKpiKey } from "@auction/shop-domain";
 
 export type CursorListInput = {
   cursor?: string | undefined;
@@ -204,7 +205,8 @@ export interface AdminCatalogueReader {
 }
 
 export interface AdminOverviewReader {
-  readOverviewKpis(): Promise<AdminOverviewKpis>;
+  /** Reads only the requested figures; the caller decides which the role may see. */
+  readOverviewKpis(keys: readonly OverviewKpiKey[]): Promise<AdminOverviewKpis>;
 }
 
 export interface AdminComplianceReader {

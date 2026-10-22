@@ -21,12 +21,14 @@ import {
   CursorListQuerySchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
+import { overviewKpiKeysForRole } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { parseOrderListQuery } from "../../../application/admin-order-list-query.js";
 import {
   requireShopAdminSubject,
+  requireShopStaffAuth,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
 import { requireClientPartyReadAccess } from "./admin-client-access.js";
@@ -60,8 +62,9 @@ export async function registerAdminReadRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "audit.read");
-      return deps.adminRead.overview.readOverviewKpis();
+      // Open to any signed-in staff member; each figure is gated by the capability for its list.
+      const auth = requireShopStaffAuth(request);
+      return deps.adminRead.overview.readOverviewKpis(overviewKpiKeysForRole(auth.role));
     },
   );
 

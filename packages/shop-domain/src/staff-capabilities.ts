@@ -63,6 +63,26 @@ const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> =
   catalogue_editor: ["catalogue.write", "editorial.write", "editorial.publish"],
 };
 
+/**
+ * The capability that lets staff open the list behind each overview figure. A figure is shown to
+ * a role only when it holds the capability, so a count never reaches someone who cannot see the
+ * records it counts.
+ */
+export const OVERVIEW_KPI_CAPABILITY = {
+  fulfilmentOpenCount: "fulfilment.write",
+  payoutsDueCount: "payout.mark_paid",
+  activeHoldsCount: "stock_hold.write",
+  pendingAuthorityRequestsCount: "sale_authority.write",
+} as const satisfies Record<string, ShopStaffCapability>;
+
+export type OverviewKpiKey = keyof typeof OVERVIEW_KPI_CAPABILITY;
+
+export function overviewKpiKeysForRole(role: ShopStaffRole): OverviewKpiKey[] {
+  return (Object.keys(OVERVIEW_KPI_CAPABILITY) as OverviewKpiKey[]).filter((key) =>
+    roleHasCapability(role, OVERVIEW_KPI_CAPABILITY[key]),
+  );
+}
+
 export function capabilitiesForRole(role: ShopStaffRole): readonly ShopStaffCapability[] {
   return ROLE_CAPABILITIES[role];
 }
