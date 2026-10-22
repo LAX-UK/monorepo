@@ -76,6 +76,26 @@ describe("buildTwoFactorChallengeUrl", () => {
   });
 });
 
+describe("buildTwoFactorChallengeUrl destination", () => {
+  it("repeats the client hint and authorize request of the callback so the challenge page can resume", () => {
+    const callback =
+      "https://auth.lax.bid/api/auth/oauth2/authorize?client_id=lax-shop-web&response_type=code&state=abc";
+    const url = new URL(buildTwoFactorChallengeUrl("https://auth.lax.bid", callback));
+    expect(url.pathname).toBe("/two-factor");
+    expect(url.searchParams.get("client_id")).toBe("lax-shop-web");
+    expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.get("state")).toBe("abc");
+    expect(url.searchParams.get("callbackURL")).toBe(callback);
+  });
+
+  it("does not lift arbitrary callback parameters", () => {
+    const url = new URL(
+      buildTwoFactorChallengeUrl("https://auth.lax.bid", "https://lax.bid/cb?secret=1&client_id=x"),
+    );
+    expect(url.searchParams.get("secret")).toBeNull();
+  });
+});
+
 describe("buildTwoFactorEnforcementAfterHook", () => {
   it("matches non-exempt paths only", () => {
     const hook = buildTwoFactorEnforcementAfterHook({ authOrigin: "https://auth.lax.bid" });

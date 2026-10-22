@@ -7,6 +7,7 @@ import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { createMachineTokenRateLimitMiddleware } from "../middleware/auth-rate-limit.js";
+import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
 import { probeAuthReadiness } from "./auth-health.js";
 
 export type AuthOperationalRoutes = {
@@ -48,7 +49,10 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
     }
     app.use(
       "/internal/oauth/*",
-      createMachineTokenRateLimitMiddleware(options.internal.redis, options.clientIp),
+      createMachineTokenRateLimitMiddleware(
+        createResilientSlidingWindowStore(options.internal.redis, options.log),
+        options.clientIp,
+      ),
     );
     app.route("/internal", options.internal.routes);
   }

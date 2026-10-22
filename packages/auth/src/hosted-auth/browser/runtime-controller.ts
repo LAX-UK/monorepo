@@ -1,46 +1,17 @@
 import type { HostedAuthConfig, JsonResponse } from "./api.js";
+import { type AuthFailure, type AuthFailureContext, describeAuthFailure } from "./auth-failure.js";
 import { messageForValidityState, parseFieldKind } from "./constraints.js";
 import {
   type ContinuePayload,
   isAllowedContinueUrl,
+  magicLinkCallbackUrl,
   productHintLoginUrl,
   resolveContinueUrl,
+  verificationCallbackUrl,
 } from "./continue.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { isCaptchaRequiredPayload, submitEnabled } from "./turnstile.js";
-
-type HostedAuthApi = {
-  config: HostedAuthConfig;
-  postJson(path: string, body: unknown): Promise<JsonResponse>;
-  setBusy(button: HTMLButtonElement | null, busy: boolean): void;
-  showError(message: string): void;
-  showSuccess(message: string): void;
-  hideStatus(): void;
-  announce(message: string): void;
-  continueAfterAuth(payload: unknown): void;
-  restartProduct(): void;
-  isAllowedContinueUrl(raw: string): boolean;
-  productHintLoginUrl(): string;
-  isCaptchaRequired(data: unknown): boolean;
-  validateFields(ids: string[]): boolean;
-  applyFieldError(input: HTMLInputElement, message: string): void;
-  clearFieldError(input: HTMLInputElement): void;
-  bindFieldConstraints(root?: ParentNode | null): void;
-  focusById(id: string): void;
-  ensureTurnstile(buttons?: Array<HTMLButtonElement | null>): Promise<boolean>;
-  clearTurnstileToken(): void;
-  onTokenChange(listener: (token: string) => void): () => void;
-  GENERIC_SIGN_IN: string;
-  GENERIC_REGISTER: string;
-  GENERIC_NETWORK: string;
-  GENERIC_RECOVERY: string;
-  GENERIC_OTP_SEND: string;
-  GENERIC_OTP_VERIFY: string;
-  GENERIC_MAGIC_LINK: string;
-  GENERIC_VERIFICATION: string;
-  REGISTER_CHECK_EMAIL: string;
-  CAPTCHA_REQUIRED: string;
-};
+import type { HostedAuthApi } from "./window-auth.js";
 
 type HostedAuthGlobals = {
   HostedAuth: HostedAuthApi;
@@ -116,6 +87,10 @@ export function installHostedAuthRuntime(): HostedAuthApi {
     return productHintLoginUrl(origin, config.loginPath || "/login");
   }
 
+  function hintMagicLinkCallbackUrl(): string {
+    return magicLinkCallbackUrl(origin, config, allowed);
+  }
+
   function continueAfterAuth(payload: unknown): void {
     window.location.assign(
       resolveContinueUrl(payload as ContinuePayload, origin, {
@@ -187,6 +162,74 @@ export function installHostedAuthRuntime(): HostedAuthApi {
     errorEl.textContent = message;
     errorEl.hidden = false;
     if (successEl) successEl.hidden = true;
+    // role=alert announces the text, but keyboard and screen-reader users also need to land on it.
+    errorEl.focus();
+  }
+
+  async function resendVerification(email: string, button: HTMLButtonElement): Promise<void> {
+    setBusy(button, true);
+    try {
+      const result = await postJson("/api/auth/send-verification-email", {
+        email,
+        callbackURL: verificationCallbackUrl(origin, config.loginPath || "/login"),
+      });
+      if (result.response.ok) {
+        showSuccess(msg.GENERIC_VERIFICATION);
+        return;
+      }
+      reportFailure(result, "other", msg.GENERIC_NETWORK);
+    } catch {
+      showError(msg.GENERIC_NETWORK);
+    }
+  }
+
+  function failureAction(failure: AuthFailure): HTMLElement | null {
+    if (failure.action === "start-again") {
+      const link = document.createElement("a");
+      link.className = "text-link";
+      link.href = new URL(config.loginPath || "/login", origin).toString();
+      link.textContent = msg.START_AGAIN;
+      return link;
+    }
+    if (failure.action === "resend-verification") {
+      const email = (document.getElementById("email") as HTMLInputElement | null)?.value.trim();
+      if (!email) return null;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "text-link";
+      button.textContent = msg.RESEND_VERIFICATION;
+      button.setAttribute("data-loading-label", "Sending…");
+      button.addEventListener("click", () => {
+        void resendVerification(email, button);
+      });
+      return button;
+    }
+    return null;
+  }
+
+  function reportFailure(
+    result: JsonResponse,
+    context: AuthFailureContext,
+    fallback: string,
+  ): void {
+    const { response, data } = result;
+    const failure = describeAuthFailure(
+      {
+        status: response.status,
+        data,
+        retryAfter: response.headers?.get("retry-after") ?? null,
+        rateLimitReset:
+          response.headers?.get("ratelimit-reset") ??
+          response.headers?.get("x-ratelimit-reset") ??
+          null,
+      },
+      context,
+      fallback,
+    );
+    showError(failure.message);
+    const action = failureAction(failure);
+    if (!action || !errorEl) return;
+    errorEl.append(" ", action);
   }
 
   function showSuccess(message: string): void {
@@ -360,6 +403,7 @@ export function installHostedAuthRuntime(): HostedAuthApi {
     postJson,
     setBusy,
     showError,
+    reportFailure,
     showSuccess,
     hideStatus,
     announce,
@@ -367,6 +411,7 @@ export function installHostedAuthRuntime(): HostedAuthApi {
     restartProduct,
     isAllowedContinueUrl: isAllowed,
     productHintLoginUrl: hintLoginUrl,
+    magicLinkCallbackUrl: hintMagicLinkCallbackUrl,
     isCaptchaRequired: isCaptchaRequiredPayload,
     validateFields,
     applyFieldError,

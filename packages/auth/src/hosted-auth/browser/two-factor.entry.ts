@@ -1,7 +1,9 @@
+import { normaliseBackupCode, normaliseTotpCode } from "./code-entry.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
-import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
+import { hostedAuth, inputValue, normaliseInputOnEdit, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
+normaliseInputOnEdit("totp-code", normaliseTotpCode);
 
 function trustDevice(): boolean {
   const input = document.getElementById("trust-device");
@@ -13,6 +15,7 @@ async function submit(
   body: unknown,
   button: HTMLButtonElement | null,
   fields: string[],
+  fallback: string,
 ): Promise<void> {
   if (!auth.validateFields(fields)) return;
   auth.hideStatus();
@@ -20,7 +23,7 @@ async function submit(
   try {
     const { response, data } = await auth.postJson(endpoint, body);
     if (!response.ok) {
-      auth.showError(msg.MFA_FAILED);
+      auth.reportFailure({ response, data }, "two-factor", fallback);
       return;
     }
     auth.continueAfterAuth(data);
@@ -38,11 +41,12 @@ if (totpForm instanceof HTMLFormElement) {
     await submit(
       "/api/auth/two-factor/verify-totp",
       {
-        code: inputValue("totp-code").trim(),
+        code: normaliseTotpCode(inputValue("totp-code")),
         trustDevice: trustDevice(),
       },
       submitButton(totpForm, event),
       ["totp-code"],
+      msg.MFA_FAILED,
     );
   });
 }
@@ -54,11 +58,12 @@ if (backupForm instanceof HTMLFormElement) {
     await submit(
       "/api/auth/two-factor/verify-backup-code",
       {
-        code: inputValue("backup-code").trim(),
+        code: normaliseBackupCode(inputValue("backup-code")),
         trustDevice: trustDevice(),
       },
       submitButton(backupForm, event),
       ["backup-code"],
+      msg.MFA_FAILED,
     );
   });
 }

@@ -1,9 +1,12 @@
 import QRCode from "qrcode";
+import { isTransientFailure } from "./auth-failure.js";
+import { normaliseTotpCode } from "./code-entry.js";
 import { formatManualKey } from "./manual-key.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
-import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
+import { hostedAuth, inputValue, normaliseInputOnEdit, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
+normaliseInputOnEdit("setup-totp-code", normaliseTotpCode);
 
 let backupCodes: string[] = [];
 
@@ -60,6 +63,10 @@ async function enableTotp(button: HTMLButtonElement | null): Promise<void> {
       "/api/auth/two-factor/enable",
       password.length > 0 ? { password } : {},
     );
+    if (isTransientFailure(response.status)) {
+      auth.reportFailure({ response, data }, "other", msg.MFA_FAILED);
+      return;
+    }
     if (response.status === 401) {
       auth.showError(msg.MFA_SESSION_EXPIRED);
       return;
@@ -124,9 +131,14 @@ if (verifyForm instanceof HTMLFormElement) {
     auth.setBusy(btn, true);
     try {
       const { response, data } = await auth.postJson("/api/auth/two-factor/verify-totp", {
-        code: inputValue("setup-totp-code").trim(),
+        code: normaliseTotpCode(inputValue("setup-totp-code")),
       });
-      if (response.status === 401) {
+      if (isTransientFailure(response.status)) {
+        auth.reportFailure({ response, data }, "other", msg.MFA_FAILED);
+        return;
+      }
+      // A wrong code is also a 401; only a missing session means the sign-in has expired.
+      if (response.status === 401 && errorCode(data) !== "INVALID_CODE") {
         auth.showError(msg.MFA_SESSION_EXPIRED);
         return;
       }

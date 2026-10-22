@@ -1,3 +1,4 @@
+import { isTransientFailure } from "./auth-failure.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { showPasswordBreached } from "./password-breached.js";
 import { isPasswordBreachedResponse } from "./sign-up-outcome.js";
@@ -31,6 +32,10 @@ form.addEventListener("submit", async (event) => {
       return;
     }
     if (!response.ok) {
+      if (isTransientFailure(response.status)) {
+        auth.reportFailure({ response, data }, "other", msg.RESET_FAILED);
+        return;
+      }
       auth.showError(msg.RESET_FAILED);
       return;
     }

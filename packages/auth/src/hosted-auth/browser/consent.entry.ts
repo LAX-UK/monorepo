@@ -1,3 +1,4 @@
+import { isTransientFailure } from "./auth-failure.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { asButton, hostedAuth } from "./window-auth.js";
 
@@ -33,6 +34,10 @@ form.addEventListener("submit", async (event) => {
       auth.isAllowedContinueUrl(result.redirectURI)
     ) {
       window.location.assign(result.redirectURI);
+      return;
+    }
+    if (isTransientFailure(response.status)) {
+      auth.reportFailure({ response, data: result }, "other", msg.CONSENT_FAILED);
       return;
     }
     auth.showError(msg.CONSENT_FAILED);

@@ -1,7 +1,7 @@
 import type { HostedBrandProfile } from "./brand.js";
 import { selectHostedBrand } from "./brand.js";
 import type { HostedAuthFlow } from "./flow-context.js";
-import { parseHostedAuthFlow, productHintHref } from "./flow-context.js";
+import { continuationHref, parseHostedAuthFlow } from "./flow-context.js";
 
 export type HostedAuthCapabilities = {
   googleEnabled: boolean;
@@ -57,7 +57,7 @@ export function buildHostedAuthPageConfig(
   return {
     authorizeResumePath: flow.authorizeResumePath,
     loginPath: flow.loginPath,
-    twoFactorPath: productHintHref("/two-factor", flow),
+    twoFactorPath: continuationHref("/two-factor", flow),
     restartUrl,
     allowedRedirectOrigins: flow.allowedRedirectOrigins,
     turnstileSiteKey: capabilities.turnstileSiteKey,

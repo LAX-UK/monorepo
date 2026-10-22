@@ -81,7 +81,7 @@ async function signInEmail(submit: HTMLButtonElement | null): Promise<void> {
     });
     if (await handleCaptcha(data, [submit])) return;
     if (!response.ok) {
-      auth.showError(auth.GENERIC_SIGN_IN);
+      auth.reportFailure({ response, data }, "sign-in", auth.GENERIC_SIGN_IN);
       return;
     }
     auth.continueAfterAuth(data);
@@ -98,11 +98,15 @@ async function sendMagicLink(button: HTMLButtonElement | null): Promise<void> {
   auth.hideStatus();
   auth.setBusy(button, true);
   try {
-    const { data } = await auth.postJson("/api/auth/sign-in/magic-link", {
+    const { response, data } = await auth.postJson("/api/auth/sign-in/magic-link", {
       email: inputValue("email").trim(),
-      callbackURL: auth.productHintLoginUrl(),
+      callbackURL: auth.magicLinkCallbackUrl(),
     });
     if (await handleCaptcha(data, [button])) return;
+    if (!response.ok) {
+      auth.reportFailure({ response, data }, "other", auth.GENERIC_NETWORK);
+      return;
+    }
     cooldownUntil = Date.now() + cooldownMs;
     setStep("magic-link-sent");
     auth.showSuccess(auth.GENERIC_MAGIC_LINK);

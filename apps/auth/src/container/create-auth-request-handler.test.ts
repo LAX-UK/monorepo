@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { createAuthRequestHandler } from "./create-auth-request-handler.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  SECURITY_EFFECT_RETRY_DELAYS_MS,
+  createAuthRequestHandler,
+} from "./create-auth-request-handler.js";
+
+const silentLog = () => ({ warn: vi.fn(), error: vi.fn() });
 
 function setup(
   publish = vi.fn(async () => undefined),
@@ -7,8 +12,11 @@ function setup(
     twoFactorEnabled?: boolean;
     response?: () => Response;
     requiredByPolicy?: boolean;
+    getSession?: () => Promise<unknown>;
+    readTwoFactorRequirement?: () => Promise<unknown>;
   } = {},
 ) {
+  const log = silentLog();
   const logout = {
     revokeClientSubject: vi.fn(async () => 1),
     revokeIdentitySessions: vi.fn(async () => 1),
@@ -19,10 +27,13 @@ function setup(
   const auth = {
     handler: vi.fn(async () => opts.response?.() ?? Response.json({ ok: true })),
     api: {
-      getSession: vi.fn(async () => ({
-        user: { id: "subject-1", twoFactorEnabled: opts.twoFactorEnabled ?? false },
-        session: { id: "session-1" },
-      })),
+      getSession: vi.fn(
+        opts.getSession ??
+          (async () => ({
+            user: { id: "subject-1", twoFactorEnabled: opts.twoFactorEnabled ?? false },
+            session: { id: "session-1" },
+          })),
+      ),
       revokeOtherSessions,
     },
   };
@@ -32,12 +43,14 @@ function setup(
     stampSocialAuth: vi.fn(async () => undefined),
   };
   const handler = createAuthRequestHandler({
+    log,
     events: { publish },
     sessionStampStore,
-    readTwoFactorRequirement: vi.fn(async () => ({
-      required: opts.requiredByPolicy ?? false,
-      sources: opts.requiredByPolicy ? [{ scope: "staff" as const }] : [],
-    })),
+    readTwoFactorRequirement: (opts.readTwoFactorRequirement ??
+      (async () => ({
+        required: opts.requiredByPolicy ?? false,
+        sources: opts.requiredByPolicy ? [{ scope: "staff" as const }] : [],
+      }))) as never,
     auth: auth as never,
     oidcSessions: {
       runTokenRequest: vi.fn(async (_code, action) => action()),
@@ -45,7 +58,7 @@ function setup(
     } as never,
     logout,
   });
-  return { auth, handler, logout, publish, revokeOtherSessions, sessionStampStore };
+  return { auth, handler, log, logout, publish, revokeOtherSessions, sessionStampStore };
 }
 
 const rotatedSessionResponse = () =>
@@ -154,6 +167,7 @@ describe("auth request lifecycle ordering", () => {
       api: { getSession },
     };
     const handler = createAuthRequestHandler({
+      log: silentLog(),
       events: { publish: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
       readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
@@ -215,6 +229,7 @@ describe("auth request lifecycle ordering", () => {
       },
     };
     const handler = createAuthRequestHandler({
+      log: silentLog(),
       events: { publish: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
       readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
@@ -284,5 +299,164 @@ describe("two-factor policy", () => {
     await handler(new Request("https://auth.test/api/auth/sign-in/email", { method: "POST" }));
 
     expect(sessionStampStore.stampSocialAuth).not.toHaveBeenCalled();
+  });
+});
+
+describe("when a security side effect fails after 2FA changed", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const enrol = () =>
+    new Request("https://auth.test/api/auth/two-factor/verify-totp", { method: "POST" });
+
+  it("returns the successful response and logs the failure with context", async () => {
+    const publish = vi.fn().mockRejectedValue(new Error("outbox unavailable"));
+    const { handler, log, logout } = setup(publish, { response: rotatedSessionResponse });
+    logout.revokeSubjectExceptIdentitySession.mockRejectedValue(new Error("redis down"));
+    vi.useFakeTimers();
+
+    const response = await handler(enrol());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("rotated-token");
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        effect: "publish_credential_changed",
+        userId: "subject-1",
+        errorMessage: "outbox unavailable",
+        attempt: 1,
+      }),
+      "auth_security_effect_failed",
+    );
+    expect(JSON.stringify(log.error.mock.calls)).not.toContain("rotated-token");
+  });
+
+  it("still attempts every effect when one fails", async () => {
+    const { handler, logout, revokeOtherSessions } = setup(undefined, {
+      response: rotatedSessionResponse,
+    });
+    revokeOtherSessions.mockRejectedValue(new Error("db down"));
+    vi.useFakeTimers();
+
+    await handler(enrol());
+
+    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed revocation in the background until it succeeds", async () => {
+    const { handler, log, logout } = setup(undefined, { response: rotatedSessionResponse });
+    logout.revokeSubjectExceptIdentitySession
+      .mockRejectedValueOnce(new Error("redis down"))
+      .mockResolvedValue(1);
+    vi.useFakeTimers();
+
+    await handler(enrol());
+    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(SECURITY_EFFECT_RETRY_DELAYS_MS[0]);
+
+    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(2);
+    expect(log.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ effect: "revoke_subject_tokens", attempt: 2 }),
+      "auth_security_effect_recovered",
+    );
+  });
+
+  it("gives up and says so once the retries are exhausted", async () => {
+    const { handler, log, logout } = setup(undefined, { response: rotatedSessionResponse });
+    logout.revokeSubjectExceptIdentitySession.mockRejectedValue(new Error("redis down"));
+    vi.useFakeTimers();
+
+    await handler(enrol());
+    await vi.advanceTimersByTimeAsync(SECURITY_EFFECT_RETRY_DELAYS_MS.reduce((a, b) => a + b, 0));
+
+    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(
+      1 + SECURITY_EFFECT_RETRY_DELAYS_MS.length,
+    );
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ effect: "revoke_subject_tokens" }),
+      "auth_security_effect_abandoned",
+    );
+  });
+
+  it("keeps the session when stamping the MFA claim fails", async () => {
+    const { handler, log, sessionStampStore } = setup(undefined, {
+      twoFactorEnabled: true,
+      response: rotatedSessionResponse,
+    });
+    sessionStampStore.stampMfaCompleted.mockRejectedValue(new Error("db down"));
+    vi.useFakeTimers();
+
+    const response = await handler(enrol());
+
+    expect(response.status).toBe(200);
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ effect: "stamp_mfa_completed" }),
+      "auth_security_effect_failed",
+    );
+  });
+});
+
+describe("when a lookup fails before 2FA changes", () => {
+  it("refuses with a retryable 503 instead of a 500 when the session lookup fails", async () => {
+    const { auth, handler } = setup(undefined, {
+      getSession: async () => {
+        throw new Error("db down");
+      },
+    });
+
+    const response = await handler(
+      new Request("https://auth.test/api/auth/two-factor/verify-totp", { method: "POST" }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("5");
+    expect(auth.handler).not.toHaveBeenCalled();
+  });
+
+  it("does not turn 2FA off when the policy cannot be read", async () => {
+    const { auth, handler } = setup(undefined, {
+      twoFactorEnabled: true,
+      readTwoFactorRequirement: async () => {
+        throw new Error("db down");
+      },
+    });
+
+    const response = await handler(
+      new Request("https://auth.test/api/auth/two-factor/disable", { method: "POST" }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(auth.handler).not.toHaveBeenCalled();
+  });
+
+  it("returns an authorisation error rather than a 500 when the issued code's session cannot be confirmed", async () => {
+    const getSession = vi.fn().mockRejectedValue(new Error("db down"));
+    const captureAuthorizationSession = vi.fn();
+    const handler = createAuthRequestHandler({
+      log: silentLog(),
+      events: { publish: vi.fn() },
+      sessionStampStore: {} as never,
+      readTwoFactorRequirement: vi.fn(),
+      auth: {
+        handler: vi.fn(async () =>
+          Response.json({ redirectURI: "https://shop.example/auth/callback?code=issued-code" }),
+        ),
+        api: { getSession },
+      } as never,
+      oidcSessions: {
+        runTokenRequest: vi.fn(async (_code, action) => action()),
+        captureAuthorizationSession,
+      } as never,
+      logout: {} as never,
+    });
+
+    const response = await handler(
+      new Request("https://auth.test/api/auth/sign-in/email", { method: "POST" }),
+    );
+
+    expect(response.status).not.toBe(500);
+    expect(captureAuthorizationSession).not.toHaveBeenCalled();
   });
 });

@@ -21,7 +21,7 @@ type Counter = { inc(labels: Record<string, string>): void };
 export type CreateAuthAppOptions = {
   log: pino.Logger;
   operational: Omit<AuthOperationalRoutes, "log" | "clientIp">;
-  oidc: Omit<OidcRouteMountOptions, "clientIp">;
+  oidc: Omit<OidcRouteMountOptions, "clientIp" | "log">;
   issuerHttpOutcomes: Counter;
 };
 
@@ -98,7 +98,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     clientIp,
     clientIpDiagnostics: options.oidc.env.AUTH_CLIENT_IP_DIAGNOSTICS,
   });
-  mountOidcRoutes(app, { ...options.oidc, clientIp });
+  mountOidcRoutes(app, { ...options.oidc, clientIp, log: options.log });
   return app;
 }
 

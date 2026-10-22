@@ -88,6 +88,36 @@ describe("issuer-hosted credential HTML", () => {
     expect(parseTwoFactorSetupRequiredBy("admin")).toBeNull();
   });
 
+  it("accepts a pasted code with a space and keeps the setup password optional", () => {
+    const challenge = buildHostedTwoFactorHtml();
+    const setup = buildHostedTwoFactorSetupHtml();
+    for (const html of [challenge, setup]) {
+      expect(html).toMatch(/maxlength="12"/);
+      expect(html).toContain('pattern="[0-9]{6}"');
+    }
+    const password = /<input[^>]*id="setup-password"[^>]*>/.exec(setup)?.[0] ?? "";
+    expect(password).not.toContain("required");
+  });
+
+  it("stops phones capitalising or correcting a backup code", () => {
+    const backup = /<input[^>]*id="backup-code"[^>]*>/.exec(buildHostedTwoFactorHtml())?.[0] ?? "";
+    expect(backup).toContain('autocapitalize="off"');
+    expect(backup).toContain('autocorrect="off"');
+    expect(backup).toContain('spellcheck="false"');
+  });
+
+  it("lets script move focus to the page-level error", () => {
+    expect(buildHostedTwoFactorHtml()).toMatch(/<p id="error"[^>]*tabindex="-1"/);
+  });
+
+  it("only tells accounts without a password to leave it blank when no policy requires 2FA", () => {
+    const view = hostedAuthViewFromSearch(shopSearch);
+    expect(buildHostedTwoFactorSetupHtml(view, null)).toContain("leave it blank");
+    const required = buildHostedTwoFactorSetupHtml(view, "staff");
+    expect(required).not.toContain("leave it blank");
+    expect(required).toContain("add a password first");
+  });
+
   it("styles OIDC consent through the shared hosted shell", () => {
     const html = buildOidcConsentHtml({
       clientName: "LAX Shop Web",

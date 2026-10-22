@@ -1,9 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AUTH_RATE_LIMIT_POLICY, slidingWindowRetryAfterSec } from "@auction/auth";
+import {
+  AUTH_RATE_LIMIT_POLICY,
+  computeSlidingWindowRetryAfterSec,
+  slidingWindowRetryAfterSec,
+} from "@auction/auth";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { Redis } from "ioredis";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
+import type { SlidingWindowStore } from "./resilient-sliding-window-store.js";
 
 /** Sliding-window thresholds mirroring apps/api to protect the auth issuer from distributed attacks. */
 const RL = AUTH_RATE_LIMIT_POLICY;
@@ -20,7 +24,7 @@ type SlidingWindowAttempt = {
 };
 
 async function slidingIncrementTracked(
-  redis: Redis,
+  redis: SlidingWindowStore,
   key: string,
   windowSec: number,
 ): Promise<SlidingWindowAttempt> {
@@ -41,13 +45,17 @@ async function slidingIncrementTracked(
   };
 }
 
-async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
+async function slidingIncrement(
+  redis: SlidingWindowStore,
+  key: string,
+  windowSec: number,
+): Promise<number> {
   return (await slidingIncrementTracked(redis, key, windowSec)).count;
 }
 
 async function enforceSlidingLimit(
   c: Context,
-  redis: Redis,
+  redis: SlidingWindowStore,
   key: string,
   windowSec: number,
   max: number,
@@ -56,6 +64,68 @@ async function enforceSlidingLimit(
   if (count <= max) return null;
   const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, count, max);
   return rateLimited(c, retryAfterSec);
+}
+
+/** Endpoints where a user submits a TOTP, backup or SMS code, at enrolment, sign-in or step-up. */
+const TWO_FACTOR_CODE_PATH = /\/two-factor\/(?:verify-totp|verify-backup-code|verify-otp)$/;
+
+/** Better Auth answers a wrong or expired code with 400 or 401. */
+function isRejectedCode(status: number): boolean {
+  return status === 400 || status === 401;
+}
+
+type FailureBucket = { key: string; windowSec: number; max: number };
+
+/**
+ * Identifies whose code is being guessed without storing anything reversible:
+ * the signed-in subject during enrolment or step-up, otherwise the sign-in
+ * challenge cookie. A fresh password sign-in issues a new challenge cookie, so
+ * this bucket alone does not stop an attacker who holds the password; Better
+ * Auth's per-factor lockout does, and the per-IP ceiling caps the rest.
+ */
+async function twoFactorAccountKey(
+  headers: Headers,
+  resolveSubjectId: ((headers: Headers) => Promise<string | null>) | undefined,
+): Promise<string | null> {
+  let subjectId: string | null = null;
+  try {
+    subjectId = resolveSubjectId ? await resolveSubjectId(headers) : null;
+  } catch {
+    subjectId = null;
+  }
+  if (subjectId) return createHash("sha256").update(`subject:${subjectId}`).digest("hex");
+  const challenge = /(?:^|;\s*)(?:__Secure-)?[^=;\s]*two_factor=([^;]+)/.exec(
+    headers.get("cookie") ?? "",
+  )?.[1];
+  return challenge ? createHash("sha256").update(`challenge:${challenge}`).digest("hex") : null;
+}
+
+/** Counts failures only, so correct codes and enrolment never consume the budget. */
+async function failureBucketRetryAfterSec(
+  redis: SlidingWindowStore,
+  bucket: FailureBucket,
+): Promise<number | null> {
+  const now = Date.now();
+  const pipeline = redis.multi();
+  pipeline.zremrangebyscore(bucket.key, 0, now - bucket.windowSec * 1000);
+  pipeline.zcard(bucket.key);
+  const results = await pipeline.exec();
+  const card = results?.[1]?.[1];
+  const count = typeof card === "number" ? card : Number(card ?? 0);
+  if (count < bucket.max) return null;
+  const oldest = (await redis.zrange(bucket.key, 0, 0, "WITHSCORES"))[1];
+  const oldestMs = Number(oldest);
+  return Number.isFinite(oldestMs)
+    ? computeSlidingWindowRetryAfterSec({
+        oldestBlockingScoreMs: oldestMs,
+        windowSec: bucket.windowSec,
+        nowMs: now,
+      })
+    : bucket.windowSec;
+}
+
+async function recordFailure(redis: SlidingWindowStore, bucket: FailureBucket): Promise<void> {
+  await slidingIncrement(redis, bucket.key, bucket.windowSec);
 }
 
 function normalizePhoneForRateLimit(raw: string): string {
@@ -90,7 +160,7 @@ async function emailFromJsonBody(req: Request): Promise<string | null> {
 
 /** Match the API host's strict resend-verification IP and email buckets. */
 export function createSendVerificationIssuerRateLimitMiddleware(
-  redis: Redis,
+  redis: SlidingWindowStore,
   clientIp: ClientIpResolver,
 ) {
   return createMiddleware(async (c, next) => {
@@ -130,7 +200,10 @@ export function createSendVerificationIssuerRateLimitMiddleware(
  * infra).  Without its own rate limit it is vulnerable to distributed brute-
  * force that bypasses the API gateway.
  */
-export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis, clientIp: ClientIpResolver) {
+export function createMagicLinkIssuerRateLimitMiddleware(
+  redis: SlidingWindowStore,
+  clientIp: ClientIpResolver,
+) {
   return createMiddleware(async (c, next) => {
     if (c.req.method !== "POST" || !c.req.path.endsWith("/sign-in/magic-link")) {
       await next();
@@ -180,7 +253,7 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis, clientIp:
 }
 
 export function createAuthIssuerRateLimitMiddleware(
-  redis: Redis,
+  redis: SlidingWindowStore,
   clientIp: ClientIpResolver,
   options?: {
     resolveSubjectId?: (headers: Headers) => Promise<string | null>;
@@ -190,24 +263,34 @@ export function createAuthIssuerRateLimitMiddleware(
     const ip = clientIp(c);
     const path = c.req.path;
     const isPost = c.req.method === "POST";
-    const isTotp = path.includes("two-factor");
+    const isTwoFactorCodeAttempt = isPost && TWO_FACTOR_CODE_PATH.test(path);
     const isSignIn = path.includes("/sign-in");
     const isSessionRead = c.req.method === "GET" && path.endsWith("/get-session");
 
-    if (isTotp) {
-      const lockKey = `rl:auth-issuer:totp-lock:${ip}`;
-      const locked = await redis.get(lockKey);
-      if (locked) {
-        const ttl = await redis.ttl(lockKey);
-        return rateLimited(c, ttl > 0 ? ttl : RL.totpLockoutSec);
+    if (isTwoFactorCodeAttempt) {
+      const accountId = await twoFactorAccountKey(c.req.raw.headers, options?.resolveSubjectId);
+      const buckets: FailureBucket[] = [
+        {
+          key: `rl:auth-issuer:2fa-fail:ip:${ip}`,
+          windowSec: RL.twoFactorIpWindowSec,
+          max: RL.twoFactorIpMax,
+        },
+      ];
+      if (accountId) {
+        buckets.push({
+          key: `rl:auth-issuer:2fa-fail:account:${accountId}`,
+          windowSec: RL.twoFactorAccountWindowSec,
+          max: RL.twoFactorAccountMax,
+        });
       }
-      const key = `rl:auth-issuer:totp:${ip}`;
-      const n = await slidingIncrement(redis, key, RL.totpWindowSec);
-      if (n > RL.totpMax) {
-        await redis.set(lockKey, "1", "EX", RL.totpLockoutSec);
-        return rateLimited(c, RL.totpLockoutSec);
+      for (const bucket of buckets) {
+        const retryAfterSec = await failureBucketRetryAfterSec(redis, bucket);
+        if (retryAfterSec !== null) return rateLimited(c, retryAfterSec);
       }
       await next();
+      if (isRejectedCode(c.res.status)) {
+        await Promise.all(buckets.map((bucket) => recordFailure(redis, bucket)));
+      }
       return;
     }
 
@@ -397,7 +480,10 @@ export function createAuthIssuerRateLimitMiddleware(
 }
 
 /** Protect the public edge from brute-force attempts against machine credentials. */
-export function createMachineTokenRateLimitMiddleware(redis: Redis, clientIp: ClientIpResolver) {
+export function createMachineTokenRateLimitMiddleware(
+  redis: SlidingWindowStore,
+  clientIp: ClientIpResolver,
+) {
   return createMiddleware(async (c, next) => {
     const ip = clientIp(c);
     const windowSec = 60;

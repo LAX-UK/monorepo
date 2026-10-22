@@ -1,3 +1,4 @@
+import { isTransientFailure } from "./auth-failure.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
@@ -22,6 +23,10 @@ if (disableForm instanceof HTMLFormElement) {
         "/api/auth/two-factor/disable",
         password.length > 0 ? { password } : {},
       );
+      if (isTransientFailure(response.status)) {
+        auth.reportFailure({ response, data }, "other", msg.MFA_FAILED);
+        return;
+      }
       if (response.status === 401) {
         auth.showError(msg.MFA_SESSION_EXPIRED);
         return;

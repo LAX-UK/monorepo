@@ -77,3 +77,28 @@ export function resolveContinueUrl(
   if (config.restartUrl) return config.restartUrl;
   return productHintLoginUrl(origin, config.loginPath || "/login");
 }
+
+/** Where the verification email's link lands, keeping the registered client hint of the current flow. */
+export function verificationCallbackUrl(origin: string, loginPath: string): string {
+  const callback = new URL("/verify-email", origin);
+  const clientId = new URL(loginPath, origin).searchParams.get("client_id");
+  if (clientId) callback.searchParams.set("client_id", clientId);
+  return callback.toString();
+}
+
+/**
+ * Where a magic link sends the user once it is verified. The authorize URL keeps the product's
+ * pending request, so the user lands where they were going, including after the two-step
+ * challenge; the bare login URL only carries the client hint.
+ */
+export function magicLinkCallbackUrl(
+  origin: string,
+  config: { authorizeResumePath?: string | null; loginPath?: string },
+  allowedRedirectOrigins: readonly string[],
+): string {
+  const resume = config.authorizeResumePath;
+  if (resume && isAllowedContinueUrl(resume, origin, allowedRedirectOrigins)) {
+    return new URL(resume, origin).toString();
+  }
+  return productHintLoginUrl(origin, config.loginPath || "/login");
+}

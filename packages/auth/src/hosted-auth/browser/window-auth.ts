@@ -1,10 +1,16 @@
 import type { HostedAuthConfig, JsonResponse } from "./api.js";
+import type { AuthFailureContext } from "./auth-failure.js";
 
 export type HostedAuthApi = {
   config: HostedAuthConfig;
   postJson(path: string, body: unknown): Promise<JsonResponse>;
   setBusy(button: HTMLButtonElement | null, busy: boolean): void;
   showError(message: string): void;
+  /**
+   * Shows the message for a failed response (rate limit, server fault, unverified email, expired
+   * challenge...) with the follow-up action that fits, and moves focus to it.
+   */
+  reportFailure(result: JsonResponse, context: AuthFailureContext, fallback: string): void;
   showSuccess(message: string): void;
   hideStatus(): void;
   announce(message: string): void;
@@ -12,6 +18,8 @@ export type HostedAuthApi = {
   restartProduct(): void;
   isAllowedContinueUrl(raw: string): boolean;
   productHintLoginUrl(): string;
+  /** Where a verified magic link lands: the pending authorize request when there is one. */
+  magicLinkCallbackUrl(): string;
   isCaptchaRequired(data: unknown): boolean;
   validateFields(ids: string[]): boolean;
   applyFieldError(input: HTMLInputElement, message: string): void;
@@ -35,6 +43,19 @@ export type HostedAuthApi = {
 
 export function hostedAuth(): HostedAuthApi {
   return (window as unknown as { HostedAuth: HostedAuthApi }).HostedAuth;
+}
+
+/**
+ * Rewrites what the user types or pastes into its canonical form as they go, so "123 456" passes
+ * the field's own pattern. The input must allow enough characters for the pasted form.
+ */
+export function normaliseInputOnEdit(id: string, normalise: (raw: string) => string): void {
+  const el = document.getElementById(id);
+  if (!(el instanceof HTMLInputElement)) return;
+  el.addEventListener("input", () => {
+    const next = normalise(el.value);
+    if (next !== el.value) el.value = next;
+  });
 }
 
 export function inputValue(id: string): string {

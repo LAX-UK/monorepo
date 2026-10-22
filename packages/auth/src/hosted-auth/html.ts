@@ -65,6 +65,8 @@ export type FloatingInputOptions = {
   name?: string;
   describedBy?: string;
   kind?: HostedFieldKind;
+  /** Codes and keys that must reach the server exactly as typed: no auto-capitalise, correct or spellcheck. */
+  exactEntry?: boolean;
 };
 
 export type HostedButtonOptions = {
@@ -132,7 +134,9 @@ export function floatingInput(input: FloatingInputOptions): string {
     inputmode ? attr("inputmode", inputmode) : "",
     input.pattern ? attr("pattern", input.pattern) : "",
     type === "email" ? attr("spellcheck", "false") : "",
-    type === "password" ? 'autocapitalize="off" autocorrect="off" spellcheck="false"' : "",
+    type === "password" || input.exactEntry
+      ? 'autocapitalize="off" autocorrect="off" spellcheck="false"'
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -217,7 +221,7 @@ export function authDivider(label = "or"): string {
 }
 
 export function statusRegions(): string {
-  return `<p id="error" class="status-error" role="alert" aria-live="assertive" hidden></p>
+  return `<p id="error" class="status-error" role="alert" aria-live="assertive" tabindex="-1" hidden></p>
     <p id="success" class="status-success" role="status" aria-live="polite" hidden></p>
     <p id="auth-announce" class="sr-only" aria-live="polite"></p>`;
 }
