@@ -1,3 +1,4 @@
+import { EMPTY_STATE } from "@/components/account-ui";
 import type { AccountProductVm } from "@/server/domain/account-products.vm";
 import type { PortfolioEmptyState as EmptyStateKind } from "@auction/lax-ecosystem";
 import { Button } from "@auction/ui/components/button";
@@ -23,6 +24,7 @@ export function PortfolioEmptyState({
   if (kind === "new_collector") {
     return (
       <EmptyState
+        className={EMPTY_STATE}
         headingLevel="h2"
         title="Works you buy on LAX Bid, LAX Shop or lax.art appear here"
         description="Once you have bought or consigned a work, you'll see it here with what you paid and its documents."
@@ -43,6 +45,7 @@ export function PortfolioEmptyState({
   if (kind === "only_awaiting_payment") {
     return (
       <EmptyState
+        className={EMPTY_STATE}
         headingLevel="h2"
         title="Pay to add your works to your portfolio"
         description="Your purchases are waiting for payment. Once they are paid, they appear here with their documents."

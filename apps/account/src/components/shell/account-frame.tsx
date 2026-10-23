@@ -105,13 +105,13 @@ export function AccountFooter({
         <nav aria-label="Legal and help" className="flex flex-wrap gap-x-6 gap-y-2">
           <a
             href={support.privacyPolicy}
-            className="underline underline-offset-4 hover:text-on-surface"
+            className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-on-surface"
           >
             Privacy
           </a>
           <a
             href={support.helpCentre}
-            className="underline underline-offset-4 hover:text-on-surface"
+            className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-on-surface"
           >
             Help
           </a>

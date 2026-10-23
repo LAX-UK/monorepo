@@ -75,6 +75,7 @@ export function AddressForm({
       <div className="space-y-1.5">
         <Label htmlFor={id}>{label}</Label>
         <Input
+          className="h-11"
           id={id}
           name={field}
           type={options.type ?? "text"}

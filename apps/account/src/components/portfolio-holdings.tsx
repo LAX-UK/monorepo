@@ -1,3 +1,4 @@
+import { EMPTY_STATE } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
 import { formatDate } from "@/lib/format-money";
 import { safeImageUrl } from "@/lib/media-origins";
@@ -44,7 +45,10 @@ function documentsSummary(row: HoldingRowVm): string {
 function WorkTitle({ row }: { row: HoldingRowVm }) {
   return (
     <>
-      <a href={workDetailHref(row.item)} className="font-medium text-on-surface underline">
+      <a
+        href={workDetailHref(row.item)}
+        className="inline-flex min-h-11 items-center font-medium break-words text-on-surface underline underline-offset-4"
+      >
         {row.item.title || "Untitled work"}
       </a>
       {row.item.artist ? (
@@ -246,6 +250,7 @@ export function PortfolioHoldings({
       />
       {holdings.noResults ? (
         <EmptyState
+          className={EMPTY_STATE}
           headingLevel="h3"
           title="No works match these filters"
           description="Try a different filter, or clear them to see every work."

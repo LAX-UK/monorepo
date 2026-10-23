@@ -69,7 +69,7 @@ export function EmailChangeEditor({ pendingEmailMasked, returnTo }: EmailChangeE
   }
 
   return (
-    <div className="space-y-3 px-4">
+    <div className="flex flex-col gap-4">
       {pendingEmailMasked ? (
         <p className="text-sm text-on-surface">
           Waiting for you to confirm the change to{" "}
@@ -79,7 +79,7 @@ export function EmailChangeEditor({ pendingEmailMasked, returnTo }: EmailChangeE
       ) : null}
       {editing ? (
         <form
-          className="-mx-4 space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+          className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
@@ -89,6 +89,7 @@ export function EmailChangeEditor({ pendingEmailMasked, returnTo }: EmailChangeE
           <div className="space-y-1.5">
             <Label htmlFor={inputId}>New email address</Label>
             <Input
+              className="h-11"
               id={inputId}
               name="email"
               type="email"

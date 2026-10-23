@@ -20,7 +20,7 @@ export default async function EmailChangePage({ searchParams }: EmailChangePageP
   const token = typeof t === "string" ? t : "";
   return (
     <AccountShell>
-      <div className="mx-auto w-full max-w-md py-6">
+      <div className="w-full py-6">
         <EmailChangeConfirm
           token={token}
           signInHref={`/api/auth/login?returnTo=${ACCOUNT_ROUTES.profile}`}

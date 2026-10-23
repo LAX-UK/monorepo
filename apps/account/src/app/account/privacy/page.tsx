@@ -24,7 +24,10 @@ export default async function PrivacyPage() {
 
   return (
     <AccountShell>
-      <AccountPageHeader title="Notifications and privacy" backHref={ACCOUNT_ROUTES.overview} />
+      <AccountPageHeader
+        title="Privacy"
+        description="Notification preferences, your data and the policies that cover your account."
+      />
       {groups.map((group) => (
         <SettingsGroup key={group.id} group={group} />
       ))}

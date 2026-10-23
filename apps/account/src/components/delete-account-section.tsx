@@ -1,9 +1,7 @@
 import type { DeletionPageVm } from "@/server/domain/account-deletion.vm";
-import { MarketingViewAllChevron } from "@auction/marketing-ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import { InsetGroup } from "@auction/ui/components/inset-group";
-import { ListRow } from "@auction/ui/components/list-row";
+import { ListCard, ListCardRow, NoticeTitle, SECTION_TITLE } from "./account-ui";
 import { CancelDeletionButton } from "./cancel-deletion-button.client";
 import { DeleteAccountForm } from "./delete-account-form.client";
 
@@ -15,7 +13,7 @@ type DeleteAccountSectionProps = {
 
 function TryAgain({ pagePath, children }: { pagePath: string; children: string }) {
   return (
-    <Button asChild variant="outline" className="mt-3 min-h-11">
+    <Button asChild variant="outline" className="mt-4 min-h-11">
       <a href={pagePath}>{children}</a>
     </Button>
   );
@@ -30,7 +28,7 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
     case "unavailable":
       return (
         <Alert variant="destructive">
-          <AlertTitle>We can't check your account right now</AlertTitle>
+          <NoticeTitle>We can't check your account right now</NoticeTitle>
           <AlertDescription>
             This is a temporary problem on our side and nothing has changed. Try again in a moment.
           </AlertDescription>
@@ -40,9 +38,9 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
 
     case "requested":
       return (
-        <section aria-labelledby="deletion-heading" className="space-y-4">
-          <div className="space-y-2">
-            <h2 id="deletion-heading" className="font-headline text-lg font-medium text-on-surface">
+        <section aria-labelledby="deletion-heading" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 id="deletion-heading" className={SECTION_TITLE}>
               Your account is scheduled for deletion
             </h2>
             <p className="text-sm text-on-surface-variant">
@@ -56,9 +54,9 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
 
     case "blocked":
       return (
-        <section aria-labelledby="deletion-heading" className="space-y-4">
-          <div className="space-y-2">
-            <h2 id="deletion-heading" className="font-headline text-lg font-medium text-on-surface">
+        <section aria-labelledby="deletion-heading" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 id="deletion-heading" className={SECTION_TITLE}>
               You can't delete your account yet
             </h2>
             <p className="text-sm text-on-surface-variant">
@@ -66,24 +64,22 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
             </p>
           </div>
           {vm.groups.map((group) => (
-            <InsetGroup key={group.product} label={group.label}>
-              {group.blockers.map((blocker) => (
-                <ListRow
-                  key={blocker.code}
-                  title={blocker.message}
-                  {...(blocker.href
-                    ? {
-                        href: blocker.href,
-                        trailing: <MarketingViewAllChevron className="text-on-surface-variant" />,
-                      }
-                    : {})}
-                />
-              ))}
-            </InsetGroup>
+            <div key={group.product} className="flex flex-col gap-3">
+              <h3 className="text-sm font-medium text-on-surface-variant">{group.label}</h3>
+              <ListCard>
+                {group.blockers.map((blocker) => (
+                  <ListCardRow
+                    key={blocker.code}
+                    title={blocker.message}
+                    {...(blocker.href ? { href: blocker.href } : {})}
+                  />
+                ))}
+              </ListCard>
+            </div>
           ))}
           {vm.unreachable.length > 0 ? (
             <Alert variant="warning">
-              <AlertTitle>We couldn't check everything</AlertTitle>
+              <NoticeTitle>We couldn't check everything</NoticeTitle>
               <AlertDescription>
                 We couldn't check {vm.unreachable.join(" or ")} just now, so there may be more to
                 sort out. Try again in a moment.
@@ -99,7 +95,7 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
     case "check_failed":
       return (
         <Alert variant="warning">
-          <AlertTitle>We couldn't finish checking your account</AlertTitle>
+          <NoticeTitle>We couldn't finish checking your account</NoticeTitle>
           <AlertDescription>
             We couldn't check {vm.unreachable.join(" or ")} just now. We can't delete your account
             until we can, so nothing has changed. Try again in a moment.
@@ -110,9 +106,9 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
 
     case "eligible":
       return (
-        <section aria-labelledby="deletion-heading" className="space-y-4">
-          <div className="space-y-2">
-            <h2 id="deletion-heading" className="font-headline text-lg font-medium text-on-surface">
+        <section aria-labelledby="deletion-heading" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 id="deletion-heading" className={SECTION_TITLE}>
               Delete your LAX account
             </h2>
             <p className="text-sm text-on-surface-variant">

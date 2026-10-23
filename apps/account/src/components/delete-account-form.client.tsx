@@ -49,7 +49,7 @@ export function DeleteAccountForm({ phrase, consequences, returnTo }: DeleteAcco
 
   return (
     <form
-      className="space-y-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+      className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -66,6 +66,7 @@ export function DeleteAccountForm({ phrase, consequences, returnTo }: DeleteAcco
           Type <span className="font-semibold">{phrase}</span> to confirm
         </Label>
         <Input
+          className="h-11"
           id={inputId}
           name="confirmation"
           autoComplete="off"

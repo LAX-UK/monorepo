@@ -8,11 +8,11 @@ import { AccountShell } from "./account-shell";
 export function AccountUnavailable({ retryHref }: { retryHref: string }) {
   return (
     <AccountShell>
-      <div className="mx-auto flex w-full max-w-md flex-col gap-4 py-10">
-        <h1 className="font-headline text-2xl font-semibold tracking-tight">
+      <div className="flex w-full flex-col items-start gap-4 py-6">
+        <h1 className="font-headline text-3xl font-semibold tracking-tight sm:text-4xl">
           We can't reach your account right now
         </h1>
-        <p className="text-sm leading-6 text-on-surface-variant">
+        <p className="max-w-prose text-base leading-7 text-on-surface-variant">
           You're still signed in. This is a temporary problem on our side, so nothing has been
           changed. Please try again in a moment.
         </p>

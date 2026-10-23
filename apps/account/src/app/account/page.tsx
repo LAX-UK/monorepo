@@ -22,11 +22,7 @@ import {
 import { buildAccountProducts } from "@/server/domain/account-products.vm";
 import { buildSecurityCheckup } from "@/server/domain/account-security-checkup.vm";
 import { readAccountSecurityFacts } from "@/server/domain/account-security-facts";
-import {
-  ACCOUNT_ROUTES,
-  buildAccountSections,
-  buildLaunchGroups,
-} from "@/server/domain/account-settings.vm";
+import { ACCOUNT_ROUTES, buildLaunchGroups } from "@/server/domain/account-settings.vm";
 import { profileGaps } from "@/server/domain/profile-completeness";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -36,7 +32,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Home · LAX Account" };
 
-/** LAX Account Home: a greeting, the Security Checkup, the portfolio, the products and shortcuts. */
+/** LAX Account Home: a greeting, the Security Checkup, the portfolio, the products and any launch links. */
 export default async function AccountOverviewPage() {
   const session = await loadAccountSession({
     withLiveSecurity: true,
@@ -88,12 +84,6 @@ export default async function AccountOverviewPage() {
       </div>
 
       <ProductCards products={buildAccountProducts(config)} />
-
-      <CardLinkSection
-        id="account-sections"
-        heading="Shortcuts"
-        items={buildAccountSections(links).map((section) => ({ ...section, key: section.id }))}
-      />
 
       {launchGroups.map((group) => (
         <CardLinkSection

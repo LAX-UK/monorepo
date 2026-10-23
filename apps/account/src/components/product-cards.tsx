@@ -1,5 +1,6 @@
 import type { AccountProductVm } from "@/server/domain/account-products.vm";
 import { Button } from "@auction/ui/components/button";
+import { CARD, CARD_PADDING, SECTION_TITLE } from "./account-ui";
 import { PRODUCT_LOCKUPS } from "./product-lockups";
 
 /**
@@ -10,17 +11,14 @@ export function ProductCards({ products }: { products: AccountProductVm[] }) {
   if (products.length === 0) return null;
   return (
     <section aria-labelledby="your-products-heading" className="flex flex-col gap-4">
-      <h2 id="your-products-heading" className="font-headline text-xl font-semibold">
+      <h2 id="your-products-heading" className={SECTION_TITLE}>
         Your LAX products
       </h2>
       <ul className="grid gap-4 sm:grid-cols-3">
         {products.map((product) => {
           const lockup = PRODUCT_LOCKUPS[product.id];
           return (
-            <li
-              key={product.id}
-              className="flex flex-col gap-5 rounded-2xl border border-border-hairline bg-surface p-5"
-            >
+            <li key={product.id} className={`flex flex-col gap-4 ${CARD} ${CARD_PADDING}`}>
               <div className="flex h-12 items-center">
                 {/* Only one of the pair is displayed, so assistive technology reads the name once. */}
                 <img src={lockup.light} alt={product.name} className="h-11 w-auto dark:hidden" />

@@ -9,7 +9,6 @@ import { PortfolioNotices } from "@/components/portfolio-notices";
 import { loadPortfolioItems } from "@/server/application/load-portfolio-data";
 import { getLaxAccountContainer } from "@/server/container";
 import { buildAccountProducts } from "@/server/domain/account-products.vm";
-import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
 import { buildSourceNotices } from "@/server/domain/portfolio-composition";
 import { buildPortfolioPage } from "@/server/domain/portfolio-page.vm";
 import { type PortfolioSearchParams, parseHoldingsQuery } from "@/server/domain/portfolio-query";
@@ -41,7 +40,10 @@ export default async function PortfolioPage({
 
   return (
     <AccountShell width="wide">
-      <AccountPageHeader title="Portfolio" backHref={ACCOUNT_ROUTES.overview} />
+      <AccountPageHeader
+        title="Portfolio"
+        description="The works you own, are selling or are paying for across LAX."
+      />
       <PortfolioNotices notices={notices} retryHref={PORTFOLIO_ROUTES.overview} />
       {page.emptyState ? (
         <PortfolioEmptyState

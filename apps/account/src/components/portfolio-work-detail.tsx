@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
+import { CARD, CARD_PADDING, CARD_TITLE } from "./account-ui";
 import { CurrencyAmounts, WorkThumbnail } from "./portfolio-parts";
 
 function Section({
@@ -26,9 +27,9 @@ function Section({
   return (
     <section
       aria-labelledby={`${id}-heading`}
-      className="flex flex-col gap-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+      className={`flex flex-col gap-4 ${CARD} ${CARD_PADDING}`}
     >
-      <h2 id={`${id}-heading`} className="font-headline text-lg font-semibold">
+      <h2 id={`${id}-heading`} className={CARD_TITLE}>
         {heading}
       </h2>
       {children}
@@ -104,7 +105,10 @@ function Documents({ work }: { work: WorkDetailVm }) {
               className="flex min-h-11 flex-wrap items-center justify-between gap-2 py-2"
             >
               {doc.href ? (
-                <a href={doc.href} className="text-sm font-medium underline">
+                <a
+                  href={doc.href}
+                  className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4"
+                >
                   {doc.label}
                 </a>
               ) : (
@@ -145,10 +149,10 @@ function Actions({ work }: { work: WorkDetailVm }) {
 export function PortfolioWorkDetail({ work }: { work: WorkDetailVm }) {
   return (
     <>
-      <header className="flex items-start gap-4">
+      <header className="flex items-start gap-4 sm:gap-6">
         <WorkThumbnail src={work.image} className="size-20 shrink-0 sm:size-28" />
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="font-headline text-2xl font-semibold tracking-tight break-words">
+          <h1 className="font-headline text-3xl font-semibold tracking-tight break-words sm:text-4xl">
             {work.title}
           </h1>
           {work.artist ? <p className="text-sm text-on-surface-variant">{work.artist}</p> : null}

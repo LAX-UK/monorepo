@@ -58,7 +58,7 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
 
   return (
     <form
-      className="space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+      className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         save();
@@ -68,6 +68,7 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
       <div className="space-y-1.5">
         <Label htmlFor={inputId}>Name</Label>
         <Input
+          className="h-11"
           id={inputId}
           name="name"
           autoComplete="name"

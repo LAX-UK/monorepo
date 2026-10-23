@@ -14,9 +14,9 @@ import {
 } from "@/server/domain/account-sessions.vm";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { InsetGroup } from "@auction/ui/components/inset-group";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ListCard } from "./account-ui";
 
 type Target = { kind: "device"; row: SessionRowVm } | { kind: "others" };
 
@@ -28,7 +28,7 @@ type SignedInDevicesListProps = {
 
 function DeviceRow({ row, onSignOut }: { row: SessionRowVm; onSignOut?: () => void }) {
   return (
-    <li className="flex min-h-[var(--tap-target-min,44px)] flex-wrap items-center gap-3 border-b border-border-hairline px-4 py-3 last:border-b-0">
+    <li className="flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
       <div className="min-w-0 flex-1 basis-48">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-on-surface">
           {row.deviceLabel}
@@ -107,31 +107,27 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
   }
 
   return (
-    <div className="space-y-3">
-      <InsetGroup>
-        <ul>
-          {sessions.current ? <DeviceRow row={sessions.current} /> : null}
-          {sessions.others.map((row) => (
-            <DeviceRow
-              key={row.id}
-              row={row}
-              onSignOut={() => {
-                setNotice(null);
-                setTarget({ kind: "device", row });
-              }}
-            />
-          ))}
-        </ul>
-      </InsetGroup>
+    <div className="flex flex-col gap-4">
+      <ListCard>
+        {sessions.current ? <DeviceRow row={sessions.current} /> : null}
+        {sessions.others.map((row) => (
+          <DeviceRow
+            key={row.id}
+            row={row}
+            onSignOut={() => {
+              setNotice(null);
+              setTarget({ kind: "device", row });
+            }}
+          />
+        ))}
+      </ListCard>
       {sessions.others.length === 0 ? (
-        <p className="px-4 text-xs text-on-surface-variant">
-          You're not signed in on any other device.
-        </p>
+        <p className="text-xs text-on-surface-variant">You're not signed in on any other device.</p>
       ) : (
         <Button
           type="button"
           variant="outline"
-          className="min-h-11"
+          className="min-h-11 self-start"
           onClick={() => {
             setNotice(null);
             setTarget({ kind: "others" });

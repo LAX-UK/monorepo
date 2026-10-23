@@ -31,7 +31,10 @@ export default async function SecurityPage() {
 
   return (
     <AccountShell>
-      <AccountPageHeader title="Password and security" backHref={ACCOUNT_ROUTES.overview} />
+      <AccountPageHeader
+        title="Security"
+        description="Your password, two-step verification and the devices you're signed in on."
+      />
       {groups.map((group) => (
         <SettingsGroup key={group.id} group={group} />
       ))}
