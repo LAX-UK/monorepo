@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import pg from "pg";
@@ -20,6 +20,7 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const FINAL_FOLDER_MILLIS = 1794643200000;
+const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
   return (error as Error & { code?: string }).code === "57P01";
@@ -488,6 +489,114 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
           api_directory_insert: false,
         },
       ]);
+    });
+  });
+
+  describe("late-registered ATG sync links (0131a)", () => {
+    async function atgTableNames(pool: pg.Pool): Promise<string[]> {
+      const tables = await pool.query<{ table_name: string }>(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name IN ('atg_auction_link', 'atg_lot_link')
+         ORDER BY table_name`,
+      );
+      return tables.rows.map((row) => row.table_name);
+    }
+
+    async function ledgerHashAt(pool: pg.Pool, folderMillis: number): Promise<string[]> {
+      const rows = await pool.query<{ hash: string }>(
+        "SELECT hash FROM drizzle.__drizzle_migrations WHERE created_at = $1",
+        [folderMillis],
+      );
+      return rows.rows.map((row) => row.hash);
+    }
+
+    async function expectedHash(): Promise<string> {
+      const sql = await readFile(
+        resolve(import.meta.dirname, "../drizzle/0131a_atg_sync_links.sql"),
+        "utf8",
+      );
+      return createHash("sha256").update(sql).digest("hex");
+    }
+
+    /** A main environment migrated before 0131a existed: later rows, no ATG row, no tables. */
+    async function simulateEnvironmentWithoutAtgRow(pool: pg.Pool): Promise<void> {
+      await pool.query("DROP TABLE IF EXISTS atg_lot_link, atg_auction_link");
+      await pool.query("DELETE FROM drizzle.__drizzle_migrations WHERE created_at = $1", [
+        ATG_SYNC_LINKS_FOLDER_MILLIS,
+      ]);
+    }
+
+    it("creates the tables and records the release hash on a clean database", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        expect(await atgTableNames(pool)).toEqual(["atg_auction_link", "atg_lot_link"]);
+        expect(await ledgerHashAt(pool, ATG_SYNC_LINKS_FOLDER_MILLIS)).toEqual([
+          await expectedHash(),
+        ]);
+      });
+    });
+
+    it("backfills an environment already past its stamp instead of failing", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        await simulateEnvironmentWithoutAtgRow(pool);
+
+        await runMigrationsPerTransaction(pool);
+
+        expect(await atgTableNames(pool)).toEqual(["atg_auction_link", "atg_lot_link"]);
+        expect(await ledgerHashAt(pool, ATG_SYNC_LINKS_FOLDER_MILLIS)).toEqual([
+          await expectedHash(),
+        ]);
+        const head = await pool.query<{ created_at: string }>(
+          "SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 1",
+        );
+        expect(Number(head.rows[0]?.created_at)).toBe(FINAL_FOLDER_MILLIS);
+
+        await runMigrationsPerTransaction(pool);
+        const rows = await pool.query<{ count: string }>(
+          "SELECT count(*)::text AS count FROM drizzle.__drizzle_migrations",
+        );
+        const journal = JSON.parse(
+          await readFile(resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
+        ) as { entries: unknown[] };
+        expect(Number(rows.rows[0]?.count)).toBe(journal.entries.length);
+      });
+    });
+
+    it("adopts a production ledger that already holds the release row", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransactionThrough(pool, 1788000007000);
+        await pool.query(
+          'INSERT INTO drizzle.__drizzle_migrations ("hash", "created_at") VALUES ($1, $2)',
+          [await expectedHash(), ATG_SYNC_LINKS_FOLDER_MILLIS],
+        );
+        await runMigrationsPerTransaction(pool);
+        expect(await ledgerHashAt(pool, ATG_SYNC_LINKS_FOLDER_MILLIS)).toHaveLength(1);
+      });
+    });
+
+    it("still rejects a divergent row at the ATG stamp", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        await pool.query(
+          "UPDATE drizzle.__drizzle_migrations SET hash = 'other' WHERE created_at = $1",
+          [ATG_SYNC_LINKS_FOLDER_MILLIS],
+        );
+        await expect(runMigrationsPerTransaction(pool)).rejects.toThrow(
+          `Migration history diverged at ${ATG_SYNC_LINKS_FOLDER_MILLIS}`,
+        );
+      });
+    });
+
+    it("rolls back and re-applies cleanly", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        await executeMigrationSql(pool, "0131a_rollback.sql");
+        expect(await atgTableNames(pool)).toEqual([]);
+        await executeMigrationSql(pool, "0131a_atg_sync_links.sql");
+        await executeMigrationSql(pool, "0131a_atg_sync_links.sql");
+        expect(await atgTableNames(pool)).toEqual(["atg_auction_link", "atg_lot_link"]);
+      });
     });
   });
 

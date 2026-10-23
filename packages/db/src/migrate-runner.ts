@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import type pg from "pg";
+import { LATE_REGISTERED_FOLDER_MILLIS } from "./late-registered-migrations.js";
 
 const MIGRATIONS_SCHEMA = "drizzle";
 const MIGRATIONS_TABLE = "__drizzle_migrations";
@@ -79,6 +80,7 @@ export async function runMigrationsPerTransactionThrough(
     setupClient.release();
   }
 
+  const lateRegistered = new Set<number>();
   if (lastApplied != null) {
     const appliedByTimestamp = new Map<number, string>();
     for (const applied of appliedMigrations) {
@@ -95,6 +97,10 @@ export async function runMigrationsPerTransactionThrough(
     for (const migration of migrations) {
       if (migration.folderMillis > lastApplied) break;
       const appliedHash = appliedByTimestamp.get(migration.folderMillis);
+      if (!appliedHash && LATE_REGISTERED_FOLDER_MILLIS.has(migration.folderMillis)) {
+        lateRegistered.add(migration.folderMillis);
+        continue;
+      }
       if (!appliedHash) {
         throw new Error(
           `Migration history is missing ${migration.folderMillis} before applied timestamp ${lastApplied}; manual reconciliation is required`,
@@ -112,7 +118,11 @@ export async function runMigrationsPerTransactionThrough(
     if (throughFolderMillis !== undefined && migration.folderMillis > throughFolderMillis) {
       break;
     }
-    if (lastApplied != null && lastApplied >= migration.folderMillis) {
+    if (
+      lastApplied != null &&
+      lastApplied >= migration.folderMillis &&
+      !lateRegistered.has(migration.folderMillis)
+    ) {
       continue;
     }
     const client = await pool.connect();
@@ -134,6 +144,6 @@ export async function runMigrationsPerTransactionThrough(
     } finally {
       client.release();
     }
-    lastApplied = migration.folderMillis;
+    lastApplied = Math.max(lastApplied ?? 0, migration.folderMillis);
   }
 }
