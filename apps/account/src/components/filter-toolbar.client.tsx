@@ -145,15 +145,16 @@ export function ActiveFilterChips({
       <ul aria-label="Active filters" className="contents">
         {chips.map((chip) => (
           <li key={chip.name}>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => onRemove(chip.name)}
               aria-label={`Remove ${chip.group} filter: ${chip.text}`}
               className="inline-flex min-h-10 items-center gap-2 rounded-full border border-product-accent bg-product-accent/10 px-3.5 text-sm font-medium text-on-surface transition-colors hover:bg-product-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {chip.text}
               <RemoveIcon />
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
@@ -255,7 +256,7 @@ export function FilterToolbar({ action, noun, search, fields, shown, total }: Fi
             {fields
               .filter((field) => field.value)
               .map((field) => (
-                <input key={field.name} type="hidden" name={field.name} value={field.value} />
+                <Input key={field.name} type="hidden" name={field.name} value={field.value} />
               ))}
             <label htmlFor={searchId} className="sr-only">
               {search.label}
