@@ -5,6 +5,7 @@ import {
   ACCOUNT_ADDRESSES_PATH,
   ACCOUNT_ADDRESSES_UPDATE_PATH,
   ACCOUNT_ADDRESS_ERRORS,
+  ACCOUNT_BACKUP_CODES_REGENERATE_PATH,
   ACCOUNT_CONTACT_ERRORS,
   ACCOUNT_CONTACT_PATH,
   ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
@@ -23,6 +24,7 @@ import {
   accountAddressDeletedSchema,
   accountAddressResultSchema,
   accountAddressesSchema,
+  accountBackupCodesSchema,
   accountContactSchema,
   accountEmailChangeCancelledSchema,
   accountEmailChangeConfirmedSchema,
@@ -245,6 +247,14 @@ export function createIssuerAccountIdentityGateway(
         accountAddressResultSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.address } : result;
+    },
+    async regenerateBackupCodes(actor) {
+      const result = await post(
+        ACCOUNT_BACKUP_CODES_REGENERATE_PATH,
+        fields(actor),
+        accountBackupCodesSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.backupCodes } : result;
     },
   };
 }

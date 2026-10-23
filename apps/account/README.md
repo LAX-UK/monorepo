@@ -6,7 +6,7 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 - `/account`: overview and Security Checkup.
 - `/account/profile`: name, email (changed through links emailed to both the current and the new address), phone (added or changed with a texted code) and the LAX-wide address book (add, edit, delete, default shipping and billing) are edited here.
 - `/account/email-change?t=`: where the emailed confirmation links land. It needs no sign-in; the signed token is the proof, and a button (not the link itself) makes the change.
-- `/account/security`: password and two-step links, and Where you're signed in (sign out one device, or every other device).
+- `/account/security`: password and two-step links, Backup codes (how many are left, and create a new set), and Where you're signed in (sign out one device, or every other device). New backup codes are shown once, with Copy and a .txt download, and the old ones stop working; the issuer emails the person that they were created.
 - Sign-in: `/api/auth/login` → auth issuer → `/api/auth/callback`; sign-out is a same-origin
   `POST /api/auth/logout` that ends the issuer session.
 - Sensitive steps (password reset, authenticator setup) stay on auth-hosted pages. The hosted
@@ -25,7 +25,7 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 | `LAX_MEDIA_ORIGINS` | Optional comma-separated origins product images may load from; also read from `NEXT_PUBLIC_MEDIA_BASE_URL` and `SHOP_MEDIA_PUBLIC_BASE_URL`. Used for the CSP `img-src` (set at build time) and to drop images from any other origin. |
 
 Name, email, phone, addresses and sessions are changed through client-authenticated issuer routes (`/api/auth/lax/account-*`),
-called server-side with the person's own access token. Renaming, starting an email change, sending or checking a phone code, adding, editing or deleting an address, and signing devices out need a
+called server-side with the person's own access token. Renaming, starting an email change, sending or checking a phone code, adding, editing or deleting an address, creating backup codes and signing devices out need a
 sign-in from the last five minutes; Account otherwise sends the person through a fresh sign-in
 (`/api/auth/login?intent=reauth`) and back to the same page.
 

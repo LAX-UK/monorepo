@@ -9,6 +9,7 @@ const identity = {
   confirmEmailChange: vi.fn(),
   sendPhoneCode: vi.fn(),
   verifyPhone: vi.fn(),
+  regenerateBackupCodes: vi.fn(),
 };
 const loadAccountRecord = vi.fn();
 
@@ -18,6 +19,7 @@ vi.mock("./load-account-record", () => ({ loadAccountRecord: () => loadAccountRe
 const {
   cancelEmailChangeAction,
   confirmEmailChangeAction,
+  regenerateBackupCodesAction,
   renameAccountAction,
   sendPhoneCodeAction,
   signOutDeviceAction,
@@ -83,6 +85,49 @@ describe("account identity actions", () => {
     });
     loadAccountRecord.mockRejectedValue(new Error("ECONNREFUSED"));
     expect(await signOutOtherDevicesAction()).toMatchObject({ status: "error" });
+  });
+
+  describe("backup codes", () => {
+    it("returns the new codes as the signed-in person", async () => {
+      identity.regenerateBackupCodes.mockResolvedValue({ status: "ok", value: ["abcde-12345"] });
+      expect(await regenerateBackupCodesAction()).toEqual({
+        status: "ok",
+        backupCodes: ["abcde-12345"],
+      });
+      expect(identity.regenerateBackupCodes).toHaveBeenCalledWith(ACTOR);
+    });
+
+    it("sends the person through a fresh sign-in when the issuer asks for one", async () => {
+      identity.regenerateBackupCodes.mockResolvedValue({ status: "reauth_required" });
+      expect(await regenerateBackupCodesAction()).toEqual({ status: "reauth_required" });
+    });
+
+    it("sends a signed-out person to sign in without calling the issuer", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await regenerateBackupCodesAction()).toEqual({ status: "reauth_required" });
+      expect(identity.regenerateBackupCodes).not.toHaveBeenCalled();
+    });
+
+    it("explains when two-step verification is off", async () => {
+      identity.regenerateBackupCodes.mockResolvedValue({
+        status: "rejected",
+        reason: "two_factor_not_enabled",
+      });
+      expect(await regenerateBackupCodesAction()).toEqual({
+        status: "error",
+        message: "Turn on two-step verification before creating backup codes.",
+      });
+    });
+
+    it("says nothing changed when the issuer or the session store is unavailable", async () => {
+      identity.regenerateBackupCodes.mockResolvedValue({ status: "unavailable" });
+      expect(await regenerateBackupCodesAction()).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("Nothing was changed"),
+      });
+      loadAccountRecord.mockRejectedValue(new Error("ECONNREFUSED"));
+      expect(await regenerateBackupCodesAction()).toMatchObject({ status: "error" });
+    });
   });
 
   describe("email change", () => {

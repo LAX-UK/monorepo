@@ -50,7 +50,7 @@ export const accountPhoneVerifiedSchema = z.object({
   verified: z.literal(true),
 });
 
-/** Reasons the issuer refuses an email or phone change, returned as `{ error }` (HTTP 400, 409, 422 or 429). */
+/** Reasons the issuer refuses an email, phone or backup-code change, returned as `{ error }` (HTTP 400, 409, 422 or 429). */
 export const ACCOUNT_CONTACT_ERRORS = [
   "email_taken",
   "same_email",
@@ -62,6 +62,7 @@ export const ACCOUNT_CONTACT_ERRORS = [
   "invalid_phone",
   "invalid_code",
   "rate_limited",
+  "two_factor_not_enabled",
 ] as const;
 
 export type AccountContactError = (typeof ACCOUNT_CONTACT_ERRORS)[number];

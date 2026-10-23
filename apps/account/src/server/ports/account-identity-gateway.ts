@@ -79,4 +79,9 @@ export type AccountIdentityGateway = {
     addressId: string,
     kind: AccountAddressDefaultKind,
   ): Promise<IdentityCallResult<AccountAddress>>;
+  /**
+   * Replaces the backup codes and resolves to the new set. This is the only time the codes are
+   * available: the issuer does not reveal them again.
+   */
+  regenerateBackupCodes(actor: IdentityActor): Promise<IdentityCallResult<string[]>>;
 };

@@ -136,7 +136,7 @@ describe("buildSecurityCheckup", () => {
     expect(ids(2, "unknown")).not.toContain("backup-codes");
   });
 
-  it("links the backup codes step to the hosted two-step page and counts it as open", () => {
+  it("links the backup codes step to the regenerate action on the security page and counts it as open", () => {
     const checkup = buildSecurityCheckup(
       { ...none, twoStep: "on", backupCodesRemaining: 1 },
       links,
@@ -145,7 +145,7 @@ describe("buildSecurityCheckup", () => {
     expect(step).toMatchObject({
       done: false,
       actionLabel: "Get new codes",
-      href: "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
+      href: "/account/security#backup-codes",
     });
     expect(step?.description).toBe(
       "You have 1 backup code left. Create a new set before they run out.",
