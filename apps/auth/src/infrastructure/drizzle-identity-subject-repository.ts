@@ -1,12 +1,17 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { account, twoFactor, user } from "@auction/identity-db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type {
   IIdentitySubjectRepository,
   IdentityOperationTransaction,
   IdentitySubjectRecord,
 } from "../services/identity-operations.ports.js";
 import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
+
+function isUniqueViolation(error: unknown): boolean {
+  const code = (error as { code?: unknown; cause?: { code?: unknown } } | null) ?? {};
+  return code.code === "23505" || code.cause?.code === "23505";
+}
 
 const subjectSelection = {
   id: user.id,
@@ -66,6 +71,33 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
       .where(eq(user.id, subjectId))
       .returning({ id: user.id, name: user.name, image: user.image });
     return updated ?? null;
+  }
+
+  async setVerifiedPhone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    phone: string,
+    now: Date,
+  ): Promise<"updated" | "phone_taken" | "not_found"> {
+    const tx = identityOperationDb(this.db, transaction);
+    const [holder] = await tx
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.phoneNumber, phone), ne(user.id, subjectId)))
+      .limit(1);
+    if (holder) return "phone_taken";
+    try {
+      const rows = await tx
+        .update(user)
+        .set({ phoneNumber: phone, phoneNumberVerified: true, updatedAt: now })
+        .where(eq(user.id, subjectId))
+        .returning({ id: user.id });
+      return rows[0] ? "updated" : "not_found";
+    } catch (error) {
+      // Two people verifying the same number at once: the partial unique index decides.
+      if (isUniqueViolation(error)) return "phone_taken";
+      throw error;
+    }
   }
 
   async markDeletionRequested(

@@ -6,15 +6,16 @@ export type SubjectReadRateLimitRedis = {
 };
 
 /**
- * Fixed-window budget per subject for read-only issuer routes. It fails open when Redis is
- * unavailable: the route is authorised and read-only, so an outage should not blank the
- * person's security page.
+ * Fixed-window budget per subject. By default it fails open when Redis is unavailable, which
+ * suits read-only routes: they are authorised, and an outage should not blank the person's
+ * security page. Routes that spend money or guard a guessable secret pass `failClosed`.
  */
 export function createSubjectReadRateLimiter(options: {
   redis: SubjectReadRateLimitRedis;
   keyPrefix: string;
   windowSec: number;
   max: number;
+  failClosed?: boolean;
   onError?: (error: unknown) => void;
 }): (subjectId: string) => Promise<number | null> {
   return async (subjectId) => {
@@ -27,7 +28,7 @@ export function createSubjectReadRateLimiter(options: {
       return ttl > 0 ? ttl : options.windowSec;
     } catch (error) {
       options.onError?.(error);
-      return null;
+      return options.failClosed ? options.windowSec : null;
     }
   };
 }

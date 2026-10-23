@@ -54,6 +54,13 @@ export interface IIdentitySubjectRepository {
     patch: { name?: string; image?: string | null },
     now: Date,
   ): Promise<{ id: string; name: string; image: string | null } | null>;
+  /** Stores a verified number, or reports that another person already holds it. */
+  setVerifiedPhone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    phone: string,
+    now: Date,
+  ): Promise<"updated" | "phone_taken" | "not_found">;
   markDeletionRequested(
     transaction: IdentityOperationTransaction,
     subjectId: string,

@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { type Context, Hono } from "hono";
+import type { EmailChangeFailure, EmailChangeService } from "../services/email-change.service.js";
 import type { IIdentityLifecycleService } from "../services/identity-lifecycle.service.js";
 import { IdentityLifecycleConflictError } from "../services/identity-lifecycle.service.js";
 import {
@@ -105,6 +106,7 @@ async function authenticateMachineClient(input: {
 export function createInternalIdentityRoutes(options: {
   lifecycle: IIdentityLifecycleService;
   operations: IdentityOperationsService;
+  emailChange: Pick<EmailChangeService, "start" | "confirm">;
   redis: MachineTokenRedis;
   machineClientId: string;
   machineClientSecret: string;
@@ -385,21 +387,11 @@ export function createInternalIdentityRoutes(options: {
 
   app.post("/identity/subjects/:subjectId/email-change/start", async (c) => {
     const body = await readJson(c);
-    if (typeof body.newEmail !== "string" || typeof body.expiresAt !== "string") {
-      return c.json({ error: "new_email_and_expiry_required" }, 400);
-    }
-    const expiresAt = new Date(body.expiresAt);
-    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
-      return c.json({ error: "invalid_expiry" }, 400);
-    }
-    return runIdentityOperation(c, async () => {
-      await options.operations.startEmailChange(
-        c.req.param("subjectId"),
-        body.newEmail as string,
-        expiresAt,
-      );
-      return { ok: true };
-    });
+    if (typeof body.newEmail !== "string") return c.json({ error: "new_email_required" }, 400);
+    const result = await options.emailChange.start(c.req.param("subjectId"), body.newEmail, "bid");
+    return result.ok
+      ? c.json({ pendingEmail: result.pendingEmail })
+      : c.json({ error: result.kind }, emailChangeFailureStatus(result.kind));
   });
 
   app.get("/identity/subjects/:subjectId/email-change", async (c) =>
@@ -415,23 +407,19 @@ export function createInternalIdentityRoutes(options: {
     }),
   );
 
-  app.post("/identity/subjects/:subjectId/email-change/confirm", async (c) => {
+  app.post("/identity/email-change/confirm", async (c) => {
     const body = await readJson(c);
-    if (
-      typeof body.oldEmail !== "string" ||
-      typeof body.newEmail !== "string" ||
-      (body.confirmFor !== "old" && body.confirmFor !== "new")
-    ) {
-      return c.json({ error: "invalid_email_change_confirmation" }, 400);
+    if (typeof body.token !== "string" || !body.token) {
+      return c.json({ error: "token_required" }, 400);
     }
-    return runIdentityOperation(c, async () => ({
-      completed: await options.operations.confirmEmailChange({
-        subjectId: c.req.param("subjectId"),
-        oldEmail: body.oldEmail as string,
-        newEmail: body.newEmail as string,
-        confirmFor: body.confirmFor as "old" | "new",
-      }),
-    }));
+    const result = await options.emailChange.confirm(body.token);
+    return result.ok
+      ? c.json({
+          subjectId: result.subjectId,
+          completed: result.completed,
+          confirmedFor: result.confirmedFor,
+        })
+      : c.json({ error: result.kind }, emailChangeFailureStatus(result.kind));
   });
 
   app.delete("/identity/subjects/:subjectId/orphan", (c) =>
@@ -505,6 +493,24 @@ async function runIdentityOperation(c: Context, action: () => Promise<unknown>) 
       return c.json({ error: error.code }, status);
     }
     throw error;
+  }
+}
+
+function emailChangeFailureStatus(kind: EmailChangeFailure): 400 | 404 | 409 | 410 | 503 {
+  switch (kind) {
+    case "subject_not_found":
+      return 404;
+    case "expired":
+      return 410;
+    case "same_email":
+    case "email_taken":
+    case "none_in_progress":
+    case "stale_flow":
+      return 409;
+    case "channel_unavailable":
+      return 503;
+    case "invalid_token":
+      return 400;
   }
 }
 

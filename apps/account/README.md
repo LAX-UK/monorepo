@@ -4,7 +4,8 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 
 - `/`: sign-in landing, post-logout landing and callback error notices (`?error=`).
 - `/account`: overview and Security Checkup.
-- `/account/profile`: the name is edited here; email and phone are read-only until Account can change them.
+- `/account/profile`: name, email (changed through links emailed to both the current and the new address) and phone (added or changed with a texted code) are edited here.
+- `/account/email-change?t=`: where the emailed confirmation links land. It needs no sign-in; the signed token is the proof, and a button (not the link itself) makes the change.
 - `/account/security`: password and two-step links, and Where you're signed in (sign out one device, or every other device).
 - Sign-in: `/api/auth/login` → auth issuer → `/api/auth/callback`; sign-out is a same-origin
   `POST /api/auth/logout` that ends the issuer session.
@@ -21,8 +22,8 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 | `REDIS_URL`, `LAX_ACCOUNT_SESSION_ENCRYPTION_KEY` | Encrypted BFF session store (key ≥ 32 chars). |
 | `LAX_BID_PUBLIC_URL` | Optional; enables the address book, notification and help links that still live in LAX Bid. |
 
-Name and sessions are changed through client-authenticated issuer routes (`/api/auth/lax/account-*`),
-called server-side with the person's own access token. Renaming and signing devices out need a
+Name, email, phone and sessions are changed through client-authenticated issuer routes (`/api/auth/lax/account-*`),
+called server-side with the person's own access token. Renaming, starting an email change, sending or checking a phone code, and signing devices out need a
 sign-in from the last five minutes; Account otherwise sends the person through a fresh sign-in
 (`/api/auth/login?intent=reauth`) and back to the same page.
 

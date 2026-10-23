@@ -1,5 +1,8 @@
 import {
+  AUTH_RATE_LIMIT_POLICY,
+  type EmailSender,
   type SessionStampStore,
+  type SmsSender,
   type createAuth,
   createAuthNoStoreMiddleware,
   runSignInTurnstileGate,
@@ -35,14 +38,18 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
+import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
+import { AccountContactService } from "../services/account-contact.service.js";
 import { AccountIdentityService } from "../services/account-identity.service.js";
+import { AccountPhoneService } from "../services/account-phone.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
+import type { EmailChangeService } from "../services/email-change.service.js";
 import type { IdentityOperationsService } from "../services/identity-operations.service.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
@@ -67,6 +74,10 @@ export type OidcRouteMountOptions = {
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
   identityOperations: IdentityOperationsService;
+  emailChange: EmailChangeService;
+  emailSender: EmailSender;
+  /** The SMS provider the phone plugin sends through; the console in development. */
+  phoneVerification: SmsSender;
   authHandler: AuthRequestHandler;
   metrics: {
     refreshRotationOutcomes: Counter;
@@ -215,6 +226,56 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       readRateLimit: accountRateLimit("account-identity-read", 120),
       writeRateLimit: accountRateLimit("account-identity-write", 20),
       onFailure: (error) => options.log.error({ err: error }, "account_identity_request_failed"),
+    }),
+  );
+  const phoneRules = AUTH_RATE_LIMIT_POLICY;
+  const strictRateLimit = (name: string, windowSec: number, max: number) =>
+    createSubjectReadRateLimiter({
+      redis: options.redis,
+      keyPrefix: `rl:auth-issuer:${name}`,
+      windowSec,
+      max,
+      // A code is a paid SMS and the code space is small: with Redis down, refuse rather than
+      // allow unlimited sends or guesses.
+      failClosed: true,
+      onError: (error) =>
+        options.log.warn({ err: error }, "account_contact_rate_limit_unavailable"),
+    });
+  app.route(
+    "/api/auth",
+    createAccountContactRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      contact: new AccountContactService({
+        operations: options.identityOperations,
+        emailChange: options.emailChange,
+      }),
+      phone: new AccountPhoneService({
+        operations: options.identityOperations,
+        sms: options.phoneVerification,
+        email: options.emailSender,
+        onNoticeFailure: (error) => options.log.warn({ err: error }, "account_phone_notice_failed"),
+      }),
+      emailChange: options.emailChange,
+      readRateLimit: accountRateLimit("account-contact-read", 120),
+      // Each start sends two emails, to an address the person typed.
+      emailChangeRateLimit: strictRateLimit("account-email-change", 60 * 60, 5),
+      phoneSendRateLimit: strictRateLimit(
+        "account-phone-send",
+        phoneRules.phoneSendOtpSubjectWindowSec,
+        phoneRules.phoneSendOtpSubjectMax,
+      ),
+      phoneNumberRateLimit: strictRateLimit(
+        "account-phone-number",
+        phoneRules.phoneSendOtpNumberWindowSec,
+        phoneRules.phoneSendOtpNumberMax,
+      ),
+      phoneVerifyRateLimit: strictRateLimit(
+        "account-phone-verify",
+        phoneRules.phoneVerifySubjectWindowSec,
+        phoneRules.phoneVerifySubjectMax,
+      ),
+      onFailure: (error) => options.log.error({ err: error }, "account_contact_request_failed"),
     }),
   );
   app.route(

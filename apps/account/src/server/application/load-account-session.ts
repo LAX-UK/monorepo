@@ -1,4 +1,8 @@
-import type { AccountSecurityFactsResponse, AccountSession } from "@auction/identity-contracts";
+import type {
+  AccountContactResponse,
+  AccountSecurityFactsResponse,
+  AccountSession,
+} from "@auction/identity-contracts";
 import { decodeJwt } from "jose";
 import { getLaxAccountContainer } from "../container";
 import { type AccountOverviewVm, buildAccountOverview } from "../domain/account-overview.vm";
@@ -14,6 +18,8 @@ export type AccountSessionState =
       liveSecurity: AccountSecurityFactsResponse | null;
       /** Present only when requested. */
       liveSessions: IdentityCallResult<AccountSession[]> | null;
+      /** Present only when requested, and null when the issuer could not answer. */
+      liveContact: AccountContactResponse | null;
     }
   | { status: "unsigned" }
   /** The session store could not be reached, so the person's state is unknown. */
@@ -37,6 +43,8 @@ export type LoadAccountSessionOptions = {
   withLiveName?: boolean;
   /** Ask the issuer for the person's signed-in devices. */
   withLiveSessions?: boolean;
+  /** Ask the issuer for the person's current email and phone, and any email change under way. */
+  withLiveContact?: boolean;
 };
 
 /** Only the pages that show a live fact pay for its extra issuer request. */
@@ -48,10 +56,11 @@ export async function loadAccountSession(
     const record = await loadAccountRecord();
     if (!record) return { status: "unsigned" };
     const actor = { accessToken: record.accessToken, sid: record.sid };
-    const [liveSecurity, liveName, liveSessions] = await Promise.all([
+    const [liveSecurity, liveName, liveSessions, liveContact] = await Promise.all([
       options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
       options.withLiveName ? identity.readName(actor) : null,
       options.withLiveSessions ? identity.listSessions(actor) : null,
+      options.withLiveContact ? identity.readContact(actor) : null,
     ]);
     const claims = idTokenClaims(record.idToken);
     return {
@@ -60,6 +69,7 @@ export async function loadAccountSession(
       overview: buildAccountOverview(liveName ? { ...claims, name: liveName } : claims, record.acr),
       liveSecurity,
       liveSessions,
+      liveContact,
     };
   } catch (error) {
     // A Redis outage must not look like a sign-out: the person is still signed in, and sending

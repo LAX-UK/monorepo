@@ -1,10 +1,24 @@
 import {
+  ACCOUNT_CONTACT_ERRORS,
+  ACCOUNT_CONTACT_PATH,
+  ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
+  ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
+  ACCOUNT_EMAIL_CHANGE_PATH,
+  ACCOUNT_PHONE_SEND_CODE_PATH,
+  ACCOUNT_PHONE_VERIFY_PATH,
   ACCOUNT_PROFILE_PATH,
   ACCOUNT_PROFILE_UPDATE_PATH,
   ACCOUNT_REAUTH_REQUIRED,
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
+  type AccountContactError,
+  accountContactSchema,
+  accountEmailChangeCancelledSchema,
+  accountEmailChangeConfirmedSchema,
+  accountEmailChangeStartedSchema,
+  accountPhoneCodeSentSchema,
+  accountPhoneVerifiedSchema,
   accountProfileSchema,
   accountSessionsRevokedSchema,
   accountSessionsSchema,
@@ -19,11 +33,21 @@ import type {
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
+const REJECTION_REASONS: ReadonlySet<string> = new Set(ACCOUNT_CONTACT_ERRORS);
+
+function rejectionReason(body: unknown): AccountContactError | null {
+  const error = (body as { error?: unknown } | null)?.error;
+  return typeof error === "string" && REJECTION_REASONS.has(error)
+    ? (error as AccountContactError)
+    : null;
+}
+
 /**
  * Calls the issuer's account routes as LAX Account, for the person who owns the access token.
  * Tokens travel in the request body, never a URL, and nothing here logs them. Every failure
  * (network, timeout, refusal, unexpected body) is `unavailable`, except the issuer's explicit
- * "sign in again", which callers turn into a fresh sign-in.
+ * "sign in again", which callers turn into a fresh sign-in, and its named refusals (`rejected`),
+ * which the person can act on.
  */
 export function createIssuerAccountIdentityGateway(
   config: Pick<LaxAccountConfig, "oidcInternalIssuer" | "oidcClientId" | "oidcClientSecret">,
@@ -51,13 +75,16 @@ export function createIssuerAccountIdentityGateway(
         cache: "no-store",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      if (response.status === 403) {
+      if (!response.ok) {
         const body: unknown = await response.json().catch(() => null);
-        if ((body as { error?: unknown } | null)?.error === ACCOUNT_REAUTH_REQUIRED) {
+        if (
+          response.status === 403 &&
+          (body as { error?: unknown } | null)?.error === ACCOUNT_REAUTH_REQUIRED
+        ) {
           return { status: "reauth_required" };
         }
-      }
-      if (!response.ok) {
+        const reason = rejectionReason(body);
+        if (reason) return { status: "rejected", reason };
         console.warn("account_identity_unavailable", { path, status: response.status });
         return { status: "unavailable" };
       }
@@ -94,6 +121,53 @@ export function createIssuerAccountIdentityGateway(
         accountProfileSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.name } : result;
+    },
+    async readContact(actor) {
+      const result = await post(
+        ACCOUNT_CONTACT_PATH,
+        { token: actor.accessToken },
+        accountContactSchema,
+      );
+      return result.status === "ok" ? result.value : null;
+    },
+    async startEmailChange(actor, email) {
+      const result = await post(
+        ACCOUNT_EMAIL_CHANGE_PATH,
+        fields(actor, { email }),
+        accountEmailChangeStartedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.pendingEmail } : result;
+    },
+    async cancelEmailChange(actor) {
+      const result = await post(
+        ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
+        fields(actor),
+        accountEmailChangeCancelledSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: true } : result;
+    },
+    confirmEmailChange(emailToken) {
+      return post(
+        ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
+        { email_token: emailToken },
+        accountEmailChangeConfirmedSchema,
+      );
+    },
+    async sendPhoneCode(actor, phone) {
+      const result = await post(
+        ACCOUNT_PHONE_SEND_CODE_PATH,
+        fields(actor, { phone }),
+        accountPhoneCodeSentSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: true } : result;
+    },
+    async verifyPhone(actor, phone, code) {
+      const result = await post(
+        ACCOUNT_PHONE_VERIFY_PATH,
+        fields(actor, { phone, code }),
+        accountPhoneVerifiedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.phone } : result;
     },
     async listSessions(actor) {
       const result = await post(ACCOUNT_SESSIONS_PATH, fields(actor), accountSessionsSchema);

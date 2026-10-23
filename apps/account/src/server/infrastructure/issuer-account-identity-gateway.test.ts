@@ -93,4 +93,112 @@ describe("createIssuerAccountIdentityGateway", () => {
       expect(await g.readName(actor)).toBeNull();
     }
   });
+
+  describe("email and phone", () => {
+    it("reads the live contact details with only the access token", async () => {
+      const contact = {
+        email: "ada@example.com",
+        emailVerified: true,
+        pendingEmail: "next@example.com",
+        phone: "+447700900123",
+        phoneVerified: true,
+      };
+      const { fetchImpl, gateway: g } = gateway(async () => Response.json(contact));
+      expect(await g.readContact(actor)).toEqual(contact);
+      expect(lastRequest(fetchImpl).url).toBe("https://auth.internal/api/auth/lax/account-contact");
+      expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({ token: "access-token" });
+    });
+
+    it("starts and cancels an email change as the signed-in person", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ pendingEmail: "next@example.com" }),
+      );
+      expect(await g.startEmailChange(actor, "next@example.com")).toEqual({
+        status: "ok",
+        value: "next@example.com",
+      });
+      expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        email: "next@example.com",
+      });
+      const cancel = gateway(async () => Response.json({ cancelled: true }));
+      expect(await cancel.gateway.cancelEmailChange(actor)).toEqual({ status: "ok", value: true });
+      expect(lastRequest(cancel.fetchImpl).url).toContain("/lax/account-email-change/cancel");
+    });
+
+    it("confirms an emailed link with the client's credentials but no access token", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ completed: false, confirmedFor: "old" }),
+      );
+      expect(await g.confirmEmailChange("signed.token")).toEqual({
+        status: "ok",
+        value: { completed: false, confirmedFor: "old" },
+      });
+      const { init, body } = lastRequest(fetchImpl);
+      expect(Object.fromEntries(body)).toEqual({ email_token: "signed.token" });
+      expect((init.headers as Record<string, string>).Authorization).toMatch(/^Basic /);
+    });
+
+    it("sends and checks a phone code", async () => {
+      const send = gateway(async () => Response.json({ sent: true }));
+      expect(await send.gateway.sendPhoneCode(actor, "+447700900123")).toEqual({
+        status: "ok",
+        value: true,
+      });
+      expect(Object.fromEntries(lastRequest(send.fetchImpl).body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        phone: "+447700900123",
+      });
+      const verify = gateway(async () => Response.json({ phone: "+447700900123", verified: true }));
+      expect(await verify.gateway.verifyPhone(actor, "+447700900123", "123456")).toEqual({
+        status: "ok",
+        value: "+447700900123",
+      });
+      expect(lastRequest(verify.fetchImpl).body.get("code")).toBe("123456");
+    });
+
+    it.each([
+      [409, "email_taken"],
+      [409, "phone_taken"],
+      [422, "invalid_code"],
+      [429, "rate_limited"],
+      [409, "expired"],
+    ] as const)(
+      "passes the issuer's named refusal %i %s through as rejected",
+      async (status, error) => {
+        const { gateway: g } = gateway(async () => Response.json({ error }, { status }));
+        expect(await g.verifyPhone(actor, "+447700900123", "123456")).toEqual({
+          status: "rejected",
+          reason: error,
+        });
+      },
+    );
+
+    it("passes the request to sign in again through for contact changes too", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await g.startEmailChange(actor, "next@example.com")).toEqual({
+        status: "reauth_required",
+      });
+      expect(await g.sendPhoneCode(actor, "+447700900123")).toEqual({ status: "reauth_required" });
+    });
+
+    it("treats an unnamed refusal or a broken answer as unavailable", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      for (const respond of [
+        async () => Response.json({ error: "invalid_request" }, { status: 400 }),
+        async () => Response.json({ error: "temporarily_unavailable" }, { status: 503 }),
+        async () => Response.json({ pendingEmail: 7 }),
+      ]) {
+        const { gateway: g } = gateway(respond);
+        expect(await g.startEmailChange(actor, "next@example.com")).toEqual({
+          status: "unavailable",
+        });
+        expect(await g.readContact(actor)).toBeNull();
+      }
+    });
+  });
 });

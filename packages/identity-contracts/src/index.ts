@@ -4,6 +4,28 @@ export {
   type AccountSecurityFactsResponse,
 } from "./account-security-facts.js";
 export {
+  ACCOUNT_CONTACT_ERRORS,
+  ACCOUNT_CONTACT_PATH,
+  ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
+  ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
+  ACCOUNT_EMAIL_CHANGE_PATH,
+  ACCOUNT_PHONE_CODE_LENGTH,
+  ACCOUNT_PHONE_SEND_CODE_PATH,
+  ACCOUNT_PHONE_VERIFY_PATH,
+  accountContactSchema,
+  accountEmailChangeCancelledSchema,
+  accountEmailChangeConfirmedSchema,
+  accountEmailChangeStartedSchema,
+  accountEmailSchema,
+  accountPhoneCodeSchema,
+  accountPhoneCodeSentSchema,
+  accountPhoneSchema,
+  accountPhoneVerifiedSchema,
+  type AccountContactError,
+  type AccountContactResponse,
+  type AccountEmailChangeConfirmedResponse,
+} from "./account-contact.js";
+export {
   ACCOUNT_NAME_MAX_LENGTH,
   ACCOUNT_PROFILE_PATH,
   ACCOUNT_PROFILE_UPDATE_PATH,

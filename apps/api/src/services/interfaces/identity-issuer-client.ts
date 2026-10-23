@@ -133,19 +133,19 @@ export interface IIdentitySessionClient {
 }
 
 export interface IIdentityEmailChangeClient {
-  startEmailChange(input: {
-    subjectId: string;
-    newEmail: string;
-    expiresAt: Date;
-  }): Promise<void>;
+  /**
+   * Starts the change and has the issuer email both inboxes. Rejects with an
+   * IdentityIssuerClientError coded `email_taken`, `same_email` or `subject_not_found`.
+   */
+  startEmailChange(input: { subjectId: string; newEmail: string }): Promise<void>;
   pendingEmailChange(subjectId: string): Promise<string | null>;
   cancelEmailChange(subjectId: string): Promise<void>;
-  confirmEmailChange(input: {
+  /** `completed` is false after the first of the two inboxes confirms. */
+  confirmEmailChange(input: { token: string }): Promise<{
     subjectId: string;
-    oldEmail: string;
-    newEmail: string;
-    confirmFor: "old" | "new";
-  }): Promise<boolean>;
+    completed: boolean;
+    confirmedFor: "old" | "new";
+  }>;
 }
 
 export interface IIdentityProfileClient {
