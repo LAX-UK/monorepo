@@ -4,3 +4,4 @@ export * from "./jwks-key.js";
 export * from "./ssf.js";
 export * from "./outbox.js";
 export * from "./access-policy.js";
+export * from "./address.js";

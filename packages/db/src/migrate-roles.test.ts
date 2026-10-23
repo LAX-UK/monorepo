@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_DENY_TABLES,
   API_READ_TABLES,
+  AUTH_ADDRESS_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   AUTH_POLICY_TABLES,
@@ -341,6 +342,12 @@ describe("migrate-roles invariants", () => {
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...AUTH_FULL_TABLES]).not.toContain(table);
     }
+  });
+
+  it("gives auth_app the address book and keeps api_app away from it", () => {
+    expect([...AUTH_ADDRESS_TABLES]).toEqual(["identity_address"]);
+    expect([...API_DENY_TABLES]).toContain("identity_address");
+    expect([...AUTH_FULL_TABLES]).not.toContain("identity_address");
   });
 
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {

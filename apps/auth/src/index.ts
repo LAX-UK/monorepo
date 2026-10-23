@@ -11,6 +11,7 @@ import { createAuthMetrics } from "./container/create-auth-metrics.js";
 import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
+import { createIdentityAddressService } from "./container/create-identity-address-service.js";
 import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
 import { createIdentityOperationsService } from "./container/create-identity-operations-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
@@ -144,6 +145,9 @@ const internal =
           machineClientId: env.IDENTITY_MACHINE_CLIENT_ID,
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
           allowMerge: env.IDENTITY_MERGE_ENABLED,
+          addresses: {
+            addresses: createIdentityAddressService(db),
+          },
           twoFactorPolicy: {
             store: identityPorts.twoFactorPolicyStore,
             readRequirement: readTwoFactorRequirement,

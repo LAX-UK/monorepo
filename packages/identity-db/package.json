@@ -39,6 +39,10 @@
     "./schema/access-policy": {
       "types": "./dist/schema/access-policy.d.ts",
       "default": "./dist/schema/access-policy.js"
+    },
+    "./schema/address": {
+      "types": "./dist/schema/address.d.ts",
+      "default": "./dist/schema/address.js"
     }
   },
   "scripts": {

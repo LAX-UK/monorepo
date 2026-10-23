@@ -12,6 +12,10 @@ import {
   MachineCredentialRateLimiter,
 } from "../services/machine-credential-rate-limiter.js";
 import {
+  type InternalAddressRouteDeps,
+  mountInternalAddressRoutes,
+} from "./internal-addresses.routes.js";
+import {
   type TwoFactorPolicyRouteDeps,
   mountTwoFactorPolicyRoutes,
 } from "./internal-two-factor-policy.routes.js";
@@ -117,6 +121,7 @@ export function createInternalIdentityRoutes(options: {
     subjectId: string,
   ) => void;
   twoFactorPolicy?: TwoFactorPolicyRouteDeps;
+  addresses?: InternalAddressRouteDeps;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
@@ -223,6 +228,7 @@ export function createInternalIdentityRoutes(options: {
   });
 
   if (options.twoFactorPolicy) mountTwoFactorPolicyRoutes(app, options.twoFactorPolicy);
+  if (options.addresses) mountInternalAddressRoutes(app, options.addresses);
 
   app.post("/identity/subjects/:subjectId/disable", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { reason?: unknown };

@@ -38,6 +38,7 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
+import { createAccountAddressRoutes } from "../routes/account-addresses.routes.js";
 import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
@@ -51,11 +52,13 @@ import { AccountPhoneService } from "../services/account-phone.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
 import type { EmailChangeService } from "../services/email-change.service.js";
 import type { IdentityOperationsService } from "../services/identity-operations.service.js";
+import { RecentSessionGuard } from "../services/recent-session-guard.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import type { AuthRequestHandler } from "./create-auth-request-handler.js";
+import { createIdentityAddressService } from "./create-identity-address-service.js";
 
 type Counter = { inc(labels: Record<string, string>): void };
 
@@ -226,6 +229,18 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       readRateLimit: accountRateLimit("account-identity-read", 120),
       writeRateLimit: accountRateLimit("account-identity-write", 20),
       onFailure: (error) => options.log.error({ err: error }, "account_identity_request_failed"),
+    }),
+  );
+  app.route(
+    "/api/auth",
+    createAccountAddressRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      addresses: createIdentityAddressService(options.db),
+      sessions: new RecentSessionGuard(options.identityOperations),
+      readRateLimit: accountRateLimit("account-addresses-read", 120),
+      writeRateLimit: accountRateLimit("account-addresses-write", 20),
+      onFailure: (error) => options.log.error({ err: error }, "account_addresses_request_failed"),
     }),
   );
   const phoneRules = AUTH_RATE_LIMIT_POLICY;

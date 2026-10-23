@@ -1,6 +1,7 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import {
   account,
+  identityAddress,
   oauthAccessToken,
   oauthConsent,
   session,
@@ -160,6 +161,17 @@ export class DrizzleIdentityLifecycleRepository implements IIdentityLifecycleRep
       .update(oauthConsent)
       .set({ userId: input.canonicalSubjectId, updatedAt: input.now })
       .where(eq(oauthConsent.userId, input.retiredSubjectId));
+    // Saved addresses follow the person. They arrive without defaults so the canonical
+    // subject keeps its own.
+    await tx
+      .update(identityAddress)
+      .set({
+        subjectId: input.canonicalSubjectId,
+        isDefaultShipping: false,
+        isDefaultBilling: false,
+        updatedAt: input.now,
+      })
+      .where(eq(identityAddress.subjectId, input.retiredSubjectId));
     await tx.delete(oauthAccessToken).where(eq(oauthAccessToken.userId, input.retiredSubjectId));
     await tx.delete(session).where(eq(session.userId, input.retiredSubjectId));
     await tx

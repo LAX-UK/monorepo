@@ -28,6 +28,8 @@ export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
 export const AUTH_READ_TABLES = ["identity_access_marker"] as const;
 /** Two-step verification policy rows written through Identity's internal API only. */
 export const AUTH_POLICY_TABLES = ["identity_mfa_policy"] as const;
+/** The LAX-wide address book. Products reach it through the issuer, never directly. */
+export const AUTH_ADDRESS_TABLES = ["identity_address"] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
@@ -123,6 +125,7 @@ export const API_DENY_TABLES = [
   "shop_ssf_replay",
   ...AUTH_READ_TABLES,
   ...AUTH_POLICY_TABLES,
+  ...AUTH_ADDRESS_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
@@ -500,6 +503,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of AUTH_POLICY_TABLES) {
           await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of AUTH_ADDRESS_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
         }
         for (const tableName of tables) {
           if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {
