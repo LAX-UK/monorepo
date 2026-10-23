@@ -183,6 +183,31 @@ jobs:
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
 
+      # DOCR occasionally accepts the second tag of a multi-tag push without moving it, leaving the
+      # rolling tag on the previous build. Terraform's pin check then refuses to apply. Point the
+      # rolling tag at this build's digest explicitly and verify it, without rebuilding.
+      - name: Point the rolling tag at this build
+        if: ${{ !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin","account","art"]'), matrix.component) }}
+        env:
+          REPO: registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}
+        run: |
+          set -euo pipefail
+          doctl registry login --expiry-seconds 600
+          digest_of() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
+          want="$(digest_of "${REPO}:${SHA}")"
+          for attempt in 1 2 3 4 5; do
+            have="$(digest_of "${REPO}:${ENVIRONMENT}" || true)"
+            if [[ "$have" == "$want" ]]; then
+              echo "${ENVIRONMENT} -> ${want}"
+              exit 0
+            fi
+            echo "${ENVIRONMENT} is ${have:-missing}, expected ${want}; re-pointing (attempt ${attempt})"
+            docker buildx imagetools create --tag "${REPO}:${ENVIRONMENT}" "${REPO}@${want}"
+            sleep 10
+          done
+          echo "::error::${REPO}:${ENVIRONMENT} still does not match ${SHA} (${want})"
+          exit 1
+
   release-manifest:
     needs: build-push
     runs-on: ubuntu-latest
