@@ -13,6 +13,7 @@ function render(items: Item[], filter = {}) {
       options={holdingsFilterOptions(items)}
       filter={filter}
       action="/account/portfolio"
+      imageOrigins={["https://cdn.lax.bid"]}
     />,
   );
 }
@@ -92,5 +93,14 @@ describe("PortfolioHoldings", () => {
     expect(html).toContain("Ada Artist 1");
     expect(html).toContain("LAX Shop 1");
     expect(html).not.toMatch(/\d%/);
+  });
+
+  it("shows images from allowed media origins only", () => {
+    const html = render([
+      item({ id: "ok", image: "https://cdn.lax.bid/a.jpg" }),
+      item({ id: "bad", image: "https://evil.example/b.jpg" }),
+    ]);
+    expect(html).toContain("https://cdn.lax.bid/a.jpg");
+    expect(html).not.toContain("evil.example");
   });
 });

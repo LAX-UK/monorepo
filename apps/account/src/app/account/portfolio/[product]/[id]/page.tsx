@@ -4,6 +4,7 @@ import { AccountUnavailable } from "@/components/account-unavailable";
 import { PortfolioNotices } from "@/components/portfolio-notices";
 import { PortfolioWorkDetail } from "@/components/portfolio-work-detail";
 import { loadPortfolioItems } from "@/server/application/load-portfolio-data";
+import { getLaxAccountContainer } from "@/server/container";
 import { buildSourceNotices } from "@/server/domain/portfolio-composition";
 import { PORTFOLIO_ROUTES } from "@/server/domain/portfolio-routes";
 import { buildWorkDetail, findWork } from "@/server/domain/portfolio-work-detail.vm";
@@ -50,7 +51,9 @@ export default async function PortfolioWorkPage({
       />
       <PortfolioNotices notices={buildSourceNotices(loaded, "items")} />
       {item ? (
-        <PortfolioWorkDetail work={buildWorkDetail(item)} />
+        <PortfolioWorkDetail
+          work={buildWorkDetail(item, getLaxAccountContainer().config.mediaOrigins)}
+        />
       ) : (
         <p className="text-sm text-on-surface-variant">
           We couldn't load this work right now. Please try again in a moment.

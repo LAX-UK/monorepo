@@ -1,8 +1,8 @@
 import { formatDate } from "@/lib/format-money";
+import { safeImageUrl } from "@/lib/media-origins";
 import { PRODUCT_LABELS, STATUS_LABELS } from "@/server/domain/portfolio-labels";
 import { hasActiveFilter } from "@/server/domain/portfolio-query";
 import { workDetailHref } from "@/server/domain/portfolio-routes";
-import { safeDeepLink } from "@/server/domain/safe-deep-link";
 import {
   type AllocationCount,
   type HoldingRowVm,
@@ -65,7 +65,10 @@ function PaidCell({ row }: { row: HoldingRowVm }) {
   );
 }
 
-function HoldingsTable({ rows }: { rows: HoldingRowVm[] }) {
+function HoldingsTable({
+  rows,
+  imageOrigins,
+}: { rows: HoldingRowVm[]; imageOrigins: readonly string[] }) {
   return (
     <div className="hidden md:block">
       <Table>
@@ -88,7 +91,7 @@ function HoldingsTable({ rows }: { rows: HoldingRowVm[] }) {
               <TableCell>
                 <div className="flex items-center gap-3">
                   <WorkThumbnail
-                    src={safeDeepLink(row.item.image ?? undefined)}
+                    src={safeImageUrl(row.item.image, imageOrigins)}
                     className="size-12 shrink-0"
                   />
                   <div className="min-w-0">
@@ -115,7 +118,10 @@ function HoldingsTable({ rows }: { rows: HoldingRowVm[] }) {
   );
 }
 
-function HoldingsCards({ rows }: { rows: HoldingRowVm[] }) {
+function HoldingsCards({
+  rows,
+  imageOrigins,
+}: { rows: HoldingRowVm[]; imageOrigins: readonly string[] }) {
   return (
     <ul className="flex flex-col gap-3 md:hidden" aria-label="Your works">
       {rows.map((row) => (
@@ -124,7 +130,7 @@ function HoldingsCards({ rows }: { rows: HoldingRowVm[] }) {
           className="flex gap-3 rounded-2xl border border-border-hairline bg-surface p-4"
         >
           <WorkThumbnail
-            src={safeDeepLink(row.item.image ?? undefined)}
+            src={safeImageUrl(row.item.image, imageOrigins)}
             className="size-16 shrink-0"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -208,11 +214,13 @@ export function PortfolioHoldings({
   options,
   filter,
   action,
+  imageOrigins,
 }: {
   holdings: HoldingsVm;
   options: FilterOptions;
   filter: HoldingsFilter;
   action: string;
+  imageOrigins: readonly string[];
 }) {
   return (
     <section aria-labelledby="portfolio-holdings-heading" className="flex flex-col gap-4">
@@ -238,8 +246,8 @@ export function PortfolioHoldings({
         />
       ) : (
         <>
-          <HoldingsTable rows={holdings.rows} />
-          <HoldingsCards rows={holdings.rows} />
+          <HoldingsTable rows={holdings.rows} imageOrigins={imageOrigins} />
+          <HoldingsCards rows={holdings.rows} imageOrigins={imageOrigins} />
           <div className="flex flex-col gap-1">
             <AllocationLine label="By artist" counts={holdings.allocation.byArtist} />
             <AllocationLine

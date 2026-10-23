@@ -19,7 +19,10 @@ const work = item({
   actions: [{ kind: "consign", href: "https://lax.bid/dashboard/submissions/new" }],
 });
 
-const render = () => renderToStaticMarkup(<PortfolioWorkDetail work={buildWorkDetail(work)} />);
+const render = () =>
+  renderToStaticMarkup(
+    <PortfolioWorkDetail work={buildWorkDetail(work, ["https://cdn.lax.bid"])} />,
+  );
 
 describe("PortfolioWorkDetail", () => {
   it("lists each cost line in its currency in a captioned table", () => {

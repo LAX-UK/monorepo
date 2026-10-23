@@ -1,3 +1,4 @@
+import { safeImageUrl } from "@/lib/media-origins";
 import {
   type CurrencyTotal,
   type LaxPortfolioItemV1,
@@ -70,7 +71,10 @@ function documentVm(doc: LaxPortfolioItemV1["documents"][number]): WorkDocumentV
   };
 }
 
-export function buildWorkDetail(item: LaxPortfolioItemV1): WorkDetailVm {
+export function buildWorkDetail(
+  item: LaxPortfolioItemV1,
+  imageOrigins: readonly string[],
+): WorkDetailVm {
   const documents = item.documents.map(documentVm);
   const actions = item.actions.flatMap((action) => {
     const href = safeDeepLink(action.href);
@@ -79,7 +83,7 @@ export function buildWorkDetail(item: LaxPortfolioItemV1): WorkDetailVm {
   return {
     title: item.title || "Untitled work",
     artist: item.artist,
-    image: safeDeepLink(item.image ?? undefined),
+    image: safeImageUrl(item.image, imageOrigins),
     statusLabel: STATUS_LABELS[item.status],
     statusTone: STATUS_TONES[item.status],
     productLabel: PRODUCT_LABELS[item.product],

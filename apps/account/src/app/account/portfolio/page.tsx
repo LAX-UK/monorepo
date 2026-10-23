@@ -59,6 +59,7 @@ export default async function PortfolioPage({
             options={page.options}
             filter={filter}
             action={PORTFOLIO_ROUTES.overview}
+            imageOrigins={getLaxAccountContainer().config.mediaOrigins}
           />
           <p className="text-sm">
             <a href={PORTFOLIO_ROUTES.money} className="underline">

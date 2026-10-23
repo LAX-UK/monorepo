@@ -5,8 +5,10 @@ import { securityHeaders } from "./security-headers";
 const value = (headers: ReturnType<typeof securityHeaders>, key: string) =>
   headers.find((header) => header.key === key)?.value;
 
+const IMAGES = ["https://cdn.lax.bid"];
+
 describe("securityHeaders", () => {
-  const production = securityHeaders({ development: false });
+  const production = securityHeaders({ development: false, imageOrigins: IMAGES });
 
   it("forbids framing and restricts the page to its own origin", () => {
     const csp = value(production, "Content-Security-Policy") ?? "";
@@ -20,19 +22,21 @@ describe("securityHeaders", () => {
     const csp = value(production, "Content-Security-Policy") ?? "";
     expect(csp).not.toContain("unsafe-eval");
     expect(csp).not.toContain("ws:");
-    const dev = value(securityHeaders({ development: true }), "Content-Security-Policy") ?? "";
+    const dev =
+      value(
+        securityHeaders({ development: true, imageOrigins: IMAGES }),
+        "Content-Security-Policy",
+      ) ?? "";
     expect(dev).toContain("'unsafe-eval'");
     expect(dev).toContain("ws:");
   });
 
-  it("allows images from https hosts for product media, and nothing else cross-origin", () => {
+  it("allows images only from the configured media origins, never a blanket https:", () => {
     const csp = value(production, "Content-Security-Policy") ?? "";
-    expect(csp).toContain("img-src 'self' data: https:");
-    expect(csp).not.toContain("http://localhost");
+    expect(csp).toContain("img-src 'self' data: https://cdn.lax.bid;");
+    expect(csp).not.toMatch(/img-src[^;]* https:(;|\s)/);
     expect(csp).toContain("connect-src 'self'");
     expect(csp).toContain("script-src 'self' 'unsafe-inline'");
-    const dev = value(securityHeaders({ development: true }), "Content-Security-Policy") ?? "";
-    expect(dev).toContain("http://localhost:*");
   });
 
   it("sets the referrer, permissions and sniffing policies", () => {

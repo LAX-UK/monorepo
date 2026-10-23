@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { item } from "./portfolio-fixtures.test-util";
 import { NO_VALUATION_NOTE, buildWorkDetail, findWork } from "./portfolio-work-detail.vm";
 
+const ORIGINS = ["https://cdn.lax.bid"];
+
 describe("buildWorkDetail", () => {
   const full = item({
     image: "https://cdn.lax.bid/a.jpg",
@@ -25,7 +27,7 @@ describe("buildWorkDetail", () => {
   });
 
   it("keeps every cost line in its own currency and shipping apart from the cost basis", () => {
-    const vm = buildWorkDetail(full);
+    const vm = buildWorkDetail(full, ORIGINS);
     expect(vm.costLines.map((line) => [line.label, line.currency])).toEqual([
       ["Hammer price", "GBP"],
       ["Buyer's premium", "GBP"],
@@ -40,7 +42,7 @@ describe("buildWorkDetail", () => {
   });
 
   it("lists present documents first and gives each missing one a note", () => {
-    const vm = buildWorkDetail(full);
+    const vm = buildWorkDetail(full, ORIGINS);
     expect(vm.documents.map((doc) => [doc.label, doc.href !== null, doc.note])).toEqual([
       ["Invoice", true, null],
       ["Certificate of authenticity", false, "Sent after payment clears."],
@@ -49,7 +51,7 @@ describe("buildWorkDetail", () => {
   });
 
   it("drops actions whose link is not a safe web link", () => {
-    expect(buildWorkDetail(full).actions).toEqual([
+    expect(buildWorkDetail(full, ORIGINS).actions).toEqual([
       {
         key: "consign",
         label: "Consign this work",
@@ -59,18 +61,21 @@ describe("buildWorkDetail", () => {
   });
 
   it("says there is no valuation yet", () => {
-    expect(buildWorkDetail(full).valueNote).toBe(NO_VALUATION_NOTE);
+    expect(buildWorkDetail(full, ORIGINS).valueNote).toBe(NO_VALUATION_NOTE);
     expect(NO_VALUATION_NOTE).toMatch(/^No valuation yet\./);
   });
 
   it("reads amounts as due while the invoice is unpaid", () => {
-    expect(buildWorkDetail(item({ status: "awaiting_payment" })).costsAreDue).toBe(true);
-    expect(buildWorkDetail(full).costsAreDue).toBe(false);
+    expect(buildWorkDetail(item({ status: "awaiting_payment" }), ORIGINS).costsAreDue).toBe(true);
+    expect(buildWorkDetail(full, ORIGINS).costsAreDue).toBe(false);
   });
 
-  it("only shows an image on a safe link", () => {
-    expect(buildWorkDetail(full).image).toBe("https://cdn.lax.bid/a.jpg");
-    expect(buildWorkDetail(item({ image: "javascript:x" })).image).toBeNull();
+  it("only shows an image on an allowed media origin", () => {
+    expect(buildWorkDetail(full, ORIGINS).image).toBe("https://cdn.lax.bid/a.jpg");
+    expect(buildWorkDetail(item({ image: "javascript:x" }), ORIGINS).image).toBeNull();
+    expect(
+      buildWorkDetail(item({ image: "https://evil.example/a.jpg" }), ORIGINS).image,
+    ).toBeNull();
   });
 });
 

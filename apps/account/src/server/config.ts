@@ -1,5 +1,6 @@
 import { REGISTERED_OIDC_CLIENT_IDS } from "@auction/identity-contracts";
 import { z } from "zod";
+import { parseMediaOrigins } from "../lib/media-origins";
 
 const configSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -18,6 +19,8 @@ const configSchema = z.object({
   /** Server-to-server base URLs of the product APIs that answer for a person's portfolio. */
   bidApiUrl: z.string().url().optional(),
   shopApiUrl: z.string().url().optional(),
+  /** Origins product images may be shown from; anything else is dropped. */
+  mediaOrigins: z.array(z.string()),
 });
 
 export type LaxAccountConfig = z.infer<typeof configSchema>;
@@ -48,6 +51,7 @@ export function loadLaxAccountConfig(source: NodeJS.ProcessEnv = process.env): L
       (source.LAX_BID_API_URL ?? source.INTERNAL_API_URL ?? source.NEXT_PUBLIC_API_URL)
         ?.trim()
         .replace(/\/+$/, "") || undefined,
+    mediaOrigins: parseMediaOrigins(source),
     shopApiUrl:
       (source.LAX_SHOP_API_URL ?? source.SHOP_API_BASE_URL)?.trim().replace(/\/+$/, "") ||
       undefined,
