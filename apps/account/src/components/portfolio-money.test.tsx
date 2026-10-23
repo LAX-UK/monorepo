@@ -1,18 +1,20 @@
-import { buildMoney } from "@auction/lax-ecosystem";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ART_BUSINESS, moneyEntry } from "../server/domain/portfolio-fixtures.test-util";
+import { buildMoneyPage } from "../server/domain/portfolio-money-page.vm";
 import { MONEY_SEPARATION_NOTE, PortfolioMoney } from "./portfolio-money";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 type Entry = ReturnType<typeof moneyEntry>;
 
 function render(entries: Entry[], filter = {}) {
   return renderToStaticMarkup(
     <PortfolioMoney
-      vm={buildMoney(entries, filter)}
+      page={buildMoneyPage(entries, filter, true)}
       filter={filter}
       action="/account/portfolio/money"
-      currencies={["EUR", "GBP"]}
+      totalCount={entries.length}
     />,
   );
 }
@@ -32,33 +34,50 @@ const entries = [
 ];
 
 describe("PortfolioMoney", () => {
-  it("groups by legal name, in the order Bid then Art", () => {
+  it("shows a summary card per business, Bid then Art", () => {
     const html = render(entries);
     expect(html.indexOf("LAX Bid Ltd")).toBeLessThan(html.indexOf("LAX Art Ltd"));
+    expect(html).toContain('aria-label="Totals by business"');
   });
 
-  it("presents payouts as two sections, Due to you and Received", () => {
+  it("lists totals per category and never nets or blends them", () => {
     const html = render(entries);
-    expect(html).toContain("Due to you");
-    expect(html).toContain("Received");
+    for (const label of ["Owed by you", "Due to you", "Received", "Paid"]) {
+      expect(html).toContain(label);
+    }
+    expect(html).toContain("£900.00");
     expect(html).toContain("£400.00");
     expect(html).toContain("£2,500.00");
-    expect(html).not.toContain("£2,900.00");
-  });
-
-  it("never nets what you owe against what you are owed", () => {
-    const html = render(entries);
-    expect(html).toContain("Owed by you");
-    expect(html).toContain("£900.00");
+    expect(html).toContain("€120.00");
     expect(html).not.toContain("£500.00");
+    expect(html).not.toContain("£2,900.00");
     expect(html).toContain(MONEY_SEPARATION_NOTE);
   });
 
-  it("shows a captioned table per section and a ledger table with a phone card list", () => {
+  it("shows each payment line once, in the ledger, not again under its business", () => {
     const html = render(entries);
-    expect(html.match(/<caption/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(html).toContain("Ledger");
+    expect(html.match(/Open in LAX Bid/g)).toHaveLength(6);
+    expect(html.match(/<caption/g)).toHaveLength(1);
+    expect(html).toContain('id="ledger"');
+  });
+
+  it("links each business card to the ledger filtered to that business", () => {
+    const html = render(entries);
+    expect(html).toContain('href="/account/portfolio/money?business=lax_bid#ledger"');
+    expect(html).toContain('href="/account/portfolio/money?business=lax_art#ledger"');
+  });
+
+  it("lays the phone ledger out as compact rows: amount, type and business, date, status", () => {
+    const html = render(entries);
     expect(html).toContain('aria-label="Ledger"');
+    expect(html).toContain("Owed by you · LAX Bid Ltd");
+    expect(html).toContain("1 Mar 2026");
+  });
+
+  it("writes statuses in sentence case", () => {
+    const html = render(entries);
+    expect(html).toContain("Pending");
+    expect(html).toContain("normal-case");
   });
 
   it("links each entry to its product and drops an unsafe link", () => {
@@ -72,17 +91,18 @@ describe("PortfolioMoney", () => {
     expect(html).toContain("No link");
   });
 
-  it("offers business, type and currency filters", () => {
+  it("offers a Filter button counting the applied filters, with a chip for each", () => {
     const html = render(entries, { currency: "GBP" });
-    for (const label of ["business", "type", "currency"]) {
-      expect(html).toContain(`Filter by ${label}`);
-    }
-    expect(html).toContain('href="/account/portfolio/money?section=received&amp;currency=GBP"');
-    expect(html).toContain("Clear filters");
+    expect(html).toContain(">Filter<");
+    expect(html).toContain(", 1 applied");
+    expect(html).toContain('aria-label="Remove Currency filter: GBP"');
+    expect(html).toContain("Showing 3 of 4 entries");
+    expect(html).not.toContain('role="search"');
   });
 
   it("reports no results when filters hide every entry", () => {
     const html = render(entries, { currency: "USD" });
     expect(html).toContain("No money entries match these filters");
+    expect(html).toContain("Clear all filters");
   });
 });

@@ -1,15 +1,18 @@
-import { formatCurrencyTotals, formatDate, formatMinorUnits } from "@/lib/format-money";
+import type { FilterFieldVm } from "@/lib/filter-query";
+import { formatDate, formatMinorUnits } from "@/lib/format-money";
 import { MONEY_SECTION_LABELS, MONEY_STATUS_LABELS } from "@/server/domain/portfolio-labels";
-import { hasActiveFilter } from "@/server/domain/portfolio-query";
+import {
+  LEDGER_ANCHOR,
+  type MoneyPageVm,
+  type MoneySummaryCardVm,
+} from "@/server/domain/portfolio-money-page.vm";
 import { safeDeepLink } from "@/server/domain/safe-deep-link";
 import {
   LAX_BUSINESS_KEYS,
   type LaxBusinessKey,
   type LaxMoneyEntryV1,
   MONEY_SECTION_KEYS,
-  type MoneyDirectionSectionVm,
   type MoneyFilter,
-  type MoneyVm,
   moneySectionOf,
 } from "@auction/lax-ecosystem";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -23,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
-import { PortfolioFilters } from "./portfolio-filters";
+import { FilterToolbar } from "./filter-toolbar.client";
+import { SENTENCE_CASE_BADGE } from "./portfolio-parts";
 
 const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
   lax_bid: "LAX Bid",
@@ -45,112 +49,69 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
 
 function EntryStatus({ entry }: { entry: LaxMoneyEntryV1 }) {
   return (
-    <StatusBadge variant={entry.status === "cancelled" ? "danger" : "neutral"}>
+    <StatusBadge
+      variant={entry.status === "cancelled" ? "danger" : "neutral"}
+      className={SENTENCE_CASE_BADGE}
+    >
       {MONEY_STATUS_LABELS[entry.status]}
     </StatusBadge>
   );
 }
 
-function SectionBlock({
-  legalName,
-  section,
-}: {
-  legalName: string;
-  section: MoneyDirectionSectionVm;
-}) {
-  const label = MONEY_SECTION_LABELS[section.section];
+function SummaryCards({ cards }: { cards: MoneySummaryCardVm[] }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-base font-semibold">{label}</h3>
-        <p className="font-headline text-lg font-semibold tabular-nums">
-          {section.subtotals.length > 0
-            ? formatCurrencyTotals(section.subtotals)
-            : "Nothing counted"}
-        </p>
-      </div>
-      <div className="hidden md:block">
-        <Table>
-          <TableCaption className="sr-only">
-            {legalName}: {label.toLowerCase()}, newest first.
-          </TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Date</TableHead>
-              <TableHead scope="col">Status</TableHead>
-              <TableHead scope="col" className="text-right">
-                Amount
-              </TableHead>
-              <TableHead scope="col">
-                <span className="sr-only">Link</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {section.entries.map((entry) => (
-              <TableRow key={`${entry.business.key}:${entry.id}`}>
-                <TableCell className="whitespace-nowrap">{formatDate(entry.occurredAt)}</TableCell>
-                <TableCell>
-                  <EntryStatus entry={entry} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatMinorUnits(entry.amount, entry.currency)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <EntryLink entry={entry} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <ul
-        className="flex flex-col divide-y divide-border-hairline md:hidden"
-        aria-label={`${legalName}: ${label.toLowerCase()}`}
-      >
-        {section.entries.map((entry) => (
-          <li key={`${entry.business.key}:${entry.id}`} className="flex flex-col gap-1 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-medium tabular-nums">
-                {formatMinorUnits(entry.amount, entry.currency)}
-              </span>
-              <EntryStatus entry={entry} />
-            </div>
-            <span className="text-xs text-on-surface-variant">{formatDate(entry.occurredAt)}</span>
-            <span className="text-sm">
-              <EntryLink entry={entry} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Groups({ groups }: { groups: MoneyVm["groups"] }) {
-  return (
-    <>
-      {groups.map((group) => (
-        <section
-          key={group.key}
-          aria-labelledby={`money-${group.key}-heading`}
-          className="flex flex-col gap-5 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+    <section aria-label="Totals by business" className="grid gap-4 md:grid-cols-2">
+      {cards.map((card) => (
+        <article
+          key={card.key}
+          aria-labelledby={`money-${card.key}-heading`}
+          className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
         >
-          <h2 id={`money-${group.key}-heading`} className="font-headline text-lg font-semibold">
-            {group.legalName}
+          <h2 id={`money-${card.key}-heading`} className="font-headline text-lg font-semibold">
+            {card.legalName}
           </h2>
-          {group.sections.map((section) => (
-            <SectionBlock key={section.section} legalName={group.legalName} section={section} />
-          ))}
-        </section>
+          <dl className="flex flex-col divide-y divide-border-hairline">
+            {card.lines.map((line) => (
+              <div
+                key={line.section}
+                className="flex items-baseline justify-between gap-4 py-2 first:pt-0"
+              >
+                <dt className="text-sm text-on-surface-variant">{line.label}</dt>
+                <dd className="flex flex-col items-end font-headline text-base font-semibold tabular-nums">
+                  {line.totals.length > 0 ? (
+                    line.totals.map((total) => (
+                      <span key={total.currency}>
+                        {formatMinorUnits(total.amount, total.currency)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm font-normal text-on-surface-variant">
+                      Nothing counted
+                    </span>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <a
+            href={card.ledgerHref}
+            className="inline-flex min-h-11 items-center text-sm font-medium underline"
+          >
+            See {card.legalName} payments in the ledger
+          </a>
+        </article>
       ))}
-    </>
+    </section>
   );
 }
 
 function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
   return (
-    <section aria-labelledby="money-ledger-heading" className="flex flex-col gap-3">
+    <section
+      id={LEDGER_ANCHOR}
+      aria-labelledby="money-ledger-heading"
+      className="flex scroll-mt-4 flex-col gap-3"
+    >
       <h2 id="money-ledger-heading" className="font-headline text-lg font-semibold">
         Ledger
       </h2>
@@ -193,14 +154,11 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
           </TableBody>
         </Table>
       </div>
-      <ul className="flex flex-col gap-3 md:hidden" aria-label="Ledger">
+      <ul className="flex flex-col divide-y divide-border-hairline md:hidden" aria-label="Ledger">
         {ledger.map((entry) => (
-          <li
-            key={`${entry.business.key}:${entry.id}`}
-            className="flex flex-col gap-2 rounded-2xl border border-border-hairline bg-surface p-4"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="font-headline text-lg font-semibold tabular-nums">
+          <li key={`${entry.business.key}:${entry.id}`} className="flex flex-col gap-0.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-headline text-base font-semibold tabular-nums">
                 {formatMinorUnits(entry.amount, entry.currency)}
               </p>
               <EntryStatus entry={entry} />
@@ -208,9 +166,8 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
             <p className="text-sm">
               {MONEY_SECTION_LABELS[moneySectionOf(entry)]} · {entry.business.legalName}
             </p>
-            <p className="text-xs text-on-surface-variant">{formatDate(entry.occurredAt)}</p>
-            <p className="text-sm">
-              <EntryLink entry={entry} />
+            <p className="text-xs text-on-surface-variant">
+              {formatDate(entry.occurredAt)} · <EntryLink entry={entry} />
             </p>
           </li>
         ))}
@@ -219,70 +176,74 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
   );
 }
 
+function toFields(filter: MoneyFilter, currencies: string[]): FilterFieldVm[] {
+  return [
+    {
+      name: "business",
+      label: "Business",
+      value: filter.business ?? "",
+      options: LAX_BUSINESS_KEYS.map((value) => ({ value, label: BUSINESS_NAMES[value] })),
+    },
+    {
+      name: "section",
+      label: "Type",
+      value: filter.section ?? "",
+      options: MONEY_SECTION_KEYS.map((value) => ({
+        value,
+        label: MONEY_SECTION_LABELS[value],
+      })),
+    },
+    {
+      name: "currency",
+      label: "Currency",
+      value: filter.currency ?? "",
+      options: currencies.map((value) => ({ value, label: value })),
+    },
+  ];
+}
+
 /**
- * Money by business, then by section, with per-currency subtotals, followed by the ledger and
- * its filters. Nothing here adds sections together or converts a currency.
+ * Totals per business, then the ledger that lists every payment line once. Filters narrow both.
+ * Nothing here adds categories together or converts a currency.
  */
 export function PortfolioMoney({
-  vm,
+  page,
   filter,
   action,
-  currencies,
+  totalCount,
 }: {
-  vm: MoneyVm;
+  page: MoneyPageVm;
   filter: MoneyFilter;
   action: string;
-  currencies: string[];
+  /** How many entries exist before any filter, so the count can say "3 of 12". */
+  totalCount: number;
 }) {
+  const { money } = page;
   return (
     <>
       <p className="text-sm text-on-surface-variant">{MONEY_SEPARATION_NOTE}</p>
-      <PortfolioFilters
+      <FilterToolbar
         action={action}
-        label="Filter your money"
-        isFiltered={hasActiveFilter(filter)}
-        fields={[
-          {
-            name: "business",
-            label: "Business",
-            value: filter.business ?? "",
-            options: LAX_BUSINESS_KEYS.map((value) => ({
-              value,
-              label: BUSINESS_NAMES[value],
-            })),
-          },
-          {
-            name: "section",
-            label: "Type",
-            value: filter.section ?? "",
-            options: MONEY_SECTION_KEYS.map((value) => ({
-              value,
-              label: MONEY_SECTION_LABELS[value],
-            })),
-          },
-          {
-            name: "currency",
-            label: "Currency",
-            value: filter.currency ?? "",
-            options: currencies.map((value) => ({ value, label: value })),
-          },
-        ]}
+        noun="entries"
+        fields={toFields(filter, page.currencies)}
+        shown={money.ledger.length}
+        total={totalCount}
       />
-      {vm.noResults ? (
+      {money.noResults ? (
         <EmptyState
           headingLevel="h2"
           title="No money entries match these filters"
           description="Try a different filter, or clear them to see everything."
           action={
             <a href={action} className="inline-flex min-h-11 items-center underline">
-              Clear filters
+              Clear all filters
             </a>
           }
         />
       ) : (
         <>
-          <Groups groups={vm.groups} />
-          <Ledger ledger={vm.ledger} />
+          <SummaryCards cards={page.summary} />
+          <Ledger ledger={money.ledger} />
         </>
       )}
     </>

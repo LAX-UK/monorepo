@@ -1,7 +1,7 @@
+import type { FilterFieldVm } from "@/lib/filter-query";
 import { formatDate } from "@/lib/format-money";
 import { safeImageUrl } from "@/lib/media-origins";
 import { PRODUCT_LABELS, STATUS_LABELS } from "@/server/domain/portfolio-labels";
-import { hasActiveFilter } from "@/server/domain/portfolio-query";
 import { workDetailHref } from "@/server/domain/portfolio-routes";
 import {
   type AllocationCount,
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
-import { PortfolioFilters } from "./portfolio-filters";
+import { FilterToolbar } from "./filter-toolbar.client";
 import {
   CurrencyAmounts,
   PortfolioStatusBadge,
@@ -170,7 +170,7 @@ function AllocationLine({ label, counts }: { label: string; counts: AllocationCo
   );
 }
 
-function toFields(options: FilterOptions, filter: HoldingsFilter) {
+function toFields(options: FilterOptions, filter: HoldingsFilter): FilterFieldVm[] {
   return [
     {
       name: "status",
@@ -196,6 +196,7 @@ function toFields(options: FilterOptions, filter: HoldingsFilter) {
     {
       name: "year",
       label: "Year acquired",
+      chipPrefix: "Acquired in",
       value: filter.year === undefined ? "" : String(filter.year),
       options: options.years.map((year) => ({ value: String(year), label: String(year) })),
     },
@@ -208,18 +209,21 @@ function toFields(options: FilterOptions, filter: HoldingsFilter) {
   ];
 }
 
-/** The filters, the works as a table (cards on a phone), and counts by artist and product. */
+/** Search and filters, the works as a table (cards on a phone), and counts by artist and product. */
 export function PortfolioHoldings({
   holdings,
   options,
   filter,
   action,
+  totalCount,
   imageOrigins,
 }: {
   holdings: HoldingsVm;
   options: FilterOptions;
   filter: HoldingsFilter;
   action: string;
+  /** How many works exist before any filter, so the count can say "3 of 12". */
+  totalCount: number;
   imageOrigins: readonly string[];
 }) {
   return (
@@ -227,11 +231,18 @@ export function PortfolioHoldings({
       <h2 id="portfolio-holdings-heading" className="font-headline text-lg font-semibold">
         Your works
       </h2>
-      <PortfolioFilters
+      <FilterToolbar
         action={action}
-        label="Filter your works"
+        noun="works"
+        search={{
+          name: "q",
+          value: filter.search ?? "",
+          label: "Search your works by title or artist",
+          placeholder: "Search works",
+        }}
         fields={toFields(options, filter)}
-        isFiltered={hasActiveFilter(filter)}
+        shown={holdings.rows.length}
+        total={totalCount}
       />
       {holdings.noResults ? (
         <EmptyState
@@ -240,7 +251,7 @@ export function PortfolioHoldings({
           description="Try a different filter, or clear them to see every work."
           action={
             <a href={action} className="inline-flex min-h-11 items-center underline">
-              Clear filters
+              Clear all filters
             </a>
           }
         />
