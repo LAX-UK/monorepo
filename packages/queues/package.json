@@ -27,6 +27,7 @@
     "@auction/db": "workspace:*",
     "@auction/exports": "workspace:*",
     "@auction/observability": "workspace:*",
+    "@auction/types": "workspace:*",
     "bullmq": "^5.74.1",
     "bullmq-otel": "^1.1.0",
     "drizzle-orm": "^0.45.2",

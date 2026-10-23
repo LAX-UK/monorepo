@@ -8,6 +8,7 @@ import {
   VALIDATE_UPLOAD_QUEUE_NAME,
   WEBHOOK_EVENTS_QUEUE_NAME,
 } from "./queue-names.js";
+import { ATG_QUEUE_REGISTRY } from "./registries/atg.js";
 import { FINANCE_CRON_QUEUE_REGISTRY } from "./registries/finance-cron.js";
 import { MAINTENANCE_QUEUE_REGISTRY } from "./registries/maintenance.js";
 import { MARKETING_QUEUE_REGISTRY } from "./registries/marketing.js";
@@ -167,6 +168,7 @@ export const QUEUE_REGISTRY = {
     },
     description: "Exhausted-retry jobs for inspection and replay",
   },
+  ...ATG_QUEUE_REGISTRY,
   ...MARKETING_QUEUE_REGISTRY,
   ...FINANCE_CRON_QUEUE_REGISTRY,
   ...PLATFORM_CRON_QUEUE_REGISTRY,

@@ -20,3 +20,4 @@ export const PAYOUT_SETTLEMENT_QUEUE_NAME = "payout-settlement" as const;
 export const PAYOUT_STATEMENTS_QUEUE_NAME = "payout-statements" as const;
 export const LEGAL_ENTITY_ARCHIVE_QUEUE_NAME = "legal-entity-archive" as const;
 export const DATA_EXPORT_QUEUE_NAME = "data-export" as const;
+export const ATG_SYNC_QUEUE_NAME = "atg-sync" as const;

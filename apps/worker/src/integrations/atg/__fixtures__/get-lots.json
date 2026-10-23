@@ -1,0 +1,35 @@
+[
+  {
+    "LotId": "6f0d2b7e-1c1a-4c55-9d4f-0a6b8f3f1a01",
+    "LotNumber": "1",
+    "Title": "Untitled (Blue)",
+    "AuctionId": "0e9c8a5d-77f1-4a43-8a8b-2f8f0d0c9b10",
+    "EndTimeUtc": "/Date(1792072800000-0000)/",
+    "Status": 2,
+    "Sold": true,
+    "HammerPrice": 1500,
+    "TotalHammerPrice": 1500,
+    "CurrentMaxBid": 1500,
+    "NumberOfBids": 7,
+    "NextMinimumBid": 1600,
+    "WinningBidderId": "c3c1d9a2-5b8e-4a77-9f0e-6f2d1e4b7a22",
+    "ImageURLs": ["https://images.example/1.jpg"]
+  },
+  {
+    "LotId": "6f0d2b7e-1c1a-4c55-9d4f-0a6b8f3f1a02",
+    "LotNumber": "2",
+    "Title": "Study II",
+    "AuctionId": "0e9c8a5d-77f1-4a43-8a8b-2f8f0d0c9b10",
+    "EndTimeUtc": null,
+    "Status": 0,
+    "Sold": false,
+    "HammerPrice": null,
+    "CurrentMaxBid": 0,
+    "NumberOfBids": 0,
+    "WinningBidderId": null
+  },
+  {
+    "LotId": null,
+    "LotNumber": "3"
+  }
+]
