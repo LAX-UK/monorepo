@@ -43,6 +43,21 @@ describe("buildSaleDetailTabSpecs", () => {
     ]);
   });
 
+  it("adds the ATG tab after press only when requested", () => {
+    const withAtg = buildSaleDetailTabSpecs({ ...base, deliveryMode: "online", showAtg: true });
+    expect(withAtg.map((t) => t.id)).toEqual([
+      "overview",
+      "lots",
+      "registrations",
+      "documents",
+      "press",
+      "atg",
+      "schedule",
+    ]);
+    const atg = withAtg.find((t) => t.id === "atg");
+    expect(atg).toMatchObject({ label: "ATG", href: "/admin/sales/sale-1/atg" });
+  });
+
   it("shows telephone pending badge only for saleroom sales", () => {
     const tabs = buildSaleDetailTabSpecs({
       ...base,

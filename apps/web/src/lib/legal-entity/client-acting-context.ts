@@ -34,19 +34,35 @@ export function parseActingLegalEntityId(
   return isUuidString(raw) ? raw : undefined;
 }
 
-/** Set or clear the acting legal entity cookie. We expire after 1 year and
- * scope the cookie to `path=/` with `SameSite=Lax`. Cross-subdomain support
- * (`.lax.bid`) is opt-in via `NEXT_PUBLIC_COOKIE_DOMAIN`.
+const EXPIRED = "Thu, 01 Jan 1970 00:00:00 GMT";
+
+/**
+ * Set or clear the acting legal entity cookie. It is host-only (no `Domain`), so it never
+ * reaches sibling subdomains such as the ATG White Label on `auctions.lax.bid`; every reader is
+ * on the Bid origin. It expires after a year, with `path=/` and `SameSite=Lax`.
  */
 export function setClientActingLegalEntityId(legalEntityId: string | null): void {
   if (typeof document === "undefined") return;
-  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  expireSharedActingCookie();
   const expires = legalEntityId
     ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString()
-    : "Thu, 01 Jan 1970 00:00:00 GMT";
+    : EXPIRED;
   const value = legalEntityId ? encodeURIComponent(legalEntityId) : "";
-  const domainPart = domain ? `; domain=${domain}` : "";
-  document.cookie = `${ACTING_LEGAL_ENTITY_COOKIE}=${value}; path=/; expires=${expires}; SameSite=Lax${domainPart}`;
+  document.cookie = `${ACTING_LEGAL_ENTITY_COOKIE}=${value}; path=/; expires=${expires}; SameSite=Lax`;
+}
+
+/**
+ * Removes the copy older deployments set with `Domain=<NEXT_PUBLIC_COOKIE_DOMAIN>`. Left in
+ * place it would be sent beside the host-only cookie, and as the older cookie it is listed
+ * first and wins on the server. Only a cookie written with the same `Domain` can be removed, and
+ * `document.cookie` is the one place a response can expire it without replacing the host-only
+ * cookie of the same name.
+ */
+export function expireSharedActingCookie(): void {
+  if (typeof document === "undefined") return;
+  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN?.trim();
+  if (!domain) return;
+  document.cookie = `${ACTING_LEGAL_ENTITY_COOKIE}=; path=/; expires=${EXPIRED}; SameSite=Lax; domain=${domain}`;
 }
 
 export function clearClientActingLegalEntityId(): void {

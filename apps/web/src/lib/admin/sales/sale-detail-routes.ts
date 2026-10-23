@@ -10,6 +10,7 @@ export const SALE_DETAIL_TABS = [
   "telephone-bookings",
   "media",
   "press",
+  "atg",
 ] as const;
 
 export type SaleDetailTab = (typeof SALE_DETAIL_TABS)[number];

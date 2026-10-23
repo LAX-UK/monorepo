@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin/load-sale-detail";
 import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -19,6 +20,7 @@ import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type {
   ArtistProfile,
+  AtgOwnershipState,
   CategoryNode,
   Lot,
   Sale,
@@ -45,6 +47,8 @@ export type SaleSetupPageModel = {
   canEditCatalog: boolean;
   pendingRegistrationCount: number | null;
   connectRequiredByLotId: Record<string, boolean>;
+  /** Set while ATG sync is on and the viewer manages sales; "atg" shows the edit alert. */
+  sellingPlatform: AtgOwnershipState | null;
 };
 
 type LoadSaleSetupPageInput = {
@@ -71,18 +75,26 @@ export async function loadAdminSaleSetupPage({
 
   const stepParam = firstString(step)?.trim() as SaleSetupStepId | undefined;
 
-  const [categories, artistResult, venuesResult, pendingRegistrationCount, connectRequiredByLotId] =
-    await Promise.all([
-      (async () => (await getServerCategoryReader()).tree())(),
-      getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
-      getWriteContainer()
-        .adminVenues.list({
-          ...(sale.createdByLegalEntityId ? { legalEntityId: sale.createdByLegalEntityId } : {}),
-        })
-        .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
-      loadAdminSalePendingRegistrationCount(saleId, sale),
-      Promise.resolve(connectRequiredFromLots(lots)),
-    ]);
+  const canManageSale = userHasAccessTo(role, staffRole, SALES_ACCESS);
+  const [
+    categories,
+    artistResult,
+    venuesResult,
+    pendingRegistrationCount,
+    connectRequiredByLotId,
+    sellingPlatform,
+  ] = await Promise.all([
+    (async () => (await getServerCategoryReader()).tree())(),
+    getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
+    getWriteContainer()
+      .adminVenues.list({
+        ...(sale.createdByLegalEntityId ? { legalEntityId: sale.createdByLegalEntityId } : {}),
+      })
+      .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
+    loadAdminSalePendingRegistrationCount(saleId, sale),
+    Promise.resolve(connectRequiredFromLots(lots)),
+    canManageSale ? getAtgSaleSellingPlatform(sale) : Promise.resolve(null),
+  ]);
 
   const initialStep =
     stepParam ??
@@ -112,9 +124,10 @@ export async function loadAdminSaleSetupPage({
     venues: venuesResult.ok ? venuesResult.data.venues : [],
     artists: artistResult.rows,
     englishOnlyAuctionsLocked: isEnglishOnlyAuctionsLocked(),
-    canManageSale: userHasAccessTo(role, staffRole, SALES_ACCESS),
+    canManageSale,
     canEditCatalog: userHasAccessTo(role, staffRole, LOTS_ACCESS),
     pendingRegistrationCount,
     connectRequiredByLotId,
+    sellingPlatform,
   };
 }

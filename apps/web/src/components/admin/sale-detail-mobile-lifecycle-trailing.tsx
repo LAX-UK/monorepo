@@ -19,7 +19,9 @@ type Props = {
   saleId: string;
   saleTitle: string;
   canPublish: boolean;
+  showPublishMenuItem?: boolean;
   publishReady?: boolean;
+  publishBlockedReason?: string;
   canUnpublish: boolean;
   canCancel: boolean;
   canDelete: boolean;
@@ -31,7 +33,9 @@ export function SaleDetailMobileLifecycleTrailing({
   saleId,
   saleTitle,
   canPublish,
+  showPublishMenuItem = canPublish,
   publishReady = true,
+  publishBlockedReason,
   canUnpublish,
   canCancel,
   canDelete,
@@ -44,7 +48,7 @@ export function SaleDetailMobileLifecycleTrailing({
   const [confirmKind, setConfirmKind] = useState<SaleLifecycleActionKind | null>(null);
 
   const lifecycleItems = buildSaleLifecycleActionItems({
-    canPublish,
+    canPublish: showPublishMenuItem,
     canUnpublish,
     canMarkOnsiteEnded,
     canCancel,
@@ -75,15 +79,18 @@ export function SaleDetailMobileLifecycleTrailing({
             type="button"
             size="sm"
             variant="outline"
-            disabled={pending || (item.kind === "publish" && !publishReady)}
+            disabled={pending || (item.kind === "publish" && (!canPublish || !publishReady))}
             title={
-              item.kind === "publish" && !publishReady
-                ? "Complete sale setup on the review step before publishing"
+              item.kind === "publish"
+                ? (publishBlockedReason ??
+                  (!publishReady
+                    ? "Complete sale setup on the review step before publishing"
+                    : undefined))
                 : undefined
             }
             className="min-h-11"
             onClick={() => {
-              if (item.kind === "publish" && !publishReady) return;
+              if (item.kind === "publish" && (!canPublish || !publishReady)) return;
               if (item.kind === "publish") setPublishOpen(true);
               else if (item.kind === "delete") setDeleteOpen(true);
               else setConfirmKind(item.kind);

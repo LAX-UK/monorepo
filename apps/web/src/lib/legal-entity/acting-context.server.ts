@@ -15,10 +15,6 @@ import { ACTING_LEGAL_ENTITY_COOKIE, X_LEGAL_ENTITY_ID_HEADER } from "./client-a
 
 const DEFAULT_ACTING_COOKIE_MAX_AGE_SEC = 365 * 24 * 60 * 60;
 
-function actingCookieDomain(): string | undefined {
-  return process.env.NEXT_PUBLIC_COOKIE_DOMAIN ?? process.env.COOKIE_DOMAIN;
-}
-
 /** Set the acting cookie to the user's personal entity. */
 async function setPersonalActingLegalEntityCookie(
   memberships: LegalEntitySummary[],
@@ -26,7 +22,6 @@ async function setPersonalActingLegalEntityCookie(
   if (memberships.length === 0) return;
   const personal = memberships.find((m) => m.kind === "individual") ?? memberships[0];
   if (!personal) return;
-  const domain = actingCookieDomain();
 
   try {
     const jar = await cookies();
@@ -35,7 +30,6 @@ async function setPersonalActingLegalEntityCookie(
       sameSite: "lax",
       maxAge: DEFAULT_ACTING_COOKIE_MAX_AGE_SEC,
       secure: process.env.NODE_ENV === "production",
-      ...(domain ? { domain } : {}),
     });
   } catch {
     /* cookie mutation unavailable (e.g. fully static segment) */
@@ -56,14 +50,12 @@ async function seedPersonalActingLegalEntityCookieIfAbsent(
 
 /** Clear a stale acting-entity cookie (e.g. after org removal or session change). */
 async function clearActingLegalEntityCookie(): Promise<void> {
-  const domain = actingCookieDomain();
   try {
     const jar = await cookies();
     jar.set(ACTING_LEGAL_ENTITY_COOKIE, "", {
       path: "/",
       maxAge: 0,
       sameSite: "lax",
-      ...(domain ? { domain } : {}),
     });
   } catch {
     /* cookie mutation unavailable */

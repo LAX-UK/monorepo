@@ -1,4 +1,5 @@
 import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
+import { atgCatalogState, atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type {
@@ -68,6 +69,12 @@ export type SaleroomDetailPageVM = {
   showPressSection: boolean;
   overviewVM: SaleOverviewVM;
   lotVMs: SaleLotCardVM[];
+  /** Sale is selling on ATG: the page is a read-only catalogue that links out to bid. */
+  atgReadOnly: boolean;
+  /** Sale status for badges and timers; ATG-owned drafts read as upcoming, live or ended. */
+  displayStatus: Sale["status"];
+  /** Buyer actions on lax.bid; always false for ATG-owned sales. */
+  canParticipate: boolean;
   liveLotsCount: number;
   catalogTotalPages: number;
   catalogPageHref: (page: number) => string;
@@ -150,6 +157,9 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   } = input;
   const now = input.now ?? new Date();
   const bundle = shell;
+  const atgState = atgCatalogState(bundle.sale);
+  /** Badges, timers and filters only; bidding and registration gates keep `bundle.sale`. */
+  const displaySale = atgDisplaySale(bundle.sale, now);
   const base = getSiteUrl();
   const viewerUserId = session?.id ?? null;
   const basePath = salePath(bundle.sale);
@@ -172,7 +182,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       : null;
   const coverBlurDataURL = bundle.sale.coverImageAssets?.[0]?.blurDataURL ?? null;
 
-  const heroVM = mapSaleToHeroVM(bundle.sale, {
+  const heroVM = mapSaleToHeroVM(displaySale, {
     totalLots: lotsPage.total,
     shareUrl,
     now,
@@ -212,6 +222,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       now,
       initialWatching: secondary.watchedLotIds.has(lot.id),
       catalogLinkParams: lotLinkParams,
+      ...(atgState ? { atgState } : {}),
     }),
   );
 
@@ -327,6 +338,9 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     showPressSection,
     overviewVM,
     lotVMs,
+    atgReadOnly: atgState != null,
+    displayStatus: displaySale.status,
+    canParticipate: viewer.canParticipateAsBuyer && !atgState,
     liveLotsCount,
     catalogTotalPages,
     catalogPageHref,

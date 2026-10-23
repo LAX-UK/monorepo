@@ -19,8 +19,11 @@ import {
   type AdminDomainEventRow,
   getAdminDomainEventsForAggregate,
 } from "@/lib/data/http/admin.server";
+import { getAtgLotSyncView } from "@/lib/data/http/atg.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
-import type { Lot } from "@auction/types";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { type AtgLotSyncView, type Lot, type UserRole, userHasAccessTo } from "@auction/types";
 
 export type LotOverviewPageModel = {
   lotId: string;
@@ -32,6 +35,8 @@ export type LotOverviewPageModel = {
   attention: AdminLotAttention | null;
   kpiTrends: AdminLotOverviewKpiTrends | null;
   kpiPeriodDays: AdminKpiPeriodDays;
+  /** ATG link state; only loaded for staff who manage sales. */
+  atgLot: AtgLotSyncView | null;
 };
 
 /** Data/composition boundary for `/admin/lots/[id]` overview tab. */
@@ -42,7 +47,7 @@ export async function loadAdminLotOverviewPage(
   const kpiPeriodDays = parseAdminKpiPeriod(periodParam);
   const bundle: AdminLotDetailBundle = await loadAdminLotDetail(lotId);
 
-  const [bids, metrics, attention, kpiTrends, activityEvents] = await Promise.all([
+  const [bids, metrics, attention, kpiTrends, activityEvents, user] = await Promise.all([
     getServerLotBids(lotId, 100).catch(() => []),
     getAdminLotDetailMetrics(lotId),
     getAdminLotAttention(lotId),
@@ -52,7 +57,11 @@ export async function loadAdminLotOverviewPage(
       aggregateId: lotId,
       limit: 100,
     }).catch(() => []),
+    getServerSessionUser().catch(() => null),
   ]);
+  const canSeeAtg =
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+  const atgLot = canSeeAtg ? await getAtgLotSyncView(bundle.auction.saleId, lotId) : null;
 
   return {
     lotId,
@@ -64,5 +73,6 @@ export async function loadAdminLotOverviewPage(
     attention,
     kpiTrends,
     kpiPeriodDays,
+    atgLot,
   };
 }

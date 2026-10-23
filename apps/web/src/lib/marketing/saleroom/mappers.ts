@@ -268,9 +268,19 @@ export function mapLotToCardVM(
     now: Date;
     initialWatching?: boolean;
     catalogLinkParams?: CatalogLinkParams;
+    /** Sale is selling on ATG: LAX prices are not the ATG bids, so show where to bid or the result. */
+    atgState?: "live" | "ended";
   },
 ): SaleLotCardVM {
   const estimate = lotEstimateLine(lot);
+  const price = opts.atgState
+    ? opts.atgState === "live"
+      ? { label: "Bidding", value: "On ATG" }
+      : { label: "Result", value: lot.hasWinner ? "Sold" : "No sale" }
+    : {
+        label: lot.status === "ended" ? "Final bid" : "Current bid",
+        value: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
+      };
   // Server-rendered relative phrase used as a non-ticking secondary line.
   // Important: scheduled lots count down to start (opens-in), active lots to end (closes-in).
   const closingShort =
@@ -288,8 +298,8 @@ export function mapLotToCardVM(
     imageUrl: lot.images[0] ?? null,
     imageAlt: lot.title,
     estimateValue: estimate,
-    currentBidLabel: lot.status === "ended" ? "Final bid" : "Current bid",
-    currentBidValue: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
+    currentBidLabel: price.label,
+    currentBidValue: price.value,
     bidsCountLabel: null,
     closingLabel: lot.status === "active" ? formatLongDateTime(lot.endTime) : null,
     closingShort,

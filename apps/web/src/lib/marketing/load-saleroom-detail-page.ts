@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
+import { atgDisplayLot } from "@/lib/catalog/atg-catalog-display";
 import {
   isPublicCatalogSale,
   viewerCanSeeNonPublicCatalog,
@@ -57,7 +58,13 @@ export async function loadSaleroomDetailPage(input: {
     }),
   ]);
   if (!loaded) notFound();
-  const { shell, lotsPage, categoryLabel, categoryLabels } = loaded;
+  const { shell, categoryLabel, categoryLabels } = loaded;
+  // Lots of an ATG-owned sale are LAX drafts; status chips, counts and filters must read them
+  // as upcoming, live or ended, so every later step works from the display copies.
+  const lotsPage = {
+    ...loaded.lotsPage,
+    items: loaded.lotsPage.items.map((lot) => atgDisplayLot(lot, shell.sale)),
+  };
 
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
   if (!canPreviewCatalog && !isPublicCatalogSale(shell.sale)) {

@@ -36,6 +36,8 @@ type Props = {
   saleForLifecycle: SalePick;
   /** Draft sale / draft lot catalogue ribbon */
   showPreviewRibbon?: boolean;
+  /** Replaces the LAX lifecycle pill (e.g. lots selling on ATG). */
+  statePill?: ReactNode;
   /** Optional shimmer when sale siblings are still loading */
   isSaleQueueLoading?: boolean;
   /** Align first client tick of `LotStatePill` with server `classifyLotLifecycle`. */
@@ -77,6 +79,7 @@ export function ArtworkOnlineLayout({
   auction,
   saleForLifecycle,
   showPreviewRibbon = false,
+  statePill,
   isSaleQueueLoading = false,
   serverClockMs,
   sessionHeader,
@@ -134,11 +137,13 @@ export function ArtworkOnlineLayout({
           <AuctionSessionHeader
             vm={sessionHeader}
             stateSlot={
-              <LotSessionStatePill
-                lot={lifecycleLot}
-                sale={saleForLifecycle}
-                {...(serverClockMs !== undefined ? { initialNowMs: serverClockMs } : {})}
-              />
+              statePill ?? (
+                <LotSessionStatePill
+                  lot={lifecycleLot}
+                  sale={saleForLifecycle}
+                  {...(serverClockMs !== undefined ? { initialNowMs: serverClockMs } : {})}
+                />
+              )
             }
             rightSlot={<LatencyBadgeContainer lotId={auction.id} />}
           />

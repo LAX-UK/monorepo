@@ -1,4 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import { AtgExternalBiddingPanel } from "@/components/marketing/atg-external-bidding";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
@@ -45,14 +46,14 @@ export function SaleroomDetailView({
           <SaleMobileSummaryBar
             start={vm.sale.startTime}
             end={vm.sale.endTime}
-            status={vm.sale.status}
+            status={vm.displayStatus}
             saleTitle={vm.sale.title}
             deliveryMode={vm.sale.deliveryMode}
             directionsUrl={vm.directionsUrl}
             streamUrl={vm.sale.streamUrl}
             sale={vm.sale}
             locationLine={vm.locationLine}
-            canParticipate={vm.viewer.canParticipateAsBuyer}
+            canParticipate={vm.canParticipate}
             {...(vm.liveLotsCount > 0 ? { liveLotsCount: vm.liveLotsCount } : {})}
             {...(vm.isSaleroomSale ? { saleroomLotRefs: vm.saleroomLotRefs } : {})}
           />
@@ -79,24 +80,28 @@ export function SaleroomDetailView({
             explainerContext={explainerContext}
             toolbar={<SaleroomHeroToolbar shareUrl={vm.shareUrl} shareTitle={vm.sale.title} />}
             actions={
-              <SaleroomHeroActionRow
-                hero={vm.heroVM}
-                isAuthenticated={vm.isAuthenticated}
-                deliveryMode={vm.sale.deliveryMode}
-                saleId={vm.sale.id}
-                saleHref={vm.basePath}
-                initialFollowing={vm.initialFollowing}
-                registerToBid={{
-                  show: vm.registerToBidShow,
-                  buyerEntities: vm.buyerEntities,
-                  myRegistrations: vm.myRegistrations,
-                  kycApproved: vm.kycApproved,
-                  kycFeedback: vm.kycFeedback,
-                  orgModuleEnabled: vm.orgModuleEnabled,
-                  saleCurrency: "GBP",
-                }}
-                hasApprovedRegistration={vm.myRegistrations.some((r) => r.status === "approved")}
-              />
+              vm.atgReadOnly ? (
+                <AtgExternalBiddingPanel sale={vm.sale} />
+              ) : (
+                <SaleroomHeroActionRow
+                  hero={vm.heroVM}
+                  isAuthenticated={vm.isAuthenticated}
+                  deliveryMode={vm.sale.deliveryMode}
+                  saleId={vm.sale.id}
+                  saleHref={vm.basePath}
+                  initialFollowing={vm.initialFollowing}
+                  registerToBid={{
+                    show: vm.registerToBidShow,
+                    buyerEntities: vm.buyerEntities,
+                    myRegistrations: vm.myRegistrations,
+                    kycApproved: vm.kycApproved,
+                    kycFeedback: vm.kycFeedback,
+                    orgModuleEnabled: vm.orgModuleEnabled,
+                    saleCurrency: "GBP",
+                  }}
+                  hasApprovedRegistration={vm.myRegistrations.some((r) => r.status === "approved")}
+                />
+              )
             }
           />
         }
@@ -143,7 +148,7 @@ export function SaleroomDetailView({
               allowOnlineBidsBeforeGoLive: vm.sale.allowOnlineBidsBeforeGoLive,
             }}
             isAuthenticated={vm.isAuthenticated}
-            canParticipate={vm.viewer.canParticipateAsBuyer}
+            canParticipate={vm.canParticipate}
             emptyMessage={vm.catalogEmptyMessage}
             clearFiltersHref={vm.catalogClearFiltersHref}
           />

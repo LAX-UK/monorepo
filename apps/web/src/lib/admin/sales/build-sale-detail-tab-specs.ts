@@ -14,6 +14,8 @@ export type BuildSaleDetailTabSpecsInput = {
   pendingTelephoneBookingCount: number;
   documentCount?: number | null;
   overviewAttentionCount: number;
+  /** Staff who can run ATG pushes; the tab is hidden from everyone else. */
+  showAtg?: boolean;
 };
 
 /** Capability-driven sale detail tab nav — single place for tab visibility rules. */
@@ -31,6 +33,7 @@ export function buildSaleDetailTabSpecs(
     pendingTelephoneBookingCount,
     documentCount = null,
     overviewAttentionCount,
+    showAtg = false,
   } = input;
 
   const isSaleroom = isSaleroomDeliveryMode(deliveryMode);
@@ -70,6 +73,7 @@ export function buildSaleDetailTabSpecs(
       label: "Press",
       href: saleDetailTabHref(saleId, "press"),
     },
+    ...(showAtg ? [{ id: "atg", label: "ATG", href: saleDetailTabHref(saleId, "atg") }] : []),
     {
       id: "schedule",
       label: "Schedule",

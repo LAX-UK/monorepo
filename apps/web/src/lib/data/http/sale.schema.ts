@@ -11,6 +11,14 @@ import type {
 } from "@auction/types";
 import { z } from "zod";
 
+function isSellingPlatform(v: unknown): v is NonNullable<Sale["sellingPlatform"]> {
+  return v === "atg" || v === "lax" || v === "free";
+}
+
+function isAtgState(v: unknown): v is "live" | "ended" {
+  return v === "live" || v === "ended";
+}
+
 function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
   const value = typeof raw === "string" ? raw : "";
   if (value === "online" || value === "onsite" || value === "hybrid") return value;
@@ -206,6 +214,8 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     createdBy: String(row.createdBy ?? ""),
     createdAt: zCoerceDate.parse(row.createdAt),
     updatedAt: zCoerceDate.parse(row.updatedAt),
+    ...(isSellingPlatform(row.sellingPlatform) ? { sellingPlatform: row.sellingPlatform } : {}),
+    ...(isAtgState(row.atgAuctionState) ? { atgAuctionState: row.atgAuctionState } : {}),
   };
 });
 
