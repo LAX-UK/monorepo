@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  ACCOUNT_DELETION_CONFIRMATION_PHRASE,
   type AccountAddressDefaultKind,
   type AccountAddressError,
   type AccountAddressInput,
@@ -30,6 +31,8 @@ function rejectionMessage(reason: AccountContactError | AccountAddressError): st
     : contactRejectionMessage(reason);
 }
 
+type NotOk = Exclude<AccountActionResult, { status: "ok" }>;
+
 /**
  * Runs a change as the signed-in person. No session, or a session store that cannot be reached,
  * never reaches the issuer: the first sends the person to sign in again, the second reports
@@ -45,19 +48,28 @@ async function loadActor(): Promise<IdentityActor | "no_session" | "unavailable"
   }
 }
 
-async function actAsSignedInPerson<T>(
+async function asSignedInPerson<T>(
   change: (actor: IdentityActor) => Promise<IdentityCallResult<T>>,
-  success: (value: T) => string,
-): Promise<AccountActionResult> {
+): Promise<{ status: "ok"; value: T } | NotOk> {
   const actor = await loadActor();
   if (actor === "no_session") return { status: "reauth_required" };
   if (actor === "unavailable") return UNAVAILABLE;
   const result = await change(actor);
-  if (result.status === "ok") return { status: "ok", message: success(result.value) };
+  if (result.status === "ok") return result;
   if (result.status === "rejected") {
     return { status: "error", message: rejectionMessage(result.reason) };
   }
-  return result.status === "reauth_required" ? result : UNAVAILABLE;
+  return result.status === "reauth_required"
+    ? result
+    : { status: "error", message: UNAVAILABLE_MESSAGE };
+}
+
+async function actAsSignedInPerson<T>(
+  change: (actor: IdentityActor) => Promise<IdentityCallResult<T>>,
+  success: (value: T) => string,
+): Promise<AccountActionResult> {
+  const result = await asSignedInPerson(change);
+  return result.status === "ok" ? { status: "ok", message: success(result.value) } : result;
 }
 
 export async function renameAccountAction(name: string): Promise<AccountActionResult> {
@@ -227,4 +239,43 @@ export async function confirmEmailChangeAction(
     return { status: "error", message: rejectionMessage(result.reason) };
   }
   return { status: "error", message: UNAVAILABLE_MESSAGE };
+}
+
+/**
+ * Starts the 30-day deletion. Identity re-checks every product at this moment, so the page
+ * that offered the button may be out of date: a refusal is reported as an error and the page
+ * refreshes to show what is in the way.
+ */
+export async function requestAccountDeletionAction(
+  confirmation: string,
+): Promise<AccountActionResult> {
+  if (confirmation !== ACCOUNT_DELETION_CONFIRMATION_PHRASE) {
+    return { status: "error", message: "Type the confirmation phrase exactly as shown." };
+  }
+  const { identity } = getLaxAccountContainer();
+  const result = await asSignedInPerson((actor) => identity.requestDeletion(actor, confirmation));
+  if (result.status !== "ok") return result;
+  switch (result.value.outcome) {
+    case "requested":
+      return { status: "ok", message: "Your account is scheduled for deletion." };
+    case "already_requested":
+      return { status: "ok", message: "Your account was already scheduled for deletion." };
+    case "not_eligible":
+      return {
+        status: "error",
+        message:
+          "Your account can't be deleted just now. What's in the way is listed on this page.",
+      };
+  }
+}
+
+export async function cancelAccountDeletionAction(): Promise<AccountActionResult> {
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.cancelDeletion(actor),
+    (outcome) =>
+      outcome === "cancelled"
+        ? "Deletion cancelled. Your account stays as it is."
+        : "There was no deletion to cancel.",
+  );
 }

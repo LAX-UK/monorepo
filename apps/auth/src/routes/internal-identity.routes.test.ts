@@ -29,6 +29,12 @@ function setup() {
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
   };
+  const accountDeletion = {
+    requestDeletion: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+      outcome: "requested",
+      requestedAt: "2026-10-23T12:00:00.000Z",
+    })),
+  };
   const emailChange = {
     start: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
       ok: true,
@@ -45,6 +51,7 @@ function setup() {
     lifecycle,
     operations: operations as never,
     emailChange: emailChange as never,
+    accountDeletion: accountDeletion as never,
     redis: {
       get: async (key) => tokens.get(key) ?? null,
       set: setToken,
@@ -63,7 +70,7 @@ function setup() {
     machineClientSecret: "machine-secret-at-least-32-characters",
     allowMerge: true,
   });
-  return { app, lifecycle, operations, emailChange, setToken, tokens };
+  return { app, lifecycle, operations, emailChange, accountDeletion, setToken, tokens };
 }
 
 async function issueToken(app: ReturnType<typeof createInternalIdentityRoutes>): Promise<string> {
@@ -193,6 +200,7 @@ describe("internal Identity machine routes", () => {
       lifecycle: {} as never,
       operations: {} as never,
       emailChange: {} as never,
+      accountDeletion: {} as never,
       redis: {
         get: async () => {
           throw new Error("redis unavailable");
@@ -268,8 +276,8 @@ describe("internal Identity machine routes", () => {
     });
   });
 
-  it("routes deletion requests and cancellations through auth operations", async () => {
-    const { app, operations } = setup();
+  it("requests deletion through the shared orchestration and cancels through operations", async () => {
+    const { app, operations, accountDeletion } = setup();
     const token = await issueToken(app);
     const headers = { authorization: `Bearer ${token}` };
 
@@ -283,9 +291,59 @@ describe("internal Identity machine routes", () => {
     });
 
     expect(requested.status).toBe(200);
+    await expect(requested.json()).resolves.toEqual({
+      outcome: "requested",
+      requestedAt: "2026-10-23T12:00:00.000Z",
+    });
+    expect(accountDeletion.requestDeletion).toHaveBeenCalledWith("u1");
+    // The route must not start the grace period itself: only the orchestration may, after it
+    // has asked every product.
+    expect(operations.markDeletionRequested).not.toHaveBeenCalled();
     expect(cancelled.status).toBe(200);
-    expect(operations.markDeletionRequested).toHaveBeenCalledWith("u1");
     expect(operations.cancelDeletionRequested).toHaveBeenCalledWith("u1");
+  });
+
+  it("passes a refusal to the caller as an outcome, with the blockers", async () => {
+    const { app, accountDeletion } = setup();
+    const status = {
+      requestedAt: null,
+      products: [
+        {
+          product: "bid",
+          state: "blocked",
+          blockers: [{ code: "pay", message: "Pay it.", href: null }],
+        },
+        { product: "shop", state: "unavailable", blockers: [] },
+      ],
+    };
+    accountDeletion.requestDeletion.mockResolvedValueOnce({ outcome: "not_eligible", status });
+    const token = await issueToken(app);
+    const response = await app.request("/identity/subjects/u1/deletion-request", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ outcome: "not_eligible", status });
+  });
+
+  it("answers 404 when the person does not exist", async () => {
+    const { app, accountDeletion } = setup();
+    accountDeletion.requestDeletion.mockResolvedValueOnce(null);
+    const token = await issueToken(app);
+    const response = await app.request("/identity/subjects/missing/deletion-request", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("refuses a deletion request without a machine token", async () => {
+    const { app, accountDeletion } = setup();
+    const response = await app.request("/identity/subjects/u1/deletion-request", {
+      method: "POST",
+    });
+    expect(response.status).toBe(401);
+    expect(accountDeletion.requestDeletion).not.toHaveBeenCalled();
   });
 
   it("validates password and session operation bodies", async () => {

@@ -15,6 +15,8 @@ export type IdentitySecurityStatusRecord = {
   phoneNumberVerified: boolean;
   pendingNewEmail: string | null;
   emailChangeExpiresAt: Date | null;
+  /** When the person asked for deletion; null when they have not, or cancelled. */
+  deletionRequestedAt: Date | null;
 };
 
 export type IdentitySessionRecord = {

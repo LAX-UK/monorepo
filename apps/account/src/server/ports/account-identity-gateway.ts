@@ -5,6 +5,8 @@ import type {
   AccountAddressInput,
   AccountContactError,
   AccountContactResponse,
+  AccountDeletionOutcome,
+  AccountDeletionStatus,
   AccountEmailChangeConfirmedResponse,
   AccountSession,
 } from "@auction/identity-contracts";
@@ -50,6 +52,17 @@ export type AccountIdentityGateway = {
     phone: string,
     code: string,
   ): Promise<IdentityCallResult<string>>;
+  /** What is in the way of deleting the account, per product; null when Identity could not answer. */
+  readDeletionStatus(actor: IdentityActor): Promise<AccountDeletionStatus | null>;
+  /**
+   * Starts the 30-day deletion after Identity has asked every product. Needs a recent sign-in
+   * and the typed confirmation phrase. A refusal is an `ok` outcome, not a failure.
+   */
+  requestDeletion(
+    actor: IdentityActor,
+    confirmation: string,
+  ): Promise<IdentityCallResult<AccountDeletionOutcome>>;
+  cancelDeletion(actor: IdentityActor): Promise<IdentityCallResult<"cancelled" | "not_requested">>;
   listSessions(actor: IdentityActor): Promise<IdentityCallResult<AccountSession[]>>;
   /** Signs out one other device. Resolves to how many sessions were ended. */
   revokeSession(actor: IdentityActor, sessionId: string): Promise<IdentityCallResult<number>>;

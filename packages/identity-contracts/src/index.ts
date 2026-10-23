@@ -52,6 +52,31 @@ export {
   type AccountSessionsResponse,
   type AccountSessionsRevokedResponse,
 } from "./account-sessions.js";
+export {
+  ACCOUNT_DELETION_CANCEL_PATH,
+  ACCOUNT_DELETION_CONFIRMATION_PHRASE,
+  ACCOUNT_DELETION_GRACE_DAYS,
+  ACCOUNT_DELETION_PATH,
+  ACCOUNT_DELETION_REQUEST_PATH,
+  DELETION_ELIGIBILITY_PRODUCTS,
+  DELETION_ELIGIBILITY_SUBROUTE,
+  INTERNAL_IDENTITY_ROUTE_PREFIX,
+  accountDeletionCancelOutcomeSchema,
+  accountDeletionProductSchema,
+  accountDeletionOutcomeSchema,
+  accountDeletionStatusSchema,
+  accountDeletionVerdict,
+  deletionBlockerSchema,
+  deletionEligibilityPath,
+  productDeletionEligibilitySchema,
+  type AccountDeletionOutcome,
+  type AccountDeletionProduct,
+  type AccountDeletionStatus,
+  type AccountDeletionVerdict,
+  type DeletionBlocker,
+  type DeletionEligibilityProduct,
+  type ProductDeletionEligibility,
+} from "./deletion-eligibility.js";
 export * from "./auth-at-rest.js";
 export {
   AUTH_ROUTE_PATH,

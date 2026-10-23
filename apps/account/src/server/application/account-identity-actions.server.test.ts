@@ -10,6 +10,8 @@ const identity = {
   sendPhoneCode: vi.fn(),
   verifyPhone: vi.fn(),
   regenerateBackupCodes: vi.fn(),
+  requestDeletion: vi.fn(),
+  cancelDeletion: vi.fn(),
 };
 const loadAccountRecord = vi.fn();
 
@@ -17,10 +19,12 @@ vi.mock("../container", () => ({ getLaxAccountContainer: () => ({ identity }) })
 vi.mock("./load-account-record", () => ({ loadAccountRecord: () => loadAccountRecord() }));
 
 const {
+  cancelAccountDeletionAction,
   cancelEmailChangeAction,
   confirmEmailChangeAction,
   regenerateBackupCodesAction,
   renameAccountAction,
+  requestAccountDeletionAction,
   sendPhoneCodeAction,
   signOutDeviceAction,
   signOutOtherDevicesAction,
@@ -236,6 +240,86 @@ describe("account identity actions", () => {
     it("sends the person through a fresh sign-in when the issuer asks for one", async () => {
       identity.sendPhoneCode.mockResolvedValue({ status: "reauth_required" });
       expect(await sendPhoneCodeAction("+447700900123")).toEqual({ status: "reauth_required" });
+    });
+  });
+
+  describe("deleting the account", () => {
+    const PHRASE = "DELETE MY ACCOUNT";
+
+    it("requests deletion as the signed-in person with the typed phrase", async () => {
+      identity.requestDeletion.mockResolvedValue({
+        status: "ok",
+        value: { outcome: "requested", requestedAt: "2026-10-23T12:00:00.000Z" },
+      });
+      expect(await requestAccountDeletionAction(PHRASE)).toEqual({
+        status: "ok",
+        message: "Your account is scheduled for deletion.",
+      });
+      expect(identity.requestDeletion).toHaveBeenCalledWith(ACTOR, PHRASE);
+    });
+
+    it.each(["", "delete my account", "DELETE", "DELETE MY ACCOUNT "])(
+      "refuses the phrase %j before calling the issuer",
+      async (typed) => {
+        expect(await requestAccountDeletionAction(typed)).toMatchObject({ status: "error" });
+        expect(identity.requestDeletion).not.toHaveBeenCalled();
+      },
+    );
+
+    it("reports a refusal as an error that points at the page, not as success", async () => {
+      identity.requestDeletion.mockResolvedValue({
+        status: "ok",
+        value: { outcome: "not_eligible", status: { requestedAt: null, products: [] } },
+      });
+      expect(await requestAccountDeletionAction(PHRASE)).toEqual({
+        status: "error",
+        message:
+          "Your account can't be deleted just now. What's in the way is listed on this page.",
+      });
+    });
+
+    it("treats an already-requested deletion as done", async () => {
+      identity.requestDeletion.mockResolvedValue({
+        status: "ok",
+        value: { outcome: "already_requested", requestedAt: "2026-10-01T09:00:00.000Z" },
+      });
+      expect(await requestAccountDeletionAction(PHRASE)).toMatchObject({ status: "ok" });
+    });
+
+    it("sends the person through a fresh sign-in when the issuer asks for one", async () => {
+      identity.requestDeletion.mockResolvedValue({ status: "reauth_required" });
+      expect(await requestAccountDeletionAction(PHRASE)).toEqual({ status: "reauth_required" });
+    });
+
+    it("asks for a sign-in, without calling the issuer, when nobody is signed in", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await requestAccountDeletionAction(PHRASE)).toEqual({ status: "reauth_required" });
+      expect(identity.requestDeletion).not.toHaveBeenCalled();
+    });
+
+    it("says nothing changed when the issuer cannot be reached", async () => {
+      identity.requestDeletion.mockResolvedValue({ status: "unavailable" });
+      expect(await requestAccountDeletionAction(PHRASE)).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("Nothing was changed"),
+      });
+    });
+
+    it("cancels a deletion", async () => {
+      identity.cancelDeletion.mockResolvedValue({ status: "ok", value: "cancelled" });
+      expect(await cancelAccountDeletionAction()).toEqual({
+        status: "ok",
+        message: "Deletion cancelled. Your account stays as it is.",
+      });
+      expect(identity.cancelDeletion).toHaveBeenCalledWith(ACTOR);
+    });
+
+    it("says so when there was nothing to cancel", async () => {
+      identity.cancelDeletion.mockResolvedValue({ status: "ok", value: "not_requested" });
+      expect(await cancelAccountDeletionAction()).toMatchObject({
+        status: "ok",
+        message: "There was no deletion to cancel.",
+      });
     });
   });
 });

@@ -76,7 +76,6 @@ export function createTestUserRouteServicesInput(
       revokeAllForUserExcept: vi.fn(),
     } as never,
     authAuditPublisher: { publish: vi.fn(async () => {}) } as never,
-    accountDeletionEligibilityService: { check: vi.fn() } as never,
     twoFactorRequirement: { readMyRequirement: vi.fn() },
     staffInvitationAccept: { accept: vi.fn() },
     ...overrides,

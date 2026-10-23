@@ -40,6 +40,18 @@ describe("buildAccountSections", () => {
 });
 
 describe("buildSecurityGroups", () => {
+  it("offers deleting the account as an Account page, not a link into another product", () => {
+    const groups = buildSecurityGroups({ twoStep: "on", backupCodesRemaining: null }, withBid);
+    expect(groups.map((group) => group.id)).toEqual(["sign-in", "your-account"]);
+    expect(groups[1]?.rows).toEqual([
+      {
+        title: "Delete your account",
+        subtitle: "Permanently delete your LAX account",
+        href: "/account/security/delete",
+      },
+    ]);
+  });
+
   it("opens the hosted password and two-step pages", () => {
     const [group] = buildSecurityGroups(
       { twoStep: "unknown", backupCodesRemaining: null },
@@ -116,7 +128,7 @@ describe("accountInitials", () => {
 });
 
 describe("buildPrivacyGroups", () => {
-  it("links notifications, deletion and policies to Bid", () => {
+  it("links notifications and policies to Bid, and deletion to Account", () => {
     const groups = buildPrivacyGroups(withBid);
     expect(groups.map((g) => g.rows.map((r) => r.title))).toEqual([
       ["Notification preferences"],
@@ -124,10 +136,18 @@ describe("buildPrivacyGroups", () => {
       ["Privacy policy", "Terms of use"],
     ]);
     expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/notifications");
-    expect(groups[1]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/security");
+    expect(groups[1]?.rows[0]?.href).toBe("/account/security/delete");
   });
 
-  it("is empty without Bid", () => {
-    expect(buildPrivacyGroups(withoutBid)).toEqual([]);
+  it("still offers deletion without Bid, since Account owns it", () => {
+    const groups = buildPrivacyGroups(withoutBid);
+    expect(groups.map((g) => g.id)).toEqual(["your-data"]);
+    expect(groups[0]?.rows[0]?.href).toBe("/account/security/delete");
+  });
+
+  it("tells people what deletion checks and that they can cancel", () => {
+    const footer = buildPrivacyGroups(withoutBid)[0]?.footer ?? "";
+    expect(footer).toMatch(/LAX Bid, LAX Shop and lax\.art/);
+    expect(footer).toMatch(/cancel for 30 days/);
   });
 });

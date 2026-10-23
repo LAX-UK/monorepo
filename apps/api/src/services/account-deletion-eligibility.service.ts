@@ -1,56 +1,61 @@
+import type { DeletionBlocker } from "@auction/identity-contracts";
 import type { IAccountDeletionEligibilityReader } from "@auction/persistence/interfaces";
 
-export type AccountDeletionEligibilityResult =
-  | { ok: true }
-  | {
-      ok: false;
-      code:
-        | "account_deletion_already_requested"
-        | "account_deletion_pending_payments"
-        | "account_deletion_active_seller_lots"
-        | "account_deletion_open_payouts";
-      error: string;
-    };
+/**
+ * Stable codes for what LAX Bid can have in flight for a person. They are the same strings the
+ * Bid delete endpoint has always returned, so existing clients keep matching on them.
+ */
+export const BID_DELETION_BLOCKER_CODES = {
+  pendingPayments: "account_deletion_pending_payments",
+  activeSellerLots: "account_deletion_active_seller_lots",
+  openPayouts: "account_deletion_open_payouts",
+} as const;
 
+/**
+ * What LAX Bid says to Identity when asked whether a person can delete their account: the
+ * reasons it cannot yet, each with the Bid page that resolves it. Whether deletion has already
+ * been requested is Identity's to say, so it is not repeated here.
+ */
 export class AccountDeletionEligibilityService {
-  constructor(private readonly reader: IAccountDeletionEligibilityReader) {}
+  constructor(
+    private readonly reader: IAccountDeletionEligibilityReader,
+    /** Public origin of the Bid web app, which the blocker links point into. */
+    private readonly webOrigin: string,
+  ) {}
 
-  async check(userId: string): Promise<AccountDeletionEligibilityResult> {
-    const deletionRequestedAt = await this.reader.getDeletionRequestedAt(userId);
-    if (deletionRequestedAt) {
-      return {
-        ok: false,
-        code: "account_deletion_already_requested",
-        error: "Deletion already requested",
-      };
+  async listBlockers(userId: string): Promise<DeletionBlocker[]> {
+    const link = (path: string) => new URL(path, this.webOrigin).toString();
+    const [hasPendingPayment, hasActiveSellerLot, entityIds] = await Promise.all([
+      this.reader.hasPendingPayment(userId),
+      this.reader.hasActiveSellerLot(userId),
+      this.reader.listActiveMembershipEntityIds(userId),
+    ]);
+    const hasOpenPayout = await this.reader.hasOpenPayoutForEntities(entityIds);
+
+    const blockers: DeletionBlocker[] = [];
+    if (hasPendingPayment) {
+      blockers.push({
+        code: BID_DELETION_BLOCKER_CODES.pendingPayments,
+        message: "You have a payment still to make. Pay it before deleting your account.",
+        href: link("/dashboard/payments"),
+      });
     }
-
-    if (await this.reader.hasPendingPayment(userId)) {
-      return {
-        ok: false,
-        code: "account_deletion_pending_payments",
-        error: "You have unpaid pending payments; resolve them before deleting your account.",
-      };
+    if (hasActiveSellerLot) {
+      blockers.push({
+        code: BID_DELETION_BLOCKER_CODES.activeSellerLots,
+        message:
+          "You have lots in draft, scheduled or live in a sale. Withdraw them or wait until they finish.",
+        href: link("/dashboard/seller/in-sale"),
+      });
     }
-
-    if (await this.reader.hasActiveSellerLot(userId)) {
-      return {
-        ok: false,
-        code: "account_deletion_active_seller_lots",
-        error:
-          "You still have active or scheduled lots as a seller; withdraw or complete them first.",
-      };
+    if (hasOpenPayout) {
+      blockers.push({
+        code: BID_DELETION_BLOCKER_CODES.openPayouts,
+        message:
+          "A payout to you or your organisation is still on its way. It needs to arrive first.",
+        href: link("/dashboard/seller/payouts"),
+      });
     }
-
-    const entityIds = await this.reader.listActiveMembershipEntityIds(userId);
-    if (await this.reader.hasOpenPayoutForEntities(entityIds)) {
-      return {
-        ok: false,
-        code: "account_deletion_open_payouts",
-        error: "Your organisation has payouts still in flight; resolve them before deletion.",
-      };
-    }
-
-    return { ok: true };
+    return blockers;
   }
 }

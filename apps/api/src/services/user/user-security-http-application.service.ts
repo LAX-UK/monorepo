@@ -1,5 +1,4 @@
 import type { IAttributionStore } from "@auction/marketing-events";
-import type { AccountDeletionEligibilityService } from "../account-deletion-eligibility.service.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
 import type { IUserSecurityHttpApplicationService } from "../interfaces/user-routes/user-security-http.js";
@@ -10,7 +9,6 @@ export type UserSecurityHttpDeps = {
   sessionRevocation: SessionRevocationService;
   authAuditPublisher: IAuthAuditPublisher;
   userService: UserService;
-  accountDeletionEligibilityService: AccountDeletionEligibilityService;
   attributionStore: IAttributionStore;
 };
 
@@ -113,13 +111,41 @@ export class UserSecurityHttpApplicationService implements IUserSecurityHttpAppl
     return { status: 200, body: { ok: true } };
   }
 
+  /**
+   * Identity decides: it asks LAX Bid, LAX Shop and anything else the person uses whether they
+   * have something in flight, and starts the 30-day deletion only when every one says no.
+   * This endpoint keeps its old response shape (`error` and `code` of the first thing in the
+   * way) and adds the complete `blockers` list.
+   */
   async requestAccountDeletion(input: { userId: string }): Promise<UserHttpJson> {
-    const eligibility = await this.deps.accountDeletionEligibilityService.check(input.userId);
-    if (!eligibility.ok) {
-      return { status: 409, body: { error: eligibility.error, code: eligibility.code } };
+    const outcome = await this.deps.userService.requestAccountDeletion(input.userId);
+    if (outcome.outcome === "already_requested") {
+      return {
+        status: 409,
+        body: { error: "Deletion already requested", code: "account_deletion_already_requested" },
+      };
+    }
+    if (outcome.outcome === "not_eligible") {
+      const blockers = outcome.status.products.flatMap((product) =>
+        product.blockers.map((blocker) => ({ ...blocker, product: product.product })),
+      );
+      const [first] = blockers;
+      if (first) {
+        return {
+          status: 409,
+          body: { error: first.message, code: first.code, blockers },
+        };
+      }
+      // Nothing was named, but a product could not be asked: refuse rather than guess.
+      return {
+        status: 503,
+        body: {
+          error: "We couldn't check your account just now. Please try again in a moment.",
+          code: "account_deletion_check_unavailable",
+        },
+      };
     }
     await this.deps.attributionStore.delete(input.userId);
-    await this.deps.userService.requestAccountDeletion(input.userId);
     return { status: 200, body: { ok: true } };
   }
 }

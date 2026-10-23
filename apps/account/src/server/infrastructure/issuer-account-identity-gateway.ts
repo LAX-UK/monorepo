@@ -8,6 +8,9 @@ import {
   ACCOUNT_BACKUP_CODES_REGENERATE_PATH,
   ACCOUNT_CONTACT_ERRORS,
   ACCOUNT_CONTACT_PATH,
+  ACCOUNT_DELETION_CANCEL_PATH,
+  ACCOUNT_DELETION_PATH,
+  ACCOUNT_DELETION_REQUEST_PATH,
   ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
   ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
   ACCOUNT_EMAIL_CHANGE_PATH,
@@ -26,6 +29,9 @@ import {
   accountAddressesSchema,
   accountBackupCodesSchema,
   accountContactSchema,
+  accountDeletionCancelOutcomeSchema,
+  accountDeletionOutcomeSchema,
+  accountDeletionStatusSchema,
   accountEmailChangeCancelledSchema,
   accountEmailChangeConfirmedSchema,
   accountEmailChangeStartedSchema,
@@ -183,6 +189,29 @@ export function createIssuerAccountIdentityGateway(
         accountPhoneVerifiedSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.phone } : result;
+    },
+    async readDeletionStatus(actor) {
+      const result = await post(
+        ACCOUNT_DELETION_PATH,
+        { token: actor.accessToken },
+        accountDeletionStatusSchema,
+      );
+      return result.status === "ok" ? result.value : null;
+    },
+    requestDeletion(actor, confirmation) {
+      return post(
+        ACCOUNT_DELETION_REQUEST_PATH,
+        fields(actor, { confirmation }),
+        accountDeletionOutcomeSchema,
+      );
+    },
+    async cancelDeletion(actor) {
+      const result = await post(
+        ACCOUNT_DELETION_CANCEL_PATH,
+        fields(actor),
+        accountDeletionCancelOutcomeSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.outcome } : result;
     },
     async listSessions(actor) {
       const result = await post(ACCOUNT_SESSIONS_PATH, fields(actor), accountSessionsSchema);

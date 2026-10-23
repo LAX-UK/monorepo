@@ -2,8 +2,10 @@ import {
   type AccountAddress,
   type AccountAddressDefaultKind,
   type AccountAddressInput,
+  type AccountDeletionOutcome,
   accountAddressResultSchema,
   accountAddressesSchema,
+  accountDeletionOutcomeSchema,
 } from "@auction/identity-contracts";
 import type {
   IIdentityAddressClient,
@@ -532,12 +534,15 @@ export class HttpIdentityIssuerClient
     );
   }
 
-  async markDeletionRequested(subjectId: string): Promise<void> {
-    await this.machineRequest(
+  async requestAccountDeletion(subjectId: string): Promise<AccountDeletionOutcome> {
+    const body = await this.machineRequest(
       "POST",
       `/identity/subjects/${encodeURIComponent(subjectId)}/deletion-request`,
       {},
     );
+    const parsed = accountDeletionOutcomeSchema.safeParse(body);
+    if (!parsed.success) throw invalidResponse("account deletion");
+    return parsed.data;
   }
 
   private async post(

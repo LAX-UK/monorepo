@@ -1,8 +1,10 @@
+import { ACCOUNT_DELETION_GRACE_DAYS } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { sql } from "drizzle-orm";
 
 export const IDENTITY_DELETION_PURGE_INTERVAL_MS = 24 * 60 * 60_000;
-export const IDENTITY_DELETION_GRACE_DAYS = 30;
+/** The same number LAX Account tells people, so the promise and the purge cannot drift apart. */
+export const IDENTITY_DELETION_GRACE_DAYS = ACCOUNT_DELETION_GRACE_DAYS;
 export const IDENTITY_DELETION_PURGE_BATCH_SIZE = 100;
 
 const DAY_MS = 24 * 60 * 60_000;
