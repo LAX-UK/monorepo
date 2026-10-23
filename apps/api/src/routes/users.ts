@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { ContainerUserAccountRoutesSlice } from "../container.js";
+import { PORTFOLIO_READ_SCOPE } from "../middleware/bid-scope-policy.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -13,6 +14,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { UserRouteDeps } from "./users/_shared.js";
 import { attachUserCategoryInterestsRoutes } from "./users/category-interests.routes.js";
 import { attachUserDashboardRoutes } from "./users/dashboard.routes.js";
+import { attachUserLaxPortfolioRoutes } from "./users/lax-portfolio.routes.js";
 import { attachUserNotificationsRoutes } from "./users/notifications.routes.js";
 import { attachUserPreferencesRoutes } from "./users/preferences.routes.js";
 import { attachUserProfileRoutes } from "./users/profile.routes.js";
@@ -26,6 +28,10 @@ export function createUserRoutes(
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+  });
+  const requirePortfolioRead = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+    acceptedScopes: ["bid.read", PORTFOLIO_READ_SCOPE],
   });
   const requireAuthAllowSuspended = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -48,6 +54,7 @@ export function createUserRoutes(
   const deps: UserRouteDeps = {
     container,
     requireAuth,
+    requirePortfolioRead,
     requireAuthAllowSuspended,
     requirePasswordStepUp,
     requireSessionRevokeAuth,
@@ -57,6 +64,7 @@ export function createUserRoutes(
   attachUserPublicRoutes(r, deps);
   attachUserCategoryInterestsRoutes(r, deps);
   attachUserDashboardRoutes(r, deps);
+  attachUserLaxPortfolioRoutes(r, deps);
   attachUserWatchlistRoutes(r, deps);
   attachUserNotificationsRoutes(r, deps);
   attachUserPreferencesRoutes(r, deps);

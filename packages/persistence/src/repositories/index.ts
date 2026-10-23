@@ -12,6 +12,7 @@ export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";
 export { DrizzleUploadPersistenceRepository } from "./drizzle-upload-persistence.repository.js";
 export { DrizzleSavedSearchRepository } from "./drizzle-saved-search.repository.js";
 export { DrizzleAccountDeletionEligibilityReader } from "./drizzle-account-deletion-eligibility.reader.js";
+export { DrizzleBidPortfolioReader } from "./drizzle-bid-portfolio.reader.js";
 export { DrizzleAccountOnboardingRepository } from "./drizzle-account-onboarding.repository.js";
 export { DrizzleAbsenteeBidRepository } from "./drizzle-absentee-bid.repository.js";
 export { DrizzleBidLotRulesReader } from "./drizzle-bid-lot-rules.reader.js";

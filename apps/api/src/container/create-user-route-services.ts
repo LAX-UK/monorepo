@@ -1,6 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import type { IAttributionStore } from "@auction/marketing-events";
 import type {
+  IBidPortfolioReader,
   ICategoryInterestsEligibilityReader,
   ICategoryInterestsRepository,
   INotificationPreferenceRepository,
@@ -20,6 +21,7 @@ import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolve
 import type { IPaymentBuyerService } from "../services/interfaces/payment-service.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type { UserRouteServices } from "../services/interfaces/user-routes/index.js";
+import { LaxPortfolioHttpApplicationService } from "../services/lax-portfolio/lax-portfolio-http-application.service.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
 import type { ProfileService } from "../services/profile.service.js";
 import type { SavedSearchService } from "../services/saved-search.service.js";
@@ -40,7 +42,8 @@ import { UserWatchlistHttpApplicationService } from "../services/user/user-watch
 import type { WatchlistService } from "../services/watchlist.service.js";
 
 export type CreateUserRouteServicesInput = {
-  env: Pick<Env, "WEB_ORIGIN">;
+  env: Pick<Env, "WEB_ORIGIN" | "LAX_BID_LEGAL_NAME">;
+  bidPortfolioReader: IBidPortfolioReader;
   categoryInterestsEligibilityReader: ICategoryInterestsEligibilityReader;
   categoryInterestsRepository: ICategoryInterestsRepository;
   accountOnboardingService: AccountOnboardingService;
@@ -93,6 +96,12 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       mediaUrlResolver: input.mediaUrlResolver,
       mediaAssetEnricher: input.mediaAssetEnricher,
       saleService: input.saleService,
+    }),
+    laxPortfolioHttp: new LaxPortfolioHttpApplicationService({
+      reader: input.bidPortfolioReader,
+      mediaUrlResolver: input.mediaUrlResolver,
+      webOrigin: input.env.WEB_ORIGIN,
+      legalName: input.env.LAX_BID_LEGAL_NAME,
     }),
     watchlistHttp: new UserWatchlistHttpApplicationService({
       watchlistService: input.watchlistService,

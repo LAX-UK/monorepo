@@ -3,6 +3,7 @@ import type { StaffInvitationAcceptService } from "../../staff-invitation-accept
 import type { IUserAccountOnboardingHttpApplicationService } from "./user-account-onboarding-http.js";
 import type { IUserCategoryInterestsHttpApplicationService } from "./user-category-interests-http.js";
 import type { IUserDashboardHttpApplicationService } from "./user-dashboard-http.js";
+import type { IUserLaxPortfolioHttpApplicationService } from "./user-lax-portfolio-http.js";
 import type { IUserNotificationsHttpApplicationService } from "./user-notifications-http.js";
 import type { IUserPreferencesHttpApplicationService } from "./user-preferences-http.js";
 import type { IUserProfileHttpApplicationService } from "./user-profile-http.js";
@@ -14,6 +15,7 @@ export type UserRouteServices = {
   categoryInterestsHttp: IUserCategoryInterestsHttpApplicationService;
   publicHttp: IUserPublicHttpApplicationService;
   dashboardHttp: IUserDashboardHttpApplicationService;
+  laxPortfolioHttp: IUserLaxPortfolioHttpApplicationService;
   watchlistHttp: IUserWatchlistHttpApplicationService;
   notificationsHttp: IUserNotificationsHttpApplicationService;
   preferencesHttp: IUserPreferencesHttpApplicationService;
@@ -27,6 +29,7 @@ export type UserRouteServices = {
 export type {
   IUserCategoryInterestsHttpApplicationService,
   IUserDashboardHttpApplicationService,
+  IUserLaxPortfolioHttpApplicationService,
   IUserNotificationsHttpApplicationService,
   IUserPreferencesHttpApplicationService,
   IUserProfileHttpApplicationService,

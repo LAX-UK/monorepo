@@ -169,6 +169,9 @@ importers:
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
+      '@auction/lax-ecosystem':
+        specifier: workspace:*
+        version: link:../../packages/lax-ecosystem
       '@auction/lot-lifecycle-app':
         specifier: workspace:*
         version: link:../../packages/lot-lifecycle-app
@@ -266,6 +269,9 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.52
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1

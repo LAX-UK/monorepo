@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type {
+  IBidPortfolioReader,
   IConnectTransferRepository,
   IPaymentExternalRefRepository,
   IPaymentRefundReconcileRepository,
@@ -10,6 +11,7 @@ import type {
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import {
+  DrizzleBidPortfolioReader,
   DrizzleConnectTransferRepository,
   DrizzlePaymentExternalRefRepository,
   DrizzlePaymentRefundReconcileRepository,
@@ -21,6 +23,7 @@ import {
 } from "@auction/persistence/repositories";
 
 export type PaymentsRepositories = {
+  bidPortfolioReader: IBidPortfolioReader;
   payoutRepository: IPayoutRepository;
   connectTransferRepository: IConnectTransferRepository;
   paymentRepo: IPaymentWriteRepository;
@@ -32,6 +35,7 @@ export type PaymentsRepositories = {
 };
 
 export function createPaymentsRepositories(db: Database): PaymentsRepositories {
+  const bidPortfolioReader: IBidPortfolioReader = new DrizzleBidPortfolioReader(db);
   const payoutRepository: IPayoutRepository = new DrizzlePayoutRepository(db);
   const connectTransferRepository: IConnectTransferRepository =
     new DrizzleConnectTransferRepository(db);
@@ -43,6 +47,7 @@ export function createPaymentsRepositories(db: Database): PaymentsRepositories {
   const xeroWebhookEventRepository = new DrizzleXeroWebhookEventRepository(db);
 
   return {
+    bidPortfolioReader,
     payoutRepository,
     connectTransferRepository,
     paymentRepo,
