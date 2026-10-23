@@ -51,7 +51,7 @@ async function signInWithPassword(page: Page): Promise<void> {
   await page.locator("#email").fill(EMAIL);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.locator("#password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign In", exact: true }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 async function signedInEmail(page: Page): Promise<string | null> {
@@ -73,7 +73,7 @@ test.describe("Hosted two-step verification @a11y", () => {
     await signInWithPassword(page);
     await expect.poll(() => signedInEmail(page)).toBe(EMAIL);
     await page.goto(`${issuerOrigin}/two-factor/setup`);
-    await expect(page.getByRole("heading", { name: "Set up authenticator" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Set up two-step verification" })).toBeVisible();
     await expect(page.locator("#setup-password")).not.toHaveAttribute("required", "");
     await expectNoBlockingAxe(page);
     await page.locator("#setup-password").fill(PASSWORD);

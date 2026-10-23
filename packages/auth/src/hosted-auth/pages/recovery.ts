@@ -1,3 +1,4 @@
+import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
@@ -24,7 +25,7 @@ export function buildHostedForgotPasswordHtml(
     brand: view.brand,
     config: view.config,
     body: `<form id="forgot-form" class="auth-form" novalidate>
-      ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${hostedButton({ label: "Send reset link", loadingLabel: "Sending…" })}
       ${turnstileHost()}
       ${statusRegions()}
@@ -39,7 +40,7 @@ export function buildHostedResetPasswordHtml(
 ): string {
   return buildHostedAuthHtml({
     title: "Choose new password",
-    description: `Set a new password for your ${view.brand.productName} account.`,
+    description: `Set a new password for your ${HOSTED_COPY.accountName}.`,
     brand: view.brand,
     config: view.config,
     body: `<form id="reset-form" class="auth-form" novalidate>

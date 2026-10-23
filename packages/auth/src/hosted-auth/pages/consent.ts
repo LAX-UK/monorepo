@@ -1,7 +1,7 @@
-import { REGISTERED_OIDC_CLIENT_IDS } from "@auction/identity-contracts";
-import { selectHostedBrandFromClientName } from "../brand.js";
+import { resolveRegisteredClientIdByName, selectHostedBrand } from "../brand.js";
 import { parseHostedAuthFlow } from "../flow-context.js";
 import { buildHostedAuthHtml, escapeHostedHtml, hostedButton, statusRegions } from "../html.js";
+import { describeHostedScopes } from "../scopes.js";
 import { EMPTY_HOSTED_AUTH_CAPABILITIES, buildHostedAuthPageConfig } from "../view.js";
 
 export { OIDC_CONSENT_SCRIPT } from "../scripts.js";
@@ -11,27 +11,24 @@ export function buildOidcConsentHtml(input: {
   scopes: string[];
   code: string;
 }): string {
-  const brand = selectHostedBrandFromClientName(input.clientName);
-  const clientId =
-    brand.theme === "shop"
-      ? REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB
-      : brand.theme === "bid"
-        ? REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB
-        : "";
+  const clientId = resolveRegisteredClientIdByName(input.clientName);
   const flow = parseHostedAuthFlow(new URLSearchParams(clientId ? { client_id: clientId } : {}));
-  const scopeItems = input.scopes.map((scope) => `<li>${escapeHostedHtml(scope)}</li>`).join("");
+  // Raw scope strings are never shown: they mean nothing to the person being asked.
+  const scopeItems = describeHostedScopes(input.scopes)
+    .map((line) => `<li>${escapeHostedHtml(line)}</li>`)
+    .join("");
   const code = escapeHostedHtml(input.code);
   return buildHostedAuthHtml({
-    title: `Authorize ${input.clientName}`,
-    description: "This application is requesting access to:",
-    brand,
+    title: `Authorise ${input.clientName}`,
+    description: "This app would like to:",
+    brand: selectHostedBrand(clientId),
     config: buildHostedAuthPageConfig(flow, EMPTY_HOSTED_AUTH_CAPABILITIES),
     body: `<ul>${scopeItems}</ul>
     <form id="oidc-consent" class="auth-form">
       <input id="consent-code" type="hidden" value="${code}">
       <div class="actions">
         ${hostedButton({ label: "Deny", kind: "secondary", name: "decision", value: "deny" })}
-        ${hostedButton({ label: "Allow", name: "decision", value: "accept", loadingLabel: "Allowing…" })}
+        ${hostedButton({ label: "Authorise", name: "decision", value: "accept", loadingLabel: "Authorising…" })}
       </div>
     </form>
     ${statusRegions()}`,

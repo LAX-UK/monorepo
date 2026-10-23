@@ -8,7 +8,10 @@
  */
 export const HOSTED_AUTH_TOKENS = {
   obsidian: "#000000",
-  midnight: "#091f5b",
+  /** LAX Account teal: the accent of every hosted page (PRODUCT_ACCENTS.account in @auction/branding). */
+  accent: "#0f766e",
+  accentOnDark: "#2dd4bf",
+  white: "#ffffff",
   lightCream: "#f2f1df",
   ink: "#191919",
   textSecondary: "#474747",
@@ -16,6 +19,12 @@ export const HOSTED_AUTH_TOKENS = {
   surface: "#ffffff",
   border: "#e6e8eb",
   red: "#e83030",
+  /** Darker red and green for text on white: the brand values fall under 4.5:1 there. */
+  errorOnLight: "#b3261e",
+  successOnLight: "#1a7f37",
+  /** Form-control boundaries need 3:1 against the surface (WCAG 1.4.11). */
+  inputBorder: "#767676",
+  darkInputBorder: "#8c8c88",
   darkPageBg: "#121414",
   darkSurface: "#1a1c1c",
   darkTextSecondary: "#c9c5bc",

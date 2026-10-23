@@ -102,21 +102,21 @@ describe("auth HTTP app composition", () => {
     expect(paths).toContain("/magic-link");
     expect(paths).toContain("/hosted-auth.css");
     expect(paths).toContain("/hosted-auth-runtime.js");
-    expect(paths).toContain("/hosted-auth/lax-shop-logo.svg");
-    expect(paths).toContain("/hosted-auth/lax-bid-logo.svg");
-    expect(paths).toContain("/hosted-auth/lax-bid-logo-light.svg");
+    expect(paths).toContain("/hosted-auth/lockups/lax-account.svg");
+    expect(paths).toContain("/hosted-auth/lockups/lax-account-dark.svg");
+    expect(paths).toContain("/hosted-auth/fonts/montserrat-latin-wght-normal.woff2");
     expect(paths).toContain("/hosted-auth/favicons/favicon-32x32.png");
   });
 
-  it("renders Shop branding for a validated Shop authorization query", async () => {
+  it("renders the LAX Account frame and Shop chip for a validated Shop authorization query", async () => {
     const app = buildApp();
     const query =
       "response_type=code&client_id=lax-shop-web&redirect_uri=http://localhost:3010/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
     const response = await app.request(`https://auth.test/login?${query}`);
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain("theme-shop");
-    expect(html).toContain("/hosted-auth/lax-shop-logo.svg");
+    expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
+    expect(html).toContain("Continue to <strong>LAX Shop</strong>");
     expect(html).toContain("/hosted-auth/favicons/favicon.ico");
     expect(html).toContain("Sign in");
     expect(html).toContain("field-control");
@@ -128,27 +128,47 @@ describe("auth HTTP app composition", () => {
     expect(html).not.toContain('params.get("callbackURL")');
   });
 
-  it("renders Bid branding for lax-bid-web login", async () => {
+  it("renders the same LAX Account frame for Bid with the Bid chip", async () => {
     const app = buildApp();
     const response = await app.request("https://auth.test/login?client_id=lax-bid-web");
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain("theme-bid");
-    expect(html).toContain("/hosted-auth/lax-bid-logo.svg");
+    expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
+    expect(html).toContain("Continue to <strong>LAX Bid</strong>");
     expect(html).toContain('media="(prefers-color-scheme: dark)"');
-    expect(html).toContain("/hosted-auth/lax-bid-logo-light.svg");
+    expect(html).toContain("/hosted-auth/lockups/lax-account-dark.svg");
     expect(html).toContain("product-back-link");
     expect(html).toContain("Back to LAX Bid");
   });
 
-  it("serves the Bid hosted logo asset", async () => {
+  it("serves lockups and self-hosted fonts from the issuer", async () => {
     const app = buildApp();
-    const response = await app.request("https://auth.test/hosted-auth/lax-bid-logo.svg");
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("image/svg+xml");
-    const light = await app.request("https://auth.test/hosted-auth/lax-bid-logo-light.svg");
-    expect(light.status).toBe(200);
-    expect(light.headers.get("content-type")).toContain("image/svg+xml");
+    const lockup = await app.request("https://auth.test/hosted-auth/lockups/lax-account-dark.svg");
+    expect(lockup.status).toBe(200);
+    expect(lockup.headers.get("content-type")).toContain("image/svg+xml");
+    const font = await app.request(
+      "https://auth.test/hosted-auth/fonts/outfit-latin-wght-normal.woff2",
+    );
+    expect(font.status).toBe(200);
+    expect(font.headers.get("content-type")).toBe("font/woff2");
+  });
+
+  it("answers a browser navigation to a failing API route with a branded page, XHR with JSON", async () => {
+    const app = buildApp(null, undefined, {
+      authHandler: async () => Response.json({ error: "invalid_request" }, { status: 400 }),
+    });
+    const url = "https://auth.test/api/auth/oauth2/authorize?client_id=lax-bid-web";
+    const nav = await app.request(url, {
+      headers: { accept: "text/html,application/xhtml+xml", "sec-fetch-mode": "navigate" },
+    });
+    expect(nav.status).toBeGreaterThanOrEqual(400);
+    expect(nav.headers.get("content-type")).toContain("text/html");
+    expect(await nav.text()).toContain("Start again");
+    const xhr = await app.request(url, {
+      headers: { accept: "application/json", "sec-fetch-mode": "cors" },
+    });
+    expect(xhr.headers.get("content-type")).toContain("application/json");
+    expect(await xhr.json()).toHaveProperty("error");
   });
 
   it("serves vendored LAX favicons for hosted auth HTML", async () => {

@@ -39,7 +39,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openHostedLogin(page);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Authorize LAX Shop Web" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Authorise LAX Shop Web" })).toHaveCount(0);
     await expect(page.getByRole("img", { name: "LAX Shop" })).toBeVisible();
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page.locator('[data-login-step="email"]')).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.locator("#password")).toBeFocused();
     await expect(page.locator('[data-login-step="credentials"]')).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Authorize LAX Shop Web" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Authorise LAX Shop Web" })).toHaveCount(0);
     await expectNoBlockingAxe(page);
   });
 
@@ -77,7 +77,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     await expectNoBlockingAxe(page);
   });
 
-  test("password sign-in and an existing issuer session skip Authorize LAX Shop Web", async ({
+  test("password sign-in and an existing issuer session skip Authorise LAX Shop Web", async ({
     page,
   }) => {
     const email = process.env.SHOP_OIDC_TEST_EMAIL;
@@ -91,9 +91,9 @@ test.describe("Shop hosted authentication @a11y", () => {
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.locator("#password")).toBeVisible();
     await page.locator("#password").fill(password as string);
-    await page.getByRole("button", { name: "Sign In" }).click();
+    await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL((url) => url.origin !== issuerOrigin, { timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: "Authorize LAX Shop Web" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Authorise LAX Shop Web" })).toHaveCount(0);
     expect(page.url()).not.toMatch(/\/oauth2\/consent/);
 
     const shopIdentity = (process.env.SHOP_IDENTITY_BASE_URL ?? "http://localhost:3010").replace(
@@ -102,7 +102,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     );
     await page.goto(`${shopIdentity}/login`);
     await expect(page).toHaveURL((url) => url.origin !== issuerOrigin, { timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: "Authorize LAX Shop Web" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Authorise LAX Shop Web" })).toHaveCount(0);
     expect(page.url()).not.toMatch(/\/oauth2\/consent/);
   });
 

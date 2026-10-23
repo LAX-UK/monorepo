@@ -3,15 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HostedFaviconAssetName } from "./favicons.js";
 
-export const HOSTED_SHOP_LOGO_FILENAME = "lax-shop-logo.svg";
-export const HOSTED_BID_LOGO_FILENAME = "lax-bid-logo.svg";
-export const HOSTED_BID_LOGO_LIGHT_FILENAME = "lax-bid-logo-light.svg";
-
 const HOSTED_FAVICONS_DIR = "favicons";
-
-export function hostedShopLogoPath(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), "assets", HOSTED_SHOP_LOGO_FILENAME);
-}
 
 function resolveHostedAssetPath(relativePath: string): { path: string; tried: string[] } {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -39,19 +31,11 @@ export function readHostedAsset(name: string): string {
   return readFileSync(path, "utf8");
 }
 
-export function readHostedFaviconBytes(name: HostedFaviconAssetName): Buffer {
-  const { path } = resolveHostedAssetPath(join(HOSTED_FAVICONS_DIR, name));
+export function readHostedAssetBytes(name: string): Buffer {
+  const { path } = resolveHostedAssetPath(name);
   return readFileSync(path);
 }
 
-export function readHostedShopLogoSvg(): string {
-  return readHostedAsset(HOSTED_SHOP_LOGO_FILENAME);
-}
-
-export function readHostedBidLogoSvg(): string {
-  return readHostedAsset(HOSTED_BID_LOGO_FILENAME);
-}
-
-export function readHostedBidLogoLightSvg(): string {
-  return readHostedAsset(HOSTED_BID_LOGO_LIGHT_FILENAME);
+export function readHostedFaviconBytes(name: HostedFaviconAssetName): Buffer {
+  return readHostedAssetBytes(join(HOSTED_FAVICONS_DIR, name));
 }

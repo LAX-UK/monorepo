@@ -1,10 +1,11 @@
-import { normalizeAuthorizePromptForCreate } from "@auction/auth";
+import { type HostedAuthCapabilities, normalizeAuthorizePromptForCreate } from "@auction/auth";
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import type pino from "pino";
 import { registerFedcmRoutes } from "../http/fedcm.routes.js";
 import { createLoginStatusMiddleware } from "../http/login-status.middleware.js";
 import { createClientIpResolver } from "../infrastructure/client-ip.js";
+import { createBrowserErrorPageMiddleware } from "../middleware/browser-error-page.js";
 import { createOidcPromptCookieHardeningMiddleware } from "../middleware/oidc-prompt-cookie-hardening.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
 import {
@@ -38,7 +39,25 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
       turnstileEnabled: Boolean(options.oidc.env.TURNSTILE_SITE_KEY),
     }),
   );
+  const hostedCapabilities: HostedAuthCapabilities = {
+    googleEnabled: Boolean(
+      options.oidc.env.GOOGLE_CLIENT_ID && options.oidc.env.GOOGLE_CLIENT_SECRET,
+    ),
+    appleEnabled: Boolean(options.oidc.env.APPLE_CLIENT_ID && options.oidc.env.APPLE_CLIENT_SECRET),
+    phoneEnabled: options.oidc.env.ENABLE_PHONE_VERIFICATION,
+    turnstileSiteKey: options.oidc.env.TURNSTILE_SITE_KEY ?? null,
+    shopOrigin: options.oidc.env.SHOP_ORIGIN,
+    artOrigin: options.oidc.env.LAX_ART_ORIGIN,
+    shopAdminOrigin: options.oidc.env.SHOP_ADMIN_ORIGIN,
+    bidOrigin: options.oidc.env.WEB_ORIGIN,
+    ...(options.oidc.env.LAX_ACCOUNT_ORIGIN
+      ? { accountOrigin: options.oidc.env.LAX_ACCOUNT_ORIGIN }
+      : {}),
+    emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
+    requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
+  };
   app.use("*", createLoginStatusMiddleware());
+  app.use("*", createBrowserErrorPageMiddleware(hostedCapabilities));
   app.use("*", createOidcPromptCookieHardeningMiddleware());
   registerFedcmRoutes(app, {
     issuerOrigin: options.oidc.env.OIDC_ISSUER_URL.replace(/\/+$/, ""),
@@ -64,21 +83,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
   );
   mountHostedAuthAssets(app);
   mountHostedAuthPages(app, {
-    googleEnabled: Boolean(
-      options.oidc.env.GOOGLE_CLIENT_ID && options.oidc.env.GOOGLE_CLIENT_SECRET,
-    ),
-    appleEnabled: Boolean(options.oidc.env.APPLE_CLIENT_ID && options.oidc.env.APPLE_CLIENT_SECRET),
-    phoneEnabled: options.oidc.env.ENABLE_PHONE_VERIFICATION,
-    turnstileSiteKey: options.oidc.env.TURNSTILE_SITE_KEY ?? null,
-    shopOrigin: options.oidc.env.SHOP_ORIGIN,
-    artOrigin: options.oidc.env.LAX_ART_ORIGIN,
-    shopAdminOrigin: options.oidc.env.SHOP_ADMIN_ORIGIN,
-    bidOrigin: options.oidc.env.WEB_ORIGIN,
-    ...(options.oidc.env.LAX_ACCOUNT_ORIGIN
-      ? { accountOrigin: options.oidc.env.LAX_ACCOUNT_ORIGIN }
-      : {}),
-    emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
-    requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
+    ...hostedCapabilities,
     getSession: (headers) => options.oidc.auth.api.getSession({ headers }),
     readTwoFactorRequirement: options.oidc.readTwoFactorRequirement,
   });

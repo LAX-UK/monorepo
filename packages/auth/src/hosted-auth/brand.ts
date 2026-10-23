@@ -1,81 +1,70 @@
-import { REGISTERED_OIDC_CLIENTS, REGISTERED_OIDC_CLIENT_IDS } from "@auction/identity-contracts";
+import {
+  REGISTERED_OIDC_CLIENTS,
+  REGISTERED_OIDC_CLIENT_IDS,
+  type RegisteredOidcClientId,
+} from "@auction/identity-contracts";
+import { HOSTED_COPY } from "./copy.js";
 
-export const HOSTED_SHOP_LOGO_PATH = "/hosted-auth/lax-shop-logo.svg";
-export const HOSTED_BID_LOGO_PATH = "/hosted-auth/lax-bid-logo.svg";
-export const HOSTED_BID_LOGO_LIGHT_PATH = "/hosted-auth/lax-bid-logo-light.svg";
-
-export type HostedAuthTheme = "shop" | "bid" | "default";
-
-export type HostedBrandProfile = {
-  theme: HostedAuthTheme;
-  productName: string;
-  logoSrc: string | null;
-  logoDarkSrc: string | null;
-  logoAlt: string | null;
-  tagline: string | null;
+/** The destination product, shown as a text chip under the heading. */
+export type HostedProductChip = {
+  label: string;
 };
 
-const DEFAULT_BRAND: HostedBrandProfile = {
-  theme: "shop",
-  productName: "LAX",
-  logoSrc: HOSTED_SHOP_LOGO_PATH,
-  logoDarkSrc: null,
-  logoAlt: "LAX",
+export type HostedBrandProfile = {
+  /** The product the user is heading to; the LAX Account when the client is Account itself or unknown. */
+  productName: string;
+  tagline: string | null;
+  /** Null for Account itself and for unknown clients: there is no other product to name. */
+  chip: HostedProductChip | null;
+};
+
+const ACCOUNT_BRAND: HostedBrandProfile = {
+  productName: HOSTED_COPY.accountName,
   tagline: null,
+  chip: null,
+};
+
+const PRODUCT_BRANDS: Partial<Record<RegisteredOidcClientId, HostedBrandProfile>> = {
+  [REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB]: {
+    productName: HOSTED_COPY.products.bid,
+    tagline: null,
+    chip: { label: HOSTED_COPY.products.bid },
+  },
+  [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB]: {
+    productName: HOSTED_COPY.products.shop,
+    tagline: null,
+    chip: { label: HOSTED_COPY.products.shop },
+  },
+  [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN]: {
+    productName: HOSTED_COPY.products.shopAdmin,
+    tagline: "Shop Admin",
+    chip: { label: HOSTED_COPY.products.shopAdmin },
+  },
+  [REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB]: {
+    productName: HOSTED_COPY.products.art,
+    tagline: null,
+    chip: { label: HOSTED_COPY.products.art },
+  },
 };
 
 export function selectHostedBrand(clientId: string | null | undefined): HostedBrandProfile {
-  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) {
-    return {
-      theme: "shop",
-      productName: "LAX Shop Admin",
-      logoSrc: HOSTED_SHOP_LOGO_PATH,
-      logoDarkSrc: null,
-      logoAlt: "LAX Shop Admin",
-      tagline: "Shop Admin",
-    };
+  if (!clientId || !Object.hasOwn(PRODUCT_BRANDS, clientId)) return ACCOUNT_BRAND;
+  return PRODUCT_BRANDS[clientId as RegisteredOidcClientId] ?? ACCOUNT_BRAND;
+}
+
+/** The consent screen only receives the client's display name, so it is mapped back to the registry. */
+export function resolveRegisteredClientIdByName(
+  clientName: string | null | undefined,
+): RegisteredOidcClientId | null {
+  if (!clientName) return null;
+  for (const client of Object.values(REGISTERED_OIDC_CLIENTS)) {
+    if (client.displayName === clientName) return client.clientId;
   }
-  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB) {
-    return {
-      theme: "shop",
-      productName: "LAX Shop",
-      logoSrc: HOSTED_SHOP_LOGO_PATH,
-      logoDarkSrc: null,
-      logoAlt: "LAX Shop",
-      tagline: null,
-    };
-  }
-  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB) {
-    return {
-      theme: "shop",
-      productName: "LAX Art",
-      logoSrc: HOSTED_SHOP_LOGO_PATH,
-      logoDarkSrc: null,
-      logoAlt: "LAX Art",
-      tagline: null,
-    };
-  }
-  if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) {
-    return {
-      theme: "bid",
-      productName: "LAX Bid",
-      logoSrc: HOSTED_BID_LOGO_PATH,
-      logoDarkSrc: HOSTED_BID_LOGO_LIGHT_PATH,
-      logoAlt: "LAX Bid",
-      tagline: null,
-    };
-  }
-  return DEFAULT_BRAND;
+  return null;
 }
 
 export function selectHostedBrandFromClientName(
   clientName: string | null | undefined,
 ): HostedBrandProfile {
-  if (!clientName) return DEFAULT_BRAND;
-  for (const client of Object.values(REGISTERED_OIDC_CLIENTS)) {
-    if (client.displayName === clientName) {
-      return selectHostedBrand(client.clientId);
-    }
-  }
-  return DEFAULT_BRAND;
+  return selectHostedBrand(resolveRegisteredClientIdByName(clientName));
 }
