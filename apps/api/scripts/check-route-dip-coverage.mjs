@@ -94,6 +94,7 @@ const EXPLICIT_ALLOWLIST = new Set([
   "src/routes/xero-admin.ts",
   "src/routes/auth.ts",
   "src/routes/internal-cron.ts",
+  "src/routes/internal-identity-deletion-eligibility.routes.ts",
   "src/routes/internal-identity-email.routes.ts",
   "src/routes/internal-identity-subject-usage.routes.ts",
   "src/routes/payments.ts",
