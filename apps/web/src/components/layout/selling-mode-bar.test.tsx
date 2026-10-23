@@ -8,6 +8,40 @@ const refresh = vi.fn();
 const switchActingLegalEntity = vi.fn();
 const notifyError = vi.fn();
 
+// Radix's popover keeps its floating-ui positioning loop running in jsdom after the test that
+// opened it ends, which slows every later test and stalls the runner. This stand-in keeps the
+// same open/close contract, so the tests still exercise what the picker shows and does.
+vi.mock("@auction/ui/components/popover", async () => {
+  const React = await import("react");
+  const PopoverContext = React.createContext<{ open: boolean; setOpen: (open: boolean) => void }>({
+    open: false,
+    setOpen: () => {},
+  });
+  return {
+    Popover: ({
+      open,
+      onOpenChange,
+      children,
+    }: {
+      open: boolean;
+      onOpenChange: (open: boolean) => void;
+      children: React.ReactNode;
+    }) => (
+      <PopoverContext.Provider value={{ open, setOpen: onOpenChange }}>
+        {children}
+      </PopoverContext.Provider>
+    ),
+    PopoverTrigger: ({ children }: { children: React.ReactElement<{ onClick?: () => void }> }) => {
+      const { open, setOpen } = React.useContext(PopoverContext);
+      return React.cloneElement(children, { onClick: () => setOpen(!open) });
+    },
+    PopoverContent: ({ children }: { children: React.ReactNode }) => {
+      const { open } = React.useContext(PopoverContext);
+      return open ? <div>{children}</div> : null;
+    },
+  };
+});
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
 }));
