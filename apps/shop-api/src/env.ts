@@ -24,6 +24,11 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().url().optional(),
   ),
+  /**
+   * Legal entity that owns Shop and lax.art records in the cross-product portfolio (LAX Shop
+   * trades under LAX Art). Set it to the registered company name in every deployed environment.
+   */
+  LAX_ART_LEGAL_NAME: z.string().min(1).default("LAX Art"),
   OIDC_ISSUER_URL: z.string().url().default("http://localhost:3001"),
   OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
   SHOP_API_BFF_TOKEN: z.string().min(32).optional(),

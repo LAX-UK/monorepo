@@ -71,6 +71,17 @@ export function requireShopScope(request: FastifyRequest, scope: ProductScope): 
   }
 }
 
+/** Passes when the token carries at least one of the given scopes. */
+export function requireAnyShopScope(
+  request: FastifyRequest,
+  scopes: readonly ProductScope[],
+): void {
+  const granted = request.shopAuth?.scopes ?? [];
+  if (!scopes.some((scope) => granted.includes(scope))) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient scope", 403);
+  }
+}
+
 export function requireShopSubject(request: FastifyRequest): string {
   const auth = request.shopAuth;
   if (auth?.kind !== "user") {

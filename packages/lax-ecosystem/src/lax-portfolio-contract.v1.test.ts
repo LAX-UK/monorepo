@@ -1,6 +1,11 @@
 import { Value } from "@sinclair/typebox/value";
 import { describe, expect, it } from "vitest";
-import { LaxMoneyEntryV1, LaxPortfolioItemV1 } from "./lax-portfolio-contract.v1.js";
+import {
+  LaxMoneyEntryV1,
+  LaxMoneyResponseV1,
+  LaxPortfolioItemV1,
+  LaxPortfolioResponseV1,
+} from "./lax-portfolio-contract.v1.js";
 import { item, moneyEntry } from "./portfolio-fixtures.test-util.js";
 
 describe("LaxPortfolioItemV1", () => {
@@ -33,5 +38,31 @@ describe("LaxMoneyEntryV1", () => {
   it("accepts a valid entry and rejects an unknown direction", () => {
     expect(Value.Check(LaxMoneyEntryV1, moneyEntry())).toBe(true);
     expect(Value.Check(LaxMoneyEntryV1, { ...moneyEntry(), direction: "netted" })).toBe(false);
+  });
+});
+
+describe("portfolio and money responses", () => {
+  it("accepts an empty list, with or without the partial flag", () => {
+    expect(Value.Check(LaxPortfolioResponseV1, { items: [] })).toBe(true);
+    expect(Value.Check(LaxPortfolioResponseV1, { items: [], partial: true })).toBe(true);
+    expect(Value.Check(LaxMoneyResponseV1, { entries: [moneyEntry()] })).toBe(true);
+  });
+
+  it("rejects a response whose rows break the item contract", () => {
+    expect(Value.Check(LaxPortfolioResponseV1, { items: [{ ...item(), status: "lost" }] })).toBe(
+      false,
+    );
+    expect(Value.Check(LaxMoneyResponseV1, { entries: [{ ...moneyEntry(), amount: 1.5 }] })).toBe(
+      false,
+    );
+  });
+});
+
+describe("document kinds", () => {
+  it("accepts a payout statement", () => {
+    const withStatement = item({
+      documents: [{ kind: "payout_statement", available: true, href: "/payouts" }],
+    });
+    expect(Value.Check(LaxPortfolioItemV1, withStatement)).toBe(true);
   });
 });

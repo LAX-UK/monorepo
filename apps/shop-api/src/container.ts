@@ -19,6 +19,7 @@ import { createListPublicMerchandiseProductsHandler } from "./application/handle
 import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
+import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
 import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
@@ -45,6 +46,7 @@ import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-me
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
 import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
+import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle-portal-portfolio.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
@@ -155,6 +157,8 @@ export type ShopApiContainer = {
   close(): Promise<void>;
 };
 
+const withoutTrailingSlash = (url: string) => url.replace(/\/+$/, "");
+
 export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   assertShopVatPolicyWhenPayoutsEnabled(env);
   const db: Database = createDb(env.DATABASE_URL_SHOP);
@@ -204,6 +208,19 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     documentStorage: resolveShopDocumentStorageConfig(env),
   });
   const portalSales = createDrizzlePortalSalesRepository(db);
+  const laxPortfolio = createLaxPortfolioHandlers({
+    reader: createDrizzlePortalPortfolioRepository(db),
+    flags: {
+      portalOwnershipEnabled: env.SHOP_PORTAL_OWNERSHIP_ENABLED,
+      payoutsEnabled: env.SHOP_PAYOUTS_ENABLED,
+    },
+    context: {
+      shopOrigin: withoutTrailingSlash(env.SHOP_STOREFRONT_URL),
+      artOrigin: withoutTrailingSlash(env.LAX_ART_PUBLIC_URL ?? env.SHOP_STOREFRONT_URL),
+      legalName: env.LAX_ART_LEGAL_NAME,
+    },
+    resolveMediaUrl,
+  });
   const portalArtist = createDrizzlePortalArtistRepository(db);
   const portalFavorites = createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db));
   const adminRead = createDrizzleAdminReadRepository(db, env);
@@ -359,7 +376,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         updateArtistSeo: (artistId, fields) => artistSeoWriter.updateArtistSeo(artistId, fields),
         shopMediaUpload,
       },
-      portal: { portalOwnership, portalSales, portalArtist, portalFavorites },
+      portal: { portalOwnership, portalSales, portalArtist, portalFavorites, laxPortfolio },
       payeeConnect,
       stripeConnectWebhook: {
         webhookSecret: env.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET,

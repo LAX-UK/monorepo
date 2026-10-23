@@ -17,6 +17,7 @@ export function createMinimalShopApiTestDeps(
       LOG_LEVEL: "error",
       SHOP_API_PUBLIC_BASE_URL: "http://localhost:3011",
       SHOP_STOREFRONT_URL: "http://localhost:3020",
+      LAX_ART_LEGAL_NAME: "LAX Art",
       OIDC_ISSUER_URL: "http://localhost:3001",
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
@@ -356,6 +357,10 @@ export function createMinimalShopApiTestDeps(
         getLinkedArtist: async () => null,
         listArtworks: async () => [],
         listSales: async () => [],
+      },
+      laxPortfolio: {
+        getPortfolio: async () => ({ items: [], partial: true }),
+        getMoney: async () => ({ entries: [], partial: true }),
       },
       portalFavorites: {
         listSavedArtworks: async () => [],
