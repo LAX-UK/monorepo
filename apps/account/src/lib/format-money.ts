@@ -1,8 +1,8 @@
 const LOCALE = "en-GB";
 
 function fractionDigits(currency: string): number {
-  return new Intl.NumberFormat(LOCALE, { style: "currency", currency }).resolvedOptions()
-    .maximumFractionDigits;
+  const resolved = new Intl.NumberFormat(LOCALE, { style: "currency", currency }).resolvedOptions();
+  return resolved.maximumFractionDigits ?? 2;
 }
 
 /**

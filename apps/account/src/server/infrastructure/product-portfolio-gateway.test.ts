@@ -14,7 +14,9 @@ function gateway(
   respond: (url: string) => Promise<Response>,
   overrides: Partial<Parameters<typeof createProductPortfolioGateway>[0]> = {},
 ) {
-  const fetchImpl = vi.fn(async (url: string | URL | Request) => respond(String(url)));
+  const fetchImpl = vi.fn(async (url: string | URL | Request, _init?: RequestInit) =>
+    respond(String(url)),
+  );
   return {
     fetchImpl,
     gateway: createProductPortfolioGateway({
