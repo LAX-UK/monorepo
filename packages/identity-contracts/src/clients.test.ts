@@ -96,6 +96,14 @@ describe("registered OIDC clients", () => {
     );
   });
 
+  it("limits LAX Account to the read-only portfolio scope on Bid and Shop", () => {
+    const account = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB];
+    expect(account.allowedResources).toEqual(["lax-bid-api", "lax-shop-api"]);
+    expect(account.allowedScopes.filter((scope) => scope.includes("."))).toEqual([
+      "lax.portfolio.read",
+    ]);
+  });
+
   it("pre-authorizes Bid, Shop web, lax.art, and Shop admin clients", () => {
     expect([...oidcClientIdsWithImplicitConsent()].sort()).toEqual(
       ["lax-account-web", "lax-art-web", "lax-bid-web", "lax-shop-admin", "lax-shop-web"].sort(),
