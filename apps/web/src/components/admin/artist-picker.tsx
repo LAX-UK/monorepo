@@ -222,7 +222,7 @@ function InlineActionButton({
       variant="outline"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex h-auto min-h-0 items-center gap-1.5 rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-auto min-h-0 items-center gap-1.5 rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
       {...rest}
     >
       {children}
@@ -250,7 +250,7 @@ function Chip({
       aria-checked={active}
       disabled={disabled}
       onClick={onClick}
-      className={`h-auto min-h-0 rounded-full border px-3 py-1 font-label text-[11px] uppercase tracking-wide shadow-none transition-colors ${
+      className={`h-auto min-h-0 rounded-full border px-3 py-1 font-label text-[11px] shadow-none transition-colors ${
         active
           ? "border-primary bg-primary text-on-primary"
           : "border-outline-variant/60 bg-surface-container-lowest text-on-surface-variant hover:border-link/50 hover:text-on-surface"

@@ -164,7 +164,7 @@ function MobileAuthenticatedAuthSection({
       <button
         type="button"
         className={cn(
-          "block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-border-hairline dark:text-on-surface dark:hover:bg-surface-container-low",
+          "block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-border-hairline dark:text-on-surface dark:hover:bg-surface-container-low",
           FOCUS_RING,
         )}
         onClick={() => {

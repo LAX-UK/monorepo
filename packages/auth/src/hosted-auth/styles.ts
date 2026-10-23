@@ -310,10 +310,8 @@ h1 {
   border: 0;
   border-radius: 0.25rem;
   font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: var(--label-tracking);
-  text-transform: uppercase;
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
   text-align: center;
   text-decoration: none;

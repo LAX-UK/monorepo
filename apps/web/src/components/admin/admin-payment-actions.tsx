@@ -83,7 +83,7 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
         <ConfirmActionButton
           size="sm"
           disabled={pending}
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+          className="font-label text-xs"
           confirmTitle="Capture payment?"
           confirmBody="This marks the payment as captured."
           confirmLabel="Capture"
@@ -97,7 +97,7 @@ export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsPro
         variant="destructive"
         size="sm"
         disabled={pending}
-        className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+        className="font-label text-xs"
         confirmTitle="Refund payment?"
         confirmBody="This refunds the buyer."
         confirmLabel="Refund"

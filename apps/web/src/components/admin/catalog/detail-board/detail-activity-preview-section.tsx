@@ -52,7 +52,7 @@ export function DetailActivityPreviewSection({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAll(true)}
-                className="h-auto p-0 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:bg-transparent hover:underline"
+                className="h-auto p-0 font-label text-xs text-link hover:bg-transparent hover:underline"
               >
                 View all activity →
               </Button>

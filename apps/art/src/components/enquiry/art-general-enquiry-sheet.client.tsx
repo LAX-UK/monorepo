@@ -68,7 +68,7 @@ export function ArtGeneralEnquirySheet({
         <Button
           type="button"
           size="lg"
-          className="min-h-11 w-fit font-label uppercase"
+          className="min-h-11 w-fit font-label"
           onClick={() => setOpen(true)}
           data-testid="art-general-enquire-trigger"
         >
@@ -92,7 +92,7 @@ export function ArtGeneralEnquirySheet({
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 w-full font-label uppercase"
+                className="min-h-11 w-full font-label"
                 onClick={() => setOpen(false)}
               >
                 Close

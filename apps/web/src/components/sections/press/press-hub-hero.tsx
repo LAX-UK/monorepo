@@ -98,21 +98,21 @@ export function PressHubHero({ lastUpdated, stats }: Props) {
                 <Button
                   variant="ghost"
                   asChild
-                  className="h-9 rounded-full px-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                  className="h-9 rounded-full px-3 font-label text-xs"
                 >
                   <Link href="#press-coverage">Coverage</Link>
                 </Button>
                 <Button
                   variant="ghost"
                   asChild
-                  className="h-9 rounded-full px-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                  className="h-9 rounded-full px-3 font-label text-xs"
                 >
                   <Link href="#press-day-media">Photos</Link>
                 </Button>
                 <Button
                   variant="ghost"
                   asChild
-                  className="h-9 rounded-full px-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                  className="h-9 rounded-full px-3 font-label text-xs"
                 >
                   <Link href="#press-media-kit">Media kit</Link>
                 </Button>

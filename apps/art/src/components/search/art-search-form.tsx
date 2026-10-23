@@ -52,10 +52,7 @@ export function ArtSearchForm({ defaultValue, className }: ArtSearchFormProps) {
           </Button>
         ) : null}
       </div>
-      <Button
-        type="submit"
-        className="hidden min-h-11 font-label uppercase tracking-wide lg:inline-flex"
-      >
+      <Button type="submit" className="hidden min-h-11 font-label lg:inline-flex">
         Search
       </Button>
     </form>

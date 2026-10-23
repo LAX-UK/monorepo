@@ -40,7 +40,7 @@ export function CatalogDetailErrorShell({
               type="button"
               variant="default"
               onClick={reset}
-              className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 font-label text-xs font-bold uppercase tracking-[0.12em] text-on-primary"
+              className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 font-label text-xs font-bold text-on-primary"
             >
               Try again
             </Button>

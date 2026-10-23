@@ -162,7 +162,7 @@ export function PushSubscriptionCard({ saveDisabled = false, enableDefaultPrefs 
                 variant="outline"
                 disabled={busy || saveDisabled}
                 onClick={() => void onDisable()}
-                className="h-auto rounded-md px-4 py-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                className="h-auto rounded-md px-4 py-3 font-label text-xs"
               >
                 {busy ? "Working…" : "Disable push"}
               </Button>
@@ -172,7 +172,7 @@ export function PushSubscriptionCard({ saveDisabled = false, enableDefaultPrefs 
                 variant="primary"
                 disabled={busy || saveDisabled}
                 onClick={() => void onEnable()}
-                className="h-auto min-h-11 px-4 py-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                className="h-auto min-h-11 px-4 py-3 font-label text-xs"
               >
                 {busy ? "Working…" : "Enable browser push"}
               </Button>

@@ -24,7 +24,7 @@ export function CategoryMobileEditSheet({ category, categories }: Props) {
       <Button
         type="button"
         variant="outline"
-        className="min-h-11 w-full rounded-md border border-outline-variant/40 bg-surface-container-low px-3 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface"
+        className="min-h-11 w-full rounded-md border border-outline-variant/40 bg-surface-container-low px-3 py-2 font-label text-xs font-semibold text-on-surface"
         onClick={() => setOpen(true)}
       >
         Quick edit

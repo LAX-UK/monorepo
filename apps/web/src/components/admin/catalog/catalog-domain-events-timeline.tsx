@@ -111,7 +111,7 @@ function EventTechnicalDetails({
         type="button"
         variant="link"
         onClick={() => setOpen((v) => !v)}
-        className="h-auto min-h-0 p-0 font-label text-[10px] uppercase tracking-wide shadow-none"
+        className="h-auto min-h-0 p-0 font-label text-[10px] shadow-none"
       >
         {open ? "Hide technical details" : "Technical details"}
       </Button>
@@ -150,7 +150,7 @@ function EventPayload({
           type="button"
           variant="link"
           onClick={() => setOpen((v) => !v)}
-          className="h-auto min-h-0 p-0 font-label text-[10px] uppercase tracking-wide shadow-none"
+          className="h-auto min-h-0 p-0 font-label text-[10px] shadow-none"
         >
           {open ? `Hide ${label}` : `Show ${label}`}
         </Button>

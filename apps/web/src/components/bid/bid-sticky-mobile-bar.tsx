@@ -34,13 +34,13 @@ import {
 } from "./bid-sticky-mobile-bar.logic";
 
 const CTA_CLASS =
-  "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
+  "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold text-cta-on shadow-sm";
 const CTA_CLASS_LG =
-  "shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
+  "shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold text-cta-on shadow-sm";
 const OUTLINE_CLASS =
-  "shrink-0 border border-primary/40 px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary";
+  "shrink-0 border border-primary/40 px-4 py-2 font-label text-[0.65rem] font-bold text-primary";
 const STATUS_CLASS =
-  "shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
+  "shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold text-on-surface-variant";
 
 type Props = {
   live: boolean;
@@ -98,7 +98,7 @@ function StickyBlockerAction({
           }}
           className={
             action.href === "/admin"
-              ? "shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
+              ? "shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
               : ctaClass
           }
         >
@@ -262,7 +262,7 @@ export function BidStickyMobileBar({
           type="button"
           variant="outline"
           onClick={onScrollToBid}
-          className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:text-link"
+          className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold text-primary hover:bg-transparent hover:text-link"
         >
           Confirm bid
         </Button>

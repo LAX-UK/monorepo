@@ -207,7 +207,7 @@ export class RsvpFormController {
     error.hidden = true;
     form.append(error);
 
-    const submit = button("CONTINUE", () => undefined, { primary: true }) as HTMLButtonElement;
+    const submit = button("Continue", () => undefined, { primary: true }) as HTMLButtonElement;
     submit.type = "submit";
     form.append(submit);
 
@@ -242,7 +242,7 @@ export class RsvpFormController {
     fragment.append(list);
 
     const row = el("div", "rsvp-actions");
-    row.append(linkButton("CREATE ACCOUNT", registerUrlForEmail(email), true));
+    row.append(linkButton("Create account", registerUrlForEmail(email), true));
     row.append(button("Use a different email", () => this.onChangeEmail()));
     fragment.append(row);
 
@@ -444,7 +444,7 @@ export class RsvpFormController {
     }
     form.append(error);
 
-    const submit = button(existing ? "UPDATE RSVP" : "CONFIRM ATTENDANCE", () => undefined, {
+    const submit = button(existing ? "Update RSVP" : "Confirm attendance", () => undefined, {
       primary: true,
     }) as HTMLButtonElement;
     submit.type = "submit";

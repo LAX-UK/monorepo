@@ -66,7 +66,7 @@ export function InvitationRowActions({ invitationId, lifecycle }: Props) {
           variant="outline"
           size="sm"
           disabled={!canResend || resendPending}
-          className="font-label text-[10px] uppercase"
+          className="font-label text-[10px]"
           onClick={handleResend}
         >
           {resendPending ? "Resending…" : "Resend"}

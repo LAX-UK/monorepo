@@ -86,7 +86,7 @@ export function ArtAnalyticsConsent({ measurementId, initialChoice }: ArtAnalyti
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 flex-1 font-label uppercase sm:flex-none"
+                className="min-h-11 flex-1 font-label sm:flex-none"
                 onClick={() => decide("denied")}
               >
                 Reject
@@ -94,7 +94,7 @@ export function ArtAnalyticsConsent({ measurementId, initialChoice }: ArtAnalyti
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 flex-1 font-label uppercase sm:flex-none"
+                className="min-h-11 flex-1 font-label sm:flex-none"
                 onClick={() => decide("granted")}
               >
                 Accept

@@ -62,7 +62,7 @@ export function DashboardDetailHeader({
             size="sm"
             asChild
             className={cn(
-              "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
+              "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold",
               accentLinkClass(track),
               compact && "hidden lg:inline-flex",
             )}

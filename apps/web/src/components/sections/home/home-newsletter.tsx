@@ -111,7 +111,7 @@ export function HomeNewsletter() {
                     type="submit"
                     variant="cta"
                     disabled={loading}
-                    className="h-12 rounded-b-sm rounded-t-none px-6 font-label text-xs uppercase tracking-[0.08em] sm:rounded-l-none sm:rounded-r-sm"
+                    className="h-12 rounded-b-sm rounded-t-none px-6 font-label text-xs sm:rounded-l-none sm:rounded-r-sm"
                   >
                     {loading ? "Subscribing…" : "Subscribe"}
                   </Button>

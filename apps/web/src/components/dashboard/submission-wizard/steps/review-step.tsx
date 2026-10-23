@@ -153,7 +153,7 @@ export function ReviewStep({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="shrink-0 text-xs uppercase tracking-wider"
+                className="shrink-0 text-xs"
                 onClick={() => onJumpTo(wizardStepIndex(section.stepId))}
               >
                 Edit

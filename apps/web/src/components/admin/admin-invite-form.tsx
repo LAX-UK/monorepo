@@ -302,7 +302,7 @@ export function AdminInviteForm({ formId, layout, onSubmittingChange, onComplete
           {!isDialog ? (
             <Button
               type="submit"
-              className="min-h-11 w-full font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] sm:w-auto"
+              className="min-h-11 w-full font-label text-xs sm:w-auto"
               disabled={submitting}
             >
               {submitting ? "Sending…" : "Send invite"}

@@ -500,8 +500,6 @@
   font-family: var(--font-secondary);
   font-size: 13px;
   line-height: 18px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
   font-weight: bold;
   text-decoration: none;
   border: 1px solid var(--brand-obsidian, #000000);

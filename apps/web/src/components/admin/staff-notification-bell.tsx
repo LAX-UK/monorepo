@@ -88,7 +88,7 @@ export function StaffNotificationBell({ items }: Props) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-auto px-0 py-0 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:bg-transparent hover:underline"
+                className="h-auto px-0 py-0 font-label text-xs text-link hover:bg-transparent hover:underline"
                 onClick={markSeen}
               >
                 Mark seen

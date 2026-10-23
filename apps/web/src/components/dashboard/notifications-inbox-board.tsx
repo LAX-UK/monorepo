@@ -44,7 +44,7 @@ export function NotificationsInboxBoard({
       size="sm"
       disabled={board.loading || board.unreadCount === 0}
       onClick={() => void board.handleMarkAllRead()}
-      className="gap-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-primary/10"
+      className="gap-2 font-label text-xs text-primary hover:bg-primary/10"
     >
       <CheckCheck className="size-3.5" aria-hidden />
       Mark all read

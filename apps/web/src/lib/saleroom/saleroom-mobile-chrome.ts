@@ -103,7 +103,7 @@ export function saleroomLiveNoLotCaption(completedLots: number, totalLots: numbe
 
 /** Shared bid CTA styling for saleroom on-block surfaces. */
 export const saleroomBidNowCtaClassName =
-  "inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on";
+  "inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold text-cta-on";
 
 export type SaleroomMobileSummaryBarMode =
   | { kind: "on_block"; lot: SaleroomLotRef; progressLabel: string | null }

@@ -75,7 +75,7 @@ function GuestAuthSection({
         <ArtAuthLink
           href={registerHref}
           className={cn(
-            "w-full justify-center font-label uppercase tracking-wide",
+            "w-full justify-center font-label",
             FOCUS_RING,
             busy && "pointer-events-none opacity-60",
           )}

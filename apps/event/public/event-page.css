@@ -460,8 +460,6 @@ td.section-band--reply[style] {
   padding: 16px 24px;
   font-family: var(--font-secondary);
   font-size: 12px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
   font-weight: bold;
   text-decoration: none;
   text-align: center;
@@ -544,8 +542,6 @@ td.section-band--reply[style] {
   padding: 12px 18px;
   font-family: var(--font-secondary);
   font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
   text-decoration: none;
   border: 1px solid rgba(239, 239, 239, 0.45);
   background: transparent;
@@ -727,8 +723,6 @@ td.section-band--reply[style] {
   padding: 14px 28px;
   font-family: var(--font-secondary);
   font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
   font-weight: bold;
   text-decoration: none;
   background: #000;
@@ -1088,8 +1082,6 @@ td.section-band--reply[style] {
   padding: 14px 22px;
   font-family: var(--font-secondary);
   font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
   text-decoration: none;
   color: var(--brand-light-cream, #f2f1df);
   background: #000;
