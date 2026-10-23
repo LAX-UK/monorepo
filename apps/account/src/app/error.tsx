@@ -1,11 +1,12 @@
 "use client";
 
-import { AccountShell } from "@/components/account-shell";
+import { AccountFrame } from "@/components/shell/account-frame";
 import { Button } from "@auction/ui/components/button";
 
+/** A client boundary cannot read the session or the product URLs, so it shows the bare shell. */
 export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
   return (
-    <AccountShell>
+    <AccountFrame viewer={null} nav={[]} products={[]} support={null}>
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 py-10" role="alert">
         <h1 className="font-headline text-2xl font-semibold tracking-tight">
           Something went wrong
@@ -20,6 +21,6 @@ export default function ErrorPage({ reset }: { error: Error; reset: () => void }
           <a href="/">Back to sign in</a>
         </Button>
       </div>
-    </AccountShell>
+    </AccountFrame>
   );
 }

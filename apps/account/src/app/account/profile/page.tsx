@@ -5,6 +5,7 @@ import { AddressBook } from "@/components/address-book.client";
 import { EmailChangeEditor } from "@/components/email-change-editor.client";
 import { PersonalNameForm } from "@/components/personal-name-form.client";
 import { PhoneEditor } from "@/components/phone-editor.client";
+import { toAccountViewer } from "@/components/shell/account-viewer";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import { resolveProfileContact } from "@/server/domain/account-contact.vm";
@@ -45,7 +46,7 @@ export default async function PersonalDetailsPage() {
   );
 
   return (
-    <AccountShell>
+    <AccountShell viewer={toAccountViewer(overview)}>
       <AccountPageHeader title="Personal details" backHref={ACCOUNT_ROUTES.overview} />
       <section aria-labelledby="about-heading" className="space-y-2">
         <h2 id="about-heading" className={`px-4 ${SECTION_HEADING}`}>

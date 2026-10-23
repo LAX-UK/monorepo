@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import { AccountOverviewHeader } from "./account-overview-header";
 
 describe("AccountOverviewHeader", () => {
-  it("shows the name, initials, email and the one-account line", () => {
+  it("greets the person by first name, with initials, email and the one-account line", () => {
     const html = renderToStaticMarkup(
       <AccountOverviewHeader
         overview={{ displayName: "Ada Lovelace", name: "Ada Lovelace", email: "ada@example.com" }}
       />,
     );
     expect(html).toContain("<h1");
-    expect(html).toContain("Ada Lovelace");
+    expect(html).toContain("Welcome, Ada");
     expect(html).toContain("ada@example.com");
     expect(html).toContain(">AL<");
     expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
@@ -33,6 +33,6 @@ describe("AccountOverviewHeader", () => {
       />,
     );
     expect(html).toContain("Your LAX Account");
-    expect(html).not.toContain("size-16");
+    expect(html).not.toContain("size-20");
   });
 });
