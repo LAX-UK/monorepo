@@ -105,7 +105,7 @@ export function AddressForm({
   return (
     <form
       aria-labelledby={`${formId}-heading`}
-      className="space-y-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+      className="-mx-4 space-y-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();

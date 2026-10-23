@@ -109,7 +109,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
           return (
             <li
               key={address.id}
-              className="space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+              className="-mx-4 space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-headline text-base font-medium text-on-surface">
