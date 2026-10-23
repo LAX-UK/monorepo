@@ -4,7 +4,7 @@ import { buildAccountLinks } from "@/server/domain/account-links";
 import { buildAccountNav, buildProductBar } from "@/server/domain/account-nav.vm";
 import { cache } from "react";
 import type { ReactNode } from "react";
-import { AccountFrame, type AccountFrameProps } from "./shell/account-frame";
+import { AccountFrame, type PageWidth } from "./shell/account-frame";
 import { type AccountViewer, toAccountViewer } from "./shell/account-viewer";
 
 /** One session read per request, however many parts of the page ask who is signed in. */
@@ -24,7 +24,7 @@ export async function AccountShell({
   viewer: viewerProp,
 }: {
   children: ReactNode;
-  width?: AccountFrameProps["width"];
+  width?: PageWidth;
   viewer?: AccountViewer | null;
 }) {
   const { config } = getLaxAccountContainer();

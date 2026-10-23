@@ -10,11 +10,23 @@ import { AccountThemeToggle } from "./account-theme-toggle.client";
 import type { AccountViewer } from "./account-viewer";
 import { ProductBar } from "./product-bar";
 
-/** Content column next to the menu. Pages that hold tables ask for the wide one. */
-const COLUMN_WIDTH = { narrow: "max-w-3xl", wide: "max-w-5xl" } as const;
+/**
+ * The page widths, defined once. `narrow` is the column for forms and settings (Personal details,
+ * Security, Privacy, Help, email change, delete account); `wide` is for pages that lay out cards or
+ * tables side by side (Home, Portfolio, Money). `centred` is the single column used when there is
+ * no menu (the error page and a signed-out 404).
+ */
+export const PAGE_WIDTH = {
+  narrow: "max-w-3xl",
+  wide: "max-w-5xl",
+  centred: "mx-auto max-w-2xl",
+} as const;
+export type PageWidth = "narrow" | "wide";
 
+/** Widest the header and page may grow on a large screen. */
+const CONTAINER_MAX = "max-w-[1440px]";
 const GUTTER = "px-4 sm:px-6 lg:px-10";
-const CONTAINER = `mx-auto w-full max-w-[1440px] ${GUTTER}`;
+const CONTAINER = `mx-auto w-full ${CONTAINER_MAX} ${GUTTER}`;
 
 export type AccountFrameProps = {
   /** The signed-in person; null on pages a signed-out visitor can reach. */
@@ -22,7 +34,7 @@ export type AccountFrameProps = {
   nav: AccountNavItemVm[];
   products: ProductBarItemVm[];
   support: SupportLinksVm | null;
-  width?: keyof typeof COLUMN_WIDTH;
+  width?: PageWidth;
   children: ReactNode;
 };
 
@@ -76,7 +88,7 @@ export function AccountFrame({
         <main
           id="main"
           className={`flex w-full min-w-0 flex-1 flex-col gap-8 py-8 sm:py-10 ${
-            showMenu ? COLUMN_WIDTH[width] : "mx-auto max-w-2xl"
+            showMenu ? PAGE_WIDTH[width] : PAGE_WIDTH.centred
           }`}
         >
           {children}

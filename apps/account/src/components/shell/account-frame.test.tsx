@@ -2,7 +2,7 @@ import { buildAccountNav, buildProductBar } from "@/server/domain/account-nav.vm
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { AccountFrame } from "./account-frame";
+import { AccountFrame, PAGE_WIDTH } from "./account-frame";
 
 // Radix's popover and dialog run positioning and focus-trap loops that stall the test runner when
 // they mount. These stand-ins render the content as if open, so the tests read what each one holds.
@@ -123,5 +123,26 @@ describe("AccountFrame signed out", () => {
     expect(html).not.toContain("Account menu for");
     expect(html).not.toContain('aria-label="Open menu"');
     expect(html).toContain("Sign in");
+  });
+});
+
+describe("AccountFrame widths", () => {
+  const frame = (width?: "narrow" | "wide") =>
+    renderToStaticMarkup(
+      <AccountFrame
+        viewer={viewer}
+        nav={buildAccountNav({ support })}
+        products={buildProductBar(config)}
+        support={support}
+        {...(width ? { width } : {})}
+      >
+        <p>Body</p>
+      </AccountFrame>,
+    );
+
+  it("uses the narrow column by default and the wide one when asked, both from PAGE_WIDTH", () => {
+    expect(frame()).toContain(PAGE_WIDTH.narrow);
+    expect(frame()).not.toContain(PAGE_WIDTH.wide);
+    expect(frame("wide")).toContain(PAGE_WIDTH.wide);
   });
 });
