@@ -7,6 +7,7 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 - `/account/profile`: name, email (changed through links emailed to both the current and the new address), phone (added or changed with a texted code) and the LAX-wide address book (add, edit, delete, default shipping and billing) are edited here.
 - `/account/email-change?t=`: where the emailed confirmation links land. It needs no sign-in; the signed token is the proof, and a button (not the link itself) makes the change.
 - `/account/security`: password and two-step links, Backup codes (how many are left, and create a new set), and Where you're signed in (sign out one device, or every other device). New backup codes are shown once, with Copy and a .txt download, and the old ones stop working; the issuer emails the person that they were created.
+- `/account/security/delete`: Delete your account. Identity asks LAX Bid and shop-api (`/internal/identity/subjects/:id/deletion-eligibility`) what the person has in flight, and this page shows every blocker grouped by product with links. With none, a typed phrase and a recent sign-in start the 30-day deletion; until then it can be cancelled. A product that cannot be asked blocks deletion with a try-again message.
 - Sign-in: `/api/auth/login` → auth issuer → `/api/auth/callback`; sign-out is a same-origin
   `POST /api/auth/logout` that ends the issuer session.
 - Sensitive steps (password reset, authenticator setup) stay on auth-hosted pages. The hosted

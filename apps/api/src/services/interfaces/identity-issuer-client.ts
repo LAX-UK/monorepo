@@ -2,7 +2,9 @@ import type {
   AccountAddress,
   AccountAddressDefaultKind,
   AccountAddressInput,
+  AccountDeletionOutcome,
 } from "@auction/identity-contracts";
+
 export type IdentityIssuerRequestContext = {
   headers?: Headers | undefined;
 };
@@ -158,7 +160,11 @@ export interface IIdentityProfileClient {
     subjectId: string,
     patch: { name?: string; image?: string | null },
   ): Promise<void>;
-  markDeletionRequested(subjectId: string): Promise<void>;
+  /**
+   * Starts the 30-day deletion through Identity's orchestration, which asks every product
+   * whether the person has anything in flight first.
+   */
+  requestAccountDeletion(subjectId: string): Promise<AccountDeletionOutcome>;
 }
 
 /**

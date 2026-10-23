@@ -30,6 +30,17 @@ const envSchema = z
     IDENTITY_EMAIL_ENQUEUE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     IDENTITY_PRODUCT_USAGE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(3_000),
+    /**
+     * Internal base URL of shop-api. Account deletion asks it what the person has in flight; with
+     * none set, deletion is blocked (an unreachable product never counts as "nothing in the way").
+     */
+    SHOP_API_INTERNAL_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    IDENTITY_DELETION_ELIGIBILITY_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(250)
+      .max(10_000)
+      .default(3_000),
     IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(1_500),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),

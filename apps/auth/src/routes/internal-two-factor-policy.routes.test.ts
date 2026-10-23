@@ -125,6 +125,7 @@ describe("internal two-step verification policy routes", () => {
       lifecycle: { disable: vi.fn(), enable: vi.fn(), merge: vi.fn() },
       operations: {} as never,
       emailChange: {} as never,
+      accountDeletion: {} as never,
       redis: {
         get: async () => null,
         set: vi.fn(),

@@ -476,9 +476,10 @@ export class IdentityOperationsService {
     });
   }
 
-  async markDeletionRequested(subjectId: string): Promise<void> {
+  /** Starts the deletion grace period and returns when it started. */
+  async markDeletionRequested(subjectId: string): Promise<Date> {
+    const requestedAt = this.now();
     await this.repositories.unitOfWork.transaction(async (transaction) => {
-      const requestedAt = this.now();
       const updated = await this.repositories.subjects.markDeletionRequested(
         transaction,
         subjectId,
@@ -490,6 +491,7 @@ export class IdentityOperationsService {
         { producer: "apps/auth", transaction },
       );
     });
+    return requestedAt;
   }
 
   async cancelDeletionRequested(subjectId: string): Promise<void> {

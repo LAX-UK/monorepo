@@ -43,6 +43,7 @@ import { createResilientSlidingWindowStore } from "../middleware/resilient-slidi
 import { createAccountAddressRoutes } from "../routes/account-addresses.routes.js";
 import { createAccountBackupCodesRoutes } from "../routes/account-backup-codes.routes.js";
 import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
+import { createAccountDeletionRoutes } from "../routes/account-deletion.routes.js";
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
@@ -51,6 +52,7 @@ import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
 import { AccountBackupCodesService } from "../services/account-backup-codes.service.js";
 import { AccountContactService } from "../services/account-contact.service.js";
+import type { AccountDeletionService } from "../services/account-deletion.service.js";
 import { AccountIdentityService } from "../services/account-identity.service.js";
 import { AccountPhoneService } from "../services/account-phone.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
@@ -83,6 +85,7 @@ export type OidcRouteMountOptions = {
   services: AuthRouteServicesSlice;
   identityOperations: IdentityOperationsService;
   emailChange: EmailChangeService;
+  accountDeletion: AccountDeletionService;
   emailSender: EmailSender;
   securityNotices: SecurityNoticePublisher;
   durableSecurityEffects: Pick<DurableSecurityEffects, "settle">;
@@ -326,6 +329,18 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         phoneRules.phoneVerifySubjectMax,
       ),
       onFailure: (error) => options.log.error({ err: error }, "account_contact_request_failed"),
+    }),
+  );
+  app.route(
+    "/api/auth",
+    createAccountDeletionRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      deletion: options.accountDeletion,
+      // Each read asks every product, so it gets a smaller budget than other reads.
+      statusRateLimit: accountRateLimit("account-deletion-status", 30),
+      changeRateLimit: strictRateLimit("account-deletion-change", 60 * 60, 10),
+      onFailure: (error) => options.log.error({ err: error }, "account_deletion_request_failed"),
     }),
   );
   app.route(

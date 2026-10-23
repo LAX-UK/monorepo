@@ -58,7 +58,6 @@ describe("buildAccountLinks", () => {
       verifyEmail: "https://test-auth.lax.bid/resend-verification?client_id=lax-account-web",
       bidSettings: {
         notifications: "https://test.lax.bid/dashboard/settings/notifications",
-        deleteAccount: "https://test.lax.bid/dashboard/settings/security",
       },
       support: {
         helpCentre: "https://test.lax.bid/faq",

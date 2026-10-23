@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { type Context, Hono } from "hono";
+import type { AccountDeletionService } from "../services/account-deletion.service.js";
 import type { EmailChangeFailure, EmailChangeService } from "../services/email-change.service.js";
 import type { IIdentityLifecycleService } from "../services/identity-lifecycle.service.js";
 import { IdentityLifecycleConflictError } from "../services/identity-lifecycle.service.js";
@@ -111,6 +112,7 @@ export function createInternalIdentityRoutes(options: {
   lifecycle: IIdentityLifecycleService;
   operations: IdentityOperationsService;
   emailChange: Pick<EmailChangeService, "start" | "confirm">;
+  accountDeletion: Pick<AccountDeletionService, "requestDeletion">;
   redis: MachineTokenRedis;
   machineClientId: string;
   machineClientSecret: string;
@@ -451,12 +453,12 @@ export function createInternalIdentityRoutes(options: {
     });
   });
 
-  app.post("/identity/subjects/:subjectId/deletion-request", (c) =>
-    runIdentityOperation(c, async () => {
-      await options.operations.markDeletionRequested(c.req.param("subjectId"));
-      return { ok: true };
-    }),
-  );
+  // Requests deletion through the same orchestration LAX Account uses: every product is asked
+  // first. The caller (LAX Bid) applies its own step-up before calling.
+  app.post("/identity/subjects/:subjectId/deletion-request", async (c) => {
+    const outcome = await options.accountDeletion.requestDeletion(c.req.param("subjectId"));
+    return outcome ? c.json(outcome) : c.json({ error: "subject_not_found" }, 404);
+  });
 
   app.delete("/identity/subjects/:subjectId/deletion-request", (c) =>
     runIdentityOperation(c, async () => {

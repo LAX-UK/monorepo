@@ -382,6 +382,61 @@ describe("HttpIdentityIssuerClient", () => {
       );
     });
   });
+
+  describe("account deletion", () => {
+    function clientFor(respond: () => Response) {
+      const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], _init?: RequestInit) => {
+        if (String(input).endsWith("/internal/oauth/token")) {
+          return Response.json({
+            access_token: "machine-token",
+            token_type: "Bearer",
+            expires_in: 300,
+          });
+        }
+        return respond();
+      });
+      const client = new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl,
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-at-least-32-characters",
+      });
+      return { client, fetchImpl };
+    }
+
+    it.each([
+      [{ outcome: "requested", requestedAt: "2026-10-23T12:00:00.000Z" }],
+      [{ outcome: "already_requested", requestedAt: "2026-10-01T09:00:00.000Z" }],
+      [
+        {
+          outcome: "not_eligible",
+          status: {
+            requestedAt: null,
+            products: [
+              {
+                product: "bid",
+                state: "blocked",
+                blockers: [{ code: "pay", message: "Pay it.", href: null }],
+              },
+            ],
+          },
+        },
+      ],
+    ])("returns Identity's outcome %j unchanged", async (outcome) => {
+      const { client, fetchImpl } = clientFor(() => Response.json(outcome));
+      await expect(client.requestAccountDeletion("user-1")).resolves.toEqual(outcome);
+      expect(String(fetchImpl.mock.calls[1]?.[0])).toBe(
+        "https://identity.example.com/internal/identity/subjects/user-1/deletion-request",
+      );
+    });
+
+    it("rejects an answer it does not recognise instead of treating it as success", async () => {
+      const { client } = clientFor(() => Response.json({ ok: true }));
+      await expect(client.requestAccountDeletion("user-1")).rejects.toBeInstanceOf(
+        IdentityIssuerClientError,
+      );
+    });
+  });
 });
 
 describe("HttpIdentityIssuerClient address book", () => {

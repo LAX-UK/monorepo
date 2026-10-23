@@ -9,8 +9,6 @@ import type { LaxAccountConfig } from "../config";
  */
 export type BidSettingsLinksVm = {
   notifications: string;
-  /** Account deletion lives in Bid security settings behind a step-up check. */
-  deleteAccount: string;
 };
 
 /**
@@ -51,7 +49,6 @@ export function buildAccountLinks(
     bidSettings: bidUrl
       ? {
           notifications: bid("/dashboard/settings/notifications"),
-          deleteAccount: bid("/dashboard/settings/security"),
         }
       : null,
     support: bidUrl

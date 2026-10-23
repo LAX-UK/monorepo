@@ -12,6 +12,7 @@ import { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { HttpEmailSender } from "../infrastructure/http-email-sender.js";
+import { HttpProductDeletionEligibilityProbe } from "../infrastructure/http-product-deletion-eligibility-probe.js";
 import { HttpProductSubjectUsageProbe } from "../infrastructure/http-product-subject-usage-probe.js";
 import type { JwksProvider } from "../infrastructure/jwks-provider.js";
 import { ConsolePhoneVerificationService } from "../infrastructure/phone-verification/console.service.js";
@@ -19,12 +20,14 @@ import {
   TwilioVerifyService,
   isTwilioVerifyConfigured,
 } from "../infrastructure/phone-verification/twilio-verify.service.js";
+import type { ProductDeletionEligibilityProbe } from "../services/account-deletion.ports.js";
 
 export type AuthInfra = {
   db: IdentityDb;
   redis: Redis;
   emailSender: EmailSender;
   productSubjectUsage: ProductSubjectUsageProbe;
+  productDeletionEligibility: ProductDeletionEligibilityProbe;
   webOrigins: string[];
   envelope: { seal(plaintext: string): string; open(sealed: string): string } | undefined;
   jwks: JwksProvider;
@@ -52,6 +55,12 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
     timeoutMs: env.IDENTITY_SUBJECT_USAGE_TIMEOUT_MS,
   });
+  const productDeletionEligibility = new HttpProductDeletionEligibilityProbe({
+    baseUrls: { bid: usageBaseUrl, shop: env.SHOP_API_INTERNAL_BASE_URL },
+    clientId: env.IDENTITY_MACHINE_CLIENT_ID,
+    clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+    timeoutMs: env.IDENTITY_DELETION_ELIGIBILITY_TIMEOUT_MS,
+  });
   const webOrigins = buildTrustedAuthOrigins({
     webOrigin: env.WEB_ORIGIN,
     webOrigins: env.WEB_ORIGINS,
@@ -66,6 +75,7 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     redis,
     emailSender,
     productSubjectUsage,
+    productDeletionEligibility,
     webOrigins,
     envelope,
     jwks: createDrizzleJwksStore(db, envelope),

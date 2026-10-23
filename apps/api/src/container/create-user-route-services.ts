@@ -8,7 +8,6 @@ import type {
 import type { LotReadPort, SaleLookupPort } from "../container/container-slices.js";
 import type { Env } from "../env.js";
 import type { CachedAccountOnboardingChecker } from "../infrastructure/cached-account-onboarding.checker.js";
-import type { AccountDeletionEligibilityService } from "../services/account-deletion-eligibility.service.js";
 import type { AccountOnboardingService } from "../services/account-onboarding.service.js";
 import type { AddressService } from "../services/address.service.js";
 import type { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
@@ -69,7 +68,6 @@ export type CreateUserRouteServicesInput = {
   addressService: AddressService;
   sessionRevocation: SessionRevocationService;
   authAuditPublisher: IAuthAuditPublisher;
-  accountDeletionEligibilityService: AccountDeletionEligibilityService;
   twoFactorRequirement: UserRouteServices["twoFactorRequirement"];
   staffInvitationAccept: UserRouteServices["staffInvitationAccept"];
 };
@@ -135,7 +133,6 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       sessionRevocation: input.sessionRevocation,
       authAuditPublisher: input.authAuditPublisher,
       userService: input.userService,
-      accountDeletionEligibilityService: input.accountDeletionEligibilityService,
       attributionStore: input.attributionStore,
     }),
     twoFactorRequirement: input.twoFactorRequirement,

@@ -452,6 +452,12 @@ export type ContainerInternalIdentitySubjectUsageRoutesSlice = Pick<
   "subjectUsageReader"
 >;
 
+/** Machine-authenticated Identity account-deletion eligibility boundary. */
+export type ContainerInternalIdentityDeletionEligibilityRoutesSlice = Pick<
+  Container,
+  "accountDeletionEligibilityService"
+>;
+
 /** Brevo marketing webhook ingest. */
 export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWebhookIngestService">;
 

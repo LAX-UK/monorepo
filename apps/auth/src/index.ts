@@ -24,6 +24,7 @@ import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
+import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 
@@ -127,6 +128,12 @@ const emailChange = new EmailChangeService({
       : {}),
   },
 });
+const accountDeletion = new AccountDeletionService({
+  operations: identityOperations,
+  products: infra.productDeletionEligibility,
+  onProductUnavailable: (product, error) =>
+    log.warn({ err: error, product }, "account_deletion_product_unavailable"),
+});
 const identityLifecycle = createIdentityLifecycleService({
   db,
   identityEventPublisher: repositories.identityEventPublisher,
@@ -167,6 +174,7 @@ const internal =
           lifecycle: identityLifecycle,
           operations: identityOperations,
           emailChange,
+          accountDeletion,
           redis,
           machineClientId: env.IDENTITY_MACHINE_CLIENT_ID,
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
@@ -226,6 +234,7 @@ const app = createAuthApp({
     services,
     identityOperations,
     emailChange,
+    accountDeletion,
     emailSender,
     securityNotices,
     durableSecurityEffects,

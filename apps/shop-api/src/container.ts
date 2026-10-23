@@ -2,6 +2,7 @@ import { type Database, closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
@@ -28,6 +29,7 @@ import { createCommerceServices } from "./create-commerce-services.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
+import type { IdentityDeletionRouteDeps } from "./identity-route-deps.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
 import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
@@ -35,6 +37,7 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import { createDrizzleDeletionEligibilityRepository } from "./infrastructure/drizzle-deletion-eligibility.repository.js";
 import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-editorial-links.repository.js";
 import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
@@ -126,6 +129,7 @@ export type ShopApiAppDeps = {
   };
   admin: AdminRoutesDeps;
   portal: PortalRoutesDeps;
+  identityDeletion: IdentityDeletionRouteDeps;
   payeeConnect: ShopPayeeConnectPort;
   stripeConnectWebhook: StripeConnectWebhookDeps;
   staffReader: AdminRoutesDeps["staffReader"];
@@ -377,6 +381,16 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         shopMediaUpload,
       },
       portal: { portalOwnership, portalSales, portalArtist, portalFavorites, laxPortfolio },
+      identityDeletion: {
+        eligibility: createShopDeletionEligibilityService({
+          reader: createDrizzleDeletionEligibilityRepository(db),
+          origins: storefrontOrigins,
+        }),
+        machine: {
+          clientId: env.IDENTITY_MACHINE_CLIENT_ID,
+          clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+        },
+      },
       payeeConnect,
       stripeConnectWebhook: {
         webhookSecret: env.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET,

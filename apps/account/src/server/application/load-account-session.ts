@@ -1,6 +1,7 @@
 import type {
   AccountAddress,
   AccountContactResponse,
+  AccountDeletionStatus,
   AccountSecurityFactsResponse,
   AccountSession,
 } from "@auction/identity-contracts";
@@ -23,6 +24,8 @@ export type AccountSessionState =
       liveContact: AccountContactResponse | null;
       /** Present only when requested; failed when the issuer could not answer. */
       liveAddresses: IdentityCallResult<AccountAddress[]> | null;
+      /** Present only when requested, and null when the issuer could not answer. */
+      liveDeletion: AccountDeletionStatus | null;
     }
   | { status: "unsigned" }
   /** The session store could not be reached, so the person's state is unknown. */
@@ -50,6 +53,8 @@ export type LoadAccountSessionOptions = {
   withLiveContact?: boolean;
   /** Ask the issuer for the person's saved addresses. */
   withLiveAddresses?: boolean;
+  /** Ask the issuer whether the account can be deleted, which asks every product. */
+  withLiveDeletion?: boolean;
 };
 
 /** Only the pages that show a live fact pay for its extra issuer request. */
@@ -61,13 +66,15 @@ export async function loadAccountSession(
     const record = await loadAccountRecord();
     if (!record) return { status: "unsigned" };
     const actor = { accessToken: record.accessToken, sid: record.sid };
-    const [liveSecurity, liveName, liveSessions, liveContact, liveAddresses] = await Promise.all([
-      options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
-      options.withLiveName ? identity.readName(actor) : null,
-      options.withLiveSessions ? identity.listSessions(actor) : null,
-      options.withLiveContact ? identity.readContact(actor) : null,
-      options.withLiveAddresses ? identity.listAddresses(actor) : null,
-    ]);
+    const [liveSecurity, liveName, liveSessions, liveContact, liveAddresses, liveDeletion] =
+      await Promise.all([
+        options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
+        options.withLiveName ? identity.readName(actor) : null,
+        options.withLiveSessions ? identity.listSessions(actor) : null,
+        options.withLiveContact ? identity.readContact(actor) : null,
+        options.withLiveAddresses ? identity.listAddresses(actor) : null,
+        options.withLiveDeletion ? identity.readDeletionStatus(actor) : null,
+      ]);
     const claims = idTokenClaims(record.idToken);
     return {
       status: "ok",
@@ -77,6 +84,7 @@ export async function loadAccountSession(
       liveSessions,
       liveContact,
       liveAddresses,
+      liveDeletion,
     };
   } catch (error) {
     // A Redis outage must not look like a sign-out: the person is still signed in, and sending

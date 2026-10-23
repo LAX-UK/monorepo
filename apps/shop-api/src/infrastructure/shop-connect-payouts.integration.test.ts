@@ -183,12 +183,17 @@ describe.skipIf(!hasShopIntegrationDb)("shop Connect payouts integration", () =>
     const gateway = fakeGateway({
       createTransfer: vi.fn(async (input) => {
         if (input.payoutId === payoutId) {
+          // Capture the outcome now: the manual call settles while the transfer is still in
+          // flight, and a rejection with no handler attached yet fails the whole test run.
           manual = markPaid({
             payoutId,
             paidReference: "BANK-REF",
             actorSubjectId: "finance-race-subject",
             idempotencyKey: `race-${payoutId}`,
-          });
+          }).then(
+            () => "paid",
+            (error: unknown) => error,
+          );
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
         return { transferId: `tr_${integrationSuffix("race")}` };
@@ -197,7 +202,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop Connect payouts integration", () =>
 
     await transferRunner(gateway)();
 
-    await expect(requireDefined(manual, "manual mark-paid")).rejects.toMatchObject({
+    expect(await requireDefined(manual, "manual mark-paid")).toMatchObject({
       code: SHOP_API_ERROR_CODES.CONFLICT,
     });
     const row = await payoutRow(payoutId);

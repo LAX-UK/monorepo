@@ -10,6 +10,7 @@ export const ACCOUNT_ROUTES = {
   overview: "/account",
   profile: "/account/profile",
   security: "/account/security",
+  deleteAccount: "/account/security/delete",
   privacy: "/account/privacy",
   help: "/account/help",
 } as const;
@@ -71,7 +72,10 @@ function twoStepSubtitle(
   return "On";
 }
 
-/** Password and security page. Both rows open the issuer's hosted pages, which own the change. */
+/**
+ * Password and security page. The sign-in rows open the issuer's hosted pages, which own the
+ * change; deleting the account is an Account page that asks every product first.
+ */
 export function buildSecurityGroups(
   facts: Pick<AccountSecurityFacts, "twoStep" | "backupCodesRemaining">,
   links: Pick<AccountLinksVm, "changePassword" | "manageTwoStep">,
@@ -90,6 +94,17 @@ export function buildSecurityGroups(
           title: "Two-step verification",
           subtitle: twoStepSubtitle(facts),
           href: links.manageTwoStep,
+        },
+      ],
+    },
+    {
+      id: "your-account",
+      label: "Your account",
+      rows: [
+        {
+          title: "Delete your account",
+          subtitle: "Permanently delete your LAX account",
+          href: ACCOUNT_ROUTES.deleteAccount,
         },
       ],
     },

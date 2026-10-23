@@ -28,6 +28,7 @@ import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sale
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
 import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
+import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/identity-deletion-eligibility.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
 import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.routes.js";
 import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
@@ -121,6 +122,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   });
 
   void registerHealthRoutes(app, options.deps.health);
+  void registerIdentityDeletionEligibilityRoutes(app, options.deps.identityDeletion);
   void registerStripeWebhookRoutes(app, options.deps.stripeWebhook);
   if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
     void registerStripeConnectWebhookRoutes(app, options.deps.stripeConnectWebhook);

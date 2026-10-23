@@ -42,6 +42,10 @@ export function createMinimalShopApiTestDeps(
       issuer: "http://localhost:3001",
       bffToken: "test-bff-token-minimum-32-characters-long",
     },
+    identityDeletion: {
+      eligibility: { listBlockers: async () => [] },
+      machine: { clientId: undefined, clientSecret: undefined },
+    },
     stripeWebhook: {
       webhookSecret: undefined,
       verifyWebhook: () => {

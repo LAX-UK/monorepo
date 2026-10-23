@@ -110,6 +110,7 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
 
   const accountDeletionEligibilityService = new AccountDeletionEligibilityService(
     repos.accountDeletionEligibilityReader,
+    env.WEB_ORIGIN,
   );
   const brevoWebhookIngestService = new BrevoWebhookIngestService(
     repos.emailSuppressionRepository,

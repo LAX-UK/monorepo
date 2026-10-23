@@ -242,4 +242,88 @@ describe("createIssuerAccountIdentityGateway", () => {
       }
     });
   });
+
+  describe("deleting the account", () => {
+    const STATUS = {
+      requestedAt: null,
+      products: [
+        { product: "bid", state: "clear", blockers: [] },
+        {
+          product: "shop",
+          state: "blocked",
+          blockers: [{ code: "shop_open_orders", message: "An order is open.", href: null }],
+        },
+      ],
+    };
+
+    it("reads the combined status with only the access token", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () => Response.json(STATUS));
+      expect(await g.readDeletionStatus(actor)).toEqual(STATUS);
+      expect(lastRequest(fetchImpl).url).toBe(
+        "https://auth.internal/api/auth/lax/account-deletion",
+      );
+      expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({ token: "access-token" });
+    });
+
+    it("sends the sign-in and the typed phrase to request deletion", async () => {
+      const outcome = { outcome: "requested", requestedAt: "2026-10-23T12:00:00.000Z" };
+      const { fetchImpl, gateway: g } = gateway(async () => Response.json(outcome));
+      expect(await g.requestDeletion(actor, "DELETE MY ACCOUNT")).toEqual({
+        status: "ok",
+        value: outcome,
+      });
+      expect(lastRequest(fetchImpl).url).toContain("/lax/account-deletion/request");
+      expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        confirmation: "DELETE MY ACCOUNT",
+      });
+    });
+
+    it("returns a refusal as an outcome, with what is in the way", async () => {
+      const outcome = { outcome: "not_eligible", status: STATUS };
+      const { gateway: g } = gateway(async () => Response.json(outcome));
+      expect(await g.requestDeletion(actor, "DELETE MY ACCOUNT")).toEqual({
+        status: "ok",
+        value: outcome,
+      });
+    });
+
+    it("cancels and reports whether there was anything to cancel", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ outcome: "cancelled" }),
+      );
+      expect(await g.cancelDeletion(actor)).toEqual({ status: "ok", value: "cancelled" });
+      expect(lastRequest(fetchImpl).url).toContain("/lax/account-deletion/cancel");
+      const none = gateway(async () => Response.json({ outcome: "not_requested" }));
+      expect(await none.gateway.cancelDeletion(actor)).toEqual({
+        status: "ok",
+        value: "not_requested",
+      });
+    });
+
+    it("passes the request to sign in again through", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await g.requestDeletion(actor, "DELETE MY ACCOUNT")).toEqual({
+        status: "reauth_required",
+      });
+    });
+
+    it("never reads an unknown answer as a success", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      for (const respond of [
+        async () => Response.json({ outcome: "deleted" }),
+        async () => Response.json({ ok: true }),
+        async () => new Response("{}", { status: 503 }),
+      ]) {
+        const { gateway: g } = gateway(respond);
+        expect(await g.requestDeletion(actor, "DELETE MY ACCOUNT")).toEqual({
+          status: "unavailable",
+        });
+        expect(await g.readDeletionStatus(actor)).toBeNull();
+      }
+    });
+  });
 });

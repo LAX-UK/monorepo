@@ -51,6 +51,7 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
         phoneNumberVerified: user.phoneNumberVerified,
         pendingNewEmail: user.pendingNewEmail,
         emailChangeExpiresAt: user.emailChangeExpiresAt,
+        deletionRequestedAt: user.deletionRequestedAt,
       })
       .from(user)
       .where(eq(user.id, subjectId))
