@@ -19,7 +19,10 @@ type SectionTabsNavProps = {
   sticky?: boolean;
 };
 
-/** Next.js adapter for `SectionTabs` — replaces pill `DashboardSectionTabs`. */
+/**
+ * Next.js adapter for `SectionTabs`, used on the buying pages, where tab names read as plain
+ * words ("Lots", "Artists", "Unread") rather than as capitalised labels.
+ */
 export function SectionTabsNav({
   items,
   ariaLabel,
@@ -41,6 +44,7 @@ export function SectionTabsNav({
       ariaLabel={ariaLabel}
       items={tabs}
       variant={variant}
+      casing="sentence"
       sticky={sticky}
       {...(className ? { className } : {})}
       renderLink={({ href, className: linkClass, children, ...rest }) => (

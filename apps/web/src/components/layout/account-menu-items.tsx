@@ -42,7 +42,6 @@ export function useAccountMenuGroups(
       mode,
       hasConsigned: context?.hasConsigned ?? false,
       isOrgMember: context?.isOrgMember ?? false,
-      accountOrigin: context?.accountOrigin ?? null,
       user,
     };
     return buildAccountMenu(facts);

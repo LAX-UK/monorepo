@@ -14,7 +14,7 @@ import {
 import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { connectRequirementsAttentionCount, getConnectGapState } from "@auction/connect";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -97,14 +97,12 @@ export default async function OrganisationOverviewPage({
   return (
     <div className="space-y-8">
       <OrgTabSectionHeader>
-        <SectionHeader
-          kicker={<LabelCaps>Overview</LabelCaps>}
-          heading={<DisplayHeading as="h2">At a glance</DisplayHeading>}
-        />
+        <SectionHeader heading={<DisplayHeading as="h2">At a glance</DisplayHeading>} />
       </OrgTabSectionHeader>
 
       <KpiRow
         embedded
+        text="plain"
         columns={4}
         aria-label="Organisation summary"
         className="rounded-xl border border-border-hairline bg-surface-container-lowest p-4 sm:p-5"
@@ -142,7 +140,6 @@ export default async function OrganisationOverviewPage({
       {resumeStep ? (
         <Surface variant="section" padding="md" className="space-y-4 border-l-4 border-l-primary">
           <div className="space-y-1">
-            <LabelCaps>Needs attention</LabelCaps>
             <h3 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
               Continue organisation setup
             </h3>
@@ -162,7 +159,6 @@ export default async function OrganisationOverviewPage({
       ) : reviewIndex >= 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
           <div className="space-y-1">
-            <LabelCaps>Review progress</LabelCaps>
             <h3 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
               Application status
             </h3>

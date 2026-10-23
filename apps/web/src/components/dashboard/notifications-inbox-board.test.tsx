@@ -72,7 +72,7 @@ describe("NotificationsInboxBoard", () => {
   it("uses FilterEmptyState when type filter yields zero rows", () => {
     searchParams = new URLSearchParams("type=outbid");
     inboxState = { ...emptyInbox, items: [] };
-    render(<NotificationsInboxBoard pageMeta="Buying" />);
+    render(<NotificationsInboxBoard />);
 
     expect(screen.getByText(/No notifications match this filter/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Clear filters/i })).toHaveAttribute(
@@ -87,7 +87,7 @@ describe("NotificationsInboxBoard", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-28T15:00:00.000Z"));
 
-    const { container } = render(<NotificationsInboxBoard pageMeta="Buying" />);
+    const { container } = render(<NotificationsInboxBoard />);
 
     const todayHeading = screen.getByRole("heading", { name: "Today" });
     const earlierHeading = screen.getByRole("heading", { name: "Earlier" });

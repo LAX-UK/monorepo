@@ -30,7 +30,10 @@ called server-side with the person's own access token. Renaming, starting an ema
 sign-in from the last five minutes; Account otherwise sends the person through a fresh sign-in
 (`/api/auth/login?intent=reauth`) and back to the same page.
 
-Keep `LAX_ACCOUNT_ORIGIN` unset on Bid web while Bid still hosts its own identity settings pages,
-otherwise Bid settings redirect here and Account's remaining links to Bid loop.
+Bid web no longer hosts identity settings. Its old profile, account, addresses, security and sessions
+pages permanently redirect here (`/account/profile`, `/account/security`, `/account/email-change`), and
+its menus link to Account, from `NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN` (build time; `http://localhost:3040`
+in development, `https://account.lax.bid` when unset in a production build). Account links back only
+to Bid pages that stay in Bid (notifications, help, legal), so there is no redirect loop.
 
 Deploy: DigitalOcean component + DNS `test-account.lax.bid` / `account.lax.bid` (see `auction-infra`).

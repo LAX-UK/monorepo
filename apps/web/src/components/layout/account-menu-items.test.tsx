@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/lib/data/contracts";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { AccountMenuContext } from "@/lib/navigation/account-menu-context";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -39,7 +40,6 @@ const withContext = (overrides: Partial<AccountMenuContext> = {}) =>
   contextMock.mockReturnValue({
     hasConsigned: false,
     isOrgMember: false,
-    accountOrigin: "https://account.example.test",
     ...overrides,
   });
 
@@ -85,26 +85,24 @@ describe("AccountMenuItems", () => {
     );
   });
 
-  it("links LAX Account to the configured origin and hides it when unset", () => {
+  it("always links LAX Account to the Account origin", () => {
     withContext();
-    const { unmount } = render(<Menu />);
+    render(<Menu />);
     expect(screen.getByRole("menuitem", { name: "LAX Account" })).toHaveAttribute(
       "href",
-      "https://account.example.test/account?from=bid",
+      laxAccountHomeUrl(),
     );
-    unmount();
-
-    withContext({ accountOrigin: null });
-    render(<Menu />);
-    expect(screen.queryByRole("menuitem", { name: "LAX Account" })).toBeNull();
-    expect(screen.getByRole("menuitem", { name: "Bid settings" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Bid settings" })).toHaveAttribute(
+      "href",
+      "/dashboard/settings",
+    );
   });
 
   it("falls back to safe defaults until the person's facts load", () => {
     contextMock.mockReturnValue(null);
     render(<Menu />);
     expect(screen.getByRole("menuitem", { name: "Start selling" })).toBeInTheDocument();
-    expect(screen.queryByRole("menuitem", { name: "LAX Account" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "LAX Account" })).toBeInTheDocument();
   });
 
   it("separates the groups", () => {

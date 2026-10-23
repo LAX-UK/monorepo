@@ -1,4 +1,3 @@
-import { DashboardBannerStackClient } from "@/components/dashboard/dashboard-banner-stack-client";
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
@@ -8,8 +7,6 @@ import { ContextBanner } from "@/components/shell/context-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
-import { getServerDataContainer } from "@/lib/data/container.server";
-import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -36,39 +33,17 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
-  const kycOnboardingEnabled = isIdentityOnboardingEnabled();
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
   if (!canAccessStaffAdminShell(user.role) && user.accountOnboardingComplete === false) {
     redirect("/onboarding/account?next=%2Fdashboard");
   }
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
-  const c = await getServerDataContainer();
   const pendingGw = createPendingInvitationsGateway();
-  const [kycR, orgR, pendingR] = await Promise.allSettled([
-    c.kyc.getSummary(),
-    orgModuleEnabled ? c.orgOnboarding.getResume() : Promise.resolve(null),
+  const [pendingR] = await Promise.allSettled([
     orgModuleEnabled ? pendingGw.listMine() : Promise.resolve([]),
   ]);
-  const kycSummary = kycR.status === "fulfilled" ? kycR.value : null;
-  const orgOnboardingResume = orgR.status === "fulfilled" ? orgR.value : null;
   const pendingInvites = pendingR.status === "fulfilled" ? pendingR.value : [];
   const layoutWarnings: { title: string; message: string }[] = [];
-  if (kycR.status === "rejected") {
-    layoutWarnings.push({
-      title: "Verification status unavailable",
-      message: dashboardSliceFailureMessage(kycR.reason, "kyc", "Could not load KYC status."),
-    });
-  }
-  if (orgR.status === "rejected" && orgModuleEnabled) {
-    layoutWarnings.push({
-      title: "Organisation onboarding unavailable",
-      message: dashboardSliceFailureMessage(
-        orgR.reason,
-        "orgOnboarding",
-        "Could not load organisation onboarding.",
-      ),
-    });
-  }
   if (pendingR.status === "rejected" && orgModuleEnabled) {
     layoutWarnings.push({
       title: "Pending invitations unavailable",
@@ -125,15 +100,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             {layoutWarnings.map((w) => (
               <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
             ))}
-            <DashboardBannerStackClient
-              user={user}
-              acting={safeActing}
-              kycSummary={kycSummary}
-              orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
-              orgModuleEnabled={orgModuleEnabled}
-              kycOnboardingEnabled={kycOnboardingEnabled}
-              workspaceMode={clientWorkspaceMode}
-            />
           </>
         }
         topSlot={<WelcomeBackToast />}

@@ -15,18 +15,15 @@ import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { CheckCheck, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { notificationTypePresenter } from "./notifications/notification-presenters";
 import { NotificationRow } from "./notifications/notification-row";
 import { NotificationsSkeleton } from "./notifications/notifications-skeleton";
 import { useNotificationsInboxBoard } from "./notifications/use-notifications-inbox-board";
 
 export function NotificationsInboxBoard({
-  pageMeta,
   loadFailure = null,
   initialPage,
 }: {
-  pageMeta: ReactNode;
   loadFailure?: DashboardSliceFailure | null;
   initialPage?: {
     tab: InboxTab;
@@ -53,7 +50,6 @@ export function NotificationsInboxBoard({
 
   return (
     <DashboardListPage
-      meta={pageMeta}
       title="Notifications"
       description="Bids, wins, payments, and saved-lot updates. Live when you are online."
       actions={loadFailure ? undefined : markAllReadAction}

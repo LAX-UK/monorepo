@@ -2,7 +2,7 @@ import { useId } from "react";
 import { cn } from "../../lib/utils.js";
 
 export type MediaPlaceholderProps = {
-  /** Short uppercase label, e.g. "Lot artwork", "Auction cover", or initials. */
+  /** Short label, e.g. "Lot artwork", "Auction cover", or initials. */
   label?: string | undefined;
   tone?: "light" | "dark" | "auto" | undefined;
   /** Intrinsic aspect ratio, matching the mockup helper's [width, height]. */
@@ -87,7 +87,7 @@ export function MediaPlaceholder({
       {normalizedLabel ? (
         <span
           className={cn(
-            "absolute inset-0 flex items-center justify-center px-2 text-center font-mono text-[9px] uppercase tracking-[0.05em]",
+            "absolute inset-0 flex items-center justify-center px-2 text-center font-mono text-[9px] tracking-normal",
             LABEL_CLASS[tone],
           )}
         >

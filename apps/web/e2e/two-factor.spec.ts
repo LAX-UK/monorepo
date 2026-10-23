@@ -15,9 +15,12 @@ test.describe("two-factor auth pages @journey", () => {
     await expect(hostedTwoFactor).toBeVisible({ timeout: 30_000 });
   });
 
-  test("settings two-factor setup page requires auth", async ({ page }) => {
+  test("the old Bid two-factor settings address permanently moves to LAX Account", async ({
+    request,
+  }) => {
     test.skip(!enabled, skipReason);
-    await page.goto("/dashboard/settings/security/two-factor");
-    await expect(page).toHaveURL(/login/);
+    const res = await request.get("/dashboard/settings/security/two-factor", { maxRedirects: 0 });
+    expect(res.status()).toBe(308);
+    expect(res.headers().location).toMatch(/\/account\/security$/);
   });
 });

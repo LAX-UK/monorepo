@@ -21,9 +21,8 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { isOrgOnboardingInProgress } from "@/lib/legal-entity/org-onboarding-in-progress";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -48,7 +47,6 @@ export default async function OrganisationsHubPage() {
     loginNext: "/dashboard/organisations",
   });
   const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
-  const workspaceMeta = await readClientWorkspacePageMeta();
 
   let loadFailure: DashboardSliceFailure | null = null;
   let memberships: HubMembership[] = [];
@@ -97,7 +95,6 @@ export default async function OrganisationsHubPage() {
 
   return (
     <DashboardListPage
-      meta={workspaceMeta}
       title="Your organisations"
       banner={orgModuleEnabled ? <OrgSubmittedAlert /> : null}
       description="Manage organisations you belong to, respond to invitations, and continue setup."
@@ -113,7 +110,6 @@ export default async function OrganisationsHubPage() {
       {!loadFailure && pending.length > 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
           <div className="space-y-1">
-            <LabelCaps>Inbox</LabelCaps>
             <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
               Pending invitations
             </h2>
@@ -156,7 +152,6 @@ export default async function OrganisationsHubPage() {
       ) : !loadFailure ? (
         <div className="space-y-4">
           <SectionHeader
-            kicker={<LabelCaps>Workspaces</LabelCaps>}
             heading={<DisplayHeading as="h2">Your organisations</DisplayHeading>}
             action={
               <Button asChild variant="outline" size="sm">

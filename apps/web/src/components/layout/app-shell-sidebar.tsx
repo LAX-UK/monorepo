@@ -17,6 +17,34 @@ import { Badge } from "@auction/ui/components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+
+/** An entry that leaves Bid (LAX Account) is a plain link; the rest use client navigation. */
+function NavLink({
+  item,
+  children,
+  ...props
+}: {
+  item: { href: string; external?: true };
+  children: ReactNode;
+  className?: string;
+  onClick?: () => void;
+  "aria-current"?: "page" | undefined;
+  "aria-label"?: string;
+}) {
+  if (item.external) {
+    return (
+      <a href={item.href} rel="noopener noreferrer" {...props}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={item.href} {...props}>
+      {children}
+    </Link>
+  );
+}
 
 type Props = {
   user: SessionUser;
@@ -141,8 +169,8 @@ export function AppShellSidebar({
               return (
                 <Tooltip key={item.id} delayDuration={400}>
                   <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
+                    <NavLink
+                      item={item}
                       {...(onNavigate ? { onClick: onNavigate } : {})}
                       aria-current={active ? "page" : undefined}
                       aria-label={item.label}
@@ -175,7 +203,7 @@ export function AppShellSidebar({
                           {item.badge > 99 ? "99+" : item.badge}
                         </Badge>
                       ) : null}
-                    </Link>
+                    </NavLink>
                   </TooltipTrigger>
                   <TooltipContent side="right" className={cn("hidden", labelsHidden && "lg:block")}>
                     {item.label}

@@ -4,6 +4,7 @@ import { trackSilentSignInResult } from "@/lib/analytics/events";
 import { BID_SILENT_NOTICE_COOKIE } from "@/lib/auth/silent-sign-in/config";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useLogout } from "@/lib/auth/use-logout";
+import { setSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
 import { maskAccountEmail } from "@auction/lax-ecosystem";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -33,7 +34,10 @@ export function SilentSignInNotice() {
   useEffect(() => {
     if (consumeNoticeCookie(BID_SILENT_NOTICE_COOKIE)) {
       pendingNotice.current = true;
+      // Hold the cookie banner and switcher hint back until the notice has been answered.
+      setSignInNoticeActive(true);
     }
+    return () => setSignInNoticeActive(false);
   }, []);
 
   useEffect(() => {
@@ -49,11 +53,13 @@ export function SilentSignInNotice() {
   const dismiss = useCallback(() => {
     trackSilentSignInResult({ strategy: "redirect", outcome: "notice_continue" });
     setOpen(false);
+    setSignInNoticeActive(false);
   }, []);
 
   const signOut = useCallback(async () => {
     trackSilentSignInResult({ strategy: "redirect", outcome: "notice_sign_out" });
     setOpen(false);
+    setSignInNoticeActive(false);
     await logout();
   }, [logout]);
 

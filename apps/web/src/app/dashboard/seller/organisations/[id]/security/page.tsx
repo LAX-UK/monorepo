@@ -4,7 +4,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { entityRoleCan } from "@auction/domain";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { notFound } from "next/navigation";
@@ -29,10 +29,7 @@ export default async function OrganisationSecurityPage({
   return (
     <div className="space-y-6">
       <OrgTabSectionHeader>
-        <SectionHeader
-          kicker={<LabelCaps>Security</LabelCaps>}
-          heading={<DisplayHeading as="h2">Two-step policy</DisplayHeading>}
-        />
+        <SectionHeader heading={<DisplayHeading as="h2">Two-step policy</DisplayHeading>} />
       </OrgTabSectionHeader>
 
       {policy ? (

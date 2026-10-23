@@ -111,7 +111,6 @@ flowchart TD
 - `apps/web/src/app/(task)/onboarding/organisation/layout.tsx`
 - `apps/web/src/app/(task)/register/page.tsx`
 - `apps/web/src/app/(task)/verify-email/page.tsx`
-- `apps/web/src/app/dashboard/settings/account/page.tsx`
 - `apps/web/src/app/dashboard/page.tsx`
 - `apps/web/src/app/dashboard/layout.tsx`
 

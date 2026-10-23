@@ -6,9 +6,9 @@ import {
 } from "@/components/settings/appearance-layout-preferences-form";
 import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { DensityPreference, LayoutViewDefault, ThemePreference } from "@auction/validators";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = { title: "Appearance & layout" };
 
@@ -35,13 +35,14 @@ export default async function AppearanceSettingsPage() {
       <ReduceMotionCard />
       <p className="text-sm text-on-surface-variant">
         Quick theme toggle is also in the site header.{" "}
-        <Link
-          href="/dashboard/settings/account"
+        <a
+          href={laxAccountHomeUrl()}
+          rel="noopener noreferrer"
           className="text-link underline-offset-4 hover:underline"
         >
-          Account &amp; email
-        </Link>{" "}
-        for sign-in details.
+          LAX Account
+        </a>{" "}
+        has your sign-in details.
       </p>
     </DashboardPage>
   );

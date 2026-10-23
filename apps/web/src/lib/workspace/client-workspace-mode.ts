@@ -54,25 +54,11 @@ export const CLIENT_WORKSPACE_COOKIE_OPTIONS = {
 };
 
 /**
- * Dashboard meta conventions:
- * - List pages → `clientWorkspacePageMeta()` → Buying / Selling
- * - Seller overview → `clientWorkspaceOverviewMeta()` → Collector home / Seller home
- * - Settings / invitations / orgs → domain-specific meta (unchanged)
+ * List pages carry no "Buying" or "Selling" eyebrow: the mode switch already says which
+ * workspace someone is in. Only the overview names its home.
  */
-
-/** Dashboard page header eyebrow for task list pages in the active client workspace. */
-export function clientWorkspacePageMeta(mode: ClientWorkspaceMode): string {
-  return mode === "selling" ? "Selling" : "Buying";
-}
 
 /** Overview home eyebrow — welcoming, mode-aware label (not Buying/Selling). */
 export function clientWorkspaceOverviewMeta(mode: ClientWorkspaceMode): string {
   return mode === "selling" ? "Seller home" : "Collector home";
-}
-
-/** Read persisted workspace mode from cookies and return the list-page header eyebrow. */
-export async function readClientWorkspacePageMeta(): Promise<string> {
-  const { cookies } = await import("next/headers");
-  const jar = await cookies();
-  return clientWorkspacePageMeta(parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value));
 }

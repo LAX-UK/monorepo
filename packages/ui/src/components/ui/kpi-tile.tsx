@@ -46,6 +46,11 @@ export type KpiTileProps = {
   clickable?: boolean;
   /** Visual variant — `dashboard` matches admin dashboard KPI cards. */
   variant?: "default" | "dashboard";
+  /**
+   * `plain` (client pages) writes the label in sentence case and lets the label and a word value
+   * such as "Approved" or "Payout setup" wrap instead of being cut with an ellipsis.
+   */
+  text?: "label" | "plain";
 };
 
 const deltaToneClass = {
@@ -106,7 +111,9 @@ export function KpiTile({
   semanticTone = "default",
   clickable = false,
   variant = "default",
+  text = "label",
 }: KpiTileProps) {
+  const plain = text === "plain";
   const resolvedDelta =
     delta ??
     (deltaDirection ? formatStructuredDelta(deltaDirection, deltaPercent, deltaTone) : null);
@@ -120,9 +127,9 @@ export function KpiTile({
     <div
       className={cn(
         "relative flex h-full min-w-0 flex-col overflow-hidden border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
-        variant === "dashboard"
-          ? "min-h-[7.75rem] rounded-shell-card"
-          : "min-h-[8.5rem] rounded-xl",
+        variant === "dashboard" ? "rounded-shell-card" : "rounded-xl",
+        // Plain tiles are only as tall as their content.
+        !plain && (variant === "dashboard" ? "min-h-[7.75rem]" : "min-h-[8.5rem]"),
         toneClass,
         clickable &&
           "cursor-pointer hover:shadow-[var(--shadow-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -134,10 +141,11 @@ export function KpiTile({
           {anomaly}
         </span>
       ) : null}
-      <KpiTileHeader label={label} icon={icon} variant={variant} />
+      <KpiTileHeader label={label} icon={icon} variant={variant} plain={plain} />
       <KpiTileBody
         value={value}
         {...(emphasize !== undefined ? { emphasize } : {})}
+        plain={plain}
         resolvedDelta={resolvedDelta}
         {...(compareHint !== undefined ? { compareHint } : {})}
         {...(trend !== undefined ? { trend } : {})}
@@ -152,17 +160,20 @@ function KpiTileHeader({
   label,
   icon,
   variant = "default",
+  plain = false,
 }: {
   label: React.ReactNode;
   icon?: React.ReactNode;
   variant?: "default" | "dashboard";
+  plain?: boolean;
 }) {
   return (
     <div className="flex min-w-0 items-start justify-between gap-2">
       <p
         className={cn(
-          "min-w-0 truncate font-label text-on-surface-variant",
-          variant === "dashboard"
+          "min-w-0 font-label text-on-surface-variant",
+          plain ? "break-words" : "truncate",
+          variant === "dashboard" || plain
             ? "text-sm font-normal normal-case tracking-normal"
             : "text-xs font-normal uppercase tracking-widest text-secondary",
         )}
@@ -182,7 +193,9 @@ function KpiTileBody({
   trend,
   trendTone,
   trendSlot,
+  plain = false,
 }: {
+  plain?: boolean;
   value: React.ReactNode;
   emphasize?: boolean;
   resolvedDelta: React.ReactNode;
@@ -197,13 +210,14 @@ function KpiTileBody({
   const showSparkline = Boolean(trend && trend.length > 0);
 
   return (
-    <div className="mt-3 flex min-h-0 flex-1 flex-col">
+    <div className={cn("flex min-h-0 flex-1 flex-col", plain ? "mt-2" : "mt-3")}>
       <div className="flex min-w-0 items-end justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p
             className={cn(
-              "truncate font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl lg:text-[length:var(--text-display-kpi,2.25rem)]",
-              emphasize && "border-b-2 border-primary pb-0.5",
+              "font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl",
+              plain ? "break-words" : "truncate lg:text-[length:var(--text-display-kpi,2.25rem)]",
+              emphasize && !plain && "border-b-2 border-primary pb-0.5",
             )}
             style={{ fontFeatureSettings: "var(--font-feature-tabular)" }}
             {...(valueTitle ? { title: valueTitle } : {})}
@@ -219,7 +233,7 @@ function KpiTileBody({
           </div>
         ) : null}
       </div>
-      <div className="mt-auto min-h-[2.75rem] pt-1">
+      <div className={plain ? "pt-1 empty:hidden" : "mt-auto min-h-[2.75rem] pt-1"}>
         {resolvedDelta ? <div className="min-w-0 truncate">{resolvedDelta}</div> : null}
         {compareHint ? (
           <p className="line-clamp-2 font-body text-[10px] text-on-surface-variant">

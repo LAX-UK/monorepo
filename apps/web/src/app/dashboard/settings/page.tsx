@@ -1,39 +1,40 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Bid settings" };
 
-const FIRST_BID_SETTINGS_PATH = "/dashboard/settings/bidding";
-
 /**
- * There is no settings overview: this index only keeps old links working. Security links
- * from emails (`?tab=security`) still reach the security page they were written for.
+ * The settings index. The list itself (bidding limits, alerts, interests, appearance, and the one
+ * LAX Account link) is the settings navigation beside or above every settings page, so this page
+ * only introduces it. Name, email, password and addresses are not here: they are in LAX Account.
+ *
+ * Links in older emails ask for `?tab=security`; they now go to the same place in LAX Account.
  */
 export default async function SettingsIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    tab?: string;
-    changed?: string;
-    linked?: string;
-    password?: string;
-  }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const sp = await searchParams;
-
-  if (sp.tab === "security") {
-    const q = new URLSearchParams();
-    if (sp.changed === "1") q.set("changed", "1");
-    if (sp.linked) q.set("linked", sp.linked);
-    if (sp.password === "set") q.set("password", "set");
-    const suffix = q.toString() ? `?${q.toString()}` : "";
-    redirect(`/dashboard/settings/security${suffix}`);
-  }
+  if (sp.tab === "security") redirect(laxAccountUrl("/account/security"));
 
   await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings",
   });
-  redirect(FIRST_BID_SETTINGS_PATH);
+
+  return (
+    <DashboardPage className="space-y-4">
+      <SettingsFormHeader
+        title="Bid settings"
+        description="Choose a setting to change how you bid, what you hear about and how Bid looks. Your name, email, password, security and addresses are in LAX Account."
+        hideTitleOnMobile={false}
+        hideDescriptionOnMobile={false}
+      />
+    </DashboardPage>
+  );
 }

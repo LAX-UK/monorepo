@@ -8,6 +8,7 @@ import { DensityTweakSection } from "@/components/layout/tweaks-popover";
 import { MediaImage } from "@/components/ui/media-image";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
 import { cn } from "@auction/ui";
 import {
@@ -17,7 +18,7 @@ import {
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
-import { ChevronRight, Compass } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -39,6 +40,7 @@ function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): stri
   if (
     item.id === "notifications" ||
     item.id === "settings" ||
+    item.id === "lax-account" ||
     item.href.includes("/settings") ||
     item.id === "payments"
   ) {
@@ -113,27 +115,25 @@ function MobileProfileStrip({
         <Link
           href="/dashboard/settings"
           onClick={onNavigate}
+          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
+        >
+          Bid settings
+          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+        </Link>
+        <a
+          href={laxAccountHomeUrl()}
+          rel="noopener noreferrer"
+          onClick={onNavigate}
           className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary-container/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary-container/20"
         >
-          All settings
-          <ChevronRight className="size-4 shrink-0" aria-hidden />
-        </Link>
-        <Link
-          href="/dashboard/settings/profile"
-          onClick={onNavigate}
-          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
-        >
-          Profile
-          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-        </Link>
-        <Link
-          href="/dashboard/settings/account"
-          onClick={onNavigate}
-          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
-        >
-          Account settings
-          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-        </Link>
+          <span className="min-w-0">
+            LAX Account
+            <span className="block text-xs font-normal text-on-surface-variant">
+              Manage your LAX Account: profile, security, addresses
+            </span>
+          </span>
+          <ArrowUpRight className="size-4 shrink-0" aria-hidden />
+        </a>
       </div>
     </div>
   );
@@ -142,18 +142,25 @@ function MobileProfileStrip({
 export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Props) {
   const pathname = usePathname();
   const { unread } = useUnreadNotifications();
-  const grouped = groupNavItems(items, variant);
+  // The profile strip already links to Bid settings and LAX Account, so the list does not repeat them.
+  const showsProfileStrip = variant === "client" && Boolean(user);
+  const grouped = groupNavItems(
+    showsProfileStrip
+      ? items.filter((item) => item.id !== "lax-account" && item.id !== "settings")
+      : items,
+    variant,
+  );
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent className="border-outline-variant bg-surface-container-lowest">
         <BottomSheetHeader className="px-6 pt-2 pb-1 text-left">
-          <BottomSheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          <BottomSheetTitle className="font-label text-sm font-semibold text-on-surface">
             More
           </BottomSheetTitle>
         </BottomSheetHeader>
         <div className="space-y-5 px-6 pt-4 pb-6">
-          {variant === "client" && user ? (
+          {showsProfileStrip && user ? (
             <MobileProfileStrip user={user} onNavigate={() => onOpenChange(false)} />
           ) : null}
           <Button
@@ -166,16 +173,13 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
             className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary-container/15 px-4 font-label text-xs text-primary transition-colors hover:bg-primary-container/25"
           >
             <Compass className="size-4 shrink-0" aria-hidden />
-            Quick go
+            Search Bid
           </Button>
-          <p className="text-center text-xs text-on-surface-variant">
-            Jump to collection, payments, organisations, and more
-          </p>
           {grouped.length > 0 ? (
             <div className="space-y-4">
               {grouped.map(([group, groupItems]) => (
                 <div key={group}>
-                  <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  <p className="mb-2 font-label text-xs font-semibold text-on-surface-variant">
                     {group}
                   </p>
                   <nav aria-label={`${group} destinations`} className="grid gap-2">
@@ -194,7 +198,7 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
                           aria-current={active ? "page" : undefined}
                           aria-label={ariaLabel}
                           className={cn(
-                            "flex min-h-12 items-center gap-3 rounded-lg border px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors",
+                            "flex min-h-12 items-center gap-3 rounded-lg border px-4 font-label text-sm font-medium transition-colors",
                             active
                               ? "border-primary/30 bg-primary-container/15 text-primary"
                               : "border-border-hairline bg-surface-container-low/40 text-on-surface hover:bg-surface-container-high",
@@ -233,9 +237,7 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
             <div>
-              <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
-                Dark mode
-              </p>
+              <p className="font-label text-sm font-medium text-on-surface">Dark mode</p>
               <p className="mt-1 text-xs text-on-surface-variant">Toggle the colour scheme.</p>
             </div>
             <ThemeToggle />

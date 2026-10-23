@@ -1,4 +1,5 @@
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ComplianceStatusStrip } from "./compliance-status-strip";
@@ -29,7 +30,6 @@ const baseUser = {
   emailVerified: true as const,
   emailStatus: "ok" as const,
   kycStatus: "unverified" as const,
-  twoFactorEnabled: false,
 };
 
 describe("ComplianceStatusStrip identity pill", () => {
@@ -76,5 +76,40 @@ describe("ComplianceStatusStrip identity pill", () => {
       />,
     );
     expect(screen.getByText("In review")).toBeInTheDocument();
+  });
+});
+
+describe("ComplianceStatusStrip", () => {
+  it("renders nothing when there is nothing left to fix", () => {
+    const { container } = render(
+      <ComplianceStatusStrip
+        user={{ ...baseUser, kycStatus: "approved" }}
+        addressesCount={2}
+        kyc={kycSummary({ status: "approved" })}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("lists only what blocks a payment, with no two-step pill", () => {
+    render(
+      <ComplianceStatusStrip
+        user={{ ...baseUser, emailVerified: false as never }}
+        addressesCount={0}
+        kyc={kycSummary({ status: "approved" })}
+      />,
+    );
+    expect(screen.getByText("Add address")).toBeInTheDocument();
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+    expect(screen.queryByText("2FA")).not.toBeInTheDocument();
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+  });
+
+  it("sends address and email problems to LAX Account", () => {
+    render(<ComplianceStatusStrip user={baseUser} addressesCount={0} kyc={null} />);
+    expect(screen.getByRole("link", { name: /address/i })).toHaveAttribute(
+      "href",
+      laxAccountUrl("/account/profile"),
+    );
   });
 });

@@ -4,7 +4,7 @@ import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import type { LegalEntity, LegalEntityDocument } from "@auction/types";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -42,10 +42,7 @@ export default async function OrganisationDocumentsPage({
   return (
     <div className="space-y-6">
       <OrgTabSectionHeader>
-        <SectionHeader
-          kicker={<LabelCaps>KYB</LabelCaps>}
-          heading={<DisplayHeading as="h2">Documents</DisplayHeading>}
-        />
+        <SectionHeader heading={<DisplayHeading as="h2">Documents</DisplayHeading>} />
       </OrgTabSectionHeader>
 
       <Surface variant="section" padding="md" className="space-y-4">

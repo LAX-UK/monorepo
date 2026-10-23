@@ -38,7 +38,6 @@ const empty = buildPortfolioAnalytics([]);
 function view(overrides: Partial<ComponentProps<typeof PurchasesView>> = {}) {
   return (
     <PurchasesView
-      meta="Buying"
       filters={parsePortfolioParams({})}
       analytics={empty}
       kpiAnalytics={empty}

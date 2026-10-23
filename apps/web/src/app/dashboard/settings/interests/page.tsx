@@ -26,7 +26,7 @@ export default async function AuctionInterestsSettingsPage({
     loginNext: "/dashboard/settings/interests",
   });
   if (user.signupPersona === "organisation") {
-    redirect("/dashboard/settings/profile");
+    redirect("/dashboard/settings/bidding");
   }
 
   let interests = null;

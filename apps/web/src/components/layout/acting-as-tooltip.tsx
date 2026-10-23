@@ -1,6 +1,8 @@
 "use client";
 
+import { useConsent } from "@/lib/analytics/consent/context";
 import { dismissActingContextTooltip } from "@/lib/legal-entity/acting-context.actions";
+import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
 import { Button } from "@auction/ui/components/button";
 import { useState, useTransition } from "react";
 
@@ -16,8 +18,11 @@ type Props = {
 export function ActingAsTooltip({ initiallyVisible }: Props) {
   const [visible, setVisible] = useState(initiallyVisible);
   const [pending, startTransition] = useTransition();
+  const { showBanner: cookieBannerShowing } = useConsent();
+  const signInNoticeActive = useSignInNoticeActive();
 
-  if (!visible) return null;
+  // One overlay at a time: the sign-in notice, then the cookie banner, then this hint.
+  if (!visible || signInNoticeActive || cookieBannerShowing) return null;
 
   function handleDismiss() {
     setVisible(false);

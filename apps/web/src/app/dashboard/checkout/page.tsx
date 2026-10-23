@@ -11,7 +11,6 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Lot, PublicLotView } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Gavel, ShoppingBag } from "lucide-react";
@@ -103,12 +102,10 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
   const notice = (sp.notice ?? "").trim();
 
   const grandTotal = rows.reduce((sum, row) => sum + row.total, 0);
-  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
     <DashboardPage className="space-y-6">
       <DashboardPageHeader
-        meta={workspaceMeta}
         title="Basket checkout"
         hideTitleOnMobile
         hideDescriptionOnMobile
@@ -184,6 +181,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title={`${rows.length} ${rows.length === 1 ? "lot" : "lots"} ready for settlement`}
         >
           <KpiRow
+            text="plain"
             variant="hero"
             columns={4}
             className="hidden lg:block"

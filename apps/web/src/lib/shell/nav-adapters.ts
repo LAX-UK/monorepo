@@ -16,9 +16,11 @@ export function appShellNavItemToNavItem(item: AppShellNavItem): NavItem {
     href: item.href,
     label: item.label,
     icon: item.icon,
+    ...(item.shortLabel ? { shortLabel: item.shortLabel } : {}),
     ...(item.badge !== undefined ? { badge: item.badge } : {}),
     ...(item.badgeTone !== undefined ? { badgeTone: item.badgeTone } : {}),
     ...(item.match ? { match: item.match } : {}),
+    ...(item.external ? { external: true as const } : {}),
   };
 }
 

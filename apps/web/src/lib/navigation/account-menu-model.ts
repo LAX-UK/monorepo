@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/lib/data/contracts";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import {
   type UserRole,
@@ -22,15 +23,8 @@ export type AccountMenuFacts = {
   hasConsigned: boolean;
   /** They belong to at least one organisation and organisations are switched on. */
   isOrgMember: boolean;
-  /** The LAX Account origin; the link is hidden when unset. */
-  accountOrigin: string | null;
   user: Pick<SessionUser, "role" | "staffRole">;
 };
-
-/** Where LAX Account opens when arriving from Bid, so it can offer a way back. */
-export function laxAccountHref(origin: string): string {
-  return `${origin}/account?from=bid`;
-}
 
 const PRIMARY: readonly AccountMenuEntry[] = [
   { id: "bids", label: "My bids", href: "/dashboard/bids" },
@@ -78,16 +72,11 @@ export function buildAccountMenu(facts: AccountMenuFacts): AccountMenuEntry[][] 
   const staff = staffEntry(facts.user);
   if (staff) switches.push(staff);
 
-  const account: AccountMenuEntry[] = [];
-  if (facts.accountOrigin) {
-    account.push({
-      id: "lax-account",
-      label: "LAX Account",
-      href: laxAccountHref(facts.accountOrigin),
-      external: true,
-    });
-  }
-  account.push({ id: "settings", label: "Bid settings", href: "/dashboard/settings/bidding" });
+  // Profile, security and addresses are managed in LAX Account; Bid keeps only its own settings.
+  const account: AccountMenuEntry[] = [
+    { id: "lax-account", label: "LAX Account", href: laxAccountHomeUrl(), external: true },
+    { id: "settings", label: "Bid settings", href: "/dashboard/settings" },
+  ];
 
   return [[...PRIMARY], switches, account];
 }

@@ -47,6 +47,7 @@ export function DashboardFilterChipRow({ label, items, className }: DashboardFil
       items={items}
       {...(className ? { className } : {})}
       scroll={false}
+      casing="sentence"
     />
   );
 }

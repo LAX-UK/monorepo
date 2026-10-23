@@ -16,6 +16,8 @@ export type KpiRowProps = {
   columns?: 3 | 4 | 5 | 6;
   sticky?: boolean;
   track?: AccentTrack;
+  /** `plain` for client pages: sentence-case labels that wrap rather than truncate. */
+  text?: "label" | "plain";
   className?: string;
   /** Extra responsive grid classes merged into the underlying `StatStrip`. */
   stripClassName?: string;
@@ -30,6 +32,7 @@ export function KpiRow({
   columns = 4,
   sticky,
   track = "buying",
+  text = "label",
   className,
   stripClassName,
   "aria-label": ariaLabel = "Summary at a glance",
@@ -65,6 +68,7 @@ export function KpiRow({
               {...tileProps}
               clickable={Boolean(href) || tileProps.clickable === true}
               variant={tileProps.variant ?? "default"}
+              text={tileProps.text ?? text}
             />
           );
           if (href) {

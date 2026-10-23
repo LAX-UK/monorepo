@@ -1,4 +1,5 @@
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { render, screen } from "@testing-library/react";
 import { Bell } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
@@ -56,14 +57,15 @@ describe("MobileMoreSheet", () => {
 
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Bid settings" })).toHaveAttribute(
       "href",
-      "/dashboard/settings/profile",
+      "/dashboard/settings",
     );
-    expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute(
-      "href",
-      "/dashboard/settings/account",
-    );
+    const account = screen.getByRole("link", { name: /LAX Account/ });
+    expect(account).toHaveAttribute("href", laxAccountHomeUrl());
+    expect(account).toHaveTextContent("Manage your LAX Account: profile, security, addresses");
+    expect(screen.queryByRole("link", { name: "Profile" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Account settings" })).toBeNull();
   });
 
   it("uses accessible label for notifications with unread count", () => {

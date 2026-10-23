@@ -1,6 +1,6 @@
 /**
- * Bounded buyer-account web surface (dashboard, profile, watchlists, notifications,
- * preferences, session security). Prefer importing from here in dashboard/account routes;
+ * Bounded buyer-account web surface (dashboard, watchlists, notifications, preferences).
+ * Name, email, addresses, sessions and security live in LAX Account. Prefer importing from here in dashboard/account routes;
  * implementations remain under `../data`, `../actions`, and `../services`.
  */
 
@@ -27,17 +27,6 @@ export {
 } from "../data/http/notifications.server";
 export { getServerSessionUser } from "../data/http/session.server";
 export type { SessionUser } from "../data/contracts";
-export {
-  updateProfileNameFromValuesAction,
-  updateProfileImageAction,
-  createAddressFromValuesAction,
-  updateAddressFromValuesAction,
-  removeAddressAction,
-  setDefaultAddressAction,
-  createAddressAction,
-  updateProfileNameAction,
-} from "../actions/profile";
-export { requestAccountDeletionAction } from "../actions/account-deletion";
 export {
   portfolioComplianceReason,
   portfolioSettlementAttentionAction,

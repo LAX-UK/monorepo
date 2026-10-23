@@ -13,7 +13,12 @@ export function BidPlacementBadge({ bid, size = "sm" }: Props) {
   if (!label) return null;
 
   return (
-    <StatusBadge variant="neutral" size={size} title={label}>
+    <StatusBadge
+      variant="neutral"
+      size={size}
+      title={label}
+      className="normal-case tracking-normal"
+    >
       {label}
     </StatusBadge>
   );

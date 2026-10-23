@@ -6,7 +6,6 @@ import {
   describeDashboardSliceFailure,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 
 function parseTab(raw: string | undefined): InboxTab {
   if (raw === "unread" || raw === "archived") return raw;
@@ -19,7 +18,7 @@ export async function NotificationsInboxContent({
 }: {
   searchParams: Promise<{ tab?: string; type?: string }>;
 }) {
-  const [sp, workspaceMeta] = await Promise.all([searchParams, readClientWorkspacePageMeta()]);
+  const sp = await searchParams;
   const tab = parseTab(sp.tab);
   const type = (sp.type ?? "").trim();
   const c = await getServerDataContainer();
@@ -43,7 +42,6 @@ export async function NotificationsInboxContent({
 
   return (
     <NotificationsInboxBoard
-      pageMeta={workspaceMeta}
       loadFailure={loadFailure}
       {...(loadFailure
         ? {}

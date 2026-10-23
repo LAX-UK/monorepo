@@ -21,7 +21,6 @@ import {
   filterPortfolioRows,
   toPortfolioLotCards,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 
 type PageProps = {
   searchParams: Promise<{ q?: string; payment?: string; year?: string }>;
@@ -72,7 +71,6 @@ export default async function DashboardPurchasesPage({ searchParams }: PageProps
 
   return (
     <PurchasesView
-      meta={await readClientWorkspacePageMeta()}
       filters={filters}
       analytics={analytics}
       kpiAnalytics={

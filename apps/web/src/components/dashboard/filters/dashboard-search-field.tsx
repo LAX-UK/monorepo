@@ -83,7 +83,7 @@ export function DashboardSearchField({
             <FormItem className="space-y-2">
               <FormLabel
                 htmlFor={id}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
+                className="font-label text-sm font-medium text-on-surface-variant"
               >
                 {label}
               </FormLabel>

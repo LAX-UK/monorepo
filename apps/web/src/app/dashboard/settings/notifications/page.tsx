@@ -3,6 +3,7 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
 import { SavedSearchesPanel } from "@/components/dashboard/saved-searches-panel";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
+import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   describeDashboardSliceFailure,
@@ -22,7 +23,7 @@ export default async function NotificationSettingsPage({
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const saved = sp.saved === "1";
 
-  await requireAuthenticatedUser({
+  const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings/notifications",
   });
@@ -56,6 +57,8 @@ export default async function NotificationSettingsPage({
         Back to inbox
       </Link>
       <SettingsFormHeader title="Notifications" />
+      {/* Alerts only reach an address that can receive them, so this is where a problem shows. */}
+      <EmailStatusBanner user={user} />
 
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 

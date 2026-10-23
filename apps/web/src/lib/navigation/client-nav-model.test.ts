@@ -1,3 +1,4 @@
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { entityRoleCan } from "@auction/domain";
 import { type LegalEntityMemberRole, legalEntityMemberRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -31,12 +32,55 @@ function org(role: LegalEntityMemberRole): ClientNavContext {
 
 describe("buying nav, personal account", () => {
   it("offers the everyday pages and Bid settings, with no dashboard or duplicates", () => {
-    expect(ids()).toEqual(["bids", "purchases", "watchlist", "notifications", "settings"]);
+    expect(ids()).toEqual([
+      "bids",
+      "purchases",
+      "watchlist",
+      "notifications",
+      "settings",
+      "lax-account",
+    ]);
+  });
+
+  it("links LAX Account to the Account origin as an external link in both modes", () => {
+    for (const mode of ["buying", "selling"] as const) {
+      const entry = getClientNavItems(input({ mode })).find((item) => item.id === "lax-account");
+      expect(entry).toMatchObject({ href: laxAccountHomeUrl(), external: true });
+    }
+  });
+
+  it("opens the Bid settings list from the settings entry", () => {
+    const entry = getClientNavItems(input()).find((item) => item.id === "settings");
+    expect(entry?.href).toBe("/dashboard/settings");
+  });
+
+  it("gives the narrow tab bar short names while keeping the full label", () => {
+    const buying = getClientNavItems(input());
+    expect(buying.find((i) => i.id === "notifications")).toMatchObject({
+      label: "Notifications",
+      shortLabel: "Alerts",
+    });
+    const selling = getClientNavItems(input({ mode: "selling" }));
+    expect(selling.find((i) => i.id === "consignments")).toMatchObject({
+      label: "Consignments",
+      shortLabel: "Lots",
+    });
+    expect(selling.find((i) => i.id === "payouts")).toMatchObject({
+      label: "Sold & payouts",
+      shortLabel: "Payouts",
+    });
   });
 
   it("uses one name per page", () => {
     const labels = getClientNavItems(input()).map((item) => item.label);
-    expect(labels).toEqual(["My bids", "Purchases", "Watching", "Notifications", "Bid settings"]);
+    expect(labels).toEqual([
+      "My bids",
+      "Purchases",
+      "Watching",
+      "Notifications",
+      "Bid settings",
+      "LAX Account",
+    ]);
   });
 
   it("adds Your organisations only for members when the module is on", () => {
@@ -62,6 +106,7 @@ describe("selling nav, personal account", () => {
       "artist",
       "notifications",
       "settings",
+      "lax-account",
     ]);
   });
 
@@ -75,6 +120,7 @@ describe("selling nav, personal account", () => {
       "Artist profile",
       "Notifications",
       "Bid settings",
+      "LAX Account",
     ]);
   });
 
@@ -146,6 +192,7 @@ describe("organisation context, specific roles", () => {
       "org-details",
       "notifications",
       "settings",
+      "lax-account",
     ]);
   });
 
@@ -159,6 +206,7 @@ describe("organisation context, specific roles", () => {
       "org-details",
       "notifications",
       "settings",
+      "lax-account",
     ]);
   });
 
@@ -172,6 +220,7 @@ describe("organisation context, specific roles", () => {
       "org-details",
       "notifications",
       "settings",
+      "lax-account",
     ]);
   });
 
@@ -194,6 +243,7 @@ describe("organisation context, specific roles", () => {
       "org-security",
       "notifications",
       "settings",
+      "lax-account",
     ]);
   });
 
@@ -229,7 +279,12 @@ describe("nav matching", () => {
   });
 
   it("highlights Bid settings across the settings tree", () => {
+    expect(activeId("/dashboard/settings")).toBe("settings");
     expect(activeId("/dashboard/settings/interests")).toBe("settings");
+  });
+
+  it("never highlights LAX Account, which is a different site", () => {
+    expect(items.find((item) => item.id === "lax-account")?.match?.("/account")).toBe(false);
   });
 
   it("no longer claims the retired artist-follow route for Watching", () => {

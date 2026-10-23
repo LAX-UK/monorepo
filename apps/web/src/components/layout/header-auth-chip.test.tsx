@@ -58,7 +58,6 @@ vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
   useAccountMenuContext: () => ({
     hasConsigned: false,
     isOrgMember: false,
-    accountOrigin: "https://account.example.test",
   }),
 }));
 

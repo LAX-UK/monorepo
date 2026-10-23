@@ -3,9 +3,9 @@
 import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
 import { AUTH_INLINE_LINK } from "@/lib/auth/auth-link-classes";
 import type { SessionUser } from "@/lib/data/contracts";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -32,9 +32,9 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
       <BannerShell dismissKey={dismissKey} onDismiss={() => setDismissed(true)} tone="error">
         <p>
           We could not deliver email to your current address.{" "}
-          <Link href="/dashboard/settings/account" className={AUTH_INLINE_LINK} prefetch>
+          <a href={laxAccountUrl("/account/profile")} className={AUTH_INLINE_LINK}>
             Update your email address
-          </Link>
+          </a>
           .
         </p>
       </BannerShell>

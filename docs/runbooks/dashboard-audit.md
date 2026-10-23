@@ -156,22 +156,23 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 ### `/dashboard/settings` (index)
 
 - **Path:** `settings/page.tsx`
-- **Data:** `requireAuthenticatedUser`, `getServerMyAddresses`, `authedServerFetch` — mixed.
-- **SOLID:** Settings hub is a mini-orchestrator — candidate for container batch.
-- **Severity:** P1 · **Effort:** M.
+- **Now:** a short intro. The list of settings (bidding limits, alerts, interests, appearance, and one LAX Account link) is the settings navigation beside or above every settings page. Old `?tab=security` email links go to LAX Account security.
 
 ### `/dashboard/settings/*` (sub-routes)
 
-- **account, account/confirm, appearance, addresses, bidding, notifications, payment-methods, profile, security, security/two-factor, sessions**
-- **Data:** Mix of `getServerSessionUser`, `authedServerFetch`, `authedServerFetch` from different modules (`authed-fetch.server` vs `authed-server-fetch`) — **inconsistency risk**.
-- **SOLID:** Unify fetch entrypoints; wrap in small services per domain (account, prefs, security).
-- **UI/UX:** Many lack dedicated `loading.tsx` (only parent `settings/loading.tsx`) — verify cascade; add per-route skeletons where heavy.
-- **Severity:** P1 (consistency) / P2 (loading) · **Effort:** L (spread across files).
+- **Kept in Bid (Bid business):** `appearance`, `bidding`, `interests`, `notifications`. Identity verification stays in Bid at `/dashboard/verify-identity` and `/onboarding/identity/verify`.
+- **Retired, now LAX Account:** `profile`, `account`, `account/confirm`, `addresses`, `security`, `security/two-factor`, `sessions` (and `payment-methods`, which goes to Purchases). Each address permanently redirects (308) to the matching Account page; the table is `IDENTITY_SETTINGS_REDIRECTS` in `apps/web/src/lib/navigation/legacy-dashboard-redirects.ts`. The Account origin comes from `NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN` through `apps/web/src/lib/lax-account-url.ts`.
+
+| Old Bid page | LAX Account page |
+|---|---|
+| `/dashboard/settings/profile`, `account`, `addresses` | `/account/profile` |
+| `/dashboard/settings/account/confirm?t=…` | `/account/email-change?t=…` |
+| `/dashboard/settings/security`, `security/two-factor`, `sessions` | `/account/security` |
 
 ### Layout / error boundary
 
 - **Path:** `layout.tsx`, `error.tsx`, `not-found.tsx`, `loading.tsx`
-- **Data:** Layout prefetches KYC + org onboarding — good.
+- **Data:** Layout loads the acting context and pending invitations; KYC is read by the pages that act on it (My bids, checkout).
 - **UI/UX:** Single `error.tsx` for whole tree — acceptable; consider nested error for settings.
 - **Severity:** P2 · **Effort:** S.
 
@@ -225,7 +226,7 @@ flowchart TB
 | Addresses | Confirm before remove; default checkbox `FormLabel` + `id` |
 | Profile | Removed duplicate header Save; sr-only name label |
 | Bidding prefs | Hint matches API (default max bid not persisted server-side) |
-| Banners | Up to 6 visible; overflow link to settings; compliance strip hides identity pill when KYC blocking banner shows |
+| Banners | Gone from buying pages: the "N account alerts" banner and the alert stack were removed. Identity checks show on My bids, in the bid panel and at checkout; an unreachable or unverified email shows on notification settings; organisation setup shows on Your organisations and organisation pages. Checkout keeps a "before you pay" strip that lists only what is left to fix |
 | Bids | `BidsPageContent` inside `Suspense` so `loading.tsx` runs |
 | Portfolio | `PortfolioNoticeToast` for `notice=not-winner`; browse CTA → `/search` |
 | Empty-state CTAs | Portfolio, payments, watchlist, bids, live → `/search` |

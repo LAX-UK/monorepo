@@ -65,17 +65,18 @@ describe("buildClientBreadcrumbTrail", () => {
     ]);
   });
 
-  it("title-cases settings leaf segments", () => {
-    expect(buildClientBreadcrumbTrail("/dashboard/settings/security/two-factor")).toEqual([
-      { label: "Bid settings", href: "/dashboard/settings" },
-      { label: "Two-factor authentication" },
-    ]);
+  it("shows one crumb on the settings index instead of repeating itself", () => {
+    expect(buildClientBreadcrumbTrail("/dashboard/settings")).toEqual([{ label: "Bid settings" }]);
   });
 
-  it("labels settings account confirm", () => {
-    expect(buildClientBreadcrumbTrail("/dashboard/settings/account/confirm")).toEqual([
+  it("labels the remaining Bid settings pages", () => {
+    expect(buildClientBreadcrumbTrail("/dashboard/settings/bidding")).toEqual([
       { label: "Bid settings", href: "/dashboard/settings" },
-      { label: "Confirm changes" },
+      { label: "Bidding limits" },
+    ]);
+    expect(buildClientBreadcrumbTrail("/dashboard/settings/notifications")).toEqual([
+      { label: "Bid settings", href: "/dashboard/settings" },
+      { label: "Auction alerts and notifications" },
     ]);
   });
 
@@ -86,7 +87,7 @@ describe("buildClientBreadcrumbTrail", () => {
       "/dashboard/seller/works",
       "/dashboard/invitations/review/x",
       "/dashboard/legal-entities/le/payouts/p/st/statement",
-      "/dashboard/settings/account/confirm",
+      "/dashboard/settings/appearance",
     ];
     for (const path of paths) {
       const labels = buildClientBreadcrumbTrail(path).map((i) => i.label);
