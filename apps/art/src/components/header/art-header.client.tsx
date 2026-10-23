@@ -4,6 +4,8 @@ import { ArtHeaderFavoritesLink } from "@/components/header/art-header-favorites
 import { ArtHeaderUtilityActions } from "@/components/header/art-header-utility-actions";
 import { ArtMobileNavDrawer } from "@/components/header/art-mobile-nav-drawer";
 import { ArtThemeToggle } from "@/components/header/art-theme-toggle";
+import { artRouteMayHaveHero } from "@/lib/layout/art-header-chrome.vm";
+import { useArtHeroPresent } from "@/lib/layout/art-hero-presence";
 import {
   type ArtHeaderNavData,
   buildArtMegaNavSections,
@@ -24,13 +26,15 @@ import {
   MarketingSearchIcon,
   MarketingUtilityBar,
   type MarketingUtilityBarItem,
+  headerChromeClassName,
   headerChromeIconClass,
   headerProductLinkClass,
+  useHeaderChrome,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const RECENT_SEARCHES_KEY = "lax-art:recent-searches";
 
@@ -49,37 +53,14 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasMenuOpenRef = useRef(false);
-  const headerRef = useRef<HTMLElement>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const lastHeaderHeightRef = useRef(0);
-
-  const setHeaderNode = useCallback((el: HTMLElement | null) => {
-    if (resizeObserverRef.current) {
-      resizeObserverRef.current.disconnect();
-      resizeObserverRef.current = null;
-    }
-    headerRef.current = el;
-    if (!el) return;
-
-    const sync = () => {
-      const h = el.offsetHeight;
-      if (h === lastHeaderHeightRef.current) return;
-      lastHeaderHeightRef.current = h;
-      document.documentElement.style.setProperty("--header-height", `${h}px`);
-    };
-
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    resizeObserverRef.current = ro;
-  }, []);
-
-  useLayoutEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const h = el.offsetHeight;
-    document.documentElement.style.setProperty("--header-height", `${h}px`);
-  }, []);
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const heroPresent = useArtHeroPresent();
+  const overHero = artRouteMayHaveHero(pathname) && heroPresent;
+  const { isTransparent, atTop, headerTone, attachHeader } = useHeaderChrome({
+    transparent: overHero,
+    overlayOpen: menuOpen || megaOpen || searchOpen,
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close the mobile menu when the route changes
   useEffect(() => {
@@ -92,7 +73,6 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
     wasMenuOpenRef.current = menuOpen;
   }, [menuOpen]);
 
-  const headerTone = "on-light" as const;
   const utilityItems = productLinks.map((link) => ({
     label: link.label,
     href: link.href,
@@ -101,13 +81,12 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
 
   return (
     <header
-      ref={setHeaderNode}
+      ref={attachHeader}
       data-testid="art-header"
+      data-chrome-variant={overHero ? "transparentUntilScroll" : "solid"}
+      data-at-top={atTop ? "true" : "false"}
       data-header-tone={headerTone}
-      className={cn(
-        MARKETING_HEADER_CHROME,
-        "fixed top-0 z-50 w-full border-b border-nav-border bg-surface/95 pt-[env(safe-area-inset-top,0px)] shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface",
-      )}
+      className={cn(MARKETING_HEADER_CHROME, headerChromeClassName(isTransparent, megaOpen))}
     >
       <div
         className={cn(
@@ -130,6 +109,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
                   account={account}
                   productLinks={productLinks}
                   pathname={pathname}
+                  headerTone={headerTone}
                 />
               </>
             }
@@ -143,6 +123,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
             resetKey={pathname}
             panelId="art-header-megamenu"
             headerTone={headerTone}
+            onOpenChange={setMegaOpen}
             logo={
               <Link
                 href="/"
@@ -161,6 +142,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
                     recentStorageKey={RECENT_SEARCHES_KEY}
                     suggestions={searchSuggestions}
                     headerTone={headerTone}
+                    onOpenChange={setSearchOpen}
                   />
                 </div>
                 <Link
@@ -176,7 +158,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
                 </Link>
                 {/* Below md the bottom tab bar carries Favourites. */}
                 <div className="hidden md:flex">
-                  <ArtHeaderFavoritesLink />
+                  <ArtHeaderFavoritesLink headerTone={headerTone} />
                 </div>
                 <MarketingChromeIconButton
                   ref={menuButtonRef}

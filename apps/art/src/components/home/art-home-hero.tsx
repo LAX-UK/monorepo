@@ -1,6 +1,8 @@
 import { ArtEditorialLink } from "@/components/editorial/art-editorial-link";
+import { ArtHeroSignal } from "@/components/header/art-hero-signal.client";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
+import { ART_HERO_UNDER_HEADER_CLASS } from "@/lib/layout/art-header-chrome.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 
@@ -9,8 +11,12 @@ export function ArtHomeHero({ hero }: { hero: ArtHomeHeroVm }) {
   return (
     <section
       aria-labelledby="art-home-title"
-      className="relative isolate flex min-h-[clamp(30rem,72svh,36.625rem)] overflow-hidden bg-brand-obsidian lg:min-h-[min(50rem,calc(100svh-var(--header-height)))]"
+      className={cn(
+        "relative isolate flex min-h-[clamp(30rem,72svh,36.625rem)] overflow-hidden bg-brand-obsidian lg:min-h-[min(50rem,100svh)]",
+        ART_HERO_UNDER_HEADER_CLASS,
+      )}
     >
+      <ArtHeroSignal />
       <div aria-hidden className="absolute inset-0 -z-10 motion-safe:animate-art-hero-drift">
         <ArtMediaImage
           src={hero.imageUrl}

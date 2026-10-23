@@ -20,6 +20,8 @@ export type MarketingHeaderSearchProps = {
   recentStorageKey: string;
   suggestions?: readonly MarketingHeaderSearchSuggestion[];
   headerTone?: MarketingHeaderTone;
+  /** Reports the shelf opening or closing, so the header can turn solid while it is open. */
+  onOpenChange?: (open: boolean) => void;
   className?: string;
 };
 
@@ -71,6 +73,7 @@ export function MarketingHeaderSearch({
   recentStorageKey,
   suggestions = [],
   headerTone = "on-light",
+  onOpenChange,
   className,
 }: MarketingHeaderSearchProps) {
   const router = useRouter();
@@ -101,6 +104,10 @@ export function MarketingHeaderSearch({
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -174,7 +181,14 @@ export function MarketingHeaderSearch({
           ),
         )}
       >
-        <span className="site-header-search-placeholder text-on-surface-variant">Search</span>
+        <span
+          className={cn(
+            "site-header-search-placeholder",
+            headerTone === "on-dark" ? "text-hero-foreground" : "text-on-surface-variant",
+          )}
+        >
+          Search
+        </span>
         <MarketingSearchIcon className="site-header-search-icon size-5" aria-hidden />
       </Button>
       {open ? (

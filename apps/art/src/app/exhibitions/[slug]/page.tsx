@@ -6,6 +6,7 @@ import { ArtExhibitionInstallationViews } from "@/components/exhibition/art-exhi
 import { ArtExhibitionPress } from "@/components/exhibition/art-exhibition-press";
 import { ArtExhibitionSpecialist } from "@/components/exhibition/art-exhibition-specialist";
 import { ArtExhibitionWorks } from "@/components/exhibition/art-exhibition-works.client";
+import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
 import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
 import { exhibitionSectionTabs } from "@/lib/editorial/editorial-page-title.vm";
@@ -66,7 +67,7 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
   return (
     <article className="flex flex-col">
       {exhibition.coverUrl ? (
-        <MarketingPageTitle
+        <ArtMediaPageTitle
           variant="media"
           image={{ src: exhibition.coverUrl }}
           priority

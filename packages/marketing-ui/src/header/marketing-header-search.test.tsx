@@ -48,6 +48,25 @@ describe("MarketingHeaderSearch", () => {
     vi.unstubAllGlobals();
   });
 
+  it("reports the shelf opening and closing so the header can turn solid", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <MarketingHeaderSearch action="/search" recentStorageKey={KEY} onOpenChange={onOpenChange} />,
+    );
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("lightens the placeholder on the on-dark tone so it reads over a hero", () => {
+    render(<MarketingHeaderSearch action="/search" recentStorageKey={KEY} headerTone="on-dark" />);
+    expect(screen.getByText("Search")).toHaveClass("text-hero-foreground");
+  });
+
   it("opens a search shelf with the input focused and closes on Escape, restoring focus", () => {
     const { trigger, dialog } = renderSearch();
     expect(trigger).toHaveAttribute("aria-expanded", "true");

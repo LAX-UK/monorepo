@@ -1,4 +1,5 @@
 import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-button.client";
+import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
 import type { ArtistPageVm } from "@/lib/artist/artist-page.composer";
 import { MarketingPageTitle } from "@auction/marketing-ui";
 
@@ -23,7 +24,7 @@ export function ArtArtistHero({ vm }: { vm: ArtistPageVm }) {
     ),
   };
   return vm.heroUrl ? (
-    <MarketingPageTitle variant="media" image={{ src: vm.heroUrl }} priority {...content} />
+    <ArtMediaPageTitle variant="media" image={{ src: vm.heroUrl }} priority {...content} />
   ) : (
     <MarketingPageTitle {...content} />
   );

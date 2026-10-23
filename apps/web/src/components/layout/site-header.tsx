@@ -9,19 +9,12 @@ import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
@@ -39,8 +32,6 @@ type SiteHeaderProps = {
   chromeVariant?: SiteHeaderChromeVariant;
   laxProductLinks?: LaxProductLinkVm[];
 };
-
-const SCROLL_FADE_THRESHOLD_PX = 12;
 
 type SiteHeaderShellProps = SiteHeaderProps & {
   searchParams: ReturnType<typeof useSearchParams> | null;
@@ -60,36 +51,9 @@ function SiteHeaderShell({
   }, [navProp, user]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
-  const [atTop, setAtTop] = useState(true);
   const pathname = usePathname();
   const searchKey = searchParams == null ? "" : searchParams.toString();
-  const headerRef = useRef<HTMLElement>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const lastHeaderHeightRef = useRef(0);
   const { title: marketingPageTitle } = useMarketingHeaderTitle();
-
-  const setHeaderNode = useCallback((el: HTMLElement | null) => {
-    if (resizeObserverRef.current) {
-      resizeObserverRef.current.disconnect();
-      resizeObserverRef.current = null;
-    }
-
-    headerRef.current = el;
-    if (!el) return;
-
-    const sync = () => {
-      const h = el.offsetHeight;
-      if (h === lastHeaderHeightRef.current) return;
-      lastHeaderHeightRef.current = h;
-      document.documentElement.style.setProperty("--header-height", `${h}px`);
-      window.dispatchEvent(new Event("scroll"));
-    };
-
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    resizeObserverRef.current = ro;
-  }, []);
 
   const resolvedVariant: SiteHeaderChromeVariant =
     chromeVariant ??
@@ -102,40 +66,21 @@ function SiteHeaderShell({
     setMenuOpen(false);
   }, [pathname, searchKey]);
 
-  useLayoutEffect(() => {
-    if (resolvedVariant !== "transparentUntilScroll") {
-      setAtTop(true);
-      return;
-    }
-    const onScroll = () => {
-      setAtTop(window.scrollY <= SCROLL_FADE_THRESHOLD_PX);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [resolvedVariant]);
-
-  const isTransparent =
-    resolvedVariant === "transparentUntilScroll" && atTop && !megaOpen && !menuOpen;
-
-  const headerTone: SiteHeaderTone = isTransparent ? "on-dark" : "on-light";
+  const { isTransparent, atTop, headerTone, attachHeader } = useHeaderChrome({
+    transparent: resolvedVariant === "transparentUntilScroll",
+    overlayOpen: megaOpen || menuOpen,
+    // Sticky sub-chrome on Bid positions itself from scroll events, so a height change re-runs it.
+    onHeightChange: () => window.dispatchEvent(new Event("scroll")),
+  });
 
   return (
     <>
       <header
-        ref={setHeaderNode}
+        ref={attachHeader}
         data-chrome-variant={resolvedVariant}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
-        className={cn(
-          "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
-          isTransparent
-            ? "border-transparent bg-transparent"
-            : cn(
-                "border-nav-border bg-surface shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface",
-                megaOpen && "border-transparent shadow-none backdrop-blur-none",
-              ),
-        )}
+        className={headerChromeClassName(isTransparent, megaOpen)}
       >
         <div
           className={cn(
