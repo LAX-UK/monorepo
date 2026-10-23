@@ -1,6 +1,6 @@
 import type { AccountLinksVm, PayoutLaunchLinkVm, StaffPlatformLinkVm } from "./account-links";
 import type { AccountOverviewVm } from "./account-overview.vm";
-import type { AccountSecurityFacts } from "./account-security-facts";
+import { type AccountSecurityFacts, LOW_BACKUP_CODES_THRESHOLD } from "./account-security-facts";
 
 export type SettingsRowVm = { title: string; subtitle?: string; href: string };
 
@@ -57,9 +57,23 @@ export function buildAccountSections(links: Pick<AccountLinksVm, "support">): Ac
   return sections;
 }
 
+function twoStepSubtitle(
+  facts: Pick<AccountSecurityFacts, "twoStep" | "backupCodesRemaining">,
+): string {
+  if (facts.twoStep === "unknown") return "Set up or manage";
+  if (facts.twoStep === "off") return "Off. Turn it on";
+  if (
+    facts.backupCodesRemaining !== null &&
+    facts.backupCodesRemaining <= LOW_BACKUP_CODES_THRESHOLD
+  ) {
+    return `On. ${facts.backupCodesRemaining} backup ${facts.backupCodesRemaining === 1 ? "code" : "codes"} left`;
+  }
+  return "On";
+}
+
 /** Password and security page. Both rows open the issuer's hosted pages, which own the change. */
 export function buildSecurityGroups(
-  facts: Pick<AccountSecurityFacts, "twoStepConfirmed">,
+  facts: Pick<AccountSecurityFacts, "twoStep" | "backupCodesRemaining">,
   links: Pick<AccountLinksVm, "changePassword" | "manageTwoStep">,
 ): SettingsGroupVm[] {
   return [
@@ -74,7 +88,7 @@ export function buildSecurityGroups(
         },
         {
           title: "Two-step verification",
-          subtitle: facts.twoStepConfirmed ? "On" : "Set up or manage",
+          subtitle: twoStepSubtitle(facts),
           href: links.manageTwoStep,
         },
       ],

@@ -5,8 +5,10 @@ import { startAccountLogin } from "./application/start-account-login";
 import type { LaxAccountConfig } from "./config";
 import { loadLaxAccountConfig } from "./config";
 import { createAccountTokenEndpoint } from "./infrastructure/account-token-endpoint";
+import { createIssuerSecurityFactsReader } from "./infrastructure/issuer-security-facts-reader";
 import { createMemorySessionStore } from "./infrastructure/memory-session-store";
 import { createRedisSessionStore } from "./infrastructure/redis-session-store";
+import type { SecurityFactsReader } from "./ports/security-facts-reader";
 import type { SessionStore } from "./ports/session-store";
 
 export type LaxAccountContainer = {
@@ -14,6 +16,7 @@ export type LaxAccountContainer = {
   cookies: AccountCookiePolicy;
   sessions: SessionStore;
   tokenEndpoint: TokenEndpoint;
+  securityFacts: SecurityFactsReader;
   startAccountLogin: typeof startAccountLogin;
   completeAccountLogin: typeof completeAccountLogin;
 };
@@ -34,6 +37,7 @@ export function createLaxAccountContainer(config: LaxAccountConfig): LaxAccountC
     cookies: accountCookiePolicy(config.publicOrigin),
     sessions: createSessionStore(config),
     tokenEndpoint: createAccountTokenEndpoint(config),
+    securityFacts: createIssuerSecurityFactsReader(config),
     startAccountLogin,
     completeAccountLogin,
   };

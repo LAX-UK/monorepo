@@ -120,6 +120,8 @@ export type Auth = {
       user?: { id?: string; twoFactorEnabled?: boolean | null } | null;
     } | null>;
     revokeOtherSessions(input: { headers: Headers }): Promise<unknown>;
+    /** Server-only (no HTTP route): decrypts the stored backup codes for a user. */
+    viewBackupCodes(input: { body: { userId: string } }): Promise<{ backupCodes: string[] }>;
     signUpEmail(input: {
       body: { name: string; email: string; password: string; callbackURL?: string };
     }): Promise<{

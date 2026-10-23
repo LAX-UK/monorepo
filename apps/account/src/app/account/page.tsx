@@ -31,14 +31,14 @@ export const metadata: Metadata = { title: "Overview · LAX Account" };
 
 /** LAX Account overview: who is signed in, the Security Checkup, products, then the categories. */
 export default async function AccountOverviewPage() {
-  const session = await loadAccountSession();
+  const session = await loadAccountSession({ withLiveSecurity: true });
   if (session.status === "unavailable")
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.overview} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.overview}`);
-  const { overview } = session;
+  const { overview, liveSecurity } = session;
   const { config } = getLaxAccountContainer();
   const links = buildAccountLinks(config, { email: overview.email });
-  const checkup = buildSecurityCheckup(readAccountSecurityFacts(overview), links);
+  const checkup = buildSecurityCheckup(readAccountSecurityFacts(overview, liveSecurity), links);
   // Email and phone are covered by the Security Checkup, so the prompt only asks for the name.
   const gaps = profileGaps(overview, { profileEditable: links.bidSettings !== null }).filter(
     (gap) => gap === "name",

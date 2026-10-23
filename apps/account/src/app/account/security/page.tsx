@@ -14,13 +14,13 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Password and security · LAX Account" };
 
 export default async function SecurityPage() {
-  const session = await loadAccountSession();
+  const session = await loadAccountSession({ withLiveSecurity: true });
   if (session.status === "unavailable")
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.security} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.security}`);
-  const { overview } = session;
+  const { overview, liveSecurity } = session;
   const links = buildAccountLinks(getLaxAccountContainer().config, { email: overview.email });
-  const groups = buildSecurityGroups(readAccountSecurityFacts(overview), links);
+  const groups = buildSecurityGroups(readAccountSecurityFacts(overview, liveSecurity), links);
 
   return (
     <AccountShell>

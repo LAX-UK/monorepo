@@ -51,7 +51,10 @@ describe("buildAccountSections", () => {
 
 describe("buildSecurityGroups", () => {
   it("opens the hosted password and two-step pages", () => {
-    const [group] = buildSecurityGroups({ twoStepConfirmed: false }, withBid);
+    const [group] = buildSecurityGroups(
+      { twoStep: "unknown", backupCodesRemaining: null },
+      withBid,
+    );
     expect(group?.rows.map((r) => [r.title, r.subtitle, r.href])).toEqual([
       [
         "Password",
@@ -66,9 +69,21 @@ describe("buildSecurityGroups", () => {
     ]);
   });
 
-  it("states two-step is on only when this sign-in used it", () => {
-    const [group] = buildSecurityGroups({ twoStepConfirmed: true }, withBid);
-    expect(group?.rows[1]?.subtitle).toBe("On");
+  const subtitle = (twoStep: "on" | "off" | "unknown", backupCodesRemaining: number | null) =>
+    buildSecurityGroups({ twoStep, backupCodesRemaining }, withBid)[0]?.rows[1]?.subtitle;
+
+  it("states On, Off or the neutral wording for each two-step state", () => {
+    expect(subtitle("on", 8)).toBe("On");
+    expect(subtitle("on", null)).toBe("On");
+    expect(subtitle("off", null)).toBe("Off. Turn it on");
+    expect(subtitle("unknown", null)).toBe("Set up or manage");
+  });
+
+  it("mentions backup codes only when few are left", () => {
+    expect(subtitle("on", 3)).toBe("On. 3 backup codes left");
+    expect(subtitle("on", 1)).toBe("On. 1 backup code left");
+    expect(subtitle("on", 0)).toBe("On. 0 backup codes left");
+    expect(subtitle("on", 4)).toBe("On");
   });
 });
 

@@ -1,7 +1,7 @@
 import type { AccountLinksVm } from "./account-links";
-import type { AccountSecurityFacts } from "./account-security-facts";
+import { type AccountSecurityFacts, LOW_BACKUP_CODES_THRESHOLD } from "./account-security-facts";
 
-export type CheckupStepId = "verify-email" | "two-step" | "phone";
+export type CheckupStepId = "verify-email" | "two-step" | "backup-codes" | "phone";
 
 export type CheckupStepVm = {
   id: CheckupStepId;
@@ -25,7 +25,9 @@ export type SecurityCheckupVm = {
 /**
  * Recommended steps the person can act on from here. A step is left out when it has no
  * destination or does not apply, so the count never promises something the page cannot deliver:
- *  - backup codes and "where you're signed in" need Account pages that do not exist yet;
+ *  - "where you're signed in" needs an Account page that does not exist yet;
+ *  - backup codes appear only when two-step verification is on and the issuer reported a low
+ *    count; an unknown count never prompts;
  *  - the email step does not apply to an account with no email;
  *  - adding a phone number is edited in LAX Bid, so it needs Bid to be configured.
  */
@@ -51,13 +53,33 @@ export function buildSecurityCheckup(
   steps.push({
     id: "two-step",
     title: "Turn on two-step verification",
-    description: facts.twoStepConfirmed
-      ? "You completed a second step to sign in."
-      : "Ask for a code from your authenticator app as well as your password.",
-    done: facts.twoStepConfirmed,
-    actionLabel: facts.twoStepConfirmed ? null : "Set up or review",
+    description:
+      facts.twoStep === "on"
+        ? "Your account asks for a code from your authenticator app as well as your password."
+        : "Ask for a code from your authenticator app as well as your password.",
+    done: facts.twoStep === "on",
+    actionLabel:
+      facts.twoStep === "on" ? null : facts.twoStep === "off" ? "Turn on" : "Set up or review",
     href: links.manageTwoStep,
   });
+
+  if (
+    facts.twoStep === "on" &&
+    facts.backupCodesRemaining !== null &&
+    facts.backupCodesRemaining <= LOW_BACKUP_CODES_THRESHOLD
+  ) {
+    steps.push({
+      id: "backup-codes",
+      title: "Save new backup codes",
+      description:
+        facts.backupCodesRemaining === 0
+          ? "You have no backup codes left. Create a new set in case you lose your phone."
+          : `You have ${facts.backupCodesRemaining} backup ${facts.backupCodesRemaining === 1 ? "code" : "codes"} left. Create a new set before they run out.`,
+      done: false,
+      actionLabel: "Get new codes",
+      href: links.manageTwoStep,
+    });
+  }
 
   if (links.bidSettings) {
     steps.push({
