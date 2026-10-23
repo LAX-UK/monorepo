@@ -1,5 +1,6 @@
+import { NoticeTitle } from "@/components/account-ui";
 import type { DevicesSectionVm } from "@/server/domain/account-devices-section.vm";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { SignedInDevicesList } from "./signed-in-devices-list.client";
 
@@ -37,7 +38,7 @@ export function SignedInDevicesSection({
         <SignedInDevicesList sessions={section.sessions} returnTo={pagePath} />
       ) : section.status === "reauth_required" ? (
         <Alert variant="warning">
-          <AlertTitle>Sign in again to see your devices</AlertTitle>
+          <NoticeTitle level={3}>Sign in again to see your devices</NoticeTitle>
           <AlertDescription>
             Your sign-in has ended, so we can't list the devices on your account.
           </AlertDescription>
@@ -47,7 +48,7 @@ export function SignedInDevicesSection({
         </Alert>
       ) : (
         <Alert variant="destructive">
-          <AlertTitle>We can't show your devices right now</AlertTitle>
+          <NoticeTitle level={3}>We can't show your devices right now</NoticeTitle>
           <AlertDescription>
             This is a temporary problem on our side and nothing has changed.
           </AlertDescription>

@@ -1,8 +1,9 @@
 import { AccountShell } from "@/components/account-shell";
+import { NoticeTitle } from "@/components/account-ui";
 import { LANDING_CAPABILITIES, ONE_ACCOUNT_MESSAGE } from "@/lib/account-copy";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { signInNotice } from "@/server/domain/sign-in-notice.vm";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { redirect } from "next/navigation";
 
@@ -33,7 +34,7 @@ export default async function LandingPage({
             variant={notice.tone === "error" ? "destructive" : "default"}
             role={notice.tone === "error" ? "alert" : "status"}
           >
-            <AlertTitle>{notice.title}</AlertTitle>
+            <NoticeTitle>{notice.title}</NoticeTitle>
             <AlertDescription className="text-on-surface-variant">
               {notice.message}
             </AlertDescription>

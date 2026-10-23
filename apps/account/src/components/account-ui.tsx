@@ -1,5 +1,6 @@
 import type { SettingsGroupVm } from "@/server/domain/account-settings.vm";
 import { MarketingCarouselPreviousIcon, MarketingViewAllChevron } from "@auction/marketing-ui";
+import { AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { InsetGroup } from "@auction/ui/components/inset-group";
 import { ListRow } from "@auction/ui/components/list-row";
@@ -48,5 +49,25 @@ export function SettingsGroup({ group }: { group: SettingsGroupVm }) {
         ))}
       </InsetGroup>
     </section>
+  );
+}
+
+/**
+ * Title of a notice. The shared alert title is always an h5, which skips levels on these pages
+ * and reads as plain text, so this states the level it sits at and gives it weight.
+ */
+export function NoticeTitle({
+  level = 2,
+  id,
+  children,
+}: {
+  level?: 2 | 3;
+  id?: string;
+  children: string;
+}) {
+  return (
+    <AlertTitle aria-level={level} className="font-semibold" {...(id ? { id } : {})}>
+      {children}
+    </AlertTitle>
   );
 }
