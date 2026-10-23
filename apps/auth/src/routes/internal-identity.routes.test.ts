@@ -29,9 +29,22 @@ function setup() {
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
   };
+  const emailChange = {
+    start: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+      ok: true,
+      pendingEmail: "next@example.com",
+    })),
+    confirm: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+      ok: true,
+      subjectId: "u1",
+      completed: false,
+      confirmedFor: "old",
+    })),
+  };
   const app = createInternalIdentityRoutes({
     lifecycle,
     operations: operations as never,
+    emailChange: emailChange as never,
     redis: {
       get: async (key) => tokens.get(key) ?? null,
       set: setToken,
@@ -50,7 +63,7 @@ function setup() {
     machineClientSecret: "machine-secret-at-least-32-characters",
     allowMerge: true,
   });
-  return { app, lifecycle, operations, setToken, tokens };
+  return { app, lifecycle, operations, emailChange, setToken, tokens };
 }
 
 async function issueToken(app: ReturnType<typeof createInternalIdentityRoutes>): Promise<string> {
@@ -179,6 +192,7 @@ describe("internal Identity machine routes", () => {
     const failingApp = createInternalIdentityRoutes({
       lifecycle: {} as never,
       operations: {} as never,
+      emailChange: {} as never,
       redis: {
         get: async () => {
           throw new Error("redis unavailable");
@@ -312,36 +326,72 @@ describe("internal Identity machine routes", () => {
     await expect(response.json()).resolves.toEqual({ error: "invalid_password" });
   });
 
-  it.each(["not-a-date", "2020-01-01T00:00:00.000Z"])(
-    "rejects invalid email-change expiry %s before storage",
-    async (expiresAt) => {
-      const { app, operations } = setup();
-      const token = await issueToken(app);
-      const response = await app.request("/identity/subjects/u1/email-change/start", {
-        method: "POST",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify({ newEmail: "next@example.com", expiresAt }),
-      });
-
-      expect(response.status).toBe(400);
-      expect(operations.startEmailChange).not.toHaveBeenCalled();
-    },
-  );
-
-  it("maps email conflicts to conflict responses", async () => {
-    const { app, operations } = setup();
-    operations.startEmailChange.mockRejectedValueOnce(new IdentityOperationError("email_taken"));
+  it("starts an email change for Bid through the shared service", async () => {
+    const { app, emailChange } = setup();
     const token = await issueToken(app);
     const response = await app.request("/identity/subjects/u1/email-change/start", {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        newEmail: "taken@example.com",
-        expiresAt: "2099-01-01T00:00:00.000Z",
-      }),
+      body: JSON.stringify({ newEmail: "next@example.com" }),
     });
 
-    expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: "email_taken" });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ pendingEmail: "next@example.com" });
+    expect(emailChange.start).toHaveBeenCalledWith("u1", "next@example.com", "bid");
+  });
+
+  it.each([
+    ["email_taken", 409],
+    ["same_email", 409],
+    ["subject_not_found", 404],
+    ["channel_unavailable", 503],
+  ] as const)("maps the %s email-change failure to HTTP %i", async (kind, status) => {
+    const { app, emailChange } = setup();
+    emailChange.start.mockResolvedValueOnce({ ok: false, kind });
+    const token = await issueToken(app);
+    const response = await app.request("/identity/subjects/u1/email-change/start", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ newEmail: "taken@example.com" }),
+    });
+
+    expect(response.status).toBe(status);
+    await expect(response.json()).resolves.toEqual({ error: kind });
+  });
+
+  it("confirms an email change from the emailed token and names the subject", async () => {
+    const { app, emailChange } = setup();
+    const token = await issueToken(app);
+    const response = await app.request("/identity/email-change/confirm", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ token: "emailed-token" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      subjectId: "u1",
+      completed: false,
+      confirmedFor: "old",
+    });
+    expect(emailChange.confirm).toHaveBeenCalledWith("emailed-token");
+  });
+
+  it("refuses an email-change confirmation with no token or no machine token", async () => {
+    const { app, emailChange } = setup();
+    const token = await issueToken(app);
+    const missing = await app.request("/identity/email-change/confirm", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(missing.status).toBe(400);
+    const anonymous = await app.request("/identity/email-change/confirm", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: "emailed-token" }),
+    });
+    expect(anonymous.status).toBe(401);
+    expect(emailChange.confirm).not.toHaveBeenCalled();
   });
 });

@@ -4,15 +4,27 @@ const identity = {
   rename: vi.fn(),
   revokeSession: vi.fn(),
   revokeOtherSessions: vi.fn(),
+  startEmailChange: vi.fn(),
+  cancelEmailChange: vi.fn(),
+  confirmEmailChange: vi.fn(),
+  sendPhoneCode: vi.fn(),
+  verifyPhone: vi.fn(),
 };
 const loadAccountRecord = vi.fn();
 
 vi.mock("../container", () => ({ getLaxAccountContainer: () => ({ identity }) }));
 vi.mock("./load-account-record", () => ({ loadAccountRecord: () => loadAccountRecord() }));
 
-const { renameAccountAction, signOutDeviceAction, signOutOtherDevicesAction } = await import(
-  "./account-identity-actions.server"
-);
+const {
+  cancelEmailChangeAction,
+  confirmEmailChangeAction,
+  renameAccountAction,
+  sendPhoneCodeAction,
+  signOutDeviceAction,
+  signOutOtherDevicesAction,
+  startEmailChangeAction,
+  verifyPhoneAction,
+} = await import("./account-identity-actions.server");
 
 const ACTOR = { accessToken: "access-token", sid: "current-sid" };
 
@@ -71,5 +83,114 @@ describe("account identity actions", () => {
     });
     loadAccountRecord.mockRejectedValue(new Error("ECONNREFUSED"));
     expect(await signOutOtherDevicesAction()).toMatchObject({ status: "error" });
+  });
+
+  describe("email change", () => {
+    it("starts a change with the normalised address as the signed-in person", async () => {
+      identity.startEmailChange.mockResolvedValue({ status: "ok", value: "new@example.com" });
+      expect(await startEmailChangeAction("  New@Example.com ")).toMatchObject({ status: "ok" });
+      expect(identity.startEmailChange).toHaveBeenCalledWith(ACTOR, "new@example.com");
+    });
+
+    it("refuses an address that is not one before calling the issuer", async () => {
+      expect(await startEmailChangeAction("not-an-email")).toMatchObject({ status: "error" });
+      expect(identity.startEmailChange).not.toHaveBeenCalled();
+    });
+
+    it("explains an address that is already in use", async () => {
+      identity.startEmailChange.mockResolvedValue({ status: "rejected", reason: "email_taken" });
+      expect(await startEmailChangeAction("taken@example.com")).toEqual({
+        status: "error",
+        message: "That email address is already used by another LAX account.",
+      });
+    });
+
+    it("sends the person through a fresh sign-in when the issuer asks for one", async () => {
+      identity.startEmailChange.mockResolvedValue({ status: "reauth_required" });
+      identity.cancelEmailChange.mockResolvedValue({ status: "reauth_required" });
+      expect(await startEmailChangeAction("new@example.com")).toEqual({
+        status: "reauth_required",
+      });
+      expect(await cancelEmailChangeAction()).toEqual({ status: "reauth_required" });
+    });
+
+    it("cancels a change", async () => {
+      identity.cancelEmailChange.mockResolvedValue({ status: "ok", value: true });
+      expect(await cancelEmailChangeAction()).toMatchObject({ status: "ok" });
+      expect(identity.cancelEmailChange).toHaveBeenCalledWith(ACTOR);
+    });
+
+    it("confirms from the emailed token without needing a session", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      identity.confirmEmailChange.mockResolvedValue({
+        status: "ok",
+        value: { completed: false, confirmedFor: "old" },
+      });
+      expect(await confirmEmailChangeAction("signed.token")).toEqual({
+        status: "ok",
+        completed: false,
+        confirmedFor: "old",
+      });
+      expect(identity.confirmEmailChange).toHaveBeenCalledWith("signed.token");
+      expect(loadAccountRecord).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [{ status: "rejected", reason: "expired" }, "This link has expired"],
+      [{ status: "rejected", reason: "invalid_token" }, "This link isn't valid"],
+      [{ status: "unavailable" }, "Nothing was changed"],
+    ])("explains a confirmation that fails (%j)", async (result, text) => {
+      identity.confirmEmailChange.mockResolvedValue(result);
+      expect(await confirmEmailChangeAction("t")).toMatchObject({
+        status: "error",
+        message: expect.stringContaining(text),
+      });
+    });
+
+    it("does not call the issuer for an empty token", async () => {
+      expect(await confirmEmailChangeAction("")).toMatchObject({ status: "error" });
+      expect(identity.confirmEmailChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("phone", () => {
+    it("sends a code to a valid international number", async () => {
+      identity.sendPhoneCode.mockResolvedValue({ status: "ok", value: true });
+      expect(await sendPhoneCodeAction("+447700900123")).toMatchObject({ status: "ok" });
+      expect(identity.sendPhoneCode).toHaveBeenCalledWith(ACTOR, "+447700900123");
+    });
+
+    it("refuses a number without a country code before spending an SMS", async () => {
+      expect(await sendPhoneCodeAction("07700900123")).toMatchObject({ status: "error" });
+      expect(identity.sendPhoneCode).not.toHaveBeenCalled();
+    });
+
+    it("verifies the number with the code", async () => {
+      identity.verifyPhone.mockResolvedValue({ status: "ok", value: "+447700900123" });
+      expect(await verifyPhoneAction("+447700900123", "123456")).toMatchObject({ status: "ok" });
+      expect(identity.verifyPhone).toHaveBeenCalledWith(ACTOR, "+447700900123", "123456");
+    });
+
+    it("refuses a malformed code before calling the issuer", async () => {
+      expect(await verifyPhoneAction("+447700900123", "12ab")).toMatchObject({ status: "error" });
+      expect(identity.verifyPhone).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["invalid_code", "That code isn't right"],
+      ["phone_taken", "already used by another LAX account"],
+      ["rate_limited", "Too many attempts"],
+    ] as const)("explains the %s refusal", async (reason, text) => {
+      identity.verifyPhone.mockResolvedValue({ status: "rejected", reason });
+      expect(await verifyPhoneAction("+447700900123", "123456")).toMatchObject({
+        status: "error",
+        message: expect.stringContaining(text),
+      });
+    });
+
+    it("sends the person through a fresh sign-in when the issuer asks for one", async () => {
+      identity.sendPhoneCode.mockResolvedValue({ status: "reauth_required" });
+      expect(await sendPhoneCodeAction("+447700900123")).toEqual({ status: "reauth_required" });
+    });
   });
 });

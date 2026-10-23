@@ -54,4 +54,21 @@ describe("createSubjectReadRateLimiter", () => {
     });
     expect(await limit("a")).toBeNull();
   });
+
+  it("refuses with the full window when Redis is unavailable and the route fails closed", async () => {
+    const limit = createSubjectReadRateLimiter({
+      redis: {
+        incr: async () => {
+          throw new Error("down");
+        },
+        expire: async () => 1,
+        ttl: async () => 1,
+      },
+      keyPrefix: "rl:test",
+      windowSec: 60,
+      max: 1,
+      failClosed: true,
+    });
+    expect(await limit("a")).toBe(60);
+  });
 });

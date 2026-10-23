@@ -317,4 +317,69 @@ describe("HttpIdentityIssuerClient", () => {
       fetchImpl.mock.calls.filter(([url]) => String(url).endsWith("/two-factor-status")),
     ).toHaveLength(2);
   });
+
+  describe("email change", () => {
+    function clientFor(respond: (url: string, init?: RequestInit) => Response) {
+      const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/internal/oauth/token")) {
+          return Response.json({
+            access_token: "machine-token",
+            token_type: "Bearer",
+            expires_in: 300,
+          });
+        }
+        return respond(url, init);
+      });
+      const client = new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl,
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-at-least-32-characters",
+      });
+      return { client, fetchImpl };
+    }
+
+    it("starts a change by naming only the new address; the issuer owns expiry and emails", async () => {
+      const { client, fetchImpl } = clientFor(() =>
+        Response.json({ pendingEmail: "new@example.com" }),
+      );
+      await client.startEmailChange({ subjectId: "user-1", newEmail: "new@example.com" });
+      const [url, init] = fetchImpl.mock.calls[1] ?? [];
+      expect(String(url)).toBe(
+        "https://identity.example.com/internal/identity/subjects/user-1/email-change/start",
+      );
+      expect(JSON.parse(String(init?.body))).toEqual({ newEmail: "new@example.com" });
+    });
+
+    it("surfaces the issuer's refusal code so Bid can map it", async () => {
+      const { client } = clientFor(() => Response.json({ error: "email_taken" }, { status: 409 }));
+      await expect(
+        client.startEmailChange({ subjectId: "user-1", newEmail: "taken@example.com" }),
+      ).rejects.toMatchObject({ status: 409, code: "email_taken" });
+    });
+
+    it("confirms with the emailed token alone and reads who it was for", async () => {
+      const { client, fetchImpl } = clientFor(() =>
+        Response.json({ subjectId: "user-1", completed: true, confirmedFor: "new" }),
+      );
+      await expect(client.confirmEmailChange({ token: "signed.token" })).resolves.toEqual({
+        subjectId: "user-1",
+        completed: true,
+        confirmedFor: "new",
+      });
+      const [url, init] = fetchImpl.mock.calls[1] ?? [];
+      expect(String(url)).toBe(
+        "https://identity.example.com/internal/identity/email-change/confirm",
+      );
+      expect(JSON.parse(String(init?.body))).toEqual({ token: "signed.token" });
+    });
+
+    it("rejects a confirmation answer that does not name the subject", async () => {
+      const { client } = clientFor(() => Response.json({ completed: true }));
+      await expect(client.confirmEmailChange({ token: "t" })).rejects.toBeInstanceOf(
+        IdentityIssuerClientError,
+      );
+    });
+  });
 });

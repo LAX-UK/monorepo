@@ -1,11 +1,14 @@
 import { AccountShell } from "@/components/account-shell";
 import { AccountPageHeader } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
+import { EmailChangeEditor } from "@/components/email-change-editor.client";
 import { PersonalNameForm } from "@/components/personal-name-form.client";
+import { PhoneEditor } from "@/components/phone-editor.client";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
+import { resolveProfileContact } from "@/server/domain/account-contact.vm";
 import { buildAccountLinks } from "@/server/domain/account-links";
-import { buildProfileSections } from "@/server/domain/account-profile.vm";
+import { buildProfileSections, maskPendingEmail } from "@/server/domain/account-profile.vm";
 import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@auction/identity-contracts";
 import { Button } from "@auction/ui/components/button";
@@ -24,15 +27,16 @@ const SECTION_HEADING =
 
 /** Personal details (Figma 950:13732). */
 export default async function PersonalDetailsPage() {
-  const session = await loadAccountSession({ withLiveName: true });
+  const session = await loadAccountSession({ withLiveName: true, withLiveContact: true });
   if (session.status === "unavailable")
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.profile} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.profile}`);
-  const { overview } = session;
+  const { overview, liveContact } = session;
   const { config } = getLaxAccountContainer();
+  const contact = resolveProfileContact(overview, liveContact);
   const sections = buildProfileSections(
-    overview,
-    buildAccountLinks(config, { email: overview.email }),
+    contact,
+    buildAccountLinks(config, { email: contact.email }),
   );
 
   return (
@@ -86,6 +90,19 @@ export default async function PersonalDetailsPage() {
           ) : null}
           {section.note ? (
             <p className="px-4 text-xs text-on-surface-variant">{section.note}</p>
+          ) : null}
+          {section.id === "email" ? (
+            <EmailChangeEditor
+              pendingEmailMasked={maskPendingEmail(contact)}
+              returnTo={ACCOUNT_ROUTES.profile}
+            />
+          ) : null}
+          {section.id === "phone" ? (
+            <PhoneEditor
+              phone={contact.phone}
+              phoneVerified={contact.phoneVerified}
+              returnTo={ACCOUNT_ROUTES.profile}
+            />
           ) : null}
         </section>
       ))}

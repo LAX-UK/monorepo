@@ -18,6 +18,7 @@ import { createRefreshTokenFamilyRepository } from "./container/create-refresh-t
 import { loadAuthEnv } from "./env.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
+import { EmailChangeService } from "./services/email-change.service.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 
 const env = loadAuthEnv();
@@ -89,6 +90,17 @@ const identityOperations = createIdentityOperationsService({
   identityEventPublisher: repositories.identityEventPublisher,
   logout: services.oidc.logout,
 });
+const emailChange = new EmailChangeService({
+  operations: identityOperations,
+  email: emailSender,
+  authSecret: env.BETTER_AUTH_SECRET,
+  confirmationPages: {
+    bid: `${env.WEB_ORIGIN.replace(/\/+$/, "")}/dashboard/settings/account/confirm`,
+    ...(env.LAX_ACCOUNT_ORIGIN
+      ? { account: `${env.LAX_ACCOUNT_ORIGIN.replace(/\/+$/, "")}/account/email-change` }
+      : {}),
+  },
+});
 const identityLifecycle = createIdentityLifecycleService({
   db,
   identityEventPublisher: repositories.identityEventPublisher,
@@ -127,6 +139,7 @@ const internal =
         routes: createInternalIdentityRoutes({
           lifecycle: identityLifecycle,
           operations: identityOperations,
+          emailChange,
           redis,
           machineClientId: env.IDENTITY_MACHINE_CLIENT_ID,
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
@@ -182,6 +195,9 @@ const app = createAuthApp({
     },
     services,
     identityOperations,
+    emailChange,
+    emailSender,
+    phoneVerification,
     authHandler,
     metrics: {
       refreshRotationOutcomes: metrics.refreshRotationOutcomes,

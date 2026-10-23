@@ -24,7 +24,6 @@ import type {
 } from "../interfaces/identity-issuer-client.js";
 import type { IIdentityAccountSecurityHttpApplicationService } from "../interfaces/identity-routes/identity-account-security-http.js";
 import type { IdentityHttpJson } from "../interfaces/identity-routes/identity-route-http.js";
-import type { UserService } from "../user.service.js";
 
 export type IdentityAccountSecurityDeps = {
   env: Env;
@@ -32,7 +31,6 @@ export type IdentityAccountSecurityDeps = {
     IIdentitySubjectClient &
     IIdentityCredentialClient &
     IIdentityEmailChangeClient;
-  userService: UserService;
   emailService: IEmailService;
   authAuditPublisher: IAuthAuditPublisher;
   authCredentialReader: Pick<IIdentityCredentialClient, "hasCredentialAccount">;
@@ -44,12 +42,7 @@ export class IdentityAccountSecurityHttpApplicationService
   constructor(private readonly deps: IdentityAccountSecurityDeps) {}
 
   private emailChangeDeps(): EmailChangeDeps {
-    return {
-      userService: this.deps.userService,
-      identityIssuer: this.deps.identityIssuer,
-      emailService: this.deps.emailService,
-      env: this.deps.env,
-    };
+    return { identityIssuer: this.deps.identityIssuer };
   }
 
   private credentialSetupSlice(): ContainerCredentialSetupSlice {

@@ -22,6 +22,7 @@ export type IdentityOperationErrorCode =
   | "invalid_password"
   | "invalid_password_policy"
   | "password_breached"
+  | "phone_taken"
   | "invalid_expiry"
   | "no_credential"
   | "no_session"
@@ -452,6 +453,28 @@ export class IdentityOperationsService {
           name: updated.name,
           image: updated.image,
         },
+        { transaction },
+      );
+    });
+  }
+
+  /**
+   * Records a phone number the person has just proved they hold. The number is contact
+   * information only, never a sign-in factor, and one number belongs to one person.
+   */
+  async setVerifiedPhone(subjectId: string, phone: string): Promise<void> {
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const outcome = await this.repositories.subjects.setVerifiedPhone(
+        transaction,
+        subjectId,
+        phone,
+        this.now(),
+      );
+      if (outcome === "not_found") throw new IdentityOperationError("subject_not_found");
+      if (outcome === "phone_taken") throw new IdentityOperationError("phone_taken");
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        { subjectId, phone, phoneVerified: true },
         { transaction },
       );
     });

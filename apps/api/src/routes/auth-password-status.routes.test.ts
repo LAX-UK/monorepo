@@ -30,7 +30,6 @@ function mountAuth(opts: {
           requestPasswordReset: vi.fn(),
           requestMagicLink: vi.fn(),
         } as never,
-        userService: {} as never,
         emailService: {} as never,
         authAuditPublisher: { publish: vi.fn(async () => {}) },
         authCredentialReader,

@@ -1,6 +1,6 @@
 import { maskAccountEmail } from "@auction/lax-ecosystem";
+import type { ProfileContactVm } from "./account-contact.vm";
 import type { AccountLinksVm } from "./account-links";
-import type { AccountOverviewVm } from "./account-overview.vm";
 
 export type ProfileStatusVm = { label: string; tone: "success" | "neutral" };
 
@@ -23,18 +23,16 @@ function verified(isVerified: boolean): ProfileStatusVm {
 }
 
 /**
- * The read-only part of Personal details (Figma 950:13732); the name above it is edited in
- * Account. Values come from the ID token. Email and phone cannot be changed from Account yet,
- * so they say so and point to support rather than to a screen in another product. Without Bid
- * configured there is no support page and the address book, which Account cannot read, is hidden.
+ * The contact part of Personal details (Figma 950:13732); the name above it is edited in
+ * Account. Email and phone are changed in place by the editors the page renders under each
+ * section. The email is masked because the page can be shown on a shared screen; the phone is
+ * the person's own contact number and is shown in full. Without Bid configured the address
+ * book, which Account cannot read, is hidden.
  */
 export function buildProfileSections(
-  overview: Pick<AccountOverviewVm, "email" | "emailVerified" | "phone" | "phoneVerified">,
-  links: Pick<AccountLinksVm, "bidSettings" | "verifyEmail" | "support">,
+  contact: ProfileContactVm,
+  links: Pick<AccountLinksVm, "bidSettings" | "verifyEmail">,
 ): ProfileSectionVm[] {
-  const contact: ProfileActionVm[] = links.support
-    ? [{ label: "Contact us", href: links.support.contact }]
-    : [];
   const sections: ProfileSectionVm[] = [
     {
       id: "email",
@@ -42,17 +40,15 @@ export function buildProfileSections(
       fields: [
         {
           label: "Email address",
-          value: overview.email ? maskAccountEmail(overview.email) : null,
-          ...(overview.email ? { status: verified(overview.emailVerified) } : {}),
+          value: contact.email ? maskAccountEmail(contact.email) : null,
+          ...(contact.email ? { status: verified(contact.emailVerified) } : {}),
         },
       ],
-      actions: [
-        ...(overview.email && !overview.emailVerified
+      actions:
+        contact.email && !contact.emailVerified
           ? [{ label: "Verify email", href: links.verifyEmail }]
-          : []),
-        ...contact,
-      ],
-      note: "You can't change your email address here yet. Contact us and we'll update it for you.",
+          : [],
+      note: "To change it, we email a link to your current and your new address. It changes once you confirm both.",
     },
     {
       id: "phone",
@@ -60,12 +56,12 @@ export function buildProfileSections(
       fields: [
         {
           label: "Phone number",
-          value: overview.phone,
-          ...(overview.phone ? { status: verified(overview.phoneVerified) } : {}),
+          value: contact.phone,
+          ...(contact.phone ? { status: verified(contact.phoneVerified) } : {}),
         },
       ],
-      actions: contact,
-      note: "You can't add or change your phone number here yet. Contact us and we'll help.",
+      actions: [],
+      note: "We use it to contact you about your activity. You can't sign in with it.",
     },
   ];
   if (links.bidSettings) {
@@ -78,4 +74,9 @@ export function buildProfileSections(
     });
   }
   return sections;
+}
+
+/** The address a pending change is waiting on, masked like the current one. */
+export function maskPendingEmail(contact: ProfileContactVm): string | null {
+  return contact.pendingEmail ? maskAccountEmail(contact.pendingEmail) : null;
 }

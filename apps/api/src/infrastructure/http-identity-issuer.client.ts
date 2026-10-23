@@ -402,15 +402,11 @@ export class HttpIdentityIssuerClient
     return body.revoked;
   }
 
-  async startEmailChange(input: {
-    subjectId: string;
-    newEmail: string;
-    expiresAt: Date;
-  }): Promise<void> {
+  async startEmailChange(input: { subjectId: string; newEmail: string }): Promise<void> {
     await this.machineRequest(
       "POST",
       `/identity/subjects/${encodeURIComponent(input.subjectId)}/email-change/start`,
-      { newEmail: input.newEmail, expiresAt: input.expiresAt.toISOString() },
+      { newEmail: input.newEmail },
     );
   }
 
@@ -436,21 +432,27 @@ export class HttpIdentityIssuerClient
     );
   }
 
-  async confirmEmailChange(input: {
+  async confirmEmailChange(input: { token: string }): Promise<{
     subjectId: string;
-    oldEmail: string;
-    newEmail: string;
-    confirmFor: "old" | "new";
-  }): Promise<boolean> {
-    const body = await this.machineRequest(
-      "POST",
-      `/identity/subjects/${encodeURIComponent(input.subjectId)}/email-change/confirm`,
-      input,
-    );
-    if (!isRecord(body) || typeof body.completed !== "boolean") {
+    completed: boolean;
+    confirmedFor: "old" | "new";
+  }> {
+    const body = await this.machineRequest("POST", "/identity/email-change/confirm", {
+      token: input.token,
+    });
+    if (
+      !isRecord(body) ||
+      typeof body.subjectId !== "string" ||
+      typeof body.completed !== "boolean" ||
+      (body.confirmedFor !== "old" && body.confirmedFor !== "new")
+    ) {
       throw invalidResponse("email change confirmation");
     }
-    return body.completed;
+    return {
+      subjectId: body.subjectId,
+      completed: body.completed,
+      confirmedFor: body.confirmedFor,
+    };
   }
 
   async deleteOrphanSubject(subjectId: string): Promise<boolean> {

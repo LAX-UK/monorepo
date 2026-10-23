@@ -117,7 +117,6 @@ function mountAuth(opts: {
       accountSecurityHttp: new IdentityAccountSecurityHttpApplicationService({
         env: env as never,
         identityIssuer: identityIssuer as never,
-        userService: {} as never,
         emailService: emailService as never,
         authAuditPublisher,
         authCredentialReader: { hasCredentialAccount: vi.fn(async () => false) },

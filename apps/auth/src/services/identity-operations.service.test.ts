@@ -49,6 +49,7 @@ function createRepositories(): IdentityOperationsRepositories {
       listAccountProviders: vi.fn().mockResolvedValue(["credential"]),
       resetTwoFactorEnrollment: vi.fn().mockResolvedValue(true),
       deleteSubject: vi.fn().mockResolvedValue(true),
+      setVerifiedPhone: vi.fn().mockResolvedValue("updated"),
     },
     credentials: {
       listProviders: vi.fn().mockResolvedValue([]),
@@ -480,6 +481,43 @@ describe("IdentityOperationsService", () => {
       IdentityOperationError,
     );
   });
+
+  it("stores a verified phone and publishes it with the profile in one transaction", async () => {
+    const repositories = createRepositories();
+    const { service, identityEventPublisher } = createService(repositories);
+
+    await service.setVerifiedPhone("subject", "+447700900123");
+
+    expect(repositories.subjects.setVerifiedPhone).toHaveBeenCalledWith(
+      transaction,
+      "subject",
+      "+447700900123",
+      now,
+    );
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      {
+        type: "user.profile_updated",
+        userId: "subject",
+        phone: "+447700900123",
+        phoneVerified: true,
+      },
+      { producer: "apps/auth", transaction },
+    );
+  });
+
+  it.each(["phone_taken", "not_found"] as const)(
+    "publishes nothing when the phone is %s",
+    async (outcome) => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.subjects.setVerifiedPhone).mockResolvedValue(outcome);
+      const { service, identityEventPublisher } = createService(repositories);
+
+      await expect(service.setVerifiedPhone("subject", "+447700900123")).rejects.toMatchObject({
+        code: outcome === "phone_taken" ? "phone_taken" : "subject_not_found",
+      });
+      expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    },
+  );
 
   it("publishes deletion request and cancellation in their state transactions", async () => {
     const repositories = createRepositories();

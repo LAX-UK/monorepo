@@ -11,6 +11,10 @@
     "./verify": {
       "types": "./dist/verify.d.ts",
       "default": "./dist/verify.js"
+    },
+    "./account": {
+      "types": "./dist/account.d.ts",
+      "default": "./dist/account.js"
     }
   },
   "scripts": {

@@ -399,7 +399,6 @@ export function createContainer(env: Env): Container {
       accountSecurity: {
         env,
         identityIssuer,
-        userService: userMisc.userService,
         emailService: infra.emailService,
         authAuditPublisher: platform.authAuditPublisher,
         authCredentialReader: identityIssuer,

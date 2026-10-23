@@ -17,7 +17,10 @@ export function buildDevicesSection(
   result: IdentityCallResult<AccountSession[]> | null,
   now: Date,
 ): DevicesSectionVm {
-  if (!result || result.status === "unavailable") return { status: "unavailable" };
+  // Listing devices has no refusal the person can act on, so a refusal reads as "could not answer".
+  if (!result || result.status === "unavailable" || result.status === "rejected") {
+    return { status: "unavailable" };
+  }
   if (result.status === "reauth_required") return { status: "reauth_required" };
   return { status: "list", sessions: buildSessionsVm(result.value, now) };
 }
