@@ -11,7 +11,7 @@ export default function ErrorPage({ reset }: { error: Error; reset: () => void }
           Something went wrong
         </h1>
         <p className="text-sm text-on-surface-variant">
-          We couldn't load your account just now. Please try again in a moment.
+          We couldn't load LAX Account just now. Please try again in a moment.
         </p>
         <Button type="button" variant="cta" size="lg" onClick={reset}>
           Try again

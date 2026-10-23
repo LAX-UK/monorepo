@@ -15,7 +15,7 @@ export function AccountPageHeader({ title, backHref }: { title: string; backHref
           size="icon"
           className="rounded-full border border-border-hairline"
         >
-          <a href={backHref} aria-label="Back to settings">
+          <a href={backHref} aria-label="Back to overview">
             <MarketingCarouselPreviousIcon />
           </a>
         </Button>

@@ -13,7 +13,7 @@ const NOTICES: Readonly<Record<string, SignInNoticeVm>> = {
   login_required: {
     tone: "info",
     title: "Your sign-in expired",
-    message: "Sign in again to keep managing your LAX account.",
+    message: "Sign in again to keep managing your LAX Account.",
   },
   mfa_required: {
     tone: "error",

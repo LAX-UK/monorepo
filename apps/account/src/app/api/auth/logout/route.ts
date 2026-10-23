@@ -13,9 +13,17 @@ export async function POST(request: Request): Promise<Response> {
   const sessionId = cookieStore.get(sessionCookie)?.value ?? null;
   let idToken: string | undefined;
   if (sessionId) {
-    const record = await container.sessions.get(sessionId);
-    idToken = record?.idToken;
-    await container.sessions.delete(sessionId);
+    try {
+      const record = await container.sessions.get(sessionId);
+      idToken = record?.idToken;
+      await container.sessions.delete(sessionId);
+    } catch (error) {
+      // Sign-out must still end this browser's session when Redis is down: the cookie is
+      // cleared below and the record expires on its own TTL. Without the ID token the issuer
+      // session is not ended, so the person lands on the sign-in page instead.
+      console.error("account_logout_session_store_failed", error);
+      idToken = undefined;
+    }
     // `__Host-` cookies are only cleared by a Set-Cookie that repeats Secure and Path=/.
     cookieStore.set(sessionCookie, "", {
       httpOnly: true,

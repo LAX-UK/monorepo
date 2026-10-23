@@ -35,7 +35,7 @@ export function buildAccountOverview(
   const phone = text(claims.phone_number);
   const acr = text(claims.acr) ?? sessionAcr;
   return {
-    displayName: name ?? email ?? "Your LAX account",
+    displayName: name ?? email ?? "Your LAX Account",
     name,
     email,
     emailVerified: claims.email_verified === true,

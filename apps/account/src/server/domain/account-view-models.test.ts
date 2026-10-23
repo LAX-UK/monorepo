@@ -40,7 +40,7 @@ describe("buildAccountOverview", () => {
   it("falls back to the session ACR and a neutral display name", () => {
     const vm = buildAccountOverview({ phone_number_verified: true }, OIDC_ACR_SILVER);
     expect(vm.signedInWithAuthenticator).toBe(true);
-    expect(vm.displayName).toBe("Your LAX account");
+    expect(vm.displayName).toBe("Your LAX Account");
     expect(vm.phoneVerified).toBe(false);
   });
 });

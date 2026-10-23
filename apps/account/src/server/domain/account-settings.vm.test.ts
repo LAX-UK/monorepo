@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { buildAccountLinks } from "./account-links";
 import { buildPrivacyGroups } from "./account-privacy.vm";
 import { buildProfileSections } from "./account-profile.vm";
-import { accountInitials, buildSettingsGroups } from "./account-settings.vm";
+import {
+  accountInitials,
+  buildAccountSections,
+  buildHelpGroups,
+  buildLaunchGroups,
+  buildSecurityGroups,
+} from "./account-settings.vm";
 
 const withBid = buildAccountLinks({
   oidcIssuer: "https://test-auth.lax.bid",
@@ -23,44 +29,68 @@ const overview = {
   signedInWithAuthenticator: false,
 };
 
-describe("buildSettingsGroups", () => {
-  it("groups account, preferences, support and legal rows in Figma order", () => {
-    const groups = buildSettingsGroups({
-      overview,
-      links: withBid,
-      payoutLinks: [],
-      staffPlatforms: [],
-    });
-    expect(groups.map((g) => [g.label, g.rows.map((r) => r.title)])).toEqual([
-      ["Account", ["Edit account", "Password", "Two-step verification"]],
-      ["Preferences", ["Notification preferences"]],
-      ["Support", ["Help centre", "Contact us"]],
-      ["Legal", ["Terms & conditions", "Privacy centre"]],
+describe("buildAccountSections", () => {
+  it("lists the four categories with the Help card", () => {
+    const sections = buildAccountSections(withBid);
+    expect(sections.map((s) => [s.title, s.href])).toEqual([
+      ["Personal details", "/account/profile"],
+      ["Password and security", "/account/security"],
+      ["Notifications and privacy", "/account/privacy"],
+      ["Help", "/account/help"],
     ]);
-    expect(groups[1]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/notifications");
-    expect(groups[3]?.rows[1]?.href).toBe("/account/privacy");
   });
 
-  it("keeps only the account group when Bid is not configured", () => {
-    const groups = buildSettingsGroups({
-      overview: { signedInWithAuthenticator: true },
-      links: withoutBid,
-      payoutLinks: [],
-      staffPlatforms: [],
-    });
-    expect(groups.map((g) => g.id)).toEqual(["account"]);
-    expect(groups[0]?.rows[2]?.subtitle).toBe("On for this sign-in");
+  it("leaves Help out when Bid, which publishes the help pages, is not configured", () => {
+    expect(buildAccountSections(withoutBid).map((s) => s.id)).toEqual([
+      "personal-details",
+      "security",
+      "privacy",
+    ]);
+  });
+});
+
+describe("buildSecurityGroups", () => {
+  it("opens the hosted password and two-step pages", () => {
+    const [group] = buildSecurityGroups({ twoStepConfirmed: false }, withBid);
+    expect(group?.rows.map((r) => [r.title, r.subtitle, r.href])).toEqual([
+      [
+        "Password",
+        "We'll email you a secure link to change it",
+        "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
+      ],
+      [
+        "Two-step verification",
+        "Set up or manage",
+        "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
+      ],
+    ]);
   });
 
-  it("adds payout and staff launch groups when present", () => {
-    const groups = buildSettingsGroups({
-      overview,
-      links: withoutBid,
+  it("states two-step is on only when this sign-in used it", () => {
+    const [group] = buildSecurityGroups({ twoStepConfirmed: true }, withBid);
+    expect(group?.rows[1]?.subtitle).toBe("On");
+  });
+});
+
+describe("buildHelpGroups", () => {
+  it("links the help centre and contact page, and is empty without Bid", () => {
+    expect(buildHelpGroups(withBid)[0]?.rows.map((r) => r.title)).toEqual([
+      "Help centre",
+      "Contact us",
+    ]);
+    expect(buildHelpGroups(withoutBid)).toEqual([]);
+  });
+});
+
+describe("buildLaunchGroups", () => {
+  it("adds payout and staff launch groups only when they have rows", () => {
+    expect(buildLaunchGroups({ payoutLinks: [], staffPlatforms: [] })).toEqual([]);
+    const groups = buildLaunchGroups({
       payoutLinks: [{ label: "LAX Art payouts", href: "https://lax.art/account/payouts" }],
       staffPlatforms: [{ product: "bid", label: "LAX Bid admin", href: "https://lax.bid/admin" }],
     });
-    expect(groups.map((g) => g.id)).toEqual(["account", "payouts", "lax-access"]);
-    expect(groups[2]?.rows[0]).toEqual({
+    expect(groups.map((g) => g.id)).toEqual(["payouts", "lax-access"]);
+    expect(groups[1]?.rows[0]).toEqual({
       title: "LAX Bid admin",
       subtitle: "Staff access",
       href: "https://lax.bid/admin",
@@ -114,13 +144,15 @@ describe("buildProfileSections", () => {
 });
 
 describe("buildPrivacyGroups", () => {
-  it("links deletion and policies to Bid", () => {
+  it("links notifications, deletion and policies to Bid", () => {
     const groups = buildPrivacyGroups(withBid);
     expect(groups.map((g) => g.rows.map((r) => r.title))).toEqual([
+      ["Notification preferences"],
       ["Delete your account"],
       ["Privacy policy", "Terms of use"],
     ]);
-    expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/security");
+    expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/notifications");
+    expect(groups[1]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/security");
   });
 
   it("is empty without Bid", () => {

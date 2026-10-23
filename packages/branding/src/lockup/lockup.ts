@@ -22,7 +22,11 @@ import { LAX_MARK_BOUNDS, LAX_MARK_INK_PATHS, LAX_MARK_MIST_PATHS } from "./lax-
  * the weight where its stem matches BID's, so nothing depends on a font being loaded.
  */
 
-export type LaxLockupKind = "mark" | LaxBrandProduct;
+/**
+ * `bid-compact` is Bid's mark and ".BID" without the "Auction Xchange" tagline, framed like the
+ * Shop, Art and Account lockups so the four read at one size in a row of product cards.
+ */
+export type LaxLockupKind = "mark" | LaxBrandProduct | "bid-compact";
 export type LaxLockupScheme = "light" | "dark";
 
 export type LockupPath = { d: string; transform?: string };
@@ -51,10 +55,14 @@ export const LAX_LOCKUP_DESCRIPTORS: Readonly<Record<LaxBrandProduct, string>> =
 const LABELS: Readonly<Record<LaxLockupKind, string>> = {
   mark: "LAX",
   bid: "LAX Bid",
+  "bid-compact": "LAX Bid",
   shop: "LAX Shop",
   art: "LAX Art",
   account: "LAX Account",
 };
+
+/** Right edge of the "D" in the Bid master's ".BID", plus a hair so the stroke is not clipped. */
+const BID_DESCRIPTOR_RIGHT = 765;
 
 /** Geometry measured from the Bid lockup master (1108.21 x 287.96 canvas). */
 const BID_CANVAS = { width: 1108.21, height: 287.96 } as const;
@@ -143,6 +151,17 @@ export function laxLockup(kind: LaxLockupKind): LaxLockup {
     };
   }
 
+  if (kind === "bid-compact") {
+    return {
+      ...base,
+      mist: plain(BID_MARK_MIST_PATHS),
+      descriptor: LAX_LOCKUP_DESCRIPTORS.bid,
+      ...frame(BID_DESCRIPTOR_RIGHT, LAX_MARK_BOUNDS.y, FRAME_BOTTOM - LAX_MARK_BOUNDS.y),
+      ink: plain(BID_MARK_INK_PATHS),
+      descriptorPaths: plain(BID_DESCRIPTOR_PATHS),
+    };
+  }
+
   const word = LAX_LOCKUP_DESCRIPTORS[kind];
   const { paths, right } = setDescriptor(word);
   return {
@@ -175,7 +194,7 @@ export function laxLockupColors(kind: LaxLockupKind, scheme: LaxLockupScheme): L
   const accent =
     kind === "mark"
       ? null
-      : kind === "bid"
+      : kind === "bid" || kind === "bid-compact"
         ? BID_DESCRIPTOR[scheme]
         : scheme === "light"
           ? PRODUCT_ACCENTS[kind]
@@ -207,7 +226,14 @@ export function laxLockupSvg(kind: LaxLockupKind, scheme: LaxLockupScheme): stri
     .join("\n")}\n`;
 }
 
-export const LAX_LOCKUP_KINDS: readonly LaxLockupKind[] = ["mark", "bid", "shop", "art", "account"];
+export const LAX_LOCKUP_KINDS: readonly LaxLockupKind[] = [
+  "mark",
+  "bid",
+  "bid-compact",
+  "shop",
+  "art",
+  "account",
+];
 
 /** Published file name of a lockup, relative to `@auction/branding/lockups/`. */
 export function laxLockupFileName(kind: LaxLockupKind, scheme: LaxLockupScheme): string {
