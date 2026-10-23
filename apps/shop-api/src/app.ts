@@ -39,6 +39,7 @@ import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
 import { registerPortalConnectRoutes } from "./routes/v1/portal-connect.routes.js";
 import { registerPortalFavoritesRoutes } from "./routes/v1/portal-favorites.routes.js";
+import { registerPortalLaxPortfolioRoutes } from "./routes/v1/portal-lax-portfolio.routes.js";
 import { registerPortalMeDisabledRoutes } from "./routes/v1/portal-me-disabled.routes.js";
 import { registerPortalMeRoutes } from "./routes/v1/portal-me.routes.js";
 import { registerStripeConnectWebhookRoutes } from "./routes/webhooks/stripe-connect.routes.js";
@@ -188,6 +189,8 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
       },
     );
   }
+  // Registered whatever the portal flags say: a switched-off feature yields a partial response.
+  void registerPortalLaxPortfolioRoutes(app, options.deps.portal.laxPortfolio);
   if (options.deps.env.SHOP_PORTAL_OWNERSHIP_ENABLED) {
     void registerPortalMeRoutes(app, {
       ...options.deps.portal,

@@ -649,6 +649,9 @@ importers:
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
+      '@auction/lax-ecosystem':
+        specifier: workspace:*
+        version: link:../../packages/lax-ecosystem
       '@auction/object-storage':
         specifier: workspace:*
         version: link:../../packages/object-storage
