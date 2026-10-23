@@ -19,7 +19,7 @@ import {
 const PUBLISHED = join(import.meta.dirname, "../public/lockups");
 const REPO_ROOT = join(import.meta.dirname, "../../..");
 const SCHEMES = ["light", "dark"] as const;
-const PRODUCTS = ["bid", "shop", "art", "account"] as const;
+const PRODUCTS = ["bid", "shop", "art", "account", "account-compact"] as const;
 
 describe("laxLockup", () => {
   it("keeps Bid's canvas and descriptor, tagline included", () => {
@@ -28,7 +28,31 @@ describe("laxLockup", () => {
     expect(bid.descriptor).toBe("BID");
     // Dot + B + I + D, outlined in Bid's own face.
     expect(bid.descriptorPaths).toHaveLength(4);
-    expect(bid.ink.length).toBeGreaterThan(laxLockup("account").ink.length);
+    expect(bid.ink.length).toBeGreaterThan(laxLockup("account-compact").ink.length);
+  });
+
+  it("builds the full Account lockup like Bid's: plain mark, a two-line name and .ACCOUNT on Bid's canvas height", () => {
+    const account = laxLockup("account");
+    const bid = laxLockup("bid");
+    expect(account.descriptor).toBe("ACCOUNT");
+    expect(account.label).toBe("LAX Account");
+    // Same height as Bid, so the two render at one size in a header.
+    expect(account.height).toBe(bid.height);
+    expect(account.viewBox.startsWith("0 0 ")).toBe(true);
+    // Mark strokes first, then "Account" and "Centre(R)".
+    expect(account.ink.slice(0, 3).map((path) => path.d)).toEqual([...LAX_MARK_INK_PATHS]);
+    expect(account.ink).toHaveLength(LAX_MARK_INK_PATHS.length + 2);
+    // The descriptor sits where Bid's does.
+    expect(account.descriptorPaths[0]?.d).toBe(bid.descriptorPaths[0]?.d);
+    expect(account.descriptorPaths).toHaveLength(1 + "ACCOUNT".length);
+  });
+
+  it("offers a compact Account lockup: the mark and .ACCOUNT without the name", () => {
+    const compact = laxLockup("account-compact");
+    expect(compact.descriptor).toBe("ACCOUNT");
+    expect(compact.ink).toHaveLength(LAX_MARK_INK_PATHS.length);
+    expect(compact.width).toBeLessThan(laxLockup("account").width);
+    expect(laxLockupFileName("account-compact", "dark")).toBe("lax-account-compact-dark.svg");
   });
 
   it("offers a compact Bid lockup: the gavel mark and .BID without the tagline, framed like the others", () => {
@@ -70,7 +94,7 @@ describe("laxLockup", () => {
   });
 
   it("ends each tight frame at the descriptor and shares the mark's top and the baseline bottom", () => {
-    for (const product of ["shop", "art", "account"] as const) {
+    for (const product of ["shop", "art", "account-compact"] as const) {
       const { viewBox, width } = laxLockup(product);
       const [x = Number.NaN, y = Number.NaN, , height = Number.NaN] = viewBox
         .split(" ")
@@ -82,7 +106,7 @@ describe("laxLockup", () => {
       expect(width).toBeGreaterThan(700);
     }
     const width = (kind: LaxLockupKind) => laxLockup(kind).width;
-    expect(width("account")).toBeGreaterThan(width("shop"));
+    expect(width("account-compact")).toBeGreaterThan(width("shop"));
     expect(width("shop")).toBeGreaterThan(width("art"));
   });
 
@@ -105,14 +129,14 @@ describe("gavel mark", () => {
   });
 
   it("draws the plain mark as the L, a two-stroke A and the X", () => {
-    for (const kind of ["mark", "shop", "art", "account"] as const) {
+    for (const kind of ["mark", "shop", "art", "account-compact"] as const) {
       expect(laxLockup(kind).ink.map((path) => path.d)).toEqual([...LAX_MARK_INK_PATHS]);
     }
     expect(LAX_MARK_INK_PATHS).toHaveLength(3);
   });
 
   it("keeps the gavel out of every published non-Bid file", () => {
-    for (const kind of ["mark", "exchange", "shop", "art", "account"] as const) {
+    for (const kind of ["mark", "exchange", "shop", "art", "account", "account-compact"] as const) {
       for (const scheme of [...SCHEMES, "auto"] as const) {
         const file = readFileSync(join(PUBLISHED, laxLockupFileName(kind, scheme)), "utf8");
         for (const d of gavelPaths) expect(file).not.toContain(d);
@@ -146,6 +170,8 @@ describe("laxLockupColors", () => {
   it("marks Account with teal, matching the surface it sits on", () => {
     expect(laxLockupColors("account", "light").descriptor).toBe("#0f766e");
     expect(laxLockupColors("account", "dark").descriptor).toBe("#2dd4bf");
+    expect(laxLockupColors("account-compact", "light").descriptor).toBe("#0f766e");
+    expect(laxLockupColors("account-compact", "dark").descriptor).toBe("#2dd4bf");
   });
 
   it("keeps Bid's descriptor exactly as the Bid lockup master draws it", () => {
@@ -198,7 +224,8 @@ describe("published lockup files", () => {
         if (product !== "bid") {
           expect(svg).not.toMatch(new RegExp(`${BRAND_COLORS.midnight}|#202759`, "i"));
         }
-        if (product !== "account") expect(svg).not.toMatch(/#0f766e|#2dd4bf/i);
+        if (product !== "account" && product !== "account-compact")
+          expect(svg).not.toMatch(/#0f766e|#2dd4bf/i);
       }
       expect(laxLockupSvg("mark", scheme)).not.toMatch(/#0f766e|#2dd4bf|#202759/i);
     }

@@ -3,6 +3,7 @@ import {
   PRODUCT_ACCENTS,
   PRODUCT_ACCENTS_ON_DARK,
 } from "../brand-identity.js";
+import { ACCOUNT_NAME_BOUNDS, ACCOUNT_NAME_PATHS } from "./account-name-paths.js";
 import {
   BID_DESCRIPTOR_PATHS,
   BID_MARK_INK_PATHS,
@@ -28,10 +29,21 @@ import { TAGLINE_BOUNDS, TAGLINE_PATHS } from "./tagline-paths.js";
  * Shop, Art and Account lockups so the four read at one size in a row of product cards.
  */
 /**
+ * `account` is the full Account lockup, built like Bid's: the plain mark, a two-line name ("Account
+ * / Centre(R)") set to Bid's measurements, and ".ACCOUNT" in the descriptor position where Bid has
+ * ".BID". `account-compact` is the mark and ".ACCOUNT" without the name, framed like the Shop and
+ * Art lockups, for rows of product cards.
+ */
+/**
  * `exchange` is the plain mark with the three-line "London / Art Exchange(R) / Marylebone" tagline,
  * the vector form of the wordmark Shop and Art show in their headers and footers.
  */
-export type LaxLockupKind = "mark" | LaxBrandProduct | "bid-compact" | "exchange";
+export type LaxLockupKind =
+  | "mark"
+  | LaxBrandProduct
+  | "bid-compact"
+  | "account-compact"
+  | "exchange";
 export type LaxLockupScheme = "light" | "dark";
 
 export type LockupPath = { d: string; transform?: string };
@@ -65,6 +77,7 @@ const LABELS: Readonly<Record<LaxLockupKind, string>> = {
   shop: "LAX Shop",
   art: "LAX Art",
   account: "LAX Account",
+  "account-compact": "LAX Account",
 };
 
 /** Right edge of the "D" in the Bid master's ".BID", plus a hair so the stroke is not clipped. */
@@ -85,6 +98,9 @@ const FRAME_BOTTOM = BID_CANVAS.height;
  * descriptor moves with it so its distance from the mark matches Bid's.
  */
 const PLAIN_MARK_SHIFT_X = -18;
+
+/** Clear space right of the Account name's last ink so antialiasing is not clipped. */
+const ACCOUNT_FRAME_PAD = 0.5;
 
 /** Clear space around the tagline's outermost ink so antialiasing is not clipped. */
 const EXCHANGE_FRAME_PAD = 0.5;
@@ -185,7 +201,23 @@ export function laxLockup(kind: LaxLockupKind): LaxLockup {
     };
   }
 
-  const word = LAX_LOCKUP_DESCRIPTORS[kind];
+  if (kind === "account") {
+    const word = LAX_LOCKUP_DESCRIPTORS.account;
+    const width = Math.ceil(ACCOUNT_NAME_BOUNDS.right) + ACCOUNT_FRAME_PAD;
+    return {
+      ...base,
+      mist: plain(LAX_MARK_MIST_PATHS),
+      descriptor: word,
+      // Bid's canvas height, so the two full lockups render at one height at one CSS height.
+      viewBox: `0 0 ${format(width)} ${BID_CANVAS.height}`,
+      width,
+      height: BID_CANVAS.height,
+      ink: [...markInk, ...plain(ACCOUNT_NAME_PATHS)],
+      descriptorPaths: setDescriptor(word).paths,
+    };
+  }
+
+  const word = LAX_LOCKUP_DESCRIPTORS[kind === "account-compact" ? "account" : kind];
   const { paths, right } = setDescriptor(word);
   return {
     ...base,
@@ -220,8 +252,8 @@ export function laxLockupColors(kind: LaxLockupKind, scheme: LaxLockupScheme): L
       : kind === "bid" || kind === "bid-compact"
         ? BID_DESCRIPTOR[scheme]
         : scheme === "light"
-          ? PRODUCT_ACCENTS[kind]
-          : PRODUCT_ACCENTS_ON_DARK[kind];
+          ? PRODUCT_ACCENTS[kind === "account-compact" ? "account" : kind]
+          : PRODUCT_ACCENTS_ON_DARK[kind === "account-compact" ? "account" : kind];
   return { ink, mist: MIST, descriptor: accent ?? ink };
 }
 
@@ -257,6 +289,7 @@ export const LAX_LOCKUP_KINDS: readonly LaxLockupKind[] = [
   "shop",
   "art",
   "account",
+  "account-compact",
 ];
 
 /**
