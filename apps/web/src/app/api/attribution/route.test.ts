@@ -10,7 +10,7 @@ vi.mock("@/lib/analytics/is-marketing-attribution-enabled", () => ({
   isMarketingAttributionEnabled: () => true,
 }));
 
-import { POST } from "./route";
+import { DELETE, POST } from "./route";
 
 const snapshot = {
   version: 1,
@@ -74,5 +74,26 @@ describe("attribution cookie route", () => {
       body: JSON.stringify({ snapshot }),
     });
     expect((await POST(crossOrigin)).status).toBe(403);
+  });
+
+  it("accepts a same-site write behind the proxy, where the request URL is internal", async () => {
+    const proxied = new Request("http://0.0.0.0:3000/api/attribution", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://test.lax.bid",
+        "X-Forwarded-Host": "test.lax.bid",
+      },
+      body: JSON.stringify({ snapshot }),
+    });
+    expect((await POST(proxied)).status).toBe(204);
+  });
+
+  it("still rejects a cross-origin write behind the proxy", async () => {
+    const proxied = new Request("http://0.0.0.0:3000/api/attribution", {
+      method: "DELETE",
+      headers: { Origin: "https://evil.example", "X-Forwarded-Host": "test.lax.bid" },
+    });
+    expect((await DELETE(proxied)).status).toBe(403);
   });
 });

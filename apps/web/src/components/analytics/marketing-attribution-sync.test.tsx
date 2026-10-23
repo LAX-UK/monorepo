@@ -64,6 +64,19 @@ describe("MarketingAttributionSync", () => {
     vi.clearAllMocks();
   });
 
+  it("sends nothing to the server for a visitor who never consented and has nothing stored", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchSpy);
+    vi.mocked(useConsent).mockReturnValue(consentValue(false, false));
+
+    render(<MarketingAttributionSync />);
+    await act(async () => vi.runAllTimersAsync());
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(deleteMarketingAttribution).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it("clears stale browser and server attribution when consent is denied", async () => {
     vi.mocked(useConsent).mockReturnValue(consentValue(false, true));
     vi.mocked(readAttributionCookie).mockReturnValue({

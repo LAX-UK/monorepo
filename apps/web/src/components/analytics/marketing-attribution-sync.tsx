@@ -74,11 +74,15 @@ export function MarketingAttributionSync() {
       const hadStoredAttribution = readAttributionCookie() !== null;
       clearAttributionCookie();
       cookiePersistInFlight.current = null;
-      void queueCookieMutation(clearAttributionCookieServer)
-        .then(() => {
-          persistedCookie.current = null;
-        })
-        .catch(() => undefined);
+      // The server copy is readable from the page, so there is nothing to clear for a visitor
+      // who never granted marketing consent; skipping the call avoids a request on every page.
+      if (hadStoredAttribution || marketingWasGranted.current) {
+        void queueCookieMutation(clearAttributionCookieServer)
+          .then(() => {
+            persistedCookie.current = null;
+          })
+          .catch(() => undefined);
+      }
       syncedSnapshot.current = null;
       persistedCookie.current = null;
       syncInFlight.current = null;

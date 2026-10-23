@@ -14,14 +14,24 @@ function cookieDomain(): string | undefined {
   return value || undefined;
 }
 
+/**
+ * Behind the platform proxy `request.url` carries the container's internal address, so the
+ * browser's Origin is compared with the public host the proxy forwards instead.
+ */
 function requestIsSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return true;
+  let originHost: string;
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    originHost = new URL(origin).host;
   } catch {
     return false;
   }
+  const publicHost =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    request.headers.get("host")?.split(",")[0]?.trim() ||
+    new URL(request.url).host;
+  return originHost === publicHost;
 }
 
 function setAttributionCookie(
