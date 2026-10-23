@@ -1,3 +1,8 @@
+import type { LaxResourceId } from "@auction/identity-contracts";
+
+/** An audience-bound access token minted for one product API, and when it stops being valid. */
+export type CachedResourceToken = { token: string; expiresAtMs: number };
+
 export type StaffSessionRecord = {
   subject: string;
   sid: string;
@@ -7,6 +12,11 @@ export type StaffSessionRecord = {
   accessTokenExpiresAtMs: number;
   authTime: number;
   acr: string;
+  /**
+   * Tokens exchanged for product APIs, kept for their own lifetime so a page that reads two
+   * products does not hit the token endpoint on every request. Absent until first used.
+   */
+  resourceTokens?: Partial<Record<LaxResourceId, CachedResourceToken>>;
 };
 
 export type SessionStore = {
