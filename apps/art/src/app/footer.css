@@ -26,3 +26,8 @@ html.dark .shop-logo__mark,
 .shop-logo--inverted .shop-logo__mark {
   filter: brightness(0) invert(1);
 }
+
+/* Over a hero image the header switches to its on-dark tone, so the mark turns white. */
+[data-header-tone="on-dark"] .art-header__logo .shop-logo__mark {
+  filter: brightness(0) invert(1);
+}

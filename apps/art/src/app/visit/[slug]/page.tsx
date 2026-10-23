@@ -3,6 +3,7 @@ import { ArtVenueLocation } from "@/components/editorial/art-venue-location";
 import { ArtVenueRelatedLinks } from "@/components/editorial/art-venue-related-links";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
 import { ArtPrivateViewingSection } from "@/components/enquiry/art-private-viewing-section";
+import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
 import { artServices } from "@/lib/art-services.server";
 import { venueMetaLines } from "@/lib/editorial/editorial-page-title.vm";
 import { composeVenuePage, venueHref } from "@/lib/editorial/editorial-pages.composer";
@@ -45,7 +46,7 @@ export default async function VenuePage({ params }: VenuePageProps) {
   return (
     <article className="flex flex-col gap-12">
       {venue.coverUrl ? (
-        <MarketingPageTitle
+        <ArtMediaPageTitle
           variant="media"
           title={venue.name}
           image={{ src: venue.coverUrl, alt: `${venue.name} gallery` }}

@@ -1,5 +1,6 @@
 import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
+import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
@@ -72,7 +73,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
     <article className="flex flex-col pb-10 lg:pb-16">
       <ArtJsonLd data={storyJsonLd(story, loadArtStorefrontBaseUrl())} />
       {heroImage ? (
-        <MarketingPageTitle variant="media" image={{ src: heroImage }} priority {...title} />
+        <ArtMediaPageTitle variant="media" image={{ src: heroImage }} priority {...title} />
       ) : (
         <MarketingPageTitle {...title} />
       )}

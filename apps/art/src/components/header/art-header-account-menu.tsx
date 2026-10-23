@@ -8,6 +8,7 @@ import {
   type MarketingAccountNavItem,
   MarketingAuthenticatedAccountMenu,
   MarketingGuestAccountMenu,
+  type MarketingHeaderTone,
 } from "@auction/marketing-ui";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -17,11 +18,15 @@ const ART_ACCOUNT_NAV: MarketingAccountNavItem[] = [...ART_ACCOUNT_LINKS];
 type ArtHeaderAccountMenuProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
+  headerTone: MarketingHeaderTone;
 };
 
-export function ArtHeaderAccountMenu({ account, productLinks }: ArtHeaderAccountMenuProps) {
+export function ArtHeaderAccountMenu({
+  account,
+  productLinks,
+  headerTone,
+}: ArtHeaderAccountMenuProps) {
   const pathname = usePathname();
-  const headerTone = "on-light" as const;
 
   switch (account.kind) {
     case "guest":

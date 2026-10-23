@@ -135,6 +135,13 @@ export {
   MarketingChromeIconButton,
   type MarketingChromeIconButtonProps,
 } from "./header/marketing-chrome-icon-button.js";
+export {
+  HEADER_SCROLL_FADE_THRESHOLD_PX,
+  type HeaderChrome,
+  type UseHeaderChromeOptions,
+  headerChromeClassName,
+  useHeaderChrome,
+} from "./header/use-header-chrome.js";
 export { computeMegaMenuContentShift } from "./header/compute-mega-menu-content-shift.js";
 export {
   MarketingHeaderMegaNav,

@@ -1,5 +1,7 @@
+import { ArtHeroSignal } from "@/components/header/art-hero-signal.client";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtworksLandingHeroVm } from "@/lib/catalogue/artworks-page.composer";
+import { ART_HERO_UNDER_HEADER_CLASS } from "@/lib/layout/art-header-chrome.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 
@@ -11,8 +13,12 @@ export function ArtArtworksLandingHero({ hero }: { hero: ArtworksLandingHeroVm }
   return (
     <section
       aria-labelledby="art-artworks-landing-title"
-      className="relative isolate flex min-h-[20rem] items-center overflow-hidden bg-brand-obsidian md:min-h-[31.25rem]"
+      className={cn(
+        "relative isolate flex min-h-[20rem] items-center overflow-hidden bg-brand-obsidian md:min-h-[31.25rem]",
+        ART_HERO_UNDER_HEADER_CLASS,
+      )}
     >
+      <ArtHeroSignal />
       <div aria-hidden className="absolute inset-0 -z-10">
         <ArtMediaImage
           src={hero.imageUrl}

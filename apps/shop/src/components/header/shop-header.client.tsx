@@ -12,17 +12,16 @@ import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosyste
 import {
   MarketingChromeIconButton,
   MarketingCloseIcon,
-  type MarketingHeaderTone,
   MarketingMenuIcon,
+  headerChromeClassName,
   headerChromeIconClass,
+  useHeaderChrome,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-
-const SCROLL_FADE_THRESHOLD_PX = 12;
+import { useEffect, useRef, useState } from "react";
 
 type ShopHeaderClientProps = {
   account: AccountChromeState;
@@ -42,47 +41,13 @@ export function ShopHeaderClient({
   const [megaOpen, setMegaOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [megaMenuResetNonce, setMegaMenuResetNonce] = useState(0);
-  const [atTop, setAtTop] = useState(true);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const headerRef = useRef<HTMLElement>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const lastHeaderHeightRef = useRef(0);
 
   const transparentHome = pathname === "/";
-
-  const setHeaderNode = useCallback((el: HTMLElement | null) => {
-    if (resizeObserverRef.current) {
-      resizeObserverRef.current.disconnect();
-      resizeObserverRef.current = null;
-    }
-    headerRef.current = el;
-    if (!el) return;
-
-    const sync = () => {
-      const h = el.offsetHeight;
-      if (h === lastHeaderHeightRef.current) return;
-      lastHeaderHeightRef.current = h;
-      document.documentElement.style.setProperty("--header-height", `${h}px`);
-    };
-
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    resizeObserverRef.current = ro;
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!transparentHome) {
-      setAtTop(true);
-      return;
-    }
-    const onScroll = () => {
-      setAtTop(window.scrollY <= SCROLL_FADE_THRESHOLD_PX);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [transparentHome]);
+  const { isTransparent, atTop, headerTone, headerRef, attachHeader } = useHeaderChrome({
+    transparent: transparentHome,
+    overlayOpen: megaOpen || menuOpen,
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {
@@ -95,26 +60,16 @@ export function ShopHeaderClient({
     setAccountMenuOpen(open);
     if (open) setMegaMenuResetNonce((nonce) => nonce + 1);
   };
-  const isTransparent = transparentHome && atTop && !megaOpen && !menuOpen;
-  const headerTone: MarketingHeaderTone = isTransparent ? "on-dark" : "on-light";
 
   return (
     <TooltipProvider delayDuration={200}>
       <header
-        ref={setHeaderNode}
+        ref={attachHeader}
         data-testid="shop-header"
         data-chrome-variant={transparentHome ? "transparentUntilScroll" : "solid"}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
-        className={cn(
-          "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
-          isTransparent
-            ? "border-transparent bg-transparent"
-            : cn(
-                "border-nav-border bg-surface shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface",
-                megaOpen && "border-transparent shadow-none backdrop-blur-none",
-              ),
-        )}
+        className={headerChromeClassName(isTransparent, megaOpen)}
       >
         <div
           className={cn(

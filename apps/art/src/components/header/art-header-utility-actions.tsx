@@ -6,21 +6,23 @@ import { ArtHeaderAccountMenu } from "@/components/header/art-header-account-men
 import { artSignInHref } from "@/lib/auth/art-reauth.vm";
 import { FOCUS_RING } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { headerProductLinkClass } from "@auction/marketing-ui";
+import { type MarketingHeaderTone, headerProductLinkClass } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
-const ACTION_CLASS = cn(
-  headerProductLinkClass("on-light", false),
-  "inline-flex min-h-11 items-center rounded-sm",
-  FOCUS_RING,
-);
+const actionClass = (headerTone: MarketingHeaderTone) =>
+  cn(
+    headerProductLinkClass(headerTone, false),
+    "inline-flex min-h-11 items-center rounded-sm",
+    FOCUS_RING,
+  );
 
 type ArtHeaderUtilityActionsProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
   pathname: string;
+  headerTone: MarketingHeaderTone;
 };
 
 /**
@@ -32,18 +34,24 @@ export function ArtHeaderUtilityActions({
   account,
   productLinks,
   pathname,
+  headerTone,
 }: ArtHeaderUtilityActionsProps) {
+  const actionClassName = actionClass(headerTone);
   const loginHref = artSignInHref(pathname);
 
   return (
     <>
       {account.kind === "guest" ? (
-        <ArtAuthLink href={loginHref} className={ACTION_CLASS}>
+        <ArtAuthLink href={loginHref} className={actionClassName}>
           Log in
         </ArtAuthLink>
       ) : (
         <div data-testid="art-header-desktop-account">
-          <ArtHeaderAccountMenu account={account} productLinks={productLinks} />
+          <ArtHeaderAccountMenu
+            account={account}
+            productLinks={productLinks}
+            headerTone={headerTone}
+          />
         </div>
       )}
       {account.kind === "authenticated" ? (
@@ -54,13 +62,13 @@ export function ArtHeaderUtilityActions({
             phone: account.verifiedPhone ?? "",
           }}
           renderTrigger={(open) => (
-            <Button type="button" variant="link" className={ACTION_CLASS} onClick={open}>
+            <Button type="button" variant="link" className={actionClassName} onClick={open}>
               Enquire
             </Button>
           )}
         />
       ) : (
-        <Link href="/contact" className={ACTION_CLASS}>
+        <Link href="/contact" className={actionClassName}>
           Enquire
         </Link>
       )}

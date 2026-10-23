@@ -295,6 +295,43 @@ test.describe("lax.art journeys", () => {
     await expect(shelf.getByRole("heading", { name: "Recent searches" })).toHaveCount(0);
   });
 
+  test("home header is transparent over the hero, solid after scrolling and while search is open", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    const header = page.getByTestId("art-header");
+    await expect(header).toHaveAttribute("data-chrome-variant", "transparentUntilScroll");
+    await expect(header).toHaveAttribute("data-at-top", "true");
+    await expect(header).toHaveAttribute("data-header-tone", "on-dark");
+    await expect(header).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+
+    // The hero starts at the top of the page, under the fixed header, with no gap above it.
+    const hero = page.locator("main section").first();
+    expect((await hero.boundingBox())?.y).toBe(0);
+
+    if (testInfo.project.name === "chromium-desktop") {
+      await header.getByRole("button", { name: "Search" }).click();
+      await expect(header).toHaveAttribute("data-header-tone", "on-light");
+      await page.keyboard.press("Escape");
+      await expect(header).toHaveAttribute("data-header-tone", "on-dark");
+    }
+
+    await page.evaluate(() => window.scrollTo(0, 400));
+    await expect(header).toHaveAttribute("data-at-top", "false");
+    await expect(header).toHaveAttribute("data-header-tone", "on-light");
+    await expect(header).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(header).toHaveAttribute("data-at-top", "true");
+  });
+
+  test("a page without a hero keeps the header solid", async ({ page }) => {
+    await page.goto("/search");
+    const header = page.getByTestId("art-header");
+    await expect(header).toHaveAttribute("data-chrome-variant", "solid");
+    await expect(header).toHaveAttribute("data-header-tone", "on-light");
+  });
+
   test("footer carries the Figma columns in the shared order", async ({ page }) => {
     await page.goto("/");
     const footer = page.getByRole("contentinfo");
