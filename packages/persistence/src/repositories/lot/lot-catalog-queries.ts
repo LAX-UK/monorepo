@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { lot, sale } from "@auction/db/schema";
-import type { Lot, LotStatus, SaleStatus } from "@auction/types";
-import { PUBLIC_LOT_STATUSES, PUBLIC_SALE_STATUSES } from "@auction/validators";
+import type { Lot } from "@auction/types";
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import type { ListCatalogLotsBySalePageInput } from "../../interfaces/index.js";
+import { publicLotCondition, publicSaleCondition } from "../atg-public-catalog.sql.js";
 import { mapLotsWithCategories } from "./lot-category-queries.js";
 import { catalogLotsBySaleWhere, catalogSalePageOrderBy } from "./lot-list-filters.js";
 
@@ -52,8 +52,8 @@ export async function countLotsBySaleIds(
         inArray(lot.saleId, saleIds),
         lotNotDeleted(),
         saleNotDeleted(),
-        inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-        inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+        publicLotCondition(),
+        publicSaleCondition(),
       )
     : and(inArray(lot.saleId, saleIds), lotNotDeleted());
   const rows = await (options?.publicOnly
@@ -97,8 +97,8 @@ export async function findPreviewLotsBySaleIds(
         inArray(lot.saleId, saleIds),
         lotNotDeleted(),
         saleNotDeleted(),
-        inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-        inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+        publicLotCondition(),
+        publicSaleCondition(),
       )
     : and(inArray(lot.saleId, saleIds), lotNotDeleted());
 

@@ -85,8 +85,20 @@ describe("isPublicCatalogLot", () => {
       status,
     }) as Sale;
 
-  it("rejects draft lots", () => {
+  it("rejects draft lots on non-ATG sales", () => {
     expect(isPublicCatalogLot(lot("draft"), sale("active"))).toBe(false);
+  });
+
+  it("accepts draft lots on ATG-owned sales", () => {
+    expect(
+      isPublicCatalogLot(lot("draft"), { status: "draft", sellingPlatform: "atg" } as Sale),
+    ).toBe(true);
+  });
+
+  it("keeps cancelled lots private even on ATG-owned sales", () => {
+    expect(
+      isPublicCatalogLot(lot("cancelled"), { status: "draft", sellingPlatform: "atg" } as Sale),
+    ).toBe(false);
   });
 
   it("rejects scheduled lot on draft sale", () => {
@@ -107,8 +119,17 @@ describe("isPublicCatalogLot", () => {
 });
 
 describe("isPublicCatalogSale", () => {
-  it("rejects draft sales", () => {
+  it("rejects plain draft sales", () => {
     expect(isPublicCatalogSale({ status: "draft" } as Sale)).toBe(false);
+  });
+
+  it("accepts ATG-owned draft sales", () => {
+    expect(isPublicCatalogSale({ status: "draft", sellingPlatform: "atg" } as Sale)).toBe(true);
+  });
+
+  it("rejects draft sales that are free or owned by LAX", () => {
+    expect(isPublicCatalogSale({ status: "draft", sellingPlatform: "free" } as Sale)).toBe(false);
+    expect(isPublicCatalogSale({ status: "draft", sellingPlatform: "lax" } as Sale)).toBe(false);
   });
 
   it("accepts scheduled sales", () => {

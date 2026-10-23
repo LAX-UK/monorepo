@@ -5,6 +5,7 @@ import { resolvePublicLotListFilter, viewerCanSeeNonPublicCatalog } from "@aucti
 import { lotBidderRef } from "../../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
 import { presentLotsImages } from "../../lib/media-presenters.js";
+import { withAtgLotStates } from "../sale-selling-platform.js";
 import { clampLotBidsLimitQuery } from "./lot-read.js";
 import type {
   ListBidsForPublicApiResult,
@@ -40,7 +41,10 @@ export async function listLotsForPublicApi(
     );
   }
 
-  const rows = await deps.lotRepo.list(queryFilter);
+  const rows = await withAtgLotStates(
+    viewerCanSeeNonPublic ? null : deps.saleChannelReader,
+    await deps.lotRepo.list(queryFilter),
+  );
 
   const resolveImages = filter.resolveImages !== false;
   const presented = resolveImages

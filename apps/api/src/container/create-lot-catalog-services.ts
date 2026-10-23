@@ -146,6 +146,7 @@ export function createLotCatalogServices(
   const { mediaUrlResolver, catalogueMediaUrlResolver, mediaAssetEnricher, imageCleanupService } =
     complianceMedia;
   const { qrCodeService } = adminReaders;
+  const saleChannelReader = repos.atgLinkReader;
   const { telephoneBidBookingService } = saleRegistration;
 
   const lotJobScheduler: ILotJobScheduler = new LotJobScheduler(
@@ -192,6 +193,7 @@ export function createLotCatalogServices(
     qrCodeService,
     telephoneBidBookingService,
     repoFactory,
+    saleChannelReader,
   });
 
   const conditionReportService = new ConditionReportService(
@@ -231,6 +233,7 @@ export function createLotCatalogServices(
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
     repoFactory,
+    saleChannelReader,
   });
   const saleService = new SaleService({
     saleRepo,
@@ -251,6 +254,7 @@ export function createLotCatalogServices(
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
     repoFactory,
+    saleChannelReader,
     salePublishService,
   });
   const saleListReadService = new SaleListReadService(
@@ -258,6 +262,7 @@ export function createLotCatalogServices(
     lotRepo,
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
+    saleChannelReader,
   );
   const pressArchiveReadService = new PressArchiveReadService(
     new SalePressArchiveRepository(saleRepo),
@@ -276,6 +281,7 @@ export function createLotCatalogServices(
     saleSoftDeleteGuardReader,
     saleSoftDeleteSideEffects,
     catalogSoftDeleteOrchestrator,
+    saleChannelReader,
   );
   const lotSoftDeleteSideEffects = new DrizzleLotSoftDeleteSideEffects(db, lotCancelledRecorder);
   const lotSoftDeleteService = new LotSoftDeleteService(
@@ -284,6 +290,7 @@ export function createLotCatalogServices(
     lotSoftDeleteGuardReader,
     lotSoftDeleteSideEffects,
     catalogSoftDeleteOrchestrator,
+    saleChannelReader,
   );
   const lotStatusAdminService: ILotStatusAdminService = new LotStatusAdminService(
     saleRepo,

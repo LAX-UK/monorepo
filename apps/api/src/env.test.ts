@@ -130,3 +130,23 @@ describe("strict bid eligibility rollout", () => {
     expect(parsed.data.STRICT_BID_ELIGIBILITY_ENABLED).toBe(true);
   });
 });
+
+describe("ATG sync flag", () => {
+  it("is off by default, including in production", () => {
+    const parsed = envSchema.safeParse(productionEnvBase());
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.ATG_SYNC_ENABLED).toBe(false);
+    expect(parsed.data.ATG_WHITE_LABEL_BASE_URL).toBeUndefined();
+  });
+
+  it("turns on only for an explicit true and treats an empty White Label URL as unset", () => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({ ATG_SYNC_ENABLED: "true", ATG_WHITE_LABEL_BASE_URL: "" }),
+    );
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.ATG_SYNC_ENABLED).toBe(true);
+    expect(parsed.data.ATG_WHITE_LABEL_BASE_URL).toBeUndefined();
+  });
+});

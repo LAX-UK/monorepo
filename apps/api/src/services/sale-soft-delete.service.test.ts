@@ -1,5 +1,9 @@
 import type { ISaleSoftDeleteGuardReader } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleChannelReader,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import {
   bulkSaleDeleteConfirmationPhrase,
@@ -87,6 +91,7 @@ function createService(input: {
   jobScheduler?: ILotJobScheduler | null;
   db?: unknown;
   domainEventSink?: IDomainEventSink | null;
+  saleChannelReader?: ISaleChannelReader;
 }) {
   const jobScheduler = input.jobScheduler ?? null;
   const domainEventSink = input.domainEventSink ?? null;
@@ -97,6 +102,7 @@ function createService(input: {
     input.guardReader ?? ({} as ISaleSoftDeleteGuardReader),
     input.sideEffects ?? ({} as ISaleSoftDeleteSideEffects),
     orchestrator,
+    input.saleChannelReader ?? null,
   );
 }
 
@@ -272,5 +278,44 @@ describe("SaleSoftDeleteService", () => {
       expect(result.value.errors[0]?.saleId).toBe("s2");
       expect(softDeleteCascade).toHaveBeenCalledTimes(1);
     }
+  });
+});
+
+describe("SaleSoftDeleteService ATG guard", () => {
+  it("blocks deleting a sale that is live on ATG", async () => {
+    const softDeleteCascade = vi.fn();
+    const svc = createService({
+      saleRepo: { findById: vi.fn().mockResolvedValue(baseSale()) } as unknown as ISaleRepository,
+      lotRepo: {
+        findBySaleId: vi.fn().mockResolvedValue([baseLot()]),
+      } as unknown as ILotRepository,
+      guardReader: {
+        countGuardsForSale: vi
+          .fn()
+          .mockResolvedValue({ bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }),
+      } as unknown as ISaleSoftDeleteGuardReader,
+      sideEffects: { softDeleteCascade } as unknown as ISaleSoftDeleteSideEffects,
+      saleChannelReader: {
+        getSaleOwnership: vi.fn().mockResolvedValue({
+          saleStatus: "draft",
+          atgRemoteStatus: "published",
+          atgLinked: true,
+          atgSoldLotCount: 0,
+          sellingPlatform: "atg",
+        }),
+        getSaleOwnerships: vi.fn(),
+        getLotAtgState: vi.fn(),
+      } as unknown as ISaleChannelReader,
+    });
+
+    const result = await svc.softDelete(
+      "admin-1",
+      "staff",
+      "s1",
+      saleDeleteConfirmationPhrase("Evening"),
+      "auction_manager",
+    );
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
+    expect(softDeleteCascade).not.toHaveBeenCalled();
   });
 });

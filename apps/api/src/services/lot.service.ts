@@ -1,4 +1,4 @@
-import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type {
@@ -66,6 +66,7 @@ export type LotServiceOptions = {
   qrCodeService?: IQrCodeService | null;
   telephoneBidBookingService?: ITelephoneBidBookingSaleroomBridge | null;
   repoFactory?: IRepositoryFactory | null;
+  saleChannelReader?: ISaleChannelReader | null;
 };
 
 export class LotService implements ILotService {
@@ -94,6 +95,7 @@ export class LotService implements ILotService {
       qrCodeService: opts.qrCodeService ?? null,
       telephoneBidBookingService: opts.telephoneBidBookingService ?? null,
       repoFactory: opts.repoFactory ?? null,
+      saleChannelReader: opts.saleChannelReader ?? null,
     };
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
   }

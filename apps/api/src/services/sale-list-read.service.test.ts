@@ -66,3 +66,58 @@ describe("SaleListReadService", () => {
     expect(resolveManyUnique).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("SaleListReadService ATG-owned drafts", () => {
+  it("includes ATG-owned drafts with one batched ownership lookup for drafts only", async () => {
+    const atgDraft = { ...sale("s-atg"), status: "draft" } as Sale;
+    const plainDraft = { ...sale("s-draft"), status: "draft" } as Sale;
+    const saleRepo = { list: vi.fn(async () => [sale("s1"), atgDraft, plainDraft]) };
+    const lotRepo = {
+      countLotsBySaleIds: vi.fn(async () => new Map<string, number>()),
+      findPreviewLotsBySaleIds: vi.fn(async () => [
+        { ...lotRow("l-atg", "s-atg"), status: "draft" } as Lot,
+      ]),
+    };
+    const getSaleOwnerships = vi.fn(
+      async () =>
+        new Map([
+          [
+            "s-atg",
+            {
+              saleStatus: "draft" as const,
+              atgRemoteStatus: "published" as const,
+              atgLinked: true,
+              atgSoldLotCount: 0,
+              sellingPlatform: "atg" as const,
+            },
+          ],
+        ]),
+    );
+    const svc = new SaleListReadService(
+      saleRepo as never,
+      lotRepo as never,
+      { resolveManyUnique: vi.fn(async () => new Map()) } as never,
+      {
+        lookupByKeys: vi.fn(async () => new Map()),
+        buildGalleryImages: vi.fn(async () => []),
+        buildGalleryImagesWithLookup: vi.fn(async () => []),
+      } as never,
+      { getSaleOwnerships },
+    );
+
+    const { data } = await svc.listForPublicApi({
+      limit: 20,
+      offset: 0,
+      statuses: ["scheduled", "active"],
+    });
+
+    expect(saleRepo.list).toHaveBeenCalledWith(
+      expect.objectContaining({ statuses: ["scheduled", "active"], includeAtgOwnedDrafts: true }),
+    );
+    expect(getSaleOwnerships).toHaveBeenCalledTimes(1);
+    expect(getSaleOwnerships).toHaveBeenCalledWith(["s-atg", "s-draft"]);
+    expect(data.map((row) => row.sale.id)).toEqual(["s1", "s-atg"]);
+    expect(data[1]?.sale.sellingPlatform).toBe("atg");
+    expect(data[1]?.previewLots.map((l) => l.id)).toEqual(["l-atg"]);
+  });
+});

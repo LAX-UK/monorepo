@@ -1,5 +1,9 @@
 import type { ISaleSoftDeleteGuardReader } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleChannelReader,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import {
   bulkSaleDeleteConfirmationPhrase,
@@ -15,6 +19,7 @@ import type {
   SaleBulkSoftDeleteResult,
   SaleDeleteEligibility,
 } from "./interfaces/sale-soft-delete.js";
+import { assertCanSoftDeleteSaleOnAtg } from "./sale-channel-guards.js";
 import {
   type SaleSoftDeleteContext,
   canSaleSoftDelete,
@@ -34,6 +39,7 @@ export class SaleSoftDeleteService implements ISaleSoftDeleteService {
     private readonly guardReader: ISaleSoftDeleteGuardReader,
     private readonly sideEffects: ISaleSoftDeleteSideEffects,
     private readonly orchestrator: CatalogSoftDeleteOrchestrator,
+    private readonly saleChannelReader: ISaleChannelReader | null = null,
   ) {}
 
   async getDeleteEligibility(saleId: string): Promise<SaleDeleteEligibility | null> {
@@ -184,6 +190,8 @@ export class SaleSoftDeleteService implements ISaleSoftDeleteService {
     sale: Sale,
     ctx?: SaleSoftDeleteContext,
   ): Promise<Result<void, LotError>> {
+    const atgConflict = await assertCanSoftDeleteSaleOnAtg(this.saleChannelReader, sale.id);
+    if (atgConflict) return err(atgConflict);
     const resolvedCtx =
       ctx ??
       (await (async () => {

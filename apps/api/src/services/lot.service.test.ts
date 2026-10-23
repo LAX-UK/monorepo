@@ -138,6 +138,50 @@ function createSut(overrides: { lot?: Partial<Lot> } = {}) {
 }
 
 describe("LotService.update", () => {
+  it("refuses to move a lot with ATG bids to another sale", async () => {
+    const lot: Lot = {
+      ...baseLot,
+      status: "draft",
+      saleId: saleAId,
+      startTime: new Date("2026-06-02T10:00:00Z"),
+      endTime: new Date("2026-06-05T10:00:00Z"),
+    };
+    const update = vi.fn();
+    const lotRepo = {
+      findById: vi.fn().mockResolvedValue(lot),
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+      update,
+    } as unknown as ILotRepository;
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(mkSale({ id: saleBId, status: "draft" })),
+    } as unknown as ISaleRepository;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+      saleChannelReader: {
+        getSaleOwnership: vi.fn().mockResolvedValue({
+          saleStatus: "draft",
+          atgRemoteStatus: "published",
+          atgLinked: true,
+          atgSoldLotCount: 0,
+          sellingPlatform: "atg",
+        }),
+        getSaleOwnerships: vi.fn(),
+        getLotAtgState: vi.fn().mockResolvedValue({ linked: true, numberOfBids: 1, sold: false }),
+        getSoldLotIds: vi.fn(),
+      },
+    });
+
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, "catalogue_manager");
+
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("allows images-only patch on active lot for catalogue.write staff", async () => {
     const lot: Lot = { ...baseLot, status: "active", images: ["old.jpg"] };
     const updated: Lot = { ...lot, images: ["new.jpg"] };
@@ -611,6 +655,37 @@ describe("LotService.updateMarketingDetails", () => {
 });
 
 describe("LotService.cancel", () => {
+  it("refuses to cancel a lot that has bids on a live ATG auction", async () => {
+    const lotRepo = {
+      findById: vi.fn().mockResolvedValue({ ...baseLot, status: "draft", saleId: saleAId }),
+      updateStatus: vi.fn(),
+    } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+      saleChannelReader: {
+        getSaleOwnership: vi.fn().mockResolvedValue({
+          saleStatus: "draft",
+          atgRemoteStatus: "published",
+          atgLinked: true,
+          atgSoldLotCount: 0,
+          sellingPlatform: "atg",
+        }),
+        getSaleOwnerships: vi.fn(),
+        getLotAtgState: vi.fn().mockResolvedValue({ linked: true, numberOfBids: 4, sold: false }),
+        getSoldLotIds: vi.fn(),
+      },
+    });
+
+    const result = await svc.cancel("admin-1", "staff", lotId, "super_admin");
+
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
+    expect(lotRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
   it("routes seller cancellation notifications to legal entity seller members", async () => {
     const activeLot: Lot = {
       ...baseLot,

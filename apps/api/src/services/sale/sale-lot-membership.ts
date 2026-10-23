@@ -19,6 +19,7 @@ import {
 import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
 import { resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
 import { publishSingleLot } from "../../lib/publish-single-lot.js";
+import { assertLotMovableOnAtg } from "../sale-channel-guards.js";
 import { publishSingleLotDeps, recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
 import { mapSaleAddLotDbError } from "./sale-status-policy.js";
 import type { SaleServiceDeps } from "./sale-types.js";
@@ -220,6 +221,8 @@ export async function detachLotFromSale(
   if (!l || l.saleId !== saleId) {
     return err(new LotError("Lot not found in this sale", 404));
   }
+  const lotAtgConflict = await assertLotMovableOnAtg(deps.saleChannelReader, lotId, saleId);
+  if (lotAtgConflict) return err(lotAtgConflict);
   if (l.status !== "draft") {
     return err(new LotError("Only draft lots can be moved between sales"));
   }

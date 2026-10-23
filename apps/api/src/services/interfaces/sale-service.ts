@@ -13,6 +13,9 @@ import type { UpdateSaleBody } from "../sale/sale-update-draft.js";
 export interface ISaleReadService {
   getById(id: string): Promise<Sale | null>;
 
+  /** Sale row plus its computed ATG/LAX selling platform, for public catalogue visibility checks. */
+  getByIdForPublicCatalog(id: string): Promise<Sale | null>;
+
   findByIds(ids: string[]): Promise<Sale[]>;
 
   getByIdWithLots(id: string): Promise<{ sale: Sale; lots: Lot[] } | null>;

@@ -16,6 +16,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
 import type {
+  AdminIntegrationRouteServices,
   AdminRouteServices,
   AdminStaffSecurityRouteServices,
 } from "../services/interfaces/admin-routes.js";
@@ -295,7 +296,7 @@ export type ContainerCronSlice = Pick<
 
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
-  admin: AdminRouteServices & AdminStaffSecurityRouteServices;
+  admin: AdminRouteServices & AdminStaffSecurityRouteServices & AdminIntegrationRouteServices;
 };
 
 /** Route-facing bidding bag (mirrors `container.bidding`). */

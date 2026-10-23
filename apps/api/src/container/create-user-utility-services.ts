@@ -57,6 +57,7 @@ export function createUserUtilityServices(
     marketingEventsBullQueue,
     payoutStatementQueue,
     dataExportQueue,
+    atgSyncQueue,
   } = infra;
   const {
     paymentRepo,
@@ -109,6 +110,7 @@ export function createUserUtilityServices(
       marketingEventsBullQueue.close(),
       payoutStatementQueue.close(),
       dataExportQueue.close(),
+      ...(atgSyncQueue ? [atgSyncQueue.close()] : []),
       queueAdmin.close(),
     ]);
   };

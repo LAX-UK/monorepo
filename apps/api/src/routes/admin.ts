@@ -15,6 +15,7 @@ import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
 import type { AdminHono } from "./admin/_shared.js";
+import { attachAdminAtgRoutes } from "./admin/atg.routes.js";
 import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
@@ -118,6 +119,8 @@ export function createAdminRoutes(
   if (container.admin.stripeConnect) {
     attachAdminStripeConnectRoutes(platform, container.admin.stripeConnect);
   }
+
+  attachAdminAtgRoutes(platform, container.admin.atg);
 
   attachAdminInvitationRoutes(platform, container.admin.invitations);
 
