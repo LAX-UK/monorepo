@@ -8,7 +8,6 @@ import type { LaxAccountConfig } from "../config";
  * directly.
  */
 export type BidSettingsLinksVm = {
-  addresses: string;
   notifications: string;
   /** Account deletion lives in Bid security settings behind a step-up check. */
   deleteAccount: string;
@@ -51,7 +50,6 @@ export function buildAccountLinks(
     verifyEmail: hosted("/resend-verification", account.email ? { email: account.email } : {}),
     bidSettings: bidUrl
       ? {
-          addresses: bid("/dashboard/settings/addresses"),
           notifications: bid("/dashboard/settings/notifications"),
           deleteAccount: bid("/dashboard/settings/security"),
         }

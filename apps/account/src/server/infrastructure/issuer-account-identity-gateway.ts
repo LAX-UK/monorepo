@@ -1,4 +1,10 @@
 import {
+  ACCOUNT_ADDRESSES_CREATE_PATH,
+  ACCOUNT_ADDRESSES_DEFAULT_PATH,
+  ACCOUNT_ADDRESSES_DELETE_PATH,
+  ACCOUNT_ADDRESSES_PATH,
+  ACCOUNT_ADDRESSES_UPDATE_PATH,
+  ACCOUNT_ADDRESS_ERRORS,
   ACCOUNT_CONTACT_ERRORS,
   ACCOUNT_CONTACT_PATH,
   ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
@@ -12,7 +18,11 @@ import {
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
+  type AccountAddressError,
   type AccountContactError,
+  accountAddressDeletedSchema,
+  accountAddressResultSchema,
+  accountAddressesSchema,
   accountContactSchema,
   accountEmailChangeCancelledSchema,
   accountEmailChangeConfirmedSchema,
@@ -33,12 +43,15 @@ import type {
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
-const REJECTION_REASONS: ReadonlySet<string> = new Set(ACCOUNT_CONTACT_ERRORS);
+const REJECTION_REASONS: ReadonlySet<string> = new Set([
+  ...ACCOUNT_CONTACT_ERRORS,
+  ...ACCOUNT_ADDRESS_ERRORS,
+]);
 
-function rejectionReason(body: unknown): AccountContactError | null {
+function rejectionReason(body: unknown): AccountContactError | AccountAddressError | null {
   const error = (body as { error?: unknown } | null)?.error;
   return typeof error === "string" && REJECTION_REASONS.has(error)
-    ? (error as AccountContactError)
+    ? (error as AccountContactError | AccountAddressError)
     : null;
 }
 
@@ -188,6 +201,50 @@ export function createIssuerAccountIdentityGateway(
         accountSessionsRevokedSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.revoked } : result;
+    },
+    async listAddresses(actor) {
+      const result = await post(
+        ACCOUNT_ADDRESSES_PATH,
+        { token: actor.accessToken },
+        accountAddressesSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.addresses } : result;
+    },
+    async createAddress(actor, address) {
+      const result = await post(
+        ACCOUNT_ADDRESSES_CREATE_PATH,
+        fields(actor, { address: JSON.stringify(address) }),
+        accountAddressResultSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.address } : result;
+    },
+    async updateAddress(actor, addressId, expectedVersion, address) {
+      const result = await post(
+        ACCOUNT_ADDRESSES_UPDATE_PATH,
+        fields(actor, {
+          address_id: addressId,
+          expected_version: String(expectedVersion),
+          address: JSON.stringify(address),
+        }),
+        accountAddressResultSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.address } : result;
+    },
+    async deleteAddress(actor, addressId, expectedVersion) {
+      const result = await post(
+        ACCOUNT_ADDRESSES_DELETE_PATH,
+        fields(actor, { address_id: addressId, expected_version: String(expectedVersion) }),
+        accountAddressDeletedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: true } : result;
+    },
+    async setDefaultAddress(actor, addressId, kind) {
+      const result = await post(
+        ACCOUNT_ADDRESSES_DEFAULT_PATH,
+        { token: actor.accessToken, address_id: addressId, kind },
+        accountAddressResultSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.address } : result;
     },
   };
 }

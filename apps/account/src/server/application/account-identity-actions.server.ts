@@ -1,7 +1,13 @@
 "use server";
 
 import {
+  type AccountAddressDefaultKind,
+  type AccountAddressError,
+  type AccountAddressInput,
+  type AccountContactError,
   type AccountEmailChangeConfirmedResponse,
+  accountAddressDefaultKindSchema,
+  accountAddressInputSchema,
   accountEmailSchema,
   accountNameSchema,
   accountPhoneCodeSchema,
@@ -9,6 +15,7 @@ import {
 } from "@auction/identity-contracts";
 import { getLaxAccountContainer } from "../container";
 import type { AccountActionResult } from "../domain/account-action-result";
+import { addressRejectionMessage, isAddressRejection } from "../domain/account-addresses.vm";
 import { contactRejectionMessage } from "../domain/account-contact.vm";
 import type { IdentityActor, IdentityCallResult } from "../ports/account-identity-gateway";
 import { loadAccountRecord } from "./load-account-record";
@@ -16,6 +23,12 @@ import { loadAccountRecord } from "./load-account-record";
 const UNAVAILABLE_MESSAGE =
   "We couldn't do that just now. Nothing was changed. Please try again in a moment.";
 const UNAVAILABLE: AccountActionResult = { status: "error", message: UNAVAILABLE_MESSAGE };
+
+function rejectionMessage(reason: AccountContactError | AccountAddressError): string {
+  return isAddressRejection(reason)
+    ? addressRejectionMessage(reason)
+    : contactRejectionMessage(reason);
+}
 
 /**
  * Runs a change as the signed-in person. No session, or a session store that cannot be reached,
@@ -38,7 +51,7 @@ async function actAsSignedInPerson<T>(
   const result = await change(actor);
   if (result.status === "ok") return { status: "ok", message: success(result.value) };
   if (result.status === "rejected") {
-    return { status: "error", message: contactRejectionMessage(result.reason) };
+    return { status: "error", message: rejectionMessage(result.reason) };
   }
   return result.status === "reauth_required" ? result : UNAVAILABLE;
 }
@@ -119,6 +132,60 @@ export async function verifyPhoneAction(phone: string, code: string): Promise<Ac
   );
 }
 
+const INVALID_ADDRESS: AccountActionResult = {
+  status: "error",
+  message: addressRejectionMessage("invalid_address"),
+};
+
+/** The form has already been checked in the browser; this repeats it because actions are public endpoints. */
+export async function addAddressAction(address: AccountAddressInput): Promise<AccountActionResult> {
+  if (!accountAddressInputSchema.safeParse(address).success) return INVALID_ADDRESS;
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.createAddress(actor, address),
+    () => "Your address has been saved.",
+  );
+}
+
+export async function updateAddressAction(
+  addressId: string,
+  expectedVersion: number,
+  address: AccountAddressInput,
+): Promise<AccountActionResult> {
+  if (!accountAddressInputSchema.safeParse(address).success) return INVALID_ADDRESS;
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.updateAddress(actor, addressId, expectedVersion, address),
+    () => "Your address has been updated.",
+  );
+}
+
+export async function deleteAddressAction(
+  addressId: string,
+  expectedVersion: number,
+): Promise<AccountActionResult> {
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.deleteAddress(actor, addressId, expectedVersion),
+    () => "The address has been deleted.",
+  );
+}
+
+export async function setDefaultAddressAction(
+  addressId: string,
+  kind: AccountAddressDefaultKind,
+): Promise<AccountActionResult> {
+  if (!accountAddressDefaultKindSchema.safeParse(kind).success) return INVALID_ADDRESS;
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.setDefaultAddress(actor, addressId, kind),
+    () =>
+      kind === "shipping"
+        ? "Default shipping address updated."
+        : "Default billing address updated.",
+  );
+}
+
 export type ConfirmEmailChangeActionResult =
   | ({ status: "ok" } & AccountEmailChangeConfirmedResponse)
   | { status: "error"; message: string };
@@ -136,7 +203,7 @@ export async function confirmEmailChangeAction(
   const result = await identity.confirmEmailChange(emailToken);
   if (result.status === "ok") return { status: "ok", ...result.value };
   if (result.status === "rejected") {
-    return { status: "error", message: contactRejectionMessage(result.reason) };
+    return { status: "error", message: rejectionMessage(result.reason) };
   }
   return { status: "error", message: UNAVAILABLE_MESSAGE };
 }
