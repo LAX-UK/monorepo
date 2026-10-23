@@ -1,8 +1,10 @@
 import { buildHoldings, holdingsFilterOptions } from "@auction/lax-ecosystem";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { item } from "../server/domain/portfolio-fixtures.test-util";
 import { PortfolioHoldings } from "./portfolio-holdings";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 type Item = ReturnType<typeof item>;
 
@@ -13,6 +15,7 @@ function render(items: Item[], filter = {}) {
       options={holdingsFilterOptions(items)}
       filter={filter}
       action="/account/portfolio"
+      totalCount={items.length}
       imageOrigins={["https://cdn.lax.bid"]}
     />,
   );
@@ -65,26 +68,46 @@ describe("PortfolioHoldings", () => {
     expect(html).toContain("1 available, 1 expected");
   });
 
+  it("writes statuses in sentence case", () => {
+    const html = render(works);
+    expect(html).toContain("normal-case");
+  });
+
   it("marks an unpaid work's amount as due, not paid", () => {
     expect(render(works)).toContain("Due");
   });
 
-  it("offers every filter, keeps the URL values selected, and can clear them", () => {
-    const html = render(works, { statuses: ["owned"], currency: "GBP" });
-    for (const label of ["status", "product", "artist", "year acquired", "currency"]) {
-      expect(html).toContain(`Filter by ${label}`);
-    }
-    // A chip changes one filter and keeps the others, so filters combine.
-    expect(html).toContain(
-      'href="/account/portfolio?status=owned&amp;product=bid&amp;currency=GBP"',
-    );
-    expect(html).toContain('aria-current="page"');
-    expect(html).toContain("Clear filters");
+  it("offers search and a Filter button instead of rows of chips", () => {
+    const html = render(works);
+    expect(html).toContain('role="search"');
+    expect(html).toContain("Search by title or artist");
+    expect(html).toContain("Filter</button>");
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).toContain("Showing 2 of 2 works");
+    expect(html).not.toContain("Filter by ");
+  });
+
+  it("counts the active filters on the button and shows each as a removable chip", () => {
+    const html = render(works, { statuses: ["owned"], currency: "GBP", search: "green" });
+    expect(html).toContain(", 2 applied");
+    expect(html).toContain('aria-label="Remove Status filter: Owned"');
+    expect(html).toContain('aria-label="Remove Currency filter: GBP"');
+    expect(html).toContain("Clear all");
+    // The search text stays in the box and the form carries the filters for use without scripts.
+    expect(html).toContain('value="green"');
+    expect(html).toContain('name="status" value="owned"');
+  });
+
+  it("shows no chips or clear control when nothing is applied", () => {
+    const html = render(works);
+    expect(html).not.toContain("Active filters");
+    expect(html).not.toContain("Clear all");
   });
 
   it("reports no results when filters hide every work", () => {
     const html = render(works, { artist: "Nobody" });
     expect(html).toContain("No works match these filters");
+    expect(html).toContain("Clear all filters");
     expect(html).not.toContain("<table");
   });
 

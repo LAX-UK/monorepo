@@ -13,6 +13,8 @@ export type HoldingsFilter = {
   year?: number;
   /** Matches works with at least one cost line in this currency. */
   currency?: string;
+  /** Free text matched, ignoring case, against a work's title and artist. */
+  search?: string;
 };
 
 export type HoldingRowVm = {
@@ -37,6 +39,11 @@ export type HoldingsVm = {
 export const UNKNOWN_ARTIST_LABEL = "Unknown artist";
 
 function matches(item: LaxPortfolioItemV1, filter: HoldingsFilter): boolean {
+  if (filter.search) {
+    const needle = filter.search.trim().toLocaleLowerCase();
+    const haystack = `${item.title} ${item.artist}`.toLocaleLowerCase();
+    if (!haystack.includes(needle)) return false;
+  }
   if (filter.statuses?.length && !filter.statuses.includes(item.status)) return false;
   if (filter.products?.length && !filter.products.includes(item.product)) return false;
   if (filter.artist && item.artist.trim() !== filter.artist) return false;

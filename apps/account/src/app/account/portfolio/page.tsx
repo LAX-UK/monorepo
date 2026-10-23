@@ -59,6 +59,7 @@ export default async function PortfolioPage({
             options={page.options}
             filter={filter}
             action={PORTFOLIO_ROUTES.overview}
+            totalCount={loaded.rows.length}
             imageOrigins={getLaxAccountContainer().config.mediaOrigins}
           />
           <p className="text-sm">

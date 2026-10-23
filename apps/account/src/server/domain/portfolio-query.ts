@@ -42,7 +42,9 @@ export function parseHoldingsQuery(params: PortfolioSearchParams): HoldingsFilte
   const yearText = single(params, "year");
   const year = yearText && /^\d{4}$/.test(yearText) ? Number(yearText) : undefined;
   const currency = currencyCode(single(params, "currency"));
+  const search = single(params, "q")?.slice(0, 100);
   return {
+    ...(search ? { search } : {}),
     ...(status ? { statuses: [status] } : {}),
     ...(product ? { products: [product] } : {}),
     ...(artist ? { artist } : {}),
@@ -62,6 +64,7 @@ export function parseMoneyQuery(params: PortfolioSearchParams): MoneyFilter {
   };
 }
 
+/** True when any filter or search narrows the list. */
 export function hasActiveFilter(filter: HoldingsFilter | MoneyFilter): boolean {
   return Object.keys(filter).length > 0;
 }

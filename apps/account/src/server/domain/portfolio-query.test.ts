@@ -37,6 +37,14 @@ describe("parseHoldingsQuery", () => {
   });
 });
 
+describe("parseHoldingsQuery search", () => {
+  it("reads the search text, trimmed and capped", () => {
+    expect(parseHoldingsQuery({ q: "  blue " })).toEqual({ search: "blue" });
+    expect(parseHoldingsQuery({ q: "x".repeat(300) }).search).toHaveLength(100);
+    expect(parseHoldingsQuery({ q: "  " })).toEqual({});
+  });
+});
+
 describe("parseMoneyQuery", () => {
   it("reads business, section and currency", () => {
     expect(parseMoneyQuery({ business: "lax_art", section: "received", currency: "EUR" })).toEqual({

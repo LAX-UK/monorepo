@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Money · LAX Account" };
 
-/** What you have paid, owe and are owed, per business and currency. Read-only. */
+/** Totals per business and currency, then every payment line in a ledger. Read-only. */
 export default async function PortfolioMoneyPage({
   searchParams,
 }: {
@@ -49,10 +49,10 @@ export default async function PortfolioMoneyPage({
         />
       ) : page.money.isEmpty ? null : (
         <PortfolioMoney
-          vm={page.money}
+          page={page}
           filter={filter}
           action={PORTFOLIO_ROUTES.money}
-          currencies={page.currencies}
+          totalCount={loaded.rows.length}
         />
       )}
     </AccountShell>

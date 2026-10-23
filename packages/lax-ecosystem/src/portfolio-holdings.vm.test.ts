@@ -61,6 +61,14 @@ describe("buildHoldings", () => {
     expect(ids({ currency: "EUR" })).toEqual(["b"]);
   });
 
+  it("searches title and artist, ignoring case and surrounding space", () => {
+    const ids = (search: string) => buildHoldings(works, { search }).rows.map((r) => r.item.id);
+    expect(ids("blue")).toEqual(["a"]);
+    expect(ids(" BRUSH ")).toEqual(["b"]);
+    expect(ids("zzz")).toEqual([]);
+    expect(buildHoldings(works, { search: "zzz" }).noResults).toBe(true);
+  });
+
   it("combines filters", () => {
     expect(buildHoldings(works, { year: 2026, products: ["art"] }).rows).toHaveLength(1);
   });

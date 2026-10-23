@@ -3,17 +3,27 @@ import { PRODUCT_LABELS, STATUS_LABELS, STATUS_TONES } from "@/server/domain/por
 import type { CurrencyTotal, LaxPortfolioItemStatus, LaxProductId } from "@auction/lax-ecosystem";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 
+/**
+ * The shared badge is all-caps and letter-spaced; these pages write statuses as plain
+ * sentences, which are easier to read and do not clip on a narrow screen.
+ */
+export const SENTENCE_CASE_BADGE = "text-xs font-medium normal-case tracking-normal";
+
 /** Which LAX product a work or entry belongs to. The name keeps its own capitalisation. */
 export function ProductBadge({ product }: { product: LaxProductId }) {
   return (
-    <StatusBadge variant="neutral" className="normal-case tracking-normal">
+    <StatusBadge variant="neutral" className={SENTENCE_CASE_BADGE}>
       {PRODUCT_LABELS[product]}
     </StatusBadge>
   );
 }
 
 export function PortfolioStatusBadge({ status }: { status: LaxPortfolioItemStatus }) {
-  return <StatusBadge variant={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>;
+  return (
+    <StatusBadge variant={STATUS_TONES[status]} className={SENTENCE_CASE_BADGE}>
+      {STATUS_LABELS[status]}
+    </StatusBadge>
+  );
 }
 
 /** One figure per currency, side by side. "None recorded" is shown instead of a zero. */
