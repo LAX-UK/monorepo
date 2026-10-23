@@ -68,14 +68,29 @@ function latestPaymentByLot(payments: readonly BidPaymentFact[]): Map<string, Bi
 }
 
 /**
- * Hammer plus the buyer's premium, which is whatever the settlement amount adds to the hammer.
- * VAT and shipping are not recorded on a Bid payment, so no such lines are invented.
+ * Decimal major units to integer minor units, or null when the value is not a finite number.
+ * The contract only accepts whole, non-negative amounts, so callers drop what cannot be one.
  */
-function costLines(hammerPrice: string, settlementAmount: string): LaxCostLineV1[] {
-  const hammer = gbpAmountToPence(hammerPrice);
-  const premium = Math.max(gbpAmountToPence(settlementAmount) - hammer, 0);
+function toPence(value: string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const pence = gbpAmountToPence(value);
+  return Number.isFinite(pence) ? pence : null;
+}
+
+/**
+ * The hammer always comes from the lot, so a purchase never shows empty cost lines. The buyer's
+ * premium is whatever the stored settlement amount (`payment.amount`) adds to the hammer, and
+ * is omitted when the payment is missing or does not exceed the hammer. Bid records no VAT,
+ * fee or shipping breakdown on a payment, so no such lines are invented.
+ */
+function costLines(hammerPrice: string, settlementAmount: string | undefined): LaxCostLineV1[] {
+  const hammer = toPence(hammerPrice);
+  if (hammer === null || hammer <= 0) return [];
   const lines: LaxCostLineV1[] = [{ kind: "hammer", amount: hammer, currency: PAYMENT_CURRENCY }];
-  if (premium > 0) lines.push({ kind: "premium", amount: premium, currency: PAYMENT_CURRENCY });
+  const settled = toPence(settlementAmount);
+  if (settled !== null && settled > hammer) {
+    lines.push({ kind: "premium", amount: settled - hammer, currency: PAYMENT_CURRENCY });
+  }
   return lines;
 }
 
@@ -127,7 +142,7 @@ function wonLotItem(
     image: ctx.imageUrl(lot.firstImageKey),
     acquiredAt: lot.endedAt.toISOString(),
     status,
-    paid: { lines: payment ? costLines(lot.hammerPrice, payment.amount) : [] },
+    paid: { lines: costLines(lot.hammerPrice, payment?.amount) },
     documents: [invoice],
     actions,
     business: businessOf(ctx),
@@ -200,9 +215,11 @@ function moneyStatus(status: string): LaxMoneyEntryV1["status"] {
 }
 
 function paymentEntries(payment: BidPaymentFact, ctx: BidPortfolioContext): LaxMoneyEntryV1[] {
+  const amount = toPence(payment.amount);
+  if (amount === null || amount < 0) return [];
   const base = {
     business: businessOf(ctx),
-    amount: gbpAmountToPence(payment.amount),
+    amount,
     currency: PAYMENT_CURRENCY,
     occurredAt: payment.createdAt.toISOString(),
     href: paymentsPage(ctx),
@@ -232,20 +249,25 @@ function payoutEntries(payout: BidPayoutFact, ctx: BidPortfolioContext): LaxMone
     occurredAt: (payout.processedAt ?? payout.periodEnd).toISOString(),
     href: payoutsPage(ctx),
   };
-  const entries: LaxMoneyEntryV1[] = [
-    {
+  const entries: LaxMoneyEntryV1[] = [];
+  const net = toPence(payout.netAmount);
+  if (net !== null && net !== 0) {
+    // A negative net is a clawback: a refund after settlement means the seller owes the money
+    // back (status `clawback_pending`, pending until reconciled), so it is owed by them, in
+    // absolute terms. The contract does not allow negative amounts.
+    entries.push({
       id: `payout:${payout.id}`,
-      direction: "owed_to_you",
-      amount: gbpAmountToPence(payout.netAmount),
+      direction: net < 0 ? "owed_by_you" : "owed_to_you",
+      amount: Math.abs(net),
       ...base,
-    },
-  ];
+    });
+  }
   for (const [suffix, fee] of [
     [":platform-fee", payout.platformFee],
     [":processing-fee", payout.stripeFee],
   ] as const) {
-    const amount = gbpAmountToPence(fee);
-    if (amount > 0) {
+    const amount = toPence(fee);
+    if (amount !== null && amount > 0) {
       entries.push({ id: `payout:${payout.id}${suffix}`, direction: "fee", amount, ...base });
     }
   }

@@ -40,9 +40,13 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
   async loadForPerson(userId: string): Promise<BidPortfolioFacts> {
     const entityId = await this.findPersonalEntityId(userId);
     if (!entityId) return { ...EMPTY };
-    const [wonLots, payments, submissions, sellerLots, payouts] = await Promise.all([
-      this.listWonLots(entityId),
-      this.listPayments(entityId),
+    const wonLots = await this.listWonLots(entityId);
+    const [payments, submissions, sellerLots, payouts] = await Promise.all([
+      this.listPayments(
+        entityId,
+        userId,
+        wonLots.map((lot) => lot.lotId),
+      ),
       this.listSubmissions(entityId),
       this.listSellerLots(entityId),
       this.listPayouts(entityId),
@@ -104,7 +108,16 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
     }));
   }
 
-  private async listPayments(entityId: string): Promise<BidPaymentFact[]> {
+  /**
+   * Payments billed to the personal entity, plus the person's own payments for lots they won
+   * personally even if the payment row was billed to another entity: the cost of a work the
+   * person holds must not depend on which entity the invoice was addressed to.
+   */
+  private async listPayments(
+    entityId: string,
+    userId: string,
+    wonLotIds: string[],
+  ): Promise<BidPaymentFact[]> {
     const rows = await this.db
       .select({
         id: payment.id,
@@ -117,7 +130,14 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
       })
       .from(payment)
       .leftJoin(paymentExternalRef, eq(paymentExternalRef.paymentId, payment.id))
-      .where(eq(payment.buyerLegalEntityId, entityId))
+      .where(
+        or(
+          eq(payment.buyerLegalEntityId, entityId),
+          wonLotIds.length > 0
+            ? and(eq(payment.buyerId, userId), inArray(payment.lotId, wonLotIds))
+            : undefined,
+        ),
+      )
       .orderBy(desc(payment.createdAt))
       .limit(MAX_ROWS);
     return rows.map((row) => ({

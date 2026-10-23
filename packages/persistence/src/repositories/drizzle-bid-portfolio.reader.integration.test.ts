@@ -39,6 +39,9 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
     const artistId = randomUUID();
     const wonPaid = randomUUID();
     const wonUnpaid = randomUUID();
+    const wonBilledToOrg = randomUUID();
+    const billedToOrgPayment = randomUUID();
+    const clawbackPayoutId = randomUUID();
     const wonRefunded = randomUUID();
     const wonForOrg = randomUUID();
     const inSale = randomUUID();
@@ -128,6 +131,12 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
             winnerId: meId,
             buyerLegalEntityId: personalId,
           }),
+          // Won personally, but the invoice was addressed to my organisation: still my cost.
+          newLot(wonBilledToOrg, {
+            sellerLegalEntityId: otherPersonalId,
+            winnerId: meId,
+            buyerLegalEntityId: personalId,
+          }),
           // Won by me, but for my organisation: never part of the personal portfolio.
           newLot(wonForOrg, {
             sellerLegalEntityId: otherPersonalId,
@@ -184,6 +193,14 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
             newPayment(paidPayment, wonPaid, meId, personalId, otherPersonalId, "captured"),
             newPayment(refundedPayment, wonRefunded, meId, personalId, otherPersonalId, "refunded"),
             newPayment(soldPayment, soldPaidOut, otherId, otherPersonalId, personalId, "captured"),
+            newPayment(
+              billedToOrgPayment,
+              wonBilledToOrg,
+              meId,
+              orgId,
+              otherPersonalId,
+              "captured",
+            ),
           ]);
         await tx.insert(paymentExternalRef).values({
           paymentId: paidPayment,
@@ -209,12 +226,19 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
           statementUrl,
           createdAt: now,
         });
-        await tx
-          .insert(payout)
-          .values([
-            newPayout(payoutId, personalId, "https://cdn.example/statement.pdf"),
-            newPayout(otherPayoutId, otherPersonalId, null),
-          ]);
+        await tx.insert(payout).values([
+          newPayout(payoutId, personalId, "https://cdn.example/statement.pdf"),
+          newPayout(otherPayoutId, otherPersonalId, null),
+          {
+            ...newPayout(clawbackPayoutId, personalId, null),
+            grossAmount: "-350.00",
+            platformFee: "0.00",
+            stripeFee: "0.00",
+            netAmount: "-350.00",
+            status: "clawback_pending",
+            processedAt: null,
+          },
+        ]);
         await tx.insert(payoutLine).values({
           payoutId,
           paymentId: soldPayment,
@@ -252,7 +276,7 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
 
         // Wins: only the personal entity's, newest first, with artist, image and fulfilment.
         expect(facts.wonLots.map((l) => l.lotId).sort()).toEqual(
-          [wonPaid, wonUnpaid, wonRefunded].sort(),
+          [wonPaid, wonUnpaid, wonRefunded, wonBilledToOrg].sort(),
         );
         const paid = facts.wonLots.find((l) => l.lotId === wonPaid);
         expect(paid).toMatchObject({
@@ -265,8 +289,16 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
 
         // Payments: the buyer entity's only, with invoice presence.
         expect(facts.payments.map((p) => p.id).sort()).toEqual(
-          [paidPayment, refundedPayment].sort(),
+          [paidPayment, refundedPayment, billedToOrgPayment].sort(),
         );
+        // A realistic captured payment: settlement amount above the hammer, so the premium can be
+        // derived, and found even though it was billed to another entity.
+        expect(facts.payments.find((p) => p.id === billedToOrgPayment)).toMatchObject({
+          lotId: wonBilledToOrg,
+          amount: "1250.00",
+          status: "captured",
+        });
+        expect(facts.wonLots.find((l) => l.lotId === wonBilledToOrg)?.hammerPrice).toBe("1000.00");
         expect(facts.payments.find((p) => p.id === paidPayment)?.hasInvoice).toBe(true);
         expect(facts.payments.find((p) => p.id === refundedPayment)?.hasInvoice).toBe(false);
 
@@ -293,18 +325,20 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
           payoutStatus: null,
         });
 
-        // Payouts: mine only.
-        expect(facts.payouts).toEqual([
-          expect.objectContaining({
-            id: payoutId,
-            currency: "GBP",
-            netAmount: "900.00",
-            platformFee: "75.00",
-            stripeFee: "25.00",
-            status: "paid",
-            hasStatement: true,
-          }),
-        ]);
+        // Payouts: mine only, including a clawback with a negative net.
+        expect(facts.payouts.map((p) => p.id).sort()).toEqual([payoutId, clawbackPayoutId].sort());
+        expect(facts.payouts.find((p) => p.id === payoutId)).toMatchObject({
+          currency: "GBP",
+          netAmount: "900.00",
+          platformFee: "75.00",
+          stripeFee: "25.00",
+          status: "paid",
+          hasStatement: true,
+        });
+        expect(facts.payouts.find((p) => p.id === clawbackPayoutId)).toMatchObject({
+          netAmount: "-350.00",
+          status: "clawback_pending",
+        });
 
         // A person with no personal entity has nothing, rather than an error.
         const nobody = await new DrizzleBidPortfolioReader(tx as never).loadForPerson(

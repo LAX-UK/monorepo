@@ -53,15 +53,27 @@ describe("buildBidPortfolioItems: wins", () => {
     ]);
   });
 
+  it("keeps the hammer line when the stored settlement amount is zero or unreadable", () => {
+    for (const amount of ["0.00", "not-a-number"]) {
+      const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ amount })] });
+      expect(item?.paid.lines).toEqual([{ kind: "hammer", amount: 100_000, currency: "GBP" }]);
+    }
+  });
+
+  it("emits no cost lines rather than an invalid one when the hammer is unreadable", () => {
+    const [item] = itemsFor({ wonLots: [wonLot({ hammerPrice: "n/a" })], payments: [payment()] });
+    expect(item?.paid.lines).toEqual([]);
+  });
+
   it("omits the premium line when the settlement equals the hammer", () => {
     const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ amount: "1000.00" })] });
     expect(item?.paid.lines).toEqual([{ kind: "hammer", amount: 100_000, currency: "GBP" }]);
   });
 
-  it("offers payment, with no cost lines, for a win that has no payment yet", () => {
+  it("offers payment for a win that has no payment yet, still showing the hammer from the lot", () => {
     const [item] = itemsFor({ wonLots: [wonLot()] });
     expect(item?.status).toBe("awaiting_payment");
-    expect(item?.paid.lines).toEqual([]);
+    expect(item?.paid.lines).toEqual([{ kind: "hammer", amount: 100_000, currency: "GBP" }]);
     expect(item?.actions[0]).toEqual({
       kind: "pay",
       href: `https://lax.bid/dashboard/checkout/${WON_LOT_ID}`,
@@ -258,5 +270,66 @@ describe("buildBidMoneyEntries", () => {
 
   it("is empty when the person has no money movements", () => {
     expect(entriesFor({})).toEqual([]);
+  });
+});
+
+describe("buildBidMoneyEntries: contract validity", () => {
+  const PAYOUT_STATUSES = [
+    "scheduled",
+    "in_transit",
+    "paid",
+    "failed",
+    "reversed",
+    "clawback_pending",
+  ] as const;
+
+  it.each(PAYOUT_STATUSES)(
+    "emits only valid entries for a %s payout with a positive net",
+    (status) => {
+      expect(entriesFor({ payouts: [payout({ status })] }).length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(PAYOUT_STATUSES)(
+    "emits only valid entries for a %s payout with a negative net",
+    (status) => {
+      const entries = entriesFor({
+        payouts: [
+          payout({ status, netAmount: "-35000.00", platformFee: "0.00", stripeFee: "0.00" }),
+        ],
+      });
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ direction: "owed_by_you", amount: 3_500_000 });
+    },
+  );
+
+  it("reports a clawback as owed by you, pending until it is reconciled", () => {
+    const [entry] = entriesFor({
+      payouts: [
+        payout({
+          status: "clawback_pending",
+          netAmount: "-350.00",
+          platformFee: "0.00",
+          stripeFee: "0.00",
+          processedAt: null,
+        }),
+      ],
+    });
+    expect(entry).toMatchObject({
+      direction: "owed_by_you",
+      status: "pending",
+      amount: 35_000,
+    });
+  });
+
+  it("drops amounts that are negative fees, zero, or not numbers instead of emitting them", () => {
+    expect(
+      entriesFor({
+        payouts: [payout({ netAmount: "0.00", platformFee: "-5.00", stripeFee: "NaN" })],
+      }),
+    ).toEqual([]);
+    expect(
+      entriesFor({ payments: [payment({ amount: "NaN" }), payment({ amount: "-1.00" })] }),
+    ).toEqual([]);
   });
 });
