@@ -22,7 +22,8 @@ describe("middleware org module redirects", () => {
     "/dashboard/invitations",
     "/dashboard/invitations/abc",
     "/dashboard/organisations/abc",
-    "/dashboard/organisations/abc/members",
+    "/dashboard/seller/organisations/abc",
+    "/dashboard/seller/organisations/abc/members",
   ])("does not redirect %s on lax.bid (org module launched)", async (pathname) => {
     const response = await middleware(requestFor("lax.bid", pathname));
     expect(response.status).toBe(200);
@@ -33,6 +34,7 @@ describe("middleware org module redirects", () => {
     "/onboarding/organisation",
     "/dashboard/invitations/abc",
     "/dashboard/organisations/abc",
+    "/dashboard/seller/organisations/abc",
   ])("redirects %s when NEXT_PUBLIC_FORCE_ORG_MODULE=hidden (kill switch)", async (pathname) => {
     vi.stubEnv("NEXT_PUBLIC_FORCE_ORG_MODULE", "hidden");
     const response = await middleware(requestFor("lax.bid", pathname));

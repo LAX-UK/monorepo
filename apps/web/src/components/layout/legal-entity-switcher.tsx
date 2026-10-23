@@ -6,7 +6,6 @@ import { roleLabel, subkindLabel } from "@/components/organisations/labels";
 import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
-import { shouldUseCompactLegalEntitySwitcher } from "@/lib/navigation/mobile-header-context";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntitySummary } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -24,7 +23,7 @@ import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { Check, ChevronRight, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { type ComponentPropsWithoutRef, forwardRef, useState, useTransition } from "react";
 
 type Props = {
@@ -55,8 +54,6 @@ export function LegalEntitySwitcher({
   orgModuleEnabled = true,
 }: Props) {
   const router = useRouter();
-  const pathname = usePathname();
-  const compactTrigger = shouldUseCompactLegalEntitySwitcher(pathname);
   const hydrated = useHydrated();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -88,7 +85,6 @@ export function LegalEntitySwitcher({
 
   const triggerProps = {
     acting,
-    compactTrigger,
     pending,
     pendingInvitesCount,
   } as const;
@@ -105,7 +101,7 @@ export function LegalEntitySwitcher({
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-0">
         <div className="border-b border-border-hairline p-3">
           <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-            Current context
+            Current account
           </p>
           <div className="mt-2 flex min-h-11 items-center gap-2">
             <Avatar size="sm">
@@ -128,7 +124,7 @@ export function LegalEntitySwitcher({
         <Command
           filter={(value, search) => (value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
         >
-          <CommandInput placeholder="Search workspaces…" />
+          <CommandInput placeholder="Search accounts…" />
           <CommandList>
             <CommandEmpty>No matches.</CommandEmpty>
             <CommandGroup heading="Personal">
@@ -252,7 +248,6 @@ export function LegalEntitySwitcher({
 
 type LegalEntitySwitcherTriggerProps = {
   acting: LegalEntitySummary;
-  compactTrigger: boolean;
   pending: boolean;
   pendingInvitesCount: number;
 };
@@ -261,7 +256,7 @@ const LegalEntitySwitcherTrigger = forwardRef<
   HTMLButtonElement,
   LegalEntitySwitcherTriggerProps & ComponentPropsWithoutRef<typeof Button>
 >(function LegalEntitySwitcherTrigger(
-  { acting, compactTrigger, pending, pendingInvitesCount, ...buttonProps },
+  { acting, pending, pendingInvitesCount, ...buttonProps },
   ref,
 ) {
   return (
@@ -270,10 +265,9 @@ const LegalEntitySwitcherTrigger = forwardRef<
       type="button"
       variant="secondary"
       size="sm"
-      aria-label={`Switch acting legal entity (${acting.displayName})`}
+      aria-label={`Switch account (${acting.displayName})`}
       className="h-auto min-h-10 min-w-10 justify-center gap-0 p-1 lg:min-h-11 lg:min-w-0 lg:w-full lg:max-w-[min(22rem,calc(100vw-2rem))] lg:justify-between lg:gap-2 lg:py-2"
       data-testid="legal-entity-switcher"
-      data-compact-trigger={compactTrigger ? "true" : "false"}
       disabled={pending}
       {...buttonProps}
     >
@@ -291,20 +285,7 @@ const LegalEntitySwitcherTrigger = forwardRef<
             </span>
           ) : null}
         </span>
-        <span
-          className={cn(
-            "min-w-0 text-left leading-tight text-on-surface lg:hidden",
-            compactTrigger ? "sr-only" : "max-w-[9rem] text-[10px] font-medium",
-          )}
-        >
-          <span className="block truncate">{acting.displayName}</span>
-          {!compactTrigger ? (
-            <span className="mt-0.5 block truncate text-[10px] text-on-surface-variant">
-              {subkindLabel(acting.subkind)}
-              {acting.kind === "organisation" ? ` · ${roleLabel(acting.role)}` : ""}
-            </span>
-          ) : null}
-        </span>
+        <span className="sr-only lg:hidden">{acting.displayName}</span>
         <span className="hidden min-w-0 flex-1 text-left lg:block">
           <span className="block truncate font-medium leading-tight">{acting.displayName}</span>
           <span className="mt-0.5 flex flex-wrap items-center gap-1.5">

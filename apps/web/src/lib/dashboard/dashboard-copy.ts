@@ -8,7 +8,6 @@ export const DASHBOARD_META = {
   selling: "Selling",
   collectorHome: "Collector home",
   sellerHome: "Seller home",
-  actingAsOrg: "Acting as organisation",
 } as const;
 
 /** Shared CTA labels — use everywhere for consistency. */
@@ -20,8 +19,8 @@ export const DASHBOARD_CTA = {
   openHome: "Go to My bids",
   signInAgain: "Sign in again",
   contactSupport: "Contact support",
-  usePersonalProfile: "Use personal profile",
-  sellerWorkspace: "Seller workspace",
+  usePersonalProfile: "Switch to personal account",
+  sellingOverview: "Selling overview",
   openPayoutSetup: "Open payout setup",
   itemsInSale: "View items in sale",
   myOrganisations: "Organisations",
@@ -35,9 +34,9 @@ export const DASHBOARD_ROUTES = {
   artistFollow: "/dashboard/watchlist?section=artists",
   notifications: "/dashboard/notifications",
   seller: "/dashboard/seller",
-  submissions: "/dashboard/submissions",
+  consignments: "/dashboard/seller/consignments",
+  consignmentsInSale: "/dashboard/seller/consignments?tab=in-sale",
   submissionsNew: "/dashboard/submissions/new",
-  sellerInSale: "/dashboard/seller/in-sale",
   sellerPayouts: "/dashboard/seller/payouts",
   sellerConnect: "/dashboard/seller/connect",
   organisations: "/dashboard/organisations",
@@ -85,18 +84,15 @@ export const DASHBOARD_EMPTY = {
     title: "No followed artists",
     description: "Follow artists to get updates when their work is listed.",
   },
-  submissions: {
-    title: "No submissions yet",
-    description: "Submit item details for specialist review.",
+  consignments: {
+    title: "No consignments yet",
+    description:
+      "Tell our specialists about an artwork or collectible. When it is accepted, we prepare the catalogue entry for you.",
   },
   seller: {
     title: "Start your first submission",
     description:
       "Tell our specialists about an artwork or collectible. When approved, we draft the catalogue lot for you.",
-  },
-  sellerInSale: {
-    title: "Nothing in sale yet",
-    description: "When your submissions are converted to lots, they will appear here.",
   },
   sellerPayouts: {
     title: "No payouts yet",

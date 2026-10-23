@@ -42,11 +42,6 @@ export function MobileShellTitle({ items, model: modelOverride, className }: Pro
         <h1 className="truncate font-headline text-base font-semibold leading-tight text-on-surface">
           {model.title}
         </h1>
-        {model.contextLine ? (
-          <p className="truncate font-body text-[11px] leading-tight text-on-surface-variant">
-            {model.contextLine}
-          </p>
-        ) : null}
       </div>
     </div>
   );

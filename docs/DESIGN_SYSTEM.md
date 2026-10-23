@@ -203,6 +203,15 @@ A lockup is the LAX mark plus a product descriptor. `packages/branding/src/locku
   - *`<img>` on a surface that follows the operating system* (hosted pages, documents): the `-auto` file, whose `<style>` switches colour with `prefers-color-scheme: dark`. It reacts to the OS only, never to a site's own toggle, and some consumers (email clients, many image proxies) ignore `<style>` in SVG, so do not use it there.
 - **Copies.** Apps serve some lockups from their own files (`packages/branding/src/lockup/lockup-copies.ts`); `generate:lockups` writes them and a test fails if one drifts.
 
+## Bid client shell and Selling mode
+
+- **No client dashboard.** People manage things from the sidebar and the account menu. `/dashboard` redirects to the workspace home.
+- **One nav model.** `apps/web/src/lib/navigation/client-nav-model.ts` decides the sidebar from mode (buying or selling), context (personal or organisation) and the capability matrix in `packages/domain/src/entity-capabilities.ts`. Pages repeat the same capability check, and the API is the real gate.
+- **Selling is a mode, entered on purpose** from the account menu ("Selling", or "Start selling" for someone who has not consigned and belongs to no organisation). A persistent header label reads "Selling" or "Selling as <organisation>", holds the organisation picker (`components/layout/selling-mode-bar.tsx`) and keeps "Back to buying" visible (shortened to "Buying" below `sm`, with the full words for screen readers). The mode lives in the `lax_client_workspace` cookie and the path rules in `lib/workspace/client-workspace-mode.ts`.
+- **What Selling pages leave out.** No account alert stack, no status chip strip, no organisation banner and no welcome block: the header label already says who you are selling as, email, address and two-step settings live in LAX Account, and identity or payout setup appear only as tasks in "Needs your attention" when they block selling. The client sidebar has no role badge.
+- **Needs your attention** is a task list: one whole-row link per task, a sentence-case status tag (under the text on a phone), no KPIs. Status tags and tabs in Selling are sentence case.
+- **Dark mode and motion.** Check every Selling screen in light, dark and at 375px; take screenshots with `prefers-reduced-motion: reduce` so fade-ins have settled.
+
 ## Conventions (read before building UI)
 
 - **[Marketing design language](./marketing-design-language.md)** — marketing surface SSOT: layout, aspect ratios, saleroom chrome, overlay tone, component catalog (includes **Shop profile**)

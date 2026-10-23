@@ -41,7 +41,7 @@ export async function adminCreateStripeConnectOnboardingLinkAction(
     const site = getSiteUrl();
     const returnPath =
       kind === "organisation"
-        ? `/dashboard/organisations/${legalEntityId}/connect`
+        ? `/dashboard/seller/organisations/${legalEntityId}/connect`
         : "/dashboard/seller/connect";
     const returnUrl = `${site}${returnPath}`;
     const res = await getWriteContainer().adminStripeConnect.createOnboardingLink(

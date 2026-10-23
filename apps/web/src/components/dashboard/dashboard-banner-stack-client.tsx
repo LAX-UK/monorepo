@@ -8,6 +8,10 @@ import { isEntityStatusBannerVisible } from "@/components/dashboard/entity-statu
 import { shouldSuppressConnectPendingEntityBanner } from "@/lib/connect/should-suppress-connect-pending-entity-banner";
 import { isDashboardListRoute, isDashboardOrgDetailRoute } from "@/lib/dashboard/list-routes";
 import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
+import {
+  type ClientWorkspaceMode,
+  resolveClientWorkspaceMode,
+} from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import {
   BottomSheet,
@@ -25,7 +29,16 @@ export function shouldSuppressKycBanner(pathname: string): boolean {
   return pathname.startsWith("/dashboard/verify-identity");
 }
 
-export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
+type ClientProps = DashboardBannerStackProps & {
+  /** The persisted mode; the path overrides it on pages that belong to one mode. */
+  workspaceMode: ClientWorkspaceMode;
+};
+
+/**
+ * Account alerts for buying pages. Selling shows what blocks selling as tasks in its own
+ * "Needs your attention" list, so the alert stack stays out of it.
+ */
+export function DashboardBannerStackClient(props: ClientProps) {
   const pathname = usePathname();
   const compact = isDashboardListRoute(pathname);
   const suppressOrgStatus = isDashboardOrgDetailRoute(pathname);
@@ -35,17 +48,19 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
 
   const suppressConnectPending = shouldSuppressConnectPendingEntityBanner(pathname);
 
-  const stackProps = useMemo(
-    (): DashboardBannerStackProps => ({
-      ...props,
+  const stackProps = useMemo((): DashboardBannerStackProps => {
+    const { workspaceMode: _mode, ...rest } = props;
+    return {
+      ...rest,
       suppressOrgStatusBanner: suppressOrgStatus,
       suppressKyc,
       suppressConnectPendingEntityBanner: suppressConnectPending,
-    }),
-    [props, suppressOrgStatus, suppressKyc, suppressConnectPending],
-  );
+    };
+  }, [props, suppressOrgStatus, suppressKyc, suppressConnectPending]);
 
   const alertCount = useMemo(() => countBannerCandidates(stackProps), [stackProps]);
+
+  if (resolveClientWorkspaceMode(pathname, props.workspaceMode) === "selling") return null;
 
   if (!compact) {
     return <DashboardBannerStack {...stackProps} maxVisible={2} compactOverflow={false} />;

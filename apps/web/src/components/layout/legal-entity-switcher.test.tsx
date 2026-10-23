@@ -45,7 +45,7 @@ describe("LegalEntitySwitcher", () => {
     expect(trigger).not.toBeDisabled();
 
     fireEvent.click(trigger);
-    expect(screen.getByText("Current context")).toBeInTheDocument();
+    expect(screen.getByText("Current account")).toBeInTheDocument();
     expect(screen.getByText("test one")).toBeInTheDocument();
   });
 });

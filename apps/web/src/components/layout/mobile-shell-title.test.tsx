@@ -30,23 +30,6 @@ describe("MobileShellTitle", () => {
     expect(screen.queryByRole("link", { name: /back/i })).not.toBeInTheDocument();
   });
 
-  it("renders identity context line on overview", () => {
-    render(
-      <MobileShellTitle
-        items={[{ label: "Dashboard" }]}
-        model={{
-          title: "Welcome, Jane",
-          eyebrow: "Collector home",
-          contextLine: "Jane Doe · Private collector",
-          variant: "identity",
-        }}
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Welcome, Jane" })).toBeInTheDocument();
-    expect(screen.getByText("Jane Doe · Private collector")).toBeInTheDocument();
-  });
-
   it("renders a back control and nested title", () => {
     render(
       <MobileShellTitle

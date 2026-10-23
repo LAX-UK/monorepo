@@ -2,14 +2,17 @@ import "server-only";
 
 import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { authedServerFetch as authedActingServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
 import {
   complianceGateEnvelopeSchema,
+  entityWonLotSchema,
   lotFulfilmentSnapshotSchema,
   myPaymentRowSchema,
 } from "@/lib/data/http/payments.schema";
 import type {
   ComplianceGateStatus,
+  EntityWonLot,
   LotFulfilmentSnapshot,
   MyPaymentRow,
   MyPaymentsListParams,
@@ -17,6 +20,7 @@ import type {
 
 export type {
   ComplianceGateStatus,
+  EntityWonLot,
   LotFulfilmentSnapshot,
   MyPaymentRow,
   MyPaymentsListParams,
@@ -77,4 +81,28 @@ export async function getServerLotFulfilmentForWinner(
     `GET /payments/me/lot/${lotId}/fulfilment`,
   );
   return data;
+}
+
+/** Cap for the organisation's works list; the endpoint pages at 100. */
+const ENTITY_LIST_LIMIT = 100;
+
+/**
+ * Works won for the organisation being acted for, whichever member bid. Sent with the acting
+ * organisation header, so the API decides from the member's role whether prices are included.
+ */
+export async function getServerEntityWonLots(): Promise<EntityWonLot[]> {
+  const res = await authedActingServerFetch(`/payments/entity/wins?limit=${ENTITY_LIST_LIMIT}`, {
+    cache: "no-store",
+  });
+  await throwIfNotOk(res, "payments");
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, entityWonLotSchema, "GET /payments/entity/wins").rows;
+}
+
+/** Payments billed to the organisation being acted for; the API refuses roles without finance access. */
+export async function getServerEntityPayments(): Promise<MyPaymentRow[]> {
+  const res = await authedActingServerFetch("/payments/entity", { cache: "no-store" });
+  await throwIfNotOk(res, "payments");
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, myPaymentRowSchema, "GET /payments/entity").rows;
 }

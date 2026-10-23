@@ -28,7 +28,6 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
     [config.moreSheetNav],
   );
   const { unread } = useUnreadNotifications();
-  const workspace = config.clientWorkspaceMode ?? "buying";
 
   if (tabs.length === 0) return null;
 
@@ -110,7 +109,6 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
           open={moreOpen}
           onOpenChange={setMoreOpen}
           variant={moreSheetVariant}
-          clientWorkspaceMode={workspace}
           items={moreItems}
           user={user}
         />

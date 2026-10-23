@@ -7,14 +7,17 @@ import {
   Brush,
   Building2,
   CreditCard,
+  FileText,
   Heart,
   Layers,
   Menu,
   Package,
   Settings,
+  ShieldCheck,
   Store,
   TrendingUp,
   Upload,
+  Users,
   WalletCards,
 } from "lucide-react";
 
@@ -24,7 +27,7 @@ import {
  */
 export type ClientNavContext =
   | { kind: "personal" }
-  | { kind: "organisation"; role: LegalEntityMemberRole };
+  | { kind: "organisation"; id: string; role: LegalEntityMemberRole };
 
 export type ClientNavInput = {
   mode: ClientWorkspaceMode;
@@ -46,14 +49,20 @@ export const PERSONAL_NAV_SCOPE: ClientNavScope = {
 };
 
 type NavSpec = {
-  item: AppShellNavItem;
+  /** Entries that point into an organisation's settings need its id; the rest ignore it. */
+  item: AppShellNavItem | ((orgId: string | null) => AppShellNavItem);
   /** Organisation members need at least one of these; personal accounts always pass. */
   anyCapability?: readonly EntityCapability[];
   /** Hidden when acting for an organisation. */
   personalOnly?: true;
+  /** Hidden unless acting for an organisation. */
+  organisationOnly?: true;
   /** Hidden unless the person belongs to an organisation and the module is on. */
   orgMembersOnly?: true;
 };
+
+/** Where an organisation's settings live; the organisation id follows. */
+export const ORG_SETTINGS_PATH = "/dashboard/seller/organisations";
 
 function exactOrNested(href: string) {
   return (pathname: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -108,8 +117,7 @@ const BUYING_SPECS: readonly NavSpec[] = [
       href: "/dashboard/organisations",
       icon: Building2,
       match: (pathname) =>
-        pathname.startsWith("/dashboard/organisations") ||
-        pathname.startsWith("/dashboard/invitations"),
+        pathname === "/dashboard/organisations" || pathname.startsWith("/dashboard/invitations"),
     },
     orgMembersOnly: true,
   },
@@ -117,11 +125,35 @@ const BUYING_SPECS: readonly NavSpec[] = [
   BID_SETTINGS,
 ];
 
+function orgSettingsItem(
+  id: string,
+  label: string,
+  suffix: string,
+  icon: AppShellNavItem["icon"],
+): (orgId: string | null) => AppShellNavItem {
+  return (orgId) => {
+    const href = `${ORG_SETTINGS_PATH}/${orgId ?? ""}${suffix}`;
+    return { id, label, href, icon, match: exactOrNested(href) };
+  };
+}
+
+/** The organisation's overview and profile; its other settings pages have entries of their own. */
+function orgDetailsItem(orgId: string | null): AppShellNavItem {
+  const href = `${ORG_SETTINGS_PATH}/${orgId ?? ""}`;
+  return {
+    id: "org-details",
+    label: "Organisation",
+    href,
+    icon: Building2,
+    match: (pathname) => pathname === href || pathname === `${href}/profile`,
+  };
+}
+
 const SELLING_SPECS: readonly NavSpec[] = [
   {
     item: {
       id: "seller-overview",
-      label: "Seller overview",
+      label: "Overview",
       href: "/dashboard/seller",
       icon: Store,
       match: (pathname) => pathname === "/dashboard/seller",
@@ -130,22 +162,22 @@ const SELLING_SPECS: readonly NavSpec[] = [
   },
   {
     item: {
-      id: "submissions",
-      label: "Submissions",
-      href: "/dashboard/submissions",
+      id: "consignments",
+      label: "Consignments",
+      href: "/dashboard/seller/consignments",
       icon: Upload,
-      match: exactOrNested("/dashboard/submissions"),
+      // Submissions are consignments before they are accepted, so their pages belong here.
+      match: (pathname) =>
+        exactOrNested("/dashboard/seller/consignments")(pathname) ||
+        exactOrNested("/dashboard/submissions")(pathname),
     },
     anyCapability: ["entity.consignments.read"],
   },
   {
-    item: {
-      id: "in-sale",
-      label: "Items in sale",
-      href: "/dashboard/seller/in-sale",
-      icon: Layers,
-    },
-    anyCapability: ["entity.consignments.read"],
+    // An organisation's own works and purchases; a person's are in Purchases and LAX Account.
+    item: { id: "works", label: "Works", href: "/dashboard/seller/works", icon: Layers },
+    organisationOnly: true,
+    anyCapability: ["entity.holdings.read", "entity.finance.read"],
   },
   {
     item: {
@@ -157,12 +189,16 @@ const SELLING_SPECS: readonly NavSpec[] = [
     anyCapability: ["entity.payouts.read"],
   },
   {
-    item: {
-      id: "connect",
-      label: "Payout setup",
-      href: "/dashboard/seller/connect",
-      icon: CreditCard,
-      match: exactOrNested("/dashboard/seller/connect"),
+    // An organisation's payout setup is one of its settings pages, so its link carries the id.
+    item: (orgId) => {
+      const href = orgId ? `${ORG_SETTINGS_PATH}/${orgId}/connect` : "/dashboard/seller/connect";
+      return {
+        id: "connect",
+        label: "Payout setup",
+        href,
+        icon: CreditCard,
+        match: exactOrNested(href),
+      };
     },
     anyCapability: ["entity.connect.operate"],
   },
@@ -170,13 +206,33 @@ const SELLING_SPECS: readonly NavSpec[] = [
     item: { id: "artist", label: "Artist profile", href: "/dashboard/seller/artist", icon: Brush },
     personalOnly: true,
   },
+  {
+    item: orgDetailsItem,
+    organisationOnly: true,
+  },
+  {
+    item: orgSettingsItem("org-members", "Members", "/members", Users),
+    organisationOnly: true,
+    anyCapability: ["entity.members.manage"],
+  },
+  {
+    // KYB documents have no capability of their own; the people who manage members manage them.
+    item: orgSettingsItem("org-documents", "Documents", "/documents", FileText),
+    organisationOnly: true,
+    anyCapability: ["entity.members.manage"],
+  },
+  {
+    item: orgSettingsItem("org-security", "Two-step policy", "/security", ShieldCheck),
+    organisationOnly: true,
+    anyCapability: ["entity.security.manage"],
+  },
   NOTIFICATIONS,
   BID_SETTINGS,
 ];
 
 function isVisible(spec: NavSpec, input: ClientNavInput): boolean {
   if (spec.orgMembersOnly && !(input.orgModuleEnabled && input.isOrgMember)) return false;
-  if (input.context.kind === "personal") return true;
+  if (input.context.kind === "personal") return !spec.organisationOnly;
   if (spec.personalOnly) return false;
   if (!spec.anyCapability) return true;
   const { role } = input.context;
@@ -186,11 +242,23 @@ function isVisible(spec: NavSpec, input: ClientNavInput): boolean {
 /** Sidebar entries for one mode, one context and the viewer's capabilities. */
 export function getClientNavItems(input: ClientNavInput): AppShellNavItem[] {
   const specs = input.mode === "selling" ? SELLING_SPECS : BUYING_SPECS;
-  return specs.filter((spec) => isVisible(spec, input)).map((spec) => spec.item);
+  const orgId = input.context.kind === "organisation" ? input.context.id : null;
+  return specs
+    .filter((spec) => isVisible(spec, input))
+    .map((spec) => (typeof spec.item === "function" ? spec.item(orgId) : spec.item));
 }
 
 const BUYING_TAB_IDS = ["bids", "purchases", "watchlist", "notifications"] as const;
-const SELLING_TAB_IDS = ["seller-overview", "submissions", "in-sale", "notifications"] as const;
+const SELLING_TAB_IDS = [
+  "seller-overview",
+  "consignments",
+  "works",
+  "payouts",
+  "notifications",
+] as const;
+
+/** The bottom bar has room for four entries plus More. */
+const MAX_TABS = 4;
 
 const MORE_TAB: AppShellNavItem = { id: "more", label: "More", href: "#more", icon: Menu };
 
@@ -200,6 +268,7 @@ export function getClientMobileTabs(input: ClientNavInput): AppShellNavItem[] {
   const tabIds: readonly string[] = input.mode === "selling" ? SELLING_TAB_IDS : BUYING_TAB_IDS;
   const tabs = tabIds
     .map((id) => items.find((item) => item.id === id))
-    .filter((item): item is AppShellNavItem => item != null);
+    .filter((item): item is AppShellNavItem => item != null)
+    .slice(0, MAX_TABS);
   return [...tabs, MORE_TAB];
 }

@@ -1,3 +1,4 @@
+import type { LegalEntityMemberRole } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -10,11 +11,14 @@ const entityId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const submissionId = "33333333-3333-4333-8333-333333333333";
 const categoryId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-function mockContainer(overrides: Partial<ReturnType<typeof stubSubmissionRouteServices>> = {}) {
+function mockContainer(
+  overrides: Partial<ReturnType<typeof stubSubmissionRouteServices>> = {},
+  role: LegalEntityMemberRole = "owner",
+) {
   return {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     requireSubmissionsLegalEntityContext: vi.fn((c, next) => {
-      c.set("legalEntityContext", { legalEntityId: entityId });
+      c.set("legalEntityContext", { legalEntityId: entityId, role });
       return next();
     }),
     submissionRoutes: stubSubmissionRouteServices(overrides),
@@ -119,5 +123,46 @@ describe("submissions API contract", () => {
     expect(Object.keys(body).sort()).toEqual(["data"]);
     expect(body.data).toEqual(created);
     expect(createDraft).toHaveBeenCalled();
+  });
+
+  describe("who may start a submission for an organisation", () => {
+    async function post(role: LegalEntityMemberRole) {
+      const createDraft = vi
+        .fn()
+        .mockResolvedValue({ status: 201, body: { data: { id: submissionId } } });
+      const container = mockContainer({ sellerHttp: { createDraft } as never }, role);
+      const authenticator: IAuthenticator = {
+        getSessionUser: vi
+          .fn()
+          .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
+      };
+      const app = new Hono();
+      app.route(
+        "/submissions",
+        createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+      );
+      const res = await app.request("http://t/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "New submission", categoryIds: [categoryId] }),
+      });
+      return { res, createDraft };
+    }
+
+    it.each(["owner", "admin", "consignor"] as const)("lets %s create one", async (role) => {
+      const { res, createDraft } = await post(role);
+      expect(res.status).toBe(201);
+      expect(createDraft).toHaveBeenCalled();
+    });
+
+    it.each(["finance", "viewer", "buyer_agent"] as const)(
+      "refuses %s with 403 and creates nothing",
+      async (role) => {
+        const { res, createDraft } = await post(role);
+        expect(res.status).toBe(403);
+        expect(await res.json()).toEqual({ error: "insufficient_entity_role" });
+        expect(createDraft).not.toHaveBeenCalled();
+      },
+    );
   });
 });

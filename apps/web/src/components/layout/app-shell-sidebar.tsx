@@ -1,6 +1,5 @@
 "use client";
 
-import { WorkspaceModeSwitcher } from "@/components/dashboard/workspace-mode-switcher";
 import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-shell-nav";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { SidebarCollapseButton } from "@/components/layout/sidebar-collapse-button";
@@ -13,7 +12,6 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { navBadgeClassName } from "@/lib/layout/nav-badge-classes";
 import { navEntriesToFlatItems, navEntriesToGroups } from "@/lib/shell/nav-adapters";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
@@ -25,8 +23,6 @@ type Props = {
   role: AppShellRole;
   onNavigate?: () => void;
   collapsible?: boolean;
-  /** Collector vs seller workspace (client shell only). */
-  clientWorkspaceMode?: ClientWorkspaceMode;
   /** When false, logo block is omitted (logo lives in the top bar). */
   showLogo?: boolean;
 };
@@ -36,7 +32,6 @@ export function AppShellSidebar({
   role,
   onNavigate,
   collapsible = false,
-  clientWorkspaceMode = "buying",
   showLogo = true,
 }: Props) {
   const pathname = usePathname();
@@ -77,9 +72,13 @@ export function AppShellSidebar({
 
   const roleRow = (
     <div
-      className={cn("flex items-center gap-2", labelsHidden ? "justify-center" : "justify-between")}
+      className={cn(
+        "flex items-center gap-2",
+        labelsHidden ? "justify-center" : role === "client" ? "justify-end" : "justify-between",
+      )}
     >
-      {rolePill}
+      {/* The staff role pill tells staff which surface they are in; a client has only one. */}
+      {role === "client" ? null : rolePill}
       {collapsible ? <SidebarCollapseButton /> : null}
     </div>
   );
@@ -194,28 +193,11 @@ export function AppShellSidebar({
         )}
       </nav>
 
-      <div className="border-t border-shell-stroke bg-surface-container-low p-3">
-        {role === "client" ? (
-          labelsHidden ? (
-            <div className="flex justify-center">
-              <Tooltip delayDuration={250}>
-                <TooltipTrigger asChild>
-                  <div>
-                    <WorkspaceModeSwitcher mode={clientWorkspaceMode} variant="compact" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="hidden lg:block">
-                  {clientWorkspaceMode === "buying" ? "Buying workspace" : "Selling workspace"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          ) : (
-            <WorkspaceModeSwitcher mode={clientWorkspaceMode} />
-          )
-        ) : (
+      {role === "client" ? null : (
+        <div className="border-t border-shell-stroke bg-surface-container-low p-3">
           <StaffWorkspaceSwitcher collapsed={labelsHidden} />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

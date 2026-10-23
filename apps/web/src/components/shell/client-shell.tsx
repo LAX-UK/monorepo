@@ -56,7 +56,7 @@ export function ClientShell({
     () => ({
       context:
         safeActing?.kind === "organisation"
-          ? { kind: "organisation", role: safeActing.role }
+          ? { kind: "organisation", id: safeActing.id, role: safeActing.role }
           : { kind: "personal" },
       orgModuleEnabled,
       isOrgMember,
@@ -72,11 +72,7 @@ export function ClientShell({
         clientWorkspaceMode: effectiveWorkspaceMode,
         clientNavScope,
         headerActionsSlot,
-        mobileHeader: {
-          acting: safeActing,
-          actingContext: acting,
-          userDisplayName: user.name,
-        },
+        mobileHeader: { actingContext: acting },
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
@@ -92,7 +88,6 @@ export function ClientShell({
       topSlot,
       hideEmailStatusBanner,
       acting,
-      safeActing,
       sellerConnectNavBadge,
       pathname,
     ],

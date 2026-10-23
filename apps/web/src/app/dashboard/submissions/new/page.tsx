@@ -1,7 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-context-banner";
 import { SubmissionResubmitBanner } from "@/components/dashboard/submission-resubmit-banner";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
@@ -15,9 +14,12 @@ import {
   itemSubmissionToFormValues,
 } from "@/lib/forms/submission/item-submission-form-defaults";
 import { findCategoryIdBySlug } from "@/lib/forms/submission/resolve-category-slug";
-import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
+import {
+  resolveSellerWorkspaceContext,
+  sellerCan,
+} from "@/lib/legal-entity/seller-acting-context.server";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function NewSubmissionPage({
   searchParams,
@@ -35,14 +37,11 @@ export default async function NewSubmissionPage({
     shell: "client",
     loginNext,
   });
-  const { orgActingSelected } = await resolveSellerWorkspaceContext(
-    user.role,
-    user.staffRole ?? null,
-  );
+  // Finance members and viewers can follow an organisation's consignments but not start one.
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  if (!sellerCan(sellerCtx, "entity.submissions.create")) redirect(DASHBOARD_ROUTES.consignments);
   const c = await getServerDataContainer();
   const categories = await c.categories.tree();
-  const workspaceMeta = await readClientWorkspacePageMeta();
-
   const fromRejectedId =
     typeof sp.fromRejected === "string" && sp.fromRejected.length > 0 ? sp.fromRejected : null;
   const priorRejected = fromRejectedId
@@ -71,21 +70,19 @@ export default async function NewSubmissionPage({
   return (
     <DashboardPage className={`mx-auto w-full space-y-6 ${SETTINGS_CONTENT_MAX_WIDTH}`}>
       <DashboardPageHeader
-        meta={workspaceMeta}
         title="New submission"
         hideTitleOnMobile
         hideDescriptionOnMobile
         description="Tell our specialists about an artwork or collectible. After your first save, progress syncs automatically on the submission page."
         actions={
           <Link
-            href={DASHBOARD_ROUTES.submissions}
+            href={DASHBOARD_ROUTES.consignments}
             className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
           >
-            ← Submissions
+            ← Consignments
           </Link>
         }
       />
-      {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {error ? <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} /> : null}
       {resubmitFrom ? (
         <SubmissionResubmitBanner

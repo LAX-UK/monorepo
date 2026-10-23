@@ -3,10 +3,7 @@ import { SellerConnectWorkspace } from "@/components/connect/seller-connect-work
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import {
-  SellerOrgContextBanner,
-  SellerProfileUnavailableAlert,
-} from "@/components/dashboard/seller-org-context-banner";
+import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -18,8 +15,8 @@ import {
 } from "@/lib/data/http/stripe-connect.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function SellerStripeConnectPage() {
   const user = await requireAuthenticatedUser({
@@ -27,7 +24,11 @@ export default async function SellerStripeConnectPage() {
     loginNext: DASHBOARD_ROUTES.sellerConnect,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
-  const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
+  const { sellerEntityId, sellingAsOrganisation, bootstrapFailed } = sellerCtx;
+  // An organisation's payout setup is one of its settings pages.
+  if (sellingAsOrganisation && sellerEntityId) {
+    redirect(`/dashboard/seller/organisations/${sellerEntityId}/connect`);
+  }
 
   const [clientConfig, kycSummary] = await Promise.all([
     getServerStripeConnectClientConfig(),
@@ -63,19 +64,15 @@ export default async function SellerStripeConnectPage() {
     }
   }
 
-  const workspaceMeta = await readClientWorkspacePageMeta();
-
   return (
     <DashboardPage className="mx-auto max-w-3xl space-y-8">
       <DashboardPageHeader
-        meta={workspaceMeta}
         title="Payout setup"
         hideTitleOnMobile
         hideDescriptionOnMobile
         description="Verify your identity, then complete payout details in the secure form below so approved lots can be scheduled once finance enables settlement."
       />
 
-      {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
 
       {connectFailure ? (
@@ -105,7 +102,7 @@ export default async function SellerStripeConnectPage() {
         </a>
         {" · "}
         <Link href={DASHBOARD_ROUTES.seller} className="text-link underline">
-          Back to seller workspace
+          Back to Selling overview
         </Link>
       </p>
     </DashboardPage>

@@ -122,7 +122,7 @@ test.describe("organisation connect @journey", () => {
     );
 
     await clientSession(page);
-    await page.goto(`/dashboard/organisations/${orgEntityId}/connect`);
+    await page.goto(`/dashboard/seller/organisations/${orgEntityId}/connect`);
     await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible({
       timeout: 15_000,
     });
@@ -137,7 +137,7 @@ test.describe("organisation connect @journey", () => {
     test.skip(!orgEntityId, "Set PLAYWRIGHT_ORG_ENTITY_ID");
 
     await clientSession(page);
-    await page.goto(`/dashboard/organisations/${orgEntityId}/connect`);
+    await page.goto(`/dashboard/seller/organisations/${orgEntityId}/connect`);
     await expect(
       page
         .getByTestId("connect-page-header-skeleton")
@@ -156,7 +156,7 @@ test.describe("connect role matrix @roles", () => {
     );
 
     await financeLogin(page);
-    await page.goto(`/dashboard/organisations/${orgEntityId}/connect`);
+    await page.goto(`/dashboard/seller/organisations/${orgEntityId}/connect`);
     await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible({
       timeout: 15_000,
     });

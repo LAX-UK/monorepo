@@ -186,7 +186,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("heading", { name: "My bids" })).toBeInTheDocument();
   });
 
-  it("renders personalized overview title on the seller overview", () => {
+  it("titles the seller overview plainly, with no welcome block", () => {
     pathnameMock.current = "/dashboard/seller";
     render(
       <AppShell
@@ -195,27 +195,15 @@ describe("AppShell", () => {
           user: clientUser,
           role: "client",
           clientWorkspaceMode: "selling",
-          mobileHeader: {
-            acting: {
-              id: "le-1",
-              displayName: "Client User",
-              kind: "individual",
-              subkind: "private_collector",
-              status: "approved",
-              role: "owner",
-              isPrimaryAdmin: true,
-            },
-            actingContext: { kind: "self" },
-            userDisplayName: "Client User",
-          },
+          mobileHeader: { actingContext: { kind: "self" } },
         })}
       >
         <p>Dashboard content</p>
       </AppShell>,
     );
 
-    expect(screen.getByRole("heading", { name: "Welcome, Client" })).toBeInTheDocument();
-    expect(screen.getByText(/Client User · Private collector/i)).toBeInTheDocument();
+    expect(screen.queryByText(/welcome/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
     pathnameMock.current = "/dashboard/bids";
   });
 

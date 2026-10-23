@@ -14,7 +14,7 @@ import {
 } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type { LegalEntitySummary, UserRole, UserStaffRole } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 import type { ReactNode } from "react";
 import {
   type SellerConnectNavBadgeInput,
@@ -38,11 +38,7 @@ export type BuildShellConfigInput = {
   navCounts?: AdminNavCounts;
   /** Whose account the client nav is for; defaults to a personal account with no organisations. */
   clientNavScope?: ClientNavScope;
-  mobileHeader?: {
-    acting: LegalEntitySummary | null;
-    actingContext: ActingContext;
-    userDisplayName?: string;
-  };
+  mobileHeader?: { actingContext: ActingContext };
   /** When selling workspace and payout setup incomplete — server-resolved nav badge. */
   sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
   /** Hide mobile bottom tab bar (wizard, checkout). */

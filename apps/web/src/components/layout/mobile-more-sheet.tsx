@@ -1,6 +1,5 @@
 "use client";
 
-import { WorkspaceModeSwitcher } from "@/components/dashboard/workspace-mode-switcher";
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav";
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { LogoutButton } from "@/components/layout/logout-button";
@@ -10,7 +9,6 @@ import { MediaImage } from "@/components/ui/media-image";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
 import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import {
   BottomSheet,
@@ -28,7 +26,6 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   variant: "client" | "staff";
   items: AppShellNavItem[];
-  clientWorkspaceMode?: ClientWorkspaceMode;
   user?: Pick<SessionUser, "name" | "email" | "image"> | null;
 };
 
@@ -142,14 +139,7 @@ function MobileProfileStrip({
   );
 }
 
-export function MobileMoreSheet({
-  open,
-  onOpenChange,
-  variant,
-  items,
-  clientWorkspaceMode = "buying",
-  user,
-}: Props) {
+export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Props) {
   const pathname = usePathname();
   const { unread } = useUnreadNotifications();
   const grouped = groupNavItems(items, variant);
@@ -163,9 +153,6 @@ export function MobileMoreSheet({
           </BottomSheetTitle>
         </BottomSheetHeader>
         <div className="space-y-5 px-6 pt-4 pb-6">
-          {variant === "client" ? (
-            <WorkspaceModeSwitcher mode={clientWorkspaceMode} variant="inline" />
-          ) : null}
           {variant === "client" && user ? (
             <MobileProfileStrip user={user} onNavigate={() => onOpenChange(false)} />
           ) : null}

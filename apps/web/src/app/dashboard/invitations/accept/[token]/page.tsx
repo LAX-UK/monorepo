@@ -40,7 +40,7 @@ export default async function AcceptInvitationTokenPage({
     });
     const res = await acceptInvitationAction(token);
     if (res.ok) {
-      redirect(`/dashboard/organisations/${res.data.legalEntityId}?welcome=1`);
+      redirect(`/dashboard/seller/organisations/${res.data.legalEntityId}?welcome=1`);
     }
     const failure = {
       ...describeSettingsActionError(res.error ?? "Could not accept invitation."),

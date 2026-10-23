@@ -38,7 +38,7 @@ test.describe("submission wizard mobile @journey", () => {
     if (draftId) {
       await page.goto(`/dashboard/submissions/${draftId}`);
     } else {
-      await page.goto("/dashboard/submissions");
+      await page.goto("/dashboard/seller/consignments?tab=drafts");
       const draftLink = page.getByRole("link", { name: /draft/i }).first();
       await expect(draftLink).toBeVisible({ timeout: 15_000 });
       await draftLink.click();

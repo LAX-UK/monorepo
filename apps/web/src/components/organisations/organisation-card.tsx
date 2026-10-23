@@ -77,7 +77,7 @@ export function OrganisationCard({
       <CardFooter className="flex flex-wrap gap-2 border-t border-border-hairline pt-4">
         {!isActing ? (
           <Button asChild size="sm" variant="secondary">
-            <Link href={`/dashboard/organisations/${summary.id}`} prefetch>
+            <Link href={`/dashboard/seller/organisations/${summary.id}`} prefetch>
               Manage
             </Link>
           </Button>

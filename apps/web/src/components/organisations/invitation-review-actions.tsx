@@ -29,7 +29,7 @@ export function InvitationReviewActions({ invitation }: Props) {
               notify.success("Invitation accepted", {
                 description: `You've joined ${invitation.orgDisplayName}.`,
               });
-              router.push(`/dashboard/organisations/${r.data.legalEntityId}?welcome=1`);
+              router.push(`/dashboard/seller/organisations/${r.data.legalEntityId}?welcome=1`);
               router.refresh();
               return;
             }

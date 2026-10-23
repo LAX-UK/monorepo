@@ -30,7 +30,7 @@ describe("buildDashboardSliceFailure", () => {
 
   it("delegates legal-entity codes for submissions", () => {
     const failure = buildDashboardSliceFailure("submissions", 403, "not_a_member_of_legal_entity");
-    expect(failure.title).toBe("Wrong organisation context");
+    expect(failure.title).toBe("Cannot sell as this organisation");
     expect(failure.actions.some((a) => a.kind === "use_personal_profile")).toBe(true);
   });
 

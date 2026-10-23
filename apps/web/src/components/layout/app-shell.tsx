@@ -58,14 +58,7 @@ function AppShellFrame({ user, config, children }: Props) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggleCollapsed]);
 
-  const desktopSidebar = (
-    <AppShellSidebar
-      user={user}
-      role={shellRole}
-      collapsible
-      {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
-    />
-  );
+  const desktopSidebar = <AppShellSidebar user={user} role={shellRole} collapsible />;
 
   return (
     <div

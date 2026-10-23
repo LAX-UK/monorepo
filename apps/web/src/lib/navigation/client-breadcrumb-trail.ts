@@ -12,7 +12,7 @@ const CLIENT_SEGMENT_LABELS: Record<string, string> = {
   organisations: "Organisations",
   invitations: "Invitations",
   settings: "Settings",
-  seller: "Seller",
+  seller: "Overview",
   submissions: "Submissions",
   purchases: "Purchases",
   watchlist: "Watching",
@@ -25,6 +25,7 @@ const ORG_TAB_LABELS: Record<string, string> = {
   profile: "Profile",
   documents: "Documents",
   connect: "Payout setup",
+  security: "Two-step policy",
 };
 
 function inferClientParentHref(pathname: string): string | undefined {
@@ -36,9 +37,6 @@ function inferClientParentHref(pathname: string): string | undefined {
 
   if (section === "settings" && segments.length > 2) {
     return "/dashboard/settings";
-  }
-  if (section === "organisations" && segments.length > 2) {
-    return "/dashboard/organisations";
   }
   if (section === "checkout" && segments.length > 2) {
     return "/dashboard/purchases";
@@ -62,12 +60,6 @@ function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceM
     return CLIENT_SEGMENT_LABELS[section] ?? getRouteLabel(pathname, "client", workspace);
   }
 
-  if (section === "organisations") {
-    if (segments.length === 3) return "Organisation";
-    const tab = segments[3] ?? "";
-    if (ORG_TAB_LABELS[tab]) return ORG_TAB_LABELS[tab];
-  }
-
   if (section === "invitations") {
     if (segments[2] === "review") return "Review invitation";
     if (segments[2] === "accept") return "Accept invitation";
@@ -86,7 +78,8 @@ function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceM
     const sellerLeaf: Record<string, string> = {
       connect: "Payout setup",
       payouts: "Sold & payouts",
-      "in-sale": "Items in sale",
+      consignments: "Consignments",
+      works: "Works",
       artist: "Artist profile",
     };
     const sub = segments[2] ?? "";
@@ -103,16 +96,18 @@ function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceM
   return CLIENT_SEGMENT_LABELS[section] ?? "Detail";
 }
 
+/** An organisation's settings pages sit under Selling: Selling > Organisation > Members. */
 function buildOrganisationTrail(segments: string[]): BreadcrumbItem[] | null {
-  if (segments[1] !== "organisations" || segments.length < 4) return null;
-  const orgId = segments[2];
-  const tab = segments[3] ?? "";
-  const tabLabel = ORG_TAB_LABELS[tab];
-  if (!orgId || !tabLabel) return null;
+  if (segments[1] !== "seller" || segments[2] !== "organisations") return null;
+  const orgId = segments[3];
+  if (!orgId) return null;
 
+  const selling: BreadcrumbItem = { label: "Selling", href: "/dashboard/seller" };
+  const tabLabel = ORG_TAB_LABELS[segments[4] ?? ""];
+  if (!tabLabel) return [selling, { label: "Organisation" }];
   return [
-    { label: "Organisations", href: "/dashboard/organisations" },
-    { label: "Organisation", href: `/dashboard/organisations/${orgId}` },
+    selling,
+    { label: "Organisation", href: `/dashboard/seller/organisations/${orgId}` },
     { label: tabLabel },
   ];
 }

@@ -31,6 +31,24 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
     destination: "/dashboard/bids#condition-reports",
     permanent: true,
   },
+  // An organisation's overview, members, profile, documents and payout setup are its settings
+  // under Selling. `:path*` also matches the bare organisation address.
+  {
+    source: "/dashboard/organisations/:id/:path*",
+    destination: "/dashboard/seller/organisations/:id/:path*",
+    permanent: true,
+  },
+  // Submissions and items in sale are one Consignments list with status tabs.
+  {
+    source: "/dashboard/submissions",
+    destination: "/dashboard/seller/consignments",
+    permanent: true,
+  },
+  {
+    source: "/dashboard/seller/in-sale",
+    destination: "/dashboard/seller/consignments?tab=in-sale",
+    permanent: true,
+  },
   // Saved cards are created and listed during checkout, so there is nothing to manage here.
   {
     source: "/dashboard/settings/payment-methods",

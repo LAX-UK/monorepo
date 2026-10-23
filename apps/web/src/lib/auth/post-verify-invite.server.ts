@@ -21,6 +21,6 @@ export async function tryConsumePendingInviteAfterVerify(
       return null;
     }
     await clearPendingEntityInviteCookie();
-    return { redirectTo: `/dashboard/organisations/${res.data.legalEntityId}?welcome=1` };
+    return { redirectTo: `/dashboard/seller/organisations/${res.data.legalEntityId}?welcome=1` };
   });
 }

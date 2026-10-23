@@ -39,9 +39,9 @@ describe("DashboardSliceErrorAlert", () => {
     expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
   });
 
-  it("renders personal profile form action", () => {
+  it("renders the switch-to-personal-account form action", () => {
     const failure = buildDashboardSliceFailure("submissions", 403, "not_a_member_of_legal_entity");
     render(<DashboardSliceErrorAlert failure={failure} />);
-    expect(screen.getByRole("button", { name: /personal profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /personal account/i })).toBeInTheDocument();
   });
 });

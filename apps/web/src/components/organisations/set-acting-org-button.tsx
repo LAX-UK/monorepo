@@ -9,9 +9,9 @@ import { useTransition } from "react";
 type Props = { legalEntityId: string };
 
 const FAILURE_TITLES: Record<"not_a_member" | "unauthenticated" | "unknown", string> = {
-  not_a_member: "Cannot set active",
+  not_a_member: "Cannot switch",
   unauthenticated: "Session expired",
-  unknown: "Could not set active",
+  unknown: "Could not switch",
 };
 
 const FAILURE_DESCRIPTIONS: Record<"not_a_member" | "unauthenticated" | "unknown", string> = {
@@ -44,7 +44,7 @@ export function SetActingOrgButton({ legalEntityId }: Props) {
         });
       }}
     >
-      Set as active
+      Sell as this organisation
     </Button>
   );
 }

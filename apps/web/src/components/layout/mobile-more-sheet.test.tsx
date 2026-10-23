@@ -26,10 +26,6 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("@/components/dashboard/workspace-mode-switcher", () => ({
-  WorkspaceModeSwitcher: () => null,
-}));
-
 vi.mock("@/lib/actions/user-ui-preferences", () => ({
   updateUiPreferencesAction: vi.fn(),
 }));

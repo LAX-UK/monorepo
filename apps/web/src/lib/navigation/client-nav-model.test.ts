@@ -1,5 +1,5 @@
 import { entityRoleCan } from "@auction/domain";
-import { legalEntityMemberRoles } from "@auction/types";
+import { type LegalEntityMemberRole, legalEntityMemberRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   type ClientNavContext,
@@ -8,6 +8,7 @@ import {
   getClientNavItems,
 } from "./client-nav-model";
 
+const ORG_ID = "org-1";
 const personal: ClientNavContext = { kind: "personal" };
 
 function input(overrides: Partial<ClientNavInput> = {}): ClientNavInput {
@@ -22,6 +23,10 @@ function input(overrides: Partial<ClientNavInput> = {}): ClientNavInput {
 
 function ids(overrides: Partial<ClientNavInput> = {}): string[] {
   return getClientNavItems(input(overrides)).map((item) => item.id);
+}
+
+function org(role: LegalEntityMemberRole): ClientNavContext {
+  return { kind: "organisation", id: ORG_ID, role };
 }
 
 describe("buying nav, personal account", () => {
@@ -48,11 +53,10 @@ describe("buying nav, personal account", () => {
 });
 
 describe("selling nav, personal account", () => {
-  it("lists the seller pages without organisation duplicates", () => {
+  it("lists the selling pages in order, with no organisation entries", () => {
     expect(ids({ mode: "selling", isOrgMember: true })).toEqual([
       "seller-overview",
-      "submissions",
-      "in-sale",
+      "consignments",
       "payouts",
       "connect",
       "artist",
@@ -60,10 +64,28 @@ describe("selling nav, personal account", () => {
       "settings",
     ]);
   });
+
+  it("names the pages as the seller sees them", () => {
+    const labels = getClientNavItems(input({ mode: "selling" })).map((item) => item.label);
+    expect(labels).toEqual([
+      "Overview",
+      "Consignments",
+      "Sold & payouts",
+      "Payout setup",
+      "Artist profile",
+      "Notifications",
+      "Bid settings",
+    ]);
+  });
+
+  it("points payout setup at the personal page", () => {
+    const connect = getClientNavItems(input({ mode: "selling" })).find((i) => i.id === "connect");
+    expect(connect?.href).toBe("/dashboard/seller/connect");
+  });
 });
 
 describe.each(legalEntityMemberRoles)("organisation context, role %s", (role) => {
-  const context: ClientNavContext = { kind: "organisation", role };
+  const context = org(role);
 
   it("shows Purchases only to roles that can read holdings or finance", () => {
     const expected =
@@ -77,41 +99,118 @@ describe.each(legalEntityMemberRoles)("organisation context, role %s", (role) =>
     );
   });
 
-  it("gates each seller page on its capability and hides the artist profile", () => {
+  it("gates each selling page on its capability and hides the artist profile", () => {
     const selling = ids({ mode: "selling", context, isOrgMember: true });
-    expect(selling.includes("seller-overview")).toBe(
-      entityRoleCan(role, "entity.consignments.read"),
+    const has = (id: string) => selling.includes(id);
+    expect(has("seller-overview")).toBe(entityRoleCan(role, "entity.consignments.read"));
+    expect(has("consignments")).toBe(entityRoleCan(role, "entity.consignments.read"));
+    expect(has("works")).toBe(
+      entityRoleCan(role, "entity.holdings.read") || entityRoleCan(role, "entity.finance.read"),
     );
-    expect(selling.includes("submissions")).toBe(entityRoleCan(role, "entity.consignments.read"));
-    expect(selling.includes("in-sale")).toBe(entityRoleCan(role, "entity.consignments.read"));
-    expect(selling.includes("payouts")).toBe(entityRoleCan(role, "entity.payouts.read"));
-    expect(selling.includes("connect")).toBe(entityRoleCan(role, "entity.connect.operate"));
-    expect(selling).not.toContain("artist");
+    expect(has("payouts")).toBe(entityRoleCan(role, "entity.payouts.read"));
+    expect(has("connect")).toBe(entityRoleCan(role, "entity.connect.operate"));
+    expect(has("org-members")).toBe(entityRoleCan(role, "entity.members.manage"));
+    expect(has("org-documents")).toBe(entityRoleCan(role, "entity.members.manage"));
+    expect(has("org-security")).toBe(entityRoleCan(role, "entity.security.manage"));
+    expect(has("org-details")).toBe(true);
+    expect(has("artist")).toBe(false);
+  });
+
+  it("never offers a selling page the capability matrix would refuse", () => {
+    const selling = ids({ mode: "selling", context, isOrgMember: true });
+    const needs: Record<string, Parameters<typeof entityRoleCan>[1][]> = {
+      "seller-overview": ["entity.consignments.read"],
+      consignments: ["entity.consignments.read"],
+      works: ["entity.holdings.read", "entity.finance.read"],
+      payouts: ["entity.payouts.read"],
+      connect: ["entity.connect.operate"],
+      "org-members": ["entity.members.manage"],
+      "org-documents": ["entity.members.manage"],
+      "org-security": ["entity.security.manage"],
+    };
+    for (const [id, capabilities] of Object.entries(needs)) {
+      if (selling.includes(id)) {
+        expect(capabilities.some((c) => entityRoleCan(role, c))).toBe(true);
+      }
+    }
   });
 });
 
 describe("organisation context, specific roles", () => {
-  it("a consignor sees consignments but no purchases, payouts or payout setup", () => {
-    const context: ClientNavContext = { kind: "organisation", role: "consignor" };
+  it("a consignor sees consignments but no purchases, works, payouts or payout setup", () => {
+    const context = org("consignor");
     expect(ids({ context })).not.toContain("purchases");
-    const selling = ids({ mode: "selling", context });
-    expect(selling).toContain("in-sale");
-    expect(selling).not.toContain("payouts");
-    expect(selling).not.toContain("connect");
+    expect(ids({ mode: "selling", context })).toEqual([
+      "seller-overview",
+      "consignments",
+      "org-details",
+      "notifications",
+      "settings",
+    ]);
   });
 
-  it("a viewer sees works and consignments but no money pages", () => {
-    const context: ClientNavContext = { kind: "organisation", role: "viewer" };
+  it("a viewer sees works and consignments but no money, members or policy pages", () => {
+    const context = org("viewer");
     expect(ids({ context })).toContain("purchases");
-    const selling = ids({ mode: "selling", context });
-    expect(selling).toContain("in-sale");
-    expect(selling).not.toContain("payouts");
+    expect(ids({ mode: "selling", context })).toEqual([
+      "seller-overview",
+      "consignments",
+      "works",
+      "org-details",
+      "notifications",
+      "settings",
+    ]);
   });
 
-  it("a finance member sees payouts and payout setup", () => {
-    const context: ClientNavContext = { kind: "organisation", role: "finance" };
-    const selling = ids({ mode: "selling", context });
-    expect(selling).toEqual(expect.arrayContaining(["payouts", "connect"]));
+  it("a finance member sees works, payouts and payout setup but cannot manage members", () => {
+    expect(ids({ mode: "selling", context: org("finance") })).toEqual([
+      "seller-overview",
+      "consignments",
+      "works",
+      "payouts",
+      "connect",
+      "org-details",
+      "notifications",
+      "settings",
+    ]);
+  });
+
+  it("an admin manages members and documents but not the two-step policy", () => {
+    const selling = ids({ mode: "selling", context: org("admin") });
+    expect(selling).toEqual(expect.arrayContaining(["org-members", "org-documents"]));
+    expect(selling).not.toContain("org-security");
+  });
+
+  it("only the owner sees every entry, including the two-step policy", () => {
+    expect(ids({ mode: "selling", context: org("owner") })).toEqual([
+      "seller-overview",
+      "consignments",
+      "works",
+      "payouts",
+      "connect",
+      "org-details",
+      "org-members",
+      "org-documents",
+      "org-security",
+      "notifications",
+      "settings",
+    ]);
+  });
+
+  it("links organisation pages and payout setup to the organisation being sold as", () => {
+    const items = getClientNavItems(input({ mode: "selling", context: org("owner") }));
+    const hrefOf = (id: string) => items.find((item) => item.id === id)?.href;
+    expect(hrefOf("connect")).toBe("/dashboard/seller/organisations/org-1/connect");
+    expect(hrefOf("org-details")).toBe("/dashboard/seller/organisations/org-1");
+    expect(hrefOf("org-members")).toBe("/dashboard/seller/organisations/org-1/members");
+    expect(hrefOf("org-documents")).toBe("/dashboard/seller/organisations/org-1/documents");
+    expect(hrefOf("org-security")).toBe("/dashboard/seller/organisations/org-1/security");
+  });
+
+  it("keeps organisation entries out of buying mode", () => {
+    const buying = ids({ context: org("owner"), isOrgMember: true });
+    expect(buying).not.toContain("org-members");
+    expect(buying).not.toContain("works");
   });
 });
 
@@ -124,8 +223,8 @@ describe("nav matching", () => {
     expect(activeId("/dashboard/purchases")).toBe("purchases");
   });
 
-  it("highlights Your organisations for organisation and invitation routes", () => {
-    expect(activeId("/dashboard/organisations/abc/members")).toBe("organisations");
+  it("highlights Your organisations on the list and for invitations", () => {
+    expect(activeId("/dashboard/organisations")).toBe("organisations");
     expect(activeId("/dashboard/invitations/review")).toBe("organisations");
   });
 
@@ -135,6 +234,29 @@ describe("nav matching", () => {
 
   it("no longer claims the retired artist-follow route for Watching", () => {
     expect(activeId("/dashboard/artist-follow")).toBeUndefined();
+  });
+
+  describe("in Selling mode", () => {
+    const selling = getClientNavItems(input({ mode: "selling", context: org("owner") }));
+    const sellingActive = (pathname: string) =>
+      selling.find((item) => item.match?.(pathname) ?? pathname === item.href)?.id;
+
+    it("keeps Overview exact so it does not shadow the other pages", () => {
+      expect(sellingActive("/dashboard/seller")).toBe("seller-overview");
+      expect(sellingActive("/dashboard/seller/consignments")).toBe("consignments");
+    });
+
+    it("treats a submission page as part of Consignments", () => {
+      expect(sellingActive("/dashboard/submissions/abc")).toBe("consignments");
+      expect(sellingActive("/dashboard/submissions/new")).toBe("consignments");
+    });
+
+    it("highlights the organisation page, tab and payout setup under the organisation", () => {
+      expect(sellingActive("/dashboard/seller/organisations/org-1")).toBe("org-details");
+      expect(sellingActive("/dashboard/seller/organisations/org-1/profile")).toBe("org-details");
+      expect(sellingActive("/dashboard/seller/organisations/org-1/members")).toBe("org-members");
+      expect(sellingActive("/dashboard/seller/organisations/org-1/connect")).toBe("connect");
+    });
   });
 });
 
@@ -149,20 +271,24 @@ describe("mobile tabs", () => {
     ]);
   });
 
-  it("selling personal: overview, submissions, items in sale, notifications, more", () => {
+  it("selling personal: overview, consignments, payouts, notifications, more", () => {
     expect(getClientMobileTabs(input({ mode: "selling" })).map((item) => item.id)).toEqual([
       "seller-overview",
-      "submissions",
-      "in-sale",
+      "consignments",
+      "payouts",
       "notifications",
       "more",
     ]);
   });
 
+  it("selling as an owner: the four most useful entries, with Works in place of notifications", () => {
+    expect(
+      getClientMobileTabs(input({ mode: "selling", context: org("owner") })).map((item) => item.id),
+    ).toEqual(["seller-overview", "consignments", "works", "payouts", "more"]);
+  });
+
   it("drops tabs the role cannot open but keeps More", () => {
-    const tabs = getClientMobileTabs(
-      input({ context: { kind: "organisation", role: "consignor" } }),
-    ).map((item) => item.id);
+    const tabs = getClientMobileTabs(input({ context: org("consignor") })).map((item) => item.id);
     expect(tabs).toEqual(["bids", "watchlist", "notifications", "more"]);
   });
 });

@@ -4,9 +4,10 @@ import {
   type ResolvedActingContext,
   resolveActingContext,
 } from "@/lib/legal-entity/acting-context.server";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { LegalEntitySummary } from "@auction/types";
 import { ActingAsTooltip } from "./acting-as-tooltip";
-import { LegalEntitySwitcher } from "./legal-entity-switcher";
+import { ActingContextControl } from "./acting-context-control";
 
 function personalOnlyContext(
   acting: LegalEntitySummary,
@@ -40,9 +41,11 @@ type Props = {
   pendingInvitesCount?: number;
   /** When false (production), hide organisation workspaces in the switcher. */
   orgModuleEnabled?: boolean;
+  /** Persisted buying or selling mode, which decides how the control presents itself. */
+  workspaceMode?: ClientWorkspaceMode;
 };
 
-/** Renders the acting-context switcher in the header chrome.
+/** Renders the account switcher (or the Selling mode bar) in the header chrome.
  * * Server component: resolves the membership list once per request and hands
  * the data to the client switcher, avoiding a client-side round trip.
  * * Returns `null` when the user has zero memberships (impossible
@@ -56,6 +59,7 @@ export async function ActingAsBanner({
   prefetchedActingContext,
   pendingInvitesCount = 0,
   orgModuleEnabled = true,
+  workspaceMode = "buying",
 }: Props) {
   const { acting, memberships } =
     prefetchedActingContext ?? (await resolveActingContext(userRole, userStaffRole ?? null));
@@ -70,9 +74,10 @@ export async function ActingAsBanner({
 
   return (
     <div className={`relative inline-flex items-center gap-2 ${className ?? ""}`}>
-      <LegalEntitySwitcher
+      <ActingContextControl
         acting={switcherContext.acting}
         memberships={switcherContext.memberships}
+        workspaceMode={workspaceMode}
         pendingInvitesCount={pendingInvitesCount}
         orgModuleEnabled={orgModuleEnabled}
       />

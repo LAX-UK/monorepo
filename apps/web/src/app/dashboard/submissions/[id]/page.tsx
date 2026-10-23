@@ -1,7 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
-import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-context-banner";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
@@ -51,10 +50,7 @@ export default async function SubmissionDetailPage({
     shell: "client",
     loginNext: `/dashboard/submissions/${id}`,
   });
-  const { orgActingSelected, sellerEntityId } = await resolveSellerWorkspaceContext(
-    user.role,
-    user.staffRole ?? null,
-  );
+  const { sellerEntityId } = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
 
   let s: Awaited<ReturnType<typeof c.submissions.getMineById>> = null;
@@ -96,8 +92,8 @@ export default async function SubmissionDetailPage({
         <DashboardDetailHeader
           compactOnMobile
           track="selling"
-          backHref={DASHBOARD_ROUTES.submissions}
-          backLabel="Submissions"
+          backHref={DASHBOARD_ROUTES.consignments}
+          backLabel="Consignments"
           title="Could not load submission"
         />
         <DashboardSliceErrorAlert failure={loadFailure} />
@@ -150,12 +146,11 @@ export default async function SubmissionDetailPage({
       <DashboardDetailHeader
         compactOnMobile
         track="selling"
-        backHref="/dashboard/submissions"
-        backLabel="Submissions"
+        backHref={DASHBOARD_ROUTES.consignments}
+        backLabel="Consignments"
         title={submission.title}
         badges={<SubmissionStatusBadge status={submission.status} />}
       />
-      {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
