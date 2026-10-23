@@ -30,6 +30,9 @@ ARG NEXT_PUBLIC_SENTRY_DSN_WEB=
 # production indexing gate. Must be passed for prebuilt images or the build
 # bakes a non-production origin (noindex / wrong canonical).
 ARG NEXT_PUBLIC_WEB_ORIGIN=http://127.0.0.1:3000
+# Where Bid sends people for profile, security and addresses (LAX Account). Unset falls back to
+# the production portal, so every non-production image must set it.
+ARG NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN=
 ARG NEXT_PUBLIC_CSP_REPORT_URI=
 # Set to "false" for non-production images to keep them out of search indexes.
 ARG NEXT_PUBLIC_ALLOW_INDEXING=
@@ -53,6 +56,7 @@ ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 ENV NEXT_PUBLIC_MEDIA_BASE_URL=$NEXT_PUBLIC_MEDIA_BASE_URL
 ENV NEXT_PUBLIC_SENTRY_DSN_WEB=$NEXT_PUBLIC_SENTRY_DSN_WEB
 ENV NEXT_PUBLIC_WEB_ORIGIN=$NEXT_PUBLIC_WEB_ORIGIN
+ENV NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN=$NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN
 ENV NEXT_PUBLIC_CSP_REPORT_URI=$NEXT_PUBLIC_CSP_REPORT_URI
 ENV NEXT_PUBLIC_ALLOW_INDEXING=$NEXT_PUBLIC_ALLOW_INDEXING
 ENV CSP_ENFORCE=$CSP_ENFORCE
