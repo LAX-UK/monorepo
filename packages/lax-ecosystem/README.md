@@ -31,6 +31,14 @@ their money. Each is a TypeBox schema with a matching static type, exported from
   are owed.
 - A document that is not `available` has no `href` and may carry an `expectedNote`.
 
+### Responses
+
+A product serves `{ items }` for the portfolio and `{ entries }` for money
+(`LaxPortfolioResponseV1`, `LaxMoneyResponseV1`). `partial: true` means the product left part
+of its data out on purpose, for example when a feature is switched off. The list is then
+incomplete rather than empty, so a consumer must say so instead of showing it as the whole
+portfolio.
+
 ### Versioning
 
 The suffix is the contract version. Within V1 a change must be additive and optional: a new

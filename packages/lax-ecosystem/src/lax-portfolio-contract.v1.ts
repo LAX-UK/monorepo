@@ -62,6 +62,8 @@ export type LaxCostLineKind = (typeof LAX_COST_LINE_KINDS)[number];
 
 export const LAX_DOCUMENT_KINDS = [
   "invoice",
+  /** What a seller receives with a payout: the settled sales and the fees taken. */
+  "payout_statement",
   "certificate",
   "provenance",
   "condition_report",
@@ -142,3 +144,21 @@ export const LaxMoneyEntryV1 = Type.Object({
   href: Type.String({ minLength: 1 }),
 });
 export type LaxMoneyEntryV1 = Static<typeof LaxMoneyEntryV1>;
+
+/**
+ * Response of a product's portfolio route. `partial` is set when the product deliberately left
+ * part of its data out (a disabled feature, say): `items` is then incomplete rather than empty,
+ * and a consumer must not present it as the whole portfolio.
+ */
+export const LaxPortfolioResponseV1 = Type.Object({
+  items: Type.Array(LaxPortfolioItemV1),
+  partial: Type.Optional(Type.Boolean()),
+});
+export type LaxPortfolioResponseV1 = Static<typeof LaxPortfolioResponseV1>;
+
+/** Response of a product's money route; `partial` carries the same meaning as on the portfolio. */
+export const LaxMoneyResponseV1 = Type.Object({
+  entries: Type.Array(LaxMoneyEntryV1),
+  partial: Type.Optional(Type.Boolean()),
+});
+export type LaxMoneyResponseV1 = Static<typeof LaxMoneyResponseV1>;
