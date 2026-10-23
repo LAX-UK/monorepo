@@ -100,7 +100,7 @@ export async function regenerateBackupCodesAction(): Promise<BackupCodesActionRe
   const result = await identity.regenerateBackupCodes(actor);
   if (result.status === "ok") return { status: "ok", backupCodes: result.value };
   if (result.status === "rejected") {
-    return { status: "error", message: contactRejectionMessage(result.reason) };
+    return { status: "error", message: rejectionMessage(result.reason) };
   }
   return result.status === "reauth_required" ? result : UNAVAILABLE;
 }
