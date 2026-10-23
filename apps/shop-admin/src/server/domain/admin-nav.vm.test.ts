@@ -7,6 +7,7 @@ const EDITORIAL_HREFS = [
   "/editorial/stories",
   "/editorial/venues",
   "/editorial/pages",
+  "/help",
   "/editorial/home",
 ];
 
@@ -117,6 +118,7 @@ describe("buildAdminNavGroups", () => {
           "Stories",
           "Venues",
           "Pages",
+          "Help centre",
           "Home placements",
           "Enquiries",
         ],

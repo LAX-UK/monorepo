@@ -1,5 +1,6 @@
 "use client";
 
+import { editorialEntityApi } from "@/components/editorial/editorial-editor-api";
 import {
   EditorialEditor,
   type EditorialEditorConfig,
@@ -44,6 +45,7 @@ type LinkedEditorProps<D> = EditorProps<D> & { links?: LinksPayload | null };
 
 const PAGE_CONFIG: EditorialEditorConfig<PageForm, PageDetail> = {
   entity: EDITORIAL_ENTITIES.pages,
+  api: editorialEntityApi("pages"),
   empty: emptyPageForm,
   fromDetail: pageFormFromDetail,
   buildPayload: buildPagePayload,
@@ -53,6 +55,7 @@ const PAGE_CONFIG: EditorialEditorConfig<PageForm, PageDetail> = {
 
 const VENUE_CONFIG: EditorialEditorConfig<VenueForm, VenueDetail> = {
   entity: EDITORIAL_ENTITIES.venues,
+  api: editorialEntityApi("venues"),
   empty: emptyVenueForm,
   fromDetail: venueFormFromDetail,
   buildPayload: buildVenuePayload,
@@ -71,6 +74,7 @@ export function VenueEditor(props: EditorProps<VenueDetail>) {
 export function StoryEditor({ links, ...props }: LinkedEditorProps<StoryDetail>) {
   const config: EditorialEditorConfig<StoryForm, StoryDetail> = {
     entity: EDITORIAL_ENTITIES.stories,
+    api: editorialEntityApi("stories"),
     empty: emptyStoryForm,
     fromDetail: storyFormFromDetail,
     buildPayload: buildStoryPayload,
@@ -99,6 +103,7 @@ export function ExhibitionEditor({
 }: LinkedEditorProps<ExhibitionDetail> & { venues: readonly EditorialAdminRow[] }) {
   const config: EditorialEditorConfig<ExhibitionForm, ExhibitionDetail> = {
     entity: EDITORIAL_ENTITIES.exhibitions,
+    api: editorialEntityApi("exhibitions"),
     empty: emptyExhibitionForm,
     fromDetail: exhibitionFormFromDetail,
     buildPayload: buildExhibitionPayload,

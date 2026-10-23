@@ -305,7 +305,7 @@ function optionalCoordinate(
 }
 
 /** Fields the form already rejected keep their own message; the schema only adds what is left. */
-function finish<T extends object>(
+export function finish<T extends object>(
   schema: TSchema,
   payload: T,
   blocks: readonly EditorialBlock[],
@@ -319,17 +319,17 @@ function finish<T extends object>(
   return hasFieldErrors(all) ? { ok: false, errors: all } : { ok: true, payload };
 }
 
-function checkSlug(slug: string, errors: FieldErrors) {
+export function checkSlug(slug: string, errors: FieldErrors) {
   if (!slug) errors.slug = "Enter a slug.";
   else if (!isEditorialSlug(slug)) errors.slug = FIELD_MESSAGES.slug as string;
 }
 
-function checkRequired(value: string, field: string, message: string, errors: FieldErrors) {
+export function checkRequired(value: string, field: string, message: string, errors: FieldErrors) {
   if (!value) errors[field] = message;
 }
 
 /** Blank SEO fields clear the override so the page falls back to generated metadata. */
-function seoWrite(form: SeoFieldsFormValues): SeoWrite {
+export function seoWrite(form: SeoFieldsFormValues): SeoWrite {
   return {
     seoTitle: form.seoTitle.trim() || null,
     seoDescription: form.seoDescription.trim() || null,

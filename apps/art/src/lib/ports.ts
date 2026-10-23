@@ -14,10 +14,14 @@ import type {
   ArtExhibitionStatus,
   ArtStoryListFilter,
 } from "@/lib/editorial/art-editorial.types";
+import type { ArtHelpArticleFilter } from "@/lib/help/art-help.types";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type {
   EditorialHomeResponse,
   GeneralEnquiryRow,
+  HelpArticleDetail,
+  HelpArticleSummary,
+  HelpCategorySummary,
   PortalCollectionItem,
   PortalEnquiry,
   PortalFollowedArtist,
@@ -120,6 +124,16 @@ export type ArtEditorialPort = {
   listVenues(): Promise<ArtEditorialFetchResult<ArtEditorialVenueList>>;
   getVenue(slug: string): Promise<ArtEditorialFetchResult<ArtEditorialVenueDetail>>;
   preview(token: string): Promise<ArtEditorialFetchResult<ArtEditorialPreview>>;
+};
+
+/** Help centre reads from shop-api `/v1/help/*`; like editorial, every read reports `disabled` when `ART_EDITORIAL_ENABLED` is off. */
+export type ArtHelpPort = {
+  /** Categories that have at least one published question, in display order. */
+  listCategories(): Promise<ArtEditorialFetchResult<{ items: HelpCategorySummary[] }>>;
+  listArticles(
+    filter?: ArtHelpArticleFilter,
+  ): Promise<ArtEditorialFetchResult<{ items: HelpArticleSummary[] }>>;
+  getArticle(slug: string): Promise<ArtEditorialFetchResult<HelpArticleDetail>>;
 };
 
 /** Site search over published editorial (shop-api `?q=` on the exhibition and story lists). */

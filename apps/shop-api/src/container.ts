@@ -38,6 +38,7 @@ import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-
 import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
+import { createDrizzleHelpRepository } from "./infrastructure/drizzle-help.repository.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
@@ -292,6 +293,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           links: createEditorialLinksService(
             createDrizzleEditorialLinksRepository(db, { resolveMediaUrl }),
           ),
+          help: createDrizzleHelpRepository(db, { resolveMediaUrl }),
           search: createDrizzleEditorialSearchReader(db, { resolveMediaUrl }),
           previewSecret,
           enquiryRateLimiter,

@@ -17,6 +17,7 @@ import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 import { createStubEditorialLinksService } from "../../test-support/stub-editorial-links-service.js";
 import { createStubEditorialRepository } from "../../test-support/stub-editorial-repository.js";
 import { createStubEditorialSearchReader } from "../../test-support/stub-editorial-search-reader.js";
+import { createStubHelpRepository } from "../../test-support/stub-help-repository.js";
 
 const userHeaders = { authorization: "Bearer user-token" };
 
@@ -100,6 +101,7 @@ async function buildApp(
       env: { ...base.env, SHOP_EDITORIAL_ENABLED: true },
       editorial: {
         previewSecret: "test-preview-secret-minimum-32-chars",
+        help: createStubHelpRepository(),
         enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
         editorial: createStubEditorialRepository(overrides),
         links: createStubEditorialLinksService(),

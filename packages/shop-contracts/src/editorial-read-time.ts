@@ -26,6 +26,14 @@ function blockText(block: EditorialBlock): string {
   }
 }
 
+/** The prose of a body as one line of text, for matching a search term against it. */
+export function editorialBlocksPlainText(blocks: readonly EditorialBlock[]): string {
+  return blocks
+    .map(blockText)
+    .filter((text) => text.length > 0)
+    .join(" ");
+}
+
 function countEditorialWords(blocks: readonly EditorialBlock[]): number {
   return blocks.reduce((total, block) => {
     const words = blockText(block).trim().split(/\s+/u).filter(Boolean);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EditorialBlock } from "./editorial-blocks.js";
-import { estimateEditorialReadMinutes } from "./editorial-read-time.js";
+import { editorialBlocksPlainText, estimateEditorialReadMinutes } from "./editorial-read-time.js";
 
 function words(count: number): string {
   return Array.from({ length: count }, () => "word").join(" ");
@@ -31,6 +31,16 @@ describe("estimateEditorialReadMinutes", () => {
     ];
     expect(estimateEditorialReadMinutes(blocks)).toBe(2);
     expect(estimateEditorialReadMinutes([...blocks, { type: "quote", text: "one" }])).toBe(3);
+  });
+
+  it("flattens prose blocks into searchable text and skips media", () => {
+    expect(
+      editorialBlocksPlainText([
+        { type: "heading", level: 2, text: "Payment" },
+        { type: "image", mediaKey: "a.webp", caption: "Not prose" },
+        { type: "richText", spans: [{ text: "Pay by " }, { text: "card", marks: ["bold"] }] },
+      ]),
+    ).toBe("Payment Pay by card");
   });
 
   it("counts FAQ, card grid and call-to-action copy", () => {

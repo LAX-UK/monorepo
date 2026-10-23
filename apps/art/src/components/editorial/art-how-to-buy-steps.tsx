@@ -4,8 +4,10 @@ import type { HowToBuyStep } from "@/lib/editorial/how-to-buy.vm";
 import { MarketingStepCard } from "@auction/marketing-ui";
 import Link from "next/link";
 
-// No help centre exists yet, so FAQ questions and the closing help line lead to the team.
-const HELP_HREF = "/contact";
+// The questions come from CMS copy and are not tied to Help centre entries, so they open the
+// Help centre rather than guess an answer page; the closing help line goes to the team.
+const FAQ_HREF = "/help";
+const CONTACT_HREF = "/contact";
 
 export function ArtHowToBuySteps({ steps }: { steps: readonly HowToBuyStep[] }) {
   return (
@@ -17,12 +19,12 @@ export function ArtHowToBuySteps({ steps }: { steps: readonly HowToBuyStep[] }) 
           step={index + 1}
           title={step.title}
           linkAs={ArtEditorialLink}
-          links={step.questions.map((label) => ({ label, href: HELP_HREF }))}
+          links={step.questions.map((label) => ({ label, href: FAQ_HREF }))}
           footer={
             <>
               Need further help?{" "}
               <Link
-                href={HELP_HREF}
+                href={CONTACT_HREF}
                 className="art-focus-ring rounded-sm underline underline-offset-4"
               >
                 Contact our team

@@ -40,6 +40,11 @@ import {
   loadArtFollowedArtistSlugs,
   loadArtSavedArtworkSlugs,
 } from "@/lib/favorites/art-favorites.server";
+import {
+  fetchHelpArticleBySlug,
+  fetchHelpArticles,
+  fetchHelpCategories,
+} from "@/lib/help/art-help.server";
 import { laxAccountPortalHref } from "@/lib/lax-account-url";
 import type {
   ArtAccountConfigPort,
@@ -48,6 +53,7 @@ import type {
   ArtEditorialPort,
   ArtEditorialSearchPort,
   ArtFavoritesReadPort,
+  ArtHelpPort,
   ArtPortalReadPort,
   ArtViewerPort,
 } from "@/lib/ports";
@@ -60,6 +66,7 @@ export type ArtServices = {
   account: ArtAccountConfigPort;
   editorial: ArtEditorialPort;
   editorialSearch: ArtEditorialSearchPort;
+  help: ArtHelpPort;
   ecosystem: ArtEcosystemPort;
 };
 
@@ -108,6 +115,11 @@ export const artServices: ArtServices = {
   editorialSearch: {
     searchExhibitions: searchEditorialExhibitions,
     searchStories: searchEditorialStories,
+  },
+  help: {
+    listCategories: fetchHelpCategories,
+    listArticles: fetchHelpArticles,
+    getArticle: fetchHelpArticleBySlug,
   },
   ecosystem: { crossProductLinks: loadArtCrossProductFooterLinks },
 };

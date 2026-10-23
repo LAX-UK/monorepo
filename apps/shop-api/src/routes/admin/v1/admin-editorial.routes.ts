@@ -38,6 +38,7 @@ const PreviewTokenBodySchema = Type.Object({
     Type.Literal("exhibition"),
     Type.Literal("story"),
     Type.Literal("page"),
+    Type.Literal("help_article"),
   ]),
   id: Type.String({ format: "uuid" }),
 });
@@ -177,7 +178,7 @@ function adminSubject(request: FastifyRequest): string {
  * A stale save is a 409 that carries the row's current version so the editor can offer to
  * reload or to save again on top of it.
  */
-function sendUpdateOutcome(
+export function sendUpdateOutcome(
   request: FastifyRequest,
   reply: FastifyReply,
   label: string,

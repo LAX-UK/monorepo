@@ -21,6 +21,7 @@ import {
   parseEditorialBlocks,
 } from "@auction/shop-contracts";
 import { eq, inArray, sql } from "drizzle-orm";
+import { seedHelpCentre } from "./help-centre-seed.js";
 
 const SEED_ACTOR = "seed:editorial-showcase";
 const VENUE_SLUG = "lax-marylebone";
@@ -581,7 +582,7 @@ async function seedEditorialJoins(
   });
 }
 
-/** Idempotent venue, exhibitions, stories, pages, placements and joins for local lax.art demos. */
+/** Idempotent venue, exhibitions, stories, pages, placements, joins and Help centre for local lax.art demos. */
 export async function seedEditorialShowcase(db: Database): Promise<void> {
   const now = new Date();
   const venueId = await upsertVenue(db, now);
@@ -801,4 +802,6 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
         },
       });
   }
+
+  await seedHelpCentre(db);
 }

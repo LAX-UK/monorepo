@@ -14,6 +14,7 @@ import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
+import { registerAdminHelpRoutes } from "./routes/admin/v1/admin-help.routes.js";
 import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
@@ -33,6 +34,7 @@ import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
 import { registerBasketRoutes } from "./routes/v1/basket.routes.js";
 import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
 import { registerEditorialRoutes } from "./routes/v1/editorial.routes.js";
+import { registerHelpRoutes } from "./routes/v1/help.routes.js";
 import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
 import { registerPortalConnectRoutes } from "./routes/v1/portal-connect.routes.js";
@@ -130,6 +132,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerArtistRoutes(app, options.deps.catalogue);
   if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
     void registerEditorialRoutes(app, options.deps.editorial);
+    void registerHelpRoutes(app, options.deps.editorial.help);
   }
   if (options.deps.env.SHOP_MERCHANDISE_ENABLED) {
     void registerMerchandiseRoutes(app, options.deps.merchandise);
@@ -166,6 +169,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
               editorialDeps.artCache ?? noopArtCacheInvalidator,
             );
             await registerAdminEditorialRoutes(editorialScope, editorialDeps);
+            await registerAdminHelpRoutes(editorialScope, editorialDeps.help);
           });
         }
         if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
