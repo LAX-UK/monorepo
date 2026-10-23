@@ -1,16 +1,19 @@
-import type { HostedBrandProfile } from "./brand.js";
+import type { HostedBrandProfile, HostedProductChip } from "./brand.js";
 import type { HostedFieldKind } from "./browser/constraints.js";
+import { HOSTED_COPY } from "./copy.js";
 import { hostedFaviconLinkTags } from "./favicons.js";
 import type { HostedAuthFlow } from "./flow-context.js";
 import { productHintHref } from "./flow-context.js";
+import {
+  HOSTED_FONT_FILES,
+  hostedFontPath,
+  hostedLockupPath,
+  hostedLockupWidth,
+} from "./lockups.js";
 import { HOSTED_AUTH_ASSET_VERSION, HOSTED_AUTH_POLICY } from "./policy.js";
-import { HOSTED_AUTH_TOKENS } from "./tokens.js";
 import type { HostedAuthPageConfig } from "./view.js";
 
 export { HOSTED_AUTH_STYLES } from "./styles.js";
-
-const FONT_HREF =
-  "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Outfit:wght@400;500;600&display=swap";
 
 const ALLOWED_INPUT_TYPES = new Set(["text", "email", "tel", "password", "search"]);
 const ALLOWED_AUTOCOMPLETE = new Set([
@@ -236,47 +239,59 @@ export function continuationAnchor(label: string, path: string, flow: HostedAuth
 
 const PRODUCT_BACK_CHEVRON = `<svg class="product-back-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-function hostedBrandLogoMarkup(brand: HostedBrandProfile, assetSuffix: string): string {
-  if (!brand.logoSrc) {
-    return `<p class="brand-mark">${escapeHostedHtml(brand.productName)}</p>`;
-  }
-  const alt = escapeHostedHtml(brand.logoAlt ?? brand.productName);
-  const src = escapeHostedHtml(`${brand.logoSrc}${assetSuffix}`);
-  const invertClass = brand.logoDarkSrc ? "" : " brand-logo--invert-dark";
-  if (brand.logoDarkSrc) {
-    const darkSrc = escapeHostedHtml(`${brand.logoDarkSrc}${assetSuffix}`);
-    return `<picture class="brand-logo-picture">
-      <source srcset="${darkSrc}" media="(prefers-color-scheme: dark)">
-      <img class="brand-logo${invertClass}" src="${src}" alt="${alt}" width="240" height="62">
+const ACCOUNT_LOCKUP_HEIGHT = 44;
+const ACCOUNT_LOCKUP_WIDTH = hostedLockupWidth(ACCOUNT_LOCKUP_HEIGHT);
+
+function accountLockupPicture(assetSuffix: string): string {
+  const light = escapeHostedHtml(`${hostedLockupPath("light")}${assetSuffix}`);
+  const dark = escapeHostedHtml(`${hostedLockupPath("dark")}${assetSuffix}`);
+  return `<picture>
+      <source srcset="${dark}" media="(prefers-color-scheme: dark)">
+      <img class="brand-logo" src="${light}" alt="${escapeHostedHtml(HOSTED_COPY.accountName)}" width="${ACCOUNT_LOCKUP_WIDTH}" height="${ACCOUNT_LOCKUP_HEIGHT}">
     </picture>`;
-  }
-  return `<img class="brand-logo${invertClass}" src="${src}" alt="${alt}" width="201" height="44">`;
+}
+
+function productChipMarkup(chip: HostedProductChip | null): string {
+  if (!chip) return "";
+  return `<p class="product-chip">${escapeHostedHtml(HOSTED_COPY.continueTo)} <strong>${escapeHostedHtml(chip.label)}</strong></p>`;
+}
+
+/** The promise that one sign-in covers every LAX product, with a way to read more when Account is configured. */
+export function oneAccountNote(accountOrigin: string | undefined): string {
+  const learnMore = accountOrigin
+    ? ` <a class="text-link" href="${escapeHostedHtml(accountOrigin.replace(/\/$/, ""))}/">${escapeHostedHtml(HOSTED_COPY.learnMore)}</a>`
+    : "";
+  return `<p class="one-account">${escapeHostedHtml(HOSTED_COPY.oneAccount)}${learnMore}</p>`;
+}
+
+function fontPreloadTags(): string {
+  return Object.values(HOSTED_FONT_FILES)
+    .map(
+      (file) =>
+        `  <link rel="preload" href="${hostedFontPath(file)}?v=${HOSTED_AUTH_ASSET_VERSION}" as="font" type="font/woff2" crossorigin>`,
+    )
+    .join("\n");
 }
 
 export function buildHostedAuthHtml(page: HostedAuthPage): string {
-  const themeClass = `theme-${page.brand.theme}`;
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
-  const logo = hostedBrandLogoMarkup(page.brand, asset);
-  const brandSub = page.brand.logoSrc
-    ? ""
-    : `<p class="brand-sub">${escapeHostedHtml(HOSTED_AUTH_TOKENS.companyName)}</p>`;
+  // Every hosted page is the LAX Account, whichever product the user came from.
+  const logo = accountLockupPicture(asset);
   const brandTagline = page.brand.tagline
     ? `<p class="brand-tagline">${escapeHostedHtml(page.brand.tagline)}</p>`
     : "";
-  const documentTitle = `${page.title} · ${page.brand.productName}`;
+  const documentTitle = `${page.title} · ${HOSTED_COPY.accountName}`;
   const productBack = page.productBack
     ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
   return `<!doctype html>
-<html lang="en" class="${themeClass}">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHostedHtml(documentTitle)}</title>
 ${hostedFaviconLinkTags()}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="${FONT_HREF}">
+${fontPreloadTags()}
   <link rel="stylesheet" href="/hosted-auth.css${asset}">
 </head>
 <body>
@@ -286,10 +301,10 @@ ${hostedFaviconLinkTags()}
     <div class="brand">
       ${logo}
       ${brandTagline}
-      ${brandSub}
     </div>
     <div class="heading">
       <h1>${escapeHostedHtml(page.title)}</h1>
+      ${productChipMarkup(page.brand.chip)}
       ${page.description ? `<p class="lead">${escapeHostedHtml(page.description)}</p>` : ""}
     </div>
     <div class="panel">${page.body}</div>

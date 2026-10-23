@@ -17,12 +17,12 @@ function scriptSrcWithNonce(base: string, nonce: string): string {
 export const AUTH_API_CSP =
   "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
-/** Hosted login/consent HTML: self scripts + stylesheet, Google fonts, issuer logo. */
+/** Hosted login/consent HTML: self scripts, stylesheet, fonts and lockups. */
 export const AUTH_HOSTED_HTML_CSP = [
   "default-src 'none'",
   "script-src 'self'",
-  "style-src 'self' https://fonts.googleapis.com",
-  "font-src https://fonts.gstatic.com",
+  "style-src 'self'",
+  "font-src 'self'",
   "img-src 'self'",
   "connect-src 'self'",
   "form-action 'self'",
@@ -34,8 +34,8 @@ export const AUTH_HOSTED_HTML_CSP = [
 export const AUTH_HOSTED_HTML_CSP_TURNSTILE = [
   "default-src 'none'",
   "script-src 'self' https://challenges.cloudflare.com",
-  "style-src 'self' https://fonts.googleapis.com",
-  "font-src https://fonts.gstatic.com",
+  "style-src 'self'",
+  "font-src 'self'",
   "img-src 'self'",
   "connect-src 'self' https://challenges.cloudflare.com",
   "frame-src https://challenges.cloudflare.com",

@@ -1,8 +1,10 @@
+import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
   floatingInput,
   hostedButton,
+  oneAccountNote,
   passwordField,
   statusRegions,
   turnstileHost,
@@ -21,7 +23,8 @@ function phoneAndSignUp(view: HostedAuthView): string {
     return `<p class="links-secondary staff-access-note">Access is limited to LAX staff accounts. Ask a Shop administrator if you need access.</p>`;
   }
   const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
-  return `<div class="links links--stacked" data-login-chrome="footer">${signUp}</div>`;
+  return `<div class="links links--stacked" data-login-chrome="footer">${signUp}</div>
+    ${oneAccountNote(view.capabilities.accountOrigin)}`;
 }
 
 function magicLinkInsteadButton(view: HostedAuthView): string {
@@ -40,7 +43,7 @@ function emailFirstBody(view: HostedAuthView): string {
     ${socialActions(view)}
     <form id="login-form" class="auth-form" novalidate>
       <div class="auth-step" data-login-step="email">
-        ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
+        ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
         ${hostedButton({ label: "Continue", loadingLabel: "Continue" })}
       </div>
       <div class="auth-step" data-login-step="credentials" hidden>
@@ -53,7 +56,7 @@ function emailFirstBody(view: HostedAuthView): string {
         </div>
         ${passwordField({ id: "password", label: "Password", autocomplete: "current-password" })}
         <div class="field-row-end">${continuationAnchor("Forgot password?", "/forgot-password", view.flow)}</div>
-        ${hostedButton({ label: "Sign In", loadingLabel: "Signing in…" })}
+        ${hostedButton({ label: "Sign in", loadingLabel: "Signing in…" })}
         ${magicLinkInsteadButton(view)}
       </div>
       <div class="auth-step" data-login-step="magic-link-sent" hidden>
@@ -78,10 +81,10 @@ function combinedBody(view: HostedAuthView): string {
   return `<div id="login-root" class="auth-stack" data-email-first="false">
     ${socialActions(view)}
     <form id="login-form" class="auth-form" novalidate>
-      ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${passwordField({ id: "password", label: "Password", autocomplete: "current-password" })}
       <div class="field-row-end">${continuationAnchor("Forgot password?", "/forgot-password", view.flow)}</div>
-      ${hostedButton({ label: "Sign In", loadingLabel: "Signing in…" })}
+      ${hostedButton({ label: "Sign in", loadingLabel: "Signing in…" })}
       ${hostedButton({
         label: "Email me a sign-in link instead",
         type: "button",
@@ -100,8 +103,8 @@ export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSe
   const productBack = resolveHostedProductBackLink(view);
   const description =
     view.flow.audience === "staff"
-      ? "Staff sign-in for the LAX Shop admin dashboard."
-      : `Sign in to continue to ${view.brand.productName}.`;
+      ? "Staff sign-in for LAX Shop Admin."
+      : `Sign in with your ${HOSTED_COPY.accountName}.`;
   return buildHostedAuthHtml({
     title: "Sign in",
     description,

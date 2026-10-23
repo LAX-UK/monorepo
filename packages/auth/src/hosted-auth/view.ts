@@ -1,5 +1,6 @@
 import type { HostedBrandProfile } from "./brand.js";
 import { selectHostedBrand } from "./brand.js";
+import { HOSTED_COPY } from "./copy.js";
 import type { HostedAuthFlow } from "./flow-context.js";
 import { continuationHref, parseHostedAuthFlow } from "./flow-context.js";
 
@@ -118,9 +119,9 @@ export function resolveHostedProductBackLink(view: HostedAuthView): HostedProduc
   const href = origin.replace(/\/$/, "");
   const label =
     view.flow.product === "shop"
-      ? "Back to LAX Shop"
+      ? `Back to ${HOSTED_COPY.products.shop}`
       : view.flow.product === "art"
-        ? "Back to LAX Art"
-        : "Back to LAX Bid";
+        ? `Back to ${HOSTED_COPY.products.art}`
+        : `Back to ${HOSTED_COPY.products.bid}`;
   return { href, label };
 }

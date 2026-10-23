@@ -3,7 +3,12 @@ import {
   HOSTED_AUTH_RUNTIME_SCRIPT,
   HOSTED_AUTH_STYLES,
   HOSTED_FAVICON_ASSET_NAMES,
+  HOSTED_FONT_ASSET_DIR,
+  HOSTED_FONT_BASE_PATH,
+  HOSTED_FONT_FILES,
   HOSTED_FORGOT_PASSWORD_SCRIPT,
+  HOSTED_LOCKUP_ASSET_DIR,
+  HOSTED_LOCKUP_BASE_PATH,
   HOSTED_LOGIN_SCRIPT,
   HOSTED_MAGIC_LINK_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
@@ -15,10 +20,9 @@ import {
   HOSTED_VERIFY_EMAIL_SCRIPT,
   OIDC_CONSENT_SCRIPT,
   hostedFaviconContentType,
-  readHostedBidLogoLightSvg,
-  readHostedBidLogoSvg,
+  hostedLockupFilename,
+  readHostedAssetBytes,
   readHostedFaviconBytes,
-  readHostedShopLogoSvg,
 } from "@auction/auth";
 import type { Hono } from "hono";
 
@@ -44,24 +48,27 @@ export function mountHostedAuthAssets(app: Hono): void {
       "Content-Type": "text/css; charset=utf-8",
     });
   });
-  app.get("/hosted-auth/lax-shop-logo.svg", (c) => {
-    c.header("Cache-Control", cache);
-    return c.body(readHostedShopLogoSvg(), 200, {
-      "Content-Type": "image/svg+xml; charset=utf-8",
+  const lockupFiles = [hostedLockupFilename("light"), hostedLockupFilename("dark")];
+  for (const file of lockupFiles) {
+    app.get(`${HOSTED_LOCKUP_BASE_PATH}/${file}`, (c) => {
+      c.header("Cache-Control", cache);
+      return c.body(
+        new Uint8Array(readHostedAssetBytes(`${HOSTED_LOCKUP_ASSET_DIR}/${file}`)),
+        200,
+        {
+          "Content-Type": "image/svg+xml; charset=utf-8",
+        },
+      );
     });
-  });
-  app.get("/hosted-auth/lax-bid-logo.svg", (c) => {
-    c.header("Cache-Control", cache);
-    return c.body(readHostedBidLogoSvg(), 200, {
-      "Content-Type": "image/svg+xml; charset=utf-8",
+  }
+  for (const file of Object.values(HOSTED_FONT_FILES)) {
+    app.get(`${HOSTED_FONT_BASE_PATH}/${file}`, (c) => {
+      c.header("Cache-Control", cache);
+      return c.body(new Uint8Array(readHostedAssetBytes(`${HOSTED_FONT_ASSET_DIR}/${file}`)), 200, {
+        "Content-Type": "font/woff2",
+      });
     });
-  });
-  app.get("/hosted-auth/lax-bid-logo-light.svg", (c) => {
-    c.header("Cache-Control", cache);
-    return c.body(readHostedBidLogoLightSvg(), 200, {
-      "Content-Type": "image/svg+xml; charset=utf-8",
-    });
-  });
+  }
   for (const name of HOSTED_FAVICON_ASSET_NAMES) {
     const path = `${HOSTED_AUTH_FAVICON_BASE_PATH}/${name}`;
     app.get(path, (c) => {

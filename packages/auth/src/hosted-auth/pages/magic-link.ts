@@ -19,7 +19,7 @@ export function buildHostedMagicLinkHtml(
     brand: view.brand,
     config: view.config,
     body: `<form id="magic-link-form" class="auth-form" novalidate>
-      ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${hostedButton({ label: "Send sign-in link", loadingLabel: "Sending…" })}
       ${turnstileHost()}
       ${statusRegions()}

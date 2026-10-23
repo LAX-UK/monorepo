@@ -1,3 +1,4 @@
+import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
   escapeHostedHtml,
@@ -26,14 +27,14 @@ function setupDescription(
   requiredBy: TwoFactorSetupRequiredBy | null,
 ): string {
   if (requiredBy === "staff") {
-    return "LAX requires two-step verification for staff accounts. Add an authenticator app to continue.";
+    return `LAX requires ${HOSTED_COPY.twoStep.name} for staff accounts. Add an ${HOSTED_COPY.twoStep.app} to continue.`;
   }
   if (requiredBy === "org") {
-    return "Your organisation requires two-step verification. Add an authenticator app to continue.";
+    return `Your organisation requires ${HOSTED_COPY.twoStep.name}. Add an ${HOSTED_COPY.twoStep.app} to continue.`;
   }
   return view.flow.audience === "staff"
-    ? "Shop admin and other staff tools require an authenticator app on your LAX account."
-    : "Add an authenticator app so signing in to your LAX account needs a second step.";
+    ? `LAX Shop Admin and other staff tools require ${HOSTED_COPY.twoStep.name} on your ${HOSTED_COPY.accountName}.`
+    : `Add an ${HOSTED_COPY.twoStep.app} so signing in to your ${HOSTED_COPY.accountName} needs a second step.`;
 }
 
 /**
@@ -57,7 +58,7 @@ export function buildHostedTwoFactorSetupHtml(
   requiredBy: TwoFactorSetupRequiredBy | null = null,
 ): string {
   return buildHostedAuthHtml({
-    title: "Set up authenticator",
+    title: `Set up ${HOSTED_COPY.twoStep.name}`,
     description: setupDescription(view, requiredBy),
     brand: view.brand,
     config: view.config,
@@ -74,13 +75,13 @@ export function buildHostedTwoFactorSetupHtml(
         ${hostedButton({ id: "setup-enable-btn", label: "Continue", loadingLabel: "Preparing…" })}
       </form>
       <section id="setup-enrol" class="auth-form" hidden>
-        <p class="auth-hint">Scan this code with your authenticator app, or enter the key manually.</p>
-        <div id="setup-qr" class="auth-qr" role="img" aria-label="QR code for your authenticator app"></div>
+        <p class="auth-hint">Scan this code with your ${HOSTED_COPY.twoStep.app}, or enter the key manually.</p>
+        <div id="setup-qr" class="auth-qr" role="img" aria-label="QR code for your ${HOSTED_COPY.twoStep.app}"></div>
         <p id="setup-secret" class="auth-mono auth-hint"></p>
         <form id="setup-verify-form" novalidate>
           ${floatingInput({
             id: "setup-totp-code",
-            label: "6-digit code",
+            label: HOSTED_COPY.twoStep.codeLabel,
             inputmode: "numeric",
             autocomplete: "one-time-code",
             minlength: HOSTED_AUTH_POLICY.otpLength,
@@ -116,7 +117,7 @@ function requiredByNotice(requiredBy: readonly TwoFactorSetupRequiredBy[]): stri
 }
 
 /**
- * Manage page for an account that already has an authenticator. It never re-enrols (that
+ * Manage page for an account that already has two-step verification. It never re-enrols (that
  * would silently replace the working secret) and hides "Turn off" while a policy requires it.
  */
 export function buildHostedTwoFactorManageHtml(
@@ -137,9 +138,8 @@ export function buildHostedTwoFactorManageHtml(
         ${hostedButton({ kind: "secondary", label: "Turn off two-step verification", loadingLabel: "Turning off…" })}
       </form>`;
   return buildHostedAuthHtml({
-    title: "Two-step verification is on",
-    description:
-      "You'll be asked for a code from your authenticator app when you sign in. Lost your device? Use a backup code, or contact LAX support to reset it safely.",
+    title: `${HOSTED_COPY.twoStep.title} is on`,
+    description: `You'll be asked for a code from your ${HOSTED_COPY.twoStep.app} when you sign in. Lost your device? Use a backup code, or contact LAX support to reset it safely.`,
     brand: view.brand,
     config: view.config,
     body: `<div class="auth-stack">

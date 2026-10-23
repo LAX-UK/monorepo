@@ -1,10 +1,4 @@
 import { describe, expect, it } from "vitest";
-import {
-  HOSTED_BID_LOGO_LIGHT_PATH,
-  HOSTED_BID_LOGO_PATH,
-  HOSTED_SHOP_LOGO_PATH,
-  selectHostedBrand,
-} from "./hosted-auth/brand.js";
 import { HOSTED_AUTH_RUNTIME_SCRIPT } from "./hosted-auth/runtime.js";
 import { HOSTED_AUTH_STYLES } from "./hosted-auth/styles.js";
 import { hostedAuthViewFromSearch } from "./hosted-auth/view.js";
@@ -54,8 +48,12 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain('class="brand"');
     expect(html).toContain('class="panel"');
     expect(html).toContain('href="/hosted-auth.css');
-    expect(html).toContain("fonts.googleapis.com");
-    expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
+    expect(html).toContain('<html lang="en-GB">');
+    expect(html).not.toContain("fonts.googleapis.com");
+    expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
+    expect(html).toContain("/hosted-auth/lockups/lax-account-dark.svg");
+    expect(html).toContain('alt="LAX Account"');
+    expect(html).toContain("/hosted-auth/fonts/montserrat-latin-wght-normal.woff2");
     expect(html).toContain('class="skip-link"');
     expect(html).toContain("/hosted-auth-runtime.js");
     expect(html).toContain("Enable JavaScript to continue signing in.");
@@ -125,30 +123,31 @@ describe("issuer-hosted credential HTML", () => {
       code: "opaque-consent-code",
     });
     expect(html).toContain('class="panel"');
-    expect(html).toContain("Authorize LAX Shop Web");
+    expect(html).toContain("Authorise LAX Shop Web");
     expect(html).toContain('value="opaque-consent-code"');
     expect(html).toContain('class="actions"');
     expect(html).toContain("btn btn-primary");
     expect(html).toContain("btn btn-secondary");
     expect(html).toContain('<script src="/oidc-consent.js');
-    expect(html).toContain('class="theme-shop"');
-    expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
+    expect(html).toContain("Continue to <strong>LAX Shop</strong>");
   });
 
-  it("uses Bid auth tokens for CTA and page shell", () => {
-    expect(HOSTED_AUTH_STYLES).toContain("--color-cta-bg: #000000");
+  it("uses the shared hosted tokens for CTA and page shell", () => {
+    expect(HOSTED_AUTH_STYLES).toContain("--color-cta-bg: #0f766e");
     expect(HOSTED_AUTH_STYLES).toContain("--color-page-bg: #ffffff");
     expect(HOSTED_AUTH_STYLES).toContain("--auth-column: 528px");
     expect(HOSTED_AUTH_STYLES).toContain("Montserrat");
     expect(HOSTED_AUTH_STYLES).toContain("--control-min: 2.75rem");
   });
 
-  it("applies the Shop mark and email-first sign-in for lax-shop-web", () => {
+  it("wears the LAX Account lockup and names the Shop as the destination for lax-shop-web", () => {
     const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
     const html = buildHostedLoginHtml(view);
-    expect(html).toContain('class="theme-shop"');
-    expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
-    expect(html).toContain("Sign in to continue to LAX Shop.");
+    expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
+    expect(html).toContain('<p class="product-chip">Continue to <strong>LAX Shop</strong></p>');
+    expect(html).not.toContain("lax-shop.svg");
+    expect(html).toContain("Sign in with your LAX Account.");
+    expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
     expect(html).toContain("Continue with Google");
     expect(html).toContain('class="btn-mark"');
     expect(html).toContain('class="btn-label"');
@@ -166,9 +165,8 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).not.toMatch(/href="\/[^"]*state=/);
     expect(html).toContain("data-password-toggle");
     expect(html).toContain("btn-reveal");
-    expect(html).toContain("Email Address");
-    expect(html).not.toContain("bid-logo");
-    expect(html).not.toContain("/shop/lax-shop-logo.svg");
+    expect(html).toContain("Email address");
+    expect(html).not.toContain("lax-bid.svg");
     expect(html).toContain("turnstile-host");
     expect(html).not.toContain("challenges.cloudflare.com");
     expect(view.config.authorizeResumePath).toContain("code_challenge=");
@@ -188,7 +186,7 @@ describe("issuer-hosted credential HTML", () => {
     const html = buildHostedLoginHtml(view);
     expect(html).toContain('data-email-first="false"');
     expect(html).not.toContain('data-login-step="email"');
-    expect(html).toContain("Email Address");
+    expect(html).toContain("Email address");
     expect(html).toContain("Password");
   });
 
@@ -230,17 +228,40 @@ describe("issuer-hosted credential HTML", () => {
   });
 });
 
-describe("selectHostedBrand", () => {
-  it("selects Shop branding only for the registered Shop client", () => {
-    expect(selectHostedBrand("lax-shop-web").theme).toBe("shop");
-    expect(selectHostedBrand("lax-shop-web").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
-    expect(selectHostedBrand("lax-bid-web").theme).toBe("bid");
-    expect(selectHostedBrand("lax-bid-web").logoSrc).toBe(HOSTED_BID_LOGO_PATH);
-    expect(selectHostedBrand("lax-bid-web").logoDarkSrc).toBe(HOSTED_BID_LOGO_LIGHT_PATH);
-    expect(selectHostedBrand("lax-shop-web").logoDarkSrc).toBeNull();
-    expect(selectHostedBrand("lax-shop-admin").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
-    expect(selectHostedBrand("lax-shop-admin").tagline).toBe("Shop Admin");
-    expect(selectHostedBrand("unknown").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
+describe("one-account message", () => {
+  const accountCapabilities = { ...shopCapabilities, accountOrigin: "https://account.example/" };
+
+  it("links Learn more to the Account landing page on sign-in and sign-up", () => {
+    const view = hostedAuthViewFromSearch(shopSearch, accountCapabilities);
+    for (const html of [buildHostedLoginHtml(view), buildHostedSignUpHtml(view)]) {
+      expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
+      expect(html).toContain('href="https://account.example/">Learn more</a>');
+    }
+  });
+
+  it("omits the link, not the message, when the Account origin is not configured", () => {
+    const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
+    expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
+    expect(html).not.toContain("Learn more");
+  });
+});
+
+describe("hosted colour rule", () => {
+  it("never uses Bid's navy for links or focus rings", () => {
+    expect(HOSTED_AUTH_STYLES).not.toMatch(/#0[89]1f5b|#202759|midnight/i);
+    expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #0f766e");
+    expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #2dd4bf");
+    expect(HOSTED_AUTH_STYLES).toContain("--color-link: #191919");
+  });
+
+  it("looks the same for Bid except for the chip", () => {
+    const bid = buildHostedLoginHtml(
+      hostedAuthViewFromSearch("client_id=lax-bid-web", shopCapabilities),
+    );
+    expect(bid).toContain("/hosted-auth/lockups/lax-account.svg");
+    expect(bid).toContain("Continue to <strong>LAX Bid</strong>");
+    expect(bid).not.toContain("lax-bid.svg");
+    expect(bid).not.toContain("theme-bid");
   });
 });
 
@@ -251,16 +272,16 @@ describe("Shop Admin hosted login", () => {
   it("renders staff-only login chrome with logo and tagline", () => {
     const view = hostedAuthViewFromSearch(shopAdminSearch, shopCapabilities);
     const html = buildHostedLoginHtml(view);
-    expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
+    expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
     expect(html).toContain("brand-tagline");
     expect(html).toContain("Shop Admin");
-    expect(html).toContain("Staff sign-in for the LAX Shop admin dashboard.");
+    expect(html).toContain("Staff sign-in for LAX Shop Admin.");
     expect(html).toContain("staff-access-note");
     expect(html).not.toContain("Continue with Google");
     expect(html).not.toContain("Email me a sign-in link instead");
     expect(html).not.toContain("Sign in with phone number");
     expect(html).not.toContain("Don't have an account?");
-    expect(html).toContain("<title>Sign in · LAX Shop Admin</title>");
+    expect(html).toContain("<title>Sign in · LAX Account</title>");
   });
 });
 

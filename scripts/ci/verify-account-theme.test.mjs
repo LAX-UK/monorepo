@@ -65,3 +65,41 @@ describe("Account accent exclusivity", () => {
     }
   });
 });
+
+describe("Hosted sign-in theme contract", () => {
+  const hostedAuthSrc = join(root, "packages/auth/src/hosted-auth");
+
+  function hostedSources(dir = hostedAuthSrc, acc = []) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) hostedSources(full, acc);
+      else if (/\.ts$/.test(entry.name) && !/\.test\.ts$/.test(entry.name)) acc.push(full);
+    }
+    return acc;
+  }
+
+  it("never uses LAX Bid's navy in hosted pages, which are the LAX Account for every product", () => {
+    const BID_ACCENT = /midnight|#0[89]1f5b\b|#202759\b/i;
+    for (const file of hostedSources()) {
+      const match = readFileSync(file, "utf8").match(BID_ACCENT);
+      assert.equal(match, null, `${rel(file)} uses Bid's accent (${match?.[0]}).`);
+    }
+  });
+
+  it("points the hosted link and focus-ring tokens at neutral ink and Account teal", () => {
+    const css = readFileSync(join(hostedAuthSrc, "styles.ts"), "utf8");
+    assert.match(css, /--color-ring: \$\{t\.accent\}/);
+    assert.match(css, /--color-ring: \$\{t\.accentOnDark\}/);
+    assert.match(css, /--color-link: \$\{t\.ink\}/);
+  });
+
+  it("does not load fonts from third parties", () => {
+    for (const file of hostedSources()) {
+      assert.doesNotMatch(
+        readFileSync(file, "utf8"),
+        /fonts\.(googleapis|gstatic)\.com/,
+        rel(file),
+      );
+    }
+  });
+});

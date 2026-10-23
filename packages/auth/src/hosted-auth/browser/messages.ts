@@ -25,7 +25,7 @@ export const HOSTED_AUTH_MESSAGES = {
     "Too many incorrect codes. Two-step verification is locked for a short while. Try again later.",
   MFA_BACKUP_INVALID: "That backup code didn't work. Check it and try again. Each code works once.",
   MFA_SESSION_EXPIRED: "Your sign-in has expired. Reload this page to sign in again.",
-  MFA_ENABLED: "Authenticator added. Save your backup codes before you continue.",
+  MFA_ENABLED: "Two-step verification is on. Save your backup codes before you continue.",
   MFA_CODES_COPIED: "Backup codes copied.",
   MFA_CODES_COPY_FAILED: "Couldn't copy automatically. Select the codes and copy them.",
   MFA_DISABLED: "Two-step verification is off. You can turn it back on at any time.",

@@ -1,16 +1,15 @@
 export { HOSTED_AUTH_TOKENS } from "./tokens.js";
 export { HOSTED_AUTH_STYLES } from "./styles.js";
 export { HOSTED_AUTH_RUNTIME_SCRIPT } from "./runtime.js";
-export { readHostedAsset } from "./assets.js";
 export {
-  HOSTED_BID_LOGO_LIGHT_PATH,
-  HOSTED_BID_LOGO_PATH,
-  HOSTED_SHOP_LOGO_PATH,
   selectHostedBrand,
   selectHostedBrandFromClientName,
-  type HostedAuthTheme,
   type HostedBrandProfile,
+  type HostedProductChip,
 } from "./brand.js";
+export { HOSTED_COPY } from "./copy.js";
+export { describeHostedScopes } from "./scopes.js";
+export { buildHostedErrorHtml, isBrowserNavigation } from "./error-page.js";
 export {
   parseHostedAuthFlow,
   continuationHref,
@@ -23,16 +22,15 @@ export {
 } from "./flow-context.js";
 export { HOSTED_AUTH_POLICY, HOSTED_AUTH_ASSET_VERSION } from "./policy.js";
 export { resolveMagicLinkUrl } from "./magic-link-url.js";
+export { readHostedAssetBytes, readHostedFaviconBytes } from "./assets.js";
 export {
-  readHostedBidLogoLightSvg,
-  readHostedBidLogoSvg,
-  readHostedShopLogoSvg,
-  hostedShopLogoPath,
-  HOSTED_BID_LOGO_LIGHT_FILENAME,
-  HOSTED_BID_LOGO_FILENAME,
-  HOSTED_SHOP_LOGO_FILENAME,
-  readHostedFaviconBytes,
-} from "./assets.js";
+  HOSTED_LOCKUP_ASSET_DIR,
+  HOSTED_LOCKUP_BASE_PATH,
+  HOSTED_FONT_FILES,
+  HOSTED_FONT_ASSET_DIR,
+  HOSTED_FONT_BASE_PATH,
+  hostedLockupFilename,
+} from "./lockups.js";
 export {
   HOSTED_AUTH_FAVICON_BASE_PATH,
   HOSTED_FAVICON_ASSET_NAMES,

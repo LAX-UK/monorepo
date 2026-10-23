@@ -1,8 +1,10 @@
+import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
   floatingInput,
   hostedButton,
+  oneAccountNote,
   passwordField,
   statusRegions,
   turnstileHost,
@@ -20,15 +22,15 @@ export { HOSTED_SIGN_UP_SCRIPT } from "../scripts.js";
 export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
   const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
-    title: "Create account",
-    description: `Create an account to continue to ${view.brand.productName}.`,
+    title: `Create your ${HOSTED_COPY.accountName}`,
+    description: "Create an account once and use it across LAX.",
     brand: view.brand,
     config: view.config,
     body: `<div id="signup-root" class="auth-stack">
       ${socialActions(view)}
       <form id="signup-form" class="auth-form" novalidate>
       ${floatingInput({ id: "name", label: "Full name", autocomplete: "name" })}
-      ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${passwordField({
         id: "password",
         label: "Password",
@@ -40,7 +42,8 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
       ${turnstileHost()}
       ${statusRegions()}
       <div class="links">${continuationAnchor("Already have an account?", "/login", view.flow)}</div>
-    </form></div>`,
+    </form>
+    ${oneAccountNote(view.capabilities.accountOrigin)}</div>`,
     scriptSrc: "/hosted-sign-up.js",
     ...(productBack ? { productBack } : {}),
   });

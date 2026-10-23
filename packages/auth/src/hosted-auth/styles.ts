@@ -1,24 +1,39 @@
+import { HOSTED_FONT_FILES, type HostedFontFile, hostedFontPath } from "./lockups.js";
 import { HOSTED_AUTH_TOKENS as t } from "./tokens.js";
 
+const fontFace = (family: string, file: HostedFontFile) => `@font-face {
+  font-family: "${family}";
+  src: url("${hostedFontPath(file)}") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}`;
+
 /**
- * Issuer-hosted credential CSS — Bid auth chrome / Brand Identity v1.0.
+ * Issuer-hosted credential CSS. Every hosted page is the LAX Account, so the accent is its
+ * teal for all products; navy is LAX Bid's and never appears here (LAX colour rule).
  * Served at `/hosted-auth.css` so CSP can stay `style-src 'self'`.
  * Selectors are scoped to semantic classes so utility controls never inherit CTAs.
  */
-export const HOSTED_AUTH_STYLES = `:root {
+export const HOSTED_AUTH_STYLES = `${fontFace("Montserrat", HOSTED_FONT_FILES.montserrat)}
+
+${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
+
+:root {
   color-scheme: light dark;
   --color-page-bg: ${t.pageBg};
   --color-surface: ${t.surface};
   --color-on-surface: ${t.ink};
   --color-on-surface-variant: ${t.textSecondary};
   --color-border: ${t.border};
-  --color-input-border: ${t.border};
-  --color-link: ${t.midnight};
-  --color-cta-bg: ${t.obsidian};
-  --color-cta-on: ${t.lightCream};
-  --color-error: ${t.red};
-  --color-success: #2ea043;
-  --color-ring: ${t.midnight};
+  --color-input-border: ${t.inputBorder};
+  --color-link: ${t.ink};
+  --color-accent: ${t.accent};
+  --color-cta-bg: ${t.accent};
+  --color-cta-on: ${t.white};
+  --color-error: ${t.errorOnLight};
+  --color-success: ${t.successOnLight};
+  --color-ring: ${t.accent};
   --color-scrim-auth: rgba(0, 0, 0, 0.07);
   --auth-column: 528px;
   --radius: 0.5rem;
@@ -35,13 +50,14 @@ export const HOSTED_AUTH_STYLES = `:root {
     --color-on-surface: ${t.lightCream};
     --color-on-surface-variant: ${t.darkTextSecondary};
     --color-border: ${t.darkBorder};
-    --color-input-border: ${t.darkBorder};
-    --color-link: color-mix(in srgb, ${t.midnight} 60%, white);
-    --color-cta-bg: ${t.lightCream};
+    --color-input-border: ${t.darkInputBorder};
+    --color-link: ${t.lightCream};
+    --color-accent: ${t.accentOnDark};
+    --color-cta-bg: ${t.accentOnDark};
     --color-cta-on: ${t.obsidian};
     --color-error: #ffb4ab;
     --color-success: #56d364;
-    --color-ring: color-mix(in srgb, ${t.midnight} 60%, white);
+    --color-ring: ${t.accentOnDark};
     --color-scrim-auth: rgba(255, 255, 255, 0.06);
   }
 }
@@ -114,25 +130,6 @@ main {
   flex-direction: column;
   align-items: center;
   text-align: center;
-}
-
-.brand-mark {
-  margin: 0;
-  font-size: clamp(1.875rem, 4vw, 2.25rem);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.brand-sub {
-  margin: 0.35rem 0 0;
-  font-family: var(--font-supporting);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--color-link);
 }
 
 .heading {
@@ -355,7 +352,7 @@ h1 {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--color-link) 50%, transparent);
+  border-color: var(--color-ring);
 }
 
 .btn-link {
@@ -369,10 +366,6 @@ h1 {
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  text-decoration: none;
-}
-
-.btn-link:hover {
   text-decoration: underline;
   text-underline-offset: 0.25rem;
 }
@@ -424,7 +417,7 @@ h1 {
 .field-check input {
   width: 1.125rem;
   height: 1.125rem;
-  accent-color: var(--color-cta-bg);
+  accent-color: var(--color-accent);
   flex-shrink: 0;
 }
 
@@ -447,12 +440,13 @@ h1 {
 .text-link,
 .links a {
   color: var(--color-link);
+  text-decoration: underline;
   text-underline-offset: 0.25rem;
 }
 
 .text-link:hover,
 .links a:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 .status-error,
@@ -517,6 +511,34 @@ a:focus-visible {
   display: block;
   height: 2.75rem;
   width: auto;
+  max-width: 100%;
+}
+
+.product-chip {
+  display: inline-block;
+  margin: 0;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-family: var(--font-supporting);
+  font-size: 0.8125rem;
+  color: var(--color-on-surface-variant);
+}
+
+.product-chip strong {
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.one-account {
+  margin: 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+  font-family: var(--font-supporting);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-on-surface-variant);
 }
 
 .brand-tagline {
@@ -526,29 +548,12 @@ a:focus-visible {
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--color-link);
-}
-
-html.theme-shop .brand-mark,
-html.theme-bid .brand-mark,
-html.theme-default .brand-mark {
-  display: none;
+  color: var(--color-on-surface-variant);
 }
 
 .staff-access-note {
   max-width: 28rem;
   line-height: 1.5;
-}
-
-@media (prefers-color-scheme: dark) {
-  .brand-logo.brand-logo--invert-dark {
-    filter: invert(1);
-  }
-}
-
-html.theme-bid .brand-logo {
-  height: 3.5rem;
-  max-width: min(100%, 15rem);
 }
 
 .product-back {
@@ -577,10 +582,6 @@ html.theme-bid .brand-logo {
 
 .product-back-chevron {
   flex-shrink: 0;
-}
-
-.brand-logo-picture {
-  display: block;
 }
 
 .links.links--stacked {
@@ -657,12 +658,6 @@ pre.auth-mono {
   main {
     padding: 2.5rem 1rem 4rem;
     gap: 2rem;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  html.theme-shop .brand-logo {
-    filter: brightness(0) invert(1);
   }
 }
 

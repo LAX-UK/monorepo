@@ -43,7 +43,7 @@ export function buildHostedResendVerificationHtml(
     brand: view.brand,
     config: view.config,
     body: `<form id="resend-form" class="auth-form" novalidate>
-      ${floatingInput({ id: "email", label: "Email Address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${hostedButton({ label: "Send verification email", loadingLabel: "Sending…" })}
       ${statusRegions()}
       <div class="links">${continuationAnchor("Back to sign in", "/login", view.flow)}</div>

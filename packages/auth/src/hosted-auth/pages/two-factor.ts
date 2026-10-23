@@ -1,3 +1,4 @@
+import { HOSTED_COPY } from "../copy.js";
 import { buildHostedAuthHtml, floatingInput, hostedButton, statusRegions } from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
@@ -11,15 +12,15 @@ export function buildHostedTwoFactorHtml(
   view: HostedAuthView = hostedAuthViewFromSearch(""),
 ): string {
   return buildHostedAuthHtml({
-    title: "Two-step verification",
-    description: "Enter the 6-digit code from your authenticator app.",
+    title: HOSTED_COPY.twoStep.title,
+    description: `Enter the 6-digit code from your ${HOSTED_COPY.twoStep.app}.`,
     brand: view.brand,
     config: view.config,
     body: `<div class="auth-stack">
       <form id="totp-form" class="auth-form" novalidate>
         ${floatingInput({
           id: "totp-code",
-          label: "Authenticator code",
+          label: HOSTED_COPY.twoStep.codeLabel,
           inputmode: "numeric",
           autocomplete: "one-time-code",
           minlength: HOSTED_AUTH_POLICY.otpLength,

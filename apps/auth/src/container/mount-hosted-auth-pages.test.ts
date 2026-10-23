@@ -56,14 +56,14 @@ describe("hosted two-factor setup page", () => {
     const html = await response.text();
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(html).toContain("setup-enable-btn");
-    expect(html).not.toContain("Shop admin and other staff tools");
+    expect(html).not.toContain("LAX Shop Admin and other staff tools");
   });
 
   it("keeps the staff explanation for shop-admin", async () => {
     const response = await appWithSession({ user: { twoFactorEnabled: false } }).request(
       "/two-factor/setup?client_id=lax-shop-admin",
     );
-    expect(await response.text()).toContain("Shop admin and other staff tools");
+    expect(await response.text()).toContain("LAX Shop Admin and other staff tools");
   });
 });
 
