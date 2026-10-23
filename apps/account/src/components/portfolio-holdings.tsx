@@ -57,7 +57,7 @@ function WorkTitle({ row }: { row: HoldingRowVm }) {
 function PaidCell({ row }: { row: HoldingRowVm }) {
   return (
     <>
-      {row.item.status === "awaiting_payment" ? (
+      {row.item.status === "awaiting_payment" && row.paid.length > 0 ? (
         <span className="mr-1 text-xs text-on-surface-variant">Due</span>
       ) : null}
       <CurrencyAmounts totals={row.paid} />

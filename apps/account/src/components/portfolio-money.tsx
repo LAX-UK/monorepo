@@ -69,39 +69,60 @@ function SectionBlock({
             : "Nothing counted"}
         </p>
       </div>
-      <Table>
-        <TableCaption className="sr-only">
-          {legalName}: {label.toLowerCase()}, newest first.
-        </TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">Date</TableHead>
-            <TableHead scope="col">Status</TableHead>
-            <TableHead scope="col" className="text-right">
-              Amount
-            </TableHead>
-            <TableHead scope="col">
-              <span className="sr-only">Link</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {section.entries.map((entry) => (
-            <TableRow key={`${entry.business.key}:${entry.id}`}>
-              <TableCell className="whitespace-nowrap">{formatDate(entry.occurredAt)}</TableCell>
-              <TableCell>
-                <EntryStatus entry={entry} />
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {formatMinorUnits(entry.amount, entry.currency)}
-              </TableCell>
-              <TableCell className="text-right">
-                <EntryLink entry={entry} />
-              </TableCell>
+      <div className="hidden md:block">
+        <Table>
+          <TableCaption className="sr-only">
+            {legalName}: {label.toLowerCase()}, newest first.
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Date</TableHead>
+              <TableHead scope="col">Status</TableHead>
+              <TableHead scope="col" className="text-right">
+                Amount
+              </TableHead>
+              <TableHead scope="col">
+                <span className="sr-only">Link</span>
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {section.entries.map((entry) => (
+              <TableRow key={`${entry.business.key}:${entry.id}`}>
+                <TableCell className="whitespace-nowrap">{formatDate(entry.occurredAt)}</TableCell>
+                <TableCell>
+                  <EntryStatus entry={entry} />
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMinorUnits(entry.amount, entry.currency)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <EntryLink entry={entry} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <ul
+        className="flex flex-col divide-y divide-border-hairline md:hidden"
+        aria-label={`${legalName}: ${label.toLowerCase()}`}
+      >
+        {section.entries.map((entry) => (
+          <li key={`${entry.business.key}:${entry.id}`} className="flex flex-col gap-1 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-medium tabular-nums">
+                {formatMinorUnits(entry.amount, entry.currency)}
+              </span>
+              <EntryStatus entry={entry} />
+            </div>
+            <span className="text-xs text-on-surface-variant">{formatDate(entry.occurredAt)}</span>
+            <span className="text-sm">
+              <EntryLink entry={entry} />
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

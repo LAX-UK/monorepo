@@ -39,6 +39,8 @@ Collectors think in **my works and my money**, not in which hostname they used.
 
 **API:** `GET /v1/me/collection` aggregates owned works and document metadata across channels. **Enquiries** use `GET /v1/me/enquiries` with a staff-visible status lifecycle; each row includes the enquiry `message` and `contactPhone` (migration 0212; both nullable). Enquiry requests validate `message` (1–2000 characters) and `contactPhone` (same shape as checkout `deliveryPhone`).
 
+The cross-product view of the same works lives in **LAX Account** (`/account/portfolio`): `shop-api` exposes `GET /v1/me/lax-portfolio` and `GET /v1/me/lax-money` in the shared portfolio contract, readable with `shop.read` or the narrower `lax.portfolio.read` scope that Account exchanges for. See [11-lax-ecosystem-boundary.md](./11-lax-ecosystem-boundary.md#portfolio-contracts-and-account-routes). Shop and lax.art keep their own collection pages as product views.
+
 Presentation uses shared view models in a package consumed by **`apps/shop`** and **`apps/art`** so both sites render the same collection semantics.
 
 ### Favorites

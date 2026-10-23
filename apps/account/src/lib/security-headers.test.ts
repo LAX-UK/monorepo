@@ -25,6 +25,16 @@ describe("securityHeaders", () => {
     expect(dev).toContain("ws:");
   });
 
+  it("allows images from https hosts for product media, and nothing else cross-origin", () => {
+    const csp = value(production, "Content-Security-Policy") ?? "";
+    expect(csp).toContain("img-src 'self' data: https:");
+    expect(csp).not.toContain("http://localhost");
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    const dev = value(securityHeaders({ development: true }), "Content-Security-Policy") ?? "";
+    expect(dev).toContain("http://localhost:*");
+  });
+
   it("sets the referrer, permissions and sniffing policies", () => {
     expect(value(production, "Referrer-Policy")).toBe("strict-origin-when-cross-origin");
     expect(value(production, "Permissions-Policy")).toContain("camera=()");
