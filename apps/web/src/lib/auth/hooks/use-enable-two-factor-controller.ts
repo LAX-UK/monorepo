@@ -1,7 +1,6 @@
 "use client";
 
 import { useConnectedAccounts } from "@/lib/auth/hooks/use-connected-accounts";
-import { notifyTwoFactorEnabledEmail } from "@/lib/auth/security-notify.client";
 import { enableTwoFactorService } from "@/lib/auth/services/enable-two-factor.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
@@ -101,8 +100,6 @@ export function useEnableTwoFactorController() {
       notify.error(r.message);
       return;
     }
-    // 2FA is actually turned on now — this is the right point to notify the user.
-    notifyTwoFactorEnabledEmail();
     await refetchSession();
     setStep("backup");
   });

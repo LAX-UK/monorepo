@@ -6,6 +6,7 @@ import { startIdentityLifecycleReconciliationSchedule } from "../infrastructure/
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
+import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
 
@@ -14,6 +15,7 @@ export async function createAuthSchedules(options: {
   log: pino.Logger;
   identityOperations: { purgeExpiredVerifications(): Promise<number> };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
+  securityEffects: Pick<DurableSecurityEffects, "drain">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
   ssfEnabled: boolean;
@@ -45,6 +47,15 @@ export async function createAuthSchedules(options: {
     service: options.logoutDelivery,
     onError: (err) => {
       options.log.error({ err }, "back-channel logout delivery drain failed");
+      Sentry.captureException(err);
+    },
+  });
+  // Polls at the shortest retry delay so a failed revocation is retried on time.
+  const securityEffects = startBackchannelLogoutSchedule({
+    service: options.securityEffects,
+    intervalMs: 2_000,
+    onError: (err) => {
+      options.log.error({ err }, "auth_security_effect_drain_failed");
       Sentry.captureException(err);
     },
   });
@@ -119,6 +130,7 @@ export async function createAuthSchedules(options: {
       if (ssf) clearInterval(ssf);
       await Promise.allSettled([
         logout.stop(),
+        securityEffects.stop(),
         retention.stop(),
         deletionPurge.stop(),
         lifecycleReconciliation.stop(),

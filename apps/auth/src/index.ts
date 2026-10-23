@@ -16,11 +16,19 @@ import { createIdentityLifecycleService } from "./container/create-identity-life
 import { createIdentityOperationsService } from "./container/create-identity-operations-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
+import {
+  createDurableSecurityEffects,
+  createSecurityNoticeService,
+} from "./container/create-security-services.js";
 import { loadAuthEnv } from "./env.js";
+import { withAlertingLog } from "./infrastructure/alerting-log.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { EmailChangeService } from "./services/email-change.service.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
+
+/** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
+const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -69,6 +77,12 @@ const services = createOidcRouteServices({
     if (outcome !== "delivered") log.warn({ outcome }, "backchannel_logout_delivery_outcome");
   },
 });
+const securityNotices = createSecurityNoticeService({
+  db,
+  email: emailSender,
+  secureAccountUrl: `${(env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, "")}/account/security`,
+  log,
+});
 const auth = createAuthIssuer({
   env,
   db,
@@ -83,17 +97,28 @@ const auth = createAuthIssuer({
     store: identityPorts.twoFactorPolicyStore,
   }),
   identityEventPublisher: repositories.identityEventPublisher,
+  securityNotices,
 });
 const identityOperations = createIdentityOperationsService({
   db,
-  email: emailSender,
+  notices: securityNotices,
   productSubjectUsage,
   identityEventPublisher: repositories.identityEventPublisher,
   logout: services.oidc.logout,
 });
+const durableSecurityEffects = createDurableSecurityEffects({
+  db,
+  ports: {
+    operations: identityOperations,
+    logout: services.oidc.logout,
+    events: repositories.identityEventPublisher,
+  },
+  log: withAlertingLog(log),
+});
 const emailChange = new EmailChangeService({
   operations: identityOperations,
   email: emailSender,
+  notices: securityNotices,
   authSecret: env.BETTER_AUTH_SECRET,
   confirmationPages: {
     bid: `${env.WEB_ORIGIN.replace(/\/+$/, "")}/dashboard/settings/account/confirm`,
@@ -109,18 +134,19 @@ const identityLifecycle = createIdentityLifecycleService({
 });
 const authHandler = createAuthRequestHandler({
   log,
-  events: repositories.identityEventPublisher,
+  durable: durableSecurityEffects,
+  notices: securityNotices,
   sessionStampStore: identityPorts.sessionStampStore,
   readTwoFactorRequirement,
   auth,
   oidcSessions: services.oidc.sessions,
-  logout: services.oidc.logout,
 });
 const schedules = await createAuthSchedules({
   db,
   log,
   identityOperations,
   logoutDelivery: services.oidc.logoutDelivery,
+  securityEffects: durableSecurityEffects,
   ssfStreams: services.ssf.streams,
   ssfDelivery: services.ssf.delivery,
   ssfEnabled: env.SSF_DELIVERY_ENABLED,
@@ -201,6 +227,8 @@ const app = createAuthApp({
     identityOperations,
     emailChange,
     emailSender,
+    securityNotices,
+    durableSecurityEffects,
     phoneVerification,
     authHandler,
     metrics: {

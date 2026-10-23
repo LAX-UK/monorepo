@@ -1,6 +1,7 @@
 import {
   AUTH_RATE_LIMIT_POLICY,
   type EmailSender,
+  type SecurityNoticePublisher,
   type SessionStampStore,
   type SmsSender,
   type createAuth,
@@ -18,6 +19,7 @@ import { cors } from "hono/cors";
 import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
+import { withAlertingLog } from "../infrastructure/alerting-log.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { readAccountSecurityBaseFacts } from "../infrastructure/drizzle-account-security-facts.reader.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
@@ -50,6 +52,7 @@ import { AccountContactService } from "../services/account-contact.service.js";
 import { AccountIdentityService } from "../services/account-identity.service.js";
 import { AccountPhoneService } from "../services/account-phone.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
+import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { EmailChangeService } from "../services/email-change.service.js";
 import type { IdentityOperationsService } from "../services/identity-operations.service.js";
 import { RecentSessionGuard } from "../services/recent-session-guard.js";
@@ -79,6 +82,8 @@ export type OidcRouteMountOptions = {
   identityOperations: IdentityOperationsService;
   emailChange: EmailChangeService;
   emailSender: EmailSender;
+  securityNotices: SecurityNoticePublisher;
+  durableSecurityEffects: Pick<DurableSecurityEffects, "settle">;
   /** The SMS provider the phone plugin sends through; the console in development. */
   phoneVerification: SmsSender;
   authHandler: AuthRequestHandler;
@@ -115,7 +120,10 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     }),
   );
   app.use("/api/auth/*", createAuthNoStoreMiddleware());
-  const rateLimitStore = createResilientSlidingWindowStore(options.redis, options.log);
+  const rateLimitStore = createResilientSlidingWindowStore(
+    options.redis,
+    withAlertingLog(options.log),
+  );
   app.use(
     "/api/auth/*",
     createSendVerificationIssuerRateLimitMiddleware(rateLimitStore, options.clientIp),
@@ -222,10 +230,10 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     createAccountIdentityRoutes({
       clients: services.oidc.confidentialClients,
       tokens: services.oidc.tokenManagement,
-      identity: new AccountIdentityService(
-        { operations: options.identityOperations, logout: services.oidc.logout },
-        options.log,
-      ),
+      identity: new AccountIdentityService({
+        operations: options.identityOperations,
+        durable: options.durableSecurityEffects,
+      }),
       readRateLimit: accountRateLimit("account-identity-read", 120),
       writeRateLimit: accountRateLimit("account-identity-write", 20),
       onFailure: (error) => options.log.error({ err: error }, "account_identity_request_failed"),
@@ -268,8 +276,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       phone: new AccountPhoneService({
         operations: options.identityOperations,
         sms: options.phoneVerification,
-        email: options.emailSender,
-        onNoticeFailure: (error) => options.log.warn({ err: error }, "account_phone_notice_failed"),
+        notices: options.securityNotices,
       }),
       emailChange: options.emailChange,
       readRateLimit: accountRateLimit("account-contact-read", 120),

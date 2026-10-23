@@ -1,4 +1,3 @@
-import type { IEmailService } from "@auction/email";
 import type { IAttributionStore } from "@auction/marketing-events";
 import type {
   IBidPortfolioReader,
@@ -28,7 +27,6 @@ import type { SavedSearchService } from "../services/saved-search.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { UiPreferenceService } from "../services/ui-preference.service.js";
 import type { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
-import type { UserSecurityReadService } from "../services/user-security-read.service.js";
 import type { UserService } from "../services/user.service.js";
 import { UserAccountOnboardingHttpApplicationService } from "../services/user/user-account-onboarding-http-application.service.js";
 import { UserCategoryInterestsHttpApplicationService } from "../services/user/user-category-interests-http-application.service.js";
@@ -71,8 +69,6 @@ export type CreateUserRouteServicesInput = {
   addressService: AddressService;
   sessionRevocation: SessionRevocationService;
   authAuditPublisher: IAuthAuditPublisher;
-  userSecurityReadService: UserSecurityReadService;
-  emailService: Pick<IEmailService, "enqueue">;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
   twoFactorRequirement: UserRouteServices["twoFactorRequirement"];
   staffInvitationAccept: UserRouteServices["staffInvitationAccept"];
@@ -138,9 +134,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
     securityHttp: new UserSecurityHttpApplicationService({
       sessionRevocation: input.sessionRevocation,
       authAuditPublisher: input.authAuditPublisher,
-      userSecurityReadService: input.userSecurityReadService,
       userService: input.userService,
-      emailService: input.emailService,
       accountDeletionEligibilityService: input.accountDeletionEligibilityService,
       attributionStore: input.attributionStore,
     }),

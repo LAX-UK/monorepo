@@ -1,7 +1,6 @@
 import { authClient } from "@/lib/auth-client";
 import { authSubmitFailure, mapBetterAuthSecondaryFailure } from "@/lib/auth/auth-error-code";
 import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
-import { notifyTwoFactorDisabledEmail } from "@/lib/auth/security-notify.client";
 
 export async function disableTwoFactorService(password?: string): Promise<AuthSubmitResult> {
   const res = await authClient.twoFactor.disable(
@@ -17,6 +16,5 @@ export async function disableTwoFactorService(password?: string): Promise<AuthSu
     });
     return authSubmitFailure(code);
   }
-  notifyTwoFactorDisabledEmail();
   return { ok: true };
 }

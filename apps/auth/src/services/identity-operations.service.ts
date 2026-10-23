@@ -131,11 +131,7 @@ export class IdentityOperationsService {
       await this.repositories.sessions.purgeSubjectSessionsAndTokens(transaction, subjectId);
     });
     await this.logout?.revokeSubject(subjectId);
-    await this.notifier.passwordChanged({
-      to: subject.email,
-      subjectId,
-      userName: subject.name,
-    });
+    await this.notifier.passwordChanged({ subjectId });
   }
 
   async stepUpStatus(

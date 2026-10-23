@@ -5,7 +5,6 @@ import { createDrizzleConsentStore } from "./drizzle-consent-store.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";
 import { createDrizzleJwksStore } from "./drizzle-jwks-store.js";
 import { createDrizzlePhoneNumberStore } from "./drizzle-phone-number-store.js";
-import { createDrizzleSessionCountReader } from "./drizzle-session-count-reader.js";
 import { createDrizzleSessionStampStore } from "./drizzle-session-stamp-store.js";
 import { createDrizzleSubjectStatusReader } from "./drizzle-subject-status-reader.js";
 import { createDrizzleTwoFactorPolicyStore } from "./drizzle-two-factor-policy-store.js";
@@ -17,7 +16,6 @@ export type IdentityAuthPorts = {
   sessionStampStore: ReturnType<typeof createDrizzleSessionStampStore>;
   subjectStatusReader: ReturnType<typeof createDrizzleSubjectStatusReader>;
   accountLinkReader: ReturnType<typeof createDrizzleAccountLinkReader>;
-  sessionCountReader: ReturnType<typeof createDrizzleSessionCountReader>;
   phoneNumberStore: ReturnType<typeof createDrizzlePhoneNumberStore>;
   twoFactorPolicyStore: ReturnType<typeof createDrizzleTwoFactorPolicyStore>;
 };
@@ -32,7 +30,6 @@ export function createIdentityAuthPorts(
     sessionStampStore: createDrizzleSessionStampStore(db),
     subjectStatusReader: createDrizzleSubjectStatusReader(db),
     accountLinkReader: createDrizzleAccountLinkReader(db),
-    sessionCountReader: createDrizzleSessionCountReader(db),
     phoneNumberStore: createDrizzlePhoneNumberStore(db),
     twoFactorPolicyStore: createDrizzleTwoFactorPolicyStore(db),
   };

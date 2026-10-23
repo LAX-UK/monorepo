@@ -73,18 +73,6 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     });
   });
 
-  r.post("/me/security-notify/two-factor-enabled", requireAuth, async (c) => {
-    const userId = c.get("userId") as string;
-    const response = await container.userRoutes.securityHttp.notifyTwoFactorEnabled({ userId });
-    return respondUserHttpJson(c, response);
-  });
-
-  r.post("/me/security-notify/two-factor-disabled", requireAuth, async (c) => {
-    const userId = c.get("userId") as string;
-    const response = await container.userRoutes.securityHttp.notifyTwoFactorDisabled({ userId });
-    return respondUserHttpJson(c, response);
-  });
-
   r.post(
     "/me/delete",
     requireAuth,

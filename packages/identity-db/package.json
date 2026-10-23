@@ -28,6 +28,10 @@
       "types": "./dist/schema/ssf.d.ts",
       "default": "./dist/schema/ssf.js"
     },
+    "./schema/security": {
+      "types": "./dist/schema/security.d.ts",
+      "default": "./dist/schema/security.js"
+    },
     "./schema/outbox": {
       "types": "./dist/schema/outbox.d.ts",
       "default": "./dist/schema/outbox.js"

@@ -193,11 +193,7 @@ describe("IdentityOperationsService", () => {
       transaction,
       "subject",
     );
-    expect(notifier.passwordChanged).toHaveBeenCalledWith({
-      to: "old@example.com",
-      subjectId: "subject",
-      userName: "Subject",
-    });
+    expect(notifier.passwordChanged).toHaveBeenCalledWith({ subjectId: "subject" });
   });
 
   it("preserves credential and session step-up errors", async () => {

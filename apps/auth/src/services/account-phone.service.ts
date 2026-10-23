@@ -1,9 +1,8 @@
 import {
-  type EmailSender,
   InvalidPhoneNumberError,
   PhoneVerificationRateLimitedError,
+  type SecurityNoticePublisher,
   type SmsSender,
-  maskPhoneE164,
 } from "@auction/auth";
 import type { ReauthRequired } from "./account-contact.service.js";
 import {
@@ -20,12 +19,11 @@ export type AccountPhoneFailure =
   | "unavailable";
 
 export type AccountPhonePorts = {
-  operations: Pick<IdentityOperationsService, "readSubject" | "listSessions" | "setVerifiedPhone">;
+  operations: Pick<IdentityOperationsService, "listSessions" | "setVerifiedPhone">;
   /** The SMS provider the Better Auth phone plugin sends through (Twilio Verify, or the console in development). */
   sms: SmsSender;
-  email: Pick<EmailSender, "enqueue">;
-  /** Called when the person's email cannot be told about the change; the change still stands. */
-  onNoticeFailure?: (error: unknown) => void;
+  /** Tells the account's email about the change; it never throws and never undoes the change. */
+  notices: SecurityNoticePublisher;
 };
 
 type PhoneResult<T> = ({ ok: true } & T) | { ok: false; kind: AccountPhoneFailure };
@@ -44,7 +42,7 @@ export class AccountPhoneService {
 
   constructor(
     private readonly ports: AccountPhonePorts,
-    now: () => Date = () => new Date(),
+    private readonly now: () => Date = () => new Date(),
   ) {
     this.sessions = new RecentSessionGuard(ports.operations, now);
   }
@@ -77,9 +75,8 @@ export class AccountPhoneService {
     phone: string,
     code: string,
   ): Promise<ReauthRequired | PhoneResult<{ phone: string }>> {
-    if (!(await this.sessions.findRecent(subjectId, currentSessionId))) {
-      return { ok: false, reason: "reauth_required" };
-    }
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
     if (!this.ports.sms.isConfigured()) return { ok: false, kind: "unavailable" };
     try {
       const { valid } = await this.ports.sms.checkOtp(phone, code);
@@ -99,28 +96,13 @@ export class AccountPhoneService {
       }
       throw error;
     }
-    await this.noticeToEmail(subjectId, phone);
+    void this.ports.notices.notify({
+      kind: "phone_verified",
+      userId: subjectId,
+      at: this.now(),
+      phone,
+      userAgent: current.userAgent,
+    });
     return { ok: true, phone };
-  }
-
-  /** Tells the account's email that a number was verified, as the phone plugin does. */
-  private async noticeToEmail(subjectId: string, phone: string): Promise<void> {
-    try {
-      const subject = await this.ports.operations.readSubject(subjectId);
-      if (!subject) return;
-      await this.ports.email.enqueue({
-        template: "new-device-login",
-        to: subject.email,
-        userId: subjectId,
-        category: "auth",
-        vars: {
-          userName: subject.name,
-          whenDisplay: new Date().toUTCString(),
-          deviceSummary: `Phone number verified: ${maskPhoneE164(phone)}`,
-        },
-      });
-    } catch (error) {
-      this.ports.onNoticeFailure?.(error);
-    }
   }
 }

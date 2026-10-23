@@ -1,24 +1,21 @@
 import { emailSubjects } from "@auction/branding";
-import { Layout } from "../components/Layout.js";
+import { SecurityNotice } from "../components/SecurityNotice.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
 export const subject = emailSubjects.twoFactorDisabled;
 
-export default function TwoFactorDisabledEmail({ userName }: TemplateVarsByName["2fa-disabled"]) {
+export default function TwoFactorDisabledEmail(vars: TemplateVarsByName["2fa-disabled"]) {
   return (
-    <Layout
-      category="account"
-      eyebrow="Security"
-      preview="Two-factor authentication was turned off on your account."
-      title="Two-factor disabled"
+    <SecurityNotice
+      {...vars}
+      preview="Two-step verification was turned off for your LAX Account."
+      title="Two-step verification turned off"
     >
-      <TextBlock>Hi {userName || "there"},</TextBlock>
-      <TextBlock>Two-factor authentication (2FA) was turned off on your account.</TextBlock>
       <TextBlock>
-        If you did not make this change, sign in and re-enable 2FA from your security settings, then
-        contact support.
+        Two-step verification was turned off for your LAX Account. Your account is now protected by
+        your password alone. You can turn it back on at any time from your security settings.
       </TextBlock>
-    </Layout>
+    </SecurityNotice>
   );
 }

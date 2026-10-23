@@ -1,25 +1,21 @@
 import { emailSubjects } from "@auction/branding";
-import { Layout } from "../components/Layout.js";
+import { SecurityNotice } from "../components/SecurityNotice.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
 export const subject = emailSubjects.twoFactorEnabled;
 
-export default function TwoFactorEnabledEmail({ userName }: TemplateVarsByName["2fa-enabled"]) {
+export default function TwoFactorEnabledEmail(vars: TemplateVarsByName["2fa-enabled"]) {
   return (
-    <Layout
-      category="account"
-      eyebrow="Security"
-      preview="Two-factor authentication is now enabled on your account."
-      title="Two-factor enabled"
+    <SecurityNotice
+      {...vars}
+      preview="Two-step verification is now on for your LAX Account."
+      title="Two-step verification turned on"
     >
-      <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Two-factor authentication (2FA) was successfully enabled on your account.
+        Two-step verification was turned on for your LAX Account. From now on, signing in needs a
+        code from your authenticator app as well as your password.
       </TextBlock>
-      <TextBlock>
-        If you did not make this change, contact support immediately and secure your account.
-      </TextBlock>
-    </Layout>
+    </SecurityNotice>
   );
 }

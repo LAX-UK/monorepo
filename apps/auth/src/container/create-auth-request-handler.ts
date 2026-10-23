@@ -1,11 +1,14 @@
 import {
-  type IdentityEventPublisher,
+  type SecurityNoticePublisher,
   type SessionStampStore,
   stampMfaCompletedFromResponse,
   stampSocialAuthFromResponse,
 } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
-import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
+import type {
+  DurableSecurityEffects,
+  SecurityEffectJob,
+} from "../services/durable-security-effects.js";
 import {
   type OidcSessionCoordinator,
   createAuthorizationServerErrorResponse,
@@ -33,14 +36,22 @@ export type AuthRequestHandler = (
 
 export type AuthRequestLogger = SecurityEffectLogger;
 
+type ChangeNoticeKind =
+  | "password_changed"
+  | "two_factor_enabled"
+  | "two_factor_disabled"
+  | "backup_codes_regenerated";
+
 export function createAuthRequestHandler(options: {
   log: AuthRequestLogger;
-  events: IdentityEventPublisher;
+  /** Runs revocations and event publication with durable retries; see `DurableSecurityEffects`. */
+  durable: Pick<DurableSecurityEffects, "settle">;
+  /** Emails the person about 2FA, backup code and password changes. Never throws. */
+  notices: SecurityNoticePublisher;
   sessionStampStore: SessionStampStore;
   readTwoFactorRequirement: TwoFactorRequirementReader;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
-  logout: BackchannelLogoutRevoker;
 }): AuthRequestHandler {
   return async (request, authorizationCode = null) => {
     const path = new URL(request.url).pathname;
@@ -52,7 +63,9 @@ export function createAuthRequestHandler(options: {
       path.endsWith("/reset-password") ||
       path.endsWith("/oauth2/endsession");
     const twoFactorSensitive =
-      path.endsWith("/two-factor/disable") || path.endsWith("/two-factor/verify-totp");
+      path.endsWith("/two-factor/disable") ||
+      path.endsWith("/two-factor/verify-totp") ||
+      path.endsWith("/two-factor/generate-backup-codes");
     // Both lookups run before Better Auth changes anything, so failing closed here costs
     // the user a retry and nothing else: without the session we cannot revoke the old
     // sessions afterwards, and without the policy we cannot tell whether 2FA may be turned off.
@@ -84,62 +97,50 @@ export function createAuthRequestHandler(options: {
     const priorSubjectId = priorSession?.user?.id;
     const priorSessionId = priorSession?.session?.id;
     if (response.ok && priorSubjectId) {
+      const userId = priorSubjectId;
+      const settle = (job: SecurityEffectJob, attempt?: () => Promise<void>) =>
+        options.durable.settle(path, job, attempt);
+      // Better Auth has already committed each change below, so a failed side effect must not
+      // become a 500 that hides the backup codes or drops the user's rotated session. Each one
+      // is retried from the durable outbox instead.
+      const notice = (kind: ChangeNoticeKind) => {
+        void options.notices.notify({
+          kind,
+          userId,
+          at: new Date(),
+          userAgent: request.headers.get("user-agent"),
+        });
+      };
       if (path.endsWith("/sign-out") || path.endsWith("/oauth2/endsession")) {
         if (priorSessionId) {
-          await completeSecuritySideEffects([
-            options.events.publish({
-              type: "user.session_revoked",
-              userId: priorSubjectId,
-              sessionId: priorSessionId,
-            }),
-            options.logout.revokeIdentitySessions([priorSessionId]).then(() => undefined),
+          await Promise.all([
+            settle({ kind: "publish_session_revoked", userId, sessionId: priorSessionId }),
+            settle({ kind: "revoke_identity_sessions", userId, sessionIds: [priorSessionId] }),
           ]);
         }
       } else if (logoutSensitive) {
         const effects: Promise<void>[] = [];
         if (path.endsWith("/revoke-sessions")) {
-          effects.push(
-            options.events.publish({
-              type: "user.session_revoked",
-              userId: priorSubjectId,
-            }),
-          );
+          effects.push(settle({ kind: "publish_session_revoked", userId }));
         }
         if (path.endsWith("/change-password")) {
-          effects.push(
-            options.events.publish({
-              type: "user.credential_changed",
-              userId: priorSubjectId,
-              changeType: "update",
-            }),
-          );
+          effects.push(settle({ kind: "publish_credential_changed", userId }));
+          notice("password_changed");
         }
-        effects.push(options.logout.revokeSubject(priorSubjectId).then(() => undefined));
-        await completeSecuritySideEffects(effects);
+        effects.push(settle({ kind: "revoke_subject_tokens", userId }));
+        await Promise.all(effects);
       } else if (priorSessionId && changesTwoFactorState(path, priorSession)) {
-        // Better Auth has already enabled or disabled 2FA, so a failure here must not become
-        // a 500 that hides the backup codes or drops the user's rotated session.
-        const effect = { path, userId: priorSubjectId };
         await Promise.all([
-          settleSecurityEffect(options.log, { ...effect, effect: "revoke_other_sessions" }, () =>
-            revokeOtherIdentitySessions(options.auth, request, response),
+          settle(
+            { kind: "end_other_identity_sessions", userId, keepSessionId: priorSessionId },
+            () => revokeOtherIdentitySessions(options.auth, request, response),
           ),
-          settleSecurityEffect(
-            options.log,
-            { ...effect, effect: "publish_credential_changed" },
-            () =>
-              options.events.publish({
-                type: "user.credential_changed",
-                userId: priorSubjectId,
-                changeType: "update",
-              }),
-          ),
-          settleSecurityEffect(options.log, { ...effect, effect: "revoke_subject_tokens" }, () =>
-            options.logout
-              .revokeSubjectExceptIdentitySession(priorSubjectId, priorSessionId)
-              .then(() => undefined),
-          ),
+          settle({ kind: "publish_credential_changed", userId }),
+          settle({ kind: "revoke_tokens_except_session", userId, keepSessionId: priorSessionId }),
         ]);
+        notice(path.endsWith("/two-factor/disable") ? "two_factor_disabled" : "two_factor_enabled");
+      } else if (path.endsWith("/two-factor/generate-backup-codes")) {
+        notice("backup_codes_regenerated");
       }
     }
     if (
@@ -240,14 +241,4 @@ async function revokeOtherIdentitySessions(
   await auth.api.revokeOtherSessions({
     headers: headersWithResponseSessionCookie(request, response),
   });
-}
-
-async function completeSecuritySideEffects(effects: Promise<void>[]): Promise<void> {
-  const failures = (await Promise.allSettled(effects))
-    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
-    .map((result) => result.reason);
-  if (failures.length === 1) throw failures[0];
-  if (failures.length > 1) {
-    throw new AggregateError(failures, "Multiple authentication security side effects failed");
-  }
 }

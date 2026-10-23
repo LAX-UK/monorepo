@@ -23,7 +23,6 @@ import { ProfileService } from "../services/profile.service.js";
 import { SavedSearchService } from "../services/saved-search.service.js";
 import { StaffInvitationAcceptService } from "../services/staff-invitation-accept.service.js";
 import { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
-import { UserSecurityReadService } from "../services/user-security-read.service.js";
 import { UserService } from "../services/user.service.js";
 import { WatchlistService } from "../services/watchlist.service.js";
 import { DrizzleAdminUserSuspender } from "./adapters/drizzle-admin-user-suspender.js";
@@ -39,7 +38,6 @@ export type ContainerUserProfileServices = {
   requireSubmissionsLegalEntityContext: ReturnType<typeof createSubmissionsLegalEntityContext>;
   watchlistService: WatchlistService;
   userDashboardReadService: UserDashboardReadService;
-  userSecurityReadService: UserSecurityReadService;
   savedSearchService: SavedSearchService;
   artistWatchlistService: ArtistWatchlistService;
   profileService: ProfileService;
@@ -162,7 +160,6 @@ export function createUserProfileServices(
     imageCleanupService,
     identityIssuer,
   );
-  const userSecurityReadService = new UserSecurityReadService(identityIssuer);
   const addressService = new AddressService(addressRepo);
 
   const invitationService = new InvitationService(
@@ -211,7 +208,6 @@ export function createUserProfileServices(
     requireSubmissionsLegalEntityContext,
     watchlistService,
     userDashboardReadService,
-    userSecurityReadService,
     savedSearchService,
     artistWatchlistService,
     profileService,

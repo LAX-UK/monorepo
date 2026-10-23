@@ -11,6 +11,9 @@ const names = [
   "password-changed",
   "2fa-enabled",
   "2fa-disabled",
+  "backup-codes-regenerated",
+  "email-changed",
+  "phone-verified",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -20,6 +23,16 @@ const names = [
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
+
+/** What every LAX Account security notice states: when, on which device, and where to secure the account. */
+type SecurityNoticeVars = {
+  userName?: string | null;
+  /** Europe/London time, formatted by the sender. */
+  whenDisplay: string;
+  /** Browser and system label; absent when the request carried no user agent. */
+  deviceLabel?: string | null;
+  secureAccountUrl: string;
+};
 
 type AuthTemplateVars = {
   "account-suspended": {
@@ -61,14 +74,19 @@ type AuthTemplateVars = {
     userEmail: string;
     userName?: string | null;
   };
-  "password-changed": {
-    userName?: string | null;
+  "password-changed": SecurityNoticeVars;
+  "2fa-enabled": SecurityNoticeVars;
+  "2fa-disabled": SecurityNoticeVars;
+  "backup-codes-regenerated": SecurityNoticeVars;
+  "email-changed": SecurityNoticeVars & {
+    previousEmail: string;
+    newEmail: string;
+    /** Which inbox received this message: the copy differs for the old and the new address. */
+    recipient: "previous" | "new";
   };
-  "2fa-enabled": {
-    userName?: string | null;
-  };
-  "2fa-disabled": {
-    userName?: string | null;
+  "phone-verified": SecurityNoticeVars & {
+    /** Already masked, for example "+44 •••• 1234". */
+    maskedPhone: string;
   };
   "social-account-linked": {
     provider: "google" | "apple";
@@ -78,11 +96,7 @@ type AuthTemplateVars = {
     provider: "google" | "apple";
     userName?: string | null;
   };
-  "new-device-login": {
-    userName?: string | null;
-    whenDisplay?: string | null;
-    deviceSummary?: string | null;
-  };
+  "new-device-login": SecurityNoticeVars;
   "password-changed-elsewhere": {
     userName?: string | null;
   };
@@ -114,6 +128,9 @@ export const authTemplates = {
     "password-changed": "live",
     "2fa-enabled": "live",
     "2fa-disabled": "live",
+    "backup-codes-regenerated": "live",
+    "email-changed": "snapshot",
+    "phone-verified": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",

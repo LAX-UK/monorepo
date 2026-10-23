@@ -22,6 +22,9 @@ import AmlComplianceReviewNoticeEmail, {
 import ArtGeneralEnquiryAlertEmail, {
   subject as artGeneralEnquiryAlertSubject,
 } from "./templates/art-general-enquiry-alert.js";
+import BackupCodesRegeneratedEmail, {
+  subject as backupCodesRegeneratedSubject,
+} from "./templates/backup-codes-regenerated.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import DisputeClosedNoticeEmail, {
@@ -30,6 +33,7 @@ import DisputeClosedNoticeEmail, {
 import DisputeOpenedNoticeEmail, {
   subject as disputeOpenedNoticeSubject,
 } from "./templates/dispute-opened-notice.js";
+import EmailChangedEmail, { subject as emailChangedSubject } from "./templates/email-changed.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
@@ -99,6 +103,7 @@ import PayoutTransferBlockedNoticeEmail, {
 import PayoutTransferFailedNoticeEmail, {
   subject as payoutTransferFailedNoticeSubject,
 } from "./templates/payout-transfer-failed-notice.js";
+import PhoneVerifiedEmail, { subject as phoneVerifiedSubject } from "./templates/phone-verified.js";
 import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
@@ -204,6 +209,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "2fa-disabled": {
     subject: twoFactorDisabledSubject,
     component: (vars) => <TwoFactorDisabledEmail {...vars} />,
+  },
+  "backup-codes-regenerated": {
+    subject: backupCodesRegeneratedSubject,
+    component: (vars) => <BackupCodesRegeneratedEmail {...vars} />,
+  },
+  "email-changed": {
+    subject: emailChangedSubject,
+    component: (vars) => <EmailChangedEmail {...vars} />,
+  },
+  "phone-verified": {
+    subject: phoneVerifiedSubject,
+    component: (vars) => <PhoneVerifiedEmail {...vars} />,
   },
   "social-account-linked": {
     subject: socialAccountLinkedSubject,

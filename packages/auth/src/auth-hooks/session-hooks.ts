@@ -1,41 +1,32 @@
 import { assertUserNotSuspendedForSession } from "../session-suspended-guard.js";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 
+/** Edge headers that carry a country code; a coarse signal, never an address. */
+const REGION_HEADERS = ["cf-ipcountry", "x-vercel-ip-country"] as const;
+
 export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
   return {
     create: {
       before: async (sess: { userId: string }) => {
         await assertUserNotSuspendedForSession(deps.ports.subjectStatusReader, sess.userId);
       },
-      after: async (sess: {
-        userId: string;
-        createdAt: Date;
-        userAgent?: string | null | undefined;
-      }) => {
+      after: async (
+        sess: {
+          userId: string;
+          createdAt: Date;
+          userAgent?: string | null | undefined;
+        },
+        context?: { request?: { headers: Headers } | undefined } | null,
+      ) => {
         if (!deps.enableNewDeviceLoginEmail) return;
-        const sessionCount = await deps.ports.sessionCountReader.countSessionsForUser(sess.userId);
-        if (sessionCount <= 1) return;
-        const userRow = await deps.ports.accountLinkReader.findUserEmailProfile(sess.userId);
-        if (!userRow) return;
-        const when = new Date(sess.createdAt);
-        deps.ports.email
-          ?.enqueue({
-            template: "new-device-login",
-            to: userRow.email,
-            userId: sess.userId,
-            category: "auth",
-            vars: {
-              userName: userRow.name,
-              whenDisplay: when.toUTCString(),
-              deviceSummary: sess.userAgent ?? null,
-            },
-          })
-          .catch((err: unknown) => {
-            console.error("[auth] enqueue new-device-login failed", {
-              userId: sess.userId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          });
+        const headers = context?.request?.headers;
+        void deps.ports.securityNotices?.notify({
+          kind: "sign_in",
+          userId: sess.userId,
+          at: new Date(sess.createdAt),
+          userAgent: sess.userAgent ?? headers?.get("user-agent") ?? null,
+          region: REGION_HEADERS.map((name) => headers?.get(name)?.trim()).find(Boolean) ?? null,
+        });
       },
     },
   };

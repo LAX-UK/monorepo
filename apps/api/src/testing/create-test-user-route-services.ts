@@ -76,8 +76,6 @@ export function createTestUserRouteServicesInput(
       revokeAllForUserExcept: vi.fn(),
     } as never,
     authAuditPublisher: { publish: vi.fn(async () => {}) } as never,
-    userSecurityReadService: { getTwoFactorEnabled: vi.fn() } as never,
-    emailService: { enqueue: vi.fn() } as never,
     accountDeletionEligibilityService: { check: vi.fn() } as never,
     twoFactorRequirement: { readMyRequirement: vi.fn() },
     staffInvitationAccept: { accept: vi.fn() },

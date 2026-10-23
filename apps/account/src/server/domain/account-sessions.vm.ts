@@ -1,5 +1,5 @@
 import type { AccountSession } from "@auction/identity-contracts";
-import { formatDeviceLabel } from "@auction/lax-ecosystem";
+import { formatDeviceLabel } from "@auction/identity-contracts/account";
 
 export type SessionRowVm = {
   id: string;
