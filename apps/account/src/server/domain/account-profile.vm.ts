@@ -9,7 +9,7 @@ export type ProfileFieldVm = { label: string; value: string | null; status?: Pro
 export type ProfileActionVm = { label: string; href: string };
 
 export type ProfileSectionVm = {
-  id: "email" | "phone" | "addresses";
+  id: "email" | "phone";
   title: string;
   fields: ProfileFieldVm[];
   actions: ProfileActionVm[];
@@ -64,15 +64,6 @@ export function buildProfileSections(
       note: "We use it to contact you about your activity. You can't sign in with it.",
     },
   ];
-  if (links.bidSettings) {
-    sections.push({
-      id: "addresses",
-      title: "Address book",
-      fields: [],
-      actions: [{ label: "Update", href: links.bidSettings.addresses }],
-      note: "Your delivery and billing addresses are kept in LAX Bid.",
-    });
-  }
   return sections;
 }
 

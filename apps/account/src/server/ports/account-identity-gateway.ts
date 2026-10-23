@@ -1,4 +1,8 @@
 import type {
+  AccountAddress,
+  AccountAddressDefaultKind,
+  AccountAddressError,
+  AccountAddressInput,
   AccountContactError,
   AccountContactResponse,
   AccountEmailChangeConfirmedResponse,
@@ -16,7 +20,7 @@ import type {
 export type IdentityCallResult<T> =
   | { status: "ok"; value: T }
   | { status: "reauth_required" }
-  | { status: "rejected"; reason: AccountContactError }
+  | { status: "rejected"; reason: AccountContactError | AccountAddressError }
   | { status: "unavailable" };
 
 /** The signed-in person's tokens: the access token names the person, `sid` names the sign-in. */
@@ -51,4 +55,28 @@ export type AccountIdentityGateway = {
   revokeSession(actor: IdentityActor, sessionId: string): Promise<IdentityCallResult<number>>;
   /** Signs out every device except the actor's own. Resolves to how many were ended. */
   revokeOtherSessions(actor: IdentityActor): Promise<IdentityCallResult<number>>;
+  /** The person's saved addresses, oldest first. */
+  listAddresses(actor: IdentityActor): Promise<IdentityCallResult<AccountAddress[]>>;
+  /** Adding, editing and deleting need a recent sign-in; making a default does not. */
+  createAddress(
+    actor: IdentityActor,
+    address: AccountAddressInput,
+  ): Promise<IdentityCallResult<AccountAddress>>;
+  /** `expectedVersion` is the version the person saw; a stale edit is rejected, not applied. */
+  updateAddress(
+    actor: IdentityActor,
+    addressId: string,
+    expectedVersion: number,
+    address: AccountAddressInput,
+  ): Promise<IdentityCallResult<AccountAddress>>;
+  deleteAddress(
+    actor: IdentityActor,
+    addressId: string,
+    expectedVersion: number,
+  ): Promise<IdentityCallResult<true>>;
+  setDefaultAddress(
+    actor: IdentityActor,
+    addressId: string,
+    kind: AccountAddressDefaultKind,
+  ): Promise<IdentityCallResult<AccountAddress>>;
 };

@@ -1,4 +1,5 @@
 import type {
+  AccountAddress,
   AccountContactResponse,
   AccountSecurityFactsResponse,
   AccountSession,
@@ -20,6 +21,8 @@ export type AccountSessionState =
       liveSessions: IdentityCallResult<AccountSession[]> | null;
       /** Present only when requested, and null when the issuer could not answer. */
       liveContact: AccountContactResponse | null;
+      /** Present only when requested; failed when the issuer could not answer. */
+      liveAddresses: IdentityCallResult<AccountAddress[]> | null;
     }
   | { status: "unsigned" }
   /** The session store could not be reached, so the person's state is unknown. */
@@ -45,6 +48,8 @@ export type LoadAccountSessionOptions = {
   withLiveSessions?: boolean;
   /** Ask the issuer for the person's current email and phone, and any email change under way. */
   withLiveContact?: boolean;
+  /** Ask the issuer for the person's saved addresses. */
+  withLiveAddresses?: boolean;
 };
 
 /** Only the pages that show a live fact pay for its extra issuer request. */
@@ -56,11 +61,12 @@ export async function loadAccountSession(
     const record = await loadAccountRecord();
     if (!record) return { status: "unsigned" };
     const actor = { accessToken: record.accessToken, sid: record.sid };
-    const [liveSecurity, liveName, liveSessions, liveContact] = await Promise.all([
+    const [liveSecurity, liveName, liveSessions, liveContact, liveAddresses] = await Promise.all([
       options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
       options.withLiveName ? identity.readName(actor) : null,
       options.withLiveSessions ? identity.listSessions(actor) : null,
       options.withLiveContact ? identity.readContact(actor) : null,
+      options.withLiveAddresses ? identity.listAddresses(actor) : null,
     ]);
     const claims = idTokenClaims(record.idToken);
     return {
@@ -70,6 +76,7 @@ export async function loadAccountSession(
       liveSecurity,
       liveSessions,
       liveContact,
+      liveAddresses,
     };
   } catch (error) {
     // A Redis outage must not look like a sign-out: the person is still signed in, and sending

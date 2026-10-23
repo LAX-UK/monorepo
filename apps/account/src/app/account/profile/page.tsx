@@ -1,6 +1,7 @@
 import { AccountShell } from "@/components/account-shell";
 import { AccountPageHeader } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
+import { AddressBook } from "@/components/address-book.client";
 import { EmailChangeEditor } from "@/components/email-change-editor.client";
 import { PersonalNameForm } from "@/components/personal-name-form.client";
 import { PhoneEditor } from "@/components/phone-editor.client";
@@ -27,11 +28,15 @@ const SECTION_HEADING =
 
 /** Personal details (Figma 950:13732). */
 export default async function PersonalDetailsPage() {
-  const session = await loadAccountSession({ withLiveName: true, withLiveContact: true });
+  const session = await loadAccountSession({
+    withLiveName: true,
+    withLiveContact: true,
+    withLiveAddresses: true,
+  });
   if (session.status === "unavailable")
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.profile} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.profile}`);
-  const { overview, liveContact } = session;
+  const { overview, liveContact, liveAddresses } = session;
   const { config } = getLaxAccountContainer();
   const contact = resolveProfileContact(overview, liveContact);
   const sections = buildProfileSections(
@@ -106,6 +111,25 @@ export default async function PersonalDetailsPage() {
           ) : null}
         </section>
       ))}
+      <section aria-labelledby="addresses-heading" className="space-y-2">
+        <h2 id="addresses-heading" className={`px-4 ${SECTION_HEADING}`}>
+          Addresses
+        </h2>
+        <p className="px-4 text-xs text-on-surface-variant">
+          Your delivery and billing addresses, shared by LAX Bid, LAX Shop and lax.art.
+        </p>
+        {liveAddresses?.status === "ok" ? (
+          <AddressBook
+            addresses={liveAddresses.value}
+            defaultRecipient={overview.name ?? ""}
+            returnTo={ACCOUNT_ROUTES.profile}
+          />
+        ) : (
+          <p role="alert" className="px-4 text-sm text-error">
+            We couldn't load your addresses just now. Please refresh the page to try again.
+          </p>
+        )}
+      </section>
     </AccountShell>
   );
 }

@@ -24,7 +24,7 @@ const contact: ProfileContactVm = {
 describe("buildProfileSections", () => {
   it("masks the email, shows the phone in full and explains how each changes", () => {
     const sections = buildProfileSections(contact, withBid);
-    expect(sections.map((s) => s.id)).toEqual(["email", "phone", "addresses"]);
+    expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);
     expect(sections[0]?.fields[0]).toEqual({
       label: "Email address",
       value: "s***@example.com",
@@ -37,7 +37,6 @@ describe("buildProfileSections", () => {
       status: { label: "Not verified", tone: "neutral" },
     });
     expect(sections[1]?.note).toMatch(/can't sign in with it/);
-    expect(sections[2]?.actions[0]?.href).toBe("https://test.lax.bid/dashboard/settings/addresses");
   });
 
   it("no longer sends people to support to change their email or phone", () => {
