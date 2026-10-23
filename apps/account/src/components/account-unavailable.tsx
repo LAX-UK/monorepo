@@ -17,7 +17,7 @@ export function AccountUnavailable({ retryHref }: { retryHref: string }) {
           changed. Please try again in a moment.
         </p>
         <Button asChild variant="cta" size="lg">
-          <a href={retryHref}>Retry</a>
+          <a href={retryHref}>Try again</a>
         </Button>
       </div>
     </AccountShell>

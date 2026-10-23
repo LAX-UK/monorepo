@@ -37,7 +37,10 @@ export default async function PortfolioMoneyPage({
         backHref={PORTFOLIO_ROUTES.overview}
         backLabel="Back to portfolio"
       />
-      <PortfolioNotices notices={buildSourceNotices(loaded, "money")} />
+      <PortfolioNotices
+        notices={buildSourceNotices(loaded, "money")}
+        retryHref={PORTFOLIO_ROUTES.money}
+      />
       {page.showEmptyState ? (
         <EmptyState
           headingLevel="h2"
