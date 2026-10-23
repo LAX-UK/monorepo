@@ -11,10 +11,10 @@ export function PaymentCompleteBlock() {
       </p>
       <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
       <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
-        Your payment is on file. Track fulfilment above and view this lot in your collection.
+        Your payment is on file. Track fulfilment above and view this lot in your purchases.
       </p>
       <Button asChild variant="secondaryOutline" className="mt-6">
-        <Link href="/dashboard/portfolio">View collection</Link>
+        <Link href="/dashboard/purchases">View purchases</Link>
       </Button>
     </output>
   );

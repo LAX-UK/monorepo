@@ -33,8 +33,8 @@ export function ActingAsTooltip({ initiallyVisible }: Props) {
     >
       <p className="text-sm font-medium">You can act on behalf of others</p>
       <p className="mt-1 text-sm text-on-surface-variant">
-        Switch the current legal entity from this menu to bid, consign, or manage payouts on behalf
-        of an organisation you belong to.
+        Switch between yourself and your organisations from this menu to bid, consign, or manage
+        payouts for them.
       </p>
       <div className="mt-3 flex justify-end">
         <Button type="button" onClick={handleDismiss} disabled={pending}>

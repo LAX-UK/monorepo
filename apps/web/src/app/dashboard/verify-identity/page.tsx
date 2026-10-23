@@ -2,13 +2,29 @@ import { VerifyIdentityClient } from "@/app/dashboard/verify-identity/verify-ide
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
+import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
+import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Verify identity",
 };
 
-export default async function VerifyIdentityPage() {
+type PageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+/**
+ * Identity checks live in the onboarding flow. This page remains only as the verifier for
+ * deployments where that flow is switched off: `/onboarding/identity` sends people here in
+ * that case, so redirecting unconditionally would loop.
+ */
+export default async function VerifyIdentityPage({ searchParams }: PageProps) {
+  if (isIdentityOnboardingEnabled()) {
+    const { next } = await searchParams;
+    redirect(dashboardIdentityOnboardingHref(next));
+  }
   const kyc = await getServerKycStatusSummary();
   return (
     <DashboardPage className="space-y-8">

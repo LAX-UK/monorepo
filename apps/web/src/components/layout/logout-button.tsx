@@ -33,7 +33,7 @@ export function LogoutButton({
       className={className}
       {...rest}
     >
-      {pending ? "Signing out…" : "Log out"}
+      {pending ? "Signing out…" : "Sign out"}
     </Button>
   );
 }

@@ -22,7 +22,7 @@ describe("BuyerOnboardingRouteError", () => {
     expect(screen.getByRole("heading", { name: /couldn’t load your interests/i })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
     expect(reset).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("link", { name: /return to dashboard/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /go to my bids/i })).toHaveAttribute(
       "href",
       "/dashboard",
     );

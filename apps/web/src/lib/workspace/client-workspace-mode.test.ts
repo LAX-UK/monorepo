@@ -1,4 +1,5 @@
 import {
+  clientWorkspaceHomePath,
   clientWorkspaceOverviewMeta,
   clientWorkspacePageMeta,
   isClientBuyingPath,
@@ -29,7 +30,7 @@ describe("resolveClientWorkspaceMode", () => {
   it("forces buying on collector list routes", () => {
     expect(resolveClientWorkspaceMode("/dashboard/bids", "selling")).toBe("buying");
     expect(resolveClientWorkspaceMode("/dashboard/watchlist", "selling")).toBe("buying");
-    expect(resolveClientWorkspaceMode("/dashboard/artist-follow", "selling")).toBe("buying");
+    expect(resolveClientWorkspaceMode("/dashboard/purchases", "selling")).toBe("buying");
   });
 
   it("keeps cookie on neutral routes", () => {
@@ -40,7 +41,14 @@ describe("resolveClientWorkspaceMode", () => {
 
   it("classifies path prefixes", () => {
     expect(isClientSellingPath("/dashboard/submissions/abc")).toBe(true);
-    expect(isClientBuyingPath("/dashboard/portfolio")).toBe(true);
+    expect(isClientBuyingPath("/dashboard/purchases")).toBe(true);
     expect(isClientBuyingPath("/dashboard")).toBe(false);
+  });
+});
+
+describe("clientWorkspaceHomePath", () => {
+  it("opens My bids when buying and the seller overview when selling", () => {
+    expect(clientWorkspaceHomePath("buying")).toBe("/dashboard/bids");
+    expect(clientWorkspaceHomePath("selling")).toBe("/dashboard/seller");
   });
 });

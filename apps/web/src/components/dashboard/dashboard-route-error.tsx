@@ -21,8 +21,8 @@ export default function DashboardRouteError({
       error={error}
       reset={reset}
       title={title}
-      homeHref={DASHBOARD_ROUTES.overview}
-      homeLabel={DASHBOARD_CTA.openOverview}
+      homeHref={DASHBOARD_ROUTES.home}
+      homeLabel={DASHBOARD_CTA.openHome}
     />
   );
 }

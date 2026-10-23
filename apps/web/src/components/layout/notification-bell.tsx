@@ -146,13 +146,6 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
             >
               View all notifications
             </Link>
-            <Link
-              href="/dashboard"
-              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:text-link"
-              onClick={closeMenu}
-            >
-              Open dashboard
-            </Link>
           </div>
         </ChromePopoverPanel>
       ) : null}

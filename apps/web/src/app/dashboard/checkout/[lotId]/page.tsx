@@ -54,7 +54,7 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
   }
   const auction = lotR.value;
   if (!auction || auction.winnerId !== user.id) {
-    redirect("/dashboard/portfolio?notice=not-winner");
+    redirect("/dashboard/purchases?notice=not-winner");
   }
 
   const fulfilment = fulfilmentR.status === "fulfilled" ? fulfilmentR.value : null;
@@ -137,8 +137,8 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
           <div className="mx-auto min-w-0 max-w-xl lg:mx-0">
             <DashboardDetailHeader
               title={auction.title}
-              backHref="/dashboard/portfolio"
-              backLabel="Back to collection"
+              backHref="/dashboard/purchases"
+              backLabel="Back to purchases"
               compactOnMobile
               sticky={false}
               className="mb-8 border-0 bg-transparent px-0 py-0 backdrop-blur-none lg:mb-10"
@@ -169,7 +169,7 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
                           href={
                             settlementsEmail()
                               ? `mailto:${settlementsEmail()}`
-                              : "/dashboard/portfolio"
+                              : "/dashboard/purchases"
                           }
                         >
                           Contact support
@@ -207,7 +207,7 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
             <p className="mt-8 font-body text-sm text-on-surface-variant lg:mt-10">
               After payment, your lot moves to{" "}
               <Link
-                href="/dashboard/portfolio"
+                href="/dashboard/purchases"
                 className="font-medium text-link underline-offset-4 hover:underline"
               >
                 Collection

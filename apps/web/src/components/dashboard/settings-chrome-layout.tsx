@@ -1,6 +1,8 @@
 import { SettingsInsetNav } from "@/components/dashboard/settings-inset-nav";
 import { SettingsMobileHeader } from "@/components/dashboard/settings-mobile-nav";
 import { SETTINGS_CONTENT_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
+import { laxAccountPortalOrigin } from "@/lib/lax-account-portal-redirect.server";
+import { laxAccountHref } from "@/lib/navigation/account-menu-model";
 import { Surface } from "@auction/ui/components/surface";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -19,10 +21,13 @@ export function SettingsChromeLayout({ children, spaceY = 6 }: Props) {
       ? "h-12 animate-pulse rounded-xl bg-surface-container-high/50 lg:hidden"
       : "h-48 animate-pulse rounded-xl bg-surface-container-high/50 lg:hidden";
 
+  const origin = laxAccountPortalOrigin();
+  const accountHref = origin ? laxAccountHref(origin) : null;
+
   return (
     <div className={`screen w-full ${outerSpace}`}>
       <Suspense fallback={<div className={mobileFallbackClass} aria-hidden />}>
-        <SettingsMobileHeader />
+        <SettingsMobileHeader accountHref={accountHref} />
       </Suspense>
       <div className="lg:grid lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)] lg:items-start lg:gap-10">
         <aside className="hidden shrink-0 lg:sticky lg:top-24 lg:block lg:self-start">
@@ -35,7 +40,7 @@ export function SettingsChromeLayout({ children, spaceY = 6 }: Props) {
                 />
               }
             >
-              <SettingsInsetNav />
+              <SettingsInsetNav accountHref={accountHref} />
             </Suspense>
           </Surface>
         </aside>

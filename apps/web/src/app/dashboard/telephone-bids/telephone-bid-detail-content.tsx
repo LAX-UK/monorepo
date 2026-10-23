@@ -76,7 +76,9 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
           status: 404,
           title: "Could not load booking",
           message: loadError,
-          actions: [{ kind: "navigate", label: "Back to list", href: "/dashboard/telephone-bids" }],
+          actions: [
+            { kind: "navigate", label: "Back to list", href: "/dashboard/bids#telephone-bids" },
+          ],
         }}
       />
     );
@@ -151,7 +153,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wider text-on-surface-variant">
-              Authorized max
+              Authorised max
             </dt>
             <dd className="mt-1 text-on-surface">
               {booking.authorizedMax
@@ -236,7 +238,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
 
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/telephone-bids">Back to list</Link>
+          <Link href="/dashboard/bids#telephone-bids">Back to list</Link>
         </Button>
         {canCancel ? (
           <Button variant="secondary" size="sm" disabled={pending} onClick={onCancel}>

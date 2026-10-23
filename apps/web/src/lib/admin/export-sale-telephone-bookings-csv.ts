@@ -8,7 +8,7 @@ const COLUMNS = [
   { key: "email", header: "Email" },
   { key: "phone", header: "Phone" },
   { key: "status", header: "Status" },
-  { key: "authorizedMax", header: "Authorized max" },
+  { key: "authorizedMax", header: "Authorised max" },
   { key: "requestedAt", header: "Requested at" },
 ] as const;
 

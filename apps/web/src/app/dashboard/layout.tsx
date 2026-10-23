@@ -101,6 +101,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <ClientShell
         user={user}
         orgModuleEnabled={orgModuleEnabled}
+        isOrgMember={actingContext.memberships.some((m) => m.kind === "organisation")}
         clientWorkspaceMode={clientWorkspaceMode}
         sellerConnectNavBadge={sellerConnectNavBadge}
         cookieDensity={cookieDensity}

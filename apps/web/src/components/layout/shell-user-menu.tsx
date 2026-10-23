@@ -1,18 +1,19 @@
 "use client";
 
+import { AccountMenuItems, useAccountMenuGroups } from "@/components/layout/account-menu-items";
 import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-shell-nav";
-import { accountNavLinks } from "@/components/layout/header-account-nav";
 import { LogoutButton } from "@/components/layout/logout-button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { DensityTweakSection, ThemeTweakSection } from "@/components/layout/tweaks-popover";
 import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronDown, Globe2 } from "lucide-react";
-import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -29,15 +30,17 @@ function initials(name: string, email: string): string {
 
 function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
   if (!panel) return [];
-  return [...panel.querySelectorAll<HTMLElement>("[data-shell-menu-item]")];
+  return [...panel.querySelectorAll<HTMLElement>("[data-account-menu-item]")];
 }
 
 type ShellUserMenuProps = {
   user: SessionUser;
   role: AppShellRole;
+  /** Which workspace the client is in; selling swaps "Selling" for "Back to buying". */
+  clientWorkspaceMode?: ClientWorkspaceMode;
 };
 
-export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
+export function ShellUserMenu({ user, role, clientWorkspaceMode = "buying" }: ShellUserMenuProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -102,7 +105,7 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
   const roleMeta = appShellRoleMeta[role];
   const rolePillLabel = shellRolePillLabel(user);
   const isClient = role === "client";
-  const navLinks = isClient ? accountNavLinks(user) : [];
+  const groups = useAccountMenuGroups(user, clientWorkspaceMode, isClient);
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -150,7 +153,7 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
           id={MENU_ID}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(100vw-2rem,18rem)] overflow-hidden rounded-lg border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 max-h-[calc(100dvh-5rem)] w-[min(100vw-2rem,18rem)] overflow-y-auto overscroll-contain rounded-lg border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]"
           onKeyDown={onPanelKeyDown}
         >
           <div className="border-b border-shell-stroke px-4 py-3">
@@ -171,41 +174,29 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
             </div>
           </div>
 
-          <div className="border-b border-shell-stroke px-4 py-4">
-            <p className="mb-3 font-label text-xs font-semibold uppercase tracking-[0.18em] text-on-surface">
-              Display settings
-            </p>
-            {/* Staff shell also exposes theme via header ThemeToggle; menu is secondary. */}
-            <div className="flex flex-col gap-5">
-              <DensityTweakSection />
-              <ThemeTweakSection />
+          {!isClient ? (
+            <div className="border-b border-shell-stroke px-4 py-4">
+              <p className="mb-3 font-label text-xs font-semibold uppercase tracking-[0.18em] text-on-surface">
+                Display settings
+              </p>
+              <div className="flex flex-col gap-5">
+                <DensityTweakSection />
+                <ThemeTweakSection />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {isClient ? (
             <div className="border-b border-shell-stroke py-1">
-              {navLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  role="menuitem"
-                  data-shell-menu-item=""
-                  className="block px-4 py-2.5 font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none"
-                  onClick={closeMenu}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <Link
-                href="/"
-                role="menuitem"
-                data-shell-menu-item=""
-                className="flex items-center gap-2 px-4 py-2.5 font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none"
-                onClick={closeMenu}
-              >
-                <Globe2 className="size-4 shrink-0" aria-hidden />
-                Browse LAX.bid
-              </Link>
+              <AccountMenuItems groups={groups} variant="shell" menu onNavigate={closeMenu} />
+            </div>
+          ) : null}
+
+          {isClient ? (
+            // The client header has no theme toggle, so keep dark mode one click away.
+            <div className="flex items-center justify-between border-b border-shell-stroke px-4 py-1.5">
+              <span className="font-label text-sm font-medium text-on-surface">Dark mode</span>
+              <ThemeToggle surface="shell" />
             </div>
           ) : null}
 
@@ -213,7 +204,7 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
             <LogoutButton
               onBeforeNavigate={closeMenu}
               role="menuitem"
-              data-shell-menu-item=""
+              data-account-menu-item=""
               className="block w-full px-4 py-2.5 text-left font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>

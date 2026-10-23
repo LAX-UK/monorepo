@@ -17,24 +17,20 @@ export const DASHBOARD_CTA = {
   browseCatalogue: "Browse catalogue",
   newSubmission: "New submission",
   tryAgain: "Try again",
-  openOverview: "Open overview",
+  openHome: "Go to My bids",
   signInAgain: "Sign in again",
   contactSupport: "Contact support",
   usePersonalProfile: "Use personal profile",
   sellerWorkspace: "Seller workspace",
   openPayoutSetup: "Open payout setup",
   itemsInSale: "View items in sale",
-  myPayments: "View my payments",
   myOrganisations: "Organisations",
 } as const;
 
 export const DASHBOARD_ROUTES = {
-  overview: "/dashboard",
+  home: "/dashboard",
   bids: "/dashboard/bids",
-  conditionReports: "/dashboard/condition-reports",
-  telephoneBids: "/dashboard/telephone-bids",
-  portfolio: "/dashboard/portfolio",
-  payments: "/dashboard/payments",
+  purchases: "/dashboard/purchases",
   watchlist: "/dashboard/watchlist",
   artistFollow: "/dashboard/watchlist?section=artists",
   notifications: "/dashboard/notifications",
@@ -77,13 +73,9 @@ export const DASHBOARD_EMPTY = {
     title: "No bids yet",
     description: "When you place bids on live lots, they will appear here.",
   },
-  portfolio: {
-    title: "Your collection is empty",
-    description: "Lots you win at auction will show up in your private collection.",
-  },
-  payments: {
-    title: "No payments yet",
-    description: "Payment records for lots you win will appear here.",
+  purchases: {
+    title: "No purchases yet",
+    description: "Lots you win at auction, and their invoices, will appear here.",
   },
   watchlist: {
     title: "Your watchlist is empty",
@@ -126,7 +118,7 @@ export const DASHBOARD_EMPTY = {
   },
   checkout: {
     title: "Your checkout basket is empty",
-    description: "Add lots from your portfolio or won items to pay in one session.",
+    description: "Add won lots from your purchases to pay in one session.",
   },
   notifications: {
     title: "No notifications",

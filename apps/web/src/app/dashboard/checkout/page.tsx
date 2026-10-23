@@ -120,10 +120,10 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           variant="hero"
           icon={<Gavel aria-hidden />}
           title="Your basket is empty"
-          description="Open your collection and start checkout on any won lot — each lot is settled through its own invoice."
+          description="Open your purchases and start checkout on any won lot — each lot is settled through its own invoice."
           action={
             <Button variant="primary" asChild>
-              <Link href="/dashboard/portfolio">Open collection</Link>
+              <Link href="/dashboard/purchases">Open purchases</Link>
             </Button>
           }
         />
@@ -132,11 +132,11 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
       {hadRawButNoValidUuids ? (
         <DashboardErrorAlert
           title="This link looks invalid"
-          message="The basket URL did not contain valid lot identifiers. Open your collection to build a basket again."
+          message="The basket URL did not contain valid lot identifiers. Open your purchases to build a basket again."
         >
           <p className="font-body text-sm">
-            <Link href="/dashboard/portfolio" className="text-link underline">
-              Open your collection
+            <Link href="/dashboard/purchases" className="text-link underline">
+              Open your purchases
             </Link>
           </p>
         </DashboardErrorAlert>
@@ -145,10 +145,10 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
       {notice === "not-winner" ? (
         <DashboardErrorAlert
           title="Some lots were not in your basket"
-          message="Lots in the URL are not assigned to you as the winning bidder. Open your collection to start checkout from a won lot."
+          message="Lots in the URL are not assigned to you as the winning bidder. Open your purchases to start checkout from a won lot."
         >
           <Button variant="secondaryOutline" asChild>
-            <Link href="/dashboard/portfolio">Open collection</Link>
+            <Link href="/dashboard/purchases">Open purchases</Link>
           </Button>
         </DashboardErrorAlert>
       ) : null}
@@ -156,10 +156,10 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
       {fetchFailureCount > 0 ? (
         <DashboardErrorAlert
           title="Some lots could not load"
-          message={`${fetchFailureCount} lot${fetchFailureCount === 1 ? "" : "s"} could not be loaded. Try again or open your collection.`}
+          message={`${fetchFailureCount} lot${fetchFailureCount === 1 ? "" : "s"} could not be loaded. Try again or open your purchases.`}
         >
           <Button variant="secondaryOutline" asChild>
-            <Link href="/dashboard/portfolio">Open collection</Link>
+            <Link href="/dashboard/purchases">Open purchases</Link>
           </Button>
         </DashboardErrorAlert>
       ) : null}

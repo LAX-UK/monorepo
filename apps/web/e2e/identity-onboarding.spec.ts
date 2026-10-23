@@ -60,7 +60,9 @@ test.describe("identity onboarding @journey", () => {
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/watchlist/);
 
+    // /dashboard lands on My bids, where account alerts sit behind one compact button.
     await page.goto("/dashboard");
+    await page.getByTestId("dashboard-alerts-preview").click();
     await expect(page.getByRole("link", { name: /identity|verification/i }).first()).toBeVisible();
   });
 

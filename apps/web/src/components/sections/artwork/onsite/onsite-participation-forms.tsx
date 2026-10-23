@@ -395,7 +395,7 @@ export function OnsiteTelephoneBidForm({
               name="authorizedMax"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Authorized maximum (optional)</FormLabel>
+                  <FormLabel>Authorised maximum (optional)</FormLabel>
                   <FormControl>
                     <Input {...field} className={fieldClass} placeholder="e.g. £5,000" />
                   </FormControl>

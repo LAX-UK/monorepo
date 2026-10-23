@@ -55,12 +55,12 @@ export const NOT_FOUND_PRESETS = {
     illustration: "notFound" as const,
   },
   dashboard: {
-    kicker: "404 · Dashboard",
-    title: "That section doesn't exist",
+    kicker: "404 · Bid",
+    title: "That page doesn't exist",
     description:
-      "The dashboard URL you opened isn't a known route. Return to the overview or browse the catalogue.",
-    primaryHref: "/dashboard",
-    primaryLabel: "Open dashboard",
+      "The address you opened isn't a known page. Go to My bids or browse the catalogue.",
+    primaryHref: "/dashboard/bids",
+    primaryLabel: "Go to My bids",
     secondaryHref: "/search",
     secondaryLabel: "Browse catalogue",
     illustration: "lots" as const,
@@ -93,8 +93,8 @@ export const ROUTE_ERROR_PRESETS = {
   },
   dashboard: {
     title: "Something went wrong",
-    homeHref: "/dashboard",
-    homeLabel: "Open overview",
+    homeHref: "/dashboard/bids",
+    homeLabel: "Go to My bids",
   },
   admin: {
     title: "Admin hiccup",

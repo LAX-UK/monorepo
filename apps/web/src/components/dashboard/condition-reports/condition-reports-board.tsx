@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { StatusChip } from "@/components/ui/status-chip";
 import type { BuyerConditionReportRequestVM } from "@/lib/condition-report/map-buyer-condition-report-requests.vm";
 import { cn } from "@auction/ui";
@@ -15,20 +14,6 @@ type Props = {
 };
 
 export function ConditionReportsBoard({ rows, className }: Props) {
-  if (rows.length === 0) {
-    return (
-      <DashboardEmptyState
-        title="No condition report requests yet"
-        description="When you request a specialist report on a live lot, it will appear here with status and download links."
-        action={
-          <Button asChild variant="outline">
-            <Link href="/search">Browse lots</Link>
-          </Button>
-        }
-      />
-    );
-  }
-
   return (
     <div className={cn("space-y-3", className)}>
       <div className="hidden md:block">

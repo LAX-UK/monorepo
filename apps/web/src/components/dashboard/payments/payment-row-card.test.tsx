@@ -17,7 +17,7 @@ const sampleRow: PaymentDisplayRow = {
   createdAtLabel: "12 May 2025",
   createdAtIso: "2025-05-12T00:00:00.000Z",
   status: "authorized",
-  statusLabel: "Authorized",
+  statusLabel: "Authorised",
   statusTone: "info",
   primaryAction: { kind: "pay", href: "/dashboard/checkout/l1", label: "Pay now" },
   invoiceNumber: "INV-001",
@@ -34,7 +34,7 @@ describe("PaymentRowCard", () => {
 
     expect(screen.getByRole("link", { name: "Blue Canvas Study" })).toBeInTheDocument();
     expect(screen.getByText("£14,814.80")).toBeInTheDocument();
-    expect(screen.getByText("Authorized")).toBeInTheDocument();
+    expect(screen.getByText("Authorised")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pay now" })).toBeInTheDocument();
   });
 });
@@ -45,7 +45,7 @@ describe("PaymentsMobileList", () => {
 
     const list = screen.getByRole("list");
     expect(within(list).getByText("£14,814.80")).toBeInTheDocument();
-    expect(within(list).getByText("Authorized")).toBeInTheDocument();
+    expect(within(list).getByText("Authorised")).toBeInTheDocument();
     expect(within(list).getByRole("link", { name: "Pay now" })).toBeInTheDocument();
   });
 });

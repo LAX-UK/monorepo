@@ -87,8 +87,8 @@ describe("buildShellConfig", () => {
       clientWorkspaceMode: "buying",
     });
     expect(config.mobileNav.map((t) => t.id)).toEqual([
-      "overview",
       "bids",
+      "purchases",
       "watchlist",
       "notifications",
       "more",

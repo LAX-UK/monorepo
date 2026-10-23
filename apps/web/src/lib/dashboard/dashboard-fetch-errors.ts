@@ -98,22 +98,22 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   conditionReports: {
     title: "Could not load condition reports",
     message: () => "Something went wrong while loading your condition report requests. Try again.",
-    retryHref: DASHBOARD_ROUTES.conditionReports,
+    retryHref: DASHBOARD_ROUTES.bids,
   },
   telephoneBids: {
     title: "Could not load telephone bookings",
     message: () => "Something went wrong while loading your telephone bookings. Try again.",
-    retryHref: DASHBOARD_ROUTES.telephoneBids,
+    retryHref: DASHBOARD_ROUTES.bids,
   },
   portfolio: {
-    title: "Could not load collection",
-    message: () => "Something went wrong while loading your collection. Try again.",
-    retryHref: DASHBOARD_ROUTES.portfolio,
+    title: "Could not load purchases",
+    message: () => "Something went wrong while loading your purchases. Try again.",
+    retryHref: DASHBOARD_ROUTES.purchases,
   },
   payments: {
     title: "Could not load payments",
     message: () => "Something went wrong while loading your payments. Try again.",
-    retryHref: DASHBOARD_ROUTES.payments,
+    retryHref: DASHBOARD_ROUTES.purchases,
   },
   watchlist: {
     title: "Could not load watchlist",
@@ -128,7 +128,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   activeLots: {
     title: "Could not load live inventory",
     message: () => "Something went wrong while loading live lots. Try again.",
-    retryHref: DASHBOARD_ROUTES.overview,
+    retryHref: DASHBOARD_ROUTES.home,
   },
   notifications: {
     title: "Could not load notifications",
@@ -338,7 +338,7 @@ export function describeSessionsOverviewError(code: string | null): DashboardSli
     message: (code && messages[code]) ?? "Could not load your active sessions.",
     actions: [
       { kind: "navigate", label: "Open settings", href: "/dashboard/settings/sessions" },
-      { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.overview },
+      { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.home },
     ],
   };
 }

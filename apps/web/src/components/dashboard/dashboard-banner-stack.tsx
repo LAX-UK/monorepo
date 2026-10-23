@@ -40,10 +40,8 @@ type StackProps = {
   compactOverflow?: boolean;
   /** Skip org entity status banner (e.g. org detail layout renders its own). */
   suppressOrgStatusBanner?: boolean;
-  /** Skip KYC banner on overview when ComplianceStatusStrip covers it. */
-  suppressKycOnOverview?: boolean;
-  /** Skip email banner on overview when ComplianceStatusStrip covers deliverability. */
-  suppressEmailOnOverview?: boolean;
+  /** Skip the KYC banner where the page is already the verifier. */
+  suppressKyc?: boolean;
   /** Skip connect_pending entity banner when user is on payout setup page. */
   suppressConnectPendingEntityBanner?: boolean;
 };
@@ -61,8 +59,7 @@ export function DashboardBannerStack({
   maxVisible = 2,
   compactOverflow = false,
   suppressOrgStatusBanner = false,
-  suppressKycOnOverview = false,
-  suppressEmailOnOverview = false,
+  suppressKyc = false,
   suppressConnectPendingEntityBanner = false,
 }: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
@@ -74,7 +71,7 @@ export function DashboardBannerStack({
       signupPersona: user.signupPersona,
     });
 
-  if (kycSummary && (kycSummary.requiresKyc || proactiveKyc) && !suppressKycOnOverview) {
+  if (kycSummary && (kycSummary.requiresKyc || proactiveKyc) && !suppressKyc) {
     candidates.push({
       id: "kyc",
       priority: DASHBOARD_BANNER_PRIORITIES.kyc,
@@ -110,7 +107,7 @@ export function DashboardBannerStack({
     });
   }
 
-  if (shouldOfferEmailStatusBanner(user) && !suppressEmailOnOverview) {
+  if (shouldOfferEmailStatusBanner(user)) {
     candidates.push({
       id: "email",
       priority: DASHBOARD_BANNER_PRIORITIES.email,

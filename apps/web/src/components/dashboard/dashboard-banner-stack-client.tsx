@@ -20,16 +20,9 @@ import { BellRing } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 
-export function resolveDashboardBannerSuppressions(
-  pathname: string,
-  kycOnboardingEnabled: boolean,
-): { suppressKyc: boolean; suppressEmail: boolean } {
-  return {
-    suppressKyc:
-      pathname.startsWith("/dashboard/verify-identity") ||
-      (pathname === "/dashboard" && !kycOnboardingEnabled),
-    suppressEmail: pathname === "/dashboard",
-  };
+/** The legacy verifier page is itself the identity check, so it needs no banner pointing at it. */
+export function shouldSuppressKycBanner(pathname: string): boolean {
+  return pathname.startsWith("/dashboard/verify-identity");
 }
 
 export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
@@ -38,10 +31,7 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
   const suppressOrgStatus = isDashboardOrgDetailRoute(pathname);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  const { suppressKyc, suppressEmail } = resolveDashboardBannerSuppressions(
-    pathname,
-    props.kycOnboardingEnabled ?? false,
-  );
+  const suppressKyc = shouldSuppressKycBanner(pathname);
 
   const suppressConnectPending = shouldSuppressConnectPendingEntityBanner(pathname);
 
@@ -49,11 +39,10 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
     (): DashboardBannerStackProps => ({
       ...props,
       suppressOrgStatusBanner: suppressOrgStatus,
-      suppressKycOnOverview: suppressKyc,
-      suppressEmailOnOverview: suppressEmail,
+      suppressKyc,
       suppressConnectPendingEntityBanner: suppressConnectPending,
     }),
-    [props, suppressOrgStatus, suppressKyc, suppressEmail, suppressConnectPending],
+    [props, suppressOrgStatus, suppressKyc, suppressConnectPending],
   );
 
   const alertCount = useMemo(() => countBannerCandidates(stackProps), [stackProps]);
@@ -111,7 +100,7 @@ function countBannerCandidates(props: DashboardBannerStackProps): number {
       summary: props.kycSummary,
       signupPersona: props.user.signupPersona,
     });
-  if (offerKyc && !props.suppressKycOnOverview) count += 1;
+  if (offerKyc && !props.suppressKyc) count += 1;
   if (props.orgModuleEnabled && props.orgOnboardingResume) count += 1;
   const showEntityStatus =
     props.orgModuleEnabled &&
@@ -122,10 +111,9 @@ function countBannerCandidates(props: DashboardBannerStackProps): number {
     count += 1;
   }
   if (
-    !props.suppressEmailOnOverview &&
-    (props.user.emailStatus === "bounced" ||
-      props.user.emailStatus === "complained" ||
-      props.user.emailVerified === false)
+    props.user.emailStatus === "bounced" ||
+    props.user.emailStatus === "complained" ||
+    props.user.emailVerified === false
   ) {
     count += 1;
   }

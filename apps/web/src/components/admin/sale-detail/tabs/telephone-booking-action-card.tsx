@@ -52,7 +52,7 @@ export function TelephoneBookingActionCard({ saleId, row }: Props) {
           </p>
           {row.authorizedMax ? (
             <p className="font-body text-xs text-on-surface-variant">
-              Authorized max: {formatMoney(row.authorizedMax)}
+              Authorised max: {formatMoney(row.authorizedMax)}
             </p>
           ) : null}
           {row.buyerNotes ? (

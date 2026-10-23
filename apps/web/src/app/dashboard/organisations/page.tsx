@@ -1,5 +1,6 @@
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { OrgSubmittedAlert } from "@/components/dashboard/org-submitted-alert";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
 import { InvitationCardList } from "@/components/organisations/invitation-card-list";
@@ -97,7 +98,8 @@ export default async function OrganisationsHubPage() {
   return (
     <DashboardListPage
       meta={workspaceMeta}
-      title="Organisations"
+      title="Your organisations"
+      banner={orgModuleEnabled ? <OrgSubmittedAlert /> : null}
       description="Manage organisations you belong to, respond to invitations, and continue setup."
       actions={
         <Button asChild variant="cta" size="sm">

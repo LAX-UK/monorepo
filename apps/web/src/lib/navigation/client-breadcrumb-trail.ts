@@ -8,18 +8,15 @@ import { settingsSectionLabel } from "@/lib/navigation/settings-section-labels";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
 const CLIENT_SEGMENT_LABELS: Record<string, string> = {
-  "verify-identity": "Verify identity",
   checkout: "Checkout",
   organisations: "Organisations",
   invitations: "Invitations",
   settings: "Settings",
   seller: "Seller",
   submissions: "Submissions",
-  portfolio: "Collection",
-  payments: "My payments",
-  watchlist: "Watchlist",
-  bids: "My Bids",
-  "artist-follow": "Followed artists",
+  purchases: "Purchases",
+  watchlist: "Watching",
+  bids: "My bids",
   notifications: "Notifications",
 };
 
@@ -44,7 +41,7 @@ function inferClientParentHref(pathname: string): string | undefined {
     return "/dashboard/organisations";
   }
   if (section === "checkout" && segments.length > 2) {
-    return "/dashboard/portfolio";
+    return "/dashboard/purchases";
   }
   if (section === "seller" && segments.length > 2) {
     return "/dashboard/seller";
@@ -59,7 +56,6 @@ function inferClientParentHref(pathname: string): string | undefined {
 
 function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceMode): string {
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length <= 1) return "Dashboard";
 
   const section = segments[1] ?? "";
   if (segments.length === 2) {
@@ -115,7 +111,6 @@ function buildOrganisationTrail(segments: string[]): BreadcrumbItem[] | null {
   if (!orgId || !tabLabel) return null;
 
   return [
-    { label: "Dashboard", href: "/dashboard" },
     { label: "Organisations", href: "/dashboard/organisations" },
     { label: "Organisation", href: `/dashboard/organisations/${orgId}` },
     { label: tabLabel },
@@ -127,14 +122,12 @@ function buildInvitationsTrail(segments: string[]): BreadcrumbItem[] | null {
   const action = segments[2];
   if (action === "review") {
     return [
-      { label: "Dashboard", href: "/dashboard" },
       { label: "Invitations", href: "/dashboard/invitations" },
       { label: "Review invitation" },
     ];
   }
   if (action === "accept") {
     return [
-      { label: "Dashboard", href: "/dashboard" },
       { label: "Invitations", href: "/dashboard/invitations" },
       { label: "Accept invitation" },
     ];
@@ -150,7 +143,7 @@ function buildLegalEntityStatementTrail(
     return null;
   }
 
-  const items: BreadcrumbItem[] = [{ label: "Dashboard", href: "/dashboard" }];
+  const items: BreadcrumbItem[] = [];
   if (workspace === "selling") {
     items.push({ label: "Selling", href: "/dashboard/seller" });
   }
@@ -164,19 +157,7 @@ export function buildClientBreadcrumbTrail(
   pathname: string,
   clientWorkspaceMode: ClientWorkspaceMode = "buying",
 ): BreadcrumbItem[] {
-  if (pathname === "/dashboard") {
-    return [{ label: "Dashboard" }];
-  }
-
   const segments = pathname.split("/").filter(Boolean);
-
-  if (segments[1] === "verify-identity") {
-    return [
-      { label: "Dashboard", href: "/dashboard" },
-      { label: "Settings", href: "/dashboard/settings" },
-      { label: "Verify identity" },
-    ];
-  }
 
   const orgTrail = buildOrganisationTrail(segments);
   if (orgTrail) return orgTrail;
@@ -190,9 +171,9 @@ export function buildClientBreadcrumbTrail(
   const parent = getRouteParentLabel(pathname, "client" as AppShellRole, clientWorkspaceMode);
   const current = resolveClientCurrentLabel(pathname, clientWorkspaceMode);
 
-  const items: BreadcrumbItem[] = [{ label: "Dashboard", href: "/dashboard" }];
+  const items: BreadcrumbItem[] = [];
 
-  if (parent && parent !== current && parent !== "Dashboard") {
+  if (parent && parent !== current) {
     const parentHref = inferClientParentHref(pathname);
     if (parentHref) {
       items.push({ label: parent, href: parentHref });
@@ -201,7 +182,7 @@ export function buildClientBreadcrumbTrail(
     }
   }
 
-  if (current && current !== "Dashboard") {
+  if (current) {
     items.push({ label: current });
   }
 
