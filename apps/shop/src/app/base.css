@@ -277,13 +277,3 @@ html.dark {
   --color-destructive: var(--color-error);
   --color-destructive-foreground: var(--color-on-error);
 }
-
-.shop-logo {
-  display: inline-flex;
-  line-height: 0;
-}
-
-html.dark .shop-logo__mark,
-[data-header-tone="on-dark"] .shop-logo__mark {
-  filter: brightness(0) invert(1);
-}

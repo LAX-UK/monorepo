@@ -9,12 +9,15 @@ import {
   LAX_LOCKUP_KINDS,
   type LaxLockupKind,
   laxLockup,
+  laxLockupAutoSvg,
   laxLockupColors,
   laxLockupFileName,
   laxLockupSvg,
 } from "../src/lockup/lockup.js";
+import { WORDMARK_COPIES } from "../src/lockup/wordmark-copies.js";
 
 const PUBLISHED = join(import.meta.dirname, "../public/lockups");
+const REPO_ROOT = join(import.meta.dirname, "../../..");
 const SCHEMES = ["light", "dark"] as const;
 const PRODUCTS = ["bid", "shop", "art", "account"] as const;
 
@@ -109,11 +112,32 @@ describe("gavel mark", () => {
   });
 
   it("keeps the gavel out of every published non-Bid file", () => {
-    for (const kind of ["mark", "shop", "art", "account"] as const) {
-      for (const scheme of SCHEMES) {
+    for (const kind of ["mark", "exchange", "shop", "art", "account"] as const) {
+      for (const scheme of [...SCHEMES, "auto"] as const) {
         const file = readFileSync(join(PUBLISHED, laxLockupFileName(kind, scheme)), "utf8");
         for (const d of gavelPaths) expect(file).not.toContain(d);
       }
+    }
+  });
+});
+
+describe("exchange lockup", () => {
+  it("is the plain mark followed by the three tagline lines, all in ink", () => {
+    const exchange = laxLockup("exchange");
+    expect(exchange.label).toBe("LAX London Art Exchange");
+    expect(exchange.descriptor).toBeNull();
+    expect(exchange.descriptorPaths).toEqual([]);
+    expect(exchange.ink.slice(0, 3).map((path) => path.d)).toEqual([...LAX_MARK_INK_PATHS]);
+    // London, Art Exchange(R), Marylebone.
+    expect(exchange.ink).toHaveLength(LAX_MARK_INK_PATHS.length + 3);
+    expect(exchange.mist).toHaveLength(1);
+  });
+
+  it("keeps the slash one fixed mist grey in both schemes and the tagline neutral", () => {
+    for (const scheme of SCHEMES) {
+      const colors = laxLockupColors("exchange", scheme);
+      expect(colors.mist).toBe("#b9bac0");
+      expect(colors.descriptor).toBe(colors.ink);
     }
   });
 });
@@ -146,6 +170,24 @@ describe("published lockup files", () => {
         const file = readFileSync(join(PUBLISHED, laxLockupFileName(kind, scheme)), "utf8");
         expect(file, laxLockupFileName(kind, scheme)).toBe(laxLockupSvg(kind, scheme));
       }
+    }
+  });
+
+  it("keeps every served copy of the London Art Exchange lockup identical to the published file", () => {
+    for (const { path, variant } of WORDMARK_COPIES) {
+      const copy = readFileSync(join(REPO_ROOT, path), "utf8");
+      const source = readFileSync(join(PUBLISHED, laxLockupFileName("exchange", variant)), "utf8");
+      expect(copy, path).toBe(source);
+    }
+  });
+
+  it("publish an auto file per lockup that switches colour with the operating system", () => {
+    for (const kind of LAX_LOCKUP_KINDS) {
+      const file = readFileSync(join(PUBLISHED, laxLockupFileName(kind, "auto")), "utf8");
+      expect(file, kind).toBe(laxLockupAutoSvg(kind));
+      expect(file).toContain("@media(prefers-color-scheme:dark)");
+      // Colours live in the stylesheet, so the file can recolour as one.
+      expect(file).not.toMatch(/ fill="/);
     }
   });
 

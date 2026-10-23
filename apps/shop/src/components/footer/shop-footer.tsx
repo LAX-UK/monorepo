@@ -1,10 +1,10 @@
-import { ShopLaxLogo } from "@/components/layout/shop-lax-logo";
 import { ShopAuthLink } from "@/components/shop-auth-link";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { buildShopFooterVm } from "@/lib/shop-footer.vm";
 import { FOCUS_RING, siteCopyrightLine } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { LaxLogo } from "@auction/marketing-ui";
 import {
   MarketingFooter,
   type MarketingFooterLink,
@@ -55,7 +55,7 @@ export function ShopFooter({
       headingId="shop-footer-heading"
       logo={
         <Link href="/" className={cn("inline-flex", FOCUS_RING)} aria-label="LAX Shop home">
-          <ShopLaxLogo variant="footer" className="shop-footer__logo" />
+          <LaxLogo className="shop-footer__logo" />
         </Link>
       }
       columns={vm.columns}

@@ -1,34 +1,20 @@
-import { LAX_LOGO_DIMENSIONS, LAX_LOGO_PUBLIC_PATH } from "@auction/branding";
 import { cn } from "@auction/ui";
-import Image from "next/image";
+import { LaxLockup } from "./lax-lockup.js";
 
 export type LaxLogoProps = {
-  variant?: "header" | "footer";
-  /** When true, inverts the mark for dark header/footer bands. */
-  inverted?: boolean;
+  /** Size the wordmark with the wrapper's CSS (the SVG scales to its height). */
   className?: string;
-  /** Override asset path (Shop may keep /shop/lax-shop-logo.svg until migrated). */
-  src?: string;
 };
 
-export function LaxLogo({
-  variant = "header",
-  inverted = false,
-  className,
-  src = LAX_LOGO_PUBLIC_PATH,
-}: LaxLogoProps) {
-  const { width, height } = LAX_LOGO_DIMENSIONS[variant];
+/**
+ * The "London Art Exchange" wordmark for the Shop and Art headers and footers. It is the inline
+ * vector lockup, so the ink follows `.lax-logo`'s colour (see marketing-header.css): the header
+ * tone over a hero image, the site theme and the OS setting all recolour it with no image filter.
+ */
+export function LaxLogo({ className }: LaxLogoProps) {
   return (
-    <span className={cn("shop-logo", inverted && "shop-logo--inverted", className)}>
-      <Image
-        src={src}
-        alt=""
-        width={width}
-        height={height}
-        priority={variant === "header"}
-        unoptimized
-        className="shop-logo__mark"
-      />
+    <span className={cn("lax-logo", className)}>
+      <LaxLockup kind="exchange" />
     </span>
   );
 }

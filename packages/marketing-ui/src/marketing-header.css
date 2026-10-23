@@ -106,3 +106,19 @@
   color: var(--color-hero-foreground);
   border-color: color-mix(in srgb, var(--color-hero-foreground) 25%, transparent);
 }
+
+/* The wordmark is an inline SVG that paints with currentColor, so its tone is set here. */
+.lax-logo {
+  display: block;
+  line-height: 0;
+  color: var(--color-brand-900);
+}
+
+html.dark .lax-logo {
+  color: var(--color-on-surface);
+}
+
+[data-header-tone="on-dark"] .lax-logo,
+html.dark [data-header-tone="on-dark"] .lax-logo {
+  color: var(--color-hero-foreground);
+}
