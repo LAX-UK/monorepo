@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import { LAX_PRODUCT_IDS } from "./product-directory.js";
 
 /**
@@ -162,3 +163,15 @@ export const LaxMoneyResponseV1 = Type.Object({
   partial: Type.Optional(Type.Boolean()),
 });
 export type LaxMoneyResponseV1 = Static<typeof LaxMoneyResponseV1>;
+
+/**
+ * Validates a product's response body against the contract. A consumer that renders money must
+ * not trust a body that only looks right, so anything off-contract is null rather than coerced.
+ */
+export function parseLaxPortfolioResponse(body: unknown): LaxPortfolioResponseV1 | null {
+  return Value.Check(LaxPortfolioResponseV1, body) ? body : null;
+}
+
+export function parseLaxMoneyResponse(body: unknown): LaxMoneyResponseV1 | null {
+  return Value.Check(LaxMoneyResponseV1, body) ? body : null;
+}
