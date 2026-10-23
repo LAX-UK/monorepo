@@ -6,7 +6,17 @@ export const LAX_RESOURCE_IDS = {
 
 export type LaxResourceId = (typeof LAX_RESOURCE_IDS)[keyof typeof LAX_RESOURCE_IDS];
 
-export type ProductScope = "bid.read" | "bid.write" | "shop.read" | "shop.write" | "shop.admin";
+/**
+ * `lax.portfolio.read` is the narrow, read-only scope LAX Account exchanges for to list a
+ * person's own works and money. Each product accepts it on its portfolio routes only.
+ */
+export type ProductScope =
+  | "bid.read"
+  | "bid.write"
+  | "shop.read"
+  | "shop.write"
+  | "shop.admin"
+  | "lax.portfolio.read";
 
 export type LaxResourceMetadata = {
   id: LaxResourceId;
@@ -23,7 +33,7 @@ export const LAX_RESOURCES: Record<LaxResourceId, LaxResourceMetadata> = {
   [LAX_RESOURCE_IDS.LAX_BID_API]: {
     id: LAX_RESOURCE_IDS.LAX_BID_API,
     uri: "https://api.lax.bid",
-    allowedScopes: ["bid.read", "bid.write"],
+    allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read"],
   },
   [LAX_RESOURCE_IDS.LAX_WS]: {
     id: LAX_RESOURCE_IDS.LAX_WS,
@@ -33,7 +43,7 @@ export const LAX_RESOURCES: Record<LaxResourceId, LaxResourceMetadata> = {
   [LAX_RESOURCE_IDS.LAX_SHOP_API]: {
     id: LAX_RESOURCE_IDS.LAX_SHOP_API,
     uri: "https://shop.lax.art/api",
-    allowedScopes: ["shop.read", "shop.write", "shop.admin"],
+    allowedScopes: ["shop.read", "shop.write", "shop.admin", "lax.portfolio.read"],
   },
 };
 
