@@ -49,14 +49,15 @@ export default async function PortfolioWorkPage({
         backHref={PORTFOLIO_ROUTES.overview}
         backLabel="Back to portfolio"
       />
-      <PortfolioNotices notices={buildSourceNotices(loaded, "items")} />
+      <PortfolioNotices notices={buildSourceNotices(loaded, "items")} retryHref={here} />
       {item ? (
         <PortfolioWorkDetail
           work={buildWorkDetail(item, getLaxAccountContainer().config.mediaOrigins)}
         />
       ) : (
-        <p className="text-sm text-on-surface-variant">
-          We couldn't load this work right now. Please try again in a moment.
+        <p className="text-sm leading-6 text-on-surface-variant">
+          This work may be there, but the product that holds it isn't answering, so we can't show it
+          yet. Nothing has changed.
         </p>
       )}
     </AccountShell>

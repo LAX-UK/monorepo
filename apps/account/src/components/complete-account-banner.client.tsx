@@ -1,12 +1,13 @@
 "use client";
 
+import { NoticeTitle } from "@/components/account-ui";
 import {
   browserLocalStorage,
   dismissCompleteAccountPrompt,
   isCompleteAccountPromptDismissed,
 } from "@/lib/complete-account-dismissal";
 import { MarketingCloseIcon, MarketingInfoIcon } from "@auction/marketing-ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { useEffect, useState } from "react";
 
@@ -40,11 +41,11 @@ export function CompleteAccountBanner({ gapsKey, href }: { gapsKey: string; href
       </Button>
       <MarketingInfoIcon />
       <div>
-        <AlertTitle className="font-semibold">You're almost ready</AlertTitle>
+        <NoticeTitle>You're almost ready</NoticeTitle>
         <AlertDescription>Add a few more details to complete your account.</AlertDescription>
         <a
           href={href}
-          className="mt-3 inline-flex min-h-11 items-center font-label text-xs font-semibold tracking-[var(--text-label-caps-tracking)] uppercase underline-offset-4 hover:underline focus-visible:outline-current"
+          className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4 focus-visible:outline-current"
         >
           Complete account
         </a>

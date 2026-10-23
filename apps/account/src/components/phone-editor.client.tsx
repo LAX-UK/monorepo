@@ -113,7 +113,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
   if (step.kind === "enter") {
     return (
       <form
-        className="mx-4 space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+        className="space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -170,7 +170,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
     const { target } = step;
     return (
       <form
-        className="mx-4 space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+        className="space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();

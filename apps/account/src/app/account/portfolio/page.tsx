@@ -42,7 +42,7 @@ export default async function PortfolioPage({
   return (
     <AccountShell width="wide">
       <AccountPageHeader title="Portfolio" backHref={ACCOUNT_ROUTES.overview} />
-      <PortfolioNotices notices={notices} />
+      <PortfolioNotices notices={notices} retryHref={PORTFOLIO_ROUTES.overview} />
       {page.emptyState ? (
         <PortfolioEmptyState
           kind={page.emptyState}
