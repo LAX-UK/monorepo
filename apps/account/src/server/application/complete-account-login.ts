@@ -1,7 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { JWKS_PATH, normalizeIssuerUrl } from "@auction/identity-contracts";
+import {
+  ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
+  JWKS_PATH,
+  normalizeIssuerUrl,
+} from "@auction/identity-contracts";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
-import { validateOAuthStateTimingSafe } from "@auction/identity-rp";
+import { assertRecentAuthentication, validateOAuthStateTimingSafe } from "@auction/identity-rp";
 import type { LaxAccountConfig } from "../config";
 import { createAccountTokenEndpoint } from "../infrastructure/account-token-endpoint";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
@@ -39,6 +43,15 @@ export async function completeAccountLogin(input: {
   });
   if (!verified || verified.payload.nonce !== input.pending.nonce) {
     throw new Error("Invalid id_token");
+  }
+  if (input.pending.reauth) {
+    // The issuer is asked for a fresh sign-in, but an answer that ignores that must not unlock
+    // a sensitive change: the issuer checks recency again, and so do we.
+    assertRecentAuthentication({
+      authTime:
+        typeof verified.payload.auth_time === "number" ? verified.payload.auth_time : undefined,
+      maxAgeSeconds: ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
+    });
   }
   const authTime =
     typeof verified.payload.auth_time === "number"

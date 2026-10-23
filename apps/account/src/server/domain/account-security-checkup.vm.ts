@@ -1,7 +1,11 @@
 import type { AccountLinksVm } from "./account-links";
 import { type AccountSecurityFacts, LOW_BACKUP_CODES_THRESHOLD } from "./account-security-facts";
+import { ACCOUNT_ROUTES } from "./account-settings.vm";
 
-export type CheckupStepId = "verify-email" | "two-step" | "backup-codes" | "phone";
+/** Where the "Where you're signed in" list sits on the Password and security page. */
+export const SIGNED_IN_DEVICES_HREF = `${ACCOUNT_ROUTES.security}#signed-in-devices`;
+
+export type CheckupStepId = "verify-email" | "two-step" | "backup-codes" | "sessions";
 
 export type CheckupStepVm = {
   id: CheckupStepId;
@@ -22,18 +26,29 @@ export type SecurityCheckupVm = {
   summary: string;
 };
 
+function sessionsDescription(otherSessionCount: number | null): string {
+  if (otherSessionCount === null) {
+    return "See which devices are signed in to your account and sign out any you don't recognise.";
+  }
+  if (otherSessionCount === 0) return "You're only signed in on this device.";
+  return `You're also signed in on ${otherSessionCount} other ${otherSessionCount === 1 ? "device" : "devices"}. Sign out any you don't recognise.`;
+}
+
 /**
  * Recommended steps the person can act on from here. A step is left out when it has no
  * destination or does not apply, so the count never promises something the page cannot deliver:
- *  - "where you're signed in" needs an Account page that does not exist yet;
  *  - backup codes appear only when two-step verification is on and the issuer reported a low
  *    count; an unknown count never prompts;
  *  - the email step does not apply to an account with no email;
- *  - adding a phone number is edited in LAX Bid, so it needs Bid to be configured.
+ *  - adding a phone number is left out until Account can edit it.
+ *
+ * "Review where you're signed in" is done when this is the only device signed in. A person who
+ * signs in on two devices on purpose keeps seeing it open: Account cannot tell a device they
+ * recognise from one they do not, so it asks rather than guesses.
  */
 export function buildSecurityCheckup(
   facts: AccountSecurityFacts,
-  links: Pick<AccountLinksVm, "verifyEmail" | "manageTwoStep" | "bidSettings">,
+  links: Pick<AccountLinksVm, "verifyEmail" | "manageTwoStep">,
 ): SecurityCheckupVm {
   const steps: CheckupStepVm[] = [];
 
@@ -81,20 +96,14 @@ export function buildSecurityCheckup(
     });
   }
 
-  if (links.bidSettings) {
-    steps.push({
-      id: "phone",
-      title: "Add a phone number",
-      description: facts.phoneVerified
-        ? "Your phone number is verified."
-        : facts.hasPhone
-          ? "Verify your number so it can help you recover your account."
-          : "A verified number gives you another way to recover your account.",
-      done: facts.phoneVerified,
-      actionLabel: facts.phoneVerified ? null : facts.hasPhone ? "Verify phone" : "Add phone",
-      href: links.bidSettings.profile,
-    });
-  }
+  steps.push({
+    id: "sessions",
+    title: "Review where you're signed in",
+    description: sessionsDescription(facts.otherSessionCount),
+    done: facts.otherSessionCount === 0,
+    actionLabel: facts.otherSessionCount === 0 ? null : "Review devices",
+    href: SIGNED_IN_DEVICES_HREF,
+  });
 
   const doneCount = steps.filter((step) => step.done).length;
   return {

@@ -35,12 +35,15 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
+import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
+import { AccountIdentityService } from "../services/account-identity.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
+import type { IdentityOperationsService } from "../services/identity-operations.service.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
@@ -63,6 +66,7 @@ export type OidcRouteMountOptions = {
   replay: RefreshReplayRedis;
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
+  identityOperations: IdentityOperationsService;
   authHandler: AuthRequestHandler;
   metrics: {
     refreshRotationOutcomes: Counter;
@@ -188,6 +192,29 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
           options.log.warn({ err: error }, "account_facts_rate_limit_unavailable"),
       }),
       onReadFailure: (error) => options.log.error({ err: error }, "account_security_facts_failed"),
+    }),
+  );
+  const accountRateLimit = (name: string, max: number) =>
+    createSubjectReadRateLimiter({
+      redis: options.redis,
+      keyPrefix: `rl:auth-issuer:${name}`,
+      windowSec: 60,
+      max,
+      onError: (error) =>
+        options.log.warn({ err: error }, "account_identity_rate_limit_unavailable"),
+    });
+  app.route(
+    "/api/auth",
+    createAccountIdentityRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      identity: new AccountIdentityService(
+        { operations: options.identityOperations, logout: services.oidc.logout },
+        options.log,
+      ),
+      readRateLimit: accountRateLimit("account-identity-read", 120),
+      writeRateLimit: accountRateLimit("account-identity-write", 20),
+      onFailure: (error) => options.log.error({ err: error }, "account_identity_request_failed"),
     }),
   );
   app.route(

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAccountLinks } from "./account-links";
 import { buildPrivacyGroups } from "./account-privacy.vm";
-import { buildProfileSections } from "./account-profile.vm";
 import {
   accountInitials,
   buildAccountSections,
@@ -19,15 +18,6 @@ const withoutBid = buildAccountLinks({
   oidcIssuer: "https://test-auth.lax.bid",
   oidcClientId: "lax-account-web",
 });
-
-const overview = {
-  name: "Shima Mohamed",
-  email: "shima@example.com",
-  emailVerified: true,
-  phone: "+201234567890",
-  phoneVerified: false,
-  signedInWithAuthenticator: false,
-};
 
 describe("buildAccountSections", () => {
   it("lists the four categories with the Help card", () => {
@@ -122,39 +112,6 @@ describe("accountInitials", () => {
   it("falls back to the email, then to nothing", () => {
     expect(accountInitials({ name: null, email: "ada@example.com" })).toBe("A");
     expect(accountInitials({ name: null, email: null })).toBeNull();
-  });
-});
-
-describe("buildProfileSections", () => {
-  it("masks the email and sends every update to the Bid screen that owns it", () => {
-    const sections = buildProfileSections(overview, withBid);
-    expect(sections.map((s) => s.id)).toEqual(["about", "email", "phone", "addresses"]);
-    const email = sections[1];
-    expect(email?.fields[0]).toEqual({
-      label: "Email address",
-      value: "s***@example.com",
-      status: { label: "Verified", tone: "success" },
-    });
-    expect(email?.actions).toEqual([
-      { label: "Update", href: "https://test.lax.bid/dashboard/settings/account" },
-    ]);
-    expect(sections[2]?.fields[0]?.status).toEqual({ label: "Not verified", tone: "neutral" });
-    expect(sections[3]?.actions[0]?.href).toBe("https://test.lax.bid/dashboard/settings/addresses");
-  });
-
-  it("offers the hosted verify step for an unverified email", () => {
-    const [, email] = buildProfileSections({ ...overview, emailVerified: false }, withBid);
-    expect(email?.actions.map((a) => a.label)).toEqual(["Verify email", "Update"]);
-  });
-
-  it("shows missing values without a status and hides Bid-only parts without Bid", () => {
-    const sections = buildProfileSections(
-      { name: null, email: null, emailVerified: false, phone: null, phoneVerified: false },
-      withoutBid,
-    );
-    expect(sections.map((s) => s.id)).toEqual(["about", "email", "phone"]);
-    expect(sections.flatMap((s) => s.actions)).toEqual([]);
-    expect(sections[2]?.fields[0]).toEqual({ label: "Phone number", value: null });
   });
 });
 

@@ -2,14 +2,11 @@ import type { LaxStaffPlatformsClaim } from "@auction/identity-contracts";
 import type { LaxAccountConfig } from "../config";
 
 /**
- * Settings that Bid's API owns. LAX Account has no API resource (its OIDC client lists no
- * `allowedResources`), so it links to Bid's screens instead of writing this data itself.
+ * Settings that Bid's API still owns. LAX Account has no API resource (its OIDC client lists no
+ * `allowedResources`), so it links to Bid's screens instead of writing this data itself. Name
+ * and sessions are not here: the issuer owns them and Account edits them directly.
  */
 export type BidSettingsLinksVm = {
-  /** Name and mobile number. */
-  profile: string;
-  /** Email change with confirmation to both addresses. */
-  email: string;
   addresses: string;
   notifications: string;
   /** Account deletion lives in Bid security settings behind a step-up check. */
@@ -53,8 +50,6 @@ export function buildAccountLinks(
     verifyEmail: hosted("/resend-verification", account.email ? { email: account.email } : {}),
     bidSettings: bidUrl
       ? {
-          profile: bid("/dashboard/settings/profile"),
-          email: bid("/dashboard/settings/account"),
           addresses: bid("/dashboard/settings/addresses"),
           notifications: bid("/dashboard/settings/notifications"),
           deleteAccount: bid("/dashboard/settings/security"),

@@ -9,7 +9,7 @@ export type ProfileFieldVm = { label: string; value: string | null; status?: Pro
 export type ProfileActionVm = { label: string; href: string };
 
 export type ProfileSectionVm = {
-  id: "about" | "email" | "phone" | "addresses";
+  id: "email" | "phone" | "addresses";
   title: string;
   fields: ProfileFieldVm[];
   actions: ProfileActionVm[];
@@ -23,25 +23,19 @@ function verified(isVerified: boolean): ProfileStatusVm {
 }
 
 /**
- * Edit account (Figma 950:13732). Values come from the ID token; every "Update"
- * opens the LAX Bid screen that owns the write (see BidSettingsLinksVm). Without
- * Bid configured the read-only values stay and the address book, which Account
- * cannot read, is hidden.
+ * The read-only part of Personal details (Figma 950:13732); the name above it is edited in
+ * Account. Values come from the ID token. Email and phone cannot be changed from Account yet,
+ * so they say so and point to support rather than to a screen in another product. Without Bid
+ * configured there is no support page and the address book, which Account cannot read, is hidden.
  */
 export function buildProfileSections(
-  overview: Pick<AccountOverviewVm, "name" | "email" | "emailVerified" | "phone" | "phoneVerified">,
-  links: Pick<AccountLinksVm, "bidSettings" | "verifyEmail">,
+  overview: Pick<AccountOverviewVm, "email" | "emailVerified" | "phone" | "phoneVerified">,
+  links: Pick<AccountLinksVm, "bidSettings" | "verifyEmail" | "support">,
 ): ProfileSectionVm[] {
-  const bid = links.bidSettings;
-  const update = (href: string | undefined): ProfileActionVm[] =>
-    href ? [{ label: "Update", href }] : [];
+  const contact: ProfileActionVm[] = links.support
+    ? [{ label: "Contact us", href: links.support.contact }]
+    : [];
   const sections: ProfileSectionVm[] = [
-    {
-      id: "about",
-      title: "About me",
-      fields: [{ label: "Name", value: overview.name }],
-      actions: update(bid?.profile),
-    },
     {
       id: "email",
       title: "Email",
@@ -56,13 +50,13 @@ export function buildProfileSections(
         ...(overview.email && !overview.emailVerified
           ? [{ label: "Verify email", href: links.verifyEmail }]
           : []),
-        ...update(bid?.email),
+        ...contact,
       ],
-      ...(bid ? { note: "We'll send a confirmation link to your current and new address." } : {}),
+      note: "You can't change your email address here yet. Contact us and we'll update it for you.",
     },
     {
       id: "phone",
-      title: "Phone book",
+      title: "Phone",
       fields: [
         {
           label: "Phone number",
@@ -70,15 +64,16 @@ export function buildProfileSections(
           ...(overview.phone ? { status: verified(overview.phoneVerified) } : {}),
         },
       ],
-      actions: update(bid?.profile),
+      actions: contact,
+      note: "You can't add or change your phone number here yet. Contact us and we'll help.",
     },
   ];
-  if (bid) {
+  if (links.bidSettings) {
     sections.push({
       id: "addresses",
       title: "Address book",
       fields: [],
-      actions: update(bid.addresses),
+      actions: [{ label: "Update", href: links.bidSettings.addresses }],
       note: "Your delivery and billing addresses are kept in LAX Bid.",
     });
   }

@@ -1,20 +1,18 @@
 import type { AccountOverviewVm } from "./account-overview.vm";
 
-export type ProfileGap = "name" | "email-verification" | "phone";
+export type ProfileGap = "name" | "email-verification";
 
 /**
- * Details still missing from the account, in the order the Edit account screen
- * lists them. Only gaps the person can fix from here count: name and phone are
- * edited in LAX Bid, so they are ignored when Bid is not configured, while email
- * verification always has the hosted resend page.
+ * Details still missing from the account, in the order the Personal details screen lists them.
+ * Only gaps the person can fix from here count: the name is edited in Account and email
+ * verification has the hosted resend page. A missing phone number is not listed because Account
+ * cannot add one yet.
  */
 export function profileGaps(
-  overview: Pick<AccountOverviewVm, "name" | "email" | "emailVerified" | "phone">,
-  options: { profileEditable: boolean },
+  overview: Pick<AccountOverviewVm, "name" | "email" | "emailVerified">,
 ): ProfileGap[] {
   const gaps: ProfileGap[] = [];
-  if (options.profileEditable && !overview.name) gaps.push("name");
+  if (!overview.name) gaps.push("name");
   if (overview.email && !overview.emailVerified) gaps.push("email-verification");
-  if (options.profileEditable && !overview.phone) gaps.push("phone");
   return gaps;
 }

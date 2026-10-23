@@ -1,4 +1,4 @@
-import type { AccountSecurityFactsResponse } from "@auction/identity-contracts";
+import type { AccountSecurityFactsResponse, AccountSession } from "@auction/identity-contracts";
 import type { AccountOverviewVm } from "./account-overview.vm";
 
 /**
@@ -14,24 +14,22 @@ export const LOW_BACKUP_CODES_THRESHOLD = 3;
 export type AccountSecurityFacts = {
   hasEmail: boolean;
   emailVerified: boolean;
-  hasPhone: boolean;
-  phoneVerified: boolean;
   twoStep: TwoStepState;
   /** Unused backup codes; null whenever the issuer did not say, which is not the same as none. */
   backupCodesRemaining: number | null;
+  /** Devices signed in besides this one; null whenever the issuer did not say. */
+  otherSessionCount: number | null;
 };
 
 /**
- * Combines the ID token (email and phone, as of sign-in) with the issuer's live answer about
- * two-step verification. When the live answer is missing, a second factor used by this very
- * sign-in still proves enrolment; anything else stays unknown.
+ * Combines the ID token (email, as of sign-in) with the issuer's live answers about two-step
+ * verification and signed-in devices. When the live two-step answer is missing, a second factor
+ * used by this very sign-in still proves enrolment; anything else stays unknown.
  */
 export function readAccountSecurityFacts(
-  overview: Pick<
-    AccountOverviewVm,
-    "email" | "emailVerified" | "phone" | "phoneVerified" | "signedInWithAuthenticator"
-  >,
+  overview: Pick<AccountOverviewVm, "email" | "emailVerified" | "signedInWithAuthenticator">,
   live: AccountSecurityFactsResponse | null,
+  sessions: readonly AccountSession[] | null = null,
 ): AccountSecurityFacts {
   const twoStep: TwoStepState = live
     ? live.twoFactorEnabled
@@ -43,9 +41,8 @@ export function readAccountSecurityFacts(
   return {
     hasEmail: overview.email !== null,
     emailVerified: overview.email !== null && overview.emailVerified,
-    hasPhone: overview.phone !== null,
-    phoneVerified: overview.phoneVerified,
     twoStep,
     backupCodesRemaining: live?.twoFactorEnabled ? live.backupCodesRemaining : null,
+    otherSessionCount: sessions ? sessions.filter((session) => !session.isCurrent).length : null,
   };
 }

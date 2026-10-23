@@ -3,7 +3,9 @@
 Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-web`).
 
 - `/`: sign-in landing, post-logout landing and callback error notices (`?error=`).
-- `/account`: profile (read-only) and security (change password, authenticator setup).
+- `/account`: overview and Security Checkup.
+- `/account/profile`: the name is edited here; email and phone are read-only until Account can change them.
+- `/account/security`: password and two-step links, and Where you're signed in (sign out one device, or every other device).
 - Sign-in: `/api/auth/login` → auth issuer → `/api/auth/callback`; sign-out is a same-origin
   `POST /api/auth/logout` that ends the issuer session.
 - Sensitive steps (password reset, authenticator setup) stay on auth-hosted pages. The hosted
@@ -17,9 +19,14 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 | `OIDC_ISSUER_URL`, `OIDC_INTERNAL_BASE_URL` | Issuer (internal URL is used for token and JWKS calls). |
 | `OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB` | Confidential client secret. |
 | `REDIS_URL`, `LAX_ACCOUNT_SESSION_ENCRYPTION_KEY` | Encrypted BFF session store (key ≥ 32 chars). |
-| `LAX_BID_PUBLIC_URL` | Optional; shows "Edit in LAX Bid" for profile changes. |
+| `LAX_BID_PUBLIC_URL` | Optional; enables the address book, notification and help links that still live in LAX Bid. |
 
-Keep `LAX_ACCOUNT_ORIGIN` unset on Bid web while Bid owns profile editing, otherwise Bid settings
-redirect here and the "Edit in LAX Bid" link loops.
+Name and sessions are changed through client-authenticated issuer routes (`/api/auth/lax/account-*`),
+called server-side with the person's own access token. Renaming and signing devices out need a
+sign-in from the last five minutes; Account otherwise sends the person through a fresh sign-in
+(`/api/auth/login?intent=reauth`) and back to the same page.
+
+Keep `LAX_ACCOUNT_ORIGIN` unset on Bid web while Bid still hosts its own identity settings pages,
+otherwise Bid settings redirect here and Account's remaining links to Bid loop.
 
 Deploy: DigitalOcean component + DNS `test-account.lax.bid` / `account.lax.bid` (see `auction-infra`).

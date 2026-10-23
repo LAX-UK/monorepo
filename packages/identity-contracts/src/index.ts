@@ -3,6 +3,27 @@ export {
   accountSecurityFactsSchema,
   type AccountSecurityFactsResponse,
 } from "./account-security-facts.js";
+export {
+  ACCOUNT_NAME_MAX_LENGTH,
+  ACCOUNT_PROFILE_PATH,
+  ACCOUNT_PROFILE_UPDATE_PATH,
+  accountNameSchema,
+  accountProfileSchema,
+  type AccountProfileResponse,
+} from "./account-profile.js";
+export {
+  ACCOUNT_REAUTH_REQUIRED,
+  ACCOUNT_SESSIONS_PATH,
+  ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
+  ACCOUNT_SESSIONS_REVOKE_PATH,
+  ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
+  accountSessionSchema,
+  accountSessionsRevokedSchema,
+  accountSessionsSchema,
+  type AccountSession,
+  type AccountSessionsResponse,
+  type AccountSessionsRevokedResponse,
+} from "./account-sessions.js";
 export * from "./auth-at-rest.js";
 export {
   AUTH_ROUTE_PATH,

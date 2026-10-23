@@ -63,6 +63,7 @@ function createRepositories(): IdentityOperationsRepositories {
       ownsSession: vi.fn().mockResolvedValue(true),
       deleteSession: vi.fn().mockResolvedValue(true),
       deleteAllSessions: vi.fn().mockResolvedValue(1),
+      deleteOtherSessions: vi.fn().mockResolvedValue(["other-1", "other-2"]),
       purgeSubjectSessionsAndTokens: vi.fn().mockResolvedValue(undefined),
     },
     emailChanges: {
@@ -273,6 +274,36 @@ describe("IdentityOperationsService", () => {
       "database unavailable",
     );
     expect(logout.revokeIdentitySessions).not.toHaveBeenCalled();
+  });
+
+  it("removes one session and records it without dispatching logout", async () => {
+    const { service, identityEventPublisher, logout } = createService();
+
+    await expect(service.removeSession("subject", "session")).resolves.toBe(true);
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.session_revoked", userId: "subject", sessionId: "session" },
+      { transaction },
+    );
+    expect(logout.revokeIdentitySessions).not.toHaveBeenCalled();
+  });
+
+  it("records one revocation per removed session so the kept session is never signed out", async () => {
+    const { service, repositories, identityEventPublisher } = createService();
+
+    await expect(service.removeOtherSessions("subject", "keep")).resolves.toEqual([
+      "other-1",
+      "other-2",
+    ]);
+    expect(repositories.sessions.deleteOtherSessions).toHaveBeenCalledWith(
+      transaction,
+      "subject",
+      "keep",
+    );
+    expect(identityEventPublisher.publish).toHaveBeenCalledTimes(2);
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.session_revoked", userId: "subject", sessionId: "other-2" },
+      { transaction },
+    );
   });
 
   it("dispatches subject logout only after revoke-all commits", async () => {

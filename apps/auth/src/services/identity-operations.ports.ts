@@ -20,6 +20,7 @@ export type IdentitySecurityStatusRecord = {
 export type IdentitySessionRecord = {
   id: string;
   createdAt: Date;
+  updatedAt: Date;
   expiresAt: Date;
   ipAddress: string | null;
   userAgent: string | null;
@@ -118,6 +119,12 @@ export interface IIdentitySessionRepository {
     subjectId: string,
     exceptSessionToken?: string,
   ): Promise<number>;
+  /** Deletes every session of the subject except one, by session id. Returns the deleted ids. */
+  deleteOtherSessions(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    keepSessionId: string,
+  ): Promise<string[]>;
   purgeSubjectSessionsAndTokens(
     transaction: IdentityOperationTransaction | null,
     subjectId: string,
