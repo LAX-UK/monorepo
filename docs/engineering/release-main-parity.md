@@ -15,8 +15,8 @@ Main is the future source of truth. Release-only work is re-expressed in main’
 | Duplicate registration / resend for unverified email | `a63e645f`                                                  | Hosted sign-up (`sign-up-outcome.ts`) + hosted `/resend-verification`                                                                                                                                                       | Re-designed    | Success and existing-account outcomes are indistinguishable when verification is required (no enumeration)                                       |
 | Forgot-password Turnstile gating                     | `6f104296`, `00231d4a`                                      | Hosted recovery page `turnstileHost()`                                                                                                                                                                                      | Superseded     | Bid web no longer renders forgot-password; Identity owns the form                                                                                |
 | No default marketing footer tagline                  | `85ce35ba` (#459)                                           | `apps/web/src/components/layout/site-footer.tsx`                                                                                                                                                                            | Ported         | None                                                                                                                                             |
-| ATG White Label sync (GAP API)                       | `53170f2e`, `e08c1b8b` (`feat/atg-integration-release`, not yet merged) | Not yet on main. Port worker `integrations/atg/**`, `packages/queues` `atg-sync`, API `/admin/integrations/atg`, web sale **ATG** tab, migration (see below), `TF_VAR_atg_*` in `terraform-apply-prod.yml` (done)         | Pending        | Re-sync is tick-driven (no enqueue hooks in sale/lot services); must be re-expressed in main's layers, not cherry-picked                        |
-| ATG White Label cookie isolation                     | `efa2683a`, `3043c67f` (`feat/atg-integration-release`, not yet merged), `auction-infra` #41 | `auctions.lax.bid` is proxied through the `atg-cookie-shield` Worker, which strips LAX cookies (release `docs/integrations/atg.md`, decision record). With D15's host-only `__Host-lax-bid-session`, sessions never reach ATG and the Worker becomes defence in depth. Still to do on main: make `lax_acting_legal_entity_id` host-only (`acting-context.actions.ts` passes `COOKIE_DOMAIN`); register ATG as an OIDC client in `packages/identity-contracts/src/clients.ts` for White Label SSO (ATG Step 9); update the `auction-infra` `atg-white-label` comments once D15 is in prod. Workflows pass `ATG_ACM_VALIDATION_ENABLED` / `ATG_WHITE_LABEL_ENABLED` (done). Release mirrors the same Terraform and Worker in its in-repo `infra/`; main reads `auction-infra` | Pending        | Release keeps shared `.lax.bid` sessions and relies on the Worker; main removes that dependency |
+| ATG White Label sync (GAP API) | #509 (`0b2a90fa`), #512 (`125e00c4`) | Worker `integrations/atg/**` and `workers/register-atg-sync-worker.ts` (#PR_WORKER); `packages/queues` `atg-sync`; migration `0131a_atg_sync_links` and the lineage mapping (#PR_DATA); `/admin/integrations/atg`, the one-platform-per-sale guards and the read-only public catalogue (#PR_API); the sale **ATG** tab and public ATG display (#PR_WEB). `TF_VAR_atg_*` in `terraform-apply-prod.yml` was already in place. | Re-implemented | Re-sync is tick-driven (no enqueue hooks in sale/lot services). Flag off by default. Main's repositories live in `packages/persistence`, so the ATG reader and public-catalogue SQL are there rather than in `apps/api`. |
+| ATG White Label cookie isolation | `efa2683a`, `3043c67f` (`feat/atg-integration-release`), `auction-infra` #41 | `lax_acting_legal_entity_id` is host-only on main, and the client expires a lingering `Domain=.lax.bid` copy (#PR_WEB). Main's sessions are host-only `__Host-` cookies, so the `atg-cookie-shield` Worker (in `auction-infra`) is defence in depth. | Re-implemented | Release keeps shared `.lax.bid` sessions and relies on the Worker. ATG is not yet registered as an OIDC client in `packages/identity-contracts/src/clients.ts`: ATG has not supplied redirect URIs (open questions 13 and 14 in `docs/integrations/atg.md`). |
 
 Terraform `variable` blocks for `strict_bid_eligibility_enabled`, `kyc_onboarding_enabled`, `full_buyer_onboarding_enabled`, and `marketing_prompts_enabled` live in the private `.infra-config` repo. In-repo wiring is workflows, env examples, `docker-compose.prod.yml`, and `turbo.json` only.
 
@@ -40,33 +40,64 @@ binary can run after `0160`/`0161`, its required user-table grants must be
 restored. This is an Identity-scoped compatibility record, not evidence that
 the broader `release` → `main` merge is safe.
 
-As of release head `85ce35ba` (2026-10-10) the four commits after
-`b385dfb0` add no migrations, so the approved mapping still describes the
-production ledger. The shipped `db:adopt-release-lineage --apply` only replays
+The approved release head is now `bd1556dff97d290b3183f24347c040a0c60652a7`
+(`packages/db/src/release-lineage-mapping.ts`), which adds release `0132`
+(ATG sync links) and `0133` (two-factor lockout columns) to the four feature
+migrations above. The shipped `db:adopt-release-lineage --apply` only replays
 main migrations on a disposable database; it does not rewrite a production
-ledger. Production rows at `1788000004000`–`1788000007000` hold the release
-`0128`–`0131` hashes, while main assigns those timestamps to `0128`–`0131`
-(role index, onsite links, Stripe Connect errors), so `db:migrate:prod` will
-fail closed with "Migration history diverged" until a ledger-normalization step
-exists and has been rehearsed on a production snapshot.
+ledger. Its dry run verifies every mapped SQL hash and prints what ledger
+normalization will do with each release row. Production rows at
+`1788000004000`–`1788000007000` hold the release `0128`–`0131` hashes, while
+main assigns those timestamps to `0128`–`0131` (role index, onsite links,
+Stripe Connect errors), so `db:migrate:prod` will fail closed with "Migration
+history diverged" until a ledger-normalization step exists and has been
+rehearsed on a production snapshot.
 
 ## ATG migration lineage
 
-Release adds `0132_atg_sync_links` (tables `atg_auction_link`, `atg_lot_link`; additive,
-`IF NOT EXISTS`) with journal `when` **`1788000007500`**. That sits after release `0131`
-(`1788000007000`) and before main's `0132_domain_event_delivery` (`1788000008000`), so it
-does not shadow any main migration under the "apply newer than last `created_at`" rule.
+Release `0132_atg_sync_links` (tables `atg_auction_link`, `atg_lot_link`; additive,
+`IF NOT EXISTS`) is applied in production with journal `when` **`1788000007500`**, after
+release `0131` (`1788000007000`) and before main's `0132_domain_event_delivery`
+(`1788000008000`).
 
-Once it ships, the production ledger has one more release-only row. Main must:
+Main registers the byte-identical SQL as `0131a_atg_sync_links` at the same `when`, between
+its `0131` and `0132` entries, so the production row matches by hash. Main's own databases
+(test, developer) were migrated past that stamp before it existed. The migration runner stops
+on a ledger that has later rows but not an earlier journal entry ("Migration history is
+missing ... before applied timestamp"), so a mid-journal registration alone would break them.
+`packages/db/src/late-registered-migrations.ts` therefore lists the stamp: the runner applies
+that additive, idempotent migration in place and records its ledger row. A row with a
+different hash at that stamp still fails closed. `atg_auction_link` and `atg_lot_link` are in
+`WORKER_FULL_TABLES`. `migration-main-upgrade.integration.test.ts` covers a clean database, an
+environment past the stamp, a production ledger that already holds the row, a divergent row,
+and the rollback.
 
-1. add the release SQL file **byte-identical** (so its hash matches the production row),
-   registered in `_journal.json` between main's `0131` and `0132` entries with the same
-   `when` (`1788000007500`) and a non-colliding tag;
-2. extend the ledger-normalization step above to expect and keep this row;
-3. keep `atg_auction_link` and `atg_lot_link` in `WORKER_FULL_TABLES`
-   (`packages/db/src/migrate-roles.ts`).
+The full integration record is `docs/integrations/atg.md`.
 
-The full integration record is `docs/integrations/atg.md` on `release`.
+## Release `0133_two_factor_lockout_columns`
+
+Release `0133_two_factor_lockout_columns` carries journal `when` **`1788000008000`**, which is
+also main's `0132_domain_event_delivery`. Production has applied it. Its SQL is
+byte-identical to main's `0222_two_factor_lockout_columns` (`ADD COLUMN IF NOT EXISTS`).
+
+Ledger normalization must **replace** that release row with main `0222`, not keep it: a kept
+row at `1788000008000` has a different hash from main `0132`, so the migrator would report a
+divergence, and under the "apply newer than the last `created_at`" rule it would shadow main
+`0132`. Dropping the row lets main `0132` apply at its own stamp and `0222` re-run, which is
+harmless. `RELEASE_TO_MAIN_SQL_MAPPING` records this as the `replace` action, and
+`planReleaseLedgerNormalization` fails closed if the stamp no longer matches `0132`.
+
+## Pending release migration `0133_atg_sale_settings`
+
+Release work not yet on `release` (local branch `feat/atg-production-readiness`) adds
+`0133_atg_sale_settings`: per-sale ATG auction type and distribution, a locked-fields hash, no
+`ApproveAuction`, and a JPG/10 MB image preflight. It is not ported here. Before it ships it
+must be renumbered **`0134`** with a journal `when` **greater than `1788000008000`** (for
+example `1788000008500`). The migrator only applies migrations newer than the last applied
+row, and production already holds `1788000008000`, so its original `1788000007750` would be
+skipped silently. When it lands, add it to the lineage mapping and to the main journal after
+`0132_domain_event_delivery` with the same stamp, and list that stamp in
+`late-registered-migrations.ts` so main's existing databases apply it in place.
 
 ## Promotion checklist (main → release)
 

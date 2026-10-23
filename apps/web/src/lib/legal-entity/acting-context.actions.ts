@@ -74,14 +74,12 @@ type SwitchResult =
 export async function switchActingLegalEntity(legalEntityId: string | null): Promise<SwitchResult> {
   return instrumentServerAction("switchActingLegalEntity", async () => {
     const jar = await cookies();
-    const cookieDomain = process.env.COOKIE_DOMAIN;
 
     if (legalEntityId === null) {
       jar.set(ACTING_LEGAL_ENTITY_COOKIE, "", {
         path: "/",
         maxAge: 0,
         sameSite: "lax",
-        ...(cookieDomain ? { domain: cookieDomain } : {}),
       });
       revalidatePath("/", "layout");
       revalidatePath("/dashboard/organisations");
@@ -109,7 +107,6 @@ export async function switchActingLegalEntity(legalEntityId: string | null): Pro
       maxAge: ONE_YEAR_SECONDS,
       sameSite: "lax",
       httpOnly: false,
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
     revalidatePath("/", "layout");
     revalidatePath("/dashboard/organisations");
@@ -150,12 +147,10 @@ export async function endAdminImpersonationAction(): Promise<void> {
     }
 
     const jar = await cookies();
-    const cookieDomain = process.env.COOKIE_DOMAIN;
     jar.set(ACTING_LEGAL_ENTITY_COOKIE, "", {
       path: "/",
       maxAge: 0,
       sameSite: "lax",
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
     revalidatePath("/", "layout");
 
@@ -231,13 +226,11 @@ export async function startAdminImpersonation(
     }
 
     const jar = await cookies();
-    const cookieDomain = process.env.COOKIE_DOMAIN;
     jar.set(ACTING_LEGAL_ENTITY_COOKIE, encodeURIComponent(actingCookie), {
       path: "/",
       maxAge: IMPERSONATION_COOKIE_MAX_AGE,
       sameSite: "lax",
       httpOnly: false,
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
     revalidatePath("/", "layout");
     return { ok: true };

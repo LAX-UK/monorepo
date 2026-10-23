@@ -1,3 +1,4 @@
+import { AtgEditAlert } from "@/components/admin/atg/atg-edit-alert";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { LotDocumentsTabBoard } from "@/components/admin/lot-detail/lot-documents-tab-board";
 import { AdminLotForm } from "@/components/admin/lot-form";
@@ -30,6 +31,7 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
 
   return (
     <Suspense fallback={<LotEditFormLayoutFallback />}>
+      {page.atgSaleId ? <AtgEditAlert saleId={page.atgSaleId} /> : null}
       <LotEditFormLayout
         lotId={id}
         canEditCore={canEditCore}

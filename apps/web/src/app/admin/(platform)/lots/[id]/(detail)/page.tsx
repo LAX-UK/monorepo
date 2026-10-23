@@ -1,3 +1,4 @@
+import { AtgLotStatus } from "@/components/admin/atg/atg-lot-status";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
 import { LotOverviewTab } from "@/components/admin/lot-detail/tabs/overview-tab";
 import { loadAdminLotOverviewPage } from "@/lib/admin/lots/load-lot-overview-page";
@@ -17,6 +18,7 @@ export default async function AdminLotOverviewPage({ params, searchParams }: Pro
       {sp.error && sp.error_code !== "connect_required" ? (
         <CatalogDetailActionError error={sp.error} />
       ) : null}
+      {page.atgLot ? <AtgLotStatus lot={page.atgLot} /> : null}
       <LotOverviewTab
         lotId={page.lotId}
         auction={page.auction}

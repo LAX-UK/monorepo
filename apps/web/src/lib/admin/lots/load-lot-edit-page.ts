@@ -3,12 +3,23 @@ import "server-only";
 import { loadAdminLotRecord } from "@/lib/admin/load-lot-detail";
 import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
-import type { ArtistProfile, CategoryNode, EntityDocument, Lot, Sale } from "@auction/types";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  type ArtistProfile,
+  type CategoryNode,
+  type EntityDocument,
+  type Lot,
+  type Sale,
+  type UserRole,
+  userHasAccessTo,
+} from "@auction/types";
 
 type AssignableSale = Pick<
   Sale,
@@ -27,6 +38,8 @@ export type LotEditPageModel = {
   isDraft: boolean;
   canEditCore: boolean;
   englishOnlyAuctionsLocked: boolean;
+  /** Sale the lot sits in while that sale is selling on ATG; drives the edit alert. */
+  atgSaleId: string | null;
 };
 
 /** Data/composition boundary for `/admin/lots/[id]/edit`. */
@@ -48,6 +61,19 @@ export async function loadAdminLotEditPage(lotId: string): Promise<LotEditPageMo
   const isDraft = auction.status === "draft";
   const canEditCore = isDraft || auction.status === "scheduled";
 
+  let atgSaleId: string | null = null;
+  if (auction.saleId && isDraft) {
+    const user = await getServerSessionUser().catch(() => null);
+    const canSeeAtg =
+      user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+    if (
+      canSeeAtg &&
+      (await getAtgSaleSellingPlatform({ id: auction.saleId, status: "draft" })) === "atg"
+    ) {
+      atgSaleId = auction.saleId;
+    }
+  }
+
   return {
     lotId,
     auction,
@@ -60,5 +86,6 @@ export async function loadAdminLotEditPage(lotId: string): Promise<LotEditPageMo
     isDraft,
     canEditCore,
     englishOnlyAuctionsLocked: isEnglishOnlyAuctionsLocked(),
+    atgSaleId,
   };
 }

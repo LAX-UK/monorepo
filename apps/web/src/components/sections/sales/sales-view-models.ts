@@ -1,4 +1,5 @@
 import type { SaleCardCommon } from "@/components/sections/sales/card/types";
+import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import { formatMoney } from "@/lib/format-currency";
 import { type SaleListRow, formatSaleItemsLabel, formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
@@ -88,7 +89,8 @@ export function mapSaleToCalendarCardVM(
   row: SaleListRow,
   listLocale = "en-GB",
 ): SaleCalendarCardVM {
-  const { sale, lots, lotCount } = row;
+  const { lots, lotCount } = row;
+  const sale = atgDisplaySale(row.sale);
   const start = toDisplayDate(sale.startTime);
   const end = toDisplayDate(sale.endTime);
   const dateRangeLabel = formatDateRangeLine(start, end, listLocale).toUpperCase();
@@ -258,7 +260,8 @@ export type SaleAgendaItemVM = {
 };
 
 export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): SaleAgendaItemVM {
-  const { sale, lotCount } = row;
+  const { lotCount } = row;
+  const sale = atgDisplaySale(row.sale);
   const start = toDisplayDate(sale.startTime);
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const startIso = toOptionalIsoString(sale.startTime) ?? "";
@@ -288,7 +291,8 @@ export function mapSaleToAuctionRowVM(
   opts: { showRegisterButton: boolean },
   listLocale = "en-GB",
 ): SaleAuctionRowVM {
-  const { sale, lots, lotCount } = row;
+  const { lots, lotCount } = row;
+  const sale = atgDisplaySale(row.sale);
   const { lead, rest } = buildRowScheduleParts(sale, lots, listLocale);
   const itemsLabel = formatSaleItemsLabel(lotCount);
   const countdownEndIso = toSaleCountdownEndIso(sale);

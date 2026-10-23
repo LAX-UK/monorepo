@@ -1,3 +1,4 @@
+import { AtgEditAlert } from "@/components/admin/atg/atg-edit-alert";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
@@ -50,6 +51,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         cancelHref: `/admin/sales/${id}`,
       }}
     >
+      {page.sellingPlatform === "atg" ? <AtgEditAlert saleId={id} /> : null}
       <SaleSetupWizard
         saleId={id}
         initialStep={page.initialStep}

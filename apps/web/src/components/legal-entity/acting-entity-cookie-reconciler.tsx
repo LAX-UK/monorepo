@@ -1,7 +1,10 @@
 "use client";
 
 import { detectActingEntityCookieDrift } from "@/lib/legal-entity/acting-entity-cookie-drift";
-import { setClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
+import {
+  expireSharedActingCookie,
+  setClientActingLegalEntityId,
+} from "@/lib/legal-entity/client-acting-context";
 import { useEffect } from "react";
 
 type Props = {
@@ -25,6 +28,8 @@ const LOG_PREFIX = "[lax:acting-entity]";
  * payload must not be replaced with a plain UUID). */
 export function ActingEntityCookieReconciler({ serverActingId, verbose = false }: Props) {
   useEffect(() => {
+    // Before reading: a lingering shared copy would be reported as the cookie value.
+    expireSharedActingCookie();
     const drift = detectActingEntityCookieDrift(
       serverActingId,
       typeof document !== "undefined" ? document.cookie : null,

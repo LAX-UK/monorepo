@@ -82,6 +82,10 @@ const lotRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transfo
     status: row.status as Lot["status"],
     winnerId: row.winnerId == null ? null : String(row.winnerId),
     ...(typeof row.hasWinner === "boolean" ? { hasWinner: row.hasWinner } : {}),
+    ...(typeof row.atgSold === "boolean" ? { atgSold: row.atgSold } : {}),
+    ...(row.atgSaleState === "live" || row.atgSaleState === "ended"
+      ? { atgSaleState: row.atgSaleState }
+      : {}),
     createdAt: zCoerceDate.parse(row.createdAt),
     updatedAt: zCoerceDate.parse(row.updatedAt),
     marketingDetails: parseMarketingDetails(row.marketingDetails),

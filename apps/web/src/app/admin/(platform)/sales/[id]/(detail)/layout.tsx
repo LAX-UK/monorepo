@@ -12,6 +12,7 @@ import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import { getAdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import { getAdminTelephoneBookings } from "@/lib/data/http/admin.server";
+import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { buildSaleOverviewAttentionRows } from "@/lib/data/view-models/sale-overview.vm";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -41,6 +42,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     connectRequiredByLotId,
     pendingTelephoneBookings,
     attention,
+    sellingPlatform,
   ] = await Promise.all([
     loadAdminSaleRegistrationCount(id, bundle.sale),
     loadAdminSalePendingRegistrationCount(id, bundle.sale),
@@ -48,6 +50,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     loadSaleConnectRequiredByLotId(id),
     isSaleroom ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
     getAdminSaleAttention(id).catch(() => null),
+    canManageSales ? getAtgSaleSellingPlatform(bundle.sale) : Promise.resolve(null),
   ]);
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =
@@ -91,6 +94,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       connectRequiredByLotId={connectRequiredByLotId}
       draftSetupReadiness={draftSetupReadiness}
       overviewAttentionCount={overviewAttentionCount}
+      sellingPlatform={sellingPlatform}
       linkedEventSlug={linkedEvent?.eventSlug ?? null}
       linkedEventTitle={linkedEvent?.eventTitle ?? null}
     >
