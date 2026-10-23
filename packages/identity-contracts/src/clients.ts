@@ -174,8 +174,17 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
         "https://test-account.lax.bid/",
         "https://account.lax.bid/",
       ],
-      allowedScopes: ["openid", "profile", "email", "offline_access", "phone"],
-      allowedResources: [],
+      // Account has no write API of its own. It exchanges its session for the one read-only
+      // scope that lists a person's works and money, one audience-bound token per product.
+      allowedScopes: [
+        "openid",
+        "profile",
+        "email",
+        "offline_access",
+        "phone",
+        "lax.portfolio.read",
+      ],
+      allowedResources: [LAX_RESOURCE_IDS.LAX_BID_API, LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,
       consentPolicy: "implicit",
       backchannelLogoutUri: "https://account.lax.bid/api/auth/backchannel-logout",

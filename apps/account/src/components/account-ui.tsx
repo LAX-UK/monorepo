@@ -5,7 +5,15 @@ import { InsetGroup } from "@auction/ui/components/inset-group";
 import { ListRow } from "@auction/ui/components/list-row";
 
 /** Screen title with the Figma back affordance (circle + chevron) on sub-screens. */
-export function AccountPageHeader({ title, backHref }: { title: string; backHref?: string }) {
+export function AccountPageHeader({
+  title,
+  backHref,
+  backLabel = "Back to overview",
+}: {
+  title: string;
+  backHref?: string;
+  backLabel?: string;
+}) {
   return (
     <div className="flex items-center gap-3">
       {backHref ? (
@@ -15,7 +23,7 @@ export function AccountPageHeader({ title, backHref }: { title: string; backHref
           size="icon"
           className="rounded-full border border-border-hairline"
         >
-          <a href={backHref} aria-label="Back to overview">
+          <a href={backHref} aria-label={backLabel}>
             <MarketingCarouselPreviousIcon />
           </a>
         </Button>

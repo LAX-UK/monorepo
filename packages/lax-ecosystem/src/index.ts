@@ -53,6 +53,9 @@ export {
   type MoneyBusinessGroupVm,
   type MoneyDirectionSectionVm,
   type MoneyFilter,
+  MONEY_SECTION_KEYS,
+  type MoneySectionKey,
   type MoneyVm,
   buildMoney,
+  moneySectionOf,
 } from "./portfolio-money.vm.js";

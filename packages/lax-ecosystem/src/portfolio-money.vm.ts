@@ -1,20 +1,37 @@
 import { type CurrencyTotal, sumByCurrency } from "./currency-totals.js";
 import {
   LAX_BUSINESS_KEYS,
-  LAX_MONEY_DIRECTIONS,
   type LaxBusinessKey,
-  type LaxMoneyDirection,
   type LaxMoneyEntryV1,
 } from "./lax-portfolio-contract.v1.js";
 
+/**
+ * The contract's `owed_to_you` direction covers both payouts still to come and payouts already
+ * received. Those are different facts for a seller, so the view splits them into two sections.
+ */
+export const MONEY_SECTION_KEYS = [
+  "owed_by_you",
+  "due_to_you",
+  "received",
+  "paid",
+  "refunded",
+  "fee",
+] as const;
+export type MoneySectionKey = (typeof MONEY_SECTION_KEYS)[number];
+
+export function moneySectionOf(entry: LaxMoneyEntryV1): MoneySectionKey {
+  if (entry.direction !== "owed_to_you") return entry.direction;
+  return entry.status === "completed" ? "received" : "due_to_you";
+}
+
 export type MoneyFilter = {
   business?: LaxBusinessKey;
-  direction?: LaxMoneyDirection;
+  section?: MoneySectionKey;
   currency?: string;
 };
 
 export type MoneyDirectionSectionVm = {
-  direction: LaxMoneyDirection;
+  section: MoneySectionKey;
   /** Per-currency subtotals of non-cancelled entries only. */
   subtotals: CurrencyTotal[];
   /** Newest first. Cancelled entries stay listed so the ledger is complete. */
@@ -40,15 +57,15 @@ const newestFirst = (a: LaxMoneyEntryV1, b: LaxMoneyEntryV1) =>
 
 function matches(entry: LaxMoneyEntryV1, filter: MoneyFilter): boolean {
   if (filter.business && entry.business.key !== filter.business) return false;
-  if (filter.direction && entry.direction !== filter.direction) return false;
+  if (filter.section && moneySectionOf(entry) !== filter.section) return false;
   if (filter.currency && entry.currency !== filter.currency) return false;
   return true;
 }
 
 /**
- * Groups money by the business that owns it, then by direction, with per-currency subtotals.
- * Directions stay separate sections on purpose: what you owe is never netted against what you
- * are owed, and no figure mixes currencies.
+ * Groups money by the business that owns it, then by section, with per-currency subtotals.
+ * Sections stay separate on purpose: what you owe is never netted against what you are owed,
+ * what is still due is never added to what has been received, and no figure mixes currencies.
  */
 export function buildMoney(entries: readonly LaxMoneyEntryV1[], filter: MoneyFilter = {}): MoneyVm {
   const visible = entries.filter((entry) => matches(entry, filter)).sort(newestFirst);
@@ -57,14 +74,14 @@ export function buildMoney(entries: readonly LaxMoneyEntryV1[], filter: MoneyFil
     const ofBusiness = visible.filter((entry) => entry.business.key === key);
     const first = ofBusiness[0];
     if (!first) continue;
-    const sections = LAX_MONEY_DIRECTIONS.flatMap((direction) => {
-      const ofDirection = ofBusiness.filter((entry) => entry.direction === direction);
-      if (ofDirection.length === 0) return [];
+    const sections = MONEY_SECTION_KEYS.flatMap((section) => {
+      const ofSection = ofBusiness.filter((entry) => moneySectionOf(entry) === section);
+      if (ofSection.length === 0) return [];
       return [
         {
-          direction,
-          subtotals: sumByCurrency(ofDirection.filter((entry) => entry.status !== "cancelled")),
-          entries: ofDirection,
+          section,
+          subtotals: sumByCurrency(ofSection.filter((entry) => entry.status !== "cancelled")),
+          entries: ofSection,
         },
       ];
     });

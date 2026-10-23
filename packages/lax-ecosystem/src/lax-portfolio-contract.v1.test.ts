@@ -5,6 +5,8 @@ import {
   LaxMoneyResponseV1,
   LaxPortfolioItemV1,
   LaxPortfolioResponseV1,
+  parseLaxMoneyResponse,
+  parseLaxPortfolioResponse,
 } from "./lax-portfolio-contract.v1.js";
 import { item, moneyEntry } from "./portfolio-fixtures.test-util.js";
 
@@ -64,5 +66,17 @@ describe("document kinds", () => {
       documents: [{ kind: "payout_statement", available: true, href: "/payouts" }],
     });
     expect(Value.Check(LaxPortfolioItemV1, withStatement)).toBe(true);
+  });
+});
+
+describe("response parsers", () => {
+  it("return a valid body unchanged and null for anything off-contract", () => {
+    const portfolio = { items: [item()], partial: true };
+    expect(parseLaxPortfolioResponse(portfolio)).toBe(portfolio);
+    expect(parseLaxPortfolioResponse({ items: [{ ...item(), status: "lost" }] })).toBeNull();
+    expect(parseLaxPortfolioResponse(null)).toBeNull();
+    const money = { entries: [moneyEntry()] };
+    expect(parseLaxMoneyResponse(money)).toBe(money);
+    expect(parseLaxMoneyResponse({ entries: [{ ...moneyEntry(), amount: 1.5 }] })).toBeNull();
   });
 });

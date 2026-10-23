@@ -88,6 +88,7 @@ The executable registries are
 |---|---|---|---|---|---|
 | `lax-bid-web` | confidential | `http://localhost:3000/api/auth/callback/lax-bid-web`; `https://lax.bid/api/auth/callback/lax-bid-web`; `https://test.lax.bid/api/auth/callback/lax-bid-web` | corresponding origin `/` | `lax-bid-api`, `lax-ws` | `openid profile email offline_access bid.read bid.write` |
 | `lax-shop-web` | confidential | `http://localhost:3010/auth/callback`; `https://shop.lax.art/auth/callback` | corresponding origin `/` | `lax-shop-api` | `openid profile email offline_access shop.read shop.write` |
+| `lax-account-web` | confidential | `http://localhost:3040/api/auth/callback`; `https://account.lax.bid/api/auth/callback`; `https://test-account.lax.bid/api/auth/callback` | corresponding origin `/` | `lax-bid-api`, `lax-shop-api` | `openid profile email offline_access phone lax.portfolio.read` |
 | `ws-mobile` | public | `com.lax.bid:/oauth/callback` | none | `lax-ws` | `openid profile email offline_access bid.read` |
 
 All interactive clients require S256 PKCE. Redirect and post-logout URIs are
@@ -95,15 +96,21 @@ separate exact allowlists with no wildcards.
 
 | Resource id / access-token `aud` | RFC 8707 resource | Allowed product scopes |
 |---|---|---|
-| `lax-bid-api` | `https://api.lax.bid` | `bid.read`, `bid.write` |
+| `lax-bid-api` | `https://api.lax.bid` | `bid.read`, `bid.write`, `lax.portfolio.read` |
 | `lax-ws` | `https://ws.lax.bid` | `bid.read` |
-| `lax-shop-api` | `https://shop.lax.art/api` | `shop.read`, `shop.write` |
+| `lax-shop-api` | `https://shop.lax.art/api` | `shop.read`, `shop.write`, `lax.portfolio.read` |
 
 `lax.art` is absent because static marketing has no protected API. Resource
 access tokens are RS256 JWTs with a 15-minute lifetime and exactly one audience.
 The RFC 8693 endpoint accepts a client-bound subject token and rejects arbitrary
 or multiple resources, unregistered client/resource combinations, scopes
 outside both registries, and disabled or merged subjects.
+
+`lax.portfolio.read` is the narrow read-only scope LAX Account exchanges for, one
+resource per exchange, to list a person's own works and money. Each product accepts it on
+its portfolio routes only; every other route still requires its `*.read` or `*.write` scope.
+The issuer's client registry must be re-applied (`db:configure-oidc-clients`) in each
+environment for the Account client to receive the new resources and scope.
 
 ## Token classes and verifier obligations
 

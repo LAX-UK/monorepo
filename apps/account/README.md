@@ -21,6 +21,8 @@ Neutral identity settings portal at `account.lax.bid` (OIDC client `lax-account-
 | `OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB` | Confidential client secret. |
 | `REDIS_URL`, `LAX_ACCOUNT_SESSION_ENCRYPTION_KEY` | Encrypted BFF session store (key ≥ 32 chars). |
 | `LAX_BID_PUBLIC_URL` | Optional; enables the address book, notification and help links that still live in LAX Bid. |
+| `LAX_BID_API_URL`, `LAX_SHOP_API_URL` | Optional server-to-server URLs of the product APIs the portfolio is read from (fall back to `INTERNAL_API_URL` / `NEXT_PUBLIC_API_URL` and `SHOP_API_BASE_URL`). A product without a URL shows as unavailable. |
+| `LAX_MEDIA_ORIGINS` | Optional comma-separated origins product images may load from; also read from `NEXT_PUBLIC_MEDIA_BASE_URL` and `SHOP_MEDIA_PUBLIC_BASE_URL`. Used for the CSP `img-src` (set at build time) and to drop images from any other origin. |
 
 Name, email, phone and sessions are changed through client-authenticated issuer routes (`/api/auth/lax/account-*`),
 called server-side with the person's own access token. Renaming, starting an email change, sending or checking a phone code, and signing devices out need a

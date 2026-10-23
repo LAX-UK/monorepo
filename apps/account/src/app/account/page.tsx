@@ -2,6 +2,11 @@ import { AccountOverviewHeader } from "@/components/account-overview-header";
 import { AccountShell } from "@/components/account-shell";
 import { AccountUnavailable } from "@/components/account-unavailable";
 import { CompleteAccountBanner } from "@/components/complete-account-banner.client";
+import {
+  OrganisationsCard,
+  PortfolioSummaryCardSkeleton,
+} from "@/components/portfolio-overview-cards";
+import { PortfolioSummarySection } from "@/components/portfolio-summary-section";
 import { ProductCards } from "@/components/product-cards";
 import { CardLinkSection } from "@/components/section-cards";
 import { SecurityCheckupCard } from "@/components/security-checkup-card";
@@ -9,6 +14,7 @@ import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import {
   buildAccountLinks,
+  buildOrganisationsLink,
   buildPayoutLaunchLinks,
   buildStaffPlatformLinks,
 } from "@/server/domain/account-links";
@@ -24,6 +30,7 @@ import { profileGaps } from "@/server/domain/profile-completeness";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +64,8 @@ export default async function AccountOverviewPage() {
     staffPlatforms: buildStaffPlatformLinks(config, overview.staffPlatforms),
   });
 
+  const organisationsHref = buildOrganisationsLink(config);
+
   return (
     <AccountShell>
       <AccountOverviewHeader overview={overview} />
@@ -67,6 +76,11 @@ export default async function AccountOverviewPage() {
 
       <SecurityCheckupCard checkup={checkup} />
       <ProductCards products={buildAccountProducts(config)} />
+      {/* The products can take seconds to answer, so the card streams in after the rest. */}
+      <Suspense fallback={<PortfolioSummaryCardSkeleton />}>
+        <PortfolioSummarySection />
+      </Suspense>
+      {organisationsHref ? <OrganisationsCard href={organisationsHref} /> : null}
       <CardLinkSection
         id="account-sections"
         heading="Manage your account"

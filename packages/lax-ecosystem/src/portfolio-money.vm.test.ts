@@ -19,7 +19,7 @@ describe("buildMoney", () => {
       moneyEntry({ id: "3", direction: "owed_by_you", status: "pending" }),
     ]);
     expect(vm.groups.map((g) => g.legalName)).toEqual(["LAX Bid Ltd", "LAX Art Ltd"]);
-    expect(vm.groups[0]?.sections.map((s) => s.direction)).toEqual(["owed_by_you", "paid"]);
+    expect(vm.groups[0]?.sections.map((s) => s.section)).toEqual(["owed_by_you", "paid"]);
   });
 
   it("subtotals per currency without mixing them", () => {
@@ -40,10 +40,41 @@ describe("buildMoney", () => {
       moneyEntry({ id: "2", direction: "owed_to_you", status: "pending", amount: 400 }),
     ]);
     const sections = vm.groups[0]?.sections ?? [];
-    expect(sections.map((s) => [s.direction, s.subtotals])).toEqual([
+    expect(sections.map((s) => [s.section, s.subtotals])).toEqual([
       ["owed_by_you", [{ currency: "GBP", amount: 900 }]],
-      ["owed_to_you", [{ currency: "GBP", amount: 400 }]],
+      ["due_to_you", [{ currency: "GBP", amount: 400 }]],
     ]);
+  });
+
+  it("splits payouts into due to you and received, never adding them together", () => {
+    const vm = buildMoney([
+      moneyEntry({ id: "1", direction: "owed_to_you", status: "pending", amount: 400 }),
+      moneyEntry({ id: "2", direction: "owed_to_you", status: "completed", amount: 2500 }),
+      moneyEntry({ id: "3", direction: "owed_to_you", status: "completed", amount: 100 }),
+    ]);
+    expect(vm.groups[0]?.sections.map((s) => [s.section, s.subtotals])).toEqual([
+      ["due_to_you", [{ currency: "GBP", amount: 400 }]],
+      ["received", [{ currency: "GBP", amount: 2600 }]],
+    ]);
+  });
+
+  it("keeps a cancelled payout out of both payout subtotals", () => {
+    const vm = buildMoney([
+      moneyEntry({ id: "1", direction: "owed_to_you", status: "cancelled", amount: 400 }),
+    ]);
+    const section = vm.groups[0]?.sections[0];
+    expect(section?.section).toBe("due_to_you");
+    expect(section?.subtotals).toEqual([]);
+    expect(section?.entries).toHaveLength(1);
+  });
+
+  it("filters by the split payout sections", () => {
+    const entries = [
+      moneyEntry({ id: "p", direction: "owed_to_you", status: "pending" }),
+      moneyEntry({ id: "c", direction: "owed_to_you", status: "completed" }),
+    ];
+    expect(buildMoney(entries, { section: "due_to_you" }).ledger.map((e) => e.id)).toEqual(["p"]);
+    expect(buildMoney(entries, { section: "received" }).ledger.map((e) => e.id)).toEqual(["c"]);
   });
 
   it("lists cancelled entries but leaves them out of subtotals", () => {
@@ -70,7 +101,7 @@ describe("buildMoney", () => {
       moneyEntry({ id: "2", business: ART_BUSINESS, currency: "EUR", direction: "refunded" }),
     ];
     expect(buildMoney(entries, { business: "lax_art" }).ledger.map((e) => e.id)).toEqual(["2"]);
-    expect(buildMoney(entries, { direction: "paid" }).ledger.map((e) => e.id)).toEqual(["1"]);
+    expect(buildMoney(entries, { section: "paid" }).ledger.map((e) => e.id)).toEqual(["1"]);
     expect(buildMoney(entries, { currency: "EUR" }).ledger.map((e) => e.id)).toEqual(["2"]);
     expect(buildMoney(entries, { currency: "USD" })).toMatchObject({
       groups: [],

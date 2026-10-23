@@ -95,6 +95,32 @@ Version **1** summary types (`LaxAccountPortalSummaryV1`) describe profile/secur
 summaries, connected products, and global consent flags for a neutral account portal.
 Products continue to own detailed settings; the portal links out to product-local routes.
 
+## Portfolio contracts and Account routes
+
+`LaxPortfolioItemV1` and `LaxMoneyEntryV1` (with the response envelopes
+`LaxPortfolioResponseV1` and `LaxMoneyResponseV1`) are the versioned read contract each
+product implements for its own data. Pure presenters in `@auction/lax-ecosystem`
+(`buildPortfolioHeader`, `buildHoldings`, `buildMoney`, `portfolioEmptyState`) turn them
+into view models. `buildMoney` splits the contract's `owed_to_you` direction into **Due to
+you** (pending) and **Received** (completed) so payouts still to come are never added to
+payouts already paid.
+
+LAX Account composes the products in `apps/account`: one token exchange per product
+(`lax.portfolio.read`, cached in the Account session for the token's lifetime), parallel
+reads with a short timeout, and validation against the contract. One product failing shows
+"LAX Bid items are unavailable right now" and leaves the others; a `partial: true` answer
+is shown as a note, and a partial set is never presented as complete.
+
+| Route | Purpose |
+| --- | --- |
+| `/account/portfolio` | Counts, "Paid so far" per currency, needs-attention strip, holdings with URL filters |
+| `/account/portfolio/[product]/[id]` | Acquisition record, documents, deep-link actions, value placeholder |
+| `/account/portfolio/money` | Money by business, then section, with per-currency subtotals, and a ledger |
+
+The Account overview links to the portfolio and to Bid's organisations page. Bid's
+organisation routes require `bid.read`, which Account does not hold, so the organisation
+list itself is read in Bid.
+
 ## Conformance gates
 
 - `packages/lax-ecosystem` unit tests (URL safety, directory, account mapping).
