@@ -1,6 +1,6 @@
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
-import { initNodeSentry } from "@auction/observability";
+import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
@@ -59,6 +59,7 @@ import {
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
+import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
 import { registerCronWorkers } from "../workers/register-cron-workers.js";
 import { registerEmailWorker } from "../workers/register-email-worker.js";
@@ -72,6 +73,7 @@ import {
   createReportWorkerJobFailure,
   registerWorkerErrorHandlers,
 } from "../workers/worker-utils.js";
+import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 
@@ -92,6 +94,7 @@ export type WorkerContainer = {
   payoutWorkers: ReturnType<typeof registerPayoutWorkers>;
   complianceWorkers: ReturnType<typeof registerComplianceWorkers>;
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
+  atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
   cronWorkers: ReturnType<typeof registerCronWorkers>;
   deadLetterQueue: Queue;
   projectorRunner: ReturnType<typeof createProjectorRunner>;
@@ -354,6 +357,17 @@ export function createWorkerContainer(): WorkerContainer {
   });
   const purgeWorkers = registerPurgeWorkers(deps);
   const cronWorkers = registerCronWorkers(deps);
+  const atgSyncWorkers = registerAtgSyncWorker(
+    deps,
+    createAtgSyncRuntime({
+      env,
+      db,
+      onTickError: (saleId, err) => {
+        log.warn({ err, saleId }, "ATG tick failed for sale");
+        captureBackgroundError("atg-sync-tick", err, { extra: { saleId } });
+      },
+    }),
+  );
 
   registerWorkerErrorHandlers(
     [
@@ -365,6 +379,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...complianceWorkers.errorHandlers,
       ...purgeWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
+      ...atgSyncWorkers.errorHandlers,
     ],
     log,
   );
@@ -533,6 +548,7 @@ export function createWorkerContainer(): WorkerContainer {
     complianceWorkers,
     purgeWorkers,
     cronWorkers,
+    atgSyncWorkers,
     deadLetterQueue,
     projectorRunner,
     lotLifecycleConsumer,
@@ -564,6 +580,7 @@ export async function shutdownWorkerContainer(
         container.complianceWorkers.close(),
         container.purgeWorkers.close(),
         container.cronWorkers.close(),
+        container.atgSyncWorkers.close(),
         container.lotLifecycleConsumer?.close(),
         container.deadLetterQueue.close(),
         container.projectorRunner.stop(),
