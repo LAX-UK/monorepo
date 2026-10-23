@@ -28,6 +28,29 @@ describe("laxLockup", () => {
     expect(bid.ink.length).toBeGreaterThan(laxLockup("account").ink.length);
   });
 
+  it("offers a compact Bid lockup: the gavel mark and .BID without the tagline, framed like the others", () => {
+    const full = laxLockup("bid");
+    const compact = laxLockup("bid-compact");
+    expect(compact.descriptor).toBe("BID");
+    expect(compact.descriptorPaths).toEqual(full.descriptorPaths);
+    expect(compact.ink.length).toBe(BID_MARK_INK_PATHS.length);
+    expect(compact.ink.length).toBeLessThan(full.ink.length);
+    const shop = laxLockup("shop");
+    // Same top and bottom as Shop, so the marks render at one height at one CSS height.
+    const [, y, , height] = compact.viewBox.split(" ").map(Number);
+    const [, shopY, , shopHeight] = shop.viewBox.split(" ").map(Number);
+    expect(y).toBe(shopY);
+    expect(height).toBeCloseTo(shopHeight ?? Number.NaN, 2);
+    expect(compact.width).toBeLessThan(full.width);
+  });
+
+  it("keeps the compact Bid descriptor colours of the full Bid lockup", () => {
+    for (const scheme of SCHEMES) {
+      expect(laxLockupColors("bid-compact", scheme)).toEqual(laxLockupColors("bid", scheme));
+    }
+    expect(laxLockupFileName("bid-compact", "dark")).toBe("lax-bid-compact-dark.svg");
+  });
+
   it("sets every other descriptor after the same dot, on Bid's baseline and left edge", () => {
     const bidDot = laxLockup("bid").descriptorPaths[0];
     for (const product of ["shop", "art", "account"] as const) {
@@ -71,11 +94,11 @@ describe("laxLockup", () => {
 describe("gavel mark", () => {
   const gavelPaths = BID_MARK_INK_PATHS.slice(2);
 
-  it("is Bid's alone: every other lockup uses the plain mark", () => {
+  it("is Bid's alone, in the full and compact lockups: every other lockup uses the plain mark", () => {
     const withGavel = LAX_LOCKUP_KINDS.filter((kind) =>
       laxLockup(kind).ink.some((path) => gavelPaths.includes(path.d)),
     );
-    expect(withGavel).toEqual(["bid"]);
+    expect(withGavel).toEqual(["bid", "bid-compact"]);
   });
 
   it("draws the plain mark as the L, a two-stroke A and the X", () => {

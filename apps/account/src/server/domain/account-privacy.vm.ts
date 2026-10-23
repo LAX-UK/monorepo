@@ -2,15 +2,26 @@ import type { AccountLinksVm } from "./account-links";
 import type { SettingsGroupVm } from "./account-settings.vm";
 
 /**
- * Privacy (Figma 956:14309). The data-sharing switch is left out: no LAX service
- * stores an account-level data-sharing choice yet. Deletion runs in LAX Bid,
- * which owns the deletion request and its step-up confirmation.
+ * Notifications and privacy (Figma 956:14309). The data-sharing switch is left out: no LAX
+ * service stores an account-level data-sharing choice yet. Notification preferences and
+ * deletion run in LAX Bid, which owns them and the deletion step-up confirmation.
  */
 export function buildPrivacyGroups(
   links: Pick<AccountLinksVm, "bidSettings" | "support">,
 ): SettingsGroupVm[] {
   const groups: SettingsGroupVm[] = [];
   if (links.bidSettings) {
+    groups.push({
+      id: "notifications",
+      label: "Notifications",
+      rows: [
+        {
+          title: "Notification preferences",
+          subtitle: "Managed in LAX Bid",
+          href: links.bidSettings.notifications,
+        },
+      ],
+    });
     groups.push({
       id: "your-data",
       label: "Your data",

@@ -1,5 +1,6 @@
 import { AccountShell } from "@/components/account-shell";
 import { AccountPageHeader } from "@/components/account-ui";
+import { AccountUnavailable } from "@/components/account-unavailable";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import { buildAccountLinks } from "@/server/domain/account-links";
@@ -14,11 +15,13 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Edit account · LAX Account" };
+export const metadata: Metadata = { title: "Personal details · LAX Account" };
 
-/** Edit account (Figma 950:13732). */
-export default async function EditAccountPage() {
+/** Personal details (Figma 950:13732). */
+export default async function PersonalDetailsPage() {
   const session = await loadAccountSession();
+  if (session.status === "unavailable")
+    return <AccountUnavailable retryHref={ACCOUNT_ROUTES.profile} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.profile}`);
   const { overview } = session;
   const { config } = getLaxAccountContainer();
@@ -29,7 +32,7 @@ export default async function EditAccountPage() {
 
   return (
     <AccountShell>
-      <AccountPageHeader title="My account" backHref={ACCOUNT_ROUTES.settings} />
+      <AccountPageHeader title="Personal details" backHref={ACCOUNT_ROUTES.overview} />
       {sections.map((section) => (
         <section key={section.id} aria-labelledby={`${section.id}-heading`} className="space-y-2">
           <div className="flex items-center justify-between gap-3 px-4">

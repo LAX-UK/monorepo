@@ -3,6 +3,12 @@ import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
 
 const ACCESS_TOKEN_EXPIRY_SKEW_MS = 30_000;
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 300;
+/**
+ * Account signs in against the same Better Auth issuer as LAX Bid, which may omit
+ * `refresh_token` or `id_token` from a refresh response; the previous ones are then kept.
+ * ("shop" would reject such a response, as the Shop identity service always sends both.)
+ */
+const REFRESH_RESPONSE_MODE = "bid";
 
 function isFresh(record: StaffSessionRecord, nowMs: number): boolean {
   return record.accessTokenExpiresAtMs - ACCESS_TOKEN_EXPIRY_SKEW_MS > nowMs;
@@ -31,7 +37,7 @@ export async function revalidateAccountSession(input: {
       const token = await input.tokenEndpoint.requestToken(
         new URLSearchParams({ grant_type: "refresh_token", refresh_token: current.refreshToken }),
       );
-      const merged = mergeRefreshTokens(current, token, "bid");
+      const merged = mergeRefreshTokens(current, token, REFRESH_RESPONSE_MODE);
       const refreshed: StaffSessionRecord = {
         ...current,
         ...merged,

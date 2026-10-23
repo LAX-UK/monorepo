@@ -181,6 +181,10 @@
       "types": "./dist/components/ui/badge.d.ts",
       "default": "./dist/components/ui/badge.js"
     },
+    "./components/progress-ring": {
+      "types": "./dist/components/ui/progress-ring.d.ts",
+      "default": "./dist/components/ui/progress-ring.js"
+    },
     "./components/progress": {
       "types": "./dist/components/ui/progress.d.ts",
       "default": "./dist/components/ui/progress.js"

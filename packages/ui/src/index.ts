@@ -280,6 +280,7 @@ export type {
 } from "./components/ui/entity-table-shell.js";
 export { Badge, badgeVariants } from "./components/ui/badge.js";
 export { Progress } from "./components/ui/progress.js";
+export { ProgressRing, type ProgressRingProps } from "./components/ui/progress-ring.js";
 export {
   Avatar,
   AvatarImage,

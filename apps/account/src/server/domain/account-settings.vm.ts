@@ -1,38 +1,72 @@
 import type { AccountLinksVm, PayoutLaunchLinkVm, StaffPlatformLinkVm } from "./account-links";
 import type { AccountOverviewVm } from "./account-overview.vm";
+import type { AccountSecurityFacts } from "./account-security-facts";
 
 export type SettingsRowVm = { title: string; subtitle?: string; href: string };
 
 export type SettingsGroupVm = { id: string; label: string; footer?: string; rows: SettingsRowVm[] };
 
 export const ACCOUNT_ROUTES = {
-  settings: "/account",
+  overview: "/account",
   profile: "/account/profile",
+  security: "/account/security",
   privacy: "/account/privacy",
+  help: "/account/help",
 } as const;
 
+export type AccountSectionVm = {
+  id: "personal-details" | "security" | "privacy" | "help";
+  title: string;
+  description: string;
+  href: string;
+};
+
 /**
- * Settings screen (Figma 930:14289). Rows only point at destinations that exist:
- * Language and Appearance are left out because Account has no locale support and
- * no theme preference shared across LAX origins; "Collect Hub" is a lax.art screen.
+ * The overview's category cards. Help opens Bid's published help centre and contact pages, so
+ * the card is left out when Bid is not configured.
  */
-export function buildSettingsGroups(input: {
-  overview: Pick<AccountOverviewVm, "signedInWithAuthenticator">;
-  links: AccountLinksVm;
-  payoutLinks: PayoutLaunchLinkVm[];
-  staffPlatforms: StaffPlatformLinkVm[];
-}): SettingsGroupVm[] {
-  const { overview, links, payoutLinks, staffPlatforms } = input;
-  const groups: SettingsGroupVm[] = [
+export function buildAccountSections(links: Pick<AccountLinksVm, "support">): AccountSectionVm[] {
+  const sections: AccountSectionVm[] = [
     {
-      id: "account",
-      label: "Account",
+      id: "personal-details",
+      title: "Personal details",
+      description: "Name, email, phone and addresses",
+      href: ACCOUNT_ROUTES.profile,
+    },
+    {
+      id: "security",
+      title: "Password and security",
+      description: "Password and two-step verification",
+      href: ACCOUNT_ROUTES.security,
+    },
+    {
+      id: "privacy",
+      title: "Notifications and privacy",
+      description: "Notification preferences, your data and policies",
+      href: ACCOUNT_ROUTES.privacy,
+    },
+  ];
+  if (links.support) {
+    sections.push({
+      id: "help",
+      title: "Help",
+      description: "Help centre and how to contact us",
+      href: ACCOUNT_ROUTES.help,
+    });
+  }
+  return sections;
+}
+
+/** Password and security page. Both rows open the issuer's hosted pages, which own the change. */
+export function buildSecurityGroups(
+  facts: Pick<AccountSecurityFacts, "twoStepConfirmed">,
+  links: Pick<AccountLinksVm, "changePassword" | "manageTwoStep">,
+): SettingsGroupVm[] {
+  return [
+    {
+      id: "sign-in",
+      label: "Signing in",
       rows: [
-        {
-          title: "Edit account",
-          subtitle: "Name, email, phone and addresses",
-          href: ACCOUNT_ROUTES.profile,
-        },
         {
           title: "Password",
           subtitle: "We'll email you a secure link to change it",
@@ -40,56 +74,49 @@ export function buildSettingsGroups(input: {
         },
         {
           title: "Two-step verification",
-          subtitle: overview.signedInWithAuthenticator ? "On for this sign-in" : "Set up or manage",
+          subtitle: facts.twoStepConfirmed ? "On" : "Set up or manage",
           href: links.manageTwoStep,
         },
       ],
     },
-    {
-      id: "preferences",
-      label: "Preferences",
-      rows: links.bidSettings
-        ? [
-            {
-              title: "Notification preferences",
-              subtitle: "Managed in LAX Bid",
-              href: links.bidSettings.notifications,
-            },
-          ]
-        : [],
-    },
+  ];
+}
+
+/** Help page rows; empty without Bid, which publishes the help centre. */
+export function buildHelpGroups(links: Pick<AccountLinksVm, "support">): SettingsGroupVm[] {
+  if (!links.support) return [];
+  return [
     {
       id: "support",
       label: "Support",
-      rows: links.support
-        ? [
-            { title: "Help centre", href: links.support.helpCentre },
-            { title: "Contact us", href: links.support.contact },
-          ]
-        : [],
+      rows: [
+        { title: "Help centre", href: links.support.helpCentre },
+        { title: "Contact us", href: links.support.contact },
+      ],
     },
-    {
-      id: "legal",
-      label: "Legal",
-      // The privacy centre only lists Bid-hosted destinations, so it shares their condition.
-      rows: links.support
-        ? [
-            { title: "Terms & conditions", href: links.support.terms },
-            { title: "Privacy centre", href: ACCOUNT_ROUTES.privacy },
-          ]
-        : [],
-    },
+  ];
+}
+
+/**
+ * Entry points to other LAX tools that belong to no category above: payout onboarding and the
+ * admin tools a staff member can open.
+ */
+export function buildLaunchGroups(input: {
+  payoutLinks: PayoutLaunchLinkVm[];
+  staffPlatforms: StaffPlatformLinkVm[];
+}): SettingsGroupVm[] {
+  const groups: SettingsGroupVm[] = [
     {
       id: "payouts",
       label: "Payout accounts",
       footer: "Bank and tax details live on each LAX business product.",
-      rows: payoutLinks.map((link) => ({ title: link.label, href: link.href })),
+      rows: input.payoutLinks.map((link) => ({ title: link.label, href: link.href })),
     },
     {
       id: "lax-access",
       label: "Your LAX access",
       footer: "Your role on each tool is managed by a LAX admin.",
-      rows: staffPlatforms.map((platform) => ({
+      rows: input.staffPlatforms.map((platform) => ({
         title: platform.label,
         subtitle: "Staff access",
         href: platform.href,
