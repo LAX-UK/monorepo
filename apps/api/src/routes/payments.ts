@@ -1,6 +1,8 @@
+import { entityActorCan } from "@auction/domain";
 import {
   adminLotFulfilmentLotIdParamSchema,
   createPaymentBodySchema,
+  entityWonLotsQuerySchema,
   myPaymentsQuerySchema,
   paymentIdParamSchema,
 } from "@auction/validators";
@@ -22,7 +24,11 @@ import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
-import { createOptionalLegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import { requireEntityCapability } from "../middleware/require-entity-capability.js";
+import {
+  createOptionalLegalEntityContext,
+  createRequireLegalEntityContext,
+} from "../middleware/require-legal-entity-context.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
@@ -47,6 +53,11 @@ export function createPaymentRoutes(
     (input) => container.impersonationAuditService.recordSessionTimedOut(input),
     container.impersonationSessionService,
   );
+  const requireEntityContext = createRequireLegalEntityContext(container.legalEntityRepository, {
+    impersonationSessions: container.impersonationSessionService,
+    onImpersonationExpired: (input) =>
+      container.impersonationAuditService.recordSessionTimedOut(input),
+  });
   const buyerPaymentHttp = container.finance.buyerPaymentHttp;
   const entityStaffPayment = container.finance.entityStaffPayment;
   const r = new Hono<{
@@ -134,6 +145,51 @@ export function createPaymentRoutes(
     });
     return respondFinanceRouteOutcome(c, outcome);
   });
+
+  /**
+   * GET /payments/entity — payments billed to the acting organisation (`X-Legal-Entity-Id`),
+   * including those for lots a colleague won on its behalf.
+   */
+  r.get(
+    "/entity",
+    requireAuth,
+    requireEntityContext,
+    requireEntityCapability("entity.finance.read"),
+    zValidator("query", myPaymentsQuerySchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const { status } = c.req.valid("query");
+      const outcome = await buyerPaymentHttp.listEntityPayments(ctx.legalEntityId, {
+        ...(status !== undefined ? { status } : {}),
+      });
+      return respondFinanceRouteOutcome(c, outcome);
+    },
+  );
+
+  /**
+   * GET /payments/entity/wins — works won for the acting organisation. Members who can read
+   * holdings but not finances (viewers) see the works without prices.
+   */
+  r.get(
+    "/entity/wins",
+    requireAuth,
+    requireEntityContext,
+    zValidator("query", entityWonLotsQuerySchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const canReadFinance = entityActorCan(ctx, "entity.finance.read");
+      if (!canReadFinance && !entityActorCan(ctx, "entity.holdings.read")) {
+        return c.json({ error: "insufficient_entity_role" }, 403);
+      }
+      const { limit, offset } = c.req.valid("query");
+      const outcome = await buyerPaymentHttp.listEntityWonLots(ctx.legalEntityId, {
+        limit,
+        offset,
+        includeHammerPrice: canReadFinance,
+      });
+      return respondFinanceRouteOutcome(c, outcome);
+    },
+  );
 
   r.get(
     "/me/lot/:lotId/fulfilment",

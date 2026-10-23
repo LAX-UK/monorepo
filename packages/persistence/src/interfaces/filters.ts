@@ -15,6 +15,8 @@ export type ListLotsFilter = {
   categoryIds?: string[] | undefined;
   sellerLegalEntityId?: string | undefined;
   winnerId?: string | undefined;
+  /** Lots won on behalf of this legal entity, whichever member placed the winning bid. */
+  buyerLegalEntityId?: string | undefined;
   saleId?: string | undefined;
   /** Filter to lots whose `artist_id` FK matches. Used by the admin artist
    * edit page ("Lots by this artist" panel) and the public artist detail rail. */

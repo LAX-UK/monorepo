@@ -1,10 +1,10 @@
+import type { LegalEntityMemberRole } from "@auction/types";
 import type { FinanceHttpJson } from "./finance-route-http.js";
-
-export type StripeConnectLegalEntityRole = "owner" | "admin" | "finance" | string;
 
 export type StripeConnectLegalEntityContext = {
   legalEntityId: string;
-  role: StripeConnectLegalEntityRole;
+  role: LegalEntityMemberRole;
+  isImpersonation?: boolean | undefined;
 };
 
 export interface IStripeConnectHttpApplicationService {

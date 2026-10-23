@@ -13,6 +13,8 @@ describe("BuyerPaymentHttpApplicationService", () => {
     createPendingForWinner: vi.fn(),
     listForBuyer: vi.fn(),
     listMyPaymentsForBuyerApi: vi.fn(),
+    listEntityPaymentsForBuyerApi: vi.fn(),
+    listEntityWonLots: vi.fn(),
     getBuyerComplianceGateStatus: vi.fn(),
     cancelPendingAsBuyer: vi.fn(),
   };
@@ -49,6 +51,31 @@ describe("BuyerPaymentHttpApplicationService", () => {
     get: () => undefined,
     req: { header: () => undefined },
   };
+
+  it("lists payments and wins for the organisation rather than the person", async () => {
+    paymentBuyerService.listEntityPaymentsForBuyerApi.mockResolvedValue({
+      data: [{ id: "pay-1" }],
+    });
+    paymentBuyerService.listEntityWonLots.mockResolvedValue({ data: [{ lotId: "lot-1" }] });
+
+    const payments = await service().listEntityPayments("entity-1", { status: "pending" });
+    const wins = await service().listEntityWonLots("entity-1", {
+      limit: 10,
+      offset: 0,
+      includeHammerPrice: false,
+    });
+
+    expect(paymentBuyerService.listEntityPaymentsForBuyerApi).toHaveBeenCalledWith("entity-1", {
+      status: "pending",
+    });
+    expect(paymentBuyerService.listEntityWonLots).toHaveBeenCalledWith("entity-1", {
+      limit: 10,
+      offset: 0,
+      includeHammerPrice: false,
+    });
+    expect(payments).toEqual({ kind: "ok", data: [{ id: "pay-1" }] });
+    expect(wins).toEqual({ kind: "ok", data: [{ lotId: "lot-1" }] });
+  });
 
   it("returns checkout payload when marketing emit fails after payment commit", async () => {
     paymentBuyerService.createPendingForWinner.mockResolvedValue(

@@ -1,3 +1,4 @@
+import { entityActorCan } from "@auction/domain";
 import {
   ADMIN_DASHBOARD_ACCESS,
   AML_REVIEW_ACCESS,
@@ -145,8 +146,6 @@ export const requireSpecialistCatalogueOrAuctionManage = createMiddleware<{
   return c.json({ error: "Forbidden" }, 403);
 });
 
-const ENTITY_FINANCE_WRITE_ROLES = new Set(["owner", "admin", "finance"]);
-
 export const requireFinanceEntityWrite = createMiddleware<{
   Variables: {
     userId?: string;
@@ -162,7 +161,7 @@ export const requireFinanceEntityWrite = createMiddleware<{
     return;
   }
   const ctx = c.get("legalEntityContext");
-  if (ctx && ENTITY_FINANCE_WRITE_ROLES.has(ctx.role)) {
+  if (ctx && entityActorCan(ctx, "entity.finance.write")) {
     await next();
     return;
   }

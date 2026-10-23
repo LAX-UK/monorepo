@@ -18,6 +18,12 @@ export const myPaymentsQuerySchema = z.object({
 
 export type MyPaymentsQuery = z.infer<typeof myPaymentsQuerySchema>;
 
+/** Paging for `GET /payments/entity/wins`. */
+export const entityWonLotsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
 const paymentStatusFilterSchema = z.enum([
   "pending",
   "authorized",

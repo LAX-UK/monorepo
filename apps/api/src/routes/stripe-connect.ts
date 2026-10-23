@@ -21,7 +21,11 @@ const sessionBodySchema = z.object({
 
 function connectCtx(c: { get: (key: "legalEntityContext") => LegalEntityContext | undefined }) {
   const ctx = c.get("legalEntityContext") as LegalEntityContext;
-  return { legalEntityId: ctx.legalEntityId, role: ctx.role };
+  return {
+    legalEntityId: ctx.legalEntityId,
+    role: ctx.role,
+    isImpersonation: ctx.isImpersonation,
+  };
 }
 
 export function createStripeConnectRoutes(

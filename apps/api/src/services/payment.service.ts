@@ -40,10 +40,13 @@ import {
   syncPaymentFromXeroAsAdmin,
 } from "./payment/payment-admin-ops.js";
 import {
+  type EntityWonLotDTO,
   cancelPendingAsBuyer,
   createPendingForWinner,
   expireStalePendingPayments,
   getBuyerComplianceGateStatus,
+  listEntityPaymentsForBuyerApi,
+  listEntityWonLots,
   listForBuyer,
   listMyPaymentsForBuyerApi,
 } from "./payment/payment-buyer-ops.js";
@@ -159,6 +162,20 @@ export class PaymentService
     options: { status?: PaymentStatus },
   ): Promise<{ data: MyPaymentRowDTO[] }> {
     return listMyPaymentsForBuyerApi(this.deps, userId, options);
+  }
+
+  listEntityPaymentsForBuyerApi(
+    legalEntityId: string,
+    options: { status?: PaymentStatus },
+  ): Promise<{ data: MyPaymentRowDTO[] }> {
+    return listEntityPaymentsForBuyerApi(this.deps, legalEntityId, options);
+  }
+
+  listEntityWonLots(
+    legalEntityId: string,
+    options: { limit: number; offset: number; includeHammerPrice: boolean },
+  ): Promise<{ data: EntityWonLotDTO[] }> {
+    return listEntityWonLots(this.deps, legalEntityId, options);
   }
 
   getBuyerComplianceGateStatus(

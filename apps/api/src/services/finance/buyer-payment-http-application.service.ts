@@ -99,6 +99,24 @@ export class BuyerPaymentHttpApplicationService implements IBuyerPaymentHttpAppl
     return { kind: "ok" as const, data };
   }
 
+  async listEntityPayments(
+    legalEntityId: string,
+    options: { status?: import("@auction/types").PaymentStatus },
+  ) {
+    const { data } = await this.paymentBuyerService.listEntityPaymentsForBuyerApi(legalEntityId, {
+      ...(options.status !== undefined ? { status: options.status } : {}),
+    });
+    return { kind: "ok" as const, data };
+  }
+
+  async listEntityWonLots(
+    legalEntityId: string,
+    options: { limit: number; offset: number; includeHammerPrice: boolean },
+  ) {
+    const { data } = await this.paymentBuyerService.listEntityWonLots(legalEntityId, options);
+    return { kind: "ok" as const, data };
+  }
+
   async cancelPendingPayment(buyerUserId: string, paymentId: string) {
     const result = await this.paymentBuyerService.cancelPendingAsBuyer(buyerUserId, paymentId);
     return result.match(

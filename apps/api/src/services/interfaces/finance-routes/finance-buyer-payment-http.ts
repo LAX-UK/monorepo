@@ -3,6 +3,7 @@ import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../../../lib/errors.js";
 import type { WebsiteEventContext } from "../../../lib/marketing-event-factory.js";
 import type { MyPaymentRowDTO } from "../../payment-me-presenter.js";
+import type { EntityWonLotDTO } from "../../payment/payment-buyer-ops.js";
 import type { SourceOfFundsDocumentCollectionService } from "../../source-of-funds/source-of-funds-document-collection.service.js";
 import type { BuyerSourceOfFundsViewResult } from "../compliance-routes/compliance-buyer-http.js";
 import type { LotFulfilmentRow } from "../lot-fulfilment-service.js";
@@ -48,6 +49,16 @@ export interface IBuyerPaymentHttpApplicationService {
     buyerUserId: string,
     options: { status?: PaymentStatus },
   ): Promise<FinanceRouteOutcome<MyPaymentRowDTO[]>>;
+
+  listEntityPayments(
+    legalEntityId: string,
+    options: { status?: PaymentStatus },
+  ): Promise<FinanceRouteOutcome<MyPaymentRowDTO[]>>;
+
+  listEntityWonLots(
+    legalEntityId: string,
+    options: { limit: number; offset: number; includeHammerPrice: boolean },
+  ): Promise<FinanceRouteOutcome<EntityWonLotDTO[]>>;
 
   cancelPendingPayment(
     buyerUserId: string,

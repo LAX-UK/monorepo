@@ -1,3 +1,4 @@
+import { entityRoleCan } from "@auction/domain";
 import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
 import {
   type ConnectAccountSessionComponents,
@@ -5,6 +6,7 @@ import {
   connectSessionComponents,
   createConnectAccountSession,
 } from "@auction/stripe-connect";
+import type { LegalEntityMemberRole } from "@auction/types";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
@@ -46,18 +48,16 @@ export class ConnectSessionService {
   }
 
   private buildComponents(
-    role: string,
+    role: LegalEntityMemberRole,
     surface: ConnectSessionSurface,
   ): ConnectAccountSessionComponents {
-    const isOwnerAdmin = role === "owner" || role === "admin";
-    const isFinance = role === "finance";
-
     if (surface === "onboarding") {
-      if (!isOwnerAdmin) throwConnectError("insufficient_role", 403);
+      if (!entityRoleCan(role, "entity.connect.manage"))
+        throwConnectError("insufficient_role", 403);
       return connectSessionComponents("onboarding");
     }
 
-    if (isOwnerAdmin || isFinance) {
+    if (entityRoleCan(role, "entity.connect.operate")) {
       return connectSessionComponents("management");
     }
 
@@ -66,7 +66,7 @@ export class ConnectSessionService {
 
   async createAccountSession(
     legalEntityId: string,
-    role: string,
+    role: LegalEntityMemberRole,
     surface: ConnectSessionSurface,
   ): Promise<AccountSessionResult> {
     const stripe = requireConnectStripe(this.stripeFactory);

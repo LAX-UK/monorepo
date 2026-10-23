@@ -63,6 +63,9 @@ export function listWhere(input: ListWhereInput) {
   if (input.sellerLegalEntityId)
     conditions.push(eq(lot.sellerLegalEntityId, input.sellerLegalEntityId));
   if (input.winnerId) conditions.push(eq(lot.winnerId, input.winnerId));
+  if (input.buyerLegalEntityId) {
+    conditions.push(eq(lot.buyerLegalEntityId, input.buyerLegalEntityId));
+  }
   if (input.saleId) conditions.push(eq(lot.saleId, input.saleId));
   if (input.artistId) conditions.push(eq(lot.artistId, input.artistId));
   if (input.endYear !== undefined) {

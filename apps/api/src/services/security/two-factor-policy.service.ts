@@ -1,3 +1,4 @@
+import { type EntityCapability, entityActorCan } from "@auction/domain";
 import type {
   ActiveMembership,
   ILegalEntityMemberRepository,
@@ -11,9 +12,6 @@ import type {
 } from "../interfaces/identity-issuer-client.js";
 
 const POLICY_CHANGED_EVENT = "auth.two_factor_policy_changed";
-type OrgRole = ActiveMembership["role"];
-
-const ORG_POLICY_READ_ROLES = new Set<OrgRole>(["owner", "admin"]);
 
 export type OrgPolicyActor = Pick<
   ActiveMembership,
@@ -57,16 +55,16 @@ export class TwoFactorPolicyService {
   }
 
   async readOrgPolicy(actor: OrgPolicyActor) {
-    this.assertOrgRole(actor, ORG_POLICY_READ_ROLES);
+    this.assertOrgCapability(actor, "entity.security.read");
     const [view, members] = await Promise.all([
       this.deps.identity.readTwoFactorPolicy(orgScope(actor)),
       this.memberStatuses(actor.legalEntityId),
     ]);
-    return { ...view, members, canEdit: actor.role === "owner" && !actor.isImpersonation };
+    return { ...view, members, canEdit: entityActorCan(actor, "entity.security.manage") };
   }
 
   async setOrgPolicy(actor: OrgPolicyActor, required: boolean) {
-    this.assertOrgRole(actor, new Set<OrgRole>(["owner"]));
+    this.assertOrgCapability(actor, "entity.security.manage");
     return this.writePolicy(orgScope(actor), actor.userId, required, actor.legalEntityId);
   }
 
@@ -81,8 +79,8 @@ export class TwoFactorPolicyService {
     return userIds.map((userId) => ({ userId, twoFactorEnabled: statuses.get(userId) ?? null }));
   }
 
-  private assertOrgRole(actor: OrgPolicyActor, roles: ReadonlySet<OrgRole>) {
-    if (actor.isImpersonation || !roles.has(actor.role)) throw new TwoFactorPolicyForbiddenError();
+  private assertOrgCapability(actor: OrgPolicyActor, capability: EntityCapability) {
+    if (!entityActorCan(actor, capability)) throw new TwoFactorPolicyForbiddenError();
   }
 
   private async writePolicy(

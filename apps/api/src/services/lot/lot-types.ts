@@ -23,8 +23,6 @@ import { LOT_CANCELLABLE_STATUSES } from "@auction/domain";
 
 export const CANCELLABLE = LOT_CANCELLABLE_STATUSES;
 
-export const SELLER_WITHDRAW_ROLES = new Set(["owner", "admin"]);
-
 export type LotBidPublicApiRow = Omit<Bid, "placedByUserId"> & {
   bidderRef: string;
   placedByUserId: string | null;

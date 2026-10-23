@@ -1,3 +1,4 @@
+import { entityActorCan } from "@auction/domain";
 import {
   isPlatformProfileStripeMessage,
   stripeConnectErrorToHttp,
@@ -15,13 +16,6 @@ import { ConnectServiceError } from "../stripe/connect/connect-service-errors.js
 type RouteErrorOptions = {
   recordAccountCreateFailure?: boolean;
 };
-
-function hasFinanceRole(
-  ctx: StripeConnectLegalEntityContext,
-  roles: Array<StripeConnectLegalEntityContext["role"]>,
-): boolean {
-  return roles.includes(ctx.role);
-}
 
 function mapConnectError(err: unknown, opts?: RouteErrorOptions): FinanceHttpJson | null {
   if (err instanceof StripeConnectNotConfiguredError) {
@@ -88,7 +82,7 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
   }
 
   async syncAccountFromStripe(ctx: StripeConnectLegalEntityContext): Promise<FinanceHttpJson> {
-    if (!hasFinanceRole(ctx, ["owner", "admin", "finance"])) {
+    if (!entityActorCan(ctx, "entity.connect.operate")) {
       return { status: 403, body: { error: "insufficient_role" } };
     }
     try {
@@ -105,6 +99,10 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
     ctx: StripeConnectLegalEntityContext,
     surface: "onboarding" | "management",
   ): Promise<FinanceHttpJson> {
+    const needed = surface === "onboarding" ? "entity.connect.manage" : "entity.connect.operate";
+    if (!entityActorCan(ctx, needed)) {
+      return { status: 403, body: { error: "insufficient_role" } };
+    }
     try {
       const session = await this.stripeConnectService.createAccountSession(
         ctx.legalEntityId,
@@ -120,7 +118,7 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
   }
 
   async ensureAccount(ctx: StripeConnectLegalEntityContext): Promise<FinanceHttpJson> {
-    if (!hasFinanceRole(ctx, ["owner", "admin"])) {
+    if (!entityActorCan(ctx, "entity.connect.manage")) {
       return { status: 403, body: { error: "insufficient_role" } };
     }
     try {
@@ -138,7 +136,7 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
     returnUrl: string,
     refreshUrl: string,
   ): Promise<FinanceHttpJson> {
-    if (!hasFinanceRole(ctx, ["owner", "admin"])) {
+    if (!entityActorCan(ctx, "entity.connect.manage")) {
       return { status: 403, body: { error: "insufficient_role" } };
     }
     try {
@@ -156,7 +154,7 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
   }
 
   async createDashboardLink(ctx: StripeConnectLegalEntityContext): Promise<FinanceHttpJson> {
-    if (!hasFinanceRole(ctx, ["owner", "admin", "finance"])) {
+    if (!entityActorCan(ctx, "entity.connect.operate")) {
       return { status: 403, body: { error: "insufficient_role" } };
     }
     try {

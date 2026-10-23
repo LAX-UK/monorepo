@@ -4,6 +4,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import type { LegalEntityMemberRole } from "@auction/types";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
@@ -90,7 +91,7 @@ export class StripeConnectFacade implements IStripeConnectService {
 
   createAccountSession(
     legalEntityId: string,
-    role: string,
+    role: LegalEntityMemberRole,
     surface: ConnectSessionSurface,
   ): Promise<{ clientSecret: string }> {
     return this.sessionService.createAccountSession(legalEntityId, role, surface);

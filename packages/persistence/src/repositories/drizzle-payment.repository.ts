@@ -7,7 +7,7 @@ import {
   paymentExternalRef,
 } from "@auction/db/schema";
 import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
+import type { InferSelectModel, SQL } from "drizzle-orm";
 import type {
   AdminPaymentTableRowDto,
   AdminPaymentsSummaryStats,
@@ -265,6 +265,14 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   }
 
   async listByBuyerId(buyerId: string): Promise<PaymentRecord[]> {
+    return this.listWithExternalRefs(eq(payment.buyerId, buyerId));
+  }
+
+  async listByBuyerLegalEntityId(legalEntityId: string): Promise<PaymentRecord[]> {
+    return this.listWithExternalRefs(eq(payment.buyerLegalEntityId, legalEntityId));
+  }
+
+  private async listWithExternalRefs(where: SQL): Promise<PaymentRecord[]> {
     const rows = await this.db
       .select({
         payment,
@@ -275,7 +283,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .from(payment)
       .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId))
-      .where(eq(payment.buyerId, buyerId))
+      .where(where)
       .orderBy(desc(payment.createdAt));
     return rows.map((r) =>
       mapRow(r.payment, {

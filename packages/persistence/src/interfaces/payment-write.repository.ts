@@ -82,6 +82,8 @@ export interface IPaymentReadRepository {
   countForExport(filter: ListPaymentsExportFilter): Promise<number>;
   /** Payments where the user is the buyer (portfolio). */
   listByBuyerId(buyerId: string): Promise<PaymentRecord[]>;
+  /** Payments billed to an organisation (or personal entity) as buyer, whoever placed the winning bid. */
+  listByBuyerLegalEntityId(legalEntityId: string): Promise<PaymentRecord[]>;
   /** Paginated admin payments table (with optional status/search). */
   listForAdminTable(filter: ListPaymentsAdminTableFilter): Promise<AdminPaymentTableRowDto[]>;
   countForAdminTable(

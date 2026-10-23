@@ -181,3 +181,9 @@ export {
   nextAdvanceableLotId,
   sortLotsForRunList,
 } from "./lot-run-order.js";
+export {
+  entityActorCan,
+  entityRoleCan,
+  type EntityActor,
+  type EntityCapability,
+} from "./entity-capabilities.js";
