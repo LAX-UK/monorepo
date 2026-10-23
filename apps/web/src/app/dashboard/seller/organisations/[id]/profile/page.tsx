@@ -2,7 +2,7 @@ import { subkindLabel } from "@/components/organisations/labels";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { Surface } from "@auction/ui/components/surface";
@@ -29,10 +29,7 @@ export default async function OrganisationProfilePage({
   return (
     <div className="space-y-6">
       <OrgTabSectionHeader>
-        <SectionHeader
-          kicker={<LabelCaps>Legal</LabelCaps>}
-          heading={<DisplayHeading as="h2">Organisation profile</DisplayHeading>}
-        />
+        <SectionHeader heading={<DisplayHeading as="h2">Organisation profile</DisplayHeading>} />
       </OrgTabSectionHeader>
 
       <Surface variant="section" padding="md" className="space-y-4">

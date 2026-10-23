@@ -12,7 +12,7 @@ import {
 } from "@/lib/legal-entity/member-list.gateway.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { entityRoleCan } from "@auction/domain";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { Surface } from "@auction/ui/components/surface";
@@ -50,10 +50,7 @@ export default async function OrganisationMembersPage({
     return (
       <div className="space-y-6">
         <OrgTabSectionHeader>
-          <SectionHeader
-            kicker={<LabelCaps>Team</LabelCaps>}
-            heading={<DisplayHeading as="h2">Members</DisplayHeading>}
-          />
+          <SectionHeader heading={<DisplayHeading as="h2">Members</DisplayHeading>} />
         </OrgTabSectionHeader>
         <DashboardSliceErrorAlert failure={failure} />
       </div>
@@ -78,7 +75,6 @@ export default async function OrganisationMembersPage({
     <div className="space-y-6">
       <OrgTabSectionHeader>
         <SectionHeader
-          kicker={<LabelCaps>Team</LabelCaps>}
           heading={<DisplayHeading as="h2">Members</DisplayHeading>}
           action={
             <p className="max-w-md text-right text-sm text-on-surface-variant">

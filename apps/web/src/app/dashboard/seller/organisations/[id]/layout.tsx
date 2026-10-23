@@ -16,6 +16,9 @@ import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 
+/** Pills read as words here, so they opt out of the badge's capitals. */
+const TAG_CASE = "normal-case tracking-normal";
+
 export default async function OrganisationLayout({
   children,
   params,
@@ -46,7 +49,6 @@ export default async function OrganisationLayout({
             compactOnMobile
             backHref="/dashboard/seller"
             backLabel="Selling"
-            eyebrow="Organisation"
             title="Organisation"
           />
           <DashboardSliceErrorAlert failure={access.failure} />
@@ -66,30 +68,27 @@ export default async function OrganisationLayout({
           compactOnMobile
           backHref="/dashboard/seller"
           backLabel="Selling"
-          eyebrow="Organisation"
           title={member.displayName}
           badges={
             <>
-              <StatusBadge variant={statusBadgeVariant(member.status)} size="sm">
+              <StatusBadge
+                variant={statusBadgeVariant(member.status)}
+                size="sm"
+                className={TAG_CASE}
+              >
                 {statusLabel(member.status)}
               </StatusBadge>
-              <StatusBadge variant="neutral" size="sm">
+              <StatusBadge variant="neutral" size="sm" className={TAG_CASE}>
                 {subkindLabel(member.subkind)}
               </StatusBadge>
-              <StatusBadge variant="neutral" size="sm">
+              <StatusBadge variant="neutral" size="sm" className={TAG_CASE}>
                 {roleLabel(member.role)}
               </StatusBadge>
             </>
           }
-          actions={
-            isActing ? (
-              <StatusBadge variant="success" size="md">
-                Selling as this organisation
-              </StatusBadge>
-            ) : (
-              <SetActingOrgButton legalEntityId={id} />
-            )
-          }
+          // The Selling header already says which organisation is active, so only the way to
+          // switch to it is offered here.
+          actions={isActing ? undefined : <SetActingOrgButton legalEntityId={id} />}
         />
 
         {entity ? <EntityStatusBanner acting={{ ...member, status: entity.status }} /> : null}

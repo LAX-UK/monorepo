@@ -8,7 +8,7 @@ import {
   syncServerStripeConnectStatus,
 } from "@/lib/data/http/stripe-connect.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { notFound } from "next/navigation";
 
@@ -39,10 +39,7 @@ export default async function OrganisationConnectPage({
   return (
     <div className="space-y-6">
       <OrgTabSectionHeader>
-        <SectionHeader
-          kicker={<LabelCaps>Payouts</LabelCaps>}
-          heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>}
-        />
+        <SectionHeader heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>} />
       </OrgTabSectionHeader>
       <p className="font-body text-sm text-on-surface-variant">
         Manage bank details and verification without leaving LAX.

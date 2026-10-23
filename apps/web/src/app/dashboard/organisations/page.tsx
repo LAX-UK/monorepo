@@ -22,7 +22,7 @@ import { isOrgOnboardingInProgress } from "@/lib/legal-entity/org-onboarding-in-
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -110,7 +110,6 @@ export default async function OrganisationsHubPage() {
       {!loadFailure && pending.length > 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
           <div className="space-y-1">
-            <LabelCaps>Inbox</LabelCaps>
             <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
               Pending invitations
             </h2>
@@ -153,7 +152,6 @@ export default async function OrganisationsHubPage() {
       ) : !loadFailure ? (
         <div className="space-y-4">
           <SectionHeader
-            kicker={<LabelCaps>Workspaces</LabelCaps>}
             heading={<DisplayHeading as="h2">Your organisations</DisplayHeading>}
             action={
               <Button asChild variant="outline" size="sm">

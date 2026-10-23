@@ -138,7 +138,7 @@ export function NotificationRow({
           <time
             dateTime={item.createdAt.toISOString()}
             title={item.createdAt.toLocaleString()}
-            className="shrink-0 font-label text-[11px] uppercase tracking-wider tabular-nums text-on-surface-variant"
+            className="shrink-0 font-label text-xs tabular-nums text-on-surface-variant"
           >
             {relativeTime(item.createdAt)}
           </time>
@@ -151,9 +151,7 @@ export function NotificationRow({
         >
           {item.message}
         </p>
-        <p className="mt-1 font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant/80">
-          {label}
-        </p>
+        <p className="mt-1 font-label text-xs text-on-surface-variant/80">{label}</p>
       </div>
 
       <div className="flex shrink-0 items-center gap-1">

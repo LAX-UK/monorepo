@@ -43,7 +43,7 @@ export function DashboardSortSelect({
       <label
         htmlFor={`sort-${label.replace(/\s+/g, "-").toLowerCase()}`}
         className={cn(
-          "block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary",
+          "block font-label text-sm font-medium text-on-surface-variant",
           compactOnMobile && "max-lg:sr-only",
         )}
       >
