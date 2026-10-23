@@ -16,6 +16,7 @@ import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
+import { readAccountSecurityBaseFacts } from "../infrastructure/drizzle-account-security-facts.reader.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
 import { createTwoFactorAuthorizeGateMiddleware } from "../infrastructure/two-factor-authorize-gate.middleware.js";
 import {
@@ -34,11 +35,14 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
+import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
+import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
+import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import type { AuthRequestHandler } from "./create-auth-request-handler.js";
@@ -156,6 +160,34 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       clients: services.oidc.confidentialClients,
       tokens: services.oidc.tokenManagement,
       logout: services.oidc.logout,
+    }),
+  );
+  const accountSecurityFacts = new AccountSecurityFactsService(
+    {
+      readBaseFacts: (subjectId) => readAccountSecurityBaseFacts(options.db, subjectId),
+      // Better Auth decrypts the stored codes (and the at-rest envelope beneath them); only
+      // the length leaves this closure.
+      countBackupCodes: async (subjectId) =>
+        (await options.auth.api.viewBackupCodes({ body: { userId: subjectId } })).backupCodes
+          .length,
+    },
+    (error) => options.log.warn({ err: error }, "account_backup_code_count_failed"),
+  );
+  app.route(
+    "/api/auth",
+    createAccountSecurityFactsRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      facts: accountSecurityFacts,
+      rateLimit: createSubjectReadRateLimiter({
+        redis: options.redis,
+        keyPrefix: "rl:auth-issuer:account-security-facts",
+        windowSec: 60,
+        max: 60,
+        onError: (error) =>
+          options.log.warn({ err: error }, "account_facts_rate_limit_unavailable"),
+      }),
+      onReadFailure: (error) => options.log.error({ err: error }, "account_security_facts_failed"),
     }),
   );
   app.route(

@@ -16,7 +16,8 @@ const base: AccountSecurityFacts = {
   emailVerified: false,
   hasPhone: false,
   phoneVerified: false,
-  twoStepConfirmed: false,
+  twoStep: "unknown",
+  backupCodesRemaining: null,
 };
 
 const render = (facts: AccountSecurityFacts) =>
@@ -35,7 +36,7 @@ describe("SecurityCheckupCard", () => {
   });
 
   it("shows partial progress and drops the action of a finished step", () => {
-    const html = render({ ...base, emailVerified: true, twoStepConfirmed: true });
+    const html = render({ ...base, emailVerified: true, twoStep: "on" });
     expect(html).toContain("2 of 3 recommended steps done");
     expect(html).toContain('aria-valuenow="2"');
     expect(html).toContain('Verify your email<span class="sr-only"> (done)</span>');
@@ -49,7 +50,8 @@ describe("SecurityCheckupCard", () => {
       emailVerified: true,
       hasPhone: true,
       phoneVerified: true,
-      twoStepConfirmed: true,
+      twoStep: "on",
+      backupCodesRemaining: null,
     });
     expect(html).toContain("3 of 3 recommended steps done");
     expect(html).toContain("Your account is up to date. Nothing needs your attention right now.");

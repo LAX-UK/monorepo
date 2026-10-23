@@ -1,3 +1,8 @@
+export {
+  ACCOUNT_SECURITY_FACTS_PATH,
+  accountSecurityFactsSchema,
+  type AccountSecurityFactsResponse,
+} from "./account-security-facts.js";
 export * from "./auth-at-rest.js";
 export {
   AUTH_ROUTE_PATH,

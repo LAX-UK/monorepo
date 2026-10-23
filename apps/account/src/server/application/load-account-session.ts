@@ -1,3 +1,4 @@
+import type { AccountSecurityFactsResponse } from "@auction/identity-contracts";
 import { decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import { getLaxAccountContainer } from "../container";
@@ -5,7 +6,13 @@ import { type AccountOverviewVm, buildAccountOverview } from "../domain/account-
 import { revalidateAccountSession } from "./revalidate-account-session";
 
 export type AccountSessionState =
-  | { status: "ok"; subject: string; overview: AccountOverviewVm }
+  | {
+      status: "ok";
+      subject: string;
+      overview: AccountOverviewVm;
+      /** Present only when requested, and null when the issuer could not answer. */
+      liveSecurity: AccountSecurityFactsResponse | null;
+    }
   | { status: "unsigned" }
   /** The session store could not be reached, so the person's state is unknown. */
   | { status: "unavailable" };
@@ -18,7 +25,13 @@ function idTokenClaims(idToken: string): Record<string, unknown> {
   }
 }
 
-export async function loadAccountSession(): Promise<AccountSessionState> {
+/**
+ * @param options.withLiveSecurity ask the issuer for the person's current two-step state.
+ *   Only the pages that show it pay for the extra request.
+ */
+export async function loadAccountSession(
+  options: { withLiveSecurity?: boolean } = {},
+): Promise<AccountSessionState> {
   const container = getLaxAccountContainer();
   const cookieStore = await cookies();
   const sessionId = cookieStore.get(container.cookies.sessionCookie)?.value;
@@ -35,6 +48,9 @@ export async function loadAccountSession(): Promise<AccountSessionState> {
       status: "ok",
       subject: record.subject,
       overview: buildAccountOverview(idTokenClaims(record.idToken), record.acr),
+      liveSecurity: options.withLiveSecurity
+        ? await container.securityFacts.read(record.accessToken)
+        : null,
     };
   } catch (error) {
     // A Redis outage must not look like a sign-out: the person is still signed in, and sending
