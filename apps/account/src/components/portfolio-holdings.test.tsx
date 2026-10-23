@@ -80,7 +80,7 @@ describe("PortfolioHoldings", () => {
   it("offers search and a Filter button instead of rows of chips", () => {
     const html = render(works);
     expect(html).toContain('role="search"');
-    expect(html).toContain("Search by title or artist");
+    expect(html).toContain("Search your works by title or artist");
     expect(html).toContain("Filter</button>");
     expect(html).toContain('aria-haspopup="dialog"');
     expect(html).toContain("Showing 2 of 2 works");

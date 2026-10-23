@@ -237,8 +237,8 @@ export function PortfolioHoldings({
         search={{
           name: "q",
           value: filter.search ?? "",
-          label: "Search your works",
-          placeholder: "Search by title or artist",
+          label: "Search your works by title or artist",
+          placeholder: "Search works",
         }}
         fields={toFields(options, filter)}
         shown={holdings.rows.length}
