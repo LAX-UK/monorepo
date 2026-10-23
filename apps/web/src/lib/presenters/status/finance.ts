@@ -3,7 +3,7 @@ import type { StatusBadgeVariant } from "./core";
 
 export const paymentStatusLabel: Record<PaymentStatus, string> = {
   pending: "Pending",
-  authorized: "Authorized",
+  authorized: "Authorised",
   captured: "Captured",
   refunded: "Refunded",
   requires_manual_review: "Manual review",

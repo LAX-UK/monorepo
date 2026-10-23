@@ -7,15 +7,15 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
+import { resolveClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AccountMenuItems, useAccountMenuGroups } from "./account-menu-items";
 import { type AppShellRole, appShellRoleMeta, sessionUserToShellRole } from "./app-shell-nav";
-import { accountNavLinks } from "./header-account-nav";
 import { LogoutButton } from "./logout-button";
 
 const MENU_ID = "header-account-menu";
@@ -106,7 +106,7 @@ export function HeaderUserMenu({
     items[next]?.focus();
   };
 
-  const links = accountNavLinks(user);
+  const groups = useAccountMenuGroups(user, resolveClientWorkspaceMode(pathname, "buying"), true);
   const displayName = user.name.trim() || user.email;
   const shellRole: AppShellRole = sessionUserToShellRole(user);
   const roleMeta = appShellRoleMeta[shellRole];
@@ -210,18 +210,8 @@ export function HeaderUserMenu({
                 </ul>
               </div>
             ) : null}
-            {links.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                role="menuitem"
-                data-account-menu-item=""
-                className="block px-3 py-2.5 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none dark:text-on-surface dark:hover:bg-surface-container-low"
-                onClick={closeMenu}
-              >
-                {item.label}
-              </Link>
-            ))}
+            <AccountMenuItems groups={groups} variant="header" menu onNavigate={closeMenu} />
+            <hr className="my-1 border-0 border-t border-nav-border dark:border-border-hairline" />
             <LogoutButton
               onBeforeNavigate={closeMenu}
               role="menuitem"

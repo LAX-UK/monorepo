@@ -34,7 +34,7 @@ export function WorkspaceModeSwitcher({ mode, hidden, variant = "sheet" }: Props
     startTransition(() => {
       void setClientWorkspaceModeAction(
         next,
-        next === "buying" ? "/dashboard" : "/dashboard/seller",
+        next === "buying" ? "/dashboard/bids" : "/dashboard/seller",
       );
     });
     setOpen(false);

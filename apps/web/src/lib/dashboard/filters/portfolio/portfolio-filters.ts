@@ -2,7 +2,7 @@ import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active
 import { buildFilterHref } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const PORTFOLIO_BASE_PATH = "/dashboard/portfolio";
+export const PORTFOLIO_BASE_PATH = "/dashboard/purchases";
 
 export type PortfolioFilterValue = "all" | "due" | "paid" | "authorized" | "refunded";
 
@@ -15,7 +15,7 @@ export type PortfolioFilters = {
 export const PORTFOLIO_PAYMENT_OPTIONS: readonly { id: PortfolioFilterValue; label: string }[] = [
   { id: "all", label: "All" },
   { id: "due", label: "Awaiting payment" },
-  { id: "authorized", label: "Authorized" },
+  { id: "authorized", label: "Authorised" },
   { id: "paid", label: "Paid" },
   { id: "refunded", label: "Refunded" },
 ] as const;
@@ -33,7 +33,7 @@ export const PORTFOLIO_FILTER_CONFIG: ListPageFilterConfig = {
     {
       kind: "search",
       param: "q",
-      label: "Search collection",
+      label: "Search purchases",
       placeholder: "Filter by title…",
     },
     {

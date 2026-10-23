@@ -126,11 +126,11 @@ export function PortfolioListToolbar({ filters, years }: Props) {
   return (
     <div className="space-y-3">
       <DashboardListToolbar
-        searchLabel="Filter collection"
+        searchLabel="Filter purchases"
         search={
           <DashboardSearchField
             initialQ={filters.q}
-            label="Search collection"
+            label="Search purchases"
             placeholder="Filter by title…"
             inputId="portfolio-q"
           />

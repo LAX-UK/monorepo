@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import type { TelephoneBookingListItem } from "@/lib/telephone/telephone-booking-types";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
@@ -13,15 +12,6 @@ type Props = {
 };
 
 export function TelephoneBidsBoard({ rows }: Props) {
-  if (rows.length === 0) {
-    return (
-      <DashboardEmptyState
-        title="No telephone bookings"
-        description="When you request a live telephone line for an onsite sale, it will appear here."
-      />
-    );
-  }
-
   return (
     <ul className="divide-y divide-border-hairline rounded-xl border border-border-hairline bg-surface-container-lowest">
       {rows.map((row) => (

@@ -183,7 +183,7 @@ export function SaleTelephoneBookingPanel({
               name="authorizedMax"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Authorized maximum (optional)</FormLabel>
+                  <FormLabel>Authorised maximum (optional)</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="e.g. £5,000" />
                   </FormControl>

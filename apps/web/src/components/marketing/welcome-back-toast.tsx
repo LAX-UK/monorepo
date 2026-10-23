@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 
 export function WelcomeBackToast() {
   const pathname = usePathname();
-  const homeHref = pathname.startsWith("/admin") ? "/admin" : "/dashboard";
-  const homeLabel = pathname.startsWith("/admin") ? "Admin home" : "Dashboard";
+  const homeHref = pathname.startsWith("/admin") ? "/admin" : "/dashboard/bids";
+  const homeLabel = pathname.startsWith("/admin") ? "Admin home" : "My bids";
 
   return (
     <MarketingQueryToast param="welcome" whenValue="back" durationMs={6000}>

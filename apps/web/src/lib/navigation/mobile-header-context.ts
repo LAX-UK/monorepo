@@ -13,7 +13,6 @@ export function isDashboardOverviewRoute(
   pathname: string,
   workspace: ClientWorkspaceMode,
 ): boolean {
-  if (pathname === "/dashboard") return workspace === "buying";
   if (pathname === "/dashboard/seller") return workspace === "selling";
   return false;
 }
@@ -69,5 +68,5 @@ export function resolveMobileHeaderTitleModel(
 }
 
 export function shouldUseCompactLegalEntitySwitcher(pathname: string): boolean {
-  return !isDashboardOverviewRoute(pathname, "buying") && pathname !== "/dashboard/seller";
+  return !isDashboardOverviewRoute(pathname, "selling");
 }

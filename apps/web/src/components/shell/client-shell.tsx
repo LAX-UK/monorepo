@@ -6,6 +6,7 @@ import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
 import { isHideDashboardTabBarRoute } from "@/lib/layout/bottom-chrome";
+import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { SellerConnectNavBadgeInput } from "@/lib/shell/apply-seller-connect-nav-badges";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
@@ -26,6 +27,8 @@ type Props = {
   acting?: ActingContext;
   safeActing?: LegalEntitySummary | null;
   orgModuleEnabled?: boolean;
+  /** The person belongs to at least one organisation (not only the one they are acting for). */
+  isOrgMember?: boolean;
   sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
   children: ReactNode;
 };
@@ -42,11 +45,24 @@ export function ClientShell({
   acting = { kind: "self" },
   safeActing = null,
   orgModuleEnabled = true,
+  isOrgMember = false,
   sellerConnectNavBadge = null,
   children,
 }: Props) {
   const pathname = usePathname();
   const effectiveWorkspaceMode = resolveClientWorkspaceMode(pathname, clientWorkspaceMode);
+
+  const clientNavScope = useMemo<ClientNavScope>(
+    () => ({
+      context:
+        safeActing?.kind === "organisation"
+          ? { kind: "organisation", role: safeActing.role }
+          : { kind: "personal" },
+      orgModuleEnabled,
+      isOrgMember,
+    }),
+    [safeActing, orgModuleEnabled, isOrgMember],
+  );
 
   const config = useMemo(
     () =>
@@ -54,7 +70,7 @@ export function ClientShell({
         user,
         role: "client",
         clientWorkspaceMode: effectiveWorkspaceMode,
-        orgModuleEnabled,
+        clientNavScope,
         headerActionsSlot,
         mobileHeader: {
           acting: safeActing,
@@ -70,7 +86,7 @@ export function ClientShell({
     [
       user,
       effectiveWorkspaceMode,
-      orgModuleEnabled,
+      clientNavScope,
       headerActionsSlot,
       contextBanner,
       topSlot,

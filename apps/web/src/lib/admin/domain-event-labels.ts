@@ -31,7 +31,7 @@ const LABELS: Record<string, string> = {
   "payment.dispute_funds_withdrawn": "Dispute funds withdrawn",
   "payment.dispute_closed": "Dispute closed",
   "payment.created": "Payment created",
-  "payment.authorized": "Payment authorized",
+  "payment.authorized": "Payment authorised",
   "payment.captured": "Payment captured",
   "payment.refunded": "Payment refunded",
   "payment.cancelled": "Payment cancelled",

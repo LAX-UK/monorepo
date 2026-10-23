@@ -6,6 +6,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
+vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
+  useAccountMenuContext: () => null,
+}));
+
 vi.mock("@/components/layout/app-shell-breadcrumbs", () => ({
   AppShellBreadcrumbs: () => null,
 }));

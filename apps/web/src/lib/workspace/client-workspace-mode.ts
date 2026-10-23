@@ -7,15 +7,17 @@ export function parseClientWorkspaceMode(raw: string | undefined): ClientWorkspa
   return raw === "selling" ? "selling" : "buying";
 }
 
+/** The first page of each workspace; `/dashboard` redirects here. */
+export function clientWorkspaceHomePath(mode: ClientWorkspaceMode): string {
+  return mode === "selling" ? "/dashboard/seller" : "/dashboard/bids";
+}
+
 const SELLING_PATH_PREFIXES = ["/dashboard/seller", "/dashboard/submissions"] as const;
 
 const BUYING_PATH_PREFIXES = [
   "/dashboard/bids",
-  "/dashboard/telephone-bids",
-  "/dashboard/portfolio",
-  "/dashboard/payments",
+  "/dashboard/purchases",
   "/dashboard/watchlist",
-  "/dashboard/artist-follow",
   "/dashboard/checkout",
 ] as const;
 
@@ -26,7 +28,7 @@ export function isClientSellingPath(pathname: string): boolean {
   );
 }
 
-/** Routes that imply the buying workspace. Overview `/dashboard` is neutral (uses cookie). */
+/** Routes that imply the buying workspace. `/dashboard` is neutral (uses the cookie). */
 export function isClientBuyingPath(pathname: string): boolean {
   if (pathname === "/dashboard") return false;
   return BUYING_PATH_PREFIXES.some(
@@ -54,7 +56,7 @@ export const CLIENT_WORKSPACE_COOKIE_OPTIONS = {
 /**
  * Dashboard meta conventions:
  * - List pages → `clientWorkspacePageMeta()` → Buying / Selling
- * - Overview → `clientWorkspaceOverviewMeta()` → Collector home / Seller home
+ * - Seller overview → `clientWorkspaceOverviewMeta()` → Collector home / Seller home
  * - Settings / invitations / orgs → domain-specific meta (unchanged)
  */
 
@@ -73,13 +75,4 @@ export async function readClientWorkspacePageMeta(): Promise<string> {
   const { cookies } = await import("next/headers");
   const jar = await cookies();
   return clientWorkspacePageMeta(parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value));
-}
-
-/** Read persisted workspace mode from cookies and return the overview home eyebrow. */
-export async function readClientWorkspaceOverviewMeta(): Promise<string> {
-  const { cookies } = await import("next/headers");
-  const jar = await cookies();
-  return clientWorkspaceOverviewMeta(
-    parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value),
-  );
 }

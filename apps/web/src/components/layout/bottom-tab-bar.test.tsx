@@ -62,11 +62,11 @@ describe("BottomTabBar", () => {
     renderBottomTabBar();
 
     const moreButton = screen.getByRole("button", { name: /open more dashboard actions/i });
-    const overviewLink = screen.getByRole("link", { name: /overview/i });
+    const bidsLink = screen.getByRole("link", { name: /my bids/i });
 
     expect(moreButton.className).toMatch(/flex-col/);
     expect(moreButton.className).not.toMatch(/inline-flex/);
-    expect(overviewLink.className).toMatch(/flex-col/);
+    expect(bidsLink.className).toMatch(/flex-col/);
 
     for (const tab of screen.getAllByRole("link")) {
       expect(tab.className).toMatch(/min-h-\[var\(--tap-target-min,44px\)\]/);

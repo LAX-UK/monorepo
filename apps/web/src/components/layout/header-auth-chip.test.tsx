@@ -54,6 +54,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
+  useAccountMenuContext: () => ({
+    hasConsigned: false,
+    isOrgMember: false,
+    accountOrigin: "https://account.example.test",
+  }),
+}));
+
 vi.mock("./notification-bell", () => ({
   NotificationBell: () => <button type="button">Notifications</button>,
 }));
@@ -94,9 +102,12 @@ describe("HeaderAuthChip", () => {
     expect(screen.getAllByText("Client User")).toHaveLength(2);
     expect(screen.getByText("client@example.com")).toBeInTheDocument();
     expect(screen.getByText("Client")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /dashboard/i })).toHaveAttribute(
+    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute(
       "href",
-      "/dashboard",
+      "/dashboard/bids",
     );
+    expect(screen.queryByRole("menuitem", { name: /dashboard/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Start selling" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
   });
 });

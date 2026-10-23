@@ -30,7 +30,7 @@ const galleryOrg: LegalEntitySummary = {
 
 describe("mobile-header-context", () => {
   it("detects overview routes per workspace", () => {
-    expect(isDashboardOverviewRoute("/dashboard", "buying")).toBe(true);
+    expect(isDashboardOverviewRoute("/dashboard", "buying")).toBe(false);
     expect(isDashboardOverviewRoute("/dashboard/seller", "selling")).toBe(true);
     expect(isDashboardOverviewRoute("/dashboard/seller", "buying")).toBe(false);
     expect(isDashboardOverviewRoute("/dashboard/watchlist", "buying")).toBe(false);
@@ -41,10 +41,10 @@ describe("mobile-header-context", () => {
     expect(formatActingContextLine(galleryOrg)).toBe("Gallery · Admin");
   });
 
-  it("returns identity model on buying overview", () => {
+  it("returns identity model on the seller overview", () => {
     const model = resolveMobileHeaderTitleModel([{ label: "Dashboard" }], {
-      pathname: "/dashboard",
-      workspace: "buying",
+      pathname: "/dashboard/seller",
+      workspace: "selling",
       acting: privateCollector,
       actingContext: { kind: "self" },
       userDisplayName: "Jane Doe",
@@ -72,7 +72,6 @@ describe("mobile-header-context", () => {
   });
 
   it("uses compact switcher on nested routes only", () => {
-    expect(shouldUseCompactLegalEntitySwitcher("/dashboard")).toBe(false);
     expect(shouldUseCompactLegalEntitySwitcher("/dashboard/seller")).toBe(false);
     expect(shouldUseCompactLegalEntitySwitcher("/dashboard/watchlist")).toBe(true);
   });

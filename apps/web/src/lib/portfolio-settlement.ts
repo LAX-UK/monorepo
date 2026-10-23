@@ -23,7 +23,7 @@ export function portfolioSettlementLabel(row: PortfolioRow): string {
     case "pending":
       return "Payment pending";
     case "authorized":
-      return "Payment authorized";
+      return "Payment authorised";
     case "captured":
       return "Paid";
     case "refunded":

@@ -1,5 +1,5 @@
 import type { PortfolioLotCardVm } from "@/components/dashboard/portfolio-lot-grid";
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import { DASHBOARD_ROUTES, dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason, portfolioSettlementLabel } from "@/lib/portfolio-settlement";
@@ -45,22 +45,16 @@ export type PortfolioAnalyticsVm = {
   totalSpentFormatted: string;
   outstandingFormatted: string;
   hasOutstanding: boolean;
-  wonThisYear: number;
   /** Sorted years available in the portfolio. Used for the year filter. */
   years: number[];
   /** Map of category id -> count (for high-level summary). */
   categoryCounts: { id: string; count: number }[];
 };
 
-export function buildPortfolioAnalytics(
-  rows: readonly PortfolioRow[],
-  options?: { now?: Date },
-): PortfolioAnalyticsVm {
+export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): PortfolioAnalyticsVm {
   let totalSpent = 0;
   let outstanding = 0;
   const yearsSet = new Set<number>();
-  const yearUtc = (options?.now ?? new Date()).getUTCFullYear();
-  let wonThisYear = 0;
   const categoryCount = new Map<string, number>();
   for (const row of rows) {
     const total = lotTotalMajorUnits(row.lot);
@@ -70,7 +64,6 @@ export function buildPortfolioAnalytics(
     }
     const year = row.lot.endTime.getUTCFullYear();
     yearsSet.add(year);
-    if (year === yearUtc) wonThisYear += 1;
     const cat = row.lot.categoryId;
     if (cat) categoryCount.set(cat, (categoryCount.get(cat) ?? 0) + 1);
   }
@@ -79,7 +72,6 @@ export function buildPortfolioAnalytics(
     totalSpentFormatted: formatMoney(totalSpent.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
     outstandingFormatted: formatMoney(outstanding.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
     hasOutstanding: outstanding > 0,
-    wonThisYear,
     years: Array.from(yearsSet).sort((a, b) => b - a),
     categoryCounts: Array.from(categoryCount.entries())
       .map(([id, count]) => ({ id, count }))
@@ -109,6 +101,48 @@ function portfolioDueColumnLabel(row: PortfolioRow): string {
   return status === "pending" || status === "authorized" ? "Due now" : "Total due";
 }
 
+/** Reason a not-yet-paid lot is held for review; the user-level gate covers lots with no payment row yet. */
+function awaitingComplianceReason(
+  row: PortfolioRow,
+  complianceGate: ComplianceGateStatus,
+): ManualReviewReason | null {
+  const gateReason: ManualReviewReason | null =
+    complianceGate === "aml_hold" || complianceGate === "source_of_funds_required"
+      ? complianceGate
+      : null;
+  return portfolioComplianceReason(row) ?? (isAwaitingCheckout(row) ? gateReason : null);
+}
+
+export type PayNowVm = {
+  /** Won lots that still need paying, whether or not they can be paid yet. */
+  dueCount: number;
+  outstandingLabel: string;
+  /** Checkout for every lot that can be paid now; null while all of them are in review. */
+  href: string | null;
+};
+
+/** What to pin at the top of Purchases when something is due; null when nothing is. */
+export function buildPayNow(
+  rows: readonly PortfolioRow[],
+  complianceGate: ComplianceGateStatus = "clear",
+): PayNowVm | null {
+  const due = rows.filter(isAwaitingCheckout);
+  if (due.length === 0) return null;
+  const payableIds = due
+    .filter((row) => awaitingComplianceReason(row, complianceGate) === null)
+    .map((row) => row.lot.id);
+  const [onlyId] = payableIds;
+  let href: string | null = null;
+  if (onlyId && payableIds.length === 1) href = dashboardCheckoutLotUrl(onlyId);
+  else if (payableIds.length > 1)
+    href = `${DASHBOARD_ROUTES.checkout}?lots=${payableIds.join(",")}`;
+  return {
+    dueCount: due.length,
+    outstandingLabel: buildPortfolioAnalytics(due).outstandingFormatted,
+    href,
+  };
+}
+
 export function toPortfolioLotCards(
   rows: PortfolioRow[],
   options: {
@@ -118,10 +152,6 @@ export function toPortfolioLotCards(
   } = {},
 ): PortfolioLotCardVm[] {
   const { artistNameById = {}, complianceGate = "clear" } = options;
-  const gateReason: ManualReviewReason | null =
-    complianceGate === "aml_hold" || complianceGate === "source_of_funds_required"
-      ? complianceGate
-      : null;
   return rows.map((row) => {
     const a = row.lot;
     const img = a.images[0];
@@ -130,11 +160,10 @@ export function toPortfolioLotCards(
     const total = cp ? Number.parseFloat(cp.totalMajor) : Number.NaN;
     // Per-payment reason takes precedence; otherwise fall back to the user-level
     // gate for lots that still require checkout (covers the pre-payment-row case).
-    const complianceReason =
-      portfolioComplianceReason(row) ?? (isAwaitingCheckout(row) ? gateReason : null);
+    const complianceReason = awaitingComplianceReason(row, complianceGate);
     const settlementLabel = complianceReason ? "Compliance review" : portfolioSettlementLabel(row);
     const settlementStageIndex =
-      settlementLabel === "Paid" || settlementLabel === "Payment authorized"
+      settlementLabel === "Paid" || settlementLabel === "Payment authorised"
         ? 2
         : settlementLabel.includes("Refund")
           ? 0

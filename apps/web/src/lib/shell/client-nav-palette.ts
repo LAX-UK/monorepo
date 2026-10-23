@@ -1,9 +1,10 @@
-import {
-  getClientBuyingNavItems,
-  getClientSellingNavItems,
-} from "@/components/layout/app-shell-nav";
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
+import {
+  type ClientNavScope,
+  PERSONAL_NAV_SCOPE,
+  getClientNavItems,
+} from "@/lib/navigation/client-nav-model";
 export function appShellNavItemsToPaletteItems(
   items: readonly AppShellNavItem[],
   idPrefix: string,
@@ -13,6 +14,11 @@ export function appShellNavItemsToPaletteItems(
     href: item.href,
     label: item.label,
   }));
+}
+
+/** The palette lists every page, including organisation ones, so it never hides a way in. */
+function paletteScope(orgModuleEnabled: boolean): ClientNavScope {
+  return { ...PERSONAL_NAV_SCOPE, orgModuleEnabled, isOrgMember: true };
 }
 
 const BUYING_PALETTE_EXTRAS: PaletteItem[] = [
@@ -30,7 +36,10 @@ export function buildClientBuyingPaletteSections(orgModuleEnabled = true): Palet
       id: "pages",
       heading: "Pages",
       items: [
-        ...appShellNavItemsToPaletteItems(getClientBuyingNavItems(orgModuleEnabled), "d"),
+        ...appShellNavItemsToPaletteItems(
+          getClientNavItems({ ...paletteScope(orgModuleEnabled), mode: "buying" }),
+          "d",
+        ),
         ...BUYING_PALETTE_EXTRAS,
       ],
     },
@@ -43,7 +52,10 @@ export function buildClientSellingPaletteSections(orgModuleEnabled = true): Pale
       id: "seller",
       heading: "Selling workspace",
       items: [
-        ...appShellNavItemsToPaletteItems(getClientSellingNavItems(orgModuleEnabled), "s"),
+        ...appShellNavItemsToPaletteItems(
+          getClientNavItems({ ...paletteScope(orgModuleEnabled), mode: "selling" }),
+          "s",
+        ),
         ...SELLING_PALETTE_EXTRAS,
       ],
     },

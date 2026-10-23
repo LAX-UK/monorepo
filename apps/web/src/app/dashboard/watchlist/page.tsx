@@ -74,7 +74,7 @@ export default async function DashboardWatchlistPage({
     <Surface variant="inset" padding="sm">
       <SectionTabsNav
         variant="underline"
-        ariaLabel="Watchlist sections"
+        ariaLabel="Watching sections"
         sticky={false}
         items={[
           { href: "/dashboard/watchlist", label: "Lots", isActive: !isArtistsSection },
@@ -92,7 +92,7 @@ export default async function DashboardWatchlistPage({
     return (
       <DashboardListPage
         meta={workspaceMeta}
-        title="Watchlist"
+        title="Watching"
         description="Track lots and artists you are following from the saleroom."
         tabs={tabs}
       >
@@ -143,7 +143,7 @@ export default async function DashboardWatchlistPage({
   return (
     <DashboardListPage
       meta={workspaceMeta}
-      title="Watchlist"
+      title="Watching"
       description="Track lots and artists you are following from the saleroom."
       tabs={tabs}
       toolbar={

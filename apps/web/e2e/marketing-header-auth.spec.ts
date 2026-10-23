@@ -38,7 +38,7 @@ test.describe("marketing header auth @journey", () => {
     await expect(accountMenu(page2)).toBeVisible({ timeout: 10_000 });
 
     await accountMenu(page1).click();
-    await page1.getByRole("menuitem", { name: /log out/i }).click();
+    await page1.getByRole("menuitem", { name: /sign out/i }).click();
 
     await expect(guestMenu(page2)).toBeVisible({ timeout: 10_000 });
   });

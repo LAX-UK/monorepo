@@ -1,10 +1,15 @@
-import { SettingsWelcome } from "@/components/dashboard/settings-welcome";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Settings" };
+export const metadata: Metadata = { title: "Bid settings" };
 
+const FIRST_BID_SETTINGS_PATH = "/dashboard/settings/bidding";
+
+/**
+ * There is no settings overview: this index only keeps old links working. Security links
+ * from emails (`?tab=security`) still reach the security page they were written for.
+ */
 export default async function SettingsIndexPage({
   searchParams,
 }: {
@@ -26,12 +31,9 @@ export default async function SettingsIndexPage({
     redirect(`/dashboard/settings/security${suffix}`);
   }
 
-  const user = await requireAuthenticatedUser({
+  await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/settings",
   });
-
-  const displayName = user.name?.trim() || user.email.split("@")[0] || "there";
-
-  return <SettingsWelcome displayName={displayName} email={user.email} />;
+  redirect(FIRST_BID_SETTINGS_PATH);
 }

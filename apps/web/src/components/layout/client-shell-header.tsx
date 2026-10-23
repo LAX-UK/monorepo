@@ -50,7 +50,7 @@ export function ClientShellHeader({
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {actionsSlot}
         {extraSlot}
-        <ShellUserMenu user={user} role={role} />
+        <ShellUserMenu user={user} role={role} clientWorkspaceMode={clientWorkspaceMode} />
       </div>
     </>
   );

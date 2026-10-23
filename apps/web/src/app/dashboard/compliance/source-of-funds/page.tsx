@@ -7,7 +7,7 @@ import { SofComplianceClient } from "./sof-compliance-client";
 export default async function SourceOfFundsCompliancePage() {
   const view = await getWriteContainer().buyerSof.getView();
   if (!view) {
-    redirect("/dashboard/portfolio");
+    redirect("/dashboard/purchases");
   }
 
   return (

@@ -184,7 +184,7 @@ export function SaleTelephoneBookingsTab({
               },
               {
                 id: "authorized",
-                header: "Authorized max",
+                header: "Authorised max",
                 cell: (row) => (
                   <span className="font-body text-sm tabular-nums text-on-surface-variant">
                     {row.authorizedMax ? formatMoney(row.authorizedMax) : "—"}

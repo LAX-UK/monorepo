@@ -5,7 +5,6 @@ import { SettingsSection } from "@/components/dashboard/settings-section";
 import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 import { presentationToDotStatus } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { PersonalMobileBlock } from "./profile-settings/personal-mobile-block";
 import { PersonalNameBlock } from "./profile-settings/personal-name-block";
@@ -80,25 +79,6 @@ export function ProfileSettingsBoard({
           phoneDefaultCountry={phoneDefaultCountry}
           {...(phoneNumberVerified !== undefined ? { phoneNumberVerified } : {})}
         />
-      </SettingsSection>
-
-      <SettingsSection
-        title="Payment method"
-        bordered={false}
-        action={
-          <Link
-            href="/dashboard/settings/payment-methods"
-            className="inline-flex items-center gap-1 font-label text-sm font-semibold text-on-surface underline underline-offset-2"
-          >
-            <CreditCard className="size-3.5" aria-hidden />
-            Manage
-          </Link>
-        }
-      >
-        <p className="font-body text-sm text-on-surface-variant">
-          Cards are saved during checkout and used for future invoices. View saved cards on the
-          payment methods page.
-        </p>
       </SettingsSection>
     </div>
   );

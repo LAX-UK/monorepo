@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+import { LEGACY_DASHBOARD_REDIRECTS } from "./src/lib/navigation/legacy-dashboard-redirects";
 
 const workspaceRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -105,6 +106,7 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      ...LEGACY_DASHBOARD_REDIRECTS,
       {
         source: "/dashboard/artist-follow",
         destination: "/dashboard/watchlist?section=artists",

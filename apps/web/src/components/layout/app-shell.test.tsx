@@ -4,8 +4,14 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
 
+const pathnameMock = vi.hoisted(() => ({ current: "/dashboard/bids" }));
+
+vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
+  useAccountMenuContext: () => null,
+}));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => pathnameMock.current,
   useRouter: () => ({
     push: vi.fn(),
     refresh: vi.fn(),
@@ -91,7 +97,14 @@ describe("AppShell", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
-    expect(screen.getByRole("menuitem", { name: /browse lax\.bid/i })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute(
+      "href",
+      "/dashboard/bids",
+    );
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
+    // Appearance lives in Bid settings; only a compact dark-mode toggle stays in the menu.
+    expect(screen.queryByText("Display settings")).not.toBeInTheDocument();
+    expect(screen.getByText("Dark mode")).toBeInTheDocument();
   });
 
   it("does not render public-site affordances for staff shells", () => {
@@ -170,16 +183,18 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "My bids" })).toBeInTheDocument();
   });
 
-  it("renders personalized overview title when mobile header context is provided", () => {
+  it("renders personalized overview title on the seller overview", () => {
+    pathnameMock.current = "/dashboard/seller";
     render(
       <AppShell
         user={clientUser}
         config={buildShellConfig({
           user: clientUser,
           role: "client",
+          clientWorkspaceMode: "selling",
           mobileHeader: {
             acting: {
               id: "le-1",
@@ -201,6 +216,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("heading", { name: "Welcome, Client" })).toBeInTheDocument();
     expect(screen.getByText(/Client User · Private collector/i)).toBeInTheDocument();
+    pathnameMock.current = "/dashboard/bids";
   });
 
   it("does not render the mobile hamburger and uses a unified account menu", () => {

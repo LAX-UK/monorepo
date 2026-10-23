@@ -53,7 +53,7 @@ describe("AppShellBreadcrumbs", () => {
     // biome-ignore lint/a11y/useValidAriaRole: `role` is the shell prop, not a DOM ARIA role
     renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);
 
-    expect(screen.getByRole("heading", { name: "Watchlist" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Watching" })).toBeInTheDocument();
   });
 
   it("renders desktop breadcrumb trail", () => {
@@ -63,6 +63,7 @@ describe("AppShellBreadcrumbs", () => {
     renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);
 
     expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
+    expect(screen.getByText("Watching", { selector: "[aria-current=page]" })).toBeInTheDocument();
   });
 });

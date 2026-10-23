@@ -6,13 +6,13 @@ import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
+import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
-import { accountNavLinks } from "./header-account-nav";
+import { AccountMenuItems, useAccountMenuGroups } from "./account-menu-items";
 import { LogoutButton } from "./logout-button";
 
 type HeaderAuthChipVariant = "account" | "notifications" | "full";
@@ -107,6 +107,14 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
     return <MobileGuestAuthSection onNavigate={onNavigate} />;
   }
 
+  return <MobileSignedInSection user={user} onNavigate={onNavigate} />;
+}
+
+function MobileSignedInSection({
+  user,
+  onNavigate,
+}: { user: SessionUser; onNavigate: () => void }) {
+  const groups = useAccountMenuGroups(user, "buying", true);
   return (
     <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
       <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400 dark:text-on-surface-variant">
@@ -120,23 +128,9 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
           {user.email}
         </p>
       </div>
-      <ul className="flex flex-col gap-0.5">
-        {accountNavLinks(user).map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className={cn(
-                "block min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide",
-                "text-brand-900 transition-colors hover:text-brand-800 dark:text-on-surface",
-                FOCUS_RING,
-              )}
-              onClick={onNavigate}
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="flex flex-col">
+        <AccountMenuItems groups={groups} variant="drawer" menu={false} onNavigate={onNavigate} />
+      </div>
       <LogoutButton
         onBeforeNavigate={onNavigate}
         className="block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-border-hairline dark:text-on-surface dark:hover:bg-surface-container-low"

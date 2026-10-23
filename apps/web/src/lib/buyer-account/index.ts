@@ -17,10 +17,6 @@ export {
   getServerMyPortfolio,
   getServerMyWatchlist,
 } from "../data/http/dashboard.server";
-export {
-  buildDashboardOverviewVm,
-  type DashboardOverviewErrors,
-} from "../data/view-models/dashboard-overview.vm";
 export { getServerWatchedLotIdSet } from "../data/http/watchlist.server";
 export { getServerMyArtistWatchIds } from "../data/http/artist-watchlist.server";
 export { getServerMyNotificationPreferences } from "../data/http/notification-preferences.server";

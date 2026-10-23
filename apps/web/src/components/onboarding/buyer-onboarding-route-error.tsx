@@ -27,7 +27,7 @@ export function BuyerOnboardingRouteError({
           Try again
         </Button>
         <Button asChild variant="outline">
-          <Link href="/dashboard">Return to dashboard</Link>
+          <Link href="/dashboard">Go to My bids</Link>
         </Button>
       </div>
     </section>

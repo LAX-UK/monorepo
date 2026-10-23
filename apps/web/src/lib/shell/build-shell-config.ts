@@ -1,8 +1,4 @@
-import {
-  type AppShellRole,
-  getAppShellNavItems,
-  getClientMobileBottomTabs,
-} from "@/components/layout/app-shell-nav";
+import { type AppShellRole, getAppShellNavItems } from "@/components/layout/app-shell-nav";
 import {
   getStaffMobileBottomTabs,
   getStaffNavGroups,
@@ -11,6 +7,11 @@ import {
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import {
+  type ClientNavScope,
+  PERSONAL_NAV_SCOPE,
+  getClientMobileTabs,
+} from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { LegalEntitySummary, UserRole, UserStaffRole } from "@auction/types";
@@ -35,7 +36,8 @@ export type BuildShellConfigInput = {
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
-  orgModuleEnabled?: boolean;
+  /** Whose account the client nav is for; defaults to a personal account with no organisations. */
+  clientNavScope?: ClientNavScope;
   mobileHeader?: {
     acting: LegalEntitySummary | null;
     actingContext: ActingContext;
@@ -60,7 +62,7 @@ export function buildShellConfig({
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   navCounts,
-  orgModuleEnabled = true,
+  clientNavScope = PERSONAL_NAV_SCOPE,
   mobileHeader,
   sellerConnectNavBadge = null,
   hideBottomTabBar = false,
@@ -72,7 +74,7 @@ export function buildShellConfig({
     clientWorkspaceMode,
     pendingArtistCount,
     navCounts,
-    orgModuleEnabled,
+    clientNavScope,
   );
   const applyConnectBadge =
     role === "client" && clientWorkspaceMode === "selling" ? sellerConnectNavBadge : null;
@@ -93,7 +95,7 @@ export function buildShellConfig({
     role === "client"
       ? applySellerConnectNavBadges(
           appShellNavItemsToNavItems(
-            getClientMobileBottomTabs(clientWorkspaceMode, orgModuleEnabled),
+            getClientMobileTabs({ ...clientNavScope, mode: clientWorkspaceMode }),
           ),
           applyConnectBadge,
         )
