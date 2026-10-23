@@ -14,6 +14,7 @@ describe("buildAttentionRows", () => {
       {
         key: "bid:lot-1",
         text: "Pay for Green Line",
+        productLabel: "LAX Bid",
         href: "https://lax.bid/dashboard/checkout/1",
         external: true,
       },

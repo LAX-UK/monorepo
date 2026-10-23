@@ -2,9 +2,10 @@ import type { LaxStaffPlatformsClaim } from "@auction/identity-contracts";
 import type { LaxAccountConfig } from "../config";
 
 /**
- * Settings that Bid's API still owns. LAX Account has no API resource (its OIDC client lists no
- * `allowedResources`), so it links to Bid's screens instead of writing this data itself. Name
- * and sessions are not here: the issuer owns them and Account edits them directly.
+ * Settings that Bid's API still owns. LAX Account only reads products through the read-only
+ * portfolio scope and never writes to them, so it links to Bid's screens instead of editing this
+ * data itself. Name and sessions are not here: the issuer owns them and Account edits them
+ * directly.
  */
 export type BidSettingsLinksVm = {
   addresses: string;
@@ -64,6 +65,15 @@ export function buildAccountLinks(
         }
       : null,
   };
+}
+
+/** Bid lists the organisations a person belongs to and their role in each; null without Bid. */
+export function buildOrganisationsLink(
+  config: Pick<LaxAccountConfig, "bidPublicUrl">,
+): string | null {
+  return config.bidPublicUrl
+    ? new URL("/dashboard/organisations", config.bidPublicUrl).toString()
+    : null;
 }
 
 export type StaffPlatformLinkVm = { product: "bid" | "shop"; label: string; href: string };
