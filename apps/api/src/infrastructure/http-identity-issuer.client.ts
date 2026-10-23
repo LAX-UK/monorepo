@@ -1,4 +1,12 @@
+import {
+  type AccountAddress,
+  type AccountAddressDefaultKind,
+  type AccountAddressInput,
+  accountAddressResultSchema,
+  accountAddressesSchema,
+} from "@auction/identity-contracts";
 import type {
+  IIdentityAddressClient,
   IIdentityCredentialClient,
   IIdentityEmailChangeClient,
   IIdentityIssuerClient,
@@ -48,6 +56,7 @@ export class HttpIdentityIssuerClient
   implements
     IIdentityIssuerClient,
     IIdentitySubjectClient,
+    IIdentityAddressClient,
     IIdentityCredentialClient,
     IIdentitySessionClient,
     IIdentityEmailChangeClient,
@@ -155,6 +164,52 @@ export class HttpIdentityIssuerClient
       }
       throw error;
     }
+  }
+
+  async listAddresses(subjectId: string): Promise<AccountAddress[]> {
+    const body = await this.machineRequest("GET", addressesPath(subjectId));
+    const parsed = accountAddressesSchema.safeParse(body);
+    if (!parsed.success) throw invalidResponse("address list");
+    return parsed.data.addresses;
+  }
+
+  async createAddress(subjectId: string, address: AccountAddressInput): Promise<AccountAddress> {
+    return readAddress(await this.machineRequest("POST", addressesPath(subjectId), { address }));
+  }
+
+  async updateAddress(
+    subjectId: string,
+    addressId: string,
+    expectedVersion: number,
+    address: AccountAddressInput,
+  ): Promise<AccountAddress> {
+    return readAddress(
+      await this.machineRequest("PATCH", addressesPath(subjectId, addressId), {
+        address,
+        expectedVersion,
+      }),
+    );
+  }
+
+  async deleteAddress(
+    subjectId: string,
+    addressId: string,
+    expectedVersion: number,
+  ): Promise<void> {
+    await this.machineRequest(
+      "DELETE",
+      `${addressesPath(subjectId, addressId)}?expectedVersion=${expectedVersion}`,
+    );
+  }
+
+  async setDefaultAddress(
+    subjectId: string,
+    addressId: string,
+    kind: AccountAddressDefaultKind,
+  ): Promise<AccountAddress> {
+    return readAddress(
+      await this.machineRequest("POST", `${addressesPath(subjectId, addressId)}/default`, { kind }),
+    );
   }
 
   async findSubjectByEmail(email: string): Promise<IdentitySubject | null> {
@@ -655,6 +710,17 @@ function readUserId(body: unknown): string | null {
   const user = body.user;
   if (!user || typeof user !== "object" || !("id" in user)) return null;
   return typeof user.id === "string" && user.id ? user.id : null;
+}
+
+function addressesPath(subjectId: string, addressId?: string): string {
+  const base = `/identity/subjects/${encodeURIComponent(subjectId)}/addresses`;
+  return addressId ? `${base}/${encodeURIComponent(addressId)}` : base;
+}
+
+function readAddress(body: unknown): AccountAddress {
+  const parsed = accountAddressResultSchema.safeParse(body);
+  if (!parsed.success) throw invalidResponse("address");
+  return parsed.data.address;
 }
 
 function readErrorDetails(body: unknown): { message?: string; code?: string } {

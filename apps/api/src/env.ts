@@ -38,6 +38,12 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.string().url(),
     OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
+    /**
+     * Where saved addresses come from. `identity` serves the LAX-wide address book (with the old
+     * Bid table as a read fallback for addresses not yet copied); `legacy` is the rollback to the
+     * Bid table alone. Switch to `identity` only after the backfill has run.
+     */
+    ADDRESS_BOOK_SOURCE: z.enum(["identity", "legacy"]).default("identity"),
     IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),

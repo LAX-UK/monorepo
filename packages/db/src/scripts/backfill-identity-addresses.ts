@@ -1,3 +1,4 @@
+import { countryToIso } from "@auction/identity-contracts";
 /**
  * Idempotent: copies Bid addresses that the identity address book does not hold yet.
  *
@@ -15,7 +16,6 @@ import { createDb } from "../client.js";
 import { user } from "../schema/auth.js";
 import { identityAddress } from "../schema/identity-address.js";
 import { userAddress } from "../schema/user-address.js";
-import { legacyCountryToIso } from "./legacy-country.js";
 
 const db = createDb(process.env.DATABASE_URL ?? "");
 
@@ -32,7 +32,7 @@ async function main() {
   const unreadable: string[] = [];
   for (const { address, name, email } of missing) {
     if (email === `deleted+${address.userId}@purged.invalid`) continue;
-    const country = legacyCountryToIso(address.country);
+    const country = countryToIso(address.country);
     if (!country) {
       unreadable.push(`${address.id} (${address.userId}): "${address.country}"`);
       continue;

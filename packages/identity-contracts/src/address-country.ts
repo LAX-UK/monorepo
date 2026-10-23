@@ -1,4 +1,4 @@
-import { ADDRESS_COUNTRY_CODES } from "@auction/identity-contracts";
+import { ADDRESS_COUNTRY_CODES } from "./account-addresses.js";
 
 const ISO_ALPHA2 = /^[A-Z]{2}$/;
 
@@ -41,11 +41,11 @@ function regionNames(): Map<string, string> {
 }
 
 /**
- * Bid stored a free-text country. Returns the ISO 3166-1 alpha-2 code for an ISO code, an
- * English country name or a common alias, or null when the text cannot be read with confidence
- * (the address is then left in Bid's table for a person to fix, never guessed).
+ * Bid's address form takes a free-text country. Returns the ISO 3166-1 alpha-2 code for an ISO
+ * code, an English country name or a common alias, or null when the text cannot be read with
+ * confidence (callers then refuse or leave the address where it is; they never guess).
  */
-export function legacyCountryToIso(raw: string): string | null {
+export function countryToIso(raw: string): string | null {
   const text = raw.trim();
   const upper = text.toUpperCase();
   if (ISO_ALPHA2.test(upper) && ADDRESS_COUNTRY_CODES.includes(upper)) return upper;
