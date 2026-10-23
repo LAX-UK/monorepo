@@ -5,10 +5,9 @@ export type AtgRemoteStatus = "pending" | "created" | "approved" | "published" |
 
 export type AtgSyncAction = "push" | "publish" | "close";
 
-/** Which platform may take bids for this sale (computed; not stored). */
-export type AtgSellingPlatform = "free" | "lax" | "atg";
-
-export type AtgOwnershipState = AtgSellingPlatform | "cancelled";
+// Defined on their own so sale.ts can use them without importing this module (which imports sale.ts).
+import type { AtgOwnershipState } from "./selling-platform.js";
+export type { AtgOwnershipState, AtgSellingPlatform } from "./selling-platform.js";
 
 export type ResolveSaleSellingPlatformInput = {
   saleStatus: SaleStatus;

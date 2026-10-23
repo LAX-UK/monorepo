@@ -1,7 +1,7 @@
-import type { AtgOwnershipState } from "./atg.js";
 import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
 import type { GalleryImage } from "./gallery.js";
+import type { AtgOwnershipState } from "./selling-platform.js";
 
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type SaleStatus = (typeof saleStatuses)[number];
