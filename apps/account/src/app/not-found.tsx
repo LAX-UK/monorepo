@@ -1,7 +1,11 @@
 import { AccountShell } from "@/components/account-shell";
 import { Button } from "@auction/ui/components/button";
+import { connection } from "next/server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  // The shell reads the session and the configured product links, so this page renders per
+  // request; a not-found page cannot use `dynamic = "force-dynamic"` like the other pages.
+  await connection();
   return (
     <AccountShell>
       <div className="flex w-full flex-col items-start gap-4 py-6">

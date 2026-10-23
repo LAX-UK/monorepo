@@ -1,3 +1,4 @@
+import { ACCOUNT_TAG } from "@auction/branding";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { LaxLockup } from "./lax-lockup.js";
@@ -11,8 +12,8 @@ describe("LaxLockup", () => {
   it("colours only the descriptor with the app's product accent", () => {
     const { container } = render(<LaxLockup kind="account" />);
     const accented = container.querySelectorAll("path[style]");
-    // Dot plus the seven letters of ACCOUNT.
-    expect(accented).toHaveLength(8);
+    // The dot plus one path per letter of the account tag.
+    expect(accented).toHaveLength(1 + ACCOUNT_TAG.length);
     for (const path of accented) {
       expect(path.getAttribute("style")).toContain("var(--color-product-accent, currentColor)");
     }
