@@ -41,8 +41,11 @@ export function ShellMain({
   return (
     <main
       id="main-content"
+      // The main area scrolls on its own. Focusable via the skip link so keyboard users can scroll
+      // it with the arrow keys even when a page has no links or buttons inside.
+      tabIndex={-1}
       className={cn(
-        "min-h-0 flex-1 scroll-mt-[var(--header-height-mobile,56px)] overflow-y-auto overflow-x-hidden lg:scroll-mt-[var(--header-height-shell,82px)]",
+        "min-h-0 flex-1 focus:outline-none scroll-mt-[var(--header-height-mobile,56px)] overflow-y-auto overflow-x-hidden lg:scroll-mt-[var(--header-height-shell,82px)]",
         mobileNavCount > 0 && "pb-[var(--page-bottom-padding)] lg:pb-0",
       )}
     >
