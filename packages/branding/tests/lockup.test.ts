@@ -6,6 +6,7 @@ import { BID_MARK_INK_PATHS } from "../src/lockup/bid-lockup-parts.js";
 import { LAX_MARK_INK_PATHS } from "../src/lockup/lax-mark-paths.js";
 import { LOCKUP_COPIES } from "../src/lockup/lockup-copies.js";
 import {
+  ACCOUNT_TAG,
   LAX_LOCKUP_DESCRIPTORS,
   LAX_LOCKUP_KINDS,
   type LaxLockupKind,
@@ -31,10 +32,10 @@ describe("laxLockup", () => {
     expect(bid.ink.length).toBeGreaterThan(laxLockup("account-compact").ink.length);
   });
 
-  it("builds the full Account lockup like Bid's: plain mark, a two-line name and .ACCOUNT on Bid's canvas height", () => {
+  it("builds the full Account lockup like Bid's: plain mark, a two-line name and the Account tag on Bid's canvas height", () => {
     const account = laxLockup("account");
     const bid = laxLockup("bid");
-    expect(account.descriptor).toBe("ACCOUNT");
+    expect(account.descriptor).toBe(ACCOUNT_TAG);
     expect(account.label).toBe("LAX Account");
     // Same height as Bid, so the two render at one size in a header.
     expect(account.height).toBe(bid.height);
@@ -44,12 +45,12 @@ describe("laxLockup", () => {
     expect(account.ink).toHaveLength(LAX_MARK_INK_PATHS.length + 2);
     // The descriptor sits where Bid's does.
     expect(account.descriptorPaths[0]?.d).toBe(bid.descriptorPaths[0]?.d);
-    expect(account.descriptorPaths).toHaveLength(1 + "ACCOUNT".length);
+    expect(account.descriptorPaths).toHaveLength(1 + ACCOUNT_TAG.length);
   });
 
-  it("offers a compact Account lockup: the mark and .ACCOUNT without the name", () => {
+  it("offers a compact Account lockup: the mark and the tag without the name", () => {
     const compact = laxLockup("account-compact");
-    expect(compact.descriptor).toBe("ACCOUNT");
+    expect(compact.descriptor).toBe(ACCOUNT_TAG);
     expect(compact.ink).toHaveLength(LAX_MARK_INK_PATHS.length);
     expect(compact.width).toBeLessThan(laxLockup("account").width);
     expect(laxLockupFileName("account-compact", "dark")).toBe("lax-account-compact-dark.svg");
@@ -103,10 +104,9 @@ describe("laxLockup", () => {
       expect(y).toBe(6.9);
       expect(y + height).toBeCloseTo(287.96, 2);
       // Wider than the mark plus the dot, so the word is inside the frame.
-      expect(width).toBeGreaterThan(700);
+      expect(width).toBeGreaterThan(640);
     }
     const width = (kind: LaxLockupKind) => laxLockup(kind).width;
-    expect(width("account-compact")).toBeGreaterThan(width("shop"));
     expect(width("shop")).toBeGreaterThan(width("art"));
   });
 

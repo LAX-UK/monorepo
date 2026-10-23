@@ -30,8 +30,8 @@ import { TAGLINE_BOUNDS, TAGLINE_PATHS } from "./tagline-paths.js";
  */
 /**
  * `account` is the full Account lockup, built like Bid's: the plain mark, a two-line name ("Account
- * / Centre(R)") set to Bid's measurements, and ".ACCOUNT" in the descriptor position where Bid has
- * ".BID". `account-compact` is the mark and ".ACCOUNT" without the name, framed like the Shop and
+ * / Centre(R)") set to Bid's measurements, and the Account tag (see ACCOUNT_TAG) in the descriptor position where Bid has
+ * ".BID". `account-compact` is the mark and the tag without the name, framed like the Shop and
  * Art lockups, for rows of product cards.
  */
 /**
@@ -62,11 +62,18 @@ export type LaxLockup = {
   descriptorPaths: readonly LockupPath[];
 };
 
+/**
+ * The tag after the dot in Account's lockup. "Account" is already in the name, so the tag says
+ * what the product is for. Two candidates were drawn, "ID" and "IDENTITY"; change this one line
+ * (then run generate:lockups) to switch. Everything else reads it from here.
+ */
+export const ACCOUNT_TAG = "ID";
+
 export const LAX_LOCKUP_DESCRIPTORS: Readonly<Record<LaxBrandProduct, string>> = {
   bid: "BID",
   shop: "SHOP",
   art: "ART",
-  account: "ACCOUNT",
+  account: ACCOUNT_TAG,
 };
 
 const LABELS: Readonly<Record<LaxLockupKind, string>> = {
