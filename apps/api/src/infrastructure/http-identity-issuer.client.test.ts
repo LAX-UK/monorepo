@@ -383,3 +383,94 @@ describe("HttpIdentityIssuerClient", () => {
     });
   });
 });
+
+describe("HttpIdentityIssuerClient address book", () => {
+  const ID = "33333333-3333-4333-8333-333333333333";
+  const wire = {
+    id: ID,
+    label: "Home",
+    recipientName: "Ada",
+    line1: "1 High Street",
+    line2: null,
+    city: "London",
+    region: null,
+    postcode: "SW1A 1AA",
+    country: "GB",
+    phone: null,
+    isDefaultShipping: true,
+    isDefaultBilling: true,
+    version: 2,
+    createdAt: "2026-10-23T12:00:00.000Z",
+    updatedAt: "2026-10-23T12:00:00.000Z",
+  };
+
+  function client(answer: (url: string, init: RequestInit) => Response) {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      calls.push({ url, init: init ?? {} });
+      return answer(url, init ?? {});
+    });
+    return {
+      calls,
+      issuer: new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl: fetchImpl as never,
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-that-is-long-enough-0123",
+      }),
+    };
+  }
+
+  it("lists, creates, updates, deletes and sets a default through the machine routes", async () => {
+    const { issuer, calls } = client((_url, init) =>
+      init.method === "DELETE"
+        ? Response.json({ deleted: true })
+        : init.method === "GET"
+          ? Response.json({ addresses: [wire] })
+          : Response.json({ address: wire }),
+    );
+    const input = {
+      label: "Home",
+      recipientName: "Ada",
+      line1: "1 High Street",
+      line2: null,
+      city: "London",
+      region: null,
+      postcode: "SW1A 1AA",
+      country: "GB",
+      phone: null,
+    };
+    expect(await issuer.listAddresses("user/1")).toEqual([wire]);
+    await issuer.createAddress("user/1", input);
+    await issuer.updateAddress("user/1", ID, 2, input);
+    await issuer.deleteAddress("user/1", ID, 2);
+    await issuer.setDefaultAddress("user/1", ID, "billing");
+
+    const base = "https://identity.example.com/internal/identity/subjects/user%2F1/addresses";
+    expect(calls.map((call) => `${call.init.method} ${call.url}`)).toEqual([
+      `GET ${base}`,
+      `POST ${base}`,
+      `PATCH ${base}/${ID}`,
+      `DELETE ${base}/${ID}?expectedVersion=2`,
+      `POST ${base}/${ID}/default`,
+    ]);
+    expect(JSON.parse(String(calls[2]?.init.body))).toEqual({ address: input, expectedVersion: 2 });
+    expect(JSON.parse(String(calls[4]?.init.body))).toEqual({ kind: "billing" });
+  });
+
+  it("rejects with the issuer's refusal code and on an unexpected body", async () => {
+    const refused = client(() => Response.json({ error: "version_conflict" }, { status: 409 }));
+    await expect(refused.issuer.deleteAddress("u", ID, 1)).rejects.toMatchObject({
+      status: 409,
+      code: "version_conflict",
+    });
+    const broken = client(() => Response.json({ nope: true }));
+    await expect(broken.issuer.listAddresses("u")).rejects.toMatchObject({
+      kind: "invalid_response",
+    });
+  });
+});

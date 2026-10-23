@@ -155,3 +155,4 @@ export {
 } from "./socket-revocation.js";
 export type { ConsentRecord, ConsentStore } from "./consent-store.js";
 export * from "./account-addresses.js";
+export { countryToIso } from "./address-country.js";

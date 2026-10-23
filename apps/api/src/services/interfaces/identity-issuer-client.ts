@@ -1,3 +1,8 @@
+import type {
+  AccountAddress,
+  AccountAddressDefaultKind,
+  AccountAddressInput,
+} from "@auction/identity-contracts";
 export type IdentityIssuerRequestContext = {
   headers?: Headers | undefined;
 };
@@ -154,4 +159,26 @@ export interface IIdentityProfileClient {
     patch: { name?: string; image?: string | null },
   ): Promise<void>;
   markDeletionRequested(subjectId: string): Promise<void>;
+}
+
+/**
+ * The LAX-wide address book, which Identity owns. Every method rejects with an
+ * IdentityIssuerClientError; a refusal the caller can act on carries the issuer's code
+ * (`invalid_address`, `address_not_found`, `address_limit_reached`, `version_conflict`).
+ */
+export interface IIdentityAddressClient {
+  listAddresses(subjectId: string): Promise<AccountAddress[]>;
+  createAddress(subjectId: string, address: AccountAddressInput): Promise<AccountAddress>;
+  updateAddress(
+    subjectId: string,
+    addressId: string,
+    expectedVersion: number,
+    address: AccountAddressInput,
+  ): Promise<AccountAddress>;
+  deleteAddress(subjectId: string, addressId: string, expectedVersion: number): Promise<void>;
+  setDefaultAddress(
+    subjectId: string,
+    addressId: string,
+    kind: AccountAddressDefaultKind,
+  ): Promise<AccountAddress>;
 }

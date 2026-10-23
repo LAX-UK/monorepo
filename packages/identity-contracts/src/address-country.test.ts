@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { legacyCountryToIso } from "./legacy-country.js";
+import { countryToIso } from "./address-country.js";
 
-describe("legacyCountryToIso", () => {
+describe("countryToIso", () => {
   it.each([
     ["gb", "GB"],
     [" FR ", "FR"],
@@ -12,10 +12,10 @@ describe("legacyCountryToIso", () => {
     ["Côte d’Ivoire", "CI"],
     ["UAE", "AE"],
   ])("reads %s as %s", (raw, expected) => {
-    expect(legacyCountryToIso(raw)).toBe(expected);
+    expect(countryToIso(raw)).toBe(expected);
   });
 
   it.each(["Ruritania", "", "Europe"])("does not guess %j", (raw) => {
-    expect(legacyCountryToIso(raw)).toBeNull();
+    expect(countryToIso(raw)).toBeNull();
   });
 });

@@ -82,6 +82,5 @@ export interface IAddressRepository {
     input: UpdateAddressInput,
   ): Promise<UserAddressRow | null>;
   delete(userId: string, addressId: string): Promise<boolean>;
-  clearDefaultForUser(userId: string): Promise<void>;
   setDefault(userId: string, addressId: string): Promise<void>;
 }
