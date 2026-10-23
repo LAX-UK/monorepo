@@ -7,6 +7,7 @@ type UserRoutePick<K extends keyof UserRouteServices> = {
 export type UserAccountRoutesContainer = UserRoutePick<
   | "publicHttp"
   | "dashboardHttp"
+  | "laxPortfolioHttp"
   | "watchlistHttp"
   | "notificationsHttp"
   | "preferencesHttp"

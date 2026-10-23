@@ -24,6 +24,10 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       listBids: vi.fn(),
       listPortfolio: vi.fn(),
     },
+    laxPortfolioHttp: {
+      getPortfolio: vi.fn(),
+      getMoney: vi.fn(),
+    },
     watchlistHttp: {
       listWatchlistIds: vi.fn(),
       listWatchlist: vi.fn(),

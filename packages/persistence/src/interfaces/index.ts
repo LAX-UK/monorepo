@@ -73,6 +73,15 @@ export type { ISavedSearchRepository, SavedSearchRow } from "./saved-search.repo
 
 export type { IAccountDeletionEligibilityReader } from "./account-deletion-eligibility.reader.js";
 export type {
+  BidPaymentFact,
+  BidPayoutFact,
+  BidPortfolioFacts,
+  BidSellerLotFact,
+  BidSubmissionFact,
+  BidWonLotFact,
+  IBidPortfolioReader,
+} from "./bid-portfolio.reader.js";
+export type {
   AccountOnboardingStatusRow,
   CompleteAccountOnboardingInput,
   IAccountOnboardingRepository,

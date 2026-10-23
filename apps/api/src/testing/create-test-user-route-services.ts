@@ -9,7 +9,8 @@ export function createTestUserRouteServicesInput(
   overrides: Partial<CreateUserRouteServicesInput> = {},
 ): CreateUserRouteServicesInput {
   return {
-    env: { WEB_ORIGIN: "https://test.lax.bid" },
+    env: { WEB_ORIGIN: "https://test.lax.bid", LAX_BID_LEGAL_NAME: "London Auction Xchange LTD" },
+    bidPortfolioReader: { loadForPerson: vi.fn() },
     categoryInterestsEligibilityReader: {
       getProfile: vi.fn(),
     } as never,

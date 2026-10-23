@@ -41,6 +41,11 @@ const envSchema = z
     IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /**
+     * Legal entity that owns Bid records in the cross-product portfolio. Defaults to
+     * `SITE_LEGAL_NAME` in `@auction/branding`; override it if the trading entity changes.
+     */
+    LAX_BID_LEGAL_NAME: z.string().min(1).default("London Auction Xchange LTD"),
     /** Comma-separated browser origins allowed for CORS (e.g. main web + event microsite). */
     WEB_ORIGINS: z.preprocess((val) => {
       let source = val;

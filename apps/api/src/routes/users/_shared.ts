@@ -18,6 +18,8 @@ export type UserHono = Hono<{
 export type UserRouteDeps = {
   container: ContainerUserAccountRoutesSlice;
   requireAuth: ReturnType<typeof createRequireAuth>;
+  /** Accepts `bid.read` or the narrower `lax.portfolio.read`; for the portfolio reads only. */
+  requirePortfolioRead: ReturnType<typeof createRequireAuth>;
   requireAuthAllowSuspended: ReturnType<typeof createRequireAuth>;
   requirePasswordStepUp: ReturnType<typeof createRequireRecentPasswordAuth>;
   requireSessionRevokeAuth: ReturnType<typeof createRequireRecentPasswordAuth>;

@@ -418,6 +418,7 @@ export function createContainer(env: Env): Container {
     }),
     userRoutes: createUserRouteServices({
       env,
+      bidPortfolioReader: repos.bidPortfolioReader,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       accountOnboardingService: userMisc.accountOnboardingService,

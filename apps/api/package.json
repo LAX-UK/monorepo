@@ -44,6 +44,7 @@
     "@auction/finance-runtime": "workspace:*",
     "@auction/http-headers": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
+    "@auction/lax-ecosystem": "workspace:*",
     "@auction/lot-lifecycle-app": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
@@ -78,6 +79,7 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@sinclair/typebox": "^0.34.41",
     "@types/node": "^22.10.5",
     "@types/qrcode": "^1.5.6",
     "@types/web-push": "^3.6.4",
