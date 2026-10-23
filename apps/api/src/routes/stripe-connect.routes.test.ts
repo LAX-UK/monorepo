@@ -11,7 +11,7 @@ import { createStripeConnectRoutes } from "./stripe-connect.js";
 
 const entityId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-function mountApp(role: LegalEntitySummary["role"]) {
+function mountApp(role: LegalEntitySummary["role"], opts: { isImpersonation?: boolean } = {}) {
   const stripeConnectService = {
     getClientConfig: vi.fn().mockReturnValue({ publishableKey: "pk_test", connectEnforced: true }),
     getStatus: vi.fn().mockResolvedValue({ ready: false, stripeAccountId: "acct_1" }),
@@ -32,6 +32,7 @@ function mountApp(role: LegalEntitySummary["role"]) {
     role,
     userId: "user-1",
     isPrimaryAdmin: role === "owner",
+    ...(opts.isImpersonation ? { isImpersonation: true } : {}),
   };
 
   const container = {
@@ -56,7 +57,7 @@ function mountApp(role: LegalEntitySummary["role"]) {
   const authenticator: IAuthenticator = {
     getSessionUser: vi
       .fn()
-      .mockResolvedValue({ id: "user-1", role: "client", scopes: ["bid.write"] }),
+      .mockResolvedValue({ id: "user-1", role: "client", scopes: ["bid.read", "bid.write"] }),
   };
 
   const app = new Hono<{
@@ -75,7 +76,7 @@ describe("stripe-connect routes — role gates", () => {
       body: JSON.stringify({ surface: "management" }),
     });
     expect(res.status).toBe(403);
-    expect(stripeConnectService.createAccountSession).toHaveBeenCalled();
+    expect(stripeConnectService.createAccountSession).not.toHaveBeenCalled();
   });
 
   it("returns 403 for member on POST /account", async () => {
@@ -148,5 +149,23 @@ describe("stripe-connect routes — role gates", () => {
     await expect(res.json()).resolves.toEqual({
       error: "stripe_platform_profile_incomplete",
     });
+  });
+
+  it("keeps an impersonating admin read-only on Connect", async () => {
+    const { app, stripeConnectService } = mountApp("admin", { isImpersonation: true });
+
+    const status = await app.request("/stripe-connect/status");
+    const sync = await app.request("/stripe-connect/sync", { method: "POST" });
+    const session = await app.request("/stripe-connect/account-session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ surface: "management" }),
+    });
+
+    expect(status.status).toBe(200);
+    expect(sync.status).toBe(403);
+    expect(session.status).toBe(403);
+    expect(stripeConnectService.syncAccountFromStripe).not.toHaveBeenCalled();
+    expect(stripeConnectService.createAccountSession).not.toHaveBeenCalled();
   });
 });

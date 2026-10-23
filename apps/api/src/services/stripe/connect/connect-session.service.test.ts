@@ -78,7 +78,7 @@ describe("ConnectSessionService", () => {
       makeReader({ id: "entity-1", stripeConnectAccountId: "acct_123" }),
       stripeFactory,
     );
-    await expect(svc.createAccountSession("entity-1", "member", "management")).rejects.toThrow(
+    await expect(svc.createAccountSession("entity-1", "viewer", "management")).rejects.toThrow(
       "insufficient_role",
     );
   });

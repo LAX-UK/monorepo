@@ -1,3 +1,4 @@
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { PaymentStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
@@ -10,7 +11,7 @@ export { createPendingForWinner } from "./create-pending-for-winner.pipeline.js"
 export async function listForBuyer(
   deps: PaymentServiceDeps,
   buyerId: string,
-): Promise<import("@auction/persistence/interfaces").PaymentRecord[]> {
+): Promise<PaymentRecord[]> {
   return deps.payments.listByBuyerId(buyerId);
 }
 
@@ -20,7 +21,28 @@ export async function listMyPaymentsForBuyerApi(
   userId: string,
   options: { status?: PaymentStatus },
 ): Promise<{ data: MyPaymentRowDTO[] }> {
-  const all = await listForBuyer(deps, userId);
+  return presentBuyerPayments(deps, await listForBuyer(deps, userId), options);
+}
+
+/**
+ * Payments billed to an organisation, for members who may read its finances. Unlike
+ * {@link listMyPaymentsForBuyerApi} this follows the buyer entity, so a finance member sees
+ * invoices for lots that a colleague won on the organisation's behalf.
+ */
+export async function listEntityPaymentsForBuyerApi(
+  deps: PaymentServiceDeps,
+  legalEntityId: string,
+  options: { status?: PaymentStatus },
+): Promise<{ data: MyPaymentRowDTO[] }> {
+  const payments = await deps.payments.listByBuyerLegalEntityId(legalEntityId);
+  return presentBuyerPayments(deps, payments, options);
+}
+
+async function presentBuyerPayments(
+  deps: PaymentServiceDeps,
+  all: PaymentRecord[],
+  options: { status?: PaymentStatus },
+): Promise<{ data: MyPaymentRowDTO[] }> {
   const filtered = options.status ? all.filter((p) => p.status === options.status) : all;
   const lotIds = Array.from(new Set(filtered.map((p) => p.lotId)));
   const lots = await Promise.all(lotIds.map((id) => deps.lots.findById(id)));
@@ -151,4 +173,54 @@ async function cancelStalePayment(
       actingLegalEntityId: null,
     });
   }
+}
+
+/** A work won for an organisation. `hammerPrice` is present only for members who may see money. */
+export type EntityWonLotDTO = {
+  lotId: string;
+  saleId: string | null;
+  lotNumber: number | null;
+  title: string;
+  imageUrl: string | null;
+  endedAt: string;
+  hammerPrice?: string;
+};
+
+/**
+ * Lots won for an organisation, whichever member placed the winning bid, newest first.
+ * Members without finance access still see the works, just not what was paid.
+ */
+export async function listEntityWonLots(
+  deps: PaymentServiceDeps,
+  legalEntityId: string,
+  options: { limit: number; offset: number; includeHammerPrice: boolean },
+): Promise<{ data: EntityWonLotDTO[] }> {
+  const lots = await deps.lots.list({
+    buyerLegalEntityId: legalEntityId,
+    statuses: ["ended"],
+    sort: "endedDesc",
+    resolveImages: false,
+    limit: options.limit,
+    offset: options.offset,
+  });
+  const data = await Promise.all(
+    lots.map(async (lot): Promise<EntityWonLotDTO> => {
+      const firstImage = lot.images[0];
+      const imageUrl = firstImage
+        ? deps.mediaUrlResolver
+          ? ((await deps.mediaUrlResolver.resolveMany([firstImage]))[0] ?? null)
+          : firstImage
+        : null;
+      return {
+        lotId: lot.id,
+        saleId: lot.saleId,
+        lotNumber: lot.lotNumber,
+        title: lot.title,
+        imageUrl,
+        endedAt: lot.endTime.toISOString(),
+        ...(options.includeHammerPrice ? { hammerPrice: lot.currentPrice } : {}),
+      };
+    }),
+  );
+  return { data };
 }

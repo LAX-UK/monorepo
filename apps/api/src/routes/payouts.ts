@@ -16,6 +16,7 @@ import {
   requirePayoutRead,
   requirePayoutReverse,
 } from "../middleware/require-capability.js";
+import { requireEntityCapability } from "../middleware/require-entity-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { AdminFinancePayoutRoutesContainer } from "../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -48,6 +49,7 @@ export function createPayoutRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
+  const requirePayoutsRead = requireEntityCapability("entity.payouts.read");
   const sellerPayoutHttp = container.finance.sellerPayoutHttp;
   const r = new Hono<{
     Variables: {
@@ -57,11 +59,12 @@ export function createPayoutRoutes(
     };
   }>();
 
-  /** GET /payouts — list payouts for the acting entity. */
+  /** GET /payouts — list payouts for the acting entity (`entity.payouts.read`). */
   r.get(
     "/",
     requireAuth,
     requireContext,
+    requirePayoutsRead,
     zValidator("query", listPayoutsQuerySchema),
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
@@ -76,7 +79,7 @@ export function createPayoutRoutes(
   );
 
   /** GET /payouts/preview-next — pending payments not yet on a payout. */
-  r.get("/preview-next", requireAuth, requireContext, async (c) => {
+  r.get("/preview-next", requireAuth, requireContext, requirePayoutsRead, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     const outcome = await sellerPayoutHttp.previewPending(ctx.legalEntityId);
     return respondFinanceRouteOutcome(c, outcome);
@@ -87,6 +90,7 @@ export function createPayoutRoutes(
     "/:payoutId",
     requireAuth,
     requireContext,
+    requirePayoutsRead,
     zValidator("param", payoutIdParam),
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;

@@ -1,3 +1,4 @@
+import { entityRoleCan } from "@auction/domain";
 import type { ILegalEntityRepository, IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Queue } from "bullmq";
 import type {
@@ -5,8 +6,6 @@ import type {
   PayoutStatementOutcome,
 } from "../interfaces/finance-routes/finance-payout-statement.js";
 import { ensureStatementQueued } from "../payout/payout-statement-queue.js";
-
-const STATEMENT_ROLES = new Set(["owner", "admin", "finance"]);
 
 export class PayoutStatementApplicationService implements IPayoutStatementApplicationService {
   constructor(
@@ -31,7 +30,7 @@ export class PayoutStatementApplicationService implements IPayoutStatementApplic
     if (!membership) {
       return { kind: "forbidden", error: "not_a_member_of_legal_entity" };
     }
-    if (!STATEMENT_ROLES.has(membership.role)) {
+    if (!entityRoleCan(membership.role, "entity.payouts.read")) {
       return { kind: "forbidden", error: "insufficient_role_for_statement" };
     }
     return this.resolveByPayoutId(input.payoutId, input.legalEntityId);

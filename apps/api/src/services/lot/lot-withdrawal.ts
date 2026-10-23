@@ -1,3 +1,4 @@
+import { entityRoleCan } from "@auction/domain";
 import type { Lot, UserRole } from "@auction/types";
 import {
   normalizeUserRoleOrClient,
@@ -7,7 +8,7 @@ import {
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import { cancelLot } from "./lot-lifecycle.js";
-import { CANCELLABLE, type LotServiceDeps, SELLER_WITHDRAW_ROLES } from "./lot-types.js";
+import { CANCELLABLE, type LotServiceDeps } from "./lot-types.js";
 
 export async function requestWithdrawal(
   deps: LotServiceDeps,
@@ -37,7 +38,7 @@ export async function requestWithdrawal(
     sellerUserId,
     sellerLegalEntityId,
   );
-  if (!membership || !SELLER_WITHDRAW_ROLES.has(membership.role)) {
+  if (!membership || !entityRoleCan(membership.role, "entity.consignments.withdraw")) {
     return err(new AuthzError("Only seller organisation admins can request withdrawal", 403));
   }
 

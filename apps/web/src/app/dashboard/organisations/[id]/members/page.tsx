@@ -12,14 +12,12 @@ import {
   createLegalEntityMemberListGateway,
 } from "@/lib/legal-entity/member-list.gateway.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
-import type { LegalEntityMemberRole } from "@auction/types";
+import { entityRoleCan } from "@auction/domain";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { Surface } from "@auction/ui/components/surface";
 import { notFound } from "next/navigation";
-
-const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
 
 export default async function OrganisationMembersPage({
   params,
@@ -66,7 +64,7 @@ export default async function OrganisationMembersPage({
   const members = fetched.data;
   const meRow = members.find((m) => m.userId === user.id);
   const missingSelfInList = !meRow;
-  const viewerIsAdmin = meRow ? ADMIN_ROLES.includes(meRow.role) : false;
+  const viewerIsAdmin = meRow ? entityRoleCan(meRow.role, "entity.members.manage") : false;
   const viewerIsPrimaryAdmin = meRow?.isPrimaryAdmin === true;
   const twoFactorPolicy =
     viewerIsAdmin && acting.kind === "organisation"

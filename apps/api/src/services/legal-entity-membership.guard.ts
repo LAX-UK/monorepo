@@ -1,8 +1,6 @@
+import { entityRoleCan } from "@auction/domain";
 import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
-import type { LegalEntityMemberRole } from "@auction/types";
 import { MemberPermissionError } from "./interfaces/member-management.js";
-
-const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
 
 export class LegalEntityMembershipGuard {
   constructor(private readonly members: ILegalEntityMemberRepository) {}
@@ -12,7 +10,7 @@ export class LegalEntityMembershipGuard {
     if (!me || !me.acceptedAt) {
       throw new MemberPermissionError("not_a_member");
     }
-    if (!ADMIN_ROLES.includes(me.role)) {
+    if (!entityRoleCan(me.role, "entity.members.manage")) {
       throw new MemberPermissionError("insufficient_role");
     }
     return me;

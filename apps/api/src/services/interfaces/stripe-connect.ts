@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { LegalEntity } from "@auction/types";
+import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
 import type Stripe from "stripe";
 
 export type ConnectClientConfig = {
@@ -97,7 +97,7 @@ export interface IConnectSessionProvider {
   getClientConfig(): ConnectClientConfig;
   createAccountSession(
     legalEntityId: string,
-    role: string,
+    role: LegalEntityMemberRole,
     surface: ConnectSessionSurface,
   ): Promise<{ clientSecret: string }>;
 }

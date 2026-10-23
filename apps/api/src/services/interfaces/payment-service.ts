@@ -3,6 +3,7 @@ import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../../lib/errors.js";
 import type { MyPaymentRowDTO } from "../payment-me-presenter.js";
+import type { EntityWonLotDTO } from "../payment/payment-buyer-ops.js";
 import type { CreatePendingPaymentResult } from "../payment/payment-service-types.js";
 
 export type { CreatePendingPaymentResult } from "../payment/payment-service-types.js";
@@ -20,6 +21,16 @@ export interface IPaymentBuyerService {
     userId: string,
     options: { status?: PaymentStatus },
   ): Promise<{ data: MyPaymentRowDTO[] }>;
+
+  listEntityPaymentsForBuyerApi(
+    legalEntityId: string,
+    options: { status?: PaymentStatus },
+  ): Promise<{ data: MyPaymentRowDTO[] }>;
+
+  listEntityWonLots(
+    legalEntityId: string,
+    options: { limit: number; offset: number; includeHammerPrice: boolean },
+  ): Promise<{ data: EntityWonLotDTO[] }>;
 
   getBuyerComplianceGateStatus(
     userId: string,
