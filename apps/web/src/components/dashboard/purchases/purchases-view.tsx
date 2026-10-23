@@ -78,6 +78,7 @@ export function PurchasesView({
     >
       {!loadFailure && analytics.totalRows > 0 ? (
         <KpiRow
+          text="plain"
           variant="hero"
           columns={4}
           stripClassName="md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2"

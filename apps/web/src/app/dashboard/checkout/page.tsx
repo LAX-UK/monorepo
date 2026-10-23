@@ -181,6 +181,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title={`${rows.length} ${rows.length === 1 ? "lot" : "lots"} ready for settlement`}
         >
           <KpiRow
+            text="plain"
             variant="hero"
             columns={4}
             className="hidden lg:block"

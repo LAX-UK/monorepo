@@ -54,6 +54,23 @@ describe("buying nav, personal account", () => {
     expect(entry?.href).toBe("/dashboard/settings");
   });
 
+  it("gives the narrow tab bar short names while keeping the full label", () => {
+    const buying = getClientNavItems(input());
+    expect(buying.find((i) => i.id === "notifications")).toMatchObject({
+      label: "Notifications",
+      shortLabel: "Alerts",
+    });
+    const selling = getClientNavItems(input({ mode: "selling" }));
+    expect(selling.find((i) => i.id === "consignments")).toMatchObject({
+      label: "Consignments",
+      shortLabel: "Lots",
+    });
+    expect(selling.find((i) => i.id === "payouts")).toMatchObject({
+      label: "Sold & payouts",
+      shortLabel: "Payouts",
+    });
+  });
+
   it("uses one name per page", () => {
     const labels = getClientNavItems(input()).map((item) => item.label);
     expect(labels).toEqual([

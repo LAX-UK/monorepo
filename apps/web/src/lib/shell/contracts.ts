@@ -13,6 +13,8 @@ export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** One short word for the narrow mobile tab bar; the full label stays the accessible name. */
+  shortLabel?: string;
   badge?: number;
   badgeTone?: NavBadgeTone;
   match?: (pathname: string) => boolean;

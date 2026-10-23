@@ -74,6 +74,7 @@ const NOTIFICATIONS: NavSpec = {
   item: {
     id: "notifications",
     label: "Notifications",
+    shortLabel: "Alerts",
     href: "/dashboard/notifications",
     icon: Bell,
   },
@@ -179,6 +180,7 @@ const SELLING_SPECS: readonly NavSpec[] = [
     item: {
       id: "consignments",
       label: "Consignments",
+      shortLabel: "Lots",
       href: "/dashboard/seller/consignments",
       icon: Upload,
       // Submissions are consignments before they are accepted, so their pages belong here.
@@ -198,6 +200,7 @@ const SELLING_SPECS: readonly NavSpec[] = [
     item: {
       id: "payouts",
       label: "Sold & payouts",
+      shortLabel: "Payouts",
       href: "/dashboard/seller/payouts",
       icon: WalletCards,
     },
