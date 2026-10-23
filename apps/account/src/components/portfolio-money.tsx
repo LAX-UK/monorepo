@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
-import { PortfolioFilterForm } from "./portfolio-filter-form";
+import { PortfolioFilters } from "./portfolio-filters";
 
 const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
   lax_bid: "LAX Bid",
@@ -237,7 +237,7 @@ export function PortfolioMoney({
   return (
     <>
       <p className="text-sm text-on-surface-variant">{MONEY_SEPARATION_NOTE}</p>
-      <PortfolioFilterForm
+      <PortfolioFilters
         action={action}
         label="Filter your money"
         isFiltered={hasActiveFilter(filter)}

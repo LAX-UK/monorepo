@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
-import { PortfolioFilterForm } from "./portfolio-filter-form";
+import { PortfolioFilters } from "./portfolio-filters";
 import {
   CurrencyAmounts,
   PortfolioStatusBadge,
@@ -219,7 +219,7 @@ export function PortfolioHoldings({
       <h2 id="portfolio-holdings-heading" className="font-headline text-lg font-semibold">
         Your works
       </h2>
-      <PortfolioFilterForm
+      <PortfolioFilters
         action={action}
         label="Filter your works"
         fields={toFields(options, filter)}

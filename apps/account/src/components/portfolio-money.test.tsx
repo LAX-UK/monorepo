@@ -74,9 +74,10 @@ describe("PortfolioMoney", () => {
 
   it("offers business, type and currency filters", () => {
     const html = render(entries, { currency: "GBP" });
-    for (const name of ["business", "section", "currency"]) {
-      expect(html).toContain(`name="${name}"`);
+    for (const label of ["business", "type", "currency"]) {
+      expect(html).toContain(`Filter by ${label}`);
     }
+    expect(html).toContain('href="/account/portfolio/money?section=received&amp;currency=GBP"');
     expect(html).toContain("Clear filters");
   });
 

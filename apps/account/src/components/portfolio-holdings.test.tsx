@@ -70,10 +70,14 @@ describe("PortfolioHoldings", () => {
 
   it("offers every filter, keeps the URL values selected, and can clear them", () => {
     const html = render(works, { statuses: ["owned"], currency: "GBP" });
-    for (const name of ["status", "product", "artist", "year", "currency"]) {
-      expect(html).toContain(`name="${name}"`);
+    for (const label of ["status", "product", "artist", "year acquired", "currency"]) {
+      expect(html).toContain(`Filter by ${label}`);
     }
-    expect(html).toContain('method="get"');
+    // A chip changes one filter and keeps the others, so filters combine.
+    expect(html).toContain(
+      'href="/account/portfolio?status=owned&amp;product=bid&amp;currency=GBP"',
+    );
+    expect(html).toContain('aria-current="page"');
     expect(html).toContain("Clear filters");
   });
 
