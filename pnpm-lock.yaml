@@ -1590,6 +1590,10 @@ importers:
         version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   packages/lax-ecosystem:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.52
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
