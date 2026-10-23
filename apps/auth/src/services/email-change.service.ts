@@ -1,4 +1,4 @@
-import type { EmailSender } from "@auction/auth";
+import type { EmailSender, SecurityNoticePublisher } from "@auction/auth";
 import {
   EMAIL_CHANGE_TOKEN_TTL_SECONDS,
   createEmailChangeToken,
@@ -30,6 +30,8 @@ export type EmailChangeDeps = {
     "readSubject" | "startEmailChange" | "cancelEmailChange" | "confirmEmailChange"
   >;
   email: EmailSender;
+  /** Tells both inboxes once the address has switched. */
+  notices: SecurityNoticePublisher;
   authSecret: string;
   /** Absolute confirmation page URL per channel; a missing channel cannot start a change. */
   confirmationPages: Partial<Record<EmailChangeChannel, string>>;
@@ -133,6 +135,17 @@ export class EmailChangeService {
         newEmail: payload.newEmail,
         confirmFor: payload.confirmFor,
       });
+      if (completed) {
+        // Both inboxes confirmed it, but the old one is told too: it is the one that could still
+        // reveal a change the owner did not make.
+        void this.deps.notices.notify({
+          kind: "email_changed",
+          userId: payload.subjectId,
+          at: this.now(),
+          previousEmail: payload.oldEmail,
+          newEmail: payload.newEmail,
+        });
+      }
       return {
         ok: true,
         subjectId: payload.subjectId,

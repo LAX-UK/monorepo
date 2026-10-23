@@ -139,3 +139,31 @@ WHERE le.id IS NULL;
 ```
 
 Do not run automatically in deploy scripts. Users who hit an authenticated API path before the projector runs are still covered by lazy `ensurePersonalEntity` on the API side.
+
+## Security side effects and alerting
+
+After a sign-out, password change, two-step change or "sign out other sessions", the issuer must still end sessions and tokens and tell the other products. If that fails once, the job is written to `auth_security_effect_outbox` and the issuer's own schedule (`apps/auth`, every 2 seconds) retries it at 2s, 10s, 60s, 5m and 30m. A restart does not lose it. A job that succeeds is deleted.
+
+Signals (structured `pino` lines from the `auction-auth` service, searchable in the App Platform component logs):
+
+| Message | Level | Meaning | Also in Sentry |
+| --- | --- | --- | --- |
+| `auth_security_effect_failed` | error | One attempt failed. Expected during a Redis or database blip. | no |
+| `auth_security_effect_recovered` | warn | A retry succeeded. | no |
+| `auth_security_effect_not_durable` | error | The attempt failed and the outbox row could not be written either. Retries run in process and a restart loses them. | no |
+| `auth_security_effect_abandoned` | error | Every durable retry failed. A person's session or token may still be live after they asked to end it. | yes, as an error event |
+| `auth_security_effect_drain_failed` | error | The retry worker itself failed. | yes |
+| `rate_limit_redis_unavailable_using_in_process_fallback` | warn | Redis is down and credential endpoints are using the per-instance rate limiter. Limits are looser across instances. Logged at most once a minute per instance. | yes, as a warning event |
+| `security_notice_failed` | error | A security email could not be queued. The change itself stood. | no |
+
+Suggested alert rules:
+
+- **Page: `auth_security_effect_abandoned` at least once.** Treat it as a security incident. Find the row (`SELECT id, kind, user_id, attempt_count, last_error, updated_at FROM auth_security_effect_outbox WHERE status = 'abandoned'`), fix the cause (Redis, relying-party logout endpoints, database), then run the revocation by hand for that user and delete the row. Jobs are idempotent, so re-running is safe.
+- **Warn: `auth_security_effect_failed` more than 5 times in 10 minutes.** Redis or the database is degraded. Check them before the retries run out.
+- **Warn: `rate_limit_redis_unavailable_using_in_process_fallback` for more than 15 minutes, or on more than one instance.** Restore Redis. Brute-force limits are weaker until then.
+- **Warn: any row in `auth_security_effect_outbox` with `status = 'pending'` and `next_attempt_at` older than 10 minutes.** The retry worker is not running.
+- **Info: `security_notice_failed` more than 20 times in an hour.** The email outbox endpoint (`/internal/identity/emails`) is unhealthy, so people are not hearing about security changes.
+
+In Sentry, create an issue alert on the `auction-auth` project for events whose message is `auth_security_effect_abandoned`, and a metric alert on `rate_limit_redis_unavailable_using_in_process_fallback` events.
+
+The security emails (two-step on or off, new backup codes, password, email address and phone changes, and sign-ins from a device not seen for 90 days) are queued through the same `/internal/identity/emails` endpoint. New-device mail is capped at three a day per person. `auth_known_device` holds only a hash of the browser, system and country for each person, never a user agent string or an IP address.

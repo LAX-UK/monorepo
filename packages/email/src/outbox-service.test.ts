@@ -2,6 +2,12 @@ import { emailSuppression } from "@auction/db/schema";
 import { describe, expect, it, vi } from "vitest";
 import { PostmarkEmailService } from "./outbox-service.js";
 
+const NOTICE_VARS = {
+  userName: "Ada",
+  whenDisplay: "23 October 2026 at 14:05 BST",
+  secureAccountUrl: "https://account.lax.bid/account/security",
+} as const;
+
 type OutboxLookupRow = { id: string; status: string } | undefined;
 
 function createFakeDb(config: {
@@ -64,7 +70,7 @@ describe("PostmarkEmailService.enqueue", () => {
       to: "ada@example.com",
       userId: "u1",
       category: "auth",
-      vars: { userName: "Ada" },
+      vars: NOTICE_VARS,
     });
 
     expect(result).toEqual({ outboxId: "row-new" });
@@ -114,7 +120,7 @@ describe("PostmarkEmailService.enqueue", () => {
       userId: "subject-1",
       category: "auth",
       recipientResolution: "snapshot",
-      vars: { userName: "Ada" },
+      vars: NOTICE_VARS,
     } as const;
 
     await service.enqueue({ ...common, to: "old@example.com" });
@@ -138,7 +144,7 @@ describe("PostmarkEmailService.enqueue", () => {
       to: "ada@example.com",
       userId: "u1",
       category: "auth",
-      vars: { userName: "Ada" },
+      vars: NOTICE_VARS,
     });
 
     expect(result).toEqual({ outboxId: "row-pending" });
@@ -161,7 +167,7 @@ describe("PostmarkEmailService.enqueue", () => {
       to: "ada@example.com",
       userId: "u1",
       category: "auth",
-      vars: { userName: "Ada" },
+      vars: NOTICE_VARS,
     });
 
     expect(result).toEqual({ outboxId: "row-dead" });
@@ -194,7 +200,7 @@ describe("PostmarkEmailService.enqueue", () => {
       to: "ada@example.com",
       userId: "u1",
       category: "auth",
-      vars: { userName: "Ada" },
+      vars: NOTICE_VARS,
     });
 
     expect(result).toEqual({ outboxId: "row-sent" });

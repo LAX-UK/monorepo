@@ -27,10 +27,12 @@ function setup() {
       outboxId: "o1",
     })),
   };
+  const notices = { notify: vi.fn(async () => undefined) };
   const service = new EmailChangeService(
     {
       operations: operations as never,
       email,
+      notices,
       authSecret: SECRET,
       confirmationPages: {
         account: "https://account.example/account/email-change",
@@ -39,7 +41,7 @@ function setup() {
     },
     () => NOW,
   );
-  return { service, operations, email };
+  return { service, operations, email, notices };
 }
 
 function tokenFrom(url: unknown): string {
@@ -115,6 +117,7 @@ describe("EmailChangeService.start", () => {
     const service = new EmailChangeService({
       operations: operations as never,
       email: { enqueue: vi.fn() },
+      notices: { notify: vi.fn() },
       authSecret: SECRET,
       confirmationPages: { bid: "https://bid.example/confirm" },
     });
@@ -143,7 +146,7 @@ describe("EmailChangeService.confirm", () => {
 
   it("applies the confirmation named by the token", async () => {
     const token = await issuedToken(1);
-    const { service, operations } = setup();
+    const { service, operations, notices } = setup();
     operations.confirmEmailChange.mockResolvedValueOnce(true as never);
     expect(await service.confirm(token)).toEqual({
       ok: true,
@@ -157,6 +160,21 @@ describe("EmailChangeService.confirm", () => {
       newEmail: "new@example.com",
       confirmFor: "new",
     });
+    expect(notices.notify).toHaveBeenCalledWith({
+      kind: "email_changed",
+      userId: SUBJECT,
+      at: NOW,
+      previousEmail: "Old@Example.com",
+      newEmail: "new@example.com",
+    });
+  });
+
+  it("does not announce a change that still waits for the other inbox", async () => {
+    const token = await issuedToken(0);
+    const { service, operations, notices } = setup();
+    operations.confirmEmailChange.mockResolvedValueOnce(false as never);
+    await service.confirm(token);
+    expect(notices.notify).not.toHaveBeenCalled();
   });
 
   it("is not complete after the first inbox", async () => {

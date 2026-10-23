@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { disable, notifyTwoFactorDisabledEmail } = vi.hoisted(() => ({
-  disable: vi.fn(),
-  notifyTwoFactorDisabledEmail: vi.fn(),
-}));
+const { disable } = vi.hoisted(() => ({ disable: vi.fn() }));
 
 vi.mock("@/lib/auth-client", () => ({ authClient: { twoFactor: { disable } } }));
-vi.mock("@/lib/auth/security-notify.client", () => ({ notifyTwoFactorDisabledEmail }));
 
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import { disableTwoFactorService } from "./disable-two-factor.service";
@@ -26,7 +22,6 @@ describe("disableTwoFactorService", () => {
       code: "two_factor_required_by_policy",
       message: AUTH_ERROR_MESSAGES.two_factor_required_by_policy,
     });
-    expect(notifyTwoFactorDisabledEmail).not.toHaveBeenCalled();
   });
 
   it("keeps the generic failure for other errors", async () => {

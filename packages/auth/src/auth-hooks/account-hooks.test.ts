@@ -6,7 +6,6 @@ function deps(onAccountCreated: NonNullable<AuthHookDeps["onAccountCreated"]>): 
   return {
     ports: {
       subjectStatusReader: { isDisabledOrMerged: vi.fn(async () => false) },
-      sessionCountReader: { countSessionsForUser: vi.fn(async () => 0) },
       accountLinkReader: {
         countAccountsForUser: vi.fn(async () => 1),
         isEmailVerified: vi.fn(async () => true),

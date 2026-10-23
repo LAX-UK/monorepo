@@ -1,19 +1,15 @@
-import type { IEmailService } from "@auction/email";
 import type { IAttributionStore } from "@auction/marketing-events";
 import type { AccountDeletionEligibilityService } from "../account-deletion-eligibility.service.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
 import type { IUserSecurityHttpApplicationService } from "../interfaces/user-routes/user-security-http.js";
 import type { SessionRevocationService } from "../session-revocation.service.js";
-import type { UserSecurityReadService } from "../user-security-read.service.js";
 import type { UserService } from "../user.service.js";
 
 export type UserSecurityHttpDeps = {
   sessionRevocation: SessionRevocationService;
   authAuditPublisher: IAuthAuditPublisher;
-  userSecurityReadService: UserSecurityReadService;
   userService: UserService;
-  emailService: Pick<IEmailService, "enqueue">;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
   attributionStore: IAttributionStore;
 };
@@ -111,72 +107,6 @@ export class UserSecurityHttpApplicationService implements IUserSecurityHttpAppl
         eventType: "auth.sessions_revoked_all_except_current",
         aggregateId: input.userId,
         payload: {},
-        actorUserId: input.userId,
-      })
-      .catch(() => {});
-    return { status: 200, body: { ok: true } };
-  }
-
-  async notifyTwoFactorEnabled(input: { userId: string }): Promise<UserHttpJson> {
-    const twoFactorEnabled = await this.deps.userSecurityReadService.getTwoFactorEnabled(
-      input.userId,
-    );
-    if (!twoFactorEnabled) {
-      return {
-        status: 409,
-        body: {
-          error: "Two-factor authentication is not enabled",
-          code: "two_factor_not_enabled",
-        },
-      };
-    }
-    const row = await this.deps.userService.getById(input.userId);
-    if (!row) return { status: 404, body: { error: "Not found", code: "user_not_found" } };
-    void this.deps.emailService.enqueue({
-      template: "2fa-enabled",
-      to: row.email,
-      userId: input.userId,
-      category: "auth",
-      vars: { userName: row.name },
-    });
-    void this.deps.authAuditPublisher
-      .publish({
-        eventType: "auth.two_factor_security_email",
-        aggregateId: input.userId,
-        payload: { kind: "enabled" },
-        actorUserId: input.userId,
-      })
-      .catch(() => {});
-    return { status: 200, body: { ok: true } };
-  }
-
-  async notifyTwoFactorDisabled(input: { userId: string }): Promise<UserHttpJson> {
-    const twoFactorEnabled = await this.deps.userSecurityReadService.getTwoFactorEnabled(
-      input.userId,
-    );
-    if (twoFactorEnabled) {
-      return {
-        status: 409,
-        body: {
-          error: "Two-factor authentication is still enabled",
-          code: "two_factor_still_enabled",
-        },
-      };
-    }
-    const row = await this.deps.userService.getById(input.userId);
-    if (!row) return { status: 404, body: { error: "Not found", code: "user_not_found" } };
-    void this.deps.emailService.enqueue({
-      template: "2fa-disabled",
-      to: row.email,
-      userId: input.userId,
-      category: "auth",
-      vars: { userName: row.name },
-    });
-    void this.deps.authAuditPublisher
-      .publish({
-        eventType: "auth.two_factor_security_email",
-        aggregateId: input.userId,
-        payload: { kind: "disabled" },
         actorUserId: input.userId,
       })
       .catch(() => {});

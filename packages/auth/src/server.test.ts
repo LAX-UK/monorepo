@@ -53,7 +53,6 @@ function mockAuthPorts(overrides?: Partial<AuthPorts>): AuthPorts {
     },
     subjectStatusReader: { isDisabledOrMerged: vi.fn(async () => false) },
     accountLinkReader: mockAccountLinkReader({ accountRows: 0, emailVerified: true }),
-    sessionCountReader: { countSessionsForUser: vi.fn(async () => 0) },
     phoneNumberStore: mockPhoneNumberStore(),
     email: undefined,
     sms: undefined,

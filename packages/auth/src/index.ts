@@ -99,6 +99,8 @@ export type {
   ProductSubjectUsageProbe,
   AuthPorts,
   PhoneNumberStore,
+  SecurityNoticeEvent,
+  SecurityNoticePublisher,
   SendOtpOptions,
   SessionStampStore,
   SmsSender,

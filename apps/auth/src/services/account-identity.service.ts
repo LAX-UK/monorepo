@@ -1,7 +1,8 @@
-import type { BackchannelLogoutRevoker } from "./backchannel-logout-revocation.service.js";
+import type { DurableSecurityEffects } from "./durable-security-effects.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
-import { type SecurityEffectLogger, settleSecurityEffect } from "./settle-security-effect.js";
+
+const ACCOUNT_SESSIONS_PATH = "account-sessions";
 
 export type AccountIdentityPorts = {
   operations: Pick<
@@ -12,10 +13,8 @@ export type AccountIdentityPorts = {
     | "removeSession"
     | "removeOtherSessions"
   >;
-  logout: Pick<
-    BackchannelLogoutRevoker,
-    "revokeIdentitySessions" | "revokeSubjectExceptIdentitySession"
-  >;
+  /** Ends relying-party sessions and tokens, retrying from the durable outbox if that fails. */
+  durable: Pick<DurableSecurityEffects, "settle">;
 };
 
 /**
@@ -48,7 +47,6 @@ export class AccountIdentityService {
 
   constructor(
     private readonly ports: AccountIdentityPorts,
-    private readonly log: SecurityEffectLogger,
     now: () => Date = () => new Date(),
   ) {
     this.sessions = new RecentSessionGuard(ports.operations, now);
@@ -106,9 +104,11 @@ export class AccountIdentityService {
     }
     const removed = await this.ports.operations.removeSession(subjectId, targetSessionId);
     if (!removed) return { ok: true, revoked: 0 };
-    await this.fanOutLogout("revoke_session", subjectId, () =>
-      this.ports.logout.revokeIdentitySessions([targetSessionId]).then(() => undefined),
-    );
+    await this.ports.durable.settle(ACCOUNT_SESSIONS_PATH, {
+      kind: "revoke_identity_sessions",
+      userId: subjectId,
+      sessionIds: [targetSessionId],
+    });
     return { ok: true, revoked: 1 };
   }
 
@@ -122,15 +122,11 @@ export class AccountIdentityService {
     const removed = await this.ports.operations.removeOtherSessions(subjectId, currentSessionId);
     // Relying-party sessions (Bid, Shop, Art) can outlive the issuer session they came from, so
     // they are ended even when no issuer session was left to delete.
-    await this.fanOutLogout("revoke_other_sessions", subjectId, () =>
-      this.ports.logout
-        .revokeSubjectExceptIdentitySession(subjectId, currentSessionId)
-        .then(() => undefined),
-    );
+    await this.ports.durable.settle(ACCOUNT_SESSIONS_PATH, {
+      kind: "revoke_tokens_except_session",
+      userId: subjectId,
+      keepSessionId: currentSessionId,
+    });
     return { ok: true, revoked: removed.length };
-  }
-
-  private fanOutLogout(effect: string, userId: string, run: () => Promise<void>): Promise<void> {
-    return settleSecurityEffect(this.log, { path: "account-sessions", effect, userId }, run);
   }
 }

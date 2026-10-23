@@ -19,6 +19,9 @@ export const AUTH_FULL_TABLES = [
   "oidc_backchannel_logout_delivery",
   "ssf_stream",
   "ssf_delivery",
+  /** Devices seen at sign-in and durable retries of security side effects, both issuer-only. */
+  "auth_known_device",
+  "auth_security_effect_outbox",
   /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
 ] as const;
@@ -121,6 +124,8 @@ export const API_DENY_TABLES = [
   "shop_logout_token_replay",
   "ssf_stream",
   "ssf_delivery",
+  "auth_known_device",
+  "auth_security_effect_outbox",
   "identity_lifecycle_outbox",
   "shop_ssf_replay",
   ...AUTH_READ_TABLES,

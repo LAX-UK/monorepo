@@ -13,7 +13,7 @@ export type {
   TwoFactorPolicyStore,
 } from "./two-factor-policy-store.js";
 export type { AccountLinkReader } from "./account-link-reader.js";
-export type { SessionCountReader } from "./session-count-reader.js";
+export type { SecurityNoticeEvent, SecurityNoticePublisher } from "./security-notice.js";
 export type { JwksStore } from "./jwks-store.js";
 export type {
   IdentityEventPublisher,
@@ -32,9 +32,9 @@ export type AuthPorts = {
   sessionStampStore: import("./session-stamp-store.js").SessionStampStore;
   subjectStatusReader: import("./subject-status-reader.js").SubjectStatusReader;
   accountLinkReader: import("./account-link-reader.js").AccountLinkReader;
-  sessionCountReader: import("./session-count-reader.js").SessionCountReader;
   phoneNumberStore: import("./phone-number-store.js").PhoneNumberStore;
   email: import("./email-sender.js").EmailSender | undefined;
   sms: import("./sms-sender.js").SmsSender | undefined;
   events: import("./identity-event-publisher.js").IdentityEventPublisher | undefined;
+  securityNotices: import("./security-notice.js").SecurityNoticePublisher | undefined;
 };

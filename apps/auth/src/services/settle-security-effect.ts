@@ -30,6 +30,18 @@ export async function settleSecurityEffect(
   } catch (error) {
     log.error({ ...context, ...describeError(error), attempt: 1 }, "auth_security_effect_failed");
   }
+  retryInBackground(log, context, run);
+}
+
+/**
+ * Last-resort in-process retries, used only when the durable record could not be written
+ * either. They are lost on restart, which is why the durable outbox is the normal path.
+ */
+export function retryInBackground(
+  log: SecurityEffectLogger,
+  context: { path: string; effect: string; userId?: string },
+  run: () => Promise<void>,
+): void {
   const retry = (index: number): void => {
     const delay = SECURITY_EFFECT_RETRY_DELAYS_MS[index];
     if (delay === undefined) {

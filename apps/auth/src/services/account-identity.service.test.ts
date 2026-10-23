@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { AccountIdentityService } from "./account-identity.service.js";
+import { type SecurityEffectJob, runSecurityEffect } from "./durable-security-effects.js";
 import type { IdentitySession } from "./identity-operations.service.js";
-import { SECURITY_EFFECT_RETRY_DELAYS_MS } from "./settle-security-effect.js";
 
 const NOW = new Date("2026-10-23T12:00:00.000Z");
 const SUBJECT = "11111111-1111-4111-8111-111111111111";
@@ -31,9 +31,14 @@ function setup(sessions: IdentitySession[]) {
     revokeIdentitySessions: vi.fn().mockResolvedValue(1),
     revokeSubjectExceptIdentitySession: vi.fn().mockResolvedValue(2),
   };
-  const log = { warn: vi.fn(), error: vi.fn() };
-  const service = new AccountIdentityService({ operations, logout } as never, log, () => NOW);
-  return { service, operations, logout, log };
+  // Runs each job through the same ports a real `DurableSecurityEffects` would use.
+  const durable = {
+    settle: vi.fn(async (_path: string, job: SecurityEffectJob) => {
+      await runSecurityEffect({ operations, logout, events: { publish: vi.fn() } } as never, job);
+    }),
+  };
+  const service = new AccountIdentityService({ operations, durable }, () => NOW);
+  return { service, operations, logout, durable };
 }
 
 const freshCurrent = session({ id: "current" });
@@ -142,24 +147,14 @@ describe("AccountIdentityService", () => {
       expect(logout.revokeIdentitySessions).not.toHaveBeenCalled();
     });
 
-    it("keeps the sign-out when relying-party logout fails, and retries it in the background", async () => {
-      vi.useFakeTimers();
-      try {
-        const { service, logout, log } = setup([freshCurrent, other]);
-        logout.revokeIdentitySessions.mockRejectedValueOnce(new Error("backchannel down"));
-        expect(await service.revokeSession(SUBJECT, "current", "other")).toEqual({
-          ok: true,
-          revoked: 1,
-        });
-        expect(log.error).toHaveBeenCalledWith(
-          expect.objectContaining({ effect: "revoke_session", userId: SUBJECT }),
-          "auth_security_effect_failed",
-        );
-        await vi.advanceTimersByTimeAsync(SECURITY_EFFECT_RETRY_DELAYS_MS[0]);
-        expect(logout.revokeIdentitySessions).toHaveBeenCalledTimes(2);
-      } finally {
-        vi.useRealTimers();
-      }
+    it("hands relying-party logout to the durable effects so a failure is retried", async () => {
+      const { service, durable } = setup([freshCurrent, other]);
+      await service.revokeSession(SUBJECT, "current", "other");
+      expect(durable.settle).toHaveBeenCalledWith("account-sessions", {
+        kind: "revoke_identity_sessions",
+        userId: SUBJECT,
+        sessionIds: ["other"],
+      });
     });
   });
 

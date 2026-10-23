@@ -8,7 +8,7 @@ import {
   createEnvelopeCrypto,
   parseAuthDekKey,
 } from "@auction/auth";
-import type { IdentityEventPublisher } from "@auction/auth";
+import type { IdentityEventPublisher, SecurityNoticePublisher } from "@auction/auth";
 import { type IdentityDatabase, createIdentityAuthPorts } from "@auction/identity-db";
 import { session } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
@@ -60,6 +60,7 @@ export function createAuthIssuer(options: {
   oidcSessions: Pick<OidcSessionCoordinator, "resolveIdTokenClaims">;
   accountAccessClaims: (input: { subjectId: string; clientId: string }) => Promise<OidcClaims>;
   identityEventPublisher: IdentityEventPublisher;
+  securityNotices: SecurityNoticePublisher;
 }): ReturnType<typeof createAuth> {
   const lifecycle = createAuthLifecycleCallbacks({
     markUserForOAuthAttribution: (userId) =>
@@ -133,6 +134,7 @@ export function createAuthIssuer(options: {
     email: options.email,
     sms: options.phoneVerification,
     events: options.identityEventPublisher,
+    securityNotices: options.securityNotices,
   };
   return createAuth({
     database: buildDrizzleDatabase(options.db, envelope),

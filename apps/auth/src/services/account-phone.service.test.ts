@@ -1,5 +1,4 @@
 import { InvalidPhoneNumberError, PhoneVerificationRateLimitedError } from "@auction/auth";
-import type { EmailEnqueueInput } from "@auction/auth";
 import { describe, expect, it, vi } from "vitest";
 import { AccountPhoneService } from "./account-phone.service.js";
 import { IdentityOperationError } from "./identity-operations.service.js";
@@ -38,17 +37,12 @@ function setup(options: { recent?: boolean; configured?: boolean } = {}) {
     sendOtp: vi.fn(async () => ({ sid: "sid" })),
     checkOtp: vi.fn(async () => ({ valid: true })),
   };
-  const email = {
-    enqueue: vi.fn<(input: EmailEnqueueInput) => Promise<{ outboxId: string }>>(async () => ({
-      outboxId: "o1",
-    })),
-  };
-  const onNoticeFailure = vi.fn();
+  const notices = { notify: vi.fn(async () => undefined) };
   const service = new AccountPhoneService(
-    { operations: operations as never, sms, email, onNoticeFailure },
+    { operations: operations as never, sms, notices },
     () => NOW,
   );
-  return { service, operations, sms, email, onNoticeFailure };
+  return { service, operations, sms, notices };
 }
 
 describe("AccountPhoneService.sendCode", () => {
@@ -93,16 +87,15 @@ describe("AccountPhoneService.sendCode", () => {
 
 describe("AccountPhoneService.verify", () => {
   it("saves the number as verified contact information and tells the account's email", async () => {
-    const { service, operations, email } = setup();
+    const { service, operations, notices } = setup();
     expect(await service.verify(SUBJECT, "current", PHONE, "123456")).toEqual({
       ok: true,
       phone: PHONE,
     });
     expect(operations.setVerifiedPhone).toHaveBeenCalledWith(SUBJECT, PHONE);
-    expect(email.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "ada@example.com", template: "new-device-login" }),
+    expect(notices.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "phone_verified", userId: SUBJECT, phone: PHONE, at: NOW }),
     );
-    expect(String(email.enqueue.mock.calls[0]?.[0].vars.deviceSummary)).not.toContain("7700900123");
   });
 
   it("saves nothing for a wrong code", async () => {
@@ -140,15 +133,5 @@ describe("AccountPhoneService.verify", () => {
       ok: false,
       kind: "rate_limited",
     });
-  });
-
-  it("still succeeds when the notice email cannot be queued", async () => {
-    const { service, email, onNoticeFailure } = setup();
-    email.enqueue.mockRejectedValueOnce(new Error("outbox down"));
-    expect(await service.verify(SUBJECT, "current", PHONE, "123456")).toEqual({
-      ok: true,
-      phone: PHONE,
-    });
-    expect(onNoticeFailure).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,8 @@
-import type { EmailSender, IdentityEventPublisher, ProductSubjectUsageProbe } from "@auction/auth";
+import type {
+  IdentityEventPublisher,
+  ProductSubjectUsageProbe,
+  SecurityNoticePublisher,
+} from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { DrizzleIdentityCredentialRepository } from "../infrastructure/drizzle-identity-credential-repository.js";
 import { DrizzleIdentityEmailChangeRepository } from "../infrastructure/drizzle-identity-email-change-repository.js";
@@ -13,7 +17,7 @@ import { IdentityOperationsService } from "../services/identity-operations.servi
 
 export function createIdentityOperationsService(options: {
   db: IdentityDatabase;
-  email: EmailSender;
+  notices: SecurityNoticePublisher;
   productSubjectUsage: ProductSubjectUsageProbe;
   identityEventPublisher: IdentityEventPublisher;
   logout?: Pick<BackchannelLogoutService, "revokeIdentitySessions" | "revokeSubject">;
@@ -28,7 +32,7 @@ export function createIdentityOperationsService(options: {
       emailChanges: new DrizzleIdentityEmailChangeRepository(db),
       verifications: new DrizzleIdentityVerificationPurger(db),
     },
-    new EmailIdentityNotifier(options.email),
+    new EmailIdentityNotifier(options.notices),
     options.productSubjectUsage,
     options.identityEventPublisher,
     options.logout,

@@ -29,6 +29,14 @@ export const EMAIL_LOGO_SRC_HEIGHT = 140;
 /** Display width in email HTML (height scales) */
 export const EMAIL_LOGO_DISPLAY_WIDTH = 160;
 
+/** LAX Account lockup (mark with ACCOUNT descriptor) in `apps/web/public/email/`, 280px wide. */
+export const EMAIL_ACCOUNT_LOCKUP_URL = `${EMAIL_SITE_URL}/email/lax-account-lockup.png`;
+export const EMAIL_ACCOUNT_LOCKUP_URL_2X = `${EMAIL_SITE_URL}/email/lax-account-lockup@2x.png`;
+/** Display size in email HTML; the source images are 280x78 and 560x156. */
+export const EMAIL_ACCOUNT_LOCKUP_DISPLAY_WIDTH = 140;
+export const EMAIL_ACCOUNT_LOCKUP_DISPLAY_HEIGHT = 39;
+export const EMAIL_ACCOUNT_LOCKUP_ALT = "LAX Account";
+
 export const EMAIL_LOGO_ALT = `${SITE_NAME} — London Art Exchange` as const;
 
 /** Primary post-welcome / transactional CTA to the signed-in app. */

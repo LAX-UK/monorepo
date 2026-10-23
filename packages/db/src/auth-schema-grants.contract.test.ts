@@ -8,6 +8,8 @@ import {
 } from "./migrate-roles.js";
 import {
   account,
+  authKnownDevice,
+  authSecurityEffectOutbox,
   jwksKey,
   oauthAccessToken,
   oauthApplication,
@@ -38,6 +40,8 @@ describe("Better Auth schema and auth_app grant drift", () => {
       oidcBackchannelLogoutDelivery,
       ssfStream,
       ssfDelivery,
+      authKnownDevice,
+      authSecurityEffectOutbox,
     ]
       .map(getTableName)
       .sort();

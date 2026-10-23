@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  SECURITY_EFFECT_RETRY_DELAYS_MS,
-  createAuthRequestHandler,
-} from "./create-auth-request-handler.js";
+  DURABLE_RETRY_DELAYS_MS,
+  DurableSecurityEffects,
+} from "../services/durable-security-effects.js";
+import { InMemorySecurityEffectOutbox } from "../services/durable-security-effects.test-util.js";
+import { createAuthRequestHandler } from "./create-auth-request-handler.js";
 
 const silentLog = () => ({ warn: vi.fn(), error: vi.fn() });
 
@@ -42,9 +44,20 @@ function setup(
     stampMfaCompleted: vi.fn(async () => undefined),
     stampSocialAuth: vi.fn(async () => undefined),
   };
+  const outbox = new InMemorySecurityEffectOutbox();
+  const operations = { removeOtherSessions: vi.fn(async () => ["other"]) };
+  const clock = { now: new Date("2026-10-23T12:00:00.000Z") };
+  const durable = new DurableSecurityEffects(
+    outbox,
+    { operations, logout, events: { publish } } as never,
+    log,
+    () => clock.now,
+  );
+  const notices = { notify: vi.fn(async () => undefined) };
   const handler = createAuthRequestHandler({
     log,
-    events: { publish },
+    durable,
+    notices,
     sessionStampStore,
     readTwoFactorRequirement: (opts.readTwoFactorRequirement ??
       (async () => ({
@@ -56,9 +69,24 @@ function setup(
       runTokenRequest: vi.fn(async (_code, action) => action()),
       captureAuthorizationSession: vi.fn(async () => undefined),
     } as never,
-    logout,
   });
-  return { auth, handler, log, logout, publish, revokeOtherSessions, sessionStampStore };
+  const advance = (ms: number) => {
+    clock.now = new Date(clock.now.getTime() + ms);
+  };
+  return {
+    auth,
+    handler,
+    log,
+    logout,
+    publish,
+    revokeOtherSessions,
+    sessionStampStore,
+    notices,
+    outbox,
+    operations,
+    durable,
+    advance,
+  };
 }
 
 const rotatedSessionResponse = () =>
@@ -136,14 +164,17 @@ describe("auth request lifecycle ordering", () => {
     expect(logout.revokeSubject).toHaveBeenCalledWith("subject-1");
   });
 
-  it("still dispatches logout when durable event publication fails", async () => {
+  it("still ends the session and answers success when event publication fails", async () => {
     const publish = vi.fn().mockRejectedValue(new Error("outbox unavailable"));
-    const { handler, logout } = setup(publish);
+    const { handler, logout, outbox } = setup(publish);
 
-    await expect(
-      handler(new Request("https://auth.test/api/auth/sign-out", { method: "POST" })),
-    ).rejects.toThrow("outbox unavailable");
+    const response = await handler(
+      new Request("https://auth.test/api/auth/sign-out", { method: "POST" }),
+    );
+
+    expect(response.status).toBe(200);
     expect(logout.revokeIdentitySessions).toHaveBeenCalledWith(["session-1"]);
+    expect(outbox.rows.map((row) => row.job.kind)).toEqual(["publish_session_revoked"]);
   });
 
   it("binds authorization codes using the response session and bypasses cookie cache", async () => {
@@ -168,7 +199,8 @@ describe("auth request lifecycle ordering", () => {
     };
     const handler = createAuthRequestHandler({
       log: silentLog(),
-      events: { publish: vi.fn(async () => undefined) },
+      durable: { settle: vi.fn(async () => undefined) },
+      notices: { notify: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
       readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       auth: auth as never,
@@ -176,12 +208,6 @@ describe("auth request lifecycle ordering", () => {
         runTokenRequest: vi.fn(async (_code, action) => action()),
         captureAuthorizationSession,
       } as never,
-      logout: {
-        revokeClientSubject: vi.fn(),
-        revokeIdentitySessions: vi.fn(),
-        revokeSubject: vi.fn(),
-        revokeSubjectExceptIdentitySession: vi.fn(),
-      },
     });
 
     await handler(
@@ -230,7 +256,8 @@ describe("auth request lifecycle ordering", () => {
     };
     const handler = createAuthRequestHandler({
       log: silentLog(),
-      events: { publish: vi.fn(async () => undefined) },
+      durable: { settle: vi.fn(async () => undefined) },
+      notices: { notify: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
       readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       auth: auth as never,
@@ -238,12 +265,6 @@ describe("auth request lifecycle ordering", () => {
         runTokenRequest: vi.fn(async (_code, action) => action()),
         captureAuthorizationSession: vi.fn(),
       } as never,
-      logout: {
-        revokeClientSubject: vi.fn(),
-        revokeIdentitySessions: vi.fn(async () => 1),
-        revokeSubject: vi.fn(),
-        revokeSubjectExceptIdentitySession: vi.fn(),
-      },
     });
 
     const response = await handler(
@@ -303,10 +324,6 @@ describe("two-factor policy", () => {
 });
 
 describe("when a security side effect fails after 2FA changed", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   const enrol = () =>
     new Request("https://auth.test/api/auth/two-factor/verify-totp", { method: "POST" });
 
@@ -314,7 +331,6 @@ describe("when a security side effect fails after 2FA changed", () => {
     const publish = vi.fn().mockRejectedValue(new Error("outbox unavailable"));
     const { handler, log, logout } = setup(publish, { response: rotatedSessionResponse });
     logout.revokeSubjectExceptIdentitySession.mockRejectedValue(new Error("redis down"));
-    vi.useFakeTimers();
 
     const response = await handler(enrol());
 
@@ -337,47 +353,47 @@ describe("when a security side effect fails after 2FA changed", () => {
       response: rotatedSessionResponse,
     });
     revokeOtherSessions.mockRejectedValue(new Error("db down"));
-    vi.useFakeTimers();
 
     await handler(enrol());
 
     expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(1);
   });
 
-  it("retries a failed revocation in the background until it succeeds", async () => {
-    const { handler, log, logout } = setup(undefined, { response: rotatedSessionResponse });
+  it("keeps a failed revocation durable and recovers it on a later drain", async () => {
+    const { handler, log, logout, outbox, durable, advance } = setup(undefined, {
+      response: rotatedSessionResponse,
+    });
     logout.revokeSubjectExceptIdentitySession
       .mockRejectedValueOnce(new Error("redis down"))
       .mockResolvedValue(1);
-    vi.useFakeTimers();
 
     await handler(enrol());
-    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(1);
+    expect(outbox.rows.map((row) => row.job.kind)).toEqual(["revoke_tokens_except_session"]);
 
-    await vi.advanceTimersByTimeAsync(SECURITY_EFFECT_RETRY_DELAYS_MS[0]);
+    advance(DURABLE_RETRY_DELAYS_MS[0]);
+    await durable.drain();
 
     expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(2);
+    expect(outbox.rows).toHaveLength(0);
     expect(log.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ effect: "revoke_subject_tokens", attempt: 2 }),
+      expect.objectContaining({ effect: "revoke_tokens_except_session", attempt: 2 }),
       "auth_security_effect_recovered",
     );
   });
 
-  it("gives up and says so once the retries are exhausted", async () => {
-    const { handler, log, logout } = setup(undefined, { response: rotatedSessionResponse });
-    logout.revokeSubjectExceptIdentitySession.mockRejectedValue(new Error("redis down"));
-    vi.useFakeTimers();
+  it("retries ending other sessions without the request's cookie", async () => {
+    const { handler, revokeOtherSessions, operations, outbox, durable, advance } = setup(
+      undefined,
+      { response: rotatedSessionResponse },
+    );
+    revokeOtherSessions.mockRejectedValue(new Error("db down"));
 
     await handler(enrol());
-    await vi.advanceTimersByTimeAsync(SECURITY_EFFECT_RETRY_DELAYS_MS.reduce((a, b) => a + b, 0));
+    advance(DURABLE_RETRY_DELAYS_MS[0]);
+    await durable.drain();
 
-    expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledTimes(
-      1 + SECURITY_EFFECT_RETRY_DELAYS_MS.length,
-    );
-    expect(log.error).toHaveBeenCalledWith(
-      expect.objectContaining({ effect: "revoke_subject_tokens" }),
-      "auth_security_effect_abandoned",
-    );
+    expect(operations.removeOtherSessions).toHaveBeenCalledWith("subject-1", "session-1");
+    expect(outbox.rows).toHaveLength(0);
   });
 
   it("keeps the session when stamping the MFA claim fails", async () => {
@@ -386,7 +402,6 @@ describe("when a security side effect fails after 2FA changed", () => {
       response: rotatedSessionResponse,
     });
     sessionStampStore.stampMfaCompleted.mockRejectedValue(new Error("db down"));
-    vi.useFakeTimers();
 
     const response = await handler(enrol());
 
@@ -395,6 +410,58 @@ describe("when a security side effect fails after 2FA changed", () => {
       expect.objectContaining({ effect: "stamp_mfa_completed" }),
       "auth_security_effect_failed",
     );
+  });
+});
+
+describe("security notices", () => {
+  const post = (path: string) =>
+    new Request(`https://auth.test/api/auth${path}`, {
+      method: "POST",
+      headers: { "user-agent": "Mozilla/5.0 (Macintosh) Chrome/130.0 Safari/537.36" },
+    });
+
+  it.each([
+    ["enrolling", "/two-factor/verify-totp", false, "two_factor_enabled"],
+    ["turning off", "/two-factor/disable", true, "two_factor_disabled"],
+    [
+      "regenerating backup codes",
+      "/two-factor/generate-backup-codes",
+      true,
+      "backup_codes_regenerated",
+    ],
+    ["changing the password", "/change-password", false, "password_changed"],
+  ] as const)("emails the person after %s", async (_label, path, twoFactorEnabled, kind) => {
+    const { handler, notices } = setup(undefined, {
+      twoFactorEnabled,
+      response: rotatedSessionResponse,
+    });
+
+    await handler(post(path));
+
+    expect(notices.notify).toHaveBeenCalledWith({
+      kind,
+      userId: "subject-1",
+      at: expect.any(Date),
+      userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0 Safari/537.36",
+    });
+  });
+
+  it("says nothing when the change did not happen", async () => {
+    const { handler, notices } = setup(undefined, {
+      response: () => Response.json({ code: "INVALID_CODE" }, { status: 401 }),
+    });
+
+    await handler(post("/two-factor/generate-backup-codes"));
+
+    expect(notices.notify).not.toHaveBeenCalled();
+  });
+
+  it("says nothing for step-up verification of an already enabled factor", async () => {
+    const { handler, notices } = setup(undefined, { twoFactorEnabled: true });
+
+    await handler(post("/two-factor/verify-totp"));
+
+    expect(notices.notify).not.toHaveBeenCalled();
   });
 });
 
@@ -436,7 +503,8 @@ describe("when a lookup fails before 2FA changes", () => {
     const captureAuthorizationSession = vi.fn();
     const handler = createAuthRequestHandler({
       log: silentLog(),
-      events: { publish: vi.fn() },
+      durable: { settle: vi.fn(async () => undefined) },
+      notices: { notify: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
       readTwoFactorRequirement: vi.fn(),
       auth: {
@@ -449,7 +517,6 @@ describe("when a lookup fails before 2FA changes", () => {
         runTokenRequest: vi.fn(async (_code, action) => action()),
         captureAuthorizationSession,
       } as never,
-      logout: {} as never,
     });
 
     const response = await handler(

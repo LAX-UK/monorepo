@@ -7,6 +7,7 @@ import {
 } from "@auction/branding";
 import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
 import type { ReactNode } from "react";
+import { AccountHeader } from "./AccountHeader.js";
 import { Eyebrow } from "./Eyebrow.js";
 import { Header } from "./Header.js";
 import { DocumentHeading } from "./Heading.js";
@@ -18,6 +19,8 @@ export type LayoutProps = {
   category: EmailCategory;
   title: string;
   unsubscribeUrl?: string | null;
+  /** `account` swaps the London Art Exchange wordmark for the LAX Account lockup. */
+  header?: "wordmark" | "account";
   children: ReactNode;
 };
 
@@ -27,6 +30,7 @@ export function Layout({
   category,
   title,
   unsubscribeUrl,
+  header = "wordmark",
   children,
 }: LayoutProps) {
   const accent = categoryAccentColor(category);
@@ -41,7 +45,7 @@ export function Layout({
       <Body style={body}>
         <Container style={container}>
           <Section style={inner}>
-            <Header />
+            {header === "account" ? <AccountHeader /> : <Header />}
             <Eyebrow category={category} label={eyebrow} />
             <DocumentHeading accentColor={accent}>{title}</DocumentHeading>
             {children}

@@ -1,15 +1,23 @@
 import { AUTH_TIMINGS } from "../auth-timings.js";
 import type { EmailSender } from "../ports/email-sender.js";
+import type { SecurityNoticePublisher } from "../ports/security-notice.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
 
 export function buildEmailAndPasswordBlock(options: {
   email?: EmailSender | undefined;
+  securityNotices?: SecurityNoticePublisher | undefined;
   requireEmailVerification?: boolean | undefined;
   revokeAllSessions?: RevokeSessions | undefined;
   sessionsSettingsUrl: string;
 }) {
-  const { email, requireEmailVerification, revokeAllSessions, sessionsSettingsUrl } = options;
+  const {
+    email,
+    securityNotices,
+    requireEmailVerification,
+    revokeAllSessions,
+    sessionsSettingsUrl,
+  } = options;
   return {
     enabled: true,
     requireEmailVerification: requireEmailVerification ?? true,
@@ -70,20 +78,11 @@ export function buildEmailAndPasswordBlock(options: {
           });
         throw e;
       }
-      email
-        ?.enqueue({
-          template: "password-changed",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: { userName: authUser.name },
-        })
-        .catch((err: unknown) => {
-          console.error("[auth] enqueue password-changed failed", {
-            userId: authUser.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
+      void securityNotices?.notify({
+        kind: "password_changed",
+        userId: authUser.id,
+        at: new Date(),
+      });
       if (revokedCount > 0) {
         email
           ?.enqueue({

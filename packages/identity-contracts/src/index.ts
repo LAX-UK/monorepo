@@ -1,3 +1,4 @@
+export { formatDeviceLabel } from "./device-label.js";
 export {
   ACCOUNT_SECURITY_FACTS_PATH,
   accountSecurityFactsSchema,

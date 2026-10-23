@@ -4,7 +4,6 @@ export {
   type ShopIdentityMePayload,
   mapShopMeToAccountChromeState,
 } from "./account-chrome-state.js";
-export { formatDeviceLabel } from "./device-label.js";
 export { maskAccountEmail } from "./mask-account-email.js";
 export {
   LAX_ACCOUNT_CONTRACT_VERSION,

@@ -211,6 +211,7 @@ export function createAuth(env: AuthEnv): Auth {
     },
     emailAndPassword: buildEmailAndPasswordBlock({
       email: ports.email,
+      securityNotices: ports.securityNotices,
       requireEmailVerification: env.requireEmailVerification,
       revokeAllSessions: env.revokeAllSessions,
       sessionsSettingsUrl,
@@ -222,10 +223,10 @@ export function createAuth(env: AuthEnv): Auth {
     databaseHooks: buildDatabaseHooks({
       ports: {
         subjectStatusReader: ports.subjectStatusReader,
-        sessionCountReader: ports.sessionCountReader,
         accountLinkReader: ports.accountLinkReader,
         phoneNumberStore: ports.phoneNumberStore,
         email: ports.email,
+        securityNotices: ports.securityNotices,
       },
       onUserCreated: env.onUserCreated,
       onAccountCreated: env.onAccountCreated,
@@ -250,6 +251,7 @@ export function createAuth(env: AuthEnv): Auth {
       jwtAudience,
       totpIssuer,
       email: ports.email,
+      securityNotices: ports.securityNotices,
       phoneVerification: ports.sms,
       onEmailVerified: env.onEmailVerified,
       resolveOidcIdTokenClaims: env.resolveOidcIdTokenClaims,

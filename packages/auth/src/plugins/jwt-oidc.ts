@@ -21,6 +21,7 @@ import type {
   EmailSender,
   JwksStore,
   PhoneNumberStore,
+  SecurityNoticePublisher,
   SmsSender,
 } from "../ports/index.js";
 import { buildTwoFactorEnforcementPlugin } from "../two-factor-enforcement.js";
@@ -41,6 +42,7 @@ export function buildJwtAndOidcPlugins(options: {
   totpIssuer?: string | undefined;
   envelope?: EnvelopeCrypto | undefined;
   email?: EmailSender | undefined;
+  securityNotices?: SecurityNoticePublisher | undefined;
   phoneVerification?: SmsSender | undefined;
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
@@ -195,7 +197,7 @@ export function buildJwtAndOidcPlugins(options: {
     buildPhoneNumberPlugin({
       phoneNumberStore: options.phoneNumberStore,
       phoneVerification,
-      email,
+      securityNotices: options.securityNotices,
     }),
     buildPhoneNumberGuardPlugin(options.phoneNumberStore),
     buildBreachedPasswordPlugin(options.breachedPasswordChecker),

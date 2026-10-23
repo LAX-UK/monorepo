@@ -38,6 +38,41 @@ describe("buildEmailAndPasswordBlock", () => {
   });
 });
 
+describe("password reset notice", () => {
+  it("reports the change through the security notice port once sessions are revoked", async () => {
+    const notify = vi.fn().mockResolvedValue(undefined);
+    const block = buildEmailAndPasswordBlock({
+      securityNotices: { notify },
+      sessionsSettingsUrl: "https://lax.bid/dashboard/settings/sessions",
+      revokeAllSessions: vi.fn().mockResolvedValue(0),
+    });
+
+    await block.onPasswordReset({ user: { id: "u1", email: "e@e.com", name: "N" } });
+
+    expect(notify).toHaveBeenCalledWith({
+      kind: "password_changed",
+      userId: "u1",
+      at: expect.any(Date),
+    });
+  });
+
+  it("sends no password-changed notice when sessions could not be revoked", async () => {
+    const notify = vi.fn().mockResolvedValue(undefined);
+    const block = buildEmailAndPasswordBlock({
+      email: { enqueue: vi.fn().mockResolvedValue(undefined) },
+      securityNotices: { notify },
+      sessionsSettingsUrl: "https://lax.bid/dashboard/settings/sessions",
+      revokeAllSessions: vi.fn().mockRejectedValue(new Error("db down")),
+    });
+
+    await expect(
+      block.onPasswordReset({ user: { id: "u1", email: "e@e.com", name: "N" } }),
+    ).rejects.toThrow("db down");
+
+    expect(notify).not.toHaveBeenCalled();
+  });
+});
+
 describe("buildJwtAndOidcPlugins", () => {
   it("enables passwordless 2FA management for OAuth-only users", () => {
     const plugins = buildJwtAndOidcPlugins({

@@ -17,9 +17,5 @@ export interface IUserSecurityHttpApplicationService {
     sessionTokenFromCookie: string | null;
   }): Promise<UserHttpJson>;
 
-  notifyTwoFactorEnabled(input: { userId: string }): Promise<UserHttpJson>;
-
-  notifyTwoFactorDisabled(input: { userId: string }): Promise<UserHttpJson>;
-
   requestAccountDeletion(input: { userId: string }): Promise<UserHttpJson>;
 }

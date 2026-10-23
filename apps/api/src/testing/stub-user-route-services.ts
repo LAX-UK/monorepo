@@ -77,8 +77,6 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       listSessions: vi.fn(),
       deleteSession: vi.fn(),
       revokeAllSessionsExceptCurrent: vi.fn(),
-      notifyTwoFactorEnabled: vi.fn(),
-      notifyTwoFactorDisabled: vi.fn(),
       requestAccountDeletion: vi.fn(),
     },
     twoFactorRequirement: { readMyRequirement: vi.fn() },

@@ -1,20 +1,15 @@
-import type { EmailSender } from "@auction/auth";
+import type { SecurityNoticePublisher } from "@auction/auth";
 import type { IIdentityNotifier } from "../services/identity-notification.ports.js";
 
+/** Sends the identity operations' notices as LAX Account security emails. */
 export class EmailIdentityNotifier implements IIdentityNotifier {
-  constructor(private readonly email: EmailSender) {}
+  constructor(private readonly notices: SecurityNoticePublisher) {}
 
-  async passwordChanged(input: {
-    to: string;
-    subjectId: string;
-    userName: string;
-  }): Promise<void> {
-    await this.email.enqueue({
-      template: "password-changed",
-      to: input.to,
+  async passwordChanged(input: { subjectId: string }): Promise<void> {
+    await this.notices.notify({
+      kind: "password_changed",
       userId: input.subjectId,
-      category: "auth",
-      vars: { userName: input.userName },
+      at: new Date(),
     });
   }
 }

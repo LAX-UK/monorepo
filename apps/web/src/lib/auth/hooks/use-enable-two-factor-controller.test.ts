@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const enableTwoFactorService = vi.fn();
 const verifyTotpService = vi.fn();
-const notifyTwoFactorEnabledEmail = vi.fn();
 const refetchSession = vi.fn().mockResolvedValue(undefined);
 
 let mockHasPassword = true;
@@ -39,10 +38,6 @@ vi.mock("@/lib/auth/services/verify-totp.service", () => ({
   verifyTotpService: (...args: unknown[]) => verifyTotpService(...args),
 }));
 
-vi.mock("@/lib/auth/security-notify.client", () => ({
-  notifyTwoFactorEnabledEmail: (...args: unknown[]) => notifyTwoFactorEnabledEmail(...args),
-}));
-
 vi.mock("@/lib/auth/use-refetch-app-session", () => ({
   useRefetchAppSession: () => refetchSession,
 }));
@@ -61,7 +56,6 @@ describe("useEnableTwoFactorController", () => {
     mockRefresh.mockReset();
     enableTwoFactorService.mockReset();
     verifyTotpService.mockReset();
-    notifyTwoFactorEnabledEmail.mockReset();
     refetchSession.mockClear();
   });
 
@@ -83,7 +77,6 @@ describe("useEnableTwoFactorController", () => {
     });
 
     expect(result.current.step).toBe("qr");
-    expect(notifyTwoFactorEnabledEmail).not.toHaveBeenCalled();
 
     act(() => {
       result.current.confirmForm.setValue("code", "123456");
@@ -93,7 +86,6 @@ describe("useEnableTwoFactorController", () => {
     });
 
     expect(result.current.step).toBe("backup");
-    expect(notifyTwoFactorEnabledEmail).toHaveBeenCalledTimes(1);
   });
 
   it("does not notify when the TOTP confirmation fails", async () => {
@@ -112,7 +104,6 @@ describe("useEnableTwoFactorController", () => {
       await result.current.verifyEnable();
     });
 
-    expect(notifyTwoFactorEnabledEmail).not.toHaveBeenCalled();
     expect(result.current.step).toBe("password");
   });
 
@@ -132,7 +123,6 @@ describe("useEnableTwoFactorController", () => {
       await result.current.startEnable();
     });
 
-    expect(notifyTwoFactorEnabledEmail).not.toHaveBeenCalled();
     expect(result.current.step).toBe("password");
   });
 

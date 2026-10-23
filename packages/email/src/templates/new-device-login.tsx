@@ -1,28 +1,21 @@
 import { emailSubjects } from "@auction/branding";
-import { Layout } from "../components/Layout.js";
+import { SecurityNotice } from "../components/SecurityNotice.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
 export const subject = emailSubjects.newDeviceLogin;
 
-export default function NewDeviceLoginEmail({
-  userName,
-  whenDisplay,
-  deviceSummary,
-}: TemplateVarsByName["new-device-login"]) {
+export default function NewDeviceLoginEmail(vars: TemplateVarsByName["new-device-login"]) {
   return (
-    <Layout
-      category="account"
-      eyebrow="Security"
-      preview="We noticed a new sign-in to your account."
+    <SecurityNotice
+      {...vars}
+      preview="Your LAX Account was signed in to from a device we haven't seen recently."
       title="New sign-in"
     >
-      <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        There was a new sign-in to your account{whenDisplay ? ` (${whenDisplay})` : ""}.
+        Your LAX Account was signed in to from a browser or device we haven't seen on your account
+        in the last 90 days.
       </TextBlock>
-      {deviceSummary ? <TextBlock>Device: {deviceSummary}</TextBlock> : null}
-      <TextBlock>If this was you, you can ignore this message.</TextBlock>
-    </Layout>
+    </SecurityNotice>
   );
 }

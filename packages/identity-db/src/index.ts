@@ -22,7 +22,6 @@ export { createDrizzleJwksStore } from "./adapters/drizzle-jwks-store.js";
 export { createDrizzleSessionStampStore } from "./adapters/drizzle-session-stamp-store.js";
 export { createDrizzleAccountLinkReader } from "./adapters/drizzle-account-link-reader.js";
 export { createDrizzleSubjectStatusReader } from "./adapters/drizzle-subject-status-reader.js";
-export { createDrizzleSessionCountReader } from "./adapters/drizzle-session-count-reader.js";
 export { createDrizzlePhoneNumberStore } from "./adapters/drizzle-phone-number-store.js";
 export { createDrizzleTwoFactorPolicyStore } from "./adapters/drizzle-two-factor-policy-store.js";
 export {

@@ -7,8 +7,8 @@ import {
   InvalidPhoneNumberError,
   PhoneVerificationRateLimitedError,
 } from "./phone-number-errors.js";
-import type { EmailSender } from "./ports/email-sender.js";
 import type { PhoneNumberStore } from "./ports/phone-number-store.js";
+import type { SecurityNoticePublisher } from "./ports/security-notice.js";
 import type { SmsSender } from "./ports/sms-sender.js";
 
 function extractClientIp(headers: Headers | undefined): string | undefined {
@@ -24,9 +24,9 @@ function extractClientIp(headers: Headers | undefined): string | undefined {
 export function buildPhoneNumberPlugin(options: {
   phoneNumberStore: PhoneNumberStore;
   phoneVerification?: SmsSender | undefined;
-  email?: EmailSender | undefined;
+  securityNotices?: SecurityNoticePublisher | undefined;
 }): ReturnType<typeof phoneNumber> {
-  const { phoneNumberStore, phoneVerification, email } = options;
+  const { phoneNumberStore, phoneVerification, securityNotices } = options;
 
   return phoneNumber({
     requireVerification: true,
@@ -80,25 +80,14 @@ export function buildPhoneNumberPlugin(options: {
         return false;
       }
     },
-    callbackOnVerification: async ({ phoneNumber: phoneE164, user: authUser }) => {
-      email
-        ?.enqueue({
-          template: "new-device-login",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: {
-            userName: authUser.name,
-            whenDisplay: new Date().toUTCString(),
-            deviceSummary: `Phone number verified: ${maskPhoneE164(phoneE164)}`,
-          },
-        })
-        .catch((err: unknown) => {
-          console.error("[auth.phoneNumber] enqueue phone-verified notice failed", {
-            userId: authUser.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
+    callbackOnVerification: async ({ phoneNumber: phoneE164, user: authUser }, ctx) => {
+      void securityNotices?.notify({
+        kind: "phone_verified",
+        userId: authUser.id,
+        at: new Date(),
+        phone: phoneE164,
+        userAgent: ctx?.request?.headers.get("user-agent") ?? null,
+      });
     },
   });
 }
