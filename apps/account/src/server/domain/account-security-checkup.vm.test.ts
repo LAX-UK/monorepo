@@ -15,17 +15,14 @@ const links = buildAccountLinks(
 const none: AccountSecurityFacts = {
   hasEmail: true,
   emailVerified: false,
-  hasPhone: false,
-  phoneVerified: false,
   twoStep: "unknown",
   backupCodesRemaining: null,
+  otherSessionCount: null,
 };
 
 const overview = {
   email: "ada@example.com",
   emailVerified: true,
-  phone: "+201000000000",
-  phoneVerified: false,
   signedInWithAuthenticator: false,
 };
 
@@ -36,11 +33,28 @@ describe("readAccountSecurityFacts", () => {
     ).toEqual({
       hasEmail: true,
       emailVerified: true,
-      hasPhone: true,
-      phoneVerified: false,
       twoStep: "on",
       backupCodesRemaining: 2,
+      otherSessionCount: null,
     });
+  });
+
+  it("counts the other devices, never this one, and leaves the count unknown without an answer", () => {
+    const session = (id: string, isCurrent: boolean) => ({
+      id,
+      isCurrent,
+      userAgent: null,
+      createdAt: "2026-10-23T12:00:00.000Z",
+      lastActiveAt: "2026-10-23T12:00:00.000Z",
+    });
+    expect(
+      readAccountSecurityFacts(overview, null, [session("a", true), session("b", false)])
+        .otherSessionCount,
+    ).toBe(1);
+    expect(readAccountSecurityFacts(overview, null, [session("a", true)]).otherSessionCount).toBe(
+      0,
+    );
+    expect(readAccountSecurityFacts(overview, null, null).otherSessionCount).toBeNull();
   });
 
   it("says off only when the issuer says so, and ignores a stale authenticator sign-in", () => {
@@ -78,7 +92,7 @@ describe("readAccountSecurityFacts", () => {
 });
 
 describe("buildSecurityCheckup", () => {
-  it("starts at 0 of 3 with an action and a hosted or Bid link on every step", () => {
+  it("starts at 0 of 3 with an action and a link on every step", () => {
     const checkup = buildSecurityCheckup(none, links);
     expect(checkup.summary).toBe("0 of 3 recommended steps done");
     expect(checkup.complete).toBe(false);
@@ -95,7 +109,7 @@ describe("buildSecurityCheckup", () => {
         "Set up or review",
         "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
       ],
-      ["phone", false, "Add phone", "https://test.lax.bid/dashboard/settings/profile"],
+      ["sessions", false, "Review devices", "/account/security#signed-in-devices"],
     ]);
   });
 
@@ -154,9 +168,22 @@ describe("buildSecurityCheckup", () => {
     expect(checkup.complete).toBe(false);
   });
 
-  it("asks to verify a phone number that was added but not verified", () => {
-    const checkup = buildSecurityCheckup({ ...none, hasPhone: true }, links);
-    expect(checkup.steps[2]).toMatchObject({ actionLabel: "Verify phone", done: false });
+  it("reviews where the person is signed in: done only when this is the one device", () => {
+    const step = (otherSessionCount: number | null) =>
+      buildSecurityCheckup({ ...none, otherSessionCount }, links).steps.find(
+        (s) => s.id === "sessions",
+      );
+    expect(step(null)).toMatchObject({ done: false, actionLabel: "Review devices" });
+    expect(step(0)).toMatchObject({
+      done: true,
+      actionLabel: null,
+      description: "You're only signed in on this device.",
+    });
+    expect(step(1)?.description).toBe(
+      "You're also signed in on 1 other device. Sign out any you don't recognise.",
+    );
+    expect(step(3)).toMatchObject({ done: false, actionLabel: "Review devices" });
+    expect(step(3)?.description).toContain("3 other devices");
   });
 
   it("is complete when every step is done", () => {
@@ -164,10 +191,9 @@ describe("buildSecurityCheckup", () => {
       {
         hasEmail: true,
         emailVerified: true,
-        hasPhone: true,
-        phoneVerified: true,
         twoStep: "on",
         backupCodesRemaining: 8,
+        otherSessionCount: 0,
       },
       links,
     );
@@ -175,13 +201,9 @@ describe("buildSecurityCheckup", () => {
     expect(checkup.steps.every((s) => s.actionLabel === null)).toBe(true);
   });
 
-  it("omits steps that do not apply or have nowhere to go", () => {
-    const noBid = buildAccountLinks({
-      oidcIssuer: "https://test-auth.lax.bid",
-      oidcClientId: "lax-account-web",
-    });
-    const checkup = buildSecurityCheckup({ ...none, hasEmail: false }, noBid);
-    expect(checkup.steps.map((s) => s.id)).toEqual(["two-step"]);
-    expect(checkup.summary).toBe("0 of 1 recommended steps done");
+  it("omits steps that do not apply", () => {
+    const checkup = buildSecurityCheckup({ ...none, hasEmail: false }, links);
+    expect(checkup.steps.map((s) => s.id)).toEqual(["two-step", "sessions"]);
+    expect(checkup.summary).toBe("0 of 2 recommended steps done");
   });
 });

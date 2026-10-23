@@ -235,7 +235,11 @@ export class IdentityOperationsService {
     await this.logout?.revokeSubject(subjectId);
   }
 
-  async revokeSession(subjectId: string, sessionId: string): Promise<boolean> {
+  /**
+   * Deletes one session and records the revocation, without telling relying parties. Callers
+   * that need the fan-out (revokeSession, or a route that retries it) do that themselves.
+   */
+  async removeSession(subjectId: string, sessionId: string): Promise<boolean> {
     if (!(await this.repositories.sessions.ownsSession(subjectId, sessionId))) return false;
     let deleted = false;
     await this.repositories.unitOfWork.transaction(async (transaction) => {
@@ -247,8 +251,36 @@ export class IdentityOperationsService {
         );
       }
     });
+    return deleted;
+  }
+
+  async revokeSession(subjectId: string, sessionId: string): Promise<boolean> {
+    const deleted = await this.removeSession(subjectId, sessionId);
     if (deleted) await this.logout?.revokeIdentitySessions([sessionId]);
     return deleted;
+  }
+
+  /**
+   * Deletes every session of the subject except `keepSessionId` and records one revocation per
+   * deleted session, so subscribers never sign out the session that was kept. Relying parties
+   * are not told here; see removeSession.
+   */
+  async removeOtherSessions(subjectId: string, keepSessionId: string): Promise<string[]> {
+    let removed: string[] = [];
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      removed = await this.repositories.sessions.deleteOtherSessions(
+        transaction,
+        subjectId,
+        keepSessionId,
+      );
+      for (const sessionId of removed) {
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId, sessionId },
+          { transaction },
+        );
+      }
+    });
+    return removed;
   }
 
   async revokeAllSessions(subjectId: string, exceptSessionToken?: string): Promise<number> {

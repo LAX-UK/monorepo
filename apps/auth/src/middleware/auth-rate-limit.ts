@@ -69,6 +69,9 @@ async function enforceSlidingLimit(
 /** Endpoints where a user submits a TOTP, backup or SMS code, at enrolment, sign-in or step-up. */
 const TWO_FACTOR_CODE_PATH = /\/two-factor\/(?:verify-totp|verify-backup-code|verify-otp)$/;
 
+/** Client-authenticated routes that only LAX Account's server calls. */
+const ACCOUNT_ROUTE_PATH = /\/lax\/account-[a-z-]+(?:\/[a-z-]+)?$/;
+
 /** Better Auth answers a wrong or expired code with 400 or 401. */
 function isRejectedCode(status: number): boolean {
   return status === 400 || status === 401;
@@ -266,6 +269,7 @@ export function createAuthIssuerRateLimitMiddleware(
     const isTwoFactorCodeAttempt = isPost && TWO_FACTOR_CODE_PATH.test(path);
     const isSignIn = path.includes("/sign-in");
     const isSessionRead = c.req.method === "GET" && path.endsWith("/get-session");
+    const isAccountRoute = isPost && ACCOUNT_ROUTE_PATH.test(path);
 
     if (isTwoFactorCodeAttempt) {
       const accountId = await twoFactorAccountKey(c.req.raw.headers, options?.resolveSubjectId);
@@ -467,9 +471,23 @@ export function createAuthIssuerRateLimitMiddleware(
       return;
     }
 
-    const key = isSessionRead ? `rl:auth-issuer:session-read:${ip}` : `rl:auth-issuer:${ip}`;
-    const windowSec = isSessionRead ? RL.sessionReadWindowSec : RL.authGeneralWindowSec;
-    const max = isSessionRead ? RL.sessionReadMax : RL.authGeneralMax;
+    const { key, windowSec, max } = isAccountRoute
+      ? {
+          key: `rl:auth-issuer:account-routes:${ip}`,
+          windowSec: RL.accountRouteWindowSec,
+          max: RL.accountRouteMax,
+        }
+      : isSessionRead
+        ? {
+            key: `rl:auth-issuer:session-read:${ip}`,
+            windowSec: RL.sessionReadWindowSec,
+            max: RL.sessionReadMax,
+          }
+        : {
+            key: `rl:auth-issuer:${ip}`,
+            windowSec: RL.authGeneralWindowSec,
+            max: RL.authGeneralMax,
+          };
     const n = await slidingIncrement(redis, key, windowSec);
     if (n > max) {
       const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, n, max);

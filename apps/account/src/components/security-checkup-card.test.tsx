@@ -14,10 +14,9 @@ const links = buildAccountLinks({
 const base: AccountSecurityFacts = {
   hasEmail: true,
   emailVerified: false,
-  hasPhone: false,
-  phoneVerified: false,
   twoStep: "unknown",
   backupCodesRemaining: null,
+  otherSessionCount: null,
 };
 
 const render = (facts: AccountSecurityFacts) =>
@@ -31,7 +30,7 @@ describe("SecurityCheckupCard", () => {
     expect(html).toContain('aria-valuemax="3"');
     expect(html).toContain("Verify email: Verify your email");
     expect(html).toContain("Set up or review: Turn on two-step verification");
-    expect(html).toContain("Add phone: Add a phone number");
+    expect(html).toContain("Review devices: Review where you&#x27;re signed in");
     expect(html).not.toContain("Nothing needs your attention");
   });
 
@@ -41,17 +40,16 @@ describe("SecurityCheckupCard", () => {
     expect(html).toContain('aria-valuenow="2"');
     expect(html).toContain('Verify your email<span class="sr-only"> (done)</span>');
     expect(html).not.toContain("Verify email: Verify your email");
-    expect(html).toContain("Add phone: Add a phone number");
+    expect(html).toContain("Review devices: Review where you&#x27;re signed in");
   });
 
   it("confirms calmly when everything is done, in green rather than the accent", () => {
     const html = render({
       hasEmail: true,
       emailVerified: true,
-      hasPhone: true,
-      phoneVerified: true,
       twoStep: "on",
       backupCodesRemaining: null,
+      otherSessionCount: 0,
     });
     expect(html).toContain("3 of 3 recommended steps done");
     expect(html).toContain("Your account is up to date. Nothing needs your attention right now.");

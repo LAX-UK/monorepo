@@ -181,6 +181,7 @@ const app = createAuthApp({
       },
     },
     services,
+    identityOperations,
     authHandler,
     metrics: {
       refreshRotationOutcomes: metrics.refreshRotationOutcomes,

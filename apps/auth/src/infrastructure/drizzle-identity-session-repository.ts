@@ -20,6 +20,7 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         id: session.id,
         token: session.token,
         createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
         expiresAt: session.expiresAt,
         ipAddress: session.ipAddress,
         userAgent: session.userAgent,
@@ -106,6 +107,19 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
       : eq(session.userId, subjectId);
     const deleted = await tx.delete(session).where(where).returning({ id: session.id });
     return deleted.length;
+  }
+
+  async deleteOtherSessions(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    keepSessionId: string,
+  ): Promise<string[]> {
+    const tx = identityOperationDb(this.db, transaction);
+    const deleted = await tx
+      .delete(session)
+      .where(and(eq(session.userId, subjectId), ne(session.id, keepSessionId)))
+      .returning({ id: session.id });
+    return deleted.map((row) => row.id);
   }
 
   async purgeSubjectSessionsAndTokens(

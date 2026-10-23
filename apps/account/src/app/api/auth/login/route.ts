@@ -11,6 +11,7 @@ export async function GET(request: Request): Promise<Response> {
   const { authorizeUrl, pending } = container.startAccountLogin({
     config: container.config,
     returnTo,
+    reauth: url.searchParams.get("intent") === "reauth",
   });
   const cookieStore = await cookies();
   cookieStore.set(LAX_ACCOUNT_LOGIN_COOKIE, JSON.stringify(pending), {

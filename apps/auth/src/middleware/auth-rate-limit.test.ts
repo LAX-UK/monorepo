@@ -125,6 +125,40 @@ describe("session read rate limit", () => {
   });
 });
 
+describe("LAX Account route rate limit", () => {
+  function createAccountApp(count: number) {
+    const app = new Hono();
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(buildFakeRedis([count]) as never, clientIp),
+    );
+    app.post("/api/auth/lax/account-sessions", (c) => c.json({ ok: true }));
+    app.post("/api/auth/lax/account-sessions/revoke-others", (c) => c.json({ ok: true }));
+    app.post("/api/auth/lax/account-security-facts", (c) => c.json({ ok: true }));
+    return app;
+  }
+
+  it.each([
+    "/api/auth/lax/account-sessions",
+    "/api/auth/lax/account-sessions/revoke-others",
+    "/api/auth/lax/account-security-facts",
+  ])("lets the Account server call %s past the general per-IP budget", async (path) => {
+    const response = await createAccountApp(AUTH_RATE_LIMIT_POLICY.authGeneralMax + 1).request(
+      path,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it("still bounds floods against the account routes", async () => {
+    const response = await createAccountApp(AUTH_RATE_LIMIT_POLICY.accountRouteMax + 1).request(
+      "/api/auth/lax/account-sessions",
+      { method: "POST" },
+    );
+    expect(response.status).toBe(429);
+  });
+});
+
 describe("OAuth token endpoint rate limit", () => {
   it("bounds repeated authorization-code and refresh exchanges by client IP", async () => {
     const app = new Hono();

@@ -19,6 +19,14 @@ export const AUTH_RATE_LIMIT_POLICY = {
   authGeneralMax: 30,
   sessionReadWindowSec: 60,
   sessionReadMax: 3_000,
+  /**
+   * LAX Account's server-side calls (`/lax/account-*`). They all arrive from the Account
+   * server's address, so the general budget above would let a handful of people lock everyone
+   * out. Each call is client-authenticated and budgeted per person; this per-IP ceiling only
+   * bounds unauthenticated floods.
+   */
+  accountRouteWindowSec: 60,
+  accountRouteMax: 600,
   signInWindowSec: 15 * 60,
   signInMax: 30,
   signInEmailWindowSec: 15 * 60,
