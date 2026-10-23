@@ -1,6 +1,7 @@
 "use client";
 
 import { useConsent } from "@/lib/analytics/consent/context";
+import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
 import { Button, Card, CardContent } from "@auction/ui";
 import Link from "next/link";
 
@@ -8,7 +9,9 @@ import Link from "next/link";
 export function ConsentBar() {
   const { showBanner, acceptAll, openPreferences } = useConsent();
 
-  if (!showBanner) return null;
+  const signInNoticeActive = useSignInNoticeActive();
+
+  if (!showBanner || signInNoticeActive) return null;
 
   return (
     <section
