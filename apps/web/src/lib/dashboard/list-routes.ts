@@ -6,7 +6,6 @@ const COMPACT_BANNER_PREFIXES = [
   "/dashboard/purchases",
   "/dashboard/notifications",
   "/dashboard/submissions",
-  "/dashboard/seller/in-sale",
   "/dashboard/seller",
   "/dashboard/settings",
   "/dashboard/verify-identity",
@@ -21,5 +20,5 @@ export function isDashboardListRoute(pathname: string): boolean {
 }
 
 export function isDashboardOrgDetailRoute(pathname: string): boolean {
-  return /^\/dashboard\/organisations\/[^/]+/.test(pathname);
+  return /^\/dashboard\/seller\/organisations\/[^/]+/.test(pathname);
 }

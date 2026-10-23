@@ -11,6 +11,7 @@ import {
   requireBuyerRole,
   requireBuyerRoleUnlessStaff,
 } from "../../middleware/require-buyer-role.js";
+import { requireEntityCapability } from "../../middleware/require-entity-capability.js";
 import {
   type SubmissionHono,
   type SubmissionRouteDeps,
@@ -29,6 +30,8 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAccountOnboarding,
     requireBuyerRole,
     requireSubmissionEntityContext,
+    // A person's own profile is owned by them; an organisation limits who may consign for it.
+    requireEntityCapability("entity.submissions.create"),
     zValidator("json", createItemSubmissionSchema),
     async (c) => {
       const body = c.req.valid("json");

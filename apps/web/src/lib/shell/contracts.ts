@@ -1,7 +1,7 @@
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { DashboardDensity } from "@/lib/preferences/density";
-import type { CapabilityRequirement, LegalEntitySummary } from "@auction/types";
+import type { CapabilityRequirement } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -57,12 +57,8 @@ export type ShellConfig = {
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
-  /** Client dashboard mobile header identity (acting entity + org context). */
-  mobileHeader?: {
-    acting: LegalEntitySummary | null;
-    actingContext: ActingContext;
-    userDisplayName?: string;
-  };
+  /** Client dashboard mobile header: which organisation, if any, the person is acting for. */
+  mobileHeader?: { actingContext: ActingContext };
 };
 
 export const SHELL_BREAKPOINTS = {

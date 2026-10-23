@@ -31,10 +31,10 @@ export function ActingAsTooltip({ initiallyVisible }: Props) {
       className="absolute right-0 top-full z-50 mt-2 w-72 rounded-md border bg-surface p-3 shadow-lg"
       aria-live="polite"
     >
-      <p className="text-sm font-medium">You can act on behalf of others</p>
+      <p className="text-sm font-medium">Switch between your accounts</p>
       <p className="mt-1 text-sm text-on-surface-variant">
-        Switch between yourself and your organisations from this menu to bid, consign, or manage
-        payouts for them.
+        Use this menu to move between your personal account and your organisations when you bid,
+        consign or manage payouts.
       </p>
       <div className="mt-3 flex justify-end">
         <Button type="button" onClick={handleDismiss} disabled={pending}>

@@ -72,7 +72,7 @@ export const buyerAgentAuthorisationBidErrorMatcher: BidErrorMatcher = {
     if (!matchesCode(options, "buyer_agent_authorisation_required", raw)) return null;
     return {
       title: "Authorisation required",
-      message: "Buyer agent authorisation is required for this legal entity on this sale.",
+      message: "Buyer agent authorisation is required for this account on this sale.",
       severity: "error",
       actionHref: "/dashboard/organisations",
       actionLabel: "View organisations",

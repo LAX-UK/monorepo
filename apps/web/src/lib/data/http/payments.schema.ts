@@ -119,3 +119,28 @@ export const lotFulfilmentSnapshotSchema = z
   }) as z.ZodType<LotFulfilmentSnapshot>;
 
 export const nullableLotFulfilmentSnapshotSchema = lotFulfilmentSnapshotSchema.nullable();
+
+/** A work won for the organisation being acted for (`GET /payments/entity/wins`). */
+export type EntityWonLot = {
+  lotId: string;
+  lotNumber: number | null;
+  title: string;
+  imageUrl: string | null;
+  /** ISO-8601 string. */
+  endedAt: string;
+  /** Absent for members whose role may not see money. */
+  hammerPrice: string | null;
+};
+
+export const entityWonLotSchema = z
+  .object({
+    lotId: z.string(),
+    lotNumber: z.number().nullable(),
+    title: z.string(),
+    imageUrl: z.string().nullable(),
+    endedAt: z.string(),
+    hammerPrice: z.string().optional(),
+  })
+  .transform(
+    (row): EntityWonLot => ({ ...row, hammerPrice: row.hammerPrice ?? null }),
+  ) as z.ZodType<EntityWonLot>;

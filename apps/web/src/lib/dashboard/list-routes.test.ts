@@ -9,7 +9,7 @@ describe("list-routes", () => {
   });
 
   it("detects org detail routes for banner suppression", () => {
-    expect(isDashboardOrgDetailRoute("/dashboard/organisations/abc/members")).toBe(true);
+    expect(isDashboardOrgDetailRoute("/dashboard/seller/organisations/abc/members")).toBe(true);
     expect(isDashboardOrgDetailRoute("/dashboard/organisations")).toBe(false);
   });
 });

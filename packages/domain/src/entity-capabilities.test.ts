@@ -14,6 +14,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.connect.manage": ["owner", "admin"],
   "entity.connect.operate": ["owner", "admin", "finance"],
   "entity.consignments.read": ["owner", "admin", "finance", "consignor", "viewer"],
+  "entity.submissions.create": ["owner", "admin", "consignor"],
   "entity.consignments.withdraw": ["owner", "admin"],
   "entity.holdings.read": ["owner", "admin", "finance", "viewer", "buyer_agent"],
 };
@@ -98,5 +99,24 @@ describe("entityActorCan", () => {
       expect(entityActorCan(actor, "entity.security.read")).toBe(false);
       expect(entityActorCan(actor, "entity.security.manage")).toBe(false);
     }
+  });
+});
+
+describe("starting a submission", () => {
+  it.each(["owner", "admin", "consignor"] as const)("allows %s", (role) => {
+    expect(entityRoleCan(role, "entity.submissions.create")).toBe(true);
+  });
+
+  it.each(["finance", "viewer", "buyer_agent", "specialist", "staff"] as const)(
+    "refuses %s",
+    (role) => {
+      expect(entityRoleCan(role, "entity.submissions.create")).toBe(false);
+    },
+  );
+
+  it("is a write, so an impersonating admin cannot start one", () => {
+    expect(
+      entityActorCan({ role: "owner", isImpersonation: true }, "entity.submissions.create"),
+    ).toBe(false);
   });
 });

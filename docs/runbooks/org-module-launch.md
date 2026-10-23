@@ -105,7 +105,7 @@ flowchart TD
 ### Web pages (early return / redirect when hidden)
 
 - `apps/web/src/app/dashboard/organisations/page.tsx`
-- `apps/web/src/app/dashboard/organisations/[id]/layout.tsx`
+- `apps/web/src/app/dashboard/seller/organisations/[id]/layout.tsx` (an organisation's settings live under Selling; `/dashboard/organisations/:id/...` redirects there)
 - `apps/web/src/app/dashboard/invitations/page.tsx`
 - `apps/web/src/app/dashboard/invitations/accept/[token]/page.tsx`
 - `apps/web/src/app/(task)/onboarding/organisation/layout.tsx`
@@ -117,7 +117,8 @@ flowchart TD
 
 ### Web components (`orgModuleEnabled` prop)
 
-- `apps/web/src/components/layout/app-shell-nav.ts`
+- `apps/web/src/lib/navigation/client-nav-model.ts` (the sidebar entries per mode, context and role)
+- `apps/web/src/components/layout/selling-mode-bar.tsx` (Selling label, organisation picker, way back to buying)
 - `apps/web/src/components/layout/legal-entity-switcher.tsx`
 - `apps/web/src/components/layout/acting-as-banner.tsx`
 - `apps/web/src/components/shell/client-shell.tsx`
@@ -159,6 +160,13 @@ flowchart TD
 - `apps/web/src/middleware.test.ts`
 - `apps/api/src/lib/org-module-enabled.test.ts`
 - `apps/web/src/lib/auth/post-verify-destination.test.ts`
-- `apps/web/src/components/layout/app-shell-nav.test.ts`
+- `apps/web/src/lib/navigation/client-nav-model.test.ts`
 - `packages/validators/src/account-onboarding.ts`
 - `apps/api/src/routes/users.register.routes.test.ts`
+
+## Where organisation pages live
+
+- **Selling mode, as an organisation.** The header label reads "Selling as <organisation>" and the picker lists the person's organisations with their role. Every nav entry and page is gated by `packages/domain/src/entity-capabilities.ts`, so a role never sees a page the API would refuse.
+- **Organisation settings** are `/dashboard/seller/organisations/:id` (details), `/members`, `/documents`, `/connect` (payout setup), `/security` (two-step policy, owner only) and `/profile`. The organisations list and invitations stay at `/dashboard/organisations` and `/dashboard/invitations`.
+- **Works** (`/dashboard/seller/works`) lists the organisation's won lots and, for roles with finance access, its payments, from `GET /payments/entity/wins` and `GET /payments/entity`.
+- **Starting a submission** for an organisation needs `entity.submissions.create` (owner, admin, consignor); the API route enforces it and the UI hides the button.

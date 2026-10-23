@@ -143,7 +143,8 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/onboarding/organisation/") ||
       pathname === "/dashboard/invitations" ||
       pathname.startsWith("/dashboard/invitations/") ||
-      pathname.startsWith("/dashboard/organisations/")
+      pathname.startsWith("/dashboard/organisations/") ||
+      pathname.startsWith("/dashboard/seller/organisations/")
     ) {
       return NextResponse.redirect(new URL("/dashboard/organisations", request.url), 307);
     }

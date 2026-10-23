@@ -45,6 +45,11 @@ const ENTITY_CAPABILITY_RULES = {
     access: "read",
     roles: ["owner", "admin", "finance", "consignor", "viewer"],
   },
+  /**
+   * Hand a new item to LAX on the organisation's behalf. Finance and viewers can follow
+   * consignments but not start them; a person's own profile always has an owner's rights.
+   */
+  "entity.submissions.create": { access: "write", roles: ["owner", "admin", "consignor"] },
   /** Ask for a consigned lot to be withdrawn from sale. */
   "entity.consignments.withdraw": { access: "write", roles: ["owner", "admin"] },
   /** See the works the organisation owns, without any prices. */

@@ -1,0 +1,252 @@
+import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
+import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import { statusLabel } from "@/components/organisations/labels";
+import { MembersAvatarStack } from "@/components/organisations/members-avatar-stack";
+import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
+import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import { getOrgOnboardingResumeHrefForEntity } from "@/lib/data/http/org-onboarding.server";
+import {
+  type ILegalEntityMemberListGateway,
+  createLegalEntityMemberListGateway,
+} from "@/lib/legal-entity/member-list.gateway.server";
+import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
+import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
+import { connectRequirementsAttentionCount, getConnectGapState } from "@auction/connect";
+import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { SectionHeader } from "@auction/ui/components/section-header";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
+import { TimelineStages } from "@auction/ui/components/timeline-stages";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+const REVIEW_TIMELINE = [
+  { id: "submitted", label: "Submitted" },
+  { id: "review", label: "Under review" },
+  { id: "connect", label: "Payout setup" },
+  { id: "approved", label: "Approved" },
+] as const;
+
+function reviewTimelineIndex(status: string): number {
+  switch (status) {
+    case "docs_received":
+      return 0;
+    case "under_review":
+      return 1;
+    case "connect_pending":
+      return 2;
+    case "approved":
+    case "restricted":
+      return 3;
+    default:
+      return -1;
+  }
+}
+
+export default async function OrganisationOverviewPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: `/dashboard/seller/organisations/${id}`,
+  });
+  const perOrgGw = createPerOrgGateway();
+  const ctx = await perOrgGw.getContext(id);
+  if (!ctx) notFound();
+
+  const { member, entity } = ctx;
+  const status = entity?.status ?? member.status;
+  const apiResumeHref = await getOrgOnboardingResumeHrefForEntity(id);
+  const resumeStep = resumeOnboardingStepKey(status);
+  const continueSetupHref =
+    apiResumeHref ??
+    (resumeStep
+      ? `/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`
+      : null);
+  const timelineIndex = resumeStep
+    ? Math.max(
+        0,
+        ORG_ONBOARDING_TIMELINE_STAGES.findIndex((s) => s.id === resumeStep),
+      )
+    : -1;
+
+  const memberListGateway: ILegalEntityMemberListGateway = createLegalEntityMemberListGateway();
+  const fetched = await memberListGateway.fetchMemberListForActing(member);
+  const memberAvatars =
+    fetched.ok && fetched.data.length > 0
+      ? fetched.data.map((m) => ({ name: m.user.name, image: m.user.image }))
+      : [];
+  const memberCount = fetched.ok ? fetched.data.length : 0;
+
+  const reqDue = entity
+    ? connectRequirementsAttentionCount(
+        entity.stripeConnectRequirementsCurrentlyDue,
+        entity.stripeConnectRequirementsErrors,
+      )
+    : 0;
+  const gap = entity ? getConnectGapState(entity) : null;
+
+  const reviewIndex = reviewTimelineIndex(status);
+
+  return (
+    <div className="space-y-8">
+      <OrgTabSectionHeader>
+        <SectionHeader
+          kicker={<LabelCaps>Overview</LabelCaps>}
+          heading={<DisplayHeading as="h2">At a glance</DisplayHeading>}
+        />
+      </OrgTabSectionHeader>
+
+      <KpiRow
+        embedded
+        columns={4}
+        aria-label="Organisation summary"
+        className="rounded-xl border border-border-hairline bg-surface-container-lowest p-4 sm:p-5"
+        tiles={[
+          {
+            id: "status",
+            label: "Status",
+            value: statusLabel(status),
+            semanticTone: "emphasis",
+            emphasize: true,
+          },
+          {
+            id: "members",
+            label: "Members",
+            value: String(memberCount),
+            href: `/dashboard/seller/organisations/${id}/members`,
+          },
+          {
+            id: "connect",
+            label: "Payout setup",
+            value: gap ? connectGapStageLabel(gap.stage) : "—",
+            semanticTone: gap?.stage === "ready" ? "emphasis" : reqDue > 0 ? "warning" : "default",
+            href: `/dashboard/seller/organisations/${id}/connect`,
+          },
+          {
+            id: "reqs",
+            label: "Requirements due",
+            value: String(reqDue),
+            semanticTone: reqDue > 0 ? "warning" : "default",
+            ...(reqDue > 0 ? { href: `/dashboard/seller/organisations/${id}/connect` } : {}),
+          },
+        ]}
+      />
+
+      {resumeStep ? (
+        <Surface variant="section" padding="md" className="space-y-4 border-l-4 border-l-primary">
+          <div className="space-y-1">
+            <LabelCaps>Needs attention</LabelCaps>
+            <h3 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
+              Continue organisation setup
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant">
+              Pick up where you left off — progress is saved to your account.
+            </p>
+          </div>
+          <TimelineStages stages={ORG_ONBOARDING_TIMELINE_STAGES} activeIndex={timelineIndex} />
+          {continueSetupHref ? (
+            <Button asChild variant="cta" size="sm">
+              <Link href={continueSetupHref} prefetch>
+                Continue setup
+              </Link>
+            </Button>
+          ) : null}
+        </Surface>
+      ) : reviewIndex >= 0 ? (
+        <Surface variant="section" padding="md" className="space-y-4">
+          <div className="space-y-1">
+            <LabelCaps>Review progress</LabelCaps>
+            <h3 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
+              Application status
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant">
+              Track where your organisation is in the verification process.
+            </p>
+          </div>
+          <TimelineStages stages={REVIEW_TIMELINE} activeIndex={reviewIndex} />
+        </Surface>
+      ) : (
+        <Surface variant="section" padding="md" className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="font-headline text-lg font-semibold tracking-tight text-on-surface">
+              Onboarding
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant">
+              No open setup steps for this status. You can still open the flow to review or update
+              information.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={
+                continueSetupHref ??
+                `/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`
+              }
+              prefetch
+            >
+              Open onboarding
+            </Link>
+          </Button>
+        </Surface>
+      )}
+
+      <DashboardSection
+        title="Members"
+        description="People who can act for this organisation."
+        action={
+          <Button asChild variant="secondary" size="sm">
+            <Link href={`/dashboard/seller/organisations/${id}/members`} prefetch>
+              Manage members
+            </Link>
+          </Button>
+        }
+      >
+        {memberAvatars.length > 0 ? (
+          <MembersAvatarStack members={memberAvatars} max={8} />
+        ) : (
+          <p className="text-sm text-on-surface-variant">No team members loaded yet.</p>
+        )}
+      </DashboardSection>
+
+      <DashboardSection
+        title="Payout setup"
+        description="Manage bank details and Stripe requirements on the dedicated payout page."
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/dashboard/seller/organisations/${id}/connect`} prefetch>
+              Open payout setup
+            </Link>
+          </Button>
+        }
+      >
+        {entity && gap ? (
+          <div className="space-y-3">
+            <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)} size="sm">
+              {connectGapStageLabel(gap.stage)}
+            </StatusBadge>
+            {reqDue > 0 ? (
+              <p className="text-sm text-on-surface-variant">
+                {reqDue} Stripe requirement{reqDue === 1 ? "" : "s"} still due.
+              </p>
+            ) : (
+              <p className="text-sm text-on-surface-variant">
+                Open payout setup to manage bank details and verification.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-on-surface-variant">
+            Connect details will load once available.
+          </p>
+        )}
+      </DashboardSection>
+    </div>
+  );
+}

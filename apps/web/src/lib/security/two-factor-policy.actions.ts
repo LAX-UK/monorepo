@@ -38,7 +38,8 @@ export async function setOrgTwoFactorPolicyAction(
       body: JSON.stringify({ required }),
     });
     if (!res.ok) return failure(res.status);
-    revalidatePath(`/dashboard/organisations/${legalEntityId}/members`);
+    revalidatePath(`/dashboard/seller/organisations/${legalEntityId}/security`);
+    revalidatePath(`/dashboard/seller/organisations/${legalEntityId}/members`);
     return { ok: true };
   });
 }

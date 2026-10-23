@@ -143,7 +143,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   sellerLots: {
     title: "Could not load your lots",
     message: () => "Something went wrong while loading your lots. Try again.",
-    retryHref: DASHBOARD_ROUTES.sellerInSale,
+    retryHref: DASHBOARD_ROUTES.consignmentsInSale,
   },
   sellerPayouts: {
     title: "Could not load payouts",
@@ -178,7 +178,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   submissions: {
     title: "Could not load submissions",
     message: () => "Something went wrong while loading your submissions. Try again.",
-    retryHref: DASHBOARD_ROUTES.submissions,
+    retryHref: DASHBOARD_ROUTES.consignments,
   },
   orgMembers: {
     title: "Could not load members",

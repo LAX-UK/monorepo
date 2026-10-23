@@ -35,11 +35,8 @@ export function AppShellBreadcrumbs({
     const mobileHeader = config.mobileHeader;
     const mobileModel = mobileHeader
       ? resolveMobileHeaderTitleModel(items, {
-          pathname,
-          workspace: clientWorkspaceMode,
-          acting: mobileHeader.acting,
           actingContext: mobileHeader.actingContext,
-          userDisplayName: mobileHeader.userDisplayName ?? sessionUser.name,
+          workspace: clientWorkspaceMode,
         })
       : undefined;
     const resolvedModel =

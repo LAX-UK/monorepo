@@ -189,8 +189,8 @@ function revalidateConnectPaths(entityId?: string) {
   revalidatePath("/dashboard/seller/connect");
   revalidatePath("/dashboard/seller/payouts");
   if (entityId) {
-    revalidatePath(`/dashboard/organisations/${entityId}`);
-    revalidatePath(`/dashboard/organisations/${entityId}/connect`);
+    revalidatePath(`/dashboard/seller/organisations/${entityId}`);
+    revalidatePath(`/dashboard/seller/organisations/${entityId}/connect`);
     revalidatePath("/onboarding/organisation/step/connect");
   }
 }

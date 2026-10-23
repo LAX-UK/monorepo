@@ -8,8 +8,8 @@ import {
 describe("buildSubmissionsAccessFailure", () => {
   it("maps not_a_member_of_legal_entity to actionable copy", () => {
     const failure = buildSubmissionsAccessFailure(403, "not_a_member_of_legal_entity");
-    expect(failure.title).toBe("Wrong organisation context");
-    expect(failure.message).toContain("personal profile");
+    expect(failure.title).toBe("Cannot sell as this organisation");
+    expect(failure.message).toContain("personal account");
     expect(failure.actions.some((a) => a.kind === "use_personal_profile")).toBe(true);
   });
 

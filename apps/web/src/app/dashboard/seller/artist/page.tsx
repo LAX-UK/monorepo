@@ -1,30 +1,28 @@
 import { ArtistChangeRequestForm } from "@/components/dashboard/artist-change-request-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-context-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { redirect } from "next/navigation";
 
 /** Read-only seller-facing view of the canonical artist profile. */
 export default async function SellerArtistProfilePage() {
-  const workspaceMeta = await readClientWorkspacePageMeta();
   const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/dashboard/seller/artist",
   });
-  const { orgActingSelected } = await resolveSellerWorkspaceContext(
+  const { sellingAsOrganisation } = await resolveSellerWorkspaceContext(
     user.role,
     user.staffRole ?? null,
   );
+  // The artist profile belongs to a person, not to an organisation they sell for.
+  if (sellingAsOrganisation) redirect("/dashboard/seller");
 
   return (
     <DashboardPage>
-      {orgActingSelected ? <SellerOrgContextBanner /> : null}
       <DashboardPageHeader
-        meta={workspaceMeta}
         title="Artist profile"
         hideTitleOnMobile
         hideDescriptionOnMobile

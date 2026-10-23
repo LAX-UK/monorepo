@@ -45,11 +45,13 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 - **UI/UX:** Has `loading.tsx`. Confirm heart/remove actions use server actions consistently.
 - **Severity:** P2 · **Effort:** S.
 
-### `/dashboard/portfolio`
+> **Current structure.** `/dashboard` redirects to the workspace home (My bids when buying, the Selling overview when selling). Buying pages are My bids, Purchases (`/dashboard/purchases`, which replaced Portfolio and Payments), Watching and Notifications. Selling is a separate mode: Overview (a short "needs your attention" list), Consignments (submissions and lots in one list with status tabs), Works (organisations only), Sold & payouts, Payout setup and Artist profile. Organisation settings live under `/dashboard/seller/organisations/:id`. The sections below describe the pre-redirect pages and are kept for their audit notes.
+
+### `/dashboard/portfolio` (now `/dashboard/purchases`)
 
 - **Status (buyer pass):** `DashboardSection` / `DashboardEmptyState` / `DashboardErrorAlert`; analytics + grid; BE `checkoutPricing` on portfolio lots; VM has no hammer×rate path.
 
-### `/dashboard/payments`
+### `/dashboard/payments` (now a section of `/dashboard/purchases`)
 
 - **Path:** `apps/web/src/app/dashboard/payments/page.tsx`
 - **Data:** Container payments + auth guard. SSR.
@@ -85,7 +87,9 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 - **UI/UX:** Has `live/loading.tsx`. Empty states use `EmptyState` — good.
 - **Severity:** P2 · **Effort:** M.
 
-### `/dashboard/seller` (hub)
+### `/dashboard/seller` (Selling overview)
+
+- **Now:** a task list built from submissions, lots, identity and payout setup (`lib/seller/seller-attention.ts`); no KPIs. Follows the account chosen in the Selling picker.
 
 - **Path:** `seller/page.tsx`
 - **Data:** `requireAuthenticatedUser`, `getServerLotReader`, `getServerSaleWithLots`, `getMySubmissions` — **not** container.
@@ -94,7 +98,7 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 - **UI/UX:** Cards and links — verify dark mode on secondary text.
 - **Severity:** P1 · **Effort:** M.
 
-### `/dashboard/seller/in-sale`
+### `/dashboard/seller/in-sale` (now `/dashboard/seller/consignments?tab=in-sale`)
 
 - **Path:** `seller/in-sale/page.tsx`
 - **Data:** Seller-specific; likely acting context + lots.
@@ -141,7 +145,7 @@ Bulleted rows: **Path** — purpose · **Data** · **SOLID** · **BE** · **UI/U
 - **UI/UX:** Has `loading.tsx`.
 - **Severity:** P2 · **Effort:** S.
 
-### `/dashboard/submissions`, `/dashboard/submissions/new`, `/dashboard/submissions/[id]`
+### `/dashboard/submissions` (now `/dashboard/seller/consignments`), `/dashboard/submissions/new`, `/dashboard/submissions/[id]`
 
 - **Paths:** `submissions/page.tsx`, `new/page.tsx`, `[id]/page.tsx`
 - **Data:** `getMySubmissions`, categories reader, boards/forms.

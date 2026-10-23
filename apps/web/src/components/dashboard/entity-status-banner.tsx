@@ -36,7 +36,7 @@ function copyForStatus(acting: LegalEntitySummary): {
               className="font-medium underline underline-offset-2"
               href={
                 kind === "organisation"
-                  ? `/dashboard/organisations/${acting.id}/documents`
+                  ? `/dashboard/seller/organisations/${acting.id}/documents`
                   : "/dashboard/organisations"
               }
             >
@@ -62,7 +62,7 @@ function copyForStatus(acting: LegalEntitySummary): {
               href={
                 kind === "individual"
                   ? DASHBOARD_ROUTES.sellerConnect
-                  : `/dashboard/organisations/${acting.id}/connect`
+                  : `/dashboard/seller/organisations/${acting.id}/connect`
               }
             >
               Continue setup

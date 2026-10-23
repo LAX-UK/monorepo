@@ -23,8 +23,33 @@ describe("client workspace meta", () => {
 describe("resolveClientWorkspaceMode", () => {
   it("forces selling on seller and submission routes", () => {
     expect(resolveClientWorkspaceMode("/dashboard/seller", "buying")).toBe("selling");
-    expect(resolveClientWorkspaceMode("/dashboard/seller/in-sale", "buying")).toBe("selling");
+    expect(resolveClientWorkspaceMode("/dashboard/seller/consignments", "buying")).toBe("selling");
     expect(resolveClientWorkspaceMode("/dashboard/submissions/new", "buying")).toBe("selling");
+  });
+
+  it("keeps every Selling page in selling mode, so the mode label and nav never disagree", () => {
+    const sellingPages = [
+      "/dashboard/seller/consignments",
+      "/dashboard/seller/works",
+      "/dashboard/seller/payouts",
+      "/dashboard/seller/connect",
+      "/dashboard/seller/artist",
+      "/dashboard/seller/organisations/org-1",
+      "/dashboard/seller/organisations/org-1/members",
+      "/dashboard/seller/organisations/org-1/documents",
+      "/dashboard/seller/organisations/org-1/security",
+      "/dashboard/submissions/new",
+      "/dashboard/submissions/abc",
+    ];
+    for (const path of sellingPages) {
+      expect(resolveClientWorkspaceMode(path, "buying")).toBe("selling");
+      expect(resolveClientWorkspaceMode(path, "selling")).toBe("selling");
+    }
+  });
+
+  it("never treats a Selling page as a buying page", () => {
+    expect(isClientBuyingPath("/dashboard/seller/works")).toBe(false);
+    expect(isClientBuyingPath("/dashboard/seller/organisations/org-1")).toBe(false);
   });
 
   it("forces buying on collector list routes", () => {

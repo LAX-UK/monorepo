@@ -48,9 +48,9 @@ export function describeLegalEntityAccessMessage(status: number, errorCode: stri
 
 const SUBMISSIONS_FAILURES: Record<string, Omit<LegalEntityAccessFailure, "code" | "status">> = {
   not_a_member_of_legal_entity: {
-    title: "Wrong organisation context",
+    title: "Cannot sell as this organisation",
     message:
-      "Your seller workspace is tied to your personal profile. Switch back to your personal account to view and manage submissions.",
+      "You no longer have access to the organisation you are selling as. Switch to your personal account to continue.",
     actions: [
       { kind: "use_personal_profile", label: DASHBOARD_CTA.usePersonalProfile },
       { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.seller },
@@ -114,8 +114,8 @@ export function buildLegalEntityAccessFailure(
           ? "Your session expired. Sign in again to view your submissions."
           : "Something went wrong while loading your submissions. Try again.",
       actions: [
-        { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.submissions },
-        { kind: "navigate", label: DASHBOARD_CTA.sellerWorkspace, href: DASHBOARD_ROUTES.seller },
+        { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.consignments },
+        { kind: "navigate", label: DASHBOARD_CTA.sellingOverview, href: DASHBOARD_ROUTES.seller },
       ],
     };
   }

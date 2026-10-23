@@ -5,20 +5,13 @@ import {
   PayoutsMobileList,
 } from "@/components/dashboard/list/payouts-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
-import {
-  SellerOrgContextBanner,
-  SellerProfileUnavailableAlert,
-} from "@/components/dashboard/seller-org-context-banner";
+import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { ExportButton } from "@/components/exports/export-button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   legalEntityToConnectFields,
   resolveSellerConnectPresentation,
 } from "@/lib/connect/resolve-seller-connect-presentation";
-import {
-  loadSellerComplianceChrome,
-  shouldShowConnectPageAlert,
-} from "@/lib/connect/seller-compliance-chrome.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   buildSellerPayoutFailure,
@@ -28,9 +21,11 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.server";
 import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
-import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import {
+  requireSellerCapability,
+  resolveSellerWorkspaceContext,
+} from "@/lib/legal-entity/seller-acting-context.server";
 import { formatMoney } from "@/lib/ui/format";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -44,9 +39,9 @@ export default async function SellerPayoutsPage() {
     loginNext: DASHBOARD_ROUTES.sellerPayouts,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
-  const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
-
-  const complianceChrome = await loadSellerComplianceChrome(user.id);
+  // Payouts settle the whole organisation's sales, so consignors and viewers do not see them.
+  requireSellerCapability(sellerCtx, "entity.payouts.read");
+  const { sellerEntityId, bootstrapFailed } = sellerCtx;
 
   const c = await getServerDataContainer();
   let payouts: Payout[] = [];
@@ -82,9 +77,7 @@ export default async function SellerPayoutsPage() {
     });
   }
 
-  const workspaceMeta = await readClientWorkspacePageMeta();
-
-  const showConnectAlert = shouldShowConnectPageAlert(complianceChrome, connectPresentation);
+  const showConnectAlert = connectPresentation.showBanner;
   const connectBanner =
     showConnectAlert && connectPresentation.bannerCopy ? (
       <Alert>
@@ -98,19 +91,16 @@ export default async function SellerPayoutsPage() {
       </Alert>
     ) : null;
 
-  const orgBanner = orgActingSelected ? <SellerOrgContextBanner /> : null;
   const profileBanner = !sellerEntityId ? (
     <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} />
   ) : null;
 
   return (
     <DashboardListPage
-      meta={workspaceMeta}
       title="Sold & payouts"
       description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
       banner={
         <>
-          {orgBanner}
           {profileBanner}
           {connectBanner}
         </>
@@ -189,7 +179,7 @@ export default async function SellerPayoutsPage() {
                 variant={connectPresentation.connectReady ? "primary" : "secondaryOutline"}
                 asChild
               >
-                <Link href={DASHBOARD_ROUTES.sellerInSale}>{DASHBOARD_CTA.itemsInSale}</Link>
+                <Link href={DASHBOARD_ROUTES.consignmentsInSale}>{DASHBOARD_CTA.itemsInSale}</Link>
               </Button>
               <Button variant="secondaryOutline" asChild>
                 <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>

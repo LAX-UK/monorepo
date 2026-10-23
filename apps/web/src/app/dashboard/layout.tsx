@@ -116,11 +116,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             prefetchedActingContext={actingContext}
             pendingInvitesCount={orgModuleEnabled ? pendingInvites.length : 0}
             orgModuleEnabled={orgModuleEnabled}
+            workspaceMode={clientWorkspaceMode}
           />
         }
         contextBanner={
           <>
-            <ContextBanner acting={acting} />
+            <ContextBanner acting={acting} workspaceMode={clientWorkspaceMode} />
             {layoutWarnings.map((w) => (
               <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
             ))}
@@ -131,6 +132,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
               orgModuleEnabled={orgModuleEnabled}
               kycOnboardingEnabled={kycOnboardingEnabled}
+              workspaceMode={clientWorkspaceMode}
             />
           </>
         }

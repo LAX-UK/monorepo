@@ -187,7 +187,7 @@ function AgentRegistrationForm({
     setMessage(null);
     setError(null);
     if (!entityId) {
-      setError("Choose the legal entity you are bidding as.");
+      setError("Choose the account you are bidding as.");
       return;
     }
     setLoading(true);
@@ -237,7 +237,7 @@ function AgentRegistrationForm({
             className="w-full font-body text-sm"
             aria-required="true"
           >
-            <SelectValue placeholder="Select legal entity…" />
+            <SelectValue placeholder="Select an account…" />
           </SelectTrigger>
           <SelectContent>
             {agentEntities.map((e) => (
