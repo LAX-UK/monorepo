@@ -1569,6 +1569,13 @@
       "when": 1794643200000,
       "tag": "0223_shop_help_centre",
       "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1794729600000,
+      "tag": "0224_identity_address_book",
+      "breakpoints": true
     }
   ]
 }

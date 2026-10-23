@@ -19,7 +19,8 @@ const PII_REPAIR_0156_FOLDER_MILLIS = 1788000032000;
 const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
-const FINAL_FOLDER_MILLIS = 1794643200000;
+const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
+const FINAL_FOLDER_MILLIS = 1794729600000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -366,6 +367,127 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
           email_change_expires_at: null,
         },
       ]);
+    });
+  });
+
+  it("copies Bid addresses into the identity address book, keeps defaults and scrubs them on purge", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransactionThrough(pool, BEFORE_ADDRESS_BOOK_FOLDER_MILLIS);
+
+      const insertUser = (id: string, name: string, email: string) =>
+        pool.query(
+          `INSERT INTO public."user" ("id", "name", "email", "email_verified", "created_at", "updated_at")
+           VALUES ($1, $2, $3, true, now(), now())`,
+          [id, name, email],
+        );
+      await insertUser("addr-ann", "Ann Buyer", "ann@example.test");
+      await insertUser("addr-bob", "Bob Buyer", "bob@example.test");
+      await insertUser("addr-gone", "[deleted]", "deleted+addr-gone@purged.invalid");
+
+      const insertAddress = (
+        id: string,
+        userId: string,
+        country: string,
+        type: string,
+        isDefault: boolean,
+        createdAt: string,
+      ) =>
+        pool.query(
+          `INSERT INTO public.user_address
+            ("id", "user_id", "label", "line1", "city", "postal_code", "country", "address_type", "is_default", "created_at")
+           VALUES ($1, $2, 'Home', '1 High Street', 'London', 'SW1A 1AA', $3, $4, $5, $6)`,
+          [id, userId, country, type, isDefault, createdAt],
+        );
+      const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+      // Ann: an older and a newer default of type "both" (the newest must win), plus a billing-only one.
+      await insertAddress(id(1), "addr-ann", "gb", "both", true, "2026-01-01T00:00:00Z");
+      await insertAddress(
+        id(2),
+        "addr-ann",
+        "United Kingdom",
+        "both",
+        true,
+        "2026-02-01T00:00:00Z",
+      );
+      await insertAddress(id(3), "addr-ann", "FR", "billing", false, "2026-03-01T00:00:00Z");
+      // Bob: a shipping-only default and a country that needs the script (free-text name).
+      await insertAddress(id(4), "addr-bob", "US", "shipping", true, "2026-01-01T00:00:00Z");
+      await insertAddress(id(5), "addr-bob", "Ruritania", "both", false, "2026-01-02T00:00:00Z");
+      await insertAddress(id(6), "addr-gone", "GB", "both", true, "2026-01-01T00:00:00Z");
+
+      await runMigrationsPerTransaction(pool);
+
+      const copied = await pool.query(
+        `SELECT id, subject_id, recipient_name, country, is_default_shipping, is_default_billing, version
+         FROM public.identity_address ORDER BY id`,
+      );
+      expect(copied.rows).toEqual([
+        {
+          id: id(1),
+          subject_id: "addr-ann",
+          recipient_name: "Ann Buyer",
+          country: "GB",
+          is_default_shipping: false,
+          is_default_billing: false,
+          version: 1,
+        },
+        {
+          id: id(2),
+          subject_id: "addr-ann",
+          recipient_name: "Ann Buyer",
+          country: "GB",
+          is_default_shipping: true,
+          is_default_billing: true,
+          version: 1,
+        },
+        {
+          id: id(3),
+          subject_id: "addr-ann",
+          recipient_name: "Ann Buyer",
+          country: "FR",
+          is_default_shipping: false,
+          is_default_billing: false,
+          version: 1,
+        },
+        {
+          id: id(4),
+          subject_id: "addr-bob",
+          recipient_name: "Bob Buyer",
+          country: "US",
+          is_default_shipping: true,
+          is_default_billing: false,
+          version: 1,
+        },
+      ]);
+
+      // Re-applying the copy adds nothing and never disturbs defaults.
+      const sql = await readFile(
+        resolve(import.meta.dirname, "../drizzle/0224_identity_address_book.sql"),
+        "utf8",
+      );
+      await pool.query(
+        sql
+          .replaceAll("--> statement-breakpoint", "")
+          .replace("SET LOCAL lock_timeout = '30s';", ""),
+      );
+      const again = await pool.query("SELECT count(*)::int AS n FROM public.identity_address");
+      expect(again.rows[0]?.n).toBe(4);
+
+      await expect(
+        pool.query("UPDATE public.identity_address SET is_default_shipping = true WHERE id = $1", [
+          id(1),
+        ]),
+      ).rejects.toMatchObject({ code: "23505" });
+
+      await pool.query("SELECT public.user_pii_purge($1)", ["addr-ann"]);
+      const left = await pool.query("SELECT subject_id FROM public.identity_address ORDER BY id");
+      expect(left.rows).toEqual([{ subject_id: "addr-bob" }]);
+
+      await executeMigrationSql(pool, "0224_rollback.sql");
+      const table = await pool.query(`SELECT to_regclass('public.identity_address') AS t`);
+      expect(table.rows[0]?.t).toBeNull();
+      const legacy = await pool.query("SELECT count(*)::int AS n FROM public.user_address");
+      expect(legacy.rows[0]?.n).toBe(6);
     });
   });
 

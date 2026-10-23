@@ -153,3 +153,4 @@ export {
   type SocketRevocationPayloadV1,
 } from "./socket-revocation.js";
 export type { ConsentRecord, ConsentStore } from "./consent-store.js";
+export * from "./account-addresses.js";
