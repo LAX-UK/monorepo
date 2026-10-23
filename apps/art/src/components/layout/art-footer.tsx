@@ -55,7 +55,7 @@ export function ArtFooter({ vm }: ArtFooterProps) {
       className="pb-[var(--art-bottom-nav-height)] md:pb-0"
       logo={
         <Link href="/" className={cn("inline-flex", FOCUS_RING)} aria-label="LAX Art home">
-          <LaxLogo variant="footer" src="/brand/lax-logo.svg" className="art-footer__logo" />
+          <LaxLogo className="art-footer__logo" />
         </Link>
       }
       columns={vm.columns}

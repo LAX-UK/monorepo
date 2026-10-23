@@ -130,7 +130,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
                 className={cn("min-w-[76px] shrink-0 rounded-sm lg:py-2.5", FOCUS_RING)}
                 aria-label="LAX Art home"
               >
-                <LaxLogo variant="header" src="/brand/lax-logo.svg" className="art-header__logo" />
+                <LaxLogo className="art-header__logo" />
               </Link>
             }
             trailing={

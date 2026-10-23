@@ -4,9 +4,9 @@ import { buildShopMegaMenuSections } from "@/components/header/header-nav.config
 import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-active";
 import { ShopMobileAuthSection } from "@/components/header/shop-mobile-auth-section";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
-import { ShopLaxLogo } from "@/components/layout/shop-lax-logo";
 import { FOCUS_RING } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { LaxLogo } from "@auction/marketing-ui";
 import { MarketingMobileNavDrawer } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -45,7 +45,7 @@ export function ShopMobileNavDrawer({
           aria-label="LAX Shop home"
           onClick={close}
         >
-          <ShopLaxLogo variant="header" className="shop-header__logo" />
+          <LaxLogo className="shop-header__logo" />
         </Link>
       }
       themeSlot={

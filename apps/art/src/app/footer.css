@@ -1,33 +1,10 @@
-.art-footer__logo {
-  display: block;
-  line-height: 0;
-}
-
-.art-footer__logo img {
+.art-footer__logo .lax-lockup {
   width: auto;
   height: 3.75rem;
-  max-width: 19.5625rem;
-  object-fit: contain;
+  max-width: 100%;
 }
 
-.art-header__logo {
-  display: block;
-  line-height: 0;
-}
-
-.art-header__logo img {
+.art-header__logo .lax-lockup {
   width: auto;
   height: 2.75rem;
-  max-width: 12.5625rem;
-  object-fit: contain;
-}
-
-html.dark .shop-logo__mark,
-.shop-logo--inverted .shop-logo__mark {
-  filter: brightness(0) invert(1);
-}
-
-/* Over a hero image the header switches to its on-dark tone, so the mark turns white. */
-[data-header-tone="on-dark"] .art-header__logo .shop-logo__mark {
-  filter: brightness(0) invert(1);
 }

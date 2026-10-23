@@ -1,13 +1,6 @@
-.shop-header__logo {
-  display: block;
-  line-height: 0;
-}
-
-.shop-header__logo img {
+.shop-header__logo .lax-lockup {
   width: auto;
   height: 2.5rem;
-  max-width: 10.5rem;
-  object-fit: contain;
 }
 
 .shop-header__utility-form {

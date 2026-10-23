@@ -61,7 +61,7 @@ export function ArtMobileNavDrawer({
           aria-label="LAX Art home"
           onClick={close}
         >
-          <LaxLogo variant="header" src="/brand/lax-logo.svg" className="art-header__logo" />
+          <LaxLogo className="art-header__logo" />
         </Link>
       }
       topSlot={

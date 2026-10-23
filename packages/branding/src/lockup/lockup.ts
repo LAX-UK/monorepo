@@ -11,6 +11,7 @@ import {
 } from "./bid-lockup-parts.js";
 import { DESCRIPTOR_FONT_CAP_HEIGHT, DESCRIPTOR_GLYPHS } from "./descriptor-glyphs.js";
 import { LAX_MARK_BOUNDS, LAX_MARK_INK_PATHS, LAX_MARK_MIST_PATHS } from "./lax-mark-paths.js";
+import { TAGLINE_BOUNDS, TAGLINE_PATHS } from "./tagline-paths.js";
 
 /**
  * LAX lockups: the LAX mark with a product descriptor at its lower right, one geometry for every
@@ -26,7 +27,11 @@ import { LAX_MARK_BOUNDS, LAX_MARK_INK_PATHS, LAX_MARK_MIST_PATHS } from "./lax-
  * `bid-compact` is Bid's mark and ".BID" without the "Auction Xchange" tagline, framed like the
  * Shop, Art and Account lockups so the four read at one size in a row of product cards.
  */
-export type LaxLockupKind = "mark" | LaxBrandProduct | "bid-compact";
+/**
+ * `exchange` is the plain mark with the three-line "London / Art Exchange(R) / Marylebone" tagline,
+ * the vector form of the wordmark Shop and Art show in their headers and footers.
+ */
+export type LaxLockupKind = "mark" | LaxBrandProduct | "bid-compact" | "exchange";
 export type LaxLockupScheme = "light" | "dark";
 
 export type LockupPath = { d: string; transform?: string };
@@ -56,6 +61,7 @@ const LABELS: Readonly<Record<LaxLockupKind, string>> = {
   mark: "LAX",
   bid: "LAX Bid",
   "bid-compact": "LAX Bid",
+  exchange: "LAX London Art Exchange",
   shop: "LAX Shop",
   art: "LAX Art",
   account: "LAX Account",
@@ -79,6 +85,9 @@ const FRAME_BOTTOM = BID_CANVAS.height;
  * descriptor moves with it so its distance from the mark matches Bid's.
  */
 const PLAIN_MARK_SHIFT_X = -18;
+
+/** Clear space around the tagline's outermost ink so antialiasing is not clipped. */
+const EXCHANGE_FRAME_PAD = 0.5;
 
 const round = (value: number): number => Math.round(value * 10000) / 10000;
 
@@ -132,6 +141,20 @@ export function laxLockup(kind: LaxLockupKind): LaxLockup {
       descriptor: null,
       ...frame(LAX_MARK_BOUNDS.width, LAX_MARK_BOUNDS.y, LAX_MARK_BOUNDS.height),
       ink: markInk,
+      descriptorPaths: [],
+    };
+  }
+
+  if (kind === "exchange") {
+    const top = Math.floor(TAGLINE_BOUNDS.y) - EXCHANGE_FRAME_PAD;
+    const bottom = Math.ceil(TAGLINE_BOUNDS.bottom) + EXCHANGE_FRAME_PAD;
+    return {
+      ...base,
+      mist: plain(LAX_MARK_MIST_PATHS),
+      descriptor: null,
+      ...frame(Math.ceil(TAGLINE_BOUNDS.right) + EXCHANGE_FRAME_PAD, top, bottom - top),
+      // The tagline is ink like the mark's strokes, so it follows the text colour with them.
+      ink: [...markInk, ...plain(TAGLINE_PATHS)],
       descriptorPaths: [],
     };
   }
@@ -192,7 +215,7 @@ const BID_DESCRIPTOR: Readonly<Record<LaxLockupScheme, string>> = {
 export function laxLockupColors(kind: LaxLockupKind, scheme: LaxLockupScheme): LaxLockupColors {
   const ink = INK[scheme];
   const accent =
-    kind === "mark"
+    kind === "mark" || kind === "exchange"
       ? null
       : kind === "bid" || kind === "bid-compact"
         ? BID_DESCRIPTOR[scheme]
@@ -228,6 +251,7 @@ export function laxLockupSvg(kind: LaxLockupKind, scheme: LaxLockupScheme): stri
 
 export const LAX_LOCKUP_KINDS: readonly LaxLockupKind[] = [
   "mark",
+  "exchange",
   "bid",
   "bid-compact",
   "shop",
@@ -235,7 +259,39 @@ export const LAX_LOCKUP_KINDS: readonly LaxLockupKind[] = [
   "account",
 ];
 
+/**
+ * A standalone SVG that picks its own colours with `prefers-color-scheme`, for `<img>` contexts
+ * that follow the operating system and have no theme of their own. The scheme-specific files stay
+ * the right choice wherever the surface colour is known (emails, social images).
+ */
+export function laxLockupAutoSvg(kind: LaxLockupKind): string {
+  const lockup = laxLockup(kind);
+  const light = laxLockupColors(kind, "light");
+  const dark = laxLockupColors(kind, "dark");
+  const hasDescriptor = lockup.descriptorPaths.length > 0;
+  const style = [
+    `.i{fill:${light.ink}}.m{fill:${light.mist}}`,
+    hasDescriptor ? `.d{fill:${light.descriptor}}` : "",
+    `@media(prefers-color-scheme:dark){.i{fill:${dark.ink}}`,
+    hasDescriptor ? `.d{fill:${dark.descriptor}}` : "",
+    "}",
+  ].join("");
+  const classed = (name: string, paths: readonly LockupPath[]) =>
+    paths.length === 0 ? "" : `<g class="${name}">${paths.map(pathElement).join("")}</g>`;
+  return `${[
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${lockup.viewBox}" width="${lockup.width}" height="${lockup.height}" role="img">`,
+    `<title>${lockup.label}</title>`,
+    `<style>${style}</style>`,
+    classed("i", lockup.ink),
+    classed("m", lockup.mist),
+    classed("d", lockup.descriptorPaths),
+    "</svg>",
+  ]
+    .filter((line) => line !== "")
+    .join("\n")}\n`;
+}
+
 /** Published file name of a lockup, relative to `@auction/branding/lockups/`. */
-export function laxLockupFileName(kind: LaxLockupKind, scheme: LaxLockupScheme): string {
-  return `lax-${kind}${scheme === "dark" ? "-dark" : ""}.svg`;
+export function laxLockupFileName(kind: LaxLockupKind, scheme: LaxLockupScheme | "auto"): string {
+  return `lax-${kind}${scheme === "light" ? "" : `-${scheme}`}.svg`;
 }

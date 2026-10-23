@@ -6,9 +6,9 @@ import { ShopHeaderBasketLink } from "@/components/header/shop-header-basket-lin
 import { ShopMegaMenu } from "@/components/header/shop-mega-menu.client";
 import { ShopMobileNavDrawer } from "@/components/header/shop-mobile-nav-drawer";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
-import { ShopLaxLogo } from "@/components/layout/shop-lax-logo";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { LaxLogo } from "@auction/marketing-ui";
 import {
   MarketingChromeIconButton,
   MarketingCloseIcon,
@@ -97,7 +97,7 @@ export function ShopHeaderClient({
                 className={cn("min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
                 aria-label="LAX Shop home"
               >
-                <ShopLaxLogo variant="header" className="shop-header__logo" />
+                <LaxLogo className="shop-header__logo" />
               </Link>
             }
             trailing={
