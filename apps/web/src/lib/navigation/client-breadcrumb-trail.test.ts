@@ -65,6 +65,10 @@ describe("buildClientBreadcrumbTrail", () => {
     ]);
   });
 
+  it("shows one crumb on the settings index instead of repeating itself", () => {
+    expect(buildClientBreadcrumbTrail("/dashboard/settings")).toEqual([{ label: "Bid settings" }]);
+  });
+
   it("labels the remaining Bid settings pages", () => {
     expect(buildClientBreadcrumbTrail("/dashboard/settings/bidding")).toEqual([
       { label: "Bid settings", href: "/dashboard/settings" },

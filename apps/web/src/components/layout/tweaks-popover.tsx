@@ -82,10 +82,7 @@ export function DensityTweakSection() {
     <section aria-labelledby="tweaks-density-label" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p
-            id="tweaks-density-label"
-            className="font-label text-xs font-semibold uppercase tracking-[0.18em] text-on-surface"
-          >
+          <p id="tweaks-density-label" className="font-label text-sm font-medium text-on-surface">
             Density
           </p>
           <p className="mt-1 text-xs text-on-surface-variant">

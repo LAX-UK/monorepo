@@ -11,7 +11,7 @@ const CLIENT_SEGMENT_LABELS: Record<string, string> = {
   checkout: "Checkout",
   organisations: "Organisations",
   invitations: "Invitations",
-  settings: "Settings",
+  settings: "Bid settings",
   seller: "Overview",
   submissions: "Submissions",
   purchases: "Purchases",

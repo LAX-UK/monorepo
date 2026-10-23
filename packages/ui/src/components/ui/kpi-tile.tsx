@@ -127,9 +127,9 @@ export function KpiTile({
     <div
       className={cn(
         "relative flex h-full min-w-0 flex-col overflow-hidden border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
-        variant === "dashboard"
-          ? "min-h-[7.75rem] rounded-shell-card"
-          : "min-h-[8.5rem] rounded-xl",
+        variant === "dashboard" ? "rounded-shell-card" : "rounded-xl",
+        // Plain tiles are only as tall as their content.
+        !plain && (variant === "dashboard" ? "min-h-[7.75rem]" : "min-h-[8.5rem]"),
         toneClass,
         clickable &&
           "cursor-pointer hover:shadow-[var(--shadow-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -210,14 +210,14 @@ function KpiTileBody({
   const showSparkline = Boolean(trend && trend.length > 0);
 
   return (
-    <div className="mt-3 flex min-h-0 flex-1 flex-col">
+    <div className={cn("flex min-h-0 flex-1 flex-col", plain ? "mt-2" : "mt-3")}>
       <div className="flex min-w-0 items-end justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p
             className={cn(
               "font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl",
               plain ? "break-words" : "truncate lg:text-[length:var(--text-display-kpi,2.25rem)]",
-              emphasize && "border-b-2 border-primary pb-0.5",
+              emphasize && !plain && "border-b-2 border-primary pb-0.5",
             )}
             style={{ fontFeatureSettings: "var(--font-feature-tabular)" }}
             {...(valueTitle ? { title: valueTitle } : {})}
@@ -233,7 +233,7 @@ function KpiTileBody({
           </div>
         ) : null}
       </div>
-      <div className="mt-auto min-h-[2.75rem] pt-1">
+      <div className={plain ? "pt-1 empty:hidden" : "mt-auto min-h-[2.75rem] pt-1"}>
         {resolvedDelta ? <div className="min-w-0 truncate">{resolvedDelta}</div> : null}
         {compareHint ? (
           <p className="line-clamp-2 font-body text-[10px] text-on-surface-variant">

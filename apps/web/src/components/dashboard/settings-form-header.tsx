@@ -12,7 +12,7 @@ export type SettingsFormHeaderProps = Omit<DashboardPageHeaderProps, "meta"> & {
 /** Settings sub-pages — eyebrow + title; mobile shell owns visible title below lg. */
 export function SettingsFormHeader({
   title,
-  eyebrow = "Settings",
+  eyebrow,
   hideTitleOnMobile = true,
   hideDescriptionOnMobile = true,
   hideMetaOnMobile = true,

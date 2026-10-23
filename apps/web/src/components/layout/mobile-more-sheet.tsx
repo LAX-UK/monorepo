@@ -155,7 +155,7 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
     <BottomSheet open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent className="border-outline-variant bg-surface-container-lowest">
         <BottomSheetHeader className="px-6 pt-2 pb-1 text-left">
-          <BottomSheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          <BottomSheetTitle className="font-label text-sm font-semibold text-on-surface">
             More
           </BottomSheetTitle>
         </BottomSheetHeader>
@@ -173,16 +173,13 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
             className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary-container/15 px-4 font-label text-xs text-primary transition-colors hover:bg-primary-container/25"
           >
             <Compass className="size-4 shrink-0" aria-hidden />
-            Quick go
+            Search Bid
           </Button>
-          <p className="text-center text-xs text-on-surface-variant">
-            Jump to collection, payments, organisations, and more
-          </p>
           {grouped.length > 0 ? (
             <div className="space-y-4">
               {grouped.map(([group, groupItems]) => (
                 <div key={group}>
-                  <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  <p className="mb-2 font-label text-xs font-semibold text-on-surface-variant">
                     {group}
                   </p>
                   <nav aria-label={`${group} destinations`} className="grid gap-2">
@@ -201,7 +198,7 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
                           aria-current={active ? "page" : undefined}
                           aria-label={ariaLabel}
                           className={cn(
-                            "flex min-h-12 items-center gap-3 rounded-lg border px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors",
+                            "flex min-h-12 items-center gap-3 rounded-lg border px-4 font-label text-sm font-medium transition-colors",
                             active
                               ? "border-primary/30 bg-primary-container/15 text-primary"
                               : "border-border-hairline bg-surface-container-low/40 text-on-surface hover:bg-surface-container-high",
@@ -240,9 +237,7 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
             <div>
-              <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
-                Dark mode
-              </p>
+              <p className="font-label text-sm font-medium text-on-surface">Dark mode</p>
               <p className="mt-1 text-xs text-on-surface-variant">Toggle the colour scheme.</p>
             </div>
             <ThemeToggle />

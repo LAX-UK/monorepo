@@ -143,7 +143,7 @@ export function CommandPalette({
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
-      title="Quick go"
+      title="Search Bid"
       description="Search pages and records"
       className={cn(dialogWidth)}
     >
