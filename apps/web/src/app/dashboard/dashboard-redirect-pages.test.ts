@@ -1,3 +1,4 @@
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const redirectMock = vi.fn((target: string) => {
@@ -83,14 +84,8 @@ describe("/dashboard/settings", () => {
     return redirectTarget(() => Page({ searchParams: Promise.resolve(query) }));
   }
 
-  it("opens the first Bid settings page", async () => {
-    expect(await visit()).toBe("/dashboard/settings/bidding");
-  });
-
-  it("still sends old security links to the security page", async () => {
-    expect(await visit({ tab: "security", changed: "1" })).toBe(
-      "/dashboard/settings/security?changed=1",
-    );
+  it("sends old security links in emails to LAX Account", async () => {
+    expect(await visit({ tab: "security" })).toBe(laxAccountUrl("/account/security"));
   });
 });
 

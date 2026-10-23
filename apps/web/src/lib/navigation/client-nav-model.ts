@@ -1,4 +1,5 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { type EntityCapability, entityRoleCan } from "@auction/domain";
 import type { LegalEntityMemberRole } from "@auction/types";
@@ -17,6 +18,7 @@ import {
   Store,
   TrendingUp,
   Upload,
+  UserRound,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -81,9 +83,21 @@ const BID_SETTINGS: NavSpec = {
   item: {
     id: "settings",
     label: "Bid settings",
-    href: "/dashboard/settings/bidding",
+    href: "/dashboard/settings",
     icon: Settings,
     match: exactOrNested("/dashboard/settings"),
+  },
+};
+
+/** Profile, security and addresses are managed in LAX Account, for every LAX product. */
+const LAX_ACCOUNT: NavSpec = {
+  item: {
+    id: "lax-account",
+    label: "LAX Account",
+    href: laxAccountHomeUrl(),
+    icon: UserRound,
+    match: () => false,
+    external: true,
   },
 };
 
@@ -123,6 +137,7 @@ const BUYING_SPECS: readonly NavSpec[] = [
   },
   NOTIFICATIONS,
   BID_SETTINGS,
+  LAX_ACCOUNT,
 ];
 
 function orgSettingsItem(
@@ -228,6 +243,7 @@ const SELLING_SPECS: readonly NavSpec[] = [
   },
   NOTIFICATIONS,
   BID_SETTINGS,
+  LAX_ACCOUNT,
 ];
 
 function isVisible(spec: NavSpec, input: ClientNavInput): boolean {

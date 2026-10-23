@@ -21,7 +21,6 @@ export type DashboardSlice =
   | "artistFollow"
   | "activeLots"
   | "notifications"
-  | "addresses"
   | "sellerLots"
   | "sellerPayouts"
   | "sellerPayoutPreview"
@@ -134,11 +133,6 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
     title: "Could not load notifications",
     message: () => "Something went wrong while loading notifications. Try again.",
     retryHref: DASHBOARD_ROUTES.notifications,
-  },
-  addresses: {
-    title: "Could not load addresses",
-    message: () => "Something went wrong while loading your addresses. Try again.",
-    retryHref: "/dashboard/settings/addresses",
   },
   sellerLots: {
     title: "Could not load your lots",
@@ -321,25 +315,6 @@ export function describeSettingsActionError(raw: string): DashboardSliceFailure 
     title: "Could not save",
     message: trimmed,
     actions: [{ kind: "retry", label: DASHBOARD_CTA.tryAgain, href: "/dashboard/settings" }],
-  };
-}
-
-/** Maps sessions page redirect codes from overview query params. */
-export function describeSessionsOverviewError(code: string | null): DashboardSliceFailure {
-  const messages: Record<string, string> = {
-    forbidden: "You do not have permission to view active sessions.",
-    server_error: "Could not load your active sessions. Try again from Settings.",
-  };
-  return {
-    slice: "settings",
-    code,
-    status: 403,
-    title: "Sessions unavailable",
-    message: (code && messages[code]) ?? "Could not load your active sessions.",
-    actions: [
-      { kind: "navigate", label: "Open settings", href: "/dashboard/settings/sessions" },
-      { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.home },
-    ],
   };
 }
 

@@ -1,7 +1,6 @@
 import {
   clientWorkspaceHomePath,
   clientWorkspaceOverviewMeta,
-  clientWorkspacePageMeta,
   isClientBuyingPath,
   isClientSellingPath,
   resolveClientWorkspaceMode,
@@ -9,11 +8,6 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("client workspace meta", () => {
-  it("uses Buying/Selling on list pages", () => {
-    expect(clientWorkspacePageMeta("buying")).toBe("Buying");
-    expect(clientWorkspacePageMeta("selling")).toBe("Selling");
-  });
-
   it("uses Collector home / Seller home on overview", () => {
     expect(clientWorkspaceOverviewMeta("buying")).toBe("Collector home");
     expect(clientWorkspaceOverviewMeta("selling")).toBe("Seller home");
@@ -61,7 +55,7 @@ describe("resolveClientWorkspaceMode", () => {
   it("keeps cookie on neutral routes", () => {
     expect(resolveClientWorkspaceMode("/dashboard", "selling")).toBe("selling");
     expect(resolveClientWorkspaceMode("/dashboard/notifications", "buying")).toBe("buying");
-    expect(resolveClientWorkspaceMode("/dashboard/settings/profile", "selling")).toBe("selling");
+    expect(resolveClientWorkspaceMode("/dashboard/settings/bidding", "selling")).toBe("selling");
   });
 
   it("classifies path prefixes", () => {

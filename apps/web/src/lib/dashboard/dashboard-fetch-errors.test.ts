@@ -5,7 +5,6 @@ import {
   buildSellerPayoutFailure,
   dashboardSliceFailureMessage,
   describeDashboardSliceFailure,
-  describeSessionsOverviewError,
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { describe, expect, it } from "vitest";
@@ -76,13 +75,6 @@ describe("describeSettingsActionError", () => {
     const failure = describeSettingsActionError("Could not update profile");
     expect(failure.message).toBe("Could not update profile");
     expect(failure.title).toBe("Could not save");
-  });
-});
-
-describe("describeSessionsOverviewError", () => {
-  it("maps forbidden code", () => {
-    const failure = describeSessionsOverviewError("forbidden");
-    expect(failure.message).toContain("permission");
   });
 });
 

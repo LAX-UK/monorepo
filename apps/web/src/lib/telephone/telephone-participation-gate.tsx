@@ -4,6 +4,7 @@ import { markContextualKycGateNavigation } from "@/components/onboarding/buyer-o
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { kycLinkActionLabel } from "@/lib/kyc/kyc-link-action-copy";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import {
   type TelephoneBookingSnapshot,
   telephoneBookingStatusLabel,
@@ -49,7 +50,8 @@ export function TelephoneParticipationGate({
 }: Props) {
   const loginHref = `/login?next=${encodeURIComponent(loginNextPath)}`;
   const kycHref = contextualIdentityOnboardingHref(loginNextPath, "telephone");
-  const profileHref = `/dashboard/settings/profile?next=${encodeURIComponent(loginNextPath)}`;
+  // The verified mobile number is kept in LAX Account.
+  const profileHref = laxAccountUrl("/account/profile");
 
   if (!isAuthenticated) {
     return (

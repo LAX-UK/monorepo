@@ -10,4 +10,6 @@ export type AppShellNavItem = {
   badge?: number;
   badgeTone?: NavBadgeTone;
   match?: (pathname: string) => boolean;
+  /** Leaves Bid for another LAX product (LAX Account), so it opens as a plain link. */
+  external?: true;
 };

@@ -8,6 +8,7 @@ import { DensityTweakSection } from "@/components/layout/tweaks-popover";
 import { MediaImage } from "@/components/ui/media-image";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
 import { cn } from "@auction/ui";
 import {
@@ -17,7 +18,7 @@ import {
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
-import { ChevronRight, Compass } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -39,6 +40,7 @@ function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): stri
   if (
     item.id === "notifications" ||
     item.id === "settings" ||
+    item.id === "lax-account" ||
     item.href.includes("/settings") ||
     item.id === "payments"
   ) {
@@ -113,27 +115,25 @@ function MobileProfileStrip({
         <Link
           href="/dashboard/settings"
           onClick={onNavigate}
+          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
+        >
+          Bid settings
+          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+        </Link>
+        <a
+          href={laxAccountHomeUrl()}
+          rel="noopener noreferrer"
+          onClick={onNavigate}
           className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary-container/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary-container/20"
         >
-          All settings
-          <ChevronRight className="size-4 shrink-0" aria-hidden />
-        </Link>
-        <Link
-          href="/dashboard/settings/profile"
-          onClick={onNavigate}
-          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
-        >
-          Profile
-          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-        </Link>
-        <Link
-          href="/dashboard/settings/account"
-          onClick={onNavigate}
-          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
-        >
-          Account settings
-          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-        </Link>
+          <span className="min-w-0">
+            LAX Account
+            <span className="block text-xs font-normal text-on-surface-variant">
+              Manage your LAX Account: profile, security, addresses
+            </span>
+          </span>
+          <ArrowUpRight className="size-4 shrink-0" aria-hidden />
+        </a>
       </div>
     </div>
   );
@@ -142,7 +142,14 @@ function MobileProfileStrip({
 export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Props) {
   const pathname = usePathname();
   const { unread } = useUnreadNotifications();
-  const grouped = groupNavItems(items, variant);
+  // The profile strip already links to Bid settings and LAX Account, so the list does not repeat them.
+  const showsProfileStrip = variant === "client" && Boolean(user);
+  const grouped = groupNavItems(
+    showsProfileStrip
+      ? items.filter((item) => item.id !== "lax-account" && item.id !== "settings")
+      : items,
+    variant,
+  );
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange}>
@@ -153,7 +160,7 @@ export function MobileMoreSheet({ open, onOpenChange, variant, items, user }: Pr
           </BottomSheetTitle>
         </BottomSheetHeader>
         <div className="space-y-5 px-6 pt-4 pb-6">
-          {variant === "client" && user ? (
+          {showsProfileStrip && user ? (
             <MobileProfileStrip user={user} onNavigate={() => onOpenChange(false)} />
           ) : null}
           <Button

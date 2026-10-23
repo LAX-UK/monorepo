@@ -13,6 +13,7 @@ import {
 } from "@/lib/checkout/checkout-payment-errors";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { notify } from "@/lib/ui/notify";
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";
@@ -49,9 +50,9 @@ export function formatCheckoutAddressLines(address: ProfileAddressRow): string {
   return `${address.line1}${line2}, ${address.city}, ${address.postalCode}, ${address.country}`;
 }
 
-export function checkoutAddressesSettingsHref(lotId: string): string {
-  const next = encodeURIComponent(dashboardCheckoutLotUrl(lotId));
-  return `/dashboard/settings/addresses?next=${next}`;
+/** Addresses are kept in LAX Account, which is a different site, so there is no way to return here. */
+export function checkoutAddressesSettingsHref(): string {
+  return laxAccountUrl("/account/profile");
 }
 
 type UseCheckoutPurchaseStateParams = {
@@ -249,6 +250,6 @@ export function useCheckoutPurchaseState({
     refreshStatus: () => router.refresh(),
     submitCheckout,
     retryStripeRedirect,
-    addressesSettingsHref: checkoutAddressesSettingsHref(lotId),
+    addressesSettingsHref: checkoutAddressesSettingsHref(),
   };
 }

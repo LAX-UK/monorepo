@@ -2,6 +2,4 @@
 export type AccountMenuContext = {
   hasConsigned: boolean;
   isOrgMember: boolean;
-  /** The LAX Account origin, or null when this deployment has none. */
-  accountOrigin: string | null;
 };

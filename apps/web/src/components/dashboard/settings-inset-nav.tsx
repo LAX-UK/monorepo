@@ -1,5 +1,6 @@
 "use client";
 
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { cn } from "@auction/ui";
 import { InsetGroup } from "@auction/ui/components/inset-group";
 import { ListRow } from "@auction/ui/components/list-row";
@@ -14,8 +15,8 @@ type NavItem = {
 };
 
 /**
- * Only settings that belong to Bidding. Name, email, password, sessions and addresses are
- * account-wide and live in LAX Account; those pages still exist here but are not listed.
+ * Only settings that belong to Bid. Name, email, password, two-step verification, sessions and
+ * addresses are account-wide and live in LAX Account, reached by the one link below the list.
  */
 const BID_SETTINGS: readonly NavItem[] = [
   {
@@ -67,11 +68,9 @@ function SettingsNavRow({
 
 type SettingsInsetNavProps = {
   className?: string;
-  /** LAX Account link for identity and security settings; omitted when the deployment has none. */
-  accountHref?: string | null;
 };
 
-export function SettingsInsetNav({ className, accountHref = null }: SettingsInsetNavProps) {
+export function SettingsInsetNav({ className }: SettingsInsetNavProps) {
   const pathname = usePathname();
 
   return (
@@ -86,19 +85,17 @@ export function SettingsInsetNav({ className, accountHref = null }: SettingsInse
           />
         ))}
       </InsetGroup>
-      {accountHref ? (
-        <InsetGroup label="Your account">
-          <a href={accountHref} rel="noopener noreferrer" className="block">
-            <ListRow
-              title="Profile, security and sign-in"
-              subtitle="Managed in LAX Account"
-              trailing={
-                <ArrowUpRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-              }
-            />
-          </a>
-        </InsetGroup>
-      ) : null}
+      <InsetGroup label="Your account">
+        <a href={laxAccountHomeUrl()} rel="noopener noreferrer" className="block">
+          <ListRow
+            title="LAX Account"
+            subtitle="Manage your LAX Account: profile, security, addresses"
+            trailing={
+              <ArrowUpRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+            }
+          />
+        </a>
+      </InsetGroup>
     </nav>
   );
 }

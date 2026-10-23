@@ -20,7 +20,7 @@ describe("TelephoneParticipationGate", () => {
     expect(screen.getByText(/verify your contact number/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /verify mobile number/i })).toHaveAttribute(
       "href",
-      expect.stringContaining("/dashboard/settings/profile"),
+      expect.stringContaining("/account/profile"),
     );
     expect(screen.queryByText("child")).not.toBeInTheDocument();
   });

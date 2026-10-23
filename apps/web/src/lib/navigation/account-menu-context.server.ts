@@ -1,7 +1,6 @@
 import "server-only";
 
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { laxAccountPortalOrigin } from "@/lib/lax-account-portal-redirect.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { AccountMenuContext } from "./account-menu-context";
 
@@ -21,6 +20,5 @@ export async function loadAccountMenuContext(): Promise<AccountMenuContext> {
     isOrgMember:
       memberships.status === "fulfilled" &&
       memberships.value.some((m) => m.kind === "organisation"),
-    accountOrigin: laxAccountPortalOrigin(),
   };
 }

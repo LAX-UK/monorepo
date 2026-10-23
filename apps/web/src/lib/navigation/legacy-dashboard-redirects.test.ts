@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { laxAccountOrigin } from "@/lib/lax-account-url";
 import { describe, expect, it } from "vitest";
-import { LEGACY_DASHBOARD_REDIRECTS } from "./legacy-dashboard-redirects";
+import {
+  IDENTITY_SETTINGS_REDIRECTS,
+  LEGACY_DASHBOARD_REDIRECTS,
+  identitySettingsRedirects,
+} from "./legacy-dashboard-redirects";
 
 const destinationOf = (source: string) =>
   LEGACY_DASHBOARD_REDIRECTS.find((redirect) => redirect.source === source)?.destination;
@@ -88,5 +93,63 @@ describe("LEGACY_DASHBOARD_REDIRECTS", () => {
       }
       expect(existsSync(path.join(dashboardDir, "organisations", "[id]"))).toBe(false);
     });
+  });
+});
+
+describe("identity settings redirects", () => {
+  const origin = "https://account.example.test";
+  const rules = identitySettingsRedirects(origin);
+  const destination = (source: string) => rules.find((rule) => rule.source === source)?.destination;
+
+  it.each([
+    ["/dashboard/settings/profile", "/account/profile"],
+    ["/dashboard/settings/account", "/account/profile"],
+    ["/dashboard/settings/account/confirm", "/account/email-change"],
+    ["/dashboard/settings/addresses", "/account/profile"],
+    ["/dashboard/settings/security", "/account/security"],
+    ["/dashboard/settings/security/two-factor", "/account/security"],
+    ["/dashboard/settings/sessions", "/account/security"],
+  ])("sends %s to %s on the Account origin", (source, accountPath) => {
+    expect(destination(source)).toBe(`${origin}${accountPath}`);
+  });
+
+  it("is permanent (308) for every retired page", () => {
+    expect(rules).toHaveLength(IDENTITY_SETTINGS_REDIRECTS.length);
+    expect(rules.every((rule) => rule.permanent)).toBe(true);
+  });
+
+  it("ignores a trailing slash on the origin", () => {
+    expect(identitySettingsRedirects(`${origin}/`)[0]?.destination).toBe(
+      `${origin}/account/profile`,
+    );
+  });
+
+  it("leaves the Bid settings that remain alone", () => {
+    const sources = new Set(rules.map((rule) => rule.source));
+    for (const kept of ["bidding", "notifications", "interests", "appearance"]) {
+      expect(sources.has(`/dashboard/settings/${kept}`)).toBe(false);
+    }
+  });
+
+  it("points only at Account, never back at a Bid page, so it cannot loop", () => {
+    const accountOrigin = laxAccountOrigin();
+    for (const rule of identitySettingsRedirects(accountOrigin)) {
+      expect(rule.destination.startsWith(`${accountOrigin}/account`)).toBe(true);
+      expect(rule.destination).not.toContain("/dashboard/");
+    }
+  });
+
+  it("has no Bid page left behind that a redirect would silently shadow", () => {
+    const appDir = path.join(process.cwd(), "src", "app");
+    for (const { source } of IDENTITY_SETTINGS_REDIRECTS) {
+      expect(existsSync(path.join(appDir, source, "page.tsx"))).toBe(false);
+    }
+  });
+
+  it("does not share a source with the other legacy redirects", () => {
+    const legacy = new Set(LEGACY_DASHBOARD_REDIRECTS.map((rule) => rule.source));
+    for (const { source } of IDENTITY_SETTINGS_REDIRECTS) {
+      expect(legacy.has(source)).toBe(false);
+    }
   });
 });

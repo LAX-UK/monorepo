@@ -6,6 +6,7 @@ import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { isSellerSubmissionPath, sellLoginRedirect } from "@/lib/auth/seller-submission-path";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import {
   type UserRole,
   canAccessStaffAdminShell,
@@ -167,6 +168,6 @@ export async function redirectIfAuthenticated(opts: {
         }),
       );
     }
-    redirect("/dashboard/settings/account?changePassword=1&welcome=back");
+    redirect(laxAccountUrl("/account/security"));
   }
 }

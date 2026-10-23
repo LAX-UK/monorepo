@@ -1,3 +1,4 @@
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { describe, expect, it } from "vitest";
 import { type AccountMenuFacts, buildAccountMenu } from "./account-menu-model";
 
@@ -6,7 +7,6 @@ function facts(overrides: Partial<AccountMenuFacts> = {}): AccountMenuFacts {
     mode: "buying",
     hasConsigned: false,
     isOrgMember: false,
-    accountOrigin: "https://account.example.test",
     user: { role: "client", staffRole: null },
     ...overrides,
   };
@@ -45,16 +45,14 @@ describe("buildAccountMenu", () => {
     expect(labels()[2]).toEqual(["LAX Account", "Bid settings"]);
   });
 
-  it("links LAX Account to the configured origin as an external link", () => {
+  it("links LAX Account to the Account origin as an external link", () => {
     const entry = buildAccountMenu(facts())[2]?.[0];
-    expect(entry).toMatchObject({
-      href: "https://account.example.test/account?from=bid",
-      external: true,
-    });
+    expect(entry).toMatchObject({ href: laxAccountHomeUrl(), external: true });
+    expect(entry?.href).toMatch(/\/account\?from=bid$/);
   });
 
-  it("hides LAX Account when no origin is configured", () => {
-    expect(labels({ accountOrigin: null })[2]).toEqual(["Bid settings"]);
+  it("opens the Bid settings list, not a single settings page", () => {
+    expect(buildAccountMenu(facts())[2]?.[1]?.href).toBe("/dashboard/settings");
   });
 
   it("adds the staff entry for platform admins and finance staff only", () => {
