@@ -1,4 +1,4 @@
-import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
@@ -37,4 +37,6 @@ export type SaleServiceDeps = {
   enforceIndividualConnectOnPublish: boolean;
   qrCodeService: IQrCodeService | null;
   repoFactory: IRepositoryFactory | null;
+  /** Unset when the ATG integration is not wired; ownership guards then never fire. */
+  saleChannelReader?: ISaleChannelReader | null | undefined;
 };

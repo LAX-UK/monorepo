@@ -1,4 +1,8 @@
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleChannelReader,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot, LotSummary, Sale } from "@auction/types";
 import {
   isPublicCatalogLot,
@@ -10,6 +14,7 @@ import { mapLotToSummary } from "../lib/mappers.js";
 import { presentSalesWithLotsImages } from "../lib/media-presenters.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
+import { withSellingPlatforms } from "./sale-selling-platform.js";
 
 const PREVIEW_LOTS_PER_SALE = 4;
 
@@ -32,6 +37,7 @@ export class SaleListReadService implements ISaleListReadService {
     private readonly lotRepo: ILotRepository,
     private readonly catalogueMediaUrlResolver: MediaUrlResolver,
     private readonly mediaAssetEnricher: MediaAssetEnricher,
+    private readonly saleChannelReader: Pick<ISaleChannelReader, "getSaleOwnerships"> | null = null,
   ) {}
 
   async listForPublicApi(
@@ -51,9 +57,13 @@ export class SaleListReadService implements ISaleListReadService {
         : resolved.status !== undefined
           ? { status: resolved.status, statuses: undefined }
           : {}),
+      ...(canPreview ? {} : { includeAtgOwnedDrafts: true }),
     };
 
-    const sales = await this.saleRepo.list(queryFilter);
+    const sales = await withSellingPlatforms(
+      this.saleChannelReader,
+      await this.saleRepo.list(queryFilter),
+    );
     if (sales.length === 0) return { data: [] };
 
     const saleIds = sales.map((s) => s.id);

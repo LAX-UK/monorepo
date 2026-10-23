@@ -73,6 +73,7 @@ function mount(
     },
     saleService: {
       getById: vi.fn().mockResolvedValue(null),
+      getByIdForPublicCatalog: vi.fn().mockResolvedValue(null),
       findByIds: vi.fn().mockResolvedValue([]),
     },
     cachedCatalogueListService: cachedCatalogueListService as never,
@@ -134,7 +135,7 @@ describe("lots public contract", () => {
         archiveEndedSummary: vi.fn(),
       },
       saleService: {
-        getById: vi.fn().mockResolvedValue({
+        getByIdForPublicCatalog: vi.fn().mockResolvedValue({
           id: saleId,
           status: "active",
           deliveryMode: "online",

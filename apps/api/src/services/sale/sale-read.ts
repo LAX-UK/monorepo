@@ -1,7 +1,6 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import {
-  PUBLIC_LOT_STATUSES,
   isPublicCatalogLot,
   isPublicCatalogSale,
   resolvePublicSaleListFilter,
@@ -13,6 +12,11 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../../lib/media-presenters.js";
+import {
+  withAtgLotResults,
+  withSellingPlatform,
+  withSellingPlatforms,
+} from "../sale-selling-platform.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 
 export async function getByIdWithLots(
@@ -53,20 +57,23 @@ export async function getSaleDetailForPublicApi(
   const bundle = await getByIdWithLots(deps, saleId);
   if (!bundle) return null;
 
+  const saleWithPlatform = await withSellingPlatform(deps.saleChannelReader, bundle.sale);
   const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
-  if (!canPreview && !isPublicCatalogSale(bundle.sale)) return null;
+  if (!canPreview && !isPublicCatalogSale(saleWithPlatform)) return null;
 
   const isFollowing =
     viewerUserId && deps.saleFollowReader
       ? await deps.saleFollowReader.isFollowing(viewerUserId, saleId)
       : false;
   const [sale, lots] = await Promise.all([
-    presentSaleImages(deps.mediaUrlResolver, bundle.sale, deps.mediaAssetEnricher),
-    presentLotsImages(deps.mediaUrlResolver, bundle.lots, deps.mediaAssetEnricher),
+    presentSaleImages(deps.mediaUrlResolver, saleWithPlatform, deps.mediaAssetEnricher),
+    withAtgLotResults(deps.saleChannelReader, saleWithPlatform, bundle.lots).then((rows) =>
+      presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
+    ),
   ]);
   const visibleLots = canPreview
     ? lots
-    : lots.filter((lot) => isPublicCatalogLot(lot, bundle.sale));
+    : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform));
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
 }
 
@@ -105,6 +112,7 @@ export async function listSalesForPublicApi(
       : resolved.status !== undefined
         ? { status: resolved.status, statuses: undefined }
         : {}),
+    ...(canPreview ? {} : { includeAtgOwnedDrafts: true }),
   };
   const rows = await list(deps, queryFilter);
   const data = await presentSalesWithLotsImages(
@@ -113,8 +121,13 @@ export async function listSalesForPublicApi(
     deps.mediaAssetEnricher,
   );
   if (canPreview) return { data };
+  const sales = await withSellingPlatforms(
+    deps.saleChannelReader,
+    data.map(({ sale }) => sale),
+  );
+  const enriched = data.map((row, i) => ({ sale: sales[i] ?? row.sale, lots: row.lots }));
   return {
-    data: data
+    data: enriched
       .filter(({ sale }) => isPublicCatalogSale(sale))
       .map(({ sale, lots }) => ({
         sale,
@@ -137,8 +150,9 @@ export async function listSaleLotsPageForPublicApi(
     sort: typeof opts.sort;
   };
 } | null> {
-  const sale = await deps.saleRepo.findById(saleId);
-  if (!sale) return null;
+  const saleRow = await deps.saleRepo.findById(saleId);
+  if (!saleRow) return null;
+  const sale = await withSellingPlatform(deps.saleChannelReader, saleRow);
 
   const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
   if (!canPreview && !isPublicCatalogSale(sale)) return null;
@@ -151,11 +165,14 @@ export async function listSaleLotsPageForPublicApi(
     ...(canPreview
       ? {}
       : {
-          lotStatuses: [...PUBLIC_LOT_STATUSES],
           requirePublicSale: true,
         }),
   });
-  const items = await presentLotsImages(deps.mediaUrlResolver, page.items, deps.mediaAssetEnricher);
+  const items = await presentLotsImages(
+    deps.mediaUrlResolver,
+    await withAtgLotResults(deps.saleChannelReader, sale, page.items),
+    deps.mediaAssetEnricher,
+  );
   return {
     data: {
       items,
@@ -188,6 +205,16 @@ export async function getById(deps: SaleServiceDeps, id: string): Promise<Sale |
   const row = await deps.saleRepo.findById(id);
   if (!row) return null;
   return presentSaleImages(deps.mediaUrlResolver, row, deps.mediaAssetEnricher);
+}
+
+/** Sale row plus computed ATG/LAX selling platform for public catalogue guards. */
+export async function getByIdForPublicCatalog(
+  deps: SaleServiceDeps,
+  id: string,
+): Promise<Sale | null> {
+  const row = await deps.saleRepo.findById(id);
+  if (!row) return null;
+  return withSellingPlatform(deps.saleChannelReader, row);
 }
 
 /** Batch read by ids — single DB round trip for portfolio / lot-list pricing joins. */

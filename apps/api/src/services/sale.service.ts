@@ -1,4 +1,4 @@
-import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
@@ -31,6 +31,7 @@ import {
 import {
   findByIds,
   getById,
+  getByIdForPublicCatalog,
   getByIdWithLots,
   getSaleDetailForCatalogAdmin,
   getSaleDetailForPublicApi,
@@ -63,6 +64,7 @@ export type SaleServiceOptions = {
   enforceIndividualConnectOnPublish?: boolean;
   qrCodeService?: IQrCodeService | null;
   repoFactory?: IRepositoryFactory | null;
+  saleChannelReader?: ISaleChannelReader | null;
   salePublishService: ISalePublishService;
 };
 
@@ -90,6 +92,7 @@ export class SaleService implements ISaleService {
       enforceIndividualConnectOnPublish: opts.enforceIndividualConnectOnPublish ?? false,
       qrCodeService: opts.qrCodeService ?? null,
       repoFactory: opts.repoFactory ?? null,
+      saleChannelReader: opts.saleChannelReader ?? null,
     };
     this.publishService = opts.salePublishService;
   }
@@ -218,6 +221,10 @@ export class SaleService implements ISaleService {
 
   async getById(id: string): Promise<Sale | null> {
     return getById(this.deps, id);
+  }
+
+  async getByIdForPublicCatalog(id: string): Promise<Sale | null> {
+    return getByIdForPublicCatalog(this.deps, id);
   }
 
   async findByIds(ids: string[]): Promise<Sale[]> {

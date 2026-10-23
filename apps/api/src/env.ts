@@ -81,6 +81,10 @@ const envSchema = z
     /** Cloudflare Turnstile secret; when set, register + forgot-password require `turnstileToken`. */
     TURNSTILE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().min(1).optional()),
     DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** ATG White Label sync: the API only enqueues `atg-sync` jobs; the worker calls ATG. */
+    ATG_SYNC_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
+    /** White Label origin linked from the admin ATG tab and the public ATG sale pages. */
+    ATG_WHITE_LABEL_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     VERIFY_ORIGIN: z.preprocess((val) => {
       if (val === undefined || val === "") return false;
       return val === "true" || val === true;

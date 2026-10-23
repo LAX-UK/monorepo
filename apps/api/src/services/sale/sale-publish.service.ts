@@ -7,6 +7,7 @@ import {
   scheduleJobsFailedError,
 } from "../../lib/lot-schedule-jobs.js";
 import type { ISalePublishService } from "../interfaces/sale-publish.js";
+import { assertCanCancelSaleOnAtg } from "../sale-channel-guards.js";
 import {
   publishSaleEvent,
   recordLotLifecycle,
@@ -164,6 +165,8 @@ export class SalePublishService implements ISalePublishService {
     if (!SALE_CANCELLABLE.has(sale.status)) {
       return err(new LotError("This sale cannot be cancelled"));
     }
+    const atgConflict = await assertCanCancelSaleOnAtg(this.deps.saleChannelReader, saleId);
+    if (atgConflict) return err(atgConflict);
     const lots = await this.deps.lotRepo.findBySaleId(saleId);
     for (const l of lots) {
       if (l.status === "draft" || l.status === "scheduled" || l.status === "active") {

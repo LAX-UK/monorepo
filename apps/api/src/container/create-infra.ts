@@ -7,6 +7,8 @@ import {
   bindEmailQueue,
 } from "@auction/email";
 import {
+  ATG_SYNC_QUEUE_NAME,
+  type AtgSyncQueueProducer,
   DATA_EXPORT_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
@@ -21,6 +23,7 @@ import {
   WEBHOOK_EVENTS_QUEUE_NAME,
   type WebhookEventsJobData,
   type WebhookEventsQueueProducer,
+  bindAtgSyncQueue,
   bindLegalEntityArchiveQueue,
   bindWebhookEventsQueue,
   createBullQueueOptions,
@@ -60,6 +63,8 @@ export type ContainerInfra = {
   marketingEventsBullQueue: Queue;
   payoutStatementQueue: Queue;
   dataExportQueue: Queue;
+  /** Null unless ATG_SYNC_ENABLED: the queue (and its consumer) exist only while the flag is on. */
+  atgSyncQueue: AtgSyncQueueProducer | null;
   legalEntityArchiveQueue: ReturnType<typeof bindLegalEntityArchiveQueue>;
   webhookEventsQueue: Queue<WebhookEventsJobData>;
   webhookEventsProducer: WebhookEventsQueueProducer;
@@ -109,6 +114,9 @@ export function createInfra(env: Env, db: Database): ContainerInfra {
     queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
   );
   const dataExportQueue = new Queue(DATA_EXPORT_QUEUE_NAME, queueOpts(DATA_EXPORT_QUEUE_NAME));
+  const atgSyncQueue = env.ATG_SYNC_ENABLED
+    ? bindAtgSyncQueue(new Queue(ATG_SYNC_QUEUE_NAME, queueOpts(ATG_SYNC_QUEUE_NAME)))
+    : null;
   const legalEntityArchiveQueue = bindLegalEntityArchiveQueue(
     new Queue<LegalEntityArchiveJobData>(
       LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
@@ -155,6 +163,7 @@ export function createInfra(env: Env, db: Database): ContainerInfra {
     marketingEventsBullQueue,
     payoutStatementQueue,
     dataExportQueue,
+    atgSyncQueue,
     legalEntityArchiveQueue,
     webhookEventsQueue,
     webhookEventsProducer,

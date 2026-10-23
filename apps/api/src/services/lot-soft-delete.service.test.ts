@@ -1,5 +1,9 @@
 import type { ILotSoftDeleteGuardReader } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleChannelReader,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
@@ -84,6 +88,7 @@ function createService(input: {
   jobScheduler?: ILotJobScheduler | null;
   db?: unknown;
   domainEventSink?: IDomainEventSink | null;
+  saleChannelReader?: ISaleChannelReader;
 }) {
   const jobScheduler = input.jobScheduler ?? null;
   const domainEventSink = input.domainEventSink ?? null;
@@ -94,6 +99,7 @@ function createService(input: {
     input.guardReader ?? ({} as ILotSoftDeleteGuardReader),
     input.sideEffects ?? ({} as ILotSoftDeleteSideEffects),
     orchestrator,
+    input.saleChannelReader ?? null,
   );
 }
 
@@ -333,5 +339,86 @@ describe("LotSoftDeleteService", () => {
     if (result.isErr()) {
       expect(result.error.status).toBe(400);
     }
+  });
+});
+
+describe("LotSoftDeleteService ATG guard", () => {
+  const atgReader = (numberOfBids: number) =>
+    ({
+      getSaleOwnership: vi.fn().mockResolvedValue({
+        saleStatus: "draft",
+        atgRemoteStatus: "published",
+        atgLinked: true,
+        atgSoldLotCount: 0,
+        sellingPlatform: "atg",
+      }),
+      getSaleOwnerships: vi.fn(),
+      getLotAtgState: vi.fn().mockResolvedValue({ linked: true, numberOfBids, sold: false }),
+    }) as unknown as ISaleChannelReader;
+
+  function setup(numberOfBids: number) {
+    const softDeleteLot = vi.fn().mockResolvedValue(undefined);
+    const guards = { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 };
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const svc = createService({
+      lotRepo: {
+        findById: vi.fn().mockResolvedValue(baseLot()),
+        findBySaleId: vi.fn().mockResolvedValue([baseLot(), baseLot({ id: "l2" })]),
+      } as unknown as ILotRepository,
+      saleRepo: {
+        findById: vi.fn().mockResolvedValue(baseSale()),
+        findByIds: vi.fn().mockResolvedValue([baseSale()]),
+      } as unknown as ISaleRepository,
+      guardReader: {
+        countGuardsForLot: vi.fn().mockResolvedValue(guards),
+        countGuardsForLots: vi.fn().mockResolvedValue(new Map([["l1", guards]])),
+      } as unknown as ILotSoftDeleteGuardReader,
+      sideEffects: { softDeleteLot } as unknown as ILotSoftDeleteSideEffects,
+      jobScheduler: { cancelLotJobs: vi.fn() } as unknown as ILotJobScheduler,
+      domainEventSink: {
+        publish,
+        withTx: vi.fn().mockReturnValue({ publish }),
+      } as unknown as IDomainEventSink,
+      saleChannelReader: atgReader(numberOfBids),
+    });
+    return { svc, softDeleteLot };
+  }
+
+  it("blocks single and bulk delete of a lot with ATG bids", async () => {
+    const { svc, softDeleteLot } = setup(1);
+    const single = await svc.softDelete(
+      "admin-1",
+      "staff",
+      "l1",
+      lotDeleteConfirmationPhrase("Evening lot"),
+      "auction_manager",
+    );
+    expect(single._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
+
+    const bulk = await svc.bulkSoftDelete(
+      "admin-1",
+      "staff",
+      ["l1"],
+      bulkLotDeleteConfirmationPhrase(1),
+      "auction_manager",
+    );
+    expect(bulk._unsafeUnwrap()).toMatchObject({
+      failed: 1,
+      errors: [{ lotId: "l1", message: expect.stringContaining("has bids on ATG") }],
+    });
+    expect(softDeleteLot).not.toHaveBeenCalled();
+  });
+
+  it("deletes a linked lot without ATG bids", async () => {
+    const { svc, softDeleteLot } = setup(0);
+    const result = await svc.softDelete(
+      "admin-1",
+      "staff",
+      "l1",
+      lotDeleteConfirmationPhrase("Evening lot"),
+      "auction_manager",
+    );
+    expect(result.isOk()).toBe(true);
+    expect(softDeleteLot).toHaveBeenCalled();
   });
 });

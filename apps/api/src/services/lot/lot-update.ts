@@ -8,6 +8,7 @@ import {
 import { type Result, err, ok } from "neverthrow";
 import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
+import { assertLotMovableOnAtg } from "../sale-channel-guards.js";
 import { recordLifecycle, txLot } from "./lot-mutation-context.js";
 import { mapLotUpdateDbError } from "./lot-number.js";
 import { prepareSaleAssignmentPatch } from "./lot-sale-membership.js";
@@ -65,6 +66,10 @@ export async function updateLot(
     return err(timingPatchResult.error);
   }
   const patch = timingPatchResult.value;
+  if (patch.saleId !== undefined && patch.saleId !== a.saleId) {
+    const lotAtgConflict = await assertLotMovableOnAtg(deps.saleChannelReader, lotId, a.saleId);
+    if (lotAtgConflict) return err(lotAtgConflict);
+  }
   const nextStart = patch.startTime ?? a.startTime;
   const nextEnd = patch.endTime ?? a.endTime;
   if (nextEnd <= nextStart) {

@@ -2,9 +2,10 @@ import type { Database } from "@auction/db";
 import { saleNotDeleted } from "@auction/db";
 import { lot, payment, sale, saleCategories } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
-import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { ISaleRepository, ListSalesFilter } from "../interfaces/index.js";
 import { mapSaleRow } from "../lib/entity-row-mappers.js";
+import { atgOwnedDraftSaleForStatusesSql } from "./atg-public-catalog.sql.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 import { queryAvgLotsPerSale } from "./sale/sale-analytics-queries.js";
 
@@ -26,8 +27,18 @@ function soldLotMissingSettledPayment() {
 
 function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [saleNotDeleted()];
-  if (input.statuses?.length) conditions.push(inArray(sale.status, input.statuses));
-  else if (input.status) conditions.push(eq(sale.status, input.status));
+  const statuses = input.statuses?.length
+    ? input.statuses
+    : input.status
+      ? [input.status]
+      : undefined;
+  if (statuses) {
+    const byStatus = inArray(sale.status, statuses);
+    const atgDrafts = input.includeAtgOwnedDrafts
+      ? atgOwnedDraftSaleForStatusesSql(statuses)
+      : undefined;
+    conditions.push(atgDrafts ? (or(byStatus, atgDrafts) ?? byStatus) : byStatus);
+  }
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds
     : input.categoryId

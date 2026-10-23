@@ -52,6 +52,8 @@ export type ListSalesFilter = {
   settlementStatus?: "settled" | "unsettled" | undefined;
   /** Draft sales missing lots or onsite venue details. */
   needsSetup?: boolean | undefined;
+  /** Public lists: also match draft sales owned by ATG (live matches scheduled/active, sold matches ended). */
+  includeAtgOwnedDrafts?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;

@@ -1,9 +1,19 @@
 import type { Database } from "@auction/db";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleChannelReader,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IVenueRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale, Venue } from "@auction/types";
+import type {
+  AtgLotChannelState,
+  AtgSaleOwnershipSnapshot,
+  Lot,
+  Sale,
+  Venue,
+} from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
@@ -61,6 +71,7 @@ function testSalePublishService(
     enforceIndividualConnectOnPublish: opts.enforceIndividualConnectOnPublish ?? false,
     qrCodeService: opts.qrCodeService ?? null,
     repoFactory: opts.repoFactory ?? null,
+    saleChannelReader: opts.saleChannelReader ?? null,
   });
 }
 
@@ -1747,9 +1758,11 @@ describe("SaleService.listSaleLotsPageForPublicApi", () => {
       expect.objectContaining({
         saleId: "s1",
         requirePublicSale: true,
-        lotStatuses: ["scheduled", "active", "ended"],
       }),
     );
+    // Visibility comes from the repository's public-catalogue condition, which also admits the
+    // draft lots of an ATG-owned sale; a fixed status list here would hide them.
+    expect(listCatalogLotsBySalePage.mock.calls[0]?.[0]).not.toHaveProperty("lotStatuses");
 
     const page2 = await svc.listSaleLotsPageForPublicApi(
       "s1",
@@ -2245,5 +2258,147 @@ describe("SaleService.updateDraft — auction-day photos", () => {
       ["old-key.jpg", "keep-key.jpg"],
       ["keep-key.jpg"],
     );
+  });
+});
+
+describe("SaleService one-platform-per-sale guards", () => {
+  const liveOnAtg: AtgSaleOwnershipSnapshot = {
+    saleStatus: "draft",
+    atgRemoteStatus: "published",
+    atgLinked: true,
+    atgSoldLotCount: 0,
+    sellingPlatform: "atg",
+  };
+
+  function channelReader(lotState: AtgLotChannelState): ISaleChannelReader {
+    return {
+      getSaleOwnership: vi.fn().mockResolvedValue(liveOnAtg),
+      getSaleOwnerships: vi.fn().mockResolvedValue(new Map([["s1", liveOnAtg]])),
+      getLotAtgState: vi.fn().mockResolvedValue(lotState),
+      getSoldLotIds: vi.fn().mockResolvedValue(new Set()),
+    };
+  }
+
+  function setup(lotState: AtgLotChannelState = { linked: false, numberOfBids: 0, sold: false }) {
+    const draftLot = { id: "lot-1", saleId: "s1", status: "draft", title: "Work" } as Lot;
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(baseSale({ status: "draft" })),
+      updateStatus: vi.fn(),
+    } as unknown as ISaleRepository;
+    const lotRepo = {
+      findById: vi.fn().mockResolvedValue(draftLot),
+      findBySaleId: vi.fn().mockResolvedValue([draftLot]),
+      updateStatus: vi.fn(),
+      clearSaleId: vi.fn(),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        saleChannelReader: channelReader(lotState),
+      }),
+    );
+    return { svc, saleRepo, lotRepo };
+  }
+
+  it("refuses to publish on lax.bid while the sale is live on ATG", async () => {
+    const { svc, saleRepo } = setup();
+    const result = await svc.publish("admin-1", "staff", "s1", "super_admin");
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
+    expect(saleRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("refuses to cancel the sale while it is live on ATG", async () => {
+    const { svc, saleRepo, lotRepo } = setup();
+    const result = await svc.cancel("admin-1", "staff", "s1", "super_admin");
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
+    expect(lotRepo.updateStatus).not.toHaveBeenCalled();
+    expect(saleRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("refuses to detach a lot with ATG bids but allows one without", async () => {
+    const blocked = setup({ linked: true, numberOfBids: 2, sold: false });
+    expect(
+      (await blocked.svc.detachLot("staff", "s1", "lot-1", "super_admin"))._unsafeUnwrapErr(),
+    ).toMatchObject({ status: 409, code: "lot_on_atg" });
+    expect(blocked.lotRepo.clearSaleId).not.toHaveBeenCalled();
+
+    const allowed = setup({ linked: true, numberOfBids: 0, sold: false });
+    expect((await allowed.svc.detachLot("staff", "s1", "lot-1", "super_admin")).isOk()).toBe(true);
+    expect(allowed.lotRepo.clearSaleId).toHaveBeenCalledWith("lot-1");
+  });
+
+  it("serves an ATG-owned draft to the public with its selling platform and sold lots", async () => {
+    const ended: AtgSaleOwnershipSnapshot = {
+      saleStatus: "draft",
+      atgRemoteStatus: "closed",
+      atgLinked: true,
+      atgSoldLotCount: 1,
+      sellingPlatform: "atg",
+    };
+    const soldLot = {
+      id: "lot-1",
+      saleId: "s1",
+      status: "draft",
+      title: "Work",
+      images: [],
+    } as unknown as Lot;
+    const otherLot = {
+      id: "lot-2",
+      saleId: "s1",
+      status: "draft",
+      title: "Other",
+      images: [],
+    } as unknown as Lot;
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(baseSale({ status: "draft" })),
+    } as unknown as ISaleRepository;
+    const lotRepo = {
+      findBySaleId: vi.fn().mockResolvedValue([soldLot, otherLot]),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        saleChannelReader: {
+          getSaleOwnership: vi.fn(),
+          getSaleOwnerships: vi.fn().mockResolvedValue(new Map([["s1", ended]])),
+          getLotAtgState: vi.fn(),
+          getSoldLotIds: vi.fn().mockResolvedValue(new Set(["lot-1"])),
+        },
+      }),
+    );
+
+    const detail = await svc.getSaleDetailForPublicApi("s1", undefined, undefined);
+
+    expect(detail?.data.sale).toMatchObject({ sellingPlatform: "atg", atgAuctionState: "ended" });
+    expect(detail?.data.lots.map((l) => [l.id, l.atgSold])).toEqual([
+      ["lot-1", true],
+      ["lot-2", false],
+    ]);
+  });
+
+  it("hides a plain draft sale from the public", async () => {
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(baseSale({ status: "draft" })),
+    } as unknown as ISaleRepository;
+    const lotRepo = { findBySaleId: vi.fn().mockResolvedValue([]) } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        saleChannelReader: {
+          getSaleOwnership: vi.fn(),
+          getSaleOwnerships: vi.fn().mockResolvedValue(new Map()),
+          getLotAtgState: vi.fn(),
+          getSoldLotIds: vi.fn(),
+        },
+      }),
+    );
+
+    expect(await svc.getSaleDetailForPublicApi("s1", undefined, undefined)).toBeNull();
   });
 });

@@ -1,14 +1,19 @@
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { lot, lotCategories, sale } from "@auction/db/schema";
-import type { SaleStatus } from "@auction/types";
 import { PUBLIC_SALE_STATUSES } from "@auction/validators";
-import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, or, sql } from "drizzle-orm";
 import type {
   ListCatalogLotsBySalePageInput,
   ListLotsFilter,
   ListLotsSort,
   SaleCatalogLotsSort,
 } from "../../interfaces/index.js";
+import {
+  atgOwnedDraftLotForStatusesSql,
+  publicLotCondition,
+  publicSaleCondition,
+  saleIsAtgOwnedSql,
+} from "../atg-public-catalog.sql.js";
 
 export type ListWhereInput = Omit<ListLotsFilter, "limit" | "offset" | "sort">;
 
@@ -26,24 +31,30 @@ export function publicParentSaleExists() {
       SELECT 1 FROM ${sale} AS parent_sale
       WHERE parent_sale.id = ${lot.saleId}
         AND parent_sale.deleted_at IS NULL
-        AND parent_sale.status IN (${sql.join(
-          PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
-          sql`, `,
-        )})
+        AND (
+          parent_sale.status IN (${sql.join(
+            PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
+            sql`, `,
+          )})
+          OR (parent_sale.status = 'draft' AND ${saleIsAtgOwnedSql(sql`parent_sale.id`)})
+        )
     )
   )`;
 }
 
 export function listWhere(input: ListWhereInput) {
   const conditions = [lotNotDeleted()];
-  if (input.statuses !== undefined) {
-    if (input.statuses.length === 0) {
+  const statuses = input.statuses ?? (input.status ? [input.status] : undefined);
+  if (statuses !== undefined) {
+    if (statuses.length === 0) {
       conditions.push(sql`false`);
     } else {
-      conditions.push(inArray(lot.status, input.statuses));
+      const byStatus = inArray(lot.status, statuses);
+      const atgDrafts = input.requirePublicParentSale
+        ? atgOwnedDraftLotForStatusesSql(statuses)
+        : undefined;
+      conditions.push(atgDrafts ? (or(byStatus, atgDrafts) ?? byStatus) : byStatus);
     }
-  } else if (input.status) {
-    conditions.push(eq(lot.status, input.status));
   }
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds
@@ -126,7 +137,8 @@ export function catalogLotsBySaleWhere(
   }
   if (input.requirePublicSale) {
     conditions.push(eq(sale.id, lot.saleId), saleNotDeleted());
-    conditions.push(inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]));
+    conditions.push(publicSaleCondition());
+    conditions.push(publicLotCondition());
   }
   return and(...conditions);
 }

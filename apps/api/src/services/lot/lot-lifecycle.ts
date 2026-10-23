@@ -12,6 +12,7 @@ import { assertLotPublishable } from "../../lib/lot-publish-policy.js";
 import { scheduleLotWithDraftRollback } from "../../lib/lot-schedule-jobs.js";
 import { findLotsMissingSellerConnect } from "../../lib/seller-connect-readiness.js";
 import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notification-routing.js";
+import { assertLotMovableOnAtg } from "../sale-channel-guards.js";
 import { recordLifecycle, txLot } from "./lot-mutation-context.js";
 import { CANCELLABLE, type LotServiceDeps } from "./lot-types.js";
 
@@ -123,6 +124,8 @@ export async function cancelLot(
   if (!CANCELLABLE.has(a.status)) {
     return err(new LotError("This lot cannot be cancelled"));
   }
+  const lotAtgConflict = await assertLotMovableOnAtg(deps.saleChannelReader, lotId, a.saleId);
+  if (lotAtgConflict) return err(lotAtgConflict);
   let updated: Lot;
   if (deps.transactionRunner && deps.lotLifecycleRecording) {
     updated = await deps.transactionRunner.runInTransaction(async (tx) => {

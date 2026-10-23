@@ -1,5 +1,9 @@
 import type { ILotSoftDeleteGuardReader } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleChannelReader,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -17,6 +21,7 @@ import {
   canLotSoftDelete,
   listLotSoftDeleteBlockers,
 } from "./lot-soft-delete.policy.js";
+import { assertLotMovableOnAtg } from "./sale-channel-guards.js";
 
 export type {
   LotBulkSoftDeleteError,
@@ -31,6 +36,7 @@ export class LotSoftDeleteService implements ILotSoftDeleteService {
     private readonly guardReader: ILotSoftDeleteGuardReader,
     private readonly sideEffects: ILotSoftDeleteSideEffects,
     private readonly orchestrator: CatalogSoftDeleteOrchestrator,
+    private readonly saleChannelReader: ISaleChannelReader | null = null,
   ) {}
 
   async getDeleteEligibility(lotId: string): Promise<LotDeleteEligibility | null> {
@@ -224,6 +230,8 @@ export class LotSoftDeleteService implements ILotSoftDeleteService {
     lot: Lot,
     ctx?: LotSoftDeleteContext,
   ): Promise<Result<void, LotError>> {
+    const lotAtgConflict = await assertLotMovableOnAtg(this.saleChannelReader, lot.id, lot.saleId);
+    if (lotAtgConflict) return err(lotAtgConflict);
     const resolvedCtx =
       ctx ??
       (await (async () => {

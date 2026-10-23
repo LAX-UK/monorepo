@@ -26,6 +26,7 @@ import type { Env } from "./env.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
+import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
@@ -220,6 +221,12 @@ export function createContainer(env: Env): Container {
     users: repos.adminUserReader,
     identity: identityIssuer,
   });
+
+  const atg = new AtgAdminService(
+    repos.atgLinkReader,
+    infra.atgSyncQueue,
+    env.ATG_WHITE_LABEL_BASE_URL ?? null,
+  );
 
   return {
     env,
@@ -451,7 +458,7 @@ export function createContainer(env: Env): Container {
       twoFactorRequirement: twoFactorPolicy,
       staffInvitationAccept: userMisc.staffInvitationAccept,
     }),
-    admin: { ...admin.admin, staffTwoFactorPolicy: twoFactorPolicy, staffAccess },
+    admin: { ...admin.admin, staffTwoFactorPolicy: twoFactorPolicy, staffAccess, atg },
     finance,
     platformCron,
     compliance,

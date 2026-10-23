@@ -1,6 +1,7 @@
 import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
 import type { GalleryImage } from "./gallery.js";
+import type { AtgOwnershipState } from "./selling-platform.js";
 
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type SaleStatus = (typeof saleStatuses)[number];
@@ -132,6 +133,10 @@ export type Sale = {
   /** Reusable venue reference for onsite sales; location fields remain the publish snapshot. */
   venueId?: string | null;
   status: SaleStatus;
+  /** Set on public reads of draft sales (the only status ATG can own). */
+  sellingPlatform?: AtgOwnershipState;
+  /** With `sellingPlatform: "atg"`: whether bidding is open or closed on the White Label. */
+  atgAuctionState?: "live" | "ended";
   startTime: Date;
   endTime: Date;
   previewStartTime: Date | null;

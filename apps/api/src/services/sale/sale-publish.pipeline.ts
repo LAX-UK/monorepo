@@ -10,6 +10,7 @@ import { AuthzError, LotError } from "../../lib/errors.js";
 import { assertLotPublishable } from "../../lib/lot-publish-policy.js";
 import { resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
 import { findLotsMissingSellerConnect } from "../../lib/seller-connect-readiness.js";
+import { assertCanPublishOnLax } from "../sale-channel-guards.js";
 import { recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
 import { getByIdWithLots } from "./sale-read.js";
 import type { SaleServiceDeps } from "./sale-types.js";
@@ -47,6 +48,8 @@ export async function validatePublishReadiness(
   if (sale.status !== "draft") {
     return err(new LotError("Only draft sales can be published"));
   }
+  const atgConflict = await assertCanPublishOnLax(deps.saleChannelReader, saleId);
+  if (atgConflict) return err(atgConflict);
   if (!isStartInFutureForPublish(sale.startTime)) {
     return err(new LotError("startTime must be in the future to publish"));
   }
