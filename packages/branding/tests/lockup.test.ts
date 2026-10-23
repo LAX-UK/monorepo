@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { BRAND_COLORS } from "../src/brand-identity.js";
 import { BID_MARK_INK_PATHS } from "../src/lockup/bid-lockup-parts.js";
 import { LAX_MARK_INK_PATHS } from "../src/lockup/lax-mark-paths.js";
+import { LOCKUP_COPIES } from "../src/lockup/lockup-copies.js";
 import {
   LAX_LOCKUP_DESCRIPTORS,
   LAX_LOCKUP_KINDS,
@@ -14,7 +15,6 @@ import {
   laxLockupFileName,
   laxLockupSvg,
 } from "../src/lockup/lockup.js";
-import { WORDMARK_COPIES } from "../src/lockup/wordmark-copies.js";
 
 const PUBLISHED = join(import.meta.dirname, "../public/lockups");
 const REPO_ROOT = join(import.meta.dirname, "../../..");
@@ -173,10 +173,10 @@ describe("published lockup files", () => {
     }
   });
 
-  it("keeps every served copy of the London Art Exchange lockup identical to the published file", () => {
-    for (const { path, variant } of WORDMARK_COPIES) {
+  it("keeps every copy served by an app or hosted sign-in identical to the published file", () => {
+    for (const { path, kind, variant } of LOCKUP_COPIES) {
       const copy = readFileSync(join(REPO_ROOT, path), "utf8");
-      const source = readFileSync(join(PUBLISHED, laxLockupFileName("exchange", variant)), "utf8");
+      const source = readFileSync(join(PUBLISHED, laxLockupFileName(kind, variant)), "utf8");
       expect(copy, path).toBe(source);
     }
   });
