@@ -7,7 +7,7 @@ import {
 import type { AccountActionResult } from "@/server/domain/account-action-result";
 import { normalisePhoneInput, phoneEntryLabel } from "@/server/domain/account-contact.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
-import { ACCOUNT_PHONE_CODE_LENGTH } from "@auction/identity-contracts";
+import { ACCOUNT_PHONE_CODE_LENGTH } from "@auction/identity-contracts/account";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";

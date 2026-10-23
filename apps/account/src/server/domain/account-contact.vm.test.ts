@@ -1,12 +1,12 @@
 import { ACCOUNT_CONTACT_ERRORS } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
 import {
-  buildEmailChangeConfirmationVm,
   contactRejectionMessage,
   normalisePhoneInput,
   phoneEntryLabel,
   resolveProfileContact,
 } from "./account-contact.vm";
+import { buildEmailChangeConfirmationVm } from "./email-change-confirmation.vm";
 
 const OVERVIEW = {
   email: "token@example.com",

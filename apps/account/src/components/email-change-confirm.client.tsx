@@ -1,7 +1,7 @@
 "use client";
 
 import { confirmEmailChangeAction } from "@/server/application/account-identity-actions.server";
-import { buildEmailChangeConfirmationVm } from "@/server/domain/account-contact.vm";
+import { buildEmailChangeConfirmationVm } from "@/server/domain/email-change-confirmation.vm";
 import { Button } from "@auction/ui/components/button";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useState, useTransition } from "react";
