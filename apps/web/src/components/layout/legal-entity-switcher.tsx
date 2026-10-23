@@ -112,9 +112,12 @@ export function LegalEntitySwitcher({
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{acting.displayName}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                <DomainStatusBadge domain="legalEntity" status={acting.status} />
+                {/* A personal account's status is the internal "lead"; only organisations show one. */}
                 {acting.kind === "organisation" ? (
-                  <DotStatusPill label={roleLabel(acting.role)} tone="neutral" />
+                  <>
+                    <DomainStatusBadge domain="legalEntity" status={acting.status} />
+                    <DotStatusPill label={roleLabel(acting.role)} tone="neutral" />
+                  </>
                 ) : null}
               </div>
             </div>
@@ -154,11 +157,6 @@ export function LegalEntitySwitcher({
                         {subkindLabel(m.subkind)}
                       </span>
                     </span>
-                    <DomainStatusBadge
-                      domain="legalEntity"
-                      status={m.status}
-                      className="shrink-0"
-                    />
                   </CommandItem>
                 ))}
             </CommandGroup>
@@ -289,7 +287,9 @@ const LegalEntitySwitcherTrigger = forwardRef<
         <span className="hidden min-w-0 flex-1 text-left lg:block">
           <span className="block truncate font-medium leading-tight">{acting.displayName}</span>
           <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <DomainStatusBadge domain="legalEntity" status={acting.status} />
+            {acting.kind === "organisation" ? (
+              <DomainStatusBadge domain="legalEntity" status={acting.status} />
+            ) : null}
             <span className="truncate text-on-surface-variant text-xs">
               {subkindLabel(acting.subkind)}
               {acting.kind === "organisation" ? ` · ${roleLabel(acting.role)}` : ""}
