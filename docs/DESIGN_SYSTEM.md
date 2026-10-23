@@ -200,8 +200,8 @@ A lockup is the LAX mark plus a product descriptor. `packages/branding/src/locku
 - **Which file, which context.**
   - *Inline in a page* (`LaxLockup`, and `LaxLogo` for the Shop and Art wordmark): the strokes paint with `currentColor` and the descriptor follows `--color-product-accent`, so the header tone over a hero, the site theme toggle and the OS setting all recolour it with no image filter. Prefer this wherever the lockup sits in the DOM of an app.
   - *`<img>` where the surface colour is known* (emails, social images, press downloads): the `light` or `dark` file. Light is for light surfaces, dark for dark ones. Bid's header swaps this pair with `dark:` classes, which follow its theme toggle.
-  - *`<img>` on a surface that follows the operating system* (hosted sign-in, documents): the `-auto` file, whose `<style>` switches colour with `prefers-color-scheme: dark`. It reacts to the OS only, never to a site's own toggle, and some consumers (email clients, many image proxies) ignore `<style>` in SVG, so do not use it there.
-- **Copies.** Apps and hosted sign-in serve some lockups from their own files (`packages/branding/src/lockup/lockup-copies.ts`); `generate:lockups` writes them and a test fails if one drifts.
+  - *`<img>` on a surface that follows the operating system* (hosted pages, documents): the `-auto` file, whose `<style>` switches colour with `prefers-color-scheme: dark`. It reacts to the OS only, never to a site's own toggle, and some consumers (email clients, many image proxies) ignore `<style>` in SVG, so do not use it there.
+- **Copies.** Apps serve some lockups from their own files (`packages/branding/src/lockup/lockup-copies.ts`); `generate:lockups` writes them and a test fails if one drifts.
 
 ## Conventions (read before building UI)
 

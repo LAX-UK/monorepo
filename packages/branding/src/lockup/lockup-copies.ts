@@ -8,24 +8,18 @@ export type LockupCopy = {
 };
 
 /**
- * Lockups that an app or the hosted sign-in server serves from its own files, because a deployed
- * app can only reach files inside its own package. Each is written by `generate:lockups` and
- * checked byte for byte by the lockup tests.
+ * Lockups that an app serves from its own files, because a deployed app can only reach files
+ * inside its own package. Each is written by `generate:lockups` and checked byte for byte by the
+ * lockup tests.
  *
- * Hosted sign-in follows the operating system's colour scheme and shows the file in an `<img>`, so
- * it takes the auto file. Shop and Art serve the light file for structured data and previews (the
- * on-page wordmark is inline). Bid's two full logos are its press-kit downloads and the light and
- * dark `<img>` pair its header swaps.
+ * Shop and Art serve the light file for structured data and previews (the on-page wordmark is
+ * inline). Bid's two full logos are its press-kit downloads and the light and dark `<img>` pair its
+ * header swaps.
  */
 export const LOCKUP_COPIES: readonly LockupCopy[] = [
   { path: "packages/branding/public/lax-logo.svg", kind: "exchange", variant: "light" },
   { path: "apps/art/public/brand/lax-logo.svg", kind: "exchange", variant: "light" },
   { path: "apps/shop/public/shop/lax-shop-logo.svg", kind: "exchange", variant: "light" },
-  {
-    path: "packages/auth/src/hosted-auth/assets/lax-shop-logo.svg",
-    kind: "exchange",
-    variant: "auto",
-  },
   { path: "apps/web/public/logo.svg", kind: "bid", variant: "light" },
   { path: "apps/web/public/logo-light.svg", kind: "bid", variant: "dark" },
 ];

@@ -2,7 +2,7 @@
  * Writes the static lockup SVGs in public/lockups from the lockup definition, so the files and
  * the React component can never disagree. Run from the repo root after changing the lockup
  * geometry, a product accent or a descriptor. It also refreshes the copies
- * that apps and hosted sign-in serve from their own files (lockup-copies.ts):
+ * that apps serve from their own files (lockup-copies.ts):
  *
  *   pnpm --filter @auction/branding generate:lockups
  */
