@@ -25,6 +25,7 @@ import type {
   SmsSender,
 } from "../ports/index.js";
 import { buildTwoFactorEnforcementPlugin } from "../two-factor-enforcement.js";
+import { buildRegenerateBackupCodesPlugin } from "./regenerate-backup-codes.js";
 
 function normalizeOidcScopes(scopes: unknown): string[] {
   if (Array.isArray(scopes)) return scopes.map(String);
@@ -193,6 +194,7 @@ export function buildJwtAndOidcPlugins(options: {
       },
     }),
     buildMagicLinkVerifyPlugin({ onEmailVerified }),
+    buildRegenerateBackupCodesPlugin(),
     buildTwoFactorEnforcementPlugin({ authOrigin: issuerBase }),
     buildPhoneNumberPlugin({
       phoneNumberStore: options.phoneNumberStore,

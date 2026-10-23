@@ -41,6 +41,7 @@ import {
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
 import { createAccountAddressRoutes } from "../routes/account-addresses.routes.js";
+import { createAccountBackupCodesRoutes } from "../routes/account-backup-codes.routes.js";
 import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
@@ -48,6 +49,7 @@ import { createOauthTokenManagementRoutes } from "../routes/oauth-token-manageme
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
+import { AccountBackupCodesService } from "../services/account-backup-codes.service.js";
 import { AccountContactService } from "../services/account-contact.service.js";
 import { AccountIdentityService } from "../services/account-identity.service.js";
 import { AccountPhoneService } from "../services/account-phone.service.js";
@@ -249,6 +251,32 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       readRateLimit: accountRateLimit("account-addresses-read", 120),
       writeRateLimit: accountRateLimit("account-addresses-write", 20),
       onFailure: (error) => options.log.error({ err: error }, "account_addresses_request_failed"),
+    }),
+  );
+  app.route(
+    "/api/auth",
+    createAccountBackupCodesRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      backupCodes: new AccountBackupCodesService({
+        operations: options.identityOperations,
+        // Better Auth generates, encrypts and stores the codes; only the new set leaves it.
+        regenerate: async (subjectId) =>
+          (await options.auth.api.regenerateBackupCodes({ body: { userId: subjectId } }))
+            .backupCodes,
+        notices: options.securityNotices,
+      }),
+      // Each regeneration ends the old codes, so it is capped well below the other changes.
+      rateLimit: createSubjectReadRateLimiter({
+        redis: options.redis,
+        keyPrefix: "rl:auth-issuer:account-backup-codes",
+        windowSec: 3600,
+        max: 10,
+        failClosed: true,
+        onError: (error) =>
+          options.log.warn({ err: error }, "account_backup_codes_rate_limit_unavailable"),
+      }),
+      onFailure: (error) => options.log.error({ err: error }, "account_backup_codes_failed"),
     }),
   );
   const phoneRules = AUTH_RATE_LIMIT_POLICY;

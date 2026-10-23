@@ -94,6 +94,47 @@ describe("createIssuerAccountIdentityGateway", () => {
     }
   });
 
+  describe("backup codes", () => {
+    it("asks the issuer for a new set with the access token and sign-in in the body", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ backupCodes: ["abcde-12345", "fghij-67890"] }),
+      );
+      expect(await g.regenerateBackupCodes(actor)).toEqual({
+        status: "ok",
+        value: ["abcde-12345", "fghij-67890"],
+      });
+      const { url, body } = lastRequest(fetchImpl);
+      expect(url).toBe("https://auth.internal/api/auth/lax/account-backup-codes/regenerate");
+      expect(url).not.toContain("access-token");
+      expect(Object.fromEntries(body)).toEqual({ token: "access-token", sid: "current-sid" });
+    });
+
+    it("passes the issuer's request to sign in again through", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await g.regenerateBackupCodes(actor)).toEqual({ status: "reauth_required" });
+    });
+
+    it("reports two-step verification being off as a refusal the person can act on", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "two_factor_not_enabled" }, { status: 409 }),
+      );
+      expect(await g.regenerateBackupCodes(actor)).toEqual({
+        status: "rejected",
+        reason: "two_factor_not_enabled",
+      });
+    });
+
+    it("never treats an empty or malformed answer as success", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      for (const body of [{ backupCodes: [] }, { backupCodes: [7] }, {}]) {
+        const { gateway: g } = gateway(async () => Response.json(body));
+        expect(await g.regenerateBackupCodes(actor)).toEqual({ status: "unavailable" });
+      }
+    });
+  });
+
   describe("email and phone", () => {
     it("reads the live contact details with only the access token", async () => {
       const contact = {

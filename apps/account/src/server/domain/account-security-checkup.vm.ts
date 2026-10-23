@@ -5,6 +5,9 @@ import { ACCOUNT_ROUTES } from "./account-settings.vm";
 /** Where the "Where you're signed in" list sits on the Password and security page. */
 export const SIGNED_IN_DEVICES_HREF = `${ACCOUNT_ROUTES.security}#signed-in-devices`;
 
+/** Where the backup codes section sits on the Password and security page. */
+export const BACKUP_CODES_HREF = `${ACCOUNT_ROUTES.security}#backup-codes`;
+
 export type CheckupStepId = "verify-email" | "two-step" | "backup-codes" | "sessions";
 
 export type CheckupStepVm = {
@@ -92,7 +95,7 @@ export function buildSecurityCheckup(
           : `You have ${facts.backupCodesRemaining} backup ${facts.backupCodesRemaining === 1 ? "code" : "codes"} left. Create a new set before they run out.`,
       done: false,
       actionLabel: "Get new codes",
-      href: links.manageTwoStep,
+      href: BACKUP_CODES_HREF,
     });
   }
 

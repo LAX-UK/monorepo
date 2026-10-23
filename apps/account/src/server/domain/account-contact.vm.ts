@@ -72,6 +72,7 @@ const REJECTION_MESSAGES: Record<AccountContactError, string> = {
     "That doesn't look like a valid phone number. Include your country code, for example +44 7700 900123.",
   invalid_code: "That code isn't right. Check the message and try again.",
   rate_limited: "Too many attempts. Wait a few minutes and try again.",
+  two_factor_not_enabled: "Turn on two-step verification before creating backup codes.",
 };
 
 export function contactRejectionMessage(reason: AccountContactError): string {

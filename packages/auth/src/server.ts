@@ -86,8 +86,9 @@ export type AuthEnv = {
       }) => Promise<void>)
     | undefined;
   /**
-   * When `true`, `databaseHooks.session.create.after` fires a `new-device-login` email
-   * for every new session. Enabled in production; leave unset in tests.
+   * When `true`, `databaseHooks.session.create.after` reports every new session so the issuer
+   * can email about sign-ins from a device it has not seen recently. Enabled in production;
+   * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
   /** When true, `databaseHooks.user.create.before` rejects all new auth users. */
@@ -122,6 +123,13 @@ export type Auth = {
     revokeOtherSessions(input: { headers: Headers }): Promise<unknown>;
     /** Server-only (no HTTP route): decrypts the stored backup codes for a user. */
     viewBackupCodes(input: { body: { userId: string } }): Promise<{ backupCodes: string[] }>;
+    /**
+     * Server-only (no HTTP route): replaces the stored backup codes and returns the new ones, or
+     * null when the person has no two-step verification. See buildRegenerateBackupCodesPlugin.
+     */
+    regenerateBackupCodes(input: {
+      body: { userId: string };
+    }): Promise<{ backupCodes: string[] | null }>;
     signUpEmail(input: {
       body: { name: string; email: string; password: string; callbackURL?: string };
     }): Promise<{

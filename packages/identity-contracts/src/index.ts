@@ -1,3 +1,8 @@
+export {
+  ACCOUNT_BACKUP_CODES_REGENERATE_PATH,
+  accountBackupCodesSchema,
+  type AccountBackupCodesResponse,
+} from "./account-backup-codes.js";
 export { formatDeviceLabel } from "./device-label.js";
 export {
   ACCOUNT_SECURITY_FACTS_PATH,
