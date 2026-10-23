@@ -92,6 +92,9 @@ services:
       XERO_INVOICE_DUE_DAYS: ${XERO_INVOICE_DUE_DAYS:-14}
       XERO_INVOICE_BLOCKING: ${XERO_INVOICE_BLOCKING:-false}
       XERO_POST_CONNECT_WEB_REDIRECT: ${XERO_POST_CONNECT_WEB_REDIRECT:-}
+      # ATG admin routes only enqueue; the sync itself runs in the worker.
+      ATG_SYNC_ENABLED: ${ATG_SYNC_ENABLED:-false}
+      ATG_WHITE_LABEL_BASE_URL: ${ATG_WHITE_LABEL_BASE_URL:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set STRIPE_SECRET_KEY in .env (sk_live_ in production)}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:?set STRIPE_PUBLISHABLE_KEY in .env}
       VERIFF_API_KEY: ${VERIFF_API_KEY:?set VERIFF_API_KEY in .env}
@@ -171,6 +174,21 @@ services:
       XERO_REDIRECT_URI: ${XERO_REDIRECT_URI:-}
       DOMAIN_EVENT_PUBLISH_VALIDATE: ${DOMAIN_EVENT_PUBLISH_VALIDATE:-enforce}
       WEBHOOK_EVENTS_PROCESS: ${WEBHOOK_EVENTS_PROCESS:-true}
+      # ATG White Label sync runs here only when ATG_SYNC_ENABLED=true (see docs/integrations/atg.md).
+      ATG_SYNC_ENABLED: ${ATG_SYNC_ENABLED:-false}
+      ATG_API_BASE_URL: ${ATG_API_BASE_URL:-https://api.globalauctionplatform.com}
+      ATG_API_USERNAME: ${ATG_API_USERNAME:-}
+      ATG_API_PASSWORD: ${ATG_API_PASSWORD:-}
+      ATG_CLIENT_ID: ${ATG_CLIENT_ID:-}
+      ATG_PLATFORM_CODE: ${ATG_PLATFORM_CODE:-}
+      ATG_INCREMENT_SET_ID: ${ATG_INCREMENT_SET_ID:-}
+      ATG_DEFAULT_CATEGORY: ${ATG_DEFAULT_CATEGORY:-}
+      ATG_AUCTION_TYPE: ${ATG_AUCTION_TYPE:-Timed}
+      ATG_LISTING_PRIVATE: ${ATG_LISTING_PRIVATE:-true}
+      ATG_ARTIST_PLACEMENT: ${ATG_ARTIST_PLACEMENT:-description}
+      ATG_APPROVE_BEFORE_PUBLISH: ${ATG_APPROVE_BEFORE_PUBLISH:-false}
+      ATG_TIMEZONE: ${ATG_TIMEZONE:-Europe/London}
+      ATG_POLL_INTERVAL_MS: ${ATG_POLL_INTERVAL_MS:-120000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -253,6 +271,8 @@ services:
       APP_ENV: production
       PORT: "3000"
       STRICT_BID_ELIGIBILITY_ENABLED: ${STRICT_BID_ELIGIBILITY_ENABLED:-false}
+      # Read-only ATG catalogue links on public sale and lot pages.
+      ATG_WHITE_LABEL_BASE_URL: ${ATG_WHITE_LABEL_BASE_URL:-}
       INTERNAL_API_URL: http://api:3001
       OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:?set OIDC_ISSUER_URL}
       OIDC_INTERNAL_BASE_URL: http://auth:3003
