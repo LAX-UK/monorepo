@@ -27,8 +27,6 @@ import { Inbox } from "lucide-react";
 import Link from "next/link";
 
 type PurchasesViewProps = {
-  /** Header eyebrow for the active workspace. */
-  meta: string;
   filters: PortfolioFilters;
   /** Totals over everything the person has won, ignoring filters. */
   analytics: PortfolioAnalyticsVm;
@@ -47,7 +45,6 @@ type PurchasesViewProps = {
  * due, the won lots with their payment state, and the invoices below.
  */
 export function PurchasesView({
-  meta,
   filters,
   analytics,
   kpiAnalytics,
@@ -63,7 +60,6 @@ export function PurchasesView({
 
   return (
     <DashboardListPage
-      meta={meta}
       title="Purchases"
       description="Works you have won, what you owe and your invoices."
       banner={

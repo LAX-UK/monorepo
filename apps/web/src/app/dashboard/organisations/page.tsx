@@ -21,7 +21,6 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { isOrgOnboardingInProgress } from "@/lib/legal-entity/org-onboarding-in-progress";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -48,7 +47,6 @@ export default async function OrganisationsHubPage() {
     loginNext: "/dashboard/organisations",
   });
   const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
-  const workspaceMeta = await readClientWorkspacePageMeta();
 
   let loadFailure: DashboardSliceFailure | null = null;
   let memberships: HubMembership[] = [];
@@ -97,7 +95,6 @@ export default async function OrganisationsHubPage() {
 
   return (
     <DashboardListPage
-      meta={workspaceMeta}
       title="Your organisations"
       banner={orgModuleEnabled ? <OrgSubmittedAlert /> : null}
       description="Manage organisations you belong to, respond to invitations, and continue setup."

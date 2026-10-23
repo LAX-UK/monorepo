@@ -6,7 +6,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 
 export type DashboardComplianceStripUser = Pick<
   SessionUser,
-  "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled" | "role" | "staffRole"
+  "emailVerified" | "emailStatus" | "kycStatus" | "role" | "staffRole"
 >;
 
 type DashboardComplianceStripProps = {
@@ -18,7 +18,7 @@ type DashboardComplianceStripProps = {
   includePayoutSetup?: boolean;
 };
 
-/** Server wrapper: loads KYC + address count and renders the account-readiness strip. */
+/** Server wrapper: loads KYC + address count and renders what is left to fix before paying. */
 export async function DashboardComplianceStrip({
   className,
   user: userProp,
@@ -54,13 +54,5 @@ export async function DashboardComplianceStrip({
       payoutSetup={payoutSetup}
       {...(className ? { className } : {})}
     />
-  );
-}
-
-export function DashboardComplianceStripSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={className} aria-hidden>
-      <div className="h-[52px] animate-pulse rounded-2xl border border-border-hairline bg-surface-container-high/40" />
-    </div>
   );
 }

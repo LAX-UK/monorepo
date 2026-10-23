@@ -20,7 +20,6 @@ import {
 } from "@/lib/dashboard/filters/watchlist/watchlist-filters";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
@@ -68,7 +67,6 @@ export default async function DashboardWatchlistPage({
 }) {
   const sp = await searchParams;
   const isArtistsSection = sp.section === "artists";
-  const workspaceMeta = await readClientWorkspacePageMeta();
 
   const tabs = (
     <Surface variant="inset" padding="sm">
@@ -91,7 +89,6 @@ export default async function DashboardWatchlistPage({
   if (isArtistsSection) {
     return (
       <DashboardListPage
-        meta={workspaceMeta}
         title="Watching"
         description="Track lots and artists you are following from the saleroom."
         tabs={tabs}
@@ -142,7 +139,6 @@ export default async function DashboardWatchlistPage({
 
   return (
     <DashboardListPage
-      meta={workspaceMeta}
       title="Watching"
       description="Track lots and artists you are following from the saleroom."
       tabs={tabs}

@@ -7,6 +7,10 @@ import { FilterChip } from "./filter-chip.js";
 const CHIP_BASE =
   "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
+/** Sentence case for chips that read as plain words rather than as labels. */
+const CHIP_BASE_SENTENCE =
+  "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 font-label text-sm font-medium normal-case tracking-normal transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
 const CHIP_ACTIVE = "border-primary/35 bg-primary-container/45 text-primary shadow-sm";
 const CHIP_IDLE =
   "border-border-hairline bg-surface-container-low text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-high hover:text-on-surface";
@@ -33,6 +37,8 @@ export type FilterRowProps =
       items: readonly FilterRowLinkItem[];
       label: string;
       className?: string;
+      /** `caps` (default) is the label style; `sentence` keeps the words as written. */
+      casing?: "caps" | "sentence";
       /** Optional link renderer (e.g. Next.js Link) */
       renderLink?: (props: {
         href: string;
@@ -64,7 +70,10 @@ export function FilterRow(props: FilterRowProps) {
       <div className="-mx-1 flex min-w-0 gap-2 overflow-x-auto px-1 pb-0.5 sm:flex-wrap sm:overflow-visible">
         {props.mode === "link"
           ? props.items.map((item) => {
-              const classNameChip = cn(CHIP_BASE, item.active ? CHIP_ACTIVE : CHIP_IDLE);
+              const classNameChip = cn(
+                props.casing === "sentence" ? CHIP_BASE_SENTENCE : CHIP_BASE,
+                item.active ? CHIP_ACTIVE : CHIP_IDLE,
+              );
               const content = (
                 <>
                   <span>{item.label}</span>

@@ -1,5 +1,6 @@
 import { parseBidTab } from "@/components/dashboard/bid-board-rows";
 import { BidsBoard } from "@/components/dashboard/bids-board";
+import { KycVerificationBanner } from "@/components/dashboard/kyc-verification-banner";
 import {
   type DashboardSliceFailure,
   describeDashboardSliceFailure,
@@ -7,6 +8,8 @@ import {
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildDashboardBidsBoardVm } from "@/lib/data/view-models/dashboard-bids.vm";
+import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
+import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 
 type PageProps = {
   searchParams: Promise<{ tab?: string; q?: string }>;
@@ -27,8 +30,9 @@ export async function BidsPageContent({ searchParams }: PageProps) {
   const settled = await Promise.allSettled([
     container.session.getCurrent(),
     container.bids.listMine(),
+    container.kyc.getSummary(),
   ]);
-  const [userResult, bidsResult] = settled;
+  const [userResult, bidsResult, kycResult] = settled;
   if (userResult.status === "fulfilled") {
     user = userResult.value;
   } else {
@@ -45,21 +49,44 @@ export async function BidsPageContent({ searchParams }: PageProps) {
     loadFailure = describeDashboardSliceFailure(bidsResult.reason, "bids", "Could not load bids.");
   }
 
+  // Identity checks matter here, where bids are placed and tracked, so the notice sits on this
+  // page instead of in an alert on every page. The bid panel and checkout raise their own.
+  const kycSummary = kycResult.status === "fulfilled" ? kycResult.value : null;
+  const kycOnboardingEnabled = isIdentityOnboardingEnabled();
+  const proactiveKyc =
+    !kycSummary?.requiresKyc &&
+    shouldOfferIdentityOnboarding({
+      enabled: kycOnboardingEnabled,
+      summary: kycSummary,
+      signupPersona: user?.signupPersona,
+    });
+
   const { active, won, lost } = buildDashboardBidsBoardVm(rows, user?.id, now);
 
   const artistIds = rows.map((r) => r.lot?.artistId ?? null);
   const artistNameById = await resolveArtistNames(artistIds);
 
   return (
-    <BidsBoard
-      loadFailure={loadFailure}
-      sessionFailure={sessionFailure}
-      active={active}
-      won={won}
-      lost={lost}
-      initialTab={initialTab}
-      initialQ={initialQ}
-      artistNameById={artistNameById}
-    />
+    <>
+      {kycSummary && (kycSummary.requiresKyc || proactiveKyc) ? (
+        <div className="mb-6">
+          <KycVerificationBanner
+            summary={kycSummary}
+            proactive={proactiveKyc}
+            onboardingEnabled={kycOnboardingEnabled}
+          />
+        </div>
+      ) : null}
+      <BidsBoard
+        loadFailure={loadFailure}
+        sessionFailure={sessionFailure}
+        active={active}
+        won={won}
+        lost={lost}
+        initialTab={initialTab}
+        initialQ={initialQ}
+        artistNameById={artistNameById}
+      />
+    </>
   );
 }

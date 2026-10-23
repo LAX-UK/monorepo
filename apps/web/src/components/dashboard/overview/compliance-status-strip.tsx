@@ -2,12 +2,12 @@ import { type KycCompliancePillTone, kycComplianceIdentityPill } from "@/compone
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { cn } from "@auction/ui";
 import type { DotStatusPillTone } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import {
   AlertTriangle,
-  CheckCircle2,
   Hourglass,
   type LucideIcon,
   MailCheck,
@@ -51,7 +51,7 @@ function complianceStripDotTone(tone: PillTone): DotStatusPillTone {
 }
 
 type ComplianceStatusStripProps = {
-  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
+  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus">;
   kyc: KycStatusSummaryDto | null;
   /** Number of saved addresses; 0 means none on file. */
   addressesCount: number;
@@ -64,11 +64,13 @@ type ComplianceStatusStripProps = {
   payoutSetup?: PayoutSetupPill | null;
 };
 
-/** Persistent identity & readiness strip for the dashboard.
+/**
+ * What still stands between a buyer and paying at checkout: identity not yet verified, an email
+ * that cannot be reached, no address to ship to. Anything that is already fine is left out, and
+ * with nothing to fix the strip renders nothing, so it is only ever a to-do list.
  *
- * Replaces the rotating two-banner stack as the *primary* signal of account
- * health — banners stay for time-sensitive alerts (KYC required, email
- * complained, etc.), but the strip is always visible.
+ * Buying pages do not carry it. Two-step verification and other account settings live in LAX
+ * Account, so there is no pill for them here.
  */
 export function ComplianceStatusStrip({
   user,
@@ -112,10 +114,7 @@ export function ComplianceStatusStrip({
         icon: IdentityIcon,
         label: "Identity",
         value: identityPill.value,
-        href:
-          kyc.status === "approved"
-            ? "/dashboard/settings/profile"
-            : dashboardIdentityOnboardingHref(),
+        href: dashboardIdentityOnboardingHref(),
         tone: identityPill.tone,
         ...(identityPill.hint !== undefined ? { hint: identityPill.hint } : {}),
       });
@@ -125,7 +124,7 @@ export function ComplianceStatusStrip({
         icon: ShieldCheck,
         label: "Identity",
         value: "Verified",
-        href: "/dashboard/settings/profile",
+        href: dashboardIdentityOnboardingHref(),
         tone: "ok",
       });
     }
@@ -148,7 +147,7 @@ export function ComplianceStatusStrip({
       icon: AlertTriangle,
       label: "Email",
       value: "Bouncing",
-      href: "/dashboard/settings/account",
+      href: laxAccountUrl("/account/profile"),
       tone: "danger",
     });
   } else if (user.emailStatus === "complained") {
@@ -157,7 +156,7 @@ export function ComplianceStatusStrip({
       icon: AlertTriangle,
       label: "Email",
       value: "Complaint",
-      href: "/dashboard/settings/account",
+      href: laxAccountUrl("/account/profile"),
       tone: "danger",
     });
   } else if (user.emailVerified === true) {
@@ -166,7 +165,7 @@ export function ComplianceStatusStrip({
       icon: MailCheck,
       label: "Email",
       value: "Verified",
-      href: "/dashboard/settings/account",
+      href: laxAccountUrl("/account/profile"),
       tone: "ok",
     });
   }
@@ -178,33 +177,24 @@ export function ComplianceStatusStrip({
       icon: MapPin,
       label: "Address",
       value: addressesCount > 0 ? `${addressesCount} on file` : "Add address",
-      href: "/dashboard/settings/addresses",
+      href: laxAccountUrl("/account/profile"),
       tone: addressesCount > 0 ? "ok" : "warn",
     });
   }
 
-  const twoFaOn = user.twoFactorEnabled === true;
-  pills.push({
-    id: "2fa",
-    icon: CheckCircle2,
-    label: "2FA",
-    value: twoFaOn ? "On" : "Off",
-    href: "/dashboard/settings/security/two-factor",
-    tone: twoFaOn ? "ok" : "warn",
-    hint: twoFaOn
-      ? "Authenticator sign-in is enabled"
-      : "Add an authenticator for stronger protection",
-  });
+  // Only what needs doing is shown; a pill that is fine would just be noise.
+  const todo = pills.filter((pill) => pill.tone !== "ok");
+  if (todo.length === 0) return null;
 
   return (
     <nav
-      aria-label="Account readiness"
+      aria-label="Before you pay"
       className={cn(
         "flex flex-wrap items-center gap-2 rounded-2xl border border-border-hairline bg-surface-container-lowest/60 p-3 shadow-sm",
         className,
       )}
     >
-      {pills.map((pill) => (
+      {todo.map((pill) => (
         <Link
           key={pill.id}
           href={pill.href}
@@ -221,9 +211,7 @@ export function ComplianceStatusStrip({
         >
           <span className={cn("size-2 rounded-full", "sr-only")} aria-hidden />
           <pill.icon className="size-3.5 opacity-80" aria-hidden />
-          <span className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] opacity-80">
-            {pill.label}
-          </span>
+          <span className="font-label text-xs font-medium opacity-80">{pill.label}</span>
           <DotStatusPill label={pill.value} tone={complianceStripDotTone(pill.tone)} />
         </Link>
       ))}

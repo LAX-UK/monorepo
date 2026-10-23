@@ -18,6 +18,8 @@ export type SectionTabsProps<Id extends string = string> = {
   /** Active tab id — required when items do not set `active` */
   active?: Id;
   variant?: "underline" | "pill";
+  /** `caps` (default) is the label style; `sentence` keeps the words as written. */
+  casing?: "caps" | "sentence";
   sticky?: boolean;
   className?: string;
   scrollOnNav?: boolean;
@@ -30,17 +32,23 @@ export type SectionTabsProps<Id extends string = string> = {
   }) => ReactNode;
 };
 
-const underlineLinkClass = (isActive: boolean) =>
+const underlineLinkClass = (isActive: boolean, sentence: boolean) =>
   cn(
-    "-mb-px inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-2 border-b-2 pb-2 font-label text-sm font-medium uppercase tracking-[var(--text-label-caps-tracking-tight,0.18em)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    "-mb-px inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-2 border-b-2 pb-2 font-label text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    sentence
+      ? "normal-case tracking-normal"
+      : "uppercase tracking-[var(--text-label-caps-tracking-tight,0.18em)]",
     isActive
       ? "border-on-surface text-on-surface"
       : "border-transparent text-on-surface-variant hover:text-on-surface",
   );
 
-const pillLinkClass = (isActive: boolean) =>
+const pillLinkClass = (isActive: boolean, sentence: boolean) =>
   cn(
-    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 font-label text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    sentence
+      ? "normal-case tracking-normal"
+      : "uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
     isActive
       ? "border-primary/35 bg-primary-container/45 text-primary shadow-sm"
       : "border-border-hairline bg-surface-container-lowest text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-high hover:text-on-surface",
@@ -52,6 +60,7 @@ export function SectionTabs<Id extends string>({
   items,
   active,
   variant = "underline",
+  casing = "caps",
   sticky = false,
   className,
   scrollOnNav = false,
@@ -81,7 +90,9 @@ export function SectionTabs<Id extends string>({
     return items.map((item) => {
       const isActive = item.active ?? item.id === active;
       const classNameLink =
-        variant === "pill" ? pillLinkClass(isActive) : underlineLinkClass(isActive);
+        variant === "pill"
+          ? pillLinkClass(isActive, casing === "sentence")
+          : underlineLinkClass(isActive, casing === "sentence");
       const content = (
         <>
           <span>{item.label}</span>

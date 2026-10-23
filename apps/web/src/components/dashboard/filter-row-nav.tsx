@@ -13,14 +13,23 @@ export type FilterRowNavProps = {
   className?: string;
   /** Passed to Next.js `Link` for filter chip navigation. */
   scroll?: boolean;
+  /** `caps` (default) is the label style; `sentence` keeps the words as written. */
+  casing?: "caps" | "sentence";
 };
 
 /** Next.js adapter for `FilterRow` link mode — use from Server Components instead of `renderLink`. */
-export function FilterRowNav({ label, items, className, scroll = false }: FilterRowNavProps) {
+export function FilterRowNav({
+  label,
+  items,
+  className,
+  scroll = false,
+  casing = "caps",
+}: FilterRowNavProps) {
   const filterProps: Extract<FilterRowProps, { mode: "link" }> = {
     mode: "link",
     label,
     items,
+    casing,
     renderLink: ({ href, className: chipClass, children, ...rest }) => (
       <Link href={href} scroll={scroll} className={chipClass} {...rest}>
         {children}

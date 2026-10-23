@@ -43,7 +43,7 @@ export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadg
   if (state.kind === "opensSoon") {
     const clock = formatRemaining(state.msLeft);
     return (
-      <StatusBadge variant="info" size="sm" className="max-w-full normal-case">
+      <StatusBadge variant="info" size="sm" className="max-w-full normal-case tracking-normal">
         Opens in <span className="ml-1 tabular-nums">{clock}</span>
       </StatusBadge>
     );
@@ -59,7 +59,7 @@ export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadg
         variant={presentation.variant}
         size="sm"
         {...(presentation.dot ? { dot: true } : {})}
-        className="max-w-full normal-case"
+        className="max-w-full normal-case tracking-normal"
       >
         <span className="truncate">{presentation.label}</span>
       </StatusBadge>
