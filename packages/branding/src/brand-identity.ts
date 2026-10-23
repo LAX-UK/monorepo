@@ -34,5 +34,19 @@ export const PRODUCT_ACCENTS: Readonly<Record<LaxBrandProduct, string | null>> =
   bid: BRAND_COLORS.midnight,
   shop: null,
   art: null,
-  account: null,
+  /** Deep teal: AA text colour on white (5.47:1). Never a success colour; see PRODUCT_ACCENTS_ON_DARK. */
+  account: "#0f766e",
+};
+
+/**
+ * The same accents re-tuned for dark surfaces, where the light-surface values lose contrast.
+ * `null` means the product has no dark-surface accent: its lockup falls back to a neutral.
+ * Bid's navy has no dark counterpart, so its dark lockup keeps the light-grey descriptor.
+ */
+export const PRODUCT_ACCENTS_ON_DARK: Readonly<Record<LaxBrandProduct, string | null>> = {
+  bid: null,
+  shop: null,
+  art: null,
+  /** Bright teal: about 10:1 on the Account dark page surface. */
+  account: "#2dd4bf",
 };

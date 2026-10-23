@@ -10,9 +10,11 @@
     },
     "./brand-primitives.css": "./public/brand-primitives.css",
     "./favicons/*": "./public/favicons/*",
-    "./lax-logo.svg": "./public/lax-logo.svg"
+    "./lax-logo.svg": "./public/lax-logo.svg",
+    "./lockups/*": "./public/lockups/*"
   },
   "scripts": {
+    "generate:lockups": "pnpm exec tsx scripts/generate-lockup-assets.ts",
     "build": "tsc -p tsconfig.json",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",

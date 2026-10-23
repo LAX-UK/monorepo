@@ -161,7 +161,8 @@ Set by the product owner on 2026-10-21. It applies to every LAX product: Bid, Sh
   - The shared typefaces are Montserrat (primary) and Outfit (secondary). No product adds another face, even when a Figma file uses one.
 - **One unique accent per product.** Each product owns exactly one accent colour, and no other product uses it.
   - The accent marks the product's identity: the product word in its wordmark, and optionally its own highlights.
-  - The LAX wordmark is otherwise identical across products. For example, the Bid logo is the shared black and light-gray LAX mark with "BID" in navy (`packages/auth/src/hosted-auth/assets/lax-bid-logo.svg`).
+  - The LAX mark is otherwise identical across products. The Bid logo is the shared black and light-gray LAX mark with ".BID" in navy (`packages/auth/src/hosted-auth/assets/lax-bid-logo.svg`).
+  - Every product's lockup is the same mark with a dot and a descriptor word at its lower right, set on Bid's baseline and left edge. Lockups live in `packages/branding/src/lockup` and ship as vector files from `@auction/branding/lockups/` (light and dark each). See [Lockups](#lax-lockups).
 - **Assigned accents:**
 
   | Product | Accent | Status |
@@ -169,20 +170,31 @@ Set by the product owner on 2026-10-21. It applies to every LAX product: Bid, Sh
   | LAX Bid | Midnight navy `--brand-midnight` #091F5B | Assigned |
   | LAX Shop | — | To be chosen |
   | lax.art | — | To be chosen |
-  | LAX Account | — | To be chosen |
+  | LAX Account | Deep teal `#0f766e` on light surfaces, `#2dd4bf` on dark | Assigned 2026-10-23 |
 
   Until a product's accent is chosen, that product uses the shared neutrals only. Primary actions, links and focus rings use obsidian or ink, never another product's accent.
+  Account's teal is declared as `PRODUCT_ACCENTS.account` and `PRODUCT_ACCENTS_ON_DARK.account`. It appears only on the lockup descriptor, the primary button and the focus ring, never on success states (success stays green) and never as text on `--color-surface-container-high` (4.47:1). Contrast, checked against Account's real tokens: `#0f766e` is 5.47:1 on `#ffffff` and 4.72:1 on `#eeeeee`; `#2dd4bf` is 9.93:1 on the dark page `#121414`, 9.20:1 on the dark surface `#1a1c1c` and 6.64:1 on `#333534`; white on `#0f766e` is 5.47:1 and obsidian on `#2dd4bf` is 11.28:1.
 - **Shared controls stay neutral.**
-  - `Button` default, links, focus rings, tabs, toggles and form controls use shared neutral tokens, so they look the same in every product.
+  - `Button` default, links, focus rings, tabs, toggles and form controls use shared neutral tokens, so they look the same in every product. LAX Account is the one deliberate exception: it maps its CTA button and focus ring to its teal through `--color-product-accent`, by owner decision.
   - A product accent may tint only product-identity moments: the wordmark, an optional active-nav underline, and editorial highlights. It never tints a control's meaning, and status colours never change per product.
 - **Where accents live.**
   - Accents are declared once in `@auction/branding`, as a per-product accent token keyed by product id.
   - Each app's `base.css` maps its own accent to a single semantic token, `--color-product-accent`.
   - Components never reference `--brand-midnight` or another product's accent directly.
 
-All products comply with the colour rule; none is waiting to migrate. Each non-Bid app maps links, focus rings, `--color-secondary` and the container tints to shared neutrals and declares `--color-product-accent` as its primary neutral until its accent is chosen. Because links share the text colour, they stay underlined so colour is never the only cue (WCAG 1.4.1).
+All products comply with the colour rule; none is waiting to migrate. Each non-Bid app maps links, `--color-secondary` and the container tints to shared neutrals. Shop and Art also keep focus rings neutral and declare `--color-product-accent` as their primary neutral until their accents are chosen; Account declares teal. Because links share the text colour, they stay underlined so colour is never the only cue (WCAG 1.4.1).
 
-Where a non-Bid Figma file draws navy (e.g. CTAs in the lax.art rebuild), build it with the shared neutral CTA. Three guards in `pnpm ci:shop-architecture` fail if Bid's accent (`brand-midnight`, #091F5B or #081F5B) appears in a non-Bid app: `scripts/ci/verify-shop-theme.test.mjs` for `apps/shop/src`, `scripts/ci/verify-art-theme.test.mjs` for `apps/art/src`, and `scripts/ci/verify-account-theme.test.mjs` for `apps/account/src`.
+Where a non-Bid Figma file draws navy (e.g. CTAs in the lax.art rebuild), build it with the shared neutral CTA. Three guards in `pnpm ci:shop-architecture` fail if Bid's accent (`brand-midnight`, #091F5B or #081F5B) appears in a non-Bid app (the Account guard also fails if Account's teal appears in Bid, Shop or Art, and the Art guard fails if it appears in `apps/art/src`): `scripts/ci/verify-shop-theme.test.mjs` for `apps/shop/src`, `scripts/ci/verify-art-theme.test.mjs` for `apps/art/src`, and `scripts/ci/verify-account-theme.test.mjs` for `apps/account/src`.
+
+### LAX lockups
+
+A lockup is the LAX mark plus a product descriptor. `packages/branding/src/lockup/lockup.ts` is the single definition; the files in `packages/branding/public/lockups/` are generated from it (`pnpm --filter @auction/branding generate:lockups`) and a test fails if they drift.
+
+- **Marks.** The gavel in the A is Bid's auction mark and appears only in the Bid lockup. Every other lockup (and the bare mark) uses the plain LAX: the L, a thin two-stroke A with no crossbar, the X and the grey slash, so no other product reads as an auction product.
+- **Geometry.** The L, X, slash and Bid tagline are outlined paths from the Bid master (the plain X without the foot that only meets the gavel handle, with a shorter lower-left leg); on the plain mark the X and slash sit 18 units left of Bid's, as in the shared raster logo, and the descriptor moves with them; the plain A is rebuilt from the Bid A's stroke width, slope, apex and baseline. Every descriptor is a dot then capitals, on Bid's baseline, cap height (46.14 of 287.96) and left edge (the dot at x 624.85). Bid keeps its "Auction Xchange®" tagline; Shop, Art and Account show the mark and descriptor only and use a tight frame.
+- **Letters.** Bid's `BID` uses its original outlines, because that face is not a font we have. Other words are Montserrat capitals converted to outlines at weight 720 (the weight where the stem of "I" equals BID's 11.24 units) with 4.4 units of tracking, so they need no font at runtime. Regenerate glyphs with `packages/branding/scripts/outline-descriptor-glyphs.py`.
+- **Colour.** Descriptor in the product accent, re-tuned for dark surfaces; neutral ink for Shop and Art until their accents are chosen. Bid keeps the navy and the light-grey dark variant of its master.
+- **In apps.** `LaxLockup` from `@auction/marketing-ui` renders the lockup inline: the mark follows the text colour and the descriptor follows `--color-product-accent`, so one component serves light and dark. Use the static files for emails, hosted pages and anywhere CSS variables are unavailable.
 
 ## Conventions (read before building UI)
 

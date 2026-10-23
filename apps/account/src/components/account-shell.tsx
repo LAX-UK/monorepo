@@ -1,3 +1,4 @@
+import { LaxLockup } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 
 /** Figma draws mobile only (390); wider screens keep the same content in a centred column. */
@@ -5,12 +6,10 @@ export function AccountShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-page-bg">
       <header className="border-b border-border-hairline bg-surface">
-        <div className="mx-auto flex h-16 max-w-2xl items-center px-4 sm:px-6">
-          <a
-            href="/"
-            className="font-label text-sm font-semibold tracking-[0.2em] text-on-surface uppercase"
-          >
-            LAX <span className="font-normal text-on-surface-variant">Account</span>
+        <div className="mx-auto flex h-20 max-w-2xl items-center px-4 sm:px-6">
+          <a href="/" className="inline-flex min-h-11 items-center">
+            {/* 64px tall puts the ".ACCOUNT" capitals at 10.5px, the smallest size that stays legible. */}
+            <LaxLockup kind="account" className="h-16 w-auto" />
           </a>
         </div>
       </header>
