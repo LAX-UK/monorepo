@@ -31,6 +31,7 @@ export * from "./notifications.js";
 export * from "./notification-outbox.js";
 export * from "./notification-preferences.js";
 export * from "./user-ui-preferences.js";
+export * from "./atg-sync.js";
 export * from "./user-category-interests.js";
 export * from "./saved-search.js";
 export * from "./push-subscriptions.js";

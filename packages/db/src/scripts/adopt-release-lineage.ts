@@ -7,6 +7,7 @@ import {
   APPROVED_RELEASE_HEAD,
   RELEASE_TO_MAIN_SQL_MAPPING,
   assertApprovedReleaseHead,
+  planReleaseLedgerNormalization,
 } from "../release-lineage-mapping.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../drizzle");
@@ -28,11 +29,30 @@ function verifyRenumberedSqlParity(): void {
   }
 }
 
+/** Dry-run the normalization plan against the journal using the approved release rows. */
+function printNormalizationPlan(): void {
+  const journal = JSON.parse(readFileSync(join(root, "meta/_journal.json"), "utf8")) as {
+    entries: { tag: string; when: number }[];
+  };
+  const mainWhenByTag = new Map(journal.entries.map((entry) => [entry.tag, entry.when]));
+  const approvedRows = RELEASE_TO_MAIN_SQL_MAPPING.map((mapping) => ({
+    createdAt: mapping.releaseWhen,
+    hash: mapping.sha256,
+  }));
+  for (const step of planReleaseLedgerNormalization(approvedRows, mainWhenByTag)) {
+    const target = step.toWhen === null ? "dropped" : String(step.toWhen);
+    console.log(
+      `  ${step.releaseTag}: ${step.action} ${step.fromWhen} -> ${target} (${step.mainTag})`,
+    );
+  }
+}
+
 async function main() {
   const releaseHead = process.env.RELEASE_HEAD_SHA ?? APPROVED_RELEASE_HEAD;
   assertApprovedReleaseHead(releaseHead);
   verifyRenumberedSqlParity();
   console.log(`Verified release lineage mapping for ${releaseHead}.`);
+  printNormalizationPlan();
 
   if (!apply) {
     console.log(

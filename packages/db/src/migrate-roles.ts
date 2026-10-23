@@ -218,6 +218,9 @@ export const WORKER_FULL_TABLES = [
   "marketing_attribution",
   /** Zoho CRM sync links platform ids to Zoho record ids. */
   "crm_record_link",
+  /** ATG sync jobs upsert links on push and delete lot links after DeleteLot. */
+  "atg_auction_link",
+  "atg_lot_link",
 ] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
