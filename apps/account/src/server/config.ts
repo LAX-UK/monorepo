@@ -15,6 +15,9 @@ const configSchema = z.object({
   shopAdminUrl: z.string().url().optional(),
   shopPublicUrl: z.string().url().optional(),
   laxArtPublicUrl: z.string().url().optional(),
+  /** Server-to-server base URLs of the product APIs that answer for a person's portfolio. */
+  bidApiUrl: z.string().url().optional(),
+  shopApiUrl: z.string().url().optional(),
 });
 
 export type LaxAccountConfig = z.infer<typeof configSchema>;
@@ -41,6 +44,13 @@ export function loadLaxAccountConfig(source: NodeJS.ProcessEnv = process.env): L
       (source.LAX_SHOP_ADMIN_URL ?? source.SHOP_ADMIN_URL)?.trim().replace(/\/+$/, "") || undefined,
     shopPublicUrl: source.LAX_SHOP_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
     laxArtPublicUrl: source.LAX_ART_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
+    bidApiUrl:
+      (source.LAX_BID_API_URL ?? source.INTERNAL_API_URL ?? source.NEXT_PUBLIC_API_URL)
+        ?.trim()
+        .replace(/\/+$/, "") || undefined,
+    shopApiUrl:
+      (source.LAX_SHOP_API_URL ?? source.SHOP_API_BASE_URL)?.trim().replace(/\/+$/, "") ||
+      undefined,
   });
   if (!parsed.success) {
     console.error(parsed.error.flatten());

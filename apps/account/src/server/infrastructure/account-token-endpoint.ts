@@ -1,7 +1,11 @@
 import { type TokenEndpoint, createFetchTokenEndpoint } from "@auction/identity-rp";
 import type { LaxAccountConfig } from "../config";
 
-export function createAccountTokenEndpoint(config: LaxAccountConfig): TokenEndpoint {
+/** Sign-in and refresh may wait on the issuer; a page that exchanges tokens passes a shorter limit. */
+export function createAccountTokenEndpoint(
+  config: LaxAccountConfig,
+  timeoutMs = 15_000,
+): TokenEndpoint {
   return createFetchTokenEndpoint({
     tokenEndpointUrl: `${config.oidcInternalIssuer}/api/auth/oauth2/token`,
     auth: {
@@ -9,6 +13,6 @@ export function createAccountTokenEndpoint(config: LaxAccountConfig): TokenEndpo
       clientId: config.oidcClientId,
       clientSecret: config.oidcClientSecret,
     },
-    timeoutMs: 15_000,
+    timeoutMs,
   });
 }
