@@ -80,7 +80,7 @@ export function SaleMobileSummaryBar({
         </div>
         <Link
           href="#catalog"
-          className="shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
+          className="shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold text-on-surface-variant"
         >
           View results
         </Link>
@@ -114,7 +114,7 @@ export function SaleMobileSummaryBar({
             href={streamUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on"
+            className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold text-cta-on"
           >
             <LiveDot className="live-dot-pulse h-2 w-2" />
             Watch live
@@ -127,7 +127,7 @@ export function SaleMobileSummaryBar({
             sale={sale}
             lotTitle={sale.title}
             locationLine={locationLine}
-            className="h-auto shrink-0 rounded-sm px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+            className="h-auto shrink-0 rounded-sm px-4 py-3 font-label text-xs font-bold"
           />
         );
       }

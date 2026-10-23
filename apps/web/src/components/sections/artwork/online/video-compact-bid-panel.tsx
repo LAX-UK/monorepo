@@ -65,7 +65,7 @@ export function VideoCompactBidPanel() {
                   setCompactExpanded(true);
                 }
               }}
-              className="shrink-0 rounded-sm bg-cta-bg px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
+              className="shrink-0 rounded-sm bg-cta-bg px-5 py-2.5 font-label text-xs font-bold text-cta-on shadow-sm hover:bg-cta-bg/90"
             >
               {step === 2 ? "Confirm bid" : "Bid"}
             </Button>

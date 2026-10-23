@@ -109,7 +109,7 @@ export async function ArtArtworksCataloguePage({
 
         {vm.nextPageHref ? (
           <nav aria-label="Pagination" className="flex justify-center">
-            <Button asChild variant="outline" className="min-h-11 font-label uppercase">
+            <Button asChild variant="outline" className="min-h-11 font-label">
               <Link href={vm.nextPageHref}>Next page</Link>
             </Button>
           </nav>

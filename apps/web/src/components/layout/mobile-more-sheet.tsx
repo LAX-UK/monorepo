@@ -176,7 +176,7 @@ export function MobileMoreSheet({
               onOpenChange(false);
               openCommandPalette();
             }}
-            className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary-container/15 px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary transition-colors hover:bg-primary-container/25"
+            className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary-container/15 px-4 font-label text-xs text-primary transition-colors hover:bg-primary-container/25"
           >
             <Compass className="size-4 shrink-0" aria-hidden />
             Quick go
@@ -253,7 +253,7 @@ export function MobileMoreSheet({
             </div>
             <ThemeToggle />
           </div>
-          <LogoutButton className="min-h-11 w-full justify-center rounded-md border border-border-hairline px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
+          <LogoutButton className="min-h-11 w-full justify-center rounded-md border border-border-hairline px-4 font-label text-xs text-on-surface hover:bg-surface-container-high" />
         </div>
       </BottomSheetContent>
     </BottomSheet>

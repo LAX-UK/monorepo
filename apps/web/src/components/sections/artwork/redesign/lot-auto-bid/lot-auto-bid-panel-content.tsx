@@ -108,7 +108,7 @@ export function LotAutoBidPanelContent(view: PanelView) {
                   disabled={disabled || saving || clearing}
                   onClick={() => onStepSelect(s.toFixed(2))}
                   className={cn(
-                    "rounded-md border px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-wider transition-colors",
+                    "rounded-md border px-3 py-1.5 font-label text-xs font-semibold transition-colors",
                     selected
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-outline-variant/40 text-on-surface-variant hover:border-link/40 hover:text-link",
@@ -144,7 +144,7 @@ export function LotAutoBidPanelContent(view: PanelView) {
           type="button"
           disabled={disabled || saving || clearing}
           onClick={() => void onSave()}
-          className="h-auto rounded-sm bg-cta-bg px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on"
+          className="h-auto rounded-sm bg-cta-bg px-4 py-2 font-label text-xs font-bold text-cta-on"
         >
           {saving ? "Saving…" : "Save auto-bid"}
         </Button>
@@ -153,7 +153,7 @@ export function LotAutoBidPanelContent(view: PanelView) {
           variant="outline"
           disabled={disabled || saving || clearing || !isActive}
           onClick={onClearRequest}
-          className="h-auto px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+          className="h-auto px-4 py-2 font-label text-xs"
         >
           {clearing ? "Clearing…" : "Clear auto-bid"}
         </Button>

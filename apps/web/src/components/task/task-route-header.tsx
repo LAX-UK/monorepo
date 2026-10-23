@@ -14,7 +14,7 @@ function TaskHeaderBackLink({ className, hidden }: { className?: string; hidden?
       size="sm"
       asChild
       className={cn(
-        "min-h-[var(--tap-target-min,44px)] shrink-0 gap-1 px-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-on-surface",
+        "min-h-[var(--tap-target-min,44px)] shrink-0 gap-1 px-2 font-label text-xs font-semibold text-on-surface-variant hover:text-on-surface",
         className,
       )}
       tabIndex={hidden ? -1 : undefined}

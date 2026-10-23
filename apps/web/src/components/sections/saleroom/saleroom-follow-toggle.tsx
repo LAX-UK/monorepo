@@ -125,7 +125,7 @@ export function SaleroomFollowToggle({
       disabled={busy}
       aria-pressed={following}
       onClick={() => void toggle()}
-      className={`h-auto rounded-full font-label font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${sizeClasses} ${
+      className={`h-auto rounded-full font-label font-bold ${sizeClasses} ${
         following
           ? "bg-primary-container text-on-primary-container hover:bg-primary-container hover:opacity-95"
           : "border-outline-variant/60 bg-surface-container-high text-on-surface hover:border-link hover:bg-surface-container-high hover:text-link"

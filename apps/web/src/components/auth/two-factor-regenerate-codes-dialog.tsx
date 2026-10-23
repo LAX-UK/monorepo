@@ -125,7 +125,7 @@ export function TwoFactorRegenerateCodesDialog({
               <Button
                 type="button"
                 variant="cta"
-                className="w-full font-headline uppercase"
+                className="w-full font-headline"
                 onClick={() => onOpenChange(false)}
               >
                 Close

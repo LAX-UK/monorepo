@@ -69,7 +69,7 @@ export function ArtistWatchToggle({
       aria-pressed={watching}
       onClick={() => void toggle()}
       className={cn(
-        "h-auto min-h-11 gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
+        "h-auto min-h-11 gap-2 rounded-md px-4 py-2 font-label text-xs font-bold",
         FOCUS_RING,
         watching
           ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"

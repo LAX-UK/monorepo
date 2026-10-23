@@ -61,7 +61,7 @@ export function ActivateSetPasswordForm({
         <Button
           type="button"
           variant="ghost"
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+          className="font-label text-xs"
           onClick={() => void onSkip()}
           disabled={loading}
         >

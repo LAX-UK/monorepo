@@ -223,7 +223,7 @@ const RENDERERS: {
       <p className={HEADING_CLASS[3]}>{block.title}</p>
       {block.body ? <p className="max-w-prose text-on-surface-variant">{block.body}</p> : null}
       {isSafeEditorialHref(block.href) ? (
-        <Button asChild size="lg" className="min-h-11 font-label uppercase tracking-wide">
+        <Button asChild size="lg" className="min-h-11 font-label">
           <ArtEditorialLink href={block.href}>{block.buttonLabel}</ArtEditorialLink>
         </Button>
       ) : null}

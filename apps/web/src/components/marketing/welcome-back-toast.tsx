@@ -14,7 +14,7 @@ export function WelcomeBackToast() {
       <p className="mb-3 font-body text-sm">You&apos;re signed in. Continue where you left off.</p>
       <Link
         href={homeHref}
-        className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary"
+        className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-bold text-on-primary"
       >
         {homeLabel}
       </Link>

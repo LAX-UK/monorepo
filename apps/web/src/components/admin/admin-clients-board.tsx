@@ -192,7 +192,7 @@ function ClientDrawerActions({
 }) {
   return (
     <div className="space-y-4">
-      <Button variant="secondary" className="w-full font-label uppercase" asChild>
+      <Button variant="secondary" className="w-full font-label" asChild>
         <Link href={buildPeopleDetailHref(`/admin/clients/${u.id}`, listReturnTarget)}>
           Open full profile
         </Link>

@@ -69,7 +69,7 @@ function InlineActionButton({
       size="sm"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1.5 font-label text-[11px] uppercase tracking-wide"
+      className="inline-flex items-center gap-1.5 font-label text-[11px]"
       {...rest}
     >
       {children}

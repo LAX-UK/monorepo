@@ -13,7 +13,7 @@ const buttonVariants = cva(
         default: "bg-primary text-on-primary shadow hover:opacity-95",
         /** Gradient primary CTA (dashboard / auth flows). */
         primary:
-          "rounded-md bg-gradient-to-br from-primary to-primary-container font-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-sm hover:opacity-95",
+          "rounded-md bg-gradient-to-br from-primary to-primary-container font-label font-semibold text-on-primary shadow-sm hover:opacity-95",
         destructive: "bg-error text-on-error shadow-sm hover:opacity-95",
         success: "bg-success text-on-success shadow-sm hover:opacity-95",
         outline:
@@ -21,25 +21,25 @@ const buttonVariants = cva(
         secondary: "bg-secondary-container text-on-secondary-container shadow-sm hover:opacity-95",
         /** Bordered label-caps secondary (legacy app Button). */
         secondaryOutline:
-          "rounded-md border border-border-hairline bg-transparent font-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low",
+          "rounded-md border border-border-hairline bg-transparent font-label font-semibold text-on-surface hover:bg-surface-container-low",
         ghost: "hover:bg-surface-container-high hover:text-on-surface",
         link: "text-primary underline-offset-4 hover:underline",
         /** Text link with underline-on-hover (legacy app tertiary). */
         tertiary:
-          "h-auto min-h-0 rounded-none border-b border-primary/0 bg-transparent p-0 px-0 py-2 font-label text-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary shadow-none hover:border-primary focus-visible:ring-accent-brand",
+          "h-auto min-h-0 rounded-none border-b border-primary/0 bg-transparent p-0 px-0 py-2 font-label text-label font-semibold text-primary shadow-none hover:border-primary focus-visible:ring-accent-brand",
         ctaLink:
-          "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-none hover:underline focus-visible:ring-accent-brand",
+          "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold text-primary shadow-none hover:underline focus-visible:ring-accent-brand",
         /** Underlined label-caps text action with a 44px tap target (card “Enquire”, inline actions). */
         underline:
-          "rounded-none bg-transparent font-label text-xs font-semibold uppercase tracking-[0.18em] text-on-surface underline decoration-1 underline-offset-4 shadow-none hover:decoration-2",
+          "rounded-none bg-transparent font-label text-xs font-semibold text-on-surface underline decoration-1 underline-offset-4 shadow-none hover:decoration-2",
         /** Primary marketing CTA (solid) */
         cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-brand",
         /** “Join live” style — border + label caps */
         liveJoin:
-          "rounded border border-brand-100 bg-transparent font-label text-base font-semibold uppercase tracking-wide text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
+          "rounded border border-brand-100 bg-transparent font-label text-base font-semibold text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
         /** Text “View all” with chevron slot — pair with `asChild` + Link */
         chevron:
-          "h-auto min-h-[44px] rounded-none bg-transparent p-0 font-label text-base font-semibold tracking-[0.8px] text-brand-900 shadow-none hover:underline focus-visible:ring-accent-brand dark:text-on-surface",
+          "h-auto min-h-[44px] rounded-none bg-transparent p-0 font-label text-base font-semibold text-brand-900 shadow-none hover:underline focus-visible:ring-accent-brand dark:text-on-surface",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -54,7 +54,7 @@ const buttonVariants = cva(
         /** Text-shaped controls that keep the 44px tap target */
         inline: "h-auto min-h-[var(--tap-target-min,44px)] px-0 py-0",
         /** Full-width auth / hero primary button */
-        xl: "h-[60px] min-h-[44px] w-full px-8 py-[18px] text-base font-semibold leading-6 tracking-wide",
+        xl: "h-[60px] min-h-[44px] w-full px-8 py-[18px] text-base font-semibold leading-6",
       },
     },
     defaultVariants: {

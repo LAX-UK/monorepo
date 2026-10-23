@@ -55,7 +55,7 @@ export function renderBootstrapError(mount: HTMLElement, onRetry: () => void): v
   }
 
   const actions = el("div", "rsvp-actions");
-  const retry = el("button", "rsvp-btn rsvp-btn-primary", "TRY AGAIN") as HTMLButtonElement;
+  const retry = el("button", "rsvp-btn rsvp-btn-primary", "Try again") as HTMLButtonElement;
   retry.type = "button";
   retry.addEventListener("click", onRetry);
   actions.append(retry);

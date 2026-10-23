@@ -21,3 +21,22 @@ describe("Button underline variant", () => {
     expect(screen.getByRole("button", { name: "Enquire" }).className).not.toContain("px-8");
   });
 });
+
+describe("Button label case", () => {
+  it.each([
+    "default",
+    "primary",
+    "secondaryOutline",
+    "tertiary",
+    "ctaLink",
+    "underline",
+    "cta",
+    "liveJoin",
+    "chevron",
+  ] as const)("keeps %s labels in the case they are written in", (variant) => {
+    render(<Button variant={variant}>Sign in</Button>);
+    const { className } = screen.getByRole("button", { name: "Sign in" });
+    expect(className).not.toContain("uppercase");
+    expect(className).not.toMatch(/tracking-\[(var\(--text-label-caps|0\.18em)/);
+  });
+});

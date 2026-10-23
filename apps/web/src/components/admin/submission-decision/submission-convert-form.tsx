@@ -99,7 +99,7 @@ export function SubmissionConvertForm({
                     setCreateOpen(true);
                   }}
                   disabled={pending}
-                  className="inline-flex h-auto min-h-0 items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-auto min-h-0 items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Use submitter as artist
                 </Button>

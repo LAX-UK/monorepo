@@ -71,19 +71,11 @@ function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
       header: "",
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button
-            variant="secondaryOutline"
-            className="px-4 py-2 text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-            asChild
-          >
+          <Button variant="secondaryOutline" className="px-4 py-2 text-xs" asChild>
             <Link href={`/dashboard/submissions/${row.original.id}`}>View</Link>
           </Button>
           {row.original.status === "draft" ? (
-            <Button
-              variant="primary"
-              className="px-4 py-2 text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-              asChild
-            >
+            <Button variant="primary" className="px-4 py-2 text-xs" asChild>
               <Link href={`/dashboard/submissions/${row.original.id}`}>Edit</Link>
             </Button>
           ) : null}

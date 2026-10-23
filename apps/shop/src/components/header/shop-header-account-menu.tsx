@@ -122,7 +122,7 @@ export function ShopGuestAccountMenu({
             <ShopAuthLink
               href={registerHref}
               className={cn(
-                "inline-flex min-h-11 w-full items-center justify-center rounded bg-cta-bg px-3 py-2 text-center font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on transition-opacity hover:opacity-95",
+                "inline-flex min-h-11 w-full items-center justify-center rounded bg-cta-bg px-3 py-2 text-center font-label text-xs font-semibold text-cta-on transition-opacity hover:opacity-95",
                 FOCUS_RING,
               )}
               {...(onNavigate ? { onClick: onNavigate } : {})}

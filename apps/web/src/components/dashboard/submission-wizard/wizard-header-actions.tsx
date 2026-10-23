@@ -50,7 +50,7 @@ export function WizardHeaderActions({
             type="button"
             variant="secondaryOutline"
             size="sm"
-            className="font-label text-xs uppercase tracking-wider"
+            className="font-label text-xs"
             disabled={isSubmitting}
             confirmTitle="Withdraw submission"
             confirmBody="Withdraw this submission? You can start a new submission later if needed."
@@ -65,7 +65,7 @@ export function WizardHeaderActions({
           type="button"
           variant="outline"
           size="sm"
-          className="font-label text-xs uppercase tracking-wider"
+          className="font-label text-xs"
           disabled={isSubmitting}
           onClick={onFinishLater}
           data-testid="wizard-finish-later"

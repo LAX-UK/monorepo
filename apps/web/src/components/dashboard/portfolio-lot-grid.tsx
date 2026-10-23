@@ -168,33 +168,25 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                   <Button
                     type="button"
                     variant="secondaryOutline"
-                    className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                    className="px-4 py-2 font-label text-xs"
                     onClick={() => setOpenId(row.id)}
                   >
                     Details
                   </Button>
                   {row.paymentStatus !== "captured" ? (
                     row.complianceReason ? (
-                      <Button
-                        variant="secondary"
-                        className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-                        asChild
-                      >
+                      <Button variant="secondary" className="px-4 py-2 font-label text-xs" asChild>
                         <Link href={complianceActionHref(row)}>View requirements</Link>
                       </Button>
                     ) : (
-                      <Button
-                        variant="primary"
-                        className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-                        asChild
-                      >
+                      <Button variant="primary" className="px-4 py-2 font-label text-xs" asChild>
                         <Link href={row.checkoutHref}>Complete checkout</Link>
                       </Button>
                     )
                   ) : (
                     <Button
                       variant="secondaryOutline"
-                      className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                      className="px-4 py-2 font-label text-xs"
                       asChild
                     >
                       <Link href={row.checkoutHref}>View details</Link>

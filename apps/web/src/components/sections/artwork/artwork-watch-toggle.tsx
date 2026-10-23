@@ -29,10 +29,10 @@ const lotBtnClass =
   "box-border inline-flex h-11 min-w-0 w-full items-center justify-center gap-2 rounded-[4px] border border-brand-200 bg-transparent px-3 sm:px-6 font-body text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
 
 const stickyBarCtaClass =
-  "h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90 gap-2";
+  "h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold text-cta-on shadow-sm hover:bg-cta-bg/90 gap-2";
 
 const stickyBarLinkClass =
-  "inline-flex shrink-0 items-center gap-2 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
+  "inline-flex shrink-0 items-center gap-2 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold text-cta-on shadow-sm";
 
 export function ArtworkWatchToggle({
   lotId,
@@ -113,7 +113,7 @@ export function ArtworkWatchToggle({
     return (
       <Link
         href={loginHref}
-        className="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container"
+        className="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-on-surface transition-colors hover:bg-surface-container"
       >
         <LogIn className="size-4 shrink-0" aria-hidden />
         {signInLabel}
@@ -230,7 +230,7 @@ export function ArtworkWatchToggle({
         disabled={busy}
         aria-pressed={watching}
         onClick={handleToggle}
-        className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${
+        className={`h-auto gap-2 rounded-md px-4 py-2 font-label text-xs font-bold ${
           watching
             ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"
             : "bg-surface-container-high text-on-surface hover:bg-surface-container"

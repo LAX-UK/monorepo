@@ -66,7 +66,7 @@ export function ArtEnquirySheet({
         ref={triggerRef}
         type="button"
         size="lg"
-        className="min-h-11 w-full font-label uppercase tracking-wide sm:w-auto"
+        className="min-h-11 w-full font-label sm:w-auto"
         onClick={() => setOpen(true)}
         data-testid="art-enquire-trigger"
       >
@@ -90,7 +90,7 @@ export function ArtEnquirySheet({
                 <Button
                   type="button"
                   variant="outline"
-                  className="min-h-11 w-full font-label uppercase"
+                  className="min-h-11 w-full font-label"
                   onClick={() => onOpenChange(false)}
                 >
                   Close

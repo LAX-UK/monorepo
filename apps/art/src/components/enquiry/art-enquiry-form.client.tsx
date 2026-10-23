@@ -226,12 +226,7 @@ export function ArtEnquiryForm({
         <Input id={`${formId}-website`} name="website" tabIndex={-1} autoComplete="off" />
       </div>
       {notice}
-      <Button
-        type="submit"
-        size="lg"
-        disabled={pending}
-        className="min-h-11 w-full font-label uppercase tracking-wide"
-      >
+      <Button type="submit" size="lg" disabled={pending} className="min-h-11 w-full font-label">
         {pending ? "Sending…" : "Send enquiry"}
       </Button>
       <p className="text-sm leading-5 text-on-surface-variant">

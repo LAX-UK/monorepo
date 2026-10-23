@@ -39,7 +39,7 @@ export function ArtArtistFollowButton({
         aria-pressed={active}
         aria-busy={pending || undefined}
         data-testid="art-artist-follow"
-        className={cn("min-h-11 min-w-32 font-label uppercase tracking-wide", className)}
+        className={cn("min-h-11 min-w-32 font-label", className)}
         onClick={() => {
           if (!pending) toggle(!active);
         }}

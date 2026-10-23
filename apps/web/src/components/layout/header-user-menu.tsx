@@ -226,7 +226,7 @@ export function HeaderUserMenu({
               onBeforeNavigate={closeMenu}
               role="menuitem"
               data-account-menu-item=""
-              className="block w-full px-3 py-2.5 text-left font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:text-on-surface dark:hover:bg-surface-container-low"
+              className="block w-full px-3 py-2.5 text-left font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:text-on-surface dark:hover:bg-surface-container-low"
             />
           </div>
         </ChromePopoverPanel>

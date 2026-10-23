@@ -18,7 +18,7 @@ export function VerifyPendingMissingEmail() {
           </p>
           <Link
             href="/register"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-6 py-3 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-6 py-3 font-label text-xs font-semibold text-on-primary"
           >
             Sign up again
           </Link>

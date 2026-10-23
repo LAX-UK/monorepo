@@ -80,7 +80,7 @@ export function BidForm({
           size="sm"
           disabled={biddingDisabled}
           onClick={onUseMinimum}
-          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
+          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
           {typeProfile.minButtonLabel === "accept"
             ? `Accept ${formatMoney(minStr)}`
@@ -98,7 +98,7 @@ export function BidForm({
                   size="sm"
                   disabled={biddingDisabled}
                   onClick={() => onAmountChange(v.toFixed(2))}
-                  className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
+                  className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
                 >
                   {label}
                 </Button>
@@ -110,7 +110,7 @@ export function BidForm({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-auto font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-link"
+            className="h-auto font-label text-xs font-bold text-on-surface-variant hover:text-link"
             onClick={() => document.getElementById(amountInputId)?.focus()}
           >
             Enter custom

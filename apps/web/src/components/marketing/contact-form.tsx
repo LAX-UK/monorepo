@@ -265,10 +265,7 @@ function ContactSubmitButton({
       type="submit"
       variant="cta"
       disabled={loading || rest.disabled}
-      className={cn(
-        "px-7 py-3.5 font-label text-xs font-semibold uppercase tracking-[0.04em]",
-        className,
-      )}
+      className={cn("px-7 py-3.5 font-label text-xs font-semibold", className)}
       {...rest}
     >
       {loading ? "Sending\u2026" : children}

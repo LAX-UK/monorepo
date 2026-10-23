@@ -9,11 +9,7 @@ type Props = {
 export function ResetFiltersLink({ active, href }: Props) {
   if (!active) return null;
   return (
-    <Button
-      variant="ghost"
-      asChild
-      className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
-    >
+    <Button variant="ghost" asChild className="min-h-11 font-label text-xs text-secondary">
       <Link href={href}>Reset filters</Link>
     </Button>
   );
