@@ -15,6 +15,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.41"
+  },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "typescript": "^5.7.3",

@@ -29,3 +29,29 @@ export {
   isAllowedLaxProductUrl,
   normalizeProductBaseUrl,
 } from "./safe-product-url.js";
+export { type CurrencyTotal, sumByCurrency } from "./currency-totals.js";
+export * from "./lax-portfolio-contract.v1.js";
+export {
+  type PortfolioHeaderVm,
+  buildPortfolioHeader,
+  costBasisLines,
+} from "./portfolio-header.vm.js";
+export {
+  type AllocationCount,
+  type HoldingRowVm,
+  type HoldingsFilter,
+  type HoldingsSort,
+  type HoldingsVm,
+  type PortfolioEmptyState,
+  UNKNOWN_ARTIST_LABEL,
+  buildHoldings,
+  holdingsFilterOptions,
+  portfolioEmptyState,
+} from "./portfolio-holdings.vm.js";
+export {
+  type MoneyBusinessGroupVm,
+  type MoneyDirectionSectionVm,
+  type MoneyFilter,
+  type MoneyVm,
+  buildMoney,
+} from "./portfolio-money.vm.js";
