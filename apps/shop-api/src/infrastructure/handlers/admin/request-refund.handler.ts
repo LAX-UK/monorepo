@@ -1,5 +1,5 @@
 import { shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
-import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { type AdminRefundReason, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type RefundLineInput, remainingRefundablePence } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../../../application/admin/operator-context.js";
@@ -14,6 +14,9 @@ export type RequestRefundCommand = {
   amountPence: number;
   actorSubjectId: string;
   idempotencyKey: string;
+  /** Why staff refunded; kept in the audit entry for the order's timeline. */
+  reason?: AdminRefundReason;
+  note?: string;
   operatorContext?: import("../../../application/admin/operator-context.js").ShopOperatorContext;
 };
 
@@ -124,6 +127,9 @@ export function createRequestRefundHandler(deps: {
             afterJson: {
               orderId: command.orderId,
               amountPence: command.amountPence,
+              ...(command.orderLineId ? { orderLineId: command.orderLineId } : {}),
+              ...(command.reason ? { reason: command.reason } : {}),
+              ...(command.note ? { note: command.note } : {}),
               ...operatorContextAuditFields(command.operatorContext),
             },
           });

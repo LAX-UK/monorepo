@@ -1,4 +1,9 @@
-import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import {
+  ADMIN_REFUND_NOTE_MAX_LENGTH,
+  ADMIN_REFUND_REASONS,
+  type AdminRefundReason,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -36,6 +41,8 @@ const RequestRefundBodySchema = Type.Object({
   orderId: Type.String({ format: "uuid" }),
   orderLineId: Type.Optional(Type.String({ format: "uuid" })),
   amountPence: Type.Integer({ minimum: 1 }),
+  reason: Type.Optional(Type.Union(ADMIN_REFUND_REASONS.map((reason) => Type.Literal(reason)))),
+  note: Type.Optional(Type.String({ maxLength: ADMIN_REFUND_NOTE_MAX_LENGTH })),
 });
 
 const MarkPayoutPaidBodySchema = Type.Object({
@@ -197,6 +204,8 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         orderId: string;
         orderLineId?: string;
         amountPence: number;
+        reason?: AdminRefundReason;
+        note?: string;
       };
       const idempotencyKey = requireIdempotencyKey(request);
       const result = await deps.requestRefund({
@@ -205,6 +214,8 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         idempotencyKey,
         actorSubjectId: subject,
         ...(body.orderLineId !== undefined ? { orderLineId: body.orderLineId } : {}),
+        ...(body.reason !== undefined ? { reason: body.reason } : {}),
+        ...(body.note?.trim() ? { note: body.note.trim() } : {}),
       });
       return { id: result.refundId, status: result.status };
     },

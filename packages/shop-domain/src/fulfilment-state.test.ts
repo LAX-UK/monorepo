@@ -3,6 +3,8 @@ import {
   SHOP_FULFILMENT_STATUSES,
   type ShopFulfilmentStatus,
   canTransitionFulfilmentStatus,
+  isShopFulfilmentStatus,
+  nextFulfilmentStatuses,
 } from "./fulfilment-state.js";
 
 const ALL = SHOP_FULFILMENT_STATUSES;
@@ -25,5 +27,19 @@ function expectedAllowed(from: ShopFulfilmentStatus): Set<ShopFulfilmentStatus> 
 describe("fulfilment transitions", () => {
   it.each(ALL.flatMap((from) => ALL.map((to) => [from, to] as const)))("%s -> %s", (from, to) => {
     expect(canTransitionFulfilmentStatus(from, to)).toBe(expectedAllowed(from).has(to));
+  });
+});
+
+describe("nextFulfilmentStatuses", () => {
+  it("lists exactly the moves the transition rule allows, without staying put", () => {
+    for (const from of ALL) {
+      const allowed = ALL.filter((to) => to !== from && canTransitionFulfilmentStatus(from, to));
+      expect([...nextFulfilmentStatuses(from)].sort()).toEqual([...allowed].sort());
+    }
+  });
+
+  it("recognises known statuses only", () => {
+    expect(isShopFulfilmentStatus("in_transit")).toBe(true);
+    expect(isShopFulfilmentStatus("shipped")).toBe(false);
   });
 });

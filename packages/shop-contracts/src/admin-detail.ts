@@ -107,6 +107,13 @@ export const AdminOrderLineDetailSchema = Type.Object({
   editionNumber: Type.Union([Type.Integer(), Type.Null()]),
   unitPricePence: Type.Integer(),
   sellerPartyId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
+  /** The edition sold on this line; null for merchandise. */
+  editionId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
+  /** The latest production task for this line, when one exists. */
+  production: Type.Union([
+    Type.Object({ taskId: Type.String({ format: "uuid" }), status: Type.String() }),
+    Type.Null(),
+  ]),
 });
 
 export const AdminOrderFulfilmentDetailSchema = Type.Object({
@@ -127,12 +134,29 @@ export const AdminOrderRefundDetailSchema = Type.Object({
   createdAt: Type.String(),
 });
 
+/**
+ * A staff action on the order or one of its records (refund, fulfilment, production task), from
+ * the admin audit log, for the order's timeline. `detail` is the recorded after-state, when kept.
+ */
+export const AdminOrderActivitySchema = Type.Object({
+  auditId: Type.String({ format: "uuid" }),
+  action: Type.String(),
+  targetType: Type.String(),
+  actorSubjectId: Type.String(),
+  actorName: Type.Union([Type.String(), Type.Null()]),
+  createdAt: Type.String(),
+  detail: Type.Union([Type.Record(Type.String(), Type.Unknown()), Type.Null()]),
+});
+
 export const AdminOrderDetailSchema = Type.Object({
   orderId: Type.String({ format: "uuid" }),
   status: Type.String(),
   fulfilment: Type.String(),
   totalPence: Type.Integer(),
   buyerSubjectId: Type.String(),
+  /** From the buyer's profile; null for a buyer who has none. */
+  buyerName: Type.Union([Type.String(), Type.Null()]),
+  buyerEmail: Type.Union([Type.String(), Type.Null()]),
   stripeCheckoutSessionId: Type.Union([Type.String(), Type.Null()]),
   stripePaymentIntentId: Type.Union([Type.String(), Type.Null()]),
   paidAt: Type.Union([Type.String(), Type.Null()]),
@@ -140,8 +164,26 @@ export const AdminOrderDetailSchema = Type.Object({
   lines: Type.Array(AdminOrderLineDetailSchema),
   fulfilmentRecord: Type.Union([AdminOrderFulfilmentDetailSchema, Type.Null()]),
   refunds: Type.Array(AdminOrderRefundDetailSchema),
+  /** Newest first. */
+  activity: Type.Array(AdminOrderActivitySchema),
 });
+
+/**
+ * Why staff refund an order. Recorded with the refund in the audit log and shown on the order's
+ * timeline; it does not change how the payment provider processes the refund.
+ */
+export const ADMIN_REFUND_REASONS = [
+  "customer_request",
+  "damaged_in_transit",
+  "not_as_described",
+  "duplicate_payment",
+  "goodwill",
+  "other",
+] as const;
+export type AdminRefundReason = (typeof ADMIN_REFUND_REASONS)[number];
+export const ADMIN_REFUND_NOTE_MAX_LENGTH = 500;
 
 export type AdminClientDetail = Static<typeof AdminClientDetailSchema>;
 export type AdminArtistDetail = Static<typeof AdminArtistDetailSchema>;
 export type AdminOrderDetail = Static<typeof AdminOrderDetailSchema>;
+export type AdminOrderActivity = Static<typeof AdminOrderActivitySchema>;

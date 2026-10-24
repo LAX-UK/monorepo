@@ -134,6 +134,9 @@ export type AdminArtistListItem = {
 export type AdminStaffMemberListItem = {
   staffMemberId: string;
   identitySubjectId: string;
+  displayName: string | null;
+  email: string | null;
+  lastActiveAt: string | null;
   role: string;
   disabledAt: string | null;
   createdAt: string;

@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  shopAdminAudit,
   shopArtist,
   shopArtwork,
   shopEdition,
@@ -10,9 +11,11 @@ import {
   shopPayoutLedger,
   shopProduct,
   shopProductVariant,
+  shopProductionTask,
   shopRefund,
   shopSaleAuthorityGrant,
   shopSaleAuthorityRequest,
+  shopUserProfile,
 } from "@auction/db/schema";
 import type {
   AdminArtistDetail,
@@ -25,6 +28,22 @@ import { notFound } from "../errors/shop-api-error.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
 
 const CLIENT_KINDS = ["person", "gallery"] as const;
+
+/** Enough history for an order's page; older entries stay in the global audit log. */
+const ORDER_ACTIVITY_LIMIT = 50;
+
+/** The audit row's recorded after-state, when it is a JSON object; anything else is dropped. */
+export function parseAuditDetail(json: string | null): Record<string, unknown> | null {
+  if (!json) return null;
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 export function createDrizzleAdminDetailReaders(db: Database) {
   return {
@@ -274,10 +293,23 @@ export function createDrizzleAdminDetailReaders(db: Database) {
     },
 
     async getOrderDetail(orderId: string): Promise<AdminOrderDetail> {
-      const [order] = await db.select().from(shopOrder).where(eq(shopOrder.id, orderId)).limit(1);
-      if (!order) {
+      const [found] = await db
+        .select({
+          order: shopOrder,
+          buyerName: shopUserProfile.name,
+          buyerEmail: shopUserProfile.email,
+        })
+        .from(shopOrder)
+        .leftJoin(
+          shopUserProfile,
+          eq(shopUserProfile.identitySubjectId, shopOrder.identitySubjectId),
+        )
+        .where(eq(shopOrder.id, orderId))
+        .limit(1);
+      if (!found) {
         throw notFound("Order");
       }
+      const order = found.order;
 
       const lines = await db
         .select({
@@ -286,6 +318,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           artworkTitle: shopArtwork.title,
           productTitle: shopProduct.title,
           sku: shopProductVariant.sku,
+          editionId: shopOrderLine.editionId,
           editionNumber: shopOrderLine.editionNumber,
           unitPricePence: shopOrderLine.unitPricePence,
           sellerPartyId: shopOrderLine.sellerPartyId,
@@ -308,12 +341,55 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         .where(eq(shopRefund.orderId, orderId))
         .orderBy(desc(shopRefund.createdAt));
 
+      const lineIds = lines.map((line) => line.orderLineId);
+      const tasks = lineIds.length
+        ? await db
+            .select({
+              taskId: shopProductionTask.id,
+              orderLineId: shopProductionTask.orderLineId,
+              status: shopProductionTask.status,
+            })
+            .from(shopProductionTask)
+            .where(inArray(shopProductionTask.orderLineId, lineIds))
+            .orderBy(desc(shopProductionTask.createdAt))
+        : [];
+      const latestTaskByLine = new Map<string, { taskId: string; status: string }>();
+      for (const task of tasks) {
+        if (!latestTaskByLine.has(task.orderLineId)) {
+          latestTaskByLine.set(task.orderLineId, { taskId: task.taskId, status: task.status });
+        }
+      }
+
+      // The timeline: every audited staff action on the order or a record that hangs off it.
+      const auditTargets = [
+        order.id,
+        ...lineIds,
+        ...refunds.map((row) => row.id),
+        ...tasks.map((task) => task.taskId),
+        ...(fulfilmentRecord ? [fulfilmentRecord.id] : []),
+      ];
+      const activity = await db
+        .select({
+          audit: shopAdminAudit,
+          actorName: shopUserProfile.name,
+        })
+        .from(shopAdminAudit)
+        .leftJoin(
+          shopUserProfile,
+          eq(shopUserProfile.identitySubjectId, shopAdminAudit.actorSubjectId),
+        )
+        .where(inArray(shopAdminAudit.targetId, auditTargets))
+        .orderBy(desc(shopAdminAudit.createdAt))
+        .limit(ORDER_ACTIVITY_LIMIT);
+
       return {
         orderId: order.id,
         status: order.status,
         fulfilment: order.fulfilment,
         totalPence: order.totalPence,
         buyerSubjectId: order.identitySubjectId,
+        buyerName: found.buyerName?.trim() || null,
+        buyerEmail: found.buyerEmail?.trim() || null,
         stripeCheckoutSessionId: order.stripeCheckoutSessionId,
         stripePaymentIntentId: order.stripePaymentIntentId,
         paidAt: order.paidAt ? order.paidAt.toISOString() : null,
@@ -327,6 +403,8 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           editionNumber: row.editionNumber,
           unitPricePence: row.unitPricePence,
           sellerPartyId: row.sellerPartyId,
+          editionId: row.editionId,
+          production: latestTaskByLine.get(row.orderLineId) ?? null,
         })),
         fulfilmentRecord: fulfilmentRecord
           ? {
@@ -345,6 +423,15 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           status: row.status,
           source: row.source,
           createdAt: row.createdAt.toISOString(),
+        })),
+        activity: activity.map(({ audit, actorName }) => ({
+          auditId: audit.id,
+          action: audit.action,
+          targetType: audit.targetType,
+          actorSubjectId: audit.actorSubjectId,
+          actorName: actorName?.trim() || null,
+          createdAt: audit.createdAt.toISOString(),
+          detail: parseAuditDetail(audit.afterJson),
         })),
       };
     },
