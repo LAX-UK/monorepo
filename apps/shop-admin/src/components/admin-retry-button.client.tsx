@@ -1,6 +1,7 @@
 "use client";
 
-import { Button } from "@auction/ui";
+import { StaffButton } from "@auction/staff-ui";
+import { RotateCw } from "@auction/staff-ui/icons";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -9,14 +10,13 @@ export function AdminRetryButton() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="md"
-      disabled={pending}
+    <StaffButton
+      size="sm"
+      loading={pending}
+      icon={<RotateCw aria-hidden />}
       onClick={() => startTransition(() => router.refresh())}
     >
-      {pending ? "Retrying…" : "Retry"}
-    </Button>
+      Try again
+    </StaffButton>
   );
 }

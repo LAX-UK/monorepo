@@ -1,5 +1,6 @@
 "use server";
 
+import type { AdminRefundReason } from "@auction/shop-contracts";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
 
 export async function createProductionTask(input: {
@@ -70,6 +71,8 @@ export async function requestOrderRefund(input: {
   orderId: string;
   amountPence: number;
   orderLineId?: string;
+  reason?: AdminRefundReason;
+  note?: string;
   idempotencyKey?: string;
 }) {
   return forwardAdminJsonMutation<{ id: string; status: string }>({
@@ -79,6 +82,8 @@ export async function requestOrderRefund(input: {
       orderId: input.orderId,
       amountPence: input.amountPence,
       ...(input.orderLineId ? { orderLineId: input.orderLineId } : {}),
+      ...(input.reason ? { reason: input.reason } : {}),
+      ...(input.note ? { note: input.note } : {}),
     },
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
   });

@@ -2,10 +2,11 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
 import { RecordPossessionForm } from "@/components/forms/operations/record-possession-form.client";
-import { UpdateFulfilmentForm } from "@/components/forms/operations/update-fulfilment-form.client";
+import { FulfilmentUpdateForm } from "@/components/orders/order-actions.client";
 import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { Section } from "@auction/staff-ui";
 import { PageHeader } from "@auction/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -38,6 +39,7 @@ export default async function ShopAdminFulfilmentPage({
   }
 
   const selectedFulfilmentId = fulfilmentId?.trim() || result.data.items[0]?.fulfilmentId;
+  const selected = result.data.items.find((row) => row.fulfilmentId === selectedFulfilmentId);
   const fulfilmentFormProps = selectedFulfilmentId
     ? { defaultFulfilmentId: selectedFulfilmentId }
     : {};
@@ -48,7 +50,14 @@ export default async function ShopAdminFulfilmentPage({
         title="Fulfilment"
         description="Track what is still to be shipped or collected, and record tracking and possession."
       />
-      <UpdateFulfilmentForm {...fulfilmentFormProps} />
+      {selected ? (
+        <Section
+          title={`Update order ${selected.orderId.slice(0, 8)}`}
+          description="Only the statuses this fulfilment can move to next are offered."
+        >
+          <FulfilmentUpdateForm fulfilment={selected} />
+        </Section>
+      ) : null}
       <RecordPossessionForm {...fulfilmentFormProps} />
       <section>
         <h2 className="mb-3 text-lg font-medium">Open fulfilments</h2>
@@ -74,7 +83,7 @@ export default async function ShopAdminFulfilmentPage({
                 href={`/fulfilment?fulfilmentId=${encodeURIComponent(row.fulfilmentId)}`}
                 className="underline"
               >
-                Use in forms
+                Update
               </Link>,
             ],
           }))}

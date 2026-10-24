@@ -1,12 +1,7 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@auction/ui";
+import { StaffBreadcrumbs, type StaffLinkComponent } from "@auction/staff-ui";
 import Link from "next/link";
+
+const NextLink: StaffLinkComponent = Link;
 
 /** Trail from a detail page back to its list; the last crumb is the page itself. */
 export function AdminBreadcrumbs({
@@ -17,18 +12,9 @@ export function AdminBreadcrumbs({
   current: string;
 }) {
   return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href={list.href}>{list.label}</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{current}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+    <StaffBreadcrumbs
+      Link={NextLink}
+      items={[{ label: list.label, href: list.href }, { label: current }]}
+    />
   );
 }

@@ -109,6 +109,62 @@ export function orderListApiQuery(query: OrderListQuery): Record<string, string>
   >;
 }
 
+export const CREATED_PRESETS = [
+  { id: "today", label: "Today", days: 1 },
+  { id: "7d", label: "Last 7 days", days: 7 },
+  { id: "30d", label: "Last 30 days", days: 30 },
+  { id: "90d", label: "Last 90 days", days: 90 },
+] as const;
+export type CreatedPresetId = (typeof CREATED_PRESETS)[number]["id"];
+
+const UK_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** The UK calendar day `daysAgo` days before `now`, as `YYYY-MM-DD`. */
+function ukDay(now: Date, daysAgo: number): string {
+  return UK_DAY.format(new Date(now.getTime() - daysAgo * 86_400_000));
+}
+
+/** A preset as the inclusive `from`/`to` days the list URL takes. */
+export function createdPresetRange(id: CreatedPresetId, now: Date): { from: string; to: string } {
+  const preset = CREATED_PRESETS.find((candidate) => candidate.id === id) ?? CREATED_PRESETS[0];
+  return { from: ukDay(now, preset.days - 1), to: ukDay(now, 0) };
+}
+
+/** Which preset the URL's range is, if any, so the filter can show it as selected. */
+export function matchCreatedPreset(query: OrderListQuery, now: Date): CreatedPresetId | null {
+  if (!query.from || !query.to) return null;
+  const match = CREATED_PRESETS.find((preset) => {
+    const range = createdPresetRange(preset.id, now);
+    return range.from === query.from && range.to === query.to;
+  });
+  return match?.id ?? null;
+}
+
+/** "3 Mar – 9 Mar 2026" for a range chip; one day reads as that day. */
+export function createdRangeLabel(query: OrderListQuery): string | null {
+  if (!query.from && !query.to) return null;
+  const format = (day: string) =>
+    new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${day}T00:00:00Z`));
+  if (query.from && query.to) {
+    return query.from === query.to
+      ? `Created ${format(query.from)}`
+      : `Created ${format(query.from)} – ${format(query.to)}`;
+  }
+  return query.from
+    ? `Created from ${format(query.from)}`
+    : `Created until ${format(query.to ?? "")}`;
+}
+
 /** What staff quote as the order number: the first eight characters of the order id, as on the order page. */
 export function orderNumber(orderId: string): string {
   return orderId.slice(0, 8);

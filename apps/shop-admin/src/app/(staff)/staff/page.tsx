@@ -1,22 +1,11 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { StaffMembersListTable } from "@/components/admin-staff-list-tables.client";
-import { GrantStaffRoleForm } from "@/components/forms/people/grant-staff-role-form.client";
+import { StaffDirectory } from "@/components/staff/staff-directory.client";
 import { adminListPath } from "@/server/application/admin-list-path";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
-import { PageHeader } from "@auction/ui";
+import type { AdminStaffMemberList } from "@auction/shop-contracts";
 import { redirect } from "next/navigation";
-
-type StaffList = {
-  items: Array<{
-    staffMemberId: string;
-    identitySubjectId: string;
-    role: string;
-    disabledAt: string | null;
-  }>;
-  nextCursor: string | null;
-};
 
 export const metadata = { title: "Staff" };
 
@@ -26,26 +15,31 @@ export default async function StaffPage({
   searchParams: Promise<{ cursor?: string }>;
 }) {
   const { cursor } = await searchParams;
-  const result = await fetchAdminJson<StaffList>(adminListPath("staff", { cursor }));
-  if (result.status === "unauthorized") redirect("/login");
+  const [result, session] = await Promise.all([
+    fetchAdminJson<AdminStaffMemberList>(adminListPath("staff", { cursor })),
+    loadAdminSession(),
+  ]);
+  if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
     return <AdminFailedPage title="Staff" status={result.status} />;
   }
 
   const { bidPublicUrl } = getShopAdminContainer().config;
-  const bidStaffUrl = bidPublicUrl ? `${bidPublicUrl}/admin/staff` : undefined;
-
   return (
-    <div>
-      <PageHeader
-        title="Staff"
-        description="People who can sign in to LAX Admin, and the role each one holds."
-      />
-      <div className="mb-6">
-        <GrantStaffRoleForm bidStaffUrl={bidStaffUrl} />
-      </div>
-      <StaffMembersListTable items={result.data.items} />
-      <AdminListCursorNav cursor={cursor} pathname="/staff" nextCursor={result.data.nextCursor} />
-    </div>
+    <StaffDirectory
+      members={result.data.items}
+      currentSubject={session.status === "ok" ? session.data.subject : ""}
+      bidStaffUrl={bidPublicUrl ? `${bidPublicUrl}/admin/staff` : undefined}
+      now={new Date().toISOString()}
+      footer={
+        cursor || result.data.nextCursor ? (
+          <AdminListCursorNav
+            cursor={cursor}
+            pathname="/staff"
+            nextCursor={result.data.nextCursor}
+          />
+        ) : undefined
+      }
+    />
   );
 }

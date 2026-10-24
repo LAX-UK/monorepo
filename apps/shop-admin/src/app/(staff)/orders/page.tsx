@@ -4,7 +4,7 @@ import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { orderListApiQuery, parseOrderListQuery } from "@/server/domain/order-list.vm";
 import type { AdminOrderList } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/ui";
+import { PageHeader } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Orders" };
@@ -24,12 +24,12 @@ export default async function OrdersPage({
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Orders"
-        description="Shop orders, newest first. Open an order to cancel a line or issue a refund."
+        description="Every Shop and lax.art order, newest first. Open one to refund, update fulfilment or send it to production."
       />
-      <OrderList query={query} page={result.data} />
+      <OrderList query={query} page={result.data} now={new Date().toISOString()} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { AdminRetryButton } from "@/components/admin-retry-button.client";
 import type { AdminFetchResult } from "@/server/application/load-admin-data";
-import { Alert, AlertDescription, AlertTitle, PageHeader } from "@auction/ui";
+import { EmptyState, ErrorState, PageHeader } from "@auction/staff-ui";
 
 export type AdminPageFailureStatus = Exclude<
   AdminFetchResult<unknown>["status"],
@@ -9,29 +9,29 @@ export type AdminPageFailureStatus = Exclude<
 
 const COPY: Record<AdminPageFailureStatus, { title: string; body: string }> = {
   forbidden: {
-    title: "Access denied",
-    body: "Your role cannot view this section.",
+    title: "Your role cannot open this page",
+    body: "Ask a LAX Admin administrator if you need access.",
   },
   not_found: {
-    title: "Not available",
+    title: "Not available here",
     body: "This section is turned off on this environment.",
   },
   failed: {
-    title: "Could not load",
-    body: "Something went wrong loading this page. Try again shortly.",
+    title: "This page did not load",
+    body: "Something went wrong on our side. Try again in a moment.",
   },
 };
 
 export function AdminFetchState({ status }: { status: AdminPageFailureStatus }) {
   const copy = COPY[status];
   return (
-    <Alert variant={status === "failed" ? "destructive" : "default"}>
-      <AlertTitle className="text-base">{copy.title}</AlertTitle>
-      <AlertDescription className="flex flex-col items-start gap-3">
-        <p>{copy.body}</p>
-        {status === "failed" ? <AdminRetryButton /> : null}
-      </AlertDescription>
-    </Alert>
+    <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+      {status === "failed" ? (
+        <ErrorState title={copy.title} description={copy.body} action={<AdminRetryButton />} />
+      ) : (
+        <EmptyState title={copy.title} description={copy.body} />
+      )}
+    </div>
   );
 }
 
@@ -44,7 +44,7 @@ export function AdminFailedPage({
   status: AdminPageFailureStatus;
 }) {
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader title={title} />
       <AdminFetchState status={status} />
     </div>

@@ -3,7 +3,6 @@
 import { AdminStaffDataTable } from "@/components/admin-staff-data-table";
 import { MarkPayoutPaidRowAction } from "@/components/forms/finance/mark-payout-paid-row-action.client";
 import { DecideSaleAuthorityRequestForm } from "@/components/forms/people/decide-sale-authority-request-form.client";
-import { RevokeStaffRoleAction } from "@/components/forms/people/revoke-staff-role-action.client";
 import { ReleaseStockHoldAction } from "@/components/forms/sales/release-stock-hold-action.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -284,57 +283,6 @@ export function ThirdPartySalesStaffListTable({ items }: { items: ThirdPartySale
         description: "Record a sale made outside the shop with the form above to see it here.",
       }}
       ariaLabel="Third-party sales"
-    />
-  );
-}
-
-type StaffRow = {
-  staffMemberId: string;
-  identitySubjectId: string;
-  role: string;
-  disabledAt: string | null;
-};
-
-export function StaffMembersListTable({ items }: { items: StaffRow[] }) {
-  const columns = useMemo<ColumnDef<StaffRow, unknown>[]>(
-    () => [
-      {
-        id: "subject",
-        header: "Subject",
-        cell: ({ row }) => row.original.identitySubjectId.slice(0, 12),
-      },
-      { accessorKey: "role", header: "Role" },
-      {
-        id: "status",
-        header: "Status",
-        cell: ({ row }) => (row.original.disabledAt ? "disabled" : "active"),
-      },
-      {
-        id: "actions",
-        header: "",
-        cell: ({ row }) =>
-          row.original.disabledAt ? (
-            "—"
-          ) : (
-            <RevokeStaffRoleAction
-              identitySubjectId={row.original.identitySubjectId}
-              role={row.original.role}
-            />
-          ),
-      },
-    ],
-    [],
-  );
-  return (
-    <AdminStaffDataTable
-      columns={columns}
-      data={items}
-      getRowId={(row) => row.staffMemberId}
-      empty={{
-        title: "No other staff yet",
-        description: "Give someone a role with the form above and they will be listed here.",
-      }}
-      ariaLabel="Staff members"
     />
   );
 }

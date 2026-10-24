@@ -1,46 +1,51 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/staff-ui/theme.css";
 
-/* The shared @auction/ui controls (dialogs, selects, toasts) are compiled to dist, which Tailwind
-   does not scan on its own; without this their layout classes are never generated. */
+/* The shared @auction/ui controls (dialogs, selects, toasts) and the staff kit are compiled to
+   dist, which Tailwind does not scan on its own; without this their classes are never generated. */
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/staff-ui/src/**/*.{ts,tsx}";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Token names match apps/account so the shared @auction/ui primitives resolve. LAX colour rule
    (docs/DESIGN_SYSTEM.md): LAX Admin is product-neutral, so it uses the shared neutrals only and
-   navy stays Bid's accent. */
+   navy stays Bid's accent. Each value is a light/dark pair (see @auction/staff-ui/theme.css), so
+   pages not yet on the staff kit follow the theme too. */
 @theme {
-  --color-page-bg: #f6f5f2;
-  --color-background: #ffffff;
-  --color-surface: #ffffff;
-  --color-on-surface: #1c170d;
-  --color-on-surface-variant: #474747;
-  --color-primary: var(--brand-obsidian);
-  --color-on-primary: var(--brand-light-cream);
-  --color-primary-container: #e8e8e8;
-  --color-on-primary-container: #1c170d;
-  --color-secondary-container: #f3f3f3;
-  --color-on-secondary-container: #1c170d;
-  --color-link: var(--brand-obsidian);
-  --color-ring: var(--brand-obsidian);
-  --color-surface-container: #eeeeee;
-  --color-surface-container-low: #f3f3f3;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-high: #e8e8e8;
-  --color-surface-container-highest: #e2e2e2;
-  --color-outline: color-mix(in srgb, var(--brand-light-gray) 70%, white);
-  --color-outline-variant: color-mix(in srgb, var(--brand-light-gray) 50%, white);
-  --color-border-hairline: color-mix(in srgb, var(--brand-light-gray) 60%, white);
-  --color-success: #1f7a35;
-  --color-on-success: #ffffff;
-  --color-success-container: #e6f4ea;
-  --color-error: #ba1a1a;
-  --color-on-error: #ffffff;
-  --color-error-container: #ffdad6;
-  --color-warning-container: #fff4d6;
-  --color-info-container: #eef2fb;
+  --color-page-bg: light-dark(#f6f5f2, #111313);
+  --color-background: light-dark(#ffffff, #181a1a);
+  --color-surface: light-dark(#ffffff, #181a1a);
+  --color-on-surface: light-dark(#1c170d, #ededeb);
+  --color-on-surface-variant: light-dark(#474747, #a4a7a7);
+  --color-primary: light-dark(#000000, #ededeb);
+  --color-on-primary: light-dark(#f2f1df, #111313);
+  --color-primary-container: light-dark(#e8e8e8, #2b2e2e);
+  --color-on-primary-container: light-dark(#1c170d, #ededeb);
+  --color-secondary-container: light-dark(#f3f3f3, #222525);
+  --color-on-secondary-container: light-dark(#1c170d, #ededeb);
+  --color-link: light-dark(#000000, #ededeb);
+  --color-ring: light-dark(#000000, #ededeb);
+  --color-surface-container: light-dark(#eeeeee, #222525);
+  --color-surface-container-low: light-dark(#f3f3f3, #1d2020);
+  --color-surface-container-lowest: light-dark(#ffffff, #181a1a);
+  --color-surface-container-high: light-dark(#e8e8e8, #2b2e2e);
+  --color-surface-container-highest: light-dark(#e2e2e2, #333636);
+  --color-outline: light-dark(#d4d5d9, #3d4141);
+  --color-outline-variant: light-dark(#dcdce0, #2b2e2e);
+  --color-border-hairline: light-dark(#d4d5d9, #2b2e2e);
+  --color-success: light-dark(#1f7a35, #86d59a);
+  --color-on-success: light-dark(#ffffff, #111313);
+  --color-success-container: light-dark(#e6f4ea, rgb(64 178 98 / 0.16));
+  --color-error: light-dark(#ba1a1a, #f6a49c);
+  --color-on-error: light-dark(#ffffff, #111313);
+  --color-error-container: light-dark(#ffdad6, rgb(240 82 70 / 0.16));
+  --color-warning-container: light-dark(#fff4d6, rgb(232 166 48 / 0.16));
+  --color-info-container: light-dark(#eef2fb, rgb(91 141 239 / 0.16));
   --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-outfit), var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-outfit), var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -49,7 +54,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-ring);
+    outline: 2px solid var(--color-staff-focus);
     outline-offset: 2px;
   }
 }

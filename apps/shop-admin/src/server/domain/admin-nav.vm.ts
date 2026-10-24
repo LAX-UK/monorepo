@@ -1,10 +1,41 @@
 import type { ShopStaffCapability } from "@auction/shop-domain";
 
+/**
+ * Icon names, not components: the nav is built on the server and handed to the client shell,
+ * which maps each name to its icon (components cannot cross that boundary).
+ */
+export type AdminNavIcon =
+  | "overview"
+  | "artworks"
+  | "artists"
+  | "exhibitions"
+  | "stories"
+  | "venues"
+  | "pages"
+  | "help"
+  | "placements"
+  | "enquiries"
+  | "products"
+  | "orders"
+  | "production"
+  | "fulfilment"
+  | "holds"
+  | "originalSales"
+  | "thirdPartySales"
+  | "requests"
+  | "clients"
+  | "payouts"
+  | "disputes"
+  | "staff"
+  | "audit"
+  | "settings";
+
 export type AdminNavGroup = {
   title: string;
   items: Array<{
     href: string;
     label: string;
+    icon: AdminNavIcon;
     capability?: ShopStaffCapability;
     /** Records waiting for staff, shown as a count beside the label. */
     attentionCount?: number;
@@ -32,21 +63,62 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
   const groups: AdminNavGroup[] = [
     {
       title: "Overview",
-      items: [{ href: "/overview", label: "Overview" }],
+      items: [{ href: "/overview", icon: "overview" as const, label: "Overview" }],
     },
     {
       title: "Gallery",
       items: [
-        { href: "/artworks", label: "Artworks", capability: "catalogue.write" },
-        { href: "/artists", label: "Artists", capability: "catalogue.write" },
-        { href: "/editorial/exhibitions", label: "Exhibitions", capability: "editorial.write" },
-        { href: "/editorial/stories", label: "Stories", capability: "editorial.write" },
-        { href: "/editorial/venues", label: "Venues", capability: "editorial.write" },
-        { href: "/editorial/pages", label: "Pages", capability: "editorial.write" },
-        { href: "/help", label: "Help centre", capability: "editorial.write" },
-        { href: "/editorial/home", label: "Home placements", capability: "editorial.write" },
+        {
+          href: "/artworks",
+          icon: "artworks" as const,
+          label: "Artworks",
+          capability: "catalogue.write",
+        },
+        {
+          href: "/artists",
+          icon: "artists" as const,
+          label: "Artists",
+          capability: "catalogue.write",
+        },
+        {
+          href: "/editorial/exhibitions",
+          icon: "exhibitions" as const,
+          label: "Exhibitions",
+          capability: "editorial.write",
+        },
+        {
+          href: "/editorial/stories",
+          icon: "stories" as const,
+          label: "Stories",
+          capability: "editorial.write",
+        },
+        {
+          href: "/editorial/venues",
+          icon: "venues" as const,
+          label: "Venues",
+          capability: "editorial.write",
+        },
+        {
+          href: "/editorial/pages",
+          icon: "pages" as const,
+          label: "Pages",
+          capability: "editorial.write",
+        },
+        {
+          href: "/help",
+          icon: "help" as const,
+          label: "Help centre",
+          capability: "editorial.write",
+        },
+        {
+          href: "/editorial/home",
+          icon: "placements" as const,
+          label: "Home placements",
+          capability: "editorial.write",
+        },
         {
           href: "/enquiries",
+          icon: "enquiries" as const,
           label: "Enquiries",
           capability: "enquiry.read",
           ...(input.enquiryAttentionCount ? { attentionCount: input.enquiryAttentionCount } : {}),
@@ -57,17 +129,41 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
       title: "Shop",
       items: [
         ...(input.features.merchandise
-          ? [{ href: "/merchandise", label: "Products", capability: "merchandise.read" as const }]
+          ? [
+              {
+                href: "/merchandise",
+                icon: "products" as const,
+                label: "Products",
+                capability: "merchandise.read" as const,
+              },
+            ]
           : []),
-        { href: "/orders", label: "Orders", capability: "order.read" },
+        { href: "/orders", icon: "orders" as const, label: "Orders", capability: "order.read" },
         ...(input.features.payouts
           ? [
-              { href: "/production", label: "Production", capability: "production.write" as const },
-              { href: "/fulfilment", label: "Fulfilment", capability: "fulfilment.write" as const },
+              {
+                href: "/production",
+                icon: "production" as const,
+                label: "Production",
+                capability: "production.write" as const,
+              },
+              {
+                href: "/fulfilment",
+                icon: "fulfilment" as const,
+                label: "Fulfilment",
+                capability: "fulfilment.write" as const,
+              },
             ]
           : []),
         ...(input.features.thirdPartySales
-          ? [{ href: "/holds", label: "Stock holds", capability: "stock_hold.write" as const }]
+          ? [
+              {
+                href: "/holds",
+                icon: "holds" as const,
+                label: "Stock holds",
+                capability: "stock_hold.write" as const,
+              },
+            ]
           : []),
       ],
     },
@@ -78,6 +174,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           ? [
               {
                 href: "/original-sales",
+                icon: "originalSales" as const,
                 label: "Original sales",
                 capability: "original_sale.write" as const,
               },
@@ -87,36 +184,64 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           ? [
               {
                 href: "/third-party-sales",
+                icon: "thirdPartySales" as const,
                 label: "Third-party sales",
                 capability: "third_party_sale.write" as const,
               },
             ]
           : []),
-        { href: "/requests", label: "Sale limit requests", capability: "sale_authority.write" },
+        {
+          href: "/requests",
+          icon: "requests" as const,
+          label: "Sale limit requests",
+          capability: "sale_authority.write",
+        },
       ],
     },
     {
       title: "Clients",
       items:
         hasCapability(caps, "client.read_all") || hasCapability(caps, "client.read_assigned")
-          ? [{ href: "/clients", label: "Clients" }]
+          ? [{ href: "/clients", icon: "clients" as const, label: "Clients" }]
           : [],
     },
     {
       title: "Finance",
       items: [
         ...(input.features.payouts
-          ? [{ href: "/payouts", label: "Payouts", capability: "payout.mark_paid" as const }]
+          ? [
+              {
+                href: "/payouts",
+                icon: "payouts" as const,
+                label: "Payouts",
+                capability: "payout.mark_paid" as const,
+              },
+            ]
           : []),
-        { href: "/disputes", label: "Disputes", capability: "audit.read" as const },
+        {
+          href: "/disputes",
+          icon: "disputes" as const,
+          label: "Disputes",
+          capability: "audit.read" as const,
+        },
       ],
     },
     {
       title: "Admin",
       items: [
-        { href: "/staff", label: "Staff", capability: "settings.write" },
-        { href: "/audit", label: "Audit log", capability: "audit.read" as const },
-        { href: "/settings", label: "Settings", capability: "settings.write" as const },
+        { href: "/staff", icon: "staff" as const, label: "Staff", capability: "settings.write" },
+        {
+          href: "/audit",
+          icon: "audit" as const,
+          label: "Audit log",
+          capability: "audit.read" as const,
+        },
+        {
+          href: "/settings",
+          icon: "settings" as const,
+          label: "Settings",
+          capability: "settings.write" as const,
+        },
       ],
     },
   ];
