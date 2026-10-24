@@ -62,6 +62,7 @@ export const AdminArtistSummarySchema = Type.Object({
   createdAt: Type.String(),
   seoTitle: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   seoDescription: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  archived: Type.Optional(Type.Boolean()),
 });
 
 export const AdminArtistArtworkSchema = Type.Object({
@@ -69,6 +70,8 @@ export const AdminArtistArtworkSchema = Type.Object({
   slug: Type.String(),
   title: Type.String(),
   saleState: Type.String(),
+  /** live, draft, sold_out or archived; optional for responses from an older shop-api. */
+  state: Type.Optional(Type.String()),
 });
 
 export const AdminArtistEditionSchema = Type.Object({

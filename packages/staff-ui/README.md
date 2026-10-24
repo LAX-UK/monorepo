@@ -72,10 +72,12 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
   saved views), `TableSearch`, `FilterMenu`, `ActiveFilterChips`, `DensityToggle`,
   `TablePagination`, `ListPageSkeleton`.
 - **Record pages**: `Section`, `KeyValueList`, `Timeline`, `StatGrid`, `StatusBadge` with
-  `defineStatusMap` (one map per domain status), `DangerZone` and `DangerZoneAction`.
+  `defineStatusMap` (one map per domain status), `Notice` (info, warning or danger line above
+  the work it concerns), `DangerZone` and `DangerZoneAction`.
 - **Panels**: `DetailPanel` (side sheet), `StaffDialog`, `ConfirmActionDialog`, `StaffToaster`.
 - **Forms**: `Field` (label, hint, inline error, wired by context), `TextInput`, `TextArea`,
-  `MoneyInput` (pounds on screen, pence in data), `EnumSelect` (closed lists, e.g. valid next
+  `MoneyInput` (pounds on screen, pence in data), `FileDropzone` (drop or browse; the native
+  file input stays inside, visually hidden), `EnumSelect` (closed lists, e.g. valid next
   states), `EntityPicker` (search records by name), `FormSection`, `FieldRow`, `FormActions`,
   `FormErrorSummary`, `StaffCheckbox`, `StaffRadio`, `StaffSwitch`, `ChoiceRow`,
   `SegmentedControl`, `TabNav`.

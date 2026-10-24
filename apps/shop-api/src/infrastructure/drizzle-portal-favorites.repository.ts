@@ -10,6 +10,7 @@ import type { PortalFollowedArtist, PortalSavedArtwork } from "@auction/shop-con
 import { and, desc, eq } from "drizzle-orm";
 import type { PortalFavoritesPort } from "../application/ports/portal-favorites.port.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 
 export function createDrizzlePortalFavoritesRepository(db: Database): PortalFavoritesPort {
   return {
@@ -28,7 +29,9 @@ export function createDrizzlePortalFavoritesRepository(db: Database): PortalFavo
         .innerJoin(shopArtwork, eq(shopSavedArtwork.artworkId, shopArtwork.id))
         .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(eq(shopSavedArtwork.identitySubjectId, identitySubjectId))
+        .where(
+          and(eq(shopSavedArtwork.identitySubjectId, identitySubjectId), publicArtworkVisible()),
+        )
         .orderBy(desc(shopSavedArtwork.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
 

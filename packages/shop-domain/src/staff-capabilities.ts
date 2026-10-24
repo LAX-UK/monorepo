@@ -1,5 +1,7 @@
 export const SHOP_STAFF_CAPABILITIES = [
   "catalogue.write",
+  /** Setting or changing an edition's price. Kept apart from catalogue edits because it is money. */
+  "artwork_price.write",
   "sale_authority.write",
   "stock_hold.write",
   "third_party_sale.write",

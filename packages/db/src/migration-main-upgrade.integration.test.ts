@@ -20,7 +20,7 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
-const FINAL_FOLDER_MILLIS = 1794988800000;
+const FINAL_FOLDER_MILLIS = 1795075200000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -653,6 +653,37 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
                 to_regclass('public.shop_staff_saved_view') AS shop`,
       );
       expect(tables.rows[0]).toEqual({ admin: null, shop: null });
+    });
+  });
+
+  it("adds artwork publishing and archiving, publishes inserts by default, and rolls back", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+
+      const party = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_party (display_name) VALUES ('Migration Artist') RETURNING id",
+      );
+      const artist = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_artist (party_id, slug) VALUES ($1, 'migration-artist') RETURNING id",
+        [party.rows[0]?.id],
+      );
+      const artwork = await pool.query<{ published: boolean; archived: boolean }>(
+        "INSERT INTO public.shop_artwork (slug, title, artist_id, eligible_for_edition_allocation, import_key) VALUES ('migration-work', 'Work', $1, false, 'migration:work') RETURNING published_at IS NOT NULL AS published, archived_at IS NOT NULL AS archived",
+        [artist.rows[0]?.id],
+      );
+      // Imports and seeds insert without the column, so they keep publishing as before.
+      expect(artwork.rows[0]).toEqual({ published: true, archived: false });
+      const artistArchived = await pool.query(
+        "SELECT archived_at FROM public.shop_artist WHERE id = $1",
+        [artist.rows[0]?.id],
+      );
+      expect(artistArchived.rows[0]).toEqual({ archived_at: null });
+
+      await executeMigrationSql(pool, "0228_rollback.sql");
+      const columns = await pool.query(
+        "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name IN ('published_at', 'archived_at') AND table_name IN ('shop_artwork', 'shop_artist')",
+      );
+      expect(columns.rows).toEqual([]);
     });
   });
 

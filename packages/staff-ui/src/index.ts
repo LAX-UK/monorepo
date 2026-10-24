@@ -38,6 +38,7 @@ export {
 } from "./display/status-badge.js";
 export type { StatusPresentation } from "./display/status-badge.js";
 export { KeyValueList } from "./display/key-value-list.js";
+export { Notice } from "./display/notice.js";
 export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";
@@ -55,6 +56,8 @@ export {
 export { Field, useStaffField } from "./forms/field.js";
 export type { FieldProps } from "./forms/field.js";
 export { MoneyInput } from "./forms/money-input.js";
+export { FileDropzone } from "./forms/file-dropzone.js";
+export type { FileDropzoneProps } from "./forms/file-dropzone.js";
 export type { MoneyInputProps } from "./forms/money-input.js";
 export { EnumSelect } from "./forms/enum-select.js";
 export type { EnumOption, EnumSelectProps } from "./forms/enum-select.js";

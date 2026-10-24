@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopEdition, shopOrder } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { editionArtworkOnStorefrontSql } from "./artwork-visibility-sql.js";
 
 /** Expired reservation TTL only counts as sellable when no pending_payment order still holds the lock. */
 const expiredReservationSellableSql = sql`(
@@ -19,7 +20,8 @@ const expiredReservationSellableSql = sql`(
 
 const sellableEditionCoreSql = sql`${shopEdition.ownerPartyId} is not null
   and ${shopEdition.custodyStatus} not in ('with_owner', 'returned')
-  and (${shopEdition.listingStatus} = 'authorised' or ${expiredReservationSellableSql})`;
+  and (${shopEdition.listingStatus} = 'authorised' or ${expiredReservationSellableSql})
+  and ${editionArtworkOnStorefrontSql}`;
 
 /** Sellable edition count for notify-me, catalogue, and basket stock checks. */
 export const sellableEditionCountSql = sql<number>`count(*) filter (where ${sellableEditionCoreSql})`;
@@ -30,6 +32,8 @@ export function sellableEditionCondition() {
     isNotNull(shopEdition.ownerPartyId),
     sql`${shopEdition.custodyStatus} not in ('with_owner', 'returned')`,
     or(eq(shopEdition.listingStatus, "authorised"), expiredReservationSellableCondition()),
+    // A draft or archived artwork sells nothing, even from a basket filled before it was withdrawn.
+    editionArtworkOnStorefrontSql,
   );
 }
 

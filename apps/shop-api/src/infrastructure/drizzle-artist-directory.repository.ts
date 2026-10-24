@@ -8,6 +8,7 @@ import type {
   ListPublicArtistsResult,
   PublicArtistSort,
 } from "../application/ports/artist-directory.reader.js";
+import { publicArtistVisible, publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicArtistDetail, toPublicArtistSummary } from "./map-public-artist.js";
 import { artworkCountByArtistId, mapArtistRow } from "./public-artist-rows.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
@@ -52,6 +53,7 @@ export function createDrizzleArtistDirectoryRepository(
                 and(
                   eq(shopArtwork.artistId, shopArtist.id),
                   eq(shopArtwork.salesChannel, input.salesChannel),
+                  publicArtworkVisible(),
                 ),
               ),
           )
@@ -78,7 +80,13 @@ export function createDrizzleArtistDirectoryRepository(
           .from(shopHomePlacement)
           .innerJoin(shopArtist, eq(shopHomePlacement.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-          .where(and(publishedHomePlacementForSlot("featured_artists"), channelFilter))
+          .where(
+            and(
+              publishedHomePlacementForSlot("featured_artists"),
+              channelFilter,
+              publicArtistVisible(),
+            ),
+          )
           .orderBy(asc(shopHomePlacement.position))
           .limit(limit);
         const counts = await artworkCountByArtistId(
@@ -132,6 +140,7 @@ export function createDrizzleArtistDirectoryRepository(
               ? sql`upper(substr(${shopParty.displayName}, 1, 1)) = ${letter}`
               : undefined,
             channelFilter,
+            publicArtistVisible(),
           ),
         )
         .orderBy(...orderByForArtistSort(sort))
@@ -196,7 +205,7 @@ export function createDrizzleArtistDirectoryRepository(
         })
         .from(shopArtist)
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(eq(shopArtist.slug, slug))
+        .where(and(eq(shopArtist.slug, slug), publicArtistVisible()))
         .limit(1);
       if (!row) {
         return null;

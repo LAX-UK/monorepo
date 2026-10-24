@@ -283,6 +283,8 @@ export const shopArtist = pgTable(
     seoDescription: text("seo_description"),
     zohoArtistCode: text("zoho_artist_code"),
     identitySubjectId: text("identity_subject_id"),
+    /** Set when staff retire the artist: hidden from both storefronts, kept for sales history. */
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -345,6 +347,13 @@ export const shopArtwork = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     version: integer("version").default(1).notNull(),
+    /**
+     * When the artwork went on the storefront; null while it is a draft. Defaults to the insert
+     * time so imports and seeds publish as they always have; staff-created artworks start as drafts.
+     */
+    publishedAt: timestamp("published_at", { mode: "date", withTimezone: true }).defaultNow(),
+    /** Set when staff withdraw the artwork. Rows are never deleted: editions and orders reference them. */
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },

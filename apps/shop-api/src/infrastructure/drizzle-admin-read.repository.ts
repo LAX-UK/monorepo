@@ -44,6 +44,7 @@ import type { AdminOrderListFilters, AdminReadPorts } from "../application/ports
 import type { ShopApiEnv } from "../env.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
+import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { escapeLikePattern } from "./escape-like-pattern.js";
@@ -124,9 +125,13 @@ export function createDrizzleAdminReadRepository(
     | "SHOP_ORIGINALS_ENABLED"
     | "SHOP_THIRD_PARTY_ENABLED"
   >,
+  options: { resolveMediaUrl: (value: string | null | undefined) => string | null } = {
+    resolveMediaUrl: (value) => value ?? null,
+  },
 ): AdminReadPorts {
   const detail = createDrizzleAdminDetailReaders(db);
   return {
+    artworks: createDrizzleAdminArtworkReader(db, options),
     orders: {
       async listOrders(input) {
         const limit = resolveLimit(input.limit);
@@ -439,17 +444,35 @@ export function createDrizzleAdminReadRepository(
       async listArtists(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
+        const q = input.q?.trim();
+        const pattern = q ? containsPattern(q) : null;
         const rows = await db
           .select({
             artist: shopArtist,
             displayName: shopParty.displayName,
+            artworkCount: sql<number>`(
+              select count(*)::int from ${shopArtwork} where ${shopArtwork.artistId} = ${shopArtist.id}
+            )`,
           })
           .from(shopArtist)
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
           .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopArtist.createdAt, shopArtist.id, cursor)
-              : undefined,
+            and(
+              pattern
+                ? or(
+                    sql`${shopParty.displayName} ILIKE ${pattern}`,
+                    sql`${shopArtist.slug} ILIKE ${pattern}`,
+                  )
+                : undefined,
+              input.status === "archived"
+                ? isNotNull(shopArtist.archivedAt)
+                : input.status === "active"
+                  ? isNull(shopArtist.archivedAt)
+                  : undefined,
+              cursor
+                ? keysetBeforeCreatedAtId(shopArtist.createdAt, shopArtist.id, cursor)
+                : undefined,
+            ),
           )
           .orderBy(...orderByMsTimestampIdDesc(shopArtist.createdAt, shopArtist.id))
           .limit(limit + 1);
@@ -457,12 +480,14 @@ export function createDrizzleAdminReadRepository(
         const page = hasMore ? rows.slice(0, limit) : rows;
         const last = page.at(-1);
         return {
-          items: page.map(({ artist, displayName }) => ({
+          items: page.map(({ artist, displayName, artworkCount }) => ({
             artistId: artist.id,
             slug: artist.slug,
             displayName,
             discipline: artist.discipline,
             createdAt: artist.createdAt.toISOString(),
+            archived: artist.archivedAt !== null,
+            artworkCount: Number(artworkCount),
           })),
           nextCursor:
             hasMore && last

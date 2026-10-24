@@ -40,6 +40,7 @@ import type {
   ListPublicArtworksResult,
 } from "../application/ports/artwork-catalogue.reader.js";
 import type { ArtworkImageReadModel } from "../application/read-models/catalogue.read-model.js";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicArtworkDetail } from "./map-public-artwork.js";
 import {
   type SelectedArtworkRow,
@@ -87,7 +88,7 @@ async function loadArtworkImages(
 }
 
 function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefined): SQL[] {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [publicArtworkVisible()];
   if (!filter) {
     return conditions;
   }
@@ -375,7 +376,7 @@ export function createDrizzleArtworkCatalogueRepository(
         .from(shopArtwork)
         .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(eq(shopArtwork.slug, slug))
+        .where(and(eq(shopArtwork.slug, slug), publicArtworkVisible()))
         .limit(1);
       if (!row) {
         return null;
@@ -399,7 +400,13 @@ export function createDrizzleArtworkCatalogueRepository(
         .from(shopArtwork)
         .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(and(eq(shopArtwork.salesChannel, salesChannel), isNotNull(shopArtwork.objectType)))
+        .where(
+          and(
+            eq(shopArtwork.salesChannel, salesChannel),
+            isNotNull(shopArtwork.objectType),
+            publicArtworkVisible(),
+          ),
+        )
         .groupBy(shopArtwork.objectType);
       const byType = new Map(rows.map((row) => [row.objectType, row]));
       return ARTWORK_OBJECT_TYPES.flatMap((objectType) => {

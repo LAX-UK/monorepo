@@ -25,6 +25,7 @@ import type {
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { notFound } from "../errors/shop-api-error.js";
+import { artworkStateSql } from "./artwork-visibility-sql.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
 
 const CLIENT_KINDS = ["person", "gallery"] as const;
@@ -202,6 +203,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           seoTitle: shopArtist.seoTitle,
           seoDescription: shopArtist.seoDescription,
           createdAt: shopArtist.createdAt,
+          archivedAt: shopArtist.archivedAt,
           displayName: shopParty.displayName,
         })
         .from(shopArtist)
@@ -218,6 +220,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           slug: shopArtwork.slug,
           title: shopArtwork.title,
           saleState: shopArtwork.saleState,
+          state: artworkStateSql,
         })
         .from(shopArtwork)
         .where(eq(shopArtwork.artistId, artistId))
@@ -280,12 +283,14 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           seoTitle: artistRow.seoTitle,
           seoDescription: artistRow.seoDescription,
           createdAt: artistRow.createdAt.toISOString(),
+          archived: artistRow.archivedAt !== null,
         },
         artworks: artworks.map((row) => ({
           artworkId: row.artworkId,
           slug: row.slug,
           title: row.title,
           saleState: row.saleState,
+          state: row.state,
         })),
         editions,
         sales,

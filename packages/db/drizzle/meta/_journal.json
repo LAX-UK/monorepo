@@ -1597,6 +1597,13 @@
       "when": 1794988800000,
       "tag": "0227_staff_saved_views",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1795075200000,
+      "tag": "0228_shop_artwork_visibility",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,10 @@ import type { ImportArtworkHandler } from "./application/handlers/import-artwork
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
 import type { ArtistSeoWriter } from "./application/ports/artist-seo.writer.js";
+import type {
+  ArtistCatalogueWriter,
+  ArtworkCatalogueWriter,
+} from "./application/ports/artwork-catalogue-admin.js";
 import type { MerchandiseCatalogueWriter } from "./application/ports/merchandise-catalogue.writer.js";
 import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
 import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
@@ -60,6 +64,8 @@ export type AdminRoutesDeps = {
   adjustMerchandiseStock: ReturnType<typeof createAdjustMerchandiseStockHandler>;
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   merchandiseCatalogue: MerchandiseCatalogueWriter;
+  artworkCatalogue: ArtworkCatalogueWriter;
+  artistCatalogue: ArtistCatalogueWriter;
   thirdPartySales: ThirdPartySaleWriter;
   originalSales: OriginalSaleWriter;
   linkArtistIdentity: ReturnType<typeof createLinkArtistIdentityHandler>;

@@ -1,13 +1,60 @@
-import { SeoFieldsWriteProperties, ShopApiErrorBodySchema } from "@auction/shop-contracts";
-import { Type } from "@sinclair/typebox";
-import type { FastifyInstance } from "fastify";
+import {
+  ADMIN_ARTWORK_VISIBILITY_ACTIONS,
+  type AdminArtworkBulkVisibilityBody,
+  AdminArtworkBulkVisibilityBodySchema,
+  AdminArtworkBulkVisibilityResponseSchema,
+  type AdminArtworkCreateBody,
+  AdminArtworkCreateBodySchema,
+  AdminArtworkCreateResponseSchema,
+  AdminArtworkDetailSchema,
+  type AdminArtworkListQuery,
+  AdminArtworkListQuerySchema,
+  AdminArtworkListSchema,
+  type AdminArtworkUpdateBody,
+  AdminArtworkUpdateBodySchema,
+  AdminArtworkVersionResponseSchema,
+  CatalogueConflictBodySchema,
+  SeoFieldsWriteProperties,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
+import { roleHasCapability } from "@auction/shop-domain";
+import { type Static, Type } from "@sinclair/typebox";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
+import { cleanArtworkFields } from "../../../application/admin/artwork-input.js";
 import type { ImportArtworkCommand } from "../../../application/ports/artwork-import.writer.js";
+import { notFound } from "../../../errors/shop-api-error.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+
+const ArtworkParams = Type.Object({ id: Type.String({ format: "uuid" }) });
+
+/** Descriptions run to 10,000 characters and a gallery to 20 images; the app default is 1 KB. */
+const ARTWORK_BODY_LIMIT = 65_536;
+
+const WRITE_ERRORS = {
+  400: ShopApiErrorBodySchema,
+  403: ShopApiErrorBodySchema,
+  404: ShopApiErrorBodySchema,
+  409: CatalogueConflictBodySchema,
+} as const;
+
+/**
+ * Who is writing, under which idempotency key, and whether they may set prices. Every artwork
+ * write needs `catalogue.write`; a price change also needs `artwork_price.write`, which the
+ * writer checks against the stored price so an unchanged price never needs it.
+ */
+function catalogueWriter(request: FastifyRequest) {
+  const auth = requireShopStaffCapability(request, "catalogue.write");
+  return {
+    actorSubjectId: requireShopAdminSubject(request),
+    idempotencyKey: requireIdempotencyKey(request),
+    canSetPrice: roleHasCapability(auth.role, "artwork_price.write"),
+  };
+}
 
 const ImportArtworkBodySchema = Type.Object({
   importKey: Type.String({ minLength: 1 }),
@@ -57,6 +104,132 @@ const GrantSaleAuthorityResponseSchema = Type.Object({
 });
 
 export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
+  app.get(
+    "/artworks",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminArtworkListQuerySchema,
+        response: {
+          200: AdminArtworkListSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "catalogue.write");
+      return deps.adminRead.artworks.listArtworks(request.query as AdminArtworkListQuery);
+    },
+  );
+
+  app.get(
+    "/artworks/:id",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: ArtworkParams,
+        response: {
+          200: AdminArtworkDetailSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "catalogue.write");
+      const { id } = request.params as Static<typeof ArtworkParams>;
+      const artwork = await deps.adminRead.artworks.getArtwork(id);
+      if (!artwork) throw notFound("Artwork not found");
+      return artwork;
+    },
+  );
+
+  app.post(
+    "/artworks",
+    {
+      bodyLimit: ARTWORK_BODY_LIMIT,
+      schema: {
+        tags: ["shop-admin"],
+        body: AdminArtworkCreateBodySchema,
+        response: { 200: AdminArtworkCreateResponseSchema, ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      const actor = catalogueWriter(request);
+      const body = request.body as AdminArtworkCreateBody;
+      return deps.artworkCatalogue.createArtwork({
+        ...actor,
+        ...cleanArtworkFields(body),
+        slug: body.slug,
+        eligibleForEditionAllocation: body.eligibleForEditionAllocation,
+      });
+    },
+  );
+
+  app.put(
+    "/artworks/:id",
+    {
+      bodyLimit: ARTWORK_BODY_LIMIT,
+      schema: {
+        tags: ["shop-admin"],
+        params: ArtworkParams,
+        body: AdminArtworkUpdateBodySchema,
+        response: { 200: Type.Object({ version: Type.String() }), ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      const actor = catalogueWriter(request);
+      const { id } = request.params as Static<typeof ArtworkParams>;
+      const body = request.body as AdminArtworkUpdateBody;
+      return deps.artworkCatalogue.updateArtwork({
+        ...actor,
+        ...cleanArtworkFields(body),
+        artworkId: id,
+        expectedVersion: body.expectedVersion,
+      });
+    },
+  );
+
+  for (const action of ADMIN_ARTWORK_VISIBILITY_ACTIONS) {
+    app.post(
+      `/artworks/:id/${action}`,
+      {
+        schema: {
+          tags: ["shop-admin"],
+          params: ArtworkParams,
+          response: { 200: AdminArtworkVersionResponseSchema, ...WRITE_ERRORS },
+        },
+      },
+      async (request) => {
+        const { canSetPrice: _unused, ...actor } = catalogueWriter(request);
+        const { id } = request.params as Static<typeof ArtworkParams>;
+        return deps.artworkCatalogue.setVisibility({ ...actor, artworkId: id, action });
+      },
+    );
+  }
+
+  app.post(
+    "/artworks/visibility",
+    {
+      bodyLimit: ARTWORK_BODY_LIMIT,
+      schema: {
+        tags: ["shop-admin"],
+        body: AdminArtworkBulkVisibilityBodySchema,
+        response: { 200: AdminArtworkBulkVisibilityResponseSchema, ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      const { canSetPrice: _unused, ...actor } = catalogueWriter(request);
+      const body = request.body as AdminArtworkBulkVisibilityBody;
+      return deps.artworkCatalogue.applyBulkVisibility({
+        ...actor,
+        action: body.action,
+        artworkIds: body.artworkIds,
+      });
+    },
+  );
+
   app.post(
     "/artworks/import",
     {

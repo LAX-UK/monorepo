@@ -37,6 +37,25 @@ export {
 } from "./original-sale-lifecycle.js";
 export { ShopDomainError } from "./shop-domain-error.js";
 export {
+  ARTWORK_CATALOGUE_STATES,
+  ARTWORK_PUBLISH_BLOCKERS,
+  ARTWORK_PUBLISH_BLOCKER_MESSAGES,
+  artworkCatalogueState,
+  artworkPublishBlockers,
+  assertArtistArchivable,
+  assertArtworkPublishable,
+  assertEditionPrice,
+  assertEditionRunUnchanged,
+  assertLivePriceKept,
+  isArtworkSoldOut,
+  summariseEditionRun,
+  type ArtworkCatalogueState,
+  type ArtworkPublishBlocker,
+  type ArtworkSaleState,
+  type ArtworkStateInput,
+  type EditionRunSummary,
+} from "./artwork-catalogue.js";
+export {
   assertQuantityWithinSellable,
   computeMerchandiseSubtotal,
   computeOrderTotal,

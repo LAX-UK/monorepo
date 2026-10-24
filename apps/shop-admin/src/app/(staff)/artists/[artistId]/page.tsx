@@ -1,13 +1,16 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
+import { ArtistHeaderActions } from "@/components/artists/artist-header-actions.client";
 import { ArtistSeoForm } from "@/components/forms/people/artist-seo-form.client";
 import { LinkArtistIdentityForm } from "@/components/forms/people/link-artist-identity-form.client";
 import { UnlinkArtistIdentityForm } from "@/components/forms/people/unlink-artist-identity-form.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
-import type { AdminArtistDetail } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/ui";
+import { loadArtistPage } from "@/server/application/load-artwork-pages";
+import { presentArtistStatus } from "@/server/domain/artist-list.vm";
+import { presentArtworkState } from "@/server/domain/artwork-list.vm";
+import { MappedStatusBadge, PageHeader, Section } from "@auction/staff-ui";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 export const metadata = { title: "Artist" };
@@ -18,13 +21,17 @@ export default async function ArtistDetailPage({
   params: Promise<{ artistId: string }>;
 }) {
   const { artistId } = await params;
-  const result = await fetchAdminJson<AdminArtistDetail>(`artists/${artistId}`);
+  const result = await loadArtistPage(artistId);
   if (result.status === "unauthorized") redirect("/login");
   if (result.status === "not_found") notFound();
   if (result.status !== "ok") {
     return <AdminFailedPage title="Artist" status={result.status} />;
   }
-  const data = result.data;
+  const { detail: data, permissions } = result.data;
+  const archived = data.artist.archived ?? false;
+  const liveArtworkCount = data.artworks.filter(
+    (row) => row.state === "live" || row.state === "sold_out",
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -36,7 +43,23 @@ export default async function ArtistDetailPage({
           />
         }
         title={data.artist.displayName}
+        status={
+          <MappedStatusBadge
+            status={archived ? "archived" : "active"}
+            present={presentArtistStatus}
+          />
+        }
         description={`/${data.artist.slug}`}
+        primaryAction={
+          permissions.write ? (
+            <ArtistHeaderActions
+              artistId={data.artist.artistId}
+              displayName={data.artist.displayName}
+              archived={archived}
+              liveArtworkCount={liveArtworkCount}
+            />
+          ) : undefined
+        }
       />
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -54,21 +77,46 @@ export default async function ArtistDetailPage({
         />
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Artworks</h2>
-        <AdminRecordTable
-          ariaLabel="Artworks"
-          columns={["Title", "Slug", "Sale state"]}
-          empty={{
-            title: "No artworks yet",
-            description: "Artworks imported for this artist will be listed here.",
-          }}
-          rows={data.artworks.map((row) => ({
-            id: row.artworkId,
-            cells: [row.title, row.slug, row.saleState],
-          }))}
-        />
-      </section>
+      <Section
+        title="Artworks"
+        description={`${data.artworks.length} by this artist, drafts and archived works included`}
+        bodyClassName="p-0"
+        action={
+          data.artworks.length > 0 ? (
+            <Link
+              href={`/artworks?artist=${data.artist.artistId}`}
+              className="staff-focus rounded-staff-xs text-staff-sm font-medium text-staff-fg hover:underline"
+            >
+              Open in the artwork list
+            </Link>
+          ) : undefined
+        }
+      >
+        {data.artworks.length === 0 ? (
+          <p className="px-4 py-6 text-center text-staff-sm text-staff-muted">
+            No artworks yet. Add one with New artwork.
+          </p>
+        ) : (
+          <ul className="divide-y divide-staff-line-subtle">
+            {data.artworks.map((row) => (
+              <li
+                key={row.artworkId}
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+              >
+                <Link
+                  href={`/artworks/${row.artworkId}`}
+                  className="staff-focus min-w-0 truncate rounded-staff-xs text-staff-sm font-medium text-staff-fg hover:underline"
+                >
+                  {row.title}
+                </Link>
+                {row.state ? (
+                  <MappedStatusBadge status={row.state} present={presentArtworkState} />
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
       <section>
         <h2 className="mb-3 text-lg font-medium">Editions</h2>

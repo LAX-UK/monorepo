@@ -8,6 +8,7 @@ import type {
 } from "../application/ports/artwork-interest.writer.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { type StorefrontOrigins, artworkPublicUrl } from "../domain/storefront-origins.js";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
@@ -36,7 +37,7 @@ async function loadArtworkSubscriptionContext(
       salesChannel: shopArtwork.salesChannel,
     })
     .from(shopArtwork)
-    .where(eq(shopArtwork.slug, artworkSlug))
+    .where(and(eq(shopArtwork.slug, artworkSlug), publicArtworkVisible()))
     .limit(1);
   const [row] = forUpdate ? await query.for("update") : await query;
   if (!row) {
