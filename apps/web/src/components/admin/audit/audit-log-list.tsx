@@ -127,7 +127,8 @@ export function AuditLogList(props: AuditLogListProps) {
       props.actions.map((action) => ({
         id: action.value,
         label: action.label,
-        description: action.value,
+        // Shop events share names with Bid's ("Dispute opened"), so say which product.
+        ...(action.value.startsWith("shop.") ? { description: "LAX Shop" } : {}),
       })),
     [props.actions],
   );
@@ -206,7 +207,7 @@ export function AuditLogList(props: AuditLogListProps) {
             }
             filters={
               <>
-                <div className="w-full sm:w-56">
+                <div className="min-w-0 flex-1 basis-36 sm:w-56 sm:flex-none">
                   <EntityPicker
                     aria-label="Filter by person"
                     className="h-control-sm text-staff-sm"
@@ -245,7 +246,7 @@ export function AuditLogList(props: AuditLogListProps) {
                     )
                   }
                 />
-                <div className="w-full sm:w-52">
+                <div className="min-w-0 flex-1 basis-36 sm:w-52 sm:flex-none">
                   <EntityPicker
                     aria-label="Filter by action"
                     className="h-control-sm text-staff-sm"

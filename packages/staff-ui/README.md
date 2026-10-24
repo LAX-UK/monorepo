@@ -70,7 +70,8 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
 - **Data**: `DataTable` (typed columns, sorting, selection, bulk-action bar, keyboard rows,
   loading/empty/error, stacked list below 768px), `DataTableToolbar`, `DataViews` (built-in and
   saved views), `TableSearch`, `FilterMenu`, `ActiveFilterChips`, `DensityToggle`,
-  `TablePagination`, `ListPageSkeleton`.
+  `TablePagination`, `ListPageSkeleton`, `DateRangeFilter` (presets plus two date fields, whole
+  London days as `YYYY-MM-DD`).
 - **Record pages**: `Section`, `KeyValueList`, `Timeline`, `StatGrid`, `StatusBadge` with
   `defineStatusMap` (one map per domain status), `DangerZone` and `DangerZoneAction`.
 - **Panels**: `DetailPanel` (side sheet), `StaffDialog`, `ConfirmActionDialog`, `StaffToaster`.

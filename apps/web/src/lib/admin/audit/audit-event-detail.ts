@@ -45,6 +45,7 @@ export function humanizeKey(key: string): string {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const SNAKE_CODE = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
 function formatMoney(minor: number, currency: unknown): string {
@@ -66,7 +67,9 @@ function formatScalar(value: unknown, formatDate: (iso: string) => string): Audi
   if (typeof value === "number") return { text: String(value), hidden: false };
   if (typeof value === "string") {
     if (value === "") return { text: null, hidden: false };
-    return { text: ISO_DATE.test(value) ? formatDate(value) : value, hidden: false };
+    if (ISO_DATE.test(value)) return { text: formatDate(value), hidden: false };
+    // A status code such as `withdrawal_requested` reads as words.
+    return { text: SNAKE_CODE.test(value) ? value.replaceAll("_", " ") : value, hidden: false };
   }
   return { text: JSON.stringify(value), hidden: false };
 }
