@@ -1,7 +1,8 @@
 import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
+import { DrizzlePaymentRepository, adminTableWhere } from "./drizzle-payment.repository.js";
 
 describe("DrizzlePaymentRepository", () => {
   it("writes stripeChargeId when creating a captured payment row", async () => {
@@ -90,5 +91,30 @@ describe("DrizzlePaymentRepository", () => {
     const ok = await repo.applyCancelledInTransaction(tx, "pay-1");
     expect(ok).toBe(true);
     expect(set).toHaveBeenCalledWith({ status: "cancelled" });
+  });
+});
+
+describe("adminTableWhere", () => {
+  it("returns no condition without a status or search term", () => {
+    expect(adminTableWhere({})).toBeUndefined();
+    expect(adminTableWhere({ q: "   " })).toBeUndefined();
+  });
+
+  it("casts the uuid id and the enum fulfilment status to text before ilike", () => {
+    const where = adminTableWhere({ q: "zzzz-no-match" });
+    const query = new PgDialect().sqlToQuery(where as never);
+    expect(query.sql).toContain('"payment"."id"::text ilike');
+    expect(query.sql).toContain('"lot_fulfilment"."status"::text ilike');
+    expect(query.sql).not.toMatch(/"payment"\."id" ilike/);
+    expect(query.sql).not.toMatch(/"lot_fulfilment"\."status" ilike/);
+    expect(query.params).toEqual(Array(6).fill("%zzzz-no-match%"));
+  });
+
+  it("combines the status filter with the search term", () => {
+    const query = new PgDialect().sqlToQuery(
+      adminTableWhere({ status: "captured", q: "abc" }) as never,
+    );
+    expect(query.sql).toContain('"payment"."status" = $1');
+    expect(query.params[0]).toBe("captured");
   });
 });

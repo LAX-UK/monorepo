@@ -7,7 +7,7 @@ import {
   userProfileUpdatedPayloadSchemaV1,
 } from "@auction/identity-contracts";
 import { userEmailVerifiedPayloadSchemaV1, userRegisteredPayloadSchemaV1 } from "@auction/types";
-import { and, eq, or, sql } from "drizzle-orm";
+import { type SQL, and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import type { DomainEventProjectorRow } from "../interfaces/domain-event-projector.reader.js";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
@@ -26,8 +26,18 @@ export const BID_IDENTITY_DIRECTORY_EVENT_TYPES = [
 
 type DirectoryValues = typeof bidIdentityDirectory.$inferInsert;
 
-function newerThan(eventId: number) {
-  return sql`${bidIdentityDirectory.lastEventId} is null or ${bidIdentityDirectory.lastEventId} < ${eventId}`;
+/**
+ * True when the row has not yet applied an event at or after `eventId`.
+ *
+ * This must stay a single grouped condition. A bare `a is null or a < n` spliced into `and(...)`
+ * loses its grouping, so the subject filter only guards the first branch and every row with an
+ * older marker is rewritten or deleted.
+ */
+function newerThan(eventId: number): SQL {
+  return or(
+    isNull(bidIdentityDirectory.lastEventId),
+    lt(bidIdentityDirectory.lastEventId, eventId),
+  ) as SQL;
 }
 
 async function insertRegistered(

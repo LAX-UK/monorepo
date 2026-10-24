@@ -31,7 +31,8 @@ function exportWhere(filter: ListPaymentsExportFilter) {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">) {
+/** Exported for tests. `payment.id` is a uuid and the fulfilment status an enum, so both are cast to text before `ilike`. */
+export function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">) {
   const conditions = [];
   if (filter.status) {
     conditions.push(eq(payment.status, filter.status));
@@ -41,12 +42,12 @@ function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limit" | "o
     const pattern = `%${needle}%`;
     conditions.push(
       or(
-        ilike(payment.id, pattern),
+        ilike(sql`${payment.id}::text`, pattern),
         ilike(payment.buyerId, pattern),
         ilike(lot.title, pattern),
         ilike(bidIdentityDirectory.name, pattern),
         ilike(bidIdentityDirectory.email, pattern),
-        ilike(lotFulfilment.status, pattern),
+        ilike(sql`${lotFulfilment.status}::text`, pattern),
       ),
     );
   }

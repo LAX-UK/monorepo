@@ -6,6 +6,7 @@ import {
   formatDateShort,
   formatDateTime,
   formatDateTimeShort,
+  formatKpiMoney,
   formatMoney,
   formatPercent,
 } from "./format";
@@ -58,5 +59,15 @@ describe("format", () => {
     expect(dash("")).toBe("—");
     expect(dash("  ")).toBe("  ");
     expect(dash("ok")).toBe("ok");
+  });
+});
+
+describe("formatKpiMoney", () => {
+  it("shows whole pounds below 100k, compact above, and zero as £0", () => {
+    expect(formatKpiMoney(0)).toBe("£0");
+    expect(formatKpiMoney("83750.00")).toBe("£83,750");
+    expect(formatKpiMoney(1_234_567)).toBe("£1.2m");
+    expect(formatKpiMoney(null)).toBe("—");
+    expect(formatKpiMoney("abc")).toBe("—");
   });
 });

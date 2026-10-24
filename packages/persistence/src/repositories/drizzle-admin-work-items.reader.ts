@@ -19,6 +19,14 @@ import type {
   IAdminWorkItemsReader,
 } from "../interfaces/admin-work-items.reader.js";
 
+const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+
+/** A payment amount stored as a decimal string, shown as pounds ("83750.00" -> "£83,750.00"). */
+export function formatWorkItemAmount(amount: string | number): string {
+  const n = typeof amount === "number" ? amount : Number.parseFloat(amount);
+  return Number.isFinite(n) ? GBP.format(n) : String(amount);
+}
+
 const REVIEW_TASK_KINDS = [
   "aml_screening_review",
   "source_of_funds_review",
@@ -125,7 +133,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       kind: "payment_manual_review" as const,
       domain: "finance" as const,
       title: `Payment manual review — Lot ${row.lotNumber ?? "?"}: ${row.lotTitle}`,
-      subtitle: `${row.winnerEmail ?? "Buyer"} · ${row.amount}`,
+      subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)}`,
       href: `/admin/payments/${row.paymentId}`,
       saleId: null,
       createdAt: row.createdAt,

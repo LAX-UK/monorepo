@@ -211,8 +211,8 @@ function KpiTileBody({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", plain ? "mt-2" : "mt-3")}>
-      <div className="flex min-w-0 items-end justify-between gap-2">
-        <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-x-2 gap-y-1">
+        <div className="min-w-0 max-w-full">
           <p
             className={cn(
               "font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl",

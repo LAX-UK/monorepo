@@ -3,7 +3,7 @@ import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminKpiTrendBundle } from "@/lib/data/http/admin-kpi-trends.server";
-import { formatCompactMoney } from "@/lib/ui/format";
+import { formatKpiMoney } from "@/lib/ui/format";
 
 type PaymentsSummary = {
   totalVolume: number;
@@ -41,7 +41,7 @@ export function buildPaymentsListKpiTiles(input: {
       trendTone: "muted",
     }),
   ].map((tile, index) =>
-    index === 1 ? tile : { ...tile, value: formatCompactMoney(Number(tile.value)) },
+    index === 1 ? tile : { ...tile, value: formatKpiMoney(Number(tile.value)) },
   );
 }
 

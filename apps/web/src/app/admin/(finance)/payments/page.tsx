@@ -18,7 +18,7 @@ import {
 import { loadAdminPaymentsListPage } from "@/lib/admin/finance/load-payments-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { formatCompactMoney } from "@/lib/ui/format";
+import { formatKpiMoney } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import type { Metadata } from "next";
@@ -197,13 +197,13 @@ export default async function AdminPaymentsPage({
           <div className="space-y-3">
             <CatalogListMobileSummary
               metrics={[
-                { id: "volume", label: "Volume", value: formatCompactMoney(summary.totalVolume) },
+                { id: "volume", label: "Volume", value: formatKpiMoney(summary.totalVolume) },
                 {
                   id: "pending",
                   label: "Awaiting action",
-                  value: formatCompactMoney(summary.pending),
+                  value: formatKpiMoney(summary.pending),
                 },
-                { id: "captured", label: "Settled", value: formatCompactMoney(summary.captured) },
+                { id: "captured", label: "Settled", value: formatKpiMoney(summary.captured) },
               ]}
             />
             <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
