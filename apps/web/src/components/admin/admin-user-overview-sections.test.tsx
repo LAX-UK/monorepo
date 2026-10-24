@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { AdminUserOverviewSections } from "./admin-user-overview-sections";
 
 describe("AdminUserOverviewSections", () => {
-  it("renders non-sticky section index with anchor links", () => {
-    const { container } = render(
+  it("renders each panel as a labelled, addressable section in order", () => {
+    render(
       <AdminUserOverviewSections
         sections={[
           { id: "profile", label: "Profile", content: <p>Profile content</p> },
@@ -13,9 +13,10 @@ describe("AdminUserOverviewSections", () => {
       />,
     );
 
-    expect(screen.getByText("On this page")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "#profile");
-    expect(screen.getByRole("link", { name: "KYC" })).toHaveAttribute("href", "#kyc-history");
-    expect(container.querySelector(".sticky")).toBeNull();
+    const profile = screen.getByRole("region", { name: "Profile" });
+    const kyc = screen.getByRole("region", { name: "KYC" });
+    expect(profile).toHaveAttribute("id", "profile");
+    expect(kyc).toHaveAttribute("id", "kyc-history");
+    expect(profile.compareDocumentPosition(kyc) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
