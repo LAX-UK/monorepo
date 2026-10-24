@@ -29,6 +29,9 @@ RUN pnpm turbo run build --filter=@auction/shop
 FROM node:22-alpine AS runner
 WORKDIR /app
 ARG IMAGE_SHA=unknown
+# "test" or "prod". On prod, draft Shop policy pages return 404 and are not linked.
+ARG SHOP_DEPLOY_ENV=
+ENV SHOP_DEPLOY_ENV=$SHOP_DEPLOY_ENV
 ENV NODE_ENV=production
 ENV PORT=3020
 ENV HOSTNAME=0.0.0.0

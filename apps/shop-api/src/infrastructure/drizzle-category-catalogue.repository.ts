@@ -1,36 +1,73 @@
 import type { Database } from "@auction/db";
-import { shopArtworkCategory, shopCategory, shopHomePlacement } from "@auction/db/schema";
+import {
+  shopArtwork,
+  shopArtworkCategory,
+  shopCategory,
+  shopHomePlacement,
+} from "@auction/db/schema";
 import { maxItemsForPlacement } from "@auction/shop-domain";
-import { and, asc, count, eq, gt, inArray, or } from "drizzle-orm";
+import { type SQL, and, asc, count, eq, exists, gt, inArray, or, sql } from "drizzle-orm";
 import type { SortLabelCursor } from "../application/catalogue-cursor.js";
 import type {
   CategoryCatalogueReader,
+  CategorySalesChannel,
   ListPublicCategoriesInput,
 } from "../application/ports/category-catalogue.reader.js";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicCategorySummary } from "./map-public-category.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
+
+/** A live artwork in the channel: published, not archived, and in Shop a limited edition. */
+function liveChannelArtwork(channel: CategorySalesChannel): SQL[] {
+  return [
+    eq(shopArtwork.salesChannel, channel),
+    ...(channel === "shop" ? [eq(shopArtwork.eligibleForEditionAllocation, true)] : []),
+    publicArtworkVisible(),
+  ];
+}
+
+/** The outer category has at least one live artwork in the channel. */
+function categoryHasLiveChannelArtwork(db: Database, channel: CategorySalesChannel): SQL {
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(shopArtworkCategory)
+      .innerJoin(shopArtwork, eq(shopArtworkCategory.artworkId, shopArtwork.id))
+      .where(
+        and(eq(shopArtworkCategory.categoryId, shopCategory.id), ...liveChannelArtwork(channel)),
+      ),
+  );
+}
 
 async function artworkCountByCategoryId(
   db: Database,
   categoryIds: string[],
+  channel: CategorySalesChannel | undefined,
 ): Promise<Map<string, number>> {
   if (categoryIds.length === 0) {
     return new Map();
   }
-  const rows = await db
-    .select({
-      categoryId: shopArtworkCategory.categoryId,
-      artworkCount: count(),
-    })
-    .from(shopArtworkCategory)
-    .where(inArray(shopArtworkCategory.categoryId, categoryIds))
-    .groupBy(shopArtworkCategory.categoryId);
+  const inCategories = inArray(shopArtworkCategory.categoryId, categoryIds);
+  const rows = channel
+    ? await db
+        .select({ categoryId: shopArtworkCategory.categoryId, artworkCount: count() })
+        .from(shopArtworkCategory)
+        .innerJoin(shopArtwork, eq(shopArtworkCategory.artworkId, shopArtwork.id))
+        .where(and(inCategories, ...liveChannelArtwork(channel)))
+        .groupBy(shopArtworkCategory.categoryId)
+    : await db
+        .select({ categoryId: shopArtworkCategory.categoryId, artworkCount: count() })
+        .from(shopArtworkCategory)
+        .where(inCategories)
+        .groupBy(shopArtworkCategory.categoryId);
   return new Map(rows.map((row) => [row.categoryId, row.artworkCount]));
 }
 
 export function createDrizzleCategoryCatalogueRepository(db: Database): CategoryCatalogueReader {
   return {
     async listPublicCategories(input: ListPublicCategoriesInput) {
+      const channel = input.salesChannel;
+      const channelFilter = channel ? categoryHasLiveChannelArtwork(db, channel) : undefined;
       if (input.placement === "featured_categories") {
         const rows = await db
           .select({
@@ -41,12 +78,13 @@ export function createDrizzleCategoryCatalogueRepository(db: Database): Category
           })
           .from(shopHomePlacement)
           .innerJoin(shopCategory, eq(shopHomePlacement.categoryId, shopCategory.id))
-          .where(publishedHomePlacementForSlot("featured_categories"))
+          .where(and(publishedHomePlacementForSlot("featured_categories"), channelFilter))
           .orderBy(asc(shopHomePlacement.position))
           .limit(Math.min(input.limit, maxItemsForPlacement("featured_categories")));
         const counts = await artworkCountByCategoryId(
           db,
           rows.map((row) => row.id),
+          channel,
         );
         return {
           items: rows.map((row) =>
@@ -82,7 +120,7 @@ export function createDrizzleCategoryCatalogueRepository(db: Database): Category
           sortOrder: shopCategory.sortOrder,
         })
         .from(shopCategory)
-        .where(cursor ? afterCursor(cursor) : undefined)
+        .where(and(cursor ? afterCursor(cursor) : undefined, channelFilter))
         .orderBy(asc(shopCategory.sortOrder), asc(shopCategory.label), asc(shopCategory.id))
         .limit(limit + 1);
       const hasMore = rows.length > limit;
@@ -90,6 +128,7 @@ export function createDrizzleCategoryCatalogueRepository(db: Database): Category
       const counts = await artworkCountByCategoryId(
         db,
         page.map((row) => row.id),
+        channel,
       );
       const items = page.map((row) =>
         toPublicCategorySummary({
@@ -122,7 +161,7 @@ export function createDrizzleCategoryCatalogueRepository(db: Database): Category
         .limit(1);
       const row = rows[0];
       if (!row) return null;
-      const counts = await artworkCountByCategoryId(db, [row.id]);
+      const counts = await artworkCountByCategoryId(db, [row.id], undefined);
       return toPublicCategorySummary({
         slug: row.slug,
         label: row.label,

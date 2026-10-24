@@ -290,6 +290,22 @@
   gap: 1.25rem;
 }
 
+.shop-checkout__terms {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-checkout__terms-link {
+  border-radius: 2px;
+  font-weight: 500;
+  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .shop-checkout__fieldset {
   border: none;
   margin: 0;

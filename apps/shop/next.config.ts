@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@auction/ui", "@auction/marketing-ui", "@auction/shop-portal"],
+  async redirects() {
+    return [
+      { source: "/contact", destination: "/help#contact", permanent: false },
+      { source: "/shipping", destination: "/delivery", permanent: false },
+    ];
+  },
   images: {
     // Uploads get a fresh UUID key and seed assets never change, so a cached optimisation stays valid.
     minimumCacheTTL: 60 * 60 * 24 * 30,

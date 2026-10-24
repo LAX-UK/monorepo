@@ -2,6 +2,7 @@
 
 import { startCheckout } from "@/app/actions/checkout.actions";
 import { CheckoutBasketSummary } from "@/components/checkout/checkout-basket-summary";
+import { CheckoutTermsNotice } from "@/components/checkout/checkout-terms-notice";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { ShopStatusState } from "@/components/shop-status-state";
@@ -48,9 +49,16 @@ type Props = {
   basket: BasketView;
   customerEmail?: string;
   defaultDeliveryPhone?: string;
+  /** False on production while the terms or returns page is still a draft, so nothing links to a 404. */
+  showTermsNotice: boolean;
 };
 
-export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Props) {
+export function CheckoutForm({
+  basket,
+  customerEmail,
+  defaultDeliveryPhone,
+  showTermsNotice,
+}: Props) {
   const [fulfilment, setFulfilment] = useState<ShopFulfilmentOption>("uk_insured_delivery");
   const [delivery, setDelivery] = useState<ShopDeliveryAddressInput>({
     line1: "",
@@ -214,6 +222,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
             announcement="assertive"
           />
         ) : null}
+        {showTermsNotice ? <CheckoutTermsNotice /> : null}
         <ShopCommerceButton
           type="button"
           disabled={fieldsDisabled}

@@ -145,9 +145,10 @@ export async function fetchPublicCategories(input?: {
 }): Promise<PublicCategoryList> {
   const params = new URLSearchParams();
   params.set("limit", String(input?.limit ?? 50));
+  // Only categories that hold a live Shop edition, so retired or originals-only categories drop out.
+  params.set("salesChannel", "shop");
   if (input?.placement) params.set("placement", input.placement);
-  const query = params.size > 0 ? `?${params.toString()}` : "";
-  const response = await shopApiFetch(`/v1/categories${query}`);
+  const response = await shopApiFetch(`/v1/categories?${params.toString()}`);
   if (!response.ok) {
     throw new ShopApiBffError("upstream", `Shop categories request failed (${response.status})`);
   }

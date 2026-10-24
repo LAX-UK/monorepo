@@ -14,6 +14,8 @@ const shopEnvSchema = z.object({
   SHOP_IMAGE_REMOTE_HOSTS: z.string().min(1).optional(),
   /** Overrides the host rule in `shop-indexing.ts`; unset means only the launch host is indexable. */
   SHOP_ALLOW_INDEXING: z.enum(["true", "false"]).optional(),
+  /** Deployment the image was built for ("test" or "prod"); hides draft policy pages on prod. */
+  SHOP_DEPLOY_ENV: z.string().min(1).optional(),
 });
 
 export type ShopEnv = z.infer<typeof shopEnvSchema>;
@@ -33,6 +35,7 @@ export function loadShopEnv(
     SHOP_STOREFRONT_URL: source.SHOP_STOREFRONT_URL?.trim() || undefined,
     SHOP_IMAGE_REMOTE_HOSTS: source.SHOP_IMAGE_REMOTE_HOSTS?.trim() || undefined,
     SHOP_ALLOW_INDEXING: source.SHOP_ALLOW_INDEXING?.trim() || undefined,
+    SHOP_DEPLOY_ENV: source.SHOP_DEPLOY_ENV?.trim() || undefined,
   });
   const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
   const hasBidPublicUrl = Boolean(parsed.LAX_BID_PUBLIC_URL ?? parsed.WEB_ORIGIN);

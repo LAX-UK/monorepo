@@ -1,4 +1,9 @@
-import { buildShopPolicyLinks } from "@/content/footer-nav.config";
+import {
+  SHOP_HELP_LINK,
+  SHOP_POLICY_LINKS,
+  buildShopGroupPolicyLinks,
+} from "@/content/footer-nav.config";
+import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
@@ -35,11 +40,20 @@ function accountColumn(state: ShopFooterAccountState): MarketingFooterColumn {
   }
 }
 
-/** Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by the shell). */
+/**
+ * Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by
+ * the shell). Legal is Shop's own retail policies, then the group privacy and cookie policies.
+ */
 export function buildShopFooterVm(input: {
   crossProductLinks: readonly LaxProductLinkVm[];
   accountState: ShopFooterAccountState;
+  /** Policy pages that can be linked on this deployment; drafts hidden on production are left out. */
+  linkablePolicies: readonly ShopPolicySlug[];
 }): ShopFooterVm {
+  const policyLinks = (links: readonly { slug: ShopPolicySlug; label: string; href: string }[]) =>
+    links
+      .filter((link) => input.linkablePolicies.includes(link.slug))
+      .map(({ label, href }) => ({ label, href }));
   const columns: MarketingFooterColumn[] = [
     {
       id: "shop",
@@ -49,6 +63,7 @@ export function buildShopFooterVm(input: {
         { label: "Artists", href: "/artists" },
         { label: "Categories", href: "/categories" },
         { label: "Basket", href: "/basket" },
+        ...policyLinks([SHOP_HELP_LINK]),
       ],
     },
     accountColumn(input.accountState),
@@ -61,8 +76,12 @@ export function buildShopFooterVm(input: {
     });
   }
   const bidLink = input.crossProductLinks.find((link) => link.id === "bid");
-  if (bidLink) {
-    columns.push({ id: "legal", title: "Legal", links: buildShopPolicyLinks(bidLink.href) });
+  const legalLinks = [
+    ...policyLinks(SHOP_POLICY_LINKS),
+    ...(bidLink ? buildShopGroupPolicyLinks(bidLink.href) : []),
+  ];
+  if (legalLinks.length > 0) {
+    columns.push({ id: "legal", title: "Legal", links: legalLinks });
   }
   return { columns };
 }

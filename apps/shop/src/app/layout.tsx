@@ -11,6 +11,7 @@ import {
 } from "@/lib/ecosystem/product-directory.server";
 import { resolveShopSilentFedcmBootstrapProps } from "@/lib/fedcm/resolve-silent-fedcm-props.server";
 import { ShopSilentFedcmBootstrap } from "@/lib/fedcm/silent-fedcm-bootstrap.client";
+import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
 import { NOINDEX_ROBOTS } from "@/lib/seo/shop-indexing";
 import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
@@ -28,6 +29,7 @@ import "./catalogue.css";
 import "./footer.css";
 import "./header.css";
 import "./home.css";
+import "./policy.css";
 import "./state.css";
 import "./elements.css";
 
@@ -92,6 +94,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ShopFooter
             crossProductLinks={crossProductFooterLinks}
             accountState={toShopFooterAccountState(viewer)}
+            linkablePolicies={loadLinkableShopPolicies()}
           />
         </ShopSmoothScroll>
       </body>

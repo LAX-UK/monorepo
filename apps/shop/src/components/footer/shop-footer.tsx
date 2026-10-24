@@ -1,4 +1,5 @@
 import { ShopAuthLink } from "@/components/shop-auth-link";
+import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { buildShopFooterVm } from "@/lib/shop-footer.vm";
@@ -16,6 +17,8 @@ import Link from "next/link";
 type ShopFooterProps = {
   crossProductLinks?: LaxProductLinkVm[];
   accountState?: ShopFooterAccountState;
+  /** Policy pages that can be linked here; drafts hidden on production are left out. */
+  linkablePolicies?: readonly ShopPolicySlug[];
 };
 
 const LINK_CLASS = cn(
@@ -48,8 +51,9 @@ function renderLink(link: MarketingFooterLink) {
 export function ShopFooter({
   crossProductLinks = [],
   accountState = { kind: "guest" },
+  linkablePolicies = [],
 }: ShopFooterProps) {
-  const vm = buildShopFooterVm({ crossProductLinks, accountState });
+  const vm = buildShopFooterVm({ crossProductLinks, accountState, linkablePolicies });
   return (
     <MarketingFooter
       headingId="shop-footer-heading"

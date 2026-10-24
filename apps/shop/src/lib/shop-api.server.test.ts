@@ -2,9 +2,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ShopApiBffError } from "./shop-api-bff-error.js";
 import {
   fetchPublicArtworkCatalogue,
+  fetchPublicCategories,
   fetchPublicCategoryBySlug,
   shopApiBaseUrl,
 } from "./shop-api.server.js";
+
+describe("fetchPublicCategories", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("asks for Shop-channel categories only, with and without a placement", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ items: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchPublicCategories({ limit: 12 });
+    await fetchPublicCategories({ placement: "featured_categories" });
+
+    const urls = fetchMock.mock.calls.map((call) => new URL((call as unknown as [string])[0]));
+    expect(urls.map((url) => url.pathname)).toEqual(["/v1/categories", "/v1/categories"]);
+    expect(urls.map((url) => url.searchParams.get("salesChannel"))).toEqual(["shop", "shop"]);
+    expect(urls[0]?.searchParams.get("limit")).toBe("12");
+    expect(urls[1]?.searchParams.get("placement")).toBe("featured_categories");
+  });
+});
 
 describe("fetchPublicCategoryBySlug", () => {
   afterEach(() => {
