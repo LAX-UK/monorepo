@@ -68,3 +68,60 @@ describe("admin users routes — list page", () => {
     expect(getPage).toHaveBeenCalledOnce();
   });
 });
+
+describe("admin users routes — set role", () => {
+  function setRoleApp(setRole: ReturnType<typeof vi.fn>) {
+    const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+      admin: {
+        requestLifecycle: {
+          isSuspended: vi.fn().mockResolvedValue(false),
+          reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+        },
+        users: { setRole },
+      },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read", "bid.write"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+    return app;
+  }
+
+  const patch = (path: string) => ({
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://test" },
+    body: JSON.stringify({ role: "staff", staffRole: "staff_viewer" }),
+    path,
+  });
+
+  it("changes a user's role at PATCH /admin/users/:userId/role", async () => {
+    const setRole = vi.fn().mockResolvedValue({ ok: true });
+    const { path, ...init } = patch("/admin/users/target-user/role");
+    const res = await setRoleApp(setRole).request(`http://test${path}`, init);
+
+    expect(res.status).toBe(200);
+    expect(setRole).toHaveBeenCalledWith(
+      "staff",
+      staffUserId,
+      "target-user",
+      "staff",
+      "super_admin",
+      "staff_viewer",
+    );
+  });
+
+  it("does not change roles through the source-of-funds path", async () => {
+    const setRole = vi.fn().mockResolvedValue({ ok: true });
+    const { path, ...init } = patch("/admin/users/target-user/source-of-funds");
+    await setRoleApp(setRole).request(`http://test${path}`, init);
+
+    expect(setRole).not.toHaveBeenCalled();
+  });
+});
