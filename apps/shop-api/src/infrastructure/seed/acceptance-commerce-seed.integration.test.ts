@@ -12,12 +12,12 @@ import {
   createPendingPaymentOrderWithReservedEdition,
   integrationSuffix,
 } from "../../test-support/shop-fixtures.js";
+import { createPublishedArtworkImportWriter } from "../../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "../drizzle-artwork-import.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "../drizzle-sale-authority.writer.js";
 import { countSellableForArtwork } from "../shop-edition-availability.js";
 import { resetAcceptanceCommerceState } from "./acceptance-commerce-seed.js";
@@ -39,7 +39,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance commerce reset", () => {
 
   it("clears buyer basket, pending checkout, and restores sellable harbor-print (idempotent)", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const grantSaleAuthority = authorityWriter.grantSaleAuthority.bind(authorityWriter);
 

@@ -11,12 +11,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEditorialLinksService } from "../application/editorial-links.service.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 import { createDrizzleEditorialLinksRepository } from "./drizzle-editorial-links.repository.js";
 import { createEditorialRelationQueries } from "./drizzle-editorial-relations.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
@@ -52,7 +52,7 @@ describe.skipIf(!hasShopIntegrationDb)("editorial links repository", () => {
     ({ ownerPool, shopPool } = await setupShopIntegrationPools());
     const db = createShopDb(shopPool);
     await seedShopFoundationCatalogue(
-      createDrizzleArtworkImportRepository(db, "off").importArtwork,
+      createPublishedArtworkImportWriter(db, "off").importArtwork,
       db,
       createDrizzleSaleAuthorityWriter(db, "off").grantSaleAuthority,
     );

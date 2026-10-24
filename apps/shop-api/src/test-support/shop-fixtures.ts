@@ -11,9 +11,11 @@ import {
 } from "@auction/db/schema";
 import type { ShopStaffRole } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
+import type { ArtworkImportWriter } from "../application/ports/artwork-import.writer.js";
 import { createDrizzleArtworkImportRepository } from "../infrastructure/drizzle-artwork-import.repository.js";
 import { completeShopCheckoutSession } from "../infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzleSaleAuthorityWriter } from "../infrastructure/drizzle-sale-authority.writer.js";
+import type { ShopDomainEventPublisherMode } from "../infrastructure/shop-domain-event-publisher.js";
 export function requireDefined<T>(value: T | null | undefined, label: string): T {
   if (value === undefined || value === null) {
     throw new Error(`Missing ${label}`);
@@ -25,13 +27,27 @@ export function integrationSuffix(label: string): string {
   return `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * The artwork import writer for integration tests. New artworks are published, so storefront
+ * reads see them; pass `publishOnCreate: false` for a draft. Production imports start as drafts.
+ */
+export function createPublishedArtworkImportWriter(
+  db: Database,
+  eventPublishMode?: ShopDomainEventPublisherMode,
+): ArtworkImportWriter {
+  const writer = createDrizzleArtworkImportRepository(db, eventPublishMode);
+  return {
+    importArtwork: (command) => writer.importArtwork({ publishOnCreate: true, ...command }),
+  };
+}
+
 export async function importTestArtwork(
   db: Database,
   label: string,
   options?: { printPricePence?: number },
 ) {
   const suffix = integrationSuffix(label);
-  const importWriter = createDrizzleArtworkImportRepository(db, "off");
+  const importWriter = createPublishedArtworkImportWriter(db, "off");
   const slug = `integration-${label}-${suffix}`;
   const result = await importWriter.importArtwork({
     importKey: `integration:${label}:${suffix}`,

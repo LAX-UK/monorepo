@@ -4,8 +4,8 @@ import { shopArtwork, shopArtworkCategory, shopCategory } from "@auction/db/sche
 import { eq, inArray } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleArtworkCatalogueRepository } from "./drizzle-artwork-catalogue.repository.js";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const shopUrl = process.env.DATABASE_URL_SHOP;
@@ -28,7 +28,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
 
   it("filters by category and paginates equal timestamps without skipping rows", async () => {
     const db = createDbFromPool(shopPool);
-    const writer = createDrizzleArtworkImportRepository(db);
+    const writer = createPublishedArtworkImportWriter(db);
     const repository = createDrizzleArtworkCatalogueRepository(db);
     const suffix = `${Date.now()}-${crypto.randomUUID()}`;
     const categorySlug = `integration-category-${suffix}`;
@@ -90,7 +90,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
 
   it("filters artworks by artist display name text search", async () => {
     const db = createDbFromPool(shopPool);
-    const writer = createDrizzleArtworkImportRepository(db);
+    const writer = createPublishedArtworkImportWriter(db);
     const repository = createDrizzleArtworkCatalogueRepository(db);
     const suffix = `${Date.now()}-${crypto.randomUUID()}`;
     const uniqueArtist = `Unique Search Artist ${suffix}`;
@@ -116,7 +116,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
   it("matches any of several artists and object types", async () => {
     const db = createDbFromPool(shopPool);
     const ownerDb = createDbFromPool(ownerPool);
-    const writer = createDrizzleArtworkImportRepository(db);
+    const writer = createPublishedArtworkImportWriter(db);
     const repository = createDrizzleArtworkCatalogueRepository(db);
     const suffix = `${Date.now()}-${crypto.randomUUID()}`;
     const seeded = [
@@ -164,7 +164,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
 
   it("lists available works as for sale plus price on request, excluding sold", async () => {
     const db = createDbFromPool(shopPool);
-    const writer = createDrizzleArtworkImportRepository(db);
+    const writer = createPublishedArtworkImportWriter(db);
     const repository = createDrizzleArtworkCatalogueRepository(db);
     const suffix = `${Date.now()}-${crypto.randomUUID()}`;
     const artist = `Availability Artist ${suffix}`;
@@ -198,7 +198,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
   it("aggregates object type facets per sales channel with the newest cover", async () => {
     const db = createDbFromPool(shopPool);
     const ownerDb = createDbFromPool(ownerPool);
-    const writer = createDrizzleArtworkImportRepository(db);
+    const writer = createPublishedArtworkImportWriter(db);
     const repository = createDrizzleArtworkCatalogueRepository(db, {
       resolveMediaUrl: (value) => (value ? `https://cdn.test/${value}` : null),
     });
@@ -244,5 +244,45 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
     } finally {
       await ownerDb.delete(shopArtwork).where(inArray(shopArtwork.id, ids));
     }
+  });
+
+  it("hides drafts and archived artworks from the storefront", async () => {
+    const db = createDbFromPool(shopPool);
+    const writer = createPublishedArtworkImportWriter(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const artist = `Visibility Artist ${suffix}`;
+    const slugs = {
+      live: `integration-visibility-${suffix}-live`,
+      draft: `integration-visibility-${suffix}-draft`,
+      archived: `integration-visibility-${suffix}-archived`,
+    };
+    const base = (key: keyof typeof slugs) => ({
+      importKey: `integration:visibility:${suffix}:${key}`,
+      slug: slugs[key],
+      title: `Visibility ${key}`,
+      description: null,
+      primaryImageUrl: null,
+      artistSlug: `integration-visibility-artist-${suffix}`,
+      artistDisplayName: artist,
+      eligibleForEditionAllocation: false,
+    });
+    await writer.importArtwork(base("live"));
+    await writer.importArtwork({ ...base("draft"), publishOnCreate: false });
+    const archived = await writer.importArtwork(base("archived"));
+    await db
+      .update(shopArtwork)
+      .set({ archivedAt: new Date(), publishedAt: null })
+      .where(eq(shopArtwork.id, archived.artworkId));
+
+    const result = await repository.listPublicArtworks({
+      limit: 10,
+      filter: { q: artist, artworkType: "all", sort: "titleAsc" },
+    });
+    expect(result.items.map((item) => item.slug)).toEqual([slugs.live]);
+    expect(result.totalCount).toBe(1);
+    expect(await repository.getPublicArtworkBySlug(slugs.live)).not.toBeNull();
+    expect(await repository.getPublicArtworkBySlug(slugs.draft)).toBeNull();
+    expect(await repository.getPublicArtworkBySlug(slugs.archived)).toBeNull();
   });
 });

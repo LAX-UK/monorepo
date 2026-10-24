@@ -2,12 +2,12 @@ import { shopArtist, shopArtwork, shopHomePlacement } from "@auction/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPublishedArtworkImportWriter } from "../../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "../drizzle-artwork-import.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "../drizzle-sale-authority.writer.js";
 import { ART_SEED_ORIGINAL_SLUGS, seedShopFoundationCatalogue } from "./catalogue-seed.js";
 
@@ -26,7 +26,7 @@ describe.skipIf(!hasShopIntegrationDb)("foundation catalogue seed", () => {
 
   it("seeds lax.art originals on the art sales channel with a medium (idempotent)", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const seed = () =>
       seedShopFoundationCatalogue(

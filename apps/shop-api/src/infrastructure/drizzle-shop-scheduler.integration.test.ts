@@ -11,7 +11,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
@@ -47,7 +47,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
 
   it("reaper expires stale pending_payment orders and a later Stripe expiry is a no-op", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
       importKey: `integration:reaper:${suffix}`,
@@ -127,7 +127,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
 
   it("notify-me dispatch stamps notified_at once and enqueues email outbox", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const notifications = createDrizzleShopNotificationPublisher();
     const suffix = Date.now();
     const subjectId = `subject-notify-${suffix}`;

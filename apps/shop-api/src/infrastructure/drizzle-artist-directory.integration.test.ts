@@ -1,12 +1,12 @@
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleArtistDirectoryRepository } from "./drizzle-artist-directory.repository.js";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 import { seedShopFoundationCatalogue } from "./seed/catalogue-seed.js";
 
@@ -17,7 +17,7 @@ describe.skipIf(!hasShopIntegrationDb)("artist directory search", () => {
   beforeAll(async () => {
     ({ ownerPool, shopPool } = await setupShopIntegrationPools());
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     await seedShopFoundationCatalogue(
       importWriter.importArtwork.bind(importWriter),

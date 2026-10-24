@@ -4,7 +4,7 @@ import { shopEdition, shopOrder } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
@@ -39,7 +39,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("sale authority and checkout pick order",
 
   it("authorises LAX editions and increases sellable count", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
@@ -76,7 +76,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("sale authority and checkout pick order",
 
   it("blocks authority reduction below committed reserved editions", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
@@ -155,7 +155,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("sale authority and checkout pick order",
   it("reserves lowest edition number first after grant", async () => {
     const db = createDbFromPool(shopPool);
     const events = createShopDomainEventPublisher("off");
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
