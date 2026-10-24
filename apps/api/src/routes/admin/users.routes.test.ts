@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
 import type { IAuthenticator } from "../../services/interfaces/authenticator.js";
+import { InMemoryIdempotencyStore, stubStepUpGuard } from "../../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "../admin.js";
 
 const staffUserId = "staff-user-id";
@@ -79,6 +80,8 @@ describe("admin users routes — set role", () => {
           reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
         },
         users: { setRole },
+        stepUp: stubStepUpGuard(true),
+        idempotencyStore: new InMemoryIdempotencyStore(),
       },
     } as unknown as Container;
     const authenticator: IAuthenticator = {
@@ -87,6 +90,7 @@ describe("admin users routes — set role", () => {
         role: "staff",
         staffRole: "super_admin",
         scopes: ["bid.read", "bid.write"],
+        identitySessionId: "session-1",
       }),
     };
     const app = new Hono();
