@@ -2,7 +2,7 @@
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { revalidatePath } from "next/cache";
 
 export type StaffAccessActionResult =

@@ -2,7 +2,7 @@ import "server-only";
 
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 

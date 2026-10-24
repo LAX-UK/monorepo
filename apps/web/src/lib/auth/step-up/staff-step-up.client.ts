@@ -1,7 +1,7 @@
 "use client";
 
 import { notify } from "@/lib/ui/notify";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { recentReauthAttempt, redirectToHostedReauth } from "./use-step-up-coordinator";
 
 /** How long the notice stays readable before the browser leaves for the sign-in page. */

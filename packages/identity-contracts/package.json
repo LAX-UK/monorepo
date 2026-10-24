@@ -15,6 +15,10 @@
     "./account": {
       "types": "./dist/account.d.ts",
       "default": "./dist/account.js"
+    },
+    "./staff-step-up": {
+      "types": "./dist/staff-step-up.d.ts",
+      "default": "./dist/staff-step-up.js"
     }
   },
   "scripts": {

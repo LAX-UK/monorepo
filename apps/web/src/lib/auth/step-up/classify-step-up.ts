@@ -1,4 +1,4 @@
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { ActionFailureReason, StepUpRequirement } from "./types";
 
 function readApiCode(body: unknown): string | undefined {
