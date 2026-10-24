@@ -1,5 +1,6 @@
 "use client";
 
+import { shopButtonClassName } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import {
   type SaleAuthorityRequestFormState,
@@ -27,11 +28,7 @@ export function SaleLimitRequestForm({ artworks }: { artworks: PortalSaleAuthori
       <h2 className="text-sm font-semibold text-on-surface">Request a limit change</h2>
       <label className="block text-sm">
         <span className="text-on-surface-variant">Artwork</span>
-        <select
-          name="artworkId"
-          required
-          className="mt-1 w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-        >
+        <select name="artworkId" required className="shop-field mt-1 w-full">
           <option value="">Select artwork</option>
           {artworks.map((row) => (
             <option key={row.artworkId} value={row.artworkId}>
@@ -48,23 +45,23 @@ export function SaleLimitRequestForm({ artworks }: { artworks: PortalSaleAuthori
           min={0}
           max={10}
           required
-          className="mt-1 w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+          className="shop-field mt-1 w-full"
         />
       </label>
       <label className="block text-sm">
         <span className="text-on-surface-variant">Note (optional)</span>
-        <textarea
-          name="note"
-          rows={3}
-          className="mt-1 w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-        />
+        <textarea name="note" rows={3} className="shop-field mt-1 w-full" />
       </label>
       {state.message ? (
         <ShopNotice tone={state.ok ? "success" : "error"} className="text-sm">
           {state.message}
         </ShopNotice>
       ) : null}
-      <Button type="submit" disabled={pending} className="min-h-11">
+      <Button
+        type="submit"
+        disabled={pending}
+        className={shopButtonClassName("default", "standard")}
+      >
         {pending ? "Submitting…" : "Submit request"}
       </Button>
     </form>

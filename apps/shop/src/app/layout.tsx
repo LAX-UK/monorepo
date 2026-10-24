@@ -29,6 +29,7 @@ import "./footer.css";
 import "./header.css";
 import "./home.css";
 import "./state.css";
+import "./elements.css";
 
 export const generateMetadata = (): Metadata => ({
   metadataBase: loadShopStorefrontBaseUrl(),

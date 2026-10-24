@@ -20,7 +20,7 @@ export function ShopCatalogueHub({ title, description, children, footer }: ShopC
           {title}
         </DisplayHeading>
         {description ? (
-          <p className="font-headline text-[length:var(--text-display-sm)] font-normal leading-snug text-on-surface">
+          <p className="font-body text-[length:var(--text-display-sm)] font-normal leading-snug text-on-surface">
             {description}
           </p>
         ) : null}

@@ -107,10 +107,10 @@ export function ArtworkCatalogueBrowse({
   }
 
   const sortControl = (
-    <label className="flex items-center gap-2 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant">
+    <label className="flex items-center gap-2">
       <span className="sr-only">Sort artworks</span>
       <select
-        className="min-h-11 max-w-[11rem] rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-body text-sm normal-case text-on-surface"
+        className="shop-field max-w-[11rem]"
         value={state.sort}
         disabled={pending}
         onChange={(event) =>
@@ -138,7 +138,7 @@ export function ArtworkCatalogueBrowse({
         value={searchDraft}
         onChange={(event) => setSearchDraft(event.target.value)}
         placeholder="Search title or artist"
-        className="min-h-11 w-full max-w-md rounded-full border border-outline-variant/50 bg-surface-container-lowest px-4 font-body text-sm shop-focus-ring"
+        className="shop-field w-full max-w-md"
       />
     </form>
   );
@@ -183,7 +183,7 @@ export function ArtworkCatalogueBrowse({
                   value={draft.q}
                   onChange={(event) => setDraft({ ...draft, q: event.target.value })}
                   placeholder="Search title or artist"
-                  className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3 shop-focus-ring"
+                  className="shop-field"
                 />
               </label>
               <ArtworkCatalogueFilterBody

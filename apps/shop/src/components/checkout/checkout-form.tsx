@@ -109,6 +109,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
             value={fulfilment}
             onValueChange={(value) => setFulfilment(value as ShopFulfilmentOption)}
             options={fulfilmentOptions}
+            optionClassName="shop-radio-card"
           />
         </div>
         {fulfilment === "uk_insured_delivery" ? (
@@ -118,6 +119,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
               <div className="shop-checkout__field shop-checkout__field--full">
                 <Label htmlFor="checkout-line1">Address line 1</Label>
                 <Input
+                  className="shop-field"
                   id="checkout-line1"
                   required
                   disabled={fieldsDisabled}
@@ -129,6 +131,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
               <div className="shop-checkout__field shop-checkout__field--full">
                 <Label htmlFor="checkout-line2">Address line 2 (optional)</Label>
                 <Input
+                  className="shop-field"
                   id="checkout-line2"
                   disabled={fieldsDisabled}
                   value={delivery.line2 ?? ""}
@@ -139,6 +142,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
               <div className="shop-checkout__field">
                 <Label htmlFor="checkout-city">City</Label>
                 <Input
+                  className="shop-field"
                   id="checkout-city"
                   required
                   disabled={fieldsDisabled}
@@ -150,6 +154,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
               <div className="shop-checkout__field">
                 <Label htmlFor="checkout-postcode">Postcode</Label>
                 <Input
+                  className="shop-field"
                   id="checkout-postcode"
                   required
                   disabled={fieldsDisabled}
@@ -170,12 +175,18 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
               </div>
               <div className="shop-checkout__field shop-checkout__field--full">
                 <Label htmlFor="checkout-country">Country</Label>
-                <Input id="checkout-country" readOnly value="United Kingdom (GB)" />
+                <Input
+                  id="checkout-country"
+                  className="shop-field"
+                  readOnly
+                  value="United Kingdom (GB)"
+                />
                 <input type="hidden" name="country" value={delivery.country} />
               </div>
               <div className="shop-checkout__field shop-checkout__field--full">
                 <Label htmlFor="checkout-phone">Delivery phone</Label>
                 <Input
+                  className="shop-field"
                   id="checkout-phone"
                   type="tel"
                   required

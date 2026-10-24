@@ -36,7 +36,7 @@ export type HomeSectionLink = {
 };
 
 export const homeHero = {
-  title: "This Week's Arrivals",
+  title: "This week's arrivals",
   copy: "Discover limited-edition prints from emerging and established artists, made to be collected and lived with.",
   ctaLabel: "Discover",
   ctaHref: "#shop-prints",
@@ -49,19 +49,19 @@ export const homeHero = {
 
 export const homeSections = {
   categories: {
-    title: "Shop by Category",
+    title: "Shop by category",
     subtitle: "Collect by medium and discipline",
     actionLabel: "View all",
     actionHref: "/categories",
   } satisfies HomeSectionLink,
   prints: {
-    title: "Prints & Multiples",
+    title: "Prints & multiples",
     subtitle: "Limited editions from the LAX catalogue",
     actionLabel: "View all",
     actionHref: "/artworks",
   } satisfies HomeSectionLink,
   artists: {
-    title: "Featured Artists",
+    title: "Featured artists",
     subtitle: "Voices shaping contemporary collecting",
     actionLabel: "View all",
     actionHref: "/artists",
@@ -71,7 +71,7 @@ export const homeSections = {
 export const homeSignup = {
   title: "Discover art worth collecting",
   copy: "Discover exceptional art, follow artists, and find pieces worth collecting, all in one place.",
-  ctaLabel: "Sign Up",
+  ctaLabel: "Create account",
   ctaHref: "/register",
   image: "/shop/home/signup-gallery.webp",
   imageAlt: "Gallery wall with contemporary artworks",

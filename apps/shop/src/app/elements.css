@@ -1,0 +1,201 @@
+/* Shop element foundations: type roles, labels, form controls and buttons.
+   Imported after the shared marketing styles so these rules set the Shop look for shared
+   components too. Tokens live in base.css. */
+
+/* Type roles: Montserrat for page titles and section headings, Outfit for everything else. */
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-headline);
+  }
+}
+
+/* Labels are sentence case. Shared marketing components carry all-caps label utilities for
+   LAX Bid; Shop renders their text as written, with normal tracking. */
+.uppercase {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Catalogue filter group titles and footer column titles read as labels, not eyebrows. */
+.marketing-filter-group-title,
+.marketing-footer__heading {
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+}
+
+/* Form controls: text inputs, search, selects and textareas. */
+.shop-field {
+  min-height: var(--shop-control-height);
+  height: auto;
+  padding: var(--shop-space-2) var(--shop-space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
+  background-color: var(--color-control-bg);
+  box-shadow: none;
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
+  line-height: 1.5rem;
+  transition: border-color var(--motion-duration-sm) ease, background-color
+    var(--motion-duration-sm) ease;
+}
+
+.shop-field::placeholder {
+  color: var(--color-on-surface-variant);
+  opacity: 1;
+}
+
+.shop-field:hover:not(:disabled, [readonly]) {
+  border-color: var(--color-control-border-hover);
+}
+
+.shop-field:focus-visible {
+  border-color: var(--color-control-border-hover);
+  box-shadow: none;
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.shop-field[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.shop-field[aria-invalid="true"]:focus-visible {
+  outline-color: var(--color-error);
+}
+
+.shop-field[readonly] {
+  background-color: var(--color-control-bg-disabled);
+  color: var(--color-on-surface-variant);
+}
+
+.shop-field:disabled {
+  border-color: var(--color-control-border-disabled);
+  background-color: var(--color-control-bg-disabled);
+  color: var(--color-on-surface-variant);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Selectable cards (delivery options and similar radio groups). */
+.shop-radio-card {
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
+  background-color: var(--color-control-bg);
+  font-family: var(--font-body);
+  transition: border-color var(--motion-duration-sm) ease, background-color
+    var(--motion-duration-sm) ease;
+}
+
+.shop-radio-card:hover {
+  border-color: var(--color-control-border-hover);
+  background-color: var(--color-surface-container-low);
+}
+
+.shop-radio-card:has([data-state="checked"]) {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface-container-low);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.shop-radio-card:has(:focus-visible) {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.shop-radio-card:has(:disabled) {
+  border-color: var(--color-control-border-disabled);
+  background-color: var(--color-control-bg-disabled);
+}
+
+.shop-radio-card [role="radio"] {
+  border-color: var(--color-input-border);
+}
+
+.shop-radio-card [role="radio"][data-state="checked"] {
+  border-color: var(--color-primary);
+}
+
+/* Buttons. The scale tokens are in base.css; ShopCommerceButton applies these classes. */
+.shop-button {
+  height: auto;
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  letter-spacing: normal;
+  line-height: 1.25rem;
+  text-transform: none;
+}
+
+.shop-button--commerce {
+  min-height: var(--shop-button-commerce-height);
+  padding: var(--shop-space-3) var(--shop-space-6);
+  font-size: var(--shop-button-commerce-text);
+  font-weight: 600;
+}
+
+.shop-button--standard {
+  min-height: var(--shop-button-standard-height);
+  padding: var(--shop-space-2) var(--shop-space-4);
+  font-size: var(--shop-button-standard-text);
+  font-weight: 500;
+}
+
+.shop-button--primary:hover:not(:disabled, [aria-disabled="true"]) {
+  background-color: var(--color-cta-bg-hover);
+  opacity: 1;
+}
+
+.shop-button--primary:active:not(:disabled, [aria-disabled="true"]) {
+  background-color: var(--color-cta-bg-pressed);
+}
+
+.shop-button--secondary {
+  border: 1px solid var(--color-input-border);
+  background-color: var(--color-surface);
+  box-shadow: none;
+  color: var(--color-on-surface);
+}
+
+.shop-button--secondary:hover:not(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-control-border-hover);
+  background-color: var(--color-surface-container-low);
+}
+
+.shop-button--secondary:active:not(:disabled, [aria-disabled="true"]) {
+  background-color: var(--color-surface-container);
+}
+
+.shop-button:disabled,
+.shop-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.shop-button[aria-busy="true"] {
+  cursor: progress;
+}
+
+/* Shared status-state actions (empty, error and not-found pages) use the standard button. */
+.marketing-status-state__action {
+  min-height: var(--shop-button-standard-height);
+  padding: var(--shop-space-2) var(--shop-space-4);
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.marketing-status-state__action--primary:hover {
+  background-color: var(--color-cta-bg-hover);
+  border-color: var(--color-cta-bg-hover);
+}
+
+.marketing-status-state__action--secondary {
+  border-color: var(--color-input-border);
+}
+
+.marketing-status-state__action--secondary:hover {
+  border-color: var(--color-control-border-hover);
+  background-color: var(--color-surface-container-low);
+}

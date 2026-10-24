@@ -50,9 +50,7 @@ export function ShopMobileNavDrawer({
       }
       themeSlot={
         <>
-          <span className="font-label text-xs font-semibold uppercase text-on-surface-variant">
-            Theme
-          </span>
+          <span className="font-label text-sm font-semibold text-on-surface-variant">Theme</span>
           <ShopThemeToggle />
         </>
       }

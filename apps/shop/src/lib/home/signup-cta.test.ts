@@ -9,7 +9,7 @@ describe("homeSignupCta", () => {
         loginHref: "/login",
         registerHref: "/register",
       }),
-    ).toEqual({ label: "Sign Up", href: "/register" });
+    ).toEqual({ label: "Create account", href: "/register" });
   });
 
   it("uses account CTA for authenticated viewers", () => {

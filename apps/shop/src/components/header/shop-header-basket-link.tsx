@@ -43,7 +43,7 @@ export function ShopHeaderBasketLink({
       <MarketingBagIcon className="size-5" />
       {showBadge ? (
         <span
-          className="absolute -top-0.5 -right-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-cta-bg px-1 font-label text-[10px] font-bold leading-none text-cta-on"
+          className="absolute -top-0.5 -right-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-cta-bg px-1 font-label text-xs font-semibold leading-none text-cta-on"
           aria-hidden
         >
           {safeCount > 99 ? "99+" : safeCount}
