@@ -88,6 +88,11 @@ export type IdentityTwoFactorPolicyView = {
 /** Identity owns two-step verification policy (D35); Bid decides who may change it. */
 export interface IIdentityTwoFactorPolicyClient {
   readTwoFactorRequirement(subjectId: string): Promise<IdentityTwoFactorRequirement>;
+  /**
+   * Removes the person's two-step enrolment and signs them out everywhere. Identity emails
+   * them that support did it. Rejects with an IdentityIssuerClientError (404 `subject_not_found`).
+   */
+  resetTwoFactor(subjectId: string): Promise<void>;
   readTwoFactorPolicy(scope: IdentityTwoFactorPolicyScope): Promise<IdentityTwoFactorPolicyView>;
   writeTwoFactorPolicy(
     scope: IdentityTwoFactorPolicyScope,

@@ -528,4 +528,51 @@ describe("HttpIdentityIssuerClient address book", () => {
       kind: "invalid_response",
     });
   });
+
+  it("posts a two-step reset to the issuer's machine route for the subject", async () => {
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], _init?: RequestInit) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      return Response.json({ ok: true });
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(client.resetTwoFactor("user/1")).resolves.toBeUndefined();
+
+    const call = fetchImpl.mock.calls.find(([url]) => String(url).includes("two-factor/reset"));
+    expect(String(call?.[0])).toBe(
+      "https://identity.example.com/internal/identity/subjects/user%2F1/two-factor/reset",
+    );
+    expect(call?.[1]).toMatchObject({ method: "POST" });
+  });
+
+  it("surfaces an unknown subject on reset as an http 404", async () => {
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      return Response.json(
+        { code: "subject_not_found", message: "Subject not found" },
+        { status: 404 },
+      );
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(client.resetTwoFactor("missing")).rejects.toMatchObject({
+      kind: "http",
+      status: 404,
+      code: "subject_not_found",
+    });
+  });
 });
