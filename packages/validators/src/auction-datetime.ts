@@ -44,10 +44,18 @@ export function instantFromAuctionDatetimeFormString(
   return new Date(tz.getTime());
 }
 
-/** UTC epoch for the start of the auction-minute bucket containing `instant`. */
-export function auctionMinuteEpoch(instant: Date, zone: string = DEFAULT_AUCTION_ZONE): number {
-  const form = toAuctionDatetimeFormString(instant, zone);
-  return instantFromAuctionDatetimeFormString(form, zone).getTime();
+const MINUTE_MS = 60_000;
+
+/**
+ * UTC epoch for the start of the auction minute containing `instant`.
+ *
+ * Every auction zone's UTC offset is a whole number of minutes, so the London minute starts on a
+ * UTC minute boundary and truncating the instant is exact. Round-tripping through the London
+ * wall-clock form instead collapses the repeated hour when the clocks go back: two instants an
+ * hour apart share one wall-clock reading and would compare as equal.
+ */
+export function auctionMinuteEpoch(instant: Date): number {
+  return Math.floor(instant.getTime() / MINUTE_MS) * MINUTE_MS;
 }
 
 /** True when `startTime` is in the current or a future auction minute (publish gate). */
