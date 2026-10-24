@@ -185,7 +185,10 @@ export function ArtworkMediaField({
                         <Star aria-hidden />
                       </StaffButton>
                     </StaffTooltip>
-                  ) : null}
+                  ) : (
+                    // Keeps every row's controls in the same columns as the rows below it.
+                    <span aria-hidden className="size-control-sm" />
+                  )}
                   <StaffTooltip label="Move up">
                     <StaffButton
                       variant="ghost"

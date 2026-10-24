@@ -13,15 +13,9 @@ import type {
 import type { OverviewKpiKey } from "@auction/shop-domain";
 import type { AdminArtworkReader } from "./artwork-catalogue-admin.js";
 
-export type CursorListInput = {
-  cursor?: string | undefined;
-  limit?: number | undefined;
-};
+import type { CursorListInput, CursorListResult } from "./cursor-list.js";
 
-export type CursorListResult<T> = {
-  items: T[];
-  nextCursor: string | null;
-};
+export type { CursorListInput, CursorListResult };
 
 export type AdminOrderListFilters = {
   status?: string;

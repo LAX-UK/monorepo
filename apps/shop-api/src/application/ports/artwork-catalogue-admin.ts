@@ -8,7 +8,7 @@ import type {
   AdminArtworkVersionResponse,
   AdminArtworkVisibilityAction,
 } from "@auction/shop-contracts";
-import type { CursorListInput, CursorListResult } from "./admin-readers.js";
+import type { CursorListInput, CursorListResult } from "./cursor-list.js";
 
 export type AdminArtworkListInput = CursorListInput & {
   /** Title or artist name, anywhere in the text. */

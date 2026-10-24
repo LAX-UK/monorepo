@@ -7,6 +7,7 @@ import {
   withArtistName,
 } from "./artist-form";
 import {
+  type ArtworkFormImage,
   type ArtworkFormValues,
   appendImages,
   artworkConflictField,
@@ -231,7 +232,11 @@ describe("artwork form payloads", () => {
 });
 
 describe("artwork images", () => {
-  const images = ["a", "b", "c"].map((key) => ({ mediaKey: key, url: null, alt: "" }));
+  const images: ArtworkFormImage[] = ["a", "b", "c"].map((key) => ({
+    mediaKey: key,
+    url: null,
+    alt: "",
+  }));
   const keys = (list: typeof images) => list.map((image) => image.mediaKey);
 
   it("moves an image up or down and stays put at the ends", () => {
