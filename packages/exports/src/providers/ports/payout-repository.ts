@@ -69,6 +69,12 @@ export interface IPayoutRepository {
   /** Find a payout by id (any entity). */
   findById(payoutId: string): Promise<Payout | null>;
 
+  /** Find a payout and lock its row until the surrounding transaction ends (SELECT FOR UPDATE). */
+  findByIdForUpdate(payoutId: string): Promise<Payout | null>;
+
+  /** Serialise settlement for one legal entity until the surrounding transaction ends. */
+  lockSettlementForEntity(legalEntityId: string): Promise<void>;
+
   /** persist Xero ACCPAY bill id after worker/API projection. */
   updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void>;
 

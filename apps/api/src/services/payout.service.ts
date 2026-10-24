@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -47,13 +48,15 @@ export class PayoutService implements IPayoutService {
     transactionRunner?: import("@auction/persistence/interfaces").ITransactionRunner,
     domainEventSink?: IDomainEventSink,
     payoutAdjustments?: IPayoutAdjustmentService,
+    repoForTx?: (tx: Database) => IPayoutRepository,
   ) {
     this.deps = {
       repo,
       transactionRunner: transactionRunner ?? null,
       domainEventSink,
       payoutAdjustments,
-      payoutRepoForTx: transactionRunner ? (tx) => payoutRepoForTx(repo, tx) : () => repo,
+      payoutRepoForTx:
+        repoForTx ?? (transactionRunner ? (tx) => payoutRepoForTx(repo, tx) : () => repo),
     };
   }
 

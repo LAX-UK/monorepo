@@ -478,10 +478,32 @@ describe("StripeConnectService.initiateTransfer", () => {
     const result = await svc.initiateTransfer("po1");
 
     expect(result).toEqual({ ok: true, stripeTransferId: "zero_amount_skipped" });
-    expect(payoutRepo.updateStatus).toHaveBeenCalledWith(
+    expect(payoutRepo.updateStatusIfCurrent).toHaveBeenCalledWith(
       "po1",
+      "scheduled",
       expect.objectContaining({ status: "paid" }),
     );
+  });
+
+  it("does not publish a clawback event when another writer already moved the payout", async () => {
+    const payoutRepo = makePayoutRepository(payout({ status: "scheduled", netAmount: "-100.00" }));
+    vi.mocked(payoutRepo.updateStatusIfCurrent).mockResolvedValue(null);
+    const publisher = makeDomainEventSink();
+    const svc = new StripeConnectService(
+      baseEnv(),
+      transactionRunnerFromDb(makeMockDb()),
+      makePayoutService(null),
+      makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
+      payoutRepo,
+      publisher,
+    );
+
+    const result = await svc.initiateTransfer("po1");
+
+    expect(result).toEqual({ ok: false, reason: "payout_already_processed" });
+    expect(publisher.publish).not.toHaveBeenCalled();
   });
 
   it("marks negative net payouts as clawback_pending without loading Stripe Connect", async () => {
@@ -502,8 +524,9 @@ describe("StripeConnectService.initiateTransfer", () => {
     const result = await svc.initiateTransfer("po1");
 
     expect(result).toEqual({ ok: false, reason: "negative_net_amount" });
-    expect(payoutRepo.updateStatus).toHaveBeenCalledWith(
+    expect(payoutRepo.updateStatusIfCurrent).toHaveBeenCalledWith(
       "po1",
+      "scheduled",
       expect.objectContaining({
         status: "clawback_pending",
         stripeTransferId: null,
@@ -537,7 +560,7 @@ describe("StripeConnectService.initiateTransfer", () => {
     const updateStatus = vi.fn().mockResolvedValue({ ...payoutRow, status: "scheduled" as const });
     const payoutRepo = {
       findById: vi.fn().mockResolvedValue(payoutRow),
-      updateStatus,
+      updateStatusIfCurrent: updateStatus,
       list: vi.fn(),
       create: vi.fn(),
       insertLine: vi.fn(),
@@ -584,8 +607,9 @@ describe("StripeConnectService.initiateTransfer", () => {
       updateStatus.mock.calls.some(
         (c) =>
           c[0] === "po1" &&
-          c[1].status === "scheduled" &&
-          String(c[1].failureReason).includes("stripe_transfer_failed"),
+          c[1] === "scheduled" &&
+          c[2].status === "scheduled" &&
+          String(c[2].failureReason).includes("stripe_transfer_failed"),
       ),
     ).toBe(true);
     expect(publisher.publish).toHaveBeenCalledWith(

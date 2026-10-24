@@ -83,11 +83,14 @@ export async function createSettlement(
 ): Promise<CreateSettlementResult> {
   const publisher = deps.domainEventSink;
   if (!deps.transactionRunner || !publisher) {
-    return await createSettlementCore(deps.repo, input);
+    throw new Error("payout_transactions_not_configured");
   }
 
   return await deps.transactionRunner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
+    // One settlement per legal entity at a time: a concurrent run waits here, then sees the
+    // payments already on the first payout and finds nothing pending.
+    await r.lockSettlementForEntity(input.legalEntityId);
     const result = await createSettlementCore(r, input);
     if (!result.ok) {
       return result;

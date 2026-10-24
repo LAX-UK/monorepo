@@ -55,6 +55,12 @@ export interface IPayoutReadRepository {
   list(filter: ListPayoutsFilter): Promise<Payout[]>;
   /** Find a payout by id (any entity). */
   findById(payoutId: string): Promise<Payout | null>;
+
+  /** Find a payout and lock its row until the surrounding transaction ends (SELECT FOR UPDATE). */
+  findByIdForUpdate(payoutId: string): Promise<Payout | null>;
+
+  /** Serialise settlement for one legal entity until the surrounding transaction ends. */
+  lockSettlementForEntity(legalEntityId: string): Promise<void>;
   /** Find a payout by its Stripe transfer id (webhook idempotency lookup). */
   findByStripeTransferId(stripeTransferId: string): Promise<Payout | null>;
   /** Lines for a payout, oldest-first by created_at. */

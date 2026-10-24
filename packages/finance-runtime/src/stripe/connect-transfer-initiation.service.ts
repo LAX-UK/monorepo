@@ -39,12 +39,13 @@ export class ConnectTransferInitiationService {
 
     const amountCents = Math.round(Number.parseFloat(payout.netAmount) * 100);
     if (amountCents < 0) {
-      await this.payoutRepository.updateStatus(payoutId, {
+      const moved1 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
         status: "clawback_pending",
         stripeTransferId: null,
         processedAt: new Date(),
         failureReason: "negative_net_amount",
       });
+      if (!moved1) return { ok: false, reason: "payout_already_processed" };
 
       await this.domainEventPublisher?.publish({
         aggregateType: "payout",
@@ -105,12 +106,13 @@ export class ConnectTransferInitiationService {
     }
 
     if (amountCents <= 0) {
-      await this.payoutRepository.updateStatus(payoutId, {
+      const moved2 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
         status: "paid",
         stripeTransferId: null,
         processedAt: new Date(),
         failureReason: null,
       });
+      if (!moved2) return { ok: false, reason: "payout_already_processed" };
       return { ok: true, stripeTransferId: "zero_amount_skipped" };
     }
 
@@ -190,12 +192,13 @@ export class ConnectTransferInitiationService {
       const errorMessage = err.message ?? "Transfer failed after retries";
       const failureReason = `stripe_transfer_failed: ${errorCode} - ${errorMessage}`;
 
-      await this.payoutRepository.updateStatus(payoutId, {
+      const moved3 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
         status: opts?.keepScheduledOnTransferFailure ? "scheduled" : "failed",
         stripeTransferId: null,
         processedAt: opts?.keepScheduledOnTransferFailure ? null : new Date(),
         failureReason,
       });
+      if (!moved3) return { ok: false, reason: "payout_already_processed" };
 
       await this.domainEventPublisher?.publish({
         aggregateType: "payout",

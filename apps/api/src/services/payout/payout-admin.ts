@@ -1,4 +1,7 @@
-import type { ReconcileStripeTransferPatch } from "@auction/persistence/interfaces";
+import type {
+  IPayoutRepository,
+  ReconcileStripeTransferPatch,
+} from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
@@ -96,31 +99,42 @@ export async function addAdjustment(
   return { ...updated, lines };
 }
 
+/**
+ * Moves a payout to a new status only if it still holds the status that was read.
+ * When another writer changed it first, nothing is written and the caller gets a
+ * transition error naming the state it now holds.
+ */
+async function transitionOrThrow(
+  r: IPayoutRepository,
+  found: Payout,
+  patch: Parameters<IPayoutRepository["updateStatusIfCurrent"]>[2],
+): Promise<Payout> {
+  const updated = await r.updateStatusIfCurrent(found.id, found.status, patch);
+  if (updated) return updated;
+  const current = await r.findById(found.id);
+  if (!current) throw new PayoutNotFoundError();
+  if (current.status === patch.status && patch.status === "paid") {
+    throw new PayoutStatusTransitionError("payout_already_paid");
+  }
+  throw new PayoutStatusTransitionError("payout_state_changed");
+}
+
+function requireTransactional(deps: PayoutServiceDeps) {
+  const runner = deps.transactionRunner;
+  const publisher = deps.domainEventSink;
+  if (!runner || !publisher) throw new Error("payout_transactions_not_configured");
+  return { runner, publisher };
+}
+
 export async function markPaid(
   deps: PayoutServiceDeps,
   actorUserId: string,
   payoutId: string,
   input: MarkPaidInput,
 ): Promise<Payout> {
-  const publisher = deps.domainEventSink;
-  if (!deps.transactionRunner || !publisher) {
-    const found = await deps.repo.findById(payoutId);
-    if (!found) throw new PayoutNotFoundError();
-    if (found.status === "paid") {
-      throw new PayoutStatusTransitionError("payout_already_paid");
-    }
-    if (found.status !== "scheduled" && found.status !== "in_transit") {
-      throw new PayoutStatusTransitionError("cannot_pay_payout_in_state");
-    }
-    return await deps.repo.updateStatus(payoutId, {
-      status: "paid",
-      stripeTransferId: input.stripeTransferId,
-      processedAt: new Date(),
-      failureReason: null,
-    });
-  }
+  const { runner, publisher } = requireTransactional(deps);
 
-  return await deps.transactionRunner.runInTransaction(async (tx) => {
+  return await runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     const found = await r.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
@@ -130,7 +144,7 @@ export async function markPaid(
     if (found.status !== "scheduled" && found.status !== "in_transit") {
       throw new PayoutStatusTransitionError("cannot_pay_payout_in_state");
     }
-    const updated = await r.updateStatus(payoutId, {
+    const updated = await transitionOrThrow(r, found, {
       status: "paid",
       stripeTransferId: input.stripeTransferId,
       processedAt: new Date(),
@@ -179,15 +193,16 @@ export async function reconcileStripeTransfer(
     failureReason: null,
   };
 
-  const publisher = deps.domainEventSink;
-  if (!deps.transactionRunner || !publisher) {
-    return await deps.repo.reconcileStripeTransfer(found.id, patch);
-  }
+  const { runner, publisher } = requireTransactional(deps);
 
-  return await deps.transactionRunner.runInTransaction(async (tx) => {
+  return await runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
-    const row = await r.findById(found.id);
+    // Row lock: concurrent Stripe events for one payout apply one after another, so each
+    // sees the previous status and emits its payout event only on a real transition.
+    const row = await r.findByIdForUpdate(found.id);
     if (!row) return null;
+    // A transfer that was reversed by staff or Stripe is never re-marked paid by a late event.
+    if (row.status === "reversed" && patch.status === "paid") return row;
     const previousStatus = row.status;
     const updated = await r.reconcileStripeTransfer(row.id, patch);
 
@@ -263,26 +278,23 @@ export async function adminManualReverse(
   payoutId: string,
   input: { reason: string },
 ): Promise<Payout> {
-  const publisher = deps.domainEventSink;
-  if (!deps.transactionRunner || !publisher) {
-    const found = await deps.repo.findById(payoutId);
-    if (!found) throw new PayoutNotFoundError();
-    if (found.status !== "paid" && found.status !== "in_transit") {
-      throw new PayoutStatusTransitionError("cannot_reverse_payout_in_state");
-    }
-    return await deps.repo.updateStatus(payoutId, {
-      status: "reversed",
-      failureReason: input.reason,
-    });
-  }
+  const { runner, publisher } = requireTransactional(deps);
 
-  return await deps.transactionRunner.runInTransaction(async (tx) => {
+  return await runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     const found = await r.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
+    if (found.status === "reversed") {
+      throw new PayoutStatusTransitionError("payout_already_reversed");
+    }
     if (found.status !== "paid" && found.status !== "in_transit") {
       throw new PayoutStatusTransitionError("cannot_reverse_payout_in_state");
     }
+    // Claim the transition first so a losing caller writes no reversal line.
+    const claimed = await transitionOrThrow(r, found, {
+      status: "reversed",
+      failureReason: input.reason,
+    });
     const negativeAmount = (-Number.parseFloat(found.netAmount)).toFixed(2);
     await r.insertLine({
       payoutId: found.id,
@@ -296,10 +308,7 @@ export async function adminManualReverse(
     if (deps.payoutAdjustments) {
       await deps.payoutAdjustments.recalculateTotalsFromLines(r, found.id);
     }
-    const updated = await r.updateStatus(payoutId, {
-      status: "reversed",
-      failureReason: input.reason,
-    });
+    const updated = (await r.findById(payoutId)) ?? claimed;
     await publisher.withTx(tx).publish({
       aggregateType: "payout",
       aggregateId: updated.id,

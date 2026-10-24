@@ -260,6 +260,22 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
     return rows[0] ? rowToPayout(rows[0]) : null;
   }
 
+  async findByIdForUpdate(payoutId: string): Promise<Payout | null> {
+    const rows = await this.db
+      .select()
+      .from(payout)
+      .where(eq(payout.id, payoutId))
+      .limit(1)
+      .for("update");
+    return rows[0] ? rowToPayout(rows[0]) : null;
+  }
+
+  async lockSettlementForEntity(legalEntityId: string): Promise<void> {
+    await this.db.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`payout_settlement:${legalEntityId}`}))`,
+    );
+  }
+
   async updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void> {
     await this.db.update(payout).set({ xeroBillId }).where(eq(payout.id, payoutId));
   }

@@ -8,6 +8,7 @@ import {
   snapshotBulkResult,
 } from "@auction/finance-runtime";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { runBulkSettlementWithTransfers } from "./payout-bulk-transfer.js";
 import type { PayoutServiceDeps } from "./payout-helpers.js";
 
@@ -35,8 +36,8 @@ describe("API payout bulk settlement parity (finance-runtime bridge)", () => {
     const initiateTransfer = vi.fn().mockResolvedValue({ ok: true, stripeTransferId: "tr_api" });
     const deps: PayoutServiceDeps = {
       repo,
-      transactionRunner: null,
-      domainEventSink: undefined,
+      transactionRunner: { runInTransaction: (fn) => fn({} as never) },
+      domainEventSink: mockDomainEventSink(),
       payoutAdjustments: undefined,
       payoutRepoForTx: () => repo,
     };
