@@ -1,11 +1,14 @@
 import type {
   AdminArtistDetail,
+  AdminArtworkLookupItem,
   AdminAuditEntry,
   AdminClientDetail,
   AdminDisputeListItem,
+  AdminEditionLookupItem,
   AdminEffectiveSettings,
   AdminOrderDetail,
   AdminOverviewKpis,
+  AdminPartyLookupItem,
   MerchandiseProductDetail,
   MerchandiseProductListItem,
   MerchandiseStatus,
@@ -67,6 +70,7 @@ export type AdminPayoutListItem = {
   status: string;
   payoutDueAt: string;
   paidAt: string | null;
+  paidReference: string | null;
 };
 
 export type AdminStockHoldListItem = {
@@ -88,6 +92,7 @@ export type AdminThirdPartySaleListItem = {
   status: string;
   grossPence: number;
   recordedAt: string | null;
+  fees: Array<{ feeId: string; label: string; amountPence: number; status: string }>;
 };
 
 export type AdminOriginalSaleListItem = {
@@ -97,6 +102,8 @@ export type AdminOriginalSaleListItem = {
   status: string;
   salePricePence: number;
   createdAt: string;
+  buyerName: string;
+  buyerEmail: string | null;
 };
 
 export type AdminSaleAuthorityRequestListItem = {
@@ -227,6 +234,24 @@ export interface AdminComplianceReader {
   readEffectiveSettings(): Promise<AdminEffectiveSettings>;
 }
 
+export type AdminLookupInput = {
+  /** Text to match; empty returns a sensible default page. */
+  q?: string | undefined;
+  limit: number;
+};
+
+/** Name-first searches behind the staff pickers, each one bounded page. */
+export interface AdminLookupReader {
+  searchParties(
+    input: AdminLookupInput & {
+      /** When set, only clients assigned to this broker subject are returned. */
+      brokerSubjectId?: string | undefined;
+    },
+  ): Promise<AdminPartyLookupItem[]>;
+  searchArtworks(input: AdminLookupInput): Promise<AdminArtworkLookupItem[]>;
+  searchEditions(input: AdminLookupInput): Promise<AdminEditionLookupItem[]>;
+}
+
 export type AdminReadPorts = {
   orders: AdminOrderReader;
   artworks: AdminArtworkReader;
@@ -239,4 +264,5 @@ export type AdminReadPorts = {
   catalogue: AdminCatalogueReader;
   overview: AdminOverviewReader;
   compliance: AdminComplianceReader;
+  lookups: AdminLookupReader;
 };

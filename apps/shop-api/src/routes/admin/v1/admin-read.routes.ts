@@ -3,11 +3,15 @@ import {
   type AdminArtistListQuery,
   AdminArtistListQuerySchema,
   AdminArtistListSchema,
+  AdminArtworkLookupSchema,
   AdminAuditListSchema,
   AdminClientDetailSchema,
   AdminDisputeListSchema,
+  AdminEditionLookupSchema,
   AdminEffectiveSettingsSchema,
   AdminFulfilmentListSchema,
+  type AdminLookupQuery,
+  AdminLookupQuerySchema,
   AdminOrderDetailSchema,
   type AdminOrderListQuery,
   AdminOrderListQuerySchema,
@@ -15,6 +19,7 @@ import {
   AdminOriginalSaleListSchema,
   AdminOverviewKpisSchema,
   AdminPartyListSchema,
+  AdminPartyLookupSchema,
   AdminPayoutListSchema,
   AdminSaleAuthorityRequestListSchema,
   AdminStaffMemberListSchema,
@@ -31,6 +36,7 @@ import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { parseOrderListQuery } from "../../../application/admin-order-list-query.js";
 import { ShopApiError } from "../../../errors/shop-api-error.js";
 import {
+  requireAnyShopStaffCapability,
   requireShopAdminSubject,
   requireShopStaffAuth,
   requireShopStaffCapability,
@@ -45,6 +51,26 @@ const SaleAuthorityRequestListQuerySchema = Type.Intersect([
     ),
   }),
 ]);
+
+const DEFAULT_LOOKUP_LIMIT = 15;
+
+/** Who may search for people: anyone who picks a client, buyer or seller in a form. */
+const PARTY_LOOKUP_CAPABILITIES = [
+  "sale_authority.write",
+  "original_sale.write",
+  "third_party_sale.write",
+  "stock_hold.write",
+] as const;
+
+/** Who may search for artworks: sale authority and original sales, and the catalogue itself. */
+const ARTWORK_LOOKUP_CAPABILITIES = [
+  "sale_authority.write",
+  "original_sale.write",
+  "catalogue.write",
+] as const;
+
+/** Who may search for editions: holds and third-party sales. */
+const EDITION_LOOKUP_CAPABILITIES = ["stock_hold.write", "third_party_sale.write"] as const;
 
 export type AdminReadPhaseFlags = {
   payoutsEnabled: boolean;
@@ -179,7 +205,8 @@ export async function registerAdminReadRoutes(
         },
       },
       async (request) => {
-        requireShopStaffCapability(request, "third_party_sale.write");
+        // Operations record the sales; finance approves each sale's fees from the same list.
+        requireAnyShopStaffCapability(request, ["third_party_sale.write", "fee.approve"]);
         const query = request.query as { cursor?: string; limit?: number };
         return deps.adminRead.sales.listThirdPartySales(query);
       },
@@ -295,6 +322,74 @@ export async function registerAdminReadRoutes(
       requireShopStaffCapability(request, "catalogue.write");
       const { artistId } = request.params as { artistId: string };
       return deps.adminRead.parties.getArtistDetail(artistId);
+    },
+  );
+
+  const lookupLimit = (query: AdminLookupQuery) => query.limit ?? DEFAULT_LOOKUP_LIMIT;
+
+  app.get(
+    "/lookups/parties",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminLookupQuerySchema,
+        response: { 200: AdminPartyLookupSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      const auth = requireAnyShopStaffCapability(request, [...PARTY_LOOKUP_CAPABILITIES]);
+      const query = request.query as AdminLookupQuery;
+      // A broker finds only the clients assigned to them, as on the Clients page.
+      const scope = clientListScope(capabilitiesForRole(auth.role));
+      return {
+        items: await deps.adminRead.lookups.searchParties({
+          q: query.q,
+          limit: lookupLimit(query),
+          ...(scope === "assigned" ? { brokerSubjectId: auth.subject } : {}),
+        }),
+      };
+    },
+  );
+
+  app.get(
+    "/lookups/artworks",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminLookupQuerySchema,
+        response: { 200: AdminArtworkLookupSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireAnyShopStaffCapability(request, [...ARTWORK_LOOKUP_CAPABILITIES]);
+      const query = request.query as AdminLookupQuery;
+      return {
+        items: await deps.adminRead.lookups.searchArtworks({
+          q: query.q,
+          limit: lookupLimit(query),
+        }),
+      };
+    },
+  );
+
+  app.get(
+    "/lookups/editions",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminLookupQuerySchema,
+        response: { 200: AdminEditionLookupSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireAnyShopStaffCapability(request, [...EDITION_LOOKUP_CAPABILITIES]);
+      const query = request.query as AdminLookupQuery;
+      return {
+        items: await deps.adminRead.lookups.searchEditions({
+          q: query.q,
+          limit: lookupLimit(query),
+        }),
+      };
     },
   );
 

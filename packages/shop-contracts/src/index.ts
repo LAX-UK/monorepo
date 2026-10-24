@@ -357,6 +357,13 @@ export {
   AdminThirdPartySaleListSchema,
   type AdminArtistList,
   type AdminArtistListItem,
+  type AdminFulfilmentList,
+  type AdminOriginalSaleList,
+  type AdminPartyList,
+  type AdminPayoutList,
+  type AdminSaleAuthorityRequestList,
+  type AdminStockHoldList,
+  type AdminThirdPartySaleList,
   type AdminOrderList,
   type AdminOrderListQuery,
   type AdminOrderStatus,
@@ -388,6 +395,21 @@ export {
   type AdminDisputeListItem,
   type AdminEffectiveSettings,
 } from "./admin-compliance.js";
+export {
+  ADMIN_LOOKUP_MAX_LIMIT,
+  ADMIN_LOOKUP_SEARCH_MAX_LENGTH,
+  AdminArtworkLookupItemSchema,
+  AdminArtworkLookupSchema,
+  AdminEditionLookupItemSchema,
+  AdminEditionLookupSchema,
+  AdminLookupQuerySchema,
+  AdminPartyLookupItemSchema,
+  AdminPartyLookupSchema,
+  type AdminArtworkLookupItem,
+  type AdminEditionLookupItem,
+  type AdminLookupQuery,
+  type AdminPartyLookupItem,
+} from "./admin-lookups.js";
 export { CursorListQuerySchema, type CursorListQuery } from "./cursor-list.js";
 export {
   PortalCollectionItemSchema,

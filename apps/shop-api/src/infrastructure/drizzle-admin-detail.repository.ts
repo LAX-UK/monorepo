@@ -418,6 +418,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
               option: fulfilmentRecord.option,
               carrier: fulfilmentRecord.carrier,
               trackingNumber: fulfilmentRecord.trackingNumber,
+              possessionAt: fulfilmentRecord.possessionAt?.toISOString() ?? null,
               updatedAt: fulfilmentRecord.updatedAt.toISOString(),
             }
           : null,
