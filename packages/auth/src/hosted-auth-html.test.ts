@@ -3,6 +3,7 @@ import { HOSTED_AUTH_RUNTIME_SCRIPT } from "./hosted-auth/runtime.js";
 import { HOSTED_AUTH_STYLES } from "./hosted-auth/styles.js";
 import { hostedAuthViewFromSearch } from "./hosted-auth/view.js";
 import {
+  buildHostedAccountChooserHtml,
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
@@ -96,6 +97,45 @@ describe("issuer-hosted credential HTML", () => {
 
     it("falls back to the bare forgot-password page without a client", () => {
       expect(buildHostedResetPasswordHtml()).toContain('href="/forgot-password"');
+    });
+  });
+
+  describe("account chooser page", () => {
+    const input = {
+      intent: "sign-in" as const,
+      name: "Jane Doe",
+      email: "jane.doe@example.test",
+      continueUrl: "https://shop.example.test/login",
+      switchUrl: "/login?client_id=lax-shop-web",
+    };
+
+    it("names the signed-in account with a masked address and offers both choices", () => {
+      const html = buildHostedAccountChooserHtml(input);
+      expect(html).toContain("You&#39;re signed in as Jane Doe (j***@example.test).");
+      expect(html).not.toContain("jane.doe@example.test");
+      expect(html).toMatch(
+        /<a class="btn btn-primary" id="chooser-continue" href="https:\/\/shop.example.test\/login">Continue<\/a>/,
+      );
+      expect(html).toContain("Use a different account");
+      expect(html).toContain('src="/hosted-account-chooser.js');
+    });
+
+    it("keeps the shared hosted shell: LAX Account lockup and status region", () => {
+      const html = buildHostedAccountChooserHtml(input);
+      expect(html).toContain('alt="LAX Account"');
+      expect(html).toContain('id="error"');
+    });
+
+    it("escapes a name that carries markup", () => {
+      const html = buildHostedAccountChooserHtml({ ...input, name: '<img src=x onerror="a">' });
+      expect(html).not.toContain("<img src=x");
+      expect(html).toContain("&lt;img src=x");
+    });
+
+    it("falls back to the product name when the account has no name", () => {
+      expect(buildHostedAccountChooserHtml({ ...input, name: "  " })).toContain(
+        "signed in as LAX Account (j***@example.test)",
+      );
     });
   });
 

@@ -105,3 +105,65 @@ describe("hosted two-factor manage page", () => {
     expect(response.headers.get("location")).toBe("/login?client_id=lax-account-web");
   });
 });
+
+describe("account chooser for an explicit sign-in or sign-up visit", () => {
+  const session = { user: { id: "u1", name: "Jane Doe", email: "jane.doe@example.test" } };
+  const signIn = "/login?client_id=lax-shop-web";
+  const signUp = "/sign-up?client_id=lax-shop-web";
+
+  it("asks before signing in a browser that already holds an issuer session", async () => {
+    const response = await appWithSession(session).request(signIn);
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(html).toContain("You&#39;re signed in as Jane Doe (j***@example.test).");
+    expect(html).not.toContain("jane.doe@example.test");
+    expect(html).toContain('href="https://test-shop.lax.bid/login"');
+    expect(html).toContain("Use a different account");
+    expect(html).toContain('data-intent="sign-in"');
+    expect(html).toContain('data-switch-href="/login?client_id=lax-shop-web"');
+  });
+
+  it("does the same on the sign-up page and returns to it after signing out", async () => {
+    const html = await (await appWithSession(session).request(signUp)).text();
+    expect(html).toContain('data-intent="sign-up"');
+    expect(html).toContain('data-switch-href="/sign-up?client_id=lax-shop-web"');
+  });
+
+  it("shows the real form when nobody is signed in", async () => {
+    const html = await (await appWithSession(null).request(signIn)).text();
+    expect(html).not.toContain("account-chooser");
+    expect(html).toContain("login-form");
+  });
+
+  it("leaves an authorize request that needs a sign-in on the real form", async () => {
+    const authorize =
+      "/login?response_type=code&client_id=lax-shop-web&redirect_uri=https://test-shop.lax.bid/auth/callback&scope=openid&state=abc&nonce=n&code_challenge=c&code_challenge_method=S256&prompt=login";
+    const html = await (await appWithSession(session).request(authorize)).text();
+    expect(html).not.toContain("account-chooser");
+    expect(html).toContain("login-form");
+  });
+
+  it("leaves a sign-in that Better Auth already started on the real form", async () => {
+    const response = await appWithSession(session).request(signIn, {
+      headers: { cookie: "oidc_login_prompt=abc" },
+    });
+    expect(await response.text()).not.toContain("account-chooser");
+  });
+
+  it("falls back to the real form when the session has no address to show", async () => {
+    const html = await (await appWithSession({ user: { id: "u1" } }).request(signIn)).text();
+    expect(html).not.toContain("account-chooser");
+  });
+
+  it("falls back to the real form when the session cannot be read", async () => {
+    const app = new Hono();
+    mountHostedAuthPages(app, {
+      ...capabilities,
+      getSession: async () => {
+        throw new Error("down");
+      },
+    });
+    expect(await (await app.request(signIn)).text()).not.toContain("account-chooser");
+  });
+});

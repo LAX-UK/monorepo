@@ -13,6 +13,7 @@ export const HOSTED_AUTH_MESSAGES = {
   SERVER_ERROR: "Something went wrong on our side. Try again.",
   EMAIL_NOT_VERIFIED: "Verify your email to continue.",
   RESEND_VERIFICATION: "Resend verification email",
+  SIGN_OUT_FAILED: "Couldn't sign you out. Try again.",
   START_AGAIN: "Start again",
   RESET_LINK_MISSING:
     "This reset link is incomplete. Open the link from your email again, or request a new one.",

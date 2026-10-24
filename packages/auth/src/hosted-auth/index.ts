@@ -61,6 +61,13 @@ export {
   continuationAnchor,
 } from "./html.js";
 export { HOSTED_LOGIN_SCRIPT, buildHostedLoginHtml } from "./pages/login.js";
+export {
+  HOSTED_ACCOUNT_CHOOSER_SCRIPT,
+  buildHostedAccountChooserHtml,
+  type HostedAccountChooserInput,
+  type HostedAccountChooserIntent,
+} from "./pages/account-chooser.js";
+export { maskEmail } from "./mask-email.js";
 export { HOSTED_SIGN_UP_SCRIPT, buildHostedSignUpHtml } from "./pages/sign-up.js";
 export {
   HOSTED_FORGOT_PASSWORD_SCRIPT,

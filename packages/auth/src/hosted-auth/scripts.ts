@@ -5,6 +5,7 @@ export { readHostedAsset } from "./assets.js";
 export const HOSTED_AUTH_RUNTIME_SCRIPT = readHostedAsset("hosted-auth-runtime.js");
 export const HOSTED_LOGIN_SCRIPT = readHostedAsset("hosted-login.js");
 export const HOSTED_SIGN_UP_SCRIPT = readHostedAsset("hosted-sign-up.js");
+export const HOSTED_ACCOUNT_CHOOSER_SCRIPT = readHostedAsset("hosted-account-chooser.js");
 export const HOSTED_FORGOT_PASSWORD_SCRIPT = readHostedAsset("hosted-forgot-password.js");
 export const HOSTED_RESET_PASSWORD_SCRIPT = readHostedAsset("hosted-reset-password.js");
 export const HOSTED_TWO_FACTOR_SCRIPT = readHostedAsset("hosted-two-factor.js");
