@@ -79,9 +79,11 @@ export class WorkerLotLifecycleNotifications implements ILotLifecycleNotificatio
     };
     tx: Database;
   }): Promise<void> {
+    let hammerPrice: string | undefined;
     if (params.winnerId) {
       const sale = params.lot.saleId ? await this.deps.saleRepo.findById(params.lot.saleId) : null;
       const pricing = computeLotCheckoutPricing(params.lot, sale ?? null);
+      hammerPrice = pricing.hammerMajor;
       await this.deps.notificationOutbox.stage(
         {
           userId: params.winnerId,
@@ -92,6 +94,22 @@ export class WorkerLotLifecycleNotifications implements ILotLifecycleNotificatio
             }),
           ),
           idempotencyKey: `lot_won:${params.lot.id}:${params.winnerId}`,
+        },
+        params.tx,
+      );
+    }
+
+    // The consignor learns the outcome, sold or unsold, whether or not anyone bid.
+    if (params.lot.sellerId) {
+      await this.deps.notificationOutbox.stage(
+        {
+          userId: params.lot.sellerId,
+          payload: notificationRowToPayload(
+            this.factory.createEndedSeller(params.lot, params.lot.sellerId, {
+              ...(hammerPrice ? { hammerPrice } : {}),
+            }),
+          ),
+          idempotencyKey: `lot_ended_seller:${params.lot.id}:${params.lot.sellerId}`,
         },
         params.tx,
       );

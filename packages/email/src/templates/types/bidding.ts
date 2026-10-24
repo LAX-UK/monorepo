@@ -24,6 +24,10 @@ type BiddingTemplateVars = {
     totalDue?: string;
   };
   "lot-ended-seller": OptOutableLotVars & {
+    outcome: "sold" | "unsold";
+    /** Formatted for display ("£1,250.00"); present when the lot sold. */
+    hammerPrice?: string | null;
+    /** Where the seller reviews the result: their consignments in Bid. */
     saleUrl?: string | null;
   };
   "proxy-cancelled-notice": {

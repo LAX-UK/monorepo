@@ -18,6 +18,8 @@ export type NotificationPayload = {
     invoiceNumber?: string;
     /** Payment due date for invoice emails (human-readable, e.g. "7 July 2026"). */
     dueDate?: string;
+    /** How a lot ended, for the seller's sold or unsold notice. */
+    outcome?: "sold" | "unsold";
     /** The bid this notification is about, in major units: the new high bid for an outbid
      *  notice, the winning bid for a lot-won notice. */
     bidAmount?: string;

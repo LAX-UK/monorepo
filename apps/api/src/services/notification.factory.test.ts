@@ -57,3 +57,18 @@ describe("NotificationFactory payment received", () => {
     expect(seller.meta).toMatchObject({ audience: "seller", amount: "1250.00" });
   });
 });
+
+describe("NotificationFactory lot ended for the seller", () => {
+  it("reports a sale with the hammer price", () => {
+    const row = factory.createEndedSeller(lot, "seller-1", { hammerPrice: "1000.00" });
+    expect(row).toMatchObject({ type: "lot_ended_seller", userId: "seller-1", lotId: "lot-1" });
+    expect(row.meta).toMatchObject({ outcome: "sold", hammerPrice: "1000.00" });
+  });
+
+  it("reports an unsold lot without a price", () => {
+    const row = factory.createEndedSeller(lot, "seller-1");
+    expect(row.meta).toMatchObject({ outcome: "unsold" });
+    expect(row.meta?.hammerPrice).toBeUndefined();
+    expect(row.message).toContain("without a sale");
+  });
+});

@@ -89,6 +89,9 @@ export class EmailNotificationChannel implements INotificationChannel {
           userName,
           lotTitle,
           lotUrl,
+          outcome: payload.meta?.outcome === "sold" ? "sold" : "unsold",
+          hammerPrice: formatMoneyMajor(payload.meta?.hammerPrice, payload.meta?.currency),
+          saleUrl: `${this.baseUrl()}/dashboard/seller/consignments`,
           unsubscribeUrl,
         };
       case "payment-receipt":

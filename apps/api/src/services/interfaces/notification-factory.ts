@@ -15,6 +15,12 @@ export interface INotificationFactory {
     opts?: { hammerPrice?: string; totalDue?: string },
   ): CreateNotificationRow;
 
+  createEndedSeller(
+    lot: Lot,
+    sellerId: string,
+    opts?: { hammerPrice?: string },
+  ): CreateNotificationRow;
+
   createLost(lot: Lot, bidderId: string): CreateNotificationRow;
 
   createEndingSoon(lot: Lot, userId: string): CreateNotificationRow;

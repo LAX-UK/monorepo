@@ -89,6 +89,34 @@ describe("EmailNotificationChannel outbid and won", () => {
   });
 });
 
+describe("EmailNotificationChannel lot ended for the seller", () => {
+  it("renders a sold notice with the formatted hammer price and a link to consignments", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({
+        type: "lot_ended_seller",
+        meta: { lotTitle: "Blue Vase", outcome: "sold", hammerPrice: "1000.00" },
+      }),
+    );
+    expect(enqueued[0]?.template).toBe("lot-ended-seller");
+    expect(enqueued[0]?.vars).toMatchObject({
+      outcome: "sold",
+      hammerPrice: "£1,000.00",
+      saleUrl: "https://test.lax.bid/dashboard/seller/consignments",
+    });
+  });
+
+  it("renders an unsold notice without a price", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({ type: "lot_ended_seller", meta: { lotTitle: "Blue Vase", outcome: "unsold" } }),
+    );
+    expect(enqueued[0]?.vars).toMatchObject({ outcome: "unsold", hammerPrice: null });
+  });
+});
+
 describe("EmailNotificationChannel payment receipt", () => {
   it("formats the amount from structured metadata and links to the buyer's purchases", async () => {
     const { channel, enqueued } = setup();
