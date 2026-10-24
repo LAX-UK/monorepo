@@ -499,6 +499,10 @@ export type {
 
 export type {
   RedactedDomainEventRow,
+  AuditActorRecord,
+  AuditLogRecord,
+  AuditLogSearchInput,
+  AuditLogSearchResult,
   FinanceIssueSnapshot,
   StripeConnectRequirementEntityRow,
   AdminOnboardingLegalEntityRow,

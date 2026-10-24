@@ -49,7 +49,7 @@ export type AdminCatalogSupportRoutesContainer = AdminRoutePick<
   "conditionReports" | "lotFulfilment" | "saleRegistrations" | "qrCodes" | "email"
 >;
 
-export type AdminAuditRoutesContainer = AdminRoutePick<"domainEvents">;
+export type AdminAuditRoutesContainer = AdminRoutePick<"domainEvents" | "auditLog">;
 
 export type AdminFinanceShellRoutesContainer = AdminRoutePick<
   "domainEvents" | "disputeCases" | "payments" | "xero"

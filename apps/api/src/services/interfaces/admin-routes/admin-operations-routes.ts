@@ -49,6 +49,52 @@ export interface IAdminDomainEventQueryService {
   }): Promise<RedactedDomainEventRow[]>;
 }
 
+export type AdminAuditLogSearch = {
+  limit: number;
+  offset: number;
+  q?: string;
+  actorUserId?: string;
+  view?: import("@auction/types").AuditLogView;
+  eventTypes?: readonly string[];
+  aggregateType?: string;
+  aggregateId?: string;
+  fromDay?: string;
+  toDay?: string;
+  /** The caller holds `audit.read_pii`: client identities and unredacted fields are visible. */
+  includePii: boolean;
+};
+
+/** Who did it, as far as the caller may see. Client identities are hidden without `audit.read_pii`. */
+export type AdminAuditActor = {
+  kind: "staff" | "client";
+  name: string | null;
+  email: string | null;
+};
+
+export type AdminAuditLogEntry = {
+  id: string;
+  aggregateType: string;
+  aggregateId: string;
+  eventType: string;
+  /** Minimised for the caller and never carries credentials. */
+  payload: unknown;
+  actorUserId: string | null;
+  actor: AdminAuditActor | null;
+  actingLegalEntityId: string | null;
+  occurredAt: Date;
+};
+
+export type AdminAuditActorOption = { userId: string; name: string; email: string };
+
+export interface IAdminAuditLogService {
+  search(input: AdminAuditLogSearch): Promise<{ rows: AdminAuditLogEntry[]; total: number }>;
+  searchActors(input: {
+    q?: string;
+    limit: number;
+    includePii: boolean;
+  }): Promise<AdminAuditActorOption[]>;
+}
+
 export type {
   AdminLegalEntityBrowseParams,
   AdminLegalEntityBrowseResult,
@@ -215,6 +261,7 @@ export type AdminOperationsRouteServices = {
   workItems: IAdminWorkItemsQueryService;
   saleReadiness: IAdminSaleReadinessQueryService;
   domainEvents: IAdminDomainEventQueryService;
+  auditLog: IAdminAuditLogService;
   financeIssueSnapshot: IAdminFinanceIssueSnapshotQueryService;
   manualReviewPayments: IAdminManualReviewPaymentQueryService;
   reviewTasks: IAdminReviewTaskQueryService;

@@ -27,6 +27,7 @@ import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
 import type { PaddleService } from "../paddle.service.js";
 import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 import type { SaleroomCheckInService } from "../saleroom-check-in.service.js";
+import { AdminAuditLogService } from "./admin-audit-log.service.js";
 import { AdminDomainEventQueryService } from "./admin-domain-event-query.service.js";
 import { AdminEmailApplicationService } from "./admin-email-application.service.js";
 import { AdminFinanceIssueSnapshotQueryService } from "./admin-finance-issue-snapshot-query.service.js";
@@ -108,6 +109,7 @@ export function createAdminOperationsServices(
       input.itemSubmissionAdminApi,
     ),
     domainEvents,
+    auditLog: new AdminAuditLogService(input.adminDomainEventReader),
     financeIssueSnapshot: new AdminFinanceIssueSnapshotQueryService(
       input.adminFinanceIssueSnapshotReader,
     ),

@@ -1,9 +1,16 @@
 import type { Database } from "@auction/db";
-import { domainEvent } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, domainEvent } from "@auction/db/schema";
 import { redactDomainEventPayload } from "@auction/types";
-import { and, asc, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, like, or, sql } from "drizzle-orm";
 import type { IAdminDomainEventReader } from "../interfaces/admin-domain-event.reader.js";
-import type { RedactedDomainEventRow } from "../interfaces/admin-read-models.js";
+import type {
+  AuditActorRecord,
+  AuditLogRecord,
+  AuditLogSearchInput,
+  AuditLogSearchResult,
+  RedactedDomainEventRow,
+} from "../interfaces/admin-read-models.js";
+import { buildAuditLogWhere, escapeLikePattern } from "./audit-log-sql.js";
 
 const DOMAIN_EVENT_LIST_COLUMNS = {
   id: domainEvent.id,
@@ -83,5 +90,80 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
     }
     const [row] = await this.db.select({ n: sql<number>`count(*)::int` }).from(domainEvent);
     return row?.n ?? 0;
+  }
+
+  async searchAuditLog(input: AuditLogSearchInput): Promise<AuditLogSearchResult> {
+    const where = buildAuditLogWhere(input);
+
+    const countQuery = this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(domainEvent)
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, domainEvent.actorUserId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, domainEvent.actorUserId));
+    const [countRow] = where ? await countQuery.where(where) : await countQuery;
+
+    const rowsQuery = this.db
+      .select({
+        ...DOMAIN_EVENT_LIST_COLUMNS,
+        actorName: bidIdentityDirectory.name,
+        actorEmail: bidIdentityDirectory.email,
+        actorRole: bidUserProfile.role,
+      })
+      .from(domainEvent)
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, domainEvent.actorUserId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, domainEvent.actorUserId))
+      .orderBy(desc(domainEvent.occurredAt), desc(domainEvent.id))
+      .limit(input.limit)
+      .offset(input.offset);
+    const rows = where ? await rowsQuery.where(where) : await rowsQuery;
+
+    return {
+      total: countRow?.n ?? 0,
+      rows: rows.map(
+        ({ actorRole, ...row }): AuditLogRecord => ({
+          ...row,
+          actorName: row.actorName ?? null,
+          actorEmail: row.actorEmail ?? null,
+          actorIsStaff: actorRole === "staff",
+        }),
+      ),
+    };
+  }
+
+  async searchAuditActors(input: {
+    q?: string;
+    limit: number;
+    staffOnly: boolean;
+  }): Promise<AuditActorRecord[]> {
+    const text = input.q?.trim();
+    const contains = text ? `%${escapeLikePattern(text)}%` : null;
+    const clauses = [
+      sql`exists (select 1 from ${domainEvent} where ${domainEvent.actorUserId} = ${bidIdentityDirectory.subjectId})`,
+      input.staffOnly ? eq(bidUserProfile.role, "staff") : undefined,
+      contains
+        ? or(
+            ilike(bidIdentityDirectory.name, contains),
+            ilike(bidIdentityDirectory.email, contains),
+          )
+        : undefined,
+    ];
+    const rows = await this.db
+      .select({
+        userId: bidIdentityDirectory.subjectId,
+        name: bidIdentityDirectory.name,
+        email: bidIdentityDirectory.email,
+        role: bidUserProfile.role,
+      })
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(and(...clauses))
+      .orderBy(asc(bidIdentityDirectory.name), asc(bidIdentityDirectory.email))
+      .limit(input.limit);
+    return rows.map((row) => ({
+      userId: row.userId,
+      name: row.name,
+      email: row.email,
+      isStaff: row.role === "staff",
+    }));
   }
 }
