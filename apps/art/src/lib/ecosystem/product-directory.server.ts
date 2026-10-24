@@ -3,6 +3,7 @@ import {
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
   buildProductDirectoryLinks,
+  isLocalProductFallbackAllowed,
   resolveProductDirectoryConfig,
 } from "@auction/lax-ecosystem";
 
@@ -27,6 +28,7 @@ function artDirectoryInput() {
   const artPublicUrl = readArtStorefrontUrl();
   return {
     currentProductId: "art" as const,
+    allowLocalFallback: isLocalProductFallbackAllowed(process.env),
     ...(bidPublicUrl ? { bidPublicUrl } : {}),
     ...(shopStorefrontUrl ? { shopStorefrontUrl } : {}),
     ...(artPublicUrl ? { artPublicUrl } : {}),

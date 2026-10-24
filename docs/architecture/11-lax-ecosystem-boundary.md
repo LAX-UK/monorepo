@@ -84,9 +84,11 @@ means unknown and must not render an unverified warning.
 ## Product directory contract
 
 Product URLs are supplied at the composition root from environment variables (see
-`.env.example`: `LAX_BID_PUBLIC_URL`, `LAX_SHOP_STOREFRONT_URL`). The directory builder
-validates HTTPS (or localhost in non-production), normalizes trailing slashes, and marks
-the current product. Cross-product links are plain `<a href>` with `rel="noopener"` when
+`.env.example`: `LAX_BID_PUBLIC_URL`, `LAX_SHOP_STOREFRONT_URL`, `LAX_ART_PUBLIC_URL`; Bid, Shop and
+Art each need all three). The directory builder validates HTTPS (or localhost in non-production),
+normalizes trailing slashes, and marks the current product. Localhost fallbacks apply only in
+development, tests and the Next.js production build; a running production server omits the link
+for any product whose URL is unset instead of pointing it at localhost. Cross-product links are plain `<a href>` with `rel="noopener"` when
 external.
 
 ## LAX Account contracts

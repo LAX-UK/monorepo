@@ -22,6 +22,7 @@ export {
   type ResolveProductDirectoryResult,
   buildCrossProductFooterLinks,
   buildProductDirectoryLinks,
+  isLocalProductFallbackAllowed,
   resolveProductDirectoryConfig,
 } from "./product-directory.js";
 export {

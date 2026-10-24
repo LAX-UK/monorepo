@@ -5,6 +5,7 @@ import {
   buildCrossProductFooterLinks,
   buildProductDirectoryLinks,
   isAllowedLaxProductUrl,
+  isLocalProductFallbackAllowed,
   normalizeProductBaseUrl,
   resolveProductDirectoryConfig,
 } from "@auction/lax-ecosystem";
@@ -19,13 +20,20 @@ function readShopStorefrontUrl(): string | undefined {
   return env.LAX_SHOP_STOREFRONT_URL ?? env.SHOP_STOREFRONT_URL;
 }
 
+function readArtPublicUrl(): string | undefined {
+  return loadShopEnv().LAX_ART_PUBLIC_URL;
+}
+
 function shopDirectoryInput() {
   const bidPublicUrl = readBidPublicUrl();
   const shopStorefrontUrl = readShopStorefrontUrl();
+  const artPublicUrl = readArtPublicUrl();
   return {
     currentProductId: "shop" as const,
+    allowLocalFallback: isLocalProductFallbackAllowed(process.env),
     ...(bidPublicUrl ? { bidPublicUrl } : {}),
     ...(shopStorefrontUrl ? { shopStorefrontUrl } : {}),
+    ...(artPublicUrl ? { artPublicUrl } : {}),
   };
 }
 
