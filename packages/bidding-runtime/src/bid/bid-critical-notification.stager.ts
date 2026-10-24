@@ -60,7 +60,9 @@ export class BidCriticalNotificationStager {
         {
           userId: params.prevWinnerId,
           payload: notificationRowToPayload(
-            this.notificationFactory.createOutbid(lotForNotify, params.prevWinnerId),
+            this.notificationFactory.createOutbid(lotForNotify, params.prevWinnerId, {
+              currentBid: params.created.amount,
+            }),
           ),
           idempotencyKey: `outbid:${params.lotId}:${params.created.id}:${params.prevWinnerId}`,
         },

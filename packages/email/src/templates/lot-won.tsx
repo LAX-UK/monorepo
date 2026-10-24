@@ -18,7 +18,9 @@ export default function LotWonEmail({
   const bidLine =
     hammerPrice && totalDue
       ? `You won ${lotTitle} with a hammer price of ${hammerPrice} (total due ${totalDue}).`
-      : `You won ${lotTitle} with a winning bid of ${winningBid}.`;
+      : winningBid
+        ? `You won ${lotTitle} with a winning bid of ${winningBid}.`
+        : `You won ${lotTitle}.`;
   return (
     <Layout
       category="auction"
@@ -28,8 +30,8 @@ export default function LotWonEmail({
       unsubscribeUrl={unsubscribeUrl}
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
-      <TextBlock>{bidLine} Complete payment from your account when ready.</TextBlock>
-      <Button href={paymentUrl || lotUrl}>Review next steps</Button>
+      <TextBlock>{bidLine} Complete payment from checkout when you are ready.</TextBlock>
+      <Button href={paymentUrl || lotUrl}>Go to checkout</Button>
     </Layout>
   );
 }

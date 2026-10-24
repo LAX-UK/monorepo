@@ -3,7 +3,11 @@ import type { Lot } from "@auction/types";
 
 /** Builds persisted notification rows from domain events. */
 export interface INotificationFactory {
-  createOutbid(lot: Lot, outbidUserId: string): CreateNotificationRow;
+  createOutbid(
+    lot: Lot,
+    outbidUserId: string,
+    opts?: { currentBid?: string },
+  ): CreateNotificationRow;
 
   createWon(
     lot: Lot,

@@ -16,6 +16,7 @@ export class WorkerNotificationFactory {
       lotId: lot.id,
       meta: {
         lotTitle: lot.title,
+        bidAmount: lot.currentPrice,
         ...(opts?.hammerPrice ? { hammerPrice: opts.hammerPrice } : {}),
         ...(opts?.totalDue ? { totalDue: opts.totalDue } : {}),
       },

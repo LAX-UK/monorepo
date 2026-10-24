@@ -63,19 +63,25 @@ export class EmailNotificationChannel implements INotificationChannel {
           userName,
           lotTitle,
           lotUrl,
-          currentBid: payload.message,
+          currentBid: formatMoneyMajor(payload.meta?.bidAmount, payload.meta?.currency),
           unsubscribeUrl,
         };
       case "lot-won": {
         const m = payload.meta;
+        const hammerPrice = formatMoneyMajor(m?.hammerPrice, m?.currency);
+        const totalDue = formatMoneyMajor(m?.totalDue, m?.currency);
         return {
           userName,
           lotTitle,
           lotUrl,
-          winningBid: payload.message,
+          winningBid: formatMoneyMajor(m?.bidAmount ?? m?.hammerPrice, m?.currency),
+          // The call to action is paying for this lot, not browsing it.
+          paymentUrl: payload.lotId
+            ? `${this.baseUrl()}/dashboard/checkout/${encodeURIComponent(payload.lotId)}`
+            : `${this.baseUrl()}/dashboard/checkout`,
           unsubscribeUrl,
-          ...(typeof m?.hammerPrice === "string" ? { hammerPrice: m.hammerPrice } : {}),
-          ...(typeof m?.totalDue === "string" ? { totalDue: m.totalDue } : {}),
+          ...(hammerPrice ? { hammerPrice } : {}),
+          ...(totalDue ? { totalDue } : {}),
         };
       }
       case "lot-ended-seller":

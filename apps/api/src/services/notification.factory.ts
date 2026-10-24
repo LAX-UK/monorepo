@@ -4,14 +4,18 @@ import type { INotificationFactory } from "./interfaces/notification-factory.js"
 
 /** SRP: builds persisted notification rows from domain events. */
 export class NotificationFactory implements INotificationFactory {
-  createOutbid(lot: Lot, outbidUserId: string): CreateNotificationRow {
+  createOutbid(
+    lot: Lot,
+    outbidUserId: string,
+    opts?: { currentBid?: string },
+  ): CreateNotificationRow {
     return {
       userId: outbidUserId,
       type: "outbid",
       title: "You have been outbid",
       message: `Another bidder placed a higher bid on "${lot.title}".`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: { lotTitle: lot.title, ...(opts?.currentBid ? { bidAmount: opts.currentBid } : {}) },
     };
   }
 
@@ -28,6 +32,7 @@ export class NotificationFactory implements INotificationFactory {
       lotId: lot.id,
       meta: {
         lotTitle: lot.title,
+        bidAmount: lot.currentPrice,
         ...(opts?.hammerPrice ? { hammerPrice: opts.hammerPrice } : {}),
         ...(opts?.totalDue ? { totalDue: opts.totalDue } : {}),
       },

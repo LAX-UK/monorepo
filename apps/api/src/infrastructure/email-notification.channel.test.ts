@@ -41,6 +41,54 @@ function payload(overrides: Partial<NotificationPayload>): NotificationPayload {
   };
 }
 
+describe("EmailNotificationChannel outbid and won", () => {
+  it("prints the formatted current bid, not the notification sentence", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({
+        type: "outbid",
+        message: 'Another bidder placed a higher bid on "Blue Vase".',
+        meta: { lotTitle: "Blue Vase", bidAmount: "1000.00" },
+      }),
+    );
+    expect(enqueued[0]?.template).toBe("bid-outbid");
+    expect(enqueued[0]?.vars).toMatchObject({ currentBid: "£1,000.00" });
+    expect(JSON.stringify(enqueued[0]?.vars)).not.toContain("higher bid");
+  });
+
+  it("leaves the amount out for an older outbid row that has no structured amount", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, payload({ type: "outbid", meta: { lotTitle: "Blue Vase" } }));
+    expect(enqueued[0]?.vars).toMatchObject({ currentBid: null });
+  });
+
+  it("formats the won amounts and sends the buyer to checkout for that lot", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({
+        type: "lot_won",
+        message: 'You won "Blue Vase". Complete payment from your portfolio when ready.',
+        meta: {
+          lotTitle: "Blue Vase",
+          bidAmount: "1000.00",
+          hammerPrice: "1000.00",
+          totalDue: "1250.00",
+        },
+      }),
+    );
+    expect(enqueued[0]?.template).toBe("lot-won");
+    expect(enqueued[0]?.vars).toMatchObject({
+      winningBid: "£1,000.00",
+      hammerPrice: "£1,000.00",
+      totalDue: "£1,250.00",
+      paymentUrl: `https://test.lax.bid/dashboard/checkout/${LOT_ID}`,
+    });
+    expect(JSON.stringify(enqueued[0]?.vars)).not.toContain("portfolio");
+  });
+});
+
 describe("EmailNotificationChannel payment receipt", () => {
   it("formats the amount from structured metadata and links to the buyer's purchases", async () => {
     const { channel, enqueued } = setup();

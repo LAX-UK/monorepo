@@ -12,10 +12,13 @@ type BiddingTemplateName = (typeof names)[number];
 
 type BiddingTemplateVars = {
   "bid-outbid": OptOutableLotVars & {
-    currentBid: string;
+    /** Formatted for display ("£1,250.00"); left out when the amount is unknown. */
+    currentBid?: string | null;
   };
   "lot-won": OptOutableLotVars & {
-    winningBid: string;
+    /** Formatted for display; left out when the amount is unknown. */
+    winningBid?: string | null;
+    /** Checkout for this lot. */
     paymentUrl?: string | null;
     hammerPrice?: string;
     totalDue?: string;
