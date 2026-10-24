@@ -32,9 +32,11 @@ import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import type { IdentityDeletionRouteDeps } from "./identity-route-deps.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
+import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
 import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
 import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzle-artwork-catalogue.repository.js";
+import { createDrizzleArtworkCatalogueWriter } from "./infrastructure/drizzle-artwork-catalogue.writer.js";
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
@@ -229,7 +231,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const portalArtist = createDrizzlePortalArtistRepository(db);
   const portalFavorites = createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db));
-  const adminRead = createDrizzleAdminReadRepository(db, env);
+  const adminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
@@ -254,6 +256,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const createStockHold = createCreateStockHoldHandler({ stockHolds, staffReader });
   const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
   const merchandiseCatalogue = createDrizzleMerchandiseCatalogueWriter(shopUow);
+  const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, { resolveMediaUrl });
+  const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
+  const artCache =
+    env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
+      ? createHttpArtCacheInvalidator({
+          url: env.ART_REVALIDATE_URL,
+          secret: env.ART_REVALIDATE_SECRET,
+        })
+      : noopArtCacheInvalidator;
   const adjustMerchandiseStock = createAdjustMerchandiseStockHandler({ merchandiseStock });
   const createMerchandiseProduct = createCreateMerchandiseProductHandler({ merchandiseStock });
   const invoiceGateway = createStripeShopInvoiceGateway({ secretKey: env.STRIPE_SECRET_KEY });
@@ -320,13 +331,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           search: createDrizzleEditorialSearchReader(db, { resolveMediaUrl }),
           previewSecret,
           enquiryRateLimiter,
-          artCache:
-            env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
-              ? createHttpArtCacheInvalidator({
-                  url: env.ART_REVALIDATE_URL,
-                  secret: env.ART_REVALIDATE_SECRET,
-                })
-              : noopArtCacheInvalidator,
+          artCache,
         }
       : null;
   return {
@@ -376,6 +381,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         adjustMerchandiseStock,
         createMerchandiseProduct,
         merchandiseCatalogue,
+        artworkCatalogue,
+        artistCatalogue,
+        artCache,
         thirdPartySales: createDrizzleThirdPartySaleWriter(db),
         originalSales,
         linkArtistIdentity,

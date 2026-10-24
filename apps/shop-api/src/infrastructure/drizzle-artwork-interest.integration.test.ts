@@ -9,7 +9,7 @@ import { createGetArtworkInterestHandler } from "../application/handlers/get-art
 import { createRegisterArtworkInterestHandler } from "../application/handlers/register-artwork-interest.handler.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { selectLaxEdition } from "../test-support/shop-fixtures.js";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleArtworkInterestRepository } from "./drizzle-artwork-interest.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./drizzle-portal-ownership.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
@@ -39,7 +39,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
 
   it("registers interest only for unavailable online artworks with one row and one event", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const writer = createDrizzleArtworkInterestRepository(db, {
       storefrontOrigins: { shop: "http://localhost:3020", art: "http://localhost:3050" },
     });
@@ -107,7 +107,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
 
   it("rejects interest registration when editions are purchasable online", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const registerInterest = createRegisterArtworkInterestHandler(
       createDrizzleArtworkInterestRepository(db, {
         storefrontOrigins: { shop: "http://localhost:3020", art: "http://localhost:3050" },
@@ -153,7 +153,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     const suffix = Date.now();
     const slug = `integration-enquiry-art-${suffix}`;
     const subject = `integration-enquiry-subject-${suffix}`;
-    const imported = await createDrizzleArtworkImportRepository(db).importArtwork({
+    const imported = await createPublishedArtworkImportWriter(db).importArtwork({
       importKey: `integration:enquiry:art:${suffix}`,
       slug,
       title: "Art enquiry original",
@@ -216,7 +216,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     const db = createDbFromPool(shopPool);
     const suffix = Date.now();
     const slug = `integration-guest-enquiry-${suffix}`;
-    const imported = await createDrizzleArtworkImportRepository(db).importArtwork({
+    const imported = await createPublishedArtworkImportWriter(db).importArtwork({
       importKey: `integration:guest-enquiry:${suffix}`,
       slug,
       title: "Guest enquiry original",
@@ -287,7 +287,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
 
   it("allows shop_app role to insert interest rows", async () => {
     const shopDb = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(shopDb);
+    const importWriter = createPublishedArtworkImportWriter(shopDb);
     const registerInterest = createRegisterArtworkInterestHandler(
       createDrizzleArtworkInterestRepository(shopDb, {
         storefrontOrigins: { shop: "http://localhost:3020", art: "http://localhost:3050" },

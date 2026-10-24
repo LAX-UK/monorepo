@@ -157,9 +157,14 @@ export const AdminArtistListItemSchema = Type.Object({
   displayName: Type.String(),
   discipline: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
+  /** Optional so the admin parses responses from an older shop-api. */
+  archived: Type.Optional(Type.Boolean()),
+  artworkCount: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 
 export const AdminArtistListSchema = createCursorListResponseSchema(AdminArtistListItemSchema);
+export type AdminArtistList = Static<typeof AdminArtistListSchema>;
+export type AdminArtistListItem = Static<typeof AdminArtistListItemSchema>;
 
 export const AdminStaffMemberListItemSchema = Type.Object({
   staffMemberId: Type.String({ format: "uuid" }),

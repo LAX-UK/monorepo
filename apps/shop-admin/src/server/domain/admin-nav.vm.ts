@@ -36,7 +36,8 @@ export type AdminNavGroup = {
     href: string;
     label: string;
     icon: AdminNavIcon;
-    capability?: ShopStaffCapability;
+    /** Shown to staff holding this capability, or any one of these. */
+    capability?: ShopStaffCapability | readonly ShopStaffCapability[];
     /** Records waiting for staff, shown as a count beside the label. */
     attentionCount?: number;
   }>;
@@ -54,8 +55,14 @@ export type AdminSessionNavInput = {
   enquiryAttentionCount?: number;
 };
 
-function hasCapability(capabilities: readonly string[], capability: ShopStaffCapability): boolean {
-  return capabilities.includes(capability);
+function hasCapability(
+  capabilities: readonly string[],
+  capability: ShopStaffCapability | readonly ShopStaffCapability[],
+): boolean {
+  const anyOf: readonly ShopStaffCapability[] = Array.isArray(capability)
+    ? capability
+    : [capability as ShopStaffCapability];
+  return anyOf.some((one) => capabilities.includes(one));
 }
 
 export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[] {
@@ -72,7 +79,8 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           href: "/artworks",
           icon: "artworks" as const,
           label: "Artworks",
-          capability: "catalogue.write",
+          // Finance sets edition prices here without editing the catalogue.
+          capability: ["catalogue.write", "artwork_price.write"] as const,
         },
         {
           href: "/artists",

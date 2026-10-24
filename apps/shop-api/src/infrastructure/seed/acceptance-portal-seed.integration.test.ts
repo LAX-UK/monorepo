@@ -13,12 +13,12 @@ import {
   createPendingPaymentOrderWithReservedEdition,
   integrationSuffix,
 } from "../../test-support/shop-fixtures.js";
+import { createPublishedArtworkImportWriter } from "../../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "../drizzle-artwork-import.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "../drizzle-sale-authority.writer.js";
 import {
   SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG,
@@ -47,7 +47,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance portal seed", () => {
 
   it("is idempotent and grants populated portal fixtures", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const grantSaleAuthority = authorityWriter.grantSaleAuthority.bind(authorityWriter);
 
@@ -87,7 +87,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance portal seed", () => {
 
   it("clears stale Stripe checkout reservations idempotently", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     await seedShopFoundationCatalogue(
       importWriter.importArtwork.bind(importWriter),
@@ -136,7 +136,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance portal seed", () => {
 
   it("resets acceptance enquiry interest for string-study idempotently", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     await seedShopFoundationCatalogue(
       importWriter.importArtwork.bind(importWriter),

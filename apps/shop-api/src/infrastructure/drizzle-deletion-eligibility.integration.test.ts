@@ -13,7 +13,7 @@ import {
 import { eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleDeletionEligibilityRepository } from "./drizzle-deletion-eligibility.repository.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -52,7 +52,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle deletion eligibility repository"
     /** Each open original sale needs its own artwork (one open sale per artwork). */
     const newArtwork = async () => {
       artworkCount += 1;
-      const imported = await createDrizzleArtworkImportRepository(db).importArtwork({
+      const imported = await createPublishedArtworkImportWriter(db).importArtwork({
         importKey: `integration:deletion:${id}:${artworkCount}`,
         slug: `integration-deletion-work-${id}-${artworkCount}`,
         title: "Deletion work",

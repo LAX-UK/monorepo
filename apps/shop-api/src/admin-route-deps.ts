@@ -2,7 +2,12 @@ import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js
 import type { ImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
+import type { ArtCacheInvalidator } from "./application/ports/art-cache-invalidator.js";
 import type { ArtistSeoWriter } from "./application/ports/artist-seo.writer.js";
+import type {
+  ArtistCatalogueWriter,
+  ArtworkCatalogueWriter,
+} from "./application/ports/artwork-catalogue-admin.js";
 import type { MerchandiseCatalogueWriter } from "./application/ports/merchandise-catalogue.writer.js";
 import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
 import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
@@ -60,6 +65,10 @@ export type AdminRoutesDeps = {
   adjustMerchandiseStock: ReturnType<typeof createAdjustMerchandiseStockHandler>;
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   merchandiseCatalogue: MerchandiseCatalogueWriter;
+  artworkCatalogue: ArtworkCatalogueWriter;
+  artistCatalogue: ArtistCatalogueWriter;
+  /** Refreshes lax.art after catalogue writes that change what it serves. */
+  artCache: ArtCacheInvalidator;
   thirdPartySales: ThirdPartySaleWriter;
   originalSales: OriginalSaleWriter;
   linkArtistIdentity: ReturnType<typeof createLinkArtistIdentityHandler>;

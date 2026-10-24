@@ -4,7 +4,7 @@ import { shopCategory, shopHomePlacement } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleStorefrontCurationWriter } from "./drizzle-storefront-curation.repository.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -28,7 +28,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle storefront curation", () => {
 
   it("replaces declared slots transactionally without deleting other slots", async () => {
     const db = createDbFromPool(shopPool);
-    const importer = createDrizzleArtworkImportRepository(db);
+    const importer = createPublishedArtworkImportWriter(db);
     const writer = createDrizzleStorefrontCurationWriter(db);
     const suffix = `${Date.now()}-${crypto.randomUUID()}`;
     const artwork = await importer.importArtwork({

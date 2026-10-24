@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopArtist, shopArtwork, shopArtworkImage, shopEdition } from "@auction/db/schema";
-import { assertValidEditionPlan, planEditionsForArtwork } from "@auction/shop-domain";
+import { shopArtwork, shopArtworkImage, shopEdition } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { assertArtworkImportIdentityUnchanged } from "../application/artwork-import-policy.js";
 import type {
@@ -8,7 +7,7 @@ import type {
   ImportArtworkCommand,
   ImportArtworkResult,
 } from "../application/ports/artwork-import.writer.js";
-import { ensureLaxShopParty } from "./ensure-lax-party.js";
+import { insertPlannedEditions } from "./insert-planned-editions.js";
 import type { ShopDomainEventPublisherMode } from "./shop-domain-event-publisher.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 import { updateShopArtist, upsertShopArtist } from "./upsert-shop-artist.js";
@@ -134,6 +133,7 @@ export function createDrizzleArtworkImportRepository(
             eligibleForEditionAllocation: command.eligibleForEditionAllocation,
             printPricePence: command.printPricePence ?? null,
             importKey: command.importKey,
+            publishedAt: command.publishOnCreate ? new Date() : null,
             ...optionalArtworkColumns(command),
           })
           .returning({ id: shopArtwork.id });
@@ -153,31 +153,12 @@ export function createDrizzleArtworkImportRepository(
           producer: "shop-api",
         });
 
-        const plan = planEditionsForArtwork(command.eligibleForEditionAllocation);
-        assertValidEditionPlan(plan);
-        if (plan.length > 0) {
-          const laxPartyId = await ensureLaxShopParty(tx as Database);
-          const artistPartyRows = await tx
-            .select({ partyId: shopArtist.partyId })
-            .from(shopArtist)
-            .where(eq(shopArtist.id, artistId))
-            .limit(1);
-          const artistPartyId = artistPartyRows[0]?.partyId ?? null;
-          await tx.insert(shopEdition).values(
-            plan.map((row) => {
-              const isLax = row.allocation === "lax";
-              const isArtist = row.allocation === "artist";
-              const ownerPartyId = isLax ? laxPartyId : isArtist ? artistPartyId : null;
-              return {
-                artworkId: artwork.id,
-                editionNumber: row.editionNumber,
-                allocation: row.allocation,
-                ownerPartyId,
-                listingStatus: "not_authorised" as const,
-                custodyStatus: "unprinted" as const,
-              };
-            }),
-          );
+        const editionCount = await insertPlannedEditions(tx as Database, {
+          artworkId: artwork.id,
+          artistId,
+          eligibleForEditionAllocation: command.eligibleForEditionAllocation,
+        });
+        if (editionCount > 0) {
           await events.insertInTransaction(tx as Database, {
             aggregateType: "shop_artwork",
             aggregateId: artwork.id,
@@ -185,7 +166,7 @@ export function createDrizzleArtworkImportRepository(
             payload: {
               schemaVersion: 1,
               importKey: command.importKey,
-              editionCount: plan.length,
+              editionCount,
             },
             producer: "shop-api",
           });
@@ -194,7 +175,7 @@ export function createDrizzleArtworkImportRepository(
         return {
           artworkId: artwork.id,
           created: true,
-          editionCount: plan.length,
+          editionCount,
         };
       });
     },

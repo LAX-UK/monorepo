@@ -12,6 +12,7 @@ import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
+import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminHelpRoutes } from "./routes/admin/v1/admin-help.routes.js";
@@ -164,6 +165,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
+        void registerAdminArtistRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {

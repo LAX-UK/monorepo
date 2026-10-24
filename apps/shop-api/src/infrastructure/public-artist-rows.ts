@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopParty } from "@auction/db/schema";
 import { and, count, eq, inArray } from "drizzle-orm";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import type { ArtistDirectoryRow } from "./map-public-artist.js";
 
 type ResolveMediaUrl = (value: string | null | undefined) => string | null;
@@ -51,6 +52,7 @@ export async function artworkCountByArtistId(
     .where(
       and(
         inArray(shopArtwork.artistId, artistIds),
+        publicArtworkVisible(),
         salesChannel ? eq(shopArtwork.salesChannel, salesChannel) : undefined,
       ),
     )

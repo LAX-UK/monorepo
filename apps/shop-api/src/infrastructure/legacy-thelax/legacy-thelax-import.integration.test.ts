@@ -20,12 +20,12 @@ import { createLegacyMediaImporter } from "../../application/legacy-thelax/legac
 import { parseLegacyThelaxExport } from "../../application/legacy-thelax/legacy-thelax-export.js";
 import { createFakeObjectStorage } from "../../test-support/fake-object-storage.js";
 import { legacyThelaxFixture } from "../../test-support/legacy-thelax-fixture.js";
+import { createPublishedArtworkImportWriter } from "../../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "../drizzle-artwork-import.repository.js";
 import { createDrizzleShopMediaAssetRepository } from "../drizzle-shop-media-asset.repository.js";
 import { createSharpImageProbe } from "../sharp-image-probe.js";
 import { upsertShopArtist } from "../upsert-shop-artist.js";
@@ -60,7 +60,7 @@ describe.skipIf(!hasShopIntegrationDb)("legacy thelax import", () => {
         return url.endsWith("-missing.jpg") ? null : image;
       },
     };
-    const importArtwork = createImportArtworkHandler(createDrizzleArtworkImportRepository(db));
+    const importArtwork = createImportArtworkHandler(createPublishedArtworkImportWriter(db));
     const store = createDrizzleLegacyThelaxContentStore(db);
     const run = () =>
       importLegacyThelax(

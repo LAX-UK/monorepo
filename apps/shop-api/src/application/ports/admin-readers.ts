@@ -11,16 +11,11 @@ import type {
   MerchandiseStatus,
 } from "@auction/shop-contracts";
 import type { OverviewKpiKey } from "@auction/shop-domain";
+import type { AdminArtworkReader } from "./artwork-catalogue-admin.js";
 
-export type CursorListInput = {
-  cursor?: string | undefined;
-  limit?: number | undefined;
-};
+import type { CursorListInput, CursorListResult } from "./cursor-list.js";
 
-export type CursorListResult<T> = {
-  items: T[];
-  nextCursor: string | null;
-};
+export type { CursorListInput, CursorListResult };
 
 export type AdminOrderListFilters = {
   status?: string;
@@ -129,6 +124,15 @@ export type AdminArtistListItem = {
   displayName: string;
   discipline: string | null;
   createdAt: string;
+  archived: boolean;
+  /** Artworks of every state, drafts and archived included. */
+  artworkCount: number;
+};
+
+export type AdminArtistListInput = CursorListInput & {
+  /** Name or slug, anywhere in the text. */
+  q?: string | undefined;
+  status?: "active" | "archived" | undefined;
 };
 
 export type AdminStaffMemberListItem = {
@@ -175,7 +179,7 @@ export type ClientPartyListInput = CursorListInput & {
 
 export interface AdminPartyReader {
   listClientParties(input: ClientPartyListInput): Promise<CursorListResult<AdminPartyListItem>>;
-  listArtists(input: CursorListInput): Promise<CursorListResult<AdminArtistListItem>>;
+  listArtists(input: AdminArtistListInput): Promise<CursorListResult<AdminArtistListItem>>;
   getClientDetail(partyId: string): Promise<AdminClientDetail>;
   getArtistDetail(artistId: string): Promise<AdminArtistDetail>;
 }
@@ -225,6 +229,7 @@ export interface AdminComplianceReader {
 
 export type AdminReadPorts = {
   orders: AdminOrderReader;
+  artworks: AdminArtworkReader;
   fulfilment: AdminFulfilmentReader;
   payouts: AdminPayoutReader;
   sales: AdminSalesReader;

@@ -166,6 +166,14 @@ export function createMinimalShopApiTestDeps(
         },
       }),
       adminRead: {
+        artworks: {
+          listArtworks: async () => ({
+            items: [],
+            nextCursor: null,
+            counts: { live: 0, draft: 0, sold_out: 0, archived: 0 },
+          }),
+          getArtwork: async () => null,
+        },
         orders: {
           listOrders: async () => ({ items: [], nextCursor: null, counts: {} }),
           getOrderDetail: async () => {
@@ -262,6 +270,40 @@ export function createMinimalShopApiTestDeps(
         updateVariant: async () => ({ variantId: "00000000-0000-4000-8000-000000000018" }),
         setVariantArchived: async () => ({ variantId: "00000000-0000-4000-8000-000000000018" }),
       },
+      artworkCatalogue: {
+        createArtwork: async () => ({
+          artworkId: "00000000-0000-4000-8000-000000000021",
+          slug: "test-artwork",
+          version: "2026-01-01T00:00:00.000Z",
+          refreshesArt: false,
+        }),
+        updateArtwork: async () => ({ version: "2026-01-01T00:00:00.000Z", refreshesArt: false }),
+        setPrice: async () => ({ version: "2026-01-01T00:00:00.000Z", refreshesArt: false }),
+        setVisibility: async () => ({
+          version: "2026-01-01T00:00:00.000Z",
+          state: "live" as const,
+          refreshesArt: false,
+        }),
+        applyBulkVisibility: async (input) => ({
+          results: input.artworkIds.map((artworkId) => ({
+            artworkId,
+            outcome: "changed" as const,
+          })),
+          refreshesArt: false,
+        }),
+      },
+      artistCatalogue: {
+        createArtist: async () => ({
+          artistId: "00000000-0000-4000-8000-000000000020",
+          slug: "test-artist",
+        }),
+        setArtistArchived: async (input) => ({
+          artistId: input.artistId,
+          archived: input.archived,
+          refreshesArt: false,
+        }),
+      },
+      artCache: { invalidateEditorial: async () => {}, invalidateCatalogue: async () => {} },
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,

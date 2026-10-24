@@ -2,12 +2,12 @@ import { shopProduct, shopStaffMember } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPublishedArtworkImportWriter } from "../../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "../drizzle-artwork-import.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "../drizzle-sale-authority.writer.js";
 import {
   SHOP_ACCEPTANCE_MERCH_PRODUCT_SLUG,
@@ -31,7 +31,7 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance staff operations seed", () =>
 
   it("is idempotent and grants staff plus merchandise fixtures", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const grantSaleAuthority = authorityWriter.grantSaleAuthority.bind(authorityWriter);
 

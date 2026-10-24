@@ -205,6 +205,8 @@ export async function importLegacyThelax(
       }
       const command: ImportArtworkCommand = {
         importKey,
+        // Migrates artworks already public on the legacy site, so they stay public.
+        publishOnCreate: true,
         slug,
         title: artwork.title,
         description: artwork.description,

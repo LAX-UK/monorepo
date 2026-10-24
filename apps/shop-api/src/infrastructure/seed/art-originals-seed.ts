@@ -243,6 +243,7 @@ export async function seedArtChannelOriginals(
       ...work,
       ...artist,
       importKey: `seed:art:foundation:${work.slug}`,
+      publishOnCreate: true,
       saleState: "price_on_application",
       eligibleForEditionAllocation: false,
     });

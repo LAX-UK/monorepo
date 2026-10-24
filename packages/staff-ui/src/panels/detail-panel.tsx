@@ -83,9 +83,16 @@ export function DetailPanel({
               </SheetClose>
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5" data-lenis-prevent>
+          {/* Focusable so keyboard users can scroll a long panel without a pointer. */}
+          <section
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must take focus to scroll by keyboard
+            tabIndex={0}
+            aria-label="Panel content"
+            className="staff-focus-inset min-h-0 flex-1 overflow-y-auto px-5 py-5"
+            data-lenis-prevent
+          >
             {children}
-          </div>
+          </section>
           {footer ? (
             <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 py-3">
               {footer}

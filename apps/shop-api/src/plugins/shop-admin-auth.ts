@@ -138,6 +138,21 @@ export function requireShopStaffCapability(
   return auth;
 }
 
+/** Allows staff holding any one of `capabilities`. */
+export function requireAnyShopStaffCapability(
+  request: FastifyRequest,
+  capabilities: readonly ShopStaffCapability[],
+): ShopAdminAuthContext {
+  const auth = request.shopAdminAuth;
+  if (!auth) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.UNAUTHORIZED, "Unauthorized", 401);
+  }
+  if (!capabilities.some((capability) => roleHasCapability(auth.role, capability))) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
+  }
+  return auth;
+}
+
 export function requireShopAdminSubject(request: FastifyRequest): string {
   const auth = request.shopAdminAuth;
   if (!auth) {

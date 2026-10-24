@@ -13,6 +13,7 @@ import type {
   UpsertBasketLineInput,
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import {
   assertBasketStock,
   ensureOpenBasket,
@@ -158,7 +159,7 @@ async function upsertArtworkLine(
       eligible: shopArtwork.eligibleForEditionAllocation,
     })
     .from(shopArtwork)
-    .where(eq(shopArtwork.slug, input.artworkSlug))
+    .where(and(eq(shopArtwork.slug, input.artworkSlug), publicArtworkVisible()))
     .limit(1);
   if (!artwork?.eligible) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Artwork not purchasable", 404);

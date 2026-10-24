@@ -4,7 +4,7 @@ import { shopFollowedArtist, shopSavedArtwork } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzlePortalFavoritesRepository } from "./drizzle-portal-favorites.repository.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -30,7 +30,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle portal favorites repository", ()
     const db = createDbFromPool(shopPool);
     const artworkSlug = `integration-favorite-work-${suffix}`;
     const artistSlug = `integration-favorite-artist-${suffix}`;
-    const imported = await createDrizzleArtworkImportRepository(db).importArtwork({
+    const imported = await createPublishedArtworkImportWriter(db).importArtwork({
       importKey: `integration:favorites:${suffix}`,
       slug: artworkSlug,
       title: "Favorite Work",

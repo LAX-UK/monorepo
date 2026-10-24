@@ -94,6 +94,7 @@ export async function seedShopFoundationCatalogue(
 ): Promise<void> {
   await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.eligible,
+    publishOnCreate: true,
     slug: "vessel-study",
     title: "Vessel Study",
     description: "An expressive still life built from a dark vessel and intersecting colour.",
@@ -109,6 +110,7 @@ export async function seedShopFoundationCatalogue(
   });
   await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.ineligible,
+    publishOnCreate: true,
     slug: "string-study",
     title: "String Study",
     description: "A suspended stringed instrument set against layered, muted colour.",
@@ -123,6 +125,7 @@ export async function seedShopFoundationCatalogue(
   });
   await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.buyerFixture,
+    publishOnCreate: true,
     slug: SHOP_SEED_BUYER_FIXTURE_SLUG,
     title: "Harbor Print",
     description: "A coastal print edition kept in stock for commerce acceptance fixtures.",
@@ -138,6 +141,7 @@ export async function seedShopFoundationCatalogue(
   });
   await importArtwork({
     importKey: "seed:shop:foundation:stripe-checkout-artwork",
+    publishOnCreate: true,
     slug: SHOP_SEED_STRIPE_CHECKOUT_SLUG,
     title: "Acceptance Stripe Print",
     description: "Isolated print stock for staging Stripe checkout acceptance.",
@@ -153,6 +157,7 @@ export async function seedShopFoundationCatalogue(
   });
   await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.secondEligible,
+    publishOnCreate: true,
     slug: "reed-study",
     title: "Reed Study",
     description: "A rhythmic study of panpipes and angular fields of colour.",

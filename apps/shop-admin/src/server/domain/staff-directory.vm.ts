@@ -20,7 +20,7 @@ const ROLE_DESCRIPTIONS: Record<(typeof GRANTABLE_STAFF_ROLES)[number], string> 
   catalogue_editor: "Artworks, artists and editorial pages",
   account_manager: "Their clients, sales and sale limits",
   broker: "Third-party sales and stock holds",
-  finance: "Orders, refunds, payouts and the audit log",
+  finance: "Orders, refunds, payouts, edition prices and the audit log",
   shop_admin: "Everything, including staff and settings",
 };
 

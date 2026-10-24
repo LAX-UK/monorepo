@@ -35,6 +35,11 @@ export type ImportArtworkCommand = {
   widthCm?: number | null;
   depthCm?: number | null;
   hasCertificate?: boolean;
+  /**
+   * New artworks start as drafts, like those created in the editor, unless this is true (seeds,
+   * test fixtures and the legacy-site migration). A re-import never changes the published state.
+   */
+  publishOnCreate?: boolean;
   /** Replaces the gallery (in order) when provided. */
   images?: ReadonlyArray<{ mediaKey: string; alt: string | null }>;
 };

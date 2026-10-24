@@ -10,6 +10,7 @@ import {
   MERCHANDISE_TITLE_MAX_LENGTH,
 } from "@auction/shop-contracts";
 import { type FieldErrors, collectFieldErrors, parseWholeNumber } from "./form-validation";
+import { slugify } from "./slugify";
 
 const SLUG_PATTERN = new RegExp(MERCHANDISE_SLUG_PATTERN);
 const MAX_PRICE_LABEL = formatPounds(MERCHANDISE_PRICE_MAX_PENCE);
@@ -22,14 +23,7 @@ function formatPounds(pence: number): string {
 
 /** A URL slug from a title: lower case words joined by hyphens, accents dropped. */
 export function slugFromTitle(title: string): string {
-  return title
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, MERCHANDISE_SLUG_MAX_LENGTH)
-    .replace(/-+$/g, "");
+  return slugify(title, MERCHANDISE_SLUG_MAX_LENGTH);
 }
 
 /**

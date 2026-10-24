@@ -20,7 +20,7 @@ function respond(status: number, error?: string) {
 }
 
 /**
- * Called by shop-api after a staff editorial write so published changes show immediately
+ * Called by shop-api after a staff editorial or catalogue write so published changes show immediately
  * instead of when the 120 second cache expires. The route is outside the page middleware
  * (`/api` is excluded from its matcher), so the shared secret is the only gate.
  */

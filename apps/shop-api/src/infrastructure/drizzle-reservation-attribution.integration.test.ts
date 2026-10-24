@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { grantLaxSaleAuthority } from "../test-support/shop-fixtures.js";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import {
   completeShopCheckoutSession,
   expireShopCheckoutSession,
@@ -51,7 +51,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
 
   it("does not treat an edition as sellable while a pending_payment order still holds the reservation", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
       importKey: `integration:attrib:${suffix}`,
@@ -97,7 +97,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
 
   it("rejects completion when the edition is reserved for a different order", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
       importKey: `integration:attrib-complete:${suffix}`,
@@ -174,7 +174,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
 
   it("does not release an edition on expire when reserved for another order", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
       importKey: `integration:attrib-expire:${suffix}`,
@@ -250,7 +250,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
 
   it("marks order lines released when checkout expires so the edition can be sold again", async () => {
     const db = createDbFromPool(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db);
+    const importWriter = createPublishedArtworkImportWriter(db);
     const suffix = Date.now();
     const imported = await importWriter.importArtwork({
       importKey: `integration:release-line:${suffix}`,

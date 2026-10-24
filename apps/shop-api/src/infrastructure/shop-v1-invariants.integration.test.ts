@@ -21,12 +21,12 @@ import {
   requireDefined,
   selectLaxEdition,
 } from "../test-support/shop-fixtures.js";
+import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
-import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 import {
   completeShopCheckoutSession,
   recordShopCheckoutCurrencyViolation,
@@ -289,7 +289,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop v1 phase 1 invariants", () => {
 
   it("seed catalogue can be re-run after a simulated sale", async () => {
     const db = createShopDb(shopPool);
-    const importWriter = createDrizzleArtworkImportRepository(db, "off");
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
     const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
     const grantSaleAuthority = authorityWriter.grantSaleAuthority.bind(authorityWriter);
     await seedShopFoundationCatalogue(

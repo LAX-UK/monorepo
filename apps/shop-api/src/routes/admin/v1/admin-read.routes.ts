@@ -1,5 +1,7 @@
 import {
   AdminArtistDetailSchema,
+  type AdminArtistListQuery,
+  AdminArtistListQuerySchema,
   AdminArtistListSchema,
   AdminAuditListSchema,
   AdminClientDetailSchema,
@@ -266,14 +268,13 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
+        querystring: AdminArtistListQuerySchema,
         response: { 200: AdminArtistListSchema, 403: ShopApiErrorBodySchema },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "catalogue.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.parties.listArtists(query);
+      return deps.adminRead.parties.listArtists(request.query as AdminArtistListQuery);
     },
   );
 

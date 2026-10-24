@@ -21,6 +21,7 @@ import type {
   EditorialStoryDetailReadModel,
   EditorialStorySummaryReadModel,
 } from "../application/ports/editorial.repository.js";
+import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicArtistDetail, toPublicArtistSummary } from "./map-public-artist.js";
 import { publicArtistColumns, toArtistDirectoryRows } from "./public-artist-rows.js";
 import { publicArtworkColumns, toPublicArtworkSummaries } from "./public-artwork-rows.js";
@@ -232,7 +233,9 @@ export function createEditorialRelationQueries(db: Database, resolveMediaUrl: Re
       .innerJoin(shopArtwork, eq(join.artworkId, shopArtwork.id))
       .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
       .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-      .where(and(condition, eq(shopArtwork.salesChannel, ART_SALES_CHANNEL)))
+      .where(
+        and(condition, eq(shopArtwork.salesChannel, ART_SALES_CHANNEL), publicArtworkVisible()),
+      )
       .orderBy(...order)
       .limit(EDITORIAL_RELATED_LIMIT);
     return toPublicArtworkSummaries(db, rows);
