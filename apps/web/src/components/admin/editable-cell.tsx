@@ -14,8 +14,6 @@ export type EditableCellProps = {
   placeholder?: string;
   className?: string;
   inputClassName?: string;
-  /** Type style for the value text (defaults to table body text). */
-  textClassName?: string;
   ariaLabel?: string;
   disabled?: boolean;
 };
@@ -27,7 +25,6 @@ export function EditableCell({
   placeholder = "—",
   className,
   inputClassName,
-  textClassName,
   ariaLabel = "Editable field",
   disabled = false,
 }: EditableCellProps) {
@@ -82,7 +79,7 @@ export function EditableCell({
 
   if (disabled) {
     return (
-      <span className={cn("font-body text-sm text-on-surface", className, textClassName)}>
+      <span className={cn("font-body text-sm text-on-surface", className)}>
         {display || placeholder}
       </span>
     );
@@ -117,7 +114,7 @@ export function EditableCell({
       type="button"
       variant="ghost"
       className={cn(
-        "group inline-flex h-auto min-h-0 max-w-full items-center gap-1.5 whitespace-normal rounded px-1 -mx-1 text-left shadow-none hover:bg-surface-container-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group inline-flex h-auto min-h-0 max-w-full items-center gap-1.5 rounded px-1 -mx-1 text-left shadow-none hover:bg-surface-container-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`${ariaLabel}. Press Enter to edit.`}
@@ -129,9 +126,7 @@ export function EditableCell({
         }
       }}
     >
-      <span className={cn("truncate font-body text-sm text-on-surface", textClassName)}>
-        {display || placeholder}
-      </span>
+      <span className="truncate font-body text-sm text-on-surface">{display || placeholder}</span>
       <Pencil
         className="size-3 shrink-0 text-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         aria-hidden

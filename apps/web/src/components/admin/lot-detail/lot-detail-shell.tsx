@@ -1,12 +1,13 @@
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
 import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogWhatsNextBanner } from "@/components/admin/catalog/catalog-whats-next-banner";
-import { AdminLotEditableTitle } from "@/components/admin/editable-titles";
 import { LotDetailConnectNotice } from "@/components/admin/lot-detail/lot-detail-connect-notice";
 import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
+import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
+import { adminUpdateLotTitleFieldAction } from "@/lib/actions/admin/field-updates";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import {
   computeLotDetailReadiness,
@@ -21,7 +22,6 @@ import { lotPath } from "@/lib/seo/url";
 import {
   MetaItem,
   PageHeader,
-  STAFF_PAGE_TITLE_CLASS,
   StaffBreadcrumbs,
   type StaffLinkComponent,
   StatusBadge,
@@ -116,11 +116,11 @@ export function LotDetailShell({
             />
           }
           title={
-            <AdminLotEditableTitle
-              lotId={lotId}
+            <StaffEditableTitle
               value={auction.title}
+              label="lot"
               editable={canEditTitle}
-              textClassName={`${STAFF_PAGE_TITLE_CLASS} overflow-visible whitespace-normal`}
+              onSave={adminUpdateLotTitleFieldAction.bind(null, lotId)}
             />
           }
           status={

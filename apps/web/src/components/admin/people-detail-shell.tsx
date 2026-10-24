@@ -3,8 +3,9 @@
 import { AdminUserAccountControls } from "@/components/admin/admin-user-account-controls";
 import { AdminUserAttentionBanner } from "@/components/admin/admin-user-attention-banner";
 import { AdminUserDangerZone } from "@/components/admin/admin-user-danger-zone";
-import { AdminUserDisplayNameEditableTitle } from "@/components/admin/editable-titles";
+import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
+import { adminUpdateClientDisplayNameFieldAction } from "@/lib/actions/admin/field-updates";
 import type { UserAttentionItem, UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
 import { toStaffStatus } from "@/lib/admin/staff-kit-status";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
@@ -14,7 +15,6 @@ import {
   MetaItem,
   OverflowMenu,
   PageHeader,
-  STAFF_PAGE_TITLE_CLASS,
   StaffBreadcrumbs,
   type StaffLinkComponent,
   StatusBadge,
@@ -98,10 +98,11 @@ export function PeopleDetailShell({
         }
         title={
           title ?? (
-            <AdminUserDisplayNameEditableTitle
-              userId={user.id}
+            <StaffEditableTitle
               value={user.name}
-              textClassName={`${STAFF_PAGE_TITLE_CLASS} overflow-visible whitespace-normal`}
+              label={isStaff ? "staff member" : "client"}
+              editable
+              onSave={(next) => adminUpdateClientDisplayNameFieldAction(user.id, next)}
             />
           )
         }
