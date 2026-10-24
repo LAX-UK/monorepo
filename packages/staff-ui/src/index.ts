@@ -85,7 +85,7 @@ export {
   useTableDensity,
 } from "./data/toolbar.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
-export { SavedViewsError, useSavedViews } from "./data/saved-views.js";
+export { SavedViewsError, sameViewQuery, useSavedViews, viewQuery } from "./data/saved-views.js";
 export type {
   SavedView,
   SavedViewItem,

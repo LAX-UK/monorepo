@@ -378,6 +378,39 @@ describe("the Views menu", () => {
   });
 });
 
+describe("recognising the view on show", () => {
+  it("matches a team view whatever the order of params or the page", () => {
+    render(<Harness port={fakePort()} currentQuery="from=2026-03-03&offset=0&status=paid" />);
+
+    const nav = screen.getByRole("navigation", { name: "Views" });
+    expect(within(nav).getByRole("link", { name: "Paid this week" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.queryByRole("button", { name: "Save view" })).toBeNull();
+  });
+
+  it("offers no Save view when only the page differs from an unfiltered list", () => {
+    render(<Harness port={fakePort()} currentQuery="offset=0" />);
+
+    expect(screen.queryByRole("button", { name: "Save view" })).toBeNull();
+  });
+
+  it("saves the filters without the page", async () => {
+    const port = fakePort();
+    render(<Harness port={port} currentQuery="status=draft&offset=50" />);
+    fireEvent.click(screen.getByRole("button", { name: "Save view" }));
+    const dialog = await settle(() => screen.getByRole("dialog", { name: "Save view" }));
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Name" }), {
+      target: { value: "Drafts" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save view" }));
+    await flush();
+
+    expect(port.create).toHaveBeenCalledWith({ label: "Drafts", query: "status=draft" });
+  });
+});
+
 describe("saving a view", () => {
   it("offers Save view only when the list is filtered and the filters are not already a view", () => {
     const { rerender } = render(<Harness port={fakePort()} currentQuery="" />);

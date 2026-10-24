@@ -13,7 +13,9 @@ import {
   lotsListHref,
   lotsSortHref,
   lotsSortState,
+  lotsTeamViews,
 } from "@/lib/admin/lots/lots-staff-list.vm";
+import { createSavedViewsPort } from "@/lib/admin/saved-views-port";
 import {
   ActiveFilterChips,
   type DataColumn,
@@ -85,7 +87,9 @@ export function LotsStaffList(props: LotsStaffListProps) {
   const [density, setDensity] = useTableDensity("bid-lots");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
-  const saved = useSavedViews("bid-lots");
+  const port = useMemo(() => createSavedViewsPort("bid-admin.lots"), []);
+  const saved = useSavedViews("bid-admin.lots", port, { legacyStorageKey: "staff.views.bid-lots" });
+  const teamViews = useMemo(() => lotsTeamViews(), []);
   const currentQuery = lotsListHref(search, {}).split("?")[1] ?? "";
   const status = typeof search.status === "string" ? search.status : "";
   const saleId = typeof search.saleId === "string" ? search.saleId : "";
@@ -188,14 +192,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
       href: lens.href,
       ...(lens.badge !== undefined ? { count: lens.badge } : {}),
     })),
-    ...saved.views.map((view) => ({
-      id: view.id,
-      label: view.label,
-      href: `/admin/lots?${view.query}`,
-      custom: true,
-    })),
   ];
-  const savedMatch = saved.views.find((view) => currentQuery && view.query === currentQuery);
   const pick = (values: string[], current: string) =>
     values.find((value) => value !== current) ?? "";
 
@@ -232,12 +229,12 @@ export function LotsStaffList(props: LotsStaffListProps) {
             views={
               <DataViews
                 views={views}
-                activeId={savedMatch?.id ?? props.activeLens}
+                activeId={props.activeLens}
                 Link={ListLink}
-                {...(filtered && !savedMatch
-                  ? { onSaveCurrent: (label: string) => saved.save(label, currentQuery) }
-                  : {})}
-                onRemove={saved.remove}
+                team={teamViews}
+                saved={saved}
+                savedHref={(view) => `/admin/lots?${view.query}`}
+                currentQuery={currentQuery}
               />
             }
             search={

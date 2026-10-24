@@ -5,7 +5,7 @@ import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
 import { toStaffStatus } from "@/lib/admin/staff-kit-status";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
 import { lotStatusLabel, lotStatusToBadgeVariant } from "@/lib/presenters/status-presentation";
-import type { StatusPresentation } from "@auction/staff-ui";
+import { type StatusPresentation, type TeamView, viewQuery } from "@auction/staff-ui";
 
 export type LotsListSearch = Record<string, string | string[] | undefined>;
 
@@ -66,6 +66,26 @@ export function lotsListHref(
   patch: Record<string, string | number | null | undefined>,
 ): string {
   return buildListHref(adminLotListPath(), current, { offset: 0, ...patch });
+}
+
+/**
+ * Views of the lots list everyone sees, beyond the lens tabs: combinations of the list's own
+ * filters. Fixed here, never edited.
+ */
+export function lotsTeamViews(): TeamView[] {
+  const view = (id: string, label: string, patch: Record<string, string>) => {
+    const [path, rest = ""] = lotsListHref({}, patch).split("?");
+    const query = viewQuery(rest);
+    return { id: `team-${id}`, label, href: `${path}?${query}`, query };
+  };
+  return [
+    view("drafts-missing-photos", "Drafts missing photos", { status: "draft", needsPhotos: "1" }),
+    view("live-ending-first", "Live, ending soonest", { status: "active", sort: "endingAsc" }),
+    view("ended-by-hammer", "Ended, highest hammer first", {
+      status: "ended",
+      sort: "hammerDesc",
+    }),
+  ];
 }
 
 /**

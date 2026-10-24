@@ -5,7 +5,9 @@ import {
   SavedViewsError,
   type SavedViewsPort,
   migrateLegacySavedViews,
+  sameViewQuery,
   useSavedViews,
+  viewQuery,
 } from "./saved-views.js";
 
 const LIST = "test.orders";
@@ -332,6 +334,20 @@ describe("useSavedViews", () => {
     });
     expect(port.remove).toHaveBeenCalledWith("b");
     expect(labels(result.current.views)).toEqual(["Alpha"]);
+  });
+});
+
+describe("comparing views by their filters", () => {
+  it("drops paging, so a view is the filters and not the page it was saved on", () => {
+    expect(viewQuery("?status=paid&offset=50&cursor=abc&page=2")).toBe("status=paid");
+  });
+
+  it("treats the same params in any order, on any page, as the same view", () => {
+    expect(sameViewQuery("offset=0&status=draft&needsPhotos=1", "needsPhotos=1&status=draft")).toBe(
+      true,
+    );
+    expect(sameViewQuery("status=draft", "status=active")).toBe(false);
+    expect(sameViewQuery("status=draft", "status=draft&q=ada")).toBe(false);
   });
 });
 

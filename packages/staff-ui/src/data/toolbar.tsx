@@ -18,7 +18,12 @@ import {
 } from "../primitives/menu.js";
 import { Count, SegmentedControl } from "../primitives/tabs.js";
 import type { StaffLinkComponent } from "../shell/link.js";
-import type { SavedView, SavedViewsControls } from "./saved-views.js";
+import {
+  type SavedView,
+  type SavedViewsControls,
+  sameViewQuery,
+  viewQuery,
+} from "./saved-views.js";
 import type { TableDensity } from "./types.js";
 import { type TeamView, VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./views-menu.js";
 
@@ -316,9 +321,9 @@ export function DataViews({
 }) {
   const [naming, setNaming] = React.useState<{ name: string; error?: string } | null>(null);
   const personal = saved?.views ?? [];
-  const query = currentQuery ?? "";
-  const savedMatch = query ? personal.find((view) => view.query === query) : undefined;
-  const teamMatch = query ? team.find((view) => view.query === query) : undefined;
+  const query = viewQuery(currentQuery ?? "");
+  const savedMatch = query ? personal.find((view) => sameViewQuery(view.query, query)) : undefined;
+  const teamMatch = query ? team.find((view) => sameViewQuery(view.query, query)) : undefined;
   const matched = savedMatch
     ? { id: savedMatch.id, label: savedMatch.label, href: savedHref?.(savedMatch) ?? "#" }
     : teamMatch

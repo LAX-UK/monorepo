@@ -11,7 +11,9 @@ import {
   clientsListHref,
   clientsSortHref,
   clientsSortState,
+  clientsTeamViews,
 } from "@/lib/admin/people/clients-staff-list.vm";
+import { createSavedViewsPort } from "@/lib/admin/saved-views-port";
 import {
   ActiveFilterChips,
   type DataColumn,
@@ -80,7 +82,11 @@ export function ClientsStaffList(props: ClientsStaffListProps) {
   const [density, setDensity] = useTableDensity("bid-clients");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
-  const saved = useSavedViews("bid-clients");
+  const port = useMemo(() => createSavedViewsPort("bid-admin.clients"), []);
+  const saved = useSavedViews("bid-admin.clients", port, {
+    legacyStorageKey: "staff.views.bid-clients",
+  });
+  const teamViews = useMemo(() => clientsTeamViews(), []);
   const operations = useMemo(
     () => (props.canModerate ? getUserBulkOperations() : []),
     [props.canModerate],
@@ -89,7 +95,6 @@ export function ClientsStaffList(props: ClientsStaffListProps) {
   const kyc = typeof search.kycStatus === "string" ? search.kycStatus : "";
   const emailVerified = typeof search.emailVerified === "string" ? search.emailVerified : "";
   const currentQuery = clientsListHref(search, {}).split("?")[1] ?? "";
-  const savedMatch = saved.views.find((view) => currentQuery && view.query === currentQuery);
   const pick = (values: string[], current: string) =>
     values.find((value) => value !== current) ?? "";
   const open = rows.find((row) => row.id === openId) ?? null;
@@ -158,12 +163,6 @@ export function ClientsStaffList(props: ClientsStaffListProps) {
       href: clientsListHref(search, { status: "suspended" }),
       count: props.counts.suspended,
     },
-    ...saved.views.map((view) => ({
-      id: view.id,
-      label: view.label,
-      href: `/admin/clients?${view.query}`,
-      custom: true,
-    })),
   ];
 
   return (
@@ -199,12 +198,12 @@ export function ClientsStaffList(props: ClientsStaffListProps) {
             views={
               <DataViews
                 views={views}
-                activeId={savedMatch?.id ?? (status || "all")}
+                activeId={status || "all"}
                 Link={ListLink}
-                {...(props.filtered && !savedMatch
-                  ? { onSaveCurrent: (label: string) => saved.save(label, currentQuery) }
-                  : {})}
-                onRemove={saved.remove}
+                team={teamViews}
+                saved={saved}
+                savedHref={(view) => `/admin/clients?${view.query}`}
+                currentQuery={currentQuery}
               />
             }
             search={

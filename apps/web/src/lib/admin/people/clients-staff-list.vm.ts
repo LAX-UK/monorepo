@@ -2,7 +2,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { toStaffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminUserRow } from "@/lib/data/http/admin-users.types";
 import { kycStatusLabel, kycStatusToBadgeVariant } from "@/lib/presenters/status-presentation";
-import type { StatusPresentation } from "@auction/staff-ui";
+import { type StatusPresentation, type TeamView, viewQuery } from "@auction/staff-ui";
 import { CLIENTS_LIST_PATH } from "./build-clients-list-page-model";
 
 export type ClientsListSearch = Record<string, string | string[] | undefined>;
@@ -53,6 +53,23 @@ export function clientsListHref(
   patch: Record<string, string | number | null | undefined>,
 ): string {
   return buildListHref(CLIENTS_LIST_PATH, current, { offset: 0, client: null, ...patch });
+}
+
+/**
+ * Views of the clients list everyone sees, beyond the status tabs: combinations of the list's
+ * own filters. Fixed here, never edited.
+ */
+export function clientsTeamViews(): TeamView[] {
+  const view = (id: string, label: string, patch: Record<string, string>) => {
+    const [path, rest = ""] = clientsListHref({}, patch).split("?");
+    const query = viewQuery(rest);
+    return { id: `team-${id}`, label, href: `${path}?${query}`, query };
+  };
+  return [
+    view("identity-submitted", "Identity submitted", { kycStatus: "pending" }),
+    view("email-not-verified", "Email not verified", { emailVerified: "0" }),
+    view("newest", "Newest sign-ups", { sort: "created_desc" }),
+  ];
 }
 
 export const CLIENT_IDENTITY_FILTERS = [
