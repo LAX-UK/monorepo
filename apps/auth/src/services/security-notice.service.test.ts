@@ -59,6 +59,7 @@ describe("SecurityNoticeService", () => {
     ["password_changed", "password-changed"],
     ["two_factor_enabled", "2fa-enabled"],
     ["two_factor_disabled", "2fa-disabled"],
+    ["two_factor_reset_by_support", "2fa-reset-by-support"],
     ["backup_codes_regenerated", "backup-codes-regenerated"],
   ] as const)(
     "sends %s to the account's email with what, when, device and the secure link",

@@ -2,6 +2,7 @@ import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
 import type {
   AdminPatchStaffRoleBody,
+  AdminResetTwoFactorBody,
   AdminSetRoleBody,
   AdminSuspendBody,
   IAdminUserService,
@@ -44,6 +45,20 @@ export class AdminUserService implements IAdminUserService {
   ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/admin/users/${encodeURIComponent(userId)}/suspend`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async resetTwoFactor(
+    userId: string,
+    body: AdminResetTwoFactorBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/admin/users/${encodeURIComponent(userId)}/two-factor/reset`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

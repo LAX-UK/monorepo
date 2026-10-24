@@ -3,12 +3,14 @@ import { HOSTED_AUTH_RUNTIME_SCRIPT } from "./hosted-auth/runtime.js";
 import { HOSTED_AUTH_STYLES } from "./hosted-auth/styles.js";
 import { hostedAuthViewFromSearch } from "./hosted-auth/view.js";
 import {
+  buildHostedAccountChooserHtml,
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
+  buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorHtml,
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
@@ -73,6 +75,90 @@ describe("issuer-hosted credential HTML", () => {
   ])("uses floating-label primitives and scoped buttons on %s", (_label, html) => {
     expect(html).toContain("field-control");
     expect(html).toContain("btn btn-primary");
+  });
+
+  describe("reset-password page", () => {
+    it("keeps the status region and the new-link route outside the form so a dead link still shows them", () => {
+      const html = buildHostedResetPasswordHtml(hostedAuthViewFromSearch(shopSearch));
+      const form = /<form id="reset-form"[\s\S]*?<\/form>/.exec(html)?.[0] ?? "";
+      expect(form).not.toContain('id="error"');
+      expect(html.indexOf('id="error"')).toBeGreaterThan(html.indexOf("</form>"));
+      expect(html).toMatch(/id="reset-new-link"[^>]*hidden/);
+      expect(html).toContain("Request a new link");
+    });
+
+    it("sends the new-link route to forgot-password with the client and return parameters", () => {
+      const html = buildHostedResetPasswordHtml(hostedAuthViewFromSearch(shopSearch));
+      const href = /id="reset-new-link"[\s\S]*?href="([^"]+)"/.exec(html)?.[1] ?? "";
+      const url = new URL(href.replaceAll("&amp;", "&"), "https://auth.test");
+      expect(url.pathname).toBe("/forgot-password");
+      expect(url.searchParams.get("client_id")).toBe("lax-shop-web");
+      expect(url.searchParams.get("state")).toBe("abc");
+    });
+
+    it("falls back to the bare forgot-password page without a client", () => {
+      expect(buildHostedResetPasswordHtml()).toContain('href="/forgot-password"');
+    });
+  });
+
+  describe("two-step lost-access route", () => {
+    it("links the challenge page to the help page, keeping the sign-in parameters", () => {
+      const html = buildHostedTwoFactorHtml(hostedAuthViewFromSearch(shopSearch));
+      const href = /href="([^"]+)">Can't use your authenticator app\?/.exec(html)?.[1] ?? "";
+      const url = new URL(href.replaceAll("&amp;", "&"), "https://auth.test");
+      expect(url.pathname).toBe("/two-factor/help");
+      expect(url.searchParams.get("client_id")).toBe("lax-shop-web");
+      expect(url.searchParams.get("state")).toBe("abc");
+    });
+
+    it("explains that support resets two-step after checking identity, with Bid's contact route", () => {
+      const html = buildHostedTwoFactorHelpHtml(hostedAuthViewFromSearch(shopSearch));
+      expect(html).toContain("LAX support can reset two-step verification for you");
+      expect(html).toContain("check it's really you");
+      expect(html).toContain('href="http://localhost:3000/contact"');
+      expect(html).toContain('alt="LAX Account"');
+      expect(html).toContain("/two-factor?client_id=lax-shop-web");
+    });
+  });
+
+  describe("account chooser page", () => {
+    const input = {
+      intent: "sign-in" as const,
+      name: "Jane Doe",
+      email: "jane.doe@example.test",
+      continueUrl: "https://shop.example.test/login",
+      switchUrl: "/login?client_id=lax-shop-web",
+    };
+
+    it("names the signed-in account with a masked address and offers both choices", () => {
+      const html = buildHostedAccountChooserHtml(input);
+      expect(html).toContain("Continue as Jane Doe?");
+      expect(html).toContain("This device is signed in to j***@example.test.");
+      expect(html).not.toContain("jane.doe@example.test");
+      expect(html).toMatch(
+        /<a class="btn btn-primary" id="chooser-continue" href="https:\/\/shop.example.test\/login">Continue<\/a>/,
+      );
+      expect(html).toContain("Use a different account");
+      expect(html).toContain('src="/hosted-account-chooser.js');
+    });
+
+    it("keeps the shared hosted shell: LAX Account lockup and status region", () => {
+      const html = buildHostedAccountChooserHtml(input);
+      expect(html).toContain('alt="LAX Account"');
+      expect(html).toContain('id="error"');
+    });
+
+    it("escapes a name that carries markup", () => {
+      const html = buildHostedAccountChooserHtml({ ...input, name: '<img src=x onerror="a">' });
+      expect(html).not.toContain("<img src=x");
+      expect(html).toContain("&lt;img src=x");
+    });
+
+    it("falls back to the product name when the account has no name", () => {
+      expect(buildHostedAccountChooserHtml({ ...input, name: "  " })).toContain(
+        "Continue as LAX Account?",
+      );
+    });
   });
 
   it("explains who requires two-step verification on forced setup", () => {

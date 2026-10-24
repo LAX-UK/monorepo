@@ -272,6 +272,15 @@ export class HttpIdentityIssuerClient
     return readTwoFactorRequirement(body.requirement);
   }
 
+  async resetTwoFactor(subjectId: string): Promise<void> {
+    const body = await this.machineRequest(
+      "POST",
+      `/identity/subjects/${encodeURIComponent(subjectId)}/two-factor/reset`,
+      {},
+    );
+    if (!isRecord(body) || body.ok !== true) throw invalidResponse("two-factor reset");
+  }
+
   async readTwoFactorPolicy(
     scope: IdentityTwoFactorPolicyScope,
   ): Promise<IdentityTwoFactorPolicyView> {

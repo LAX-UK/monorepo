@@ -84,6 +84,9 @@ export class SecurityNoticeService implements SecurityNoticePublisher {
       case "two_factor_disabled":
         await enqueue("2fa-disabled", subject.email, {});
         return;
+      case "two_factor_reset_by_support":
+        await enqueue("2fa-reset-by-support", subject.email, {});
+        return;
       case "backup_codes_regenerated":
         await enqueue("backup-codes-regenerated", subject.email, {});
         return;

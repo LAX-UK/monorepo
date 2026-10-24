@@ -196,6 +196,12 @@ export const adminSuspendBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+/** A reason is required so the audit entry says why someone's sign-in protection was removed. */
+export const ADMIN_TWO_FACTOR_RESET_REASON_MIN = 10;
+export const adminResetTwoFactorBodySchema = z.object({
+  reason: z.string().trim().min(ADMIN_TWO_FACTOR_RESET_REASON_MIN).max(500),
+});
+
 export const adminBulkUsersBodySchema = z.object({
   ids: z.array(z.string().min(1).max(191)).min(1).max(50),
   op: z.enum(["suspend", "unsuspend"]),

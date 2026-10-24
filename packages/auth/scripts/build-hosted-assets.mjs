@@ -14,6 +14,7 @@ const entries = {
   "hosted-auth-runtime": join(src, "runtime.entry.ts"),
   "hosted-login": join(src, "login.entry.ts"),
   "hosted-sign-up": join(src, "sign-up.entry.ts"),
+  "hosted-account-chooser": join(src, "account-chooser.entry.ts"),
   "hosted-forgot-password": join(src, "forgot-password.entry.ts"),
   "hosted-reset-password": join(src, "reset-password.entry.ts"),
   "hosted-two-factor": join(src, "two-factor.entry.ts"),

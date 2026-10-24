@@ -28,6 +28,7 @@ import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { createAppLogger } from "./lib/logger.js";
+import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
@@ -224,6 +225,11 @@ export function createContainer(env: Env): Container {
   const twoFactorPolicy = new TwoFactorPolicyService({
     identity: identityIssuer,
     members: repos.legalEntityMemberRepository,
+    audit: platform.authAuditPublisher,
+  });
+  const twoFactorReset = new AdminTwoFactorResetService({
+    identity: identityIssuer,
+    users: repos.adminUserReader,
     audit: platform.authAuditPublisher,
   });
   const staffAccess = new StaffAccessAdminService({
@@ -464,7 +470,13 @@ export function createContainer(env: Env): Container {
       twoFactorRequirement: twoFactorPolicy,
       staffInvitationAccept: userMisc.staffInvitationAccept,
     }),
-    admin: { ...admin.admin, staffTwoFactorPolicy: twoFactorPolicy, staffAccess, atg },
+    admin: {
+      ...admin.admin,
+      staffTwoFactorPolicy: twoFactorPolicy,
+      twoFactorReset,
+      staffAccess,
+      atg,
+    },
     finance,
     platformCron,
     compliance,

@@ -1,4 +1,5 @@
 import {
+  HOSTED_ACCOUNT_CHOOSER_SCRIPT,
   HOSTED_AUTH_FAVICON_BASE_PATH,
   HOSTED_AUTH_RUNTIME_SCRIPT,
   HOSTED_AUTH_STYLES,
@@ -32,6 +33,7 @@ export function mountHostedAuthAssets(app: Hono): void {
     ["/hosted-auth-runtime.js", HOSTED_AUTH_RUNTIME_SCRIPT],
     ["/hosted-login.js", HOSTED_LOGIN_SCRIPT],
     ["/hosted-sign-up.js", HOSTED_SIGN_UP_SCRIPT],
+    ["/hosted-account-chooser.js", HOSTED_ACCOUNT_CHOOSER_SCRIPT],
     ["/hosted-forgot-password.js", HOSTED_FORGOT_PASSWORD_SCRIPT],
     ["/hosted-reset-password.js", HOSTED_RESET_PASSWORD_SCRIPT],
     ["/hosted-two-factor.js", HOSTED_TWO_FACTOR_SCRIPT],

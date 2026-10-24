@@ -11,6 +11,7 @@ const names = [
   "password-changed",
   "2fa-enabled",
   "2fa-disabled",
+  "2fa-reset-by-support",
   "backup-codes-regenerated",
   "email-changed",
   "phone-verified",
@@ -77,6 +78,7 @@ type AuthTemplateVars = {
   "password-changed": SecurityNoticeVars;
   "2fa-enabled": SecurityNoticeVars;
   "2fa-disabled": SecurityNoticeVars;
+  "2fa-reset-by-support": SecurityNoticeVars;
   "backup-codes-regenerated": SecurityNoticeVars;
   "email-changed": SecurityNoticeVars & {
     previousEmail: string;
@@ -128,6 +130,7 @@ export const authTemplates = {
     "password-changed": "live",
     "2fa-enabled": "live",
     "2fa-disabled": "live",
+    "2fa-reset-by-support": "live",
     "backup-codes-regenerated": "live",
     "email-changed": "snapshot",
     "phone-verified": "live",

@@ -15,6 +15,7 @@ export type SecurityNoticeEvent =
   | { kind: "password_changed"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "two_factor_enabled"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "two_factor_disabled"; userId: string; at: Date; userAgent?: string | null }
+  | { kind: "two_factor_reset_by_support"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "backup_codes_regenerated"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {

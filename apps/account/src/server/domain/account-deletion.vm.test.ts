@@ -32,7 +32,11 @@ describe("buildDeletionPageVm", () => {
       if (vm.kind !== "eligible") throw new Error("expected eligible");
       expect(vm.consequences.join(" ")).toMatch(/30 days you can cancel/);
       expect(vm.consequences.join(" ")).toMatch(/permanently erase/);
-      expect(vm.consequences.join(" ")).toMatch(/legally required/);
+      expect(vm.consequences.join(" ")).toMatch(/name, email address, phone number/);
+      expect(vm.consequences.join(" ")).toMatch(/password, any linked Google or Apple sign-in/);
+      expect(vm.consequences.join(" ")).toMatch(
+        /orders, invoices and payments without your personal details/,
+      );
     });
 
     it("keeps the copy in British English and sentence case", () => {

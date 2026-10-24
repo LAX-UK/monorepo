@@ -212,14 +212,19 @@ describe("auth HTTP app composition", () => {
     expect(await response.text()).toContain("Sign in");
   });
 
-  it("redirects a live session with only a product hint to the Shop restart URL", async () => {
-    const app = buildApp({ session: { id: "s1" }, user: { id: "u1" } });
-    const login = await app.request("https://auth.test/login?client_id=lax-shop-web");
-    expect(login.status).toBe(302);
-    expect(login.headers.get("location")).toBe("http://localhost:3020/login");
-    const signUp = await app.request("https://auth.test/sign-up?client_id=lax-shop-web");
-    expect(signUp.status).toBe(302);
-    expect(signUp.headers.get("location")).toBe("http://localhost:3020/login");
+  it("asks which account to use when a live session meets a bare sign-in or sign-up visit", async () => {
+    const app = buildApp({
+      session: { id: "s1" },
+      user: { id: "u1", name: "Jane Doe", email: "jane.doe@example.test" },
+    });
+    for (const path of ["login", "sign-up"]) {
+      const response = await app.request(`https://auth.test/${path}?client_id=lax-shop-web`);
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html).toContain("Use a different account");
+      expect(html).toContain('href="http://localhost:3020/login"');
+      expect(html).not.toContain("jane.doe@example.test");
+    }
   });
 
   it("still renders the login form when a session accompanies a resumable authorize query", async () => {

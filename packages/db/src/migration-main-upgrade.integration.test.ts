@@ -20,7 +20,7 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
-const FINAL_FOLDER_MILLIS = 1794816000000;
+const FINAL_FOLDER_MILLIS = 1794902400000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -488,6 +488,131 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
       expect(table.rows[0]?.t).toBeNull();
       const legacy = await pool.query("SELECT count(*)::int AS n FROM public.user_address");
       expect(legacy.rows[0]?.n).toBe(6);
+    });
+  });
+
+  it("erases sign-in material, phone and tokens on purge, keeps the anonymised user row, and rolls back", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+
+      const purged = "0b6f5c1e-4d2a-4f8e-9a31-7c5d8e2b6a10";
+      const bystander = "5e9d3a74-1b86-4c20-8f7d-2a6c4b9e1d53";
+      const clientId = "7a1c9e32-6d54-4b08-a2f1-3e8b5c7d9014";
+      const insertUser = (id: string, email: string, phone: string) =>
+        pool.query(
+          `INSERT INTO public."user"
+            ("id", "name", "email", "email_verified", "phone_number", "phone_number_verified",
+             "pending_new_email", "two_factor_enabled", "created_at", "updated_at")
+           VALUES ($1, 'Real Name', $2, true, $3, true, $4, true, now(), now())`,
+          [id, email, phone, `new-${email}`],
+        );
+      await insertUser(purged, "purge-me@example.test", "+447700900111");
+      await insertUser(bystander, "keep-me@example.test", "+447700900222");
+
+      await pool.query(
+        `INSERT INTO public.oauth_application
+          ("id", "name", "client_id", "redirect_urls", "type", "created_at", "updated_at")
+         VALUES ($1, 'Test client', $1, 'https://client.example.test/cb', 'web', now(), now())`,
+        [clientId],
+      );
+      for (const userId of [purged, bystander]) {
+        await pool.query(
+          `INSERT INTO public.session ("id", "expires_at", "token", "created_at", "updated_at", "user_id")
+           VALUES ($1, now() + interval '1 day', $2, now(), now(), $3)`,
+          [`session-${userId}`, `token-${userId}`, userId],
+        );
+        await pool.query(
+          `INSERT INTO public.account
+            ("id", "account_id", "provider_id", "user_id", "password", "created_at", "updated_at")
+           VALUES ($1, $2, 'credential', $2, 'scrypt-hash', now(), now())`,
+          [`account-${userId}`, userId],
+        );
+        await pool.query(
+          `INSERT INTO public.two_factor ("id", "secret", "backup_codes", "user_id")
+           VALUES ($1, 'secret', 'codes', $2)`,
+          [`two-factor-${userId}`, userId],
+        );
+        await pool.query(
+          `INSERT INTO public.oauth_access_token
+            ("id", "access_token", "refresh_token", "access_token_expires_at",
+             "refresh_token_expires_at", "client_id", "user_id", "scopes", "created_at", "updated_at")
+           VALUES ($1, $2, $3, now() + interval '1 hour', now() + interval '1 day', $4, $5,
+                   'openid', now(), now())`,
+          [`access-${userId}`, `at-${userId}`, `rt-${userId}`, clientId, userId],
+        );
+        await pool.query(
+          `INSERT INTO public.oauth_consent
+            ("id", "client_id", "user_id", "scopes", "consent_given", "created_at", "updated_at")
+           VALUES ($1, $2, $3, 'openid', true, now(), now())`,
+          [`consent-${userId}`, clientId, userId],
+        );
+        await pool.query(
+          `INSERT INTO public.auth_known_device ("user_id", "fingerprint") VALUES ($1, 'device')`,
+          [userId],
+        );
+      }
+      await pool.query(
+        `INSERT INTO public.verification ("id", "identifier", "value", "expires_at")
+         VALUES ('verification-email', 'purge-me@example.test', 'otp', now() + interval '1 day'),
+                ('verification-reset', 'reset-password:one-time', $1, now() + interval '1 day'),
+                ('verification-other', 'keep-me@example.test', 'otp', now() + interval '1 day')`,
+        [purged],
+      );
+
+      const countFor = async (table: string, userId: string) =>
+        Number(
+          (
+            await pool.query(
+              `SELECT count(*)::int AS n FROM public."${table}" WHERE user_id = $1`,
+              [userId],
+            )
+          ).rows[0]?.n,
+        );
+      const personalTables = [
+        "session",
+        "account",
+        "two_factor",
+        "oauth_access_token",
+        "oauth_consent",
+        "auth_known_device",
+      ];
+
+      await pool.query("SELECT public.user_pii_purge($1)", [purged]);
+
+      for (const table of personalTables) {
+        expect(await countFor(table, purged), `${table} cleared for the purged user`).toBe(0);
+        expect(await countFor(table, bystander), `${table} kept for others`).toBe(1);
+      }
+      const verification = await pool.query("SELECT id FROM public.verification ORDER BY id");
+      expect(verification.rows).toEqual([{ id: "verification-other" }]);
+
+      const user = await pool.query(
+        `SELECT name, email, phone_number, phone_number_verified, pending_new_email,
+                two_factor_enabled, image
+         FROM public."user" WHERE id = $1`,
+        [purged],
+      );
+      expect(user.rows).toEqual([
+        {
+          name: "[deleted]",
+          email: `deleted+${purged}@purged.invalid`,
+          phone_number: null,
+          phone_number_verified: false,
+          pending_new_email: null,
+          two_factor_enabled: false,
+          image: null,
+        },
+      ]);
+      const other = await pool.query(`SELECT name, phone_number FROM public."user" WHERE id = $1`, [
+        bystander,
+      ]);
+      expect(other.rows[0]?.name).toBe("Real Name");
+      expect(other.rows[0]?.phone_number).not.toBeNull();
+
+      // The previous function stays available as a rollback and leaves credentials alone.
+      await executeMigrationSql(pool, "0226_rollback.sql");
+      await pool.query("SELECT public.user_pii_purge($1)", [bystander]);
+      expect(await countFor("session", bystander)).toBe(1);
     });
   });
 

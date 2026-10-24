@@ -11,6 +11,7 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "password-changed",
   "2fa-enabled",
   "2fa-disabled",
+  "2fa-reset-by-support",
   "backup-codes-regenerated",
   "email-changed",
   "phone-verified",

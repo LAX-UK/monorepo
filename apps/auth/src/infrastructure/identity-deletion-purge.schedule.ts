@@ -9,10 +9,15 @@ export const IDENTITY_DELETION_PURGE_BATCH_SIZE = 100;
 
 const DAY_MS = 24 * 60 * 60_000;
 
+/**
+ * Erases one batch of people whose grace period has ended and returns their ids. The SQL scrub
+ * deletes their sessions, credentials and tokens; the caller then ends what still lives outside
+ * the scrub (relying-party sessions, back-channel logout) for each id.
+ */
 export async function purgeDeletedSubjectsBatch(
   db: Pick<IdentityDatabase, "execute">,
   now: Date = new Date(),
-): Promise<number> {
+): Promise<string[]> {
   const cutoff = new Date(now.getTime() - IDENTITY_DELETION_GRACE_DAYS * DAY_MS);
   const result = await db.execute(sql`
     WITH candidates AS (
@@ -53,14 +58,20 @@ export async function purgeDeletedSubjectsBatch(
       1,
       ${now}::timestamptz
     FROM purged
+    RETURNING "aggregate_id" AS "id"
   `);
-  return result.rowCount ?? 0;
+  return result.rows.map((row) => String((row as { id: unknown }).id));
 }
 
 export function startIdentityDeletionPurgeSchedule(options: {
   db: Pick<IdentityDatabase, "execute">;
   onError: (error: unknown) => void;
   onPurged?: (count: number) => void;
+  /**
+   * Ends the person's relying-party sessions and tells every product to sign them out. Must not
+   * throw: a failure has to be retried from a durable queue, not lost with the batch.
+   */
+  endSessions?: (subjectId: string) => Promise<void>;
   intervalMs?: number;
 }): { stop: () => Promise<void> } {
   let stopped = false;
@@ -68,8 +79,9 @@ export function startIdentityDeletionPurgeSchedule(options: {
   const run = () => {
     if (stopped || inFlight) return;
     inFlight = purgeDeletedSubjectsBatch(options.db)
-      .then((count) => {
-        if (count > 0) options.onPurged?.(count);
+      .then(async (subjectIds) => {
+        for (const subjectId of subjectIds) await options.endSessions?.(subjectId);
+        if (subjectIds.length > 0) options.onPurged?.(subjectIds.length);
       })
       .catch(options.onError)
       .finally(() => {

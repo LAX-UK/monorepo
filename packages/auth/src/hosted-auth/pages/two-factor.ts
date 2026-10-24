@@ -1,5 +1,12 @@
 import { HOSTED_COPY } from "../copy.js";
-import { buildHostedAuthHtml, floatingInput, hostedButton, statusRegions } from "../html.js";
+import { continuationHref } from "../flow-context.js";
+import {
+  buildHostedAuthHtml,
+  escapeHostedHtml,
+  floatingInput,
+  hostedButton,
+  statusRegions,
+} from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
@@ -37,6 +44,7 @@ export function buildHostedTwoFactorHtml(
         ${hostedButton({ label: "Use backup code", kind: "secondary", loadingLabel: "Verifying…" })}
       </form>
       ${statusRegions()}
+      <p class="links-secondary"><a class="text-link" href="${escapeHostedHtml(continuationHref("/two-factor/help", view.flow))}">Can't use your ${HOSTED_COPY.twoStep.app}?</a></p>
     </div>`,
     scriptSrc: "/hosted-two-factor.js",
   });

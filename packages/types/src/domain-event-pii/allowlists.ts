@@ -241,6 +241,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.session_revoked": new Set(["sessionId"]),
   "auth.sessions_revoked_all_except_current": new Set(),
   "auth.two_factor_policy_changed": new Set(["scope", "required", "legalEntityId"]),
+  /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
+  "auth.two_factor_reset_by_staff": new Set(["reason"]),
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
   "bid.user_suspended": new Set(),

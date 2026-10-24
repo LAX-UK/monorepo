@@ -6,6 +6,9 @@ import TwoFactorDisabledEmail, {
 import TwoFactorEnabledEmail, {
   subject as twoFactorEnabledSubject,
 } from "./templates/2fa-enabled.js";
+import TwoFactorResetBySupportEmail, {
+  subject as twoFactorResetBySupportSubject,
+} from "./templates/2fa-reset-by-support.js";
 import AccessInviteEmail, { subject as accessInviteSubject } from "./templates/access-invite.js";
 import AccountActivation, {
   subject as accountActivationSubject,
@@ -209,6 +212,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "2fa-disabled": {
     subject: twoFactorDisabledSubject,
     component: (vars) => <TwoFactorDisabledEmail {...vars} />,
+  },
+  "2fa-reset-by-support": {
+    subject: twoFactorResetBySupportSubject,
+    component: (vars) => <TwoFactorResetBySupportEmail {...vars} />,
   },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,

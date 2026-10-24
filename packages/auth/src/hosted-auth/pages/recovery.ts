@@ -1,7 +1,10 @@
+import { HOSTED_AUTH_MESSAGES } from "../browser/messages.js";
 import { HOSTED_COPY } from "../copy.js";
+import { continuationHref } from "../flow-context.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
+  escapeHostedHtml,
   floatingInput,
   hostedButton,
   passwordField,
@@ -43,7 +46,8 @@ export function buildHostedResetPasswordHtml(
     description: `Set a new password for your ${HOSTED_COPY.accountName}.`,
     brand: view.brand,
     config: view.config,
-    body: `<form id="reset-form" class="auth-form" novalidate>
+    body: `<div class="auth-stack">
+    <form id="reset-form" class="auth-form" novalidate>
       ${passwordField({
         id: "password",
         label: "New password",
@@ -52,8 +56,12 @@ export function buildHostedResetPasswordHtml(
         maxlength: HOSTED_AUTH_POLICY.passwordMaxLength,
       })}
       ${hostedButton({ label: "Update password", loadingLabel: "Updating…" })}
-      ${statusRegions()}
-    </form>`,
+    </form>
+    ${statusRegions()}
+    <div id="reset-new-link" class="links" hidden>
+      <a class="text-link" href="${escapeHostedHtml(continuationHref("/forgot-password", view.flow))}">${escapeHostedHtml(HOSTED_AUTH_MESSAGES.RESET_REQUEST_NEW_LINK)}</a>
+    </div>
+    </div>`,
     scriptSrc: "/hosted-reset-password.js",
   });
 }

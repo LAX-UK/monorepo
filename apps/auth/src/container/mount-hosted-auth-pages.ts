@@ -1,16 +1,20 @@
 import {
+  type HostedAccountChooserIntent,
   type HostedAuthCapabilities,
   type TwoFactorSetupRequiredBy,
+  buildHostedAccountChooserHtml,
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
+  buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorHtml,
   buildHostedTwoFactorManageHtml,
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
+  continuationHref,
   hostedAuthViewFromSearch,
   hostedSignUpRequested,
   parseTwoFactorSetupRequiredBy,
@@ -44,9 +48,30 @@ function hasOidcLoginPromptCookie(cookieHeader: string | null | undefined): bool
   return /(?:^|;\s*)oidc_login_prompt=/.test(cookieHeader);
 }
 
-async function redirectSignedInIfNeeded(
+function sessionIdentity(session: unknown): { name: string; email: string } | null {
+  if (!session || typeof session !== "object") return null;
+  const user = (session as { user?: { name?: unknown; email?: unknown } }).user;
+  if (typeof user?.email !== "string" || user.email.length === 0) return null;
+  return { name: typeof user.name === "string" ? user.name : "", email: user.email };
+}
+
+/**
+ * An explicit visit to the sign-in or sign-up page from a browser that already holds an issuer
+ * session. It asks "continue as this person, or use a different account" instead of signing in
+ * silently, so a shared or borrowed device never becomes the previous person's session because
+ * someone pressed Sign in.
+ *
+ * Only an explicit page visit lands here. Silent single sign-on between products, and
+ * `prompt=none`, run inside the authorize request, which completes with the existing session
+ * and never renders these pages. An authorize request that does need a sign-in arrives with its
+ * full OIDC parameters (`authorizeResumePath`) or Better Auth's `oidc_login_prompt` cookie, and
+ * must reach the real form: the person is mid-flow, and that includes `prompt=login`, which
+ * asks for a fresh sign-in.
+ */
+async function accountChooserIfSignedIn(
   c: Context,
   capabilities: HostedAuthPageMountOptions,
+  intent: HostedAccountChooserIntent,
 ): Promise<Response | null> {
   if (hasOidcLoginPromptCookie(c.req.header("cookie"))) return null;
   const view = viewFromRequest(c.req.url, capabilities);
@@ -54,9 +79,22 @@ async function redirectSignedInIfNeeded(
   if (!isConfiguredRestartUrl(view.config.restartUrl)) return null;
   if (!capabilities.getSession) return null;
   try {
-    const session = await capabilities.getSession(c.req.raw.headers);
-    if (!session) return null;
-    return c.redirect(view.config.restartUrl, 302);
+    const identity = sessionIdentity(await capabilities.getSession(c.req.raw.headers));
+    if (!identity) return null;
+    c.header("Cache-Control", "no-store");
+    return hostedAuthHtml(
+      c,
+      buildHostedAccountChooserHtml(
+        {
+          intent,
+          ...identity,
+          continueUrl: view.config.restartUrl,
+          switchUrl:
+            intent === "sign-up" ? continuationHref("/sign-up", view.flow) : view.flow.loginPath,
+        },
+        view,
+      ),
+    );
   } catch {
     return null;
   }
@@ -115,13 +153,17 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     return c.redirect(`/login${url.search}`, 302);
   });
 
-  const html = (path: string, render: typeof buildHostedLoginHtml, signedInRedirect = false) => {
+  const html = (
+    path: string,
+    render: typeof buildHostedLoginHtml,
+    chooserIntent?: HostedAccountChooserIntent,
+  ) => {
     app.get(path, async (c) => {
       const staffRedirect = redirectStaffCustomerPaths(c, capabilities);
       if (staffRedirect) return staffRedirect;
-      if (signedInRedirect) {
-        const redirected = await redirectSignedInIfNeeded(c, capabilities);
-        if (redirected) return redirected;
+      if (chooserIntent) {
+        const chooser = await accountChooserIfSignedIn(c, capabilities, chooserIntent);
+        if (chooser) return chooser;
       }
       c.header("Cache-Control", "no-store");
       return hostedAuthHtml(c, render(viewFromRequest(c.req.url, capabilities)));
@@ -133,15 +175,16 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     if (hostedSignUpRequested(url.searchParams)) {
       return c.redirect(`/sign-up${url.search}`, 302);
     }
-    const redirected = await redirectSignedInIfNeeded(c, capabilities);
-    if (redirected) return redirected;
+    const chooser = await accountChooserIfSignedIn(c, capabilities, "sign-in");
+    if (chooser) return chooser;
     c.header("Cache-Control", "no-store");
     return hostedAuthHtml(c, buildHostedLoginHtml(viewFromRequest(c.req.url, capabilities)));
   });
-  html("/sign-up", buildHostedSignUpHtml, true);
+  html("/sign-up", buildHostedSignUpHtml, "sign-up");
   html("/forgot-password", buildHostedForgotPasswordHtml);
   html("/reset-password", buildHostedResetPasswordHtml);
   html("/two-factor", buildHostedTwoFactorHtml);
+  html("/two-factor/help", buildHostedTwoFactorHelpHtml);
   app.get("/two-factor/setup", async (c) => {
     const view = viewFromRequest(c.req.url, capabilities);
     const requiredBy = parseTwoFactorSetupRequiredBy(

@@ -27,6 +27,7 @@ import {
   adminBulkSubmissionsBodySchema,
   adminBulkUsersBodySchema,
   adminPatchStaffRoleBodySchema,
+  adminResetTwoFactorBodySchema,
   adminSetRoleBodySchema,
   adminSuspendBodySchema,
 } from "@auction/validators";
@@ -215,6 +216,32 @@ export async function adminSuspendUserResultAction(
     }
     const { adminUsers } = getWriteContainer();
     const r = await adminUsers.suspend(id, p.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidateAdminUserDetailPaths(id);
+    return actionSuccess();
+  });
+}
+
+/** Support's way back in for someone who lost their authenticator app and backup codes. */
+export async function adminResetTwoFactorResultAction(
+  userId: string,
+  body: z.infer<typeof adminResetTwoFactorBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminResetTwoFactorResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
+    if (denied) return denied;
+    const id = userId.trim();
+    if (!id) {
+      return actionFailure("Missing user");
+    }
+    const p = adminResetTwoFactorBodySchema.safeParse(body);
+    if (!p.success) {
+      return actionFailure(firstZodErrorMessage(p.error), zodErrorToFieldErrors(p.error));
+    }
+    const { adminUsers } = getWriteContainer();
+    const r = await adminUsers.resetTwoFactor(id, p.data);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }

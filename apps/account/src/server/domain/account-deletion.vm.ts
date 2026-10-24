@@ -79,9 +79,10 @@ export function buildDeletionPageVm(status: AccountDeletionStatus | null): Delet
     phrase: ACCOUNT_DELETION_CONFIRMATION_PHRASE,
     consequences: [
       `We'll schedule your account for deletion. For ${ACCOUNT_DELETION_GRACE_DAYS} days you can cancel and keep everything.`,
-      `After ${ACCOUNT_DELETION_GRACE_DAYS} days we permanently erase your personal details, including your name, email address and phone number.`,
+      `After ${ACCOUNT_DELETION_GRACE_DAYS} days we permanently erase your name, email address, phone number, saved addresses and profile picture.`,
+      "We also delete your password, any linked Google or Apple sign-in, your two-step verification and every device you're signed in on.",
       "You won't be able to sign in to LAX Bid, LAX Shop or lax.art with this account again.",
-      "We keep records we're legally required to, such as invoices and payment records.",
+      "We keep your orders, invoices and payments without your personal details, because the law and our accounting rules require us to.",
     ],
   };
 }

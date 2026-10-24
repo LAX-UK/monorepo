@@ -1,6 +1,7 @@
 import { isTransientFailure } from "./auth-failure.js";
 import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 import { showPasswordBreached } from "./password-breached.js";
+import { resetLinkState } from "./reset-link-state.js";
 import { isPasswordBreachedResponse } from "./sign-up-outcome.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
@@ -11,8 +12,16 @@ const form = document.getElementById("reset-form");
 if (!(form instanceof HTMLFormElement)) {
   throw new Error("hosted reset-password form missing");
 }
-if (!token) {
-  auth.showError(msg.RESET_INVALID);
+const newLink = document.getElementById("reset-new-link");
+
+function offerNewLink(): void {
+  if (newLink) newLink.hidden = false;
+}
+
+const linkState = resetLinkState(params);
+if (linkState !== "ready") {
+  auth.showError(linkState === "missing" ? msg.RESET_LINK_MISSING : msg.RESET_INVALID);
+  offerNewLink();
   form.hidden = true;
 }
 
@@ -37,6 +46,7 @@ form.addEventListener("submit", async (event) => {
         return;
       }
       auth.showError(msg.RESET_FAILED);
+      offerNewLink();
       return;
     }
     auth.restartProduct();
