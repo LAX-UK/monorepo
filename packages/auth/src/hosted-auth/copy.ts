@@ -9,6 +9,8 @@
 export const HOSTED_COPY = {
   accountName: "LAX Account",
   oneAccount: "One LAX Account for Bid, Shop and lax.art.",
+  /** The product names inside `oneAccount`, which the note sets in each product's colour. */
+  oneAccountProducts: { bid: "Bid", shop: "Shop", art: "lax.art" },
   learnMore: "Learn more",
   continueTo: "Continue to",
   products: {

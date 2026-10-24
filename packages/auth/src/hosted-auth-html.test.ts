@@ -19,6 +19,9 @@ import {
 } from "./index.js";
 import { isSafeHostedReturnPath } from "./safe-return-url.js";
 
+/** The visible text of rendered markup, for copy split across elements. */
+const textOf = (html: string) => html.replace(/<[^>]+>/g, "");
+
 const shopSearch =
   "response_type=code&client_id=lax-shop-web&redirect_uri=http://localhost:3010/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
 
@@ -233,7 +236,7 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain('<p class="product-chip">Continue to <strong>LAX Shop</strong></p>');
     expect(html).not.toContain("lax-shop.svg");
     expect(html).toContain("Sign in with your LAX Account.");
-    expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
+    expect(textOf(html)).toContain("One LAX Account for Bid, Shop and lax.art.");
     expect(html).toContain("Continue with Google");
     expect(html).toContain('class="btn-mark"');
     expect(html).toContain('class="btn-label"');
@@ -320,21 +323,36 @@ describe("one-account message", () => {
   it("links Learn more to the Account landing page on sign-in and sign-up", () => {
     const view = hostedAuthViewFromSearch(shopSearch, accountCapabilities);
     for (const html of [buildHostedLoginHtml(view), buildHostedSignUpHtml(view)]) {
-      expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
+      expect(textOf(html)).toContain("One LAX Account for Bid, Shop and lax.art.");
       expect(html).toContain('href="https://account.example/">Learn more</a>');
     }
   });
 
   it("omits the link, not the message, when the Account origin is not configured", () => {
     const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
-    expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
+    expect(textOf(html)).toContain("One LAX Account for Bid, Shop and lax.art.");
     expect(html).not.toContain("Learn more");
+  });
+});
+
+describe("one-account product names", () => {
+  it("sets each product in the note in its own colour", () => {
+    const html = buildHostedLoginHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
+    expect(html).toContain('<span class="product-name product-name--bid">Bid</span>');
+    expect(html).toContain('<span class="product-name product-name--shop">Shop</span>');
+    expect(html).toContain('<span class="product-name product-name--art">lax.art</span>');
   });
 });
 
 describe("hosted colour rule", () => {
   it("never uses Bid's navy for links or focus rings", () => {
-    expect(HOSTED_AUTH_STYLES).not.toMatch(/#0[89]1f5b|#202759|midnight/i);
+    // Navy appears once per theme, as the colour of Bid's name in the one-account note.
+    const navy = HOSTED_AUTH_STYLES.split("\n").filter((line) => /#091f5b|#a5b7e9/i.test(line));
+    expect(navy.map((line) => line.trim())).toEqual([
+      "--color-product-bid: #091f5b;",
+      "--color-product-bid: #a5b7e9;",
+    ]);
+    expect(HOSTED_AUTH_STYLES).not.toMatch(/#202759|midnight/i);
     expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #0f766e");
     expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #2dd4bf");
     expect(HOSTED_AUTH_STYLES).toContain("--color-link: #191919");
