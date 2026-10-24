@@ -24,7 +24,14 @@ describe("LAX resource registry", () => {
       "lax-shop-api": {
         id: "lax-shop-api",
         uri: "https://shop.lax.art/api",
-        allowedScopes: ["shop.read", "shop.write", "shop.admin", "lax.portfolio.read"],
+        allowedScopes: [
+          "shop.read",
+          "shop.write",
+          "shop.admin",
+          "lax.portfolio.read",
+          "lax.selling.read",
+          "lax.selling.write",
+        ],
       },
     });
     expect(
@@ -42,6 +49,8 @@ describe("LAX resource registry", () => {
       "bid.read",
       "bid.write",
       "lax.portfolio.read",
+      "lax.selling.read",
+      "lax.selling.write",
       "lax.staff.tools.read",
       "shop.admin",
       "shop.read",

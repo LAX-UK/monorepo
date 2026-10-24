@@ -9,12 +9,22 @@ import {
   PortalSaleAuthorityRequestsResponseSchema,
   PortalSaleAuthorityResponseSchema,
   PortalSalesResponseSchema,
+  PortalSellerAccessSchema,
   SaleAuthorityRequestBodySchema,
   SaleAuthorityRequestResponseSchema,
+  SaleAuthorityRequestWithdrawResponseSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
+import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
-import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
+import { decidePortalSellerAccess } from "../../domain/portal-seller-access.js";
+import {
+  SELLER_READ_SCOPES,
+  SELLER_WRITE_SCOPES,
+  requireAnyShopScope,
+  requireShopScope,
+  requireShopSubject,
+} from "../../plugins/shop-auth.js";
 import type { PortalRoutesDeps } from "../../portal-route-deps.js";
 
 export type PortalMeRoutesDeps = PortalRoutesDeps & {
@@ -79,7 +89,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
       const subject = requireShopSubject(request);
       const items = await deps.portalOwnership.listSaleAuthority(subject);
       return { items };
@@ -98,7 +108,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
       const subject = requireShopSubject(request);
       const items = await deps.portalOwnership.listSaleAuthorityRequests(subject);
       return { items };
@@ -122,7 +132,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.write");
+      requireAnyShopScope(request, SELLER_WRITE_SCOPES);
       const subject = requireShopSubject(request);
       const body = request.body as {
         artworkId: string;
@@ -138,6 +148,60 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
     },
   );
 
+  app.post(
+    "/v1/me/sale-authority-requests/:requestId/withdraw",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        params: Type.Object({ requestId: Type.String({ format: "uuid" }) }),
+        response: {
+          200: SaleAuthorityRequestWithdrawResponseSchema,
+          400: ShopApiErrorBodySchema,
+          401: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireAnyShopScope(request, SELLER_WRITE_SCOPES);
+      const subject = requireShopSubject(request);
+      const { requestId } = request.params as { requestId: string };
+      return deps.portalOwnership.withdrawSaleAuthorityRequest(subject, requestId);
+    },
+  );
+
+  // Answers about the caller only, so Account can show seller tools to people who can use them.
+  app.get(
+    "/v1/me/seller-access",
+    {
+      schema: {
+        tags: ["shop-portal"],
+        response: { 200: PortalSellerAccessSchema, 401: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
+      const subject = requireShopSubject(request);
+      const [saleAuthority, requests, artist, payouts, sales] = await Promise.all([
+        deps.portalOwnership.listSaleAuthority(subject),
+        deps.portalOwnership.listSaleAuthorityRequests(subject),
+        deps.portalArtist.getLinkedArtist(subject),
+        deps.payoutsEnabled ? deps.portalOwnership.listPayouts(subject) : [],
+        deps.payoutsEnabled ? deps.portalSales.listSales(subject) : [],
+      ]);
+      return decidePortalSellerAccess({
+        saleAuthority,
+        hasSaleAuthorityRequest: requests.length > 0,
+        hasPayout: payouts.length > 0,
+        hasSalesStatement: sales.length > 0,
+        hasLinkedArtist: artist !== null,
+        payoutsEnabled: deps.payoutsEnabled,
+      });
+    },
+  );
+
   app.get(
     "/v1/me/artist/artworks",
     {
@@ -147,7 +211,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
       const subject = requireShopSubject(request);
       const artist = await deps.portalArtist.getLinkedArtist(subject);
       const items = await deps.portalArtist.listArtworks(subject);
@@ -164,7 +228,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
       const subject = requireShopSubject(request);
       const artist = await deps.portalArtist.getLinkedArtist(subject);
       const items = await deps.portalArtist.listSales(subject);
@@ -182,7 +246,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
         },
       },
       async (request) => {
-        requireShopScope(request, "shop.read");
+        requireAnyShopScope(request, SELLER_READ_SCOPES);
         const subject = requireShopSubject(request);
         const items = await deps.portalOwnership.listPayouts(subject);
         return { items };
@@ -198,7 +262,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
         },
       },
       async (request) => {
-        requireShopScope(request, "shop.read");
+        requireAnyShopScope(request, SELLER_READ_SCOPES);
         const subject = requireShopSubject(request);
         const items = await deps.portalSales.listSales(subject);
         return { items };

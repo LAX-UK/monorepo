@@ -18,6 +18,7 @@ export async function registerPortalMeDisabledRoutes(app: FastifyInstance): Prom
     "/v1/me/editions",
     "/v1/me/sale-authority",
     "/v1/me/sale-authority-requests",
+    "/v1/me/seller-access",
     "/v1/me/payouts",
     "/v1/me/connect/status",
     "/v1/me/connect/account",
@@ -30,6 +31,9 @@ export async function registerPortalMeDisabledRoutes(app: FastifyInstance): Prom
     "/v1/me/favorites/artists",
   ] as const;
 
+  app.all("/v1/me/sale-authority-requests/:requestId/withdraw", async () =>
+    portalFeatureDisabled(),
+  );
   app.all("/v1/me/favorites/artworks/:slug", async () => portalFeatureDisabled());
   app.all("/v1/me/favorites/artists/:slug", async () => portalFeatureDisabled());
 

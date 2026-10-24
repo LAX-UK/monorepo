@@ -39,6 +39,18 @@ export const SaleAuthorityRequestResponseSchema = Type.Object({
   status: Type.Literal("pending"),
 });
 
+export const SaleAuthorityRequestWithdrawResponseSchema = Type.Object({
+  requestId: Type.String({ format: "uuid" }),
+  status: Type.Literal("cancelled"),
+});
+
+/** Which seller tools the signed-in person can use, decided from their own records. */
+export const PortalSellerAccessSchema = Type.Object({
+  editions: Type.Boolean(),
+  payouts: Type.Boolean(),
+  artist: Type.Boolean(),
+});
+
 export const PortalSaleAuthorityRequestSchema = Type.Object({
   requestId: Type.String({ format: "uuid" }),
   artworkId: Type.String({ format: "uuid" }),
@@ -141,6 +153,10 @@ export const PortalArtistSalesResponseSchema = Type.Object({
 export type PortalEdition = Static<typeof PortalEditionSchema>;
 export type PortalSaleAuthority = Static<typeof PortalSaleAuthoritySchema>;
 export type PortalSaleAuthorityRequest = Static<typeof PortalSaleAuthorityRequestSchema>;
+export type SaleAuthorityRequestWithdrawResponse = Static<
+  typeof SaleAuthorityRequestWithdrawResponseSchema
+>;
+export type PortalSellerAccess = Static<typeof PortalSellerAccessSchema>;
 export type PortalPayout = Static<typeof PortalPayoutSchema>;
 export type PortalDocument = Static<typeof PortalDocumentSchema>;
 export type PortalSaleStatement = Static<typeof PortalSaleStatementSchema>;

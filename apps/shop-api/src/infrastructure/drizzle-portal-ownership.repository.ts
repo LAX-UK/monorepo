@@ -20,6 +20,7 @@ import type {
   PortalOwnedEditionRow,
   PortalOwnershipReader,
   PortalSaleAuthorityRow,
+  WithdrawSaleAuthorityRequestResult,
 } from "../application/ports/portal-ownership.reader.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
@@ -343,6 +344,49 @@ export function createDrizzlePortalOwnershipRepository(
         createdAt: row.createdAt.toISOString(),
         handledAt: row.handledAt?.toISOString() ?? null,
       }));
+    },
+
+    async withdrawSaleAuthorityRequest(
+      identitySubjectId: string,
+      requestId: string,
+    ): Promise<WithdrawSaleAuthorityRequestResult> {
+      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
+      if (partyIds.length === 0) {
+        throw notFound("Sale authority request");
+      }
+      // One conditional update, so a staff decision landing at the same moment wins or loses cleanly.
+      const [cancelled] = await db
+        .update(shopSaleAuthorityRequest)
+        .set({ status: "cancelled", handledAt: new Date() })
+        .where(
+          and(
+            eq(shopSaleAuthorityRequest.id, requestId),
+            inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds),
+            eq(shopSaleAuthorityRequest.status, "pending"),
+          ),
+        )
+        .returning({ id: shopSaleAuthorityRequest.id });
+      if (cancelled) {
+        return { requestId: cancelled.id, status: "cancelled" };
+      }
+      const [existing] = await db
+        .select({ id: shopSaleAuthorityRequest.id })
+        .from(shopSaleAuthorityRequest)
+        .where(
+          and(
+            eq(shopSaleAuthorityRequest.id, requestId),
+            inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds),
+          ),
+        )
+        .limit(1);
+      if (!existing) {
+        throw notFound("Sale authority request");
+      }
+      throw new ShopApiError(
+        SHOP_API_ERROR_CODES.CONFLICT,
+        "This request has already been decided",
+        409,
+      );
     },
 
     async listCollection(identitySubjectId: string): Promise<PortalCollectionItem[]> {

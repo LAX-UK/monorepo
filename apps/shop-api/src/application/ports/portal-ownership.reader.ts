@@ -30,6 +30,11 @@ export type CreateSaleAuthorityRequestResult = {
   status: "pending";
 };
 
+export type WithdrawSaleAuthorityRequestResult = {
+  requestId: string;
+  status: "cancelled";
+};
+
 export type PortalPayoutRow = {
   payoutId: string;
   grossPence: number;
@@ -119,6 +124,11 @@ export interface PortalOwnershipReader {
     command: CreateSaleAuthorityRequestCommand,
   ): Promise<CreateSaleAuthorityRequestResult>;
   listSaleAuthorityRequests(identitySubjectId: string): Promise<PortalSaleAuthorityRequestRow[]>;
+  /** Cancels the person's own pending request; throws not-found or conflict (already decided). */
+  withdrawSaleAuthorityRequest(
+    identitySubjectId: string,
+    requestId: string,
+  ): Promise<WithdrawSaleAuthorityRequestResult>;
   listPayouts(identitySubjectId: string): Promise<PortalPayoutRow[]>;
   listDocuments(identitySubjectId: string): Promise<PortalDocumentRow[]>;
   listCollection(identitySubjectId: string): Promise<PortalCollectionItem[]>;

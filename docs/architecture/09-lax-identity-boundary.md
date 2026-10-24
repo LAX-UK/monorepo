@@ -88,7 +88,7 @@ The executable registries are
 |---|---|---|---|---|---|
 | `lax-bid-web` | confidential | `http://localhost:3000/api/auth/callback/lax-bid-web`; `https://lax.bid/api/auth/callback/lax-bid-web`; `https://test.lax.bid/api/auth/callback/lax-bid-web` | corresponding origin `/` | `lax-bid-api`, `lax-ws` | `openid profile email offline_access bid.read bid.write` |
 | `lax-shop-web` | confidential | `http://localhost:3010/auth/callback`; `https://shop.lax.art/auth/callback` | corresponding origin `/` | `lax-shop-api` | `openid profile email offline_access shop.read shop.write` |
-| `lax-account-web` | confidential | `http://localhost:3040/api/auth/callback`; `https://account.lax.bid/api/auth/callback`; `https://test-account.lax.bid/api/auth/callback` | corresponding origin `/` | `lax-bid-api`, `lax-shop-api` | `openid profile email offline_access phone lax.portfolio.read` |
+| `lax-account-web` | confidential | `http://localhost:3040/api/auth/callback`; `https://account.lax.bid/api/auth/callback`; `https://test-account.lax.bid/api/auth/callback` | corresponding origin `/` | `lax-bid-api`, `lax-shop-api` | `openid profile email offline_access phone lax.portfolio.read lax.selling.read lax.selling.write` |
 | `lax-shop-admin` | confidential | `http://localhost:3030/api/auth/callback`; `https://test-shop-admin.lax.bid/api/auth/callback`; `https://admin.shop.lax.art/api/auth/callback` | corresponding origin `/` | `lax-shop-api`, `lax-bid-api` | `openid profile email offline_access shop.admin lax.staff.tools.read` |
 | `ws-mobile` | public | `com.lax.bid:/oauth/callback` | none | `lax-ws` | `openid profile email offline_access bid.read` |
 
@@ -99,7 +99,7 @@ separate exact allowlists with no wildcards.
 |---|---|---|
 | `lax-bid-api` | `https://api.lax.bid` | `bid.read`, `bid.write`, `lax.portfolio.read`, `lax.staff.tools.read` |
 | `lax-ws` | `https://ws.lax.bid` | `bid.read` |
-| `lax-shop-api` | `https://shop.lax.art/api` | `shop.read`, `shop.write`, `lax.portfolio.read` |
+| `lax-shop-api` | `https://shop.lax.art/api` | `shop.read`, `shop.write`, `lax.portfolio.read`, `lax.selling.read`, `lax.selling.write` |
 
 `lax.art` is absent because static marketing has no protected API. Resource
 access tokens are RS256 JWTs with a 15-minute lifetime and exactly one audience.
@@ -119,6 +119,15 @@ tools that will accept them. LAX Admin exchanges the person's own session for a
 `lax-bid-api` token with this scope; only the `lax-shop-admin` client may request it, and
 the route answers about the caller alone. Re-apply `db:configure-oidc-clients` in each
 environment for the client to receive the Bid resource and scope.
+
+`lax.selling.read` and `lax.selling.write` let LAX Account act as the signed-in person on
+their own Shop seller tools: sale limits requests, sales and payouts. Account exchanges the
+person's session for a `lax-shop-api` token with these scopes; the `lax-bid-api` resource and
+every other client refuse them. Shop accepts them on the seller routes only
+(`/v1/me/sale-authority*`, `/v1/me/artist/*`, `/v1/me/payouts`, `/v1/me/sales`,
+`/v1/me/seller-access` and the Connect status and account-session routes); every other route
+still requires its `shop.*` scope. Re-apply `db:configure-oidc-clients` in each environment
+for the Account client to receive the scopes.
 
 ## Token classes and verifier obligations
 
