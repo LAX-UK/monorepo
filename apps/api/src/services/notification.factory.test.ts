@@ -48,3 +48,12 @@ describe("NotificationFactory payment due", () => {
     expect(row.meta?.dueDate).toBe("3 July 2026");
   });
 });
+
+describe("NotificationFactory payment received", () => {
+  it("carries the amount and audience so email renders from metadata, not the message", () => {
+    const buyer = factory.createPaymentReceived(lot, "user-1", "1250.00");
+    expect(buyer.meta).toMatchObject({ audience: "buyer", amount: "1250.00" });
+    const seller = factory.createSellerPaymentReceived(lot, "user-2", "1250.00");
+    expect(seller.meta).toMatchObject({ audience: "seller", amount: "1250.00" });
+  });
+});

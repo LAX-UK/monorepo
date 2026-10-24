@@ -78,14 +78,14 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
-  createPaymentReceived(lot: Lot, buyerId: string): CreateNotificationRow {
+  createPaymentReceived(lot: Lot, buyerId: string, amount?: string): CreateNotificationRow {
     return {
       userId: buyerId,
       type: "payment_received",
       title: "Payment received",
       message: `Your payment for "${lot.title}" was recorded.`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: { lotTitle: lot.title, audience: "buyer", ...(amount ? { amount } : {}) },
     };
   }
 
@@ -100,7 +100,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Payment received",
       message: `Payment of ${amount} was recorded for "${lot.title}".`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: { lotTitle: lot.title, audience: "seller", amount },
     };
   }
 

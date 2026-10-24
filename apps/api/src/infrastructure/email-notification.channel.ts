@@ -1,4 +1,5 @@
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
+import { formatMoneyMajor } from "@auction/email";
 import type { IEmailService } from "@auction/email";
 import type { IUserRepository } from "@auction/persistence/interfaces";
 import { notificationTypeToTemplate } from "@auction/persistence/lib";
@@ -33,6 +34,9 @@ export class EmailNotificationChannel implements INotificationChannel {
   async send(userId: string, payload: NotificationPayload): Promise<void> {
     const template = notificationTypeToTemplate(payload.type) as TemplateName | null;
     if (!template) return;
+    // The receipt is worded for the buyer ("we received your payment"); the seller side of the same
+    // event has no email template, so sellers are told in-app and by push only.
+    if (template === "payment-receipt" && payload.meta?.audience === "seller") return;
     const recipient = await this.users.findById(userId);
     if (!recipient) return;
     await this.email.enqueue({
@@ -85,7 +89,8 @@ export class EmailNotificationChannel implements INotificationChannel {
         return {
           userName,
           lotTitle,
-          amount: payload.message,
+          amount: formatMoneyMajor(payload.meta?.amount, payload.meta?.currency),
+          receiptUrl: `${this.baseUrl()}/dashboard/purchases`,
         };
       case "payment-invoice": {
         const m = payload.meta;
@@ -151,6 +156,10 @@ export class EmailNotificationChannel implements INotificationChannel {
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }
+  }
+
+  private baseUrl(): string {
+    return this.apiBaseUrl.replace(/\/$/, "");
   }
 
   private lotUrl(payload: NotificationPayload): string {

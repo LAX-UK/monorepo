@@ -1,3 +1,4 @@
+export { EMAIL_DEFAULT_CURRENCY, formatMoneyMajor } from "./format-money.js";
 export { renderEmail } from "./render.js";
 export {
   ConsoleEmailService,
