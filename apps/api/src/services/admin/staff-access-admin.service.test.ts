@@ -49,6 +49,15 @@ function setup() {
   return { service, access, users, identity };
 }
 
+describe("StaffAccessAdminService tools", () => {
+  it("takes the signed-in person's Bid access from their session, Shop from the directory", async () => {
+    const { service } = setup();
+
+    expect(await service.myTools(SPECIALIST)).toEqual(["bid-admin", "lax-admin"]);
+    expect(await service.myTools(CLIENT)).toEqual(["lax-admin"]);
+  });
+});
+
 describe("StaffAccessAdminService", () => {
   it("summarises platforms in catalogue order with Identity security data", async () => {
     const { service } = setup();

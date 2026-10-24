@@ -489,6 +489,7 @@ export function createContainer(env: Env): Container {
 
 export type {
   ContainerAdminMarketingEventsRoutesSlice,
+  ContainerAdminMyStaffToolsRoutesSlice,
   ContainerAdminOnsiteEventRoutesSlice,
   ContainerAdminPayoutRoutesSlice,
   ContainerAdminPlatformRoutesSlice,

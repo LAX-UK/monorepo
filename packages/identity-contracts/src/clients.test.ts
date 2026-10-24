@@ -72,7 +72,7 @@ describe("registered OIDC clients", () => {
   it("registers shop admin client for staff API and acceptance only", () => {
     const admin = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN];
     expect(admin.kind).toBe(OidcClientKind.Confidential);
-    expect(admin.allowedResources).toEqual(["lax-shop-api"]);
+    expect(admin.allowedResources).toEqual(["lax-shop-api", "lax-bid-api"]);
     expect(admin.allowedScopes).toContain("shop.admin");
     expect(admin.redirectUris).toContain("https://test-shop-admin.lax.bid/api/auth/callback");
     expect(admin.redirectUris).not.toContain("https://test-shop.lax.bid/");
@@ -101,6 +101,15 @@ describe("registered OIDC clients", () => {
     expect(account.allowedResources).toEqual(["lax-bid-api", "lax-shop-api"]);
     expect(account.allowedScopes.filter((scope) => scope.includes("."))).toEqual([
       "lax.portfolio.read",
+    ]);
+  });
+
+  it("lets LAX Admin exchange for Shop and, read-only, for Bid's staff tools", () => {
+    const admin = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN];
+    expect(admin.allowedResources).toEqual(["lax-shop-api", "lax-bid-api"]);
+    expect(admin.allowedScopes.filter((scope) => scope.includes("."))).toEqual([
+      "shop.admin",
+      "lax.staff.tools.read",
     ]);
   });
 

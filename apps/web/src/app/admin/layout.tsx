@@ -8,7 +8,7 @@ import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
 import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
-import { loadStaffProducts } from "@/lib/admin/staff-products.server";
+import { loadStaffProducts } from "@/lib/admin/load-staff-products";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -100,7 +100,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const jar = await cookies();
   const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
-  const products = loadStaffProducts();
+  const products = await loadStaffProducts();
   const navCollapsed = jar.get(STAFF_NAV_COOKIE)?.value === "collapsed";
 
   const showImpersonationBanner =

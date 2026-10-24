@@ -3,6 +3,7 @@ import {
   LAX_STAFF_PLATFORMS,
   laxStaffRoleOption,
   normalizeLaxStaffGrants,
+  staffToolsFromGrants,
 } from "./lax-staff-platforms.js";
 import { userStaffRoles } from "./user.js";
 
@@ -34,6 +35,28 @@ describe("LAX staff platforms", () => {
         { product: "shop", role: "finance" },
       ],
     });
+  });
+
+  it("opens Bid admin for any Bid staff role and LAX Admin for any Shop role", () => {
+    for (const role of userStaffRoles) {
+      expect(staffToolsFromGrants([{ product: "bid", role }])).toEqual(["bid-admin"]);
+    }
+    expect(staffToolsFromGrants([{ product: "shop", role: "catalogue_editor" }])).toEqual([
+      "lax-admin",
+    ]);
+    expect(
+      staffToolsFromGrants([
+        { product: "shop", role: "broker" },
+        { product: "bid", role: "finance_ops" },
+      ]),
+    ).toEqual(["bid-admin", "lax-admin"]);
+  });
+
+  it("opens nothing for no grants or roles the platform does not know", () => {
+    expect(staffToolsFromGrants([])).toEqual([]);
+    // Bid records a staff user without a staff role as the plain word "staff".
+    expect(staffToolsFromGrants([{ product: "bid", role: "staff" }])).toEqual([]);
+    expect(staffToolsFromGrants([{ product: "shop", role: "super_admin" }])).toEqual([]);
   });
 
   it("rejects unknown platforms, foreign roles and duplicates", () => {

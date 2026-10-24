@@ -9,6 +9,8 @@ export type LaxResourceId = (typeof LAX_RESOURCE_IDS)[keyof typeof LAX_RESOURCE_
 /**
  * `lax.portfolio.read` is the narrow, read-only scope LAX Account exchanges for to list a
  * person's own works and money. Each product accepts it on its portfolio routes only.
+ * `lax.staff.tools.read` is the read-only scope LAX Admin exchanges for to ask Bid which staff
+ * tools the signed-in person can open; Bid accepts it on that one route only.
  */
 export type ProductScope =
   | "bid.read"
@@ -16,7 +18,8 @@ export type ProductScope =
   | "shop.read"
   | "shop.write"
   | "shop.admin"
-  | "lax.portfolio.read";
+  | "lax.portfolio.read"
+  | "lax.staff.tools.read";
 
 export type LaxResourceMetadata = {
   id: LaxResourceId;
@@ -33,7 +36,7 @@ export const LAX_RESOURCES: Record<LaxResourceId, LaxResourceMetadata> = {
   [LAX_RESOURCE_IDS.LAX_BID_API]: {
     id: LAX_RESOURCE_IDS.LAX_BID_API,
     uri: "https://api.lax.bid",
-    allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read"],
+    allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read", "lax.staff.tools.read"],
   },
   [LAX_RESOURCE_IDS.LAX_WS]: {
     id: LAX_RESOURCE_IDS.LAX_WS,

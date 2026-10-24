@@ -7,11 +7,13 @@ import type {
 import {
   LAX_STAFF_PLATFORMS,
   type LaxStaffAccessProduct,
+  type StaffToolId,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
   laxStaffRoleOption,
   normalizeUserStaffRole,
   roleHasCapability,
+  staffToolsFromGrants,
   userHasAccessTo,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -81,6 +83,20 @@ export class StaffAccessAdminService {
       identity: Pick<IIdentityTwoFactorPolicyClient, "readSecuritySummaries">;
     },
   ) {}
+
+  /**
+   * The staff tools the signed-in person can open, for their own product switcher. Bid admin
+   * follows the Bid session itself, which is what Bid enforces on arrival; LAX Admin follows the
+   * role Shop recorded. Anyone may ask about themselves, so there is no capability check.
+   */
+  async myTools(actor: StaffAccessActor): Promise<StaffToolId[]> {
+    const entries = await this.deps.access.listForSubjects([actor.userId]);
+    const bidRole = actor.role === "staff" ? normalizeUserStaffRole(actor.staffRole) : null;
+    return staffToolsFromGrants([
+      ...entries.filter((e) => e.product !== "bid"),
+      ...(bidRole ? [{ product: "bid" as const, role: bidRole }] : []),
+    ]);
+  }
 
   async summaries(
     actor: StaffAccessActor,

@@ -1,5 +1,5 @@
 import type { LaxStaffAccessProduct } from "./domain-event-catalog/lax-staff-access-payload-schemas.js";
-import { type UserStaffRole, userStaffRoles } from "./user.js";
+import { type UserStaffRole, normalizeUserStaffRole, userStaffRoles } from "./user.js";
 
 /** Mirrors `shop_staff_role`; shop-api pins the two lists together in a parity test. */
 export const laxShopStaffRoles = [
@@ -121,4 +121,27 @@ export function normalizeLaxStaffGrants(
       return role ? [{ product: p.product, role }] : [];
     }),
   };
+}
+
+/** The staff tools a person can switch between. Matches the staff kit's product ids. */
+export const STAFF_TOOL_IDS = ["bid-admin", "lax-admin"] as const;
+export type StaffToolId = (typeof STAFF_TOOL_IDS)[number];
+
+/** The Bid API's answer to "which staff tools can this person open?". */
+export type StaffToolsAccess = { tools: StaffToolId[] };
+
+/**
+ * Maps the roles a person holds on each platform to the staff tools they can open. Bid admin
+ * needs a Bid staff role; LAX Admin needs a Shop staff role. A role a platform no longer knows
+ * opens nothing, so a stale directory row cannot offer a tool that would refuse the person.
+ */
+export function staffToolsFromGrants(grants: readonly LaxStaffGrant[]): StaffToolId[] {
+  const tools = new Set<StaffToolId>();
+  for (const { product, role } of grants) {
+    if (product === "bid" && normalizeUserStaffRole(role) !== null) tools.add("bid-admin");
+    if (product === "shop" && (laxShopStaffRoles as readonly string[]).includes(role)) {
+      tools.add("lax-admin");
+    }
+  }
+  return STAFF_TOOL_IDS.filter((id) => tools.has(id));
 }

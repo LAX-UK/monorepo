@@ -33,6 +33,10 @@ WHERE subject_id = '<identity-subject-id>';
 
 Shop admins can grant a role directly at **Staff → Add staff by email**. The email must match an active LAX login that Shop knows (`shop_user_profile`). If it doesn't, invite the person from Bid instead. The page links to Bid's staff screen when `LAX_BID_PUBLIC_URL` is set for `shop-admin`.
 
+## Product switcher
+
+Each staff tool lists the other in its switcher only for people who can open it. Both ask the Bid API's `GET /admin/staff/my-tools`, which answers only about the caller. Bid admin calls it with the person's Bid session; Shop Admin exchanges the person's session ID token (RFC 8693) for a `lax-bid-api` token with the read-only `lax.staff.tools.read` scope, calls it at `BID_API_INTERNAL_BASE_URL`, and reuses the answer for a minute per person. If that call fails or is not configured, Shop Admin shows itself alone, so a missing Bid link after a grant usually means the call is failing, not that the grant is missing. Each tool still enforces its own permissions when the link is followed.
+
 ## Confirm grant for a subject (break-glass)
 
 ```bash

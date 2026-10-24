@@ -60,7 +60,7 @@ export type AdminStaffSecurityRouteServices = {
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">;
   staffAccess: Pick<
     StaffAccessAdminService,
-    "summaries" | "detail" | "setRemoteRole" | "revokeRemote"
+    "summaries" | "detail" | "setRemoteRole" | "revokeRemote" | "myTools"
   >;
 };
 
