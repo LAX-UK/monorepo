@@ -140,6 +140,7 @@ export function attachAdminUsersManagementRoutes(
   );
 
   platform.patch(
+    "/users/:userId/role",
     requireUsersDirectory,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSetRoleBodySchema),

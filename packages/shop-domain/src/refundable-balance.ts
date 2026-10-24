@@ -20,7 +20,11 @@ export function remainingRefundablePence(input: {
   refunds: readonly RefundLineInput[];
   orderLineId?: string;
 }): number {
-  const cap = input.lineTotalPence ?? input.orderTotalPence;
-  const used = sumRefundedOrPendingPence(input.refunds, input.orderLineId);
-  return Math.max(0, cap - used);
+  const orderRemaining = input.orderTotalPence - sumRefundedOrPendingPence(input.refunds);
+  if (input.lineTotalPence === undefined) return Math.max(0, orderRemaining);
+  // A line can never take back more than is left on the whole order: whole-order refunds
+  // (no line) already reduce what any single line may still refund.
+  const lineRemaining =
+    input.lineTotalPence - sumRefundedOrPendingPence(input.refunds, input.orderLineId);
+  return Math.max(0, Math.min(lineRemaining, orderRemaining));
 }
