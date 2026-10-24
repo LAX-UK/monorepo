@@ -117,7 +117,7 @@ export function EditableCell({
       type="button"
       variant="ghost"
       className={cn(
-        "group inline-flex h-auto min-h-0 max-w-full items-center gap-1.5 rounded px-1 -mx-1 text-left shadow-none hover:bg-surface-container-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group inline-flex h-auto min-h-0 max-w-full items-center gap-1.5 whitespace-normal rounded px-1 -mx-1 text-left shadow-none hover:bg-surface-container-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`${ariaLabel}. Press Enter to edit.`}

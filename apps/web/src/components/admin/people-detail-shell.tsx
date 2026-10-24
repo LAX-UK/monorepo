@@ -101,7 +101,7 @@ export function PeopleDetailShell({
             <AdminUserDisplayNameEditableTitle
               userId={user.id}
               value={user.name}
-              textClassName={STAFF_PAGE_TITLE_CLASS}
+              textClassName={`${STAFF_PAGE_TITLE_CLASS} overflow-visible whitespace-normal`}
             />
           )
         }

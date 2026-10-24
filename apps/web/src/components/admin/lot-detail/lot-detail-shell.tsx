@@ -120,7 +120,7 @@ export function LotDetailShell({
               lotId={lotId}
               value={auction.title}
               editable={canEditTitle}
-              textClassName={STAFF_PAGE_TITLE_CLASS}
+              textClassName={`${STAFF_PAGE_TITLE_CLASS} overflow-visible whitespace-normal`}
             />
           }
           status={

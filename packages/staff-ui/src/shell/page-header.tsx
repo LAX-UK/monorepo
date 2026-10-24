@@ -47,7 +47,7 @@ export function PageHeader({
     <header className={cn("flex flex-col gap-4", className)}>
       {breadcrumbs}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
-        <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <h1 className={STAFF_PAGE_TITLE_CLASS}>{title}</h1>
             {status}
