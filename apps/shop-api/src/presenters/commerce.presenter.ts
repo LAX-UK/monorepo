@@ -51,6 +51,7 @@ export function presentOrder(record: OrderRecord): OrderSummary {
     merchandiseSubtotalPence: record.merchandiseSubtotalPence,
     fulfilmentSurchargePence: record.fulfilmentSurchargePence,
     totalPence: record.totalPence,
+    refundedPence: record.refundedPence,
     createdAt: record.createdAt.toISOString(),
     paidAt: record.paidAt ? record.paidAt.toISOString() : null,
     deliveryAddress: record.deliveryAddress

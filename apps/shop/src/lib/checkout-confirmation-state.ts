@@ -53,6 +53,16 @@ export function resolveCheckoutConfirmationView(input: {
       statusMessage =
         "Your payment did not go through and any reserved editions were released. Return to your basket to try again.";
       break;
+    case "partially_refunded":
+      heading = "Order partly refunded";
+      statusMessage =
+        "Part of this order has been refunded to your original payment method. Refunds usually reach your account within 5 to 10 working days.";
+      break;
+    case "refunded":
+      heading = "Order refunded";
+      statusMessage =
+        "This order has been refunded to your original payment method. Refunds usually reach your account within 5 to 10 working days.";
+      break;
   }
 
   return { kind: "order", order, heading, statusMessage };

@@ -80,6 +80,7 @@ describe("orders routes", () => {
       totalPence: 1000,
       merchandiseSubtotalPence: 1000,
       fulfilmentSurchargePence: 0,
+      refundedPence: 0,
       fulfilment: "collect_brunswick" as const,
       lines: [],
       createdAt: new Date(),

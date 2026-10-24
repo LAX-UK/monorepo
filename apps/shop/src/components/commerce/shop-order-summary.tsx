@@ -96,6 +96,12 @@ export function ShopOrderSummary({ order, heading, showLineLinks = true }: Props
           <dt>Total</dt>
           <dd>{formatGbpPence(order.totalPence)}</dd>
         </div>
+        {order.refundedPence ? (
+          <div>
+            <dt>Refunded</dt>
+            <dd>{formatGbpPence(order.refundedPence)}</dd>
+          </div>
+        ) : null}
       </dl>
     </article>
   );

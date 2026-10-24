@@ -346,6 +346,8 @@ export {
   EmptyBasketViewSchema,
   OrderLineSchema,
   OrderListSchema,
+  ORDER_STATUS_VALUES,
+  OrderStatusSchema,
   OrderSummarySchema,
   ShopFulfilmentOptionSchema,
   type ShopFulfilmentOption,
@@ -355,6 +357,7 @@ export {
   type CheckoutSession,
   type EmptyBasketView,
   type OrderList,
+  type OrderStatus,
   type OrderSummary,
 } from "./commerce-public.js";
 export {

@@ -5,8 +5,10 @@ import {
   shopOrderLine,
   shopProduct,
   shopProductVariant,
+  shopRefund,
 } from "@auction/db/schema";
-import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { SHOP_ORDER_STATUSES, type ShopOrderStatus } from "@auction/shop-domain";
+import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type {
   ListOrdersResult,
   OrderReader,
@@ -35,18 +37,28 @@ function deliveryAddressFromOrder(
   };
 }
 
+/** The column is an enum, so an unknown value means the schema moved ahead of this code. */
+export function parseOrderStatus(value: string): ShopOrderStatus {
+  const known = SHOP_ORDER_STATUSES.find((status) => status === value);
+  if (!known) {
+    throw new Error(`Unknown shop order status "${value}"`);
+  }
+  return known;
+}
+
 function orderRowToRecord(
   order: typeof shopOrder.$inferSelect,
   lines: OrderRecord["lines"],
+  refundedPence: number,
 ): OrderRecord {
-  const status = order.status as OrderRecord["status"];
   return {
     orderId: order.id,
-    status,
+    status: parseOrderStatus(order.status),
     fulfilment: order.fulfilment,
     merchandiseSubtotalPence: order.merchandiseSubtotalPence,
     fulfilmentSurchargePence: order.fulfilmentSurchargePence,
     totalPence: order.totalPence,
+    refundedPence,
     lines,
     createdAt: order.createdAt,
     paidAt: order.paidAt,
@@ -96,6 +108,22 @@ async function fetchLinesByOrderIds(
   return linesByOrder;
 }
 
+async function fetchRefundedPenceByOrderIds(
+  db: Database,
+  orderIds: string[],
+): Promise<Map<string, number>> {
+  if (orderIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      orderId: shopRefund.orderId,
+      refundedPence: sql<number>`coalesce(sum(${shopRefund.amountPence}), 0)::int`,
+    })
+    .from(shopRefund)
+    .where(and(inArray(shopRefund.orderId, orderIds), eq(shopRefund.status, "succeeded")))
+    .groupBy(shopRefund.orderId);
+  return new Map(rows.map((row) => [row.orderId, row.refundedPence]));
+}
+
 export function createDrizzleOrderRepository(db: Database): OrderReader {
   return {
     async listOrders(subject, input): Promise<ListOrdersResult> {
@@ -127,7 +155,17 @@ export function createDrizzleOrderRepository(db: Database): OrderReader {
         db,
         page.map((order) => order.id),
       );
-      const items = page.map((order) => orderRowToRecord(order, linesByOrder.get(order.id) ?? []));
+      const refundedByOrder = await fetchRefundedPenceByOrderIds(
+        db,
+        page.map((order) => order.id),
+      );
+      const items = page.map((order) =>
+        orderRowToRecord(
+          order,
+          linesByOrder.get(order.id) ?? [],
+          refundedByOrder.get(order.id) ?? 0,
+        ),
+      );
       const last = page.at(-1);
       if (hasMore && last) {
         return {
@@ -146,7 +184,12 @@ export function createDrizzleOrderRepository(db: Database): OrderReader {
         .limit(1);
       if (!order) return null;
       const linesByOrder = await fetchLinesByOrderIds(db, [order.id]);
-      return orderRowToRecord(order, linesByOrder.get(order.id) ?? []);
+      const refundedByOrder = await fetchRefundedPenceByOrderIds(db, [order.id]);
+      return orderRowToRecord(
+        order,
+        linesByOrder.get(order.id) ?? [],
+        refundedByOrder.get(order.id) ?? 0,
+      );
     },
   };
 }

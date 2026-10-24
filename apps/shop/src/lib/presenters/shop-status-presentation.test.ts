@@ -4,6 +4,7 @@ import {
   resolveCatalogueArtworkBadgePresentation,
   resolveEditionAvailabilityPresentation,
   resolvePortalOriginalSaleStatusPresentation,
+  resolveShopOrderRefundLine,
   resolveShopOrderStatusPresentation,
 } from "./shop-status-presentation.js";
 
@@ -33,6 +34,28 @@ describe("shop status presentation", () => {
     expect(resolveShopOrderStatusPresentation("paid").tone).toBe("success");
     expect(resolveShopOrderStatusPresentation("cancelled").tone).toBe("critical");
     expect(resolveShopOrderStatusPresentation("payment_failed").tone).toBe("critical");
+  });
+
+  it("labels refunded orders in sentence case", () => {
+    expect(resolveShopOrderStatusPresentation("refunded")).toMatchObject({
+      label: "Refunded",
+      tone: "neutral",
+    });
+    expect(resolveShopOrderStatusPresentation("partially_refunded")).toMatchObject({
+      label: "Partly refunded",
+      tone: "warning",
+    });
+  });
+
+  it("shows the refunded amount only for refunded orders that have one", () => {
+    expect(resolveShopOrderRefundLine({ status: "partially_refunded", refundedPence: 4000 })).toBe(
+      "£40.00 refunded",
+    );
+    expect(resolveShopOrderRefundLine({ status: "refunded", refundedPence: 12050 })).toBe(
+      "£120.50 refunded",
+    );
+    expect(resolveShopOrderRefundLine({ status: "refunded" })).toBeNull();
+    expect(resolveShopOrderRefundLine({ status: "paid", refundedPence: 0 })).toBeNull();
   });
 
   it("labels original sale statuses and tolerates unknown values", () => {
