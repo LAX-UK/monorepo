@@ -23,7 +23,7 @@ export interface IExportProviderDeps {
   saleRepo: ISaleRepository;
   submissionRepo: IItemSubmissionRepository;
   adminUserReader: Pick<IAdminUserReader, "list">;
-  paymentRepo: Pick<IPaymentWriteRepository, "listForExport" | "countForExport">;
+  paymentRepo: Pick<IPaymentWriteRepository, "listForAdminTable" | "countForAdminTable">;
   domainEvents: IExportDomainEventsQuery;
   payoutRepo: Pick<IPayoutRepository, "list" | "countMatching">;
   legalEntityRepo: Pick<ILegalEntityRepository, "findActiveMembership">;

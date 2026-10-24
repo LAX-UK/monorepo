@@ -405,7 +405,10 @@ export type ContainerPaymentHttpRoutesSlice = ContainerFinanceSlice &
     | "legalEntityRepository"
     | "impersonationAuditService"
     | "impersonationSessionService"
-  >;
+  > & {
+    /** Staff refunds need a recent sign-in. */
+    admin: Pick<AdminStaffSecurityRouteServices, "stepUp">;
+  };
 
 /** Standalone bid placement route (`routes/bids.ts`). */
 export type ContainerBidRoutesSlice = Pick<

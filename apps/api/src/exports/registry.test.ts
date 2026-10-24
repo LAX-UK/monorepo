@@ -21,8 +21,8 @@ function baseDeps(overrides: Partial<IExportProviderDeps> = {}): IExportProvider
       list: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
     } as unknown as IExportProviderDeps["adminUserReader"],
     paymentRepo: {
-      countForExport: vi.fn().mockResolvedValue(0),
-      listForExport: vi.fn().mockResolvedValue([]),
+      countForAdminTable: vi.fn().mockResolvedValue(0),
+      listForAdminTable: vi.fn().mockResolvedValue([]),
     },
     domainEvents: {
       countForExport: vi.fn().mockResolvedValue(0),
@@ -93,28 +93,44 @@ describe("createExportProviders", () => {
     expect(findActiveMembership).toHaveBeenCalled();
   });
 
-  it("passes payment filters to countForExport", async () => {
-    const countForExport = vi.fn().mockResolvedValue(3);
-    const deps = baseDeps({ paymentRepo: { countForExport, listForExport: vi.fn() } });
+  it("exports payments with every filter the list applies", async () => {
+    const countForAdminTable = vi.fn().mockResolvedValue(3);
+    const deps = baseDeps({ paymentRepo: { countForAdminTable, listForAdminTable: vi.fn() } });
     const providers = createExportProviders(deps);
     const payments = providers.get("payments");
     await payments?.estimateCount(
       { userId: "u1", userRole: "staff", userStaffRole: "finance_ops" },
-      { status: "captured", manualReview: false },
+      { status: "captured", q: " golden ", fulfilment: "in_transit,delivered", xero: "linked" },
     );
-    expect(countForExport).toHaveBeenCalledWith({ status: "captured" });
+    expect(countForAdminTable).toHaveBeenCalledWith({
+      status: "captured",
+      q: "golden",
+      fulfilmentStatuses: ["in_transit", "delivered"],
+      xeroInvoice: "linked",
+    });
   });
 
-  it("maps manualReview filter to requires_manual_review export filter", async () => {
-    const countForExport = vi.fn().mockResolvedValue(1);
-    const deps = baseDeps({ paymentRepo: { countForExport, listForExport: vi.fn() } });
+  it("drops payment filter values the list never sends", async () => {
+    const countForAdminTable = vi.fn().mockResolvedValue(3);
+    const deps = baseDeps({ paymentRepo: { countForAdminTable, listForAdminTable: vi.fn() } });
+    const payments = createExportProviders(deps).get("payments");
+    await payments?.estimateCount(
+      { userId: "u1", userRole: "staff", userStaffRole: "finance_ops" },
+      { status: "everything", xero: "maybe", fulfilment: "" },
+    );
+    expect(countForAdminTable).toHaveBeenCalledWith({});
+  });
+
+  it("maps manualReview filter to the manual review status", async () => {
+    const countForAdminTable = vi.fn().mockResolvedValue(1);
+    const deps = baseDeps({ paymentRepo: { countForAdminTable, listForAdminTable: vi.fn() } });
     const providers = createExportProviders(deps);
     const payments = providers.get("payments");
     await payments?.estimateCount(
       { userId: "u1", userRole: "staff", userStaffRole: "finance_ops" },
       { manualReview: true },
     );
-    expect(countForExport).toHaveBeenCalledWith({ manualReview: true });
+    expect(countForAdminTable).toHaveBeenCalledWith({ status: "requires_manual_review" });
   });
 
   it("allows catalogue staff to export scoped domain events", () => {

@@ -3,10 +3,10 @@ import {
   DrizzleExportAdminUserReader,
   DrizzleExportDomainEventsQuery,
   DrizzleExportLegalEntityReader,
-  DrizzleExportPaymentReader,
   DrizzleExportPayoutReader,
 } from "@auction/exports/infrastructure";
 import type { IExportProviderDeps } from "@auction/exports/providers";
+import { DrizzlePaymentRepository } from "@auction/persistence/repositories";
 import type { ContainerRepositories } from "./create-repositories.js";
 
 export type CreateExportProviderDepsInput = Pick<
@@ -23,7 +23,8 @@ export function createExportProviderDeps(
     saleRepo: repos.saleRepo,
     submissionRepo: repos.itemSubmissionRepository,
     adminUserReader: new DrizzleExportAdminUserReader(db),
-    paymentRepo: new DrizzleExportPaymentReader(db),
+    // The staff Payments list's own query, so an export holds exactly the rows the list shows.
+    paymentRepo: new DrizzlePaymentRepository(db),
     domainEvents: new DrizzleExportDomainEventsQuery(db),
     payoutRepo: new DrizzleExportPayoutReader(db),
     legalEntityRepo: new DrizzleExportLegalEntityReader(db),

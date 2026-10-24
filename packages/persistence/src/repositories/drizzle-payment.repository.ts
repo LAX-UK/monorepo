@@ -5,6 +5,7 @@ import {
   lotFulfilment,
   payment,
   paymentExternalRef,
+  sale,
 } from "@auction/db/schema";
 import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import type { InferSelectModel, SQL } from "drizzle-orm";
@@ -369,6 +370,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .select({
         payment,
         lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        saleTitle: sale.title,
         buyerName: bidIdentityDirectory.name,
         buyerEmail: bidIdentityDirectory.email,
         fulfilmentStatus: lotFulfilment.status,
@@ -379,6 +382,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(sale, eq(lot.saleId, sale.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
       .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
@@ -399,6 +403,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         buyerId: r.payment.buyerId,
         sellerId: r.payment.sellerLegalEntityId,
         lotTitle: r.lotTitle,
+        lotNumber: r.lotNumber ?? null,
+        saleTitle: r.saleTitle ?? null,
         buyerLabel,
         fulfilmentStatus: r.fulfilmentStatus ?? null,
       };
