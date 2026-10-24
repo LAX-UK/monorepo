@@ -2,7 +2,7 @@ import { CatalogFormSection } from "@/components/admin/forms/catalog-form-sectio
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { formatNumber } from "@/lib/ui/format";
+import { formatMoney } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
 import {
   FormControl,
@@ -167,12 +167,12 @@ export function BuyerPremiumSection({
               Preview — {tierBandPreview.kind === "tiered" ? "tiered" : "flat"} policy
             </p>
             <p className="mt-1">
-              £{formatNumber(Number(tierBandPreview.at250k.hammer), undefined, "en-GB")} hammer →
-              buyer premium £{tierBandPreview.at250k.premium}
+              {formatMoney(tierBandPreview.at250k.hammer)} hammer → buyer premium{" "}
+              {formatMoney(tierBandPreview.at250k.premium)}
             </p>
             <p>
-              £{formatNumber(Number(tierBandPreview.at600k.hammer), undefined, "en-GB")} hammer →
-              premium £{tierBandPreview.at600k.premium}
+              {formatMoney(tierBandPreview.at600k.hammer)} hammer → premium{" "}
+              {formatMoney(tierBandPreview.at600k.premium)}
             </p>
           </div>
         ) : null}

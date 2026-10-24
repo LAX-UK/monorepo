@@ -91,6 +91,12 @@ describe("admin-sof-table.vm", () => {
     expect(buildSettlementSummaryLabel(null, 0)).toBeNull();
   });
 
+  it("formats exposure and threshold as money", () => {
+    const row = buildAdminSofTableRow({ ...baseRow, exposureAmount: "185001.25" });
+    expect(row.exposureLabel).toBe("£185,001.25");
+    expect(row.thresholdLabel).toBe("£9,000.00");
+  });
+
   it("passes through approved and rejected statuses", () => {
     expect(resolveSofDisplayStatus("approved", "recommend_approve")).toBe("approved");
     expect(resolveSofDisplayStatus("rejected", "recommend_reject")).toBe("rejected");

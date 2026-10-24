@@ -9,6 +9,7 @@ import {
   formatKpiMoney,
   formatMoney,
   formatPercent,
+  formatPeriod,
 } from "./format";
 
 describe("format", () => {
@@ -69,5 +70,22 @@ describe("formatKpiMoney", () => {
     expect(formatKpiMoney(1_234_567)).toBe("£1.2m");
     expect(formatKpiMoney(null)).toBe("—");
     expect(formatKpiMoney("abc")).toBe("—");
+  });
+});
+
+describe("formatPeriod", () => {
+  it("joins two dates with an arrow", () => {
+    expect(formatPeriod("2026-01-01T00:00:00Z", "2026-06-22T00:00:00Z")).toBe(
+      "1 Jan 2026 → 22 Jun 2026",
+    );
+  });
+
+  it("reads an epoch or missing start as an open-ended period", () => {
+    expect(formatPeriod(new Date(0), "2026-06-22T00:00:00Z")).toBe("Up to 22 Jun 2026");
+    expect(formatPeriod("1970-01-01T00:00:00.000Z", "2026-06-22T00:00:00Z")).toBe(
+      "Up to 22 Jun 2026",
+    );
+    expect(formatPeriod(null, "2026-06-22T00:00:00Z")).toBe("Up to 22 Jun 2026");
+    expect(formatPeriod(null, null)).toBe("—");
   });
 });

@@ -50,6 +50,24 @@ describe("admin BFF methods", () => {
   });
 });
 
+describe("admin BFF query string", () => {
+  it("passes the query string to the forwarder", async () => {
+    forwardAdminRequest.mockResolvedValue({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: new TextEncoder().encode("{}").buffer,
+    });
+    const { GET } = await import("./route.js");
+    await GET(
+      new Request("https://admin.example.com/api/admin/saved-views?listKey=orders"),
+      context("saved-views"),
+    );
+    expect(forwardAdminRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ bffPath: "/api/admin/saved-views", search: "?listKey=orders" }),
+    );
+  });
+});
+
 describe("admin BFF error body", () => {
   it("does not return the error message to the browser, and logs it", async () => {
     const detail = "connect ECONNREFUSED 10.0.3.7:3011 at /srv/shop-api/internal";

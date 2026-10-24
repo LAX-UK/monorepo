@@ -15,6 +15,8 @@ export async function forwardAdminRequest(input: {
   clock: Clock;
   sessionId: string | null;
   bffPath: string;
+  /** The query string of the incoming request, forwarded to shop-api unchanged. */
+  search?: string;
   method: string;
   origin: string | null;
   csrfHeader: string | null;
@@ -38,6 +40,7 @@ export async function forwardAdminRequest(input: {
     bffPath: input.bffPath,
     shopApiBaseUrl: input.config.shopApiBaseUrl,
     method: input.method,
+    ...(input.search ? { search: input.search } : {}),
   });
   if (!target) {
     throw new Error("Not found");
