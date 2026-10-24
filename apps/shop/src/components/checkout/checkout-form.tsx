@@ -2,6 +2,7 @@
 
 import { startCheckout } from "@/app/actions/checkout.actions";
 import { CheckoutBasketSummary } from "@/components/checkout/checkout-basket-summary";
+import { CheckoutTermsNotice } from "@/components/checkout/checkout-terms-notice";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { ShopStatusState } from "@/components/shop-status-state";
@@ -214,6 +215,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
             announcement="assertive"
           />
         ) : null}
+        <CheckoutTermsNotice />
         <ShopCommerceButton
           type="button"
           disabled={fieldsDisabled}

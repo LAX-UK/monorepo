@@ -1,4 +1,5 @@
 import {
+  PublicArtworkSalesChannelSchema,
   PublicCategoryListSchema,
   PublicCategorySummarySchema,
   ShopApiErrorBodySchema,
@@ -16,6 +17,8 @@ const ListQuerySchema = Type.Object({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, default: 50 })),
   placement: Type.Optional(Type.Literal("featured_categories")),
   cursor: Type.Optional(Type.String()),
+  /** Only categories with a live artwork in this channel (Shop: limited editions only). */
+  salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
 });
 
 export async function registerCategoryRoutes(app: FastifyInstance, catalogue: CatalogueRoutesDeps) {
@@ -36,11 +39,13 @@ export async function registerCategoryRoutes(app: FastifyInstance, catalogue: Ca
         limit?: number;
         placement?: "featured_categories";
         cursor?: string;
+        salesChannel?: "shop" | "art";
       };
       const result = await catalogue.listPublicCategories({
         limit: query.limit ?? 50,
         ...(query.placement ? { placement: query.placement } : {}),
         ...(query.cursor ? { cursor: query.cursor } : {}),
+        ...(query.salesChannel ? { salesChannel: query.salesChannel } : {}),
       });
       return presentCategoryList(result);
     },

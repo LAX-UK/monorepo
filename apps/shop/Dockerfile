@@ -16,6 +16,9 @@ ARG NEXT_PUBLIC_SHOP_IDENTITY_BASE_URL=https://test-shop.lax.bid
 ARG NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN=https://test-account.lax.bid
 ARG SENTRY_RELEASE=unknown
 ARG SENTRY_PROJECT=
+# "test" or "prod". A prod build fails while a Shop policy page is still a draft (next.config.ts).
+ARG SHOP_DEPLOY_ENV=
+ENV SHOP_DEPLOY_ENV=$SHOP_DEPLOY_ENV
 ARG NEXT_PUBLIC_SENTRY_DSN_SHOP=
 ENV NEXT_PUBLIC_SENTRY_DSN_SHOP=$NEXT_PUBLIC_SENTRY_DSN_SHOP
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
@@ -29,6 +32,8 @@ RUN pnpm turbo run build --filter=@auction/shop
 FROM node:22-alpine AS runner
 WORKDIR /app
 ARG IMAGE_SHA=unknown
+ARG SHOP_DEPLOY_ENV=
+ENV SHOP_DEPLOY_ENV=$SHOP_DEPLOY_ENV
 ENV NODE_ENV=production
 ENV PORT=3020
 ENV HOSTNAME=0.0.0.0

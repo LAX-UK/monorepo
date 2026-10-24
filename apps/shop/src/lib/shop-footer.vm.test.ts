@@ -11,7 +11,7 @@ const bid: LaxProductLinkVm = {
 };
 
 describe("buildShopFooterVm", () => {
-  it("orders shop, account, products, then Bid-hosted legal documents", () => {
+  it("orders shop, account, products, then Shop policies and the group privacy documents", () => {
     const vm = buildShopFooterVm({
       crossProductLinks: [bid],
       accountState: { kind: "guest" },
@@ -26,20 +26,30 @@ describe("buildShopFooterVm", () => {
       { label: "Sign in", href: "/login" },
       { label: "Create account", href: "/register" },
     ]);
+    expect(vm.columns[0]?.links.at(-1)).toEqual({ label: "Help and contact", href: "/help" });
     expect(vm.columns[3]?.links).toEqual([
-      { label: "Conditions of business", href: "https://bid.example/terms" },
+      { label: "Terms of sale", href: "/terms" },
+      { label: "Delivery and collection", href: "/delivery" },
+      { label: "Cancellations and returns", href: "/returns" },
       { label: "Privacy notice", href: "https://bid.example/privacy" },
       { label: "Cookie policy", href: "https://bid.example/cookies" },
-      { label: "Shipping & logistics", href: "https://bid.example/shipping" },
     ]);
+    const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
+    expect(hrefs).not.toContain("https://bid.example/terms");
+    expect(hrefs).not.toContain("https://bid.example/shipping");
   });
 
-  it("omits product and legal columns without cross-product links", () => {
+  it("keeps Shop policies without cross-product links, and drops the products column", () => {
     const vm = buildShopFooterVm({
       crossProductLinks: [],
       accountState: { kind: "disabled", accountHref: "/account/disabled" },
     });
-    expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account"]);
+    expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account", "legal"]);
+    expect(vm.columns[2]?.links.map((link) => link.href)).toEqual([
+      "/terms",
+      "/delivery",
+      "/returns",
+    ]);
     expect(vm.columns[1]?.links).toEqual([{ label: "Account status", href: "/account/disabled" }]);
   });
 
