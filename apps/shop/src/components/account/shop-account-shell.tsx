@@ -1,8 +1,6 @@
-import { ShopAccountNav } from "@/components/account/shop-account-nav";
 import { ShopAuthLink } from "@/components/shop-auth-link";
 import { ShopNotice, type ShopNoticeTone } from "@/components/shop-notice";
 import { type ShopBreadcrumbItem, ShopPageHeader } from "@/components/shop-page-header";
-import type { ShopAccountNavItem } from "@/lib/account/account-nav.vm";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@auction/branding";
@@ -18,8 +16,6 @@ export type ShopAccountShellProps = {
   title: string;
   breadcrumbs?: readonly ShopBreadcrumbItem[];
   children: ReactNode;
-  /** Seller tool tabs; empty or absent for a plain buyer, who only has "Your orders". */
-  nav?: readonly ShopAccountNavItem[];
   /** Hidden on pages that are not about the signed-in person, such as the disabled notice. */
   showAccountSettings?: boolean;
   notice?: {
@@ -35,12 +31,11 @@ const noticeTone: Record<ShopAccountNoticeVariant, ShopNoticeTone> = {
   warning: "warning",
 };
 
-/** Full-width account page: breadcrumbs and title, the settings hand-off, optional seller tabs. */
+/** Full-width account page: breadcrumbs and title, then the hand-off to LAX Account settings. */
 export function ShopAccountShell({
   title,
   breadcrumbs,
   children,
-  nav = [],
   showAccountSettings = true,
   notice,
 }: ShopAccountShellProps) {
@@ -64,7 +59,6 @@ export function ShopAccountShell({
               </Button>
             ) : null}
           </div>
-          {nav.length > 0 ? <ShopAccountNav items={nav} /> : null}
           {notice ? (
             <ShopNotice tone={noticeTone[notice.variant]} title={notice.title}>
               <div className="text-on-surface-variant">{notice.description}</div>

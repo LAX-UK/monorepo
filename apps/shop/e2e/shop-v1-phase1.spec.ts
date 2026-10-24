@@ -6,11 +6,7 @@ const isCi = process.env.CI === "true";
 const skipReason =
   "Set PLAYWRIGHT_E2E=1 and PLAYWRIGHT_BASE_URL (Shop storefront) for phase 1 smoke.";
 
-const portalFailureTitles = [
-  "Ownership portal not enabled",
-  "Could not load sale limits",
-  "Unavailable",
-] as const;
+const portalFailureTitles = ["Orders unavailable", "Orders temporarily unavailable"] as const;
 
 function requirePhase1E2e(): void {
   if (enabled) return;
@@ -26,14 +22,6 @@ function requireShopBuyerCredentials(): { email: string; password: string } {
     return { email, password };
   }
   const message = `${skipReason} Provide SHOP_OIDC_TEST_EMAIL and SHOP_OIDC_TEST_PASSWORD.`;
-  if (isCi) throw new Error(message);
-  test.skip(true, message);
-}
-
-function requirePortalOwnershipFlag(): void {
-  if (process.env.SHOP_PORTAL_OWNERSHIP_ENABLED === "true") return;
-  const message =
-    "SHOP_PORTAL_OWNERSHIP_ENABLED must be true on shop-api and the storefront for portal smoke.";
   if (isCi) throw new Error(message);
   test.skip(true, message);
 }
@@ -59,28 +47,19 @@ test.describe("Shop V1 phase 1 smoke", () => {
     }
   });
 
-  test("sale limits load for a seeded seller", async ({ page }) => {
+  test("seller tools leave Shop for LAX Account's Selling area", async ({ page }) => {
     requirePhase1E2e();
-    requirePortalOwnershipFlag();
-    const { email, password } = requireShopBuyerCredentials();
-    if (process.env.SHOP_ACCEPTANCE_PORTAL_SEEDED !== "true") {
-      test.skip(true, "Needs the seeded portal owner (SHOP_ACCEPTANCE_PORTAL_SEEDED=true).");
-      return;
+    const moved: Array<[string, RegExp]> = [
+      ["/account/sale-limits", /\/account\/selling\/editions$/],
+      ["/account/sales", /\/account\/selling\/sales$/],
+      ["/account/payouts", /\/account\/selling\/payouts$/],
+      ["/account/artworks", /\/account\/selling\/artworks$/],
+      ["/account/artist-sales", /\/account\/selling\/artworks$/],
+    ];
+    for (const [path, destination] of moved) {
+      const response = await page.request.get(path, { maxRedirects: 0 });
+      expect(response.status()).toBe(308);
+      expect(response.headers().location).toMatch(destination);
     }
-    const ownedArtworkTitle = process.env.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE?.trim();
-    if (!ownedArtworkTitle) {
-      throw new Error("SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE is required when portal seed ran");
-    }
-
-    await signInShopBuyer(page, { email, password }, "/account/orders");
-    await expect(
-      page.getByRole("navigation", { name: "Account" }).getByRole("link", { name: "Sale limits" }),
-    ).toBeVisible();
-    await page.goto("/account/sale-limits");
-    await expect(page).toHaveURL(/\/account\/sale-limits(\?.*)?$/);
-    for (const title of portalFailureTitles) {
-      await expect(page.getByText(title, { exact: true })).not.toBeVisible();
-    }
-    await expect(page.locator("#main-content").getByText(ownedArtworkTitle).first()).toBeVisible();
   });
 });

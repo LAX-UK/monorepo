@@ -88,24 +88,4 @@ export const shopPageWayfinding = {
     /** Ends at "Your orders": the h1 names the order, so a third crumb would repeat it. */
     breadcrumbs: [shopRoot, { label: "Your orders", href: "/account/orders" }],
   }),
-  accountSaleLimits: {
-    title: "Sale limits",
-    breadcrumbs: [shopRoot, { label: "Sale limits" }],
-  },
-  accountSales: {
-    title: "Sales statement",
-    breadcrumbs: [shopRoot, { label: "Sales" }],
-  },
-  accountPayouts: {
-    title: "Payouts",
-    breadcrumbs: [shopRoot, { label: "Payouts" }],
-  },
-  accountArtworks: {
-    title: "My artworks",
-    breadcrumbs: [shopRoot, { label: "My artworks" }],
-  },
-  accountArtistSales: {
-    title: "Artist sales",
-    breadcrumbs: [shopRoot, { label: "Artist sales" }],
-  },
 } as const;

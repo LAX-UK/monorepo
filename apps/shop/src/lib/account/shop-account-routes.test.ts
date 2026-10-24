@@ -101,9 +101,24 @@ describe("resolveRetiredShopAccountRedirect", () => {
     );
   });
 
+  it("sends the seller tools to LAX Account's Selling area", () => {
+    const cases: Array<[string, string]> = [
+      ["/account/sale-limits", "/account/selling/editions"],
+      ["/account/sales", "/account/selling/sales"],
+      ["/account/payouts/", "/account/selling/payouts"],
+      ["/account/artworks", "/account/selling/artworks"],
+      ["/account/artist-sales", "/account/selling/artworks"],
+    ];
+    for (const [from, to] of cases) {
+      expect(resolveRetiredShopAccountRedirect(from, art)).toBe(`http://localhost:3040${to}`);
+    }
+  });
+
   it("leaves every other path alone", () => {
     expect(resolveRetiredShopAccountRedirect("/account/orders", art)).toBeNull();
     expect(resolveRetiredShopAccountRedirect("/account/collection/x", art)).toBeNull();
     expect(resolveRetiredShopAccountRedirect("/account", art)).toBeNull();
+    expect(resolveRetiredShopAccountRedirect("/account/sales/x", art)).toBeNull();
+    expect(resolveRetiredShopAccountRedirect("/account/salesroom", art)).toBeNull();
   });
 });
