@@ -22,12 +22,15 @@ export const CARD_TITLE = "font-headline text-lg font-semibold text-on-surface";
  * Text fields and selects: 44px tall on the card surface, with an edge that clears 3:1 (the
  * shared field's 25% border is too faint to see on white or on the dark surface).
  */
-export const FIELD = "h-11 border-control-border bg-surface";
+export const FIELD =
+  "h-11 border-control-border bg-surface hover:border-on-surface-variant aria-[invalid=true]:border-error disabled:hover:border-control-border";
 /** Rows of a list card: 64px, whether a row holds two lines of text or a 44px button. */
 export const LIST_ROW = "flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 sm:px-6";
-/** A quiet tag beside a title ("This device"), matching the product tags. */
+/** Notices (alerts) share the cards' 16px radius and padding instead of the shared 8px box. */
+export const NOTICE = "rounded-2xl px-4 py-4 sm:px-6";
+/** A quiet tag beside a title ("This device"), in the neutral status badge's grey. */
 export const TAG =
-  "inline-flex w-fit shrink-0 items-center rounded-full bg-surface px-2 py-0.5 text-xs leading-5 font-medium whitespace-nowrap ring-1 ring-border-hairline ring-inset text-on-surface-variant";
+  "inline-flex w-fit shrink-0 items-center rounded-full bg-surface-container-high px-2 py-0.5 text-xs leading-5 font-medium whitespace-nowrap text-on-surface-variant";
 
 /** "Back to <where>" above a page that sits below another page. */
 export function BackLink({ href, label }: { href: string; label: string }) {

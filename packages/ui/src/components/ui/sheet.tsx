@@ -59,7 +59,7 @@ const SheetContent = React.forwardRef<
           <>
             <div className="sticky top-0 z-10 flex items-center justify-end gap-2 bg-surface-container-lowest/95 px-3 pt-[max(env(safe-area-inset-top,0px),0.5rem)] pb-2 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80">
               <SheetPrimitive.Close
-                className="relative inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm ring-offset-background transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
+                className="relative inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm ring-offset-background transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
                 aria-label="Close"
               >
                 <X className="size-5" aria-hidden />

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ProductName, ProductTag, ProductText, productOfName } from "./product-name";
+import { ProductName, ProductText, productOfName } from "./product-name";
 
 describe("ProductName", () => {
   it("sets a product's name in that product's colour token", () => {
@@ -17,14 +17,6 @@ describe("ProductName", () => {
       </ProductName>,
     );
     expect(html).not.toContain("font-medium");
-  });
-});
-
-describe("ProductTag", () => {
-  it("is a quiet outlined tag in the product's colour", () => {
-    const html = renderToStaticMarkup(<ProductTag product="shop">LAX Shop</ProductTag>);
-    expect(html).toContain("text-product-shop");
-    expect(html).toContain("ring-border-hairline");
   });
 });
 

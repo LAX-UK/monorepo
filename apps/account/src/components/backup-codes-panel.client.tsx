@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/account-button";
-import { NoticeTitle } from "@/components/account-ui";
+import { NOTICE, NoticeTitle } from "@/components/account-ui";
 import { regenerateBackupCodesAction } from "@/server/application/account-identity-actions.server";
 import type { BackupCodesActionResult } from "@/server/domain/account-action-result";
 import {
@@ -90,7 +90,7 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
   return (
     <div className="flex flex-col gap-4">
       {issued ? (
-        <Alert variant="warning" aria-labelledby="new-backup-codes-heading">
+        <Alert variant="warning" aria-labelledby="new-backup-codes-heading" className={NOTICE}>
           <NoticeTitle level={3} id="new-backup-codes-heading">
             Your new backup codes
           </NoticeTitle>

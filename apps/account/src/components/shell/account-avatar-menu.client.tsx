@@ -26,7 +26,7 @@ export function AccountAvatarMenu({ viewer }: { viewer: AccountViewer }) {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="flex w-72 flex-col gap-4 border-border-hairline bg-surface p-4"
+        className="flex w-72 flex-col gap-4 rounded-2xl border-border-hairline bg-surface p-4"
       >
         <div className="flex items-center gap-3">
           <AccountAvatar viewer={viewer} className="size-11" textClassName="text-sm" />

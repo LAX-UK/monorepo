@@ -42,8 +42,9 @@
   --color-product-shop: var(--color-on-surface);
   --color-product-art: var(--color-on-surface);
   --color-product-account: var(--color-product-accent);
-  /* Edge of a text field or select: 4.54:1 on white, so the field is visible (WCAG 1.4.11). */
-  --color-control-border: #767676;
+  /* Edge of a text field or select: 3.45:1 on white and 3.11:1 on the low surface, so the field
+     clears WCAG 1.4.11 without outweighing the hairline buttons beside it. */
+  --color-control-border: #8a8a8a;
   --color-surface-container: #eeeeee;
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
@@ -87,7 +88,8 @@ html.dark {
   --color-link: var(--brand-light-cream);
   --color-ring: var(--color-product-accent);
   --color-product-bid: var(--brand-midnight-on-dark);
-  --color-control-border: #8c8c88;
+  /* 3.60:1 on the dark surface. */
+  --color-control-border: #73736f;
   --color-surface-container: #333534;
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;

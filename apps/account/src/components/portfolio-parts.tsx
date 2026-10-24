@@ -2,7 +2,7 @@ import { formatCurrencyTotals } from "@/lib/format-money";
 import { PRODUCT_LABELS, STATUS_LABELS, STATUS_TONES } from "@/server/domain/portfolio-labels";
 import type { CurrencyTotal, LaxPortfolioItemStatus, LaxProductId } from "@auction/lax-ecosystem";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { ProductTag } from "./product-name";
+import { ProductName } from "./product-name";
 
 /**
  * The shared badge is all-caps and letter-spaced; these pages write statuses as plain
@@ -13,7 +13,12 @@ export const SENTENCE_CASE_BADGE =
 
 /** Which LAX product a work or entry belongs to. The name keeps its own capitalisation. */
 export function ProductBadge({ product }: { product: LaxProductId }) {
-  return <ProductTag product={product}>{PRODUCT_LABELS[product]}</ProductTag>;
+  // Plain coloured text, not a pill, so the product never reads as another status badge.
+  return (
+    <ProductName product={product} className="text-sm whitespace-nowrap">
+      {PRODUCT_LABELS[product]}
+    </ProductName>
+  );
 }
 
 export function PortfolioStatusBadge({ status }: { status: LaxPortfolioItemStatus }) {

@@ -43,21 +43,6 @@ export function ProductName({
   );
 }
 
-/** A small tag naming the product a work or entry belongs to, in that product's colour. */
-export function ProductTag({ product, children }: { product: NamedProduct; children: ReactNode }) {
-  return (
-    <span
-      data-product={product}
-      className={cn(
-        "inline-flex w-fit shrink-0 items-center rounded-full bg-surface px-2 py-0.5 text-xs leading-5 font-medium whitespace-nowrap ring-1 ring-border-hairline ring-inset",
-        NAME_COLOUR[product],
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
 /** Full product names as they appear in Account's copy, longest first so "LAX Shop" wins. */
 const NAMES: ReadonlyArray<readonly [string, NamedProduct]> = [
   ["LAX Account", "account"],

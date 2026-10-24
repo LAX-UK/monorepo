@@ -1,6 +1,6 @@
 import signInGallery from "@/assets/signin-gallery.webp";
 import { Button } from "@/components/account-button";
-import { NoticeTitle } from "@/components/account-ui";
+import { NOTICE, NoticeTitle } from "@/components/account-ui";
 import { ProductName } from "@/components/product-name";
 import { AccountFooter } from "@/components/shell/account-frame";
 import { AccountThemeToggle } from "@/components/shell/account-theme-toggle.client";
@@ -78,7 +78,7 @@ export default async function LandingPage({
             <Alert
               variant={notice.tone === "error" ? "destructive" : "default"}
               role={notice.tone === "error" ? "alert" : "status"}
-              className="max-w-lg"
+              className={`max-w-lg ${NOTICE}`}
             >
               <NoticeTitle>{notice.title}</NoticeTitle>
               <AlertDescription className="text-on-surface-variant">

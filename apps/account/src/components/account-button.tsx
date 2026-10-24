@@ -22,16 +22,26 @@ const ACCOUNT_SIZE = "min-h-11 rounded-md px-5 text-sm";
 const ACCOUNT_OUTLINE =
   "border-outline-variant bg-surface shadow-none hover:bg-surface-container-low active:bg-surface-container";
 
+/**
+ * The shared primary button only fades 5% on hover, which is hard to see. Account's darkens its
+ * teal a step on hover and two when pressed, in both themes.
+ */
+const ACCOUNT_CTA =
+  "hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--color-cta-bg)_88%,black)] active:bg-[color-mix(in_srgb,var(--color-cta-bg)_78%,black)]";
+
 const TEXT_SHAPED = new Set(["link", "underline", "tertiary", "ctaLink", "chevron"]);
 
 export function accountButtonClass(
   variant: ButtonProps["variant"],
   size: ButtonProps["size"],
 ): string {
-  if (size === "icon" || size === "lg" || size === "xl") return "";
   if (variant && TEXT_SHAPED.has(variant)) return "";
-  if (variant === "ghost") return ACCOUNT_SIZE;
-  return cn(ACCOUNT_SIZE, variant === "outline" && ACCOUNT_OUTLINE);
+  const ownShape = size === "icon" || size === "lg" || size === "xl";
+  return cn(
+    !ownShape && ACCOUNT_SIZE,
+    variant === "outline" && ACCOUNT_OUTLINE,
+    variant === "cta" && ACCOUNT_CTA,
+  );
 }
 
 /** The shared button in Account's size and outline treatment. */
