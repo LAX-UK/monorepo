@@ -42,7 +42,7 @@ describe.skipIf(!DATABASE_URL)("identity deletion purge schedule", () => {
       },
     ]);
 
-    await expect(purgeDeletedSubjectsBatch(db, now)).resolves.toBe(1);
+    await expect(purgeDeletedSubjectsBatch(db, now)).resolves.toEqual([eligibleId]);
     const subjects = await db
       .select({ id: user.id, name: user.name, email: user.email, image: user.image })
       .from(user)

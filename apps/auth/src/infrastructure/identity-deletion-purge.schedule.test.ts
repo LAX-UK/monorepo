@@ -8,18 +8,21 @@ import {
   startIdentityDeletionPurgeSchedule,
 } from "./identity-deletion-purge.schedule.js";
 
+const SUBJECT_A = "4c8d1a2e-7b39-4e60-9f15-a2d3c6b8e071";
+const SUBJECT_B = "9e2f6b04-3a71-4d8c-b5e0-1c7a9d4f2863";
+
 afterEach(() => {
   vi.useRealTimers();
 });
 
 describe("Identity deletion purge", () => {
   it("uses the grace-period cutoff and a bounded idempotent candidate query", async () => {
-    const execute = vi.fn().mockResolvedValue({ rowCount: 2 });
+    const execute = vi.fn().mockResolvedValue({ rows: [{ id: SUBJECT_A }, { id: SUBJECT_B }] });
     const now = new Date("2026-08-19T00:00:00Z");
 
     await expect(
       purgeDeletedSubjectsBatch({ execute } as unknown as Pick<IdentityDatabase, "execute">, now),
-    ).resolves.toBe(2);
+    ).resolves.toEqual([SUBJECT_A, SUBJECT_B]);
 
     const statement = execute.mock.calls[0]?.[0];
     const query = new PgDialect().sqlToQuery(statement);
@@ -35,13 +38,30 @@ describe("Identity deletion purge", () => {
     );
   });
 
+  it("ends each purged person's sessions and back-channel logout after the batch", async () => {
+    const execute = vi.fn().mockResolvedValue({ rows: [{ id: SUBJECT_A }, { id: SUBJECT_B }] });
+    const endSessions = vi.fn().mockResolvedValue(undefined);
+    const onPurged = vi.fn();
+    const schedule = startIdentityDeletionPurgeSchedule({
+      db: { execute } as unknown as Pick<IdentityDatabase, "execute">,
+      onError: vi.fn(),
+      onPurged,
+      endSessions,
+      intervalMs: 60_000,
+    });
+    await schedule.stop();
+
+    expect(endSessions.mock.calls).toEqual([[SUBJECT_A], [SUBJECT_B]]);
+    expect(onPurged).toHaveBeenCalledWith(2);
+  });
+
   it("prevents overlapping runs and waits for the active purge when stopped", async () => {
     vi.useFakeTimers();
     let finish: (() => void) | undefined;
     const execute = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
-          finish = () => resolve({ rowCount: 0 });
+          finish = () => resolve({ rows: [] });
         }),
     );
     const schedule = startIdentityDeletionPurgeSchedule({
