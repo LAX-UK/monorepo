@@ -24,7 +24,7 @@ describe("presentArtworkAvailability", () => {
   it("presents an available edition with its size and allocation guidance", () => {
     expect(presentArtworkAvailability(artwork())).toEqual({
       status: { label: "Available", tone: "success" },
-      headline: "Limited edition of 24 · Available",
+      headline: "Limited edition of 24",
       detail: "Edition numbers are assigned when your purchase is confirmed.",
       isEdition: true,
     });
@@ -37,7 +37,7 @@ describe("presentArtworkAvailability", () => {
       ),
     ).toEqual({
       status: { label: "Sold out", tone: "neutral" },
-      headline: "Limited edition of 24 · Sold out",
+      headline: "Limited edition of 24",
       detail: null,
       isEdition: true,
     });

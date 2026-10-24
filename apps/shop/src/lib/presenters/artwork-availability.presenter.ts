@@ -29,17 +29,15 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
   const status = resolveEditionAvailabilityPresentation(state);
   const size = totalEditions > 0 ? `Limited edition of ${totalEditions}` : "Limited edition";
 
+  // The status pill beside the headline carries "Available" or "Sold out", and the sold-out
+  // panel above already offers the waiting list, so neither is repeated here.
   if (state === "sold_out") {
-    return {
-      status,
-      headline: `${size} · Sold out`,
-      detail: "Join the list and we will email you if one is released.",
-    };
+    return { status, headline: size, detail: null };
   }
 
   return {
     status,
-    headline: `${size} · Available`,
+    headline: size,
     detail: "Edition numbers are assigned when your order is fulfilled.",
   };
 }

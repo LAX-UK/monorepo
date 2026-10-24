@@ -44,13 +44,14 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
   const status = resolveEditionAvailabilityPresentation(state);
   const size = totalEditions > 0 ? `Limited edition of ${totalEditions}` : "Limited edition";
 
+  // The status pill beside the headline carries "Available" or "Sold out".
   if (state === "sold_out") {
-    return { status, headline: `${size} · Sold out`, detail: null, isEdition: true };
+    return { status, headline: size, detail: null, isEdition: true };
   }
 
   return {
     status,
-    headline: `${size} · Available`,
+    headline: size,
     detail: "Edition numbers are assigned when your purchase is confirmed.",
     isEdition: true,
   };
