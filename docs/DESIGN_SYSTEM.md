@@ -215,6 +215,10 @@ A lockup is the LAX mark plus a product descriptor. `packages/branding/src/locku
 - **Needs your attention** is a task list: one whole-row link per task, a sentence-case status tag (under the text on a phone), no KPIs. Status tags and tabs in Selling are sentence case.
 - **Dark mode and motion.** Check every Selling screen in light, dark and at 375px; take screenshots with `prefers-reduced-motion: reduce` so fade-ins have settled.
 
+## Staff tools (LAX Admin and Bid admin)
+
+Both staff tools use one design system, [`packages/staff-ui`](../packages/staff-ui/README.md): its own token scale (13px interface type, 32/36px controls, 4px grid, light and dark from one declaration), one shell (grouped collapsible nav, ⌘K, product switcher, account menu), and shared tables, side panels, forms, status badges and timelines. The Radix-backed widgets underneath are the `@auction/ui` primitives. Each tool keeps its own pages and permissions and hides nav items and actions its roles cannot use. Buttons, focus and selection stay neutral in both; the product accent marks only the product tile and the active-nav bar (navy for Bid admin, none yet for LAX Admin).
+
 ## Conventions (read before building UI)
 
 - **[Marketing design language](./marketing-design-language.md)** — marketing surface SSOT: layout, aspect ratios, saleroom chrome, overlay tone, component catalog (includes **Shop profile**)
