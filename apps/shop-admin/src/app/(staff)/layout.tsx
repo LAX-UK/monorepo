@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
-import { resolveStaffLayoutRedirect, staffReauthHref } from "@/lib/staff-layout-redirect";
+import { resolveStaffLayoutRedirect, staffSignInHref } from "@/lib/staff-layout-redirect";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { loadStaffIdentity } from "@/server/application/load-staff-identity";
 import { loadStaffProducts } from "@/server/application/load-staff-products";
@@ -25,7 +25,7 @@ export default async function StaffLayout({ children }: { children: ReactNode })
   const decision = resolveStaffLayoutRedirect(sessionResult, pathname);
 
   if (decision.action === "reauth") {
-    redirect(staffReauthHref(decision));
+    redirect(staffSignInHref(decision));
   }
   if (decision.action === "login_error") {
     redirect(`/login?error=${decision.error}`);

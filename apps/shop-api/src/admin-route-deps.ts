@@ -1,5 +1,4 @@
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
-import type { ImportArtworkHandler } from "./application/handlers/import-artwork.handler.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
 import type { ArtCacheInvalidator } from "./application/ports/art-cache-invalidator.js";
@@ -8,14 +7,30 @@ import type {
   ArtistCatalogueWriter,
   ArtworkCatalogueWriter,
 } from "./application/ports/artwork-catalogue-admin.js";
+import type {
+  ArtworkImportWriter,
+  ImportArtworkCommand,
+} from "./application/ports/artwork-import.writer.js";
 import type { MerchandiseCatalogueWriter } from "./application/ports/merchandise-catalogue.writer.js";
-import type { OriginalSaleWriter } from "./application/ports/original-sale.writer.js";
-import type { SaleAuthorityWriter } from "./application/ports/sale-authority.writer.js";
-import type { SaleFeeWriter } from "./application/ports/sale-fee.writer.js";
+import type {
+  CreateOriginalSaleCommand,
+  OriginalSaleWriter,
+} from "./application/ports/original-sale.writer.js";
+import type {
+  GrantSaleAuthorityCommand,
+  SaleAuthorityWriter,
+} from "./application/ports/sale-authority.writer.js";
+import type { ApproveSaleFeeCommand, SaleFeeWriter } from "./application/ports/sale-fee.writer.js";
 import type { ShopFeatureFlagsReader } from "./application/ports/shop-feature-flags.js";
 import type { ShopStaffMemberReader } from "./application/ports/staff-member.reader.js";
-import type { StockHoldWriter } from "./application/ports/stock-hold.writer.js";
-import type { ThirdPartySaleWriter } from "./application/ports/third-party-sale.writer.js";
+import type {
+  ReleaseStockHoldCommand,
+  StockHoldWriter,
+} from "./application/ports/stock-hold.writer.js";
+import type {
+  RecordThirdPartySaleCommand,
+  ThirdPartySaleWriter,
+} from "./application/ports/third-party-sale.writer.js";
 import type { ProductionTaskService } from "./application/production-task.service.js";
 import type { SavedViewService } from "./application/saved-view.service.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
@@ -36,14 +51,21 @@ import type { createRecordPossessionHandler } from "./infrastructure/handlers/ad
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
+import type { AdminIdempotency } from "./infrastructure/idempotent-admin-command.js";
 import type { HealthDeps } from "./routes/health.routes.js";
 
 export type AdminRoutesDeps = {
   featureFlags: ShopFeatureFlagsReader;
   stepUpMaxAuthAgeSeconds: number;
   health: HealthDeps;
-  importArtwork: ImportArtworkHandler;
-  grantSaleAuthority: SaleAuthorityWriter["grantSaleAuthority"];
+  importArtwork: (
+    command: ImportArtworkCommand,
+    ctx: AdminIdempotency,
+  ) => ReturnType<ArtworkImportWriter["importArtwork"]>;
+  grantSaleAuthority: (
+    command: GrantSaleAuthorityCommand,
+    ctx: AdminIdempotency,
+  ) => ReturnType<SaleAuthorityWriter["grantSaleAuthority"]>;
   getSaleAuthorityRequest: AdminReadPorts["saleAuthorityRequests"]["getRequestById"];
   rejectSaleAuthorityRequest: ReturnType<typeof createRejectSaleAuthorityRequestHandler>;
   grantStaffRole: ReturnType<typeof createGrantStaffRoleHandler>;
@@ -59,8 +81,18 @@ export type AdminRoutesDeps = {
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
   requestRefund: ReturnType<typeof createRequestRefundHandler>;
   markPayoutPaid: ReturnType<typeof createMarkPayoutPaidHandler>;
-  saleFees: SaleFeeWriter;
-  stockHolds: StockHoldWriter;
+  saleFees: {
+    approveFee(
+      command: ApproveSaleFeeCommand,
+      ctx: AdminIdempotency,
+    ): ReturnType<SaleFeeWriter["approveFee"]>;
+  };
+  stockHolds: {
+    releaseHold(
+      command: ReleaseStockHoldCommand,
+      ctx: AdminIdempotency,
+    ): ReturnType<StockHoldWriter["releaseHold"]>;
+  };
   createStockHold: ReturnType<typeof createCreateStockHoldHandler>;
   adjustMerchandiseStock: ReturnType<typeof createAdjustMerchandiseStockHandler>;
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
@@ -69,8 +101,18 @@ export type AdminRoutesDeps = {
   artistCatalogue: ArtistCatalogueWriter;
   /** Refreshes lax.art after catalogue writes that change what it serves. */
   artCache: ArtCacheInvalidator;
-  thirdPartySales: ThirdPartySaleWriter;
-  originalSales: OriginalSaleWriter;
+  thirdPartySales: {
+    recordSale(
+      command: RecordThirdPartySaleCommand,
+      ctx: AdminIdempotency,
+    ): ReturnType<ThirdPartySaleWriter["recordSale"]>;
+  };
+  originalSales: Omit<OriginalSaleWriter, "createReservation"> & {
+    createReservation(
+      command: CreateOriginalSaleCommand,
+      ctx: AdminIdempotency,
+    ): ReturnType<OriginalSaleWriter["createReservation"]>;
+  };
   linkArtistIdentity: ReturnType<typeof createLinkArtistIdentityHandler>;
   unlinkArtistIdentity: ReturnType<typeof createUnlinkArtistIdentityHandler>;
   updateArtistSeo: ArtistSeoWriter["updateArtistSeo"];

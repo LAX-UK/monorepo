@@ -22,7 +22,7 @@ const container = createShopApiContainer(env);
 try {
   await seedAcceptancePortalFixtures(
     container.db,
-    (command) => container.app.admin.grantSaleAuthority(command),
+    (command) => container.grantSaleAuthority(command),
     {
       identitySubjectId,
       ...(process.env.SHOP_ACCEPTANCE_PORTAL_DISPLAY_NAME?.trim()

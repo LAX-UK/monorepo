@@ -12,7 +12,12 @@ import {
   orderLineLabel,
   presentFulfilmentStatus,
 } from "@/server/domain/order-detail.vm";
-import type { AdminOrderDetail } from "@auction/shop-contracts";
+import {
+  type AdminOrderDetail,
+  FULFILMENT_CARRIER_MAX_LENGTH,
+  FULFILMENT_TRACKING_NUMBER_MAX_LENGTH,
+  FULFILMENT_TRACKING_NUMBER_PATTERN,
+} from "@auction/shop-contracts";
 import type { ShopFulfilmentStatus } from "@auction/shop-domain";
 import {
   ConfirmActionDialog,
@@ -218,6 +223,14 @@ export function FulfilmentUpdateForm({
           setError("Choose the next status.");
           return;
         }
+        if (
+          showTracking &&
+          tracking.trim() &&
+          !new RegExp(FULFILMENT_TRACKING_NUMBER_PATTERN).test(tracking.trim())
+        ) {
+          setError("A tracking number can only contain letters, numbers, spaces and hyphens.");
+          return;
+        }
         setError(null);
         const ok = await mutation.run(
           () =>
@@ -250,11 +263,16 @@ export function FulfilmentUpdateForm({
             <TextInput
               value={carrier}
               onChange={(event) => setCarrier(event.target.value)}
+              maxLength={FULFILMENT_CARRIER_MAX_LENGTH}
               placeholder="Royal Mail"
             />
           </Field>
           <Field label="Tracking number" optional>
-            <TextInput value={tracking} onChange={(event) => setTracking(event.target.value)} />
+            <TextInput
+              value={tracking}
+              onChange={(event) => setTracking(event.target.value)}
+              maxLength={FULFILMENT_TRACKING_NUMBER_MAX_LENGTH}
+            />
           </Field>
         </FieldRow>
       ) : null}

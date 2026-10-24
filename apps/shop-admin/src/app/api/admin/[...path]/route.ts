@@ -41,7 +41,8 @@ async function handle(request: Request, pathSegments: string[]): Promise<Respons
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "error";
-    if (classifyAdminReadFailure(error).kind === "unauthorized") {
+    const failure = classifyAdminReadFailure(error);
+    if (failure.kind === "unauthorized") {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
     if (message === "Not found") {
@@ -50,38 +51,25 @@ async function handle(request: Request, pathSegments: string[]): Promise<Respons
     if (message.includes("CSRF") || message.includes("Cross-origin")) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
-    return NextResponse.json({ error: message }, { status: 400 });
+    // The detail can name hosts, paths or upstream responses; it goes to the log, not the browser.
+    console.error("[shop-admin.bff] admin request failed", {
+      method: request.method,
+      path: bffPath,
+      ...failure.log,
+    });
+    return NextResponse.json({ error: "request_failed" }, { status: 400 });
   }
 }
 
-export async function GET(
-  request: Request,
-  context: { params: Promise<{ path: string[] }> },
-): Promise<Response> {
+type RouteContext = { params: Promise<{ path: string[] }> };
+
+async function forward(request: Request, context: RouteContext): Promise<Response> {
   const { path } = await context.params;
   return handle(request, path);
 }
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ path: string[] }> },
-): Promise<Response> {
-  const { path } = await context.params;
-  return handle(request, path);
-}
-
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ path: string[] }> },
-): Promise<Response> {
-  const { path } = await context.params;
-  return handle(request, path);
-}
-
-export async function DELETE(
-  request: Request,
-  context: { params: Promise<{ path: string[] }> },
-): Promise<Response> {
-  const { path } = await context.params;
-  return handle(request, path);
-}
+export const GET = forward;
+export const POST = forward;
+export const PUT = forward;
+export const PATCH = forward;
+export const DELETE = forward;

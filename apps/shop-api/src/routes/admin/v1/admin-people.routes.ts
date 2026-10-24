@@ -1,4 +1,4 @@
-import { ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import { SALE_AUTHORITY_NOTE_MAX_LENGTH, ShopApiErrorBodySchema } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -12,8 +12,12 @@ import {
 const SaleAuthorityDecisionBodySchema = Type.Object({
   decision: Type.Union([Type.Literal("approve"), Type.Literal("decline")]),
   authorisedCount: Type.Optional(Type.Integer({ minimum: 0, maximum: 10 })),
-  evidenceNote: Type.Optional(Type.String()),
-  declineReason: Type.Optional(Type.String()),
+  evidenceNote: Type.Optional(
+    Type.String({ minLength: 1, maxLength: SALE_AUTHORITY_NOTE_MAX_LENGTH }),
+  ),
+  declineReason: Type.Optional(
+    Type.String({ minLength: 1, maxLength: SALE_AUTHORITY_NOTE_MAX_LENGTH }),
+  ),
 });
 
 const SaleAuthorityDecisionResponseSchema = Type.Object({
@@ -51,19 +55,24 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
   app.post(
     "/sale-authority-requests/:requestId/decision",
     {
+      // A note of the maximum length does not fit the 1 KB default.
+      bodyLimit: 8_192,
       schema: {
         tags: ["shop-admin"],
         params: Type.Object({ requestId: Type.String({ format: "uuid" }) }),
         body: SaleAuthorityDecisionBodySchema,
         response: {
           200: SaleAuthorityDecisionResponseSchema,
+          400: ShopApiErrorBodySchema,
           403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
           409: ShopApiErrorBodySchema,
         },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "sale_authority.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const { requestId } = request.params as { requestId: string };
       const body = request.body as {
@@ -83,14 +92,17 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
       }
       const requestRow = await deps.getSaleAuthorityRequest(requestId);
       const authorisedCount = body.authorisedCount ?? requestRow.requestedCount;
-      await deps.grantSaleAuthority({
-        requestId,
-        artworkId: requestRow.artworkId,
-        ownerPartyId: requestRow.ownerPartyId,
-        authorisedCount,
-        evidenceNote: body.evidenceNote ?? "Approved from admin",
-        recordedBySubjectId: subject,
-      });
+      await deps.grantSaleAuthority(
+        {
+          requestId,
+          artworkId: requestRow.artworkId,
+          ownerPartyId: requestRow.ownerPartyId,
+          authorisedCount,
+          evidenceNote: body.evidenceNote ?? "Approved from admin",
+          recordedBySubjectId: subject,
+        },
+        { idempotencyKey, actorSubjectId: subject },
+      );
       return { requestId, status: "approved" };
     },
   );

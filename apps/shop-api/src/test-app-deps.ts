@@ -319,10 +319,6 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       stockHolds: {
-        createHold: async () => ({
-          holdId: "00000000-0000-4000-8000-000000000013",
-          status: "active",
-        }),
         releaseHold: async () => ({
           holdId: "00000000-0000-4000-8000-000000000013",
           status: "released",

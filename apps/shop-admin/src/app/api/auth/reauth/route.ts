@@ -8,9 +8,16 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getShopAdminContainer } from "../../../../server/container";
 
-export async function GET(request: Request): Promise<Response> {
+/**
+ * Ends the staff session and signs in again. A POST that checks the request's origin, like
+ * logout and switch-account, so a link on another site cannot sign staff out.
+ */
+export async function POST(request: Request): Promise<Response> {
   const container = getShopAdminContainer();
   const publicOrigin = container.config.publicOrigin;
+  if (request.headers.get("origin") !== publicOrigin) {
+    return NextResponse.json({ error: "invalid_origin" }, { status: 403 });
+  }
   const url = new URL(request.url);
   const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
   const reason = url.searchParams.get("reason");
@@ -23,9 +30,10 @@ export async function GET(request: Request): Promise<Response> {
 
   const response =
     reason === "not_authorized" || hadLoginAttempt
-      ? NextResponse.redirect(new URL("/login?error=not_authorized", publicOrigin))
+      ? NextResponse.redirect(new URL("/login?error=not_authorized", publicOrigin), 303)
       : NextResponse.redirect(
           new URL(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`, publicOrigin),
+          303,
         );
 
   response.cookies.delete(shopAdminSessionCookie(container.config));

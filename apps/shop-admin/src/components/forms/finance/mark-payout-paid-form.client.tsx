@@ -8,6 +8,7 @@ import {
   requiredText,
 } from "@/lib/form-validation";
 import { markPayoutPaid } from "@/server/application/admin-operations-actions.server";
+import { PAYOUT_PAID_REFERENCE_MAX_LENGTH } from "@auction/shop-contracts";
 import { ConfirmDialog } from "@auction/ui";
 import { useState } from "react";
 import { AdminForm } from "../admin-form";
@@ -47,6 +48,7 @@ export function MarkPayoutPaidForm({ defaultPayoutId }: { defaultPayoutId?: stri
         <TextField
           name="paidReference"
           label="Paid reference"
+          maxLength={PAYOUT_PAID_REFERENCE_MAX_LENGTH}
           value={paidReference}
           error={errors.paidReference}
           disabled={mutation.pending}

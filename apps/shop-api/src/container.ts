@@ -21,7 +21,19 @@ import { createPortalFavoritesHandlers } from "./application/handlers/portal-fav
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
+import type { ImportArtworkCommand } from "./application/ports/artwork-import.writer.js";
+import type { CreateOriginalSaleCommand } from "./application/ports/original-sale.writer.js";
+import type {
+  GrantSaleAuthorityCommand,
+  SaleAuthorityWriter,
+} from "./application/ports/sale-authority.writer.js";
+import type { ApproveSaleFeeCommand } from "./application/ports/sale-fee.writer.js";
 import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
+import type {
+  CreateStockHoldCommand,
+  ReleaseStockHoldCommand,
+} from "./application/ports/stock-hold.writer.js";
+import type { RecordThirdPartySaleCommand } from "./application/ports/third-party-sale.writer.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
@@ -94,6 +106,7 @@ import {
   createHttpArtCacheInvalidator,
   noopArtCacheInvalidator,
 } from "./infrastructure/http-art-cache-invalidator.js";
+import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-command.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
@@ -149,7 +162,7 @@ export type ShopApiContainer = {
     role: import("@auction/shop-domain").ShopStaffRole;
     operatorSubjectId: string;
   }): Promise<void>;
-  grantSaleAuthority: AdminRoutesDeps["grantSaleAuthority"];
+  grantSaleAuthority: SaleAuthorityWriter["grantSaleAuthority"];
   seedCatalogue(): Promise<void>;
   seedAcceptancePortal(identitySubjectId: string, displayName?: string): Promise<void>;
   reportPhase2BackfillDryRun(): Promise<unknown[]>;
@@ -252,8 +265,62 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const linkArtistIdentity = createLinkArtistIdentityHandler({ uow: shopUow });
   const unlinkArtistIdentity = createUnlinkArtistIdentityHandler({ uow: shopUow });
   const artistSeoWriter = createDrizzleArtistSeoWriter(db);
-  const stockHolds = createDrizzleStockHoldWriter(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
-  const createStockHold = createCreateStockHoldHandler({ stockHolds, staffReader });
+  const eventMode = env.DOMAIN_EVENT_PUBLISH_VALIDATE;
+  const createHold = idempotentAdminCommand(
+    { uow: shopUow },
+    {
+      commandType: "stock_hold.create",
+      run: (tx, command: CreateStockHoldCommand) =>
+        createDrizzleStockHoldWriter(tx, eventMode).createHold(command),
+    },
+  );
+  const stockHolds = {
+    releaseHold: idempotentAdminCommand(
+      { uow: shopUow },
+      {
+        commandType: "stock_hold.release",
+        run: (tx, command: ReleaseStockHoldCommand) =>
+          createDrizzleStockHoldWriter(tx, eventMode).releaseHold(command),
+      },
+    ),
+  };
+  const createStockHold = createCreateStockHoldHandler({ createHold, staffReader });
+  const saleFees = {
+    approveFee: idempotentAdminCommand(
+      { uow: shopUow },
+      {
+        commandType: "sale_fee.approve",
+        run: (tx, command: ApproveSaleFeeCommand) =>
+          createDrizzleSaleFeeWriter(tx, eventMode).approveFee(command),
+      },
+    ),
+  };
+  const thirdPartySales = {
+    recordSale: idempotentAdminCommand(
+      { uow: shopUow },
+      {
+        commandType: "third_party_sale.record",
+        run: (tx, command: RecordThirdPartySaleCommand) =>
+          createDrizzleThirdPartySaleWriter(tx, eventMode).recordSale(command),
+      },
+    ),
+  };
+  const adminImportArtwork = idempotentAdminCommand(
+    { uow: shopUow },
+    {
+      commandType: "artwork.import",
+      run: (tx, command: ImportArtworkCommand) =>
+        createImportArtworkHandler(createDrizzleArtworkImportRepository(tx, eventMode))(command),
+    },
+  );
+  const adminGrantSaleAuthority = idempotentAdminCommand(
+    { uow: shopUow },
+    {
+      commandType: "sale_authority.grant",
+      run: (tx, command: GrantSaleAuthorityCommand) =>
+        createDrizzleSaleAuthorityWriter(tx, eventMode).grantSaleAuthority(command),
+    },
+  );
   const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
   const merchandiseCatalogue = createDrizzleMerchandiseCatalogueWriter(shopUow);
   const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, { resolveMediaUrl });
@@ -290,12 +357,25 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const syncConnectAccount = connectGateway
     ? createSyncConnectAccountHandler({ gateway: connectGateway, accounts: payeeConnectAccounts })
     : async () => "ignored" as const;
-  const originalSales = createDrizzleOriginalSaleWriter({
-    db,
-    uow: shopUow,
-    invoiceGateway,
-    domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
-  });
+  const originalSaleWriterFor = (writerDb: Database) =>
+    createDrizzleOriginalSaleWriter({
+      db: writerDb,
+      uow: shopUow,
+      invoiceGateway,
+      domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+    });
+  const originalSales = originalSaleWriterFor(db);
+  const adminOriginalSales = {
+    ...originalSales,
+    createReservation: idempotentAdminCommand(
+      { uow: shopUow },
+      {
+        commandType: "original_sale.create",
+        run: (tx, command: CreateOriginalSaleCommand) =>
+          originalSaleWriterFor(tx).createReservation(command),
+      },
+    ),
+  };
   const healthDeps = {
     checkConnectivity: () => readiness.checkConnectivity(),
     checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
@@ -351,8 +431,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         featureFlags: createShopFeatureFlagsReader(env),
         stepUpMaxAuthAgeSeconds: env.SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS,
         health: healthDeps,
-        importArtwork,
-        grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),
+        importArtwork: adminImportArtwork,
+        grantSaleAuthority: adminGrantSaleAuthority,
         getSaleAuthorityRequest: (requestId) =>
           adminRead.saleAuthorityRequests.getRequestById(requestId),
         rejectSaleAuthorityRequest,
@@ -375,7 +455,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         cancelAfterPossession,
         requestRefund,
         markPayoutPaid,
-        saleFees: createDrizzleSaleFeeWriter(db),
+        saleFees,
         stockHolds,
         createStockHold,
         adjustMerchandiseStock,
@@ -384,8 +464,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artworkCatalogue,
         artistCatalogue,
         artCache,
-        thirdPartySales: createDrizzleThirdPartySaleWriter(db),
-        originalSales,
+        thirdPartySales,
+        originalSales: adminOriginalSales,
         linkArtistIdentity,
         unlinkArtistIdentity,
         updateArtistSeo: (artistId, fields) => artistSeoWriter.updateArtistSeo(artistId, fields),

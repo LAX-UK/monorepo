@@ -11,6 +11,8 @@ const configSchema = z.object({
   oidcClientId: z.string().default(REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN),
   oidcClientSecret: z.string().min(1),
   shopApiBaseUrl: z.string().url(),
+  /** Set when shop-api overrides its step-up window; unset uses the shared window. */
+  stepUpMaxAgeSeconds: z.coerce.number().int().min(60).max(86_400).optional(),
   redisUrl: z.string().min(1),
   sessionEncryptionKey: z.string().min(32),
   sessionTtlSeconds: z.coerce.number().int().min(300).default(604_800),
@@ -48,6 +50,7 @@ export function loadShopAdminConfig(source: NodeJS.ProcessEnv = process.env): Sh
     oidcClientId: source.OIDC_CLIENT_ID ?? REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN,
     oidcClientSecret: source.OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN,
     shopApiBaseUrl: (source.SHOP_API_BASE_URL ?? "http://127.0.0.1:3011").replace(/\/+$/, ""),
+    stepUpMaxAgeSeconds: source.SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS?.trim() || undefined,
     redisUrl: source.REDIS_URL ?? "redis://127.0.0.1:6379",
     sessionEncryptionKey: source.SHOP_ADMIN_SESSION_ENCRYPTION_KEY,
     sessionTtlSeconds: source.SHOP_ADMIN_SESSION_TTL_SECONDS ?? "604800",

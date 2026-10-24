@@ -1,4 +1,5 @@
 import { assertRecentAuthentication } from "@auction/identity-rp";
+import { SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS } from "@auction/shop-contracts";
 import type { ShopAdminConfig } from "../config";
 import { resolveAdminProxyTarget } from "../domain/admin-proxy-policy";
 import { assertMutationCsrf } from "../domain/csrf-policy";
@@ -55,7 +56,7 @@ export async function forwardAdminRequest(input: {
   if (target.requiresRecentAuth) {
     assertRecentAuthentication({
       authTime: session.authTime,
-      maxAgeSeconds: 900,
+      maxAgeSeconds: input.config.stepUpMaxAgeSeconds ?? SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS,
       nowMs: input.clock.nowMs(),
     });
   }

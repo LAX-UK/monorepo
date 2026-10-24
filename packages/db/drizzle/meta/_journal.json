@@ -1604,6 +1604,13 @@
       "when": 1795075200000,
       "tag": "0228_shop_artwork_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1795161600000,
+      "tag": "0229_shop_sale_fee_creator",
+      "breakpoints": true
     }
   ]
 }

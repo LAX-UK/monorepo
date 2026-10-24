@@ -1,8 +1,12 @@
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type ShopStaffRole, roleHasCapability } from "@auction/shop-domain";
 import type { ShopStaffMemberReader } from "../../../application/ports/staff-member.reader.js";
-import type { StockHoldWriter } from "../../../application/ports/stock-hold.writer.js";
+import type {
+  CreateStockHoldCommand,
+  CreateStockHoldResult,
+} from "../../../application/ports/stock-hold.writer.js";
 import { ShopApiError } from "../../../errors/shop-api-error.js";
+import type { AdminIdempotency } from "../../idempotent-admin-command.js";
 
 export type CreateStockHoldHandlerCommand = {
   editionId: string;
@@ -11,10 +15,14 @@ export type CreateStockHoldHandlerCommand = {
   note?: string;
   actorSubjectId: string;
   actorRole: ShopStaffRole;
+  idempotencyKey: string;
 };
 
 export function createCreateStockHoldHandler(deps: {
-  stockHolds: StockHoldWriter;
+  createHold: (
+    command: CreateStockHoldCommand,
+    ctx: AdminIdempotency,
+  ) => Promise<CreateStockHoldResult>;
   staffReader: ShopStaffMemberReader;
 }) {
   return async (command: CreateStockHoldHandlerCommand) => {
@@ -37,14 +45,17 @@ export function createCreateStockHoldHandler(deps: {
         403,
       );
     }
-    return deps.stockHolds.createHold({
-      editionId: command.editionId,
-      clientPartyId: command.clientPartyId,
-      expiresAt: command.expiresAt,
-      actorSubjectId: command.actorSubjectId,
-      actorRole: command.actorRole,
-      usedOverride: command.actorRole !== "broker" && !assigned,
-      ...(command.note !== undefined ? { note: command.note } : {}),
-    });
+    return deps.createHold(
+      {
+        editionId: command.editionId,
+        clientPartyId: command.clientPartyId,
+        expiresAt: command.expiresAt,
+        actorSubjectId: command.actorSubjectId,
+        actorRole: command.actorRole,
+        usedOverride: command.actorRole !== "broker" && !assigned,
+        ...(command.note !== undefined ? { note: command.note } : {}),
+      },
+      { idempotencyKey: command.idempotencyKey, actorSubjectId: command.actorSubjectId },
+    );
   };
 }

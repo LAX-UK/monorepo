@@ -2,6 +2,12 @@ import "./contract-formats.js";
 
 export { SHOP_API_ERROR_CODES, type ShopApiErrorCode } from "./errors.js";
 export {
+  SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS,
+  SHOP_ADMIN_STEP_UP_PATHS,
+  isStepUpPath,
+  stepUpPatternMatches,
+} from "./staff-step-up.js";
+export {
   PublicArtistDetailSchema,
   PublicArtistListSchema,
   PublicArtistSortSchema,
@@ -363,6 +369,11 @@ export {
   AdminOrderDetailSchema,
   ADMIN_REFUND_NOTE_MAX_LENGTH,
   ADMIN_REFUND_REASONS,
+  FULFILMENT_CARRIER_MAX_LENGTH,
+  FULFILMENT_TRACKING_NUMBER_MAX_LENGTH,
+  FULFILMENT_TRACKING_NUMBER_PATTERN,
+  PAYOUT_PAID_REFERENCE_MAX_LENGTH,
+  SALE_AUTHORITY_NOTE_MAX_LENGTH,
   type AdminRefundReason,
   type AdminArtistDetail,
   type AdminClientDetail,
