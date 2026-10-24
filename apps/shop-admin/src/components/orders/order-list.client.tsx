@@ -2,6 +2,7 @@
 
 import { OrderQuickView } from "@/components/orders/order-quick-view.client";
 import { useListNavigation } from "@/components/use-list-navigation.client";
+import { createSavedViewsPort } from "@/lib/saved-views-port.client";
 import { presentOrderStatus } from "@/server/domain/order-detail.vm";
 import {
   CREATED_PRESETS,
@@ -17,6 +18,7 @@ import {
   orderListHref,
   orderListPageHref,
   orderNumber,
+  orderTeamViews,
 } from "@/server/domain/order-list.vm";
 import { ADMIN_ORDER_SEARCH_MAX_LENGTH, type AdminOrderList } from "@auction/shop-contracts";
 import {
@@ -48,6 +50,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type OrderRow = AdminOrderList["items"][number];
+
+const ORDERS_LIST_KEY = "lax-admin.orders";
 
 const STATUS_VIEWS = ["paid", "pending_payment", "partially_refunded", "refunded"] as const;
 
@@ -98,9 +102,11 @@ export function OrderList({
   const [density, setDensity] = useTableDensity("orders");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
-  const saved = useSavedViews("orders");
+  const port = useMemo(() => createSavedViewsPort(ORDERS_LIST_KEY), []);
+  const saved = useSavedViews(ORDERS_LIST_KEY, port, { legacyStorageKey: "staff.views.orders" });
   const filtered = hasActiveOrderFilters(query);
   const today = useMemo(() => new Date(now), [now]);
+  const teamViews = useMemo(() => orderTeamViews(today), [today]);
   const activePreset = matchCreatedPreset(query, today);
   const total = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
   const currentQuery = orderListHref(query).split("?")[1] ?? "";
@@ -113,15 +119,8 @@ export function OrderList({
       href: orderListHref(query, { status }),
       count: page.counts[status] ?? 0,
     })),
-    ...saved.views.map((view) => ({
-      id: view.id,
-      label: view.label,
-      href: `${ORDER_LIST_PATH}?${view.query}`,
-      custom: true,
-    })),
   ];
-  const savedMatch = saved.views.find((view) => view.query === currentQuery && currentQuery);
-  const activeView = savedMatch?.id ?? query.status ?? "all";
+  const activeView = query.status ?? "all";
 
   const columns = useMemo<DataColumn<OrderRow>[]>(
     () => [
@@ -262,10 +261,10 @@ export function OrderList({
                 views={views}
                 activeId={activeView}
                 Link={ListLink}
-                {...(filtered && !savedMatch
-                  ? { onSaveCurrent: (label: string) => saved.save(label, currentQuery) }
-                  : {})}
-                onRemove={saved.remove}
+                team={teamViews}
+                saved={saved}
+                savedHref={(view) => `${ORDER_LIST_PATH}?${view.query}`}
+                currentQuery={filtered ? currentQuery : ""}
               />
             }
             search={

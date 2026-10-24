@@ -67,6 +67,7 @@ export { DrizzleProfileRepository } from "./drizzle-profile.repository.js";
 export { DrizzleCategoryInterestsEligibilityReader } from "./drizzle-category-interests-eligibility.reader.js";
 export { DrizzleCategoryInterestsRepository } from "./drizzle-category-interests.repository.js";
 export { DrizzleAddressRepository } from "./drizzle-address.repository.js";
+export { DrizzleAdminSavedViewRepository } from "./drizzle-admin-saved-view.repository.js";
 export { DrizzleUserRepository } from "./drizzle-user.repository.js";
 export { DrizzleUserSuspensionChecker } from "./drizzle-user-suspension.checker.js";
 export { DrizzleUiPreferenceRepository } from "./drizzle-ui-preference.repository.js";

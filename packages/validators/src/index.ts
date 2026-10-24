@@ -41,6 +41,7 @@ export * from "./item-submission.js";
 export * from "./money-compare.js";
 export * from "./password-change.js";
 export * from "./two-factor.js";
+export * from "./admin-saved-view.js";
 export * from "./setup-password.js";
 export * from "./email-change.js";
 export * from "./checkout.js";

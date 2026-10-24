@@ -40,6 +40,7 @@ import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
 import { attachAdminSaleroomSessionRoutes } from "./admin/saleroom-session.routes.js";
 import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
+import { attachAdminSavedViewRoutes } from "./admin/saved-views.routes.js";
 import { attachAdminSecurityRoutes } from "./admin/security.routes.js";
 import { attachAdminStaffAccessRoutes } from "./admin/staff-access.routes.js";
 import { attachAdminTwoFactorResetRoutes } from "./admin/two-factor-reset.routes.js";
@@ -113,6 +114,7 @@ export function createAdminRoutes(
   attachAdminSecurityRoutes(platform, container.admin.staffTwoFactorPolicy);
   attachAdminStaffAccessRoutes(platform, container.admin.staffAccess);
   attachAdminTwoFactorResetRoutes(platform, container.admin.twoFactorReset);
+  attachAdminSavedViewRoutes(platform, container.admin.savedViews);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 

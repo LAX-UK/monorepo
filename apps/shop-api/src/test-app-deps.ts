@@ -1,8 +1,10 @@
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
+import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
+import { createInMemorySavedViewRepository } from "./test-support/in-memory-saved-view-repository.js";
 import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
 import { createStubProductionTaskRepository } from "./test-support/stub-production-task-repository.js";
 
@@ -155,6 +157,7 @@ export function createMinimalShopApiTestDeps(
           brokerCanAccessClientParty: async () => false,
         },
       }),
+      savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
       enquiryInbox: createEnquiryInboxService({
         repository: createStubEnquiryInboxRepository(),
         staffReader: {

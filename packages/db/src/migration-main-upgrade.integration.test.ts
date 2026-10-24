@@ -20,7 +20,7 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
-const FINAL_FOLDER_MILLIS = 1794902400000;
+const FINAL_FOLDER_MILLIS = 1794988800000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -613,6 +613,46 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
       await executeMigrationSql(pool, "0226_rollback.sql");
       await pool.query("SELECT public.user_pii_purge($1)", [bystander]);
       expect(await countFor("session", bystander)).toBe(1);
+    });
+  });
+
+  it("creates each tool's saved views table with one view name per person and list, and rolls back", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+
+      const owner = "3c8e5a1d-7b24-4f96-a0e3-9d1b6c2f4a78";
+      for (const table of ["admin_saved_view", "shop_staff_saved_view"]) {
+        const insert = (subject: string, listKey: string, label: string) =>
+          pool.query(
+            `INSERT INTO public."${table}" ("owner_subject_id", "list_key", "label", "query")
+             VALUES ($1, $2, $3, 'status=paid')`,
+            [subject, listKey, label],
+          );
+        await insert(owner, "test.orders", "Paid");
+        // The same name is fine for another list or another person, not twice in one list.
+        await insert(owner, "test.staff", "Paid");
+        await insert("someone-else", "test.orders", "Paid");
+        await expect(insert(owner, "test.orders", "Paid")).rejects.toMatchObject({ code: "23505" });
+
+        const row = await pool.query<{ position: number }>(
+          `SELECT position FROM public."${table}" WHERE owner_subject_id = $1 AND list_key = 'test.orders'`,
+          [owner],
+        );
+        expect(row.rows).toEqual([{ position: 0 }]);
+        const index = await pool.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = $1
+             AND indexname = $2`,
+          [table, `${table}_owner_list_idx`],
+        );
+        expect(index.rowCount).toBe(1);
+      }
+
+      await executeMigrationSql(pool, "0227_rollback.sql");
+      const tables = await pool.query(
+        `SELECT to_regclass('public.admin_saved_view') AS admin,
+                to_regclass('public.shop_staff_saved_view') AS shop`,
+      );
+      expect(tables.rows[0]).toEqual({ admin: null, shop: null });
     });
   });
 

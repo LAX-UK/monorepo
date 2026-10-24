@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, ListFilter, Plus, Rows3, Rows4, Search, X } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { Field } from "../forms/field.js";
 import { cn } from "../lib/cn.js";
 import { StaffDialog } from "../panels/staff-dialog.js";
@@ -17,7 +18,14 @@ import {
 } from "../primitives/menu.js";
 import { Count, SegmentedControl } from "../primitives/tabs.js";
 import type { StaffLinkComponent } from "../shell/link.js";
+import {
+  type SavedView,
+  type SavedViewsControls,
+  sameViewQuery,
+  viewQuery,
+} from "./saved-views.js";
 import type { TableDensity } from "./types.js";
+import { type TeamView, VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./views-menu.js";
 
 /** The rows above a table: views on top, then search, filters and view options. */
 export function DataTableToolbar({
@@ -282,100 +290,123 @@ export type DataView = {
   label: string;
   href: string;
   count?: number;
-  custom?: boolean;
 };
 
 /**
- * Built-in and saved views of a list as tabs: each is a URL, so a view can be bookmarked or
- * shared. Saved views can be removed; "Save view" stores the current filters under a name.
+ * A list's views as tabs: each is a URL, so a view can be bookmarked or shared. The tabs are the
+ * built-in views (with counts). The Views menu adds the team's fixed views and the person's own
+ * saved views, which follow them across devices; "Save view" keeps the current search and
+ * filters as one. When the list is showing a team or saved view it appears as the active tab.
  */
 export function DataViews({
   views,
   activeId,
   Link,
-  onSaveCurrent,
-  onRemove,
+  team = [],
+  saved,
+  savedHref,
+  currentQuery,
 }: {
   views: readonly DataView[];
   activeId: string | null;
   Link: StaffLinkComponent;
-  /** Saves the current filters under the name staff give; offers "Save view" when set. */
-  onSaveCurrent?: (label: string) => void;
-  onRemove?: (id: string) => void;
+  /** Views fixed in code for everyone; shown in the Views menu, never editable. */
+  team?: readonly TeamView[];
+  /** The person's own views (from `useSavedViews`); turns on saving and managing them. */
+  saved?: SavedViewsControls;
+  /** The list URL for one of the person's views. */
+  savedHref?: (view: SavedView) => string;
+  /** The list's current search and filters as URL params, empty when there are none. */
+  currentQuery?: string;
 }) {
-  const [naming, setNaming] = React.useState(false);
-  const [name, setName] = React.useState("");
-  const close = () => {
-    setNaming(false);
-    setName("");
+  const [naming, setNaming] = React.useState<{ name: string; error?: string } | null>(null);
+  const personal = saved?.views ?? [];
+  const query = viewQuery(currentQuery ?? "");
+  const savedMatch = query ? personal.find((view) => sameViewQuery(view.query, query)) : undefined;
+  const teamMatch = query ? team.find((view) => sameViewQuery(view.query, query)) : undefined;
+  const matched = savedMatch
+    ? { id: savedMatch.id, label: savedMatch.label, href: savedHref?.(savedMatch) ?? "#" }
+    : teamMatch
+      ? { id: teamMatch.id, label: teamMatch.label, href: teamMatch.href }
+      : null;
+  const tabs: DataView[] = matched ? [...views, matched] : [...views];
+  const currentId = matched?.id ?? activeId;
+
+  const save = async (name: string) => {
+    if (!saved) return;
+    setNaming(null);
+    const result = await saved.save(name, query);
+    if (result.ok) toast.success(`Saved “${name}”`);
+    else setNaming({ name, error: result.message });
   };
+
   return (
-    <nav
-      aria-label="Views"
-      className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none]"
-    >
-      <ul className="flex min-w-max items-center gap-0.5">
-        {views.map((view) => {
-          const active = view.id === activeId;
-          return (
-            <li key={view.id} className="group/view relative flex items-center">
-              <Link
-                href={view.href}
-                {...(active ? { "aria-current": "page" as const } : {})}
-                className={cn(
-                  "staff-focus relative flex h-10 items-center gap-1.5 rounded-staff-xs px-2.5 text-staff-sm font-medium transition-colors",
-                  "after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full",
-                  active
-                    ? "text-staff-fg after:bg-staff-ink"
-                    : "text-staff-muted hover:text-staff-fg",
-                  view.custom && onRemove && "pr-7",
-                )}
-              >
-                {view.label}
-                {view.count !== undefined ? <Count value={view.count} /> : null}
-              </Link>
-              {view.custom && onRemove ? (
-                <StaffButton
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Remove saved view: ${view.label}`}
-                  onClick={() => onRemove(view.id)}
-                  className="absolute right-1 size-5 opacity-0 group-hover/view:opacity-100 focus-visible:opacity-100 [&_svg]:size-3"
+    <div className="flex items-center gap-1">
+      <nav aria-label="Views" className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
+        <ul className="flex min-w-max items-center gap-0.5">
+          {tabs.map((view) => {
+            const active = view.id === currentId;
+            return (
+              <li key={view.id}>
+                <Link
+                  href={view.href}
+                  {...(active ? { "aria-current": "page" as const } : {})}
+                  className={cn(
+                    "staff-focus relative flex h-10 items-center gap-1.5 rounded-staff-xs px-2.5 text-staff-sm font-medium transition-colors",
+                    "after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full",
+                    active
+                      ? "text-staff-fg after:bg-staff-ink"
+                      : "text-staff-muted hover:text-staff-fg",
+                  )}
                 >
-                  <X aria-hidden />
-                </StaffButton>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-      {onSaveCurrent ? (
-        <StaffButton
-          variant="ghost"
-          size="sm"
-          icon={<Plus aria-hidden />}
-          onClick={() => setNaming(true)}
-          className="ml-1 shrink-0 text-staff-muted"
-        >
-          Save view
-        </StaffButton>
+                  {view.label}
+                  {view.count !== undefined ? <Count value={view.count} /> : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      {team.length > 0 || saved ? (
+        <div className="flex shrink-0 items-center gap-1">
+          {saved && query && !matched ? (
+            <StaffButton
+              variant="ghost"
+              size="sm"
+              icon={<Plus aria-hidden />}
+              onClick={() => setNaming({ name: "" })}
+              className="text-staff-muted"
+            >
+              Save view
+            </StaffButton>
+          ) : null}
+          <ViewsMenu
+            team={team}
+            saved={saved}
+            savedHref={savedHref}
+            activeViewId={matched?.id ?? null}
+            Link={Link}
+          />
+        </div>
       ) : null}
-      {onSaveCurrent ? (
+      {saved ? (
         <StaffDialog
-          open={naming}
-          onOpenChange={(open) => (open ? setNaming(true) : close())}
+          open={naming !== null}
+          onOpenChange={(open) => {
+            if (!open) setNaming(null);
+          }}
           title="Save view"
-          description="Keeps the current search and filters as a view in this browser."
+          description="Keeps the current search and filters as a view you can open from any device."
           footer={
             <>
-              <StaffButton variant="secondary" onClick={close}>
+              <StaffButton variant="secondary" onClick={() => setNaming(null)}>
                 Cancel
               </StaffButton>
               <StaffButton
                 variant="primary"
                 type="submit"
                 form="staff-save-view"
-                disabled={!name.trim()}
+                disabled={!naming?.name.trim()}
               >
                 Save view
               </StaffButton>
@@ -386,65 +417,24 @@ export function DataViews({
             id="staff-save-view"
             onSubmit={(event) => {
               event.preventDefault();
-              if (!name.trim()) return;
-              onSaveCurrent(name.trim());
-              close();
+              const name = naming?.name.trim();
+              if (name) void save(name);
             }}
           >
-            <Field label="Name">
+            <Field label="Name" error={naming?.error}>
               <TextInput
                 autoFocus
-                maxLength={40}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                maxLength={VIEW_LABEL_MAX_LENGTH}
+                value={naming?.name ?? ""}
+                onChange={(event) => setNaming({ name: event.target.value })}
                 placeholder="e.g. Paid this week"
               />
             </Field>
           </form>
         </StaffDialog>
       ) : null}
-    </nav>
+    </div>
   );
-}
-
-export type SavedView = { id: string; label: string; query: string };
-
-/** Views a person saved for a list, kept in this browser. */
-export function useSavedViews(listKey: string) {
-  const storageKey = `staff.views.${listKey}`;
-  const [views, setViews] = React.useState<SavedView[]>([]);
-  React.useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      const parsed: unknown = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) {
-        setViews(
-          parsed.filter(
-            (view): view is SavedView =>
-              typeof view?.id === "string" &&
-              typeof view?.label === "string" &&
-              typeof view?.query === "string",
-          ),
-        );
-      }
-    } catch {
-      setViews([]);
-    }
-  }, [storageKey]);
-  const persist = (next: SavedView[]) => {
-    setViews(next);
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(next));
-    } catch {
-      // Storage unavailable: views last for this page only.
-    }
-  };
-  return {
-    views,
-    save: (label: string, query: string) =>
-      persist([...views, { id: `view-${Date.now().toString(36)}`, label, query }]),
-    remove: (id: string) => persist(views.filter((view) => view.id !== id)),
-  };
 }
 
 /**

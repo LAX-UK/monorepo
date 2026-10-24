@@ -1,15 +1,21 @@
 "use client";
 
 import { useAdminMutation } from "@/components/use-admin-mutation";
+import { useListNavigation } from "@/components/use-list-navigation.client";
+import { createSavedViewsPort } from "@/lib/saved-views-port.client";
 import { grantStaffRole, revokeStaffRole } from "@/server/application/admin-people-actions.server";
 import {
+  STAFF_LIST_PATH,
   STAFF_ROLE_OPTIONS,
   type StaffMemberRow,
   filterStaff,
   isGrantableRole,
   lastActiveLabel,
+  parseStaffListParams,
+  staffListHref,
   staffMemberName,
   staffMemberStatus,
+  staffTeamViews,
 } from "@/server/domain/staff-directory.vm";
 import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
 import {
@@ -19,6 +25,7 @@ import {
   type DataColumn,
   DataTable,
   DataTableToolbar,
+  DataViews,
   DetailPanel,
   EmptyState,
   EnumSelect,
@@ -35,9 +42,13 @@ import {
   TextInput,
   formatStaffDateTime,
   initialsOf,
+  useSavedViews,
 } from "@auction/staff-ui";
 import { CircleAlert, UserPlus } from "@auction/staff-ui/icons";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+
+const STAFF_LIST_KEY = "lax-admin.staff";
 
 type GrantableRole = (typeof STAFF_ROLE_OPTIONS)[number]["value"];
 
@@ -357,8 +368,15 @@ export function StaffDirectory({
   now: string;
   footer?: React.ReactNode;
 }) {
-  const [q, setQ] = useState("");
-  const [roles, setRoles] = useState<string[]>([]);
+  const router = useRouter();
+  const { Link: ListLink } = useListNavigation();
+  const { q, roles } = parseStaffListParams(useSearchParams());
+  const setFilter = (next: { q: string; roles: string[] }) =>
+    router.replace(staffListHref(next), { scroll: false });
+  const port = useMemo(() => createSavedViewsPort(STAFF_LIST_KEY), []);
+  const saved = useSavedViews(STAFF_LIST_KEY, port);
+  const teamViews = useMemo(() => staffTeamViews(), []);
+  const currentQuery = staffListHref({ q, roles }).split("?")[1] ?? "";
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const today = useMemo(() => new Date(now), [now]);
@@ -454,12 +472,23 @@ export function StaffDirectory({
         activeRowId={openId}
         toolbar={
           <DataTableToolbar
+            views={
+              <DataViews
+                views={[{ id: "all", label: "All", href: STAFF_LIST_PATH, count: members.length }]}
+                activeId="all"
+                Link={ListLink}
+                team={teamViews}
+                saved={saved}
+                savedHref={(view) => `${STAFF_LIST_PATH}?${view.query}`}
+                currentQuery={currentQuery}
+              />
+            }
             search={
               <TableSearch
                 label="Search staff"
                 placeholder="Name or email"
                 value={q}
-                onSearch={setQ}
+                onSearch={(next) => setFilter({ q: next, roles })}
                 live
               />
             }
@@ -472,7 +501,7 @@ export function StaffDirectory({
                   count: roleCounts.get(option.value) ?? 0,
                 }))}
                 selected={roles}
-                onChange={setRoles}
+                onChange={(next) => setFilter({ q, roles: next })}
               />
             }
           />
@@ -488,13 +517,7 @@ export function StaffDirectory({
               title="No one matches"
               description="Try another name or email, or clear the role filter."
               action={
-                <StaffButton
-                  size="sm"
-                  onClick={() => {
-                    setQ("");
-                    setRoles([]);
-                  }}
-                >
+                <StaffButton size="sm" onClick={() => setFilter({ q: "", roles: [] })}>
                   Clear filters
                 </StaffButton>
               }

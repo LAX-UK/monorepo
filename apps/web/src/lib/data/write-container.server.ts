@@ -16,6 +16,7 @@ import { AdminQrCodesService } from "@/lib/services/impl/admin-qr-codes.service"
 import { AdminSaleRegistrationsService } from "@/lib/services/impl/admin-sale-registrations.service";
 import { AdminSaleService } from "@/lib/services/impl/admin-sale.service";
 import { AdminSaleroomService } from "@/lib/services/impl/admin-saleroom.service";
+import { AdminSavedViewService } from "@/lib/services/impl/admin-saved-view.service";
 import { AdminStripeConnectService } from "@/lib/services/impl/admin-stripe-connect.service";
 import { AdminSubmissionService } from "@/lib/services/impl/admin-submission.service";
 import { AdminTelephoneService } from "@/lib/services/impl/admin-telephone.service";
@@ -43,6 +44,7 @@ import type { IAdminQrCodesService } from "@/lib/services/interfaces/admin-qr-co
 import type { IAdminSaleRegistrationsService } from "@/lib/services/interfaces/admin-sale-registrations-service";
 import type { IAdminSaleService } from "@/lib/services/interfaces/admin-sale-service";
 import type { IAdminSaleroomService } from "@/lib/services/interfaces/admin-saleroom-service";
+import type { IAdminSavedViewService } from "@/lib/services/interfaces/admin-saved-view-service";
 import type { IAdminStripeConnectService } from "@/lib/services/interfaces/admin-stripe-connect-service";
 import type { IAdminSubmissionService } from "@/lib/services/interfaces/admin-submission-service";
 import type { IAdminTelephoneService } from "@/lib/services/interfaces/admin-telephone-service";
@@ -85,6 +87,7 @@ export type WriteServiceContainer = {
   adminUsers: IAdminUserService;
   adminPayments: IAdminPaymentOpsService;
   invitations: IAdminInvitationService;
+  adminSavedViews: IAdminSavedViewService;
 };
 
 let cached: WriteServiceContainer | null = null;
@@ -124,6 +127,7 @@ export function getWriteContainer(): WriteServiceContainer {
     adminUsers: new AdminUserService(api),
     adminPayments: new AdminPaymentOpsService(api),
     invitations: new AdminInvitationService(api),
+    adminSavedViews: new AdminSavedViewService(api),
   };
   return cached;
 }
