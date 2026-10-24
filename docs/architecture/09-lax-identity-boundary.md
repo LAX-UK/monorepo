@@ -89,6 +89,7 @@ The executable registries are
 | `lax-bid-web` | confidential | `http://localhost:3000/api/auth/callback/lax-bid-web`; `https://lax.bid/api/auth/callback/lax-bid-web`; `https://test.lax.bid/api/auth/callback/lax-bid-web` | corresponding origin `/` | `lax-bid-api`, `lax-ws` | `openid profile email offline_access bid.read bid.write` |
 | `lax-shop-web` | confidential | `http://localhost:3010/auth/callback`; `https://shop.lax.art/auth/callback` | corresponding origin `/` | `lax-shop-api` | `openid profile email offline_access shop.read shop.write` |
 | `lax-account-web` | confidential | `http://localhost:3040/api/auth/callback`; `https://account.lax.bid/api/auth/callback`; `https://test-account.lax.bid/api/auth/callback` | corresponding origin `/` | `lax-bid-api`, `lax-shop-api` | `openid profile email offline_access phone lax.portfolio.read` |
+| `lax-shop-admin` | confidential | `http://localhost:3030/api/auth/callback`; `https://test-shop-admin.lax.bid/api/auth/callback`; `https://admin.shop.lax.art/api/auth/callback` | corresponding origin `/` | `lax-shop-api`, `lax-bid-api` | `openid profile email offline_access shop.admin lax.staff.tools.read` |
 | `ws-mobile` | public | `com.lax.bid:/oauth/callback` | none | `lax-ws` | `openid profile email offline_access bid.read` |
 
 All interactive clients require S256 PKCE. Redirect and post-logout URIs are
@@ -96,7 +97,7 @@ separate exact allowlists with no wildcards.
 
 | Resource id / access-token `aud` | RFC 8707 resource | Allowed product scopes |
 |---|---|---|
-| `lax-bid-api` | `https://api.lax.bid` | `bid.read`, `bid.write`, `lax.portfolio.read` |
+| `lax-bid-api` | `https://api.lax.bid` | `bid.read`, `bid.write`, `lax.portfolio.read`, `lax.staff.tools.read` |
 | `lax-ws` | `https://ws.lax.bid` | `bid.read` |
 | `lax-shop-api` | `https://shop.lax.art/api` | `shop.read`, `shop.write`, `lax.portfolio.read` |
 
@@ -111,6 +112,13 @@ resource per exchange, to list a person's own works and money. Each product acce
 its portfolio routes only; every other route still requires its `*.read` or `*.write` scope.
 The issuer's client registry must be re-applied (`db:configure-oidc-clients`) in each
 environment for the Account client to receive the new resources and scope.
+
+`lax.staff.tools.read` lets LAX Admin ask the Bid API which staff tools the signed-in
+person may open (`GET /admin/staff/my-tools`), so the staff product switcher lists only
+tools that will accept them. LAX Admin exchanges the person's own session for a
+`lax-bid-api` token with this scope; only the `lax-shop-admin` client may request it, and
+the route answers about the caller alone. Re-apply `db:configure-oidc-clients` in each
+environment for the client to receive the Bid resource and scope.
 
 ## Token classes and verifier obligations
 
