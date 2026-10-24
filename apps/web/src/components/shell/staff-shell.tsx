@@ -1,12 +1,13 @@
 "use client";
 
-import { AppShell } from "@/components/layout/app-shell";
+import { BidStaffFrame } from "@/components/shell/bid-staff-frame";
 import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
+import type { StaffProduct } from "@auction/staff-ui";
 import { type ReactNode, useMemo } from "react";
 
 type Props = {
@@ -19,6 +20,10 @@ type Props = {
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
+  /** Staff tools this person can switch to (product switcher). */
+  products: StaffProduct[];
+  /** Server-read sidebar state, so the first paint has the right width. */
+  defaultCollapsed?: boolean;
   children: ReactNode;
 };
 
@@ -33,6 +38,8 @@ export function StaffShell({
   contextBanner,
   topSlot,
   acting = { kind: "self" },
+  products,
+  defaultCollapsed = false,
   children,
 }: Props) {
   const config = useMemo(
@@ -60,9 +67,15 @@ export function StaffShell({
 
   return (
     <ViewerCapabilitiesProvider user={user} acting={acting}>
-      <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>
+      <BidStaffFrame
+        user={user}
+        config={config}
+        products={products}
+        cookieDensity={cookieDensity ?? null}
+        defaultCollapsed={defaultCollapsed}
+      >
         {children}
-      </AppShell>
+      </BidStaffFrame>
     </ViewerCapabilitiesProvider>
   );
 }

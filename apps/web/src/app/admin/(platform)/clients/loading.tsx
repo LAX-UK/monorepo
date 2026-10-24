@@ -1,13 +1,11 @@
-import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function ClientsLoading() {
   return (
-    <PeopleListPageSkeleton
+    <ListPageSkeleton
       title="Clients"
-      description="Loading clients…"
-      kpiTiles={4}
-      tableRows={10}
-      tableColumns={6}
+      description="Collector and seller accounts. Open a client to see their activity, identity checks and account controls."
+      columns={["Name", "Email", "Identity", "Account", "Joined"]}
     />
   );
 }

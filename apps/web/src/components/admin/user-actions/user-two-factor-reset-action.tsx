@@ -5,7 +5,7 @@ import { adminResetTwoFactorResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
 import { USER_MODERATION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton } from "@auction/staff-ui";
 import { ADMIN_TWO_FACTOR_RESET_REASON_MIN } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -32,15 +32,15 @@ export function UserTwoFactorResetAction({
 
   return (
     <Can requirement={USER_MODERATION_ACCESS}>
-      <Button
-        type="button"
-        variant="outline"
-        className={fullWidthButton ? "min-h-11 w-full" : "min-h-11"}
-        disabled={pending}
+      <StaffButton
+        variant="danger-secondary"
+        size="sm"
+        className={fullWidthButton ? "w-full sm:w-auto" : undefined}
+        loading={pending}
         onClick={() => setConfirmOpen(true)}
       >
         Reset two-step verification
-      </Button>
+      </StaffButton>
       <TypedConfirmationDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

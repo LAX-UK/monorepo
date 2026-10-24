@@ -5,9 +5,12 @@
 @import "@auction/marketing-ui/marketing-header.css";
 @import "@auction/marketing-ui/marketing-ui.css";
 @import "../styles/tokens-utilities.css";
+@import "@auction/staff-ui/theme.css";
 
 /* Scan shared UI package so Tailwind keeps utilities used in @auction/ui */
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
+/* The staff design system (Bid admin's shell, tables, panels and forms). */
+@source "../../../../packages/staff-ui/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

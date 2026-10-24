@@ -8,6 +8,7 @@ import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
 import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
+import { loadStaffProducts } from "@/lib/admin/staff-products.server";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -25,6 +26,7 @@ import {
   parseDashboardDensityCookie,
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { STAFF_NAV_COOKIE } from "@auction/staff-ui";
 import {
   type UserRole,
   type UserStaffRole,
@@ -98,6 +100,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const jar = await cookies();
   const cookieDensity = parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
+  const products = loadStaffProducts();
+  const navCollapsed = jar.get(STAFF_NAV_COOKIE)?.value === "collapsed";
 
   const showImpersonationBanner =
     Boolean(impersonation) &&
@@ -139,6 +143,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               navCounts={navCounts}
               cookieDensity={cookieDensity}
               acting={acting}
+              products={products}
+              defaultCollapsed={navCollapsed}
               headerActionsSlot={headerActionsSlot}
               topSlot={<WelcomeBackToast />}
             >
@@ -152,6 +158,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               navCounts={navCounts}
               cookieDensity={cookieDensity}
               acting={acting}
+              products={products}
+              defaultCollapsed={navCollapsed}
               headerActionsSlot={headerActionsSlot}
               contextBanner={<PlatformStaffContextBanners />}
               topSlot={<WelcomeBackToast />}

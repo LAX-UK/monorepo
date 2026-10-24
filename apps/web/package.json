@@ -36,6 +36,7 @@
     "@auction/marketing-ui": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/types": "workspace:*",
+    "@auction/staff-ui": "workspace:*",
     "@auction/ui": "workspace:*",
     "@auction/validators": "workspace:*",
     "@date-fns/tz": "^1.5.0",

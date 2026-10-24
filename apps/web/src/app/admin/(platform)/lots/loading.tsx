@@ -1,13 +1,11 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function LotsLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Lots"
-      description="Loading lots…"
-      kpiTiles={6}
-      tableRows={10}
-      tableColumns={6}
+      description="Publish, schedule and triage catalogue lots. Open a lot to see it beside the list."
+      columns={["Lot", "Sale", "Status", "Estimate", "Hammer", "Ends"]}
     />
   );
 }
