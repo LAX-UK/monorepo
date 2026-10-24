@@ -1,3 +1,4 @@
+import { adminResetTwoFactorBodySchema } from "@auction/validators";
 import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -6,8 +7,6 @@ import type { AdminTwoFactorResetService } from "../../services/admin/admin-two-
 import type { AdminHono } from "./_shared.js";
 
 const userParamSchema = z.object({ userId: z.string().min(1) });
-/** A reason is required so the audit entry says why someone's sign-in protection was removed. */
-const resetBodySchema = z.object({ reason: z.string().trim().min(10).max(500) });
 
 /** Resetting two-step verification for a customer who lost every way to pass it. */
 export function attachAdminTwoFactorResetRoutes(
@@ -18,7 +17,7 @@ export function attachAdminTwoFactorResetRoutes(
     "/users/:userId/two-factor/reset",
     requireUserModeration,
     zValidator("param", userParamSchema),
-    zValidator("json", resetBodySchema),
+    zValidator("json", adminResetTwoFactorBodySchema),
     async (c) => {
       const result = await twoFactorReset.reset(
         {

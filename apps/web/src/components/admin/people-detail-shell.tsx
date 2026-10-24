@@ -81,7 +81,11 @@ export function PeopleDetailShell({
   ) : null;
 
   const dangerZone = showDangerZone ? (
-    <AdminUserDangerZone userId={user.id} suspendedAt={user.suspendedAt} />
+    <AdminUserDangerZone
+      userId={user.id}
+      suspendedAt={user.suspendedAt}
+      twoFactorEnabled={user.twoFactorEnabled}
+    />
   ) : null;
 
   const clientContextRail =

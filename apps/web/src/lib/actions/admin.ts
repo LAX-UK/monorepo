@@ -103,6 +103,9 @@ export const adminSetUserRoleResultAction = _adminSetUserRoleResultAction;
 import { adminSuspendUserResultAction as _adminSuspendUserResultAction } from "./admin/admin-users";
 export const adminSuspendUserResultAction = _adminSuspendUserResultAction;
 
+import { adminResetTwoFactorResultAction as _adminResetTwoFactorResultAction } from "./admin/admin-users";
+export const adminResetTwoFactorResultAction = _adminResetTwoFactorResultAction;
+
 import { adminUnsuspendUserResultAction as _adminUnsuspendUserResultAction } from "./admin/admin-users";
 export const adminUnsuspendUserResultAction = _adminUnsuspendUserResultAction;
 
