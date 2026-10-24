@@ -4,6 +4,10 @@ The LAX staff design system: one set of tokens, one shell and one set of compone
 **LAX Admin** (`apps/shop-admin`) and **Bid admin** (`apps/web/src/app/admin`). Each tool keeps its
 own pages and permissions; they look and behave the same.
 
+The rules both tools are audited against, and which of them the kit meets, are in the
+[staff design standard](../../docs/design/staff-design-standard.md). When a change here meets or
+breaks a rule, update that rule's **Kit** line in the same pull request.
+
 ## Why a separate package
 
 `@auction/ui` serves customer surfaces (Bid, Shop, Art, Account) at a 44px, marketing-led scale.
@@ -36,7 +40,7 @@ and tests read); `tokens.test.ts` fails if they drift. Use the scales only; no a
 | Scale | Steps | Use |
 | --- | --- | --- |
 | Spacing | 4px unit, 4/8 rhythm: 4, 8, 12, 16, 20, 24, 32, 40, 48 | Tailwind `1 2 3 4 5 6 8 10 12`; `0.5` only for 2px optical nudges |
-| Type | `text-staff-2xs` 11/16, `xs` 12/16, `sm` 13/20, `md` 14/20, `lg` 16/24, `xl` 20/28 | Outfit for the interface, Montserrat (`font-staff-display`) for page, panel and dialog titles; `tabular-nums` for money, counts and dates in tables |
+| Type | `text-staff-2xs` 11/16, `xs` 12/16, `sm` 13/20, `md` 14/20, `lg` 16/24, `xl` 20/28 | Outfit for the interface, Montserrat (`font-staff-display`) for page, panel and dialog titles; `tabular-nums` for money, counts and dates in tables. 12px is the floor for words; `2xs` is for digits in counters and `kbd` glyphs only |
 | Weight | 400, 500, 600 | Body, interactive labels, titles |
 | Radius | `rounded-staff-xs` 4, `sm` 6, `md` 8, `lg` 12 | Badges and checkboxes; controls; cards, menus, tables; dialogs and sheets |
 | Control height | `h-control-xs` 24, `sm` 32, `md` 36, `lg` 40 | Inline; compact (toolbars, filters); default (forms); the ⌘K field. Coarse pointers grow to 44 (`staff-target`) |
@@ -45,6 +49,7 @@ and tests read); `tokens.test.ts` fails if they drift. Use the scales only; no a
 | Elevation | flat + hairline; `shadow-staff-xs`; `md`; `lg` | Page, cards, tables; secondary buttons; menus, popovers, bulk bar; dialogs, sheets, ⌘K |
 | Icons | lucide, 1.75 stroke; 14, 16, 20 | Badges and compact controls; controls and nav; empty states |
 | Layout | nav 240 (56 collapsed), top bar 52, content max 1280, panel 480/640 | |
+| Sticky layers | `--spacing-staff-top-bar` 52, `table-header` 36, `bulk-bar-clearance` 72 | The page's scroll padding while each is on screen, so focus is never hidden under them (WCAG 2.4.11) |
 
 ### Colour
 
@@ -54,6 +59,10 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
 - **Neutrals**: `canvas` (page), `surface` (cards, tables), `sunken` (nav, tracks), `raised`
   (menus, dialogs); `line-subtle`, `line`, `line-strong`, `line-hover`; `fg`, `muted`, `subtle`,
   `disabled`; `ink` and `on-ink` for primary buttons and selected controls.
+- **Control border**: `control-border` and `control-border-hover` are the only edge of inputs,
+  selects, pickers, the money input, checkboxes, radios and the switch's off track. They keep at
+  least 3:1 against every surface in both themes (WCAG 1.4.11), which `tokens.test.ts` checks.
+  The `line*` hairlines are decorative (cards, tables, secondary buttons) and stay faint.
 - **Interaction** is translucent (`staff-overlay-hover`, `-pressed`, `-selected`) so hover reads
   the same on any surface.
 - **Status tones**: neutral, info, success, warning, danger, each with `-bg`, `-fg` and `-dot`.
@@ -66,25 +75,47 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
 ## Components
 
 - **Shell**: `StaffShell` (grouped, collapsible nav; top bar with ⌘K; product switcher; account
-  menu), `PageHeader`, `StaffBreadcrumbs`, `OverflowMenu`, `CommandPalette`, `AccountMenu`.
-- **Data**: `DataTable` (typed columns, sorting, selection, bulk-action bar, keyboard rows,
-  loading/empty/error, stacked list below 768px), `DataTableToolbar`, `DataViews` (built-in and
+  menu; the keyboard-shortcut registry), `PageHeader`, `StaffBreadcrumbs`, `RecordPager` ("‹ 3 of
+  50 ›" with J and K), `OverflowMenu` (disabled reasons and shortcuts per action; steps aside
+  while table rows are selected), `CommandPalette`, `AccountMenu`, `useStaffShortcut`,
+  `ShortcutsDialog`.
+- **Data**: `DataTable` (typed columns; a default sort that only toggles; selection from the
+  whole checkbox cell, Shift+click ranges and "Select all N matching"; bulk-action bar; keyboard
+  rows; sticky header and optional sticky first column; truncation with a full-value tooltip;
+  loading/empty/error; stacked list below 768px), `DataTableToolbar`, `DataViews` (built-in and
   saved views), `TableSearch`, `FilterMenu`, `ActiveFilterChips`, `DensityToggle`,
   `TablePagination`, `ListPageSkeleton`, `DateRangeFilter` (presets plus two date fields, whole
   London days as `YYYY-MM-DD`).
-- **Record pages**: `Section`, `KeyValueList`, `Timeline`, `StatGrid`, `StatusBadge` with
+- **Overview**: `AttentionList` (queues that need someone, linking to the filtered list).
+- **Record pages**: `Section`, `KeyValueList`, `Timeline`, `RelativeTime`, `TruncatedText`,
+  `StatGrid`, `StatusBadge` with
   `defineStatusMap` (one map per domain status), `Notice` (info, warning or danger line above
   the work it concerns), `DangerZone` and `DangerZoneAction`.
-- **Panels**: `DetailPanel` (side sheet), `StaffDialog`, `ConfirmActionDialog`, `StaffToaster`.
+- **Panels**: `DetailPanel` (side sheet; asks before closing over unsaved changes), `StaffDialog`,
+  `ConfirmActionDialog` (Cancel focused first; optional audited `reason` and
+  `typedConfirmation`), `StepUpDialog`, `StepUpNotice` and `useStaffStepUp` (the
+  `step_up_required` contract), `StaffToaster`, `toastUndo`, `useOptimisticState`.
+- **Formatting**: `formatStaffDate`, `formatStaffTime`, `formatStaffDateTime` (with a BST or GMT
+  label where the moment matters), `formatStaffRelative`, `formatStaffMoney` (minus sign, ISO code
+  for other currencies), all in London time.
 - **Forms**: `Field` (label, hint, inline error, wired by context), `TextInput`, `TextArea`,
-  `MoneyInput` (pounds on screen, pence in data), `FileDropzone` (drop or browse; the native
+  `MoneyInput` (pounds on screen, pence in data), `DateInput` and `DateTimeInput` (typed dates,
+  an optional calendar, a 24-hour clock and a fixed London zone label), `useUnsavedChanges`,
+  `UnsavedChangesGuard` and `confirmDiscardChanges` (ask before unsaved changes are lost),
+  `FileDropzone` (drop or browse; the native
   file input stays inside, visually hidden), `EnumSelect` (closed lists, e.g. valid next
   states), `EntityPicker` (search records by name), `FormSection`, `FieldRow`, `FormActions`,
-  `FormErrorSummary`, `StaffCheckbox`, `StaffRadio`, `StaffSwitch`, `ChoiceRow`,
+  `FormErrorSummary` (takes focus, links focus each field), `StaffCheckbox`, `StaffRadio`,
+  `StaffSwitch`, `ChoiceRow`,
   `SegmentedControl`, `TabNav`.
 
 ## Keyboard
 
-⌘K / Ctrl+K opens search from anywhere. In tables: arrows move between rows, Enter opens the row,
-Space selects it, Escape clears the selection. Panels and dialogs trap focus, close on Escape and
-return focus to what opened them.
+⌘K / Ctrl+K opens search from anywhere, and `?` lists every shortcut that works on the page. `/`
+focuses the list's search. In tables: arrows or J and K move between rows, Enter opens the row,
+Space or X selects it, Shift extends the selection, Escape clears it. On a record opened from a
+list, J and K move to the next and previous record. Panels and dialogs trap focus, close on Escape
+and return focus to what opened them.
+
+Pages add keys with `useStaffShortcut({ id, keys, label, group, handler })`. Single-key shortcuts
+never fire while typing in a field, and people can turn them off from the account menu.

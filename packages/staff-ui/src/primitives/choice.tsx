@@ -8,13 +8,14 @@ import { cn } from "../lib/cn.js";
 
 /*
  * Checkbox, radio and switch: the shared Radix-backed primitives from @auction/ui, drawn at the
- * staff scale. 16px boxes (radius xs), ink when on, the hairline when off, and the same focus ring
- * as every other control. Each sits in a 32px row with its label so the hit area is generous.
+ * staff scale. 16px boxes (radius xs), ink when on, the control border (3:1 on any surface) when
+ * off, and the same focus ring as every other control. Each sits in a 32px row with its label so
+ * the hit area is generous.
  */
 
 const boxBase = [
-  "size-4 shrink-0 border border-staff-line-strong bg-staff-surface shadow-none",
-  "hover:border-staff-line-hover",
+  "size-4 shrink-0 border border-staff-control-border bg-staff-surface shadow-none",
+  "hover:border-staff-control-border-hover",
   // The wrapped primitive turns the outline off on focus; turn the staff ring back on explicitly.
   "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",
   "focus-visible:ring-0 focus-visible:ring-offset-0",
@@ -77,9 +78,11 @@ export function StaffSwitch({
       className={cn(
         "h-5 w-8 border-0 p-0.5",
         "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",
-        "data-[state=unchecked]:bg-staff-line-strong data-[state=checked]:bg-staff-ink",
-        "hover:data-[state=unchecked]:bg-staff-line-hover",
+        "data-[state=unchecked]:bg-staff-control-border data-[state=checked]:bg-staff-ink",
+        "hover:data-[state=unchecked]:bg-staff-control-border-hover hover:data-[state=checked]:bg-staff-ink-hover",
         "disabled:opacity-100 disabled:data-[state=checked]:bg-staff-line-hover disabled:data-[state=unchecked]:bg-staff-line",
+        // A disabled switch dims its thumb too, so it never reads as an active control.
+        "disabled:data-[state=unchecked]:[&>span]:bg-staff-disabled",
         className,
       )}
       thumbClassName="size-4 bg-staff-thumb shadow-staff-xs data-[state=checked]:translate-x-3 data-[state=checked]:bg-staff-on-ink data-[state=unchecked]:translate-x-0"

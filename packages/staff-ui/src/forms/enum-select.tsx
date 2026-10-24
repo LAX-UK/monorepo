@@ -74,7 +74,7 @@ export function EnumSelect<T extends string>({
           "staff-focus focus:ring-0 focus:ring-offset-0",
           "aria-invalid:border-staff-danger",
           "disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled disabled:opacity-100",
-          "data-[placeholder]:text-staff-subtle data-[state=open]:border-staff-line-hover",
+          "data-[placeholder]:text-staff-subtle data-[state=open]:border-staff-control-border-hover",
           "[&>svg]:opacity-100 [&_[data-option-hint]]:hidden",
           className,
         )}

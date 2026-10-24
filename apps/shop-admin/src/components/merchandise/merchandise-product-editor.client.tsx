@@ -6,7 +6,6 @@ import { FormScopeProvider } from "@/components/forms/form-field";
 import { MerchandiseConflictBanner } from "@/components/merchandise/merchandise-conflict-banner.client";
 import { MerchandiseStatusBadge } from "@/components/merchandise/merchandise-status-badge";
 import { MerchandiseVariants } from "@/components/merchandise/merchandise-variants.client";
-import { useUnsavedNavigationGuard } from "@/components/use-unsaved-changes-guard";
 import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
@@ -24,6 +23,7 @@ import {
 } from "@/server/application/admin-merchandise-actions.server";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
 import type { MerchandiseProductDetail } from "@auction/shop-contracts";
+import { UnsavedChangesDialog, useUnsavedChanges } from "@auction/staff-ui";
 import {
   Alert,
   AlertDescription,
@@ -100,12 +100,8 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
   const [busy, setBusy] = useState<Busy | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
-  const {
-    pending: leavePending,
-    stay,
-    leave,
-    release: releaseGuard,
-  } = useUnsavedNavigationGuard(dirty);
+  const leaveGuard = useUnsavedChanges(dirty, { navigate: (href) => router.push(href) });
+  const releaseGuard = leaveGuard.release;
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -487,17 +483,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
           if (current) await save(current);
         }}
       />
-      <ConfirmDialog
-        open={leavePending}
-        onOpenChange={(open) => {
-          if (!open) stay();
-        }}
-        title="Leave without saving?"
-        body="Your changes to this product have not been saved and will be lost."
-        confirmLabel="Leave without saving"
-        cancelLabel="Keep editing"
-        onConfirm={leave}
-      />
+      <UnsavedChangesDialog guard={leaveGuard} />
     </div>
   );
 }

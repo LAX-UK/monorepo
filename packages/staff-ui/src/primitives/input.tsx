@@ -11,7 +11,7 @@ import { cn } from "../lib/cn.js";
 export const staffFieldBox = [
   "flex w-full min-w-0 items-center gap-2 rounded-staff-sm border bg-staff-surface px-3",
   "font-staff text-staff-fg transition-[border-color,box-shadow] duration-150 ease-out",
-  "border-staff-line-strong hover:border-staff-line-hover",
+  "border-staff-control-border hover:border-staff-control-border-hover",
   "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-staff-focus",
   "has-[[aria-invalid=true]]:border-staff-danger",
   "has-[:disabled]:cursor-not-allowed has-[:disabled]:border-staff-line has-[:disabled]:bg-staff-sunken has-[:disabled]:text-staff-disabled",
@@ -107,5 +107,44 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
     >
       {children}
     </kbd>
+  );
+}
+
+const KEY_GLYPHS: Record<string, string> = {
+  shift: "⇧",
+  alt: "⌥",
+  enter: "↵",
+  escape: "esc",
+  arrowup: "↑",
+  arrowdown: "↓",
+};
+
+/**
+ * "g o" as two key caps, "mod+s" as ⌘ S (Ctrl S off a Mac), "?" as itself. The server renders ⌘
+ * and the browser corrects it after mount, so the first paint matches.
+ */
+export function ShortcutKeys({ keys, className }: { keys: string; className?: string }) {
+  const [mac, setMac] = React.useState(true);
+  React.useEffect(() => {
+    setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
+  }, []);
+  const steps = keys.split(" ");
+  return (
+    <span className={cn("inline-flex items-center gap-1", className)}>
+      {steps.map((step, index) => (
+        <React.Fragment key={`${step}-${index.toString()}`}>
+          {index > 0 ? <span className="text-staff-xs text-staff-subtle">then</span> : null}
+          {step.split("+").map((part) => (
+            <Kbd key={part}>
+              {part === "mod"
+                ? mac
+                  ? "⌘"
+                  : "Ctrl"
+                : (KEY_GLYPHS[part] ?? (part.length === 1 ? part.toUpperCase() : part))}
+            </Kbd>
+          ))}
+        </React.Fragment>
+      ))}
+    </span>
   );
 }

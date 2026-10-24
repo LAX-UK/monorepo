@@ -4,7 +4,6 @@ import { EditorialErrorList, EditorialStatusMessage } from "@/components/editori
 import { SelectField, TextField } from "@/components/forms/fields";
 import { MediaUploadField } from "@/components/media-upload-field";
 import { useEditorialMutation } from "@/components/use-editorial-mutation";
-import { useUnsavedChangesGuard } from "@/components/use-unsaved-changes-guard";
 import type { EditorialAdminRow } from "@/lib/editorial-entity-forms";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import {
@@ -21,6 +20,7 @@ import {
   placementDraftsBySlot,
 } from "@/lib/editorial-placements";
 import { replaceEditorialPlacementSlot } from "@/server/application/admin-editorial-actions.server";
+import { useBeforeUnloadGuard } from "@auction/staff-ui";
 import { Button } from "@auction/ui";
 import { useState } from "react";
 
@@ -161,7 +161,7 @@ function PlacementSlotEditor({
   const { status, setStatus, pending, run } = useEditorialMutation();
   const [drafts, setDrafts] = useState(initialDrafts);
   const [dirty, setDirty] = useState(false);
-  useUnsavedChangesGuard(dirty);
+  useBeforeUnloadGuard(dirty);
   const [errors, setErrors] = useState<string[]>([]);
   const headingId = `placement-${slot}-heading`;
 

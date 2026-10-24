@@ -186,6 +186,7 @@ export function ArtworkList({
         numeric: true,
         sortable: true,
         sortValue: (row) => row.printPricePence,
+        defaultSortDirection: "desc",
         mobile: "meta",
         cell: (row) =>
           row.printPricePence === null ? (
@@ -208,6 +209,7 @@ export function ArtworkList({
         numeric: true,
         sortable: true,
         sortValue: (row) => row.updatedAt,
+        defaultSortDirection: "desc",
         hideBelow: "xl",
         mobile: "hidden",
         cell: (row) => (
@@ -268,6 +270,7 @@ export function ArtworkList({
         columns={columns}
         data={page.items}
         getRowId={(row) => row.artworkId}
+        defaultSort={{ columnId: "updated", direction: "desc" }}
         density={density}
         loading={pending}
         onRowOpen={(row) => setOpenId(row.artworkId)}

@@ -162,6 +162,8 @@ export function BidStaffFrame({
               navigate={navigate}
               search={searchRecords}
               defaultCollapsed={defaultCollapsed}
+              // Bid admin's own hotkey help already answers "?".
+              shortcutsHelp={false}
               {...(config.header.actionsSlot ? { topBarActions: config.header.actionsSlot } : {})}
               account={
                 <AccountMenu

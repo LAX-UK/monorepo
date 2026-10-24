@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { formatStaffDateTime } from "../lib/format.js";
 import type { StaffStatusTone } from "../tokens.js";
 
 export type TimelineEvent = {
@@ -22,20 +23,6 @@ const dotTone: Record<StaffStatusTone, string> = {
   warning: "bg-staff-warning-dot",
   danger: "bg-staff-danger-dot",
 };
-
-const TIME = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/London",
-});
-
-export function formatStaffDateTime(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : TIME.format(date);
-}
 
 /**
  * Activity and audit history, newest first: a dot on a hairline rail, the event in a sentence,

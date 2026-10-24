@@ -8,9 +8,11 @@ import {
   SheetTitle,
 } from "@auction/ui/components/sheet";
 import { X } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
+import { discardPrompt } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
+import { ConfirmActionDialog } from "./staff-dialog.js";
 
 export type DetailPanelProps = {
   open: boolean;
@@ -26,6 +28,13 @@ export type DetailPanelProps = {
   footer?: React.ReactNode;
   /** Wider for forms with side-by-side fields. */
   size?: "md" | "lg";
+  /**
+   * The panel holds a form with unsaved changes: closing it (close button, Escape, the scrim)
+   * asks "Discard changes?" first.
+   */
+  dirty?: boolean;
+  /** What is being edited, for "Discard changes to <label>?". */
+  dirtyLabel?: string;
   children: React.ReactNode;
 };
 
@@ -43,64 +52,87 @@ export function DetailPanel({
   headerActions,
   footer,
   size = "md",
+  dirty = false,
+  dirtyLabel,
   children,
 }: DetailPanelProps) {
+  const [confirmingClose, setConfirmingClose] = React.useState(false);
+  const prompt = discardPrompt(dirtyLabel);
+  const requestOpenChange = (next: boolean) => {
+    if (!next && dirty) setConfirmingClose(true);
+    else onOpenChange(next);
+  };
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        {...STAFF_LAYER}
-        side="right"
-        overlayClassName="bg-staff-scrim"
-        className={cn(
-          "flex w-full max-w-none flex-col gap-0 border-l border-staff-line bg-staff-surface p-0 text-staff-fg shadow-staff-lg sm:max-w-none",
-          size === "lg" ? "sm:w-[640px]" : "sm:w-[480px]",
-          "[&>button:last-child]:hidden",
-        )}
-      >
-        <div className="flex min-h-0 flex-1 flex-col">
-          <header className="flex items-start gap-3 border-b border-staff-line px-5 py-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle className="font-staff-display text-staff-lg font-semibold text-staff-fg">
-                  {title}
-                </SheetTitle>
-                {status}
+    <>
+      <Sheet open={open} onOpenChange={requestOpenChange}>
+        <SheetContent
+          {...STAFF_LAYER}
+          side="right"
+          overlayClassName="bg-staff-scrim"
+          className={cn(
+            "flex w-full max-w-none flex-col gap-0 border-l border-staff-line bg-staff-surface p-0 text-staff-fg shadow-staff-lg sm:max-w-none",
+            size === "lg" ? "sm:w-[640px]" : "sm:w-[480px]",
+            "[&>button:last-child]:hidden",
+          )}
+        >
+          <div className="flex min-h-0 flex-1 flex-col">
+            <header className="flex items-start gap-3 border-b border-staff-line px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SheetTitle className="font-staff-display text-staff-lg font-semibold text-staff-fg">
+                    {title}
+                  </SheetTitle>
+                  {status}
+                </div>
+                {description ? (
+                  <SheetDescription className="mt-0.5 text-staff-sm text-staff-muted">
+                    {description}
+                  </SheetDescription>
+                ) : (
+                  <SheetDescription className="sr-only">Details</SheetDescription>
+                )}
               </div>
-              {description ? (
-                <SheetDescription className="mt-0.5 text-staff-sm text-staff-muted">
-                  {description}
-                </SheetDescription>
-              ) : (
-                <SheetDescription className="sr-only">Details</SheetDescription>
-              )}
-            </div>
-            <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
-              {headerActions}
-              <SheetClose asChild>
-                <StaffButton variant="ghost" size="icon-sm" aria-label="Close panel">
-                  <X aria-hidden />
-                </StaffButton>
-              </SheetClose>
-            </div>
-          </header>
-          {/* Focusable so keyboard users can scroll a long panel without a pointer. */}
-          <section
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must take focus to scroll by keyboard
-            tabIndex={0}
-            aria-label="Panel content"
-            className="staff-focus-inset min-h-0 flex-1 overflow-y-auto px-5 py-5"
-            data-lenis-prevent
-          >
-            {children}
-          </section>
-          {footer ? (
-            <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 py-3">
-              {footer}
-            </footer>
-          ) : null}
-        </div>
-      </SheetContent>
-    </Sheet>
+              <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
+                {headerActions}
+                <SheetClose asChild>
+                  <StaffButton variant="ghost" size="icon-sm" aria-label="Close panel">
+                    <X aria-hidden />
+                  </StaffButton>
+                </SheetClose>
+              </div>
+            </header>
+            {/* Focusable so keyboard users can scroll a long panel without a pointer. */}
+            <section
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must take focus to scroll by keyboard
+              tabIndex={0}
+              aria-label="Panel content"
+              className="staff-focus-inset min-h-0 flex-1 overflow-y-auto px-5 py-5"
+              data-lenis-prevent
+            >
+              {children}
+            </section>
+            {footer ? (
+              <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 py-3">
+                {footer}
+              </footer>
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
+      <ConfirmActionDialog
+        open={confirmingClose}
+        onOpenChange={setConfirmingClose}
+        title={prompt.title}
+        description={prompt.description}
+        cancelLabel="Keep editing"
+        confirmLabel={prompt.confirmLabel}
+        tone="danger"
+        onConfirm={() => {
+          setConfirmingClose(false);
+          onOpenChange(false);
+        }}
+      />
+    </>
   );
 }
 

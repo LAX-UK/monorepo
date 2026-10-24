@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { LayoutDashboard, Receipt, Users } from "lucide-react";
 import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -124,7 +124,7 @@ describe("StaffShell", () => {
     expect(document.cookie).toContain(`${STAFF_NAV_COOKIE}=collapsed`);
   });
 
-  it("opens search with ⌘K and Ctrl+K and goes to a page from it", () => {
+  it("opens search with ⌘K and Ctrl+K and goes to a page from it", async () => {
     const navigate = renderShell();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.keyDown(window, { key: "k", metaKey: true });
@@ -133,7 +133,7 @@ describe("StaffShell", () => {
       within(dialog).getByRole("textbox", { name: "Search pages and records" }),
     ).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("option", { name: /Staff/ }));
-    expect(navigate).toHaveBeenCalledWith("/staff");
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/staff"));
     fireEvent.keyDown(window, { key: "K", ctrlKey: true });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });

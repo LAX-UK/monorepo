@@ -170,6 +170,7 @@ export function OrderList({
         numeric: true,
         sortable: true,
         sortValue: (row) => row.totalPence,
+        defaultSortDirection: "desc",
         mobile: "meta",
         cell: (row) => formatGbp(row.totalPence),
       },
@@ -180,6 +181,7 @@ export function OrderList({
         numeric: true,
         sortable: true,
         sortValue: (row) => row.createdAt,
+        defaultSortDirection: "desc",
         hideBelow: "lg",
         mobile: "meta",
         cell: (row) => (
@@ -220,6 +222,7 @@ export function OrderList({
         columns={columns}
         data={page.items}
         getRowId={(row) => row.orderId}
+        defaultSort={{ columnId: "created", direction: "desc" }}
         density={density}
         loading={pending}
         onRowOpen={(row) => setOpenOrderId(row.orderId)}

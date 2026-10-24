@@ -262,11 +262,11 @@ describe("exhibition editor publishing and leaving", () => {
     editTitle("Changed");
     fireEvent.click(screen.getByRole("link", { name: "Exhibitions" }));
     expect(
-      await screen.findByRole("dialog", { name: "Leave without saving?" }),
+      await screen.findByRole("dialog", { name: "Discard unsaved changes?" }),
     ).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Leave without saving" }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard changes" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/editorial/exhibitions"));
   });
 
@@ -294,17 +294,17 @@ describe("exhibition editor publishing and leaving", () => {
       editTitle("Changed");
       await pressBack();
       expect(
-        await screen.findByRole("dialog", { name: "Leave without saving?" }),
+        await screen.findByRole("dialog", { name: "Discard unsaved changes?" }),
       ).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
-      expect(screen.queryByRole("dialog", { name: "Leave without saving?" })).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Discard unsaved changes?" })).toBeNull();
       expect(screen.getByLabelText("Title")).toHaveValue("Changed");
 
       // The guard re-armed, so a second Back asks again.
       await pressBack();
       expect(
-        await screen.findByRole("dialog", { name: "Leave without saving?" }),
+        await screen.findByRole("dialog", { name: "Discard unsaved changes?" }),
       ).toBeInTheDocument();
     });
 
@@ -316,7 +316,7 @@ describe("exhibition editor publishing and leaving", () => {
       await settle();
 
       await pressBack();
-      expect(screen.queryByRole("dialog", { name: "Leave without saving?" })).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Discard unsaved changes?" })).toBeNull();
     });
   });
 });
