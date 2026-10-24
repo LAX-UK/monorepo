@@ -309,6 +309,7 @@ export function DataTable<T>({
   const titleColumn = columns.find((c) => c.mobile === "title") ?? columns[0];
   const badgeColumns = columns.filter((c) => c.mobile === "badge");
   const metaColumns = columns.filter((c) => c.mobile === "meta");
+  const actionColumns = columns.filter((c) => c.mobile === "actions");
   const noun = bulkNoun ?? { one: "row", other: "rows" };
   const canSelectMatching =
     selectAllMatching && !allMatching && allSelected && selectAllMatching.total > rows.length;
@@ -436,7 +437,9 @@ export function DataTable<T>({
                                 ),
                             )}
                           >
-                            {column.sortable ? (
+                            {column.headerHidden ? (
+                              <span className="sr-only">{column.header}</span>
+                            ) : column.sortable ? (
                               <button
                                 type="button"
                                 onClick={() => toggleSort(column)}
@@ -668,6 +671,11 @@ export function DataTable<T>({
                                 </div>
                               ) : null}
                             </div>
+                            {actionColumns.map((column) => (
+                              <div key={column.id} className="-my-0.5 shrink-0 self-start">
+                                {column.cell(row)}
+                              </div>
+                            ))}
                           </li>
                         );
                       })}

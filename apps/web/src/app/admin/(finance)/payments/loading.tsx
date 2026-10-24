@@ -1,14 +1,12 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function PaymentsLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Payments"
-      description="Loading payments…"
-      kpiTiles={4}
-      tableRows={10}
-      tableColumns={6}
-      showFilterBar
+      description="Buyer payments for won lots. Capture held payments, refund captured ones and check their Xero invoices."
+      metrics={4}
+      columns={["Lot", "Status", "Buyer", "Amount", "Fulfilment", "Created"]}
     />
   );
 }

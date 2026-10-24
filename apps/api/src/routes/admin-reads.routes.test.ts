@@ -65,6 +65,48 @@ describe("admin read routes (DIP facade)", () => {
     expect(listPage).toHaveBeenCalledWith({ limit: 25, offset: 0 });
   });
 
+  it("GET /payments pages 50 rows by default and passes fulfilment and Xero filters", async () => {
+    const listPage = vi.fn().mockResolvedValue({
+      rows: [],
+      total: 0,
+      offset: 0,
+      limit: 50,
+      summary: {},
+    });
+    const container = createAdminReadsContainer({
+      requestLifecycle: {
+        isSuspended: vi.fn().mockResolvedValue(false),
+        reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+      },
+      payments: { listPage } as never,
+      catalog: {} as never,
+    });
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const ok = await app.request(
+      "http://test/admin/payments?fulfilment=in_transit,delivered&xero=sync_error",
+    );
+    expect(ok.status).toBe(200);
+    expect(listPage).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      fulfilmentStatuses: ["in_transit", "delivered"],
+      xeroInvoice: "sync_error",
+    });
+
+    const bad = await app.request("http://test/admin/payments?fulfilment=lost_at_sea");
+    expect(bad.status).toBe(400);
+  });
+
   it("GET /artists/search returns registry hits for authorized staff", async () => {
     const hits = [{ id: "artist-1", displayName: "Monet", status: "approved" }];
     const searchArtists = vi.fn().mockResolvedValue(hits);

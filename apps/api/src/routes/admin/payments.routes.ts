@@ -24,6 +24,8 @@ export function attachAdminPaymentsListRoutes(
         offset: q.offset,
         ...(q.status ? { status: q.status } : {}),
         ...(q.q ? { q: q.q } : {}),
+        ...(q.fulfilment ? { fulfilmentStatuses: q.fulfilment } : {}),
+        ...(q.xero ? { xeroInvoice: q.xero } : {}),
       });
       return c.json({
         data: page.rows,

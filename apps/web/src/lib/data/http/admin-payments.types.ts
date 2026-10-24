@@ -1,6 +1,7 @@
 import type { AdminPaymentRow, AdminPayoutRow } from "@/lib/data/http/admin-parse.server";
 import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import type { PaymentStatus } from "@auction/types";
+import type { AdminPaymentXeroFilter, LotFulfilmentStatus } from "@auction/validators";
 
 export type AdminPaymentsListPageResult = {
   rows: AdminPaymentTableRow[];
@@ -43,6 +44,9 @@ export type GetAdminPaymentsListPageParams = {
   offset: number;
   status?: PaymentStatus;
   q?: string;
+  /** Lot fulfilment statuses; any of them matches. */
+  fulfilment?: readonly LotFulfilmentStatus[];
+  xero?: AdminPaymentXeroFilter;
 };
 
 export type { AdminPaymentRow, AdminPaymentTableRow, AdminPayoutRow };

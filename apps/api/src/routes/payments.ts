@@ -1,10 +1,12 @@
 import { entityActorCan } from "@auction/domain";
 import {
+  ADMIN_REFUND_BUYER_REASON_MIN,
   adminLotFulfilmentLotIdParamSchema,
   createPaymentBodySchema,
   entityWonLotsQuerySchema,
   myPaymentsQuerySchema,
   paymentIdParamSchema,
+  paymentRefundBodySchema,
 } from "@auction/validators";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
@@ -288,12 +290,25 @@ export function createPaymentRoutes(
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
+      // The body is optional: older callers send none. A reason, when sent, must be valid.
+      const rawBody: unknown = await c.req.json().catch(() => ({}));
+      const body = paymentRefundBodySchema.safeParse(rawBody ?? {});
+      if (!body.success) {
+        return c.json(
+          {
+            error: `Enter a reason of at least ${ADMIN_REFUND_BUYER_REASON_MIN} characters.`,
+            code: "invalid_reason",
+          },
+          400,
+        );
+      }
       const result = await entityStaffPayment.refundPayment(
         userId,
         role,
         id,
         ctx?.legalEntityId,
         staffRole,
+        ...(body.data.reason ? [body.data.reason] : []),
       );
       return result.match(
         () => c.json({ ok: true }),

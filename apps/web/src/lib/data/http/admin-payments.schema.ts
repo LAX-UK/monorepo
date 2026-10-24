@@ -33,6 +33,7 @@ export const adminPaymentTableRowSchema = z
       xeroOnlineInvoiceUrl: base.xeroOnlineInvoiceUrl,
       xeroSyncStatus: base.xeroSyncStatus,
       xeroLastError: base.xeroLastError,
+      createdAt: Number.isNaN(base.createdAt.getTime()) ? null : base.createdAt.toISOString(),
     };
   });
 

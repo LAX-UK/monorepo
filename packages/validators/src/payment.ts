@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lotFulfilmentStatusSchema } from "./fulfilment.js";
 
 export const createPaymentBodySchema = z.object({
   lotId: z.string().uuid(),
@@ -33,12 +34,24 @@ const paymentStatusFilterSchema = z.enum([
   "cancelled",
 ]);
 
+/** Xero invoice state of a payment, as the admin payments table filters it. */
+export const adminPaymentXeroFilterSchema = z.enum(["linked", "missing", "sync_error"]);
+export type AdminPaymentXeroFilter = z.infer<typeof adminPaymentXeroFilterSchema>;
+
 /** Paginated admin payments table (`GET /admin/payments`). */
 export const adminPaymentsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   status: paymentStatusFilterSchema.optional(),
   q: z.string().trim().optional(),
+  /** Comma-separated lot fulfilment statuses, e.g. `in_transit,delivered`. */
+  fulfilment: z
+    .string()
+    .trim()
+    .optional()
+    .transform((raw) => (raw ? raw.split(",").filter(Boolean) : undefined))
+    .pipe(z.array(lotFulfilmentStatusSchema).min(1).max(7).optional()),
+  xero: adminPaymentXeroFilterSchema.optional(),
 });
 
 export type AdminPaymentsListQuery = z.infer<typeof adminPaymentsListQuerySchema>;

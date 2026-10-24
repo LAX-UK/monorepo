@@ -15,6 +15,8 @@ export type CellTruncation = "end" | "middle" | false;
 export type DataColumn<T> = {
   id: string;
   header: string;
+  /** Keeps the header for screen readers only, e.g. the row actions column. */
+  headerHidden?: boolean;
   cell: (row: T) => React.ReactNode;
   /** Right-aligned tabular figures: amounts, counts, dates in fixed formats. */
   numeric?: boolean;
@@ -34,9 +36,9 @@ export type DataColumn<T> = {
   hideBelow?: "md" | "lg" | "xl";
   /**
    * The role this column plays in the phone layout: the row's title, a badge on the right, a meta
-   * fact under the title, or left out.
+   * fact under the title, the row's actions at the far right, or left out.
    */
-  mobile?: "title" | "badge" | "meta" | "hidden";
+  mobile?: "title" | "badge" | "meta" | "actions" | "hidden";
 };
 
 /**

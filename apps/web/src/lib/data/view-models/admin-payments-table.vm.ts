@@ -18,6 +18,8 @@ export type AdminPaymentTableRow = {
   xeroOnlineInvoiceUrl: string | null;
   xeroSyncStatus: "pending_sync" | "synced" | "error" | null;
   xeroLastError: string | null;
+  /** When the payment was created, ISO; null when the API sent no valid date. */
+  createdAt: string | null;
 };
 
 export function buildAdminPaymentAmountDisplay(amount: string): AdminTableMoneyDisplay {

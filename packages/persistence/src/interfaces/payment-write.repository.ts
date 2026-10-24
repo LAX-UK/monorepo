@@ -49,6 +49,10 @@ export type ListPaymentsAdminTableFilter = {
   status?: PaymentRecord["status"];
   /** Case-insensitive match on payment id, buyer id/name/email, lot title, fulfilment status. */
   q?: string;
+  /** Lot fulfilment statuses; a payment matches when its lot's fulfilment is any of them. */
+  fulfilmentStatuses?: readonly string[];
+  /** Xero invoice state: an invoice number is linked, none is, or the last sync failed. */
+  xeroInvoice?: "linked" | "missing" | "sync_error";
   limit: number;
   offset: number;
 };

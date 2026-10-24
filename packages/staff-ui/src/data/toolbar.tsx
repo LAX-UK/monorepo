@@ -1,6 +1,16 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ListFilter, Plus, Rows3, Rows4, Search, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ListFilter,
+  Plus,
+  Rows3,
+  Rows4,
+  Search,
+  X,
+} from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { Field } from "../forms/field.js";
@@ -12,6 +22,7 @@ import {
   StaffMenu,
   StaffMenuCheckboxItem,
   StaffMenuContent,
+  StaffMenuItem,
   StaffMenuLabel,
   StaffMenuSeparator,
   StaffMenuTrigger,
@@ -70,12 +81,15 @@ export function TableSearch({
   placeholder,
   label,
   live = false,
+  fullWidth = false,
 }: {
   value: string;
   onSearch: (query: string) => void;
   placeholder: string;
   label: string;
   live?: boolean;
+  /** Fills the toolbar row (the ListPage layout) instead of a fixed 256px. */
+  fullWidth?: boolean;
 }) {
   const [text, setText] = React.useState(value);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -98,7 +112,7 @@ export function TableSearch({
   return (
     <form
       aria-label={label}
-      className="w-full sm:w-64"
+      className={fullWidth ? "w-full min-w-0" : "w-full sm:w-64"}
       onSubmit={(event) => {
         event.preventDefault();
         onSearch(text.trim());
@@ -357,31 +371,7 @@ export function DataViews({
 
   return (
     <div className="flex items-center gap-1">
-      <nav aria-label="Views" className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
-        <ul className="flex min-w-max items-center gap-0.5">
-          {tabs.map((view) => {
-            const active = view.id === currentId;
-            return (
-              <li key={view.id}>
-                <Link
-                  href={view.href}
-                  {...(active ? { "aria-current": "page" as const } : {})}
-                  className={cn(
-                    "staff-focus relative flex h-10 items-center gap-1.5 rounded-staff-xs px-2.5 text-staff-sm font-medium transition-colors",
-                    "after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full",
-                    active
-                      ? "text-staff-fg after:bg-staff-ink"
-                      : "text-staff-muted hover:text-staff-fg",
-                  )}
-                >
-                  {view.label}
-                  {view.count !== undefined ? <Count value={view.count} /> : null}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <ViewTabs tabs={tabs} currentId={currentId} Link={Link} />
       {team.length > 0 || saved ? (
         <div className="flex shrink-0 items-center gap-1">
           {saved && query && !matched ? (
@@ -449,6 +439,174 @@ export function DataViews({
         </StaffDialog>
       ) : null}
     </div>
+  );
+}
+
+const tabClass = (active: boolean) =>
+  cn(
+    "staff-focus relative flex h-10 shrink-0 items-center gap-1.5 rounded-staff-xs px-2.5 text-staff-sm font-medium whitespace-nowrap transition-colors",
+    "after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full",
+    active ? "text-staff-fg after:bg-staff-ink" : "text-staff-muted hover:text-staff-fg",
+  );
+
+/** Room kept for the "More" button when some tabs do not fit. */
+const MORE_WIDTH = 88;
+
+/**
+ * Which tabs fit on one line. The active tab always stays visible, taking the place of the last
+ * one that fits; the rest go into "More". Before the first measurement (and where nothing can be
+ * measured) every tab shows.
+ */
+export function fitViewTabs(
+  widths: readonly number[],
+  available: number,
+  activeIndex: number,
+  gap = 2,
+): { visible: number[]; overflow: number[] } {
+  const all = widths.map((_, index) => index);
+  const total = widths.reduce((sum, width) => sum + width + gap, 0);
+  if (available <= 0 || total <= available) return { visible: all, overflow: [] };
+  const room = available - MORE_WIDTH;
+  const visible: number[] = [];
+  let used = 0;
+  for (const index of all) {
+    const width = (widths[index] ?? 0) + gap;
+    if (used + width > room) break;
+    visible.push(index);
+    used += width;
+  }
+  if (activeIndex >= 0 && !visible.includes(activeIndex)) {
+    const activeWidth = (widths[activeIndex] ?? 0) + gap;
+    while (visible.length > 0 && used + activeWidth > room) {
+      const dropped = visible.pop() as number;
+      used -= (widths[dropped] ?? 0) + gap;
+    }
+    visible.push(activeIndex);
+  }
+  visible.sort((a, b) => a - b);
+  return { visible, overflow: all.filter((index) => !visible.includes(index)) };
+}
+
+/**
+ * The built-in views as tabs on one line, in sentence case. When they do not fit, the ones that
+ * do not go into a "More" menu instead of scrolling out of sight.
+ */
+function ViewTabs({
+  tabs,
+  currentId,
+  Link,
+}: {
+  tabs: readonly DataView[];
+  currentId: string | null;
+  Link: StaffLinkComponent;
+}) {
+  const navRef = React.useRef<HTMLElement>(null);
+  const listRef = React.useRef<HTMLUListElement>(null);
+  const activeIndex = tabs.findIndex((tab) => tab.id === currentId);
+  const signature = `${tabs.map((tab) => `${tab.id}:${tab.label}:${tab.count ?? ""}`).join("|")}#${activeIndex}`;
+  const widths = React.useRef<{ signature: string; values: number[] } | null>(null);
+  const [fit, setFit] = React.useState<{
+    signature: string;
+    visible: number[];
+    overflow: number[];
+  } | null>(null);
+  const current = fit?.signature === signature ? fit : null;
+
+  // A change of tabs renders every tab again (the fit no longer matches), so this effect measures
+  // them all once; later resizes reuse those widths, since hidden tabs cannot be measured.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: signature covers the tabs and the active one
+  React.useLayoutEffect(() => {
+    const nav = navRef.current;
+    const list = listRef.current;
+    if (!nav || !list) return;
+    if (widths.current?.signature !== signature) {
+      widths.current = {
+        signature,
+        values: Array.from(list.children, (child) => (child as HTMLElement).offsetWidth).slice(
+          0,
+          tabs.length,
+        ),
+      };
+    }
+    const update = () => {
+      if (!widths.current) return;
+      const next = fitViewTabs(widths.current.values, nav.clientWidth, activeIndex);
+      setFit((previous) =>
+        previous?.signature === signature &&
+        previous.visible.join() === next.visible.join() &&
+        previous.overflow.join() === next.overflow.join()
+          ? previous
+          : { signature, ...next },
+      );
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [signature]);
+
+  const visible = current?.visible ?? tabs.map((_, index) => index);
+  const overflow = current?.overflow ?? [];
+
+  const content = (view: DataView) => (
+    <>
+      {view.label}
+      {view.count !== undefined ? <Count value={view.count} /> : null}
+    </>
+  );
+
+  return (
+    <nav aria-label="Views" ref={navRef} className="min-w-0 flex-1 overflow-hidden">
+      <ul ref={listRef} className="flex items-center gap-0.5">
+        {visible.map((index) => {
+          const view = tabs[index];
+          if (!view) return null;
+          const active = view.id === currentId;
+          return (
+            <li key={view.id} className="shrink-0">
+              <Link
+                href={view.href}
+                {...(active ? { "aria-current": "page" as const } : {})}
+                className={tabClass(active)}
+              >
+                {content(view)}
+              </Link>
+            </li>
+          );
+        })}
+        {overflow.length > 0 ? (
+          <li>
+            <StaffMenu>
+              <StaffMenuTrigger asChild>
+                <StaffButton
+                  variant="ghost"
+                  size="sm"
+                  className="text-staff-muted"
+                  aria-label={`More views, ${overflow.length}`}
+                >
+                  More
+                  <ChevronDown aria-hidden />
+                </StaffButton>
+              </StaffMenuTrigger>
+              <StaffMenuContent align="start" className="w-56">
+                {overflow.map((index) => {
+                  const view = tabs[index];
+                  if (!view) return null;
+                  return (
+                    <StaffMenuItem key={view.id} asChild>
+                      <Link href={view.href} className="flex w-full items-center justify-between">
+                        {content(view)}
+                      </Link>
+                    </StaffMenuItem>
+                  );
+                })}
+              </StaffMenuContent>
+            </StaffMenu>
+          </li>
+        ) : null}
+      </ul>
+    </nav>
   );
 }
 

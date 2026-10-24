@@ -21,6 +21,10 @@ export class AdminPaymentListQueryService {
     const tableFilter = {
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.q ? { q: filter.q } : {}),
+      ...(filter.fulfilmentStatuses?.length
+        ? { fulfilmentStatuses: filter.fulfilmentStatuses }
+        : {}),
+      ...(filter.xeroInvoice ? { xeroInvoice: filter.xeroInvoice } : {}),
     };
     const [rows, total, summary] = await Promise.all([
       this.payments.listForAdminTable(filter),

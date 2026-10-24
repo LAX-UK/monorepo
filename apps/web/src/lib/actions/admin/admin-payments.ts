@@ -10,6 +10,7 @@ import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { FINANCE_ACCESS, PAYMENT_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { ADMIN_REFUND_BUYER_REASON_MIN, paymentRefundBodySchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -70,15 +71,17 @@ export async function adminCapturePaymentResultAction(
     const { adminPayments } = getWriteContainer();
     const r = await adminPayments.capture(id);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, r.code);
     }
     revalidatePath("/admin/payments");
     return actionSuccess();
   });
 }
 
+/** Refunds a captured payment. The reason is required here and kept on the audit event. */
 export async function adminRefundPaymentResultAction(
   paymentId: string,
+  input: { reason: string },
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminRefundPaymentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
@@ -87,10 +90,18 @@ export async function adminRefundPaymentResultAction(
     if (!id) {
       return actionFailure("Missing payment");
     }
+    const parsed = paymentRefundBodySchema.required().safeParse({ reason: input.reason });
+    if (!parsed.success) {
+      return actionFailure(
+        `Enter a reason of at least ${ADMIN_REFUND_BUYER_REASON_MIN} characters.`,
+        { reason: [`Enter a reason of at least ${ADMIN_REFUND_BUYER_REASON_MIN} characters.`] },
+        400,
+      );
+    }
     const { adminPayments } = getWriteContainer();
-    const r = await adminPayments.refund(id);
+    const r = await adminPayments.refund(id, parsed.data.reason);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, r.code);
     }
     revalidatePath("/admin/payments");
     return actionSuccess();

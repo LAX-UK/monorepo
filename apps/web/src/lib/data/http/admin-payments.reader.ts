@@ -37,6 +37,8 @@ export async function getAdminPaymentsListPage(
   });
   if (params.status) qs.set("status", params.status);
   if (params.q?.trim()) qs.set("q", params.q.trim());
+  if (params.fulfilment?.length) qs.set("fulfilment", params.fulfilment.join(","));
+  if (params.xero) qs.set("xero", params.xero);
   const res = await authedServerFetch(`/admin/payments?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load payments: ${res.status}`);
   const body = await readJsonBody(res);

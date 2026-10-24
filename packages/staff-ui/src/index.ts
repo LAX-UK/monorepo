@@ -61,12 +61,18 @@ export { AttentionList } from "./display/attention-list.js";
 export type { AttentionItem } from "./display/attention-list.js";
 export type { TimelineEvent } from "./display/timeline.js";
 export {
+  AccessDeniedState,
   EmptyState,
   ErrorState,
   NoResultsState,
   Section,
   Skeleton,
+  ViewOnlyBadge,
 } from "./display/states.js";
+export { METRIC_STRIP_MAX, MetricStrip } from "./display/metric-strip.js";
+export type { Metric, MetricComparison } from "./display/metric-strip.js";
+export { AttentionStrip } from "./display/attention-strip.js";
+export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
 export { Field, useStaffField } from "./forms/field.js";
@@ -134,8 +140,26 @@ export {
   FilterMenu,
   TablePagination,
   TableSearch,
+  fitViewTabs,
   useTableDensity,
 } from "./data/toolbar.js";
+export { FilterSheet } from "./data/filter-sheet.js";
+export type {
+  FilterChecklistSection,
+  FilterDateRangeSection,
+  FilterRadioSection,
+  FilterSheetSection,
+  FilterSheetValues,
+} from "./data/filter-sheet.js";
+export { ColumnsMenu, useColumnVisibility, visibleColumns } from "./data/columns-menu.js";
+export type { ColumnVisibility } from "./data/columns-menu.js";
+export { RowActions, rowActionsColumn } from "./data/row-actions.js";
+
+// Page templates
+export { ListPage } from "./templates/list-page.js";
+export type { ListPageAccess, ListPageProps, ListPageTable } from "./templates/list-page.js";
+export { DetailPage } from "./templates/detail-page.js";
+export type { DetailPageProps } from "./templates/detail-page.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
 export { SavedViewsError, sameViewQuery, useSavedViews, viewQuery } from "./data/saved-views.js";
 export type {

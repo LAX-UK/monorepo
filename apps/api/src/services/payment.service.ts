@@ -198,6 +198,7 @@ export class PaymentService
     paymentId: string,
     actingLegalEntityId?: string | null,
     userStaffRole?: string | null,
+    staffReason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     return refundPayment(
       this.deps,
@@ -206,6 +207,7 @@ export class PaymentService
       paymentId,
       actingLegalEntityId,
       userStaffRole,
+      staffReason,
     );
   }
 
