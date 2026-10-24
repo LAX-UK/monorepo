@@ -7,6 +7,46 @@ import { PlainLink } from "../shell/link.js";
 // The real toaster injects a large stylesheet into the page, which makes every style lookup the
 // test runtime does for focus and role queries slow. Toasts are not what these tests are about.
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+// Radix's popover keeps repositioning itself in the test runtime, which makes every query take
+// seconds. A plain open/close panel exercises the same menu code; positioning is not under test.
+vi.mock("@auction/ui/components/popover", async () => {
+  const React = await import("react");
+  const Context = React.createContext<{ open: boolean; set: (open: boolean) => void }>({
+    open: false,
+    set: () => {},
+  });
+  return {
+    Popover: ({
+      open,
+      onOpenChange,
+      children,
+    }: { open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode }) => (
+      <Context.Provider value={{ open, set: onOpenChange }}>{children}</Context.Provider>
+    ),
+    PopoverTrigger: ({ children }: { children: React.ReactElement<{ onClick?: () => void }> }) => {
+      const { open, set } = React.useContext(Context);
+      return React.cloneElement(children, { onClick: () => set(!open) });
+    },
+    PopoverContent: ({
+      children,
+      ...props
+    }: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) => {
+      const { open } = React.useContext(Context);
+      const {
+        align: _a,
+        sideOffset: _s,
+        onEscapeKeyDown: _e,
+        ...rest
+      } = props as Record<string, unknown>;
+      return open ? (
+        <dialog open {...(rest as React.HTMLAttributes<HTMLDialogElement>)}>
+          {children}
+        </dialog>
+      ) : null;
+    },
+  };
+});
 import {
   type SavedView,
   SavedViewsError,

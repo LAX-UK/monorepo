@@ -196,6 +196,14 @@ export function ViewsMenu({
         sideOffset={6}
         aria-label="Views"
         ref={panel}
+        // Escape backs out of a rename or a delete first; only then does it close the panel.
+        onEscapeKeyDown={(event) => {
+          if (editing) event.preventDefault();
+          else if (confirmingId) {
+            event.preventDefault();
+            setConfirmingId(null);
+          }
+        }}
         className="w-[min(22rem,calc(100vw-2rem))] gap-0 rounded-staff-md border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-md"
       >
         <output className="sr-only">{announcement}</output>
