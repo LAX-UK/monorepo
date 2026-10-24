@@ -95,6 +95,6 @@ describe("overview cards", () => {
     );
     expect(html).toContain("Your organisations");
     expect(html).toContain('href="https://lax.bid/dashboard/organisations"');
-    expect(html).toContain("Open in Bid");
+    expect(html).toContain("Open in LAX Bid");
   });
 });

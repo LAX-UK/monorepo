@@ -73,7 +73,7 @@ export function OrganisationsCard({ href }: { href: string }) {
         <ProductName product="bid">LAX Bid</ProductName>, where you can see your role in each.
       </p>
       <Button asChild variant="outline" className="self-start">
-        <a href={href}>Open in Bid</a>
+        <a href={href}>Open in LAX Bid</a>
       </Button>
     </section>
   );

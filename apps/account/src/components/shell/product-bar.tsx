@@ -9,7 +9,7 @@ const LABEL =
   "relative font-label text-xs uppercase tracking-[0.22em] after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-['']";
 
 /**
- * LAX BID · LAX ART · LAX SHOP · LAX ACCOUNT: the small bar every LAX header carries so a person
+ * LAX BID · LAX.ART · LAX SHOP · LAX ACCOUNT: the small bar every LAX header carries so a person
  * can move between products. The current product is the only one in full text colour and is not
  * a link. The bar is hidden on a phone, where the menu sheet lists the products instead.
  */

@@ -89,7 +89,7 @@ export function buildPayoutLaunchLinks(
   const artPayouts = config.laxArtPublicUrl ?? config.shopPublicUrl;
   if (artPayouts) {
     links.push({
-      label: "LAX Art payouts",
+      label: "lax.art payouts",
       href: new URL("/account/payouts", artPayouts).toString(),
     });
   }

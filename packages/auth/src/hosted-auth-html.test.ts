@@ -236,7 +236,7 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain('<p class="product-chip">Continue to <strong>LAX Shop</strong></p>');
     expect(html).not.toContain("lax-shop.svg");
     expect(html).toContain("Sign in with your LAX Account.");
-    expect(textOf(html)).toContain("One LAX Account for Bid, Shop and lax.art.");
+    expect(textOf(html)).toContain("One LAX Account for LAX Bid, LAX Shop and lax.art.");
     expect(html).toContain("Continue with Google");
     expect(html).toContain('class="btn-mark"');
     expect(html).toContain('class="btn-label"');
@@ -323,14 +323,14 @@ describe("one-account message", () => {
   it("links Learn more to the Account landing page on sign-in and sign-up", () => {
     const view = hostedAuthViewFromSearch(shopSearch, accountCapabilities);
     for (const html of [buildHostedLoginHtml(view), buildHostedSignUpHtml(view)]) {
-      expect(textOf(html)).toContain("One LAX Account for Bid, Shop and lax.art.");
+      expect(textOf(html)).toContain("One LAX Account for LAX Bid, LAX Shop and lax.art.");
       expect(html).toContain('href="https://account.example/">Learn more</a>');
     }
   });
 
   it("omits the link, not the message, when the Account origin is not configured", () => {
     const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
-    expect(textOf(html)).toContain("One LAX Account for Bid, Shop and lax.art.");
+    expect(textOf(html)).toContain("One LAX Account for LAX Bid, LAX Shop and lax.art.");
     expect(html).not.toContain("Learn more");
   });
 });
@@ -338,8 +338,8 @@ describe("one-account message", () => {
 describe("one-account product names", () => {
   it("sets each product in the note in its own colour", () => {
     const html = buildHostedLoginHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
-    expect(html).toContain('<span class="product-name product-name--bid">Bid</span>');
-    expect(html).toContain('<span class="product-name product-name--shop">Shop</span>');
+    expect(html).toContain('<span class="product-name product-name--bid">LAX Bid</span>');
+    expect(html).toContain('<span class="product-name product-name--shop">LAX Shop</span>');
     expect(html).toContain('<span class="product-name product-name--art">lax.art</span>');
   });
 });

@@ -38,7 +38,7 @@ import { SENTENCE_CASE_BADGE } from "./portfolio-parts";
 
 const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
   lax_bid: "LAX Bid",
-  lax_art: "LAX Art",
+  lax_art: "lax.art",
 };
 
 export const MONEY_SEPARATION_NOTE =

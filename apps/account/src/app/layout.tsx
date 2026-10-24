@@ -8,7 +8,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LAX Account",
   description:
-    "One LAX Account for Bid, Shop and lax.art. Manage your details, password and two-step verification.",
+    "One LAX Account for LAX Bid, LAX Shop and lax.art. Manage your details, password and two-step verification.",
   icons: laxFaviconMetadataIcons(),
   robots: { index: false, follow: false },
 };

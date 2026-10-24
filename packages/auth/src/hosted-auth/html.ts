@@ -260,7 +260,7 @@ function productName(product: "bid" | "shop" | "art", label: string): string {
   return `<span class="product-name product-name--${product}">${escapeHostedHtml(label)}</span>`;
 }
 
-/** "One LAX Account for Bid, Shop and lax.art.", each product named in its own colour. */
+/** "One LAX Account for LAX Bid, LAX Shop and lax.art.", each product named in its own colour. */
 function oneAccountMarkup(): string {
   const { bid, shop, art } = HOSTED_COPY.oneAccountProducts;
   return `One LAX Account for ${productName("bid", bid)}, ${productName("shop", shop)} and ${productName("art", art)}.`;

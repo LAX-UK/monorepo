@@ -87,7 +87,7 @@ describe("PortfolioMoney", () => {
       moneyEntry({ id: "bad", href: "javascript:alert(1)", direction: "fee" }),
     ]);
     expect(html).toContain('href="https://shop.lax.art/orders/1"');
-    expect(html).toContain("Open in LAX Art");
+    expect(html).toContain("Open in lax.art");
     expect(html).not.toContain("javascript:");
     expect(html).toContain("No link");
   });

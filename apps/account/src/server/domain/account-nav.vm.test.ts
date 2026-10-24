@@ -45,7 +45,7 @@ describe("buildProductBar", () => {
     });
     expect(bar.map((item) => item.label)).toEqual([
       "LAX Bid",
-      "LAX Art",
+      "lax.art",
       "LAX Shop",
       "LAX Account",
     ]);

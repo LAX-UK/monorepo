@@ -69,9 +69,9 @@ export default async function LandingPage({
             </h1>
             <p className="text-base leading-7 text-on-surface-variant">
               Sign in once to manage your details, security and works across{" "}
-              <ProductName product="bid">Bid</ProductName>,{" "}
-              <ProductName product="shop">Shop</ProductName> and{" "}
-              <ProductName product="art">Art</ProductName>.
+              <ProductName product="bid">LAX Bid</ProductName>,{" "}
+              <ProductName product="shop">LAX Shop</ProductName> and{" "}
+              <ProductName product="art">lax.art</ProductName>.
             </p>
           </div>
           {notice ? (

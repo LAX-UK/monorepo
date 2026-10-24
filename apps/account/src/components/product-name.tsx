@@ -6,7 +6,7 @@ export type NamedProduct = "bid" | "shop" | "art" | "account";
 
 /**
  * Each product's name colour, from the accent of its lockup (LAX colour rule in
- * docs/DESIGN_SYSTEM.md): Bid's navy, Account's teal, and Shop and Art in ink until they choose
+ * docs/DESIGN_SYSTEM.md): Bid's navy, Account's teal, and LAX Shop and lax.art in ink until they choose
  * an accent. The tokens switch to their dark-surface values in dark mode.
  */
 const NAME_COLOUR: Readonly<Record<NamedProduct, string>> = {
@@ -48,7 +48,6 @@ const NAMES: ReadonlyArray<readonly [string, NamedProduct]> = [
   ["LAX Account", "account"],
   ["LAX Bid", "bid"],
   ["LAX Shop", "shop"],
-  ["LAX Art", "art"],
   ["lax.art", "art"],
 ];
 
