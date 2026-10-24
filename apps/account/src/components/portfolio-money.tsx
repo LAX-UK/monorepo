@@ -1,3 +1,4 @@
+import { EMPTY_STATE } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
 import { formatDate, formatMinorUnits } from "@/lib/format-money";
 import { MONEY_SECTION_LABELS, MONEY_STATUS_LABELS } from "@/server/domain/portfolio-labels";
@@ -231,6 +232,7 @@ export function PortfolioMoney({
       />
       {money.noResults ? (
         <EmptyState
+          className={EMPTY_STATE}
           headingLevel="h2"
           title="No money entries match these filters"
           description="Try a different filter, or clear them to see everything."

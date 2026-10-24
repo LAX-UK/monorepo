@@ -46,6 +46,15 @@ describe("buildSourceNotices", () => {
     );
   });
 
+  it("merges two unavailable products into one notice that names both", () => {
+    const notices = buildSourceNotices({ unavailable: ["bid", "shop"], partial: [] }, "items");
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.id.startsWith("unavailable")).toBe(true);
+    expect(notices[0]?.text).toBe(
+      "We can't reach LAX Bid or LAX Shop and lax.art right now. Their items are unavailable, and counts and totals on this page leave them out.",
+    );
+  });
+
   it("describes money separately from items", () => {
     const [notice] = buildSourceNotices({ unavailable: ["shop"], partial: [] }, "money");
     expect(notice?.text).toContain("LAX Shop and lax.art money details are unavailable");

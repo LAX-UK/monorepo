@@ -10,7 +10,7 @@ export const HOSTED_LOCKUP_ASSET_DIR = "lockups";
 export const HOSTED_LOCKUP_BASE_PATH = "/hosted-auth/lockups";
 
 /** viewBox width / height of the Account lockup, so the image reserves its space before it loads. */
-const ACCOUNT_LOCKUP_ASPECT = 1006.11 / 281.06;
+const ACCOUNT_LOCKUP_ASPECT = 1015.5 / 287.96;
 
 export function hostedLockupWidth(height: number): number {
   return Math.round(height * ACCOUNT_LOCKUP_ASPECT);

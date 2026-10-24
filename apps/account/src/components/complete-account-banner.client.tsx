@@ -25,13 +25,17 @@ export function CompleteAccountBanner({ gapsKey, href }: { gapsKey: string; href
   if (!visible) return null;
 
   return (
-    <Alert variant="inverse" role="note" className="rounded-lg py-4 pr-12">
+    <Alert
+      variant="default"
+      role="note"
+      className="rounded-2xl border-border-hairline bg-surface py-4 pr-12 sm:pl-6"
+    >
       <Button
         type="button"
         variant="ghost"
         size="icon"
         aria-label="Dismiss"
-        className="absolute top-1 right-1 text-cta-on hover:bg-cta-on/10 hover:text-cta-on focus-visible:ring-cta-on"
+        className="absolute top-1 right-1"
         onClick={() => {
           dismissCompleteAccountPrompt(browserLocalStorage(), gapsKey);
           setVisible(false);
@@ -45,7 +49,7 @@ export function CompleteAccountBanner({ gapsKey, href }: { gapsKey: string; href
         <AlertDescription>Add a few more details to complete your account.</AlertDescription>
         <a
           href={href}
-          className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4 focus-visible:outline-current"
+          className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-on-surface underline underline-offset-4"
         >
           Complete account
         </a>

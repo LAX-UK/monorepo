@@ -3,7 +3,6 @@ import { buildAccountLinks } from "./account-links";
 import { buildPrivacyGroups } from "./account-privacy.vm";
 import {
   accountInitials,
-  buildAccountSections,
   buildHelpGroups,
   buildLaunchGroups,
   buildSecurityGroups,
@@ -17,26 +16,6 @@ const withBid = buildAccountLinks({
 const withoutBid = buildAccountLinks({
   oidcIssuer: "https://test-auth.lax.bid",
   oidcClientId: "lax-account-web",
-});
-
-describe("buildAccountSections", () => {
-  it("lists the four categories with the Help card", () => {
-    const sections = buildAccountSections(withBid);
-    expect(sections.map((s) => [s.title, s.href])).toEqual([
-      ["Personal details", "/account/profile"],
-      ["Password and security", "/account/security"],
-      ["Notifications and privacy", "/account/privacy"],
-      ["Help", "/account/help"],
-    ]);
-  });
-
-  it("leaves Help out when Bid, which publishes the help pages, is not configured", () => {
-    expect(buildAccountSections(withoutBid).map((s) => s.id)).toEqual([
-      "personal-details",
-      "security",
-      "privacy",
-    ]);
-  });
 });
 
 describe("buildSecurityGroups", () => {

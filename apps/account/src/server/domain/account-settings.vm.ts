@@ -15,49 +15,6 @@ export const ACCOUNT_ROUTES = {
   help: "/account/help",
 } as const;
 
-export type AccountSectionVm = {
-  id: "personal-details" | "security" | "privacy" | "help";
-  title: string;
-  description: string;
-  href: string;
-};
-
-/**
- * The overview's category cards. Help opens Bid's published help centre and contact pages, so
- * the card is left out when Bid is not configured.
- */
-export function buildAccountSections(links: Pick<AccountLinksVm, "support">): AccountSectionVm[] {
-  const sections: AccountSectionVm[] = [
-    {
-      id: "personal-details",
-      title: "Personal details",
-      description: "Name, email, phone and addresses",
-      href: ACCOUNT_ROUTES.profile,
-    },
-    {
-      id: "security",
-      title: "Password and security",
-      description: "Password and two-step verification",
-      href: ACCOUNT_ROUTES.security,
-    },
-    {
-      id: "privacy",
-      title: "Notifications and privacy",
-      description: "Notification preferences, your data and policies",
-      href: ACCOUNT_ROUTES.privacy,
-    },
-  ];
-  if (links.support) {
-    sections.push({
-      id: "help",
-      title: "Help",
-      description: "Help centre and how to contact us",
-      href: ACCOUNT_ROUTES.help,
-    });
-  }
-  return sections;
-}
-
 function twoStepSubtitle(
   facts: Pick<AccountSecurityFacts, "twoStep" | "backupCodesRemaining">,
 ): string {

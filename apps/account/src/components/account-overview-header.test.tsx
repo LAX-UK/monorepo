@@ -3,17 +3,17 @@ import { describe, expect, it } from "vitest";
 import { AccountOverviewHeader } from "./account-overview-header";
 
 describe("AccountOverviewHeader", () => {
-  it("shows the name, initials, email and the one-account line", () => {
+  it("greets the person by first name, with initials and email, and no repeated tagline", () => {
     const html = renderToStaticMarkup(
       <AccountOverviewHeader
         overview={{ displayName: "Ada Lovelace", name: "Ada Lovelace", email: "ada@example.com" }}
       />,
     );
     expect(html).toContain("<h1");
-    expect(html).toContain("Ada Lovelace");
+    expect(html).toContain("Welcome, Ada");
     expect(html).toContain("ada@example.com");
     expect(html).toContain(">AL<");
-    expect(html).toContain("One LAX Account for Bid, Shop and lax.art.");
+    expect(html).not.toContain("One LAX Account");
   });
 
   it("does not repeat the email when it is already the display name", () => {
@@ -23,6 +23,8 @@ describe("AccountOverviewHeader", () => {
       />,
     );
     expect(html.match(/ada@example\.com/g)).toHaveLength(1);
+    // Without a name the greeting stays "Welcome" rather than welcoming an email address.
+    expect(html).toContain(">Welcome<");
     expect(html).toContain(">A<");
   });
 
@@ -32,7 +34,7 @@ describe("AccountOverviewHeader", () => {
         overview={{ displayName: "Your LAX Account", name: null, email: null }}
       />,
     );
-    expect(html).toContain("Your LAX Account");
-    expect(html).not.toContain("size-16");
+    expect(html).toContain(">Welcome<");
+    expect(html).not.toContain("size-20");
   });
 });

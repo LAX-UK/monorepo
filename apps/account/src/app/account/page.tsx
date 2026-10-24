@@ -10,6 +10,7 @@ import { PortfolioSummarySection } from "@/components/portfolio-summary-section"
 import { ProductCards } from "@/components/product-cards";
 import { CardLinkSection } from "@/components/section-cards";
 import { SecurityCheckupCard } from "@/components/security-checkup-card";
+import { toAccountViewer } from "@/components/shell/account-viewer";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import {
@@ -21,22 +22,17 @@ import {
 import { buildAccountProducts } from "@/server/domain/account-products.vm";
 import { buildSecurityCheckup } from "@/server/domain/account-security-checkup.vm";
 import { readAccountSecurityFacts } from "@/server/domain/account-security-facts";
-import {
-  ACCOUNT_ROUTES,
-  buildAccountSections,
-  buildLaunchGroups,
-} from "@/server/domain/account-settings.vm";
+import { ACCOUNT_ROUTES, buildLaunchGroups } from "@/server/domain/account-settings.vm";
 import { profileGaps } from "@/server/domain/profile-completeness";
-import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Overview · LAX Account" };
+export const metadata: Metadata = { title: "Home · LAX Account" };
 
-/** LAX Account overview: who is signed in, the Security Checkup, products, then the categories. */
+/** LAX Account Home: a greeting, the Security Checkup, the portfolio, the products and any launch links. */
 export default async function AccountOverviewPage() {
   const session = await loadAccountSession({
     withLiveSecurity: true,
@@ -67,25 +63,27 @@ export default async function AccountOverviewPage() {
   const organisationsHref = buildOrganisationsLink(config);
 
   return (
-    <AccountShell>
+    <AccountShell width="wide" viewer={toAccountViewer(overview)}>
       <AccountOverviewHeader overview={overview} />
 
       {gaps.length > 0 ? (
         <CompleteAccountBanner gapsKey={gaps.join(",")} href={ACCOUNT_ROUTES.profile} />
       ) : null}
 
-      <SecurityCheckupCard checkup={checkup} />
+      <div className="grid items-start gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <SecurityCheckupCard checkup={checkup} />
+        </div>
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {/* The products can take seconds to answer, so the card streams in after the rest. */}
+          <Suspense fallback={<PortfolioSummaryCardSkeleton />}>
+            <PortfolioSummarySection />
+          </Suspense>
+          {organisationsHref ? <OrganisationsCard href={organisationsHref} /> : null}
+        </div>
+      </div>
+
       <ProductCards products={buildAccountProducts(config)} />
-      {/* The products can take seconds to answer, so the card streams in after the rest. */}
-      <Suspense fallback={<PortfolioSummaryCardSkeleton />}>
-        <PortfolioSummarySection />
-      </Suspense>
-      {organisationsHref ? <OrganisationsCard href={organisationsHref} /> : null}
-      <CardLinkSection
-        id="account-sections"
-        heading="Manage your account"
-        items={buildAccountSections(links).map((section) => ({ ...section, key: section.id }))}
-      />
 
       {launchGroups.map((group) => (
         <CardLinkSection
@@ -101,12 +99,6 @@ export default async function AccountOverviewPage() {
           {...(group.footer ? { footer: group.footer } : {})}
         />
       ))}
-
-      <form method="post" action="/api/auth/logout">
-        <Button type="submit" variant="outline" size="lg" className="w-full border-border-hairline">
-          Sign out
-        </Button>
-      </form>
     </AccountShell>
   );
 }

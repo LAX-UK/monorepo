@@ -26,8 +26,9 @@ export default async function DeleteAccountPage() {
     <AccountShell>
       <AccountPageHeader
         title="Delete your account"
+        description="This permanently removes your LAX account and everything in it."
         backHref={ACCOUNT_ROUTES.security}
-        backLabel="Back to password and security"
+        backLabel="Security"
       />
       <DeleteAccountSection
         vm={buildDeletionPageVm(session.liveDeletion)}

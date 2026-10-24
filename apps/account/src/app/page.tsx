@@ -1,14 +1,29 @@
-import { AccountShell } from "@/components/account-shell";
+import signInGallery from "@/assets/signin-gallery.webp";
 import { NoticeTitle } from "@/components/account-ui";
-import { LANDING_CAPABILITIES, ONE_ACCOUNT_MESSAGE } from "@/lib/account-copy";
+import { AccountFooter } from "@/components/shell/account-frame";
+import { AccountThemeToggle } from "@/components/shell/account-theme-toggle.client";
+import { SignInProducts } from "@/components/sign-in-products";
 import { loadAccountSession } from "@/server/application/load-account-session";
+import { getLaxAccountContainer } from "@/server/container";
+import { buildAccountLinks } from "@/server/domain/account-links";
+import { buildAccountProducts } from "@/server/domain/account-products.vm";
 import { signInNotice } from "@/server/domain/sign-in-notice.vm";
+import { LaxLockup } from "@auction/marketing-ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+const LOGIN_HREF = "/api/auth/login?returnTo=/account";
+
+/** `next/image` hands back an object; Vite, in tests, hands back the URL. */
+const galleryUrl = typeof signInGallery === "string" ? signInGallery : signInGallery.src;
+
+/**
+ * Sign-in: the panel on the left and a gallery painting on the right, the way Art and Shop open
+ * their own sign-up. On a phone the painting becomes a short banner above the panel.
+ */
 export default async function LandingPage({
   searchParams,
 }: {
@@ -19,46 +34,80 @@ export default async function LandingPage({
   const session = await loadAccountSession();
   if (session.status === "ok" && !notice) redirect("/account");
 
+  const { config } = getLaxAccountContainer();
+  const products = buildAccountProducts(config);
+  const { support } = buildAccountLinks(config);
+
   return (
-    <AccountShell>
-      <div className="mx-auto flex w-full max-w-md flex-col gap-6 py-10">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-headline text-3xl font-semibold tracking-tight">LAX Account</h1>
-          <p className="text-base font-medium text-on-surface">{ONE_ACCOUNT_MESSAGE}</p>
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Sign in once. Your details, security and preferences go with you.
-          </p>
-        </div>
-        {notice ? (
-          <Alert
-            variant={notice.tone === "error" ? "destructive" : "default"}
-            role={notice.tone === "error" ? "alert" : "status"}
-          >
-            <NoticeTitle>{notice.title}</NoticeTitle>
-            <AlertDescription className="text-on-surface-variant">
-              {notice.message}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        <Button asChild variant="cta" size="lg">
-          <a href="/api/auth/login?returnTo=/account">
-            {notice ? "Try signing in again" : "Sign in"}
-          </a>
-        </Button>
-        <p className="text-xs text-on-surface-variant">
-          New to LAX? Choose “Sign up” on the next screen.
-        </p>
-        <section aria-labelledby="what-you-can-do" className="flex flex-col gap-3">
-          <h2 id="what-you-can-do" className="font-headline text-lg font-semibold">
-            What you can do here
-          </h2>
-          <ul className="flex list-disc flex-col gap-2 pl-5 text-sm leading-6 text-on-surface-variant marker:text-product-accent">
-            {LANDING_CAPABILITIES.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
+    <div className="flex min-h-screen flex-col bg-page-bg lg:grid lg:grid-cols-2">
+      {/* The painting is decoration: the headline says everything the page means. */}
+      <div className="relative h-40 w-full shrink-0 overflow-hidden bg-surface-container sm:h-56 lg:order-2 lg:h-auto">
+        <img
+          src={galleryUrl}
+          alt=""
+          fetchPriority="high"
+          className="absolute inset-0 size-full object-cover object-[50%_40%]"
+        />
       </div>
-    </AccountShell>
+
+      <div className="flex flex-1 flex-col lg:order-1">
+        <div className="flex items-center justify-between px-4 pt-6 sm:px-10 lg:px-16 lg:pt-10">
+          <a href="/" className="flex min-h-11 items-center rounded-sm">
+            <LaxLockup kind="account" className="block h-9 w-auto sm:h-10" />
+          </a>
+          <AccountThemeToggle />
+        </div>
+
+        <main
+          id="main"
+          className="flex flex-1 flex-col justify-center gap-8 px-4 py-10 sm:px-10 lg:px-16"
+        >
+          <div className="flex max-w-lg flex-col gap-4">
+            <h1 className="font-headline text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+              One account for all of LAX
+            </h1>
+            <p className="text-base leading-7 text-on-surface-variant">
+              Sign in once to manage your details, security and works across Bid, Shop and Art.
+            </p>
+          </div>
+          {notice ? (
+            <Alert
+              variant={notice.tone === "error" ? "destructive" : "default"}
+              role={notice.tone === "error" ? "alert" : "status"}
+              className="max-w-lg"
+            >
+              <NoticeTitle>{notice.title}</NoticeTitle>
+              <AlertDescription className="text-on-surface-variant">
+                {notice.message}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="flex max-w-lg flex-col gap-4">
+            <Button
+              asChild
+              variant="cta"
+              size="lg"
+              className="min-h-12 w-full sm:w-auto sm:self-start sm:px-10"
+            >
+              <a href={LOGIN_HREF}>{notice ? "Try signing in again" : "Sign in"}</a>
+            </Button>
+            <p className="text-sm text-on-surface-variant">
+              New to LAX?{" "}
+              <a
+                href={LOGIN_HREF}
+                className="font-medium text-on-surface underline underline-offset-4"
+              >
+                Create an account
+              </a>
+            </p>
+          </div>
+          <SignInProducts products={products} />
+        </main>
+
+        <div className="px-4 sm:px-10 lg:px-16">
+          <AccountFooter support={support} bare />
+        </div>
+      </div>
+    </div>
   );
 }

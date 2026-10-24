@@ -1,5 +1,5 @@
 import { AccountShell } from "@/components/account-shell";
-import { AccountPageHeader } from "@/components/account-ui";
+import { BackLink } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
 import { PortfolioNotices } from "@/components/portfolio-notices";
 import { PortfolioWorkDetail } from "@/components/portfolio-work-detail";
@@ -44,11 +44,7 @@ export default async function PortfolioWorkPage({
 
   return (
     <AccountShell>
-      <AccountPageHeader
-        title="Work"
-        backHref={PORTFOLIO_ROUTES.overview}
-        backLabel="Back to portfolio"
-      />
+      <BackLink href={PORTFOLIO_ROUTES.overview} label="Portfolio" />
       <PortfolioNotices notices={buildSourceNotices(loaded, "items")} retryHref={here} />
       {item ? (
         <PortfolioWorkDetail

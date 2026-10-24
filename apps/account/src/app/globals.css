@@ -4,17 +4,23 @@
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../../../packages/marketing-ui/src/**/*.{ts,tsx}";
 
+/* `dark:` follows the class the theme script and the header toggle set on <html>, as in Art. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Token names match apps/art/src/app/base.css so the shared @auction/ui primitives resolve.
    LAX colour rule (docs/DESIGN_SYSTEM.md): Account's accent is deep teal (PRODUCT_ACCENTS in
    @auction/branding) and navy stays Bid's. Teal marks the product only: the lockup descriptor,
    the primary button and the focus ring. It never signals success; --color-success stays green.
-   The theme follows the system setting because no theme preference is shared across LAX origins. */
+   The theme is the system setting until the person uses the header toggle; the choice is kept
+   for this origin only because no theme preference is shared across LAX origins. */
 @theme {
   --color-page-bg: #ffffff;
   --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-on-surface: #1c170d;
   --color-on-surface-variant: #474747;
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-on-surface);
   --color-primary: var(--brand-obsidian);
   --color-on-primary: #ffffff;
   --color-primary-container: #e8e8e8;
@@ -54,52 +60,66 @@
   --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-page-bg: #121414;
-    --color-background: #121414;
-    --color-surface: #1a1c1c;
-    --color-on-surface: var(--brand-light-cream);
-    --color-on-surface-variant: #c9c5bc;
-    --color-primary: var(--brand-light-cream);
-    --color-on-primary: var(--brand-obsidian);
-    --color-primary-container: #383a39;
-    --color-secondary-container: #333534;
-    --color-on-secondary-container: #e8e7e7;
-    --color-product-accent: #2dd4bf;
-    --color-cta-bg: var(--color-product-accent);
-    --color-cta-on: var(--brand-obsidian);
-    --color-accent-brand: var(--color-product-accent);
-    --color-link: var(--brand-light-cream);
-    --color-ring: var(--color-product-accent);
-    --color-surface-container: #333534;
-    --color-surface-container-low: #2d2f2e;
-    --color-surface-container-lowest: #0f1111;
-    --color-surface-container-high: #383a39;
-    --color-outline: #2e2e2e;
-    --color-outline-variant: #5c5a54;
-    --color-border-hairline: color-mix(in srgb, #5c5a54 40%, transparent);
-    --color-success: #56d364;
-    --color-success-container: oklch(0.28 0.06 145);
-    --color-on-success-container: #c8efd4;
-    --color-info: #6f9ef0;
-    --color-info-container: #1a2740;
-    --color-warning: oklch(0.78 0.12 85);
-    --color-warning-container: oklch(0.28 0.06 85);
-    --color-error: #ffb4ab;
-    --color-on-error: #690005;
-    --color-error-container: #93000a;
-    --color-on-error-container: #ffdad6;
-  }
+html.dark {
+  --color-page-bg: #121414;
+  --color-background: #121414;
+  --color-surface: #1a1c1c;
+  --color-on-surface: var(--brand-light-cream);
+  --color-on-surface-variant: #c9c5bc;
+  --color-primary: var(--brand-light-cream);
+  --color-on-primary: var(--brand-obsidian);
+  --color-primary-container: #383a39;
+  --color-secondary-container: #333534;
+  --color-on-secondary-container: #e8e7e7;
+  --color-product-accent: #2dd4bf;
+  --color-cta-bg: var(--color-product-accent);
+  --color-cta-on: var(--brand-obsidian);
+  --color-accent-brand: var(--color-product-accent);
+  --color-link: var(--brand-light-cream);
+  --color-ring: var(--color-product-accent);
+  --color-surface-container: #333534;
+  --color-surface-container-low: #2d2f2e;
+  --color-surface-container-lowest: #0f1111;
+  --color-surface-container-high: #383a39;
+  --color-outline: #2e2e2e;
+  --color-outline-variant: #5c5a54;
+  --color-border-hairline: color-mix(in srgb, #5c5a54 40%, transparent);
+  --color-success: #56d364;
+  --color-success-container: oklch(0.28 0.06 145);
+  --color-on-success-container: #c8efd4;
+  --color-info: #6f9ef0;
+  --color-info-container: #1a2740;
+  --color-warning: oklch(0.78 0.12 85);
+  --color-warning-container: oklch(0.28 0.06 85);
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
 }
 
 @layer base {
   html {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
     font-family: var(--font-body);
+  }
+
+  /* The menu sheet, the avatar menu and the skeletons animate; people who ask for less motion get none. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   :focus-visible {

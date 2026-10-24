@@ -84,7 +84,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
   }
 
   return (
-    <div className="space-y-4 px-4">
+    <div className="flex flex-col gap-4">
       <div aria-live="polite">
         {notice && editing.kind === "none" ? (
           <p
@@ -103,16 +103,16 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
         </p>
       ) : null}
 
-      <ul className="space-y-3">
+      <ul className="flex flex-col gap-4">
         {addresses.map((address) => {
           const badges = addressDefaultBadges(address);
           return (
             <li
               key={address.id}
-              className="-mx-4 space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+              className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-headline text-base font-medium text-on-surface">
+                <h3 className="font-headline text-lg font-semibold break-words text-on-surface">
                   {address.label}
                 </h3>
                 {badges.map((badge) => (
@@ -121,7 +121,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
               </div>
               <address className="text-sm leading-relaxed text-on-surface not-italic">
                 {addressLines(address).map((line) => (
-                  <span key={line} className="block">
+                  <span key={line} className="block [overflow-wrap:anywhere]">
                     {line}
                   </span>
                 ))}
@@ -231,7 +231,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            className="min-h-11 self-start"
             disabled={pending}
             onClick={() => {
               setNotice(null);

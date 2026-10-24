@@ -22,7 +22,10 @@ export default async function HelpPage() {
 
   return (
     <AccountShell>
-      <AccountPageHeader title="Help" backHref={ACCOUNT_ROUTES.overview} />
+      <AccountPageHeader
+        title="Help"
+        description="Find answers in the help centre, or get in touch with us."
+      />
       {groups.map((group) => (
         <SettingsGroup key={group.id} group={group} />
       ))}

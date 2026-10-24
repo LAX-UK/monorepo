@@ -113,7 +113,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
   if (step.kind === "enter") {
     return (
       <form
-        className="space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+        className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -123,6 +123,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
         <div className="space-y-1.5">
           <Label htmlFor={phoneId}>Phone number</Label>
           <Input
+            className="h-11"
             id={phoneId}
             name="phone"
             type="tel"
@@ -170,7 +171,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
     const { target } = step;
     return (
       <form
-        className="space-y-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+        className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -180,6 +181,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
         <div className="space-y-1.5">
           <Label htmlFor={codeId}>Verification code</Label>
           <Input
+            className="h-11"
             id={codeId}
             name="code"
             autoComplete="one-time-code"
@@ -236,11 +238,11 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
   }
 
   return (
-    <div className="space-y-3 px-4">
+    <div className="flex flex-col gap-4">
       <Button
         type="button"
         variant="outline"
-        className="min-h-11"
+        className="min-h-11 self-start"
         disabled={pending}
         onClick={() => {
           setNotice(null);

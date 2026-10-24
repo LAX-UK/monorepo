@@ -1,8 +1,9 @@
 import { PORTFOLIO_ROUTES } from "@/server/domain/portfolio-routes";
 import type { PortfolioSummaryVm } from "@/server/domain/portfolio-summary.vm";
 import { Button } from "@auction/ui/components/button";
+import { CARD as BASE_CARD, CARD_PADDING, CARD_TITLE } from "./account-ui";
 
-const CARD = "flex flex-col gap-3 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5";
+const CARD = `flex flex-col gap-4 ${BASE_CARD} ${CARD_PADDING}`;
 
 function SummaryBody({ summary }: { summary: PortfolioSummaryVm }) {
   if (summary.kind === "empty") {
@@ -33,7 +34,7 @@ function SummaryBody({ summary }: { summary: PortfolioSummaryVm }) {
 export function PortfolioSummaryCard({ summary }: { summary: PortfolioSummaryVm }) {
   return (
     <section aria-labelledby="portfolio-card-heading" className={CARD}>
-      <h2 id="portfolio-card-heading" className="font-headline text-lg font-semibold">
+      <h2 id="portfolio-card-heading" className={CARD_TITLE}>
         Portfolio
       </h2>
       <SummaryBody summary={summary} />
@@ -63,7 +64,7 @@ export function PortfolioSummaryCardSkeleton() {
 export function OrganisationsCard({ href }: { href: string }) {
   return (
     <section aria-labelledby="organisations-card-heading" className={CARD}>
-      <h2 id="organisations-card-heading" className="font-headline text-lg font-semibold">
+      <h2 id="organisations-card-heading" className={CARD_TITLE}>
         Your organisations
       </h2>
       <p className="text-sm text-on-surface-variant">

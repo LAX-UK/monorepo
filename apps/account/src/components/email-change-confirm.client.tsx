@@ -40,9 +40,11 @@ export function EmailChangeConfirm({ token, signInHref }: EmailChangeConfirmProp
 
   if (state.kind === "done") {
     return (
-      <div className="space-y-4" aria-live="polite">
-        <h1 className="font-headline text-2xl font-semibold tracking-tight">{state.heading}</h1>
-        <p className="text-sm text-on-surface-variant">{state.body}</p>
+      <div className="flex flex-col items-start gap-4" aria-live="polite">
+        <h1 className="font-headline text-3xl font-semibold tracking-tight sm:text-4xl">
+          {state.heading}
+        </h1>
+        <p className="max-w-prose text-base leading-7 text-on-surface-variant">{state.body}</p>
         {state.signInAgain ? (
           <Button asChild variant="cta" size="lg">
             <a href={signInHref}>Sign in</a>
@@ -53,11 +55,11 @@ export function EmailChangeConfirm({ token, signInHref }: EmailChangeConfirmProp
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="font-headline text-2xl font-semibold tracking-tight">
+    <div className="flex flex-col items-start gap-4">
+      <h1 className="font-headline text-3xl font-semibold tracking-tight sm:text-4xl">
         Confirm your email change
       </h1>
-      <p className="text-sm text-on-surface-variant">
+      <p className="max-w-prose text-base leading-7 text-on-surface-variant">
         Your email address changes once you've confirmed it from both your current and your new
         address. Confirm this one now.
       </p>

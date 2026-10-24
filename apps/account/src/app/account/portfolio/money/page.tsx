@@ -1,4 +1,5 @@
 import { AccountShell } from "@/components/account-shell";
+import { EMPTY_STATE } from "@/components/account-ui";
 import { AccountPageHeader } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
 import { PortfolioMoney } from "@/components/portfolio-money";
@@ -34,8 +35,7 @@ export default async function PortfolioMoneyPage({
     <AccountShell width="wide">
       <AccountPageHeader
         title="Money"
-        backHref={PORTFOLIO_ROUTES.overview}
-        backLabel="Back to portfolio"
+        description="Payments, payouts and refunds across LAX Bid, LAX Shop and lax.art."
       />
       <PortfolioNotices
         notices={buildSourceNotices(loaded, "money")}
@@ -43,6 +43,7 @@ export default async function PortfolioMoneyPage({
       />
       {page.showEmptyState ? (
         <EmptyState
+          className={EMPTY_STATE}
           headingLevel="h2"
           title="No money to show yet"
           description="Payments, payouts and refunds from LAX Bid, LAX Shop and lax.art appear here."

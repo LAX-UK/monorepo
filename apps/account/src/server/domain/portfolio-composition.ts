@@ -44,19 +44,30 @@ type Subject = "items" | "money";
 const NOUNS: Record<Subject, string> = { items: "items", money: "money details" };
 
 /**
- * Plain-language notes for a page built from incomplete data. They name the product, and say
- * that the figures leave it out, so a partial set is never read as the whole portfolio.
+ * Plain-language notes for a page built from incomplete data. They name the products, and say
+ * that the figures leave them out, so a partial set is never read as the whole portfolio.
  */
 export function buildSourceNotices(
   composed: Pick<ComposedRows<unknown>, "unavailable" | "partial">,
   subject: Subject,
 ): SourceNoticeVm[] {
   const noun = NOUNS[subject];
+  const labels = composed.unavailable.map((source) => PORTFOLIO_SOURCE_DESCRIPTORS[source].label);
+  const unavailable: SourceNoticeVm[] =
+    labels.length === 0
+      ? []
+      : [
+          {
+            id: `unavailable-${composed.unavailable.join("-")}`,
+            // One notice for however many products, so two outages never read as two problems.
+            text:
+              labels.length === 1
+                ? `${labels[0]} ${noun} are unavailable right now. Counts and totals on this page leave them out.`
+                : `We can't reach ${labels.join(" or ")} right now. Their ${noun} are unavailable, and counts and totals on this page leave them out.`,
+          },
+        ];
   return [
-    ...composed.unavailable.map((source) => ({
-      id: `unavailable-${source}`,
-      text: `${PORTFOLIO_SOURCE_DESCRIPTORS[source].label} ${noun} are unavailable right now. Counts and totals on this page leave them out.`,
-    })),
+    ...unavailable,
     ...composed.partial.map((source) => ({
       id: `partial-${source}`,
       text: `Some ${PORTFOLIO_SOURCE_DESCRIPTORS[source].label} ${noun} are not shown yet, so this may not be everything.`,

@@ -88,7 +88,7 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-4">
       {issued ? (
         <Alert variant="warning" aria-labelledby="new-backup-codes-heading">
           <NoticeTitle level={3} id="new-backup-codes-heading">
@@ -141,7 +141,7 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
           </output>
         </Alert>
       ) : null}
-      <div className="px-4">
+      <div>
         <Button
           type="button"
           variant="outline"

@@ -1,6 +1,6 @@
 import { formatMinorUnits } from "@/lib/format-money";
 import type { PortfolioHeaderVm } from "@auction/lax-ecosystem";
-import { KpiTile } from "@auction/ui/components/kpi-tile";
+import { CARD, CARD_PADDING } from "./account-ui";
 
 export const PAID_SO_FAR_NOTE =
   "What you've paid across LAX, in the currency you paid. Not a valuation.";
@@ -20,14 +20,19 @@ export function PortfolioHeader({ header }: { header: PortfolioHeaderVm }) {
       <h2 id="portfolio-summary-heading" className="sr-only">
         Summary
       </h2>
-      <ul className="grid gap-3 sm:grid-cols-3">
+      <ul className="grid gap-4 sm:grid-cols-3">
         {counts.map(({ label, value }) => (
           <li key={label}>
-            <KpiTile label={label} value={value} className="min-h-0" />
+            <div className={`flex flex-col gap-2 ${CARD} ${CARD_PADDING}`}>
+              <p className="text-sm text-on-surface-variant">{label}</p>
+              <p className="font-headline text-4xl font-semibold tabular-nums text-on-surface">
+                {value}
+              </p>
+            </div>
           </li>
         ))}
       </ul>
-      <div className="rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5">
+      <div className={`${CARD} ${CARD_PADDING}`}>
         <h3 className="text-sm font-medium text-on-surface-variant">Paid so far</h3>
         {header.paidSoFar.length === 0 ? (
           <p className="mt-1 font-headline text-lg text-on-surface">Nothing paid yet</p>
