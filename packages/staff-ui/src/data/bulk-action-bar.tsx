@@ -33,13 +33,17 @@ export function BulkActionBar({
     >
       <section
         aria-label="Bulk actions"
-        className="pointer-events-auto flex max-w-full items-center gap-1 rounded-staff-md border border-staff-line bg-staff-raised p-1 pl-3 shadow-staff-md"
+        className="pointer-events-auto flex w-full max-w-full items-center gap-1 rounded-staff-md border border-staff-line bg-staff-raised p-1 pl-3 shadow-staff-md sm:w-auto"
       >
-        <p className="mr-2 text-staff-sm font-medium whitespace-nowrap text-staff-fg tabular-nums">
-          {count} {count === 1 ? noun.one : noun.other} selected
+        <p className="mr-1 text-staff-sm font-medium whitespace-nowrap text-staff-fg tabular-nums sm:mr-2">
+          {count}{" "}
+          <span className="sr-only sm:not-sr-only">{count === 1 ? noun.one : noun.other} </span>
+          selected
         </p>
         <span aria-hidden className="mx-1 h-5 w-px bg-staff-line" />
-        <div className="flex min-w-0 items-center gap-1 overflow-x-auto">{children}</div>
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] sm:flex-none">
+          {children}
+        </div>
         <span aria-hidden className="mx-1 h-5 w-px bg-staff-line" />
         <StaffButton variant="ghost" size="icon-sm" aria-label="Clear selection" onClick={onClear}>
           <X aria-hidden />

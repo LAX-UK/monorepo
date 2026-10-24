@@ -60,7 +60,10 @@ export function Timeline({
       {events.map((event, index) => (
         <li key={event.id} className="relative flex gap-3 pb-4 last:pb-0">
           {index < events.length - 1 ? (
-            <span aria-hidden className="absolute top-4 bottom-0 left-[3.5px] w-px bg-staff-line" />
+            <span
+              aria-hidden
+              className="absolute top-[18px] -bottom-1.5 left-[3px] w-[2px] rounded-full bg-staff-line"
+            />
           ) : null}
           <span
             aria-hidden

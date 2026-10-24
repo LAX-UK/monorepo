@@ -15,8 +15,8 @@ export type KeyValueItem = {
 };
 
 /**
- * Facts about a record as label and value pairs. Two columns (label 160px) from `sm`, stacked on
- * a phone. Empty values show an em dash so a missing fact is visible, not invisible.
+ * Facts about a record as label and value pairs: side by side (label 148px) when the list is at
+ * least 384px wide, stacked when narrower. Empty values show an em dash so a missing fact is visible, not invisible.
  */
 export function KeyValueList({
   items,
@@ -31,7 +31,9 @@ export function KeyValueList({
   return (
     <dl
       className={cn(
-        "grid gap-x-8 text-staff-sm",
+        // Sized by its container, not the window: label and value side by side when there is
+        // room (a main column), stacked in a narrow side column or panel.
+        "@container grid gap-x-8 text-staff-sm",
         columns === 2 ? "lg:grid-cols-2" : "grid-cols-1",
         className,
       )}
@@ -39,7 +41,7 @@ export function KeyValueList({
       {items.map((item) => (
         <div
           key={item.label}
-          className="grid min-h-control-sm grid-cols-1 items-baseline gap-0.5 border-b border-staff-line-subtle py-1.5 last:border-b-0 sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-4"
+          className="grid min-h-control-sm grid-cols-1 items-baseline gap-0.5 border-b border-staff-line-subtle py-1.5 last:border-b-0 @sm:grid-cols-[148px_minmax(0,1fr)] @sm:gap-4"
         >
           <dt className="text-staff-muted">{item.label}</dt>
           <dd
