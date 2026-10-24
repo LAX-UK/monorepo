@@ -1830,6 +1830,9 @@ importers:
 
   packages/shop-contracts:
     dependencies:
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../identity-contracts
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.52

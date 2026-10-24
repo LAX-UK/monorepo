@@ -56,7 +56,7 @@ export async function forwardAdminRequest(input: {
   if (target.requiresRecentAuth) {
     assertRecentAuthentication({
       authTime: session.authTime,
-      maxAgeSeconds: SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS,
+      maxAgeSeconds: input.config.stepUpMaxAgeSeconds ?? SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS,
       nowMs: input.clock.nowMs(),
     });
   }

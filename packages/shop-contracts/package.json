@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/identity-contracts": "workspace:*",
     "@sinclair/typebox": "^0.34.41"
   },
   "devDependencies": {

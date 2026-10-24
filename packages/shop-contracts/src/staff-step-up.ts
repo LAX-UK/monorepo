@@ -1,12 +1,13 @@
+import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts/staff-step-up";
+
 /**
  * How recently a staff member must have signed in to move money or change who can sell or sign
  * in. shop-api enforces it on the routes below; the LAX Admin BFF checks the same list first so
  * the person is sent to sign in again instead of getting an error from the API.
  *
- * `identity-contracts` is adding `STAFF_STEP_UP_MAX_AGE_SECONDS`. When it is on main, re-export
- * it here as `SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS` and delete the literal; no caller changes.
+ * The window is the staff-wide one from `identity-contracts`, so both staff tools share it.
  */
-export const SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS = 900;
+export const SHOP_ADMIN_STEP_UP_MAX_AGE_SECONDS = STAFF_STEP_UP_MAX_AGE_SECONDS;
 
 /**
  * Mutating routes that need a recent sign-in, as `/admin/v1` paths. A `:name` segment matches
