@@ -73,6 +73,7 @@ export function presentOrder(record: OrderRecord): OrderSummary {
       variantSku: line.variantSku,
       editionNumber: line.editionNumber,
       unitPricePence: line.unitPricePence,
+      imageUrl: line.imageUrl,
     })),
   };
 }

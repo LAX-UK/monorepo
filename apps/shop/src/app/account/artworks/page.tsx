@@ -1,52 +1,33 @@
 import { ShopAccountShell } from "@/components/account/shop-account-shell";
-import {
-  ShopArtistNotLinkedActions,
-  shopArtistNotLinkedNotice,
-} from "@/components/account/shop-artist-not-linked";
-import {
-  fetchPortalArtistArtworks,
-  resolveShopArtistPortalLinked,
-  resolveShopPortalOwnershipEnabled,
-} from "@/lib/shop-portal.server";
+import { shopPageWayfinding } from "@/components/shop-page-header";
+import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { requireShopSellerTool } from "@/lib/account/shop-seller-access.server";
+import { fetchPortalArtistArtworks } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
-import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("My artworks");
 
+const { title, breadcrumbs } = shopPageWayfinding.accountArtworks;
+
 export default async function ShopAccountArtworksPage() {
   const viewer = await loadShopViewerState();
-  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
-  const artistPortalEnabled = await resolveShopArtistPortalLinked();
-  const payoutsEnabled = isShopPayoutsEnabled();
   const gate = gateShopAuthenticatedRoute(viewer, "/account/artworks");
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
-    redirect("/account");
+    redirect(SHOP_ORDERS_HREF);
   }
 
+  const access = await requireShopSellerTool("artworks");
+  const nav = buildShopAccountNavItems({ access, activeHref: "/account/artworks" });
   const result = await fetchPortalArtistArtworks();
-  const notLinked = result.status === "ok" && !result.data.artist;
 
   return (
-    <ShopAccountShell
-      title="My artworks"
-      breadcrumbs={[
-        { label: "Shop", href: "/" },
-        { label: "Account", href: "/account" },
-        { label: "My artworks" },
-      ]}
-      activeNavHref="/account/artworks"
-      portalOwnershipEnabled={portalOwnershipEnabled}
-      payoutsEnabled={payoutsEnabled}
-      artistPortalEnabled={artistPortalEnabled}
-      {...(notLinked ? { notice: shopArtistNotLinkedNotice } : {})}
-    >
-      {notLinked ? (
-        <ShopArtistNotLinkedActions />
-      ) : result.status === "unauthorized" ? (
+    <ShopAccountShell title={title} breadcrumbs={breadcrumbs} nav={nav}>
+      {result.status === "unauthorized" ? (
         <p>
           <a href={shopStorefrontLoginHref("/account/artworks")}>Sign in</a> to view your artworks.
         </p>

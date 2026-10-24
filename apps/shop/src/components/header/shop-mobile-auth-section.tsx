@@ -2,7 +2,9 @@
 
 import { ShopAccountStatus } from "@/components/header/shop-account-status";
 import { ShopAuthLink } from "@/components/shop-auth-link";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING } from "@auction/branding";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
@@ -11,8 +13,6 @@ import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
-
-const ORDERS_HREF = "/account/orders";
 
 type ShopMobileAuthSectionProps = {
   account: AccountChromeState;
@@ -92,14 +92,12 @@ function MobileGuestAuthSection({
 function MobileAuthenticatedAuthSection({
   displayName,
   email,
-  accountHref,
   logoutHref,
   productLinks,
   onNavigate,
 }: {
   displayName: string;
   email: string;
-  accountHref: string;
   logoutHref: string;
   productLinks: LaxProductLinkVm[];
   onNavigate?: () => void;
@@ -144,21 +142,21 @@ function MobileAuthenticatedAuthSection({
         ))}
         <li>
           <Link
-            href={accountHref}
+            href={SHOP_ORDERS_HREF}
             className={linkClass}
             {...(onNavigate ? { onClick: onNavigate } : {})}
           >
-            My account
+            Your orders
           </Link>
         </li>
         <li>
-          <Link
-            href={ORDERS_HREF}
+          <a
+            href={laxAccountUrl()}
             className={linkClass}
             {...(onNavigate ? { onClick: onNavigate } : {})}
           >
-            Orders
-          </Link>
+            LAX Account settings
+          </a>
         </li>
       </ul>
       <button
@@ -199,7 +197,6 @@ export function ShopMobileAuthSection({
         <MobileAuthenticatedAuthSection
           displayName={account.displayName}
           email={account.email}
-          accountHref={account.accountHref}
           logoutHref={account.logoutHref}
           productLinks={productLinks}
           {...(onNavigate ? { onNavigate } : {})}

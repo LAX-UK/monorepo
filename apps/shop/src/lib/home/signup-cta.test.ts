@@ -21,7 +21,7 @@ describe("homeSignupCta", () => {
         accountHref: "/account",
         logoutHref: "/logout",
       }),
-    ).toEqual({ label: "My account", href: "/account" });
+    ).toEqual({ label: "Your orders", href: "/account/orders" });
   });
 
   it("uses account status when identity is disabled with a href", () => {

@@ -3,14 +3,15 @@ import { ShopAccountBodyText, ShopAccountShell } from "@/components/account/shop
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { requireShopSellerTool } from "@/lib/account/shop-seller-access.server";
+import { LAX_ACCOUNT_PATHS, laxAccountUrl } from "@/lib/lax-account-url";
 import {
   fetchPortalSaleAuthority,
   fetchPortalSaleAuthorityRequests,
-  resolveShopArtistPortalLinked,
-  resolveShopPortalOwnershipEnabled,
 } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
-import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { formatPortalSaleAuthorityRequestStatus, formatShopDate } from "@auction/shop-portal/vm";
@@ -20,16 +21,6 @@ export const metadata = shopPrivatePageTitle("Sale limits");
 
 export default async function ShopAccountSaleLimitsPage() {
   const viewer = await loadShopViewerState();
-  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
-  const artistPortalEnabled = await resolveShopArtistPortalLinked();
-  const payoutsEnabled = isShopPayoutsEnabled();
-  const shellNav = {
-    activeNavHref: "/account/sale-limits",
-    portalOwnershipEnabled,
-    payoutsEnabled,
-    artistPortalEnabled,
-  };
-
   const gate = gateShopAuthenticatedRoute(viewer, "/account/sale-limits");
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
@@ -37,7 +28,6 @@ export default async function ShopAccountSaleLimitsPage() {
       <ShopAccountShell
         title={shopPageWayfinding.accountSaleLimits.title}
         breadcrumbs={shopPageWayfinding.accountSaleLimits.breadcrumbs}
-        {...shellNav}
         notice={{
           variant: "warning",
           title: "Unavailable",
@@ -52,6 +42,8 @@ export default async function ShopAccountSaleLimitsPage() {
     );
   }
 
+  const access = await requireShopSellerTool("sale-limits");
+  const nav = buildShopAccountNavItems({ access, activeHref: "/account/sale-limits" });
   const [result, requests] = await Promise.all([
     fetchPortalSaleAuthority(),
     fetchPortalSaleAuthorityRequests(),
@@ -61,7 +53,7 @@ export default async function ShopAccountSaleLimitsPage() {
     <ShopAccountShell
       title={shopPageWayfinding.accountSaleLimits.title}
       breadcrumbs={shopPageWayfinding.accountSaleLimits.breadcrumbs}
-      {...shellNav}
+      nav={nav}
     >
       {result.status === "unauthorized" ? (
         <ShopStatusState
@@ -86,7 +78,9 @@ export default async function ShopAccountSaleLimitsPage() {
           title="Ownership portal not enabled"
           titleAs="h2"
           description="This environment has not turned on the owner portal yet."
-          actions={<ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>}
+          actions={
+            <ShopStatusStateLink href={SHOP_ORDERS_HREF}>Back to your orders</ShopStatusStateLink>
+          }
         />
       ) : result.status === "failed" ? (
         <ShopStatusState
@@ -105,8 +99,11 @@ export default async function ShopAccountSaleLimitsPage() {
           titleAs="h2"
           description="When staff grant sale authority for your artworks, authorised and committed counts will appear here."
           actions={
-            <ShopStatusStateLink href="/account/editions" priority="primary">
-              View my editions
+            <ShopStatusStateLink
+              href={laxAccountUrl(LAX_ACCOUNT_PATHS.shopPortfolio)}
+              priority="primary"
+            >
+              View your editions in LAX Account
             </ShopStatusStateLink>
           }
         />

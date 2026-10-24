@@ -3,14 +3,10 @@ import { ShopPayoutAccountPanel } from "@/components/account/shop-payout-account
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import {
-  fetchPortalPayeeConnect,
-  fetchPortalPayouts,
-  resolveShopArtistPortalLinked,
-  resolveShopPortalOwnershipEnabled,
-} from "@/lib/shop-portal.server";
+import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
+import { requireShopSellerTool } from "@/lib/account/shop-seller-access.server";
+import { fetchPortalPayeeConnect, fetchPortalPayouts } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
-import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import {
@@ -20,42 +16,29 @@ import {
   resolvePortalPayoutStatusPresentation,
 } from "@auction/shop-portal/vm";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = shopPrivatePageTitle("Payouts");
 
 export default async function ShopAccountPayoutsPage() {
-  if (!isShopPayoutsEnabled()) {
-    notFound();
-  }
-
   const viewer = await loadShopViewerState();
   const gate = gateShopAuthenticatedRoute(viewer, "/account/payouts");
-  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
-  const artistPortalEnabled = await resolveShopArtistPortalLinked();
-  const payoutsEnabled = isShopPayoutsEnabled();
-  const shellNav = {
-    activeNavHref: "/account/payouts",
-    portalOwnershipEnabled,
-    payoutsEnabled,
-    artistPortalEnabled,
-  };
-
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
       <ShopAccountShell
         title={shopPageWayfinding.accountPayouts.title}
         breadcrumbs={shopPageWayfinding.accountPayouts.breadcrumbs}
-        {...shellNav}
       >
         <ShopCatalogueStateRetryButton />
       </ShopAccountShell>
     );
   }
 
+  const access = await requireShopSellerTool("payouts");
+  const nav = buildShopAccountNavItems({ access, activeHref: "/account/payouts" });
   const [result, payoutAccount] = await Promise.all([
     fetchPortalPayouts(),
     fetchPortalPayeeConnect(),
@@ -65,7 +48,7 @@ export default async function ShopAccountPayoutsPage() {
     <ShopAccountShell
       title={shopPageWayfinding.accountPayouts.title}
       breadcrumbs={shopPageWayfinding.accountPayouts.breadcrumbs}
-      {...shellNav}
+      nav={nav}
     >
       {payoutAccount.status === "ok" ? (
         <ShopPayoutAccountPanel

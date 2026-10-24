@@ -5,19 +5,17 @@ import {
   ShopAuthenticatedAccountMenu,
   ShopGuestAccountMenu,
 } from "@/components/header/shop-header-account-menu";
-import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { AccountChromeState } from "@auction/lax-ecosystem";
 import type { MarketingHeaderTone } from "@auction/marketing-ui";
 
 export function ShopHeaderAccountUtility({
   account,
-  productLinks = [],
   headerTone = "on-light",
   onNavigate,
   open,
   onOpenChange,
 }: {
   account: AccountChromeState;
-  productLinks?: LaxProductLinkVm[];
   headerTone?: MarketingHeaderTone;
   onNavigate?: () => void;
   open?: boolean;
@@ -33,9 +31,7 @@ export function ShopHeaderAccountUtility({
         <ShopAuthenticatedAccountMenu
           displayName={account.displayName}
           email={account.email}
-          accountHref={account.accountHref}
           logoutHref={account.logoutHref}
-          productLinks={productLinks}
           headerTone={headerTone}
           {...menuControl}
           {...(onNavigate ? { onNavigate } : {})}

@@ -1,9 +1,10 @@
 "use client";
 
 import { ShopAuthLink } from "@/components/shop-auth-link";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING } from "@auction/branding";
-import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import {
   MARKETING_HEADER_CHROME,
   MarketingChevronDownIcon,
@@ -17,15 +18,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
-
-const ORDERS_HREF = "/account/orders";
 
 function accountInitials(displayName: string, email: string): string {
   const source = displayName.trim() || email;
@@ -139,9 +137,7 @@ export function ShopGuestAccountMenu({
 type ShopAuthenticatedAccountMenuProps = {
   displayName: string;
   email: string;
-  accountHref: string;
   logoutHref: string;
-  productLinks: LaxProductLinkVm[];
   headerTone: MarketingHeaderTone;
   onNavigate?: () => void;
   initialOpen?: boolean;
@@ -152,16 +148,13 @@ type ShopAuthenticatedAccountMenuProps = {
 export function ShopAuthenticatedAccountMenu({
   displayName,
   email,
-  accountHref,
   logoutHref,
-  productLinks,
   headerTone,
   onNavigate,
   initialOpen = false,
   open,
   onOpenChange,
 }: ShopAuthenticatedAccountMenuProps) {
-  const otherProducts = productLinks.filter((link) => !link.current);
   const initials = accountInitials(displayName, email);
   const signOutFormRef = useRef<HTMLFormElement>(null);
   const menuProps =
@@ -228,34 +221,15 @@ export function ShopAuthenticatedAccountMenu({
             ) : null}
           </div>
           <div className="py-1">
-            {otherProducts.length > 0 ? (
-              <>
-                <DropdownMenuLabel className="px-3 py-1.5 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-brand-400 dark:text-on-surface-variant">
-                  LAX products
-                </DropdownMenuLabel>
-                {otherProducts.map((item) => (
-                  <DropdownMenuItem key={item.id} asChild className={menuItemClass(headerTone)}>
-                    <a
-                      href={item.href}
-                      rel="noopener noreferrer"
-                      {...(onNavigate ? { onClick: onNavigate } : {})}
-                    >
-                      {item.label}
-                    </a>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-              </>
-            ) : null}
             <DropdownMenuItem asChild className={menuItemClass(headerTone)}>
-              <Link href={accountHref} {...(onNavigate ? { onClick: onNavigate } : {})}>
-                My account
+              <Link href={SHOP_ORDERS_HREF} {...(onNavigate ? { onClick: onNavigate } : {})}>
+                Your orders
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild className={menuItemClass(headerTone)}>
-              <Link href={ORDERS_HREF} {...(onNavigate ? { onClick: onNavigate } : {})}>
-                Orders
-              </Link>
+              <a href={laxAccountUrl()} {...(onNavigate ? { onClick: onNavigate } : {})}>
+                LAX Account settings
+              </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

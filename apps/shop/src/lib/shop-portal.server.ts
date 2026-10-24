@@ -9,34 +9,22 @@ const portalFetchers = createPortalFetchers({
   readOwnershipEnvFlag: () => process.env.SHOP_PORTAL_OWNERSHIP_ENABLED?.trim(),
 });
 
-export type {
-  PortalDocumentItem,
-  PortalEditionItem,
-  PortalPayeeConnectView,
-  PortalPayoutItem,
-  PortalSaleAuthorityItem,
-  PortalSaleAuthorityRequestItem,
-  PortalSaleStatementItem,
-} from "@auction/shop-portal/portal";
+export type { PortalSaleAuthorityItem } from "@auction/shop-portal/portal";
 
-export const {
-  fetchPortalEditions,
-  fetchPortalCollection,
-  fetchPortalEnquiries,
-  fetchPortalSaleAuthority,
-  fetchPortalSaleAuthorityRequests,
-  fetchPortalPayouts,
-  fetchPortalSales,
-  fetchPortalDocuments,
-  fetchPortalArtistArtworks,
-  fetchPortalArtistSales,
-  fetchPortalPayeeConnect,
-} = portalFetchers;
+/**
+ * Seller tools only. Collection, editions, documents and enquiries moved to LAX Account and
+ * lax.art, so their fetchers are not exposed here.
+ */
+export const { fetchPortalSaleAuthorityRequests, fetchPortalArtistSales, fetchPortalPayeeConnect } =
+  portalFetchers;
+
+/** Cached per request: the seller-role lookup and the page that shows the list share one call. */
+export const fetchPortalSaleAuthority = cache(portalFetchers.fetchPortalSaleAuthority);
+export const fetchPortalPayouts = cache(portalFetchers.fetchPortalPayouts);
+export const fetchPortalSales = cache(portalFetchers.fetchPortalSales);
+export const fetchPortalArtistArtworks = cache(portalFetchers.fetchPortalArtistArtworks);
 
 /** Storefront hub links follow shop-api when the storefront env flag is unset. */
 export const resolveShopPortalOwnershipEnabled = cache(
   portalFetchers.resolveShopPortalOwnershipEnabled,
 );
-
-/** Whether the signed-in subject is linked to an artist profile (for account nav). */
-export const resolveShopArtistPortalLinked = cache(portalFetchers.resolveShopArtistPortalLinked);

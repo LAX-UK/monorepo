@@ -27,7 +27,6 @@ export function ShopPageHeader({ title, breadcrumbs, suppressTitle }: ShopPageHe
       <Breadcrumb className="shop-page-header__breadcrumb">
         <BreadcrumbList>
           {breadcrumbs.map((item, index) => {
-            const isLast = index === breadcrumbs.length - 1;
             const key = `${item.label}-${item.href ?? "current"}`;
             return (
               <Fragment key={key}>
@@ -37,7 +36,7 @@ export function ShopPageHeader({ title, breadcrumbs, suppressTitle }: ShopPageHe
                   </BreadcrumbSeparator>
                 ) : null}
                 <BreadcrumbItem>
-                  {item.href && !isLast ? (
+                  {item.href ? (
                     <BreadcrumbLink asChild className="shop-page-header__link shop-focus-ring">
                       <Link href={item.href}>{item.label}</Link>
                     </BreadcrumbLink>
@@ -76,53 +75,37 @@ export const shopPageWayfinding = {
     title: "Order confirmation",
     breadcrumbs: [shopRoot, { label: "Checkout", href: "/checkout" }, { label: "Confirmation" }],
   },
-  account: {
-    title: "Your account",
-    breadcrumbs: [shopRoot, { label: "Account" }],
-  },
   accountDisabled: {
     title: "Account disabled",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Disabled" }],
+    breadcrumbs: [shopRoot, { label: "Account disabled" }],
   },
   orders: {
     title: "Your orders",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Orders" }],
+    breadcrumbs: [shopRoot, { label: "Your orders" }],
   },
-  orderDetail: (orderShortLabel: string) => ({
-    title: `Order ${orderShortLabel}`,
-    breadcrumbs: [
-      shopRoot,
-      { label: "Account", href: "/account" },
-      { label: "Orders", href: "/account/orders" },
-      { label: orderShortLabel },
-    ],
+  orderDetail: (title: string) => ({
+    title,
+    /** Ends at "Your orders": the h1 names the order, so a third crumb would repeat it. */
+    breadcrumbs: [shopRoot, { label: "Your orders", href: "/account/orders" }],
   }),
-  accountSignIn: {
-    title: "Sign in required",
-    breadcrumbs: [shopRoot, { label: "Account" }],
-  },
-  accountUnavailable: {
-    title: "Account unavailable",
-    breadcrumbs: [shopRoot, { label: "Account" }],
-  },
-  accountEditions: {
-    title: "My editions",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "My editions" }],
-  },
   accountSaleLimits: {
     title: "Sale limits",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sale limits" }],
+    breadcrumbs: [shopRoot, { label: "Sale limits" }],
   },
   accountSales: {
     title: "Sales statement",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sales" }],
+    breadcrumbs: [shopRoot, { label: "Sales" }],
   },
   accountPayouts: {
     title: "Payouts",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Payouts" }],
+    breadcrumbs: [shopRoot, { label: "Payouts" }],
   },
-  accountDocuments: {
-    title: "Documents",
-    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Documents" }],
+  accountArtworks: {
+    title: "My artworks",
+    breadcrumbs: [shopRoot, { label: "My artworks" }],
+  },
+  accountArtistSales: {
+    title: "Artist sales",
+    breadcrumbs: [shopRoot, { label: "Artist sales" }],
   },
 } as const;

@@ -1,5 +1,5 @@
-import { ShopRouteLoading } from "@/components/shop-route-loading";
+import { ShopAccountLoading } from "@/components/account/shop-account-loading";
 
 export default function AccountOrdersLoading() {
-  return <ShopRouteLoading variant="commerce" shellClassName="shop-page shop-page--orders" />;
+  return <ShopAccountLoading variant="list" />;
 }

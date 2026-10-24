@@ -1,3 +1,4 @@
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { mergeBasketOnSignIn } from "@/lib/merge-basket-on-sign-in.server";
 import { markShopSilentNoticeOnStorefront } from "@/lib/silent-sign-in/cookies.server";
 import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
@@ -18,5 +19,5 @@ export async function GET(request: Request) {
     redirect(`${destination.pathname}${destination.search}${destination.hash}`);
   }
 
-  redirect(`/account?basketMerge=${basketMerge}&merged=1`);
+  redirect(`${SHOP_ORDERS_HREF}?basketMerge=${basketMerge}`);
 }

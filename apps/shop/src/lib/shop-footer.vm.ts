@@ -1,4 +1,6 @@
 import { buildShopPolicyLinks } from "@/content/footer-nav.config";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingFooterColumn } from "@auction/marketing-ui";
@@ -22,9 +24,8 @@ function accountColumn(state: ShopFooterAccountState): MarketingFooterColumn {
       return {
         ...column,
         links: [
-          { label: "Your account", href: "/account" },
-          { label: "Orders", href: "/account/orders" },
-          { label: "Collection", href: "/account/collection" },
+          { label: "Your orders", href: SHOP_ORDERS_HREF },
+          { label: "LAX Account", href: laxAccountUrl() },
         ],
       };
     case "disabled":

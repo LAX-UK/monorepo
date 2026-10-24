@@ -1,48 +1,29 @@
 import { ShopAccountShell } from "@/components/account/shop-account-shell";
+import { ShopOrderList } from "@/components/account/shop-order-list";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import {
-  resolveShopOrderRefundLine,
-  resolveShopOrderStatusPresentation,
-} from "@/lib/presenters/shop-status-presentation";
+import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { buildShopOrderListVm } from "@/lib/account/shop-orders.vm";
+import { loadShopSellerAccess } from "@/lib/account/shop-seller-access.server";
 import { listShopOrders } from "@/lib/shop-commerce.server";
-import {
-  resolveShopArtistPortalLinked,
-  resolveShopPortalOwnershipEnabled,
-} from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
-import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
-import { formatShopDateTime } from "@auction/shop-portal/vm";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export const metadata = shopPrivatePageTitle("Orders");
+export const metadata = shopPrivatePageTitle("Your orders");
+
+const { title, breadcrumbs } = shopPageWayfinding.orders;
 
 export default async function AccountOrdersPage() {
   const viewer = await loadShopViewerState();
-  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
-  const artistPortalEnabled = await resolveShopArtistPortalLinked();
-  const payoutsEnabled = isShopPayoutsEnabled();
-  const shellNav = {
-    activeNavHref: "/account/orders",
-    portalOwnershipEnabled,
-    payoutsEnabled,
-    artistPortalEnabled,
-  };
-
-  const gate = gateShopAuthenticatedRoute(viewer, "/account/orders");
+  const gate = gateShopAuthenticatedRoute(viewer, SHOP_ORDERS_HREF);
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
-      <ShopAccountShell
-        title={shopPageWayfinding.orders.title}
-        breadcrumbs={shopPageWayfinding.orders.breadcrumbs}
-        {...shellNav}
-      >
+      <ShopAccountShell title={title} breadcrumbs={breadcrumbs}>
         <ShopStatusState
           layout="page"
           variant="error"
@@ -59,14 +40,17 @@ export default async function AccountOrdersPage() {
     );
   }
 
-  const ordersResult = await listShopOrders();
+  const [ordersResult, access] = await Promise.all([listShopOrders(), loadShopSellerAccess()]);
+  const nav = buildShopAccountNavItems({ access, activeHref: SHOP_ORDERS_HREF });
+  const list =
+    ordersResult.status === "ok"
+      ? buildShopOrderListVm(ordersResult.data)
+      : ordersResult.status === "empty"
+        ? ({ kind: "empty" } as const)
+        : null;
 
   return (
-    <ShopAccountShell
-      title={shopPageWayfinding.orders.title}
-      breadcrumbs={shopPageWayfinding.orders.breadcrumbs}
-      {...shellNav}
-    >
+    <ShopAccountShell title={title} breadcrumbs={breadcrumbs} nav={nav}>
       {ordersResult.status === "unauthorized" ? (
         <ShopStatusState
           layout="page"
@@ -76,62 +60,38 @@ export default async function AccountOrdersPage() {
           description="Your session ended before we could load your orders."
           actions={
             <ShopStatusStateLink
-              href={shopStorefrontLoginHref("/account/orders")}
+              href={shopStorefrontLoginHref(SHOP_ORDERS_HREF)}
               priority="primary"
             >
               Sign in
             </ShopStatusStateLink>
           }
         />
-      ) : ordersResult.status === "failed" ? (
+      ) : list === null ? (
         <ShopStatusState
           layout="page"
           variant="error"
           title="Orders temporarily unavailable"
           titleAs="h2"
-          description="We could not load your order history. Try again in a moment."
+          description="We could not load your orders. Try again in a moment."
           actions={<ShopCatalogueStateRetryButton />}
         />
-      ) : ordersResult.status === "empty" ? (
+      ) : list.kind === "empty" ? (
         <ShopStatusState
           layout="page"
           variant="empty"
+          icon="bag"
           title="No orders yet"
           titleAs="h2"
-          description="When you purchase an artwork, order details and progress will appear here."
+          description="When you buy an edition, the order and its progress appear here."
           actions={
             <ShopStatusStateLink href="/artworks" priority="primary">
-              Explore artworks
+              Browse editions
             </ShopStatusStateLink>
           }
         />
       ) : (
-        <ul className="shop-orders__list">
-          {ordersResult.data.map((order) => {
-            const status = resolveShopOrderStatusPresentation(order.status);
-            const refundLine = resolveShopOrderRefundLine(order);
-            const firstLine = order.lines[0];
-            const titleLine = firstLine?.artworkTitle ?? "Order";
-            return (
-              <li key={order.orderId} className="shop-orders__list-item">
-                <Link href={`/account/orders/${order.orderId}`} className="shop-orders__list-link">
-                  <span className="shop-orders__list-copy">
-                    <span>
-                      Order {order.orderId.slice(0, 8)}… · {titleLine}
-                    </span>
-                    <span className="shop-orders__status-hint">
-                      {formatShopDateTime(order.createdAt)}
-                      {refundLine ? ` · ${refundLine}` : ""}
-                    </span>
-                  </span>
-                  <span className="shop-orders__list-status">
-                    <DotStatusPill label={status.label} tone={status.tone} />
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <ShopOrderList rows={list.rows} />
       )}
     </ShopAccountShell>
   );

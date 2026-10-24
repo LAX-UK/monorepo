@@ -1,4 +1,5 @@
 import { homeSignup } from "@/content/home-marketing";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import type { ShopViewerState } from "@/lib/shop-viewer-state";
 
 export type HomeSignupCta = {
@@ -11,7 +12,7 @@ export function homeSignupCta(viewer: ShopViewerState): HomeSignupCta | null {
     case "guest":
       return { label: homeSignup.ctaLabel, href: homeSignup.ctaHref };
     case "authenticated":
-      return { label: "My account", href: viewer.accountHref };
+      return { label: "Your orders", href: SHOP_ORDERS_HREF };
     case "disabled":
       if (viewer.accountHref) {
         return { label: "Account status", href: viewer.accountHref };

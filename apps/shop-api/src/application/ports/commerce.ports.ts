@@ -80,6 +80,8 @@ export type OrderRecord = {
     variantSku: string | null;
     editionNumber: number | null;
     unitPricePence: number;
+    /** The artwork's primary image; null for merchandise or a work without one. */
+    imageUrl: string | null;
   }>;
   createdAt: Date;
   paidAt: Date | null;

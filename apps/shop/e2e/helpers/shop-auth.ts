@@ -48,7 +48,7 @@ export async function signInShopBuyer(
   }
 
   await page.waitForURL(
-    (url) => url.pathname === returnTo || url.pathname.startsWith("/account/post-sign-in"),
+    (url) => url.pathname.startsWith(returnTo) || url.pathname.startsWith("/account/post-sign-in"),
     { timeout: 60_000 },
   );
   if (page.url().includes("/account/post-sign-in")) {
@@ -59,8 +59,9 @@ export async function signInShopBuyer(
 }
 
 export async function signOutShopBuyer(page: Page): Promise<void> {
-  await page.goto("/account", { waitUntil: "domcontentloaded" });
-  const signOut = page.getByRole("button", { name: "Sign out" });
+  await page.goto("/account/orders", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Account menu" }).click();
+  const signOut = page.getByRole("menuitem", { name: "Sign out" });
   await Promise.all([
     page.waitForURL((url) => url.pathname === "/signed-out" || url.pathname === "/", {
       timeout: 90_000,
