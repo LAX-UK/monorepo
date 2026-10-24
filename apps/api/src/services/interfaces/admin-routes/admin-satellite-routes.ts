@@ -1,6 +1,7 @@
 import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
 import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
+import type { AdminSavedViewService } from "../../admin/admin-saved-view.service.js";
 import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-reset.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
@@ -62,6 +63,7 @@ export type AdminStaffSecurityRouteServices = {
     StaffAccessAdminService,
     "summaries" | "detail" | "setRemoteRole" | "revokeRemote" | "myTools"
   >;
+  savedViews: Pick<AdminSavedViewService, "list" | "create" | "rename" | "reorder" | "remove">;
 };
 
 export type { IQueueInspector, IQueueMutator };

@@ -82,10 +82,20 @@ export {
   FilterMenu,
   TablePagination,
   TableSearch,
-  useSavedViews,
   useTableDensity,
 } from "./data/toolbar.js";
-export type { ActiveFilter, DataView, FilterOption, SavedView } from "./data/toolbar.js";
+export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
+export { SavedViewsError, useSavedViews } from "./data/saved-views.js";
+export type {
+  SavedView,
+  SavedViewItem,
+  SavedViewsControls,
+  SavedViewsErrorCode,
+  SavedViewsPort,
+  SavedViewsResult,
+} from "./data/saved-views.js";
+export { VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./data/views-menu.js";
+export type { TeamView } from "./data/views-menu.js";
 export type { DataColumn, SortDirection, SortState, TableDensity } from "./data/types.js";
 
 // Panels

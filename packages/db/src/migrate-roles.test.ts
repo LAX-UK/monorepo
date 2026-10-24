@@ -370,6 +370,18 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_COMMERCE_TABLES]).toContain("shop_admin_command");
   });
 
+  it("keeps each tool's saved views to its own role", () => {
+    // LAX Admin's views belong to shop_app alone.
+    expect([...SHOP_COMMERCE_TABLES]).toContain("shop_staff_saved_view");
+    expect([...API_DENY_TABLES]).toContain("shop_staff_saved_view");
+    expect([...WORKER_DENY_TABLES]).toContain("shop_staff_saved_view");
+    // Bid admin's views belong to api_app alone: it is granted by default and never listed for
+    // Shop or the worker.
+    expect([...API_DENY_TABLES]).not.toContain("admin_saved_view");
+    expect([...SHOP_COMMERCE_TABLES]).not.toContain("admin_saved_view");
+    expect([...WORKER_FULL_TABLES, ...WORKER_READ_TABLES]).not.toContain("admin_saved_view");
+  });
+
   it("grants public sequence usage to shop_app (sale authority grant revision)", async () => {
     const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
     expect(source).toMatch(/\["auth_app", "api_app", "shop_app", "worker_app"\].*grantSequences/s);

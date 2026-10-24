@@ -98,6 +98,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_client_assignment",
   "shop_original_sale",
   "shop_payee_connect_account",
+  /** A staff member's saved list views, written by shop-api only. */
+  "shop_staff_saved_view",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */

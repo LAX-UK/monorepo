@@ -1,5 +1,8 @@
 import { createDb } from "@auction/db";
-import { DrizzleLaxStaffAccessRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleAdminSavedViewRepository,
+  DrizzleLaxStaffAccessRepository,
+} from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
@@ -28,6 +31,7 @@ import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { createAppLogger } from "./lib/logger.js";
+import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
@@ -237,6 +241,8 @@ export function createContainer(env: Env): Container {
     users: repos.adminUserReader,
     identity: identityIssuer,
   });
+
+  const savedViews = new AdminSavedViewService(new DrizzleAdminSavedViewRepository(db));
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -475,6 +481,7 @@ export function createContainer(env: Env): Container {
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
       staffAccess,
+      savedViews,
       atg,
     },
     finance,

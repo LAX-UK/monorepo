@@ -12,6 +12,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -1415,4 +1416,27 @@ export const shopMediaAsset = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("shop_media_asset_status_kind_idx").on(table.status, table.kind)],
+);
+
+/** A table view a LAX Admin staff member saved for a list. Owned by the person, never shared. */
+export const shopStaffSavedView = pgTable(
+  "shop_staff_saved_view",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerSubjectId: text("owner_subject_id").notNull(),
+    listKey: text("list_key").notNull(),
+    label: text("label").notNull(),
+    query: text("query").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("shop_staff_saved_view_owner_list_label_uid").on(
+      table.ownerSubjectId,
+      table.listKey,
+      table.label,
+    ),
+    index("shop_staff_saved_view_owner_list_idx").on(table.ownerSubjectId, table.listKey),
+  ],
 );

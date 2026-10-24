@@ -321,6 +321,15 @@ export type {
   ReplaceCategoryInterestsResult,
 } from "./category-interests.repository.js";
 
+export type {
+  AdminSavedViewRecord,
+  CreateAdminSavedViewInput,
+  CreateAdminSavedViewResult,
+  IAdminSavedViewRepository,
+  RenameAdminSavedViewResult,
+  ReorderAdminSavedViewsResult,
+} from "./admin-saved-view.repository.js";
+
 export type { IUserRepository, UserProfileRow } from "./user.repository.js";
 
 export type { IUserSuspensionChecker } from "./user-suspension.checker.js";

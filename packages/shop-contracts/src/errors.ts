@@ -21,6 +21,9 @@ export const SHOP_API_ERROR_CODES = {
   FEATURE_DISABLED: "shop.feature_disabled",
   IDEMPOTENCY_CONFLICT: "shop.idempotency_conflict",
   RATE_LIMITED: "shop.rate_limited",
+  SAVED_VIEW_DUPLICATE: "shop.saved_view_duplicate",
+  SAVED_VIEW_LIMIT: "shop.saved_view_limit",
+  SAVED_VIEW_ORDER_CHANGED: "shop.saved_view_order_changed",
 } as const;
 
 export type ShopApiErrorCode = (typeof SHOP_API_ERROR_CODES)[keyof typeof SHOP_API_ERROR_CODES];

@@ -20,6 +20,7 @@ import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchand
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminProductionRoutes } from "./routes/admin/v1/admin-production.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
+import { registerAdminSavedViewRoutes } from "./routes/admin/v1/admin-saved-views.routes.js";
 import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
@@ -160,6 +161,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
           originalsEnabled: options.deps.env.SHOP_ORIGINALS_ENABLED,
         });
         void registerAdminPeopleRoutes(adminScope, options.deps.admin);
+        void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);

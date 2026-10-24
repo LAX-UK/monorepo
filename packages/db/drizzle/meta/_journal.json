@@ -1590,6 +1590,13 @@
       "when": 1794902400000,
       "tag": "0226_user_pii_purge_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 227,
+      "version": "7",
+      "when": 1794988800000,
+      "tag": "0227_staff_saved_views",
+      "breakpoints": true
     }
   ]
 }

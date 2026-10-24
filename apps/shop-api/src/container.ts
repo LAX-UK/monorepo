@@ -23,6 +23,7 @@ import { createShopMediaUploadHandlers } from "./application/handlers/shop-media
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
 import type { ShopPayeeConnectPort } from "./application/ports/shop-payee-connect.port.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
+import { createSavedViewService } from "./application/saved-view.service.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
@@ -53,6 +54,7 @@ import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
+import { createDrizzleSavedViewRepository } from "./infrastructure/drizzle-saved-view.repository.js";
 import { createDrizzleShopMediaAssetRepository } from "./infrastructure/drizzle-shop-media-asset.repository.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
@@ -360,6 +362,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           repository: createDrizzleProductionTaskRepository(db),
           staffReader,
         }),
+        savedViews: createSavedViewService({ repository: createDrizzleSavedViewRepository(db) }),
         staffReader,
         createProductionTask,
         updateFulfilment,
