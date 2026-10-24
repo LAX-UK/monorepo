@@ -672,7 +672,7 @@ export function DataTable<T>({
                               ) : null}
                             </div>
                             {actionColumns.map((column) => (
-                              <div key={column.id} className="-my-1 shrink-0 self-center">
+                              <div key={column.id} className="-my-0.5 shrink-0 self-start">
                                 {column.cell(row)}
                               </div>
                             ))}

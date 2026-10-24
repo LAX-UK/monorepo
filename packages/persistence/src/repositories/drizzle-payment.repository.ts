@@ -6,7 +6,7 @@ import {
   payment,
   paymentExternalRef,
 } from "@auction/db/schema";
-import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import type { InferSelectModel, SQL } from "drizzle-orm";
 import type {
   AdminPaymentTableRowDto,
@@ -36,6 +36,16 @@ export function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limi
   const conditions = [];
   if (filter.status) {
     conditions.push(eq(payment.status, filter.status));
+  }
+  if (filter.fulfilmentStatuses && filter.fulfilmentStatuses.length > 0) {
+    conditions.push(inArray(sql`${lotFulfilment.status}::text`, [...filter.fulfilmentStatuses]));
+  }
+  if (filter.xeroInvoice === "linked") {
+    conditions.push(isNotNull(paymentExternalRef.xeroInvoiceNumber));
+  } else if (filter.xeroInvoice === "missing") {
+    conditions.push(isNull(paymentExternalRef.xeroInvoiceNumber));
+  } else if (filter.xeroInvoice === "sync_error") {
+    conditions.push(eq(paymentExternalRef.syncStatus, "error"));
   }
   const needle = filter.q?.trim();
   if (needle) {
@@ -404,7 +414,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
-      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId));
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
+      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
     const [row] = await (where ? base.where(where) : base);
     return row?.n ?? 0;
   }
@@ -423,7 +434,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
-      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId));
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
+      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
     const [row] = await (where ? base.where(where) : base);
     return {
       totalVolume: row?.totalVolume ?? "0",

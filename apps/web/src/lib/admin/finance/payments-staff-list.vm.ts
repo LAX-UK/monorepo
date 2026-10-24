@@ -4,6 +4,7 @@ import { toStaffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin-ops-dashboard.types";
 import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import {
+  lotFulfilmentStatusLabel,
   paymentStatusLabel,
   paymentStatusToBadgeVariant,
   resolveStatusPresentation,
@@ -165,7 +166,14 @@ export function paymentsViews(
   search: PaymentsListSearch,
   manualReviewCount: number,
 ): StaffDataView[] {
-  const reset = { manualReview: null, manualReviewReason: null, status: null, q: null };
+  const reset = {
+    manualReview: null,
+    manualReviewReason: null,
+    status: null,
+    q: null,
+    fulfilment: null,
+    xero: null,
+  };
   return [
     { id: "all", label: "All", href: paymentsListHref(search, reset) },
     ...PAYMENT_STATUS_VIEWS.map((status) => ({
@@ -255,6 +263,61 @@ export const MANUAL_REVIEW_REASON_FILTERS = [
   { value: "aml_hold", label: manualReviewReasonLabel("aml_hold") },
   { value: "source_of_funds_required", label: manualReviewReasonLabel("source_of_funds_required") },
 ] as const;
+
+/** Lot fulfilment, as the payments filter sheet offers it, in the order a lot moves through it. */
+export const PAYMENT_FULFILMENT_FILTERS = (
+  [
+    "awaiting_payment",
+    "awaiting_release",
+    "released",
+    "ready_for_collection",
+    "in_transit",
+    "delivered",
+    "cancelled",
+  ] as const
+).map((value) => ({ value, label: lotFulfilmentStatusLabel[value] }));
+
+export const PAYMENT_XERO_FILTERS = [
+  { value: "linked", label: "Invoice linked" },
+  { value: "missing", label: "No invoice yet" },
+  { value: "sync_error", label: "Last sync failed" },
+] as const;
+
+const listParam = (value: string | string[] | undefined) =>
+  typeof value === "string" ? value : "";
+
+/** The filters in force beyond the status view, as chips, each with the link that removes it. */
+export function paymentsFilterChips(
+  search: PaymentsListSearch,
+): Array<{ id: string; label: string; clearHref: string }> {
+  const q = listParam(search.q);
+  const fulfilment = listParam(search.fulfilment)
+    .split(",")
+    .map((value) => PAYMENT_FULFILMENT_FILTERS.find((option) => option.value === value)?.label)
+    .filter((label): label is string => Boolean(label));
+  const xero = PAYMENT_XERO_FILTERS.find((option) => option.value === listParam(search.xero));
+  return [
+    ...(q ? [{ id: "q", label: `“${q}”`, clearHref: paymentsListHref(search, { q: null }) }] : []),
+    ...(fulfilment.length > 0
+      ? [
+          {
+            id: "fulfilment",
+            label: `Fulfilment: ${fulfilment.join(", ")}`,
+            clearHref: paymentsListHref(search, { fulfilment: null }),
+          },
+        ]
+      : []),
+    ...(xero
+      ? [
+          {
+            id: "xero",
+            label: `Xero: ${xero.label}`,
+            clearHref: paymentsListHref(search, { xero: null }),
+          },
+        ]
+      : []),
+  ];
+}
 
 /** "1–50 of 312 payments". */
 export function paymentsRangeSummary(offset: number, shown: number, total: number): string {

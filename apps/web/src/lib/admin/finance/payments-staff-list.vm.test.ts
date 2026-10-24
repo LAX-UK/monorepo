@@ -3,6 +3,7 @@ import {
   activePaymentsView,
   formatPaymentAmount,
   paymentsAttention,
+  paymentsFilterChips,
   paymentsListHref,
   paymentsMetrics,
   paymentsRangeSummary,
@@ -62,6 +63,21 @@ describe("payments staff list view model", () => {
       ["Captured", "£604.80"],
       ["Refunded", "£0.00"],
     ]);
+  });
+
+  it("shows filters beyond the status view as chips, never the status itself", () => {
+    const chips = paymentsFilterChips({
+      status: "captured",
+      q: "golden",
+      fulfilment: "in_transit,delivered",
+      xero: "missing",
+    });
+    expect(chips.map((chip) => chip.label)).toEqual([
+      "“golden”",
+      "Fulfilment: In transit, Delivered",
+      "Xero: No invoice yet",
+    ]);
+    expect(chips[1]?.clearHref).toBe("/admin/payments?status=captured&q=golden&xero=missing");
   });
 
   it("states the range shown", () => {

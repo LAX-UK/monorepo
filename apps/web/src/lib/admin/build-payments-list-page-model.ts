@@ -15,6 +15,8 @@ export type PaymentsListSearchParams = {
   period?: string;
   manualReview?: string;
   manualReviewReason?: string;
+  fulfilment?: string;
+  xero?: string;
   success?: string;
 };
 
@@ -24,7 +26,9 @@ export function buildPaymentsListPageModel(sp: PaymentsListSearchParams) {
   const manualReviewReasonFilter = manualReviewQuery.reasonFilter;
   const query = paymentsListController.parseQuery(sp);
   const paymentQ = query.q ?? "";
-  const hasListFilters = Boolean(query.status || paymentQ.trim());
+  const hasListFilters = Boolean(
+    query.status || paymentQ.trim() || query.fulfilment?.length || query.xero,
+  );
 
   const buildPaginationHref = (patch: Record<string, string | number | undefined>) =>
     buildListHref(PAYMENTS_LIST_PATH, sp, patch);

@@ -183,18 +183,22 @@ export function FilterSheet({
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4" data-lenis-prevent>
               <div className="flex flex-col divide-y divide-staff-line-subtle">
                 {sections.map((section) => (
-                  <fieldset key={section.id} className="flex flex-col gap-1 py-4 first:pt-0">
-                    <legend className="mb-1 text-staff-sm font-medium text-staff-fg">
-                      {section.label}
-                    </legend>
-                    <SectionBody
-                      section={section}
-                      value={draft[section.id] ?? emptyValue(section)}
-                      onChange={(value) => set(section.id, value)}
-                      idBase={`${idBase}-${section.id}`}
-                      today={today ?? londonToday()}
-                    />
-                  </fieldset>
+                  // The spacing sits on a wrapper: a fieldset draws its legend above its own
+                  // padding, which would open a gap between the legend and the choices.
+                  <div key={section.id} className="py-4 first:pt-0">
+                    <fieldset className="flex flex-col gap-1">
+                      <legend className="mb-1 text-staff-sm font-medium text-staff-fg">
+                        {section.label}
+                      </legend>
+                      <SectionBody
+                        section={section}
+                        value={draft[section.id] ?? emptyValue(section)}
+                        onChange={(value) => set(section.id, value)}
+                        idBase={`${idBase}-${section.id}`}
+                        today={today ?? londonToday()}
+                      />
+                    </fieldset>
+                  </div>
                 ))}
               </div>
             </div>

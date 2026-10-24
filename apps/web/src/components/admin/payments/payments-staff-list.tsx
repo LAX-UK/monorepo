@@ -5,16 +5,17 @@ import { PaymentQuickView } from "@/components/admin/payments/payment-quick-view
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import {
-  PAYMENT_STATUS_VIEWS,
+  PAYMENT_FULFILMENT_FILTERS,
+  PAYMENT_XERO_FILTERS,
   type PaymentsListSearch,
   type PaymentsStaffRow,
   type PaymentsViewId,
   paymentsAttention,
+  paymentsFilterChips,
   paymentsListHref,
   paymentsMetrics,
   paymentsViews,
 } from "@/lib/admin/finance/payments-staff-list.vm";
-import { paymentStatusLabel } from "@/lib/presenters/status-presentation";
 import {
   type DataColumn,
   DataViews,
@@ -46,7 +47,7 @@ const linkClass =
 
 /**
  * Bid's payments on the staff list template: status views with the manual review queue beside
- * them, search, a status filter, a summary of the matching payments, and capture and refund from
+ * them, search, fulfilment and Xero filters, a summary of the matching payments, and capture and refund from
  * each row's `…` menu or the record panel, always through a confirm dialog with the amount.
  */
 export function PaymentsStaffList(props: PaymentsStaffListProps) {
@@ -56,7 +57,10 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
   const money = usePaymentMoneyActions({ canWritePayments: props.canWritePayments });
   const q = typeof search.q === "string" ? search.q : "";
   const status = typeof search.status === "string" ? search.status : "";
-  const filtered = Boolean(q || status);
+  const fulfilment =
+    typeof search.fulfilment === "string" ? search.fulfilment.split(",").filter(Boolean) : [];
+  const xero = typeof search.xero === "string" ? search.xero : "";
+  const filtered = Boolean(q || status || fulfilment.length > 0 || xero);
 
   const columns = useMemo<DataColumn<PaymentsStaffRow>[]>(
     () => [
@@ -160,27 +164,13 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
     [],
   );
 
-  const activeFilters = [
-    ...(q
-      ? [
-          {
-            id: "q",
-            label: `“${q}”`,
-            onRemove: () => navigate(paymentsListHref(search, { q: null })),
-          },
-        ]
-      : []),
-    ...(status
-      ? [
-          {
-            id: "status",
-            label: `Status: ${paymentStatusLabel[status as keyof typeof paymentStatusLabel] ?? status}`,
-            onRemove: () => navigate(paymentsListHref(search, { status: null })),
-          },
-        ]
-      : []),
-  ];
-  const clearHref = paymentsListHref({}, {});
+  const activeFilters = paymentsFilterChips(search).map((chip) => ({
+    id: chip.id,
+    label: chip.label,
+    onRemove: () => navigate(chip.clearHref),
+  }));
+  // Clearing filters keeps the status view: the tab is where status is chosen.
+  const clearHref = paymentsListHref(search, { q: null, fulfilment: null, xero: null });
   const openRow = rows.find((row) => row.id === openId) ?? null;
 
   return (
@@ -200,7 +190,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         attention={paymentsAttention(search, props.attentionCounts, props.view)}
         metrics={{
           label: "Payments summary",
-          period: filtered ? "Payments matching this view and search" : "All payments",
+          period: filtered ? "Payments matching this view and filters" : "All payments",
           items: paymentsMetrics(props.summary),
         }}
         views={
@@ -223,22 +213,33 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         filters={
           <FilterSheet
             title="Filter payments"
+            description="Status is set by the tabs above the list."
             sections={[
               {
+                kind: "checklist",
+                id: "fulfilment",
+                label: "Lot fulfilment",
+                options: PAYMENT_FULFILMENT_FILTERS,
+                value: fulfilment,
+              },
+              {
                 kind: "radio",
-                id: "status",
-                label: "Status",
-                anyLabel: "Any status",
-                options: PAYMENT_STATUS_VIEWS.map((value) => ({
-                  value,
-                  label: paymentStatusLabel[value],
-                })),
-                value: status,
+                id: "xero",
+                label: "Xero invoice",
+                anyLabel: "Any",
+                options: PAYMENT_XERO_FILTERS,
+                value: xero,
               },
             ]}
-            onApply={(values) =>
-              navigate(paymentsListHref(search, { status: (values.status as string) || null }))
-            }
+            onApply={(values) => {
+              const nextFulfilment = (values.fulfilment as readonly string[]) ?? [];
+              navigate(
+                paymentsListHref(search, {
+                  fulfilment: nextFulfilment.length > 0 ? nextFulfilment.join(",") : null,
+                  xero: (values.xero as string) || null,
+                }),
+              );
+            }}
           />
         }
         activeFilters={activeFilters}

@@ -117,4 +117,23 @@ describe("adminTableWhere", () => {
     expect(query.sql).toContain('"payment"."status" = $1');
     expect(query.params[0]).toBe("captured");
   });
+
+  it("filters by any of several fulfilment statuses", () => {
+    const query = new PgDialect().sqlToQuery(
+      adminTableWhere({ fulfilmentStatuses: ["in_transit", "delivered"] }) as never,
+    );
+    expect(query.sql).toContain('"lot_fulfilment"."status"::text in ($1, $2)');
+    expect(query.params).toEqual(["in_transit", "delivered"]);
+  });
+
+  it("filters by Xero invoice state", () => {
+    const dialect = new PgDialect();
+    const linked = dialect.sqlToQuery(adminTableWhere({ xeroInvoice: "linked" }) as never);
+    const missing = dialect.sqlToQuery(adminTableWhere({ xeroInvoice: "missing" }) as never);
+    const failed = dialect.sqlToQuery(adminTableWhere({ xeroInvoice: "sync_error" }) as never);
+    expect(linked.sql).toContain('"payment_external_ref"."xero_invoice_number" is not null');
+    expect(missing.sql).toContain('"payment_external_ref"."xero_invoice_number" is null');
+    expect(failed.sql).toContain('"payment_external_ref"."sync_status" = $1');
+    expect(failed.params).toEqual(["error"]);
+  });
 });
