@@ -1,12 +1,13 @@
-import type {
-  AdminKycSession,
-  AdminUserListFilter,
-  IAdminUserActivityReader,
-  IAdminUserBidsReader,
-  IAdminUserKycReader,
-  IAdminUserReader,
-  IAdminUserRoleManager,
-  IAdminUserSuspender,
+import {
+  type AdminKycSession,
+  type AdminUserListFilter,
+  type IAdminUserActivityReader,
+  type IAdminUserBidsReader,
+  type IAdminUserKycReader,
+  type IAdminUserReader,
+  type IAdminUserRoleManager,
+  type IAdminUserSuspender,
+  LastSuperAdminError,
 } from "@auction/persistence/interfaces";
 import {
   CLIENT_ACTIVITY_ACCESS,
@@ -22,6 +23,7 @@ import {
   roleHasCapability,
   userHasAccessTo,
 } from "@auction/types";
+import { ADMIN_SUSPEND_REASON_MIN } from "@auction/validators";
 import { AuthzError } from "../lib/errors.js";
 import type {
   IIdentitySecurityClient,
@@ -40,6 +42,19 @@ function assertAdminAccess(
     throw new AuthzError("Forbidden", 403);
   }
 }
+
+/** The signed-in staff member performing a moderation or role action. */
+export type AdminActor = {
+  userId: string;
+  role: string;
+  staffRole: string | null | undefined;
+};
+
+const lastSuperAdminError = () =>
+  new AuthzError("Cannot remove the last active super admin", 409, { code: "last_super_admin" });
+
+const cannotChangeOwnRoleError = () =>
+  new AuthzError("You cannot change your own staff role", 403, { code: "cannot_change_own_role" });
 
 export class AdminUserService {
   constructor(
@@ -104,6 +119,9 @@ export class AdminUserService {
       throw new AuthzError("Cannot demote yourself");
     }
     const actorStaff = normalizeUserStaffRole(actorStaffRole);
+    if (targetUserId === actorUserId && targetStaff !== actorStaff) {
+      throw cannotChangeOwnRoleError();
+    }
     if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaff)) {
       throw new AuthzError("Forbidden");
     }
@@ -112,14 +130,29 @@ export class AdminUserService {
       if (targetStaff == null) {
         throw new AuthzError("staffRole is required when role is staff", 400);
       }
-      await this.roles.setRoleAndStaff(targetUserId, "staff", targetStaff, actorUserId);
+      await this.applyRoles(targetUserId, "staff", targetStaff, actorUserId);
       return;
     }
 
     if (targetStaff != null) {
       throw new AuthzError("staffRole must be omitted when role is client", 400);
     }
-    await this.roles.setRoleAndStaff(targetUserId, "client", null, actorUserId);
+    await this.applyRoles(targetUserId, "client", null, actorUserId);
+  }
+
+  /** Persists a role change; the last active super_admin guard runs under a roster lock. */
+  private async applyRoles(
+    targetUserId: string,
+    role: string,
+    staffRole: string | null,
+    actorUserId: string,
+  ): Promise<void> {
+    try {
+      await this.roles.setRoleAndStaff(targetUserId, role, staffRole, actorUserId);
+    } catch (error) {
+      if (error instanceof LastSuperAdminError) throw lastSuperAdminError();
+      throw error;
+    }
   }
 
   async setStaffRole(
@@ -133,6 +166,7 @@ export class AdminUserService {
     if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaff)) {
       throw new AuthzError("Forbidden");
     }
+    if (targetUserId === actorUserId) throw cannotChangeOwnRoleError();
     const target = await this.reader.getById(targetUserId);
     if (!target) throw new AuthzError("Not found", 404);
     if (normalizeUserRole(target.role) !== "staff") {
@@ -141,24 +175,75 @@ export class AdminUserService {
     if (staffRole == null) {
       throw new AuthzError("staffRole is required for staff accounts", 400);
     }
-    await this.roles.setRoleAndStaff(targetUserId, "staff", staffRole, actorUserId);
+    await this.applyRoles(targetUserId, "staff", staffRole, actorUserId);
   }
 
-  async suspend(
-    actorRole: string,
-    actorStaffRole: string | null | undefined,
-    userId: string,
-    reason: string | null,
-  ) {
-    assertAdminAccess(actorRole, actorStaffRole, USER_MODERATION_ACCESS);
-    await this.suspender.suspend(userId, reason);
-    await this.suspensionCacheInvalidator?.invalidate(userId);
+  async suspend(actor: AdminActor, userId: string, reason: string): Promise<void> {
+    await this.suspendMany(actor, [userId], reason, false);
   }
 
-  async unsuspend(actorRole: string, actorStaffRole: string | null | undefined, userId: string) {
-    assertAdminAccess(actorRole, actorStaffRole, USER_MODERATION_ACCESS);
-    await this.suspender.unsuspend(userId);
-    await this.suspensionCacheInvalidator?.invalidate(userId);
+  async unsuspend(actor: AdminActor, userId: string): Promise<void> {
+    await this.unsuspendMany(actor, [userId], false);
+  }
+
+  /**
+   * Suspends every account in one transaction with the actor and reason on each audit event.
+   * You cannot suspend yourself, and only a super_admin can suspend a staff account.
+   */
+  async suspendMany(
+    actor: AdminActor,
+    userIds: string[],
+    reason: string,
+    bulk: boolean,
+  ): Promise<void> {
+    assertAdminAccess(actor.role, actor.staffRole, USER_MODERATION_ACCESS);
+    const trimmed = reason.trim();
+    if (trimmed.length < ADMIN_SUSPEND_REASON_MIN) {
+      throw new AuthzError(
+        `A reason of at least ${ADMIN_SUSPEND_REASON_MIN} characters is required`,
+        400,
+        { code: "reason_required" },
+      );
+    }
+    const ids = [...new Set(userIds)];
+    if (ids.includes(actor.userId)) {
+      throw new AuthzError("You cannot suspend your own account", 403, {
+        code: "cannot_suspend_self",
+      });
+    }
+    await this.assertModeratable(actor, ids);
+    await this.suspender.suspendMany({
+      userIds: ids,
+      reason: trimmed,
+      actorUserId: actor.userId,
+      bulk,
+    });
+    await this.invalidateSuspension(ids);
+  }
+
+  async unsuspendMany(actor: AdminActor, userIds: string[], bulk: boolean): Promise<void> {
+    assertAdminAccess(actor.role, actor.staffRole, USER_MODERATION_ACCESS);
+    const ids = [...new Set(userIds)];
+    await this.assertModeratable(actor, ids);
+    await this.suspender.unsuspendMany({ userIds: ids, actorUserId: actor.userId, bulk });
+    await this.invalidateSuspension(ids);
+  }
+
+  /** Every target must exist, and staff accounts are moderated by a super_admin only. */
+  private async assertModeratable(actor: AdminActor, ids: string[]): Promise<void> {
+    const targets = await this.reader.getByIds(ids);
+    if (targets.length !== ids.length) throw new AuthzError("User not found", 404);
+    const touchesStaff = targets.some((t) => normalizeUserRole(t.role) === "staff");
+    if (touchesStaff && normalizeUserStaffRole(actor.staffRole) !== "super_admin") {
+      throw new AuthzError("Only a platform admin can suspend or restore a staff account", 403, {
+        code: "staff_moderation_requires_super_admin",
+      });
+    }
+  }
+
+  private async invalidateSuspension(ids: string[]): Promise<void> {
+    if (!this.suspensionCacheInvalidator) return;
+    await Promise.all(ids.map((id) => this.suspensionCacheInvalidator?.invalidate(id)));
   }
 
   activityFor(

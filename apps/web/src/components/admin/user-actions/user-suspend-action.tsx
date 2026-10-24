@@ -3,9 +3,11 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminSuspendUserResultAction, adminUnsuspendUserResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { USER_MODERATION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { StaffButton } from "@auction/staff-ui";
+import { ADMIN_SUSPEND_REASON_MIN } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -41,6 +43,7 @@ export function UserSuspendAction({
               router.refresh();
               return;
             }
+            if (handleStaffStepUp(r)) return;
             notify.error(r.error);
           })();
         });
@@ -63,19 +66,21 @@ export function UserSuspendAction({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Suspend this account?"
-        description={`Type ${SUSPEND_PHRASE} to confirm. The user will be blocked from signing in.`}
+        description="The user will be blocked from signing in."
         actionLabel="Suspend account"
         confirmationPhrase={SUSPEND_PHRASE}
         severity="danger"
-        onConfirm={() => {
+        reason={{ label: "Reason for the suspension", minLength: ADMIN_SUSPEND_REASON_MIN }}
+        onConfirm={(reason) => {
           startTransition(() => {
             void (async () => {
-              const r = await adminSuspendUserResultAction(userId, { reason: "Admin action" });
+              const r = await adminSuspendUserResultAction(userId, { reason });
               if (r.ok) {
                 notify.success("Suspended");
                 router.refresh();
                 return;
               }
+              if (handleStaffStepUp(r)) return;
               notify.error(r.error);
             })();
           });

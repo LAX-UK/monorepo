@@ -6,11 +6,12 @@ import {
   impersonationRecordFailedEndBodySchema,
   impersonationStartBodySchema,
 } from "./_schemas.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 export function attachAdminImpersonationRoutes(
   platform: AdminHono,
   container: AdminPeopleImpersonationRoutesContainer,
+  guards: AdminStaffMutationGuards,
 ): void {
   platform.get(
     "/impersonation/lookup",
@@ -47,6 +48,7 @@ export function attachAdminImpersonationRoutes(
   platform.post(
     "/impersonation/start",
     requirePlatformAdminFull,
+    guards.requireStepUp,
     zValidator("json", impersonationStartBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;

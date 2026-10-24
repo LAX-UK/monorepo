@@ -40,6 +40,7 @@ const LABELS: Record<string, string> = {
   "bid.placed": "Bid placed",
   "bid.proxy_cancelled": "Proxy bid cancelled",
   "bid.user_suspended": "Bidder suspended",
+  "bid.user_unsuspended": "Bidder reactivated",
 
   "category.created": "Category created",
   "category.updated": "Category updated",

@@ -47,3 +47,11 @@ export const configurePayoutMethodSchema = z.object({
 });
 
 export type ConfigurePayoutMethodInput = z.infer<typeof configurePayoutMethodSchema>;
+
+/** Refunding a buyer for a held payment names why, for the audit log. */
+export const ADMIN_REFUND_BUYER_REASON_MIN = 10;
+export const adminRefundBuyerBodySchema = z.object({
+  reason: z.string().trim().min(ADMIN_REFUND_BUYER_REASON_MIN).max(500),
+});
+
+export type AdminRefundBuyerInput = z.infer<typeof adminRefundBuyerBodySchema>;

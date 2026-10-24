@@ -16,6 +16,10 @@ describe("classifyStepUpFromResponse", () => {
       "credential_required",
     );
   });
+  it("returns step_up_required for the staff step-up code", () => {
+    expect(classifyStepUpFromResponse(403, { code: "step_up_required" })).toBe("step_up_required");
+    expect(classifyActionFailure(403, { code: "step_up_required" })).toBe("step_up_required");
+  });
   it("returns null for 403 unknown code", () => {
     expect(classifyStepUpFromResponse(403, { code: "forbidden" })).toBeNull();
   });

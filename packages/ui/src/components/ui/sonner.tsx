@@ -41,7 +41,7 @@ export function Toaster({
             "group toast font-body group-[.toaster]:bg-surface-container-highest group-[.toaster]:text-on-surface group-[.toaster]:border-outline-variant/20 group-[.toaster]:shadow-lg",
             u?.toast,
           ),
-          title: cn("font-label text-xs uppercase tracking-widest", u?.title),
+          title: cn("font-body text-sm font-medium normal-case tracking-normal", u?.title),
           description: cn(
             "font-body text-sm group-[.toast]:text-on-surface-variant",
             u?.description,

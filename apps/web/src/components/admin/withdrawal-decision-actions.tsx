@@ -5,6 +5,7 @@ import {
   adminApproveWithdrawalRequestResultAction,
   adminDeclineWithdrawalRequestResultAction,
 } from "@/lib/actions/admin";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
 import { Field, StaffButton, StaffDialog, TextArea } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
@@ -55,6 +56,7 @@ export function WithdrawalDecisionActions({ lotId, canDecide }: Props) {
         setReason("");
         router.refresh();
       } else {
+        if (handleStaffStepUp(r)) return;
         notify.error("Decline failed", { description: r.error });
       }
     });
@@ -85,6 +87,7 @@ export function WithdrawalDecisionActions({ lotId, canDecide }: Props) {
               notify.success("Withdrawal approved. Lot cancelled.");
               router.refresh();
             } else {
+              if (handleStaffStepUp(r)) return;
               notify.error("Approval failed", { description: r.error });
             }
           });

@@ -15,6 +15,7 @@ import {
   parseBulkLotsApiResponse,
 } from "@/lib/admin/bulk-ops/lot-bulk-result";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -280,7 +281,12 @@ export async function adminApproveWithdrawalRequestResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.approveWithdrawalRequest(id);
     if (!r.ok) {
-      return actionFailure(r.message || "Failed to approve withdrawal");
+      return actionFailure(
+        r.message || "Failed to approve withdrawal",
+        undefined,
+        r.status,
+        stepUpErrorCode(r),
+      );
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);
@@ -304,7 +310,12 @@ export async function adminDeclineWithdrawalRequestResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.declineWithdrawalRequest(id, parsed.data.reason);
     if (!r.ok) {
-      return actionFailure(r.message || "Failed to decline withdrawal");
+      return actionFailure(
+        r.message || "Failed to decline withdrawal",
+        undefined,
+        r.status,
+        stepUpErrorCode(r),
+      );
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);

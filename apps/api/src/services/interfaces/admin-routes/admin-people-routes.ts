@@ -6,6 +6,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
+import type { AdminActor } from "../../admin-user.service.js";
 import type { AdminInvitationListPage } from "../../admin/admin-invitation-list-query.service.js";
 import type { AdminUserListPage } from "../../admin/admin-user-list-query.service.js";
 import type { CreateInvitationInput, InvitationError } from "../../invitation.service.js";
@@ -88,17 +89,8 @@ export interface IAdminUserApplicationService {
     staffRole: import("@auction/types").UserStaffRole | null,
     actorStaffRole?: string | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
-  suspend(
-    actorRole: string,
-    actorStaffRole: string | null | undefined,
-    userId: string,
-    reason: string | null,
-  ): Promise<void>;
-  unsuspend(
-    actorRole: string,
-    actorStaffRole: string | null | undefined,
-    userId: string,
-  ): Promise<void>;
+  suspend(actor: AdminActor, userId: string, reason: string): Promise<void>;
+  unsuspend(actor: AdminActor, userId: string): Promise<void>;
   activityFor(
     actorRole: string,
     actorStaffRole: string | null | undefined,
@@ -118,11 +110,10 @@ export interface IAdminUserApplicationService {
     page: { limit: number; offset: number },
   ): Promise<import("@auction/persistence/interfaces").AdminUserBidListResult>;
   bulkSuspendOrUnsuspend(input: {
-    actorRole: string;
-    actorStaffRole: string | null | undefined;
+    actor: AdminActor;
     ids: string[];
     op: "suspend" | "unsuspend";
-    reason: string | null | undefined;
+    reason: string | undefined;
   }): Promise<{ count: number }>;
   updateProfileName(userId: string, name: string): Promise<void>;
 }

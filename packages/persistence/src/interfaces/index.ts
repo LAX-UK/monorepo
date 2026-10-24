@@ -205,6 +205,7 @@ export type {
 } from "./saleroom-check-in.repository.js";
 
 export { PaddleTakenError } from "./saleroom-check-in.repository.js";
+export { LastSuperAdminError } from "./admin-user.repository.js";
 
 export type {
   IOnsiteEventClientReader,

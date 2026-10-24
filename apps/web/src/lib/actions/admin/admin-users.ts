@@ -9,6 +9,8 @@ import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
+import { redirectToStaffReauth } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -46,10 +48,13 @@ export async function adminSuspendUserAction(formData: FormData): Promise<void> 
       const id = String(formData.get("userId") ?? "").trim();
       if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
       const { adminUsers } = getWriteContainer();
-      const r = await adminUsers.suspend(id, {
-        reason: String(formData.get("reason") ?? "").trim() || undefined,
-      });
+      const body = adminSuspendBodySchema.safeParse({ reason: formData.get("reason") ?? "" });
+      if (!body.success) {
+        redirect(`/admin/clients?error=${encodeURIComponent(firstZodErrorMessage(body.error))}`);
+      }
+      const r = await adminUsers.suspend(id, body.data);
       if (!r.ok) {
+        if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/clients");
         redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
       }
       revalidateAdminUserDetailPaths(id);
@@ -72,6 +77,7 @@ export async function adminUnsuspendUserAction(formData: FormData): Promise<void
       const { adminUsers } = getWriteContainer();
       const r = await adminUsers.unsuspend(id);
       if (!r.ok) {
+        if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/clients");
         redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
       }
       revalidateAdminUserDetailPaths(id);
@@ -97,6 +103,7 @@ export async function adminSetUserRoleAction(formData: FormData): Promise<void> 
       const { adminUsers } = getWriteContainer();
       const r = await adminUsers.setRole(id, bodyParsed.data);
       if (!r.ok) {
+        if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/clients");
         redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
       }
       revalidateAdminUserListPaths();
@@ -167,7 +174,7 @@ export async function adminSetUserStaffRoleResultAction(
     const { adminUsers } = getWriteContainer();
     const r = await adminUsers.setStaffRole(id, p.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();
@@ -192,7 +199,7 @@ export async function adminSetUserRoleResultAction(
     const { adminUsers } = getWriteContainer();
     const r = await adminUsers.setRole(id, p.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();
@@ -217,7 +224,7 @@ export async function adminSuspendUserResultAction(
     const { adminUsers } = getWriteContainer();
     const r = await adminUsers.suspend(id, p.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();
@@ -243,7 +250,7 @@ export async function adminResetTwoFactorResultAction(
     const { adminUsers } = getWriteContainer();
     const r = await adminUsers.resetTwoFactor(id, p.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();
@@ -261,7 +268,7 @@ export async function adminUnsuspendUserResultAction(userId: string): Promise<Ac
     const { adminUsers } = getWriteContainer();
     const r = await adminUsers.unsuspend(id);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();

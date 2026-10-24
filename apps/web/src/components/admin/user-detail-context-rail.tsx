@@ -8,6 +8,7 @@ import {
 } from "@/components/admin/detail-rail";
 import type { UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
 import { kycStatusLabel } from "@/lib/admin/status-badge-variants";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntity } from "@auction/types";
@@ -38,6 +39,7 @@ export function UserDetailContextRail({ email, legalEntities = [], context }: Pr
             router.refresh();
             return;
           }
+          if (handleStaffStepUp(r)) return;
           notify.error(r.message ?? "Could not start impersonation");
         })();
       });

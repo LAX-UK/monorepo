@@ -29,6 +29,7 @@ import type { Env } from "./env.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
+import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
@@ -38,6 +39,7 @@ import { StaffAccessAdminService } from "./services/admin/staff-access-admin.ser
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
+import { StaffStepUpService } from "./services/staff-step-up.service.js";
 
 export type { Container, ContainerComposedSlices };
 
@@ -483,6 +485,8 @@ export function createContainer(env: Env): Container {
       staffAccess,
       savedViews,
       atg,
+      stepUp: new StaffStepUpService(identityIssuer),
+      idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
     finance,
     platformCron,

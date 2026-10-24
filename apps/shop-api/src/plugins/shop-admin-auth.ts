@@ -1,5 +1,5 @@
 import { verifyBearerToken } from "@auction/auth/token-verifier";
-import type { ProductScope } from "@auction/identity-contracts";
+import { type ProductScope, isRecentStaffAuthentication } from "@auction/identity-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type ShopStaffCapability, roleHasCapability } from "@auction/shop-domain";
 import type { FastifyInstance, FastifyRequest } from "fastify";
@@ -170,17 +170,13 @@ export function requireRecentAuthentication(
   if (!ctx) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.UNAUTHORIZED, "Unauthorized", 401);
   }
-  const authTime = ctx.authTime;
-  if (authTime == null) {
-    throw new ShopApiError(
-      SHOP_API_ERROR_CODES.STEP_UP_REQUIRED,
-      "Recent authentication is required for this action",
-      403,
-    );
-  }
-  const nowSec = Math.floor(Date.now() / 1000);
-  const age = nowSec - authTime;
-  if (age < 0 || age > maxAuthAgeSeconds) {
+  if (
+    !isRecentStaffAuthentication({
+      authTimeSeconds: ctx.authTime,
+      nowSeconds: Math.floor(Date.now() / 1000),
+      maxAgeSeconds: maxAuthAgeSeconds,
+    })
+  ) {
     throw new ShopApiError(
       SHOP_API_ERROR_CODES.STEP_UP_REQUIRED,
       "Recent authentication is required for this action",

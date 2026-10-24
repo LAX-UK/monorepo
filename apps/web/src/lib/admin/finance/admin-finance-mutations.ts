@@ -4,16 +4,18 @@ import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
+import { redirectIfStaffStepUpRequired } from "@/lib/auth/step-up/staff-step-up.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import {
   FINANCE_ACCESS,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { normalizeApiErrorMessage } from "@auction/validators";
+import { adminRefundBuyerBodySchema, normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { normalizeFinanceApiError } from "./finance-action-errors";
+import { IDEMPOTENCY_KEY_HEADER, idempotencyKeyFrom } from "./idempotency-key";
 import {
   isPayoutReversalConfirmationValid,
   isPayoutReversalReasonValid,
@@ -23,6 +25,10 @@ function formValue(formData: FormData, key: string): string {
   const raw = formData.get(key);
   return typeof raw === "string" ? raw.trim() : "";
 }
+
+const MANUAL_REVIEW_PATH = "/admin/payments?manualReview=1";
+const PAYOUTS_PATH = "/admin/payouts";
+const SETTLEMENT_PATH = "/admin/payouts/settlement";
 
 function redirectManualReview(kind: "success" | "error", message: string): never {
   redirect(`/admin/payments?manualReview=1&${kind}=${encodeURIComponent(message)}`);
@@ -48,8 +54,9 @@ export async function captureManualReviewPaymentAction(formData: FormData): Prom
 
       const res = await authedServerFetch(
         `/admin/payments/${encodeURIComponent(paymentId)}/capture-and-process`,
-        { method: "POST" },
+        { method: "POST", headers: { [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData) } },
       );
+      await redirectIfStaffStepUpRequired(res, MANUAL_REVIEW_PATH);
       const error = await normalizeFinanceApiError(res, "capture_manual_review_failed");
       if (error) redirectManualReview("error", error);
 
@@ -70,10 +77,23 @@ export async function refundManualReviewPaymentAction(formData: FormData): Promi
       const paymentId = formValue(formData, "paymentId");
       if (!paymentId) redirectManualReview("error", "payment_id_required");
 
+      const reason = adminRefundBuyerBodySchema.safeParse({
+        reason: formValue(formData, "reason"),
+      });
+      if (!reason.success) redirectManualReview("error", "refund_reason_required");
+
       const res = await authedServerFetch(
         `/admin/payments/${encodeURIComponent(paymentId)}/refund-buyer`,
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData),
+          },
+          body: JSON.stringify(reason.data),
+        },
       );
+      await redirectIfStaffStepUpRequired(res, MANUAL_REVIEW_PATH);
       const error = await normalizeFinanceApiError(res, "refund_manual_review_failed");
       if (error) redirectManualReview("error", error);
 
@@ -120,9 +140,13 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<voi
 
       const res = await authedServerFetch("/admin/payouts/run-settlement", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData),
+        },
         body: JSON.stringify({ legalEntityId, dryRun: false }),
       });
+      await redirectIfStaffStepUpRequired(res, SETTLEMENT_PATH);
       const error = await jsonOrError(res, "run_settlement_failed");
       if (error) redirectSettlement("error", error);
 
@@ -181,10 +205,14 @@ export async function markPayoutPaidAction(formData: FormData): Promise<void> {
         `/admin/payouts/${encodeURIComponent(payoutId)}/mark-paid`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData),
+          },
           body: JSON.stringify({ stripeTransferId }),
         },
       );
+      await redirectIfStaffStepUpRequired(res, PAYOUTS_PATH);
       const error = await jsonOrError(res, "mark_paid_failed");
       if (error) redirectPayoutsList("error", error);
 
@@ -216,10 +244,14 @@ export async function reversePayoutAction(formData: FormData): Promise<void> {
         `/admin/payouts/${encodeURIComponent(payoutId)}/reverse`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData),
+          },
           body: JSON.stringify({ reason, confirmationPhrase }),
         },
       );
+      await redirectIfStaffStepUpRequired(res, PAYOUTS_PATH);
       const error = await jsonOrError(res, "reverse_payout_failed");
       if (error) redirectPayoutsList("error", error);
 

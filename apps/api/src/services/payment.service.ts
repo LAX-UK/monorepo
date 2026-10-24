@@ -250,8 +250,16 @@ export class PaymentService
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
+    reason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
-    return refundManualReviewPayment(this.deps, adminUserId, userRole, paymentId, userStaffRole);
+    return refundManualReviewPayment(
+      this.deps,
+      adminUserId,
+      userRole,
+      paymentId,
+      userStaffRole,
+      reason,
+    );
   }
 
   cancelPendingAsBuyer(

@@ -99,6 +99,53 @@ describe("executePaymentRefundLedger", () => {
     );
   });
 
+  it("keeps the staff member's written reason and the actor on a manual-review refund event", async () => {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const deps = baseDeps({
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
+    });
+
+    await executePaymentRefundLedger(deps, {
+      payment,
+      adminUserId: "admin-1",
+      stripeRefundId: "re_1",
+      via: "admin_manual_review",
+      eventReason: "seller_archived",
+      staffReason: "Seller archived before capture; buyer asked for the money back.",
+      sourceEventId: "admin_manual_review_refund:pay-1",
+      clawbackNote: "Manual review refund: pay-1",
+      logViaField: true,
+    });
+
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: "admin-1",
+        payload: expect.objectContaining({
+          staffReason: "Seller archived before capture; buyer asked for the money back.",
+        }),
+      }),
+    );
+  });
+
+  it("omits the staff reason when none is given", async () => {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const deps = baseDeps({
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
+    });
+
+    await executePaymentRefundLedger(deps, {
+      payment,
+      adminUserId: "admin-1",
+      stripeRefundId: "re_1",
+      via: "admin_manual",
+      sourceEventId: "admin_refund:pay-1",
+      clawbackNote: "Admin refund: pay-1",
+      logViaField: false,
+    });
+
+    expect(publish.mock.calls[0]?.[0]?.payload).not.toHaveProperty("staffReason");
+  });
+
   it("creates payout clawback with caller-provided sourceEventId and note", async () => {
     const addClawback = vi.fn().mockResolvedValue(undefined);
     const deps = baseDeps({

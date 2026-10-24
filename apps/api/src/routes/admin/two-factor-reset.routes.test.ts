@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
+import { createTestStaffGuards } from "../../testing/staff-mutation-guards.js";
 import type { AdminHono } from "./_shared.js";
 import { attachAdminTwoFactorResetRoutes } from "./two-factor-reset.routes.js";
 
@@ -8,7 +9,7 @@ const ACTOR_ID = "b2e48c7a-1f09-4d35-8a6e-5d3c9f7e2b14";
 const REASON = "Customer lost phone and backup codes; identity checked by video call.";
 
 /** The platform shell authenticates upstream; here a stub supplies the identity. */
-function setup(session: { role: string; staffRole: string | null }) {
+function setup(session: { role: string; staffRole: string | null }, recent = true) {
   const reset = vi.fn().mockResolvedValue({
     match: (ok: () => unknown) => ok(),
   });
@@ -17,9 +18,10 @@ function setup(session: { role: string; staffRole: string | null }) {
     c.set("userId", ACTOR_ID);
     c.set("userRole", session.role);
     c.set("userStaffRole", session.staffRole);
+    c.set("identitySessionId", "session-1");
     await next();
   });
-  attachAdminTwoFactorResetRoutes(platform, { reset });
+  attachAdminTwoFactorResetRoutes(platform, { reset }, createTestStaffGuards({ recent }));
   const app = new Hono();
   app.route("/admin", platform);
   const post = (body: unknown) =>
@@ -84,5 +86,27 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
 
     expect(res.status).toBe(400);
     expect(reset).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in before resetting, and does not reset", async () => {
+    const { post, reset } = setup({ role: "staff", staffRole: "super_admin" }, false);
+
+    const res = await post({ reason: REASON });
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      error: "Recent sign-in required",
+      code: "step_up_required",
+    });
+    expect(reset).not.toHaveBeenCalled();
+  });
+
+  it("answers a person without the capability with forbidden, not a sign-in prompt", async () => {
+    const { post } = setup({ role: "staff", staffRole: "finance_ops" }, false);
+
+    const res = await post({ reason: REASON });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()) as { code?: string }).not.toMatchObject({ code: "step_up_required" });
   });
 });

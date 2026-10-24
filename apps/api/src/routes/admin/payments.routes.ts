@@ -1,4 +1,4 @@
-import { adminPaymentsListQuerySchema } from "@auction/validators";
+import { adminPaymentsListQuerySchema, adminRefundBuyerBodySchema } from "@auction/validators";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
@@ -7,7 +7,7 @@ import {
 } from "../../middleware/require-capability.js";
 import type { AdminPaymentsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { adminPaymentIdParamSchema } from "./_schemas.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 export function attachAdminPaymentsListRoutes(
   finance: AdminHono,
@@ -41,6 +41,7 @@ export function attachAdminPaymentsListRoutes(
 export function attachAdminPaymentsManualReviewRoutes(
   finance: AdminHono,
   container: AdminPaymentsRoutesContainer,
+  guards: AdminStaffMutationGuards,
 ): void {
   finance.get("/payments/manual-review", requireFinanceAccess, async (c) => {
     const data = await container.admin.manualReviewPayments.listManualReviewPayments();
@@ -50,6 +51,8 @@ export function attachAdminPaymentsManualReviewRoutes(
   finance.post(
     "/payments/:id/capture-and-process",
     requirePaymentManualReviewWrite,
+    guards.requireStepUp,
+    guards.idempotent("payments.capture-and-process"),
     zValidator("param", adminPaymentIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -76,17 +79,22 @@ export function attachAdminPaymentsManualReviewRoutes(
   finance.post(
     "/payments/:id/refund-buyer",
     requirePaymentManualReviewWrite,
+    guards.requireStepUp,
+    guards.idempotent("payments.refund-buyer"),
     zValidator("param", adminPaymentIdParamSchema),
+    zValidator("json", adminRefundBuyerBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
       const result = await container.admin.payments.refundManualReviewPayment(
         userId,
         role,
         id,
         staffRole,
+        reason,
       );
       return result.match(
         () => c.json({ ok: true }),

@@ -21,6 +21,8 @@ export interface IAdminPaymentsApplicationService {
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
+    /** Why the buyer is being refunded; recorded on the refund's audit event. */
+    reason?: string,
   ): Promise<Result<void, AuthzError>>;
   syncPaymentFromXeroAsAdmin(
     userRole: string,

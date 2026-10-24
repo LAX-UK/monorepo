@@ -2,6 +2,7 @@
 
 import { adminSetUserRoleResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { USER_ROLE_MANAGEMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { type UserRole, userRoles } from "@auction/types";
@@ -40,6 +41,7 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
           router.refresh();
           return;
         }
+        if (handleStaffStepUp(r)) return;
         notify.error(r.error);
       })();
     });

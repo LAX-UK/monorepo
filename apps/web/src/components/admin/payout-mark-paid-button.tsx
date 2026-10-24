@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
+import { IdempotencyKeyField } from "@/components/admin/idempotency-key-field";
 import { markPayoutPaidAction } from "@/lib/admin/finance/admin-finance-mutations";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
@@ -17,6 +18,7 @@ export function PayoutMarkPaidButton({ payoutId, stripeTransferId, disabled }: P
   return (
     <form id={formId} action={markPayoutPaidAction} className="space-y-3 rounded-md border p-3">
       <input type="hidden" name="payoutId" value={payoutId} />
+      <IdempotencyKeyField />
       <h3 className="font-label text-sm font-semibold uppercase tracking-wide">Mark paid</h3>
       <div className="space-y-1">
         <Label htmlFor={`${formId}-transfer`}>Stripe transfer ID</Label>

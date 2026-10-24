@@ -1,5 +1,6 @@
 "use client";
 
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -34,6 +35,7 @@ export function LegalEntityImpersonationButton({
           router.refresh();
           return;
         }
+        if (handleStaffStepUp(result)) return;
         notify.error(result.message ?? "Could not start impersonation");
       })();
     });

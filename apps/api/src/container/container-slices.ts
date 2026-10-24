@@ -586,7 +586,8 @@ export type ContainerPayoutRoutesSlice = ContainerFinanceSlice &
 
 /** Staff payout settlement/adjustment. */
 export type ContainerAdminPayoutRoutesSlice = Pick<Container, "userSuspensionChecker"> & {
-  admin: Pick<import("../services/interfaces/admin-routes.js").AdminRouteServices, "payouts">;
+  admin: Pick<import("../services/interfaces/admin-routes.js").AdminRouteServices, "payouts"> &
+    Pick<AdminStaffSecurityRouteServices, "stepUp" | "idempotencyStore">;
 };
 
 /** Seller payout statement download. */

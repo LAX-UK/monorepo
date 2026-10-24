@@ -30,8 +30,15 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
+    reason?: string,
   ): Promise<Result<void, AuthzError>> {
-    return this.payments.refundManualReviewPayment(adminUserId, userRole, paymentId, userStaffRole);
+    return this.payments.refundManualReviewPayment(
+      adminUserId,
+      userRole,
+      paymentId,
+      userStaffRole,
+      reason,
+    );
   }
 
   syncPaymentFromXeroAsAdmin(

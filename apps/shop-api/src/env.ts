@@ -1,3 +1,4 @@
+import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { z } from "zod";
 
 type AppEnv = "production" | "test" | "development";
@@ -146,7 +147,12 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   /** Max seconds since OIDC `auth_time` for finance admin mutations (D31). */
-  SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
+  SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .max(86_400)
+    .default(STAFF_STEP_UP_MAX_AGE_SECONDS),
   SHOP_OPS_FINANCE_CLI_ENABLED: z
     .enum(["true", "false"])
     .default("false")

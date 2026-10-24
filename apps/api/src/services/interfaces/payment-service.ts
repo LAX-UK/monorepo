@@ -76,6 +76,7 @@ export interface IPaymentAdminService {
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
+    reason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>>;
 
   syncPaymentFromXeroAsAdmin(

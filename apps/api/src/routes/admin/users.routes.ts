@@ -8,6 +8,7 @@ import {
   updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
+import type { Context } from "hono";
 import { mapAdminUserListQuery } from "../../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -20,13 +21,23 @@ import {
   requireUserModeration,
   requireUsersDirectory,
 } from "../../middleware/require-capability.js";
+import type { AdminActor } from "../../services/admin-user.service.js";
 import type { AdminPeopleUsersRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { activityQuerySchema, adminUserIdParamSchema, userBidsQuerySchema } from "./_schemas.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
+
+function actorOf(c: Context): AdminActor {
+  return {
+    userId: c.get("userId") as string,
+    role: (c.get("userRole") as string | undefined) ?? "client",
+    staffRole: c.get("userStaffRole") as string | null | undefined,
+  };
+}
 
 export function attachAdminUsersDirectoryRoutes(
   platform: AdminHono,
   container: AdminPeopleUsersRoutesContainer,
+  guards: AdminStaffMutationGuards,
 ): void {
   platform.get(
     "/users",
@@ -69,14 +80,12 @@ export function attachAdminUsersDirectoryRoutes(
   platform.post(
     "/users/bulk",
     requireUserModeration,
+    guards.requireStepUp,
     zValidator("json", adminBulkUsersBodySchema),
     async (c) => {
       const { ids, op, reason } = c.req.valid("json");
-      const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
       const data = await container.admin.users.bulkSuspendOrUnsuspend({
-        actorRole,
-        actorStaffRole: actorStaff,
+        actor: actorOf(c),
         ids,
         op,
         reason,
@@ -127,6 +136,7 @@ export function attachAdminUsersDirectoryRoutes(
 export function attachAdminUsersManagementRoutes(
   platform: AdminHono,
   container: AdminPeopleUsersRoutesContainer,
+  guards: AdminStaffMutationGuards,
 ): void {
   platform.get(
     "/users/:userId/source-of-funds",
@@ -141,7 +151,8 @@ export function attachAdminUsersManagementRoutes(
 
   platform.patch(
     "/users/:userId/role",
-    requireUsersDirectory,
+    requireUserInvite,
+    guards.requireStepUp,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSetRoleBodySchema),
     async (c) => {
@@ -167,7 +178,8 @@ export function attachAdminUsersManagementRoutes(
 
   platform.patch(
     "/users/:userId/staff-role",
-    requireUsersDirectory,
+    requireUserInvite,
+    guards.requireStepUp,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminPatchStaffRoleBodySchema),
     async (c) => {
@@ -192,14 +204,13 @@ export function attachAdminUsersManagementRoutes(
   platform.post(
     "/users/:userId/suspend",
     requireUserModeration,
+    guards.requireStepUp,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSuspendBodySchema),
     async (c) => {
       const { userId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
-      await container.admin.users.suspend(actorRole, actorStaff, userId, reason ?? null);
+      await container.admin.users.suspend(actorOf(c), userId, reason);
       return c.json({ ok: true });
     },
   );
@@ -207,12 +218,11 @@ export function attachAdminUsersManagementRoutes(
   platform.post(
     "/users/:userId/unsuspend",
     requireUserModeration,
+    guards.requireStepUp,
     zValidator("param", userIdParamSchema),
     async (c) => {
       const { userId } = c.req.valid("param");
-      const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
-      await container.admin.users.unsuspend(actorRole, actorStaff, userId);
+      await container.admin.users.unsuspend(actorOf(c), userId);
       return c.json({ ok: true });
     },
   );

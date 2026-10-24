@@ -97,6 +97,7 @@ export async function refundManualReviewPayment(
   userRole: string,
   paymentId: string,
   userStaffRole?: string | null,
+  reason?: string,
 ): Promise<Result<void, AuthzError | PaymentProviderError>> {
   if (
     !roleHasCapability(
@@ -147,6 +148,7 @@ export async function refundManualReviewPayment(
       stripeRefundId,
       via: "admin_manual_review",
       eventReason: "seller_archived",
+      ...(reason ? { staffReason: reason } : {}),
       sourceEventId: `admin_manual_review_refund:${paymentId}`,
       clawbackNote: `Manual review refund: ${paymentId}`,
       logViaField: true,

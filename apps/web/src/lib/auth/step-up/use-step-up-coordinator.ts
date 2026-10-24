@@ -31,7 +31,7 @@ export function clearHostedReauthLoopGuard(): void {
   }
 }
 
-function redirectToHostedReauth(): void {
+export function redirectToHostedReauth(): void {
   try {
     sessionStorage.setItem(REAUTH_LOOP_GUARD_KEY, String(Date.now()));
   } catch {
@@ -40,7 +40,7 @@ function redirectToHostedReauth(): void {
   window.location.assign(buildHostedReauthHref());
 }
 
-function recentReauthAttempt(): boolean {
+export function recentReauthAttempt(): boolean {
   try {
     const raw = sessionStorage.getItem(REAUTH_LOOP_GUARD_KEY);
     if (!raw) return false;
@@ -81,7 +81,7 @@ export function useStepUpCoordinator(): IStepUpCoordinator {
   const request = useCallback(
     (requirement: StepUpRequirement): Promise<"satisfied" | "cancelled"> =>
       new Promise((resolve) => {
-        if (requirement === "recent_auth_required") {
+        if (requirement === "recent_auth_required" || requirement === "step_up_required") {
           if (recentReauthAttempt()) {
             resolveRef.current = resolve;
             setState({
