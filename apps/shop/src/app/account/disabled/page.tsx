@@ -14,6 +14,7 @@ export default function ShopDisabledAccountPage() {
     <ShopAccountShell
       title={shopPageWayfinding.accountDisabled.title}
       breadcrumbs={shopPageWayfinding.accountDisabled.breadcrumbs}
+      showAccountSettings={false}
       notice={{
         variant: "destructive",
         title: "Access restricted",

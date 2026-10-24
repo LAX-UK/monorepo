@@ -83,6 +83,7 @@ async function fetchLinesByOrderIds(
       variantSku: shopProductVariant.sku,
       editionNumber: shopOrderLine.editionNumber,
       unitPricePence: shopOrderLine.unitPricePence,
+      imageUrl: shopArtwork.primaryImageUrl,
     })
     .from(shopOrderLine)
     .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
@@ -102,6 +103,7 @@ async function fetchLinesByOrderIds(
       variantSku: line.variantSku,
       editionNumber: line.editionNumber,
       unitPricePence: line.unitPricePence,
+      imageUrl: line.imageUrl,
     });
     linesByOrder.set(line.orderId, bucket);
   }

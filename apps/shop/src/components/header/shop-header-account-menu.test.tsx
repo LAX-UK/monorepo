@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -68,7 +67,6 @@ vi.mock("@auction/ui/components/dropdown-menu", async () => {
     ),
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     DropdownMenuSeparator: () => <hr />,
   };
 });
@@ -77,23 +75,6 @@ import {
   ShopAuthenticatedAccountMenu,
   ShopGuestAccountMenu,
 } from "@/components/header/shop-header-account-menu";
-
-const productLinks: LaxProductLinkVm[] = [
-  {
-    id: "shop",
-    label: "LAX Shop",
-    href: "http://localhost:3020",
-    current: true,
-    external: false,
-  },
-  {
-    id: "bid",
-    label: "LAX Bid",
-    href: "http://localhost:3000",
-    current: false,
-    external: true,
-  },
-];
 
 describe("Shop account menus", () => {
   afterEach(() => {
@@ -117,29 +98,28 @@ describe("Shop account menus", () => {
     );
   });
 
-  it("lists authenticated account destinations and LAX products", () => {
+  it("lists only Your orders, LAX Account settings and Sign out", () => {
     render(
       <ShopAuthenticatedAccountMenu
         displayName="Alex Collector"
         email="alex@lax.bid"
-        accountHref="/account"
         logoutHref="https://identity.test/logout"
-        productLinks={productLinks}
         headerTone="on-light"
         initialOpen
       />,
     );
     expect(screen.getByText("alex@lax.bid")).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "My account" }).getAttribute("href")).toBe(
-      "/account",
-    );
-    expect(screen.getByRole("menuitem", { name: "Orders" }).getAttribute("href")).toBe(
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Your orders",
+      "LAX Account settings",
+      "Sign out",
+    ]);
+    expect(screen.getByRole("menuitem", { name: "Your orders" }).getAttribute("href")).toBe(
       "/account/orders",
     );
-    expect(screen.getByRole("menuitem", { name: "LAX Bid" }).getAttribute("href")).toBe(
-      "http://localhost:3000",
-    );
-    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeTruthy();
+    expect(
+      screen.getByRole("menuitem", { name: "LAX Account settings" }).getAttribute("href"),
+    ).toBe("http://localhost:3040/account");
   });
 
   it("submits the hoisted logout form when Sign out is selected", () => {
@@ -152,9 +132,7 @@ describe("Shop account menus", () => {
       <ShopAuthenticatedAccountMenu
         displayName="Alex Collector"
         email="alex@lax.bid"
-        accountHref="/account"
         logoutHref={logoutHref}
-        productLinks={[]}
         headerTone="on-light"
         initialOpen
       />,

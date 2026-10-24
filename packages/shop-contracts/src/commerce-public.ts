@@ -76,6 +76,8 @@ export const OrderLineSchema = Type.Object(
     variantSku: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     editionNumber: Type.Union([Type.Integer({ minimum: 1, maximum: 24 }), Type.Null()]),
     unitPricePence: Type.Integer({ minimum: 0 }),
+    /** The artwork's primary image for order lists; absent from older responses. */
+    imageUrl: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
   },
   { additionalProperties: false },
 );

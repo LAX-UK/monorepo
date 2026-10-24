@@ -1,49 +1,42 @@
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import {
+  type ShopSellerAccess,
+  type ShopSellerTool,
+  showsSellerTool,
+} from "@/lib/account/shop-seller-access";
+
 export type ShopAccountNavItem = {
   href: string;
   label: string;
+  active: boolean;
 };
 
+const SELLER_TOOLS: ReadonlyArray<{ tool: ShopSellerTool; href: string; label: string }> = [
+  { tool: "sales", href: "/account/sales", label: "Sales" },
+  { tool: "payouts", href: "/account/payouts", label: "Payouts" },
+  { tool: "sale-limits", href: "/account/sale-limits", label: "Sale limits" },
+  { tool: "artworks", href: "/account/artworks", label: "My artworks" },
+  { tool: "artist-sales", href: "/account/artist-sales", label: "Artist sales" },
+];
+
 export type BuildShopAccountNavItemsInput = {
-  portalOwnershipEnabled: boolean;
-  payoutsEnabled: boolean;
-  artistPortalEnabled?: boolean;
+  access: ShopSellerAccess;
   activeHref: string;
 };
 
+/**
+ * "Your orders" plus the seller tools this viewer holds a role for. A plain buyer gets an empty
+ * list: with one destination there is nothing to navigate between.
+ */
 export function buildShopAccountNavItems({
-  portalOwnershipEnabled,
-  payoutsEnabled,
-  artistPortalEnabled = false,
+  access,
   activeHref,
-}: BuildShopAccountNavItemsInput): Array<ShopAccountNavItem & { active: boolean }> {
-  const items: ShopAccountNavItem[] = [
-    { href: "/account", label: "Overview" },
-    { href: "/account/orders", label: "Orders" },
-  ];
-  if (portalOwnershipEnabled) {
-    items.push(
-      { href: "/account/collection", label: "Collection" },
-      { href: "/account/enquiries", label: "Enquiries" },
-      { href: "/account/editions", label: "My editions" },
-      { href: "/account/sale-limits", label: "Sale limits" },
-    );
-  }
-  if (payoutsEnabled) {
-    items.push(
-      { href: "/account/sales", label: "Sales" },
-      { href: "/account/payouts", label: "Payouts" },
-      { href: "/account/documents", label: "Documents" },
-    );
-  }
-  if (artistPortalEnabled) {
-    items.push(
-      { href: "/account/artworks", label: "My artworks" },
-      { href: "/account/artist-sales", label: "Artist sales" },
-    );
-  }
-
-  return items.map((item) => ({
-    ...item,
-    active: activeHref === item.href,
+}: BuildShopAccountNavItemsInput): ShopAccountNavItem[] {
+  const tools = SELLER_TOOLS.filter(({ tool }) => showsSellerTool(access, tool));
+  if (tools.length === 0) return [];
+  return [{ href: SHOP_ORDERS_HREF, label: "Your orders" }, ...tools].map(({ href, label }) => ({
+    href,
+    label,
+    active: activeHref === href,
   }));
 }

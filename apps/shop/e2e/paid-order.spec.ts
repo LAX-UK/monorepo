@@ -20,7 +20,7 @@ test.describe("shop paid order @e2e", () => {
     }
     test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
 
-    await signInShopBuyer(page, buyerCredentials, "/account");
+    await signInShopBuyer(page, buyerCredentials, "/account/orders");
 
     await page.goto(`/checkout/confirmation?orderId=${encodeURIComponent(paidOrderId)}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -30,9 +30,7 @@ test.describe("shop paid order @e2e", () => {
 
     await page.goto("/account/orders");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/your orders/i);
-    await expect(
-      page.getByRole("link", { name: new RegExp(paidOrderId.slice(0, 8), "i") }),
-    ).toBeVisible({
+    await expect(page.locator(`a[href="/account/orders/${paidOrderId}"]`)).toBeVisible({
       timeout: 30_000,
     });
   });

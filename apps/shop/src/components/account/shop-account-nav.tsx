@@ -1,15 +1,9 @@
-import {
-  type BuildShopAccountNavItemsInput,
-  buildShopAccountNavItems,
-} from "@/lib/account/account-nav.vm";
+import type { ShopAccountNavItem } from "@/lib/account/account-nav.vm";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
-type Props = BuildShopAccountNavItemsInput;
-
-export function ShopAccountNav(props: Props) {
-  const items = buildShopAccountNavItems(props);
-
+/** Underlined tabs between "Your orders" and the viewer's seller tools; wraps rather than clips. */
+export function ShopAccountNav({ items }: { items: readonly ShopAccountNavItem[] }) {
   return (
     <nav aria-label="Account" className="shop-account-nav">
       <ul className="shop-account-nav__list">

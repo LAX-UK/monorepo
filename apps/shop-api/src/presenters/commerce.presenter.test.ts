@@ -90,4 +90,26 @@ describe("presentOrder", () => {
       refundedPence: 12000,
     });
   });
+
+  it("passes each line's artwork image through for order lists", () => {
+    const line = {
+      orderLineId: "550e8400-e29b-41d4-a716-846655440002",
+      artworkSlug: "warm-basket",
+      artworkTitle: "Warm Basket",
+      productVariantId: null,
+      productSlug: null,
+      productTitle: null,
+      variantSku: null,
+      editionNumber: null,
+      unitPricePence: 12000,
+    };
+    const view = presentOrder({
+      ...order,
+      lines: [
+        { ...line, imageUrl: "/warm.webp" },
+        { ...line, imageUrl: null },
+      ],
+    });
+    expect(view.lines.map((row) => row.imageUrl)).toEqual(["/warm.webp", null]);
+  });
 });

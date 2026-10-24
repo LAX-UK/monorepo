@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 export type ShopCommercePageShellProps = {
   header: ShopPageHeaderProps;
-  /** e.g. shop-basket, shop-checkout, shop-orders */
+  /** e.g. shop-basket, shop-checkout */
   contentClassName?: string;
   children: ReactNode;
 };

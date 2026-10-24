@@ -1,21 +1,26 @@
+import { ShopAccountShell } from "@/components/account/shop-account-shell";
+import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { MarketingDetailShell } from "@auction/marketing-ui";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+
+const { title, breadcrumbs } = shopPageWayfinding.orderDetail("Order not found");
 
 export default function AccountOrderNotFound() {
   return (
-    <MarketingDetailShell shellClassName="shop-page shop-page--orders">
+    <ShopAccountShell title={title} breadcrumbs={breadcrumbs} showAccountSettings={false}>
       <ShopStatusState
+        layout="page"
         variant="empty"
-        title="Order not found"
-        titleAs="h1"
-        description="This order does not exist or is not linked to your signed-in account."
-        className="shop-status-state--page"
+        icon="search"
+        title="We could not find this order"
+        titleAs="h2"
+        description="It may belong to another LAX account. Check that you are signed in with the email you used at checkout."
         actions={
-          <ShopStatusStateLink href="/account/orders" priority="primary">
-            Back to orders
+          <ShopStatusStateLink href={SHOP_ORDERS_HREF} priority="primary">
+            Back to your orders
           </ShopStatusStateLink>
         }
       />
-    </MarketingDetailShell>
+    </ShopAccountShell>
   );
 }

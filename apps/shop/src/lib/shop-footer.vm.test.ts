@@ -43,15 +43,14 @@ describe("buildShopFooterVm", () => {
     expect(vm.columns[1]?.links).toEqual([{ label: "Account status", href: "/account/disabled" }]);
   });
 
-  it("links signed-in buyers to their account, orders and collection", () => {
+  it("links signed-in buyers to their orders and LAX Account, with no collection link", () => {
     const account = buildShopFooterVm({
       crossProductLinks: [],
       accountState: { kind: "authenticated" },
     }).columns[1];
-    expect(account?.links.map((link) => link.href)).toEqual([
-      "/account",
-      "/account/orders",
-      "/account/collection",
+    expect(account?.links).toEqual([
+      { label: "Your orders", href: "/account/orders" },
+      { label: "LAX Account", href: "http://localhost:3040/account" },
     ]);
   });
 

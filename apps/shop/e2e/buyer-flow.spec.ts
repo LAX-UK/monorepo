@@ -42,7 +42,7 @@ test.describe("shop buyer flow @e2e", () => {
       test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
       test.setTimeout(420_000);
 
-      await signInShopBuyer(page, buyerCredentials, "/account");
+      await signInShopBuyer(page, buyerCredentials, "/account/orders");
       await ensureAcceptanceStripePrintInBasket(page);
       await page.getByRole("link", { name: /view basket/i }).click();
       await page.getByRole("link", { name: /proceed to checkout/i }).click();

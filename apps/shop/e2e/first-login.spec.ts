@@ -31,7 +31,7 @@ test.describe("shop first login @e2e", () => {
     test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
     test.setTimeout(120_000);
 
-    await signInShopBuyer(page, buyerCredentials, "/account");
+    await signInShopBuyer(page, buyerCredentials, "/account/orders");
     await signOutShopBuyer(page);
     await signInShopBuyer(page, buyerCredentials, "/basket");
     expect(page.url()).not.toMatch(/\/sign-in-error/);

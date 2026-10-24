@@ -1,19 +1,17 @@
-import { ShopAccountLinkButton, ShopAccountShell } from "@/components/account/shop-account-shell";
+import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import {
-  fetchPortalSales,
-  resolveShopArtistPortalLinked,
-  resolveShopPortalOwnershipEnabled,
-} from "@/lib/shop-portal.server";
+import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { requireShopSellerTool } from "@/lib/account/shop-seller-access.server";
+import { fetchPortalSales } from "@/lib/shop-portal.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
-import { isShopPayoutsEnabled } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { formatPortalSaleChannel } from "@auction/shop-portal/vm";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export const metadata = shopPrivatePageTitle("Sales statement");
 
@@ -22,33 +20,22 @@ function formatPence(pence: number): string {
 }
 
 export default async function ShopAccountSalesPage() {
-  if (!isShopPayoutsEnabled()) {
-    notFound();
-  }
   const viewer = await loadShopViewerState();
-  const portalOwnershipEnabled = await resolveShopPortalOwnershipEnabled();
-  const artistPortalEnabled = await resolveShopArtistPortalLinked();
-  const payoutsEnabled = isShopPayoutsEnabled();
-  const shellNav = {
-    activeNavHref: "/account/sales",
-    portalOwnershipEnabled,
-    payoutsEnabled,
-    artistPortalEnabled,
-  };
-
   const gate = gateShopAuthenticatedRoute(viewer, "/account/sales");
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
-    redirect("/account");
+    redirect(SHOP_ORDERS_HREF);
   }
 
+  const access = await requireShopSellerTool("sales");
+  const nav = buildShopAccountNavItems({ access, activeHref: "/account/sales" });
   const result = await fetchPortalSales();
 
   return (
     <ShopAccountShell
       title={shopPageWayfinding.accountSales.title}
       breadcrumbs={shopPageWayfinding.accountSales.breadcrumbs}
-      {...shellNav}
+      nav={nav}
     >
       {result.status === "unauthorized" ? (
         <ShopStatusState
@@ -73,7 +60,9 @@ export default async function ShopAccountSalesPage() {
           title="Ownership portal not enabled"
           titleAs="h2"
           description="This environment has not turned on the owner portal yet."
-          actions={<ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>}
+          actions={
+            <ShopStatusStateLink href={SHOP_ORDERS_HREF}>Back to your orders</ShopStatusStateLink>
+          }
         />
       ) : result.status === "failed" ? (
         <ShopStatusState
@@ -91,7 +80,9 @@ export default async function ShopAccountSalesPage() {
           title="No sales yet"
           titleAs="h2"
           description="When editions sell, gross, fees and net will appear here with payout links."
-          actions={<ShopStatusStateLink href="/account">Back to account</ShopStatusStateLink>}
+          actions={
+            <ShopStatusStateLink href={SHOP_ORDERS_HREF}>Back to your orders</ShopStatusStateLink>
+          }
         />
       ) : (
         <ul className="space-y-3 text-sm">
@@ -122,7 +113,6 @@ export default async function ShopAccountSalesPage() {
           ))}
         </ul>
       )}
-      <ShopAccountLinkButton href="/account" label="Back to account" variant="outline" />
     </ShopAccountShell>
   );
 }

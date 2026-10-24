@@ -1,10 +1,5 @@
-import { ShopAccountShell } from "@/components/account/shop-account-shell";
-import { ShopPageSkeleton } from "@/components/shop-page-skeleton";
+import { ShopAccountLoading } from "@/components/account/shop-account-loading";
 
 export default function AccountLoading() {
-  return (
-    <ShopAccountShell title="Your account">
-      <ShopPageSkeleton variant="commerce" />
-    </ShopAccountShell>
-  );
+  return <ShopAccountLoading variant="list" />;
 }

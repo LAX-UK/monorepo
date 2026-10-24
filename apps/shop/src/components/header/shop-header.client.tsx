@@ -122,7 +122,6 @@ export function ShopHeaderClient({
                 >
                   <ShopHeaderAccountUtility
                     account={account}
-                    productLinks={productLinks}
                     headerTone={headerTone}
                     open={accountMenuOpen}
                     onOpenChange={handleAccountMenuOpenChange}
