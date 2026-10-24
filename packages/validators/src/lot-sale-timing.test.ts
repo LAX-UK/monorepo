@@ -59,6 +59,23 @@ describe("auctionMinuteEpoch", () => {
     const withSeconds = new Date(base.getTime() + 30_000);
     expect(auctionMinuteEpoch(base)).toBe(auctionMinuteEpoch(withSeconds));
   });
+
+  it("keeps the repeated hour apart when the clocks go back", () => {
+    // 25 Oct 2026: 01:30 BST (00:30 UTC) and 01:30 GMT (01:30 UTC) share a wall-clock reading.
+    const beforeChange = new Date("2026-10-25T00:30:00Z");
+    const afterChange = new Date("2026-10-25T01:30:00Z");
+    expect(auctionMinuteEpoch(afterChange) - auctionMinuteEpoch(beforeChange)).toBe(3_600_000);
+  });
+
+  it("flags a lot that opens an hour before a sale starting just after the clocks go back", () => {
+    const saleStart = new Date("2026-10-25T01:30:00Z");
+    const violation = lotTimingViolationAgainstSale(
+      { deliveryMode: "online", startTime: saleStart, endTime: new Date("2026-10-26T01:30:00Z") },
+      new Date("2026-10-25T00:30:00Z"),
+      new Date("2026-10-25T02:30:00Z"),
+    );
+    expect(violation).toBe("Lot start must not be before the sale start time");
+  });
 });
 
 describe("isStartInFutureForPublish", () => {
