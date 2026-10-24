@@ -2,6 +2,7 @@
 
 import { Check, Copy } from "lucide-react";
 import * as React from "react";
+import { EmptyValue, isEmptyCellValue } from "../data/cells.js";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
 
@@ -51,9 +52,7 @@ export function KeyValueList({
             )}
           >
             <span className="min-w-0 break-words">
-              {item.value === null || item.value === undefined || item.value === ""
-                ? "—"
-                : item.value}
+              {isEmptyCellValue(item.value) ? <EmptyValue /> : item.value}
             </span>
             {item.copyValue ? <CopyButton value={item.copyValue} label={item.label} /> : null}
           </dd>

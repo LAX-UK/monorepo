@@ -9,6 +9,7 @@ import {
 } from "@auction/ui/components/sheet";
 import { X } from "lucide-react";
 import * as React from "react";
+import { type KeyValueItem, KeyValueList } from "../display/key-value-list.js";
 import { discardPrompt } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
@@ -18,12 +19,23 @@ export type DetailPanelProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: React.ReactNode;
-  /** A line under the title: who, how much, when. */
+  /** A line under the title: who, how much, when. Prefer `meta` for facts. */
   description?: React.ReactNode;
   /** Status badge(s) beside the title. */
   status?: React.ReactNode;
-  /** Header actions beside close, e.g. "Open full page" and an overflow menu. */
+  /**
+   * The record's key facts under the title as `MetaItem`s, the same line a record page shows:
+   * "Buyer Ada Lovelace · Amount £4,140.00".
+   */
+  meta?: React.ReactNode;
+  /** Header actions beside close, e.g. "Open full page". */
   headerActions?: React.ReactNode;
+  /** An OverflowMenu (`…`) with the record's other actions, destructive last. */
+  overflow?: React.ReactNode;
+  /** Key facts as a key-value list at the top of the panel, as on the record page. */
+  summary?: readonly KeyValueItem[];
+  /** The record's activity (a Timeline), last in the panel under "Activity". */
+  activity?: React.ReactNode;
   /** Sticky footer actions; the primary action last. */
   footer?: React.ReactNode;
   /** Wider for forms with side-by-side fields. */
@@ -49,7 +61,11 @@ export function DetailPanel({
   title,
   description,
   status,
+  meta,
   headerActions,
+  overflow,
+  summary,
+  activity,
   footer,
   size = "md",
   dirty = false,
@@ -76,24 +92,36 @@ export function DetailPanel({
           )}
         >
           <div className="flex min-h-0 flex-1 flex-col">
-            <header className="flex items-start gap-3 border-b border-staff-line px-5 py-4">
-              <div className="min-w-0 flex-1">
+            {/* On a phone the actions take their own row under the title, so the title keeps the
+                width; from 640px they sit beside the close button. */}
+            <header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b border-staff-line px-5 py-4">
+              <div className="order-1 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <SheetTitle className="font-staff-display text-staff-lg font-semibold text-staff-fg">
+                  <SheetTitle className="font-staff text-staff-lg font-semibold text-staff-fg">
                     {title}
                   </SheetTitle>
                   {status}
                 </div>
                 {description ? (
-                  <SheetDescription className="mt-0.5 text-staff-sm text-staff-muted">
+                  <SheetDescription className="mt-1 text-staff-sm text-staff-muted">
                     {description}
                   </SheetDescription>
                 ) : (
                   <SheetDescription className="sr-only">Details</SheetDescription>
                 )}
+                {meta ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-staff-sm text-staff-muted">
+                    {meta}
+                  </div>
+                ) : null}
               </div>
-              <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
-                {headerActions}
+              {headerActions || overflow ? (
+                <div className="order-3 -ml-2 flex basis-full items-center gap-1 sm:order-2 sm:-mt-1 sm:ml-0 sm:basis-auto">
+                  {headerActions}
+                  {overflow}
+                </div>
+              ) : null}
+              <div className="order-2 -mt-1 -mr-2 flex shrink-0 items-center sm:order-3">
                 <SheetClose asChild>
                   <StaffButton variant="ghost" size="icon-sm" aria-label="Close panel">
                     <X aria-hidden />
@@ -109,7 +137,13 @@ export function DetailPanel({
               className="staff-focus-inset min-h-0 flex-1 overflow-y-auto px-5 py-5"
               data-lenis-prevent
             >
+              {summary && summary.length > 0 ? (
+                <PanelSection title="Summary">
+                  <KeyValueList items={summary} />
+                </PanelSection>
+              ) : null}
               {children}
+              {activity ? <PanelSection title="Activity">{activity}</PanelSection> : null}
             </section>
             {footer ? (
               <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 py-3">

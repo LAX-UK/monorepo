@@ -56,7 +56,7 @@ export function StaffDialog({
         )}
       >
         <div className="flex flex-col gap-1.5 px-5 pt-5 pb-4">
-          <DialogTitle className="font-staff-display text-staff-lg font-semibold tracking-normal text-staff-fg">
+          <DialogTitle className="font-staff text-staff-lg font-semibold tracking-normal text-staff-fg">
             {title}
           </DialogTitle>
           {description ? (

@@ -40,11 +40,11 @@ and tests read); `tokens.test.ts` fails if they drift. Use the scales only; no a
 | Scale | Steps | Use |
 | --- | --- | --- |
 | Spacing | 4px unit, 4/8 rhythm: 4, 8, 12, 16, 20, 24, 32, 40, 48 | Tailwind `1 2 3 4 5 6 8 10 12`; `0.5` only for 2px optical nudges |
-| Type | `text-staff-2xs` 11/16, `xs` 12/16, `sm` 13/20, `md` 14/20, `lg` 16/24, `xl` 20/28 | Outfit for the interface, Montserrat (`font-staff-display`) for page, panel and dialog titles; `tabular-nums` for money, counts and dates in tables. 12px is the floor for words; `2xs` is for digits in counters and `kbd` glyphs only |
+| Type | `text-staff-2xs` 11/16, `xs` 12/16, `sm` 13/20, `md` 14/20, `lg` 16/24, `xl` 20/28 | Outfit for the interface, Montserrat (`font-staff-display`) for page titles only; `tabular-nums` for money, counts and dates in tables. 12px is the floor for words; `2xs` is for digits in counters and `kbd` glyphs only |
 | Weight | 400, 500, 600 | Body, interactive labels, titles |
 | Radius | `rounded-staff-xs` 4, `sm` 6, `md` 8, `lg` 12 | Badges and checkboxes; controls; cards, menus, tables; dialogs and sheets |
 | Control height | `h-control-xs` 24, `sm` 32, `md` 36, `lg` 40 | Inline; compact (toolbars, filters); default (forms); the ⌘K field. Coarse pointers grow to 44 (`staff-target`) |
-| Row height | 36 compact, 44 comfortable | Table density toggle |
+| Row height | 36 compact, 44 comfortable | "Rows" in the Display menu; comfortable for lists whose first cell has a second line |
 | Border | 1px hairlines; focus ring 2px offset 2px (inset for rows) | `staff-focus`, `staff-focus-inset` |
 | Elevation | flat + hairline; `shadow-staff-xs`; `md`; `lg` | Page, cards, tables; secondary buttons; menus, popovers, bulk bar; dialogs, sheets, ⌘K |
 | Icons | lucide, 1.75 stroke; 14, 16, 20 | Badges and compact controls; controls and nav; empty states |
@@ -92,15 +92,24 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
     Export among the secondary ones); an `AttentionStrip` (one line per issue, linking to the
     filtered view, never dismissable); a `MetricStrip` (at most four numbers in one bordered row,
     with their period); then one table surface: view tabs (overflowing into "More"), search ·
-    `FilterSheet` · period · `ColumnsMenu` · density, the applied filters as chips, the table
-    with a `…` menu on every row (`table.rowActions`), and pagination. Loading, empty, no
-    results, error with retry, read-only and no access are props of the template.
+    `FilterSheet` · period · `DisplayMenu` (columns, rows, rows per page, reset), the applied
+    filters as chips, the table with a `…` menu on every row (`table.rowActions`), and
+    pagination. The four blocks sit 24px apart and share radius, hairline and fill; from 768px
+    the toolbar and the column headers stick under the top bar. Export goes in `exportAction`,
+    built from the same query as the rows. Loading, empty, no results, error with retry,
+    read-only and no access are props of the template.
     `scripts/check-staff-list-template.mjs` fails CI for a new list page built without it.
   - `DetailPage`: breadcrumbs and the record pager, title with status, key facts and actions, a
     summary card, an optional notice and tabs, then sections beside a rail for activity.
-  - Parts: `MetricStrip`, `AttentionStrip`, `FilterSheet`, `ColumnsMenu` and
+  - Parts: `MetricStrip`, `AttentionStrip`, `FilterSheet`, `DisplayMenu` and
     `useColumnVisibility`, `RowActions` and `rowActionsColumn`, `AccessDeniedState`,
-    `ViewOnlyBadge`.
+    `ViewOnlyBadge`, `OverflowTabs`.
+  - Cells, so a value never looks two ways: `PrimaryCell` (the row's link, optional muted second
+    line), `CellLink`, `StaffDate` (London date, exact time with BST/GMT on hover), `StaffMoney`
+    in `numeric` columns, and one muted dash (`EmptyValue`) for anything empty, added by the
+    table itself.
+  - Record panel (`DetailPanel`) and `DetailPage` share one header: title, status, a `meta` line
+    of `MetaItem`s, actions and the `…` (`overflow`), then the summary, sections and activity.
 
   ```tsx
   <ListPage
@@ -108,7 +117,7 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
     description="Buyer payments for won lots."
     Link={Link}
     listKey="bid-admin.payments"
-    secondaryActions={<ExportButton … />}
+    exportAction={<ExportButton filters={controller.exportFilters(query)} … />}
     attention={[{ id: "review", count: 10, label: "payments need manual review", href }]}
     metrics={{ label: "Payments summary", period: "All payments", items }}
     views={<DataViews … />}
@@ -119,6 +128,7 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
     filtered={filtered}
     empty={{ title: "No payments yet" }}
     table={{ columns, data, getRowId, defaultSort, rowActions: { label, actions } }}
+    pageSize={{ value: 50, onChange: (size) => navigate(hrefWithLimit(size)) }}
     pagination={{ summary: "1–50 of 312 payments", prevHref, nextHref }}
   />
   ```
@@ -148,7 +158,8 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
 ## Keyboard
 
 ⌘K / Ctrl+K opens search from anywhere, and `?` lists every shortcut that works on the page. `/`
-focuses the list's search. In tables: arrows or J and K move between rows, Enter opens the row,
+focuses the list's search and `f` opens its filters. J and K from anywhere on a list page land on
+the rows. In tables: arrows or J and K move between rows, Enter opens the row,
 Space or X selects it, Shift extends the selection, Escape clears it. On a record opened from a
 list, J and K move to the next and previous record. Panels and dialogs trap focus, close on Escape
 and return focus to what opened them.

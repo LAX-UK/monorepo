@@ -96,7 +96,51 @@ describe("ListPage", () => {
         previous.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
-    expect(screen.getByRole("button", { name: "Columns" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Display" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
+  });
+
+  it("puts columns, density, page size and reset in one Display menu", () => {
+    const onPageSize = vi.fn();
+    render(page({ pageSize: { value: 50, onChange: onPageSize } }));
+    const reset = () => screen.getByRole("menuitem", { name: "Reset to default" });
+    expect(reset()).toHaveAttribute("aria-disabled", "true");
+    const table = () => screen.getAllByRole("table", { name: "Payments" })[0] as HTMLElement;
+    expect(table().querySelector("tbody tr")).toHaveClass("h-9");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Comfortable" }));
+    expect(table().querySelector("tbody tr")).toHaveClass("h-11");
+    expect(screen.getByRole("menuitemradio", { name: "50" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "100" }));
+    expect(onPageSize).toHaveBeenCalledWith(100);
+    fireEvent.click(reset());
+    expect(table().querySelector("tbody tr")).toHaveClass("h-9");
+  });
+
+  it("shows one muted dash for an empty cell", () => {
+    render(
+      page({
+        table: {
+          columns,
+          data: [{ id: "p3", lot: "Night Ferry", amount: "" }],
+          getRowId: (row) => row.id,
+        },
+      }),
+    );
+    const table = screen.getAllByRole("table", { name: "Payments" })[0] as HTMLElement;
+    expect(within(table).getByText("—")).toBeInTheDocument();
+    expect(within(table).getByText("None")).toHaveClass("sr-only");
+  });
+
+  it("puts Export first among the header actions", () => {
+    render(page({ exportAction: <StaffButton size="sm">Export CSV</StaffButton> }));
+    const exportButton = screen.getByRole("button", { name: "Export CSV" });
+    const other = screen.getByRole("button", { name: "Export" });
+    expect(
+      exportButton.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("gives every row a visible actions menu and keeps money actions in it", () => {
@@ -108,7 +152,7 @@ describe("ListPage", () => {
     expect(within(table).getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
   });
 
-  it("hides a column from the Columns menu and remembers it", () => {
+  it("hides a column from the Display menu and remembers it", () => {
     const { unmount } = render(page());
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Amount" }));
     const table = () => screen.getAllByRole("table", { name: "Payments" })[0] as HTMLElement;

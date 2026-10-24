@@ -6,6 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
@@ -100,6 +102,25 @@ export function StaffMenuCheckboxItem({
   return (
     <DropdownMenuCheckboxItem
       className={cn(itemClass, "pl-8 [&>span>span>svg]:size-4", className)}
+      {...props}
+    />
+  );
+}
+
+export const StaffMenuRadioGroup = DropdownMenuRadioGroup;
+
+/** One choice of several in a menu (density, page size); the chosen one shows a dot. */
+export function StaffMenuRadioItem({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuRadioItem>) {
+  return (
+    <DropdownMenuRadioItem
+      className={cn(
+        itemClass,
+        "pl-8 [&>span>span>svg]:size-2 [&>span>span>svg]:fill-current",
+        className,
+      )}
       {...props}
     />
   );
