@@ -1,5 +1,6 @@
 import type { PaymentsStaffRow } from "@/lib/admin/finance/payments-staff-list.vm";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePaymentMoneyActions } from "./payment-money-actions";
 
@@ -10,6 +11,13 @@ const notifySuccess = vi.fn();
 
 // Radix's dialog portals, traps focus and animates, which is slow and noisy in jsdom. This
 // stand-in keeps the open/close contract so the tests cover what the dialogs ask and do.
+vi.mock("@auction/ui/components/dialog", () => ({
+  Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
+    open ? <dialog open>{children}</dialog> : null,
+  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/actions/admin", () => ({
   adminRefundPaymentResultAction: (...args: unknown[]) => refundAction(...args),
@@ -28,6 +36,7 @@ const payment: PaymentsStaffRow = {
   id: "pay_1",
   lotId: "lot_1",
   lotTitle: "Golden Hour",
+  lotContext: "Lot 12 · Autumn sale",
   buyerId: "user_1",
   buyer: "Ada Lovelace",
   sellerId: "seller_1",

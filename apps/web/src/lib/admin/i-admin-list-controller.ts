@@ -40,4 +40,27 @@ export interface IAdminListController<
   readonly id: string;
   parseQuery(searchParams: Record<string, string | string[] | undefined>): TQuery;
   fetch(query: TQuery): Promise<AdminListResult<TRow>>;
+  /**
+   * The export of what the list shows, from the same parsed query the rows came from: every
+   * view, search and filter, without the page. A list on `ListPage` that offers Export passes
+   * this to its export control, so the file always matches the list.
+   */
+  exportFilters?(query: TQuery): Record<string, unknown>;
+}
+
+const PAGING_KEYS: ReadonlySet<string> = new Set(["limit", "offset", "cursor"]);
+
+/**
+ * A list query as export filters: the paging dropped, and empty values left out so the export
+ * summary only names the filters in force. Arrays are sent as they are.
+ */
+export function listExportFilters(query: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(query).filter(([key, value]) => {
+      if (PAGING_KEYS.has(key)) return false;
+      if (value === undefined || value === null || value === "") return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    }),
+  );
 }

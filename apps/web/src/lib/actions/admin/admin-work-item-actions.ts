@@ -20,6 +20,7 @@ import {
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { ADMIN_REFUND_BUYER_REASON_MIN } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -109,9 +110,15 @@ export async function executeWorkItemActionAction(input: unknown): Promise<Actio
       case "refund": {
         const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
         if (denied) return denied;
+        // A refund is audited with its reason, wherever it starts.
+        const reason = notes?.trim() ?? "";
+        if (reason.length < ADMIN_REFUND_BUYER_REASON_MIN) {
+          const message = `Enter a reason of at least ${ADMIN_REFUND_BUYER_REASON_MIN} characters.`;
+          return actionFailure(message, { reason: [message] }, 400);
+        }
         return runWithTelemetry(kind, action, async () => {
-          const res = await getWriteContainer().adminPayments.refund(id);
-          if (!res.ok) return actionFailure(res.message, undefined, res.status);
+          const res = await getWriteContainer().adminPayments.refund(id, reason);
+          if (!res.ok) return actionFailure(res.message, undefined, res.status, res.code);
           revalidatePath("/admin");
           return actionSuccess();
         });

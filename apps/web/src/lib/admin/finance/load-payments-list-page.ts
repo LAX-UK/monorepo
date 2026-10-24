@@ -138,6 +138,7 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
       disputesOpen: navCounts.disputesOpen,
     },
     exportFilters: model.exportFilters,
+    pageSize: limit,
     pagination:
       !paymentResult.error && rows.length > 0
         ? {

@@ -1,7 +1,12 @@
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
-import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
+import {
+  type AdminListQueryBase,
+  type IAdminListController,
+  listExportFilters,
+} from "@/lib/admin/i-admin-list-controller";
 import { getAdminPaymentsListPage } from "@/lib/data/http/admin.server";
 import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
+import { parseStaffPageSize } from "@auction/staff-ui";
 import type { PaymentStatus } from "@auction/types";
 import {
   type AdminPaymentXeroFilter,
@@ -68,8 +73,12 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
         status,
         ...(fulfilment.length > 0 ? { fulfilment } : {}),
         ...(xero ? { xero } : {}),
-        limit: Math.min(200, base.limit),
+        limit: parseStaffPageSize(firstString(sp.limit)),
       };
+    },
+    exportFilters(q) {
+      const { sort: _sort, ...rest } = q;
+      return listExportFilters({ ...rest, q: q.q?.trim() });
     },
     async fetch(q) {
       const page = await getAdminPaymentsListPage({

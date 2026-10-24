@@ -17,13 +17,15 @@ import {
   paymentsViews,
 } from "@/lib/admin/finance/payments-staff-list.vm";
 import {
+  CellLink,
   type DataColumn,
   DataViews,
   FilterSheet,
   ListPage,
+  PrimaryCell,
+  StaffDate,
   StatusBadge,
   TableSearch,
-  formatStaffDate,
   staffButtonVariants,
 } from "@auction/staff-ui";
 import Link from "next/link";
@@ -37,13 +39,10 @@ export type PaymentsStaffListProps = {
   attentionCounts: { manualReviewCount: number; disputesOpen: number };
   canWritePayments: boolean;
   exportFilters: Record<string, unknown>;
+  pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
 };
-
-/** 24px tall, so adjacent links in the phone layout keep a full pointer target. */
-const linkClass =
-  "staff-focus inline-block max-w-full truncate align-middle leading-6 rounded-staff-xs hover:underline underline-offset-2";
 
 /**
  * Bid's payments on the staff list template: status views with the manual review queue beside
@@ -69,9 +68,9 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         header: "Lot",
         mobile: "title",
         cell: (row) => (
-          <Link href={`/admin/lots/${row.lotId}`} className={`${linkClass} font-medium`}>
+          <PrimaryCell href={`/admin/lots/${row.lotId}`} Link={Link} secondary={row.lotContext}>
             {row.lotTitle}
-          </Link>
+          </PrimaryCell>
         ),
       },
       {
@@ -92,9 +91,9 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         width: "22%",
         mobile: "meta",
         cell: (row) => (
-          <Link href={`/admin/clients/${encodeURIComponent(row.buyerId)}`} className={linkClass}>
+          <CellLink href={`/admin/clients/${encodeURIComponent(row.buyerId)}`} Link={Link}>
             {row.buyer}
-          </Link>
+          </CellLink>
         ),
       },
       {
@@ -118,9 +117,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         cell: (row) =>
           row.fulfilment ? (
             <StatusBadge tone={row.fulfilment.tone}>{row.fulfilment.label}</StatusBadge>
-          ) : (
-            <span className="text-staff-subtle">—</span>
-          ),
+          ) : null,
       },
       {
         id: "xero",
@@ -130,16 +127,11 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         mobile: "hidden",
         cell: (row) =>
           row.xero.invoiceUrl ? (
-            <a
-              href={row.xero.invoiceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={linkClass}
-            >
+            <CellLink href={row.xero.invoiceUrl} external>
               {row.xero.invoiceNumber ?? "Invoice"}
-            </a>
+            </CellLink>
           ) : (
-            <span className="text-staff-subtle">{row.xero.invoiceNumber ?? "—"}</span>
+            row.xero.invoiceNumber
           ),
       },
       {
@@ -151,14 +143,8 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         defaultSortDirection: "desc",
         hideBelow: "md",
         mobile: "meta",
-        cell: (row) =>
-          row.createdAt ? (
-            <time dateTime={row.createdAt} className="text-staff-muted tabular-nums">
-              {formatStaffDate(row.createdAt)}
-            </time>
-          ) : (
-            <span className="text-staff-subtle">—</span>
-          ),
+        truncate: false,
+        cell: (row) => <StaffDate value={row.createdAt} />,
       },
     ],
     [],
@@ -180,7 +166,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         description="Buyer payments for won lots. Capture held payments, refund captured ones and check their Xero invoices."
         Link={ListLink}
         listKey="bid-admin.payments"
-        secondaryActions={
+        exportAction={
           <ExportButton
             entityType="payments"
             filters={props.exportFilters}
@@ -267,6 +253,8 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
           data: rows,
           getRowId: (row) => row.id,
           defaultSort: { columnId: "created", direction: "desc" },
+          // The lot cell carries a second line (lot number and sale), which needs 44px rows.
+          defaultDensity: "comfortable",
           defaultHiddenColumns: ["xero"],
           onRowOpen: (row) => setOpenId(row.id),
           activeRowId: openId,
@@ -279,6 +267,10 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
             ],
           },
         }}
+        pageSize={{
+          value: props.pageSize,
+          onChange: (size) => navigate(paymentsListHref(search, { limit: size })),
+        }}
         pagination={props.pagination}
       />
       <PaymentQuickView
@@ -287,6 +279,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         onClose={() => setOpenId(null)}
         onCapture={money.capture}
         onRefund={money.refund}
+        moneyActions={openRow ? money.actionsFor(openRow) : []}
       />
       {money.dialogs}
     </>

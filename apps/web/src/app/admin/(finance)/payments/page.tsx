@@ -42,6 +42,7 @@ export default async function AdminPaymentsPage({
       attentionCounts={page.attentionCounts}
       canWritePayments={page.canWritePayments}
       exportFilters={page.exportFilters}
+      pageSize={page.pageSize}
       pagination={page.pagination}
       loadError={page.loadError}
     />

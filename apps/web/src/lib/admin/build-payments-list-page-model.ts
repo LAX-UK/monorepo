@@ -144,9 +144,9 @@ export function buildPaymentsListPageModel(sp: PaymentsListSearchParams) {
         ]
       : [];
 
-  const exportFilters = {
-    ...(query.status ? { status: query.status } : {}),
-  };
+  const exportFilters = manualReviewQueue
+    ? { manualReview: true }
+    : (paymentsListController.exportFilters?.(query) ?? {});
 
   return {
     query,

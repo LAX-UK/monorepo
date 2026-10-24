@@ -32,11 +32,13 @@ import {
   FilterSheet,
   ListPage,
   MappedStatusBadge,
+  PrimaryCell,
+  STAFF_DEFAULT_PAGE_SIZE,
   StaffButton,
+  StaffDate,
   TableSearch,
   daysBefore,
   formatGbp,
-  formatStaffDateTime,
   londonToday,
   toast,
   useSavedViews,
@@ -137,12 +139,11 @@ export function OrderList({
         mobile: "title",
         truncate: false,
         cell: (row) => (
-          <Link
-            href={`/orders/${row.orderId}`}
-            className="staff-focus rounded-staff-xs font-medium text-staff-fg tabular-nums hover:underline"
-          >
-            {orderNumber(row.orderId)}
-          </Link>
+          <span className="tabular-nums">
+            <PrimaryCell href={`/orders/${row.orderId}`} Link={Link}>
+              {orderNumber(row.orderId)}
+            </PrimaryCell>
+          </span>
         ),
       },
       {
@@ -157,19 +158,11 @@ export function OrderList({
         id: "buyer",
         header: "Buyer",
         mobile: "meta",
-        cell: (row) => {
-          const secondary = orderBuyerSecondary(row);
-          return (
-            <span className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate">{orderBuyerName(row)}</span>
-              {secondary ? (
-                <span className="hidden truncate text-staff-xs text-staff-muted lg:inline">
-                  {secondary}
-                </span>
-              ) : null}
-            </span>
-          );
-        },
+        cell: (row) => (
+          <PrimaryCell secondary={orderBuyerSecondary(row)}>
+            <span className="font-normal">{orderBuyerName(row)}</span>
+          </PrimaryCell>
+        ),
       },
       {
         id: "total",
@@ -191,11 +184,8 @@ export function OrderList({
         defaultSortDirection: "desc",
         hideBelow: "lg",
         mobile: "meta",
-        cell: (row) => (
-          <time dateTime={row.createdAt} className="text-staff-muted tabular-nums">
-            {formatStaffDateTime(row.createdAt)}
-          </time>
-        ),
+        truncate: false,
+        cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
     ],
     [],
@@ -239,7 +229,7 @@ export function OrderList({
         description="Every Shop and lax.art order, newest first. Open one to refund, update fulfilment or send it to production."
         Link={ListLink}
         listKey="orders"
-        secondaryActions={
+        exportAction={
           page.items.length > 0 ? (
             <StaffButton
               size="sm"
@@ -331,6 +321,8 @@ export function OrderList({
           columns,
           data: page.items,
           getRowId: (row) => row.orderId,
+          // The first cell carries a second line, which needs 44px rows.
+          defaultDensity: "comfortable",
           defaultSort: { columnId: "created", direction: "desc" },
           onRowOpen: (row) => setOpenOrderId(row.orderId),
           activeRowId: openOrderId,
@@ -377,6 +369,15 @@ export function OrderList({
               },
             ],
           },
+        }}
+        pageSize={{
+          value: query.limit ? Number(query.limit) : STAFF_DEFAULT_PAGE_SIZE,
+          onChange: (size) =>
+            navigate(
+              orderListHref(query, {
+                limit: size === STAFF_DEFAULT_PAGE_SIZE ? null : String(size),
+              }),
+            ),
         }}
         pagination={
           page.items.length > 0

@@ -1,5 +1,5 @@
 import { ADMIN_ORDER_STATUSES, type AdminOrderStatus } from "@auction/shop-contracts";
-import type { TeamView } from "@auction/staff-ui";
+import { STAFF_DEFAULT_PAGE_SIZE, type TeamView, parseStaffPageSize } from "@auction/staff-ui";
 import {
   type RawSearchParams,
   calendarDayParam,
@@ -20,6 +20,8 @@ export type OrderListQuery = {
   from?: string;
   to?: string;
   cursor?: string;
+  /** Rows per page when not the default 50 (25 or 100). */
+  limit?: string;
 };
 
 export const ORDER_STATUS_LABELS: Record<AdminOrderStatus, string> = {
@@ -57,12 +59,14 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
   const from = calendarDayParam(singleParam(params.from));
   const to = calendarDayParam(singleParam(params.to));
   const cursor = singleParam(params.cursor);
+  const limit = parseStaffPageSize(singleParam(params.limit));
   return {
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
     ...(cursor ? { cursor } : {}),
+    ...(limit !== STAFF_DEFAULT_PAGE_SIZE ? { limit: String(limit) } : {}),
   };
 }
 
@@ -103,6 +107,7 @@ export function orderListApiQuery(query: OrderListQuery): Record<string, string>
     status: query.status,
     createdFrom,
     createdTo,
+    limit: query.limit,
   };
   return Object.fromEntries(Object.entries(api).filter(([, value]) => Boolean(value))) as Record<
     string,

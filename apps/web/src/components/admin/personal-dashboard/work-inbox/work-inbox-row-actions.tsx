@@ -1,8 +1,10 @@
 "use client";
 
 import { executeWorkItemActionAction } from "@/lib/actions/admin/admin-work-item-actions";
+import { redirectToHostedReauth } from "@/lib/auth/step-up/use-step-up-coordinator";
 import type { AdminWorkItem, AdminWorkItemAction } from "@/lib/data/http/admin-work-items.schema";
 import { notify } from "@/lib/ui/notify";
+import { ConfirmActionDialog, Notice, useStaffStepUp } from "@auction/staff-ui";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
@@ -11,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
+import { ADMIN_REFUND_BUYER_REASON_MIN } from "@auction/validators";
 import { MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -66,8 +69,11 @@ export function WorkInboxRowActions({ item, layout }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<AdminWorkItemAction | null>(null);
+  const [refunding, setRefunding] = useState(false);
+  const [refundFailure, setRefundFailure] = useState<string | null>(null);
+  const stepUp = useStaffStepUp({ onReauthenticate: redirectToHostedReauth });
 
-  function executeAction(action: AdminWorkItemAction, onSuccess?: () => void) {
+  function executeAction(action: AdminWorkItemAction, onSuccess?: () => void, notes?: string) {
     startTransition(async () => {
       const result = await executeWorkItemActionAction({
         itemId: item.id,
@@ -76,11 +82,15 @@ export function WorkInboxRowActions({ item, layout }: Props) {
         saleId: item.saleId ?? undefined,
         registrationId: item.kind === "sale_registration" ? entityId(item) : undefined,
         bookingId: item.kind === "telephone_booking" ? entityId(item) : undefined,
+        ...(notes ? { notes } : {}),
       });
       if (result.ok) {
         notify.success(`${ACTION_LABELS[action]} completed`);
         onSuccess?.();
         router.refresh();
+      } else if (action === "refund") {
+        if (stepUp.handle(result, "Refund the payment")) setRefunding(false);
+        else setRefundFailure(result.error);
       } else {
         notify.error(result.error);
       }
@@ -88,12 +98,56 @@ export function WorkInboxRowActions({ item, layout }: Props) {
   }
 
   function run(action: AdminWorkItemAction) {
+    if (action === "refund") {
+      // Money goes back to the buyer: the kit confirm, with a reason kept in the audit log.
+      setRefundFailure(null);
+      setRefunding(true);
+      return;
+    }
     if (CONFIRM_ACTIONS.has(action)) {
       setConfirmAction(action);
       return;
     }
     executeAction(action);
   }
+
+  const refundDialog = (
+    <>
+      <ConfirmActionDialog
+        open={refunding}
+        onOpenChange={(open) => {
+          if (!open && !pending) setRefunding(false);
+        }}
+        title={`Refund the payment for ${item.title}?`}
+        description={
+          <>
+            {item.subtitle ? <span className="block">{item.subtitle}</span> : null}
+            The buyer gets the full amount back on their original payment method. A refund cannot be
+            undone.
+          </>
+        }
+        confirmLabel="Refund payment"
+        tone="danger"
+        loading={pending}
+        reason={{
+          label: "Reason for the refund",
+          description: "Kept in the audit log with your name.",
+          minLength: ADMIN_REFUND_BUYER_REASON_MIN,
+        }}
+        onConfirm={({ reason }) => {
+          setRefundFailure(null);
+          executeAction("refund", () => setRefunding(false), reason);
+        }}
+      >
+        {refundFailure ? (
+          <Notice tone="danger" alert title="The refund did not go through">
+            {refundFailure}
+          </Notice>
+        ) : null}
+      </ConfirmActionDialog>
+      {stepUp.dialog}
+    </>
+  );
 
   const confirmDialog =
     confirmAction !== null ? (
@@ -120,6 +174,7 @@ export function WorkInboxRowActions({ item, layout }: Props) {
           <a href={item.href}>Open</a>
         </Button>
         {confirmDialog}
+        {refundDialog}
       </>
     );
   }
@@ -141,6 +196,7 @@ export function WorkInboxRowActions({ item, layout }: Props) {
           ))}
         </div>
         {confirmDialog}
+        {refundDialog}
       </>
     );
   }
@@ -190,6 +246,7 @@ export function WorkInboxRowActions({ item, layout }: Props) {
         )}
       </div>
       {confirmDialog}
+      {refundDialog}
     </>
   );
 }

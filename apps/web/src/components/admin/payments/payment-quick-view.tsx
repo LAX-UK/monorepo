@@ -5,13 +5,17 @@ import type { PaymentsStaffRow } from "@/lib/admin/finance/payments-staff-list.v
 import { xeroSyncStatusLabel } from "@/lib/admin/xero-sync-status-presenter";
 import { notify } from "@/lib/ui/notify";
 import {
+  CellLink,
   DetailPanel,
   KeyValueList,
+  MetaItem,
   Notice,
+  type OverflowAction,
+  OverflowMenu,
   PanelSection,
   StaffButton,
+  StaffDate,
   StatusBadge,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
 import { ArrowUpRight, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -19,8 +23,9 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 /**
- * A payment beside the list: amount, parties, fulfilment and Xero, with capture and refund in the
- * footer. Both open the same confirm dialogs as the row menu.
+ * A payment beside the list, in the record header pattern: lot title and status, a meta line
+ * (buyer, amount, created), "Open lot" and the same `…` menu as the row, then the summary and
+ * Xero. The next money step sits in the footer; every money action opens the row's confirm dialog.
  */
 export function PaymentQuickView({
   row,
@@ -28,12 +33,15 @@ export function PaymentQuickView({
   onClose,
   onCapture,
   onRefund,
+  moneyActions = [],
 }: {
   row: PaymentsStaffRow | null;
   canWritePayments: boolean;
   onClose: () => void;
   onCapture: (row: PaymentsStaffRow) => void;
   onRefund: (row: PaymentsStaffRow) => void;
+  /** The row menu's money actions, for the panel's `…`. */
+  moneyActions?: readonly OverflowAction[];
 }) {
   const router = useRouter();
   const [syncing, startSync] = useTransition();
@@ -44,7 +52,20 @@ export function PaymentQuickView({
         if (!open) onClose();
       }}
       title={row?.lotTitle ?? "Payment"}
-      description={row ? `${row.buyer} · ${row.amount}` : undefined}
+      {...(row?.lotContext ? { description: row.lotContext } : {})}
+      meta={
+        row ? (
+          <>
+            <MetaItem label="Buyer">{row.buyer}</MetaItem>
+            <MetaItem label="Amount">{row.amount}</MetaItem>
+            {row.createdAt ? (
+              <MetaItem label="Created">
+                <StaffDate value={row.createdAt} />
+              </MetaItem>
+            ) : null}
+          </>
+        ) : null
+      }
       status={
         row ? (
           <StatusBadge tone={row.statusPresentation.tone}>
@@ -57,6 +78,23 @@ export function PaymentQuickView({
           <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
             <Link href={`/admin/lots/${row.lotId}`}>Open lot</Link>
           </StaffButton>
+        ) : null
+      }
+      overflow={
+        row ? (
+          <OverflowMenu
+            size="icon-sm"
+            label={`More actions for payment ${row.lotTitle}`}
+            Link={Link}
+            actions={[
+              {
+                id: "buyer",
+                label: "Open buyer",
+                href: `/admin/clients/${encodeURIComponent(row.buyerId)}`,
+              },
+              ...moneyActions,
+            ]}
+          />
         ) : null
       }
       footer={
@@ -78,7 +116,7 @@ export function PaymentQuickView({
     >
       {row ? (
         <>
-          <PanelSection title="Payment">
+          <PanelSection title="Summary">
             <KeyValueList
               items={[
                 { label: "Amount", value: row.amount, numeric: true },
@@ -86,28 +124,28 @@ export function PaymentQuickView({
                 {
                   label: "Buyer",
                   value: (
-                    <Link
+                    <CellLink
                       href={`/admin/clients/${encodeURIComponent(row.buyerId)}`}
-                      className="staff-focus rounded-staff-xs underline-offset-2 hover:underline"
+                      Link={Link}
                     >
                       {row.buyer}
-                    </Link>
+                    </CellLink>
                   ),
                 },
                 {
                   label: "Seller",
                   value: (
-                    <Link
+                    <CellLink
                       href={`/admin/clients/${encodeURIComponent(row.sellerId)}`}
-                      className="staff-focus rounded-staff-xs underline-offset-2 hover:underline"
+                      Link={Link}
                     >
                       Seller profile
-                    </Link>
+                    </CellLink>
                   ),
                 },
                 {
                   label: "Created",
-                  value: row.createdAt ? formatStaffDateTime(row.createdAt) : null,
+                  value: row.createdAt ? <StaffDate value={row.createdAt} withTime /> : null,
                 },
                 {
                   label: "Fulfilment",
@@ -153,14 +191,9 @@ export function PaymentQuickView({
                 {
                   label: "Invoice",
                   value: row.xero.invoiceUrl ? (
-                    <a
-                      href={row.xero.invoiceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="staff-focus rounded-staff-xs underline-offset-2 hover:underline"
-                    >
+                    <CellLink href={row.xero.invoiceUrl} external>
                       {row.xero.invoiceNumber ?? "Open invoice"}
-                    </a>
+                    </CellLink>
                   ) : (
                     (row.xero.invoiceNumber ?? "Not linked yet")
                   ),
