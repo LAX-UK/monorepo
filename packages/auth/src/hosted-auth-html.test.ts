@@ -132,7 +132,8 @@ describe("issuer-hosted credential HTML", () => {
 
     it("names the signed-in account with a masked address and offers both choices", () => {
       const html = buildHostedAccountChooserHtml(input);
-      expect(html).toContain("You&#39;re signed in as Jane Doe (j***@example.test).");
+      expect(html).toContain("Continue as Jane Doe?");
+      expect(html).toContain("This device is signed in to j***@example.test.");
       expect(html).not.toContain("jane.doe@example.test");
       expect(html).toMatch(
         /<a class="btn btn-primary" id="chooser-continue" href="https:\/\/shop.example.test\/login">Continue<\/a>/,
@@ -155,7 +156,7 @@ describe("issuer-hosted credential HTML", () => {
 
     it("falls back to the product name when the account has no name", () => {
       expect(buildHostedAccountChooserHtml({ ...input, name: "  " })).toContain(
-        "signed in as LAX Account (j***@example.test)",
+        "Continue as LAX Account?",
       );
     });
   });

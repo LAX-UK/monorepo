@@ -29,10 +29,9 @@ export function buildHostedAccountChooserHtml(
   view: HostedAuthView = hostedAuthViewFromSearch(""),
 ): string {
   const name = input.name.trim() || HOSTED_COPY.accountName;
-  const who = `${name} (${maskEmail(input.email)})`;
   return buildHostedAuthHtml({
-    title: "You're signed in",
-    description: `You're signed in as ${who}.`,
+    title: `Continue as ${name}?`,
+    description: `This device is signed in to ${maskEmail(input.email)}. Not you? Use a different account.`,
     brand: view.brand,
     config: view.config,
     body: `<div id="account-chooser" class="auth-stack" data-intent="${escapeHostedHtml(input.intent)}" data-switch-href="${escapeHostedHtml(input.switchUrl)}">

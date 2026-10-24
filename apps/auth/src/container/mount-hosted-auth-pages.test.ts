@@ -128,7 +128,7 @@ describe("account chooser for an explicit sign-in or sign-up visit", () => {
     const html = await response.text();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(html).toContain("You&#39;re signed in as Jane Doe (j***@example.test).");
+    expect(html).toContain("Continue as Jane Doe?");
     expect(html).not.toContain("jane.doe@example.test");
     expect(html).toContain('href="https://test-shop.lax.bid/login"');
     expect(html).toContain("Use a different account");
