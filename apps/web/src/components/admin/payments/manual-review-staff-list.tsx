@@ -21,13 +21,11 @@ import {
   DataViews,
   DetailPanel,
   FilterSheet,
-  KeyValueList,
+  type KeyValueItem,
   ListPage,
-  MetaItem,
   Notice,
   type OverflowAction,
   OverflowMenu,
-  PanelSection,
   PrimaryCell,
   StaffButton,
   StaffDate,
@@ -262,16 +260,16 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
             </StatusBadge>
           ) : null
         }
+        notice={openRow ? <HeldPaymentNotice row={openRow} /> : null}
+        summary={openRow ? heldPaymentSummary(openRow) : []}
         meta={
-          openRow ? (
-            <>
-              <MetaItem label="Winner">{openRow.winner}</MetaItem>
-              <MetaItem label="Amount">{openRow.amount}</MetaItem>
-              <MetaItem label="Held since">
-                <StaffDate value={openRow.source.createdAt} />
-              </MetaItem>
-            </>
-          ) : null
+          openRow
+            ? [
+                { label: "Winner", value: openRow.winner },
+                { label: "Amount", value: openRow.amount },
+                { label: "Held since", value: <StaffDate value={openRow.source.createdAt} /> },
+              ]
+            : []
         }
         headerActions={
           openRow ? (
@@ -307,52 +305,47 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
           ) : null
         }
       >
-        {openRow ? <HeldPaymentBody row={openRow} /> : null}
+        {null}
       </DetailPanel>
       {money.dialogs}
     </>
   );
 }
 
-/** The hold, the facts and what has to happen before the payment can move. */
-function HeldPaymentBody({ row }: { row: ManualReviewStaffRow }) {
-  const payment = row.source;
-  const amlHold = payment.manualReviewReason === "aml_hold";
+/** What has to happen before the payment can move. */
+function HeldPaymentNotice({ row }: { row: ManualReviewStaffRow }) {
+  if (row.compliance) {
+    return (
+      <Notice tone="warning" title="Compliance hold">
+        Settlement waits until the MLRO clears the{" "}
+        {row.source.manualReviewReason === "aml_hold" ? "AML screening" : "source of funds case"}.
+        Finance cannot release checkout while the hold is on.
+      </Notice>
+    );
+  }
   return (
-    <>
-      {row.compliance ? (
-        <Notice tone="warning" title="Compliance hold" className="mb-6">
-          Settlement waits until the MLRO clears the{" "}
-          {amlHold ? "AML screening" : "source of funds case"}. Finance cannot release checkout
-          while the hold is on.
-        </Notice>
-      ) : (
-        <Notice tone="info" title="Why it is held" className="mb-6">
-          {payment.archiveReason ?? "No reason was recorded."}
-        </Notice>
-      )}
-      <PanelSection title="Summary">
-        <KeyValueList
-          items={[
-            { label: "Amount", value: row.amount, numeric: true },
-            { label: "Hold", value: row.reason },
-            { label: "Winner", value: payment.winnerEmail?.trim() || null },
-            { label: "Seller", value: payment.sellerDisplayName },
-            {
-              label: "Seller archived",
-              value:
-                payment.archiveTimestamp || payment.sellerArchivedAt ? (
-                  <StaffDate
-                    value={payment.archiveTimestamp ?? payment.sellerArchivedAt}
-                    withTime
-                  />
-                ) : null,
-            },
-            { label: "Held since", value: <StaffDate value={payment.createdAt} withTime /> },
-            { label: "Payment ID", value: payment.paymentId, copyValue: payment.paymentId },
-          ]}
-        />
-      </PanelSection>
-    </>
+    <Notice tone="info" title="Why it is held">
+      {row.source.archiveReason ?? "No reason was recorded."}
+    </Notice>
   );
+}
+
+/** The held payment's facts; those in the panel's meta line are left out by the kit. */
+function heldPaymentSummary(row: ManualReviewStaffRow): KeyValueItem[] {
+  const payment = row.source;
+  return [
+    { label: "Amount", value: row.amount, numeric: true },
+    { label: "Hold", value: row.reason },
+    { label: "Winner", value: payment.winnerEmail?.trim() || null },
+    { label: "Seller", value: payment.sellerDisplayName },
+    {
+      label: "Seller archived",
+      value:
+        payment.archiveTimestamp || payment.sellerArchivedAt ? (
+          <StaffDate value={payment.archiveTimestamp ?? payment.sellerArchivedAt} withTime />
+        ) : null,
+    },
+    { label: "Held since", value: <StaffDate value={payment.createdAt} withTime /> },
+    { label: "Payment ID", value: payment.paymentId, copyValue: payment.paymentId },
+  ];
 }

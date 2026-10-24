@@ -209,10 +209,13 @@ previous or next record in that list.**
   - The metric strip's period caption and its labels are 12px muted; values are 20px semibold in
     tabular figures.
   - The toolbar row is: search (fills the row), Filter, period (when the rows have one), Display.
+  - No band ever holds a single control. A list with no search, filters or period puts Display
+    at the right of the view tabs; with no tabs either, a slim row carries the record count on
+    the left ("12 screenings") and Display on the right.
   - View tabs carry the same `Count` everywhere and overflow into "More" when they do not fit;
     record-section tabs (`TabNav`) are the same tabs.
-- **Kit:** `MET` (`ListPage`, `MetricStrip`, `AttentionStrip`, `OverflowTabs` behind `DataViews`
-  and `TabNav`).
+- **Kit:** `MET` (`ListPage` with `resultCount`, `MetricStrip`, `AttentionStrip`, `OverflowTabs`
+  behind `DataViews` and `TabNav`).
 
 **TBL-1. Two densities: 36px compact and 44px comfortable, remembered per list.**
 
@@ -631,10 +634,14 @@ independent and heavy.**
 - **Check:** a panel never holds tabs or a money action without confirmation. It has a URL, and
   Esc returns focus to the row.
 - **Header:** a panel uses the record page's header pattern: title, status badge, a meta line of
-  2–4 `MetaItem`s, header actions ("Open full page"), then the `…` with the same actions as the
-  row menu. Under it, the key-value summary, sections, and activity last.
-- **Kit:** `MET` for the panel (`DetailPanel` widths, focus return, `meta`, `headerActions`,
-  `overflow`, `summary`, `activity`, footer). URL and J/K are `APP` (NAV-6, NAV-7).
+  2–4 facts, header actions ("Open full page"), then the `…` with the same actions as the row
+  menu. Under it, a notice about the record, the key-value summary, sections, and activity last.
+  - A fact is said once: anything in the meta line is left out of the summary.
+  - Focus starts on the panel's title, as in a dialog, so no focus ring shows on a header button
+    until the person presses Tab.
+- **Kit:** `MET` for the panel (`DetailPanel` widths, focus on the title and back to the row,
+  `meta` as facts that `summary` never repeats, `headerActions`, `overflow`, `notice`,
+  `summary`, `activity`, footer). URL and J/K are `APP` (NAV-6, NAV-7).
 - **Sources:** [notion-peek]
 
 **PRD-8. Edit sections in place. Use a page-level edit mode only for long documents.**

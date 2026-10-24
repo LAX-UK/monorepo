@@ -16,6 +16,8 @@ import { type DataColumn, ListPage, PrimaryCell, StaffDate, StatusBadge } from "
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+const COUNT = new Intl.NumberFormat("en-GB");
+
 export type AmlStaffListProps = {
   search: AmlListSearch;
   rows: AmlStaffRow[];
@@ -167,6 +169,7 @@ export function AmlStaffList(props: AmlStaffListProps) {
           value: props.pageSize,
           onChange: (size) => navigate(amlListHref(search, { limit: size })),
         }}
+        resultCount={`${COUNT.format(props.summary.total)} ${props.summary.total === 1 ? "screening" : "screenings"}`}
         pagination={props.pagination}
       />
       <AmlQuickView

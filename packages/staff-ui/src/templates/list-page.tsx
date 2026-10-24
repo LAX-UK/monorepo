@@ -21,6 +21,7 @@ import {
   NoResultsState,
   ViewOnlyBadge,
 } from "../display/states.js";
+import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
 import type { StaffLinkComponent } from "../shell/link.js";
 import type { OverflowAction } from "../shell/overflow-menu.js";
@@ -100,6 +101,11 @@ export type ListPageProps<T> = {
   onClearFilters?: () => void;
 
   table: ListPageTable<T>;
+  /**
+   * How many records the list holds, "12 screenings". Shown at the left of the slim row that
+   * carries "Display" when the list has no view tabs, search or filters.
+   */
+  resultCount?: React.ReactNode;
   /** Rows per page (25, 50 or 100; 50 by default), offered in "Display". */
   pageSize?: DisplayPageSize | null;
   /** "1–50 of 312" and previous/next links. */
@@ -158,6 +164,7 @@ export function ListPage<T>({
   activeFilters = [],
   onClearFilters,
   table,
+  resultCount,
   pageSize,
   pagination,
   loading = false,
@@ -220,29 +227,50 @@ export function ListPage<T>({
   }
 
   const hasViewOptions = allColumns.length > 1 || Boolean(pageSize);
+  const display = hasViewOptions ? (
+    <DisplayMenu
+      columns={allColumns}
+      visibility={visibility}
+      locked={locked}
+      density={density}
+      onDensityChange={setDensity}
+      defaultDensity={defaultDensity}
+      {...(pageSize ? { pageSize } : {})}
+    />
+  ) : null;
+  // No row ever holds a single control: without search, filters or a period, "Display" joins the
+  // view tabs, or sits in a slim row beside the record count.
+  const hasControls = Boolean(search || filters || period);
   const toolbar = (
     <div className="flex flex-col">
-      {views ? <div className="border-b border-staff-line-subtle px-2">{views}</div> : null}
-      <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">{search}</div>
-        {filters || period ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {filters}
-            {period}
-          </div>
-        ) : null}
-        {hasViewOptions ? (
-          <DisplayMenu
-            columns={allColumns}
-            visibility={visibility}
-            locked={locked}
-            density={density}
-            onDensityChange={setDensity}
-            defaultDensity={defaultDensity}
-            {...(pageSize ? { pageSize } : {})}
-          />
-        ) : null}
-      </div>
+      {views ? (
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-2 px-2",
+            hasControls && "border-b border-staff-line-subtle",
+          )}
+        >
+          <div className="min-w-0 flex-1">{views}</div>
+          {!hasControls && display ? <div className="shrink-0 pr-1">{display}</div> : null}
+        </div>
+      ) : null}
+      {hasControls ? (
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+          <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">{search}</div>
+          {filters || period ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {filters}
+              {period}
+            </div>
+          ) : null}
+          {display}
+        </div>
+      ) : !views && (display || resultCount) ? (
+        <div className="flex min-h-11 items-center justify-between gap-3 py-1.5 pr-3 pl-4">
+          <p className="text-staff-sm text-staff-muted tabular-nums">{resultCount}</p>
+          {display}
+        </div>
+      ) : null}
       {activeFilters.length > 0 ? (
         <div className="border-t border-staff-line-subtle px-3 py-2">
           <ActiveFilterChips

@@ -55,6 +55,7 @@ const payout = {
   statementUrl: null,
   statementGenerationError: null,
   createdAt: "2026-11-01T00:00:00.000Z",
+  legalEntityName: "Gallery One",
 };
 
 describe("loadAdminPayoutsListPage", () => {
@@ -65,7 +66,7 @@ describe("loadAdminPayoutsListPage", () => {
     getEntity.mockResolvedValue({ displayName: "Gallery One" });
   });
 
-  it("returns rows with seller names, the filtered summary and paging", async () => {
+  it("returns rows with seller names from the list read, the filtered summary and paging", async () => {
     getPage.mockResolvedValue({
       rows: [payout],
       total: 120,
@@ -80,6 +81,8 @@ describe("loadAdminPayoutsListPage", () => {
     expect(getPage).toHaveBeenCalledWith({ limit: 50, offset: 50, status: "scheduled" });
     expect(result.loadError).toBeNull();
     expect(result.rows[0]).toMatchObject({ seller: "Gallery One", net: "£900.00" });
+    // The names come with the rows: no lookup per seller.
+    expect(getEntity).not.toHaveBeenCalled();
     expect(result.summary.readiness.inFlightCount).toBe(15);
     expect(result.capabilities.canProcess).toBe(true);
     expect(result.disputesOpen).toBe(2);
@@ -110,10 +113,9 @@ describe("loadAdminPayoutsListPage", () => {
     expect(result.sellerFilterName).toBe("Gallery One");
   });
 
-  it("keeps a short reference for a seller whose name cannot be read", async () => {
-    getEntity.mockRejectedValue(new Error("down"));
+  it("keeps a short reference for a seller whose name the list does not carry", async () => {
     getPage.mockResolvedValue({
-      rows: [payout],
+      rows: [{ ...payout, legalEntityName: null }],
       total: 1,
       offset: 0,
       limit: 50,
@@ -124,6 +126,7 @@ describe("loadAdminPayoutsListPage", () => {
     const result = await loadAdminPayoutsListPage({});
 
     expect(result.rows[0]?.seller).toBe("Seller entity_1");
+    expect(getEntity).not.toHaveBeenCalled();
   });
 
   it("contains list failures in plain language, without the raw error", async () => {

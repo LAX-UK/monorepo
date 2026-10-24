@@ -10,7 +10,6 @@ import {
   CellLink,
   DetailPanel,
   KeyValueList,
-  MetaItem,
   type OverflowAction,
   OverflowMenu,
   PanelSection,
@@ -65,15 +64,60 @@ export function LegalEntityQuickView({
           </StatusBadge>
         ) : null
       }
+      summary={
+        row
+          ? [
+              { label: "Kind", value: row.kind },
+              { label: "Stripe requirements", value: row.stripe ?? "None due" },
+              ...(details
+                ? [
+                    { label: "Stripe Connect", value: details.stripeConnect },
+                    { label: "Managed by LAX", value: details.laxManaged ? "Yes" : "No" },
+                    { label: "Platform fee", value: details.platformFee },
+                    ...(details.creator
+                      ? [
+                          {
+                            label: "Created by",
+                            value: (
+                              <CellLink
+                                href={`/admin/clients/${encodeURIComponent(details.creator.id)}`}
+                                Link={Link}
+                              >
+                                {details.creator.name}
+                              </CellLink>
+                            ),
+                          },
+                        ]
+                      : []),
+                    ...(details.documents
+                      ? [
+                          {
+                            label: "Documents",
+                            value:
+                              details.documents.total === 0
+                                ? "None uploaded"
+                                : `${details.documents.total} on file${
+                                    details.documents.pending > 0
+                                      ? ` · ${details.documents.pending} pending review`
+                                      : ""
+                                  }`,
+                          },
+                        ]
+                      : []),
+                  ]
+                : []),
+              { label: "Updated", value: <StaffDate value={row.updatedAt} withTime /> },
+              { label: "Legal entity ID", value: row.id, copyValue: row.id },
+            ]
+          : []
+      }
       meta={
-        row ? (
-          <>
-            <MetaItem label="Kind">{row.kind}</MetaItem>
-            <MetaItem label="Updated">
-              <StaffDate value={row.updatedAt} />
-            </MetaItem>
-          </>
-        ) : null
+        row
+          ? [
+              { label: "Kind", value: row.kind },
+              { label: "Updated", value: <StaffDate value={row.updatedAt} /> },
+            ]
+          : []
       }
       headerActions={
         row ? (
@@ -114,53 +158,6 @@ export function LegalEntityQuickView({
     >
       {row ? (
         <>
-          <PanelSection title="Summary">
-            <KeyValueList
-              items={[
-                { label: "Kind", value: row.kind },
-                { label: "Stripe requirements", value: row.stripe ?? "None due" },
-                ...(details
-                  ? [
-                      { label: "Stripe Connect", value: details.stripeConnect },
-                      { label: "Managed by LAX", value: details.laxManaged ? "Yes" : "No" },
-                      { label: "Platform fee", value: details.platformFee },
-                      ...(details.creator
-                        ? [
-                            {
-                              label: "Created by",
-                              value: (
-                                <CellLink
-                                  href={`/admin/clients/${encodeURIComponent(details.creator.id)}`}
-                                  Link={Link}
-                                >
-                                  {details.creator.name}
-                                </CellLink>
-                              ),
-                            },
-                          ]
-                        : []),
-                      ...(details.documents
-                        ? [
-                            {
-                              label: "Documents",
-                              value:
-                                details.documents.total === 0
-                                  ? "None uploaded"
-                                  : `${details.documents.total} on file${
-                                      details.documents.pending > 0
-                                        ? ` · ${details.documents.pending} pending review`
-                                        : ""
-                                    }`,
-                            },
-                          ]
-                        : []),
-                    ]
-                  : []),
-                { label: "Updated", value: <StaffDate value={row.updatedAt} withTime /> },
-                { label: "Legal entity ID", value: row.id, copyValue: row.id },
-              ]}
-            />
-          </PanelSection>
           <PanelSection title="Readiness">
             {details ? (
               <div className="flex flex-col gap-3">

@@ -57,6 +57,22 @@ const row: AdminPayoutRow = {
 };
 
 describe("payouts staff list view model", () => {
+  it("shows a paid date only for a payout that was paid", () => {
+    const at = "2026-10-05T09:00:00.000Z";
+    const paidAt = (status: AdminPayoutRow["status"]) =>
+      toPayoutsStaffRows([{ ...row, status, processedAt: at }])[0]?.paidAt;
+    expect(paidAt("paid")).toBe(at);
+    expect(paidAt("clawback_pending")).toBe(at);
+    for (const status of ["scheduled", "in_transit", "failed", "reversed"] as const) {
+      expect(paidAt(status)).toBeNull();
+    }
+  });
+
+  it("takes the seller's name from the list read", () => {
+    const [named] = toPayoutsStaffRows([{ ...row, legalEntityName: "Halcyon Gallery Ltd" }]);
+    expect(named?.seller).toBe("Halcyon Gallery Ltd");
+  });
+
   it("formats amounts in full pounds, with a true minus", () => {
     expect(formatPayoutAmount("4499.5")).toBe("£4,499.50");
     expect(formatPayoutAmount("-25")).toBe("−£25.00");

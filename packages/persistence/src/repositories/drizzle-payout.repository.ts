@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { payment, payout, payoutLine } from "@auction/db/schema";
+import { legalEntity, payment, payout, payoutLine } from "@auction/db/schema";
 import type { Payout, PayoutLine, PayoutLineKind, PayoutStatus } from "@auction/types";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type {
@@ -138,16 +138,19 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
     const limit = filter.limit ?? 50;
     const offset = filter.offset ?? 0;
 
-    const rows = await (where
-      ? this.db
-          .select()
-          .from(payout)
-          .where(where)
-          .orderBy(desc(payout.periodEnd))
-          .limit(limit)
-          .offset(offset)
-      : this.db.select().from(payout).orderBy(desc(payout.periodEnd)).limit(limit).offset(offset));
-    return rows.map(rowToPayout);
+    // The seller's name comes with the row, so a list page never looks sellers up one by one.
+    const base = this.db
+      .select({ payout, legalEntityName: legalEntity.displayName })
+      .from(payout)
+      .leftJoin(legalEntity, eq(legalEntity.id, payout.legalEntityId));
+    const rows = await (where ? base.where(where) : base)
+      .orderBy(desc(payout.periodEnd))
+      .limit(limit)
+      .offset(offset);
+    return rows.map((row) => ({
+      ...rowToPayout(row.payout),
+      legalEntityName: row.legalEntityName?.trim() || null,
+    }));
   }
 
   async countMatching(filter: Omit<ListPayoutsFilter, "limit" | "offset">): Promise<number> {

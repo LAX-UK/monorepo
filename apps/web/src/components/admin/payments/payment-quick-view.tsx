@@ -8,7 +8,6 @@ import {
   CellLink,
   DetailPanel,
   KeyValueList,
-  MetaItem,
   Notice,
   type OverflowAction,
   OverflowMenu,
@@ -53,18 +52,51 @@ export function PaymentQuickView({
       }}
       title={row?.lotTitle ?? "Payment"}
       {...(row?.lotContext ? { description: row.lotContext } : {})}
+      summary={
+        row
+          ? [
+              { label: "Amount", value: row.amount, numeric: true },
+              { label: "Platform fee", value: row.platformFee, numeric: true },
+              {
+                label: "Buyer",
+                value: (
+                  <CellLink href={`/admin/clients/${encodeURIComponent(row.buyerId)}`} Link={Link}>
+                    {row.buyer}
+                  </CellLink>
+                ),
+              },
+              {
+                label: "Seller",
+                value: (
+                  <CellLink href={`/admin/clients/${encodeURIComponent(row.sellerId)}`} Link={Link}>
+                    Seller profile
+                  </CellLink>
+                ),
+              },
+              {
+                label: "Created",
+                value: row.createdAt ? <StaffDate value={row.createdAt} withTime /> : null,
+              },
+              {
+                label: "Fulfilment",
+                value: row.fulfilment ? (
+                  <StatusBadge tone={row.fulfilment.tone}>{row.fulfilment.label}</StatusBadge>
+                ) : null,
+              },
+              { label: "Payment ID", value: row.id, copyValue: row.id },
+            ]
+          : []
+      }
       meta={
-        row ? (
-          <>
-            <MetaItem label="Buyer">{row.buyer}</MetaItem>
-            <MetaItem label="Amount">{row.amount}</MetaItem>
-            {row.createdAt ? (
-              <MetaItem label="Created">
-                <StaffDate value={row.createdAt} />
-              </MetaItem>
-            ) : null}
-          </>
-        ) : null
+        row
+          ? [
+              { label: "Buyer", value: row.buyer },
+              { label: "Amount", value: row.amount },
+              ...(row.createdAt
+                ? [{ label: "Created", value: <StaffDate value={row.createdAt} /> }]
+                : []),
+            ]
+          : []
       }
       status={
         row ? (
@@ -116,47 +148,6 @@ export function PaymentQuickView({
     >
       {row ? (
         <>
-          <PanelSection title="Summary">
-            <KeyValueList
-              items={[
-                { label: "Amount", value: row.amount, numeric: true },
-                { label: "Platform fee", value: row.platformFee, numeric: true },
-                {
-                  label: "Buyer",
-                  value: (
-                    <CellLink
-                      href={`/admin/clients/${encodeURIComponent(row.buyerId)}`}
-                      Link={Link}
-                    >
-                      {row.buyer}
-                    </CellLink>
-                  ),
-                },
-                {
-                  label: "Seller",
-                  value: (
-                    <CellLink
-                      href={`/admin/clients/${encodeURIComponent(row.sellerId)}`}
-                      Link={Link}
-                    >
-                      Seller profile
-                    </CellLink>
-                  ),
-                },
-                {
-                  label: "Created",
-                  value: row.createdAt ? <StaffDate value={row.createdAt} withTime /> : null,
-                },
-                {
-                  label: "Fulfilment",
-                  value: row.fulfilment ? (
-                    <StatusBadge tone={row.fulfilment.tone}>{row.fulfilment.label}</StatusBadge>
-                  ) : null,
-                },
-                { label: "Payment ID", value: row.id, copyValue: row.id },
-              ]}
-            />
-          </PanelSection>
           <PanelSection
             title="Xero"
             action={

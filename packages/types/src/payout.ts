@@ -54,6 +54,8 @@ export type Payout = {
   /** populated when PDF generation fails after max retries. */
   statementGenerationError: string | null;
   createdAt: Date;
+  /** The seller's display name; filled by list reads, so a list never looks it up per row. */
+  legalEntityName?: string | null;
 };
 
 /** Payout Line - individual line item in a payout */

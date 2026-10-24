@@ -50,7 +50,8 @@ export type PayoutsStaffRow = {
   stripeTransferId: string | null;
   failureReason: string | null;
   statementError: string | null;
-  processedAt: string | null;
+  /** When the money went out; null until the payout is paid, and for one never paid. */
+  paidAt: string | null;
   createdAt: string;
   /** Money moves out only while the payout is open (scheduled or in transit). */
   canMarkPaid: boolean;
@@ -72,16 +73,28 @@ function sellerFallback(legalEntityId: string): string {
   return `Seller ${legalEntityId.slice(0, 8)}`;
 }
 
+/**
+ * The date a payout was paid. Only a paid payout (or one being clawed back after it was paid)
+ * has one: a scheduled, in-transit, failed or reversed payout shows none, even when the row
+ * carries an older processing time.
+ */
+export function payoutPaidAt(row: Pick<AdminPayoutRow, "status" | "processedAt">): string | null {
+  return row.status === "paid" || row.status === "clawback_pending" ? row.processedAt : null;
+}
+
 export function toPayoutsStaffRows(
   rows: readonly AdminPayoutRow[],
-  sellerNames: ReadonlyMap<string, string>,
+  sellerNames: ReadonlyMap<string, string> = new Map(),
 ): PayoutsStaffRow[] {
   return rows.map((row) => {
     const open = row.status === "scheduled" || row.status === "in_transit";
     return {
       id: row.id,
       legalEntityId: row.legalEntityId,
-      seller: sellerNames.get(row.legalEntityId) ?? sellerFallback(row.legalEntityId),
+      seller:
+        row.legalEntityName ??
+        sellerNames.get(row.legalEntityId) ??
+        sellerFallback(row.legalEntityId),
       period: payoutPeriod(row.periodStart, row.periodEnd),
       periodStart: row.periodStart,
       gross: formatPayoutAmount(row.grossAmount, row.currency),
@@ -94,7 +107,7 @@ export function toPayoutsStaffRows(
       stripeTransferId: row.stripeTransferId,
       failureReason: row.failureReason,
       statementError: row.statementGenerationError,
-      processedAt: row.processedAt,
+      paidAt: payoutPaidAt(row),
       createdAt: row.createdAt,
       canMarkPaid: open,
       canAdjust: open,

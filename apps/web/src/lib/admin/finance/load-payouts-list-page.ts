@@ -26,17 +26,16 @@ function plainSearch(sp: PayoutsListSearch): Record<string, string> {
   );
 }
 
-/** Seller names for the sellers on this page; a seller that cannot be read keeps a short reference. */
-async function loadSellerNames(legalEntityIds: readonly string[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  await Promise.all(
-    [...new Set(legalEntityIds)].map(async (id) => {
-      const entity = await getAdminLegalEntityById(id).catch(() => null);
-      const name = entity?.displayName?.trim();
-      if (name) names.set(id, name);
-    }),
-  );
-  return names;
+/** The filtered seller's name, for its chip, when no row on the page carries it. */
+async function sellerFilterName(
+  legalEntityId: string | undefined,
+  rows: readonly { legalEntityId: string; legalEntityName?: string | null }[],
+): Promise<string | null> {
+  if (!legalEntityId) return null;
+  const onPage = rows.find((row) => row.legalEntityId === legalEntityId)?.legalEntityName;
+  if (onPage) return onPage;
+  const entity = await getAdminLegalEntityById(legalEntityId).catch(() => null);
+  return entity?.displayName?.trim() || null;
 }
 
 export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
@@ -63,17 +62,15 @@ export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
 
   try {
     const page = await payoutsListController.fetchPage(query);
-    const names = await loadSellerNames([
-      ...page.rows.map((row) => row.legalEntityId),
-      ...(query.legalEntityId ? [query.legalEntityId] : []),
-    ]);
-    const rows = toPayoutsStaffRows(page.rows, names);
+    // Seller names come with the rows; only a filtered seller with no row here is looked up.
+    const filterName = await sellerFilterName(query.legalEntityId, page.rows);
+    const rows = toPayoutsStaffRows(page.rows);
     const { offset, limit } = query;
     return {
       ...base,
       rows,
       summary: page.summary,
-      sellerFilterName: query.legalEntityId ? (names.get(query.legalEntityId) ?? null) : null,
+      sellerFilterName: filterName,
       loadError: null as string | null,
       pagination:
         rows.length > 0

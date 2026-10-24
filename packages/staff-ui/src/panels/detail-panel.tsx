@@ -13,7 +13,11 @@ import { type KeyValueItem, KeyValueList } from "../display/key-value-list.js";
 import { discardPrompt } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
+import { MetaItem } from "../shell/page-header.js";
 import { ConfirmActionDialog } from "./staff-dialog.js";
+
+/** One key fact in a panel's meta line: "Buyer Ada Lovelace". */
+export type PanelMetaFact = { label: string; value: React.ReactNode };
 
 export type DetailPanelProps = {
   open: boolean;
@@ -24,15 +28,21 @@ export type DetailPanelProps = {
   /** Status badge(s) beside the title. */
   status?: React.ReactNode;
   /**
-   * The record's key facts under the title as `MetaItem`s, the same line a record page shows:
-   * "Buyer Ada Lovelace · Amount £4,140.00".
+   * The record's key facts under the title, the same line a record page shows: "Buyer Ada
+   * Lovelace · Amount £4,140.00". A fact here is never repeated: a `summary` item with the same
+   * label is left out of the summary.
    */
-  meta?: React.ReactNode;
+  meta?: readonly PanelMetaFact[];
   /** Header actions beside close, e.g. "Open full page". */
   headerActions?: React.ReactNode;
   /** An OverflowMenu (`…`) with the record's other actions, destructive last. */
   overflow?: React.ReactNode;
-  /** Key facts as a key-value list at the top of the panel, as on the record page. */
+  /** A Notice about the whole record, above everything else in the panel. */
+  notice?: React.ReactNode;
+  /**
+   * Key facts as a key-value list at the top of the panel, as on the record page. Facts already
+   * in `meta` are dropped here.
+   */
   summary?: readonly KeyValueItem[];
   /** The record's activity (a Timeline), last in the panel under "Activity". */
   activity?: React.ReactNode;
@@ -64,6 +74,7 @@ export function DetailPanel({
   meta,
   headerActions,
   overflow,
+  notice,
   summary,
   activity,
   footer,
@@ -73,6 +84,9 @@ export function DetailPanel({
   children,
 }: DetailPanelProps) {
   const [confirmingClose, setConfirmingClose] = React.useState(false);
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+  const metaLabels = new Set((meta ?? []).map((fact) => fact.label));
+  const summaryItems = (summary ?? []).filter((item) => !metaLabels.has(item.label));
   const prompt = discardPrompt(dirtyLabel);
   const requestOpenChange = (next: boolean) => {
     if (!next && dirty) setConfirmingClose(true);
@@ -90,6 +104,12 @@ export function DetailPanel({
             size === "lg" ? "sm:w-[640px]" : "sm:w-[480px]",
             "[&>button:last-child]:hidden",
           )}
+          // Focus starts on the title, as in a dialog: no ring on a header button until the
+          // person presses Tab, and screen readers start with the record's name.
+          onOpenAutoFocus={(event: Event) => {
+            event.preventDefault();
+            titleRef.current?.focus({ preventScroll: true });
+          }}
         >
           <div className="flex min-h-0 flex-1 flex-col">
             {/* On a phone the actions take their own row under the title, so the title keeps the
@@ -97,7 +117,11 @@ export function DetailPanel({
             <header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b border-staff-line px-5 py-4">
               <div className="order-1 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <SheetTitle className="font-staff text-staff-lg font-semibold text-staff-fg">
+                  <SheetTitle
+                    ref={titleRef}
+                    tabIndex={-1}
+                    className="font-staff text-staff-lg font-semibold text-staff-fg outline-none"
+                  >
                     {title}
                   </SheetTitle>
                   {status}
@@ -109,9 +133,13 @@ export function DetailPanel({
                 ) : (
                   <SheetDescription className="sr-only">Details</SheetDescription>
                 )}
-                {meta ? (
+                {meta && meta.length > 0 ? (
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-staff-sm text-staff-muted">
-                    {meta}
+                    {meta.map((fact) => (
+                      <MetaItem key={fact.label} label={fact.label}>
+                        {fact.value}
+                      </MetaItem>
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -137,9 +165,10 @@ export function DetailPanel({
               className="staff-focus-inset min-h-0 flex-1 overflow-y-auto px-5 py-5"
               data-lenis-prevent
             >
-              {summary && summary.length > 0 ? (
+              {notice ? <div className="mb-6">{notice}</div> : null}
+              {summaryItems.length > 0 ? (
                 <PanelSection title="Summary">
-                  <KeyValueList items={summary} />
+                  <KeyValueList items={summaryItems} />
                 </PanelSection>
               ) : null}
               {children}

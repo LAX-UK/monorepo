@@ -1,16 +1,7 @@
 "use client";
 
 import type { OnboardingStaffRow } from "@/lib/admin/onboarding-issues-staff-list.vm";
-import {
-  DetailPanel,
-  KeyValueList,
-  MetaItem,
-  OverflowMenu,
-  PanelSection,
-  StaffButton,
-  StaffDate,
-  StatusBadge,
-} from "@auction/staff-ui";
+import { DetailPanel, OverflowMenu, StaffButton, StaffDate, StatusBadge } from "@auction/staff-ui";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -47,17 +38,40 @@ export function OnboardingIssueQuickView({
       }}
       title={row?.title ?? "Onboarding item"}
       description={row?.kind}
+      summary={
+        row
+          ? [
+              { label: "Type", value: row.kind },
+              { label: row.tab === "kyc" ? "Client" : "Name", value: row.title },
+              { label: "Status", value: row.status?.label ?? null },
+              { label: "Provider", value: row.tab === "kyc" ? row.secondary : null },
+              {
+                label: row.tab === "documents" ? "Uploaded" : "Created",
+                value: <StaffDate value={row.since} withTime />,
+              },
+              { label: "Waiting", value: row.ageLabel },
+              { label: "Reference", value: row.id, copyValue: row.id },
+            ]
+          : []
+      }
       meta={
-        row ? (
-          <>
-            <MetaItem label="Waiting">{row.ageLabel ?? "Date unknown"}</MetaItem>
-            {position ? (
-              <MetaItem label="Position">
-                {position.index} of {position.total}
-              </MetaItem>
-            ) : null}
-          </>
-        ) : null
+        row
+          ? [
+              { label: "Waiting", value: row.ageLabel ?? "Date unknown" },
+              ...(position
+                ? [
+                    {
+                      label: "Position",
+                      value: (
+                        <>
+                          {position.index} of {position.total}
+                        </>
+                      ),
+                    },
+                  ]
+                : []),
+            ]
+          : []
       }
       status={
         row ? (
@@ -108,24 +122,7 @@ export function OnboardingIssueQuickView({
         ) : null
       }
     >
-      {row ? (
-        <PanelSection title="Summary">
-          <KeyValueList
-            items={[
-              { label: "Type", value: row.kind },
-              { label: row.tab === "kyc" ? "Client" : "Name", value: row.title },
-              { label: "Status", value: row.status?.label ?? null },
-              { label: "Provider", value: row.tab === "kyc" ? row.secondary : null },
-              {
-                label: row.tab === "documents" ? "Uploaded" : "Created",
-                value: <StaffDate value={row.since} withTime />,
-              },
-              { label: "Waiting", value: row.ageLabel },
-              { label: "Reference", value: row.id, copyValue: row.id },
-            ]}
-          />
-        </PanelSection>
-      ) : null}
+      {null}
     </DetailPanel>
   );
 }

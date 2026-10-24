@@ -157,6 +157,49 @@ describe("createExportProviders", () => {
     ).toThrow(AuthzError);
   });
 
+  it("exports payouts in the status the staff list is filtered to", async () => {
+    const countMatching = vi.fn().mockResolvedValue(4);
+    const list = vi.fn().mockResolvedValue([]);
+    const deps = baseDeps({
+      payoutRepo: { countMatching, list } as unknown as IExportProviderDeps["payoutRepo"],
+    });
+    const payouts = createExportProviders(deps).get("payouts");
+    const ctx = { userId: "u1", userRole: "staff", userStaffRole: "finance_ops" } as const;
+    const filters = {
+      status: "failed" as const,
+      legalEntityId: "11111111-1111-4111-8111-111111111111",
+    };
+
+    await payouts?.estimateCount(ctx, filters);
+    for await (const _row of payouts?.streamRows(ctx, filters) ?? []) {
+      // No rows; the scope passed to the repository is what is under test.
+    }
+
+    expect(countMatching).toHaveBeenCalledWith(filters);
+    expect(list).toHaveBeenCalledWith(expect.objectContaining({ ...filters, offset: 0 }));
+  });
+
+  it("keeps a client's payout export to their own entity, in the status they chose", async () => {
+    const countMatching = vi.fn().mockResolvedValue(1);
+    const deps = baseDeps({
+      payoutRepo: { countMatching, list: vi.fn() } as unknown as IExportProviderDeps["payoutRepo"],
+      legalEntityRepo: {
+        findActiveMembership: vi.fn().mockResolvedValue({ id: "m1" }),
+      } as unknown as IExportProviderDeps["legalEntityRepo"],
+    });
+    const payouts = createExportProviders(deps).get("payouts");
+
+    await payouts?.estimateCount(
+      { userId: "u1", userRole: "client", userStaffRole: null },
+      { legalEntityId: "11111111-1111-4111-8111-111111111111", status: "paid" },
+    );
+
+    expect(countMatching).toHaveBeenCalledWith({
+      legalEntityId: "11111111-1111-4111-8111-111111111111",
+      status: "paid",
+    });
+  });
+
   it("includes full payout columns in export rows", async () => {
     const list = vi.fn().mockResolvedValue([
       {

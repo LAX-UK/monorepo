@@ -50,7 +50,7 @@ const payout: PayoutsStaffRow = {
   stripeTransferId: "tr_gallery_one",
   failureReason: null,
   statementError: null,
-  processedAt: null,
+  paidAt: null,
   createdAt: "2026-11-01T00:00:00.000Z",
   canMarkPaid: true,
   canAdjust: true,

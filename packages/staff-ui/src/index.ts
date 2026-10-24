@@ -202,7 +202,7 @@ export type {
 
 // Panels
 export { DetailPanel, PanelSection } from "./panels/detail-panel.js";
-export type { DetailPanelProps } from "./panels/detail-panel.js";
+export type { DetailPanelProps, PanelMetaFact } from "./panels/detail-panel.js";
 export { ConfirmActionDialog, StaffDialog } from "./panels/staff-dialog.js";
 export type {
   ConfirmActionDialogProps,

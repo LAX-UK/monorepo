@@ -15,7 +15,6 @@ import {
   CellLink,
   DetailPanel,
   KeyValueList,
-  MetaItem,
   Notice,
   type OverflowAction,
   OverflowMenu,
@@ -106,16 +105,41 @@ export function AmlQuickView({
       }}
       title={row?.client ?? "Screening"}
       description="Watchlist screening"
+      summary={
+        row
+          ? [
+              {
+                label: "Client",
+                value: (
+                  <CellLink href={clientHref} Link={Link}>
+                    {row.client}
+                  </CellLink>
+                ),
+              },
+              { label: "Match", value: row.match.label },
+              { label: "Policy outcome", value: row.decision.label },
+              { label: "Monitoring", value: row.monitor.label },
+              { label: "Categories", value: row.categories },
+              { label: "Watchlist hits", value: row.totalHits, numeric: true },
+              { label: "Screened", value: <StaffDate value={row.screenedAt} withTime /> },
+              { label: "Check type", value: row.checkType },
+              { label: "Screening ID", value: row.id, copyValue: row.id },
+              {
+                label: "Provider session ID",
+                value: row.providerSessionId,
+                copyValue: row.providerSessionId,
+              },
+            ]
+          : []
+      }
       meta={
-        row ? (
-          <>
-            <MetaItem label="Screened">
-              <StaffDate value={row.screenedAt} />
-            </MetaItem>
-            <MetaItem label="Hits">{row.totalHits}</MetaItem>
-            <MetaItem label="Triage">{row.triage.label}</MetaItem>
-          </>
-        ) : null
+        row
+          ? [
+              { label: "Screened", value: <StaffDate value={row.screenedAt} /> },
+              { label: "Hits", value: row.totalHits },
+              { label: "Triage", value: row.triage.label },
+            ]
+          : []
       }
       status={
         row ? (
@@ -171,33 +195,6 @@ export function AmlQuickView({
     >
       {row && access ? (
         <>
-          <PanelSection title="Summary">
-            <KeyValueList
-              items={[
-                {
-                  label: "Client",
-                  value: (
-                    <CellLink href={clientHref} Link={Link}>
-                      {row.client}
-                    </CellLink>
-                  ),
-                },
-                { label: "Match", value: row.match.label },
-                { label: "Policy outcome", value: row.decision.label },
-                { label: "Monitoring", value: row.monitor.label },
-                { label: "Categories", value: row.categories },
-                { label: "Watchlist hits", value: row.totalHits, numeric: true },
-                { label: "Screened", value: <StaffDate value={row.screenedAt} withTime /> },
-                { label: "Check type", value: row.checkType },
-                { label: "Screening ID", value: row.id, copyValue: row.id },
-                {
-                  label: "Provider session ID",
-                  value: row.providerSessionId,
-                  copyValue: row.providerSessionId,
-                },
-              ]}
-            />
-          </PanelSection>
           <PanelSection title="Review">
             <div className="flex flex-col gap-2">
               <KeyValueList

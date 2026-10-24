@@ -4,12 +4,9 @@ import type { PayoutsStaffRow } from "@/lib/admin/finance/payouts-staff-list.vm"
 import {
   CellLink,
   DetailPanel,
-  KeyValueList,
-  MetaItem,
   Notice,
   type OverflowAction,
   OverflowMenu,
-  PanelSection,
   StaffButton,
   StaffDate,
   StatusBadge,
@@ -63,18 +60,42 @@ export function PayoutQuickView({
           </StatusBadge>
         ) : null
       }
+      summary={
+        row
+          ? [
+              { label: "Gross", value: row.gross, numeric: true },
+              { label: "Platform fee", value: row.platformFee, numeric: true },
+              { label: "Stripe fee", value: row.stripeFee, numeric: true },
+              { label: "Net", value: row.net, numeric: true },
+              {
+                label: "Seller",
+                value: (
+                  <CellLink href={sellerHref} Link={Link}>
+                    {row.seller}
+                  </CellLink>
+                ),
+              },
+              {
+                label: "Stripe transfer",
+                value: row.stripeTransferId,
+                ...(row.stripeTransferId ? { copyValue: row.stripeTransferId } : {}),
+              },
+              {
+                label: "Paid",
+                value: row.paidAt ? <StaffDate value={row.paidAt} withTime /> : null,
+              },
+              { label: "Created", value: <StaffDate value={row.createdAt} withTime /> },
+              { label: "Payout ID", value: row.id, copyValue: row.id },
+            ]
+          : []
+      }
       meta={
-        row ? (
-          <>
-            <MetaItem label="Seller">{row.seller}</MetaItem>
-            <MetaItem label="Net amount">{row.net}</MetaItem>
-            {row.processedAt ? (
-              <MetaItem label="Paid">
-                <StaffDate value={row.processedAt} />
-              </MetaItem>
-            ) : null}
-          </>
-        ) : null
+        row
+          ? [
+              { label: "Seller", value: row.seller },
+              ...(row.paidAt ? [{ label: "Paid", value: <StaffDate value={row.paidAt} /> }] : []),
+            ]
+          : []
       }
       headerActions={
         row ? (
@@ -133,35 +154,6 @@ export function PayoutQuickView({
               {row.statementError}
             </Notice>
           ) : null}
-          <PanelSection title="Summary">
-            <KeyValueList
-              items={[
-                { label: "Gross", value: row.gross, numeric: true },
-                { label: "Platform fee", value: row.platformFee, numeric: true },
-                { label: "Stripe fee", value: row.stripeFee, numeric: true },
-                { label: "Net", value: row.net, numeric: true },
-                {
-                  label: "Seller",
-                  value: (
-                    <CellLink href={sellerHref} Link={Link}>
-                      {row.seller}
-                    </CellLink>
-                  ),
-                },
-                {
-                  label: "Stripe transfer",
-                  value: row.stripeTransferId,
-                  ...(row.stripeTransferId ? { copyValue: row.stripeTransferId } : {}),
-                },
-                {
-                  label: "Paid",
-                  value: row.processedAt ? <StaffDate value={row.processedAt} withTime /> : null,
-                },
-                { label: "Created", value: <StaffDate value={row.createdAt} withTime /> },
-                { label: "Payout ID", value: row.id, copyValue: row.id },
-              ]}
-            />
-          </PanelSection>
         </>
       ) : null}
     </DetailPanel>

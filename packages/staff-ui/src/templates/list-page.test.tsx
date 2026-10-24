@@ -100,6 +100,24 @@ describe("ListPage", () => {
     expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
   });
 
+  it("never gives Display a row of its own", () => {
+    const { unmount } = render(
+      page({ resultCount: "2 payments", views: <nav aria-label="Views">tabs</nav> }),
+    );
+    const display = screen.getByRole("button", { name: "Display" });
+    // With tabs and no search or filters, Display sits in the tabs row.
+    expect(screen.getByRole("navigation", { name: "Views" }).parentElement?.parentElement).toBe(
+      display.parentElement?.parentElement,
+    );
+    expect(screen.queryByText("2 payments")).toBeNull();
+    unmount();
+
+    render(page({ resultCount: "2 payments" }));
+    // Without tabs: one slim row, the count on the left and Display on the right.
+    const count = screen.getByText("2 payments");
+    expect(count.parentElement).toContainElement(screen.getByRole("button", { name: "Display" }));
+  });
+
   it("puts columns, density, page size and reset in one Display menu", () => {
     const onPageSize = vi.fn();
     render(page({ pageSize: { value: 50, onChange: onPageSize } }));

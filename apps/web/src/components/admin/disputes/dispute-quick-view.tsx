@@ -4,11 +4,8 @@ import type { DisputesStaffRow } from "@/lib/admin/finance/disputes-staff-list.v
 import {
   CellLink,
   DetailPanel,
-  KeyValueList,
-  MetaItem,
   type OverflowAction,
   OverflowMenu,
-  PanelSection,
   StaffButton,
   StaffDate,
   StatusBadge,
@@ -72,52 +69,9 @@ export function DisputeQuickView({
           </StatusBadge>
         ) : null
       }
-      meta={
-        row ? (
-          <>
-            <MetaItem label="Amount">{row.amount}</MetaItem>
-            <MetaItem label="Opened">
-              <StaffDate value={row.openedAt} />
-            </MetaItem>
-            {row.closedAt ? (
-              <MetaItem label="Closed">
-                <StaffDate value={row.closedAt} />
-              </MetaItem>
-            ) : null}
-          </>
-        ) : null
-      }
-      overflow={
-        row ? (
-          <OverflowMenu
-            size="icon-sm"
-            label={`More actions for dispute ${row.title}`}
-            Link={Link}
-            actions={disputeLinkActions(row)}
-          />
-        ) : null
-      }
-      footer={
-        row ? (
-          <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={disputePaymentHref(row)}>Open payment</Link>
-          </StaffButton>
-        ) : null
-      }
-      activity={
-        row ? (
-          <Timeline
-            label={`Activity on dispute ${row.title}`}
-            events={row.timeline}
-            empty="Stripe has not reported anything on this case yet."
-          />
-        ) : null
-      }
-    >
-      {row ? (
-        <PanelSection title="Summary">
-          <KeyValueList
-            items={[
+      summary={
+        row
+          ? [
               { label: "Amount", value: row.amount, numeric: true },
               { label: "Reason", value: row.reason },
               {
@@ -158,10 +112,48 @@ export function DisputeQuickView({
               },
               { label: "Stripe dispute ID", value: row.id, copyValue: row.id },
               { label: "Payment ID", value: row.paymentId, copyValue: row.paymentId },
-            ]}
+            ]
+          : []
+      }
+      meta={
+        row
+          ? [
+              { label: "Amount", value: row.amount },
+              { label: "Opened", value: <StaffDate value={row.openedAt} /> },
+              ...(row.closedAt
+                ? [{ label: "Closed", value: <StaffDate value={row.closedAt} /> }]
+                : []),
+            ]
+          : []
+      }
+      overflow={
+        row ? (
+          <OverflowMenu
+            size="icon-sm"
+            label={`More actions for dispute ${row.title}`}
+            Link={Link}
+            actions={disputeLinkActions(row)}
           />
-        </PanelSection>
-      ) : null}
+        ) : null
+      }
+      footer={
+        row ? (
+          <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>
+            <Link href={disputePaymentHref(row)}>Open payment</Link>
+          </StaffButton>
+        ) : null
+      }
+      activity={
+        row ? (
+          <Timeline
+            label={`Activity on dispute ${row.title}`}
+            events={row.timeline}
+            empty="Stripe has not reported anything on this case yet."
+          />
+        ) : null
+      }
+    >
+      {null}
     </DetailPanel>
   );
 }
