@@ -1,6 +1,7 @@
 import type { ShopViewerState } from "@/lib/shop-viewer-state";
 import { describe, expect, it } from "vitest";
 import {
+  resolveRetiredShopAccountRedirect,
   resolveShopAccountEntryRedirect,
   retiredShopAccountPageDestination,
 } from "./shop-account-routes";
@@ -79,5 +80,30 @@ describe("resolveShopAccountEntryRedirect", () => {
     expect(
       resolveShopAccountEntryRedirect({ kind: "unavailable", message: "Unavailable" }, {}),
     ).toBe("/account/orders");
+  });
+});
+
+describe("resolveRetiredShopAccountRedirect", () => {
+  const art = new URL("https://art.example.test");
+
+  it("redirects retired account pages, with or without a trailing slash", () => {
+    expect(resolveRetiredShopAccountRedirect("/account/collection", art)).toMatch(
+      /\/account\/portfolio$/,
+    );
+    expect(resolveRetiredShopAccountRedirect("/account/documents/", art)).toMatch(
+      /\/account\/portfolio$/,
+    );
+    expect(resolveRetiredShopAccountRedirect("/account/editions", art)).toMatch(
+      /\/account\/portfolio\?product=shop$/,
+    );
+    expect(resolveRetiredShopAccountRedirect("/account/enquiries", art)).toBe(
+      "https://art.example.test/account/enquiries",
+    );
+  });
+
+  it("leaves every other path alone", () => {
+    expect(resolveRetiredShopAccountRedirect("/account/orders", art)).toBeNull();
+    expect(resolveRetiredShopAccountRedirect("/account/collection/x", art)).toBeNull();
+    expect(resolveRetiredShopAccountRedirect("/account", art)).toBeNull();
   });
 });

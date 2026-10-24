@@ -1,4 +1,5 @@
 import { loadShopEnv } from "@/env";
+import { resolveRetiredShopAccountRedirect } from "@/lib/account/shop-account-routes";
 import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
 import { resolveOriginalWorksRedirect } from "@/lib/original-works-redirect";
 import {
@@ -37,6 +38,13 @@ export async function middleware(request: NextRequest) {
   const originalWorksRedirect = resolveOriginalWorksRedirect(request.nextUrl, loadShopArtBaseUrl());
   if (originalWorksRedirect) {
     return NextResponse.redirect(originalWorksRedirect, 301);
+  }
+  const retiredAccountRedirect = resolveRetiredShopAccountRedirect(
+    request.nextUrl.pathname,
+    loadShopArtBaseUrl(),
+  );
+  if (retiredAccountRedirect) {
+    return NextResponse.redirect(new URL(retiredAccountRedirect, request.url), 308);
   }
   const response = await resolveSessionResponse(request);
   const host = publicRequestHost(request.headers);

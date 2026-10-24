@@ -71,3 +71,21 @@ export function resolveShopAccountEntryRedirect(
     }
   }
 }
+
+const RETIRED_ACCOUNT_PAGE_PATTERN = /^\/account\/(collection|editions|documents|enquiries)\/?$/;
+
+/**
+ * The permanent redirect for a retired account page, or null for any other path. Middleware
+ * answers these before rendering: the account segment streams a loading state, so a redirect
+ * thrown from the page would arrive as a 200 response instead of a 308.
+ */
+export function resolveRetiredShopAccountRedirect(
+  pathname: string,
+  artBaseUrl: URL | null,
+): string | null {
+  const page = RETIRED_ACCOUNT_PAGE_PATTERN.exec(pathname)?.[1] as
+    | RetiredShopAccountPage
+    | undefined;
+  if (!page) return null;
+  return retiredShopAccountPageDestination(page, artBaseUrl ? artBaseUrl.origin : null);
+}
