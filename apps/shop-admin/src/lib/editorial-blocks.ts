@@ -85,17 +85,6 @@ export function withOptionalText<T extends object>(
   return next as T;
 }
 
-export function parseSlugList(text: string): string[] {
-  return text
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
-
-export function formatSlugList(slugs: readonly string[]): string {
-  return slugs.join(", ");
-}
-
 /**
  * Reads spans as one plain paragraph with an optional link. Returns null when the
  * spans carry formatting the simple form cannot represent without data loss.

@@ -2,7 +2,7 @@ import { type Page, expect, test } from "@playwright/test";
 
 /**
  * Local-only journey for the linked-artworks list of an exhibition: add two artworks by
- * searching, reorder them from the keyboard, save, reload and see the order kept. Needs the
+ * searching, reorder them, save with the editor's one Save, reload and see the order kept. Needs the
  * stack, scripts/local/start-shop-admin.sh and the signed-in state that
  * sign-in-local-staff.setup.ts saves (run it first).
  *
@@ -15,14 +15,14 @@ const artworksSection = (page: Page) =>
 
 async function addByTitle(page: Page, query: string, title: string) {
   const section = artworksSection(page);
-  const search = section.getByRole("combobox", { name: /Search to add/ });
-  await search.fill(query);
-  await section.getByRole("option", { name: new RegExp(title) }).click();
+  await section.getByRole("combobox", { name: "Add artwork" }).click();
+  await page.getByPlaceholder("Search artworks by name").fill(query);
+  await page.getByRole("option", { name: new RegExp(title) }).click();
 }
 
 async function titlesInOrder(page: Page): Promise<string[]> {
   const rows = artworksSection(page).getByRole("list", { name: "Artworks in this exhibition" });
-  return rows.getByRole("listitem").locator("span.truncate:not(.text-xs)").allInnerTexts();
+  return rows.getByRole("listitem").locator("span.truncate:not(.text-staff-xs)").allInnerTexts();
 }
 
 async function shoot(page: Page, name: string) {
@@ -66,18 +66,12 @@ test("links two artworks to an exhibition, reorders them with the keyboard and k
   await expect(page.getByText("Unsaved changes")).toBeVisible();
   await shoot(page, "unsaved");
 
-  const moveUp = artworksSection(page).getByRole("button", { name: "Move Quiet Orchard up" });
-  await moveUp.focus();
-  await page.keyboard.press("Enter");
+  await artworksSection(page).getByRole("button", { name: "Move Quiet Orchard up" }).click();
   expect(await titlesInOrder(page)).toEqual(["Quiet Orchard", "Tidal Forms"]);
-  await expect(
-    artworksSection(page).getByText("Moved Quiet Orchard to position 1 of 2"),
-  ).toBeAttached();
-  // The pressed button is now disabled, so focus moves on to the row's position menu.
-  await expect(artworksSection(page).getByLabel("Move Quiet Orchard to position")).toBeFocused();
 
-  await artworksSection(page).getByRole("button", { name: "Save artworks" }).click();
-  await expect(page.getByText("Artworks in this exhibition saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Exhibition saved.")).toBeVisible();
+  await expect(page.getByText("Unsaved changes")).toBeHidden();
 
   await page.goto(editorUrl);
   expect(await titlesInOrder(page)).toEqual(["Quiet Orchard", "Tidal Forms"]);

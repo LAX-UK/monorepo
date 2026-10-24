@@ -1,6 +1,6 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
+import { FulfilmentSection } from "@/components/orders/fulfilment-section.client";
 import {
-  FulfilmentUpdateForm,
   OrderHeaderActions,
   OrderLineMenu,
   SendToProductionButton,
@@ -8,9 +8,7 @@ import {
 import {
   buildOrderTimeline,
   canRefundOrder,
-  fulfilmentOptionLabel,
   orderLineLabel,
-  presentFulfilmentStatus,
   presentOrderStatus,
   presentProductionStatus,
   presentRefundStatus,
@@ -29,6 +27,7 @@ import {
   formatStaffDateTime,
   humanizeStatus,
 } from "@auction/staff-ui";
+import Link from "next/link";
 
 export type OrderPermissions = {
   refund: boolean;
@@ -114,9 +113,23 @@ export function OrderDetailView({
                     {line.production ? (
                       <span className="flex items-center gap-2 text-staff-xs text-staff-muted">
                         Production
-                        <StatusBadge tone={presentProductionStatus(line.production.status).tone}>
-                          {presentProductionStatus(line.production.status).label}
-                        </StatusBadge>
+                        {permissions.production ? (
+                          <Link
+                            href={`/production/${line.production.taskId}`}
+                            className="staff-focus rounded-staff-xs"
+                            aria-label={`Open the production task for ${orderLineLabel(line)}`}
+                          >
+                            <StatusBadge
+                              tone={presentProductionStatus(line.production.status).tone}
+                            >
+                              {presentProductionStatus(line.production.status).label}
+                            </StatusBadge>
+                          </Link>
+                        ) : (
+                          <StatusBadge tone={presentProductionStatus(line.production.status).tone}>
+                            {presentProductionStatus(line.production.status).label}
+                          </StatusBadge>
+                        )}
                       </span>
                     ) : permissions.production && line.editionId ? (
                       <SendToProductionButton line={line} />
@@ -128,51 +141,12 @@ export function OrderDetailView({
             </ul>
           </Section>
 
-          <Section
-            title="Fulfilment"
-            description={fulfilmentOptionLabel(
-              detail.fulfilmentRecord?.option ?? detail.fulfilment,
-            )}
-            action={
-              detail.fulfilmentRecord ? (
-                <MappedStatusBadge
-                  status={detail.fulfilmentRecord.status}
-                  present={presentFulfilmentStatus}
-                />
-              ) : null
-            }
-          >
-            {detail.fulfilmentRecord ? (
-              <div className="flex flex-col gap-5">
-                <KeyValueList
-                  items={[
-                    {
-                      label: "Tracking",
-                      value: detail.fulfilmentRecord.trackingNumber
-                        ? `${detail.fulfilmentRecord.carrier ?? "Carrier"} ${detail.fulfilmentRecord.trackingNumber}`
-                        : null,
-                      ...(detail.fulfilmentRecord.trackingNumber
-                        ? { copyValue: detail.fulfilmentRecord.trackingNumber }
-                        : {}),
-                    },
-                    {
-                      label: "Last updated",
-                      value: formatStaffDateTime(detail.fulfilmentRecord.updatedAt),
-                    },
-                  ]}
-                />
-                {permissions.fulfilment ? (
-                  <div className="border-t border-staff-line-subtle pt-4">
-                    <FulfilmentUpdateForm fulfilment={detail.fulfilmentRecord} />
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <p className="text-staff-sm text-staff-muted">
-                Fulfilment starts once the order is paid.
-              </p>
-            )}
-          </Section>
+          <FulfilmentSection
+            fulfilment={detail.fulfilmentRecord}
+            fallbackOption={detail.fulfilment}
+            paidAt={detail.paidAt}
+            canEdit={permissions.fulfilment}
+          />
 
           <Section
             title="Refunds"

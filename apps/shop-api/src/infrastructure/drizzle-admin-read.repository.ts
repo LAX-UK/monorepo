@@ -14,6 +14,7 @@ import {
   shopProduct,
   shopProductVariant,
   shopSaleAuthorityRequest,
+  shopSaleFee,
   shopStaffMember,
   shopStockHold,
   shopThirdPartySale,
@@ -46,6 +47,7 @@ import { notFound } from "../errors/shop-api-error.js";
 import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
+import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { escapeLikePattern } from "./escape-like-pattern.js";
 import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
@@ -255,6 +257,7 @@ export function createDrizzleAdminReadRepository(
             status: payout.status,
             payoutDueAt: payout.payoutDueAt.toISOString(),
             paidAt: payout.paidAt?.toISOString() ?? null,
+            paidReference: payout.paidReference ?? null,
           })),
           nextCursor:
             hasMore && last
@@ -348,6 +351,18 @@ export function createDrizzleAdminReadRepository(
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
         const last = page.at(-1);
+        const feeRows = page.length
+          ? await db
+              .select()
+              .from(shopSaleFee)
+              .where(
+                inArray(
+                  shopSaleFee.thirdPartySaleId,
+                  page.map(({ sale }) => sale.id),
+                ),
+              )
+              .orderBy(asc(shopSaleFee.createdAt), asc(shopSaleFee.id))
+          : [];
         return {
           items: page.map(({ sale, artworkTitle, editionNumber }) => ({
             saleId: sale.id,
@@ -357,6 +372,14 @@ export function createDrizzleAdminReadRepository(
             status: sale.status,
             grossPence: sale.grossPence,
             recordedAt: sale.recordedAt?.toISOString() ?? null,
+            fees: feeRows
+              .filter((fee) => fee.thirdPartySaleId === sale.id)
+              .map((fee) => ({
+                feeId: fee.id,
+                label: fee.label,
+                amountPence: fee.amountPence,
+                status: fee.status,
+              })),
           })),
           nextCursor:
             hasMore && last
@@ -374,9 +397,16 @@ export function createDrizzleAdminReadRepository(
           .select({
             sale: shopOriginalSale,
             artworkTitle: shopArtwork.title,
+            buyerName: shopParty.displayName,
+            buyerEmail: shopUserProfile.email,
           })
           .from(shopOriginalSale)
           .innerJoin(shopArtwork, eq(shopOriginalSale.artworkId, shopArtwork.id))
+          .innerJoin(shopParty, eq(shopOriginalSale.buyerPartyId, shopParty.id))
+          .leftJoin(
+            shopUserProfile,
+            eq(shopUserProfile.identitySubjectId, shopParty.identitySubjectId),
+          )
           .where(
             cursor
               ? keysetBeforeCreatedAtId(shopOriginalSale.createdAt, shopOriginalSale.id, cursor)
@@ -388,13 +418,15 @@ export function createDrizzleAdminReadRepository(
         const page = hasMore ? rows.slice(0, limit) : rows;
         const last = page.at(-1);
         return {
-          items: page.map(({ sale, artworkTitle }) => ({
+          items: page.map(({ sale, artworkTitle, buyerName, buyerEmail }) => ({
             saleId: sale.id,
             artworkId: sale.artworkId,
             artworkTitle,
             status: sale.status,
             salePricePence: sale.salePricePence,
             createdAt: sale.createdAt.toISOString(),
+            buyerName,
+            buyerEmail: buyerEmail ?? null,
           })),
           nextCursor:
             hasMore && last
@@ -790,6 +822,7 @@ export function createDrizzleAdminReadRepository(
         return Object.fromEntries(entries);
       },
     },
+    lookups: createDrizzleAdminLookupReader(db),
     compliance: {
       async listAuditEntries(input) {
         const limit = resolveLimit(input.limit);

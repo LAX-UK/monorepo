@@ -80,6 +80,8 @@ export const AdminPayoutListItemSchema = Type.Object({
   status: Type.String(),
   payoutDueAt: Type.String(),
   paidAt: Type.Union([Type.String(), Type.Null()]),
+  /** The bank or transfer reference staff entered when paying; optional for older shop-api. */
+  paidReference: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export const AdminPayoutListSchema = createCursorListResponseSchema(AdminPayoutListItemSchema);
@@ -107,6 +109,17 @@ export const AdminThirdPartySaleListItemSchema = Type.Object({
   status: Type.String(),
   grossPence: Type.Integer(),
   recordedAt: Type.Union([Type.String(), Type.Null()]),
+  /** The fees on the sale, so a fee is approved from its sale. Optional for older shop-api. */
+  fees: Type.Optional(
+    Type.Array(
+      Type.Object({
+        feeId: Type.String({ format: "uuid" }),
+        label: Type.String(),
+        amountPence: Type.Integer(),
+        status: Type.String(),
+      }),
+    ),
+  ),
 });
 
 export const AdminThirdPartySaleListSchema = createCursorListResponseSchema(
@@ -120,6 +133,9 @@ export const AdminOriginalSaleListItemSchema = Type.Object({
   status: Type.String(),
   salePricePence: Type.Integer(),
   createdAt: Type.String(),
+  /** The buyer, so the invoice is addressed from the sale. Optional for older shop-api. */
+  buyerName: Type.Optional(Type.String()),
+  buyerEmail: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export const AdminOriginalSaleListSchema = createCursorListResponseSchema(
@@ -193,3 +209,11 @@ export const AdminOverviewKpisSchema = Type.Object({
 });
 
 export type AdminOverviewKpis = Static<typeof AdminOverviewKpisSchema>;
+
+export type AdminFulfilmentList = Static<typeof AdminFulfilmentListSchema>;
+export type AdminPayoutList = Static<typeof AdminPayoutListSchema>;
+export type AdminStockHoldList = Static<typeof AdminStockHoldListSchema>;
+export type AdminThirdPartySaleList = Static<typeof AdminThirdPartySaleListSchema>;
+export type AdminOriginalSaleList = Static<typeof AdminOriginalSaleListSchema>;
+export type AdminSaleAuthorityRequestList = Static<typeof AdminSaleAuthorityRequestListSchema>;
+export type AdminPartyList = Static<typeof AdminPartyListSchema>;

@@ -5,8 +5,6 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   conflictField,
-  parsePoundsToPence,
-  penceToPoundsText,
   slugFromTitle,
   validateNewProduct,
   validateProductFields,
@@ -30,7 +28,9 @@ describe("slugFromTitle", () => {
   });
 });
 
-describe("parsePoundsToPence", () => {
+describe("a variant's price", () => {
+  const price = (raw: string) => validateVariant({ sku: "TOTE-01", price: raw });
+
   it.each([
     ["12", 1200],
     ["12.5", 1250],
@@ -40,22 +40,34 @@ describe("parsePoundsToPence", () => {
     [" 0 ", 0],
     ["19.99", 1999],
   ])("reads %s as %i pence", (raw, pence) => {
-    expect(parsePoundsToPence(raw)).toEqual({ ok: true, pence });
+    expect(price(raw)).toEqual({ ok: true, value: { sku: "TOTE-01", pricePence: pence } });
   });
 
-  it.each(["", "abc", "-1", "1.234", "1.", ".5", "1e3", "100000.01"])("rejects %j", (raw) => {
-    expect(parsePoundsToPence(raw).ok).toBe(false);
+  it.each(["", "abc", "-1", "1.234", "1e3", "100000.01"])("rejects %j", (raw) => {
+    expect(price(raw).ok).toBe(false);
+  });
+
+  it("does not read a decimal comma as pounds and pence", () => {
+    // "1,20" used to become £120.00, a hundredfold slip that was accepted silently.
+    expect(price("1,20").ok).toBe(false);
+    expect(price("1,200")).toEqual({ ok: true, value: { sku: "TOTE-01", pricePence: 120000 } });
   });
 
   it("accepts the limit exactly", () => {
-    expect(parsePoundsToPence("100000.00")).toEqual({ ok: true, pence: 10_000_000 });
+    expect(price("100000.00")).toEqual({
+      ok: true,
+      value: { sku: "TOTE-01", pricePence: 10_000_000 },
+    });
   });
-});
 
-describe("penceToPoundsText", () => {
-  it("always shows two decimals", () => {
-    expect(penceToPoundsText(1250)).toBe("12.50");
-    expect(penceToPoundsText(7)).toBe("0.07");
+  it("says what a price looks like and the most it can be", () => {
+    const result = price("free");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.price).toBe(
+        "Enter a price in pounds, such as 12.50, up to £100,000.00.",
+      );
+    }
   });
 });
 

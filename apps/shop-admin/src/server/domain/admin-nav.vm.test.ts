@@ -53,6 +53,13 @@ describe("buildAdminNavGroups", () => {
     expect(hrefs).not.toContain("/audit");
   });
 
+  it("shows third-party sales to operations, who record them, and to finance, who approve their fees", () => {
+    expect(navHrefsFor("operations")).toContain("/third-party-sales");
+    expect(navHrefsFor("finance")).toContain("/third-party-sales");
+    expect(navHrefsFor("broker")).not.toContain("/third-party-sales");
+    expect(navHrefsFor("account_manager")).not.toContain("/third-party-sales");
+  });
+
   it("lets finance view orders but not enquiries or editorial", () => {
     const hrefs = navHrefsFor("finance");
     expect(hrefs).toContain("/orders");

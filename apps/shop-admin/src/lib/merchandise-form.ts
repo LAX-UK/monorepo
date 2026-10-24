@@ -9,6 +9,7 @@ import {
   MERCHANDISE_STOCK_REASON_MAX_LENGTH,
   MERCHANDISE_TITLE_MAX_LENGTH,
 } from "@auction/shop-contracts";
+import { parsePoundsToPence } from "@auction/staff-ui";
 import { type FieldErrors, collectFieldErrors, parseWholeNumber } from "./form-validation";
 import { slugify } from "./slugify";
 
@@ -27,26 +28,15 @@ export function slugFromTitle(title: string): string {
 }
 
 /**
- * Pounds typed by staff ("12", "12.5", "£1,200.00") to whole pence. Read as text so no
- * floating-point rounding can change an amount.
+ * A price typed in pounds ("12", "12.50", "£1,200.00") as whole pence, by the kit's shared parser
+ * so every pounds field in staff tools reads the same text the same way. The merchandise limit
+ * applies on top.
  */
-export function parsePoundsToPence(
-  raw: string,
-): { ok: true; pence: number } | { ok: false; message: string } {
+function readPrice(raw: string): { ok: true; pence: number } | { ok: false; message: string } {
   const message = `Enter a price in pounds, such as 12.50, up to ${MAX_PRICE_LABEL}.`;
-  const text = raw.replace(/[£\s,]/g, "");
-  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(text);
-  if (!match) return { ok: false, message };
-  const pence = Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
-  if (!Number.isSafeInteger(pence) || pence > MERCHANDISE_PRICE_MAX_PENCE) {
-    return { ok: false, message };
-  }
-  return { ok: true, pence };
-}
-
-/** Pence as the pounds text a price field shows, always with two decimals. */
-export function penceToPoundsText(pence: number): string {
-  return (pence / 100).toFixed(2);
+  const parsed = parsePoundsToPence(raw);
+  if (!parsed.ok || parsed.pence > MERCHANDISE_PRICE_MAX_PENCE) return { ok: false, message };
+  return { ok: true, pence: parsed.pence };
 }
 
 function titleError(title: string): string | null {
@@ -103,7 +93,7 @@ export type VariantForm = { sku: string; price: string };
 export type VariantPayload = { sku: string; pricePence: number };
 
 export function validateVariant(form: VariantForm): Validated<VariantPayload> {
-  const price = parsePoundsToPence(form.price);
+  const price = readPrice(form.price);
   const errors = collectFieldErrors({
     sku: skuError(form.sku),
     price: price.ok ? null : price.message,

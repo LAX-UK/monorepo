@@ -41,9 +41,9 @@ describe("toLinkRow", () => {
     expect(toLinkRow(item("a", "Paper Rooms", false))).toMatchObject({
       title: "Paper Rooms",
       subtitle: "/a-slug",
-      draft: true,
+      notPublic: true,
     });
-    expect(toLinkRow(item("a")).draft).toBe(false);
+    expect(toLinkRow(item("a")).notPublic).toBe(false);
   });
 });
 

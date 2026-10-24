@@ -215,6 +215,11 @@ export function createMinimalShopApiTestDeps(
         overview: {
           readOverviewKpis: async (keys) => Object.fromEntries(keys.map((key) => [key, 0])),
         },
+        lookups: {
+          searchParties: async () => [],
+          searchArtworks: async () => [],
+          searchEditions: async () => [],
+        },
         compliance: {
           listAuditEntries: async () => ({ items: [], nextCursor: null }),
           listDisputes: async () => ({ items: [], nextCursor: null }),

@@ -3,6 +3,7 @@
 import { isUuid } from "@/lib/editorial-entity-forms";
 import type {
   EditorialLinkCandidatesResponse,
+  EditorialLinkItem,
   EditorialLinkKind,
   EditorialLinksReplaceResponse,
 } from "@auction/shop-contracts";
@@ -19,6 +20,8 @@ import { fetchAdminJson } from "./load-admin-data";
 const PARENTS: readonly EditorialLinkParent[] = ["exhibitions", "stories"];
 const CANDIDATE_KINDS: readonly EditorialLinkKind[] = ["artwork", "artist", "story", "exhibition"];
 const CANDIDATE_PAGE_SIZE = 20;
+const RAIL_SLUG_LOOKUP_MAX = 24;
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const invalidInput = {
   ok: false,
@@ -91,4 +94,33 @@ export async function searchEditorialLinkCandidates(input: {
     `editorial/link-candidates?${params.toString()}`,
   );
   return result.status === "ok" ? { ok: true, data: result.data } : fetchFailure(result.status);
+}
+
+/**
+ * Names for the slugs a rail stores, so staff see titles rather than addresses. Each slug is
+ * searched on its own and only an exact address match counts; slugs without one come back absent.
+ */
+export async function resolveRailSlugs(input: {
+  kind: "artwork" | "artist";
+  slugs: string[];
+}): Promise<AdminMutationResult<EditorialLinkItem[]>> {
+  if (!["artwork", "artist"].includes(input.kind)) return invalidInput;
+  // A stored address that is not a valid slug cannot match a record; it comes back absent.
+  const slugs = [...new Set(input.slugs)]
+    .filter((slug) => SLUG.test(slug))
+    .slice(0, RAIL_SLUG_LOOKUP_MAX);
+  const found = await Promise.all(
+    slugs.map((slug) => {
+      const params = new URLSearchParams({ kind: input.kind, limit: "5", q: slug });
+      return fetchAdminJson<EditorialLinkCandidatesResponse>(
+        `editorial/link-candidates?${params.toString()}`,
+      );
+    }),
+  );
+  const failed = found.find((result) => result.status !== "ok");
+  if (failed) return fetchFailure(failed.status);
+  const items = found.flatMap((result, index) =>
+    result.status === "ok" ? result.data.items.filter((item) => item.slug === slugs[index]) : [],
+  );
+  return { ok: true, data: items };
 }

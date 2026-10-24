@@ -1,11 +1,12 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { AdminRecordTable } from "@/components/admin-staff-data-table";
-import { GrantSaleAuthorityForm } from "@/components/forms/people/grant-sale-authority-form.client";
+import { ClientHeaderActions } from "@/components/clients/client-header-actions.client";
 import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
+import { ownedArtworkOptions, partyKindLabel } from "@/server/domain/lookup-options.vm";
 import type { AdminClientDetail } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/ui";
+import { PageHeader } from "@auction/staff-ui";
 import { notFound, redirect } from "next/navigation";
 
 export const metadata = { title: "Client" };
@@ -16,13 +17,18 @@ export default async function ClientDetailPage({
   params: Promise<{ partyId: string }>;
 }) {
   const { partyId } = await params;
-  const result = await fetchAdminJson<AdminClientDetail>(`clients/${partyId}`);
-  if (result.status === "unauthorized") redirect("/login");
+  const [result, session] = await Promise.all([
+    fetchAdminJson<AdminClientDetail>(`clients/${partyId}`),
+    loadAdminSession(),
+  ]);
+  if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
   if (result.status === "not_found") notFound();
   if (result.status !== "ok") {
     return <AdminFailedPage title="Client" status={result.status} />;
   }
   const data = result.data;
+  const capabilities = session.status === "ok" ? session.data.capabilities : [];
+  const canGrant = capabilities.includes("sale_authority.write");
 
   return (
     <div className="space-y-8">
@@ -34,15 +40,19 @@ export default async function ClientDetailPage({
           />
         }
         title={data.party.displayName}
-        description={`${data.party.kind} · ${data.party.partyId}`}
-      />
-
-      <GrantSaleAuthorityForm
-        defaultOwnerPartyId={data.party.partyId}
-        artworkOptions={data.editions.map((row) => ({
-          artworkId: row.artworkId,
-          label: `${row.artworkTitle} · ed. ${row.editionNumber}`,
-        }))}
+        description={partyKindLabel(data.party.kind)}
+        primaryAction={
+          canGrant ? (
+            <ClientHeaderActions
+              client={{
+                id: data.party.partyId,
+                label: data.party.displayName,
+                description: partyKindLabel(data.party.kind),
+              }}
+              ownedArtworks={ownedArtworkOptions(data.editions)}
+            />
+          ) : undefined
+        }
       />
 
       <section>
@@ -73,8 +83,7 @@ export default async function ClientDetailPage({
           columns={["Artwork", "Authorised", "Committed", "Last grant"]}
           empty={{
             title: "No sale limits",
-            description:
-              "Grant sale authority with the form above to let this client sell editions.",
+            description: "Use Grant sale authority above to let this client sell editions.",
           }}
           rows={data.saleAuthority.map((row) => ({
             id: row.artworkId,

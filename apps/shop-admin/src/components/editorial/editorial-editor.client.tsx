@@ -8,10 +8,15 @@ import {
   FieldSection,
 } from "@/components/editorial/editorial-field-parts.client";
 import {
+  EditorialLinkLists,
+  EditorialLinksAfterFirstSave,
+} from "@/components/editorial/editorial-link-lists.client";
+import {
   type EditorialPreview,
   EditorialPreviewPanel,
 } from "@/components/editorial/editorial-preview-panel.client";
 import { EditorialStatusBadge } from "@/components/editorial/editorial-status-badge";
+import type { LinksController } from "@/components/editorial/use-editorial-links.client";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormScopeProvider } from "@/components/forms/form-field";
 import { type EditorialBlockItem, fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
@@ -61,13 +66,10 @@ export type EditorialEditorConfig<F, D extends EditorialDetailBase> = {
   afterSave?: (form: F) => F;
   renderFields: (props: EntityFieldsProps<F>) => ReactNode;
   /**
-   * Linked records, edited and saved apart from the entity's own Save. `onDirtyChange` reports
-   * unsaved edits so leaving the page is guarded. Only offered for saved items (`id` is set).
+   * What an item with linked records says about them before its first save, when there is
+   * nothing to attach them to yet: "Artists, artworks and exhibitions".
    */
-  renderLinks?: (props: {
-    id: string | null;
-    onDirtyChange: (dirty: boolean) => void;
-  }) => ReactNode;
+  linksBeforeFirstSave?: string;
 };
 
 type Failure = { text: string; stepUp: boolean };
@@ -104,11 +106,17 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   config,
   detail,
   artPublicUrl,
+  links = null,
 }: {
   config: EditorialEditorConfig<F, D>;
   /** The stored item, or null to create a new draft. */
   detail: D | null;
   artPublicUrl: string | null;
+  /**
+   * The linked records of a saved item. They are saved by the same Save as the rest of the item,
+   * after its fields, so there is one place to save and one unsaved-changes state.
+   */
+  links?: LinksController | null;
 }) {
   const { entity, api } = config;
   const id = detail?.id ?? null;
@@ -125,7 +133,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const [savedAt, setSavedAt] = useState<string | null>(detail?.updatedAt ?? null);
   const [status, setStatus] = useState<EditorialPublicationStatus>(detail?.status ?? "draft");
   const [dirty, setDirty] = useState(false);
-  const [linksDirty, setLinksDirty] = useState(false);
+  const linksDirty = links?.dirty ?? false;
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<Failure | null>(null);
   const [conflictVersion, setConflictVersion] = useState<string | null>(null);
@@ -154,48 +162,77 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     }
   }
 
-  async function save(expectedVersion: string | null = version) {
-    const built = config.buildPayload(form, fromBlockItems(items));
-    if (!built.ok) {
-      setErrors(built.errors);
-      setFailure(null);
-      return;
-    }
-    setErrors({});
-    setFailure(null);
+  /**
+   * Saves the linked records. When the item's own fields were saved a moment ago, a failure says
+   * so, so nobody saves them twice or thinks they were lost.
+   */
+  async function saveLinks(fieldsAlreadySaved: boolean): Promise<boolean> {
+    if (!links?.dirty) return true;
     setBusy("save");
-    const signature = JSON.stringify([id, expectedVersion, built.payload]);
-    const result = await attemptMutation(() =>
-      api.save({
-        id,
-        payload: built.payload,
-        expectedVersion,
-        idempotencyKey: keyFor(signature),
-      }),
-    );
+    const result = await links.save();
     setBusy(null);
-    if (!result.ok) {
-      if (result.kind === "conflict" && result.currentVersion) {
-        setConflictVersion(result.currentVersion);
-      } else if (result.kind === "conflict") {
-        setErrors({ slug: SLUG_IN_USE });
-      } else {
-        setFailure(failureFrom(result, `save the ${entity.singular}`));
+    if (result.ok) return true;
+    if (result.kind === "failed") {
+      setFailure({
+        text: fieldsAlreadySaved
+          ? `Your changes to the ${entity.singular} were saved, but the linked records were not. ${result.text}`
+          : result.text,
+        stepUp: result.stepUp,
+      });
+    }
+    return false;
+  }
+
+  async function save(expectedVersion: string | null = version) {
+    // Linked records alone changed: the item's own fields are not sent again.
+    const savingFields = id === null || dirty;
+    if (savingFields) {
+      const built = config.buildPayload(form, fromBlockItems(items));
+      if (!built.ok) {
+        setErrors(built.errors);
+        setFailure(null);
+        return;
       }
-      return;
+      setErrors({});
+      setFailure(null);
+      setBusy("save");
+      const signature = JSON.stringify([id, expectedVersion, built.payload]);
+      const result = await attemptMutation(() =>
+        api.save({
+          id,
+          payload: built.payload,
+          expectedVersion,
+          idempotencyKey: keyFor(signature),
+        }),
+      );
+      setBusy(null);
+      if (!result.ok) {
+        if (result.kind === "conflict" && result.currentVersion) {
+          setConflictVersion(result.currentVersion);
+        } else if (result.kind === "conflict") {
+          setErrors({ slug: SLUG_IN_USE });
+        } else {
+          setFailure(failureFrom(result, `save the ${entity.singular}`));
+        }
+        return;
+      }
+      attempt.current = null;
+      setDirty(false);
+      setConflictVersion(null);
+      if (config.afterSave) setForm(config.afterSave(form));
+      if (id === null) {
+        toast.success(`${capitalise(entity.singular)} created as a draft.`);
+        await releaseGuard();
+        router.replace(api.detailHref(result.data.id));
+        return;
+      }
+      setVersion(result.data.version);
+      setSavedAt(result.data.version);
+    } else {
+      setFailure(null);
     }
-    attempt.current = null;
-    setDirty(false);
-    setConflictVersion(null);
-    if (config.afterSave) setForm(config.afterSave(form));
-    if (id === null) {
-      toast.success(`${capitalise(entity.singular)} created as a draft.`);
-      await releaseGuard();
-      router.replace(api.detailHref(result.data.id));
-      return;
-    }
-    setVersion(result.data.version);
-    setSavedAt(result.data.version);
+    if (!(await saveLinks(savingFields))) return;
+    if (!savingFields) setSavedAt(new Date().toISOString());
     toast.success(`${capitalise(entity.singular)} saved.`);
   }
 
@@ -298,7 +335,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               <Button
                 type="button"
                 variant="outline"
-                disabled={disabled || dirty}
+                disabled={disabled || dirty || linksDirty}
                 onClick={() => void createPreview()}
               >
                 Create preview link
@@ -306,7 +343,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               <Button
                 type="button"
                 variant="outline"
-                disabled={disabled || dirty}
+                disabled={disabled || dirty || linksDirty}
                 onClick={() => setDialog("publish")}
               >
                 {publishing ? "Publish" : "Unpublish"}
@@ -314,7 +351,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
             </div>
           ) : null}
         </div>
-        {id && dirty ? (
+        {id && (dirty || linksDirty) ? (
           <p className="-mt-4 text-sm text-on-surface-variant">
             Save your changes before publishing or creating a preview link.
           </p>
@@ -369,7 +406,11 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           </div>
         </FieldSection>
 
-        {config.renderLinks?.({ id, onDirtyChange: setLinksDirty })}
+        {links ? (
+          <EditorialLinkLists controller={links} onFailure={(next) => setFailure(next)} />
+        ) : id === null && config.linksBeforeFirstSave ? (
+          <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
+        ) : null}
 
         <StickySaveBar>
           <div className="flex flex-wrap items-center gap-3">
@@ -382,7 +423,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               {id ? "Save changes" : "Create draft"}
             </LoadingButton>
             <output aria-live="polite" className="text-sm text-on-surface-variant">
-              {dirty
+              {dirty || linksDirty
                 ? "Unsaved changes"
                 : savedAt
                   ? `Saved ${formatLondonTime(savedAt)}`

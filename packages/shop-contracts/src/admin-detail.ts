@@ -125,6 +125,8 @@ export const AdminOrderFulfilmentDetailSchema = Type.Object({
   option: Type.String(),
   carrier: Type.Union([Type.String(), Type.Null()]),
   trackingNumber: Type.Union([Type.String(), Type.Null()]),
+  /** When the customer took possession; null until recorded. Optional for older shop-api. */
+  possessionAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   updatedAt: Type.String(),
 });
 

@@ -1,23 +1,9 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { ThirdPartySalesStaffListTable } from "@/components/admin-staff-list-tables.client";
-import { ApproveSaleFeeForm } from "@/components/forms/sales/approve-sale-fee-form.client";
-import { RecordThirdPartySaleForm } from "@/components/forms/sales/record-third-party-sale-form.client";
+import { ThirdPartySalesList } from "@/components/sales/third-party-sales-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
-import { PageHeader } from "@auction/ui";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
+import type { AdminThirdPartySaleList } from "@auction/shop-contracts";
 import { redirect } from "next/navigation";
-
-type ThirdPartySaleList = {
-  items: Array<{
-    saleId: string;
-    artworkTitle: string;
-    editionNumber: number;
-    status: string;
-    grossPence: number;
-  }>;
-  nextCursor: string | null;
-};
 
 export const metadata = { title: "Third-party sales" };
 
@@ -27,30 +13,22 @@ export default async function ThirdPartySalesPage({
   searchParams: Promise<{ cursor?: string }>;
 }) {
   const { cursor } = await searchParams;
-  const result = await fetchAdminJson<ThirdPartySaleList>(
-    adminListPath("third-party-sales", { cursor }),
-  );
-  if (result.status === "unauthorized") redirect("/login");
+  const [result, session] = await Promise.all([
+    fetchAdminJson<AdminThirdPartySaleList>(adminListPath("third-party-sales", { cursor })),
+    loadAdminSession(),
+  ]);
+  if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
     return <AdminFailedPage title="Third-party sales" status={result.status} />;
   }
+  const capabilities = session.status === "ok" ? session.data.capabilities : [];
 
   return (
-    <div>
-      <PageHeader
-        title="Third-party sales"
-        description="Sales made through partners outside the shop, and the fee approved for each."
-      />
-      <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <RecordThirdPartySaleForm />
-        <ApproveSaleFeeForm />
-      </div>
-      <ThirdPartySalesStaffListTable items={result.data.items} />
-      <AdminListCursorNav
-        cursor={cursor}
-        pathname="/third-party-sales"
-        nextCursor={result.data.nextCursor}
-      />
-    </div>
+    <ThirdPartySalesList
+      page={result.data}
+      cursor={cursor ?? null}
+      canRecord={capabilities.includes("third_party_sale.write")}
+      canApproveFees={capabilities.includes("fee.approve")}
+    />
   );
 }
