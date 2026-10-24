@@ -19,6 +19,7 @@ export {
   lotSoftDeletedPayloadSchema,
   lotUnpublishedPayloadSchema,
   lotVoidedPayloadSchema,
+  lotWithdrawalDeclinedPayloadSchema,
   lotWithdrawalRequestedPayloadSchema,
   parseLotEventPayload,
   type LotAttachedToSalePayload,

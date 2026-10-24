@@ -1,4 +1,4 @@
-import type { ShopStaffCapability } from "@auction/shop-domain";
+import { type ShopStaffCapability, clientListScope } from "@auction/shop-domain";
 
 /**
  * Icon names, not components: the nav is built on the server and handed to the client shell,
@@ -201,7 +201,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
     {
       title: "Clients",
       items:
-        hasCapability(caps, "client.read_all") || hasCapability(caps, "client.read_assigned")
+        clientListScope(caps) !== "none"
           ? [{ href: "/clients", icon: "clients" as const, label: "Clients" }]
           : [],
     },

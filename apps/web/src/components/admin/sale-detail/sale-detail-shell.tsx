@@ -135,7 +135,7 @@ export function SaleDetailShell({
     pendingTelephoneBookingCount: pendingTelephoneBookingCount ?? 0,
     documentCount,
     overviewAttentionCount,
-    showAtg: canManageSales,
+    canManageSales,
   });
 
   const draftSetupHref =

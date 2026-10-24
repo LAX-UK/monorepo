@@ -64,9 +64,11 @@ export {
 } from "./sale-authority.js";
 export { compareEditionPickOrder, type EditionPickCandidate } from "./edition-assignment-policy.js";
 export {
+  type ClientListScope,
   OVERVIEW_KPI_CAPABILITY,
   SHOP_STAFF_CAPABILITIES,
   capabilitiesForRole,
+  clientListScope,
   overviewKpiKeysForRole,
   type OverviewKpiKey,
   roleHasCapability,

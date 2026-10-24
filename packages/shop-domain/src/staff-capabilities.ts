@@ -90,3 +90,16 @@ export function capabilitiesForRole(role: ShopStaffRole): readonly ShopStaffCapa
 export function roleHasCapability(role: ShopStaffRole, capability: ShopStaffCapability): boolean {
   return capabilitiesForRole(role).includes(capability);
 }
+
+/** Which clients a staff member can list: everyone, only those assigned to them, or nobody. */
+export type ClientListScope = "all" | "assigned" | "none";
+
+/**
+ * The one rule for the Clients page. The nav shows the page and the API answers `GET /clients`
+ * from this same scope, so a link is shown exactly when the list behind it will load.
+ */
+export function clientListScope(capabilities: readonly string[]): ClientListScope {
+  if (capabilities.includes("client.read_all")) return "all";
+  if (capabilities.includes("client.read_assigned")) return "assigned";
+  return "none";
+}

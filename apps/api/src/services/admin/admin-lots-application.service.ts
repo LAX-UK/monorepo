@@ -43,6 +43,33 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
     return { ok: false, status: (e as { status?: number }).status ?? 400, error: e.message };
   }
 
+  async declineWithdrawalRequest(
+    adminUserId: string,
+    adminRole: UserRole,
+    lotId: string,
+    reason: string,
+    adminStaffRole?: import("@auction/types").UserStaffRole | null,
+  ): Promise<
+    | { ok: true; data: { taskId: string } }
+    | { ok: false; status: number; error: string; code?: string | undefined }
+  > {
+    const result = await this.lots.declineWithdrawalRequest(
+      adminUserId,
+      adminRole,
+      lotId,
+      reason,
+      adminStaffRole,
+    );
+    if (result.isOk()) {
+      return { ok: true, data: result.value };
+    }
+    const e = result.error;
+    if (e instanceof LotError && e.code) {
+      return { ok: false, status: e.status, error: e.message, code: e.code };
+    }
+    return { ok: false, status: (e as { status?: number }).status ?? 400, error: e.message };
+  }
+
   listAttachable(...args: Parameters<AdminLotBrowseService["listAttachable"]>) {
     return this.lotBrowse.listAttachable(...args);
   }

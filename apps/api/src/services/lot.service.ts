@@ -36,7 +36,11 @@ import {
 import { archiveEndedSummary, countMatching, getById, list } from "./lot/lot-read.js";
 import type { ListBidsForPublicApiResult, LotServiceDeps } from "./lot/lot-types.js";
 import { updateLot, updateLotMarketingDetails } from "./lot/lot-update.js";
-import { approveWithdrawalRequest, requestWithdrawal } from "./lot/lot-withdrawal.js";
+import {
+  approveWithdrawalRequest,
+  declineWithdrawalRequest,
+  requestWithdrawal,
+} from "./lot/lot-withdrawal.js";
 
 export type { ListBidsForPublicApiResult, LotBidPublicApiRow } from "./lot/lot-types.js";
 
@@ -234,5 +238,22 @@ export class LotService implements ILotService {
     adminStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
     return approveWithdrawalRequest(this.deps, adminUserId, adminRole, lotId, adminStaffRole);
+  }
+
+  declineWithdrawalRequest(
+    adminUserId: string,
+    adminRole: UserRole,
+    lotId: string,
+    reason: string,
+    adminStaffRole?: string | null,
+  ): Promise<Result<{ taskId: string }, LotError | AuthzError>> {
+    return declineWithdrawalRequest(
+      this.deps,
+      adminUserId,
+      adminRole,
+      lotId,
+      reason,
+      adminStaffRole,
+    );
   }
 }

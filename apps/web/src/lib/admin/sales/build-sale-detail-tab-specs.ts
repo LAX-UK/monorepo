@@ -14,8 +14,12 @@ export type BuildSaleDetailTabSpecsInput = {
   pendingTelephoneBookingCount: number;
   documentCount?: number | null;
   overviewAttentionCount: number;
-  /** Staff who can run ATG pushes; the tab is hidden from everyone else. */
-  showAtg?: boolean;
+  /**
+   * Whether the viewer holds `SALES_ACCESS`. Registrations, telephone bookings, saleroom
+   * operations and ATG are all auction-management actions the API refuses to anyone else, so
+   * their tabs are hidden from catalogue-only staff.
+   */
+  canManageSales?: boolean;
 };
 
 /** Capability-driven sale detail tab nav — single place for tab visibility rules. */
@@ -33,7 +37,7 @@ export function buildSaleDetailTabSpecs(
     pendingTelephoneBookingCount,
     documentCount = null,
     overviewAttentionCount,
-    showAtg = false,
+    canManageSales = false,
   } = input;
 
   const isSaleroom = isSaleroomDeliveryMode(deliveryMode);
@@ -55,13 +59,17 @@ export function buildSaleDetailTabSpecs(
       count: lotCount,
       ...(saleStatus === "draft" && lotCount === 0 ? { badge: "warning" as const } : {}),
     },
-    {
-      id: "registrations",
-      label: "Registrations",
-      href: saleDetailTabHref(saleId, "registrations"),
-      ...(liveish && registrationCount != null ? { count: registrationCount } : {}),
-      ...(pendingRegs > 0 ? { badge: "pending" as const } : {}),
-    },
+    ...(canManageSales
+      ? [
+          {
+            id: "registrations",
+            label: "Registrations",
+            href: saleDetailTabHref(saleId, "registrations"),
+            ...(liveish && registrationCount != null ? { count: registrationCount } : {}),
+            ...(pendingRegs > 0 ? { badge: "pending" as const } : {}),
+          },
+        ]
+      : []),
     {
       id: "documents",
       label: "Documents",
@@ -73,7 +81,9 @@ export function buildSaleDetailTabSpecs(
       label: "Press",
       href: saleDetailTabHref(saleId, "press"),
     },
-    ...(showAtg ? [{ id: "atg", label: "ATG", href: saleDetailTabHref(saleId, "atg") }] : []),
+    ...(canManageSales
+      ? [{ id: "atg", label: "ATG", href: saleDetailTabHref(saleId, "atg") }]
+      : []),
     {
       id: "schedule",
       label: "Schedule",
@@ -82,24 +92,27 @@ export function buildSaleDetailTabSpecs(
   ];
 
   if (isSaleroom) {
-    tabs.splice(4, 0, {
+    const mediaAt = tabs.findIndex((tab) => tab.id === "press");
+    tabs.splice(mediaAt, 0, {
       id: "media",
       label: "Media",
       href: saleDetailTabHref(saleId, "media"),
     });
-    tabs.push(
-      {
-        id: "operations",
-        label: "Operations",
-        href: saleDetailTabHref(saleId, "operations"),
-      },
-      {
-        id: "telephone-bookings",
-        label: "Telephone",
-        href: saleDetailTabHref(saleId, "telephone-bookings"),
-        ...(pendingTelephone > 0 ? { badge: "pending" as const } : {}),
-      },
-    );
+    if (canManageSales) {
+      tabs.push(
+        {
+          id: "operations",
+          label: "Operations",
+          href: saleDetailTabHref(saleId, "operations"),
+        },
+        {
+          id: "telephone-bookings",
+          label: "Telephone",
+          href: saleDetailTabHref(saleId, "telephone-bookings"),
+          ...(pendingTelephone > 0 ? { badge: "pending" as const } : {}),
+        },
+      );
+    }
   }
 
   return tabs;

@@ -78,7 +78,6 @@ export function createAdminRoutes(
   );
 
   attachAdminOpsRoutes(platform, container);
-  attachAdminPaymentsListRoutes(platform, container);
   attachAdminQrCodesRoutes(platform, container);
   attachAdminOpsDashboardRoutes(platform, container);
   attachAdminConditionReportsRoutes(platform, container);
@@ -102,7 +101,6 @@ export function createAdminRoutes(
   attachAdminSaleroomSessionRoutes(platform, container);
   attachAdminLotFulfilmentRoutes(platform, container);
   attachAdminLotsCatalogRoutes(platform, container);
-  attachAdminPaymentsManualReviewRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container);
   attachAdminAuditRoutes(platform, container);
@@ -141,6 +139,10 @@ export function createAdminRoutes(
   finance.use("/payments/:id/xero-sync", requireFinanceAccess);
   finance.use("/integrations/xero/*", requireFinanceAccess);
 
+  // Payments are a finance screen: finance_ops fails the platform shell, so these mount here.
+  // Each route carries its own capability guard.
+  attachAdminPaymentsListRoutes(finance, container);
+  attachAdminPaymentsManualReviewRoutes(finance, container);
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
 

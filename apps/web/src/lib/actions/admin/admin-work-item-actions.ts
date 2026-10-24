@@ -14,8 +14,8 @@ import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import {
   CONDITION_REPORTS_ACCESS,
-  FINANCE_ACCESS,
   LOT_FULFILMENT_ACCESS,
+  PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
@@ -97,7 +97,7 @@ export async function executeWorkItemActionAction(input: unknown): Promise<Actio
         return runWithTelemetry(kind, action, () => adminAssignSubmissionResultAction(id, user.id));
       }
       case "capture": {
-        const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+        const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
         if (denied) return denied;
         return runWithTelemetry(kind, action, async () => {
           const res = await getWriteContainer().adminPayments.capture(id);
@@ -107,7 +107,7 @@ export async function executeWorkItemActionAction(input: unknown): Promise<Actio
         });
       }
       case "refund": {
-        const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+        const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
         if (denied) return denied;
         return runWithTelemetry(kind, action, async () => {
           const res = await getWriteContainer().adminPayments.refund(id);

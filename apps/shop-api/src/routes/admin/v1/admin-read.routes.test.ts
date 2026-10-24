@@ -1,5 +1,6 @@
 import { verifyBearerToken } from "@auction/auth/token-verifier";
 import { OIDC_ACR_SILVER } from "@auction/identity-contracts";
+import { type ShopStaffRole, capabilitiesForRole, clientListScope } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@auction/auth/token-verifier", () => ({
@@ -173,5 +174,50 @@ describe("admin read routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().artist.artistId).toBe(ARTIST_ID);
     await app.close();
+  });
+});
+
+describe("GET /admin/v1/clients follows the client list scope the nav uses", () => {
+  const ROLES: ShopStaffRole[] = [
+    "shop_admin",
+    "account_manager",
+    "broker",
+    "operations",
+    "finance",
+    "catalogue_editor",
+  ];
+
+  async function listClients(role: ShopStaffRole) {
+    const deps = mockAdminAuth(`${role}-subject`, role);
+    const listClientParties = vi.fn(async () => ({ items: [], nextCursor: null }));
+    deps.admin.adminRead.parties.listClientParties = listClientParties;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/v1/clients",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    await app.close();
+    return { response, listClientParties };
+  }
+
+  it.each(ROLES)("%s: the route answers as clientListScope says", async (role) => {
+    const { response } = await listClients(role);
+    const scope = clientListScope(capabilitiesForRole(role));
+    expect(response.statusCode === 200).toBe(scope !== "none");
+  });
+
+  it("gives a broker only the clients assigned to them", async () => {
+    const { response, listClientParties } = await listClients("broker");
+    expect(response.statusCode).toBe(200);
+    expect(listClientParties).toHaveBeenCalledWith(
+      expect.objectContaining({ brokerSubjectId: "broker-subject" }),
+    );
+  });
+
+  it("gives full-access roles the whole list", async () => {
+    const { listClientParties } = await listClients("account_manager");
+    expect(listClientParties).toHaveBeenCalledWith({});
   });
 });

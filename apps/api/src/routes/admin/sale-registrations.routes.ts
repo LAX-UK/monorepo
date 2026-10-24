@@ -7,7 +7,7 @@ import {
 import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireAuctionManage } from "../../middleware/require-capability.js";
+import { requireSalesAccess } from "../../middleware/require-capability.js";
 import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -17,7 +17,7 @@ export function attachAdminSaleRegistrationsRoutes(
 ): void {
   platform.get(
     "/sales/:saleId/registrations",
-    requireAuctionManage,
+    requireSalesAccess,
     zValidator("param", z.object({ saleId: z.string().uuid() })),
     zValidator("query", adminSaleRegistrationListQuerySchema),
     async (c) => {
@@ -33,7 +33,7 @@ export function attachAdminSaleRegistrationsRoutes(
 
   platform.post(
     "/sales/:saleId/registrations/:registrationId/approve",
-    requireAuctionManage,
+    requireSalesAccess,
     zValidator("param", adminSaleRegistrationParamsSchema),
     async (c) => {
       const { saleId, registrationId } = c.req.valid("param");
@@ -53,7 +53,7 @@ export function attachAdminSaleRegistrationsRoutes(
 
   platform.post(
     "/sales/:saleId/registrations/:registrationId/reject",
-    requireAuctionManage,
+    requireSalesAccess,
     zValidator("param", adminSaleRegistrationParamsSchema),
     zValidator("json", adminRejectSaleRegistrationBodySchema),
     async (c) => {
@@ -76,7 +76,7 @@ export function attachAdminSaleRegistrationsRoutes(
 
   platform.patch(
     "/sales/:saleId/registrations/:registrationId/bid-limit",
-    requireAuctionManage,
+    requireSalesAccess,
     zValidator("param", adminSaleRegistrationParamsSchema),
     zValidator("json", adminUpdateSaleRegistrationBidLimitBodySchema),
     async (c) => {

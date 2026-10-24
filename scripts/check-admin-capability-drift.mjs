@@ -2,6 +2,10 @@
 /**
  * Prevents inline capability strings in admin web and API route code.
  * Use @auction/types *_ACCESS constants and require-capability middleware instead.
+ *
+ * LAX Admin (shop-admin and shop-api) follows the same rule for the client scope: the nav and
+ * the route both ask `clientListScope` in @auction/shop-domain instead of spelling the
+ * capability, so a link and the route behind it cannot disagree.
  */
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -9,6 +13,8 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const WEB_SRC = path.join(ROOT, "apps/web/src");
 const API_ROUTES = path.join(ROOT, "apps/api/src/routes");
+const SHOP_ADMIN_SRC = path.join(ROOT, "apps/shop-admin/src");
+const SHOP_API_ROUTES = path.join(ROOT, "apps/shop-api/src/routes");
 
 const WEB_SCAN_ROOTS = [
   path.join(WEB_SRC, "app/admin"),
@@ -18,7 +24,9 @@ const WEB_SCAN_ROOTS = [
 ];
 
 const INLINE_CAPABILITY =
-  /"(?:platform\.admin\.full|finance\.read|payout\.(?:read|process|reverse)|user\.invite|artist\.(?:read|review|merge|delete)|catalogue\.write|auction\.manage|specialist\.appraise|operations\.fulfilment|content\.write|support\.respond|legal_entity\.read|client\.read|bids\.read|audit\.read_pii)"/g;
+  /"(?:platform\.admin\.full|finance\.read|finance\.(?:platform\.write|entity\.write|write)|payout\.(?:read|process|reverse)|user\.invite|artist\.(?:read|review|merge|delete)|catalogue\.write|auction\.manage|specialist\.appraise|operations\.fulfilment|content\.write|support\.respond|legal_entity\.read|client\.read|bids\.read|audit\.read_pii|aml\.review|compliance\.mlro)"/g;
+
+const INLINE_SHOP_CLIENT_CAPABILITY = /"client\.read_(?:all|assigned)"/g;
 
 const SKIP_SUFFIX = [".test.ts", ".test.tsx"];
 
@@ -73,15 +81,44 @@ for (const root of WEB_SCAN_ROOTS) {
   }
 }
 
-for (const ent of await readdir(API_ROUTES, { withFileTypes: true })) {
-  if (!ent.isFile() || !ent.name.startsWith("admin") || !ent.name.endsWith(".ts")) continue;
-  if (ent.name.endsWith(".test.ts")) continue;
-  const file = path.join(API_ROUTES, ent.name);
+// Admin route files at the top level, the per-area files under routes/admin, and the payment
+// routes that admin screens call (capture and refund).
+const apiRouteFiles = [
+  ...(await readdir(API_ROUTES, { withFileTypes: true }))
+    .filter(
+      (ent) =>
+        ent.isFile() &&
+        ent.name.startsWith("admin") &&
+        ent.name.endsWith(".ts") &&
+        !isSkipped(ent.name),
+    )
+    .map((ent) => path.join(API_ROUTES, ent.name)),
+  ...(await walk(path.join(API_ROUTES, "admin"))),
+  path.join(API_ROUTES, "payments.ts"),
+];
+for (const file of apiRouteFiles) {
   const text = stripAllowedApiInlineChecks(await readFile(file, "utf8"));
   const matches = findInlineViolations(text);
   if (matches.length) {
     const unique = [...new Set(matches)];
-    violations.push(`api/src/routes/${ent.name}: inline capability string(s) ${unique.join(", ")}`);
+    violations.push(
+      `api/src/routes/${path.relative(API_ROUTES, file)}: inline capability string(s) ${unique.join(", ")}`,
+    );
+  }
+}
+
+for (const [label, root] of [
+  ["shop-admin", SHOP_ADMIN_SRC],
+  ["shop-api/routes", SHOP_API_ROUTES],
+]) {
+  for (const file of await walk(root)) {
+    const matches = (await readFile(file, "utf8")).match(INLINE_SHOP_CLIENT_CAPABILITY) ?? [];
+    if (matches.length) {
+      const unique = [...new Set(matches)];
+      violations.push(
+        `${label}/${path.relative(root, file)}: inline client capability ${unique.join(", ")}; use clientListScope from @auction/shop-domain`,
+      );
+    }
   }
 }
 

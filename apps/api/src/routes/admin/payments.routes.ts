@@ -1,16 +1,19 @@
 import { adminPaymentsListQuerySchema } from "@auction/validators";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireFinanceAccess } from "../../middleware/require-capability.js";
+import {
+  requireFinanceAccess,
+  requirePaymentManualReviewWrite,
+} from "../../middleware/require-capability.js";
 import type { AdminPaymentsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { adminPaymentIdParamSchema } from "./_schemas.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminPaymentsListRoutes(
-  platform: AdminHono,
+  finance: AdminHono,
   container: AdminPaymentsRoutesContainer,
 ): void {
-  platform.get(
+  finance.get(
     "/payments",
     requireFinanceAccess,
     zValidator("query", adminPaymentsListQuerySchema),
@@ -36,17 +39,17 @@ export function attachAdminPaymentsListRoutes(
 }
 
 export function attachAdminPaymentsManualReviewRoutes(
-  platform: AdminHono,
+  finance: AdminHono,
   container: AdminPaymentsRoutesContainer,
 ): void {
-  platform.get("/payments/manual-review", requireFinanceAccess, async (c) => {
+  finance.get("/payments/manual-review", requireFinanceAccess, async (c) => {
     const data = await container.admin.manualReviewPayments.listManualReviewPayments();
     return c.json({ data });
   });
 
-  platform.post(
+  finance.post(
     "/payments/:id/capture-and-process",
-    requireFinanceAccess,
+    requirePaymentManualReviewWrite,
     zValidator("param", adminPaymentIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -70,9 +73,9 @@ export function attachAdminPaymentsManualReviewRoutes(
     },
   );
 
-  platform.post(
+  finance.post(
     "/payments/:id/refund-buyer",
-    requireFinanceAccess,
+    requirePaymentManualReviewWrite,
     zValidator("param", adminPaymentIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;

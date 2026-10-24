@@ -108,6 +108,14 @@ export interface ILotLifecycleService {
     lotId: string,
     adminStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>>;
+
+  declineWithdrawalRequest(
+    adminUserId: string,
+    adminRole: UserRole,
+    lotId: string,
+    reason: string,
+    adminStaffRole?: string | null,
+  ): Promise<Result<{ taskId: string }, LotError | AuthzError>>;
 }
 
 export interface ILotService extends ILotReadService, ILotWriteService, ILotLifecycleService {}

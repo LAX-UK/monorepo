@@ -13,9 +13,12 @@ import { useCallback, useMemo, useState } from "react";
 export function AdminManualReviewBoard({
   rows,
   canOpenComplianceQueues = false,
+  canResolveManualReview,
 }: {
   rows: AdminManualReviewPaymentRow[];
   canOpenComplianceQueues?: boolean;
+  /** Whether release and refund are offered; mirrors the API's manual-review write rule. */
+  canResolveManualReview: boolean;
 }) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminManualReviewPaymentRow | null>(null);
@@ -55,6 +58,7 @@ export function AdminManualReviewBoard({
               <ManualReviewDrawerContent
                 payment={selected}
                 canOpenComplianceQueues={canOpenComplianceQueues}
+                canResolveManualReview={canResolveManualReview}
               />
             </div>
           ) : null}

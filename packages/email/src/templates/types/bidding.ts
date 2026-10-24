@@ -6,6 +6,7 @@ const names = [
   "lot-ended-seller",
   "proxy-cancelled-notice",
   "lot-voided-notice",
+  "lot-withdrawal-declined-notice",
 ] as const;
 
 type BiddingTemplateName = (typeof names)[number];
@@ -42,6 +43,13 @@ type BiddingTemplateVars = {
     reason: string;
     supportContactEmail: string;
   };
+  "lot-withdrawal-declined-notice": {
+    recipientFirstName?: string | null;
+    lotTitle: string;
+    /** Staff-written explanation, shown as written. */
+    reason: string;
+    supportContactEmail: string;
+  };
 };
 
 export const biddingTemplates = {
@@ -53,6 +61,7 @@ export const biddingTemplates = {
     "lot-ended-seller": "live",
     "proxy-cancelled-notice": "live",
     "lot-voided-notice": "live",
+    "lot-withdrawal-declined-notice": "live",
   },
 } satisfies TemplateDomainSlice<BiddingTemplateName, BiddingTemplateVars>;
 

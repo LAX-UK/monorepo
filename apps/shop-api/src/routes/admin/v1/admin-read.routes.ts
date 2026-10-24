@@ -19,13 +19,15 @@ import {
   AdminStockHoldListSchema,
   AdminThirdPartySaleListSchema,
   CursorListQuerySchema,
+  SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
-import { overviewKpiKeysForRole } from "@auction/shop-domain";
+import { capabilitiesForRole, clientListScope, overviewKpiKeysForRole } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { parseOrderListQuery } from "../../../application/admin-order-list-query.js";
+import { ShopApiError } from "../../../errors/shop-api-error.js";
 import {
   requireShopAdminSubject,
   requireShopStaffAuth,
@@ -226,9 +228,16 @@ export async function registerAdminReadRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "client.read_all");
+      const auth = requireShopStaffAuth(request);
+      const scope = clientListScope(capabilitiesForRole(auth.role));
+      if (scope === "none") {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
+      }
       const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.parties.listClientParties(query);
+      return deps.adminRead.parties.listClientParties({
+        ...query,
+        ...(scope === "assigned" ? { brokerSubjectId: requireShopAdminSubject(request) } : {}),
+      });
     },
   );
 

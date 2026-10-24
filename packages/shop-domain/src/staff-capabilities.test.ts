@@ -5,6 +5,7 @@ import {
   type ShopStaffCapability,
   type ShopStaffRole,
   capabilitiesForRole,
+  clientListScope,
   overviewKpiKeysForRole,
   roleHasCapability,
 } from "./staff-capabilities.js";
@@ -96,5 +97,21 @@ describe("overviewKpiKeysForRole", () => {
     expect(overviewKpiKeysForRole("shop_admin")).toHaveLength(
       Object.keys(OVERVIEW_KPI_CAPABILITY).length,
     );
+  });
+});
+
+describe("clientListScope", () => {
+  it("reads everything for full client access, even alongside assigned access", () => {
+    expect(clientListScope(["client.read_all"])).toBe("all");
+    expect(clientListScope(["client.read_assigned", "client.read_all"])).toBe("all");
+  });
+
+  it("limits assigned-only staff to their own clients", () => {
+    expect(clientListScope(["client.read_assigned"])).toBe("assigned");
+  });
+
+  it("gives everyone else no client list", () => {
+    expect(clientListScope(["order.read"])).toBe("none");
+    expect(clientListScope([])).toBe("none");
   });
 });

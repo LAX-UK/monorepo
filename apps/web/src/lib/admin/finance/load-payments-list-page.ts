@@ -14,7 +14,13 @@ import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
-import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
+import {
+  PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
+  PAYMENT_WRITE_ACCESS,
+  type UserRole,
+  canAccessPlatformAdminRoutes,
+  userHasAccessTo,
+} from "@auction/types";
 
 const EMPTY_PAYMENT_SUMMARY = { totalVolume: 0, captured: 0, pending: 0, refunded: 0 };
 const EMPTY_MANUAL_SUMMARY = {
@@ -24,6 +30,18 @@ const EMPTY_MANUAL_SUMMARY = {
   amlHolds: 0,
   sofHolds: 0,
 };
+
+type SessionUser = Awaited<ReturnType<typeof getServerSessionUser>>;
+
+/** What the signed-in staff member may do to a payment, from the rules the API enforces. */
+function paymentActionCapabilities(sessionUser: SessionUser) {
+  const role = (sessionUser?.role ?? "client") as UserRole;
+  const staffRole = sessionUser?.staffRole ?? null;
+  return {
+    canWritePayments: userHasAccessTo(role, staffRole, PAYMENT_WRITE_ACCESS),
+    canResolveManualReview: userHasAccessTo(role, staffRole, PAYMENT_MANUAL_REVIEW_WRITE_ACCESS),
+  };
+}
 
 export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
   const model = buildPaymentsListPageModel(sp);
@@ -57,6 +75,7 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
       allRows: manualResult.allRows,
       summary: manualResult.summary,
       loadError: manualResult.error,
+      ...paymentActionCapabilities(sessionUser),
       canOpenComplianceQueues: sessionUser
         ? canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
         : false,
@@ -67,7 +86,7 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
     };
   }
 
-  const [paymentResult, navCounts, paymentsTrend] = await Promise.all([
+  const [paymentResult, navCounts, paymentsTrend, sessionUser] = await Promise.all([
     paymentsListController.fetch(model.query).then(
       (result) => ({ ...result, error: null as string | null }),
       (error) => ({
@@ -79,6 +98,7 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
     ),
     getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
     paymentsTrendPromise,
+    getServerSessionUser(),
   ]);
   const buyerIds = [...new Set(paymentResult.rows.map((row) => row.buyerId).filter(Boolean))];
   const buyers = await getAdminUsersByIds(buyerIds).catch(() => []);
@@ -99,6 +119,7 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
     summary,
     total,
     loadError: paymentResult.error,
+    ...paymentActionCapabilities(sessionUser),
     anomalies: detectAnomaliesFromNavCounts(navCounts, {
       awaitingCaptureVolume: summary.pending,
     }),

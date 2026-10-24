@@ -1,6 +1,7 @@
 import { type UserRole, normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
 import {
   adminLotBrowseQuerySchema,
+  declineWithdrawalRequestBodySchema,
   lotIdOnlyParamSchema,
   lotIdParamSchema,
   returnLotToInventoryBodySchema,
@@ -11,6 +12,7 @@ import {
   requireAuctionManage,
   requireLotsAccess,
   requireSpecialistCatalogueOrAuctionManage,
+  requireWithdrawalDecision,
 } from "../../middleware/require-capability.js";
 import type { AdminLotsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
@@ -117,7 +119,7 @@ export function attachAdminLotsRoutes(
   /** POST /admin/lots/:id/approve-withdrawal-request — cancel lot after seller request (B3). */
   platform.post(
     "/lots/:id/approve-withdrawal-request",
-    requireLotsAccess,
+    requireWithdrawalDecision,
     zValidator("param", lotIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -125,6 +127,35 @@ export function attachAdminLotsRoutes(
       const { id } = c.req.valid("param");
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const out = await container.admin.lots.approveWithdrawalRequest(userId, role, id, staff);
+      if (!out.ok) {
+        return c.json(
+          out.code !== undefined ? { error: out.error, code: out.code } : { error: out.error },
+          asHttpStatus(out.status),
+        );
+      }
+      return c.json({ data: out.data });
+    },
+  );
+
+  /** POST /admin/lots/:id/decline-withdrawal-request — keep the lot and tell the seller why. */
+  platform.post(
+    "/lots/:id/decline-withdrawal-request",
+    requireWithdrawalDecision,
+    zValidator("param", lotIdParamSchema),
+    zValidator("json", declineWithdrawalRequestBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
+      const { id } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const out = await container.admin.lots.declineWithdrawalRequest(
+        userId,
+        role,
+        id,
+        reason,
+        staff,
+      );
       if (!out.ok) {
         return c.json(
           out.code !== undefined ? { error: out.error, code: out.code } : { error: out.error },

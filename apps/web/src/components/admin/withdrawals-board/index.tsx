@@ -10,7 +10,13 @@ import type { LotWithdrawalRequestTask } from "@/lib/data/http/admin.server";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { useCallback, useMemo, useState } from "react";
 
-export function AdminWithdrawalsBoard({ tasks }: { tasks: LotWithdrawalRequestTask[] }) {
+export function AdminWithdrawalsBoard({
+  tasks,
+  canDecide,
+}: {
+  tasks: LotWithdrawalRequestTask[];
+  canDecide: boolean;
+}) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<LotWithdrawalRequestTask | null>(null);
   const onOpen = useCallback((row: LotWithdrawalRequestTask) => setSelected(row), []);
@@ -51,7 +57,7 @@ export function AdminWithdrawalsBoard({ tasks }: { tasks: LotWithdrawalRequestTa
                   </p>
                 }
               />
-              <WithdrawalDrawerContent task={selected} />
+              <WithdrawalDrawerContent task={selected} canDecide={canDecide} />
             </div>
           ) : null}
         </SheetContent>

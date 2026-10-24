@@ -68,6 +68,12 @@ export const lotWithdrawalRequestedPayloadSchema = z.object({
   sellerLegalEntityId: z.string().uuid(),
 });
 
+export const lotWithdrawalDeclinedPayloadSchema = z.object({
+  sellerLegalEntityId: z.string().uuid(),
+  /** Staff-written explanation that goes to the seller in the decline notice. */
+  reason: z.string(),
+});
+
 export const lotReturnedToInventoryPayloadSchema = z.object({
   fromStatus: z.enum(["ended", "cancelled", "voided"]),
   lastSaleId: z.string().uuid().nullable(),
@@ -92,6 +98,7 @@ export const LotEventSchemas = {
   "lot.ended": lotEndedPayloadSchema,
   "lot.voided": lotVoidedPayloadSchema,
   "lot.withdrawal_requested": lotWithdrawalRequestedPayloadSchema,
+  "lot.withdrawal_declined": lotWithdrawalDeclinedPayloadSchema,
   "lot.returned_to_inventory": lotReturnedToInventoryPayloadSchema,
   "lot.soft_deleted": lotSoftDeletedPayloadSchema,
 } as const;

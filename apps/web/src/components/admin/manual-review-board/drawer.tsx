@@ -15,9 +15,11 @@ import Link from "next/link";
 export function ManualReviewDrawerContent({
   payment,
   canOpenComplianceQueues = false,
+  canResolveManualReview,
 }: {
   payment: AdminManualReviewPaymentRow;
   canOpenComplianceQueues?: boolean;
+  canResolveManualReview: boolean;
 }) {
   const lotReference =
     payment.lotNumber == null ? "Lot details on full page" : `Lot ${payment.lotNumber}`;
@@ -124,10 +126,12 @@ export function ManualReviewDrawerContent({
           </AlertDescription>
         </Alert>
       )}
-      <ManualReviewPaymentActions
-        paymentId={payment.paymentId}
-        manualReviewReason={payment.manualReviewReason}
-      />
+      {canResolveManualReview ? (
+        <ManualReviewPaymentActions
+          paymentId={payment.paymentId}
+          manualReviewReason={payment.manualReviewReason}
+        />
+      ) : null}
     </div>
   );
 }

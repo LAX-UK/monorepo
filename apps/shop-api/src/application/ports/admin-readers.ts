@@ -168,8 +168,13 @@ export interface AdminSalesReader {
   listOriginalSales(input: CursorListInput): Promise<CursorListResult<AdminOriginalSaleListItem>>;
 }
 
+export type ClientPartyListInput = CursorListInput & {
+  /** When set, only clients assigned to this broker subject are returned. */
+  brokerSubjectId?: string;
+};
+
 export interface AdminPartyReader {
-  listClientParties(input: CursorListInput): Promise<CursorListResult<AdminPartyListItem>>;
+  listClientParties(input: ClientPartyListInput): Promise<CursorListResult<AdminPartyListItem>>;
   listArtists(input: CursorListInput): Promise<CursorListResult<AdminArtistListItem>>;
   getClientDetail(partyId: string): Promise<AdminClientDetail>;
   getArtistDetail(artistId: string): Promise<AdminArtistDetail>;

@@ -285,6 +285,18 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Apple account was disconnected");
   });
 
+  it("renders the withdrawal decline notice with the staff reason", async () => {
+    const rendered = await renderEmail("lot-withdrawal-declined-notice", {
+      recipientFirstName: "Sam",
+      lotTitle: "Harbour at Dusk",
+      reason: "The lot is already in the printed catalogue.",
+      supportContactEmail: "support@lax.bid",
+    });
+    expect(rendered.subject).toBe("Withdrawal request declined: Harbour at Dusk");
+    expect(rendered.html).toContain("The lot is already in the printed catalogue.");
+    expect(rendered.text).toContain("Harbour at Dusk");
+  });
+
   it("applies category accent colours from design tokens", async () => {
     const alertHtml = (
       await renderEmail("lot-voided-notice", {
