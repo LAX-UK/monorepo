@@ -5,13 +5,10 @@ import {
   EditorialEditor,
   type EditorialEditorConfig,
 } from "@/components/editorial/editorial-editor.client";
-import {
-  EditorialLinksAfterFirstSave,
-  EditorialLinksSections,
-} from "@/components/editorial/editorial-links-sections.client";
 import { ExhibitionFields } from "@/components/editorial/exhibition-fields.client";
 import { PageFields } from "@/components/editorial/page-fields.client";
 import { StoryFields } from "@/components/editorial/story-fields.client";
+import { useEditorialLinks } from "@/components/editorial/use-editorial-links.client";
 import { VenueFields } from "@/components/editorial/venue-fields.client";
 import { EDITORIAL_ENTITIES } from "@/lib/editorial-entities";
 import {
@@ -72,6 +69,7 @@ export function VenueEditor(props: EditorProps<VenueDetail>) {
 }
 
 export function StoryEditor({ links, ...props }: LinkedEditorProps<StoryDetail>) {
+  const linkState = useEditorialLinks("stories", props.detail?.id ?? null, links ?? null);
   const config: EditorialEditorConfig<StoryForm, StoryDetail> = {
     entity: EDITORIAL_ENTITIES.stories,
     api: editorialEntityApi("stories"),
@@ -81,19 +79,9 @@ export function StoryEditor({ links, ...props }: LinkedEditorProps<StoryDetail>)
     nameOf: (form) => form.title,
     afterSave: (form) => ({ ...form, savedKind: form.kind }),
     renderFields: (fields) => <StoryFields {...fields} />,
-    renderLinks: ({ id, onDirtyChange }) =>
-      id === null ? (
-        <EditorialLinksAfterFirstSave what="Artists, artworks and exhibitions" />
-      ) : links ? (
-        <EditorialLinksSections
-          parent="stories"
-          id={id}
-          links={links}
-          onDirtyChange={onDirtyChange}
-        />
-      ) : null,
+    linksBeforeFirstSave: "Artists, artworks and exhibitions",
   };
-  return <EditorialEditor config={config} {...props} />;
+  return <EditorialEditor config={config} links={linkState} {...props} />;
 }
 
 export function ExhibitionEditor({
@@ -101,6 +89,7 @@ export function ExhibitionEditor({
   links,
   ...props
 }: LinkedEditorProps<ExhibitionDetail> & { venues: readonly EditorialAdminRow[] }) {
+  const linkState = useEditorialLinks("exhibitions", props.detail?.id ?? null, links ?? null);
   const config: EditorialEditorConfig<ExhibitionForm, ExhibitionDetail> = {
     entity: EDITORIAL_ENTITIES.exhibitions,
     api: editorialEntityApi("exhibitions"),
@@ -109,17 +98,7 @@ export function ExhibitionEditor({
     buildPayload: buildExhibitionPayload,
     nameOf: (form) => form.title,
     renderFields: (fields) => <ExhibitionFields {...fields} venues={venues} />,
-    renderLinks: ({ id, onDirtyChange }) =>
-      id === null ? (
-        <EditorialLinksAfterFirstSave what="Artworks, artists and related stories" />
-      ) : links ? (
-        <EditorialLinksSections
-          parent="exhibitions"
-          id={id}
-          links={links}
-          onDirtyChange={onDirtyChange}
-        />
-      ) : null,
+    linksBeforeFirstSave: "Artworks, artists and related stories",
   };
-  return <EditorialEditor config={config} {...props} />;
+  return <EditorialEditor config={config} links={linkState} {...props} />;
 }

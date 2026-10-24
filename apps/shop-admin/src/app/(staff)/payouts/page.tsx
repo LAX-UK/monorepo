@@ -1,22 +1,11 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { PayoutsStaffListTable } from "@/components/admin-staff-list-tables.client";
-import { MarkPayoutPaidForm } from "@/components/forms/finance/mark-payout-paid-form.client";
+import { PayoutList } from "@/components/payouts/payout-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
-import { PageHeader } from "@auction/ui";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
+import { duePayoutCount } from "@/server/domain/payout-list.vm";
+import type { AdminPayoutList } from "@auction/shop-contracts";
+import { MetaItem, PageHeader } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
-
-type PayoutList = {
-  items: Array<{
-    payoutId: string;
-    ownerDisplayName: string;
-    netPence: number;
-    status: string;
-    payoutDueAt: string;
-  }>;
-  nextCursor: string | null;
-};
 
 export const metadata = { title: "Payouts" };
 
@@ -26,23 +15,29 @@ export default async function PayoutsPage({
   searchParams: Promise<{ cursor?: string }>;
 }) {
   const { cursor } = await searchParams;
-  const result = await fetchAdminJson<PayoutList>(adminListPath("payouts", { cursor }));
-  if (result.status === "unauthorized") redirect("/login");
+  const [result, session] = await Promise.all([
+    fetchAdminJson<AdminPayoutList>(adminListPath("payouts", { cursor })),
+    loadAdminSession(),
+  ]);
+  if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
     return <AdminFailedPage title="Payouts" status={result.status} />;
   }
+  const capabilities = session.status === "ok" ? session.data.capabilities : [];
+  const due = duePayoutCount(result.data.items);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Payouts"
-        description="Money owed to artists and owners after a sale. Mark a payout as paid once the transfer has been made."
+        description="Money owed to artists and owners after a sale. Open a due payout to mark it paid once the transfer has been made."
+        meta={<MetaItem label="Due on this page">{due}</MetaItem>}
       />
-      <div className="mb-6 max-w-xl">
-        <MarkPayoutPaidForm />
-      </div>
-      <PayoutsStaffListTable items={result.data.items} />
-      <AdminListCursorNav cursor={cursor} pathname="/payouts" nextCursor={result.data.nextCursor} />
+      <PayoutList
+        page={result.data}
+        cursor={cursor ?? null}
+        canMarkPaid={capabilities.includes("payout.mark_paid")}
+      />
     </div>
   );
 }

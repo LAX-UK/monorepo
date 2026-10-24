@@ -1,11 +1,10 @@
 "use client";
 
+import { RailRelationFields } from "@/components/editorial/rail-relation-fields.client";
 import { SelectField, TextAreaField, TextField } from "@/components/forms/fields";
 import { MediaUploadField } from "@/components/media-upload-field";
 import {
   type EditorialBlockOf,
-  formatSlugList,
-  parseSlugList,
   readSimpleText,
   simpleSpans,
   withOptionalText,
@@ -412,44 +411,6 @@ function CtaFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"
   );
 }
 
-function SlugRailFields({
-  headline,
-  slugs,
-  noun,
-  disabled,
-  onChange,
-}: {
-  headline: string;
-  slugs: readonly string[];
-  noun: "artwork" | "artist";
-  disabled: boolean;
-  onChange: (next: { headline: string; slugs: string[] }) => void;
-}) {
-  const [slugText, setSlugText] = useState(() => formatSlugList(slugs));
-  return (
-    <div className="space-y-3">
-      <TextField
-        label="Rail headline (optional)"
-        value={headline}
-        maxLength={200}
-        disabled={disabled}
-        onChange={(value) => onChange({ headline: value, slugs: [...slugs] })}
-      />
-      <TextAreaField
-        label={`${noun === "artwork" ? "Artwork" : "Artist"} slugs`}
-        hint="Comma-separated, in display order (up to 24)."
-        rows={2}
-        value={slugText}
-        disabled={disabled}
-        onChange={(text) => {
-          setSlugText(text);
-          onChange({ headline, slugs: parseSlugList(text) });
-        }}
-      />
-    </div>
-  );
-}
-
 function InfoStripFields({
   block,
   onChange,
@@ -503,8 +464,8 @@ export function EditorialBlockFields({ block, onChange, disabled }: FieldsProps<
       return <CtaFields block={block} onChange={onChange} disabled={disabled} />;
     case "artworkRail":
       return (
-        <SlugRailFields
-          noun="artwork"
+        <RailRelationFields
+          kind="artwork"
           headline={block.headline ?? ""}
           slugs={block.artworkSlugs}
           disabled={disabled}
@@ -515,8 +476,8 @@ export function EditorialBlockFields({ block, onChange, disabled }: FieldsProps<
       );
     case "artistRail":
       return (
-        <SlugRailFields
-          noun="artist"
+        <RailRelationFields
+          kind="artist"
           headline={block.headline ?? ""}
           slugs={block.artistSlugs}
           disabled={disabled}

@@ -7,7 +7,6 @@ import {
   isStructuredBlock,
   parseBlocksJson,
   parseSingleBlockJson,
-  parseSlugList,
   readSimpleText,
   simpleSpans,
   toBlockItems,
@@ -42,13 +41,6 @@ describe("withOptionalText", () => {
     });
     expect(withOptionalText(quote, "attribution", "")).toEqual({ type: "quote", text: "x" });
     expect(quote).toHaveProperty("attribution", "A");
-  });
-});
-
-describe("parseSlugList", () => {
-  it("splits, trims and drops empty entries", () => {
-    expect(parseSlugList(" a-1, ,b ,")).toEqual(["a-1", "b"]);
-    expect(parseSlugList("")).toEqual([]);
   });
 });
 

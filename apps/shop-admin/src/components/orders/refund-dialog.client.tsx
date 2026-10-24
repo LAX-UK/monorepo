@@ -1,5 +1,6 @@
 "use client";
 
+import { StaffMutationError } from "@/components/staff-mutation-error";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import { requestOrderRefund } from "@/server/application/admin-operations-actions.server";
 import {
@@ -24,7 +25,6 @@ import {
   TextArea,
   formatGbp,
 } from "@auction/staff-ui";
-import { CircleAlert } from "@auction/staff-ui/icons";
 import { useState } from "react";
 
 type Errors = Partial<Record<"amount" | "reason", string>>;
@@ -163,25 +163,7 @@ export function RefundDialog({
           errors={summaryErrors.length > 1 ? summaryErrors : []}
           focusKey={submits}
         />
-        {mutation.message ? (
-          <p
-            role="alert"
-            className="flex items-start gap-2 rounded-staff-md bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
-          >
-            <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {mutation.message}
-              {mutation.stepUpRequired ? (
-                <>
-                  {" "}
-                  <a href={mutation.stepUpHref} className="font-medium underline">
-                    Sign in again
-                  </a>
-                </>
-              ) : null}
-            </span>
-          </p>
-        ) : null}
+        <StaffMutationError mutation={mutation} />
         <Field label="Refund" description="The whole order, or one item on it.">
           <EntityPicker
             value={target}

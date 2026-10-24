@@ -4,7 +4,6 @@ import type {
   EditorialLinkKind,
   EditorialStoryLinkList,
 } from "@auction/shop-contracts";
-import type { RelationItem } from "@auction/ui";
 
 /** The most items any public rail on lax.art shows; longer lists are still stored in full. */
 export const PUBLIC_RAIL_LIMIT = 24;
@@ -12,8 +11,18 @@ export const PUBLIC_RAIL_LIMIT = 24;
 export type EditorialLinkParent = "exhibitions" | "stories";
 export type EditorialLinkList = EditorialExhibitionLinkList | EditorialStoryLinkList;
 
+/** One related record as a list shows it. `id` is whatever the caller identifies records by. */
+export type RelationRow = {
+  id: string;
+  title: string;
+  /** A second line that tells similar records apart, such as the address it lives at. */
+  subtitle?: string;
+  /** True when the public site cannot show it yet. */
+  notPublic?: boolean;
+};
+
 /** A linked record as the picker shows it. `slug` stays so the public address is visible. */
-export type LinkRow = RelationItem & { slug: string };
+export type LinkRow = RelationRow & { slug: string };
 
 export type LinkSectionSpec = {
   list: EditorialLinkList;
@@ -23,6 +32,8 @@ export type LinkSectionSpec = {
   description: string;
   /** Plural noun for sentences, e.g. "artworks". */
   noun: string;
+  /** The same noun in the singular, e.g. "artwork". */
+  singular: string;
   saveLabel: string;
   /** False for sets whose order is not stored. */
   ordered: boolean;
@@ -35,6 +46,7 @@ export const EXHIBITION_LINK_SECTIONS: readonly LinkSectionSpec[] = [
     heading: "Artworks in this exhibition",
     description: "Shown in this order on the exhibition page.",
     noun: "artworks",
+    singular: "artwork",
     saveLabel: "Save artworks",
     ordered: true,
   },
@@ -44,6 +56,7 @@ export const EXHIBITION_LINK_SECTIONS: readonly LinkSectionSpec[] = [
     heading: "Artists",
     description: "Shown in this order on the exhibition page.",
     noun: "artists",
+    singular: "artist",
     saveLabel: "Save artists",
     ordered: true,
   },
@@ -53,6 +66,7 @@ export const EXHIBITION_LINK_SECTIONS: readonly LinkSectionSpec[] = [
     heading: "Related stories",
     description: "Stories that appear alongside this exhibition. lax.art orders them by date.",
     noun: "stories",
+    singular: "story",
     saveLabel: "Save related stories",
     ordered: false,
   },
@@ -65,6 +79,7 @@ export const STORY_LINK_SECTIONS: readonly LinkSectionSpec[] = [
     heading: "Artists",
     description: "Shown in this order on the story page.",
     noun: "artists",
+    singular: "artist",
     saveLabel: "Save artists",
     ordered: true,
   },
@@ -74,6 +89,7 @@ export const STORY_LINK_SECTIONS: readonly LinkSectionSpec[] = [
     heading: "Artworks",
     description: "Shown in this order on the story page.",
     noun: "artworks",
+    singular: "artwork",
     saveLabel: "Save artworks",
     ordered: true,
   },
@@ -83,6 +99,7 @@ export const STORY_LINK_SECTIONS: readonly LinkSectionSpec[] = [
     heading: "Exhibitions",
     description: "Exhibitions this story relates to. lax.art orders them by date.",
     noun: "exhibitions",
+    singular: "exhibition",
     saveLabel: "Save exhibitions",
     ordered: false,
   },
@@ -98,8 +115,7 @@ export function toLinkRow(item: EditorialLinkItem): LinkRow {
     title: item.title,
     slug: item.slug,
     subtitle: `/${item.slug}`,
-    thumbnailUrl: item.thumbnailUrl,
-    draft: !item.published,
+    notPublic: !item.published,
   };
 }
 

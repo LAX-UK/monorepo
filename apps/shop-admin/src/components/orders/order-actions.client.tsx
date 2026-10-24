@@ -5,31 +5,10 @@ import { useAdminMutation } from "@/components/use-admin-mutation";
 import {
   cancelOrderAfterPossession,
   createProductionTask,
-  updateFulfilment,
 } from "@/server/application/admin-operations-actions.server";
-import {
-  fulfilmentNextOptions,
-  orderLineLabel,
-  presentFulfilmentStatus,
-} from "@/server/domain/order-detail.vm";
-import {
-  type AdminOrderDetail,
-  FULFILMENT_CARRIER_MAX_LENGTH,
-  FULFILMENT_TRACKING_NUMBER_MAX_LENGTH,
-  FULFILMENT_TRACKING_NUMBER_PATTERN,
-} from "@auction/shop-contracts";
-import type { ShopFulfilmentStatus } from "@auction/shop-domain";
-import {
-  ConfirmActionDialog,
-  EnumSelect,
-  Field,
-  FieldRow,
-  FormActions,
-  OverflowMenu,
-  StaffButton,
-  TextInput,
-  toast,
-} from "@auction/staff-ui";
+import { orderLineLabel } from "@/server/domain/order-detail.vm";
+import type { AdminOrderDetail } from "@auction/shop-contracts";
+import { ConfirmActionDialog, OverflowMenu, StaffButton, toast } from "@auction/staff-ui";
 import { Copy, CreditCard, Factory, Undo2, XCircle } from "@auction/staff-ui/icons";
 import { useState } from "react";
 
@@ -183,104 +162,5 @@ export function OrderLineMenu({ line, canCancel }: { line: Line; canCancel: bool
         ) : null}
       </ConfirmActionDialog>
     </>
-  );
-}
-
-const NEEDS_TRACKING: readonly ShopFulfilmentStatus[] = ["in_transit"];
-
-/**
- * Moves the fulfilment on. Only the statuses the fulfilment can reach next are offered, so an
- * impossible move cannot be chosen; tracking is asked for only when it is going in the post.
- */
-export function FulfilmentUpdateForm({
-  fulfilment,
-}: {
-  fulfilment: NonNullable<AdminOrderDetail["fulfilmentRecord"]>;
-}) {
-  const mutation = useAdminMutation();
-  const options = fulfilmentNextOptions(fulfilment.status);
-  const [status, setStatus] = useState<ShopFulfilmentStatus | null>(null);
-  const [carrier, setCarrier] = useState(fulfilment.carrier ?? "");
-  const [tracking, setTracking] = useState(fulfilment.trackingNumber ?? "");
-  const [error, setError] = useState<string | null>(null);
-
-  if (options.length === 0) {
-    return (
-      <p className="text-staff-sm text-staff-muted">
-        {presentFulfilmentStatus(fulfilment.status).label} is final; there is nothing further to do.
-      </p>
-    );
-  }
-  const showTracking = status !== null && NEEDS_TRACKING.includes(status);
-
-  return (
-    <form
-      noValidate
-      className="flex flex-col gap-4"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!status) {
-          setError("Choose the next status.");
-          return;
-        }
-        if (
-          showTracking &&
-          tracking.trim() &&
-          !new RegExp(FULFILMENT_TRACKING_NUMBER_PATTERN).test(tracking.trim())
-        ) {
-          setError("A tracking number can only contain letters, numbers, spaces and hyphens.");
-          return;
-        }
-        setError(null);
-        const ok = await mutation.run(
-          () =>
-            updateFulfilment({
-              fulfilmentId: fulfilment.fulfilmentId,
-              status,
-              ...(showTracking && carrier.trim() ? { carrier: carrier.trim() } : {}),
-              ...(showTracking && tracking.trim() ? { trackingNumber: tracking.trim() } : {}),
-              idempotencyKey: mutation.idempotencyKey,
-            }),
-          `Fulfilment moved to ${presentFulfilmentStatus(status).label.toLowerCase()}`,
-        );
-        if (ok) setStatus(null);
-      }}
-    >
-      <Field label="Move to" error={error ?? mutation.message}>
-        <EnumSelect
-          value={status}
-          onValueChange={(next) => {
-            setStatus(next);
-            setError(null);
-          }}
-          options={options}
-          placeholder="Choose the next status"
-        />
-      </Field>
-      {showTracking ? (
-        <FieldRow>
-          <Field label="Carrier" optional>
-            <TextInput
-              value={carrier}
-              onChange={(event) => setCarrier(event.target.value)}
-              maxLength={FULFILMENT_CARRIER_MAX_LENGTH}
-              placeholder="Royal Mail"
-            />
-          </Field>
-          <Field label="Tracking number" optional>
-            <TextInput
-              value={tracking}
-              onChange={(event) => setTracking(event.target.value)}
-              maxLength={FULFILMENT_TRACKING_NUMBER_MAX_LENGTH}
-            />
-          </Field>
-        </FieldRow>
-      ) : null}
-      <FormActions>
-        <StaffButton type="submit" variant="primary" loading={mutation.pending}>
-          Update fulfilment
-        </StaffButton>
-      </FormActions>
-    </form>
   );
 }

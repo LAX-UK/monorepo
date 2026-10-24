@@ -145,6 +145,7 @@ export function EntityPicker({
         {...STAFF_LAYER}
         align="start"
         sideOffset={6}
+        aria-label={searchPlaceholder}
         className="w-[var(--radix-popover-trigger-width)] min-w-72 rounded-staff-md border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-md"
       >
         <Command shouldFilter={!search} className={staffCommandClass}>

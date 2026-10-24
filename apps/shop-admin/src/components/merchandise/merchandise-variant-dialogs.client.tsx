@@ -6,18 +6,14 @@ import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormScopeProvider } from "@/components/forms/form-field";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
-import {
-  conflictField,
-  penceToPoundsText,
-  validateStockAdjustment,
-  validateVariant,
-} from "@/lib/merchandise-form";
+import { conflictField, validateStockAdjustment, validateVariant } from "@/lib/merchandise-form";
 import {
   addMerchandiseVariant,
   adjustMerchandiseStock,
   updateMerchandiseVariant,
 } from "@/server/application/admin-merchandise-actions.server";
 import type { MerchandiseVariantDetail } from "@auction/shop-contracts";
+import { formatPenceAsPounds } from "@auction/staff-ui";
 import {
   Button,
   Dialog,
@@ -101,7 +97,7 @@ function VariantForm({
   const scope = useId();
   const mutation = useAdminMutation();
   const [sku, setSku] = useState(variant?.sku ?? "");
-  const [price, setPrice] = useState(variant ? penceToPoundsText(variant.pricePence) : "");
+  const [price, setPrice] = useState(variant ? formatPenceAsPounds(variant.pricePence) : "");
   const [errors, setErrors] = useState<FieldErrors>({});
   // A taken SKU comes back from the server; show it against the SKU field, not as a loose message.
   const taken = conflictField(mutation.message ?? "") === "sku" ? mutation.message : null;

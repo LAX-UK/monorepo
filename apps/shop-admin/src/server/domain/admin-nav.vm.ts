@@ -194,7 +194,8 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
                 href: "/third-party-sales",
                 icon: "thirdPartySales" as const,
                 label: "Third-party sales",
-                capability: "third_party_sale.write" as const,
+                // Operations record the sales; finance approves each sale's fee from the list.
+                capability: ["third_party_sale.write", "fee.approve"] as const,
               },
             ]
           : []),
