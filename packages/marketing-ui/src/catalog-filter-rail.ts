@@ -2,7 +2,7 @@ import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
 
 const filterGroupLabel =
-  "font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant";
+  "marketing-filter-group-title font-label text-xs uppercase tracking-[0.18em] text-on-surface-variant";
 
 /** Sticky scrollable filter rail on desktop catalogue hubs. */
 export const MARKETING_FILTER_RAIL_STICKY =

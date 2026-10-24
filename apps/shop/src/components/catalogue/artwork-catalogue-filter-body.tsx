@@ -161,7 +161,7 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               type="number"
               min={0}
               inputMode="numeric"
-              className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3"
+              className="shop-field"
               value={draft.minPrice}
               onChange={(event) => onDraftChange({ ...draft, minPrice: event.target.value })}
               onBlur={(event) =>
@@ -183,7 +183,7 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
               type="number"
               min={0}
               inputMode="numeric"
-              className="min-h-11 rounded-md border border-outline-variant/50 bg-surface px-3 shop-focus-ring"
+              className="shop-field"
               value={draft.maxPrice}
               onChange={(event) => onDraftChange({ ...draft, maxPrice: event.target.value })}
               onBlur={(event) =>

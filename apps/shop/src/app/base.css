@@ -73,7 +73,14 @@
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
-  --color-input-border: var(--color-brand-light-gray);
+  /* Form controls: the resting border is at least 3:1 against every Shop surface (WCAG 1.4.11). */
+  --color-input-border: #808080;
+  --color-control-border-hover: #4d4d4d;
+  --color-control-bg: var(--color-surface-container-lowest);
+  --color-control-bg-disabled: var(--color-surface-container-low);
+  --color-control-border-disabled: var(--color-brand-light-gray);
+  --color-cta-bg-hover: color-mix(in srgb, var(--color-cta-bg) 82%, var(--color-cta-on));
+  --color-cta-bg-pressed: color-mix(in srgb, var(--color-cta-bg) 70%, var(--color-cta-on));
 
   /* shadcn/ui variable bridge — selective @auction/ui on account and commerce flows */
   --color-foreground: var(--color-on-surface);
@@ -92,8 +99,17 @@
   --color-destructive: var(--color-error);
   --color-destructive-foreground: var(--color-on-error);
 
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+  /* Radius scale: controls 6px, cards and panels 12px, pills full. Artwork images are square.
+     The Tailwind steps map onto it so shared components follow the same scale. */
+  --radius-control: 0.375rem;
+  --radius-card: 0.75rem;
+  --radius-pill: 9999px;
+  --radius-xs: var(--radius-control);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-card);
+  --radius-2xl: var(--radius-card);
 
   --container-max: 90rem;
   --container-inner: 86rem;
@@ -109,11 +125,16 @@
   --text-display-md: clamp(1.5rem, 3vw, 2rem);
   --text-display-sm: clamp(1.125rem, 2vw, 1.375rem);
   --text-title-section: clamp(1.25rem, 2.5vw, 1.75rem);
-  --text-label-caps-tracking: 0.22em;
+  /* Shop labels are sentence case with normal tracking. */
+  --text-label-caps-tracking: normal;
+  --text-label-caps-tracking-tight: normal;
+  /* Montserrat is the display face (page titles and section headings). Outfit is the interface
+     face: body, controls, labels, navigation, tables, prices and badges. */
   --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-footer-links: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -124,17 +145,38 @@
   --section-spacing: 5rem;
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
-  --shop-page-gutter: 1rem;
-  --shop-section-gap: 2.5rem;
-  --shop-section-spacing: var(--section-spacing-tight, 3rem);
+  /* Spacing scale (4px base). Shop layout tokens below are set from it. */
+  --shop-space-1: 0.25rem;
+  --shop-space-2: 0.5rem;
+  --shop-space-3: 0.75rem;
+  --shop-space-4: 1rem;
+  --shop-space-6: 1.5rem;
+  --shop-space-8: 2rem;
+  --shop-space-12: 3rem;
+  --shop-space-16: 4rem;
+  --shop-space-24: 6rem;
+  --shop-page-gutter: var(--shop-space-4);
+  --shop-section-gap: var(--shop-space-12);
+  --shop-section-spacing: var(--shop-space-12);
   --shop-motion-duration: 0.45s;
   --shop-header-max: 90rem;
   --shop-header-inline: 2.5rem;
   --shop-nav-label: 0.875rem;
   --shop-nav-leading: 1.3125rem;
-  --shop-card-pad-x: 1.25rem;
-  --shop-card-pad-y: 1rem;
-  --shop-card-gap: 0.75rem;
+  --shop-card-pad-x: var(--shop-space-4);
+  --shop-card-pad-y: var(--shop-space-4);
+  --shop-card-gap: var(--shop-space-3);
+  /* Type scale for interface text (Outfit). 12px is the floor. */
+  --shop-text-xs: 0.75rem;
+  --shop-text-sm: 0.875rem;
+  --shop-text-md: 1rem;
+  --shop-text-lg: 1.125rem;
+  /* Button scale: commerce actions (buy, checkout, pay) and standard actions. */
+  --shop-button-commerce-height: 3rem;
+  --shop-button-commerce-text: 1rem;
+  --shop-button-standard-height: 2.5rem;
+  --shop-button-standard-text: 0.875rem;
+  --shop-control-height: 2.75rem;
   --motion-duration-sm: 200ms;
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
@@ -256,7 +298,9 @@ html.dark {
   --color-link: var(--color-brand-light-cream);
   --color-ring: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
-  --color-input-border: var(--color-brand-light-gray);
+  --color-input-border: #858585;
+  --color-control-border-hover: #b3b3b3;
+  --color-control-border-disabled: #5c5a54;
   --color-footer-bg: #0d0f0f;
   --color-nav-border: #333534;
   --color-nav-text: var(--color-brand-light-cream);

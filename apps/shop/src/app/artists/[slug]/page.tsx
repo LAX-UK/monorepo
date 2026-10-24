@@ -68,14 +68,12 @@ export default async function ArtistDetailPage({ params, searchParams }: ArtistD
           {artist.name}
         </DisplayHeading>
         {artist.discipline ? (
-          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          <p className="font-label text-sm font-medium text-on-surface-variant">
             {artist.discipline}
           </p>
         ) : null}
         {artist.bio ? (
-          <p className="font-headline text-[length:var(--text-display-sm)] leading-snug text-on-surface">
-            {artist.bio}
-          </p>
+          <p className="font-body text-lg leading-relaxed text-on-surface">{artist.bio}</p>
         ) : null}
       </header>
       <CatalogueGrid items={artworks.items} />

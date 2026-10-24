@@ -43,7 +43,7 @@ export function MarketingFooter({
   renderLink,
 }: MarketingFooterProps) {
   const headingClass =
-    "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
+    "marketing-footer__heading font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
   const linkClass = cn(
     "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
     FOCUS_RING,

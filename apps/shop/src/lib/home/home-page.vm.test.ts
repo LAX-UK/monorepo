@@ -21,6 +21,6 @@ describe("buildHomePageViewModel", () => {
       artists: [],
       sectionErrors: {},
     });
-    expect(vm.sections.prints.title).toBe("Prints & Multiples");
+    expect(vm.sections.prints.title).toBe("Prints & multiples");
   });
 });

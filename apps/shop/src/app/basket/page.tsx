@@ -4,7 +4,7 @@ import { ShopBasketResumePayment } from "@/components/basket/shop-basket-resume-
 import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopAuthLink } from "@/components/shop-auth-link";
-import { ShopCommerceButton } from "@/components/shop-commerce-button";
+import { ShopCommerceButton, shopButtonClassName } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { ShopNotice } from "@/components/shop-notice";
 import { shopPageWayfinding } from "@/components/shop-page-header";
@@ -20,7 +20,6 @@ import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import { formatGbpPence } from "@auction/shop-portal/vm";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Suspense } from "react";
 
@@ -55,7 +54,12 @@ export default async function BasketPage() {
               Proceed to checkout
             </ShopCommerceButton>
           ) : (
-            <Button asChild variant="cta" size="md" className={cn("shop-focus-ring", "w-full")}>
+            <Button
+              asChild
+              variant="cta"
+              size="md"
+              className={shopButtonClassName("cta", "commerce", "w-full")}
+            >
               <ShopAuthLink href={shopStorefrontLoginHref("/checkout")}>
                 Sign in to check out
               </ShopAuthLink>

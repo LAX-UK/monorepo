@@ -130,7 +130,6 @@
   line-height: 1.05;
   letter-spacing: -0.02em;
   color: var(--color-hero-foreground);
-  text-transform: uppercase;
 }
 
 .shop-home__hero-copy {
@@ -145,9 +144,9 @@
 /* THEME_FIXED_CONTRAST: cream CTA on hero imagery */
 .shop-home__hero-cta {
   align-self: flex-start;
-  min-height: 2.75rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.25rem;
+  min-height: var(--shop-button-commerce-height);
+  padding: var(--shop-space-3) var(--shop-space-6);
+  border-radius: var(--radius-control);
   background: var(--color-brand-light-cream);
   color: var(--color-brand-obsidian);
   font-family: var(--font-body);
@@ -249,10 +248,6 @@
   line-height: 1.125rem;
 }
 
-.shop-home__badge--sold {
-  text-transform: uppercase;
-}
-
 .shop-home__availability-note {
   margin: 0;
   font-family: var(--font-body);
@@ -267,6 +262,11 @@
   flex-direction: column;
   gap: 1.25rem;
   background: var(--color-surface);
+}
+
+/* Artwork imagery is square-cornered. */
+.shop-home__category-card > :first-child {
+  border-radius: 0;
 }
 
 .shop-home__scroll-row--categories {
@@ -369,7 +369,7 @@
 .shop-home__artist-image {
   position: relative;
   aspect-ratio: 288 / 295;
-  border-radius: 2px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -403,7 +403,7 @@
   flex-direction: column;
   min-height: 24rem;
   margin: 0 0 6.25rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--color-surface);
 }
@@ -432,9 +432,10 @@
 
 .shop-home__signup-button {
   align-self: flex-start;
-  padding: 0.75rem 1.25rem;
+  min-height: var(--shop-button-commerce-height);
+  padding: var(--shop-space-3) var(--shop-space-6);
   border: 0;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-control);
   background: var(--color-brand-light-cream);
   color: var(--color-brand-obsidian);
   font-family: var(--font-body);
@@ -442,6 +443,16 @@
   font-weight: 600;
   line-height: 1.5rem;
   text-decoration: none;
+}
+
+.shop-home__hero-cta:hover,
+.shop-home__signup-button:hover {
+  background: color-mix(in srgb, var(--color-brand-light-cream) 85%, var(--color-brand-obsidian));
+}
+
+.shop-home__hero-cta:active,
+.shop-home__signup-button:active {
+  background: color-mix(in srgb, var(--color-brand-light-cream) 72%, var(--color-brand-obsidian));
 }
 
 .shop-home__signup-media {

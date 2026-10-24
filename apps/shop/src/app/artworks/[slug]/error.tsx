@@ -1,6 +1,7 @@
 "use client";
 
 import { ArtworkDetailState } from "@/components/artwork/artwork-detail-state";
+import { shopButtonClassName } from "@/components/shop-commerce-button";
 import { Button } from "@auction/ui/components/button";
 
 export default function ArtworkDetailError({ reset }: { reset: () => void }) {
@@ -11,7 +12,7 @@ export default function ArtworkDetailError({ reset }: { reset: () => void }) {
       description="We could not load this work. The catalogue may be temporarily unavailable."
       motif="alert"
     >
-      <Button type="button" className="min-h-11" onClick={reset}>
+      <Button type="button" className={shopButtonClassName("default", "standard")} onClick={reset}>
         Try again
       </Button>
     </ArtworkDetailState>

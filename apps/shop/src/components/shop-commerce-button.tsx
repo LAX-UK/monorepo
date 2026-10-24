@@ -3,20 +3,47 @@ import { Button, type ButtonProps } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ComponentProps } from "react";
 
+/**
+ * Shop button scale:
+ * - `commerce`: buy, checkout and pay (48px, 16px label).
+ * - `standard`: every other action (40px, 14px label).
+ */
+export type ShopButtonScale = "commerce" | "standard";
+
+export function shopButtonClassName(
+  variant: ButtonProps["variant"],
+  scale: ShopButtonScale,
+  className?: string,
+): string {
+  return cn(
+    "shop-button shop-focus-ring",
+    scale === "commerce" ? "shop-button--commerce" : "shop-button--standard",
+    variant === "cta" && "shop-button--primary",
+    variant === "outline" && "shop-button--secondary",
+    className,
+  );
+}
+
 type ShopCommerceButtonProps = ButtonProps & {
   href?: string;
+  scale?: ShopButtonScale;
 };
 
-/** Primary commerce actions — 44px tap target, shared focus ring. */
+/** Shop action button. Solid (`cta`) defaults to the commerce scale, other variants to standard. */
 export function ShopCommerceButton({
   href,
   variant = "cta",
   size = "md",
+  scale,
   className,
   children,
   ...props
 }: ShopCommerceButtonProps) {
-  const classes = cn("shop-focus-ring", className);
+  const classes = shopButtonClassName(
+    variant,
+    scale ?? (variant === "cta" ? "commerce" : "standard"),
+    className,
+  );
   if (href) {
     return (
       <Button asChild variant={variant} size={size} className={classes}>
@@ -38,7 +65,12 @@ export function ShopCommerceOutlineLink({
   ...props
 }: ComponentProps<typeof Link>) {
   return (
-    <Button asChild variant="outline" size="md" className={cn("shop-focus-ring", className)}>
+    <Button
+      asChild
+      variant="outline"
+      size="md"
+      className={shopButtonClassName("outline", "standard", className)}
+    >
       <Link href={href} {...props}>
         {children}
       </Link>

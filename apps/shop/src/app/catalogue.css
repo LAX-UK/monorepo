@@ -68,9 +68,7 @@
 .shop-detail__media-note {
   margin-top: 2rem;
   color: var(--color-on-surface-variant);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-size: var(--shop-text-sm);
 }
 
 .shop-detail__content {
@@ -106,10 +104,8 @@
 
 .shop-detail__eyebrow {
   color: var(--color-on-surface-variant);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
 }
 
 .shop-detail__artist {
@@ -126,9 +122,8 @@
 
 .shop-detail__section h2 {
   margin: 0 0 0.75rem;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
 }
 
 .shop-detail__availability-heading {
@@ -228,15 +223,14 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1.25rem;
-  border: 1px solid var(--color-outline);
-  border-radius: 0.25rem;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--color-on-surface);
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.5;
-  letter-spacing: 0.02em;
   text-decoration: none;
   cursor: pointer;
 }
@@ -262,13 +256,15 @@
 
 .shop-detail__cta {
   display: inline-flex;
-  min-height: 2.75rem;
+  min-height: var(--shop-button-commerce-height);
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1rem;
-  border-radius: 0.375rem;
+  padding: var(--shop-space-3) var(--shop-space-6);
+  border-radius: var(--radius-control);
   background: var(--color-primary);
   color: var(--color-on-primary);
+  font-family: var(--font-body);
+  font-size: var(--shop-button-commerce-text);
   font-weight: 600;
   text-decoration: none;
 }
@@ -288,8 +284,6 @@
 
 .shop-catalogue h2 {
   font-size: 1.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
   margin-bottom: 1.5rem;
 }
 
@@ -315,7 +309,7 @@
 
 .shop-catalogue__card {
   border: 0;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   padding: 0;
   background: var(--color-surface);
 }
@@ -330,8 +324,10 @@
 }
 
 .shop-catalogue__title {
-  font-size: 1.125rem;
-  margin: 0 0 0.35rem;
+  font-family: var(--font-body);
+  font-size: var(--shop-text-lg);
+  font-weight: 500;
+  margin: 0 0 var(--shop-space-1);
   width: 100%;
 }
 
@@ -383,5 +379,5 @@
   background: var(--color-error-container);
   color: var(--color-on-error-container);
   padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-card);
 }
