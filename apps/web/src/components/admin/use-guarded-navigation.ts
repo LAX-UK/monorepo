@@ -1,34 +1,31 @@
 "use client";
 
-import { confirmGuardedNavigation } from "@/components/admin/dirty-navigation-registry";
+import { confirmDiscardChanges } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 /**
- * Wraps `next/navigation` `router.push` / `router.replace` so they consult
- * the dirty-form registry before navigating. Use this from form Cancel
- * buttons instead of calling `router.push` directly so a `FormDirtyGuard`
- * higher in the tree gets a chance to ask the user.
+ * `router.push` and `router.replace` that ask first when a form on the page has unsaved
+ * changes. Use from Cancel buttons instead of the router directly, so a `FormDirtyGuard`
+ * higher in the tree gets a chance to ask.
  */
 export function useGuardedNavigation() {
   const router = useRouter();
 
   const guardedPush = useCallback(
     (href: string) => {
-      void (async () => {
-        if (!(await confirmGuardedNavigation())) return;
-        router.push(href);
-      })();
+      void confirmDiscardChanges().then((discard) => {
+        if (discard) router.push(href);
+      });
     },
     [router],
   );
 
   const guardedReplace = useCallback(
     (href: string) => {
-      void (async () => {
-        if (!(await confirmGuardedNavigation())) return;
-        router.replace(href);
-      })();
+      void confirmDiscardChanges().then((discard) => {
+        if (discard) router.replace(href);
+      });
     },
     [router],
   );

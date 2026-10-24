@@ -6,9 +6,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
-import type * as React from "react";
+import * as React from "react";
+import { Field } from "../forms/field.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
+import { TextArea, TextInput } from "../primitives/input.js";
 
 export type StaffDialogProps = {
   open: boolean;
@@ -18,6 +20,8 @@ export type StaffDialogProps = {
   children?: React.ReactNode;
   footer?: React.ReactNode;
   size?: "sm" | "md";
+  /** Where focus lands when the dialog opens; by default the first focusable element. */
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
 };
 
 /** A focused task or confirmation over the page: 440px (560px for `md`), radius lg, shadow lg. */
@@ -29,6 +33,7 @@ export function StaffDialog({
   children,
   footer,
   size = "sm",
+  initialFocusRef,
 }: StaffDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -36,6 +41,15 @@ export function StaffDialog({
         {...STAFF_LAYER}
         overlayClassName="bg-staff-scrim"
         closeClassName="hidden"
+        {...(initialFocusRef
+          ? {
+              onOpenAutoFocus: (event: Event) => {
+                if (!initialFocusRef.current) return;
+                event.preventDefault();
+                initialFocusRef.current.focus();
+              },
+            }
+          : {})}
         className={cn(
           "w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-staff-lg border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-lg sm:rounded-staff-lg",
           size === "md" ? "max-w-[560px]" : "max-w-[440px]",
@@ -64,9 +78,46 @@ export function StaffDialog({
   );
 }
 
+/** A required, audited reason for a consequential action ("Why are you banning this bidder?"). */
+export type ConfirmReason = {
+  label: string;
+  /** Guidance under the label, e.g. who will read it. */
+  description?: React.ReactNode;
+  /** Fewest characters accepted; at least 1. */
+  minLength?: number;
+  maxLength?: number;
+  placeholder?: string;
+};
+
+export type ConfirmActionDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** A question naming the action and the record: "Refund £20.00 to Ada Lovelace?" */
+  title: string;
+  /** What will happen, plainly, including what cannot be undone. */
+  description: React.ReactNode;
+  /** Repeats the verb and amount: "Refund £20.00". Never "OK" or "Yes". */
+  confirmLabel: string;
+  cancelLabel?: string;
+  tone?: "default" | "danger";
+  loading?: boolean;
+  /** Called with the reason, when one is asked for. */
+  onConfirm: (details: { reason: string }) => void;
+  /** Asks for a reason, kept in the audit log; confirming checks it is long enough. */
+  reason?: ConfirmReason;
+  /**
+   * For rare, catastrophic actions only: the person types this text (the record's name or
+   * reference) and the confirm button stays disabled until it matches exactly.
+   */
+  typedConfirmation?: string;
+  children?: React.ReactNode;
+};
+
 /**
  * Confirms a consequential action. Says exactly what will happen; the confirm button repeats the
- * verb and amount ("Refund £20.00"), and danger actions are red.
+ * verb and amount ("Refund £20.00"), and danger actions are red. Focus starts on Cancel (or on
+ * the first field to fill), so Enter never confirms by accident. Friction scales with damage: add
+ * a `reason` for actions that are audited, and `typedConfirmation` for the catastrophic few.
  */
 export function ConfirmActionDialog({
   open,
@@ -74,43 +125,133 @@ export function ConfirmActionDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancel",
   tone = "default",
   loading = false,
   onConfirm,
+  reason,
+  typedConfirmation,
   children,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description: React.ReactNode;
-  confirmLabel: string;
-  tone?: "default" | "danger";
-  loading?: boolean;
-  onConfirm: () => void;
-  children?: React.ReactNode;
-}) {
+}: ConfirmActionDialogProps) {
+  const cancelRef = React.useRef<HTMLButtonElement>(null);
+  const reasonRef = React.useRef<HTMLTextAreaElement>(null);
+  const typedRef = React.useRef<HTMLInputElement>(null);
+  const [reasonText, setReasonText] = React.useState("");
+  const [reasonError, setReasonError] = React.useState<string | null>(null);
+  const [typed, setTyped] = React.useState("");
+  const minLength = Math.max(1, reason?.minLength ?? 1);
+
+  React.useEffect(() => {
+    if (open) return;
+    setReasonText("");
+    setReasonError(null);
+    setTyped("");
+  }, [open]);
+
+  const typedMatches = typedConfirmation === undefined || typed === typedConfirmation;
+  const initialFocusRef = reason
+    ? reasonRef
+    : typedConfirmation !== undefined
+      ? typedRef
+      : cancelRef;
+
+  const confirm = () => {
+    const trimmed = reasonText.trim();
+    if (reason && trimmed.length < minLength) {
+      setReasonError(
+        minLength > 1
+          ? `Enter a reason of at least ${minLength} characters.`
+          : `Enter ${reason.label.toLowerCase()}.`,
+      );
+      reasonRef.current?.focus();
+      return;
+    }
+    if (!typedMatches) return;
+    onConfirm({ reason: trimmed });
+  };
+
   return (
     <StaffDialog
       open={open}
       onOpenChange={onOpenChange}
       title={title}
       description={description}
+      initialFocusRef={initialFocusRef}
       footer={
         <>
-          <StaffButton variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
+          <StaffButton
+            ref={cancelRef}
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            {cancelLabel}
           </StaffButton>
           <StaffButton
             variant={tone === "danger" ? "danger" : "primary"}
             loading={loading}
-            onClick={onConfirm}
+            disabled={!typedMatches}
+            onClick={confirm}
           >
             {confirmLabel}
           </StaffButton>
         </>
       }
     >
-      {children}
+      {children || reason || typedConfirmation !== undefined ? (
+        <div className="flex flex-col gap-4">
+          {children}
+          {reason ? (
+            <Field
+              label={reason.label}
+              description={reason.description}
+              error={reasonError}
+              disabled={loading}
+            >
+              <TextArea
+                ref={reasonRef}
+                value={reasonText}
+                maxLength={reason.maxLength ?? 500}
+                placeholder={reason.placeholder}
+                onChange={(event) => {
+                  setReasonText(event.target.value);
+                  if (reasonError && event.target.value.trim().length >= minLength) {
+                    setReasonError(null);
+                  }
+                }}
+              />
+            </Field>
+          ) : null}
+          {typedConfirmation !== undefined ? (
+            <Field
+              label={
+                <span>
+                  Type{" "}
+                  <span className="rounded-staff-xs bg-staff-sunken px-1 font-mono text-staff-fg">
+                    {typedConfirmation}
+                  </span>{" "}
+                  to confirm
+                </span>
+              }
+              disabled={loading}
+            >
+              <TextInput
+                ref={typedRef}
+                value={typed}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setTyped(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && typed === typedConfirmation) {
+                    event.preventDefault();
+                    confirm();
+                  }
+                }}
+              />
+            </Field>
+          ) : null}
+        </div>
+      ) : null}
     </StaffDialog>
   );
 }

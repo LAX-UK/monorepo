@@ -1917,6 +1917,9 @@ importers:
 
   packages/staff-ui:
     dependencies:
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../identity-contracts
       '@auction/ui':
         specifier: workspace:*
         version: link:../ui

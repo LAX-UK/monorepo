@@ -122,7 +122,7 @@ export function EntityPicker({
             staffFieldBox,
             "staff-focus staff-target h-control-md justify-between text-left text-staff-md",
             "aria-invalid:border-staff-danger disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled",
-            "data-[state=open]:border-staff-line-hover",
+            "data-[state=open]:border-staff-control-border-hover",
             className,
           )}
         >

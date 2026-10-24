@@ -428,6 +428,7 @@ export function StaffDirectory({
       mobile: "meta",
       sortable: true,
       sortValue: (row) => row.lastActiveAt ?? "",
+      defaultSortDirection: "desc",
       cell: (row) => (
         <span
           className="text-staff-muted"
@@ -468,6 +469,7 @@ export function StaffDirectory({
         columns={columns}
         data={rows}
         getRowId={(row) => row.staffMemberId}
+        defaultSort={{ columnId: "name", direction: "asc" }}
         onRowOpen={(row) => setOpenId(row.staffMemberId)}
         activeRowId={openId}
         toolbar={

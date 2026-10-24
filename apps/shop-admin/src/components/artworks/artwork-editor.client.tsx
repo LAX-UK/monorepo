@@ -8,7 +8,6 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
-import { useUnsavedNavigationGuard } from "@/components/use-unsaved-changes-guard";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   type ArtworkFormField,
@@ -75,14 +74,16 @@ import {
   StatGrid,
   TextArea,
   TextInput,
+  UnsavedChangesDialog,
   formatStaffDateTime,
   parsePoundsToPence,
   toast,
+  useUnsavedChanges,
 } from "@auction/staff-ui";
 import { Archive, ArchiveRestore, Eye, EyeOff, Save } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 export type ArtworkEditorPermissions = {
   /** `catalogue.write`: edit, publish, unpublish, archive. */
@@ -150,7 +151,6 @@ export function ArtworkEditor({
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [confirming, setConfirming] = useState<AdminArtworkVisibilityAction | null>(null);
   const [changingVisibility, setChangingVisibility] = useState(false);
-  const summaryRef = useRef<HTMLDivElement>(null);
 
   const live = record?.state === "live" || record?.state === "sold_out";
   const context = {
@@ -164,16 +164,14 @@ export function ArtworkEditor({
   /** Finance: the edition price is the only thing they may change. */
   const priceOnly = readOnly && permissions.setPrice && mode === "edit";
   const canSave = permissions.write || priceOnly;
-  const guard = useUnsavedNavigationGuard(dirty && canSave);
+  const guard = useUnsavedChanges(dirty && canSave, {
+    navigate: (href) => router.push(href),
+    ...(record?.title ? { label: `“${record.title}”` } : {}),
+  });
   const attempted = failedSubmits > 0;
   const clientErrors = attempted ? validateArtworkForm(values, context) : {};
   const errors = { ...serverErrors, ...clientErrors };
   const summary = artworkErrorSummary(errors);
-
-  // Move focus to the summary once per failed submit, not on every keystroke after it.
-  useEffect(() => {
-    if (failedSubmits > 0) summaryRef.current?.focus();
-  }, [failedSubmits]);
 
   function update(patch: Partial<ArtworkFormValues>) {
     setValues((current) => ({ ...current, ...patch }));
@@ -404,11 +402,7 @@ export function ArtworkEditor({
           void submit();
         }}
       >
-        {summary.length > 0 && attempted ? (
-          <div ref={summaryRef} tabIndex={-1} className="outline-none">
-            <FormErrorSummary errors={summary} />
-          </div>
-        ) : null}
+        <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
 
         {readOnly && record ? (
           <ReadOnlyDetails values={values} record={record} />
@@ -771,17 +765,7 @@ export function ArtworkEditor({
         loading={changingVisibility}
         onConfirm={() => confirming && void changeVisibility(confirming)}
       />
-      <ConfirmActionDialog
-        open={guard.pending}
-        onOpenChange={(open) => {
-          if (!open) guard.stay();
-        }}
-        title="Leave without saving?"
-        description="Your changes to this artwork have not been saved and will be lost."
-        confirmLabel="Leave without saving"
-        tone="danger"
-        onConfirm={guard.leave}
-      />
+      <UnsavedChangesDialog guard={guard} />
     </div>
   );
 }

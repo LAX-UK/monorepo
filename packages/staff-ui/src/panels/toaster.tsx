@@ -1,10 +1,12 @@
 "use client";
 
 import { Toaster } from "@auction/ui/components/sonner";
+import { STAFF_TOAST_DURATION_MS } from "./feedback.js";
 
 /**
  * Feedback after an action, bottom right on desktop, above the thumb on a phone. Sentence-case
  * title, one optional line, raised surface; success and failure carry an icon, not a colour fill.
+ * Toasts stay 5s (10s with Undo, see `toastUndo`) and pause while hovered.
  */
 export function StaffToaster() {
   return (
@@ -12,7 +14,7 @@ export function StaffToaster() {
       position="bottom-right"
       richColors={false}
       closeButton
-      duration={5000}
+      duration={STAFF_TOAST_DURATION_MS}
       offset={24}
       toastOptions={{
         classNames: {

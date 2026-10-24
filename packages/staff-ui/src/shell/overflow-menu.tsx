@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Ellipsis } from "lucide-react";
 import * as React from "react";
+import { useTableSelectionActive } from "../data/bulk-action-bar.js";
 import { StaffButton } from "../primitives/button.js";
 import {
   StaffMenu,
@@ -21,11 +22,16 @@ export type OverflowAction = {
   onSelect?: () => void;
   tone?: "default" | "danger";
   disabled?: boolean;
+  /** Disables the action and says why: "Refunds open once payment settles". */
+  disabledReason?: string;
+  /** Its keyboard shortcut, shown right-aligned: "e". */
+  shortcut?: string;
 };
 
 /**
  * "More actions" for a page, a row or a panel: secondary and destructive actions out of the way
- * of the primary one. Destructive actions are listed last, after a separator.
+ * of the primary one. Destructive actions are listed last, after a separator. Inside a table
+ * with rows selected, a row's menu steps aside so only the bulk actions are on offer.
  */
 export function OverflowMenu({
   actions,
@@ -38,6 +44,7 @@ export function OverflowMenu({
   Link?: StaffLinkComponent;
   size?: "icon-xs" | "icon-sm" | "icon-md";
 }) {
+  const selectionActive = useTableSelectionActive();
   if (actions.length === 0) return null;
   const regular = actions.filter((action) => action.tone !== "danger");
   const danger = actions.filter((action) => action.tone === "danger");
@@ -51,7 +58,11 @@ export function OverflowMenu({
     );
     if (action.href && Link) {
       return (
-        <StaffMenuItem key={action.id} asChild disabled={action.disabled ?? false}>
+        <StaffMenuItem
+          key={action.id}
+          asChild
+          disabled={Boolean(action.disabled || action.disabledReason)}
+        >
           <Link href={action.href}>{content}</Link>
         </StaffMenuItem>
       );
@@ -61,20 +72,31 @@ export function OverflowMenu({
         key={action.id}
         tone={action.tone ?? "default"}
         disabled={action.disabled ?? false}
+        {...(action.disabledReason ? { disabledReason: action.disabledReason } : {})}
+        {...(action.shortcut ? { shortcut: action.shortcut } : {})}
         {...(action.onSelect ? { onSelect: action.onSelect } : {})}
       >
         {content}
       </StaffMenuItem>
     );
   };
+  const variant = size === "icon-md" ? "secondary" : "ghost";
+  if (selectionActive) {
+    return (
+      <StaffButton
+        variant={variant}
+        size={size}
+        aria-label={label}
+        disabledReason="Clear the selection to use this row's actions"
+      >
+        <Ellipsis aria-hidden />
+      </StaffButton>
+    );
+  }
   return (
     <StaffMenu>
       <StaffMenuTrigger asChild>
-        <StaffButton
-          variant={size === "icon-md" ? "secondary" : "ghost"}
-          size={size}
-          aria-label={label}
-        >
+        <StaffButton variant={variant} size={size} aria-label={label}>
           <Ellipsis aria-hidden />
         </StaffButton>
       </StaffMenuTrigger>

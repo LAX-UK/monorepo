@@ -14,7 +14,6 @@ import {
 import { EditorialStatusBadge } from "@/components/editorial/editorial-status-badge";
 import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormScopeProvider } from "@/components/forms/form-field";
-import { useUnsavedNavigationGuard } from "@/components/use-unsaved-changes-guard";
 import { type EditorialBlockItem, fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
 import type { EditorialPublicationStatus, PayloadResult } from "@/lib/editorial-entity-forms";
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
@@ -23,6 +22,7 @@ import { formatLondonTime } from "@/lib/editorial-time";
 import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
 import type { EditorialBlock } from "@auction/shop-contracts";
+import { UnsavedChangesDialog, useUnsavedChanges } from "@auction/staff-ui";
 import {
   Alert,
   AlertDescription,
@@ -133,12 +133,10 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [preview, setPreview] = useState<EditorialPreview | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
-  const {
-    pending: leavePending,
-    stay,
-    leave,
-    release: releaseGuard,
-  } = useUnsavedNavigationGuard(dirty || linksDirty);
+  const leaveGuard = useUnsavedChanges(dirty || linksDirty, {
+    navigate: (href) => router.push(href),
+  });
+  const releaseGuard = leaveGuard.release;
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -438,17 +436,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           if (current) await save(current);
         }}
       />
-      <ConfirmDialog
-        open={leavePending}
-        onOpenChange={(open) => {
-          if (!open) stay();
-        }}
-        title="Leave without saving?"
-        body={`Your changes to this ${entity.singular} have not been saved and will be lost.`}
-        confirmLabel="Leave without saving"
-        cancelLabel="Keep editing"
-        onConfirm={leave}
-      />
+      <UnsavedChangesDialog guard={leaveGuard} />
     </FormScopeProvider>
   );
 }

@@ -71,7 +71,8 @@ export function RefundDialog({
   const [reason, setReason] = useState<AdminRefundReason | null>(null);
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<Errors>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [submits, setSubmits] = useState(0);
+  const submitted = submits > 0;
 
   const lineId = target || null;
   const remaining = refundableRemainingPence(detail, lineId);
@@ -86,11 +87,11 @@ export function RefundDialog({
     setReason(null);
     setNote("");
     setErrors({});
-    setSubmitted(false);
+    setSubmits(0);
   };
 
   const submit = async () => {
-    setSubmitted(true);
+    setSubmits((count) => count + 1);
     const next = validateRefund({
       amountPence,
       amountText: amountTyped,
@@ -158,7 +159,10 @@ export function RefundDialog({
           void submit();
         }}
       >
-        <FormErrorSummary errors={summaryErrors.length > 1 ? summaryErrors : []} />
+        <FormErrorSummary
+          errors={summaryErrors.length > 1 ? summaryErrors : []}
+          focusKey={submits}
+        />
         {mutation.message ? (
           <p
             role="alert"

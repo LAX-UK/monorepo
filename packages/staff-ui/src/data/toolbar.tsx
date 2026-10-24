@@ -18,6 +18,7 @@ import {
 } from "../primitives/menu.js";
 import { Count, SegmentedControl } from "../primitives/tabs.js";
 import type { StaffLinkComponent } from "../shell/link.js";
+import { useStaffShortcut } from "../shell/shortcuts.js";
 import {
   type SavedView,
   type SavedViewsControls,
@@ -61,7 +62,7 @@ export function DataTableToolbar({
 
 /**
  * Search within the list. Submits on Enter (and after a pause when `live`), so a server-filtered
- * list does not refetch on every key. Escape clears.
+ * list does not refetch on every key. Escape clears; `/` from anywhere on the page focuses it.
  */
 export function TableSearch({
   value,
@@ -77,7 +78,18 @@ export function TableSearch({
   live?: boolean;
 }) {
   const [text, setText] = React.useState(value);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => setText(value), [value]);
+  useStaffShortcut({
+    id: "staff:focus-list-search",
+    keys: "/",
+    label: "Search this list",
+    group: "Lists",
+    handler: () => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    },
+  });
   React.useEffect(() => {
     if (!live || text === value) return;
     const timer = window.setTimeout(() => onSearch(text.trim()), 300);
@@ -93,9 +105,11 @@ export function TableSearch({
       }}
     >
       <TextInput
+        ref={inputRef}
         size="sm"
         type="search"
         aria-label={label}
+        aria-keyshortcuts="/"
         placeholder={placeholder}
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -212,7 +226,8 @@ export function ActiveFilterChips({
               size="icon-xs"
               aria-label={`Remove filter: ${filter.label}`}
               onClick={filter.onRemove}
-              className="size-5 [&_svg]:size-3"
+              // 20px to look at, 24px to hit: the pseudo-element widens the target.
+              className="relative size-5 after:absolute after:-inset-0.5 [&_svg]:size-3"
             >
               <X aria-hidden />
             </StaffButton>

@@ -58,39 +58,86 @@ export function FormActions({
   );
 }
 
-/**
- * Summary of what to fix after a failed submit, linking to each field. Shown above the form and
- * focused, so keyboard and screen reader users land on it.
- */
-export function FormErrorSummary({
-  errors,
-  title = "Check the highlighted fields",
-}: {
+/** Moves focus to a field and scrolls its label into view, so the question shows with it. */
+function focusField(fieldId: string) {
+  const field = document.getElementById(fieldId);
+  if (!field) return false;
+  const label = [...document.querySelectorAll("label")].find((item) => item.htmlFor === fieldId);
+  field.focus({ preventScroll: true });
+  (label ?? field).scrollIntoView?.({ block: "start" });
+  return document.activeElement === field;
+}
+
+export type FormErrorSummaryProps = {
   errors: ReadonlyArray<{ fieldId: string; message: string }>;
   title?: string;
-}) {
-  if (errors.length === 0) return null;
-  return (
-    <div
-      role="alert"
-      className="flex gap-2.5 rounded-staff-md border border-staff-danger/30 bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
-    >
-      <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <div>
-        <p className="font-medium">{title}</p>
-        <ul className="mt-1 list-disc pl-4">
-          {errors.map((error) => (
-            <li key={error.fieldId}>
-              <a href={`#${error.fieldId}`} className="underline underline-offset-2">
-                {error.message}
-              </a>
-            </li>
-          ))}
-        </ul>
+  /**
+   * Changes once per failed submit (e.g. a submit counter). Without it, focus moves to the
+   * summary whenever it appears. With it, focus moves only when the key changes, so errors that
+   * come and go while the person fixes fields never pull focus away. Keep the summary mounted
+   * (it renders nothing without errors) so it remembers the last key.
+   */
+  focusKey?: string | number;
+};
+
+/**
+ * What to fix after a failed submit, at the top of the form. It takes focus when it appears (and
+ * on each failed submit, with `focusKey`), so keyboard and screen reader users land on it; each
+ * error links to its field and moves focus there. Messages match the inline errors exactly.
+ */
+export const FormErrorSummary = React.forwardRef<HTMLDivElement, FormErrorSummaryProps>(
+  function FormErrorSummary({ errors, title = "There is a problem", focusKey }, forwardedRef) {
+    const ref = React.useRef<HTMLDivElement | null>(null);
+    const focusedFor = React.useRef<unknown>(Symbol("never focused"));
+    const titleId = React.useId();
+    const visible = errors.length > 0;
+
+    React.useImperativeHandle(forwardedRef, () => ref.current as HTMLDivElement);
+
+    React.useEffect(() => {
+      if (!visible) return;
+      // Without a key, focus follows the summary appearing; with one, it follows each submit.
+      if (focusKey !== undefined) {
+        if (focusedFor.current === focusKey) return;
+        focusedFor.current = focusKey;
+      }
+      ref.current?.focus();
+    }, [visible, focusKey]);
+
+    if (!visible) return null;
+    return (
+      <div
+        ref={ref}
+        role="alert"
+        tabIndex={-1}
+        aria-labelledby={titleId}
+        className="staff-focus flex gap-2.5 rounded-staff-md border border-staff-danger/30 bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
+      >
+        <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+        <div>
+          <p id={titleId} className="font-semibold">
+            {title}
+          </p>
+          <ul className="mt-1 list-disc pl-4">
+            {errors.map((error) => (
+              <li key={error.fieldId}>
+                <a
+                  href={`#${error.fieldId}`}
+                  onClick={(event) => {
+                    if (focusField(error.fieldId)) event.preventDefault();
+                  }}
+                  className="staff-focus rounded-staff-xs font-medium underline underline-offset-2 hover:decoration-2"
+                >
+                  {error.message}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  },
+);
 
 /**
  * Irreversible or account-level actions, kept apart at the foot of a record page: a red-ruled

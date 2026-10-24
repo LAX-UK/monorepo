@@ -3,11 +3,20 @@ export * from "./tokens.js";
 export { cn, STAFF_LAYER } from "./lib/cn.js";
 export { formatGbp, formatPenceAsPounds, parsePoundsToPence } from "./lib/money.js";
 export type { ParsedPence } from "./lib/money.js";
+export {
+  STAFF_TIME_ZONE,
+  formatStaffDate,
+  formatStaffDateTime,
+  formatStaffMoney,
+  formatStaffRelative,
+  formatStaffTime,
+  londonZoneLabel,
+} from "./lib/format.js";
 
 // Primitives
 export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
-export { Kbd, TextArea, TextInput, staffFieldBox } from "./primitives/input.js";
+export { Kbd, ShortcutKeys, TextArea, TextInput, staffFieldBox } from "./primitives/input.js";
 export type { TextAreaProps, TextInputProps } from "./primitives/input.js";
 export {
   ChoiceRow,
@@ -42,7 +51,14 @@ export { Notice } from "./display/notice.js";
 export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";
-export { Timeline, formatStaffDateTime } from "./display/timeline.js";
+export { Timeline } from "./display/timeline.js";
+export { RelativeTime } from "./display/relative-time.js";
+export {
+  STAFF_TRUNCATION_TOOLTIP_DELAY_MS,
+  TruncatedText,
+} from "./display/truncated-text.js";
+export { AttentionList } from "./display/attention-list.js";
+export type { AttentionItem } from "./display/attention-list.js";
 export type { TimelineEvent } from "./display/timeline.js";
 export {
   EmptyState,
@@ -56,6 +72,31 @@ export {
 export { Field, useStaffField } from "./forms/field.js";
 export type { FieldProps } from "./forms/field.js";
 export { MoneyInput } from "./forms/money-input.js";
+export {
+  DateInput,
+  DateTimeInput,
+  formatStaffDay,
+  isoToLondonWallTime,
+  londonClockChange,
+  londonWallTimeToIso,
+  parseStaffDay,
+  parseStaffTime,
+} from "./forms/date-input.js";
+export type { DateInputProps, DateTimeInputProps, ParsedDay } from "./forms/date-input.js";
+export {
+  UnsavedChangesDialog,
+  UnsavedChangesGuard,
+  confirmDiscardChanges,
+  discardPrompt,
+  hasUnsavedChanges,
+  useBeforeUnloadGuard,
+  useUnsavedChanges,
+} from "./forms/unsaved-changes.js";
+export type {
+  DiscardPrompt,
+  UnsavedChangesOptions,
+  UnsavedChangesState,
+} from "./forms/unsaved-changes.js";
 export { FileDropzone } from "./forms/file-dropzone.js";
 export type { FileDropzoneProps } from "./forms/file-dropzone.js";
 export type { MoneyInputProps } from "./forms/money-input.js";
@@ -71,11 +112,12 @@ export {
   FormErrorSummary,
   FormSection,
 } from "./forms/form-section.js";
+export type { FormErrorSummaryProps } from "./forms/form-section.js";
 
 // Data
 export { DataTable } from "./data/data-table.js";
 export type { DataTableProps } from "./data/data-table.js";
-export { BulkActionBar } from "./data/bulk-action-bar.js";
+export { BulkActionBar, useTableSelectionActive } from "./data/bulk-action-bar.js";
 export {
   DEFAULT_DATE_PRESETS,
   DateRangeFilter,
@@ -106,14 +148,40 @@ export type {
 } from "./data/saved-views.js";
 export { VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./data/views-menu.js";
 export type { TeamView } from "./data/views-menu.js";
-export type { DataColumn, SortDirection, SortState, TableDensity } from "./data/types.js";
+export type {
+  BulkSelectionScope,
+  CellTruncation,
+  DataColumn,
+  SelectAllMatching,
+  SortDirection,
+  SortState,
+  TableDensity,
+} from "./data/types.js";
 
 // Panels
 export { DetailPanel, PanelSection } from "./panels/detail-panel.js";
 export type { DetailPanelProps } from "./panels/detail-panel.js";
 export { ConfirmActionDialog, StaffDialog } from "./panels/staff-dialog.js";
-export type { StaffDialogProps } from "./panels/staff-dialog.js";
+export type {
+  ConfirmActionDialogProps,
+  ConfirmReason,
+  StaffDialogProps,
+} from "./panels/staff-dialog.js";
 export { StaffToaster } from "./panels/toaster.js";
+export {
+  STAFF_TOAST_DURATION_MS,
+  STAFF_UNDO_TOAST_DURATION_MS,
+  toastUndo,
+  useOptimisticState,
+} from "./panels/feedback.js";
+export type { OptimisticOptions, OptimisticResult } from "./panels/feedback.js";
+export {
+  STAFF_STEP_UP_REASON,
+  StepUpDialog,
+  StepUpNotice,
+  isStaffStepUpRequired,
+  useStaffStepUp,
+} from "./panels/step-up.js";
 /** Toasts for the StaffToaster: `toast.success("Refund requested")`. */
 export { toast } from "sonner";
 
@@ -126,6 +194,17 @@ export { STAFF_PRODUCT_IDS, buildStaffProducts } from "./shell/staff-products.js
 export type { StaffProductId } from "./shell/staff-products.js";
 export { CommandPalette, useCommandPaletteShortcut } from "./shell/command-palette.js";
 export { StaffBreadcrumbs } from "./shell/breadcrumbs.js";
+export { RecordPager, recordPosition } from "./shell/record-pager.js";
+export type { RecordPosition } from "./shell/record-pager.js";
+export {
+  STAFF_SHORTCUTS_STORAGE_KEY,
+  ShortcutsDialog,
+  StaffShortcutsProvider,
+  isTypingTarget,
+  useStaffShortcut,
+  useStaffShortcuts,
+} from "./shell/shortcuts.js";
+export type { StaffShortcut } from "./shell/shortcuts.js";
 export { MetaItem, PageHeader, STAFF_PAGE_TITLE_CLASS } from "./shell/page-header.js";
 export type { PageHeaderProps } from "./shell/page-header.js";
 export { OverflowMenu } from "./shell/overflow-menu.js";

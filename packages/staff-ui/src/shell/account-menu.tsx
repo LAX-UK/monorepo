@@ -4,17 +4,19 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@auction/ui/components/dropdown-menu";
-import { LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { Keyboard, LogOut, Monitor, Moon, Sun } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 import {
   StaffMenu,
+  StaffMenuCheckboxItem,
   StaffMenuContent,
   StaffMenuItem,
   StaffMenuLabel,
   StaffMenuSeparator,
   StaffMenuTrigger,
 } from "../primitives/menu.js";
+import { useStaffShortcuts } from "./shortcuts.js";
 import type { StaffTheme, StaffUser } from "./types.js";
 
 export function initialsOf(name: string): string {
@@ -31,8 +33,8 @@ const THEMES: ReadonlyArray<{ value: StaffTheme; label: string; icon: React.Reac
 ];
 
 /**
- * Who is signed in, their role, the theme and sign out. Further links (LAX Account, help) come
- * from the app as `children`.
+ * Who is signed in, their role, the theme, keyboard shortcuts and sign out. Further links (LAX
+ * Account, help) come from the app as `children`.
  */
 export function AccountMenu({
   user,
@@ -50,6 +52,7 @@ export function AccountMenu({
   signOutHref?: string;
   children?: React.ReactNode;
 }) {
+  const shortcuts = useStaffShortcuts();
   return (
     <StaffMenu>
       <StaffMenuTrigger
@@ -107,6 +110,23 @@ export function AccountMenu({
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
+          </>
+        ) : null}
+        {shortcuts ? (
+          <>
+            <StaffMenuSeparator />
+            {shortcuts.helpAvailable ? (
+              <StaffMenuItem onSelect={shortcuts.openHelp} shortcut="?">
+                <Keyboard aria-hidden />
+                Keyboard shortcuts
+              </StaffMenuItem>
+            ) : null}
+            <StaffMenuCheckboxItem
+              checked={shortcuts.enabled}
+              onCheckedChange={(checked) => shortcuts.setEnabled(checked === true)}
+            >
+              Single-key shortcuts
+            </StaffMenuCheckboxItem>
           </>
         ) : null}
         {onSignOut || signOutHref ? (

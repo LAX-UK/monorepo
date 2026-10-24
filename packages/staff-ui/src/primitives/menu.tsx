@@ -12,6 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
 import type * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
+import { ShortcutKeys } from "./input.js";
 
 /*
  * Menus and tooltips on the shared Radix wrappers. A menu is a raised surface (radius md, shadow
@@ -50,18 +51,45 @@ const itemClass = [
 export function StaffMenuItem({
   className,
   tone = "default",
+  shortcut,
+  disabledReason,
+  disabled,
+  children,
+  asChild,
   ...props
-}: React.ComponentPropsWithoutRef<typeof DropdownMenuItem> & { tone?: "default" | "danger" }) {
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuItem> & {
+  tone?: "default" | "danger";
+  /** The item's keyboard shortcut, right-aligned: "e", "mod+c". */
+  shortcut?: string;
+  /** Disables the item and says why, on a line under its label. */
+  disabledReason?: string;
+}) {
+  const extras = !asChild && Boolean(shortcut || disabledReason);
   return (
     <DropdownMenuItem
       className={cn(
         itemClass,
+        disabledReason && "flex-wrap gap-y-0.5",
         tone === "danger" &&
           "text-staff-danger focus:bg-staff-danger-bg focus:text-staff-danger data-[highlighted]:bg-staff-danger-bg [&>svg]:text-staff-danger",
         className,
       )}
+      disabled={Boolean(disabled || disabledReason)}
+      {...(asChild ? { asChild } : {})}
       {...props}
-    />
+    >
+      {extras ? (
+        <>
+          {children}
+          {shortcut ? <ShortcutKeys keys={shortcut} className="ml-auto pl-4" /> : null}
+          {disabledReason ? (
+            <span className="basis-full pl-6 text-staff-xs text-staff-muted">{disabledReason}</span>
+          ) : null}
+        </>
+      ) : (
+        children
+      )}
+    </DropdownMenuItem>
   );
 }
 

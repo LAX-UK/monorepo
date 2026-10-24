@@ -1,10 +1,16 @@
 "use client";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@auction/ui/components/tooltip";
 import { Slot, Slottable } from "@radix-ui/react-slot";
 import { type VariantProps, cva } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
 import * as React from "react";
-import { cn } from "../lib/cn.js";
+import { STAFF_LAYER, cn } from "../lib/cn.js";
 
 /**
  * The staff button. Four variants and two heights cover every action in both admins:
@@ -27,29 +33,32 @@ export const staffButtonVariants = cva(
         primary: [
           "bg-staff-ink text-staff-on-ink",
           "hover:bg-staff-ink-hover active:opacity-90",
-          "disabled:bg-staff-line disabled:text-staff-disabled aria-disabled:bg-staff-line aria-disabled:text-staff-disabled",
+          "disabled:bg-staff-line disabled:text-staff-disabled aria-disabled:bg-staff-line aria-disabled:text-staff-disabled aria-disabled:opacity-100",
         ],
         secondary: [
           "border border-staff-line-strong bg-staff-surface text-staff-fg shadow-staff-xs",
           "hover:staff-overlay-hover active:staff-overlay-pressed",
           "disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled disabled:shadow-none",
-          "aria-disabled:border-staff-line aria-disabled:bg-staff-sunken aria-disabled:text-staff-disabled",
+          "aria-disabled:border-staff-line aria-disabled:bg-staff-sunken aria-disabled:text-staff-disabled aria-disabled:shadow-none",
+          "disabled:bg-none aria-disabled:bg-none",
           "data-[state=open]:staff-overlay-pressed",
         ],
         ghost: [
           "bg-transparent text-staff-fg",
           "hover:bg-staff-hover active:bg-staff-pressed data-[state=open]:bg-staff-pressed",
-          "disabled:text-staff-disabled aria-disabled:text-staff-disabled",
+          "disabled:bg-transparent disabled:text-staff-disabled aria-disabled:bg-transparent aria-disabled:text-staff-disabled",
         ],
         danger: [
           "bg-staff-danger-solid text-staff-on-danger",
           "hover:bg-staff-danger-solid-hover active:opacity-90",
-          "disabled:bg-staff-line disabled:text-staff-disabled aria-disabled:bg-staff-line aria-disabled:text-staff-disabled",
+          "disabled:bg-staff-line disabled:text-staff-disabled aria-disabled:bg-staff-line aria-disabled:text-staff-disabled aria-disabled:opacity-100",
         ],
         "danger-secondary": [
           "border border-staff-line-strong bg-staff-surface text-staff-danger shadow-staff-xs",
           "hover:staff-overlay-hover active:staff-overlay-pressed",
           "disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled disabled:shadow-none",
+          "aria-disabled:border-staff-line aria-disabled:bg-staff-sunken aria-disabled:text-staff-disabled aria-disabled:shadow-none",
+          "disabled:bg-none aria-disabled:bg-none",
         ],
       },
       size: {
@@ -72,6 +81,12 @@ export type StaffButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
     loading?: boolean;
     /** Leading icon element, e.g. `<Plus />`. */
     icon?: React.ReactNode;
+    /**
+     * Disables the button and says why ("Refunds open once payment settles"). The button stays
+     * focusable (`aria-disabled`, not `disabled`) and shows the reason in a tooltip on hover and
+     * focus, so keyboard and screen reader users can find out what blocks it.
+     */
+    disabledReason?: string;
   };
 
 export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>(
@@ -84,6 +99,7 @@ export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>
       loading = false,
       icon,
       disabled,
+      disabledReason,
       children,
       type,
       ...props
@@ -92,13 +108,24 @@ export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>
   ) => {
     const Comp = asChild ? Slot : "button";
     const leading = loading ? <LoaderCircle aria-hidden className="animate-spin" /> : icon;
-    return (
+    const explained = Boolean(disabledReason) && !loading;
+    const button = (
       <Comp
         ref={ref}
-        className={cn(staffButtonVariants({ variant, size }), className)}
-        {...(asChild ? {} : { type: type ?? "button", disabled })}
-        {...(asChild && disabled ? { "aria-disabled": true } : {})}
+        className={cn(
+          staffButtonVariants({ variant, size }),
+          explained && "cursor-not-allowed aria-disabled:pointer-events-auto",
+          className,
+        )}
+        {...(asChild ? {} : { type: type ?? "button", disabled: explained ? undefined : disabled })}
+        {...((asChild && disabled) || explained ? { "aria-disabled": true } : {})}
         {...props}
+        {...(explained
+          ? {
+              // Focusable but inert: the press is swallowed, the reason is shown instead.
+              onClick: (event: React.MouseEvent<HTMLButtonElement>) => event.preventDefault(),
+            }
+          : {})}
         {...(loading
           ? {
               "aria-busy": true,
@@ -111,6 +138,23 @@ export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>
         {leading}
         <Slottable>{children}</Slottable>
       </Comp>
+    );
+    if (!explained || !disabledReason) return button;
+    // Its own provider, so a button that explains itself works outside the shell too.
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent
+            {...STAFF_LAYER}
+            side="top"
+            sideOffset={6}
+            className="max-w-72 rounded-staff-xs border-0 bg-staff-ink px-2 py-1 font-staff text-staff-xs font-medium text-staff-on-ink shadow-staff-md"
+          >
+            {disabledReason}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   },
 );

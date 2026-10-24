@@ -1,8 +1,8 @@
 "use client";
 
-import { confirmWithMessage } from "@/components/admin/dirty-navigation-registry";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { confirmDiscardChanges } from "@auction/staff-ui";
 import {
   type ReactNode,
   createContext,
@@ -53,7 +53,11 @@ export function LotEditFormProvider({ activeSection, children }: ProviderProps) 
   const confirmLeaveActiveSection = useCallback(async () => {
     if (activeSection === "documents") return true;
     if (!dirtySectionsRef.current.has(activeSection)) return true;
-    return confirmWithMessage("You have unsaved changes. Switch section anyway?");
+    return confirmDiscardChanges({
+      title: "Switch section without saving?",
+      description: "Your changes to this section have not been saved and will be lost.",
+      confirmLabel: "Discard and switch",
+    });
   }, [activeSection]);
 
   const hasAnyDirty = dirtySections.size > 0;

@@ -91,6 +91,7 @@ export function ArtistList({
         numeric: true,
         sortable: true,
         sortValue: (row) => row.artworkCount ?? 0,
+        defaultSortDirection: "desc",
         mobile: "meta",
         cell: (row) =>
           row.artworkCount && row.artworkCount > 0 ? (
@@ -156,6 +157,7 @@ export function ArtistList({
         columns={columns}
         data={page.items}
         getRowId={(row) => row.artistId}
+        defaultSort={{ columnId: "name", direction: "asc" }}
         density={density}
         loading={pending}
         onRowOpen={(row) => router.push(`/artists/${row.artistId}`)}

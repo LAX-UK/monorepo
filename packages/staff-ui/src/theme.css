@@ -46,6 +46,13 @@
   --spacing-control-md: 36px;
   --spacing-control-lg: 40px;
 
+  /* Sticky layers. The top bar and a sticky table header stay over the page as it scrolls, and
+     the bulk-action bar floats over the bottom of a list; the page reserves their height so the
+     focused element is never hidden beneath them (WCAG 2.4.11). */
+  --spacing-staff-top-bar: 52px;
+  --spacing-staff-table-header: 36px;
+  --spacing-staff-bulk-bar-clearance: 72px;
+
   /* Elevation. Level 0 is flat with a hairline (page, cards, tables). xs lifts secondary buttons
      off the surface; md floats menus, popovers and the bulk-action bar; lg holds dialogs, sheets
      and the command palette. Dark mode deepens the shadow and relies on the hairline for edges. */
@@ -68,6 +75,13 @@
   --color-staff-line-subtle: light-dark(#eeeeec, #222525);
   --color-staff-line-strong: light-dark(#d0d0ce, #3d4141);
   --color-staff-line-hover: light-dark(#b3b5b4, #535757);
+  /* Form-control boundaries: inputs, selects, pickers, checkboxes, radios and the switch track
+     when off. The border is the only edge these controls have, so it keeps at least 3:1 against
+     every surface it sits on (WCAG 1.4.11): 3.35:1 on surface and 3.01:1 on sunken in light,
+     3.59:1 on surface and 3.25:1 on raised in dark. Hover darkens it further. Card and table
+     hairlines (`line*`) are decorative and stay faint. */
+  --color-staff-control-border: light-dark(#8a8d8d, #6e7272);
+  --color-staff-control-border-hover: light-dark(#6f7272, #878b8b);
   --color-staff-fg: light-dark(#181a1a, #ededeb);
   --color-staff-muted: light-dark(#5b5e5e, #a4a7a7);
   --color-staff-subtle: light-dark(#666969, #8c8f8f);
@@ -76,8 +90,9 @@
   --color-staff-ink-hover: light-dark(#323535, #ffffff);
   --color-staff-on-ink: light-dark(#ffffff, #111313);
   --color-staff-focus: light-dark(#181a1a, #ededeb);
-  /* A switch's thumb when off: white on the light track, mid grey on the dark one. */
-  --color-staff-thumb: light-dark(#ffffff, #a4a7a7);
+  /* A switch's thumb when off: near white on the control-border track in both schemes, so the
+     thumb keeps 3:1 against the track (3.35:1 light, 4.15:1 dark). */
+  --color-staff-thumb: light-dark(#ffffff, #ededeb);
   --color-staff-scrim: light-dark(rgb(17 19 19 / 0.32), rgb(0 0 0 / 0.6));
 
   /* Product accent: identity only. Each shell sets data-staff-product; see below. */
@@ -176,6 +191,24 @@
     min-height: 44px;
     min-width: 44px;
   }
+}
+
+/* Focus not obscured: scrolling a focused control into view stops short of the sticky layers. */
+:root:has([data-staff-shell]) {
+  scroll-padding-top: calc(var(--spacing-staff-top-bar) + var(--spacing) * 2);
+}
+
+:root:has([data-staff-shell] [data-staff-sticky-header]) {
+  scroll-padding-top: calc(
+    var(--spacing-staff-top-bar) +
+    var(--spacing-staff-table-header) +
+    var(--spacing) *
+    2
+  );
+}
+
+:root:has([data-staff-bulk-bar]) {
+  scroll-padding-bottom: var(--spacing-staff-bulk-bar-clearance);
 }
 
 @media (prefers-reduced-motion: reduce) {

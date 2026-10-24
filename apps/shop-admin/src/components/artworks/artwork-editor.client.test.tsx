@@ -312,8 +312,8 @@ describe("artwork editor", () => {
       fireEvent.click(screen.getByRole("link", { name: "Artworks" }));
 
       const dialog = await screen.findByRole("dialog");
-      expect(within(dialog).getByText("Leave without saving?")).toBeInTheDocument();
-      fireEvent.click(within(dialog).getByRole("button", { name: "Leave without saving" }));
+      expect(within(dialog).getByText(/^Discard changes to “.+”\?$/)).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Discard changes" }));
       await waitFor(() => expect(push).toHaveBeenCalledWith("/artworks"));
     });
 
