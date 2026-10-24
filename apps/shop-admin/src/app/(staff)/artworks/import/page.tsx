@@ -16,7 +16,7 @@ export default function ImportArtworkPage() {
           <AdminBreadcrumbs list={{ label: "Artworks", href: "/artworks" }} current="Import" />
         }
         title="Import by catalogue key"
-        description="Creates the artwork, or updates the one already imported under the same key. Imported artworks are published straight away. To add a new artwork by hand, use New artwork instead."
+        description="Creates the artwork, or updates the one already imported under the same key. A new import starts as a draft; publish it from the artwork list or editor. To add a new artwork by hand, use New artwork instead."
       />
       <ImportArtworkForm />
     </div>

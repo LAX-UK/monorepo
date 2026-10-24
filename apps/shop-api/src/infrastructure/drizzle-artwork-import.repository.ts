@@ -133,6 +133,7 @@ export function createDrizzleArtworkImportRepository(
             eligibleForEditionAllocation: command.eligibleForEditionAllocation,
             printPricePence: command.printPricePence ?? null,
             importKey: command.importKey,
+            publishedAt: command.publishOnCreate ? new Date() : null,
             ...optionalArtworkColumns(command),
           })
           .returning({ id: shopArtwork.id });

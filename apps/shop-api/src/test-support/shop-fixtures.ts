@@ -35,6 +35,7 @@ export async function importTestArtwork(
   const slug = `integration-${label}-${suffix}`;
   const result = await importWriter.importArtwork({
     importKey: `integration:${label}:${suffix}`,
+    publishOnCreate: true,
     slug,
     title: `Integration ${label}`,
     description: null,

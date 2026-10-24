@@ -259,4 +259,41 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork import", () => {
     await writer.importArtwork({ ...command, medium: null });
     expect(await readMedium(created.artworkId)).toBeNull();
   });
+
+  it("creates imports as drafts unless told to publish, and never changes that on re-import", async () => {
+    const suffix = Date.now();
+    const db = createDbFromPool(shopPool);
+    const writer = createDrizzleArtworkImportRepository(db);
+    const command = (label: string) => ({
+      importKey: `integration:${suffix}:${label}`,
+      slug: `integration-${label}-${suffix}`,
+      title: `Integration ${label}`,
+      description: null,
+      primaryImageUrl: null,
+      artistSlug: `integration-artist-${suffix}`,
+      artistDisplayName: "Integration Artist",
+      eligibleForEditionAllocation: false,
+    });
+    const published = async (artworkId: string) =>
+      (
+        await db
+          .select({ publishedAt: shopArtwork.publishedAt })
+          .from(shopArtwork)
+          .where(eq(shopArtwork.id, artworkId))
+      )[0]?.publishedAt !== null;
+
+    const draft = await writer.importArtwork(command("draft"));
+    expect(await published(draft.artworkId)).toBe(false);
+    const seeded = await writer.importArtwork({ ...command("seeded"), publishOnCreate: true });
+    expect(await published(seeded.artworkId)).toBe(true);
+
+    await writer.importArtwork({
+      ...command("draft"),
+      title: "Re-imported",
+      publishOnCreate: true,
+    });
+    expect(await published(draft.artworkId)).toBe(false);
+    await writer.importArtwork({ ...command("seeded"), title: "Re-imported" });
+    expect(await published(seeded.artworkId)).toBe(true);
+  });
 });
