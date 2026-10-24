@@ -167,13 +167,14 @@ Set by the product owner on 2026-10-21. It applies to every LAX product: Bid, Sh
 
   | Product | Accent | Status |
   | --- | --- | --- |
-  | LAX Bid | Midnight navy `--brand-midnight` #091F5B | Assigned |
+  | LAX Bid | Midnight navy `--brand-midnight` #091F5B; `--brand-midnight-on-dark` #A5B7E9 for its name as text on dark surfaces | Assigned |
   | LAX Shop | — | To be chosen |
   | lax.art | — | To be chosen |
   | LAX Account | Deep teal `#0f766e` on light surfaces, `#2dd4bf` on dark | Assigned 2026-10-23 |
 
   Until a product's accent is chosen, that product uses the shared neutrals only. Primary actions, links and focus rings use obsidian or ink, never another product's accent.
   Account's teal is declared as `PRODUCT_ACCENTS.account` and `PRODUCT_ACCENTS_ON_DARK.account`. It appears only on the lockup descriptor, the primary button and the focus ring, never on success states (success stays green) and never as text on `--color-surface-container-high` (4.47:1). Contrast, checked against Account's real tokens: `#0f766e` is 5.47:1 on `#ffffff` and 4.72:1 on `#eeeeee`; `#2dd4bf` is 9.93:1 on the dark page `#121414`, 9.20:1 on the dark surface `#1a1c1c` and 6.64:1 on `#333534`; white on `#0f766e` is 5.47:1 and obsidian on `#2dd4bf` is 11.28:1.
+- **Product names take their product's colour.** Wherever a product's interface names another LAX product in text (a sentence, a list row, the product of a work), the name is set in that product's accent: Bid in navy (#091F5B on light, #A5B7E9 on dark, 15.5:1 and 8.6:1 on Account's surfaces), Account in its teal, and Shop and lax.art in ink until their accents are chosen. Buttons, links and the product switcher stay neutral, and a legal business name ("LAX Bid Ltd") is not a product name. In Account this is the `ProductName` component (and `ProductText` for plain copy), backed by `--color-product-<id>` tokens; the hosted sign-in pages do the same in their one-account note. These tokens are the only place Bid's navy may appear outside Bid, and the theme guards allow exactly them.
 - **Shared controls stay neutral.**
   - `Button` default, links, focus rings, tabs, toggles and form controls use shared neutral tokens, so they look the same in every product. LAX Account is the one deliberate exception: it maps its CTA button and focus ring to its teal through `--color-product-accent`, by owner decision.
   - A product accent may tint only product-identity moments: the wordmark, an optional active-nav underline, and editorial highlights. It never tints a control's meaning, and status colours never change per product.
