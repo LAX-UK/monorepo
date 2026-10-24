@@ -3,6 +3,7 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { notifyOrphanDraftSales } from "@/lib/admin/bulk-ops/orphan-draft-sale-notify";
 import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import {
@@ -86,6 +87,7 @@ export function BulkActionsToolbar({
     startTransition(() => {
       void (async () => {
         const result = await operation.run(selectedIds, options);
+        if (!result.ok && handleStaffStepUp(result)) return;
         const refresh = () => {
           router.refresh();
         };

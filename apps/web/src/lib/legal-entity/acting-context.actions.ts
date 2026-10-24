@@ -5,6 +5,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
 import { decodeActingContextCookie } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -203,6 +204,9 @@ export async function startAdminImpersonation(
       const p = await readApiFailure(res);
       if (res.status === 503 && p.code === "database_schema_incomplete") {
         return { ok: false, error: "schema_incomplete", message: p.summary };
+      }
+      if (res.status === 403 && p.code === STAFF_STEP_UP_REQUIRED) {
+        return { ok: false, error: STAFF_STEP_UP_REQUIRED, message: p.summary };
       }
       const err =
         res.status === 401

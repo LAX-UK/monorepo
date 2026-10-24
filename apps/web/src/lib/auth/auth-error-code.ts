@@ -42,6 +42,7 @@ export const AUTH_ERROR_CODES = [
   "account_deletion_open_payouts",
   "recent_auth_required",
   "credential_required",
+  "step_up_required",
   "session_not_found",
   "session_cannot_delete_current",
   "verification_email_failed",
@@ -104,6 +105,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   recent_auth_required:
     "For your security, please confirm your password again before continuing. You can do this from your security settings.",
   credential_required: "This action requires a password on your account.",
+  step_up_required: "Confirm it is you to continue. Sign in again, then repeat the action.",
   session_not_found: "That session could not be found.",
   session_cannot_delete_current:
     "You cannot remove the session you are currently using from here. Use sign out instead.",

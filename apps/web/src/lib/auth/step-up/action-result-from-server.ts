@@ -3,7 +3,9 @@ import type { ActionResult } from "@/lib/forms/form-result";
 import type { StepUpActionResult, StepUpRequirement } from "./types";
 
 function isStepUpCode(code: string | undefined): code is StepUpRequirement {
-  return code === "recent_auth_required" || code === "credential_required";
+  return (
+    code === "recent_auth_required" || code === "credential_required" || code === "step_up_required"
+  );
 }
 
 /** Maps server {@link ActionResult} into {@link StepUpActionResult} for `withStepUp`. */

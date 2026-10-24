@@ -1,3 +1,4 @@
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 
@@ -12,8 +13,16 @@ export async function postBulkAction(
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const payload = (await res.json().catch(() => ({}))) as { error?: string };
-    return actionFailure(payload.error ?? fallback, undefined, res.status);
+    const payload = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      code?: string;
+    };
+    return actionFailure(
+      payload.error ?? fallback,
+      undefined,
+      res.status,
+      stepUpErrorCode(payload),
+    );
   }
   return actionSuccess();
 }

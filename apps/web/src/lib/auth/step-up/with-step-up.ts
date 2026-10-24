@@ -11,7 +11,11 @@ export async function withStepUp<T>(
 ): Promise<StepUpActionResult<T>> {
   const first = await action();
   if (first.ok) return first;
-  if (first.reason !== "recent_auth_required" && first.reason !== "credential_required") {
+  if (
+    first.reason !== "recent_auth_required" &&
+    first.reason !== "credential_required" &&
+    first.reason !== "step_up_required"
+  ) {
     return first;
   }
   const gate = await coordinator.request(first.reason);

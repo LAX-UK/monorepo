@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
+import { IdempotencyKeyField } from "@/components/admin/idempotency-key-field";
 import { PendingFormSubmit } from "@/components/admin/pending-form-submit";
 import { runPayoutSettlementAction } from "@/lib/admin/finance/admin-finance-mutations";
 import { useState } from "react";
@@ -30,6 +31,7 @@ export function PayoutSettlementForm() {
         />
       </div>
       <input type="hidden" name="legalEntityId" value={legalEntityId ?? ""} />
+      <IdempotencyKeyField />
       <PendingFormSubmit
         formId={FORM_ID}
         pendingLabel="Running settlement…"

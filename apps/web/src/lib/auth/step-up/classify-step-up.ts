@@ -1,3 +1,4 @@
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
 import type { ActionFailureReason, StepUpRequirement } from "./types";
 
 function readApiCode(body: unknown): string | undefined {
@@ -13,7 +14,11 @@ export function classifyStepUpFromResponse(
 ): StepUpRequirement | null {
   if (status !== 403) return null;
   const code = readApiCode(body);
-  if (code === "recent_auth_required" || code === "credential_required") {
+  if (
+    code === "recent_auth_required" ||
+    code === "credential_required" ||
+    code === STAFF_STEP_UP_REQUIRED
+  ) {
     return code;
   }
   return null;

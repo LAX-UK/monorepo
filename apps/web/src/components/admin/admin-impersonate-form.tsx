@@ -1,5 +1,6 @@
 "use client";
 
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -59,6 +60,7 @@ export function AdminImpersonateForm() {
         startTransition(async () => {
           const result = await startAdminImpersonationAfterLookup(id);
           if (!result.ok) {
+            if (handleStaffStepUp(result)) return;
             setError(formatImpersonationError(result));
             notify.error("Impersonation failed");
             return;

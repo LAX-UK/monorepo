@@ -3,6 +3,7 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminResetTwoFactorResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { USER_MODERATION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { StaffButton } from "@auction/staff-ui";
@@ -68,6 +69,7 @@ export function UserTwoFactorResetAction({
                 router.refresh();
                 return;
               }
+              if (handleStaffStepUp(r)) return;
               notify.error(r.error);
             })();
           });

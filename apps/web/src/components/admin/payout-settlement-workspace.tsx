@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
+import { IdempotencyKeyField } from "@/components/admin/idempotency-key-field";
 import { PendingFormSubmit } from "@/components/admin/pending-form-submit";
 import { runPayoutSettlementAction } from "@/lib/admin/finance/admin-finance-mutations";
 import type { AdminSettlementPreview } from "@/lib/data/http/admin-payouts.shared";
@@ -174,6 +175,7 @@ export function PayoutSettlementWorkspace({ loadPreview }: Props) {
           ) : (
             <form id={FORM_ID} action={runPayoutSettlementAction} className="space-y-3">
               <input type="hidden" name="legalEntityId" value={legalEntityId} />
+              <IdempotencyKeyField />
               <PendingFormSubmit
                 formId={FORM_ID}
                 pendingLabel="Running settlement…"

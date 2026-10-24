@@ -2,6 +2,8 @@
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { reversePayoutAction } from "@/lib/admin/finance/admin-finance-mutations";
+import { IDEMPOTENCY_KEY_FIELD } from "@/lib/admin/finance/idempotency-key";
+import { useIdempotencyKey } from "@/lib/admin/finance/use-idempotency-key";
 import { Can } from "@/lib/auth/capabilities";
 import { PAYOUT_REVERSE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { PayoutStatus } from "@auction/types";
@@ -18,6 +20,7 @@ export function AdminPayoutReverseButton({ payoutId, status }: Props) {
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const idempotency = useIdempotencyKey();
 
   const eligible = status === "paid" || status === "in_transit";
   const phrase = `REVERSE PAYOUT ${payoutId}`;
@@ -50,7 +53,10 @@ export function AdminPayoutReverseButton({ payoutId, status }: Props) {
           type="button"
           variant="destructive"
           disabled={!reasonOk || pending}
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            idempotency.rotate();
+            setOpen(true);
+          }}
         >
           Reverse payout…
         </Button>
@@ -69,6 +75,7 @@ export function AdminPayoutReverseButton({ payoutId, status }: Props) {
               fd.set("payoutId", payoutId);
               fd.set("reason", reason.trim());
               fd.set("confirmationPhrase", phrase);
+              fd.set(IDEMPOTENCY_KEY_FIELD, idempotency.key);
               await reversePayoutAction(fd);
             });
           }}

@@ -4,6 +4,7 @@ import {
   revokeShopStaffAccessAction,
   setShopStaffRoleAction,
 } from "@/lib/admin/people/staff-access.actions";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
 import { laxStaffPlatform } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -40,6 +41,7 @@ export function ShopStaffAccessControl({
           router.refresh();
           return;
         }
+        if (handleStaffStepUp(result)) return;
         notify.error(result.error);
       })();
     });
