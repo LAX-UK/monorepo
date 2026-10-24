@@ -12,10 +12,6 @@ test.describe("Shop home catalogue fixtures @e2e", () => {
     test.skip(testInfo.project.name !== "chromium-desktop", "home catalogue cards once on desktop");
     await page.goto("/");
 
-    await expect(page.locator(".shop-home__original-card").first()).toHaveAttribute(
-      "href",
-      /\/artworks\//,
-    );
     await expect(page.locator(".shop-home__category-card").first()).toHaveAttribute(
       "href",
       /\/categories\//,

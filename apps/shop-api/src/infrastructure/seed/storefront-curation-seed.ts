@@ -16,7 +16,7 @@ const publishedAt = new Date("2026-01-01T00:00:00.000Z");
  * Bid's auction taxonomy, seeded before Shop had its own. Re-seeds remove these only while they
  * still use a bundled seed cover, so a staff-curated category with the same slug survives.
  */
-const RETIRED_CATEGORY_SLUGS = ["art", "watches", "coins-medals"];
+const RETIRED_CATEGORY_SLUGS = ["art", "watches", "coins-medals", "originals"];
 const SEED_COVER_PREFIX = "/shop/home/";
 
 async function upsertCategory(
@@ -82,12 +82,6 @@ async function seedShopStorefrontCurationTransaction(
     coverImageUrl: "/shop/home/artwork-warm-basket.webp",
     sortOrder: 0,
   });
-  const originalsCategoryId = await upsertCategory(db, {
-    slug: "originals",
-    label: "Original works",
-    coverImageUrl: "/shop/home/original-2.webp",
-    sortOrder: 1,
-  });
 
   const emmettId = await upsertShopArtist(db, {
     slug: "emmett-king",
@@ -117,7 +111,6 @@ async function seedShopStorefrontCurationTransaction(
     [vesselId, printsCategoryId],
     [reedId, printsCategoryId],
     [harborId, printsCategoryId],
-    [stringId, originalsCategoryId],
   ] as const;
   for (const [artworkId, categoryId] of categoryLinks) {
     if (!artworkId) continue;
@@ -136,10 +129,7 @@ async function seedShopStorefrontCurationTransaction(
     placements.push({ slot: "featured_originals", position: 0, artworkId: stringId });
   }
 
-  placements.push(
-    { slot: "featured_categories", position: 0, categoryId: printsCategoryId },
-    { slot: "featured_categories", position: 1, categoryId: originalsCategoryId },
-  );
+  placements.push({ slot: "featured_categories", position: 0, categoryId: printsCategoryId });
 
   if (vesselId) {
     placements.push({ slot: "featured_prints", position: 0, artworkId: vesselId });

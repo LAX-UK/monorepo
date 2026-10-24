@@ -12,9 +12,12 @@ test.describe("Artworks catalogue filters @a11y", () => {
     }
   });
 
-  test("preserves type filter in URL for prints deep link", async ({ page }) => {
-    await page.goto("/artworks?type=edition");
-    await expect(page).toHaveURL(/type=edition/);
-    await expect(page.getByRole("heading", { name: "Prints & Multiples", level: 1 })).toBeVisible();
+  test("offers no originals or price-on-request filters", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "desktop filter rail only");
+    await page.goto("/artworks");
+    const rail = page.getByRole("complementary", { name: "Filters" });
+    await expect(rail.getByText("Artwork type")).toHaveCount(0);
+    await expect(rail.getByRole("button", { name: "Originals" })).toHaveCount(0);
+    await expect(rail.getByRole("button", { name: "Price on request" })).toHaveCount(0);
   });
 });

@@ -4,7 +4,6 @@ import {
   ARTWORK_FILTER_DEFAULT_OPEN,
   ARTWORK_FILTER_GROUPS,
   ARTWORK_SALE_STATE_OPTIONS,
-  ARTWORK_TYPE_OPTIONS,
   type ArtworkFilterGroupValue,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
 import type {
@@ -27,7 +26,6 @@ export type CatalogueFilterOption = {
 
 export type ArtworkCatalogueDraft = {
   q: string;
-  type: ArtworkCatalogueUrlState["type"];
   saleState: ArtworkCatalogueUrlState["saleState"] | "";
   categorySlug: string;
   artistSlug: string;
@@ -38,7 +36,6 @@ export type ArtworkCatalogueDraft = {
 export function artworkDraftFromState(state: ArtworkCatalogueUrlState): ArtworkCatalogueDraft {
   return {
     q: state.q ?? "",
-    type: state.type,
     saleState: state.saleState ?? "",
     categorySlug: state.categorySlug ?? "",
     artistSlug: state.artistSlug ?? "",
@@ -52,7 +49,6 @@ export function draftToPartialState(draft: ArtworkCatalogueDraft): ArtworkCatalo
   const maxParsed = draft.maxPrice.trim() ? Number.parseInt(draft.maxPrice, 10) : undefined;
   return {
     q: draft.q.trim() ? draft.q.trim() : null,
-    type: draft.type,
     saleState: draft.saleState ? draft.saleState : null,
     categorySlug: draft.categorySlug ? draft.categorySlug : null,
     artistSlug: draft.artistSlug ? draft.artistSlug : null,
@@ -99,19 +95,6 @@ function commitDraft(props: Props, next: ArtworkCatalogueDraft) {
 function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
   const { draft, onDraftChange, categories, artists } = props;
   switch (group) {
-    case "type":
-      return (
-        <div className="flex flex-col gap-1">
-          {ARTWORK_TYPE_OPTIONS.map((option) => (
-            <RailOption
-              key={option.value}
-              active={draft.type === option.value}
-              label={option.label}
-              onSelect={() => commitDraft(props, { ...draft, type: option.value })}
-            />
-          ))}
-        </div>
-      );
     case "availability":
       return (
         <div className="flex flex-col gap-1">
@@ -170,8 +153,7 @@ function groupContent(group: ArtworkFilterGroupValue, props: Props): ReactNode {
       return (
         <div className="flex flex-col gap-3">
           <p className="font-body text-xs text-on-surface-variant">
-            Applies to prints with a listed price. Originals and price-on-request works are excluded
-            from numeric ranges.
+            Applies to prints with a listed price.
           </p>
           <label className="flex flex-col gap-1 font-body text-sm">
             <span>Min (£)</span>

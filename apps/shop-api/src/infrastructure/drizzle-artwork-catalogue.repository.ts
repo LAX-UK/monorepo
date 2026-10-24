@@ -403,6 +403,10 @@ export function createDrizzleArtworkCatalogueRepository(
         .where(
           and(
             eq(shopArtwork.salesChannel, salesChannel),
+            // The Shop channel sells limited editions only.
+            ...(salesChannel === "shop"
+              ? [eq(shopArtwork.eligibleForEditionAllocation, true)]
+              : []),
             isNotNull(shopArtwork.objectType),
             publicArtworkVisible(),
           ),

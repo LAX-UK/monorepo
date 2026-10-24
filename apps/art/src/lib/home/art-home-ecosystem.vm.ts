@@ -39,7 +39,7 @@ const ECOSYSTEM_COPY: ReadonlyArray<[BandProductId, EcosystemCopy]> = [
     {
       eyebrow: "LAX Shop",
       title: "Collect with certainty",
-      body: "LAX Shop is the dedicated editions destination: a considered selection of artist originals and prints.",
+      body: "LAX Shop is the dedicated editions destination: a considered selection of limited editions and prints.",
       ctaLabel: "Explore editions",
     },
   ],

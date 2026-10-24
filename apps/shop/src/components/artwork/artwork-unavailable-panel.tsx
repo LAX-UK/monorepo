@@ -4,38 +4,23 @@ import type { ArtworkUnavailableReason } from "@/lib/presenters/artwork-commerce
 import type { ShopInterestReadResult } from "@/lib/shop-fetch-result";
 import type { ShopViewerState } from "@/lib/shop-viewer-state";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
-import { MarketingBellIcon, MarketingInfoIcon, MarketingUserIcon } from "@auction/marketing-ui";
+import { MarketingBellIcon, MarketingUserIcon } from "@auction/marketing-ui";
 
 type Props = {
   viewer: ShopViewerState;
   artworkSlug: string;
   reason: ArtworkUnavailableReason;
   interestRead: ShopInterestReadResult;
-  isEdition?: boolean;
 };
 
-const COPY: Record<
-  ArtworkUnavailableReason,
-  { title: string; description: string; guestCta: string; intent: "notify_me" | "enquiry" }
-> = {
+const COPY: Record<ArtworkUnavailableReason, { title: string; description: string }> = {
   edition_sold_out: {
     title: "This edition is sold out",
     description: "Join the list and we will email you if an edition is released.",
-    guestCta: "Sign in to get notified",
-    intent: "notify_me",
-  },
-  price_enquiry: {
-    title: "Price on request",
-    description:
-      "Contact LAX and we will share the price for this work and answer questions about this original.",
-    guestCta: "Sign in to register interest",
-    intent: "enquiry",
   },
   sold: {
     title: "Sold out",
-    description: "This work is no longer available to purchase or enquire about.",
-    guestCta: "",
-    intent: "enquiry",
+    description: "This work is no longer available to purchase.",
   },
 };
 
@@ -53,27 +38,9 @@ function interestReadHint(interestRead: ShopInterestReadResult): string | null {
   return null;
 }
 
-function guestSignInIcon(intent: "notify_me" | "enquiry") {
-  if (intent === "notify_me") {
-    return <MarketingBellIcon className="size-4" />;
-  }
-  return <MarketingInfoIcon className="size-4" />;
-}
-
-export function ArtworkUnavailablePanel({
-  viewer,
-  artworkSlug,
-  reason,
-  interestRead,
-  isEdition = false,
-}: Props) {
+export function ArtworkUnavailablePanel({ viewer, artworkSlug, reason, interestRead }: Props) {
   const returnTo = `/artworks/${encodeURIComponent(artworkSlug)}`;
-  const base = COPY[reason];
-  const description =
-    reason === "price_enquiry" && isEdition
-      ? "Contact LAX and we will share the price for this edition and answer questions about availability."
-      : base.description;
-  const { title, guestCta, intent } = base;
+  const { title, description } = COPY[reason];
 
   const interestStatusKnown = interestRead.status === "ok";
   const interestSubscribed = interestStatusKnown && interestRead.data.subscribed;
@@ -105,15 +72,14 @@ export function ArtworkUnavailablePanel({
                 <ArtworkNotifyMeButton
                   slug={artworkSlug}
                   initialSubscribed={interestLoadFailed ? false : interestSubscribed}
-                  intent={intent}
                 />
               )
             ) : viewer.kind === "guest" ? (
               <ShopInterestOutlineLink
                 href={shopStorefrontLoginHref(returnTo)}
-                icon={guestSignInIcon(intent)}
+                icon={<MarketingBellIcon className="size-4" />}
               >
-                {guestCta}
+                Sign in to get notified
               </ShopInterestOutlineLink>
             ) : (
               <p className="shop-detail__interest-feedback">{viewer.message}</p>

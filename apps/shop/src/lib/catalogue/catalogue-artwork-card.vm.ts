@@ -1,5 +1,4 @@
 import type { ShopStatusPresentation } from "@/lib/presenters/shop-status-presentation";
-import { resolveArtworkSaleStatePresentation } from "@/lib/presenters/shop-status-presentation";
 import { formatEditionAvailabilitySummary } from "@/lib/public-artwork-presenters";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { formatGbpPence } from "@auction/shop-portal/vm";
@@ -25,15 +24,12 @@ export function isCatalogueArtworkSoldOut(item: PublicArtworkSummary): boolean {
   return false;
 }
 
-/** Availability outranks price: sold-out editions and sold originals win over Price on request. */
+/** Sold-out editions carry a badge; available editions have none. */
 export function resolveCatalogueArtworkCardBadge(
   item: PublicArtworkSummary,
 ): ShopStatusPresentation | null {
   if (isCatalogueArtworkSoldOut(item)) {
     return { label: "Sold out", tone: "neutral" };
-  }
-  if (item.saleState === "price_on_application") {
-    return resolveArtworkSaleStatePresentation("price_on_application");
   }
   return null;
 }

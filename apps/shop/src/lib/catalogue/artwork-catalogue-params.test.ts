@@ -7,8 +7,17 @@ import {
 } from "./artwork-catalogue-params.js";
 
 describe("artwork catalogue params", () => {
-  it("maps legacy editionEligible to type=edition", () => {
-    expect(parseArtworkCatalogueParams({ editionEligible: "true" }).type).toBe("edition");
+  it("ignores the retired type filter", () => {
+    const state = parseArtworkCatalogueParams({ type: "original", editionEligible: "true" });
+    expect(state).not.toHaveProperty("type");
+    expect(artworkCatalogueFetchQuery(state)).not.toHaveProperty("type");
+    expect(artworkCatalogueFilterHref(state)).toBe("/artworks");
+  });
+
+  it("drops the retired price-on-request availability", () => {
+    expect(parseArtworkCatalogueParams({ saleState: "price_on_application" })).not.toHaveProperty(
+      "saleState",
+    );
   });
 
   it("clears cursor when building filter hrefs", () => {
@@ -17,7 +26,7 @@ describe("artwork catalogue params", () => {
       back: "def",
       categorySlug: "painting",
     });
-    expect(artworkCatalogueFilterHref(state, { type: "original" })).not.toContain("cursor=");
+    expect(artworkCatalogueFilterHref(state, { sort: "titleAsc" })).not.toContain("cursor=");
   });
 
   it("converts URL pounds to API pence", () => {
@@ -39,7 +48,6 @@ describe("artwork catalogue params", () => {
     });
     const cleared = draftToPartialState({
       q: "",
-      type: "all",
       saleState: "",
       categorySlug: "",
       artistSlug: "",

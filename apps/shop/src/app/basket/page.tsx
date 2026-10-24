@@ -114,7 +114,7 @@ export default async function BasketPage() {
             layout="page"
             title="Your basket is empty"
             titleAs="h2"
-            description="Discover original works and limited editions, then add your favourites here."
+            description="Discover limited-edition prints, then add your favourites here."
             actions={
               <ShopStatusStateLink href="/artworks" priority="primary">
                 Browse artworks

@@ -9,7 +9,6 @@ import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-s
 import {
   artworkCatalogueFetchQuery,
   artworkCatalogueHasActiveFilters,
-  artworkCataloguePageTitle,
   artworkCataloguePagerHref,
   parseArtworkCatalogueParams,
 } from "@/lib/catalogue/artwork-catalogue-params";
@@ -23,6 +22,9 @@ import {
 import { MarketingCatalogView } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
+const CATALOGUE_TITLE = "Artworks";
+const CATALOGUE_DESCRIPTION = "Browse limited-edition prints available through LAX Shop.";
+
 type ArtworksIndexPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
@@ -31,14 +33,11 @@ export async function generateMetadata({
   searchParams,
 }: ArtworksIndexPageProps): Promise<Metadata> {
   const state = parseArtworkCatalogueParams(await searchParams);
-  const title = `${artworkCataloguePageTitle(state)} | LAX Shop`;
   const description = state.q
     ? `Search results for “${state.q}” in the LAX Shop catalogue.`
-    : state.type === "edition"
-      ? "Editioned prints and multiples from the LAX Shop catalogue."
-      : "Browse contemporary artworks available through LAX Shop.";
+    : CATALOGUE_DESCRIPTION;
   return {
-    title,
+    title: `${CATALOGUE_TITLE} | LAX Shop`,
     description,
     alternates: { canonical: "/artworks" },
   };
@@ -56,7 +55,6 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
       ...(fetchQuery.categorySlug ? { categorySlug: fetchQuery.categorySlug } : {}),
       ...(fetchQuery.artistSlug ? { artistSlug: fetchQuery.artistSlug } : {}),
       ...(fetchQuery.saleState ? { saleState: fetchQuery.saleState } : {}),
-      ...(fetchQuery.type ? { type: fetchQuery.type } : {}),
       ...(fetchQuery.minPrice !== undefined ? { minPrice: fetchQuery.minPrice } : {}),
       ...(fetchQuery.maxPrice !== undefined ? { maxPrice: fetchQuery.maxPrice } : {}),
       ...(fetchQuery.sort ? { sort: fetchQuery.sort } : {}),
@@ -70,12 +68,9 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
   const categories = categoryList.items.map((item) => ({ slug: item.slug, label: item.label }));
   const artists = artistList.items.map((item) => ({ slug: item.slug, label: item.name }));
 
-  const title = artworkCataloguePageTitle(state);
   const description = state.q
     ? `Search results for “${state.q}” in the LAX Shop catalogue.`
-    : state.type === "edition"
-      ? "Editioned prints and multiples from the LAX Shop catalogue."
-      : "Browse contemporary artworks available through LAX Shop.";
+    : CATALOGUE_DESCRIPTION;
 
   const showPrevious = Boolean(state.cursor);
   const previousHref = showPrevious
@@ -88,7 +83,7 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
 
   return (
     <ShopCatalogueHub
-      title={title}
+      title={CATALOGUE_TITLE}
       description={description}
       footer={
         <div className="shop-catalogue-pager">

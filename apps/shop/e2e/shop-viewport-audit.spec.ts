@@ -32,7 +32,7 @@ test.describe("Shop viewport audit @a11y", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
     await expect(page.locator("#main-content")).toBeVisible();
-    for (const selector of [".shop-home__original-card", ".shop-home__category-card"]) {
+    for (const selector of [".shop-home__print-card", ".shop-home__category-card"]) {
       const card = page.locator(selector).first();
       await expect(card).toBeAttached();
       const box = await card.boundingBox();

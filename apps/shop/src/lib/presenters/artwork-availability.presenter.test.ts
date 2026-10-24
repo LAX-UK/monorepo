@@ -52,7 +52,6 @@ describe("presentArtworkAvailability", () => {
       presentArtworkAvailability(
         artwork({
           saleState: "sold",
-          eligibleForEditionAllocation: false,
           availability: { totalEditions: 0, state: "sold_out" },
         }),
       ),
@@ -60,21 +59,6 @@ describe("presentArtworkAvailability", () => {
       status: { label: "Sold out", tone: "neutral" },
       headline: "This work is no longer available",
       detail: null,
-    });
-  });
-
-  it("describes an original without edition programme language", () => {
-    expect(
-      presentArtworkAvailability(
-        artwork({
-          eligibleForEditionAllocation: false,
-          availability: { totalEditions: 0, state: "sold_out" },
-        }),
-      ),
-    ).toEqual({
-      status: { label: "Original", tone: "neutral" },
-      headline: "Original work — one of one",
-      detail: "A unique piece, not part of an edition series.",
     });
   });
 });

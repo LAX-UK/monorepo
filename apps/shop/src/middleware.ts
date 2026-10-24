@@ -1,4 +1,6 @@
 import { loadShopEnv } from "@/env";
+import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
+import { resolveOriginalWorksRedirect } from "@/lib/original-works-redirect";
 import {
   X_ROBOTS_TAG_NOINDEX,
   isShopIndexingAllowedForHost,
@@ -32,6 +34,10 @@ const SKIP_PREFIXES = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const originalWorksRedirect = resolveOriginalWorksRedirect(request.nextUrl, loadShopArtBaseUrl());
+  if (originalWorksRedirect) {
+    return NextResponse.redirect(originalWorksRedirect, 301);
+  }
   const response = await resolveSessionResponse(request);
   const host = publicRequestHost(request.headers);
   if (!isShopIndexingAllowedForHost(host, loadShopEnv().SHOP_ALLOW_INDEXING)) {

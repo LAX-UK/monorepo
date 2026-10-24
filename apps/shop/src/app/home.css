@@ -240,54 +240,6 @@
   flex-shrink: 0;
 }
 
-.shop-home__original-card {
-  width: min(26.25rem, 85vw);
-  min-height: 40rem;
-  background: var(--color-surface);
-  display: flex;
-  flex-direction: column;
-}
-
-.shop-home__original-image {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 18rem;
-}
-
-.shop-home__original-body {
-  padding: var(--shop-card-pad-y) var(--shop-card-pad-x);
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.shop-home__original-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.shop-home__original-title {
-  margin: 0;
-  width: 100%;
-  font-family: var(--font-body);
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.75rem;
-}
-
-.shop-home__original-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.shop-home__original-card:hover .shop-home__original-title,
-.shop-home__original-card:focus-within .shop-home__original-title {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
 .shop-home__badge {
   display: inline-flex;
   align-items: center;
@@ -299,21 +251,6 @@
 
 .shop-home__badge--sold {
   text-transform: uppercase;
-}
-
-.shop-home__original-artist {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 1rem;
-  line-height: 1.5rem;
-}
-
-.shop-home__original-dimensions {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  line-height: 1.125rem;
-  color: var(--color-on-surface);
 }
 
 .shop-home__availability-note {
@@ -517,23 +454,6 @@
 }
 
 @media (min-width: 64rem) {
-  .shop-home__scroll-row--originals {
-    overflow-x: visible;
-  }
-
-  /* Rail items are the flex children (cards sit inside a reveal wrapper), so the column width lives here. */
-  .shop-home__scroll-row--originals > .shop-home__rail-item {
-    width: calc((100% - 5rem) / 3);
-    min-width: 0;
-  }
-
-  .shop-home__scroll-row--originals .shop-home__original-card {
-    width: 100%;
-    height: 40rem;
-    min-height: 40rem;
-    min-width: 0;
-  }
-
   .shop-home__scroll-row--categories {
     overflow-x: visible;
   }

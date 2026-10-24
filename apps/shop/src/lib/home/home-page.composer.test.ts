@@ -17,19 +17,16 @@ describe("composeHomePageData", () => {
   });
 
   it("preserves healthy sections when one upstream read fails", async () => {
-    api.fetchPublicArtworks
-      .mockRejectedValueOnce(new Error("originals offline"))
-      .mockResolvedValueOnce({ items: [{ slug: "print" }] });
+    api.fetchPublicArtworks.mockRejectedValueOnce(new Error("prints offline"));
     api.fetchPublicCategories.mockResolvedValue({ items: [{ slug: "art" }] });
     api.fetchPublicArtists.mockResolvedValue({ items: [{ slug: "artist" }] });
 
     const result = await composeHomePageData();
 
-    expect(result.originals).toEqual([]);
-    expect(result.prints).toEqual([{ slug: "print" }]);
+    expect(result.prints).toEqual([]);
     expect(result.categories).toEqual([{ slug: "art" }]);
     expect(result.artists).toEqual([{ slug: "artist" }]);
-    expect(result.sectionErrors).toEqual({ originals: "originals offline" });
+    expect(result.sectionErrors).toEqual({ prints: "prints offline" });
   });
 
   it("requests each merchandising slot independently", async () => {
@@ -39,11 +36,8 @@ describe("composeHomePageData", () => {
 
     await composeHomePageData();
 
-    expect(api.fetchPublicArtworks).toHaveBeenNthCalledWith(1, {
-      limit: 12,
-      placement: "featured_originals",
-    });
-    expect(api.fetchPublicArtworks).toHaveBeenNthCalledWith(2, {
+    expect(api.fetchPublicArtworks).toHaveBeenCalledTimes(1);
+    expect(api.fetchPublicArtworks).toHaveBeenCalledWith({
       limit: 12,
       placement: "featured_prints",
     });

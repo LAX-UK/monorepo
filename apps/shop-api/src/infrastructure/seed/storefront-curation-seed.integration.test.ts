@@ -44,7 +44,7 @@ describe.skipIf(!hasShopIntegrationDb)("storefront curation seed", () => {
       .select({ slug: shopCategory.slug, label: shopCategory.label })
       .from(shopCategory)
       .where(inArray(shopCategory.slug, ["prints", "originals", "watches", "coins-medals"]));
-    expect(rows.map((row) => row.slug).sort()).toEqual(["coins-medals", "originals", "prints"]);
+    expect(rows.map((row) => row.slug).sort()).toEqual(["coins-medals", "prints"]);
     expect(rows.find((row) => row.slug === "prints")?.label).toBe("Limited edition prints");
   });
 });

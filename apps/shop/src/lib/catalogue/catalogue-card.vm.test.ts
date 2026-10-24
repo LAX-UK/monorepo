@@ -4,7 +4,7 @@ import { toCatalogueArtworkCardVm } from "./catalogue-artwork-card.vm.js";
 import { buildCatalogueCategoryCards } from "./catalogue-category-card.vm.js";
 
 describe("catalogue card view models", () => {
-  it("maps artwork media and sale state for home and catalogue surfaces", () => {
+  it("maps artwork media and sold-out state for home and catalogue surfaces", () => {
     expect(
       toCatalogueArtworkCardVm({
         slug: "work",
@@ -12,25 +12,21 @@ describe("catalogue card view models", () => {
         artistName: "Artist",
         artistSlug: "artist",
         imageUrl: "/work.webp",
-        saleState: "price_on_application",
+        saleState: "for_sale",
         dimensions: "40 × 50 cm",
         yearCreated: 2026,
         medium: null,
         salesChannel: "shop",
-        eligibleForEditionAllocation: false,
+        eligibleForEditionAllocation: true,
         printPricePence: null,
-        availability: { totalEditions: 0, state: "sold_out" },
+        availability: { totalEditions: 24, state: "sold_out" },
       }),
     ).toMatchObject({
       href: "/artworks/work",
       imageAlt: "Work by Artist",
-      status: {
-        label: "Price on request",
-        tone: "accent",
-        hint: "Contact LAX and we will share the price for this work.",
-      },
+      status: { label: "Sold out", tone: "neutral" },
       dimensions: "40 × 50 cm",
-      metaLine: "Original — one of one",
+      metaLine: "Limited edition of 24 · Sold out",
     });
   });
 
@@ -52,26 +48,6 @@ describe("catalogue card view models", () => {
         availability: { totalEditions: 12, state: "available" },
       }).metaLine,
     ).toMatch(/^£850/);
-  });
-
-  it("prefers sold out over price on request when editions are claimed", () => {
-    expect(
-      toCatalogueArtworkCardVm({
-        slug: "vessel",
-        title: "Vessel Study",
-        artistName: "Flora Powers",
-        artistSlug: "flora-powers",
-        imageUrl: null,
-        saleState: "price_on_application",
-        dimensions: null,
-        yearCreated: null,
-        medium: null,
-        salesChannel: "shop",
-        eligibleForEditionAllocation: true,
-        printPricePence: null,
-        availability: { totalEditions: 24, state: "sold_out" },
-      }).status,
-    ).toEqual({ label: "Sold out", tone: "neutral" });
   });
 
   it("maps artist and category media through shared catalogue view models", () => {

@@ -115,6 +115,66 @@ describe("artworks routes", () => {
     await app.close();
   });
 
+  it("limits Shop-channel lists to editions whatever type is requested", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    for (const query of ["", "&type=original", "&editionEligible=false"]) {
+      listPublicArtworks.mockClear();
+      const response = await app.inject({
+        method: "GET",
+        url: `/v1/artworks?salesChannel=shop${query}`,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(listPublicArtworks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: expect.objectContaining({ salesChannel: "shop", artworkType: "edition" }),
+        }),
+      );
+    }
+    await app.close();
+  });
+
+  it("keeps serving originals to the lax.art channel", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    deps.catalogue.getPublicArtwork = async () =>
+      ({
+        ...mockArtworkDetail(),
+        salesChannel: "art",
+        eligibleForEditionAllocation: false,
+      }) as never;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const list = await app.inject({ method: "GET", url: "/v1/artworks?salesChannel=art" });
+    expect(list.statusCode).toBe(200);
+    expect(listPublicArtworks).toHaveBeenCalledWith({
+      limit: 20,
+      filter: { salesChannel: "art" },
+    });
+    const detail = await app.inject({ method: "GET", url: "/v1/artworks/demo?salesChannel=art" });
+    expect(detail.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it("does not serve an original through the Shop channel", async () => {
+    const deps = createCatalogueDeps();
+    deps.catalogue.getPublicArtwork = async () =>
+      ({ ...mockArtworkDetail(), eligibleForEditionAllocation: false }) as never;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const shop = await app.inject({ method: "GET", url: "/v1/artworks/demo?salesChannel=shop" });
+    expect(shop.statusCode).toBe(404);
+    expect(shop.json()).toMatchObject({ code: "shop.not_found" });
+    await app.close();
+  });
+
   it("forwards text search query to the catalogue handler", async () => {
     const deps = createCatalogueDeps();
     const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);
