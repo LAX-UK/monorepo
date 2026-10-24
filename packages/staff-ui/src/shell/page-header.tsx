@@ -1,6 +1,10 @@
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 
+/** The page title's type style, for titles rendered by other components (e.g. inline editors). */
+export const STAFF_PAGE_TITLE_CLASS =
+  "font-staff-display text-staff-xl font-semibold tracking-[-0.01em] text-staff-fg";
+
 export type PageHeaderProps = {
   title: React.ReactNode;
   /** One sentence: what this page is for. */
@@ -45,9 +49,7 @@ export function PageHeader({
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className="font-staff-display text-staff-xl font-semibold tracking-[-0.01em] text-staff-fg">
-              {title}
-            </h1>
+            <h1 className={STAFF_PAGE_TITLE_CLASS}>{title}</h1>
             {status}
           </div>
           {description ? (

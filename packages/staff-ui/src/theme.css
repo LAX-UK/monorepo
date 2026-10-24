@@ -76,6 +76,8 @@
   --color-staff-ink-hover: light-dark(#323535, #ffffff);
   --color-staff-on-ink: light-dark(#ffffff, #111313);
   --color-staff-focus: light-dark(#181a1a, #ededeb);
+  /* A switch's thumb when off: white on the light track, mid grey on the dark one. */
+  --color-staff-thumb: light-dark(#ffffff, #a4a7a7);
   --color-staff-scrim: light-dark(rgb(17 19 19 / 0.32), rgb(0 0 0 / 0.6));
 
   /* Product accent: identity only. Each shell sets data-staff-product; see below. */
@@ -97,8 +99,11 @@
   --color-staff-danger-bg: light-dark(#fcecea, rgb(240 82 70 / 0.16));
   --color-staff-danger-fg: light-dark(#a8261b, #f6a49c);
   --color-staff-danger-dot: light-dark(#d93a2b, #f0675b);
-  --color-staff-danger: light-dark(#b42318, #e5574b);
-  --color-staff-danger-hover: light-dark(#931c13, #f06b60);
+  /* Danger as text, icon or border (red on the surface), and as a solid fill behind white text.
+     They differ in dark mode: light red reads on a dark surface, but white needs a deeper red. */
+  --color-staff-danger: light-dark(#b42318, #ef6a5e);
+  --color-staff-danger-solid: light-dark(#b42318, #c13a2e);
+  --color-staff-danger-solid-hover: light-dark(#931c13, #a93125);
   --color-staff-on-danger: light-dark(#ffffff, #ffffff);
   --color-staff-live-dot: light-dark(#e83030, #ff5a4f);
 }
@@ -135,17 +140,19 @@
 
 /* The one focus treatment: a 2px ring offset from the control. `staff-focus-inset` draws it inside
    the box for rows and cells, where an outside ring would be clipped by the table. */
+/* Important on purpose: the wrapped primitives switch their own outline off on focus, and the
+   one staff ring must win whatever order the stylesheets land in. */
 @utility staff-focus {
   &:focus-visible {
-    outline: 2px solid var(--color-staff-focus);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-staff-focus) !important;
+    outline-offset: 2px !important;
   }
 }
 
 @utility staff-focus-inset {
   &:focus-visible {
-    outline: 2px solid var(--color-staff-focus);
-    outline-offset: -2px;
+    outline: 2px solid var(--color-staff-focus) !important;
+    outline-offset: -2px !important;
   }
 }
 

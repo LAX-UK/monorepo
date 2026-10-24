@@ -38,6 +38,11 @@ type Props = {
   kpiPeriodDays?: AdminKpiPeriodDays;
 };
 
+/** "Bid Placed" → "Bid placed": staff copy is sentence case. */
+function sentenceCase(text: string): string {
+  return text.charAt(0) + text.slice(1).toLowerCase();
+}
+
 const SEVERITY_TONE = {
   critical: "danger",
   high: "warning",
@@ -229,7 +234,7 @@ export function LotOverviewTab({
             empty="No lot activity recorded yet."
             events={activityEvents.map((event) => ({
               id: event.id,
-              title: domainEventLabel(event.eventType),
+              title: sentenceCase(domainEventLabel(event.eventType)),
               at: new Date(event.occurredAt).toISOString(),
               actor: event.actorUserId ? "Staff" : "System",
             }))}

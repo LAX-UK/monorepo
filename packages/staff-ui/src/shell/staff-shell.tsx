@@ -109,47 +109,50 @@ export function StaffShell({
         </a>
         {banner}
         <div className="flex">
-          <aside
-            aria-label="Navigation"
+          <div
             className={cn(
-              "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-staff-line bg-staff-sunken transition-[width] duration-200 ease-out lg:flex",
+              "hidden shrink-0 border-r border-staff-line bg-staff-sunken transition-[width] duration-200 ease-out lg:block",
               collapsed ? "w-14" : "w-60",
             )}
           >
-            <div className={cn("flex h-13 shrink-0 items-center border-b border-staff-line px-2")}>
-              <ProductSwitcher current={product} products={products} collapsed={collapsed} />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:thin]">
-              <SidebarNav
-                groups={navGroups}
-                pathname={pathname}
-                Link={Link}
-                collapsed={collapsed}
-              />
-            </div>
-            <div
-              className={cn(
-                "flex shrink-0 border-t border-staff-line p-2",
-                collapsed && "justify-center",
-              )}
-            >
-              <StaffTooltip
-                label={collapsed ? "Expand navigation" : "Collapse navigation"}
-                side="right"
+            <aside aria-label="Navigation" className="sticky top-0 flex h-dvh flex-col">
+              <div
+                className={cn("flex h-13 shrink-0 items-center border-b border-staff-line px-2")}
               >
-                <StaffButton
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-                  aria-expanded={!collapsed}
-                  onClick={toggleCollapsed}
-                  className="text-staff-muted"
+                <ProductSwitcher current={product} products={products} collapsed={collapsed} />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:thin]">
+                <SidebarNav
+                  groups={navGroups}
+                  pathname={pathname}
+                  Link={Link}
+                  collapsed={collapsed}
+                />
+              </div>
+              <div
+                className={cn(
+                  "flex shrink-0 border-t border-staff-line p-2",
+                  collapsed && "justify-center",
+                )}
+              >
+                <StaffTooltip
+                  label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                  side="right"
                 >
-                  {collapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
-                </StaffButton>
-              </StaffTooltip>
-            </div>
-          </aside>
+                  <StaffButton
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                    aria-expanded={!collapsed}
+                    onClick={toggleCollapsed}
+                    className="text-staff-muted"
+                  >
+                    {collapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
+                  </StaffButton>
+                </StaffTooltip>
+              </div>
+            </aside>
+          </div>
 
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-30 flex h-13 shrink-0 items-center gap-2 border-b border-staff-line bg-staff-canvas/95 px-3 backdrop-blur-sm supports-[backdrop-filter]:bg-staff-canvas/85 md:gap-3 md:px-6 lg:px-8">

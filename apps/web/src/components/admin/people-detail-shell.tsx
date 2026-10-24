@@ -14,6 +14,7 @@ import {
   MetaItem,
   OverflowMenu,
   PageHeader,
+  STAFF_PAGE_TITLE_CLASS,
   StaffBreadcrumbs,
   type StaffLinkComponent,
   StatusBadge,
@@ -95,7 +96,15 @@ export function PeopleDetailShell({
             items={[{ label: listLabel, href: listHref }, { label: user.name }]}
           />
         }
-        title={title ?? <AdminUserDisplayNameEditableTitle userId={user.id} value={user.name} />}
+        title={
+          title ?? (
+            <AdminUserDisplayNameEditableTitle
+              userId={user.id}
+              value={user.name}
+              textClassName={STAFF_PAGE_TITLE_CLASS}
+            />
+          )
+        }
         status={
           <>
             <StatusBadge tone={user.suspendedAt ? "danger" : "success"}>

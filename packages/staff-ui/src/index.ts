@@ -104,7 +104,7 @@ export { AccountMenu, initialsOf } from "./shell/account-menu.js";
 export { ProductMark, ProductSwitcher } from "./shell/product-switcher.js";
 export { CommandPalette, useCommandPaletteShortcut } from "./shell/command-palette.js";
 export { StaffBreadcrumbs } from "./shell/breadcrumbs.js";
-export { MetaItem, PageHeader } from "./shell/page-header.js";
+export { MetaItem, PageHeader, STAFF_PAGE_TITLE_CLASS } from "./shell/page-header.js";
 export type { PageHeaderProps } from "./shell/page-header.js";
 export { OverflowMenu } from "./shell/overflow-menu.js";
 export {

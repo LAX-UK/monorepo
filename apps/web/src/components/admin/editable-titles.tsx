@@ -11,6 +11,8 @@ import {
 type TitleProps = {
   value: string;
   className?: string;
+  /** Type style for the title text itself, e.g. a page title in the staff kit. */
+  textClassName?: string;
   as?: "h1" | "span";
 };
 

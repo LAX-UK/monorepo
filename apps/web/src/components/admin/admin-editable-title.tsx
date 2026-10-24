@@ -8,6 +8,8 @@ type Props = {
   value: string;
   onSave: (next: string) => Promise<ActionResult<void>>;
   className?: string;
+  /** Type style for the text, read and edit states alike. */
+  textClassName?: string;
   as?: "h1" | "span";
   editable?: boolean;
 };
@@ -17,6 +19,7 @@ export function AdminEditableTitle({
   value,
   onSave,
   className,
+  textClassName,
   as = "span",
   editable = true,
 }: Props) {
@@ -35,7 +38,11 @@ export function AdminEditableTitle({
         ariaLabel={value}
         disabled={!editable}
         className={cn(isStandaloneHeading && "font-headline text-2xl font-semibold sm:text-3xl")}
-        inputClassName={cn(isStandaloneHeading && "font-headline text-xl sm:text-2xl")}
+        inputClassName={cn(
+          isStandaloneHeading && "font-headline text-xl sm:text-2xl",
+          textClassName,
+        )}
+        {...(textClassName ? { textClassName } : {})}
       />
     </Tag>
   );

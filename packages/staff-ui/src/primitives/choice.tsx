@@ -15,7 +15,9 @@ import { cn } from "../lib/cn.js";
 const boxBase = [
   "size-4 shrink-0 border border-staff-line-strong bg-staff-surface shadow-none",
   "hover:border-staff-line-hover",
-  "staff-focus focus-visible:ring-0 focus-visible:ring-offset-0",
+  // The wrapped primitive turns the outline off on focus; turn the staff ring back on explicitly.
+  "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",
+  "focus-visible:ring-0 focus-visible:ring-offset-0",
   "disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:opacity-100",
   "aria-invalid:border-staff-danger",
 ].join(" ");
@@ -74,13 +76,13 @@ export function StaffSwitch({
     <Switch
       className={cn(
         "h-5 w-8 border-0 p-0.5",
-        "staff-focus focus-visible:outline-staff-focus",
+        "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",
         "data-[state=unchecked]:bg-staff-line-strong data-[state=checked]:bg-staff-ink",
         "hover:data-[state=unchecked]:bg-staff-line-hover",
         "disabled:opacity-100 disabled:data-[state=checked]:bg-staff-line-hover disabled:data-[state=unchecked]:bg-staff-line",
         className,
       )}
-      thumbClassName="size-4 bg-staff-surface shadow-staff-xs data-[state=checked]:translate-x-3 data-[state=unchecked]:translate-x-0"
+      thumbClassName="size-4 bg-staff-thumb shadow-staff-xs data-[state=checked]:translate-x-3 data-[state=checked]:bg-staff-on-ink data-[state=unchecked]:translate-x-0"
       {...props}
     />
   );

@@ -21,6 +21,7 @@ import { lotPath } from "@/lib/seo/url";
 import {
   MetaItem,
   PageHeader,
+  STAFF_PAGE_TITLE_CLASS,
   StaffBreadcrumbs,
   type StaffLinkComponent,
   StatusBadge,
@@ -115,7 +116,12 @@ export function LotDetailShell({
             />
           }
           title={
-            <AdminLotEditableTitle lotId={lotId} value={auction.title} editable={canEditTitle} />
+            <AdminLotEditableTitle
+              lotId={lotId}
+              value={auction.title}
+              editable={canEditTitle}
+              textClassName={STAFF_PAGE_TITLE_CLASS}
+            />
           }
           status={
             <StatusBadge tone={status.tone} live={status.live ?? false}>

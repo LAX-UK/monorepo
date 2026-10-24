@@ -121,6 +121,8 @@ export function SegmentedControl<T extends string>({
   return (
     <ToggleGroup
       type="single"
+      // A non-zero spacing keeps the shared primitive from drawing joined-segment borders.
+      spacing={1}
       value={value}
       aria-label={label}
       onValueChange={(next) => {
@@ -142,7 +144,7 @@ export function SegmentedControl<T extends string>({
             "h-full min-w-0 gap-1.5 rounded-staff-xs border-0 px-2.5 font-staff text-staff-sm font-medium text-staff-muted shadow-none",
             "staff-focus focus-visible:ring-0",
             "hover:bg-transparent hover:text-staff-fg",
-            "data-[state=on]:bg-staff-surface data-[state=on]:text-staff-fg data-[state=on]:shadow-staff-xs",
+            "data-[state=on]:bg-staff-raised data-[state=on]:text-staff-fg data-[state=on]:shadow-staff-xs",
             "data-[state=on]:ring-1 data-[state=on]:ring-staff-line",
             "[&_svg]:size-4",
             option.iconOnly && "px-1.5",

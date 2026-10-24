@@ -18,6 +18,7 @@ export const staffButtonVariants = cva(
     "transition-[background-color,border-color,color,box-shadow] duration-150 ease-out",
     "staff-focus staff-target",
     "disabled:cursor-not-allowed aria-disabled:pointer-events-none",
+    "data-[loading]:cursor-progress",
     "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   ],
   {
@@ -41,8 +42,8 @@ export const staffButtonVariants = cva(
           "disabled:text-staff-disabled aria-disabled:text-staff-disabled",
         ],
         danger: [
-          "bg-staff-danger text-staff-on-danger",
-          "hover:bg-staff-danger-hover active:opacity-90",
+          "bg-staff-danger-solid text-staff-on-danger",
+          "hover:bg-staff-danger-solid-hover active:opacity-90",
           "disabled:bg-staff-line disabled:text-staff-disabled aria-disabled:bg-staff-line aria-disabled:text-staff-disabled",
         ],
         "danger-secondary": [
@@ -95,10 +96,17 @@ export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>
       <Comp
         ref={ref}
         className={cn(staffButtonVariants({ variant, size }), className)}
-        {...(asChild ? {} : { type: type ?? "button", disabled: disabled || loading })}
+        {...(asChild ? {} : { type: type ?? "button", disabled })}
         {...(asChild && disabled ? { "aria-disabled": true } : {})}
-        {...(loading ? { "aria-busy": true } : {})}
         {...props}
+        {...(loading
+          ? {
+              "aria-busy": true,
+              "data-loading": "",
+              // Keeps its colours while busy (not the disabled look) but ignores repeat presses.
+              onClick: (event: React.MouseEvent<HTMLButtonElement>) => event.preventDefault(),
+            }
+          : {})}
       >
         {leading}
         <Slottable>{children}</Slottable>

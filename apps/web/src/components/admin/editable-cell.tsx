@@ -14,6 +14,8 @@ export type EditableCellProps = {
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  /** Type style for the value text (defaults to table body text). */
+  textClassName?: string;
   ariaLabel?: string;
   disabled?: boolean;
 };
@@ -25,6 +27,7 @@ export function EditableCell({
   placeholder = "—",
   className,
   inputClassName,
+  textClassName,
   ariaLabel = "Editable field",
   disabled = false,
 }: EditableCellProps) {
@@ -79,7 +82,7 @@ export function EditableCell({
 
   if (disabled) {
     return (
-      <span className={cn("font-body text-sm text-on-surface", className)}>
+      <span className={cn("font-body text-sm text-on-surface", className, textClassName)}>
         {display || placeholder}
       </span>
     );
@@ -126,7 +129,9 @@ export function EditableCell({
         }
       }}
     >
-      <span className="truncate font-body text-sm text-on-surface">{display || placeholder}</span>
+      <span className={cn("truncate font-body text-sm text-on-surface", textClassName)}>
+        {display || placeholder}
+      </span>
       <Pencil
         className="size-3 shrink-0 text-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         aria-hidden
