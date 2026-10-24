@@ -1,6 +1,11 @@
 export { EMAIL_DEFAULT_CURRENCY, formatMoneyMajor } from "./format-money.js";
 export { renderEmail } from "./render.js";
 export {
+  OPTIONAL_EMAIL_TEMPLATES,
+  isOptionalEmailTemplate,
+  suppressionBlocksTemplate,
+} from "./suppression-policy.js";
+export {
   ConsoleEmailService,
   PostmarkEmailService,
   bindEmailQueue,

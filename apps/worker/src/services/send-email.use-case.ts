@@ -1,4 +1,4 @@
-import type { IEmailSender, TemplateName } from "@auction/email";
+import { type IEmailSender, type TemplateName, suppressionBlocksTemplate } from "@auction/email";
 import type pino from "pino";
 import type {
   EmailOutboxRow,
@@ -42,7 +42,10 @@ export async function sendEmailUseCase(
 
   const to = await resolveRecipient(outboxRepo, row);
 
-  const suppressed = await outboxRepo.findSuppression(row.toEmailHash);
+  const suppressionReason = await outboxRepo.findSuppression(row.toEmailHash);
+  // An unsubscribe only silences optional mail; bounces and complaints silence everything.
+  const suppressed =
+    suppressionReason !== null && suppressionBlocksTemplate(suppressionReason, row.template);
   if (suppressed && row.category !== "auth") {
     await outboxRepo.markSuppressed(row.id, "suppressed_after_enqueue");
     log.info({ outboxId: row.id }, "email send skipped: address suppressed after enqueue");
