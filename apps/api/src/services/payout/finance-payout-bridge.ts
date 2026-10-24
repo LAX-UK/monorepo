@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type {
   IDomainEventSinkPort,
   PayoutAdjustmentService,
@@ -7,7 +6,7 @@ import type {
 import type { DomainEventConnection, DomainEventInput } from "@auction/persistence/lib";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
-import { type PayoutServiceDeps, payoutRepoForTx } from "./payout-helpers.js";
+import type { PayoutServiceDeps } from "./payout-helpers.js";
 
 export function apiDomainEventSinkPort(
   sink: IDomainEventSink | undefined,
@@ -43,7 +42,7 @@ export function toPayoutSettlementDeps(deps: PayoutServiceDeps): PayoutSettlemen
     transactionRunner: deps.transactionRunner,
     domainEventSink: apiDomainEventSinkPort(deps.domainEventSink),
     payoutAdjustments: adjustments,
-    payoutRepoForTx: (tx: Database) => payoutRepoForTx(deps.repo, tx),
+    payoutRepoForTx: deps.payoutRepoForTx,
   };
 }
 

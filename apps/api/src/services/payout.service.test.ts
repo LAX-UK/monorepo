@@ -1,9 +1,7 @@
-import type { Database } from "@auction/db";
 import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence/interfaces";
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
-import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,
@@ -49,6 +47,8 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     }),
     countCreatedAtByDay: vi.fn().mockResolvedValue(new Map()),
     findById: vi.fn().mockResolvedValue(null),
+    findByIdForUpdate: vi.fn().mockResolvedValue(null),
+    lockSettlementForEntity: vi.fn().mockResolvedValue(undefined),
     findByStripeTransferId: vi.fn().mockResolvedValue(null),
     listLines: vi.fn().mockResolvedValue([]),
     findUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),
@@ -69,6 +69,17 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     updateLineAmount: vi.fn(),
     ...overrides,
   };
+}
+
+/** Service wired with a pass-through transaction runner that hands the same fake repo to every transaction. */
+function serviceFor(repo: IPayoutRepository, publish = vi.fn().mockResolvedValue(undefined)) {
+  return new PayoutService(
+    repo,
+    { runInTransaction: (fn) => fn({} as never) },
+    mockDomainEventSink(publish),
+    undefined,
+    () => repo,
+  );
 }
 
 function pending(rows: Partial<PendingPaymentRow>[]): PendingPaymentRow[] {
@@ -109,7 +120,7 @@ describe("PayoutService.previewPending", () => {
     const repo = makeRepo({
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await expect(svc.previewPending(ENTITY_ID)).resolves.toEqual({
       pendingGross: "0.00",
       pendingPlatformFee: "0.00",
@@ -129,7 +140,7 @@ describe("PayoutService.previewPending", () => {
         ]),
       ),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const preview = await svc.previewPending(ENTITY_ID);
     expect(preview.pendingGross).toBe("1350.50");
     expect(preview.pendingPlatformFee).toBe("67.53");
@@ -140,7 +151,7 @@ describe("PayoutService.previewPending", () => {
 
 describe("PayoutService.createSettlement", () => {
   it("returns no_pending_payments when nothing to settle", async () => {
-    const svc = new PayoutService(makeRepo());
+    const svc = serviceFor(makeRepo());
     const r = await svc.createSettlement(ACTOR_ID, {
       legalEntityId: ENTITY_ID,
       periodStart: new Date(0),
@@ -184,7 +195,7 @@ describe("PayoutService.createSettlement", () => {
       insertLine,
       tryInsertSaleLine: insertLine,
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.createSettlement(ACTOR_ID, {
       legalEntityId: ENTITY_ID,
       periodStart: new Date("2026-01-01"),
@@ -245,7 +256,7 @@ describe("PayoutService.createSettlement", () => {
       create: vi.fn().mockResolvedValue(created),
       tryInsertSaleLine: insertLine,
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.createSettlement(ACTOR_ID, {
       legalEntityId: ENTITY_ID,
       periodStart: new Date("2026-01-01"),
@@ -271,12 +282,12 @@ describe("PayoutService.getById", () => {
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(payout({ legalEntityId: OTHER_ENTITY_ID })),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await expect(svc.getById(ENTITY_ID, "po1")).rejects.toBeInstanceOf(PayoutPermissionError);
   });
 
   it("throws PayoutNotFoundError when missing", async () => {
-    const svc = new PayoutService(makeRepo());
+    const svc = serviceFor(makeRepo());
     await expect(svc.getById(ENTITY_ID, "missing")).rejects.toBeInstanceOf(PayoutNotFoundError);
   });
 });
@@ -286,7 +297,7 @@ describe("PayoutService.addAdjustment", () => {
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(payout({ status: "paid" })),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await expect(
       svc.addAdjustment(ACTOR_ID, "po1", { amount: "10.00", note: "long enough note" }),
     ).rejects.toBeInstanceOf(PayoutStatusTransitionError);
@@ -315,7 +326,7 @@ describe("PayoutService.addAdjustment", () => {
       updateTotals: vi.fn().mockResolvedValue(after),
       listLines: vi.fn().mockResolvedValue([newLine]),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.addAdjustment(ACTOR_ID, "po1", {
       amount: "100.00",
       note: "manual top-up",
@@ -343,7 +354,7 @@ describe("PayoutService.addAdjustment", () => {
       updateTotals: vi.fn().mockResolvedValue(after),
       listLines: vi.fn().mockResolvedValue([]),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await svc.addAdjustment(ACTOR_ID, "po1", {
       amount: "-50.00",
       note: "deduction reason",
@@ -361,7 +372,7 @@ describe("PayoutService.markPaid", () => {
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(payout({ status: "paid" })),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_1" })).rejects.toMatchObject(
       { code: "payout_already_paid" },
     );
@@ -371,7 +382,7 @@ describe("PayoutService.markPaid", () => {
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(payout({ status: "reversed" })),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_1" })).rejects.toMatchObject(
       { code: "cannot_pay_payout_in_state" },
     );
@@ -386,13 +397,14 @@ describe("PayoutService.markPaid", () => {
     });
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(before),
-      updateStatus: vi.fn().mockResolvedValue(updated),
+      updateStatusIfCurrent: vi.fn().mockResolvedValue(updated),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_test_1" });
     expect(result.status).toBe("paid");
-    expect(repo.updateStatus).toHaveBeenCalledWith(
+    expect(repo.updateStatusIfCurrent).toHaveBeenCalledWith(
       "po1",
+      "scheduled",
       expect.objectContaining({
         status: "paid",
         stripeTransferId: "tr_test_1",
@@ -407,7 +419,7 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const repo = makeRepo({
       findByStripeTransferId: vi.fn().mockResolvedValue(null),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await expect(
       svc.reconcileStripeTransfer({
         stripeTransferId: "tr_missing",
@@ -421,9 +433,10 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const after = payout({ stripeTransferId: "tr_1", status: "paid" });
     const repo = makeRepo({
       findById: vi.fn().mockResolvedValue(before),
+      findByIdForUpdate: vi.fn().mockResolvedValue(before),
       reconcileStripeTransfer: vi.fn().mockResolvedValue(after),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_1",
       payoutId: "po1",
@@ -450,9 +463,10 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const after = payout({ stripeTransferId: "tr_paid", status: "paid", processedAt: occurredAt });
     const repo = makeRepo({
       findByStripeTransferId: vi.fn().mockResolvedValue(before),
+      findByIdForUpdate: vi.fn().mockResolvedValue(before),
       reconcileStripeTransfer: vi.fn().mockResolvedValue(after),
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_paid",
       status: "paid",
@@ -472,77 +486,25 @@ describe("PayoutService.reconcileStripeTransfer", () => {
 
   it("inserts negative payout line and emits payout.transfer_reversed event on reversal", async () => {
     const before = payout({ stripeTransferId: "tr_1", status: "paid" });
-
+    const after = payout({ stripeTransferId: "tr_1", status: "reversed" });
+    const insertLine = vi.fn().mockResolvedValue({
+      id: "line-rev",
+      payoutId: "po1",
+      paymentId: null,
+      amount: "-950.00",
+      kind: "reversal",
+      createdByUserId: null,
+      note: "Transfer reversed: tr_1",
+      createdAt: new Date(),
+    });
     const repo = makeRepo({
       findByStripeTransferId: vi.fn().mockResolvedValue(before),
+      findByIdForUpdate: vi.fn().mockResolvedValue(before),
+      reconcileStripeTransfer: vi.fn().mockResolvedValue(after),
+      insertLine,
     });
     const publish = vi.fn().mockResolvedValue(undefined);
-
-    const payoutDbRow = {
-      id: "po1",
-      legalEntityId: "le1",
-      periodStart: new Date("2026-01-01"),
-      periodEnd: new Date("2026-01-31"),
-      grossAmount: "1000.00",
-      platformFee: "50.00",
-      stripeFee: "0.00",
-      netAmount: "950.00",
-      currency: "GBP",
-      status: "paid",
-      stripeTransferId: "tr_1",
-      xeroBillId: null,
-      failureReason: null,
-      processedAt: null,
-      statementUrl: null,
-      statementGenerationError: null,
-      createdAt: new Date("2026-02-01"),
-    };
-    const updatedDbRow = { ...payoutDbRow, status: "reversed" };
-
-    const mockInsert = vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        onConflictDoNothing: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([
-            {
-              id: "line-rev",
-              payoutId: "po1",
-              paymentId: null,
-              amount: "-950.00",
-              kind: "reversal",
-              createdByUserId: null,
-              note: "Transfer reversed: tr_1",
-              sourceEventId: "evt_rev_123",
-              createdAt: new Date(),
-            },
-          ]),
-        }),
-      }),
-    });
-    const mockTx = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([payoutDbRow]),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([updatedDbRow]),
-          }),
-        }),
-      }),
-      insert: mockInsert,
-    };
-    const db = {
-      transaction: vi.fn().mockImplementation(async (fn) => fn(mockTx)),
-    };
-    const svc = new PayoutService(
-      repo,
-      transactionRunnerFromDb(db as unknown as Database),
-      mockDomainEventSink(publish),
-    );
+    const svc = serviceFor(repo, publish);
 
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_1",
@@ -552,14 +514,51 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     });
 
     expect(result?.status).toBe("reversed");
-    expect(mockInsert).toHaveBeenCalled();
+    expect(insertLine).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: "-950.00", sourceEventId: "evt_rev_123" }),
+    );
     expect(publish).toHaveBeenCalledTimes(1);
     const publishCall = publish.mock.calls[0]?.[0];
-    expect(publishCall).toBeDefined();
     expect(publishCall.eventType).toBe("payout.transfer_reversed");
     expect(publishCall.aggregateId).toBe("po1");
     expect(publishCall.payload.reversedAmountCents).toBe(95000);
     expect(publishCall.payload.stripeEventId).toBe("evt_rev_123");
+  });
+
+  it("does not mark a reversed payout paid again on a late transfer event", async () => {
+    const reversed = payout({ stripeTransferId: "tr_1", status: "reversed" });
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const repo = makeRepo({
+      findByStripeTransferId: vi.fn().mockResolvedValue(reversed),
+      findByIdForUpdate: vi.fn().mockResolvedValue(reversed),
+    });
+    const result = await serviceFor(repo, publish).reconcileStripeTransfer({
+      stripeTransferId: "tr_1",
+      status: "paid",
+    });
+    expect(result?.status).toBe("reversed");
+    expect(repo.reconcileStripeTransfer).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("emits payout.paid only for the event that moves the payout to paid", async () => {
+    // Two Stripe events for one payout arrive together; the row lock makes the second
+    // one see the status written by the first.
+    let status: Payout["status"] = "scheduled";
+    const repo = makeRepo({
+      findByStripeTransferId: vi.fn().mockResolvedValue(payout({ stripeTransferId: "tr_1" })),
+      findByIdForUpdate: vi.fn(async () => payout({ stripeTransferId: "tr_1", status })),
+      reconcileStripeTransfer: vi.fn(async () => {
+        status = "paid";
+        return payout({ stripeTransferId: "tr_1", status });
+      }),
+    });
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const svc = serviceFor(repo, publish);
+    await svc.reconcileStripeTransfer({ stripeTransferId: "tr_1", status: "paid" });
+    await svc.reconcileStripeTransfer({ stripeTransferId: "tr_1", status: "paid" });
+    const paidEvents = publish.mock.calls.filter((c) => c[0].eventType === "payout.paid");
+    expect(paidEvents).toHaveLength(1);
   });
 });
 
@@ -595,7 +594,7 @@ describe("PayoutService.runBulkSettlement", () => {
       create,
       insertLine,
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const result = await svc.runBulkSettlement(null);
     expect(result.eligibleEntityCount).toBe(2);
     expect(result.createdCount).toBe(2);
@@ -654,7 +653,7 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
       create,
       insertLine,
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const r = await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
     expect(r.settlement.createdCount).toBe(10);
     expect(initiateTransfer).toHaveBeenCalledTimes(10);
@@ -698,7 +697,7 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
       create,
       insertLine,
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     const r = await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
     expect(initiateTransfer).toHaveBeenCalledTimes(3);
     expect(r.settlement.items.filter((i) => i.outcome === "error")).toHaveLength(1);
@@ -750,7 +749,7 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
       create,
       insertLine,
     });
-    const svc = new PayoutService(repo);
+    const svc = serviceFor(repo);
     await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
     await svc.runBulkSettlementWithTransfers(null, { initiateTransfer });
     expect(initiateTransfer.mock.calls.filter((c) => c[0] === "po-resume-5")).toHaveLength(2);

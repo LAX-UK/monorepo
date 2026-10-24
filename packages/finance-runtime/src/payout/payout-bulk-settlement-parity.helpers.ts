@@ -84,6 +84,8 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
       }) as Awaited<ReturnType<IPayoutRepository["summarizeMatching"]>>,
     countCreatedAtByDay: async () => new Map(),
     findById: async () => null,
+    findByIdForUpdate: async () => null,
+    lockSettlementForEntity: async () => undefined,
     findByStripeTransferId: async () => null,
     listLines: async () => [],
     findUnlinkedCapturedPayments: async () => [],
@@ -109,8 +111,8 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
 export function settlementDeps(repo: IPayoutRepository): PayoutSettlementDeps {
   return {
     repo,
-    transactionRunner: null,
-    domainEventSink: null,
+    transactionRunner: { runInTransaction: (fn) => fn({} as never) },
+    domainEventSink: { withTx: () => ({ publish: async () => undefined }) },
     payoutAdjustments: undefined,
     payoutRepoForTx: () => repo,
   };

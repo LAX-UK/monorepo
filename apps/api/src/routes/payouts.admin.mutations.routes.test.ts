@@ -175,6 +175,42 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
   });
 });
 
+describe("payout transition conflicts", () => {
+  it("answers 409 with the conflict code when mark-paid loses a race", async () => {
+    const { app, payouts } = mount("finance_ops");
+    const { PayoutStatusTransitionError } = await import("../services/interfaces/payout.js");
+    payouts.markPaid.mockRejectedValueOnce(new PayoutStatusTransitionError("payout_state_changed"));
+
+    const res = await post(
+      app,
+      `/${PAYOUT_ID}/mark-paid`,
+      { stripeTransferId: TRANSFER_REF },
+      key("mark-paid-key-7"),
+    );
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: "payout_state_changed" });
+  });
+
+  it("answers 409 when a reversal loses a race", async () => {
+    const { app, payouts } = mount("super_admin");
+    const { PayoutStatusTransitionError } = await import("../services/interfaces/payout.js");
+    payouts.adminManualReverse.mockRejectedValueOnce(
+      new PayoutStatusTransitionError("payout_already_reversed"),
+    );
+
+    const res = await post(
+      app,
+      `/${PAYOUT_ID}/reverse`,
+      { reason: REVERSE_REASON, confirmationPhrase: `REVERSE PAYOUT ${PAYOUT_ID}` },
+      key("reverse-key-409"),
+    );
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: "payout_already_reversed" });
+  });
+});
+
 describe("POST /admin/payouts/:payoutId/reverse", () => {
   const body = { reason: REVERSE_REASON, confirmationPhrase: `REVERSE PAYOUT ${PAYOUT_ID}` };
 
