@@ -29,6 +29,7 @@ import { createSecurityHeadersMiddleware } from "./middleware/security-headers.j
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
 import { createAdminRoutes } from "./routes/admin.js";
+import { createAdminMyStaffToolsRoutes } from "./routes/admin/staff-access.routes.js";
 import { createArtistRoutes } from "./routes/artists.js";
 import { createProductAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
@@ -258,6 +259,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))
     .route("/exports", createExportRoutes(container, authenticator))
+    .route("/admin/staff/my-tools", createAdminMyStaffToolsRoutes(container, authenticator))
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
     .route("/webhooks", createXeroWebhookRoutes(container));

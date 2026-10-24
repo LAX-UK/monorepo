@@ -52,6 +52,32 @@ describe("token exchange policy", () => {
     ).toThrowError(new TokenExchangeError("invalid_scope", "The requested scope is not allowed"));
   });
 
+  it("lets LAX Admin ask Bid for the staff tools with the narrow scope only", () => {
+    expect(
+      resolveTokenExchangePolicy({
+        clientId: "lax-shop-admin",
+        resource: "https://api.lax.bid",
+        scope: "lax.staff.tools.read",
+      }),
+    ).toEqual({ audience: "lax-bid-api", scopes: ["lax.staff.tools.read"] });
+    for (const scope of ["bid.read", "bid.write", "lax.portfolio.read"]) {
+      expect(() =>
+        resolveTokenExchangePolicy({
+          clientId: "lax-shop-admin",
+          resource: "https://api.lax.bid",
+          scope,
+        }),
+      ).toThrowError(new TokenExchangeError("invalid_scope", "The requested scope is not allowed"));
+    }
+    expect(() =>
+      resolveTokenExchangePolicy({
+        clientId: "lax-account-web",
+        resource: "https://api.lax.bid",
+        scope: "lax.staff.tools.read",
+      }),
+    ).toThrowError(new TokenExchangeError("invalid_scope", "The requested scope is not allowed"));
+  });
+
   it("lets LAX Account read portfolios from Bid and Shop with the narrow scope only", () => {
     for (const [resource, audience] of [
       ["https://api.lax.bid", "lax-bid-api"],

@@ -5,10 +5,9 @@ import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffReauthHref } from "@/lib/staff-layout-redirect";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { loadStaffIdentity } from "@/server/application/load-staff-identity";
-import { getShopAdminContainer } from "@/server/container";
+import { loadStaffProducts } from "@/server/application/load-staff-products";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import { staffDisplayName } from "@/server/domain/staff-identity.vm";
-import { staffProducts } from "@/server/domain/staff-products.vm";
 import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
 import {
   STAFF_NAV_COOKIE,
@@ -39,9 +38,10 @@ export default async function StaffLayout({ children }: { children: ReactNode })
   }
 
   const session = sessionResult.data;
-  const [enquirySummary, identity, jar] = await Promise.all([
+  const [enquirySummary, identity, products, jar] = await Promise.all([
     loadEnquirySummary(session.capabilities),
     loadStaffIdentity(),
+    loadStaffProducts(),
     cookies(),
   ]);
   const navGroups = buildAdminNavGroups({
@@ -54,7 +54,7 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     <>
       <ShopAdminShell
         navGroups={navGroups}
-        products={staffProducts(getShopAdminContainer().config)}
+        products={products}
         user={{
           name: staffDisplayName(identity, roleLabel),
           ...(identity.email ? { email: identity.email } : {}),

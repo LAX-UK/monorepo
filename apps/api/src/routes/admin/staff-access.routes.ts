@@ -1,14 +1,19 @@
+import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Result } from "neverthrow";
 import { z } from "zod";
+import type { ContainerAdminMyStaffToolsRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
+import { STAFF_TOOLS_READ_SCOPE } from "../../middleware/bid-scope-policy.js";
+import { createRequireAuth } from "../../middleware/require-auth.js";
 import {
   STAFF_ACCESS_SUMMARY_BATCH,
   type StaffAccessActor,
   type StaffAccessAdminService,
   type StaffAccessError,
 } from "../../services/admin/staff-access-admin.service.js";
+import type { IAuthenticator } from "../../services/interfaces/authenticator.js";
 import type { AdminHono } from "./_shared.js";
 
 const summariesBodySchema = z.object({
@@ -31,6 +36,29 @@ function respond<T>(c: Context, result: Result<T, StaffAccessError>, status: 200
     (data) => c.json({ data }, status),
     (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
   );
+}
+
+/**
+ * The signed-in person's own staff tools, for the product switcher. It answers only about the
+ * caller, so it takes no subject id. It is mounted outside the platform shell gate because
+ * finance staff, who fail it, still open Bid admin and need the answer, and it also accepts the
+ * read-only `lax.staff.tools.read` token LAX Admin exchanges for on the person's behalf.
+ */
+export function createAdminMyStaffToolsRoutes(
+  container: ContainerAdminMyStaffToolsRoutesSlice,
+  authenticator: IAuthenticator,
+) {
+  const requireStaffToolsRead = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.admin.requestLifecycle.isSuspended(id),
+    acceptedScopes: ["bid.read", STAFF_TOOLS_READ_SCOPE],
+  });
+  const routes = new Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>();
+  routes.get("/", requireStaffToolsRead, async (c) =>
+    c.json({ data: { tools: await container.admin.staffAccess.myTools(actorOf(c)) } }),
+  );
+  return routes;
 }
 
 /** Cross-platform staff access for the Bid People screen (D36). */

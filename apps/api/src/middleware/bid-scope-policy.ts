@@ -6,6 +6,12 @@ export type BidScope = "bid.read" | "bid.write";
  */
 export const PORTFOLIO_READ_SCOPE = "lax.portfolio.read";
 
+/**
+ * Read-only scope LAX Admin exchanges for to ask which staff tools the signed-in person can
+ * open. It opens that one route and nothing else.
+ */
+export const STAFF_TOOLS_READ_SCOPE = "lax.staff.tools.read";
+
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Central resource-scope policy; product capability checks run after this gate. */

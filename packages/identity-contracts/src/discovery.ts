@@ -35,6 +35,7 @@ export type OidcDiscoveryDocument = {
     "shop.write",
     "shop.admin",
     "lax.portfolio.read",
+    "lax.staff.tools.read",
     "phone",
   ];
   token_endpoint_auth_methods_supported: readonly [
@@ -114,6 +115,7 @@ export function buildOidcDiscoveryDocument(issuerUrl: string): OidcDiscoveryDocu
       "shop.write",
       "shop.admin",
       "lax.portfolio.read",
+      "lax.staff.tools.read",
       "phone",
     ],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],

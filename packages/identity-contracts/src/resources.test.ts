@@ -14,7 +14,7 @@ describe("LAX resource registry", () => {
       "lax-bid-api": {
         id: "lax-bid-api",
         uri: "https://api.lax.bid",
-        allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read"],
+        allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read", "lax.staff.tools.read"],
       },
       "lax-ws": {
         id: "lax-ws",
@@ -42,6 +42,7 @@ describe("LAX resource registry", () => {
       "bid.read",
       "bid.write",
       "lax.portfolio.read",
+      "lax.staff.tools.read",
       "shop.admin",
       "shop.read",
       "shop.write",

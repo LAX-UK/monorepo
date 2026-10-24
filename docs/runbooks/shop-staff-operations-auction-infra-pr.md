@@ -25,6 +25,7 @@ After #29 merges and applies, open **one flag-flip PR each** on `terraform/ephem
 | `REDIS_URL` | shared Redis |
 | `SHOP_ADMIN_PUBLIC_ORIGIN` | `https://test-shop-admin.lax.bid` |
 | `SHOP_ADMIN_SESSION_ENCRYPTION_KEY` | ≥32 chars secret |
+| `BID_API_INTERNAL_BASE_URL` | internal Bid API, for example `http://api:3001`. Lets the product switcher list Bid admin only for people who can open it; unset, the switcher shows LAX Admin alone. No extra credentials: shop-admin exchanges the signed-in session for a `lax.staff.tools.read` token (the `lax-shop-admin` client is registered for it) |
 | `SENTRY_RELEASE` / deploy SHA | matches monorepo pin |
 
 ## shop-api (test) additions

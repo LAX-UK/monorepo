@@ -102,6 +102,8 @@ export { StaffShell, STAFF_NAV_COOKIE } from "./shell/staff-shell.js";
 export type { StaffShellProps } from "./shell/staff-shell.js";
 export { AccountMenu, initialsOf } from "./shell/account-menu.js";
 export { ProductMark, ProductSwitcher } from "./shell/product-switcher.js";
+export { STAFF_PRODUCT_IDS, buildStaffProducts } from "./shell/staff-products.js";
+export type { StaffProductId } from "./shell/staff-products.js";
 export { CommandPalette, useCommandPaletteShortcut } from "./shell/command-palette.js";
 export { StaffBreadcrumbs } from "./shell/breadcrumbs.js";
 export { MetaItem, PageHeader, STAFF_PAGE_TITLE_CLASS } from "./shell/page-header.js";

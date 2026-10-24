@@ -452,6 +452,14 @@ export type ContainerInternalIdentitySubjectUsageRoutesSlice = Pick<
   "subjectUsageReader"
 >;
 
+/** The signed-in person's own staff tools, for either product's switcher. */
+export type ContainerAdminMyStaffToolsRoutesSlice = {
+  admin: {
+    requestLifecycle: Pick<AdminRouteServices["requestLifecycle"], "isSuspended">;
+    staffAccess: Pick<AdminStaffSecurityRouteServices["staffAccess"], "myTools">;
+  };
+};
+
 /** Machine-authenticated Identity account-deletion eligibility boundary. */
 export type ContainerInternalIdentityDeletionEligibilityRoutesSlice = Pick<
   Container,
