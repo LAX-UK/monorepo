@@ -230,6 +230,8 @@ export class IdentityOperationsService {
     });
     // RP sessions (shop-admin, account) can outlive IdP sessions, so always fan out logout.
     await this.logout?.revokeSubject(subjectId);
+    // After the reset has committed, so an email failure (which never throws) cannot undo it.
+    await this.notifier.twoFactorResetBySupport({ subjectId });
   }
 
   /**

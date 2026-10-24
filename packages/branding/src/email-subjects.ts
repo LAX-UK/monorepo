@@ -5,6 +5,7 @@ export const emailSubjects = {
   passwordChanged: "Your LAX Account password was changed",
   twoFactorEnabled: "Two-step verification was turned on for your LAX Account",
   twoFactorDisabled: "Two-step verification was turned off for your LAX Account",
+  twoFactorResetBySupport: "Two-step verification was reset by LAX support",
   backupCodesRegenerated: "New backup codes were created for your LAX Account",
   emailChanged: "The email address on your LAX Account was changed",
   phoneVerified: "A phone number was verified on your LAX Account",

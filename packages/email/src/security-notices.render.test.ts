@@ -36,6 +36,14 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
+  it("renders two-step verification reset by support and says every device was signed out", async () => {
+    const rendered = await renderEmail("2fa-reset-by-support", BASE);
+    expect(rendered.subject).toBe("Two-step verification was reset by LAX support");
+    expect(rendered.text).toContain("LAX support reset two-step verification");
+    expect(rendered.text).toContain("set up two-step verification again");
+    expectSharedParts(rendered);
+  });
+
   it("renders backup codes regenerated and says the old codes stop working", async () => {
     const rendered = await renderEmail("backup-codes-regenerated", BASE);
     expect(rendered.subject).toBe("New backup codes were created for your LAX Account");

@@ -83,7 +83,10 @@ function createRepositories(): IdentityOperationsRepositories {
 }
 
 function createService(repositories = createRepositories()) {
-  const notifier: IIdentityNotifier = { passwordChanged: vi.fn().mockResolvedValue(undefined) };
+  const notifier: IIdentityNotifier = {
+    passwordChanged: vi.fn().mockResolvedValue(undefined),
+    twoFactorResetBySupport: vi.fn().mockResolvedValue(undefined),
+  };
   const productSubjectUsage = {
     getSubjectUsage: vi.fn().mockResolvedValue({
       hasProductProfile: false,
@@ -135,7 +138,10 @@ describe("IdentityOperationsService", () => {
     const status = { value: "breached" as "breached" | "unknown" };
     const service = new IdentityOperationsService(
       repositories,
-      { passwordChanged: vi.fn().mockResolvedValue(undefined) },
+      {
+        passwordChanged: vi.fn().mockResolvedValue(undefined),
+        twoFactorResetBySupport: vi.fn().mockResolvedValue(undefined),
+      },
       { getSubjectUsage: vi.fn() },
       { publish: vi.fn().mockResolvedValue(undefined) },
       undefined,
@@ -545,8 +551,9 @@ describe("IdentityOperationsService", () => {
 
 describe("resetTwoFactor", () => {
   it("clears enrollment and deletes sessions in one transaction, then fans out logout", async () => {
-    const { repositories, service, logout, identityEventPublisher } = createService();
+    const { repositories, service, logout, identityEventPublisher, notifier } = createService();
     await service.resetTwoFactor("subject");
+    expect(notifier.twoFactorResetBySupport).toHaveBeenCalledWith({ subjectId: "subject" });
     expect(repositories.unitOfWork.transaction).toHaveBeenCalledTimes(1);
     expect(repositories.subjects.resetTwoFactorEnrollment).toHaveBeenCalledWith(
       transaction,
@@ -574,11 +581,12 @@ describe("resetTwoFactor", () => {
   });
 
   it("rejects unknown subjects without revoking anything", async () => {
-    const { repositories, service, logout } = createService();
+    const { repositories, service, logout, notifier } = createService();
     vi.mocked(repositories.subjects.resetTwoFactorEnrollment).mockResolvedValue(false);
     await expect(service.resetTwoFactor("missing")).rejects.toMatchObject({
       code: "subject_not_found",
     });
+    expect(notifier.twoFactorResetBySupport).not.toHaveBeenCalled();
     expect(repositories.sessions.deleteAllSessions).not.toHaveBeenCalled();
     expect(logout.revokeSubject).not.toHaveBeenCalled();
   });

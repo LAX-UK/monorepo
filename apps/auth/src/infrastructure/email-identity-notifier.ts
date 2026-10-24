@@ -12,4 +12,12 @@ export class EmailIdentityNotifier implements IIdentityNotifier {
       at: new Date(),
     });
   }
+
+  async twoFactorResetBySupport(input: { subjectId: string }): Promise<void> {
+    await this.notices.notify({
+      kind: "two_factor_reset_by_support",
+      userId: input.subjectId,
+      at: new Date(),
+    });
+  }
 }
