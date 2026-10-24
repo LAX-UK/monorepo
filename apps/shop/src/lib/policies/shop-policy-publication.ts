@@ -1,5 +1,8 @@
-import { isProductionDeployEnv } from "@/content/policies/shop-policy-status";
-import type { ShopPolicyRelease } from "@/content/policies/shop-policy-status";
+import {
+  type ShopPolicyRelease,
+  type ShopPolicySlug,
+  isProductionDeployEnv,
+} from "@/content/policies/shop-policy-status";
 import { SHOP_PRODUCTION_HOSTS } from "@/lib/seo/shop-indexing";
 
 export type ShopPolicyVisibility = "published" | "draft-preview" | "hidden";
@@ -24,4 +27,22 @@ export function resolveShopPolicyVisibility(
 ): ShopPolicyVisibility {
   if (release.status === "approved") return "published";
   return production ? "hidden" : "draft-preview";
+}
+
+/**
+ * Policy pages that may be linked to (footer, checkout). A draft hidden on production is left
+ * out, so nothing links to a page that would 404.
+ */
+export function linkableShopPolicies(
+  releases: Readonly<Record<ShopPolicySlug, ShopPolicyRelease>>,
+  production: boolean,
+): ShopPolicySlug[] {
+  return (Object.keys(releases) as ShopPolicySlug[]).filter(
+    (slug) => resolveShopPolicyVisibility(releases[slug], production) !== "hidden",
+  );
+}
+
+/** The checkout terms line links to both pages, so it shows only when both can be linked. */
+export function canShowCheckoutTerms(linkable: readonly ShopPolicySlug[]): boolean {
+  return linkable.includes("terms") && linkable.includes("returns");
 }

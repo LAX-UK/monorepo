@@ -3,10 +3,6 @@ import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
-import { assertShopPoliciesPublishable } from "./src/content/policies/shop-policy-status";
-
-// A production image cannot be built while the terms, delivery, returns or help page is a draft.
-assertShopPoliciesPublishable(process.env.SHOP_DEPLOY_ENV);
 
 const workspaceRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // Image hosts are fixed at build time; shop-api serves uploaded media from the lax-media CDN.

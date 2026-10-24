@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isShopProductionDeployment, resolveShopPolicyVisibility } from "./shop-policy-publication";
+import {
+  canShowCheckoutTerms,
+  isShopProductionDeployment,
+  linkableShopPolicies,
+  resolveShopPolicyVisibility,
+} from "./shop-policy-publication";
 
 const draft = { status: "draft", version: "0.1", lastUpdated: "2026-10-25" } as const;
 const approved = { status: "approved", version: "1.0", lastUpdated: "2026-11-01" } as const;
@@ -39,5 +44,24 @@ describe("resolveShopPolicyVisibility", () => {
   it("publishes approved pages everywhere", () => {
     expect(resolveShopPolicyVisibility(approved, false)).toBe("published");
     expect(resolveShopPolicyVisibility(approved, true)).toBe("published");
+  });
+});
+
+describe("linkableShopPolicies", () => {
+  const releases = { terms: approved, delivery: draft, returns: draft, help: draft };
+
+  it("drops drafts on production so footer and checkout never link to a 404", () => {
+    expect(linkableShopPolicies(releases, true)).toEqual(["terms"]);
+    expect(canShowCheckoutTerms(linkableShopPolicies(releases, true))).toBe(false);
+  });
+
+  it("links every page off production, drafts included", () => {
+    expect(linkableShopPolicies(releases, false)).toEqual(["terms", "delivery", "returns", "help"]);
+    expect(canShowCheckoutTerms(linkableShopPolicies(releases, false))).toBe(true);
+  });
+
+  it("shows the checkout terms line on production once terms and returns are approved", () => {
+    const ready = { ...releases, returns: approved };
+    expect(canShowCheckoutTerms(linkableShopPolicies(ready, true))).toBe(true);
   });
 });

@@ -15,6 +15,8 @@ import {
   basketKnownEmpty,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
+import { canShowCheckoutTerms } from "@/lib/policies/shop-policy-publication";
+import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
@@ -171,6 +173,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
         <ShopCheckoutSteps current="Details" />
         <CheckoutForm
           basket={basket}
+          showTermsNotice={canShowCheckoutTerms(loadLinkableShopPolicies())}
           {...(viewer.kind === "authenticated" && viewer.email
             ? {
                 customerEmail: viewer.email,

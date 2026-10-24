@@ -49,9 +49,16 @@ type Props = {
   basket: BasketView;
   customerEmail?: string;
   defaultDeliveryPhone?: string;
+  /** False on production while the terms or returns page is still a draft, so nothing links to a 404. */
+  showTermsNotice: boolean;
 };
 
-export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Props) {
+export function CheckoutForm({
+  basket,
+  customerEmail,
+  defaultDeliveryPhone,
+  showTermsNotice,
+}: Props) {
   const [fulfilment, setFulfilment] = useState<ShopFulfilmentOption>("uk_insured_delivery");
   const [delivery, setDelivery] = useState<ShopDeliveryAddressInput>({
     line1: "",
@@ -215,7 +222,7 @@ export function CheckoutForm({ basket, customerEmail, defaultDeliveryPhone }: Pr
             announcement="assertive"
           />
         ) : null}
-        <CheckoutTermsNotice />
+        {showTermsNotice ? <CheckoutTermsNotice /> : null}
         <ShopCommerceButton
           type="button"
           disabled={fieldsDisabled}
