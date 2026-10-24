@@ -19,7 +19,7 @@ export type CatalogueArtworkCardVm = {
 
 export function isCatalogueArtworkSoldOut(item: PublicArtworkSummary): boolean {
   if (item.saleState === "sold") return true;
-  if (item.eligibleForEditionAllocation && item.availability.editionsAvailable <= 0) {
+  if (item.eligibleForEditionAllocation && item.availability.state === "sold_out") {
     return true;
   }
   return false;

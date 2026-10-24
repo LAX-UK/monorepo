@@ -34,7 +34,8 @@ export const BasketLineSchema = Type.Object(
     variantSku: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     unitPricePence: Type.Integer({ minimum: 0 }),
     quantity: Type.Integer({ minimum: 1 }),
-    sellableCount: Type.Integer({ minimum: 0 }),
+    /** No stock at all; how much is left is never public. */
+    soldOut: Type.Boolean(),
     priceChanged: Type.Boolean(),
     outOfStock: Type.Boolean(),
     imageUrl: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),

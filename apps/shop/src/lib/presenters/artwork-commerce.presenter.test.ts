@@ -20,7 +20,7 @@ const artwork = (overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDet
   salesChannel: "shop",
   eligibleForEditionAllocation: true,
   printPricePence: 12000,
-  availability: { totalEditions: 24, editionsAvailable: 10 },
+  availability: { totalEditions: 24, state: "available" },
   ...overrides,
 });
 
@@ -33,7 +33,7 @@ describe("artwork commerce presenter", () => {
   it("blocks price enquiry when editions are sold out even if sale state is POA", () => {
     const soldOutPoa = artwork({
       saleState: "price_on_application",
-      availability: { totalEditions: 24, editionsAvailable: 0 },
+      availability: { totalEditions: 24, state: "sold_out" },
     });
     expect(isArtworkPriceEnquiryAvailable(soldOutPoa)).toBe(false);
     expect(resolveArtworkUnavailableReason(soldOutPoa)).toBe("edition_sold_out");
@@ -44,7 +44,7 @@ describe("artwork commerce presenter", () => {
       saleState: "price_on_application",
       eligibleForEditionAllocation: false,
       printPricePence: null,
-      availability: { totalEditions: 0, editionsAvailable: 0 },
+      availability: { totalEditions: 0, state: "sold_out" },
     });
     expect(isArtworkPriceEnquiryAvailable(poaOriginal)).toBe(true);
     expect(resolveArtworkUnavailableReason(poaOriginal)).toBe("price_enquiry");
@@ -55,7 +55,7 @@ describe("artwork commerce presenter", () => {
       saleState: "sold",
       eligibleForEditionAllocation: false,
       printPricePence: null,
-      availability: { totalEditions: 0, editionsAvailable: 0 },
+      availability: { totalEditions: 0, state: "sold_out" },
     });
     expect(isArtworkPriceEnquiryAvailable(sold)).toBe(false);
     expect(resolveArtworkUnavailableReason(sold)).toBe("sold");

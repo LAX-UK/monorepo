@@ -143,19 +143,6 @@
   font-weight: 600;
 }
 
-.shop-detail__availability-meter {
-  height: 0.25rem;
-  margin-top: 1rem;
-  overflow: hidden;
-  background: var(--color-border-hairline);
-}
-
-.shop-detail__availability-meter > span {
-  display: block;
-  height: 100%;
-  background: var(--color-on-surface);
-}
-
 .shop-detail__availability-detail {
   margin-top: 0.75rem !important;
   color: var(--color-on-surface-variant) !important;

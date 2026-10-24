@@ -31,23 +31,30 @@ describe("planEditionsForArtwork", () => {
 });
 
 describe("publicEditionAvailability", () => {
-  it("reports zero when ineligible", () => {
+  it("reports no edition series when ineligible", () => {
     expect(
       publicEditionAvailability({
         eligibleForEditionAllocation: false,
         totalEditionCount: 0,
         availableEditionCount: 0,
       }),
-    ).toEqual({ totalEditions: 0, editionsAvailable: 0 });
+    ).toEqual({ totalEditions: 0, state: "available" });
   });
 
-  it("reports total and unowned availability independently", () => {
+  it("reports the edition size and a state, never the remaining count", () => {
     expect(
       publicEditionAvailability({
         eligibleForEditionAllocation: true,
         totalEditionCount: 24,
         availableEditionCount: 18,
       }),
-    ).toEqual({ totalEditions: 24, editionsAvailable: 18 });
+    ).toEqual({ totalEditions: 24, state: "available" });
+    expect(
+      publicEditionAvailability({
+        eligibleForEditionAllocation: true,
+        totalEditionCount: 24,
+        availableEditionCount: 0,
+      }),
+    ).toEqual({ totalEditions: 24, state: "sold_out" });
   });
 });

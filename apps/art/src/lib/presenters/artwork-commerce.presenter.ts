@@ -11,7 +11,7 @@ export type ArtworkMetaFacts = Pick<PublicArtworkSummary, "yearCreated" | "mediu
 /** Sold originals and fully claimed edition runs are both “Sold” on lax.art. */
 export function isArtworkSold(artwork: ArtworkCommerceFacts): boolean {
   if (artwork.saleState === "sold") return true;
-  return artwork.eligibleForEditionAllocation && artwork.availability.editionsAvailable <= 0;
+  return artwork.eligibleForEditionAllocation && artwork.availability.state === "sold_out";
 }
 
 /** lax.art sales are enquiry-led: every unsold work accepts an enquiry. */

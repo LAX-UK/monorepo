@@ -99,7 +99,8 @@ export function createDrizzleMerchandiseCatalogueRepository(
           variantId: row.variantId,
           sku: row.sku,
           pricePence: row.pricePence,
-          availableCount: Number(row.availableCount),
+          availability:
+            Number(row.availableCount) > 0 ? ("available" as const) : ("sold_out" as const),
         })),
       };
     },

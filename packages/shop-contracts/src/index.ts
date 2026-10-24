@@ -36,6 +36,7 @@ export {
   PublicArtworkSortSchema,
   PublicArtworkSummarySchema,
   PublicArtworkTypeFilterSchema,
+  PublicAvailabilityStateSchema,
   PublicEditionAvailabilitySchema,
   ShopApiErrorBodySchema,
   type PublicArtworkDetail,

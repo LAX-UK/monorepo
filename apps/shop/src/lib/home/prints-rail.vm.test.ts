@@ -22,7 +22,7 @@ const item = (
   salesChannel: "shop",
   eligibleForEditionAllocation: true,
   printPricePence: 12000,
-  availability: { totalEditions: 24, editionsAvailable: 4 },
+  availability: { totalEditions: 24, state: "available" },
   ...overrides,
 });
 

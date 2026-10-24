@@ -91,7 +91,7 @@ export function BasketLinesClient({ basket, summary }: Props) {
         <ul className="shop-basket__lines">
           {basket.lines.map((line) => {
             const quantity = quantities[line.lineId] ?? line.quantity;
-            const maxQuantity = Math.min(24, line.sellableCount);
+            const maxQuantity = 24;
             const lineTitle = line.productTitle ?? line.artworkTitle ?? "Item";
             const lineHref = line.productSlug
               ? `/merchandise/${line.productSlug}`
@@ -126,7 +126,7 @@ export function BasketLinesClient({ basket, summary }: Props) {
                       </ShopCommerceButton>
                     </ShopNotice>
                   ) : null}
-                  {line.outOfStock && line.sellableCount < 1 ? (
+                  {line.outOfStock && line.soldOut ? (
                     <ShopNotice tone="warning" title="Sold out">
                       <p>This item is no longer available. Remove it to continue to checkout.</p>
                       <ShopCommerceButton
@@ -141,21 +141,19 @@ export function BasketLinesClient({ basket, summary }: Props) {
                       </ShopCommerceButton>
                     </ShopNotice>
                   ) : line.outOfStock ? (
-                    <ShopNotice tone="warning" title="Not enough stock">
-                      <p>Only {line.sellableCount} available.</p>
+                    <ShopNotice tone="warning" title="Quantity not available">
+                      <p>
+                        We cannot supply that quantity. Lower it or remove the item to continue.
+                      </p>
                       <ShopCommerceButton
                         type="button"
                         variant="outline"
                         size="sm"
                         className="mt-2"
                         disabled={pending}
-                        onClick={() => {
-                          const next = line.sellableCount;
-                          setQuantities((current) => ({ ...current, [line.lineId]: next }));
-                          commitQuantity(line.lineId, line, next, quantity, maxQuantity);
-                        }}
+                        onClick={() => removeLine(line.lineId)}
                       >
-                        Set quantity to {line.sellableCount}
+                        Remove from basket
                       </ShopCommerceButton>
                     </ShopNotice>
                   ) : null}

@@ -12,10 +12,24 @@ export const PublicArtworkSalesChannelSchema = Type.Union([
   Type.Literal("art"),
 ]);
 
-export const PublicEditionAvailabilitySchema = Type.Object({
-  totalEditions: Type.Integer({ minimum: 0 }),
-  editionsAvailable: Type.Integer({ minimum: 0 }),
-});
+/**
+ * Public availability is a state, never a remaining count: shoppers see the edition size and
+ * whether the work is available or sold out. Counts are for LAX staff and the original's owner,
+ * from their own authorised endpoints.
+ */
+export const PublicAvailabilityStateSchema = Type.Union([
+  Type.Literal("available"),
+  Type.Literal("sold_out"),
+]);
+
+export const PublicEditionAvailabilitySchema = Type.Object(
+  {
+    /** The edition size ("Limited edition of 24"); 0 for works with no edition series. */
+    totalEditions: Type.Integer({ minimum: 0 }),
+    state: PublicAvailabilityStateSchema,
+  },
+  { additionalProperties: false },
+);
 
 export const PublicArtworkObjectTypeSchema = Type.Union([
   Type.Literal("painting"),

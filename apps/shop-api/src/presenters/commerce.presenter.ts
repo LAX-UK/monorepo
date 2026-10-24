@@ -27,7 +27,7 @@ export function presentBasket(record: BasketRecord): BasketView {
       variantSku: line.variantSku,
       unitPricePence: line.unitPricePence,
       quantity: line.quantity,
-      sellableCount: line.sellableCount,
+      soldOut: line.sellableCount < 1,
       priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
       outOfStock: line.quantity > line.sellableCount,
       imageUrl: line.imageUrl,

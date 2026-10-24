@@ -20,7 +20,7 @@ const artwork = (overrides: Partial<PublicArtworkSummary> = {}): PublicArtworkSu
   salesChannel: "art",
   eligibleForEditionAllocation: false,
   printPricePence: null,
-  availability: { totalEditions: 0, editionsAvailable: 0 },
+  availability: { totalEditions: 0, state: "sold_out" },
   ...overrides,
 });
 
@@ -36,7 +36,7 @@ describe("artwork commerce presenter", () => {
     const claimed = artwork({
       eligibleForEditionAllocation: true,
       printPricePence: 12000,
-      availability: { totalEditions: 24, editionsAvailable: 0 },
+      availability: { totalEditions: 24, state: "sold_out" },
     });
     expect(isArtworkSold(claimed)).toBe(true);
     expect(resolveArtworkPriceLabel(claimed)).toBe("Sold");

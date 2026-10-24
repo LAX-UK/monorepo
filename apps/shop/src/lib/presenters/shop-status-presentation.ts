@@ -71,11 +71,10 @@ export function resolveShopOrderRefundLine(order: {
   return `${formatGbpPence(order.refundedPence)} refunded`;
 }
 
-export type EditionAvailabilityKind = "available" | "limited" | "sold_out";
+export type EditionAvailabilityKind = "available" | "sold_out";
 
 const EDITION_AVAILABILITY: Record<EditionAvailabilityKind, ShopStatusPresentation> = {
   available: { label: "Available", tone: "success" },
-  limited: { label: "Limited", tone: "warning" },
   sold_out: { label: "Sold out", tone: "neutral" },
 };
 
@@ -91,17 +90,11 @@ export function resolveShopOrderStatusPresentation(
   return ORDER_STATUS[status];
 }
 
-export function resolveEditionAvailabilityPresentation(input: {
-  editionsAvailable: number;
-  totalEditions: number;
-}): ShopStatusPresentation {
-  if (input.editionsAvailable <= 0) {
-    return EDITION_AVAILABILITY.sold_out;
-  }
-  if (input.totalEditions > 0 && input.editionsAvailable / input.totalEditions <= 0.2) {
-    return EDITION_AVAILABILITY.limited;
-  }
-  return EDITION_AVAILABILITY.available;
+/** Public availability is only ever "Available" or "Sold out"; there is no low-stock tier. */
+export function resolveEditionAvailabilityPresentation(
+  state: EditionAvailabilityKind,
+): ShopStatusPresentation {
+  return EDITION_AVAILABILITY[state];
 }
 
 /** Catalogue cards show Price on request and Sold out only; for_sale has no badge. */

@@ -6,23 +6,16 @@ export type ArtStatusPresentation = {
   hint?: string;
 };
 
-export type EditionAvailabilityKind = "available" | "limited" | "sold_out";
+export type EditionAvailabilityKind = "available" | "sold_out";
 
 const EDITION_AVAILABILITY: Record<EditionAvailabilityKind, ArtStatusPresentation> = {
   available: { label: "Available", tone: "success" },
-  limited: { label: "Limited", tone: "warning" },
   sold_out: { label: "Sold out", tone: "neutral" },
 };
 
-export function resolveEditionAvailabilityPresentation(input: {
-  editionsAvailable: number;
-  totalEditions: number;
-}): ArtStatusPresentation {
-  if (input.editionsAvailable <= 0) {
-    return EDITION_AVAILABILITY.sold_out;
-  }
-  if (input.totalEditions > 0 && input.editionsAvailable / input.totalEditions <= 0.2) {
-    return EDITION_AVAILABILITY.limited;
-  }
-  return EDITION_AVAILABILITY.available;
+/** Public availability is only ever "Available" or "Sold out"; there is no low-stock tier. */
+export function resolveEditionAvailabilityPresentation(
+  state: EditionAvailabilityKind,
+): ArtStatusPresentation {
+  return EDITION_AVAILABILITY[state];
 }

@@ -54,7 +54,7 @@ function artworkSummary(slug: string): PublicArtworkSummary {
     salesChannel: "art",
     eligibleForEditionAllocation: false,
     printPricePence: null,
-    availability: { totalEditions: 0, editionsAvailable: 0 },
+    availability: { totalEditions: 0, state: "sold_out" },
   };
 }
 

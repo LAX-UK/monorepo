@@ -73,16 +73,20 @@ export function assertValidEditionPlan(plan: PlannedEdition[]): void {
   }
 }
 
+/**
+ * What the public may know about an edition run: its size and whether any edition is still
+ * available. The remaining count is deliberately not returned.
+ */
 export function publicEditionAvailability(input: {
   eligibleForEditionAllocation: boolean;
   totalEditionCount: number;
   availableEditionCount: number;
-}): { totalEditions: number; editionsAvailable: number } {
+}): { totalEditions: number; state: "available" | "sold_out" } {
   if (!input.eligibleForEditionAllocation) {
-    return { totalEditions: 0, editionsAvailable: 0 };
+    return { totalEditions: 0, state: "available" };
   }
   return {
     totalEditions: input.totalEditionCount,
-    editionsAvailable: input.availableEditionCount,
+    state: input.availableEditionCount > 0 ? "available" : "sold_out",
   };
 }

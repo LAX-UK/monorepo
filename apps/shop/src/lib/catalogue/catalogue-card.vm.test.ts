@@ -19,7 +19,7 @@ describe("catalogue card view models", () => {
         salesChannel: "shop",
         eligibleForEditionAllocation: false,
         printPricePence: null,
-        availability: { totalEditions: 0, editionsAvailable: 0 },
+        availability: { totalEditions: 0, state: "sold_out" },
       }),
     ).toMatchObject({
       href: "/artworks/work",
@@ -49,7 +49,7 @@ describe("catalogue card view models", () => {
         salesChannel: "shop",
         eligibleForEditionAllocation: true,
         printPricePence: 85000,
-        availability: { totalEditions: 12, editionsAvailable: 8 },
+        availability: { totalEditions: 12, state: "available" },
       }).metaLine,
     ).toMatch(/^£850/);
   });
@@ -69,7 +69,7 @@ describe("catalogue card view models", () => {
         salesChannel: "shop",
         eligibleForEditionAllocation: true,
         printPricePence: null,
-        availability: { totalEditions: 24, editionsAvailable: 0 },
+        availability: { totalEditions: 24, state: "sold_out" },
       }).status,
     ).toEqual({ label: "Sold out", tone: "neutral" });
   });

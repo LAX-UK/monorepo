@@ -67,15 +67,14 @@ describe("shop status presentation", () => {
     expect(resolvePortalOriginalSaleStatusPresentation("future_state").label).toBe("Unknown");
   });
 
-  it("derives edition availability", () => {
-    expect(
-      resolveEditionAvailabilityPresentation({ editionsAvailable: 0, totalEditions: 10 }).tone,
-    ).toBe("neutral");
-    expect(
-      resolveEditionAvailabilityPresentation({ editionsAvailable: 1, totalEditions: 10 }).tone,
-    ).toBe("warning");
-    expect(
-      resolveEditionAvailabilityPresentation({ editionsAvailable: 5, totalEditions: 10 }).tone,
-    ).toBe("success");
+  it("maps edition availability to Available or Sold out only", () => {
+    expect(resolveEditionAvailabilityPresentation("available")).toEqual({
+      label: "Available",
+      tone: "success",
+    });
+    expect(resolveEditionAvailabilityPresentation("sold_out")).toEqual({
+      label: "Sold out",
+      tone: "neutral",
+    });
   });
 });

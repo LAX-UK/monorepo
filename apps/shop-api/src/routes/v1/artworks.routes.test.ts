@@ -36,6 +36,28 @@ describe("artworks routes", () => {
     await app.close();
   });
 
+  it("never returns a remaining edition count on list or detail", async () => {
+    const leakyAvailability = { totalEditions: 24, state: "available", editionsAvailable: 4 };
+    const leaky = { ...mockArtworkSummary(), availability: leakyAvailability } as never;
+    const deps = createCatalogueDeps();
+    deps.catalogue.listPublicArtworks = async () => ({ items: [leaky] });
+    deps.catalogue.getPublicArtwork = async () =>
+      ({ ...mockArtworkDetail(), availability: leakyAvailability }) as never;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const list = await app.inject({ method: "GET", url: "/v1/artworks" });
+    const detail = await app.inject({ method: "GET", url: "/v1/artworks/demo" });
+    for (const response of [list, detail]) {
+      expect(response.statusCode).toBe(200);
+      expect(response.body).not.toMatch(
+        /editionsAvailable|availableCount|sellableCount|remaining/i,
+      );
+    }
+    const item = (list.json() as { items: Array<{ availability: unknown }> }).items[0];
+    expect(item?.availability).toEqual({ totalEditions: 24, state: "available" });
+    await app.close();
+  });
+
   it("serves object type facets for a sales channel with public caching", async () => {
     const deps = createCatalogueDeps();
     const listFacets = vi.fn(async () => [

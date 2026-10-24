@@ -12,7 +12,7 @@ const line: BasketView["lines"][number] = {
   variantSku: null,
   quantity: 2,
   unitPricePence: 8500,
-  sellableCount: 23,
+  soldOut: false,
   priceChanged: false,
   outOfStock: false,
   imageUrl: null,

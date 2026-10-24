@@ -77,7 +77,7 @@ export type ArtworkDetailVm = {
   priceLabel: string;
   /** Discretion line under the price; null once the work is sold. */
   priceNote: string | null;
-  /** Edition availability ("3 of 10 editions available"); null for originals. */
+  /** Edition availability ("Limited edition of 10 · Available"); null for originals. */
   availabilityNote: string | null;
   keySpecs: ArtworkSpecRow[];
   mediumSpecs: ArtworkSpecRow[];
@@ -198,7 +198,7 @@ export async function composeArtworkDetailPage(
       galleryImages: buildGalleryImages(artwork),
       priceLabel: resolveArtworkPriceLabel(artwork),
       priceNote: artworkPriceNote(artwork),
-      availabilityNote: availability.meter ? availability.headline : null,
+      availabilityNote: availability.isEdition ? availability.headline : null,
       keySpecs: buildArtworkKeySpecs(artwork),
       mediumSpecs: buildArtworkMediumSpecs(artwork),
       description: artwork.description,
