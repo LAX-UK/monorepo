@@ -14,7 +14,10 @@ export const HOSTED_AUTH_MESSAGES = {
   EMAIL_NOT_VERIFIED: "Verify your email to continue.",
   RESEND_VERIFICATION: "Resend verification email",
   START_AGAIN: "Start again",
-  RESET_INVALID: "Reset link is invalid or expired.",
+  RESET_LINK_MISSING:
+    "This reset link is incomplete. Open the link from your email again, or request a new one.",
+  RESET_INVALID: "This reset link is invalid, expired or has already been used. Request a new one.",
+  RESET_REQUEST_NEW_LINK: "Request a new link",
   RESET_FAILED: "Unable to reset password. Request a new link.",
   VERIFY_FAILED: "Verification link is invalid or expired.",
   MFA_FAILED: "Verification failed. Try again.",

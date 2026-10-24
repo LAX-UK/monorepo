@@ -75,6 +75,30 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain("btn btn-primary");
   });
 
+  describe("reset-password page", () => {
+    it("keeps the status region and the new-link route outside the form so a dead link still shows them", () => {
+      const html = buildHostedResetPasswordHtml(hostedAuthViewFromSearch(shopSearch));
+      const form = /<form id="reset-form"[\s\S]*?<\/form>/.exec(html)?.[0] ?? "";
+      expect(form).not.toContain('id="error"');
+      expect(html.indexOf('id="error"')).toBeGreaterThan(html.indexOf("</form>"));
+      expect(html).toMatch(/id="reset-new-link"[^>]*hidden/);
+      expect(html).toContain("Request a new link");
+    });
+
+    it("sends the new-link route to forgot-password with the client and return parameters", () => {
+      const html = buildHostedResetPasswordHtml(hostedAuthViewFromSearch(shopSearch));
+      const href = /id="reset-new-link"[\s\S]*?href="([^"]+)"/.exec(html)?.[1] ?? "";
+      const url = new URL(href.replaceAll("&amp;", "&"), "https://auth.test");
+      expect(url.pathname).toBe("/forgot-password");
+      expect(url.searchParams.get("client_id")).toBe("lax-shop-web");
+      expect(url.searchParams.get("state")).toBe("abc");
+    });
+
+    it("falls back to the bare forgot-password page without a client", () => {
+      expect(buildHostedResetPasswordHtml()).toContain('href="/forgot-password"');
+    });
+  });
+
   it("explains who requires two-step verification on forced setup", () => {
     const view = hostedAuthViewFromSearch(shopSearch);
     expect(buildHostedTwoFactorSetupHtml(view, "staff")).toContain(
