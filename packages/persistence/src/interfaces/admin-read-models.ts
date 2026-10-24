@@ -13,6 +13,53 @@ export type RedactedDomainEventRow = {
   occurredAt: Date;
 };
 
+/** One audit event with who did it. Payload is as stored: callers redact before showing it. */
+export type AuditLogRecord = {
+  id: number;
+  aggregateType: string;
+  aggregateId: string;
+  eventType: string;
+  payload: unknown;
+  actorUserId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  /** True when the actor holds a staff role; false for clients and system events. */
+  actorIsStaff: boolean;
+  actingLegalEntityId: string | null;
+  occurredAt: Date;
+};
+
+export type AuditLogSearchInput = {
+  limit: number;
+  offset: number;
+  /** Matches the event type, the entity id and the actor's name or email. */
+  q?: string;
+  /**
+   * Whether `q` may match the name or email of a client actor. Staff actors always match; client
+   * identities match only for callers who may see them, so search cannot reveal a hidden name.
+   */
+  matchClientActors?: boolean;
+  actorUserId?: string;
+  /** Exact event types. */
+  eventTypes?: readonly string[];
+  /** Event-type prefixes; an event matches when it starts with any of them. */
+  eventTypePrefixes?: readonly string[];
+  aggregateType?: string;
+  aggregateId?: string;
+  /** Inclusive London calendar days, `YYYY-MM-DD`. */
+  fromDay?: string;
+  toDay?: string;
+};
+
+export type AuditLogSearchResult = { rows: AuditLogRecord[]; total: number };
+
+export type AuditActorRecord = {
+  userId: string;
+  name: string;
+  email: string;
+  isStaff: boolean;
+};
+
 export type FinanceIssueSnapshot = {
   failedPayoutCount: number;
   legalEntitiesWithStripeConnectRequirementsCount: number;

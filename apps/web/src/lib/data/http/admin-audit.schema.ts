@@ -27,3 +27,42 @@ export const adminDomainEventRowSchema = z
       occurredAt: zCoerceDate.parse(row.occurredAt ?? ""),
     }),
   ) as z.ZodType<AdminDomainEventRow>;
+
+/** Who did it, as far as the viewer may see: client identities are hidden without PII access. */
+export type AdminAuditActor = {
+  kind: "staff" | "client";
+  name: string | null;
+  email: string | null;
+};
+
+/** One event of the staff audit log: the domain event plus its actor. */
+export type AdminAuditLogRow = AdminDomainEventRow & { actor: AdminAuditActor | null };
+
+function parseActor(value: unknown): AdminAuditActor | null {
+  const record = toObjectRecord(value);
+  if (Object.keys(record).length === 0) return null;
+  return {
+    kind: record.kind === "staff" ? "staff" : "client",
+    name: typeof record.name === "string" ? record.name : null,
+    email: typeof record.email === "string" ? record.email : null,
+  };
+}
+
+export const adminAuditLogRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform(
+  (row): AdminAuditLogRow => ({
+    ...adminDomainEventRowSchema.parse(row),
+    actor: parseActor(row.actor),
+  }),
+) as z.ZodType<AdminAuditLogRow>;
+
+export type AdminAuditActorOption = { userId: string; name: string; email: string };
+
+export const adminAuditActorOptionSchema = z
+  .preprocess(toObjectRecord, z.record(z.unknown()))
+  .transform(
+    (row): AdminAuditActorOption => ({
+      userId: String(row.userId ?? ""),
+      name: String(row.name ?? ""),
+      email: String(row.email ?? ""),
+    }),
+  ) as z.ZodType<AdminAuditActorOption>;

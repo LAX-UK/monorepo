@@ -1,42 +1,23 @@
-"use client";
-
-import { DetailActivityFeed, DetailBoardShell } from "@/components/admin/catalog/detail-board";
-import { domainEventLabel } from "@/lib/admin/domain-event-labels";
-import { formatAdminTableDateTime } from "@/lib/admin/format-admin-table-datetime";
-import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
-import { useMemo } from "react";
+import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
+import type { AdminAuditLogRow } from "@/lib/data/http/admin-audit.schema";
+import { Section } from "@auction/staff-ui";
 
 type Props = {
   lotId: string;
-  events: readonly AdminDomainEventRow[];
+  events: readonly AdminAuditLogRow[];
 };
 
 export function LotActivityTabBoard({ lotId: _lotId, events }: Props) {
-  const rows = useMemo(
-    () =>
-      events.map((event) => {
-        const when = formatAdminTableDateTime(event.occurredAt, "timestamp");
-        return {
-          id: event.id,
-          label: domainEventLabel(event.eventType),
-          detail: when.secondary ?? when.title,
-          when: when.primary,
-        };
-      }),
-    [events],
-  );
-
   return (
-    <DetailBoardShell
+    <Section
       title="Activity"
-      description="Audit trail and lifecycle events for this lot."
-      count={rows.length}
+      description={`${events.length} ${events.length === 1 ? "event" : "events"} on this lot, newest first.`}
     >
-      <DetailActivityFeed
-        rows={rows}
-        title="Lot activity"
-        emptyMessage="No activity recorded for this lot yet."
+      <AuditTimeline
+        label="Lot activity"
+        events={events}
+        empty="No activity recorded for this lot yet."
       />
-    </DetailBoardShell>
+    </Section>
   );
 }

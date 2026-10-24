@@ -73,6 +73,13 @@ export {
 export { DataTable } from "./data/data-table.js";
 export type { DataTableProps } from "./data/data-table.js";
 export { BulkActionBar } from "./data/bulk-action-bar.js";
+export {
+  DEFAULT_DATE_PRESETS,
+  DateRangeFilter,
+  daysBefore,
+  londonToday,
+} from "./data/date-range-filter.js";
+export type { DateRangePreset, DayRange } from "./data/date-range-filter.js";
 export { ListPageSkeleton } from "./data/list-page-skeleton.js";
 export {
   ActiveFilterChips,
