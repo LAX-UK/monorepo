@@ -24,13 +24,18 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
-import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  LOTS_ACCESS,
+  SALES_ACCESS,
+  WITHDRAWAL_DECISION_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { Lot } from "@auction/types";
 import {
   bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
+  declineWithdrawalRequestBodySchema,
   returnLotToInventoryBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
@@ -268,7 +273,7 @@ export async function adminApproveWithdrawalRequestResultAction(
   lotId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminApproveWithdrawalRequestResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    const denied = await denyUnlessAdminCapability(WITHDRAWAL_DECISION_ACCESS);
     if (denied) return denied;
     const id = lotId.trim();
     if (!id) return actionFailure("Missing lot ID");
@@ -276,6 +281,30 @@ export async function adminApproveWithdrawalRequestResultAction(
     const r = await adminLots.approveWithdrawalRequest(id);
     if (!r.ok) {
       return actionFailure(r.message || "Failed to approve withdrawal");
+    }
+    revalidatePath("/admin/lots");
+    revalidatePath(`/admin/lots/${id}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminDeclineWithdrawalRequestResultAction(
+  lotId: string,
+  reason: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminDeclineWithdrawalRequestResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(WITHDRAWAL_DECISION_ACCESS);
+    if (denied) return denied;
+    const id = lotId.trim();
+    if (!id) return actionFailure("Missing lot ID");
+    const parsed = declineWithdrawalRequestBodySchema.safeParse({ reason });
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminLots } = getWriteContainer();
+    const r = await adminLots.declineWithdrawalRequest(id, parsed.data.reason);
+    if (!r.ok) {
+      return actionFailure(r.message || "Failed to decline withdrawal");
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);

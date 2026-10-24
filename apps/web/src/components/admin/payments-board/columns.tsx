@@ -10,6 +10,7 @@ import Link from "next/link";
 
 export function paymentColumns(
   onOpen: (row: AdminPaymentTableRow) => void,
+  { canWritePayments }: { canWritePayments: boolean },
 ): ColumnDef<AdminPaymentTableRow>[] {
   return [
     {
@@ -86,7 +87,11 @@ export function paymentColumns(
       header: "",
       cell: ({ row }) => (
         <div className="flex flex-wrap justify-end gap-3">
-          <AdminPaymentActions id={row.original.id} status={row.original.status} />
+          <AdminPaymentActions
+            id={row.original.id}
+            status={row.original.status}
+            canWrite={canWritePayments}
+          />
           <Button
             type="button"
             variant="secondary"

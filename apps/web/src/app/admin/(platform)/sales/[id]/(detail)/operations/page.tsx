@@ -1,5 +1,7 @@
 import { SaleroomOperationsCommandCenter } from "@/components/admin/sale-detail/onsite-operations-command-center";
 import { loadSaleroomOperationsPage } from "@/lib/admin/saleroom/load-saleroom-operations-page";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -8,6 +10,7 @@ type Props = {
 
 export default async function AdminSaleOperationsPage({ params }: Props) {
   const { id } = await params;
+  await requireAdminCapability(SALES_ACCESS, `/admin/sales/${id}`);
   const model = await loadSaleroomOperationsPage(id);
   if (model.notFound) notFound();
 

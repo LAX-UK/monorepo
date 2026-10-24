@@ -9,6 +9,7 @@ import {
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
   LOT_FULFILMENT_ACCESS,
+  PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
   userHasAccessTo,
@@ -63,7 +64,7 @@ function stampActions(
       }
       break;
     case "payment_manual_review":
-      if (can(FINANCE_ACCESS)) actions.push("capture", "refund");
+      if (can(PAYMENT_WRITE_ACCESS)) actions.push("capture", "refund");
       break;
     case "aml_screening":
       break;

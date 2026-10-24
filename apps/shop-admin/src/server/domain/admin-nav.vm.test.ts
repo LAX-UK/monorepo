@@ -1,4 +1,4 @@
-import { type ShopStaffRole, capabilitiesForRole } from "@auction/shop-domain";
+import { type ShopStaffRole, capabilitiesForRole, clientListScope } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { buildAdminNavGroups, flattenAdminNav } from "./admin-nav.vm";
 
@@ -167,5 +167,23 @@ describe("buildAdminNavGroups", () => {
     it("never adds a link for a role that cannot read enquiries", () => {
       expect(enquiriesItem("finance", 9)).toBeUndefined();
     });
+  });
+});
+
+describe("Clients nav item", () => {
+  it.each([
+    "shop_admin",
+    "account_manager",
+    "broker",
+    "operations",
+    "finance",
+    "catalogue_editor",
+  ] as const)("is shown to %s exactly when the client list route will answer", (role) => {
+    const shown = navHrefsFor(role).includes("/clients");
+    expect(shown).toBe(clientListScope(capabilitiesForRole(role)) !== "none");
+  });
+
+  it("shows brokers the page, which lists only their assigned clients", () => {
+    expect(navHrefsFor("broker")).toContain("/clients");
   });
 });

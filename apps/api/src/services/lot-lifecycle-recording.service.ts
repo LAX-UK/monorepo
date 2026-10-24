@@ -215,6 +215,21 @@ export class LotLifecycleRecording implements ILotLifecycleRecorder {
     });
   }
 
+  async recordWithdrawalDeclined(
+    tx: Database,
+    lotRow: Pick<Lot, "id" | "status" | "saleId" | "sellerLegalEntityId">,
+    sellerLegalEntityId: string,
+    reason: string,
+    actorUserId: string,
+  ): Promise<void> {
+    await this.recordStatusEvent(tx, {
+      lot: lotRow,
+      eventType: "lot.withdrawal_declined",
+      payload: { sellerLegalEntityId, reason },
+      actorUserId,
+    });
+  }
+
   async recordReturnedToInventory(
     tx: Database,
     lotRow: Pick<Lot, "id" | "sellerLegalEntityId">,

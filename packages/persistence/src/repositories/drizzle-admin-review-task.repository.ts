@@ -57,4 +57,20 @@ export class DrizzleAdminReviewTaskRepository implements IAdminReviewTaskReposit
       })
       .where(eq(adminReviewTask.id, input.taskId));
   }
+
+  async declineLotWithdrawal(input: {
+    taskId: string;
+    declinedByUserId: string;
+    reason: string;
+  }): Promise<void> {
+    await this.db
+      .update(adminReviewTask)
+      .set({
+        status: "rejected",
+        resolvedByUserId: input.declinedByUserId,
+        resolvedAt: new Date(),
+        resolutionNotes: input.reason,
+      })
+      .where(eq(adminReviewTask.id, input.taskId));
+  }
 }

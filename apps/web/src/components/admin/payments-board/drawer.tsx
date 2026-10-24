@@ -9,9 +9,11 @@ import Link from "next/link";
 
 export function PaymentDrawerContent({
   p,
+  canWritePayments,
   onClose,
 }: {
   p: AdminPaymentTableRow;
+  canWritePayments: boolean;
   onClose: () => void;
 }) {
   return (
@@ -95,7 +97,7 @@ export function PaymentDrawerContent({
         xeroLastError={p.xeroLastError}
       />
 
-      <AdminPaymentActions id={p.id} status={p.status} fullWidth />
+      <AdminPaymentActions id={p.id} status={p.status} canWrite={canWritePayments} fullWidth />
     </div>
   );
 }

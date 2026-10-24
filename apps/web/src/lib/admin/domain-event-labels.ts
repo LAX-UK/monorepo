@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
   "lot.ended": "Lot ended",
   "lot.voided": "Lot voided",
   "lot.withdrawal_requested": "Withdrawal requested",
+  "lot.withdrawal_declined": "Withdrawal declined",
   "lot.returned_to_inventory": "Returned to inventory",
   "bid.placed": "Bid placed",
   "bid.proxy_cancelled": "Proxy bid cancelled",

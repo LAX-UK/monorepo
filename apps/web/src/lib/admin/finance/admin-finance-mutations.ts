@@ -5,7 +5,10 @@ import {
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import { FINANCE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  FINANCE_ACCESS,
+  PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -37,7 +40,7 @@ export async function captureManualReviewPaymentAction(formData: FormData): Prom
   return instrumentServerAction(
     "captureManualReviewPaymentAction",
     async () => {
-      const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+      const denied = await assertAdminCapabilityForRedirect(PAYMENT_MANUAL_REVIEW_WRITE_ACCESS);
       if (!denied.ok) redirectManualReview("error", denied.message);
 
       const paymentId = formValue(formData, "paymentId");
@@ -61,7 +64,7 @@ export async function refundManualReviewPaymentAction(formData: FormData): Promi
   return instrumentServerAction(
     "refundManualReviewPaymentAction",
     async () => {
-      const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+      const denied = await assertAdminCapabilityForRedirect(PAYMENT_MANUAL_REVIEW_WRITE_ACCESS);
       if (!denied.ok) redirectManualReview("error", denied.message);
 
       const paymentId = formValue(formData, "paymentId");

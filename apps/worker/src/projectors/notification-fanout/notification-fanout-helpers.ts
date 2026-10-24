@@ -35,6 +35,11 @@ export type LotVoidedPayload = {
   reason: string;
 };
 
+export type LotWithdrawalDeclinedPayload = {
+  sellerLegalEntityId: string;
+  reason: string;
+};
+
 export const SUPPORTED_EVENT_TYPES = [
   "payout.transfer_blocked",
   "payment.requires_manual_review",
@@ -43,6 +48,7 @@ export const SUPPORTED_EVENT_TYPES = [
   "payment.dispute_closed",
   "bid.proxy_cancelled",
   "lot.voided",
+  "lot.withdrawal_declined",
   "payout.clawback_required",
 ] as const;
 

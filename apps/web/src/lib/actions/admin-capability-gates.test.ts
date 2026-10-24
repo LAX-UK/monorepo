@@ -28,13 +28,14 @@ import {
   adminApproveWithdrawalRequestResultAction,
   adminBulkSubmissionsResultAction,
   adminCapturePaymentResultAction,
+  adminDeclineWithdrawalRequestResultAction,
   adminSetUserRoleResultAction,
 } from "@/lib/actions/admin";
 import {
-  FINANCE_ACCESS,
-  LOTS_ACCESS,
+  PAYMENT_WRITE_ACCESS,
   SUBMISSIONS_ACCESS,
   USER_ROLE_MANAGEMENT_ACCESS,
+  WITHDRAWAL_DECISION_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 
 const submissionId = "11111111-1111-4111-8111-111111111111";
@@ -59,7 +60,7 @@ describe("admin capability gates", () => {
     const result = await adminCapturePaymentResultAction("pay-1");
 
     expect(result.ok).toBe(false);
-    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(FINANCE_ACCESS);
+    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(PAYMENT_WRITE_ACCESS);
     expect(capture).not.toHaveBeenCalled();
   });
 
@@ -67,7 +68,7 @@ describe("admin capability gates", () => {
     const result = await adminCapturePaymentResultAction("pay-1");
 
     expect(result.ok).toBe(true);
-    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(FINANCE_ACCESS);
+    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(PAYMENT_WRITE_ACCESS);
     expect(capture).toHaveBeenCalledWith("pay-1");
   });
 
@@ -109,7 +110,7 @@ describe("admin capability gates", () => {
     expect(denyUnlessAdminCapability).toHaveBeenCalledWith(SUBMISSIONS_ACCESS);
   });
 
-  it("adminApproveWithdrawalRequestResultAction checks LOTS_ACCESS", async () => {
+  it("adminApproveWithdrawalRequestResultAction checks WITHDRAWAL_DECISION_ACCESS", async () => {
     denyUnlessAdminCapability.mockResolvedValue({
       ok: false,
       error: "You do not have permission to perform this action",
@@ -119,6 +120,19 @@ describe("admin capability gates", () => {
     const result = await adminApproveWithdrawalRequestResultAction("lot-1");
 
     expect(result.ok).toBe(false);
-    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(LOTS_ACCESS);
+    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(WITHDRAWAL_DECISION_ACCESS);
+  });
+
+  it("adminDeclineWithdrawalRequestResultAction checks WITHDRAWAL_DECISION_ACCESS", async () => {
+    denyUnlessAdminCapability.mockResolvedValue({
+      ok: false,
+      error: "You do not have permission to perform this action",
+      status: 403,
+    });
+
+    const result = await adminDeclineWithdrawalRequestResultAction("lot-1", "Needed for the sale");
+
+    expect(result.ok).toBe(false);
+    expect(denyUnlessAdminCapability).toHaveBeenCalledWith(WITHDRAWAL_DECISION_ACCESS);
   });
 });

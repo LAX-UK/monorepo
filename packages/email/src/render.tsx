@@ -63,6 +63,9 @@ import LotVoidedAntiShillingAdminEmail, {
 import LotVoidedNoticeEmail, {
   subject as lotVoidedNoticeSubject,
 } from "./templates/lot-voided-notice.js";
+import LotWithdrawalDeclinedNoticeEmail, {
+  subject as lotWithdrawalDeclinedNoticeSubject,
+} from "./templates/lot-withdrawal-declined-notice.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
 import NewDeviceLoginEmail, {
   subject as newDeviceLoginSubject,
@@ -315,6 +318,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "lot-voided-notice": {
     subject: lotVoidedNoticeSubject,
     component: (vars) => <LotVoidedNoticeEmail {...vars} />,
+  },
+  "lot-withdrawal-declined-notice": {
+    subject: lotWithdrawalDeclinedNoticeSubject,
+    component: (vars) => <LotWithdrawalDeclinedNoticeEmail {...vars} />,
   },
   "payout-clawback-required-notice": {
     subject: payoutClawbackRequiredNoticeSubject,

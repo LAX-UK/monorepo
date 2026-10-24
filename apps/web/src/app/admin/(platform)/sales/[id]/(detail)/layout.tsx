@@ -44,11 +44,13 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     attention,
     sellingPlatform,
   ] = await Promise.all([
-    loadAdminSaleRegistrationCount(id, bundle.sale),
-    loadAdminSalePendingRegistrationCount(id, bundle.sale),
+    canManageSales ? loadAdminSaleRegistrationCount(id, bundle.sale) : Promise.resolve(null),
+    canManageSales ? loadAdminSalePendingRegistrationCount(id, bundle.sale) : Promise.resolve(null),
     getServerSaleDocuments(id).catch(() => []),
     loadSaleConnectRequiredByLotId(id),
-    isSaleroom ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
+    isSaleroom && canManageSales
+      ? getAdminTelephoneBookings(id, "requested").catch(() => [])
+      : Promise.resolve([]),
     getAdminSaleAttention(id).catch(() => null),
     canManageSales ? getAtgSaleSellingPlatform(bundle.sale) : Promise.resolve(null),
   ]);

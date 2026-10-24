@@ -104,4 +104,12 @@ export class AdminLotService implements IAdminLotService {
       method: "POST",
     });
   }
+
+  async declineWithdrawalRequest(id: string, reason: string): Promise<ServiceResult<void>> {
+    return this.api.json<void>(`/admin/lots/${encodeURIComponent(id)}/decline-withdrawal-request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+  }
 }

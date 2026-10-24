@@ -1,9 +1,10 @@
 import { entityRoleCan } from "@auction/domain";
 import type { Lot, UserRole } from "@auction/types";
 import {
+  WITHDRAWAL_DECISION_ACCESS,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
-  roleHasCapability,
+  userHasAccessTo,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
@@ -93,7 +94,7 @@ export async function approveWithdrawalRequest(
   }
   const role = normalizeUserRoleOrClient(adminRole);
   const staff = normalizeUserStaffRole(adminStaffRole ?? undefined);
-  if (!roleHasCapability(role, "auction.manage", staff)) {
+  if (!userHasAccessTo(role, staff, WITHDRAWAL_DECISION_ACCESS)) {
     return err(new AuthzError("Only staff with auction.manage can approve withdrawals", 403));
   }
   const pending = await adminReviewTaskRepository.findPendingLotWithdrawal(lotId);
@@ -115,4 +116,80 @@ export async function approveWithdrawalRequest(
     resolutionNotes: "Seller withdrawal approved; lot cancelled.",
   });
   return cancelRes;
+}
+
+export const WITHDRAWAL_DECLINE_REASON_MAX_LENGTH = 1000;
+
+/**
+ * Closes a seller's withdrawal request without cancelling the lot. The staff reason is
+ * stored on the task and published on `lot.withdrawal_declined`, which the worker turns
+ * into a notice to the seller organisation.
+ */
+export async function declineWithdrawalRequest(
+  deps: LotServiceDeps,
+  adminUserId: string,
+  adminRole: UserRole,
+  lotId: string,
+  reason: string,
+  adminStaffRole?: string | null,
+): Promise<Result<{ taskId: string }, LotError | AuthzError>> {
+  const adminReviewTaskRepository = deps.adminReviewTaskRepository;
+  const publisher = deps.domainEventSink;
+  if (
+    !adminReviewTaskRepository ||
+    !deps.transactionRunner ||
+    (!deps.lotLifecycleRecording && !publisher)
+  ) {
+    return err(new LotError("Withdrawal decisions are not available", 503));
+  }
+  const role = normalizeUserRoleOrClient(adminRole);
+  const staff = normalizeUserStaffRole(adminStaffRole ?? undefined);
+  if (!userHasAccessTo(role, staff, WITHDRAWAL_DECISION_ACCESS)) {
+    return err(new AuthzError("Only staff with auction.manage can decline withdrawals", 403));
+  }
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    return err(new LotError("A reason is required to decline a withdrawal", 400));
+  }
+  if (trimmedReason.length > WITHDRAWAL_DECLINE_REASON_MAX_LENGTH) {
+    return err(new LotError("The reason is too long", 400));
+  }
+  const lotRow = await deps.lotRepo.findById(lotId);
+  if (!lotRow) return err(new LotError("Lot not found", 404));
+  const sellerLegalEntityId = lotRow.sellerLegalEntityId;
+  if (!sellerLegalEntityId) {
+    return err(new LotError("Lot has no seller organisation", 400));
+  }
+  const pending = await adminReviewTaskRepository.findPendingLotWithdrawal(lotId);
+  if (!pending) {
+    return err(new LotError("No pending withdrawal request for this lot", 404));
+  }
+
+  await deps.transactionRunner.runInTransaction(async (tx) => {
+    await adminReviewTaskRepository.forConnection(tx).declineLotWithdrawal({
+      taskId: pending.id,
+      declinedByUserId: adminUserId,
+      reason: trimmedReason,
+    });
+    if (deps.lotLifecycleRecording) {
+      await deps.lotLifecycleRecording.recordWithdrawalDeclined(
+        tx,
+        lotRow,
+        sellerLegalEntityId,
+        trimmedReason,
+        adminUserId,
+      );
+    } else if (publisher) {
+      await publisher.withTx(tx).publish({
+        aggregateType: "lot",
+        aggregateId: lotId,
+        eventType: "lot.withdrawal_declined",
+        payload: { sellerLegalEntityId, reason: trimmedReason },
+        actorUserId: adminUserId,
+        actingLegalEntityId: sellerLegalEntityId,
+      });
+    }
+  });
+
+  return ok({ taskId: pending.id });
 }

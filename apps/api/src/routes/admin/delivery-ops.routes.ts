@@ -3,7 +3,10 @@ import type { ContainerAdminPlatformRoutesSlice } from "../../container.js";
 import { createBaseLogger } from "../../lib/logger.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { createAuditAccessMiddleware } from "../../middleware/audit-access.js";
-import { requireAuditDomainEvents } from "../../middleware/require-capability.js";
+import {
+  requireAuditDomainEvents,
+  requireDeliveryReplay,
+} from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
 const deliveryListQuerySchema = z.object({
@@ -57,7 +60,7 @@ export function attachAdminDeliveryOpsRoutes(
 
   platform.post(
     "/system/delivery/:deliveryId/replay",
-    requireAuditDomainEvents,
+    requireDeliveryReplay,
     zValidator("param", deliveryIdParamSchema),
     async (c) => {
       const { deliveryId } = c.req.valid("param");
@@ -68,7 +71,7 @@ export function attachAdminDeliveryOpsRoutes(
 
   platform.post(
     "/system/delivery/webhook/retry",
-    requireAuditDomainEvents,
+    requireDeliveryReplay,
     zValidator("json", webhookReplayBodySchema),
     async (c) => {
       const { eventKey } = c.req.valid("json");

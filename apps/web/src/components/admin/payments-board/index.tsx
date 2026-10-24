@@ -30,6 +30,8 @@ export type PaymentsBoardPagination = {
 
 type Props = {
   rows: AdminPaymentTableRow[];
+  /** Whether capture and refund are offered; mirrors the API's payment write rule. */
+  canWritePayments: boolean;
   statusChips?: ReactNode;
   filterControls?: CatalogTableFilterControlsBaseProps;
   /** Export filter payload — includes active search when present. */
@@ -39,6 +41,7 @@ type Props = {
 
 export function AdminPaymentsBoard({
   rows,
+  canWritePayments,
   statusChips,
   filterControls,
   exportFilters,
@@ -48,7 +51,10 @@ export function AdminPaymentsBoard({
   const [selected, setSelected] = useState<AdminPaymentTableRow | null>(null);
 
   const onOpen = useCallback((row: AdminPaymentTableRow) => setSelected(row), []);
-  const columns = useMemo(() => paymentColumns(onOpen), [onOpen]);
+  const columns = useMemo(
+    () => paymentColumns(onOpen, { canWritePayments }),
+    [onOpen, canWritePayments],
+  );
 
   const tableFilterControls = useMemo((): CatalogTableFilterControlsProps | undefined => {
     if (!filterControls) return undefined;
@@ -136,7 +142,11 @@ export function AdminPaymentsBoard({
                   </p>
                 }
               />
-              <PaymentDrawerContent p={selected} onClose={() => setSelected(null)} />
+              <PaymentDrawerContent
+                p={selected}
+                canWritePayments={canWritePayments}
+                onClose={() => setSelected(null)}
+              />
             </div>
           ) : null}
         </SheetContent>

@@ -7,7 +7,11 @@ import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import type { LotServiceDeps } from "./lot-types.js";
-import { approveWithdrawalRequest, requestWithdrawal } from "./lot-withdrawal.js";
+import {
+  approveWithdrawalRequest,
+  declineWithdrawalRequest,
+  requestWithdrawal,
+} from "./lot-withdrawal.js";
 
 const activeLot: Lot = {
   id: "lot-1",
@@ -135,5 +139,88 @@ describe("approveWithdrawalRequest", () => {
     const result = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", "super_admin");
     expect(result.isOk()).toBe(true);
     expect(resolveLotWithdrawal).toHaveBeenCalled();
+  });
+});
+
+describe("withdrawal decisions by role", () => {
+  function decisionDeps() {
+    const resolveLotWithdrawal = vi.fn().mockResolvedValue(undefined);
+    const declineLotWithdrawal = vi.fn().mockResolvedValue(undefined);
+    const recordWithdrawalDeclined = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      transaction: vi.fn(async (cb: (tx: Database) => Promise<unknown>) => cb({} as Database)),
+    };
+    const deps = baseDeps({
+      transactionRunner: transactionRunnerFromDb(db as unknown as Database),
+      adminReviewTaskRepository: makeAdminReviewTaskRepo({
+        findPendingLotWithdrawal: vi.fn().mockResolvedValue({ id: "task-1" }),
+        resolveLotWithdrawal,
+        declineLotWithdrawal,
+      } as never) as never,
+      lotLifecycleRecording: { recordWithdrawalDeclined } as unknown as LotLifecycleRecording,
+      lotRepo: {
+        findById: vi.fn().mockResolvedValue(activeLot),
+        updateStatus: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ILotRepository,
+    });
+    return { deps, declineLotWithdrawal, recordWithdrawalDeclined };
+  }
+
+  it.each(["catalogue_manager", "finance_ops", "staff_viewer"])(
+    "refuses %s for both approve and decline",
+    async (staffRole) => {
+      const { deps, declineLotWithdrawal } = decisionDeps();
+      const approve = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", staffRole);
+      const decline = await declineWithdrawalRequest(
+        deps,
+        "admin-1",
+        "staff",
+        "lot-1",
+        "Keep it in the sale",
+        staffRole,
+      );
+      expect(approve.isErr()).toBe(true);
+      expect(decline.isErr()).toBe(true);
+      expect(declineLotWithdrawal).not.toHaveBeenCalled();
+    },
+  );
+
+  it("records the decline, the reason and the event together for an auction manager", async () => {
+    const { deps, declineLotWithdrawal, recordWithdrawalDeclined } = decisionDeps();
+    const result = await declineWithdrawalRequest(
+      deps,
+      "admin-1",
+      "staff",
+      "lot-1",
+      "  Already in the printed catalogue  ",
+      "auction_manager",
+    );
+    expect(result.isOk()).toBe(true);
+    expect(declineLotWithdrawal).toHaveBeenCalledWith({
+      taskId: "task-1",
+      declinedByUserId: "admin-1",
+      reason: "Already in the printed catalogue",
+    });
+    expect(recordWithdrawalDeclined).toHaveBeenCalledWith(
+      expect.anything(),
+      activeLot,
+      "le-1",
+      "Already in the printed catalogue",
+      "admin-1",
+    );
+  });
+
+  it("requires a reason", async () => {
+    const { deps, declineLotWithdrawal } = decisionDeps();
+    const result = await declineWithdrawalRequest(
+      deps,
+      "admin-1",
+      "staff",
+      "lot-1",
+      "   ",
+      "super_admin",
+    );
+    expect(result.isErr()).toBe(true);
+    expect(declineLotWithdrawal).not.toHaveBeenCalled();
   });
 });

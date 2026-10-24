@@ -12,6 +12,7 @@ import {
   CLIENT_KYC_ACCESS,
   CONDITION_REPORTS_ACCESS,
   type CapabilityRequirement,
+  DELIVERY_REPLAY_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   INVITATIONS_ACCESS,
@@ -19,14 +20,18 @@ import {
   LOTS_ACCESS,
   MLRO_DECISION_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
+  PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
+  PAYMENT_WRITE_ACCESS,
   PLATFORM_ADMIN_ACCESS,
   QR_CODES_ACCESS,
   type RoleCapability,
+  SALES_ACCESS,
   SUBMISSIONS_ACCESS,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   type UserRole,
   VENUES_ACCESS,
+  WITHDRAWAL_DECISION_ACCESS,
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
@@ -100,6 +105,14 @@ export const requireCatalogueWrite = createRequireCapability("catalogue.write");
 export const requireSpecialistAppraise = createRequireCapability("specialist.appraise");
 export const requireAuctionManage = createRequireCapability("auction.manage");
 
+/** Rules shared with the admin web UI, so a button is shown exactly when the route will accept it. */
+export const requireSalesAccess = createRequireAccess(SALES_ACCESS);
+export const requireWithdrawalDecision = createRequireAccess(WITHDRAWAL_DECISION_ACCESS);
+export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS);
+export const requirePaymentManualReviewWrite = createRequireAccess(
+  PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
+);
+
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);
 export const requireUserModeration = createRequireAccess(USER_MODERATION_ACCESS);
@@ -156,7 +169,7 @@ export const requireFinanceEntityWrite = createMiddleware<{
 }>(async (c, next) => {
   const role = c.get("userRole") as UserRole | undefined;
   const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-  if (role && roleHasCapability(role, "finance.entity.write", staff)) {
+  if (role && userHasAccessTo(role, staff, PAYMENT_WRITE_ACCESS)) {
     await next();
     return;
   }

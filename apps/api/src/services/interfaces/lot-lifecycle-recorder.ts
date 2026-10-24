@@ -66,6 +66,14 @@ export interface ILotLifecycleRecorder {
     actorUserId: string,
   ): Promise<void>;
 
+  recordWithdrawalDeclined(
+    tx: Database,
+    lotRow: Pick<Lot, "id" | "status" | "saleId" | "sellerLegalEntityId">,
+    sellerLegalEntityId: string,
+    reason: string,
+    actorUserId: string,
+  ): Promise<void>;
+
   recordReturnedToInventory(
     tx: Database,
     lotRow: Pick<Lot, "id" | "sellerLegalEntityId">,

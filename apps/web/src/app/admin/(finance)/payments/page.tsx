@@ -149,6 +149,7 @@ export default async function AdminPaymentsPage({
               <AdminManualReviewBoard
                 rows={loaded.rows}
                 canOpenComplianceQueues={loaded.canOpenComplianceQueues}
+                canResolveManualReview={loaded.canResolveManualReview}
               />
             ) : null}
           </div>
@@ -244,6 +245,7 @@ export default async function AdminPaymentsPage({
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminPaymentsBoard
             rows={paymentRows}
+            canWritePayments={loaded.canWritePayments}
             statusChips={statusChips}
             filterControls={boardFilterControls}
             exportFilters={exportFilters}

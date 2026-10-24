@@ -104,6 +104,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Seller requested to withdraw an active lot (admin queue). */
   "lot.withdrawal_requested": new Set(["sellerLegalEntityId"]),
+  /** Staff declined a seller's withdrawal request; the reason is shown to the seller. */
+  "lot.withdrawal_declined": new Set(["sellerLegalEntityId", "reason"]),
   /** Pending payment cancelled by buyer or expired by cron. */
   "payment.cancelled": new Set(["lotId", "buyerUserId", "reason"]),
   /** Hosted Checkout attempt failed; payment row stays open for retry. */

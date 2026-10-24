@@ -405,12 +405,22 @@ export function createDrizzleAdminReadRepository(
       async listClientParties(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
+        const brokerSubjectId = input.brokerSubjectId?.trim();
         const rows = await db
           .select()
           .from(shopParty)
           .where(
             and(
               inArray(shopParty.kind, ["person", "gallery"]),
+              brokerSubjectId
+                ? inArray(
+                    shopParty.id,
+                    db
+                      .select({ id: shopClientAssignment.clientPartyId })
+                      .from(shopClientAssignment)
+                      .where(eq(shopClientAssignment.brokerSubjectId, brokerSubjectId)),
+                  )
+                : undefined,
               cursor
                 ? keysetBeforeCreatedAtId(shopParty.createdAt, shopParty.id, cursor)
                 : undefined,

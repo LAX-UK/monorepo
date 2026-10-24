@@ -4,7 +4,11 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { loadAdminLotsListPage } from "@/lib/admin/lots/load-lots-list-page";
 import { toLotsStaffRows } from "@/lib/admin/lots/lots-staff-list.vm";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  LOTS_ACCESS,
+  SALES_ACCESS,
+  WITHDRAWAL_DECISION_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { PageHeader, Section, StaffButton } from "@auction/staff-ui";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -24,6 +28,11 @@ export default async function AdminLotsPage({
   const role = user.role as UserRole;
   const canManageAuction = userHasAccessTo(role, user.staffRole ?? null, SALES_ACCESS);
   const canManageCatalog = userHasAccessTo(role, user.staffRole ?? null, LOTS_ACCESS);
+  const canDecideWithdrawals = userHasAccessTo(
+    role,
+    user.staffRole ?? null,
+    WITHDRAWAL_DECISION_ACCESS,
+  );
   const sp = await searchParams;
   if (sp.view === "pipeline") {
     redirect(buildListHref("/admin/lots", sp, { view: "", offset: 0 }));
@@ -54,7 +63,7 @@ export default async function AdminLotsPage({
           title="Withdrawal requests"
           description={`${vm.withdrawalTasks.length} waiting for a decision`}
         >
-          <AdminWithdrawalsBoard tasks={vm.withdrawalTasks} />
+          <AdminWithdrawalsBoard tasks={vm.withdrawalTasks} canDecide={canDecideWithdrawals} />
         </Section>
       ) : null}
       <LotsStaffList

@@ -2,7 +2,7 @@
 
 import { AdminJsonDisclosure } from "@/components/admin/admin-json-disclosure";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
-import { WithdrawalApproveButton } from "@/components/admin/withdrawal-approve-button";
+import { WithdrawalDecisionActions } from "@/components/admin/withdrawal-decision-actions";
 import type { LotWithdrawalRequestTask } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import Link from "next/link";
@@ -11,7 +11,13 @@ function humanizeKind(kind: string): string {
   return kind.replaceAll("_", " ");
 }
 
-export function WithdrawalDrawerContent({ task }: { task: LotWithdrawalRequestTask }) {
+export function WithdrawalDrawerContent({
+  task,
+  canDecide,
+}: {
+  task: LotWithdrawalRequestTask;
+  canDecide: boolean;
+}) {
   return (
     <div className="space-y-6">
       <dl className="grid grid-cols-1 gap-3 text-sm">
@@ -53,7 +59,9 @@ export function WithdrawalDrawerContent({ task }: { task: LotWithdrawalRequestTa
 
       <AdminJsonDisclosure label="Request payload" value={task.payload} />
 
-      {task.targetLotId ? <WithdrawalApproveButton lotId={task.targetLotId} /> : null}
+      {task.targetLotId ? (
+        <WithdrawalDecisionActions lotId={task.targetLotId} canDecide={canDecide} />
+      ) : null}
     </div>
   );
 }

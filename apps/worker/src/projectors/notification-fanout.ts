@@ -7,6 +7,7 @@ import { fanoutLotVoided } from "./notification-fanout/lot-voided-fanout.js";
 import { fanoutPaymentManualReview } from "./notification-fanout/manual-review-fanout.js";
 import {
   type LotVoidedPayload,
+  type LotWithdrawalDeclinedPayload,
   type ManualReviewPayload,
   type ProxyCancelledPayload,
   SUPPORTED_EVENT_TYPES,
@@ -16,6 +17,7 @@ import {
 import { fanoutPayoutInitiated } from "./notification-fanout/payout-fanout.js";
 import { fanoutProxyCancelled } from "./notification-fanout/proxy-fanout.js";
 import { fanoutPayoutTransferBlocked } from "./notification-fanout/transfer-blocked-fanout.js";
+import { fanoutLotWithdrawalDeclined } from "./notification-fanout/withdrawal-declined-fanout.js";
 
 export const NOTIFICATION_FANOUT_PROJECTOR = "notification_fanout";
 
@@ -126,6 +128,16 @@ export async function processNotificationFanout(options: {
           eventId: row.id,
           lotId: row.aggregateId,
           payload: row.payload as LotVoidedPayload,
+        });
+      }
+      if (row.eventType === "lot.withdrawal_declined") {
+        await fanoutLotWithdrawalDeclined({
+          notificationFanoutReader,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          lotId: row.aggregateId,
+          payload: row.payload as LotWithdrawalDeclinedPayload,
         });
       }
       if (row.eventType === "payout.clawback_required") {

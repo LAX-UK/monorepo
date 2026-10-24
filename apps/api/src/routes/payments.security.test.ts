@@ -120,19 +120,46 @@ function mount(role: string, opts: MountOptions = {}) {
 }
 
 describe("payment finance entity authorization", () => {
-  it("returns 403 for finance staff (finance_ops) refund without acting entity context", async () => {
+  it("lets finance_ops refund platform-wide without an acting entity", async () => {
     const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
 
     const res = await app.request(`/payments/${paymentId}/refund`, { method: "POST" });
 
-    expect(res.status).toBe(403);
-    expect(entityStaffPayment.refundPayment).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(entityStaffPayment.refundPayment).toHaveBeenCalledWith(
+      "u1",
+      "staff",
+      paymentId,
+      undefined,
+      "finance_ops",
+    );
   });
 
-  it("returns 403 for finance staff capture without finance membership", async () => {
+  it("lets finance_ops capture platform-wide without an acting entity", async () => {
+    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+
+    const res = await app.request(`/payments/${paymentId}/capture`, { method: "POST" });
+
+    expect(res.status).toBe(200);
+    expect(entityStaffPayment.markCapturedByAdmin).toHaveBeenCalled();
+  });
+
+  it.each(["auction_manager", "catalogue_manager", "staff_viewer"])(
+    "returns 403 for %s refund without an acting entity",
+    async (staffRole) => {
+      const { app, entityStaffPayment } = mount("staff", { staffRole });
+
+      const res = await app.request(`/payments/${paymentId}/refund`, { method: "POST" });
+
+      expect(res.status).toBe(403);
+      expect(entityStaffPayment.refundPayment).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns 403 for a non-finance staff capture with only a viewer membership", async () => {
     const { app, entityStaffPayment } = mount("staff", {
       membershipRole: "viewer",
-      staffRole: "finance_ops",
+      staffRole: "auction_manager",
     });
 
     const res = await app.request(`/payments/${paymentId}/capture`, {

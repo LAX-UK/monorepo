@@ -32,6 +32,11 @@ export const returnLotToInventoryBodySchema = z.object({
   notifyBidders: z.boolean().optional(),
 });
 
+/** Seller-facing explanation sent with a declined withdrawal request. */
+export const declineWithdrawalRequestBodySchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+});
+
 export const lotIdOnlyParamSchema = z.object({
   lotId: z.string().uuid(),
 });

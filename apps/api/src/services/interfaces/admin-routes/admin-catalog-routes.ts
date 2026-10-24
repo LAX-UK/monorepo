@@ -76,6 +76,16 @@ export interface IAdminLotsApplicationService {
     | { ok: true; data: Lot }
     | { ok: false; status: number; error: string; code?: string | undefined }
   >;
+  declineWithdrawalRequest(
+    adminUserId: string,
+    adminRole: UserRole,
+    lotId: string,
+    reason: string,
+    adminStaffRole?: UserStaffRole | null,
+  ): Promise<
+    | { ok: true; data: { taskId: string } }
+    | { ok: false; status: number; error: string; code?: string | undefined }
+  >;
   listAttachable(
     input: import("../../admin/admin-lot-browse.types.js").AdminLotBrowseInput,
   ): Promise<{

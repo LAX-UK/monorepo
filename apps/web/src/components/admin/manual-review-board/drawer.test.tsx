@@ -33,14 +33,14 @@ const payment = {
 
 describe("ManualReviewDrawerContent", () => {
   it("hides payment ID until reference IDs are expanded", () => {
-    render(<ManualReviewDrawerContent payment={payment} />);
+    render(<ManualReviewDrawerContent payment={payment} canResolveManualReview />);
     expect(screen.queryByText("pay_secret_uuid_12345")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /show reference ids/i }));
     expect(screen.getByText("pay_secret_uuid_12345")).toBeTruthy();
   });
 
   it("shows human-readable fields in the default view", () => {
-    render(<ManualReviewDrawerContent payment={payment} />);
+    render(<ManualReviewDrawerContent payment={payment} canResolveManualReview />);
     expect(screen.getByText("Vintage Chronograph")).toBeTruthy();
     expect(screen.getByText("buyer@example.com")).toBeTruthy();
     expect(screen.getByText("Lot 42")).toBeTruthy();
@@ -55,11 +55,22 @@ describe("ManualReviewDrawerContent", () => {
           sourceOfFundsCaseId: "sof-case-uuid",
         }}
         canOpenComplianceQueues
+        canResolveManualReview
       />,
     );
     const link = screen.getByRole("link", { name: /open source of funds case/i });
     expect(link.getAttribute("href")).toBe(
       "/admin/compliance/source-of-funds/sof-case-uuid?listStatus=pending",
     );
+  });
+
+  it("offers release and refund only when the viewer may resolve the hold", () => {
+    const { rerender } = render(
+      <ManualReviewDrawerContent payment={payment} canResolveManualReview />,
+    );
+    expect(screen.getByTestId("actions")).toBeTruthy();
+
+    rerender(<ManualReviewDrawerContent payment={payment} canResolveManualReview={false} />);
+    expect(screen.queryByTestId("actions")).toBeNull();
   });
 });

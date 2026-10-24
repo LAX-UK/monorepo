@@ -8,7 +8,7 @@ import { getAdminXeroOAuthConsentUrl } from "@/lib/data/http/admin-payments.serv
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
-import { FINANCE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { FINANCE_ACCESS, PAYMENT_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,7 +17,7 @@ export async function adminRefundPaymentAction(formData: FormData): Promise<void
   return instrumentServerAction(
     "adminRefundPaymentAction",
     async () => {
-      const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+      const denied = await assertAdminCapabilityForRedirect(PAYMENT_WRITE_ACCESS);
       if (!denied.ok) {
         redirect(`/admin/payments?error=${encodeURIComponent(denied.message)}`);
       }
@@ -39,7 +39,7 @@ export async function adminCapturePaymentAction(formData: FormData): Promise<voi
   return instrumentServerAction(
     "adminCapturePaymentAction",
     async () => {
-      const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+      const denied = await assertAdminCapabilityForRedirect(PAYMENT_WRITE_ACCESS);
       if (!denied.ok) {
         redirect(`/admin/payments?error=${encodeURIComponent(denied.message)}`);
       }
@@ -61,7 +61,7 @@ export async function adminCapturePaymentResultAction(
   paymentId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminCapturePaymentResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+    const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
     if (denied) return denied;
     const id = paymentId.trim();
     if (!id) {
@@ -81,7 +81,7 @@ export async function adminRefundPaymentResultAction(
   paymentId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminRefundPaymentResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+    const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
     if (denied) return denied;
     const id = paymentId.trim();
     if (!id) {

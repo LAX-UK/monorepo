@@ -95,6 +95,33 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
 /** Finance shell: payments, disputes, payouts, integrations. */
 export const FINANCE_ACCESS: CapabilityRequirement = "finance.read";
 
+/**
+ * Capture and refund a payment from the admin payments screens. `finance_ops` holds
+ * `finance.platform.write`; super admin also holds `finance.entity.write`. The API route
+ * additionally lets a seller entity's own finance members act on their own payments.
+ */
+export const PAYMENT_WRITE_ACCESS: CapabilityRequirement = {
+  anyOf: ["finance.platform.write", "finance.entity.write"],
+};
+
+/**
+ * Release or refund a payment held for manual review. Platform-wide finance write only:
+ * a held payment is not yet any seller entity's to act on.
+ */
+export const PAYMENT_MANUAL_REVIEW_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
+
+/**
+ * Approve or decline a seller's request to withdraw a lot. Withdrawing cancels the lot and
+ * can pull it out of a sale, so it follows `auction.manage`, not the wider catalogue access.
+ */
+export const WITHDRAWAL_DECISION_ACCESS: CapabilityRequirement = "auction.manage";
+
+/**
+ * Replay a dead-lettered domain-event delivery or retry a webhook. These re-run side effects
+ * (emails, ledger writes), so they are an operations action, not an audit read.
+ */
+export const DELIVERY_REPLAY_ACCESS: CapabilityRequirement = "platform.admin.full";
+
 export const PAYOUT_PROCESS_ACCESS: CapabilityRequirement = {
   anyOf: ["payout.process", "platform.admin.full"],
 };

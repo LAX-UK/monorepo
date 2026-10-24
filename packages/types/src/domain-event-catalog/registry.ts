@@ -134,6 +134,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lot.soft_deleted",
   "lot.unpublished",
   "lot.voided",
+  "lot.withdrawal_declined",
   "lot.withdrawal_requested",
   "payment.bank_transfer_partially_funded",
   "payment.cancelled",
@@ -319,6 +320,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "lot.voided": {
     schema: LotEventSchemas["lot.voided"],
     consumers: ["lot_voided_anti_shilling", "notification_fanout"],
+    piiClassification: "none",
+  },
+  "lot.withdrawal_declined": {
+    schema: LotEventSchemas["lot.withdrawal_declined"],
+    consumers: ["lot_lifecycle_snapshot", "notification_fanout"],
     piiClassification: "none",
   },
   "lot.withdrawal_requested": {

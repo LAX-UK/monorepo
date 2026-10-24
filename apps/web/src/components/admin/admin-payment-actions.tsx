@@ -10,14 +10,22 @@ import type { PaymentStatus } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-type PaymentActionsProps = { id: string; status: PaymentStatus; fullWidth?: boolean };
+type PaymentActionsProps = {
+  id: string;
+  status: PaymentStatus;
+  /** From the payment write rule shared with the API; without it no action is offered. */
+  canWrite: boolean;
+  fullWidth?: boolean;
+};
 
-export function AdminPaymentActions({ id, status, fullWidth }: PaymentActionsProps) {
+export function AdminPaymentActions({ id, status, canWrite, fullWidth }: PaymentActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   if (status === "refunded") {
     return <span className="text-on-surface-variant">Refunded</span>;
   }
+
+  if (!canWrite) return null;
 
   const runCapture = () => {
     startTransition(() => {

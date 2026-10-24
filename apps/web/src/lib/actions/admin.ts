@@ -27,6 +27,8 @@ export const adminReturnLotToInventoryResultAction = _adminReturnLotToInventoryR
 
 import { adminApproveWithdrawalRequestResultAction as _adminApproveWithdrawalRequestResultAction } from "./admin/admin-lots";
 export const adminApproveWithdrawalRequestResultAction = _adminApproveWithdrawalRequestResultAction;
+import { adminDeclineWithdrawalRequestResultAction as _adminDeclineWithdrawalRequestResultAction } from "./admin/admin-lots";
+export const adminDeclineWithdrawalRequestResultAction = _adminDeclineWithdrawalRequestResultAction;
 
 import { adminBulkLotsResultAction as _adminBulkLotsResultAction } from "./admin/admin-lots";
 export const adminBulkLotsResultAction = _adminBulkLotsResultAction;
