@@ -11,9 +11,11 @@ import { createIssuerSecurityFactsReader } from "./infrastructure/issuer-securit
 import { createMemorySessionStore } from "./infrastructure/memory-session-store";
 import { createProductPortfolioGateway } from "./infrastructure/product-portfolio-gateway";
 import { createRedisSessionStore } from "./infrastructure/redis-session-store";
+import { createShopSellingGateway } from "./infrastructure/shop-selling-gateway";
 import type { AccountIdentityGateway } from "./ports/account-identity-gateway";
 import type { PortfolioGateway } from "./ports/portfolio-gateway";
 import type { SecurityFactsReader } from "./ports/security-facts-reader";
+import type { SellingGateway } from "./ports/selling-gateway";
 import type { SessionStore } from "./ports/session-store";
 
 export type LaxAccountContainer = {
@@ -24,6 +26,7 @@ export type LaxAccountContainer = {
   securityFacts: SecurityFactsReader;
   identity: AccountIdentityGateway;
   portfolio: PortfolioGateway;
+  selling: SellingGateway;
   startAccountLogin: typeof startAccountLogin;
   completeAccountLogin: typeof completeAccountLogin;
 };
@@ -42,6 +45,12 @@ function createSessionStore(config: LaxAccountConfig): SessionStore {
 
 export function createLaxAccountContainer(config: LaxAccountConfig): LaxAccountContainer {
   const sessions = createSessionStore(config);
+  const tokens = createExchangeResourceTokenProvider({
+    // A shorter limit than sign-in's: a slow issuer must not stall a page that reads products.
+    tokenEndpoint: createAccountTokenEndpoint(config, PORTFOLIO_TOKEN_EXCHANGE_TIMEOUT_MS),
+    sessions,
+    sessionTtlSeconds: config.sessionTtlSeconds,
+  });
   return {
     config,
     cookies: accountCookiePolicy(config.publicOrigin),
@@ -54,13 +63,9 @@ export function createLaxAccountContainer(config: LaxAccountConfig): LaxAccountC
         ...(config.bidApiUrl ? { bid: config.bidApiUrl } : {}),
         ...(config.shopApiUrl ? { shop: config.shopApiUrl } : {}),
       },
-      tokens: createExchangeResourceTokenProvider({
-        // A shorter limit than sign-in's: a slow issuer must not stall a page that reads products.
-        tokenEndpoint: createAccountTokenEndpoint(config, PORTFOLIO_TOKEN_EXCHANGE_TIMEOUT_MS),
-        sessions,
-        sessionTtlSeconds: config.sessionTtlSeconds,
-      }),
+      tokens,
     }),
+    selling: createShopSellingGateway({ apiUrl: config.shopApiUrl, tokens }),
     startAccountLogin,
     completeAccountLogin,
   };

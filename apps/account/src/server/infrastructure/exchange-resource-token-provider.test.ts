@@ -134,6 +134,36 @@ describe("createExchangeResourceTokenProvider", () => {
     expect(await provider.tokenFor(handle, "lax-bid-api")).toBe("bid-token");
   });
 
+  it("exchanges and caches each selling scope apart from the portfolio token", async () => {
+    const tokenEndpoint = endpoint((body) => issued(`shop-${body.get("scope")}`));
+    const { provider, sessions, handle } = await setup(record(), tokenEndpoint);
+
+    expect(await provider.tokenFor(handle, "lax-shop-api")).toBe("shop-lax.portfolio.read");
+    expect(await provider.tokenFor(handle, "lax-shop-api", "lax.selling.read")).toBe(
+      "shop-lax.selling.read",
+    );
+    expect(await provider.tokenFor(handle, "lax-shop-api", "lax.selling.write")).toBe(
+      "shop-lax.selling.write",
+    );
+    expect(tokenEndpoint.calls.map((body) => body.get("scope"))).toEqual([
+      "lax.portfolio.read",
+      "lax.selling.read",
+      "lax.selling.write",
+    ]);
+
+    const saved = await sessions.get("sess");
+    expect(Object.keys(saved?.resourceTokens ?? {}).sort()).toEqual([
+      "lax-shop-api",
+      "lax-shop-api lax.selling.read",
+      "lax-shop-api lax.selling.write",
+    ]);
+    const cached = { sessionId: "sess", record: saved ?? record() };
+    expect(await provider.tokenFor(cached, "lax-shop-api", "lax.selling.read")).toBe(
+      "shop-lax.selling.read",
+    );
+    expect(tokenEndpoint.calls).toHaveLength(3);
+  });
+
   it("lets an exchange failure reach the caller", async () => {
     const tokenEndpoint = endpoint(() => new Error("invalid_target"));
     const { provider, handle } = await setup(record(), tokenEndpoint);

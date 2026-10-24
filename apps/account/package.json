@@ -18,7 +18,10 @@
     "@auction/identity-rp": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/marketing-ui": "workspace:*",
+    "@auction/shop-contracts": "workspace:*",
     "@auction/ui": "workspace:*",
+    "@stripe/connect-js": "^3.3.31",
+    "@stripe/react-connect-js": "^3.3.31",
     "ioredis": "^5.6.1",
     "jose": "^6.2.3",
     "next": "15.5.9",
@@ -29,9 +32,11 @@
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "@tailwindcss/postcss": "^4.1.13",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "jsdom": "^25.0.1",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
