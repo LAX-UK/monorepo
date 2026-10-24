@@ -256,16 +256,27 @@ function productChipMarkup(chip: HostedProductChip | null): string {
   return `<p class="product-chip">${escapeHostedHtml(HOSTED_COPY.continueTo)} <strong>${escapeHostedHtml(chip.label)}</strong></p>`;
 }
 
+function productName(product: "bid" | "shop" | "art", label: string): string {
+  return `<span class="product-name product-name--${product}">${escapeHostedHtml(label)}</span>`;
+}
+
+/** "One LAX Account for LAX Bid, LAX Shop and lax.art.", each product named in its own colour. */
+function oneAccountMarkup(): string {
+  const { bid, shop, art } = HOSTED_COPY.oneAccountProducts;
+  return `One LAX Account for ${productName("bid", bid)}, ${productName("shop", shop)} and ${productName("art", art)}.`;
+}
+
 /** The promise that one sign-in covers every LAX product, with a way to read more when Account is configured. */
 export function oneAccountNote(accountOrigin: string | undefined): string {
   const learnMore = accountOrigin
     ? ` <a class="text-link" href="${escapeHostedHtml(accountOrigin.replace(/\/$/, ""))}/">${escapeHostedHtml(HOSTED_COPY.learnMore)}</a>`
     : "";
-  return `<p class="one-account">${escapeHostedHtml(HOSTED_COPY.oneAccount)}${learnMore}</p>`;
+  return `<p class="one-account">${oneAccountMarkup()}${learnMore}</p>`;
 }
 
+/** Only Montserrat is preloaded: every hosted page sets its text in it, as LAX Account does. */
 function fontPreloadTags(): string {
-  return Object.values(HOSTED_FONT_FILES)
+  return [HOSTED_FONT_FILES.montserrat]
     .map(
       (file) =>
         `  <link rel="preload" href="${hostedFontPath(file)}?v=${HOSTED_AUTH_ASSET_VERSION}" as="font" type="font/woff2" crossorigin>`,

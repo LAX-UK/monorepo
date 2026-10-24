@@ -38,8 +38,11 @@ export function AccountMenuSheet({
           <MarketingMenuIcon />
         </MarketingChromeIconButton>
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-[min(85vw,22rem)] flex-col gap-6 overflow-y-auto">
-        <div className="flex items-center gap-3 pr-8">
+      <SheetContent
+        side="left"
+        className="flex w-[min(85vw,22rem)] flex-col gap-6 overflow-y-auto bg-surface"
+      >
+        <div className="flex items-center gap-3 pr-10">
           <AccountAvatar viewer={viewer} className="size-11" textClassName="text-sm" />
           <div className="min-w-0">
             <SheetTitle className="truncate text-sm">{viewer.displayName}</SheetTitle>

@@ -34,13 +34,17 @@ ${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
   --color-error: ${t.errorOnLight};
   --color-success: ${t.successOnLight};
   --color-ring: ${t.accent};
+  --color-product-bid: ${t.productBid};
+  --color-product-shop: ${t.ink};
+  --color-product-art: ${t.ink};
   --color-scrim-auth: rgba(0, 0, 0, 0.07);
   --auth-column: 528px;
   --radius: 0.5rem;
   --control-min: 2.75rem;
   --label-tracking: 0.08em;
   --font-body: ${t.fontBody};
-  --font-supporting: ${t.fontSupporting};
+  /* LAX Account sets all of its text in Montserrat, so the hosted pages do too. */
+  --font-supporting: ${t.fontBody};
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +62,9 @@ ${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
     --color-error: #ffb4ab;
     --color-success: #56d364;
     --color-ring: ${t.accentOnDark};
+    --color-product-bid: ${t.productBidOnDark};
+    --color-product-shop: ${t.lightCream};
+    --color-product-art: ${t.lightCream};
     --color-scrim-auth: rgba(255, 255, 255, 0.06);
   }
 }
@@ -159,8 +166,8 @@ h1 {
 
 .panel {
   width: 100%;
-  border: 1px solid color-mix(in srgb, var(--color-border) 25%, transparent);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
   background: var(--color-surface);
   padding: 1.5rem;
 }
@@ -257,13 +264,24 @@ h1 {
   transition: background-color 99999s ease-out;
 }
 
+/* Focus thickens the underline to 2px in the ring colour; the field draws no box of its own. */
 .field-control:focus-within {
   border-bottom-color: var(--color-ring);
+  box-shadow: 0 1px 0 0 var(--color-ring);
 }
 
 .field-control.is-invalid,
 .field-control:has(.field-input[aria-invalid="true"]) {
   border-bottom-color: var(--color-error);
+}
+
+.field-control.is-invalid:focus-within,
+.field-control:has(.field-input[aria-invalid="true"]):focus-within {
+  box-shadow: 0 1px 0 0 var(--color-error);
+}
+
+.field-control:has(.field-input[aria-invalid="true"]) .field-label {
+  color: var(--color-error);
 }
 
 .field-error {
@@ -308,7 +326,7 @@ h1 {
   min-height: var(--control-min);
   padding: 0.75rem 1.25rem;
   border: 0;
-  border-radius: 0.25rem;
+  border-radius: 0.375rem;
   font-family: var(--font-body);
   font-size: 0.875rem;
   font-weight: 600;
@@ -329,7 +347,7 @@ h1 {
 }
 
 .btn-primary:hover:not(:disabled) {
-  opacity: 0.92;
+  opacity: 0.95;
 }
 
 .btn-secondary {
@@ -340,7 +358,7 @@ h1 {
   width: 100%;
   background: transparent;
   color: var(--color-on-surface);
-  border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+  border: 1px solid var(--color-border);
 }
 
 .btn-mark {
@@ -350,12 +368,12 @@ h1 {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: var(--color-ring);
+  background: color-mix(in srgb, var(--color-on-surface) 4%, transparent);
 }
 
 .btn-link {
   width: auto;
-  min-height: auto;
+  min-height: var(--control-min);
   padding: 0;
   background: transparent;
   color: var(--color-link);
@@ -375,10 +393,9 @@ h1 {
 }
 
 .email-summary-label {
+  font-family: var(--font-supporting);
   font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: var(--label-tracking);
-  text-transform: uppercase;
+  line-height: 1.125rem;
   color: var(--color-on-surface-variant);
 }
 
@@ -399,6 +416,9 @@ h1 {
 .field-row-end {
   display: flex;
   justify-content: flex-end;
+  font-family: var(--font-supporting);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .field-check {
@@ -445,6 +465,31 @@ h1 {
 .text-link:hover,
 .links a:hover {
   text-decoration-thickness: 2px;
+}
+
+/* Links that stand on their own line get the 44px target; a link inside a sentence stays inline. */
+.links a,
+.field-row-end .text-link,
+.links-secondary .text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min);
+}
+
+.product-name {
+  font-weight: 500;
+}
+
+.product-name--bid {
+  color: var(--color-product-bid);
+}
+
+.product-name--shop {
+  color: var(--color-product-shop);
+}
+
+.product-name--art {
+  color: var(--color-product-art);
 }
 
 .status-error,
@@ -496,9 +541,12 @@ ol {
   min-height: 0;
 }
 
+.field-input:focus-visible {
+  outline: none;
+}
+
 .btn:focus-visible,
 .btn-reveal:focus-visible,
-.field-input:focus-visible,
 .text-link:focus-visible,
 .skip-link:focus-visible,
 a:focus-visible {
@@ -657,6 +705,10 @@ pre.auth-mono {
   main {
     padding: 2.5rem 1rem 4rem;
     gap: 2rem;
+  }
+
+  .panel {
+    padding: 1.25rem 1rem;
   }
 }
 

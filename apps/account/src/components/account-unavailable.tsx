@@ -1,4 +1,4 @@
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@/components/account-button";
 import { AccountShell } from "./account-shell";
 
 /**

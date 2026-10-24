@@ -2,19 +2,22 @@ import { formatCurrencyTotals } from "@/lib/format-money";
 import { PRODUCT_LABELS, STATUS_LABELS, STATUS_TONES } from "@/server/domain/portfolio-labels";
 import type { CurrencyTotal, LaxPortfolioItemStatus, LaxProductId } from "@auction/lax-ecosystem";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { ProductName } from "./product-name";
 
 /**
  * The shared badge is all-caps and letter-spaced; these pages write statuses as plain
  * sentences, which are easier to read and do not clip on a narrow screen.
  */
-export const SENTENCE_CASE_BADGE = "text-xs font-medium normal-case tracking-normal";
+export const SENTENCE_CASE_BADGE =
+  "px-2 py-0.5 text-xs leading-5 font-medium normal-case tracking-normal";
 
 /** Which LAX product a work or entry belongs to. The name keeps its own capitalisation. */
 export function ProductBadge({ product }: { product: LaxProductId }) {
+  // Plain coloured text, not a pill, so the product never reads as another status badge.
   return (
-    <StatusBadge variant="neutral" className={SENTENCE_CASE_BADGE}>
+    <ProductName product={product} className="text-sm whitespace-nowrap">
       {PRODUCT_LABELS[product]}
-    </StatusBadge>
+    </ProductName>
   );
 }
 

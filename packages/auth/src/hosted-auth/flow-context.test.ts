@@ -29,7 +29,7 @@ const shopAuthorize = {
 };
 
 describe("parseHostedAuthFlow", () => {
-  it("resumes a validated LAX Art authorization request", () => {
+  it("resumes a validated lax.art authorization request", () => {
     const flow = parseHostedAuthFlow(new URLSearchParams(artAuthorize));
     expect(flow.product).toBe("art");
     expect(flow.clientId).toBe("lax-art-web");

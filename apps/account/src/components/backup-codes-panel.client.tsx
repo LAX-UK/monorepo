@@ -1,6 +1,7 @@
 "use client";
 
-import { NoticeTitle } from "@/components/account-ui";
+import { Button } from "@/components/account-button";
+import { NOTICE, NoticeTitle } from "@/components/account-ui";
 import { regenerateBackupCodesAction } from "@/server/application/account-identity-actions.server";
 import type { BackupCodesActionResult } from "@/server/domain/account-action-result";
 import {
@@ -11,7 +12,6 @@ import {
 } from "@/server/domain/account-backup-codes.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -90,7 +90,7 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
   return (
     <div className="flex flex-col gap-4">
       {issued ? (
-        <Alert variant="warning" aria-labelledby="new-backup-codes-heading">
+        <Alert variant="warning" aria-labelledby="new-backup-codes-heading" className={NOTICE}>
           <NoticeTitle level={3} id="new-backup-codes-heading">
             Your new backup codes
           </NoticeTitle>

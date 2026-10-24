@@ -1,9 +1,10 @@
+import { Button } from "@/components/account-button";
 import type { DeletionPageVm } from "@/server/domain/account-deletion.vm";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { ListCard, ListCardRow, NoticeTitle, SECTION_TITLE } from "./account-ui";
+import { ListCard, ListCardRow, NOTICE, NoticeTitle, SECTION_TITLE } from "./account-ui";
 import { CancelDeletionButton } from "./cancel-deletion-button.client";
 import { DeleteAccountForm } from "./delete-account-form.client";
+import { withProductNames } from "./product-name";
 
 type DeleteAccountSectionProps = {
   vm: DeletionPageVm;
@@ -13,7 +14,7 @@ type DeleteAccountSectionProps = {
 
 function TryAgain({ pagePath, children }: { pagePath: string; children: string }) {
   return (
-    <Button asChild variant="outline" className="mt-4 min-h-11">
+    <Button asChild variant="outline" className="mt-4">
       <a href={pagePath}>{children}</a>
     </Button>
   );
@@ -27,7 +28,7 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
   switch (vm.kind) {
     case "unavailable":
       return (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className={NOTICE}>
           <NoticeTitle>We can't check your account right now</NoticeTitle>
           <AlertDescription>
             This is a temporary problem on our side and nothing has changed. Try again in a moment.
@@ -65,7 +66,9 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
           </div>
           {vm.groups.map((group) => (
             <div key={group.product} className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-on-surface-variant">{group.label}</h3>
+              <h3 className="text-sm font-medium text-on-surface-variant">
+                {withProductNames(group.label, "inherit")}
+              </h3>
               <ListCard>
                 {group.blockers.map((blocker) => (
                   <ListCardRow
@@ -78,11 +81,11 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
             </div>
           ))}
           {vm.unreachable.length > 0 ? (
-            <Alert variant="warning">
+            <Alert variant="warning" className={NOTICE}>
               <NoticeTitle>We couldn't check everything</NoticeTitle>
               <AlertDescription>
-                We couldn't check {vm.unreachable.join(" or ")} just now, so there may be more to
-                sort out. Try again in a moment.
+                We couldn't check {withProductNames(vm.unreachable.join(" or "))} just now, so there
+                may be more to sort out. Try again in a moment.
               </AlertDescription>
               <TryAgain pagePath={pagePath}>Check again</TryAgain>
             </Alert>
@@ -94,11 +97,11 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
 
     case "check_failed":
       return (
-        <Alert variant="warning">
+        <Alert variant="warning" className={NOTICE}>
           <NoticeTitle>We couldn't finish checking your account</NoticeTitle>
           <AlertDescription>
-            We couldn't check {vm.unreachable.join(" or ")} just now. We can't delete your account
-            until we can, so nothing has changed. Try again in a moment.
+            We couldn't check {withProductNames(vm.unreachable.join(" or "))} just now. We can't
+            delete your account until we can, so nothing has changed. Try again in a moment.
           </AlertDescription>
           <TryAgain pagePath={pagePath}>Try again</TryAgain>
         </Alert>

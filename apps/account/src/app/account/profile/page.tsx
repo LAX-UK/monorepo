@@ -1,3 +1,4 @@
+import { Button } from "@/components/account-button";
 import { AccountShell } from "@/components/account-shell";
 import { AccountPageHeader, AccountSection, ListCard, ListCardRow } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
@@ -13,7 +14,6 @@ import { buildAccountLinks } from "@/server/domain/account-links";
 import { buildProfileSections, maskPendingEmail } from "@/server/domain/account-profile.vm";
 import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@auction/identity-contracts";
-import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";

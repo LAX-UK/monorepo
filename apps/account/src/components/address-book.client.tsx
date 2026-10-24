@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@/components/account-button";
+import { CARD, CARD_PADDING, CARD_TITLE } from "@/components/account-ui";
+import { ProductText } from "@/components/product-name";
 import {
   addAddressAction,
   deleteAddressAction,
@@ -19,7 +22,6 @@ import type {
   AccountAddress,
   AccountAddressDefaultKind,
 } from "@auction/identity-contracts/account";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { useRouter } from "next/navigation";
@@ -98,8 +100,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
 
       {addresses.length === 0 && editing.kind === "none" ? (
         <p className="text-sm text-on-surface-variant">
-          You haven't saved an address yet. Saved addresses are offered at checkout in LAX Bid, LAX
-          Shop and lax.art.
+          <ProductText text="You haven't saved an address yet. Saved addresses are offered at checkout in LAX Bid, LAX Shop and lax.art." />
         </p>
       ) : null}
 
@@ -107,14 +108,9 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
         {addresses.map((address) => {
           const badges = addressDefaultBadges(address);
           return (
-            <li
-              key={address.id}
-              className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
-            >
+            <li key={address.id} className={`flex flex-col gap-4 ${CARD} ${CARD_PADDING}`}>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-headline text-lg font-semibold break-words text-on-surface">
-                  {address.label}
-                </h3>
+                <h3 className={`${CARD_TITLE} break-words`}>{address.label}</h3>
                 {badges.map((badge) => (
                   <DotStatusPill key={badge} label={badge} tone="success" />
                 ))}
@@ -134,7 +130,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
                   type="button"
                   variant="link"
                   size="inline"
-                  className="min-h-11"
+                  className="min-h-11 text-on-surface underline underline-offset-4"
                   disabled={pending}
                   aria-label={`Edit ${address.label}`}
                   onClick={() => {
@@ -150,7 +146,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
                     type="button"
                     variant="link"
                     size="inline"
-                    className="min-h-11"
+                    className="min-h-11 text-on-surface underline underline-offset-4"
                     disabled={pending}
                     aria-label={`Make ${address.label} your default shipping address`}
                     onClick={() => makeDefault(address, "shipping")}
@@ -163,7 +159,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
                     type="button"
                     variant="link"
                     size="inline"
-                    className="min-h-11"
+                    className="min-h-11 text-on-surface underline underline-offset-4"
                     disabled={pending}
                     aria-label={`Make ${address.label} your default billing address`}
                     onClick={() => makeDefault(address, "billing")}
@@ -175,7 +171,7 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
                   type="button"
                   variant="link"
                   size="inline"
-                  className="min-h-11 text-error"
+                  className="min-h-11 text-error underline underline-offset-4"
                   disabled={pending}
                   aria-label={`Delete ${address.label}`}
                   onClick={() => {

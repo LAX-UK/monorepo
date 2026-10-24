@@ -1,5 +1,5 @@
+import { Button } from "@/components/account-button";
 import type { CheckupStepVm, SecurityCheckupVm } from "@/server/domain/account-security-checkup.vm";
-import { Button } from "@auction/ui/components/button";
 import { ProgressRing } from "@auction/ui/components/progress-ring";
 import { CARD, CARD_TITLE } from "./account-ui";
 
@@ -47,7 +47,7 @@ function CheckupStep({ step }: { step: CheckupStepVm }) {
         <p className="mt-0.5 text-xs leading-5 text-on-surface-variant">{step.description}</p>
       </div>
       {step.actionLabel ? (
-        <Button asChild variant="outline" size="sm" className="ml-9 min-h-11 shrink-0 sm:ml-0">
+        <Button asChild variant="outline" className="ml-9 shrink-0 sm:ml-0">
           <a href={step.href} aria-label={`${step.actionLabel}: ${step.title}`}>
             {step.actionLabel}
           </a>
@@ -68,7 +68,7 @@ export function SecurityCheckupCard({ checkup }: { checkup: SecurityCheckupVm })
         <ProgressRing
           value={checkup.doneCount}
           max={checkup.total}
-          label="Security Checkup progress"
+          label="Security checkup progress"
           size={72}
           className="text-product-accent"
         >
@@ -78,7 +78,7 @@ export function SecurityCheckupCard({ checkup }: { checkup: SecurityCheckupVm })
         </ProgressRing>
         <div className="min-w-0">
           <h2 id="security-checkup-heading" className={CARD_TITLE}>
-            Security Checkup
+            Security checkup
           </h2>
           <p className="text-sm text-on-surface-variant">{checkup.summary}</p>
         </div>

@@ -1,3 +1,4 @@
+import { textOf } from "@/test/text-of";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildAttentionRows } from "../server/domain/portfolio-attention.vm";
@@ -19,7 +20,7 @@ describe("PortfolioEmptyState", () => {
     const html = renderToStaticMarkup(
       <PortfolioEmptyState kind="new_collector" products={products} payHref={null} />,
     );
-    expect(html).toContain("Works you buy on LAX Bid, LAX Shop or lax.art appear here");
+    expect(textOf(html)).toContain("Works you buy on LAX Bid, LAX Shop or lax.art appear here");
     expect(html).toContain('href="https://lax.bid"');
     expect(html).toContain('href="https://shop.lax.art"');
   });
@@ -51,7 +52,7 @@ describe("PortfolioNotices", () => {
         notices={buildSourceNotices({ unavailable: ["bid"], partial: [] }, "items")}
       />,
     );
-    expect(html).toContain("LAX Bid items are unavailable right now");
+    expect(textOf(html)).toContain("LAX Bid items are unavailable right now");
   });
 
   it("renders nothing when every product answered", () => {
@@ -70,7 +71,7 @@ describe("PortfolioAttention", () => {
     const html = renderToStaticMarkup(<PortfolioAttention rows={rows} />);
     expect(html).toContain("Needs your attention");
     expect(html).toContain('href="https://lax.bid/dashboard/checkout/1"');
-    expect(html).toContain("Opens LAX Bid");
+    expect(textOf(html)).toContain("Opens LAX Bid");
     expect(renderToStaticMarkup(<PortfolioAttention rows={[]} />)).toBe("");
   });
 });
@@ -94,6 +95,6 @@ describe("overview cards", () => {
     );
     expect(html).toContain("Your organisations");
     expect(html).toContain('href="https://lax.bid/dashboard/organisations"');
-    expect(html).toContain("Open in Bid");
+    expect(html).toContain("Open in LAX Bid");
   });
 });

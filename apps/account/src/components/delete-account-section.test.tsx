@@ -1,3 +1,4 @@
+import { textOf } from "@/test/text-of";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DeleteAccountSection } from "./delete-account-section";
@@ -44,7 +45,9 @@ describe("DeleteAccountSection", () => {
     it("lists every blocker under its product, each linking into that product", () => {
       const html = render(vm);
       expect(html).toContain("You can&#x27;t delete your account yet");
-      expect(html.indexOf("LAX Bid")).toBeLessThan(html.indexOf("LAX Shop and lax.art"));
+      expect(textOf(html).indexOf("LAX Bid")).toBeLessThan(
+        textOf(html).indexOf("LAX Shop and lax.art"),
+      );
       expect(html).toContain(BID.message);
       expect(html).toContain(`href="${BID.href}"`);
       expect(html).toContain(SHOP.message.replace("haven't", "haven&#x27;t"));
@@ -70,7 +73,7 @@ describe("DeleteAccountSection", () => {
     it("says which product could not be checked, so there may be more to do", () => {
       const html = render({ ...vm, unreachable: ["LAX Shop and lax.art"] });
       expect(html).toContain("We couldn&#x27;t check everything");
-      expect(html).toContain("LAX Shop and lax.art just now");
+      expect(textOf(html)).toContain("LAX Shop and lax.art just now");
     });
   });
 

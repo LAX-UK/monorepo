@@ -16,7 +16,7 @@ export function SignInProducts({ products }: { products: AccountProductVm[] }) {
       <h2 id="sign-in-products-heading" className="text-sm font-medium text-on-surface-variant">
         One sign-in for
       </h2>
-      <ul className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:gap-x-8">
+      <ul className="flex flex-wrap items-center gap-x-6 gap-y-1 sm:gap-x-8">
         {products.map((product) => {
           const lockup = PRODUCT_LOCKUPS[product.id];
           return (
@@ -26,8 +26,8 @@ export function SignInProducts({ products }: { products: AccountProductVm[] }) {
                 className="flex min-h-11 items-center rounded-sm"
                 aria-label={product.name}
               >
-                <img src={lockup.light} alt="" className="h-7 w-auto sm:h-9 dark:hidden" />
-                <img src={lockup.dark} alt="" className="hidden h-7 w-auto sm:h-9 dark:block" />
+                <img src={lockup.light} alt="" className="h-6 w-auto sm:h-7 dark:hidden" />
+                <img src={lockup.dark} alt="" className="hidden h-6 w-auto sm:h-7 dark:block" />
               </a>
             </li>
           );

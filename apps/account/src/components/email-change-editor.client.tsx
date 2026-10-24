@@ -1,15 +1,15 @@
 "use client";
 
+import { Button, LoadingButton } from "@/components/account-button";
+import { FIELD } from "@/components/account-ui";
 import {
   cancelEmailChangeAction,
   startEmailChangeAction,
 } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult } from "@/server/domain/account-action-result";
 import { buildReauthHref } from "@/server/domain/account-reauth";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
@@ -89,7 +89,7 @@ export function EmailChangeEditor({ pendingEmailMasked, returnTo }: EmailChangeE
           <div className="space-y-1.5">
             <Label htmlFor={inputId}>New email address</Label>
             <Input
-              className="h-11"
+              className={FIELD}
               id={inputId}
               name="email"
               type="email"

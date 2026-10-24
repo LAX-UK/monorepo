@@ -15,7 +15,7 @@ describe("ProductCards", () => {
       />,
     );
     expect(html).toContain("Your LAX products");
-    for (const name of ["LAX Bid", "LAX Shop", "LAX Art"]) {
+    for (const name of ["LAX Bid", "LAX Shop", "lax.art"]) {
       expect(html).toContain(`alt="${name}"`);
       expect(html).toContain(`aria-label="Open ${name}"`);
     }

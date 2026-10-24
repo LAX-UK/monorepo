@@ -82,7 +82,7 @@ describe("buildLaunchGroups", () => {
   it("adds payout and staff launch groups only when they have rows", () => {
     expect(buildLaunchGroups({ payoutLinks: [], staffPlatforms: [] })).toEqual([]);
     const groups = buildLaunchGroups({
-      payoutLinks: [{ label: "LAX Art payouts", href: "https://lax.art/account/payouts" }],
+      payoutLinks: [{ label: "lax.art payouts", href: "https://lax.art/account/payouts" }],
       staffPlatforms: [{ product: "bid", label: "LAX Bid admin", href: "https://lax.bid/admin" }],
     });
     expect(groups.map((g) => g.id)).toEqual(["payouts", "lax-access"]);

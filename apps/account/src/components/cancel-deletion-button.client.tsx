@@ -1,7 +1,7 @@
 "use client";
 
+import { LoadingButton } from "@/components/account-button";
 import { cancelAccountDeletionAction } from "@/server/application/account-identity-actions.server";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 

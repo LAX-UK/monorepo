@@ -43,7 +43,7 @@ export function buildProductBar(
 ): ProductBarItemVm[] {
   const others: Array<[string, string, string | undefined]> = [
     ["bid", "LAX Bid", config.bidPublicUrl],
-    ["art", "LAX Art", config.laxArtPublicUrl],
+    ["art", "lax.art", config.laxArtPublicUrl],
     ["shop", "LAX Shop", config.shopPublicUrl],
   ];
   return [

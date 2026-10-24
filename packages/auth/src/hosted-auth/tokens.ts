@@ -11,6 +11,12 @@ export const HOSTED_AUTH_TOKENS = {
   /** LAX Account teal: the accent of every hosted page (PRODUCT_ACCENTS.account in @auction/branding). */
   accent: "#0f766e",
   accentOnDark: "#2dd4bf",
+  /**
+   * LAX Bid's navy and its dark-surface value (PRODUCT_ACCENTS.bid and PRODUCT_ACCENTS_ON_DARK.bid),
+   * used only to set Bid's name in the one-account note. Nothing else on these pages is navy.
+   */
+  productBid: "#091f5b",
+  productBidOnDark: "#a5b7e9",
   white: "#ffffff",
   lightCream: "#f2f1df",
   ink: "#191919",

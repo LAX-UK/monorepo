@@ -1,7 +1,8 @@
+import { Button } from "@/components/account-button";
 import { PORTFOLIO_ROUTES } from "@/server/domain/portfolio-routes";
 import type { PortfolioSummaryVm } from "@/server/domain/portfolio-summary.vm";
-import { Button } from "@auction/ui/components/button";
 import { CARD as BASE_CARD, CARD_PADDING, CARD_TITLE } from "./account-ui";
+import { ProductName, ProductText } from "./product-name";
 
 const CARD = `flex flex-col gap-4 ${BASE_CARD} ${CARD_PADDING}`;
 
@@ -9,7 +10,7 @@ function SummaryBody({ summary }: { summary: PortfolioSummaryVm }) {
   if (summary.kind === "empty") {
     return (
       <p className="text-sm text-on-surface-variant">
-        Works you buy on LAX Bid, LAX Shop or lax.art appear here.
+        <ProductText text="Works you buy on LAX Bid, LAX Shop or lax.art appear here." />
       </p>
     );
   }
@@ -38,7 +39,7 @@ export function PortfolioSummaryCard({ summary }: { summary: PortfolioSummaryVm 
         Portfolio
       </h2>
       <SummaryBody summary={summary} />
-      <Button asChild variant="outline" size="sm" className="min-h-11 self-start">
+      <Button asChild variant="outline" className="self-start">
         <a href={PORTFOLIO_ROUTES.overview}>View portfolio</a>
       </Button>
     </section>
@@ -68,11 +69,11 @@ export function OrganisationsCard({ href }: { href: string }) {
         Your organisations
       </h2>
       <p className="text-sm text-on-surface-variant">
-        Galleries and businesses you belong to are managed in LAX Bid, where you can see your role
-        in each.
+        Galleries and businesses you belong to are managed in{" "}
+        <ProductName product="bid">LAX Bid</ProductName>, where you can see your role in each.
       </p>
-      <Button asChild variant="outline" size="sm" className="min-h-11 self-start">
-        <a href={href}>Open in Bid</a>
+      <Button asChild variant="outline" className="self-start">
+        <a href={href}>Open in LAX Bid</a>
       </Button>
     </section>
   );

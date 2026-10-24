@@ -1,4 +1,4 @@
-import { EMPTY_STATE } from "@/components/account-ui";
+import { EMPTY_STATE, SECTION_TITLE } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
 import { formatDate } from "@/lib/format-money";
 import { safeImageUrl } from "@/lib/media-origins";
@@ -30,6 +30,7 @@ import {
   ProductBadge,
   WorkThumbnail,
 } from "./portfolio-parts";
+import { ProductText } from "./product-name";
 
 type FilterOptions = ReturnType<typeof holdingsFilterOptions>;
 
@@ -84,7 +85,9 @@ function HoldingsTable({
             <TableHead scope="col">Work</TableHead>
             <TableHead scope="col">Product</TableHead>
             <TableHead scope="col">Acquired</TableHead>
-            <TableHead scope="col">Paid</TableHead>
+            <TableHead scope="col" className="text-right">
+              Paid
+            </TableHead>
             <TableHead scope="col">Status</TableHead>
             <TableHead scope="col">Documents</TableHead>
           </TableRow>
@@ -107,7 +110,7 @@ function HoldingsTable({
                 <ProductBadge product={row.item.product} />
               </TableCell>
               <TableCell className="whitespace-nowrap">{formatDate(row.item.acquiredAt)}</TableCell>
-              <TableCell>
+              <TableCell className="text-right whitespace-nowrap">
                 <PaidCell row={row} />
               </TableCell>
               <TableCell>
@@ -169,7 +172,7 @@ function AllocationLine({ label, counts }: { label: string; counts: AllocationCo
   return (
     <p className="text-xs text-on-surface-variant">
       <span className="font-medium">{label}:</span>{" "}
-      {counts.map((entry) => `${entry.label} ${entry.count}`).join(" · ")}
+      <ProductText text={counts.map((entry) => `${entry.label} ${entry.count}`).join(" · ")} />
     </p>
   );
 }
@@ -232,7 +235,7 @@ export function PortfolioHoldings({
 }) {
   return (
     <section aria-labelledby="portfolio-holdings-heading" className="flex flex-col gap-4">
-      <h2 id="portfolio-holdings-heading" className="font-headline text-lg font-semibold">
+      <h2 id="portfolio-holdings-heading" className={SECTION_TITLE}>
         Your works
       </h2>
       <FilterToolbar

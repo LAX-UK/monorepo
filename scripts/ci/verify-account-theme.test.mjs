@@ -25,14 +25,44 @@ function rel(full) {
 
 describe("Account theme contract", () => {
   it("never uses LAX Bid's navy accent (LAX colour rule in docs/DESIGN_SYSTEM.md)", () => {
-    const BID_ACCENT = /brand-midnight|#0[89]1f5b\b/i;
+    const BID_ACCENT = /brand-midnight|#0[89]1f5b\b|#a5b7e9\b/i;
+    // The one exception: the token that sets Bid's own name in Bid's colour (ProductName).
+    const BID_NAME_TOKEN = /^\s*--color-product-bid:\s*var\(--brand-midnight(?:-on-dark)?\);\s*$/;
     for (const file of walk(accountSrc)) {
-      const text = readFileSync(file, "utf8");
+      const text = readFileSync(file, "utf8")
+        .split("\n")
+        .filter((line) => !(file.endsWith("app/globals.css") && BID_NAME_TOKEN.test(line)))
+        .join("\n");
       const match = text.match(BID_ACCENT);
       assert.equal(
         match,
         null,
         `${rel(file)} uses Bid's accent (${match?.[0]}); use neutral tokens.`,
+      );
+    }
+  });
+});
+
+describe("Product names in Account", () => {
+  it("maps Bid's navy only to the product-name token, light and dark", () => {
+    const css = readFileSync(join(accountSrc, "app/globals.css"), "utf8");
+    const uses = css.split("\n").filter((line) => /brand-midnight/.test(line));
+    assert.deepEqual(
+      uses.map((line) => line.trim()),
+      [
+        "--color-product-bid: var(--brand-midnight);",
+        "--color-product-bid: var(--brand-midnight-on-dark);",
+      ],
+    );
+  });
+
+  it("uses the Bid name colour only through the ProductName component", () => {
+    for (const file of walk(accountSrc)) {
+      if (/components\/product-name\.tsx$|app\/globals\.css$|\.test\.tsx?$/.test(file)) continue;
+      assert.doesNotMatch(
+        readFileSync(file, "utf8"),
+        /product-bid/,
+        `${rel(file)} sets Bid's colour directly; name the product with ProductName instead.`,
       );
     }
   });
@@ -78,10 +108,16 @@ describe("Hosted sign-in theme contract", () => {
     return acc;
   }
 
-  it("never uses LAX Bid's navy in hosted pages, which are the LAX Account for every product", () => {
-    const BID_ACCENT = /midnight|#0[89]1f5b\b|#202759\b/i;
+  it("never uses LAX Bid's navy in hosted pages, except to name Bid", () => {
+    const BID_ACCENT = /midnight|#0[89]1f5b\b|#202759\b|#a5b7e9\b/i;
+    // The one exception: the tokens that set Bid's own name in the one-account note.
+    const BID_NAME_TOKEN = /^\s*productBid(?:OnDark)?: "#[0-9a-f]{6}",\s*$/i;
     for (const file of hostedSources()) {
-      const match = readFileSync(file, "utf8").match(BID_ACCENT);
+      const text = readFileSync(file, "utf8")
+        .split("\n")
+        .filter((line) => !(file.endsWith("tokens.ts") && BID_NAME_TOKEN.test(line)))
+        .join("\n");
+      const match = text.match(BID_ACCENT);
       assert.equal(match, null, `${rel(file)} uses Bid's accent (${match?.[0]}).`);
     }
   });

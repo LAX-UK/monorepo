@@ -41,10 +41,14 @@ export const PRODUCT_ACCENTS: Readonly<Record<LaxBrandProduct, string | null>> =
 /**
  * The same accents re-tuned for dark surfaces, where the light-surface values lose contrast.
  * `null` means the product has no dark-surface accent: its lockup falls back to a neutral.
- * Bid's navy has no dark counterpart, so its dark lockup keeps the light-grey descriptor.
  */
 export const PRODUCT_ACCENTS_ON_DARK: Readonly<Record<LaxBrandProduct, string | null>> = {
-  bid: null,
+  /**
+   * Navy lifted to a light tint of the same hue (224 degrees), so Bid's name stays recognisably
+   * Bid's on a dark surface: about 8.6:1 on Account's dark surface. Bid's dark lockup keeps its
+   * master's light-grey descriptor; this is for the product's name set as text.
+   */
+  bid: "#a5b7e9",
   shop: null,
   art: null,
   /** Bright teal: about 10:1 on the Account dark page surface. */

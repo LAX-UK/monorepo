@@ -1,7 +1,7 @@
+import { Button } from "@/components/account-button";
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { AccountNavItemVm, ProductBarItemVm } from "@/server/domain/account-nav.vm";
 import { LaxLockup } from "@auction/marketing-ui";
-import { Button } from "@auction/ui/components/button";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";

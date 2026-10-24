@@ -59,7 +59,7 @@ const SheetContent = React.forwardRef<
           <>
             <div className="sticky top-0 z-10 flex items-center justify-end gap-2 bg-surface-container-lowest/95 px-3 pt-[max(env(safe-area-inset-top,0px),0.5rem)] pb-2 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/80">
               <SheetPrimitive.Close
-                className="relative inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm ring-offset-background transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
+                className="relative inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm ring-offset-background transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
                 aria-label="Close"
               >
                 <X className="size-5" aria-hidden />
@@ -77,10 +77,10 @@ const SheetContent = React.forwardRef<
           <>
             {children}
             <SheetPrimitive.Close
-              className="absolute right-4 top-4 -m-2.5 rounded-sm p-2.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
+              className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md opacity-70 ring-offset-background transition-[opacity,background-color] hover:bg-surface-container-low hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
               aria-label="Close"
             >
-              <X className="h-4 w-4" aria-hidden />
+              <X className="size-5" aria-hidden />
               <span className="sr-only">Close</span>
             </SheetPrimitive.Close>
           </>

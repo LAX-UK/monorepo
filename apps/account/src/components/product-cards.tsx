@@ -1,5 +1,5 @@
+import { Button } from "@/components/account-button";
 import type { AccountProductVm } from "@/server/domain/account-products.vm";
-import { Button } from "@auction/ui/components/button";
 import { CARD, CARD_PADDING, SECTION_TITLE } from "./account-ui";
 import { PRODUCT_LOCKUPS } from "./product-lockups";
 
@@ -19,17 +19,17 @@ export function ProductCards({ products }: { products: AccountProductVm[] }) {
           const lockup = PRODUCT_LOCKUPS[product.id];
           return (
             <li key={product.id} className={`flex flex-col gap-4 ${CARD} ${CARD_PADDING}`}>
-              <div className="flex h-12 items-center">
+              <div className="flex h-9 items-center">
                 {/* Only one of the pair is displayed, so assistive technology reads the name once. */}
-                <img src={lockup.light} alt={product.name} className="h-11 w-auto dark:hidden" />
+                <img src={lockup.light} alt={product.name} className="h-8 w-auto dark:hidden" />
                 <img
                   src={lockup.dark}
                   alt={product.name}
-                  className="hidden h-11 w-auto dark:block"
+                  className="hidden h-8 w-auto dark:block"
                 />
               </div>
               <p className="text-sm text-on-surface-variant">{product.tagline}</p>
-              <Button asChild variant="outline" size="sm" className="mt-auto min-h-11 self-start">
+              <Button asChild variant="outline" className="mt-auto self-start">
                 <a href={product.href} aria-label={`Open ${product.name}`}>
                   Open
                 </a>
