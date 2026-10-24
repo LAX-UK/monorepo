@@ -76,6 +76,7 @@ export {
   buildHostedResetPasswordHtml,
 } from "./pages/recovery.js";
 export { HOSTED_TWO_FACTOR_SCRIPT, buildHostedTwoFactorHtml } from "./pages/two-factor.js";
+export { buildHostedTwoFactorHelpHtml } from "./pages/two-factor-help.js";
 export {
   HOSTED_TWO_FACTOR_SETUP_SCRIPT,
   HOSTED_TWO_FACTOR_MANAGE_SCRIPT,

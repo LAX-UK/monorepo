@@ -53,6 +53,7 @@ export {
   buildHostedForgotPasswordHtml,
   buildHostedResetPasswordHtml,
   buildHostedTwoFactorHtml,
+  buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorManageHtml,
   buildHostedTwoFactorSetupHtml,
   parseTwoFactorSetupRequiredBy,

@@ -106,6 +106,18 @@ describe("hosted two-factor manage page", () => {
   });
 });
 
+describe("two-step help page", () => {
+  it("is reachable without a session, because the person cannot finish signing in", async () => {
+    const response = await appWithSession(null).request(
+      "/two-factor/help?client_id=lax-account-web",
+    );
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(html).toContain("Contact support");
+    expect(html).toContain('href="/two-factor?client_id=lax-account-web"');
+  });
+});
+
 describe("account chooser for an explicit sign-in or sign-up visit", () => {
   const session = { user: { id: "u1", name: "Jane Doe", email: "jane.doe@example.test" } };
   const signIn = "/login?client_id=lax-shop-web";

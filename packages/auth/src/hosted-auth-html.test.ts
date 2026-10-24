@@ -10,6 +10,7 @@ import {
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
+  buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorHtml,
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
@@ -97,6 +98,26 @@ describe("issuer-hosted credential HTML", () => {
 
     it("falls back to the bare forgot-password page without a client", () => {
       expect(buildHostedResetPasswordHtml()).toContain('href="/forgot-password"');
+    });
+  });
+
+  describe("two-step lost-access route", () => {
+    it("links the challenge page to the help page, keeping the sign-in parameters", () => {
+      const html = buildHostedTwoFactorHtml(hostedAuthViewFromSearch(shopSearch));
+      const href = /href="([^"]+)">Can't use your authenticator app\?/.exec(html)?.[1] ?? "";
+      const url = new URL(href.replaceAll("&amp;", "&"), "https://auth.test");
+      expect(url.pathname).toBe("/two-factor/help");
+      expect(url.searchParams.get("client_id")).toBe("lax-shop-web");
+      expect(url.searchParams.get("state")).toBe("abc");
+    });
+
+    it("explains that support resets two-step after checking identity, with Bid's contact route", () => {
+      const html = buildHostedTwoFactorHelpHtml(hostedAuthViewFromSearch(shopSearch));
+      expect(html).toContain("LAX support can reset two-step verification for you");
+      expect(html).toContain("check it's really you");
+      expect(html).toContain('href="http://localhost:3000/contact"');
+      expect(html).toContain('alt="LAX Account"');
+      expect(html).toContain("/two-factor?client_id=lax-shop-web");
     });
   });
 

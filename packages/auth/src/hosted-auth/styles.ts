@@ -465,7 +465,8 @@ h1 {
   font-weight: 500;
 }
 
-ul {
+ul,
+ol {
   margin: 0 0 1.25rem;
   padding-left: 1.25rem;
   color: var(--color-on-surface-variant);

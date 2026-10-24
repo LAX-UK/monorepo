@@ -9,6 +9,7 @@ import {
   buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
+  buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorHtml,
   buildHostedTwoFactorManageHtml,
   buildHostedTwoFactorSetupHtml,
@@ -183,6 +184,7 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
   html("/forgot-password", buildHostedForgotPasswordHtml);
   html("/reset-password", buildHostedResetPasswordHtml);
   html("/two-factor", buildHostedTwoFactorHtml);
+  html("/two-factor/help", buildHostedTwoFactorHelpHtml);
   app.get("/two-factor/setup", async (c) => {
     const view = viewFromRequest(c.req.url, capabilities);
     const requiredBy = parseTwoFactorSetupRequiredBy(
