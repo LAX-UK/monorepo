@@ -7,7 +7,7 @@ permissions, queues, money presentation, and mutation workflows.
 
 1. Payments is the canonical finance reference.
 2. Disputes is the first migration pilot.
-3. Payouts follows the same list pipeline (`load-payouts-list-page`, `build-payouts-list-kpi-tiles`, `CatalogListShell`, board-contained pagination, URL-backed drawer, settlement preview).
+3. Payouts follows the staff list template pipeline (`load-payouts-list-page`, `payouts-staff-list.vm`, `ListPage`, URL-backed record panel, settlement preview).
 4. Payouts + settlement must pass the browser stabilization gate before expanding to other finance/ops queues.
 
 ## Pipeline A — list

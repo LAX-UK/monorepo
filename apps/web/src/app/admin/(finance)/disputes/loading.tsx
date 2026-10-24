@@ -1,14 +1,12 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function DisputesLoading() {
   return (
-    <CatalogListPageSkeleton
-      title="Payment disputes"
-      description="Loading disputes…"
-      kpiTiles={4}
-      showFilterBar
-      tableRows={8}
-      tableColumns={5}
+    <ListPageSkeleton
+      title="Disputes"
+      description="Card disputes raised through Stripe. Open one for the payment, the evidence deadline and its history."
+      metrics={4}
+      columns={["Lot", "Status", "Reason", "Amount", "Seller", "Opened"]}
     />
   );
 }

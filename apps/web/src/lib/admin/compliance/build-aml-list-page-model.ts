@@ -1,29 +1,23 @@
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import { firstString } from "@/lib/admin/admin-list-params";
+import { parseStaffPageSize } from "@auction/staff-ui";
 
 export const AML_LIST_PATH = "/admin/compliance/aml";
 
 export type AmlListSearchParams = {
-  error?: string;
-  success?: string;
   limit?: string;
   offset?: string;
   screening?: string;
 };
 
+/** The list's URL state: page size and offset, and the screening whose panel is open. */
 export function buildAmlListPageModel(sp: AmlListSearchParams) {
-  const limit = Math.min(100, Math.max(1, Number(sp.limit ?? 100) || 100));
-  const offset = Math.max(0, Number(sp.offset ?? 0) || 0);
-  const selectedScreeningId = sp.screening?.trim() || undefined;
-
-  const listQueryParams = { limit, offset };
-
+  const limit = parseStaffPageSize(firstString(sp.limit));
+  const offset = Math.max(0, Number.parseInt(firstString(sp.offset) ?? "0", 10) || 0);
+  const selectedScreeningId = firstString(sp.screening)?.trim() || undefined;
   return {
-    basePath: AML_LIST_PATH,
     query: { offset, limit },
-    listQueryParams,
+    listQueryParams: { limit, offset },
     selectedScreeningId,
-    buildPaginationHref: (patch: Record<string, string | number | undefined>) =>
-      buildListHref(AML_LIST_PATH, sp, patch),
   };
 }
 

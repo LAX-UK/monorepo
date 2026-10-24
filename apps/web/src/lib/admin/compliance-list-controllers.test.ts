@@ -36,9 +36,10 @@ describe("sof-list-query", () => {
 });
 
 describe("buildSofListPageModel", () => {
-  it("caps page size at 100", () => {
-    const model = buildSofListPageModel({ limit: "200" });
-    expect(model.query.limit).toBe(100);
+  it("offers 25, 50 or 100 rows and falls back to 50", () => {
+    expect(buildSofListPageModel({ limit: "25" }).query.limit).toBe(25);
+    expect(buildSofListPageModel({ limit: "200" }).query.limit).toBe(50);
+    expect(buildSofListPageModel({}).query.limit).toBe(50);
   });
 
   it("parses offset from search params", () => {
