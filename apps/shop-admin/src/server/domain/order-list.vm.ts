@@ -1,4 +1,5 @@
 import { ADMIN_ORDER_STATUSES, type AdminOrderStatus } from "@auction/shop-contracts";
+import type { TeamView } from "@auction/staff-ui";
 import {
   type RawSearchParams,
   calendarDayParam,
@@ -143,6 +144,39 @@ export function matchCreatedPreset(query: OrderListQuery, now: Date): CreatedPre
     return range.from === query.from && range.to === query.to;
   });
   return match?.id ?? null;
+}
+
+const TEAM_ORDER_VIEWS: ReadonlyArray<{
+  id: string;
+  label: string;
+  status: AdminOrderStatus;
+  preset: CreatedPresetId;
+}> = [
+  { id: "paid-this-week", label: "Paid this week", status: "paid", preset: "7d" },
+  {
+    id: "unpaid-this-week",
+    label: "Awaiting payment this week",
+    status: "pending_payment",
+    preset: "7d",
+  },
+  {
+    id: "failed-this-month",
+    label: "Payment failed this month",
+    status: "payment_failed",
+    preset: "30d",
+  },
+  { id: "refunded-this-month", label: "Refunded this month", status: "refunded", preset: "30d" },
+];
+
+/**
+ * Views of the orders list everyone sees: a status over a recent period. Fixed here, never
+ * edited; the dates follow `now`, so "this week" is always the last seven days.
+ */
+export function orderTeamViews(now: Date): TeamView[] {
+  return TEAM_ORDER_VIEWS.map(({ id, label, status, preset }) => {
+    const href = orderListHref({ status, ...createdPresetRange(preset, now) });
+    return { id: `team-${id}`, label, href, query: href.split("?")[1] ?? "" };
+  });
 }
 
 /** "3 Mar – 9 Mar 2026" for a range chip; one day reads as that day. */

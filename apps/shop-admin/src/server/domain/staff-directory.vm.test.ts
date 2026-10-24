@@ -3,9 +3,42 @@ import {
   type StaffMemberRow,
   filterStaff,
   lastActiveLabel,
+  parseStaffListParams,
+  staffListHref,
   staffMemberName,
   staffMemberStatus,
+  staffTeamViews,
 } from "./staff-directory.vm";
+
+describe("the staff list URL", () => {
+  it("writes the search and each role, and nothing when there is no filter", () => {
+    expect(staffListHref({ q: "  ada ", roles: ["finance", "broker"] })).toBe(
+      "/staff?q=ada&role=finance&role=broker",
+    );
+    expect(staffListHref({ q: "", roles: [] })).toBe("/staff");
+  });
+
+  it("reads it back, dropping roles that do not exist", () => {
+    expect(
+      parseStaffListParams(new URLSearchParams("q=ada&role=finance&role=wizard&role=broker")),
+    ).toEqual({ q: "ada", roles: ["finance", "broker"] });
+  });
+
+  it("offers team views whose links read back as the same filter", () => {
+    const views = staffTeamViews();
+    expect(views.map((view) => view.label)).toEqual([
+      "Administrators",
+      "Sales team",
+      "Operations and catalogue",
+      "Finance",
+    ]);
+    for (const view of views) {
+      const filter = parseStaffListParams(new URLSearchParams(view.query));
+      expect(filter.roles.length).toBeGreaterThan(0);
+      expect(staffListHref(filter)).toBe(view.href);
+    }
+  });
+});
 
 function row(overrides: Partial<StaffMemberRow>): StaffMemberRow {
   return {

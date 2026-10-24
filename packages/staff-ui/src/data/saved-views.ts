@@ -67,12 +67,9 @@ function toFailure(error: unknown): Extract<SavedViewsResult, { ok: false }> {
   return { ok: false, code: "failed", message: FAILED_MESSAGE };
 }
 
-/** Where views were kept before they moved to the server: this browser, per list. */
-const legacyKey = (listKey: string) => `staff.views.${listKey}`;
-
-function readLegacyViews(listKey: string): SavedView[] {
+function readLegacyViews(storageKey: string): SavedView[] {
   try {
-    const raw = window.localStorage.getItem(legacyKey(listKey));
+    const raw = window.localStorage.getItem(storageKey);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
@@ -86,10 +83,10 @@ function readLegacyViews(listKey: string): SavedView[] {
   }
 }
 
-function writeLegacyViews(listKey: string, views: readonly SavedView[]): void {
+function writeLegacyViews(storageKey: string, views: readonly SavedView[]): void {
   try {
-    if (views.length === 0) window.localStorage.removeItem(legacyKey(listKey));
-    else window.localStorage.setItem(legacyKey(listKey), JSON.stringify(views));
+    if (views.length === 0) window.localStorage.removeItem(storageKey);
+    else window.localStorage.setItem(storageKey, JSON.stringify(views));
   } catch {
     // Storage unavailable: nothing to clear.
   }
@@ -102,11 +99,11 @@ function writeLegacyViews(listKey: string, views: readonly SavedView[]): void {
  * Returns the views it created.
  */
 export async function migrateLegacySavedViews(
-  listKey: string,
+  storageKey: string,
   existing: readonly SavedView[],
   port: Pick<SavedViewsPort, "create">,
 ): Promise<SavedView[]> {
-  const legacy = readLegacyViews(listKey);
+  const legacy = readLegacyViews(storageKey);
   if (legacy.length === 0) return [];
   const known = new Set(existing.map((view) => view.label));
   const created: SavedView[] = [];
@@ -122,7 +119,7 @@ export async function migrateLegacySavedViews(
     }
     remaining = remaining.filter((item) => item !== view);
   }
-  writeLegacyViews(listKey, remaining);
+  writeLegacyViews(storageKey, remaining);
   return created;
 }
 
@@ -146,7 +143,15 @@ function reorderTo<T extends { id: string }>(
  * the server calls run one after another so the stored order always matches what was done.
  * Views found in this browser's storage are moved to the server on first load.
  */
-export function useSavedViews(listKey: string, port: SavedViewsPort): SavedViewsControls {
+export function useSavedViews(
+  listKey: string,
+  port: SavedViewsPort,
+  options: {
+    /** The browser-storage key this list's views were kept under before they moved to the server. */
+    legacyStorageKey?: string;
+  } = {},
+): SavedViewsControls {
+  const legacyStorageKey = options.legacyStorageKey ?? `staff.views.${listKey}`;
   const [views, setViews] = React.useState<SavedViewItem[]>([]);
   const [status, setStatus] = React.useState<SavedViewsControls["status"]>("loading");
   const [reloadToken, setReloadToken] = React.useState(0);
@@ -168,7 +173,7 @@ export function useSavedViews(listKey: string, port: SavedViewsPort): SavedViews
         let all = loaded;
         if (!migrated.current) {
           migrated.current = true;
-          const created = await migrateLegacySavedViews(listKey, loaded, portRef.current);
+          const created = await migrateLegacySavedViews(legacyStorageKey, loaded, portRef.current);
           all = [...loaded, ...created];
         }
         if (cancelled) return;
@@ -182,7 +187,7 @@ export function useSavedViews(listKey: string, port: SavedViewsPort): SavedViews
     return () => {
       cancelled = true;
     };
-  }, [listKey, reloadToken]);
+  }, [listKey, legacyStorageKey, reloadToken]);
 
   const reload = React.useCallback(() => setReloadToken((token) => token + 1), []);
 

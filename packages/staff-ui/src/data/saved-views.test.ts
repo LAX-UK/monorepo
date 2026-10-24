@@ -429,6 +429,22 @@ describe("migrating views saved in the browser", () => {
     expect(result.current.views).toEqual([]);
   });
 
+  it("reads views from the storage key the app says they were kept under", async () => {
+    window.localStorage.setItem(
+      "staff.views.orders",
+      JSON.stringify([view("l1", "Old orders view")]),
+    );
+    const { port, server } = fakePort();
+
+    const hook = renderHook(() =>
+      useSavedViews("lax-admin.orders", port, { legacyStorageKey: "staff.views.orders" }),
+    );
+    await waitFor(() => expect(hook.result.current.status).toBe("ready"));
+
+    expect(server.map((item) => item.label)).toEqual(["Old orders view"]);
+    expect(window.localStorage.getItem("staff.views.orders")).toBeNull();
+  });
+
   it("only moves the list it is opened for", async () => {
     window.localStorage.setItem(
       "staff.views.test.other",
@@ -448,7 +464,7 @@ describe("migrating views saved in the browser", () => {
       view("server-1", input.label, input.query),
     );
 
-    const created = await migrateLegacySavedViews(LIST, [], { create });
+    const created = await migrateLegacySavedViews(STORAGE_KEY, [], { create });
 
     expect(created).toEqual([view("server-1", "One", "q=l1")]);
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();

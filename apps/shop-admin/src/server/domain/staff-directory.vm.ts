@@ -1,6 +1,6 @@
 import type { AdminStaffMemberList } from "@auction/shop-contracts";
 import type { ShopStaffRole } from "@auction/shop-domain";
-import type { EnumOption, StatusPresentation } from "@auction/staff-ui";
+import type { EnumOption, StatusPresentation, TeamView } from "@auction/staff-ui";
 import { staffRoleLabel } from "./staff-role-label.vm";
 
 export type StaffMemberRow = AdminStaffMemberList["items"][number];
@@ -76,5 +76,48 @@ export function filterStaff(
     if (filter.roles.length > 0 && !filter.roles.includes(row.role)) return false;
     if (!q) return true;
     return [row.displayName, row.email].some((value) => value?.toLowerCase().includes(q));
+  });
+}
+
+export const STAFF_LIST_PATH = "/staff";
+
+/** The staff list URL for a search and role filter, as it appears in the address bar. */
+export function staffListHref(filter: { q: string; roles: readonly string[] }): string {
+  const params = new URLSearchParams();
+  const q = filter.q.trim();
+  if (q) params.set("q", q);
+  for (const role of filter.roles) params.append("role", role);
+  const query = params.toString();
+  return query ? `${STAFF_LIST_PATH}?${query}` : STAFF_LIST_PATH;
+}
+
+/** Reads the list's filter from the URL, dropping roles that do not exist. */
+export function parseStaffListParams(params: URLSearchParams): { q: string; roles: string[] } {
+  return {
+    q: params.get("q")?.trim() ?? "",
+    roles: params.getAll("role").filter((role) => GRANTABLE_STAFF_ROLES.some((r) => r === role)),
+  };
+}
+
+const TEAM_VIEW_ROLES: ReadonlyArray<{
+  id: string;
+  label: string;
+  roles: readonly (typeof GRANTABLE_STAFF_ROLES)[number][];
+}> = [
+  { id: "admins", label: "Administrators", roles: ["shop_admin"] },
+  { id: "sales", label: "Sales team", roles: ["account_manager", "broker"] },
+  {
+    id: "operations",
+    label: "Operations and catalogue",
+    roles: ["operations", "catalogue_editor"],
+  },
+  { id: "finance", label: "Finance", roles: ["finance"] },
+];
+
+/** Views of the staff list everyone sees: a team at a time. Fixed here, never edited. */
+export function staffTeamViews(): TeamView[] {
+  return TEAM_VIEW_ROLES.map(({ id, label, roles }) => {
+    const href = staffListHref({ q: "", roles });
+    return { id: `team-${id}`, label, href, query: href.split("?")[1] ?? "" };
   });
 }

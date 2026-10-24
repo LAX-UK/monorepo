@@ -10,8 +10,37 @@ import {
   orderListPageHref,
   orderNumber,
   orderStatusTone,
+  orderTeamViews,
   parseOrderListQuery,
 } from "./order-list.vm";
+
+describe("orderTeamViews", () => {
+  const views = orderTeamViews(new Date("2026-03-10T12:00:00Z"));
+
+  it("offers a status over a recent period, dated from the given day", () => {
+    expect(views.map((view) => [view.label, view.query])).toEqual([
+      ["Paid this week", "status=paid&from=2026-03-04&to=2026-03-10"],
+      ["Awaiting payment this week", "status=pending_payment&from=2026-03-04&to=2026-03-10"],
+      ["Payment failed this month", "status=payment_failed&from=2026-02-09&to=2026-03-10"],
+      ["Refunded this month", "status=refunded&from=2026-02-09&to=2026-03-10"],
+    ]);
+  });
+
+  it("links each view to the list with exactly its query, so the list recognises it as active", () => {
+    for (const view of views) {
+      expect(view.href).toBe(`/orders?${view.query}`);
+      expect(
+        orderListHref(
+          parseOrderListQuery(Object.fromEntries(new URLSearchParams(view.query))),
+        ).split("?")[1],
+      ).toBe(view.query);
+    }
+  });
+
+  it("gives every view its own id", () => {
+    expect(new Set(views.map((view) => view.id)).size).toBe(views.length);
+  });
+});
 
 describe("parseOrderListQuery", () => {
   it("reads every filter", () => {
