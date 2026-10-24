@@ -181,8 +181,9 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
         "https://test-account.lax.bid/",
         "https://account.lax.bid/",
       ],
-      // Account has no write API of its own. It exchanges its session for the one read-only
-      // scope that lists a person's works and money, one audience-bound token per product.
+      // Account has no write API of its own. It reads portfolios read-only, and acts as the
+      // person on their own Shop seller tools (sale limits requests, sales, payouts), one
+      // audience-bound token per product.
       allowedScopes: [
         "openid",
         "profile",
@@ -190,6 +191,8 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
         "offline_access",
         "phone",
         "lax.portfolio.read",
+        "lax.selling.read",
+        "lax.selling.write",
       ],
       allowedResources: [LAX_RESOURCE_IDS.LAX_BID_API, LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,

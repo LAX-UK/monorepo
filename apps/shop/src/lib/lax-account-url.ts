@@ -1,8 +1,8 @@
 /**
  * Where LAX Account lives, from one build-time setting: `NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN`.
  *
- * LAX Account owns profile, addresses, payment methods, security, the collection, documents and
- * money for every LAX product. Shop keeps only "Your orders" and links here for everything else,
+ * LAX Account owns profile, addresses, payment methods, security, the collection, documents,
+ * money and the seller tools for every LAX product. Shop keeps only "Your orders" and links here for everything else,
  * so the link must always resolve:
  * - in local development and tests it goes to the Account dev server (`localhost:3040`);
  * - in a production build without the setting it goes to the live portal.
@@ -19,6 +19,11 @@ export const LAX_ACCOUNT_PATHS = {
   portfolio: "/account/portfolio",
   /** The portfolio filtered to works bought through LAX Shop. */
   shopPortfolio: "/account/portfolio?product=shop",
+  /** Seller tools: editions a person may sell, the sales statement, payouts, an artist's works. */
+  sellingEditions: "/account/selling/editions",
+  sellingSales: "/account/selling/sales",
+  sellingPayouts: "/account/selling/payouts",
+  sellingArtworks: "/account/selling/artworks",
 } as const;
 
 export function resolveLaxAccountOrigin(

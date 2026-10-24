@@ -64,6 +64,16 @@ function constantTimeEqual(left: string, right: string): boolean {
   return timingSafeEqual(Buffer.from(left), Buffer.from(right));
 }
 
+/** Seller routes also open to LAX Account acting as the person with its narrow selling scopes. */
+export const SELLER_READ_SCOPES = [
+  "shop.read",
+  "lax.selling.read",
+] as const satisfies readonly ProductScope[];
+export const SELLER_WRITE_SCOPES = [
+  "shop.write",
+  "lax.selling.write",
+] as const satisfies readonly ProductScope[];
+
 export function requireShopScope(request: FastifyRequest, scope: ProductScope): void {
   const auth = request.shopAuth;
   if (!auth?.scopes.includes(scope)) {

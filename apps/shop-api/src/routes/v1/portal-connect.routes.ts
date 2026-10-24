@@ -11,7 +11,13 @@ import type {
   ShopPayeeConnectPort,
   ShopPayeeConnectSessionSurface,
 } from "../../application/ports/shop-payee-connect.port.js";
-import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
+import {
+  SELLER_READ_SCOPES,
+  SELLER_WRITE_SCOPES,
+  requireAnyShopScope,
+  requireShopScope,
+  requireShopSubject,
+} from "../../plugins/shop-auth.js";
 
 const ConnectLinkBodySchema = Type.Object({
   returnUrl: Type.String({ format: "uri" }),
@@ -45,7 +51,7 @@ export async function registerPortalConnectRoutes(
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
       requireShopSubject(request);
       return connect.getClientConfig();
     },
@@ -64,7 +70,7 @@ export async function registerPortalConnectRoutes(
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireAnyShopScope(request, SELLER_READ_SCOPES);
       const subject = requireShopSubject(request);
       return connect.getStatusForSubject(subject);
     },
@@ -95,7 +101,7 @@ export async function registerPortalConnectRoutes(
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.write");
+      requireAnyShopScope(request, SELLER_WRITE_SCOPES);
       const subject = requireShopSubject(request);
       const body = request.body as { surface: ShopPayeeConnectSessionSurface };
       return connect.createAccountSessionForSubject(subject, body.surface);

@@ -11,12 +11,22 @@ export function shopOrderHref(orderId: string): string {
 }
 
 /** Shop account pages whose content now lives in LAX Account or on lax.art. */
-export type RetiredShopAccountPage = "collection" | "editions" | "documents" | "enquiries";
+export type RetiredShopAccountPage =
+  | "collection"
+  | "editions"
+  | "documents"
+  | "enquiries"
+  | "sale-limits"
+  | "sales"
+  | "payouts"
+  | "artworks"
+  | "artist-sales";
 
 /**
  * Where a retired Shop account page now lives. Collection and documents are the LAX Account
  * portfolio (documents sit on each work); editions are the portfolio filtered to Shop; enquiries
- * are lax.art conversations. Without a lax.art URL, enquiries fall back to the orders page.
+ * are lax.art conversations. Without a lax.art URL, enquiries fall back to the orders page. The
+ * seller tools (sale limits, sales, payouts and the artist pages) are LAX Account's Selling area.
  */
 export function retiredShopAccountPageDestination(
   page: RetiredShopAccountPage,
@@ -28,6 +38,15 @@ export function retiredShopAccountPageDestination(
       return laxAccountUrl(LAX_ACCOUNT_PATHS.portfolio);
     case "editions":
       return laxAccountUrl(LAX_ACCOUNT_PATHS.shopPortfolio);
+    case "sale-limits":
+      return laxAccountUrl(LAX_ACCOUNT_PATHS.sellingEditions);
+    case "sales":
+      return laxAccountUrl(LAX_ACCOUNT_PATHS.sellingSales);
+    case "payouts":
+      return laxAccountUrl(LAX_ACCOUNT_PATHS.sellingPayouts);
+    case "artworks":
+    case "artist-sales":
+      return laxAccountUrl(LAX_ACCOUNT_PATHS.sellingArtworks);
     case "enquiries":
       return artBaseUrl ? `${artBaseUrl.replace(/\/+$/, "")}/account/enquiries` : SHOP_ORDERS_HREF;
   }
@@ -72,7 +91,8 @@ export function resolveShopAccountEntryRedirect(
   }
 }
 
-const RETIRED_ACCOUNT_PAGE_PATTERN = /^\/account\/(collection|editions|documents|enquiries)\/?$/;
+const RETIRED_ACCOUNT_PAGE_PATTERN =
+  /^\/account\/(collection|editions|documents|enquiries|sale-limits|sales|payouts|artworks|artist-sales)\/?$/;
 
 /**
  * The permanent redirect for a retired account page, or null for any other path. Middleware

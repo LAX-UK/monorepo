@@ -6,9 +6,22 @@ import type { StaffSessionRecord } from "./session-store";
 /** The signed-in session a read acts for; its id is where exchanged tokens are cached. */
 export type SessionHandle = { sessionId: string; record: StaffSessionRecord };
 
+/**
+ * The scopes Account may exchange its session for. `lax.portfolio.read` lists works and money;
+ * the selling scopes open the person's own seller tools on Shop's API and nothing else.
+ */
+export type AccountProductScope = "lax.portfolio.read" | "lax.selling.read" | "lax.selling.write";
+
 export type ResourceTokenProvider = {
-  /** A read-only access token whose audience is `resource`. Throws when none can be issued. */
-  tokenFor(handle: SessionHandle, resource: LaxResourceId): Promise<string>;
+  /**
+   * An access token whose audience is `resource` and whose only scope is `scope` (the portfolio
+   * read scope when omitted). Throws when none can be issued.
+   */
+  tokenFor(
+    handle: SessionHandle,
+    resource: LaxResourceId,
+    scope?: AccountProductScope,
+  ): Promise<string>;
 };
 
 /**

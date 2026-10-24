@@ -3,10 +3,8 @@ import { ShopOrderDetail } from "@/components/account/shop-order-detail";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
 import { SHOP_ORDERS_HREF, shopOrderHref } from "@/lib/account/shop-account-routes";
 import { buildShopOrderDetailVm } from "@/lib/account/shop-orders.vm";
-import { loadShopSellerAccess } from "@/lib/account/shop-seller-access.server";
 import { fetchShopOrder } from "@/lib/shop-commerce.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -47,21 +45,16 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
     );
   }
 
-  const [orderResult, access] = await Promise.all([
-    fetchShopOrder(orderId),
-    loadShopSellerAccess(),
-  ]);
+  const orderResult = await fetchShopOrder(orderId);
   if (orderResult.status === "unauthorized") redirect(shopStorefrontLoginHref(returnTo));
   if (orderResult.status === "empty") notFound();
 
-  const nav = buildShopAccountNavItems({ access, activeHref: SHOP_ORDERS_HREF });
   if (orderResult.status === "failed") {
     return (
       <ShopAccountShell
         title={fallback.title}
         breadcrumbs={fallback.breadcrumbs}
         showAccountSettings={false}
-        nav={nav}
       >
         <ShopStatusState
           layout="page"
@@ -88,7 +81,6 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
       title={wayfinding.title}
       breadcrumbs={wayfinding.breadcrumbs}
       showAccountSettings={false}
-      nav={nav}
     >
       <ShopOrderDetail order={order} />
     </ShopAccountShell>

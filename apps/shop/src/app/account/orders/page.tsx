@@ -3,10 +3,8 @@ import { ShopOrderList } from "@/components/account/shop-order-list";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { buildShopAccountNavItems } from "@/lib/account/account-nav.vm";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { buildShopOrderListVm } from "@/lib/account/shop-orders.vm";
-import { loadShopSellerAccess } from "@/lib/account/shop-seller-access.server";
 import { listShopOrders } from "@/lib/shop-commerce.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -40,8 +38,7 @@ export default async function AccountOrdersPage() {
     );
   }
 
-  const [ordersResult, access] = await Promise.all([listShopOrders(), loadShopSellerAccess()]);
-  const nav = buildShopAccountNavItems({ access, activeHref: SHOP_ORDERS_HREF });
+  const ordersResult = await listShopOrders();
   const list =
     ordersResult.status === "ok"
       ? buildShopOrderListVm(ordersResult.data)
@@ -50,7 +47,7 @@ export default async function AccountOrdersPage() {
         : null;
 
   return (
-    <ShopAccountShell title={title} breadcrumbs={breadcrumbs} nav={nav}>
+    <ShopAccountShell title={title} breadcrumbs={breadcrumbs}>
       {ordersResult.status === "unauthorized" ? (
         <ShopStatusState
           layout="page"

@@ -56,6 +56,8 @@ describe("OIDC discovery contracts", () => {
         "shop.admin",
         "lax.portfolio.read",
         "lax.staff.tools.read",
+        "lax.selling.read",
+        "lax.selling.write",
         "phone",
       ],
       token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],

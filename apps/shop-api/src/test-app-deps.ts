@@ -395,6 +395,10 @@ export function createMinimalShopApiTestDeps(
           status: "pending" as const,
         }),
         listSaleAuthorityRequests: async () => [],
+        withdrawSaleAuthorityRequest: async (_subject: string, requestId: string) => ({
+          requestId,
+          status: "cancelled" as const,
+        }),
         listPayouts: async () => [],
         listDocuments: async () => [],
         listCollection: async () => [],

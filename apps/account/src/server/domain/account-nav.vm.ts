@@ -2,6 +2,7 @@ import type { LaxAccountConfig } from "../config";
 import type { AccountLinksVm } from "./account-links";
 import { ACCOUNT_ROUTES } from "./account-settings.vm";
 import { PORTFOLIO_ROUTES } from "./portfolio-routes";
+import { SELLING_ROUTES } from "./selling/selling-routes";
 
 export type AccountNavId =
   | "home"
@@ -9,22 +10,30 @@ export type AccountNavId =
   | "security"
   | "portfolio"
   | "money"
+  | "selling"
   | "privacy"
   | "help";
 
 export type AccountNavItemVm = { id: AccountNavId; label: string; href: string };
 
 /**
- * The signed-in menu, in the order a person looks for things. Help opens Bid's published help
- * centre, so it is left out when Bid is not configured, as on the Home shortcuts.
+ * The signed-in menu, in the order a person looks for things. Selling is there only for people
+ * who sell or are paid for sales (`selling`), so a buyer never sees it. Help opens Bid's
+ * published help centre, so it is left out when Bid is not configured, as on the Home shortcuts.
  */
-export function buildAccountNav(links: Pick<AccountLinksVm, "support">): AccountNavItemVm[] {
+export function buildAccountNav(
+  links: Pick<AccountLinksVm, "support">,
+  options: { selling?: boolean } = {},
+): AccountNavItemVm[] {
   const items: AccountNavItemVm[] = [
     { id: "home", label: "Home", href: ACCOUNT_ROUTES.overview },
     { id: "personal-details", label: "Personal details", href: ACCOUNT_ROUTES.profile },
     { id: "security", label: "Security", href: ACCOUNT_ROUTES.security },
     { id: "portfolio", label: "Portfolio", href: PORTFOLIO_ROUTES.overview },
     { id: "money", label: "Money", href: PORTFOLIO_ROUTES.money },
+    ...(options.selling
+      ? [{ id: "selling" as const, label: "Selling", href: SELLING_ROUTES.overview }]
+      : []),
     { id: "privacy", label: "Privacy", href: ACCOUNT_ROUTES.privacy },
   ];
   if (links.support) items.push({ id: "help", label: "Help", href: ACCOUNT_ROUTES.help });

@@ -39,6 +39,21 @@ describe("securityHeaders", () => {
     expect(csp).toContain("script-src 'self' 'unsafe-inline'");
   });
 
+  it("allows Stripe's embedded components only when asked, for the payouts page", () => {
+    expect(value(production, "Content-Security-Policy")).not.toContain("stripe.com");
+    const stripe =
+      value(
+        securityHeaders({ development: false, imageOrigins: [], stripeConnect: true }),
+        "Content-Security-Policy",
+      ) ?? "";
+    expect(stripe).toContain(
+      "script-src 'self' 'unsafe-inline' https://connect-js.stripe.com https://js.stripe.com;",
+    );
+    expect(stripe).toContain("frame-src https://connect-js.stripe.com https://js.stripe.com");
+    expect(stripe).toContain("connect-src 'self' https://api.stripe.com");
+    expect(stripe).toContain("frame-ancestors 'none'");
+  });
+
   it("sets the referrer, permissions and sniffing policies", () => {
     expect(value(production, "Referrer-Policy")).toBe("strict-origin-when-cross-origin");
     expect(value(production, "Permissions-Policy")).toContain("camera=()");
@@ -47,6 +62,14 @@ describe("securityHeaders", () => {
 });
 
 describe("next.config headers", () => {
+  it("gives the payouts page the Stripe policy, listed after the site-wide one", async () => {
+    const rules = (await nextConfig.headers?.()) ?? [];
+    const sources = rules.map((rule) => rule.source);
+    expect(sources).toEqual(["/:path*", "/account/selling/payouts"]);
+    const payouts = rules[1]?.headers.find((h) => h.key === "Content-Security-Policy")?.value;
+    expect(payouts).toContain("https://connect-js.stripe.com");
+  });
+
   it("applies the security headers to every route", async () => {
     const rules = (await nextConfig.headers?.()) ?? [];
     const all = rules.find((rule) => rule.source === "/:path*");

@@ -78,6 +78,10 @@ import {
   PortalSaleAuthorityResponseSchema,
   type PortalSaleStatement,
   PortalSalesResponseSchema,
+  type PortalSellerAccess,
+  PortalSellerAccessSchema,
+  type SaleAuthorityRequestWithdrawResponse,
+  SaleAuthorityRequestWithdrawResponseSchema,
 } from "./portal-me.js";
 
 export class ShopContractParseError extends Error {
@@ -224,6 +228,22 @@ export function parsePortalSaleAuthorityRequests(value: unknown): PortalSaleAuth
     throw new ShopContractParseError("Invalid portal sale authority requests payload");
   }
   return value.items;
+}
+
+export function parseSaleAuthorityRequestWithdrawResponse(
+  body: unknown,
+): SaleAuthorityRequestWithdrawResponse {
+  if (!Value.Check(SaleAuthorityRequestWithdrawResponseSchema, body)) {
+    throw new ShopContractParseError("Invalid sale authority request withdrawal payload");
+  }
+  return body;
+}
+
+export function parsePortalSellerAccess(body: unknown): PortalSellerAccess {
+  if (!Value.Check(PortalSellerAccessSchema, body)) {
+    throw new ShopContractParseError("Invalid portal seller access payload");
+  }
+  return body;
 }
 
 export function parsePortalPayouts(value: unknown): PortalPayout[] {

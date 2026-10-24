@@ -96,11 +96,13 @@ describe("registered OIDC clients", () => {
     );
   });
 
-  it("limits LAX Account to the read-only portfolio scope on Bid and Shop", () => {
+  it("limits LAX Account to the portfolio and selling scopes on Bid and Shop", () => {
     const account = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB];
     expect(account.allowedResources).toEqual(["lax-bid-api", "lax-shop-api"]);
     expect(account.allowedScopes.filter((scope) => scope.includes("."))).toEqual([
       "lax.portfolio.read",
+      "lax.selling.read",
+      "lax.selling.write",
     ]);
   });
 

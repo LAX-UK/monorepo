@@ -31,6 +31,23 @@ describe("buildAccountNav", () => {
     ]);
   });
 
+  it("adds Selling after Money only for people who sell", () => {
+    expect(buildAccountNav({ support }).map((item) => item.id)).not.toContain("selling");
+    const items = buildAccountNav({ support }, { selling: true });
+    expect(items.map((item) => item.id)).toEqual([
+      "home",
+      "personal-details",
+      "security",
+      "portfolio",
+      "money",
+      "selling",
+      "privacy",
+      "help",
+    ]);
+    expect(items.find((item) => item.id === "selling")?.href).toBe("/account/selling");
+    expect(activeAccountNavId("/account/selling/payouts", items)).toBe("selling");
+  });
+
   it("leaves Help out without Bid's support pages", () => {
     expect(buildAccountNav({ support: null }).map((item) => item.id)).not.toContain("help");
   });

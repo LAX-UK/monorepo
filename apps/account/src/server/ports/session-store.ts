@@ -14,9 +14,12 @@ export type StaffSessionRecord = {
   acr: string;
   /**
    * Tokens exchanged for product APIs, kept for their own lifetime so a page that reads two
-   * products does not hit the token endpoint on every request. Absent until first used.
+   * products does not hit the token endpoint on every request. Absent until first used. Keyed by
+   * the resource id for the portfolio scope, and by "<resource> <scope>" for any other scope.
    */
-  resourceTokens?: Partial<Record<LaxResourceId, CachedResourceToken>>;
+  resourceTokens?: Partial<
+    Record<LaxResourceId | `${LaxResourceId} ${string}`, CachedResourceToken>
+  >;
 };
 
 export type SessionStore = {
