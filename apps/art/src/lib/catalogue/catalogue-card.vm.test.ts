@@ -20,7 +20,7 @@ const summary = (overrides: Partial<PublicArtworkSummary> = {}): PublicArtworkSu
   salesChannel: "art",
   eligibleForEditionAllocation: false,
   printPricePence: null,
-  availability: { totalEditions: 0, editionsAvailable: 0 },
+  availability: { totalEditions: 0, state: "sold_out" },
   ...overrides,
 });
 

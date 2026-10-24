@@ -1,4 +1,4 @@
-import type { ShopFulfilmentOption } from "@auction/shop-domain";
+import type { ShopFulfilmentOption, ShopOrderStatus } from "@auction/shop-domain";
 import type { CatalogueCursor } from "../catalogue-cursor.js";
 
 export type BasketOwner =
@@ -63,11 +63,13 @@ export type ShopDeliveryAddressRecord = {
 
 export type OrderRecord = {
   orderId: string;
-  status: "pending_payment" | "paid" | "cancelled" | "expired" | "payment_failed";
+  status: ShopOrderStatus;
   fulfilment: ShopFulfilmentOption;
   merchandiseSubtotalPence: number;
   fulfilmentSurchargePence: number;
   totalPence: number;
+  /** Sum of refunds Stripe has confirmed for this order. */
+  refundedPence: number;
   lines: Array<{
     orderLineId: string;
     artworkSlug: string | null;

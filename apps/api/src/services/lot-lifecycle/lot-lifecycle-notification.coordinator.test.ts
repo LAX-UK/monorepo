@@ -146,7 +146,18 @@ describe("LotLifecycleNotificationCoordinator", () => {
 
     await clerkOutcomes.finalizeTimedLotEnding(lot, new Date());
 
-    expect(stageDispatch).toHaveBeenCalledTimes(2);
+    expect(stageDispatch).toHaveBeenCalledTimes(3);
+    expect(stageDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "s1",
+        idempotencyKey: "lot_ended_seller:a1:s1",
+        payload: expect.objectContaining({
+          type: "lot_ended_seller",
+          meta: expect.objectContaining({ outcome: "unsold" }),
+        }),
+      }),
+      expect.anything(),
+    );
     expect(stageDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "u1",
@@ -161,5 +172,47 @@ describe("LotLifecycleNotificationCoordinator", () => {
       }),
       expect.anything(),
     );
+  });
+
+  it("tells the consignor the hammer price when the lot sells", async () => {
+    const lot = baseLot({ reservePrice: "400.00", currentPrice: "500.00" });
+    const stageDispatch = vi.fn().mockResolvedValue(undefined);
+    const coordinator = createNotificationCoordinatorStack({
+      repos: createFactory({} as ILotRepository, {} as IBidRepository),
+      notificationOutbox: { stageDispatch },
+    });
+
+    await coordinator.stageLotCloseNotificationsInTransaction({
+      lot,
+      winnerId: "winner",
+      bid: {
+        listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
+      } as unknown as IBidRepository,
+      tx: {} as never,
+    });
+
+    const sellerCall = stageDispatch.mock.calls
+      .map(([input]) => input)
+      .find((input) => input.payload.type === "lot_ended_seller");
+    expect(sellerCall.userId).toBe("s1");
+    expect(sellerCall.payload.meta).toMatchObject({ outcome: "sold", hammerPrice: "500.00" });
+  });
+
+  it("does not stage a seller notice when the lot has no consignor", async () => {
+    const lot = baseLot({ sellerId: undefined as unknown as string });
+    const stageDispatch = vi.fn().mockResolvedValue(undefined);
+    const coordinator = createNotificationCoordinatorStack({
+      repos: createFactory({} as ILotRepository, {} as IBidRepository),
+      notificationOutbox: { stageDispatch },
+    });
+
+    await coordinator.stageLotCloseNotificationsInTransaction({
+      lot,
+      winnerId: null,
+      bid: { listDistinctBidderIds: vi.fn().mockResolvedValue([]) } as unknown as IBidRepository,
+      tx: {} as never,
+    });
+
+    expect(stageDispatch).not.toHaveBeenCalled();
   });
 });

@@ -12,7 +12,7 @@ type OutboxLookupRow = { id: string; status: string } | undefined;
 
 function createFakeDb(config: {
   outboxLookups: OutboxLookupRow[];
-  suppressionRows?: Array<{ emailHash: string }>;
+  suppressionRows?: Array<{ emailHash: string; reason: string }>;
   insertReturning?: OutboxLookupRow[];
 }) {
   const outboxLookups = [...config.outboxLookups];
@@ -206,5 +206,46 @@ describe("PostmarkEmailService.enqueue", () => {
     expect(result).toEqual({ outboxId: "row-sent" });
     expect(updateCalls).toHaveLength(0);
     expect(queue.add).not.toHaveBeenCalled();
+  });
+});
+
+describe("PostmarkEmailService.enqueue suppression", () => {
+  async function enqueueWith(template: "payment-receipt" | "bid-outbid", reason: string) {
+    const { db, insertCalls } = createFakeDb({
+      outboxLookups: [undefined],
+      suppressionRows: [{ emailHash: "h", reason }],
+      insertReturning: [{ id: "row-1", status: "pending" }],
+    });
+    const queue = { add: vi.fn().mockResolvedValue(undefined) };
+    const service = new PostmarkEmailService(db, queue);
+    const vars =
+      template === "payment-receipt"
+        ? { lotTitle: "Blue Vase", amount: "£10.00" }
+        : {
+            lotTitle: "Blue Vase",
+            lotUrl: "https://lax.bid/lots/1",
+            unsubscribeUrl: "https://lax.bid/u",
+          };
+    await service.enqueue({
+      template,
+      to: "ada@example.com",
+      userId: "u1",
+      category: "transactional",
+      vars: vars as never,
+    });
+    return insertCalls[0] as { status: string };
+  }
+
+  it("still queues a receipt for someone who unsubscribed", async () => {
+    expect((await enqueueWith("payment-receipt", "unsubscribe")).status).toBe("pending");
+  });
+
+  it("suppresses an optional notification after an unsubscribe", async () => {
+    expect((await enqueueWith("bid-outbid", "unsubscribe")).status).toBe("suppressed");
+  });
+
+  it("suppresses a receipt for a hard bounce or complaint", async () => {
+    expect((await enqueueWith("payment-receipt", "hard_bounce")).status).toBe("suppressed");
+    expect((await enqueueWith("payment-receipt", "complaint")).status).toBe("suppressed");
   });
 });

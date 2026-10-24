@@ -27,7 +27,7 @@ export function presentBasket(record: BasketRecord): BasketView {
       variantSku: line.variantSku,
       unitPricePence: line.unitPricePence,
       quantity: line.quantity,
-      sellableCount: line.sellableCount,
+      soldOut: line.sellableCount < 1,
       priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
       outOfStock: line.quantity > line.sellableCount,
       imageUrl: line.imageUrl,
@@ -51,6 +51,7 @@ export function presentOrder(record: OrderRecord): OrderSummary {
     merchandiseSubtotalPence: record.merchandiseSubtotalPence,
     fulfilmentSurchargePence: record.fulfilmentSurchargePence,
     totalPence: record.totalPence,
+    refundedPence: record.refundedPence,
     createdAt: record.createdAt.toISOString(),
     paidAt: record.paidAt ? record.paidAt.toISOString() : null,
     deliveryAddress: record.deliveryAddress

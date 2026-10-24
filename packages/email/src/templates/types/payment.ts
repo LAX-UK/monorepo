@@ -17,7 +17,8 @@ type PaymentTemplateVars = {
   "payment-receipt": {
     userName?: string | null;
     lotTitle: string;
-    amount: string;
+    /** Formatted for display ("£1,250.00"); left out when the amount is unknown. */
+    amount?: string | null;
     receiptUrl?: string | null;
   };
   "payment-invoice": {

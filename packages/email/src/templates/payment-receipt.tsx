@@ -20,9 +20,11 @@ export default function PaymentReceiptEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        We received your payment of {amount} for {lotTitle}.
+        {amount
+          ? `We received your payment of ${amount} for ${lotTitle}.`
+          : `We received your payment for ${lotTitle}.`}
       </TextBlock>
-      {receiptUrl ? <Button href={receiptUrl}>View receipt</Button> : null}
+      {receiptUrl ? <Button href={receiptUrl}>View your purchase</Button> : null}
     </Layout>
   );
 }

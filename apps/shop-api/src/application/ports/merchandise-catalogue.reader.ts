@@ -13,7 +13,7 @@ export type PublicMerchandiseVariantRecord = {
   variantId: string;
   sku: string;
   pricePence: number;
-  availableCount: number;
+  availability: "available" | "sold_out";
 };
 
 export type PublicMerchandiseProductDetailRecord = {

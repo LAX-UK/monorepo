@@ -93,5 +93,25 @@ describe("resolveCheckoutConfirmationView", () => {
         },
       }),
     ).toMatchObject({ kind: "order", heading: "Payment could not be completed" });
+
+    expect(
+      resolveCheckoutConfirmationView({
+        orderId: "ord-1",
+        orderResult: {
+          status: "ok",
+          data: { ...paidOrder, status: "refunded" },
+        },
+      }),
+    ).toMatchObject({ kind: "order", heading: "Order refunded" });
+
+    expect(
+      resolveCheckoutConfirmationView({
+        orderId: "ord-1",
+        orderResult: {
+          status: "ok",
+          data: { ...paidOrder, status: "partially_refunded" },
+        },
+      }),
+    ).toMatchObject({ kind: "order", heading: "Order partly refunded" });
   });
 });

@@ -15,13 +15,13 @@ const summary = (overrides: Partial<PublicArtworkSummary> = {}): PublicArtworkSu
   salesChannel: "shop",
   eligibleForEditionAllocation: true,
   printPricePence: 12000,
-  availability: { totalEditions: 24, editionsAvailable: 10 },
+  availability: { totalEditions: 24, state: "available" },
   ...overrides,
 });
 
 describe("formatEditionAvailabilitySummary", () => {
   it("describes edition availability", () => {
-    expect(formatEditionAvailabilitySummary(summary())).toBe("10 of 24 editions available");
+    expect(formatEditionAvailabilitySummary(summary())).toBe("Limited edition of 24 · Available");
   });
 
   it("labels originals without allocation", () => {
@@ -30,15 +30,15 @@ describe("formatEditionAvailabilitySummary", () => {
     );
   });
 
-  it("turns zero availability into a shopper-facing sold-out line", () => {
+  it("shows a sold-out edition without a count", () => {
     expect(
       formatEditionAvailabilitySummary(
-        summary({ availability: { totalEditions: 24, editionsAvailable: 0 } }),
+        summary({ availability: { totalEditions: 24, state: "sold_out" } }),
       ),
-    ).toBe("Sold out — all 24 claimed");
+    ).toBe("Limited edition of 24 · Sold out");
     expect(
       formatEditionAvailabilitySummary(
-        summary({ availability: { totalEditions: 0, editionsAvailable: 0 } }),
+        summary({ availability: { totalEditions: 0, state: "sold_out" } }),
       ),
     ).toBe("Sold out");
   });

@@ -22,7 +22,7 @@ export function mockArtworkSummary(
     salesChannel: "shop",
     eligibleForEditionAllocation: true,
     printPricePence: 12000,
-    availability: { totalEditions: 24, editionsAvailable: 4 },
+    availability: { totalEditions: 24, state: "available" },
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };

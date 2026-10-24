@@ -5,6 +5,7 @@ import type { JobsOptions, Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
 import type { EmailEnqueueInput, IEmailService } from "./service.js";
+import { suppressionBlocksTemplate } from "./suppression-policy.js";
 import type { RecipientResolution, TemplateName } from "./types.js";
 import { RECIPIENT_RESOLUTION } from "./types.js";
 
@@ -85,14 +86,18 @@ export class PostmarkEmailService implements IEmailService {
 
     const toEmailHash = emailHash(input.to);
     const [suppression] = await this.db
-      .select({ emailHash: emailSuppression.emailHash })
+      .select({ emailHash: emailSuppression.emailHash, reason: emailSuppression.reason })
       .from(emailSuppression)
       .where(eq(emailSuppression.emailHash, toEmailHash))
       .limit(1);
 
-    const suppressed = Boolean(suppression);
+    // An unsubscribe only silences optional mail; bounces and complaints silence everything.
+    const suppressed = suppression
+      ? suppressionBlocksTemplate(suppression.reason, input.template)
+      : false;
     const status = suppressed && input.category === "transactional" ? "suppressed" : "pending";
-    const flaggedAddress = suppressed && input.category === "auth";
+    const flaggedAddress =
+      suppressed && input.category === "auth" && suppression?.reason !== "unsubscribe";
     const shouldSnapshot = resolution === "snapshot";
     const now = new Date();
 

@@ -51,6 +51,8 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "payout.transfer_blocked") {
         await fanoutPayoutTransferBlocked({
           notificationFanoutReader,
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
+          adminEmailAddress: ctx.adminEmailAddress,
           emailService,
           supportContactEmail,
           adminPayoutsUrl,

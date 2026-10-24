@@ -3,12 +3,22 @@ import type { Lot } from "@auction/types";
 
 /** Builds persisted notification rows from domain events. */
 export interface INotificationFactory {
-  createOutbid(lot: Lot, outbidUserId: string): CreateNotificationRow;
+  createOutbid(
+    lot: Lot,
+    outbidUserId: string,
+    opts?: { currentBid?: string },
+  ): CreateNotificationRow;
 
   createWon(
     lot: Lot,
     winnerId: string,
     opts?: { hammerPrice?: string; totalDue?: string },
+  ): CreateNotificationRow;
+
+  createEndedSeller(
+    lot: Lot,
+    sellerId: string,
+    opts?: { hammerPrice?: string },
   ): CreateNotificationRow;
 
   createLost(lot: Lot, bidderId: string): CreateNotificationRow;
@@ -19,7 +29,7 @@ export interface INotificationFactory {
 
   createWatchlistEndingSoon(lot: Lot, userId: string): CreateNotificationRow;
 
-  createPaymentReceived(lot: Lot, buyerId: string): CreateNotificationRow;
+  createPaymentReceived(lot: Lot, buyerId: string, amount?: string): CreateNotificationRow;
 
   createSellerPaymentReceived(lot: Lot, recipientId: string, amount: string): CreateNotificationRow;
 

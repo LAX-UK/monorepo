@@ -1,4 +1,5 @@
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
+import { formatMoneyMajor } from "@auction/email";
 import type { IEmailService } from "@auction/email";
 import type { IUserRepository } from "@auction/persistence/interfaces";
 import { notificationTypeToTemplate } from "@auction/persistence/lib";
@@ -33,6 +34,9 @@ export class EmailNotificationChannel implements INotificationChannel {
   async send(userId: string, payload: NotificationPayload): Promise<void> {
     const template = notificationTypeToTemplate(payload.type) as TemplateName | null;
     if (!template) return;
+    // The receipt is worded for the buyer ("we received your payment"); the seller side of the same
+    // event has no email template, so sellers are told in-app and by push only.
+    if (template === "payment-receipt" && payload.meta?.audience === "seller") return;
     const recipient = await this.users.findById(userId);
     if (!recipient) return;
     await this.email.enqueue({
@@ -59,19 +63,25 @@ export class EmailNotificationChannel implements INotificationChannel {
           userName,
           lotTitle,
           lotUrl,
-          currentBid: payload.message,
+          currentBid: formatMoneyMajor(payload.meta?.bidAmount, payload.meta?.currency),
           unsubscribeUrl,
         };
       case "lot-won": {
         const m = payload.meta;
+        const hammerPrice = formatMoneyMajor(m?.hammerPrice, m?.currency);
+        const totalDue = formatMoneyMajor(m?.totalDue, m?.currency);
         return {
           userName,
           lotTitle,
           lotUrl,
-          winningBid: payload.message,
+          winningBid: formatMoneyMajor(m?.bidAmount ?? m?.hammerPrice, m?.currency),
+          // The call to action is paying for this lot, not browsing it.
+          paymentUrl: payload.lotId
+            ? `${this.baseUrl()}/dashboard/checkout/${encodeURIComponent(payload.lotId)}`
+            : `${this.baseUrl()}/dashboard/checkout`,
           unsubscribeUrl,
-          ...(typeof m?.hammerPrice === "string" ? { hammerPrice: m.hammerPrice } : {}),
-          ...(typeof m?.totalDue === "string" ? { totalDue: m.totalDue } : {}),
+          ...(hammerPrice ? { hammerPrice } : {}),
+          ...(totalDue ? { totalDue } : {}),
         };
       }
       case "lot-ended-seller":
@@ -79,13 +89,17 @@ export class EmailNotificationChannel implements INotificationChannel {
           userName,
           lotTitle,
           lotUrl,
+          outcome: payload.meta?.outcome === "sold" ? "sold" : "unsold",
+          hammerPrice: formatMoneyMajor(payload.meta?.hammerPrice, payload.meta?.currency),
+          saleUrl: `${this.baseUrl()}/dashboard/seller/consignments`,
           unsubscribeUrl,
         };
       case "payment-receipt":
         return {
           userName,
           lotTitle,
-          amount: payload.message,
+          amount: formatMoneyMajor(payload.meta?.amount, payload.meta?.currency),
+          receiptUrl: `${this.baseUrl()}/dashboard/purchases`,
         };
       case "payment-invoice": {
         const m = payload.meta;
@@ -151,6 +165,10 @@ export class EmailNotificationChannel implements INotificationChannel {
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }
+  }
+
+  private baseUrl(): string {
+    return this.apiBaseUrl.replace(/\/$/, "");
   }
 
   private lotUrl(payload: NotificationPayload): string {

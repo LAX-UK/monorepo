@@ -76,7 +76,7 @@ export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
 
 function artworkOffer(artwork: PublicArtworkDetail, url: string): JsonLd | undefined {
   if (!artwork.eligibleForEditionAllocation || artwork.printPricePence == null) return undefined;
-  const soldOut = artwork.saleState === "sold" || artwork.availability.editionsAvailable === 0;
+  const soldOut = artwork.saleState === "sold" || artwork.availability.state === "sold_out";
   return {
     "@type": "Offer",
     url,

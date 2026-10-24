@@ -38,7 +38,11 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
     salesChannel: model.salesChannel,
     eligibleForEditionAllocation: model.eligibleForEditionAllocation,
     printPricePence: model.printPricePence,
-    availability: { ...model.availability },
+    // Field by field, so a count added to the read model can never reach a public response.
+    availability: {
+      totalEditions: model.availability.totalEditions,
+      state: model.availability.state,
+    },
     updatedAt: model.updatedAt,
   };
 }

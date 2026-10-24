@@ -8,7 +8,7 @@ export function isArtworkPurchasable(artwork: PublicArtworkDetail): boolean {
     artwork.saleState !== "sold" &&
     artwork.eligibleForEditionAllocation &&
     artwork.printPricePence !== null &&
-    artwork.availability.editionsAvailable > 0
+    artwork.availability.state === "available"
   );
 }
 
@@ -17,7 +17,7 @@ export function isArtworkPriceEnquiryAvailable(artwork: PublicArtworkDetail): bo
     return true;
   }
   if (artwork.saleState !== "price_on_application") return false;
-  if (artwork.eligibleForEditionAllocation && artwork.availability.editionsAvailable <= 0) {
+  if (artwork.eligibleForEditionAllocation && artwork.availability.state === "sold_out") {
     return false;
   }
   return true;
@@ -27,7 +27,7 @@ export function resolveArtworkUnavailableReason(
   artwork: PublicArtworkDetail,
 ): ArtworkUnavailableReason | null {
   if (isArtworkPurchasable(artwork)) return null;
-  if (artwork.eligibleForEditionAllocation && artwork.availability.editionsAvailable <= 0) {
+  if (artwork.eligibleForEditionAllocation && artwork.availability.state === "sold_out") {
     return "edition_sold_out";
   }
   if (artwork.saleState === "sold") return "sold";

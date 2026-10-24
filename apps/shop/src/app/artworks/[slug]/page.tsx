@@ -176,19 +176,6 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                 <p>{availability.headline}</p>
                 <DotStatusPill label={availability.status.label} tone={availability.status.tone} />
               </div>
-              {availability.meter ? (
-                <div className="shop-detail__availability-meter" aria-hidden="true">
-                  <span
-                    style={{
-                      width: `${
-                        availability.meter.total > 0
-                          ? (availability.meter.available / availability.meter.total) * 100
-                          : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-              ) : null}
               {availability.detail ? (
                 <p className="shop-detail__availability-detail">{availability.detail}</p>
               ) : null}

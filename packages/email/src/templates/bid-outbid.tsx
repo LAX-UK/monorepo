@@ -22,9 +22,10 @@ export default function BidOutbidEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Another bidder placed a higher bid on {lotTitle}. The current bid is {currentBid}.
+        Another bidder placed a higher bid on {lotTitle}.
+        {currentBid ? ` The current bid is ${currentBid}.` : ""}
       </TextBlock>
-      <Button href={lotUrl}>View lot</Button>
+      <Button href={lotUrl}>View lot and bid again</Button>
     </Layout>
   );
 }

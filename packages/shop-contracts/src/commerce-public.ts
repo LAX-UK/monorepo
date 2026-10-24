@@ -34,7 +34,8 @@ export const BasketLineSchema = Type.Object(
     variantSku: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     unitPricePence: Type.Integer({ minimum: 0 }),
     quantity: Type.Integer({ minimum: 1 }),
-    sellableCount: Type.Integer({ minimum: 0 }),
+    /** No stock at all; how much is left is never public. */
+    soldOut: Type.Boolean(),
     priceChanged: Type.Boolean(),
     outOfStock: Type.Boolean(),
     imageUrl: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
@@ -79,20 +80,40 @@ export const OrderLineSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * Every status an order can reach, including the two staff refunds set after payment. Kept in step
+ * with `SHOP_ORDER_STATUSES` in `@auction/shop-domain`; shop-api checks the two lists agree.
+ */
+export const ORDER_STATUS_VALUES = [
+  "pending_payment",
+  "paid",
+  "cancelled",
+  "expired",
+  "payment_failed",
+  "partially_refunded",
+  "refunded",
+] as const;
+
+export const OrderStatusSchema = Type.Union([
+  Type.Literal("pending_payment"),
+  Type.Literal("paid"),
+  Type.Literal("cancelled"),
+  Type.Literal("expired"),
+  Type.Literal("payment_failed"),
+  Type.Literal("partially_refunded"),
+  Type.Literal("refunded"),
+]);
+
 export const OrderSummarySchema = Type.Object(
   {
     orderId: Type.String({ format: "uuid" }),
-    status: Type.Union([
-      Type.Literal("pending_payment"),
-      Type.Literal("paid"),
-      Type.Literal("cancelled"),
-      Type.Literal("expired"),
-      Type.Literal("payment_failed"),
-    ]),
+    status: OrderStatusSchema,
     fulfilment: ShopFulfilmentOptionSchema,
     merchandiseSubtotalPence: Type.Integer({ minimum: 0 }),
     fulfilmentSurchargePence: Type.Integer({ minimum: 0 }),
     totalPence: Type.Integer({ minimum: 0 }),
+    /** Money already returned to the customer; absent from older responses, meaning none. */
+    refundedPence: Type.Optional(Type.Integer({ minimum: 0 })),
     lines: Type.Array(OrderLineSchema),
     createdAt: Type.String({ format: "date-time" }),
     paidAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
@@ -122,6 +143,7 @@ export type BasketView = typeof BasketViewSchema.static;
 export type EmptyBasketView = typeof EmptyBasketViewSchema.static;
 export type BasketResponse = typeof BasketResponseSchema.static;
 export type BasketLine = typeof BasketLineSchema.static;
+export type OrderStatus = typeof OrderStatusSchema.static;
 export type OrderSummary = typeof OrderSummarySchema.static;
 export type OrderList = typeof OrderListSchema.static;
 export type CheckoutSession = typeof CheckoutSessionSchema.static;

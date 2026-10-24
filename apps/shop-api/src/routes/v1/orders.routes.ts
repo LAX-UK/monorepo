@@ -1,5 +1,6 @@
 import {
   CheckoutSessionSchema,
+  OrderStatusSchema,
   OrderSummarySchema,
   ShopApiErrorBodySchema,
   ShopFulfilmentOptionSchema,
@@ -35,13 +36,7 @@ const OrderListSchema = Type.Object({
 /** JSON body rather than 204: the Shop Identity proxy re-serialises every upstream response. */
 const OrderCancelledSchema = Type.Object({
   orderId: Type.String({ format: "uuid" }),
-  status: Type.Union([
-    Type.Literal("pending_payment"),
-    Type.Literal("paid"),
-    Type.Literal("cancelled"),
-    Type.Literal("expired"),
-    Type.Literal("payment_failed"),
-  ]),
+  status: OrderStatusSchema,
 });
 
 export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRoutesDeps) {

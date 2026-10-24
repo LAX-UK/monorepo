@@ -1,4 +1,5 @@
 import type { UserNotification } from "@auction/types";
+import type { NotificationPayload } from "./notification-outbox.repository.js";
 
 export type CreateNotificationRow = {
   userId: string;
@@ -8,17 +9,7 @@ export type CreateNotificationRow = {
   lotId?: string | undefined;
   submissionId?: string | undefined;
   /** Ephemeral fields for email/push channels (not stored on `notification` rows). */
-  meta?: {
-    paymentId?: string;
-    amount?: string;
-    invoiceUrl?: string | null;
-    invoiceNumber?: string;
-    dueDate?: string;
-    hammerPrice?: string;
-    totalDue?: string;
-    lotTitle?: string;
-    outboxIdempotencyKey?: string;
-  };
+  meta?: NotificationPayload["meta"];
 };
 
 export interface INotificationWriteRepository {

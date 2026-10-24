@@ -1,6 +1,10 @@
 import type { IEmailService } from "@auction/email";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
-import { type SellerMoneyPayload, centsToAmount } from "./notification-fanout-helpers.js";
+import {
+  type SellerMoneyPayload,
+  centsToAmount,
+  sellerPayoutsUrlFor,
+} from "./notification-fanout-helpers.js";
 
 export async function fanoutPayoutInitiated(options: {
   notificationFanoutReader: INotificationFanoutReader;
@@ -25,7 +29,7 @@ export async function fanoutPayoutInitiated(options: {
         payoutId: options.payoutId,
         amount: centsToAmount(options.payload.amountCents),
         currency: options.payload.currency,
-        adminPayoutsUrl: options.adminPayoutsUrl,
+        payoutsUrl: sellerPayoutsUrlFor(options.adminPayoutsUrl),
       },
       category: "transactional",
       idempotencyKey: `payout-initiated-notice:${options.eventId}:${recipient.userId}`,

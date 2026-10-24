@@ -48,3 +48,27 @@ describe("NotificationFactory payment due", () => {
     expect(row.meta?.dueDate).toBe("3 July 2026");
   });
 });
+
+describe("NotificationFactory payment received", () => {
+  it("carries the amount and audience so email renders from metadata, not the message", () => {
+    const buyer = factory.createPaymentReceived(lot, "user-1", "1250.00");
+    expect(buyer.meta).toMatchObject({ audience: "buyer", amount: "1250.00" });
+    const seller = factory.createSellerPaymentReceived(lot, "user-2", "1250.00");
+    expect(seller.meta).toMatchObject({ audience: "seller", amount: "1250.00" });
+  });
+});
+
+describe("NotificationFactory lot ended for the seller", () => {
+  it("reports a sale with the hammer price", () => {
+    const row = factory.createEndedSeller(lot, "seller-1", { hammerPrice: "1000.00" });
+    expect(row).toMatchObject({ type: "lot_ended_seller", userId: "seller-1", lotId: "lot-1" });
+    expect(row.meta).toMatchObject({ outcome: "sold", hammerPrice: "1000.00" });
+  });
+
+  it("reports an unsold lot without a price", () => {
+    const row = factory.createEndedSeller(lot, "seller-1");
+    expect(row.meta).toMatchObject({ outcome: "unsold" });
+    expect(row.meta?.hammerPrice).toBeUndefined();
+    expect(row.message).toContain("without a sale");
+  });
+});

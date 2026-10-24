@@ -27,7 +27,9 @@ export async function dispatchPaymentReceived(deps: {
 
   await deps.notificationDispatcher.dispatch(
     paidByUserId,
-    notificationRowToPayload(deps.notificationFactory.createPaymentReceived(lot, paidByUserId)),
+    notificationRowToPayload(
+      deps.notificationFactory.createPaymentReceived(lot, paidByUserId, p.amount),
+    ),
   );
 
   const financeRecipients = await resolveLegalEntityNotificationRecipients(

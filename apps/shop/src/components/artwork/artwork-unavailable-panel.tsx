@@ -19,7 +19,7 @@ const COPY: Record<
   { title: string; description: string; guestCta: string; intent: "notify_me" | "enquiry" }
 > = {
   edition_sold_out: {
-    title: "All editions are currently claimed",
+    title: "This edition is sold out",
     description: "Join the list and we will email you if an edition is released.",
     guestCta: "Sign in to get notified",
     intent: "notify_me",

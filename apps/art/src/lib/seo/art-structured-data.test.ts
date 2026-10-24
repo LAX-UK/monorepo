@@ -46,7 +46,7 @@ describe("Art structured data", () => {
     const edition = artworkDetail({
       eligibleForEditionAllocation: true,
       printPricePence: 45000,
-      availability: { totalEditions: 10, editionsAvailable: 0 },
+      availability: { totalEditions: 10, state: "sold_out" },
     });
     expect(artworkJsonLd(edition, SITE)[0]?.offers).toMatchObject({
       price: "450.00",

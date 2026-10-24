@@ -60,7 +60,9 @@ export class BidCriticalNotificationStager {
         {
           userId: params.prevWinnerId,
           payload: notificationRowToPayload(
-            this.notificationFactory.createOutbid(lotForNotify, params.prevWinnerId),
+            this.notificationFactory.createOutbid(lotForNotify, params.prevWinnerId, {
+              currentBid: params.created.amount,
+            }),
           ),
           idempotencyKey: `outbid:${params.lotId}:${params.created.id}:${params.prevWinnerId}`,
         },
@@ -84,6 +86,21 @@ export class BidCriticalNotificationStager {
         },
         params.tx,
       );
+
+      if (lotForNotify.sellerId) {
+        await this.notificationOutbox.stageDispatch(
+          {
+            userId: lotForNotify.sellerId,
+            payload: notificationRowToPayload(
+              this.notificationFactory.createEndedSeller(lotForNotify, lotForNotify.sellerId, {
+                hammerPrice: pricing.hammerMajor,
+              }),
+            ),
+            idempotencyKey: `lot_ended_seller:${params.lotId}:${lotForNotify.sellerId}`,
+          },
+          params.tx,
+        );
+      }
 
       const bidderIds = await params.bids.listDistinctBidderIds(params.lotId);
       for (const uid of bidderIds) {

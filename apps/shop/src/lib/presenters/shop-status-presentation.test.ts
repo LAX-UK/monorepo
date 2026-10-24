@@ -4,6 +4,7 @@ import {
   resolveCatalogueArtworkBadgePresentation,
   resolveEditionAvailabilityPresentation,
   resolvePortalOriginalSaleStatusPresentation,
+  resolveShopOrderRefundLine,
   resolveShopOrderStatusPresentation,
 } from "./shop-status-presentation.js";
 
@@ -35,6 +36,28 @@ describe("shop status presentation", () => {
     expect(resolveShopOrderStatusPresentation("payment_failed").tone).toBe("critical");
   });
 
+  it("labels refunded orders in sentence case", () => {
+    expect(resolveShopOrderStatusPresentation("refunded")).toMatchObject({
+      label: "Refunded",
+      tone: "neutral",
+    });
+    expect(resolveShopOrderStatusPresentation("partially_refunded")).toMatchObject({
+      label: "Partly refunded",
+      tone: "warning",
+    });
+  });
+
+  it("shows the refunded amount only for refunded orders that have one", () => {
+    expect(resolveShopOrderRefundLine({ status: "partially_refunded", refundedPence: 4000 })).toBe(
+      "£40.00 refunded",
+    );
+    expect(resolveShopOrderRefundLine({ status: "refunded", refundedPence: 12050 })).toBe(
+      "£120.50 refunded",
+    );
+    expect(resolveShopOrderRefundLine({ status: "refunded" })).toBeNull();
+    expect(resolveShopOrderRefundLine({ status: "paid", refundedPence: 0 })).toBeNull();
+  });
+
   it("labels original sale statuses and tolerates unknown values", () => {
     expect(resolvePortalOriginalSaleStatusPresentation("deposit_due")).toEqual({
       label: "Deposit due",
@@ -44,15 +67,14 @@ describe("shop status presentation", () => {
     expect(resolvePortalOriginalSaleStatusPresentation("future_state").label).toBe("Unknown");
   });
 
-  it("derives edition availability", () => {
-    expect(
-      resolveEditionAvailabilityPresentation({ editionsAvailable: 0, totalEditions: 10 }).tone,
-    ).toBe("neutral");
-    expect(
-      resolveEditionAvailabilityPresentation({ editionsAvailable: 1, totalEditions: 10 }).tone,
-    ).toBe("warning");
-    expect(
-      resolveEditionAvailabilityPresentation({ editionsAvailable: 5, totalEditions: 10 }).tone,
-    ).toBe("success");
+  it("maps edition availability to Available or Sold out only", () => {
+    expect(resolveEditionAvailabilityPresentation("available")).toEqual({
+      label: "Available",
+      tone: "success",
+    });
+    expect(resolveEditionAvailabilityPresentation("sold_out")).toEqual({
+      label: "Sold out",
+      tone: "neutral",
+    });
   });
 });

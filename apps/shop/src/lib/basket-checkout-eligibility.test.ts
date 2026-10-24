@@ -15,7 +15,7 @@ const baseBasket: BasketView = {
       variantSku: null,
       quantity: 1,
       unitPricePence: 1000,
-      sellableCount: 1,
+      soldOut: false,
       priceChanged: false,
       outOfStock: false,
       imageUrl: null,

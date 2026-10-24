@@ -6,7 +6,6 @@ export type ArtworkAvailabilityView = {
   status: ShopStatusPresentation;
   headline: string;
   detail: string | null;
-  meter: { available: number; total: number } | null;
 };
 
 export function presentArtworkAvailability(artwork: PublicArtworkDetail): ArtworkAvailabilityView {
@@ -15,7 +14,6 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
       status: { label: "Sold out", tone: "neutral" },
       headline: "This work is no longer available",
       detail: null,
-      meter: null,
     };
   }
 
@@ -24,32 +22,22 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
       status: { label: "Original", tone: "neutral" },
       headline: "Original work — one of one",
       detail: "A unique piece, not part of an edition series.",
-      meter: null,
     };
   }
 
-  const { editionsAvailable, totalEditions } = artwork.availability;
-  const status = resolveEditionAvailabilityPresentation({
-    editionsAvailable,
-    totalEditions,
-  });
+  const { totalEditions, state } = artwork.availability;
+  const status = resolveEditionAvailabilityPresentation(state);
+  const size = totalEditions > 0 ? `Limited edition of ${totalEditions}` : "Limited edition";
 
-  if (editionsAvailable <= 0) {
-    return {
-      status,
-      headline: `All ${totalEditions} editions are currently claimed`,
-      detail: "Join the list and we will email you if one is released.",
-      meter: { available: editionsAvailable, total: totalEditions },
-    };
+  // The status pill beside the headline carries "Available" or "Sold out", and the sold-out
+  // panel above already offers the waiting list, so neither is repeated here.
+  if (state === "sold_out") {
+    return { status, headline: size, detail: null };
   }
 
-  const limited = status.tone === "warning";
   return {
     status,
-    headline: `${editionsAvailable} of ${totalEditions} editions available`,
-    detail: limited
-      ? `Only a few remain from this edition of ${totalEditions}.`
-      : "Edition numbers are assigned when your order is fulfilled.",
-    meter: { available: editionsAvailable, total: totalEditions },
+    headline: size,
+    detail: "Edition numbers are assigned when your order is fulfilled.",
   };
 }

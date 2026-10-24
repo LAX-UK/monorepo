@@ -27,7 +27,8 @@ export type EmailOutboxRecoveryRow = {
 
 export interface IEmailOutboxRepository {
   claimForSend(outboxId: string): Promise<EmailOutboxClaimResult | null>;
-  findSuppression(emailHash: string): Promise<boolean>;
+  /** Why this address is suppressed, or null when it is not. */
+  findSuppression(emailHash: string): Promise<EmailSuppressionReason | null>;
   markSuppressed(outboxId: string, reason: string): Promise<void>;
   markSent(outboxId: string, messageId: string): Promise<void>;
   markFailedOrPending(outboxId: string, message: string, terminal: boolean): Promise<void>;

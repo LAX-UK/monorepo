@@ -68,9 +68,11 @@ export class LotLifecycleNotificationCoordinator {
   }): Promise<void> {
     if (!this.notificationOutbox) return;
 
+    let hammerPrice: string | undefined;
     if (params.winnerId) {
       const sale = params.lot.saleId ? await this.saleRepo?.findById(params.lot.saleId) : null;
       const pricing = computeLotCheckoutPricing(params.lot, sale ?? null);
+      hammerPrice = pricing.hammerMajor;
       await this.notificationOutbox.stageDispatch(
         {
           userId: params.winnerId,
@@ -81,6 +83,22 @@ export class LotLifecycleNotificationCoordinator {
             }),
           ),
           idempotencyKey: `lot_won:${params.lot.id}:${params.winnerId}`,
+        },
+        params.tx,
+      );
+    }
+
+    // The consignor learns the outcome, sold or unsold, whether or not anyone bid.
+    if (params.lot.sellerId) {
+      await this.notificationOutbox.stageDispatch(
+        {
+          userId: params.lot.sellerId,
+          payload: notificationRowToPayload(
+            this.notificationFactory.createEndedSeller(params.lot, params.lot.sellerId, {
+              ...(hammerPrice ? { hammerPrice } : {}),
+            }),
+          ),
+          idempotencyKey: `lot_ended_seller:${params.lot.id}:${params.lot.sellerId}`,
         },
         params.tx,
       );

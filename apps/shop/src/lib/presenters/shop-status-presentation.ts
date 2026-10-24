@@ -1,9 +1,10 @@
-import type { PublicArtworkSummary } from "@auction/shop-contracts";
+import type { OrderStatus, PublicArtworkSummary } from "@auction/shop-contracts";
 import type {
   EditionCustodyStatus,
   EditionListingStatus,
   ShopOriginalSaleStatus,
 } from "@auction/shop-domain";
+import { formatGbpPence } from "@auction/shop-portal/vm";
 import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 
 type PublicArtworkSaleState = PublicArtworkSummary["saleState"];
@@ -24,12 +25,7 @@ const ARTWORK_SALE_STATE: Record<PublicArtworkSaleState, ShopStatusPresentation>
   sold: { label: "Sold", tone: "neutral" },
 };
 
-export type ShopOrderStatus =
-  | "pending_payment"
-  | "paid"
-  | "cancelled"
-  | "expired"
-  | "payment_failed";
+export type ShopOrderStatus = OrderStatus;
 
 const ORDER_STATUS: Record<ShopOrderStatus, ShopStatusPresentation> = {
   pending_payment: {
@@ -53,13 +49,32 @@ const ORDER_STATUS: Record<ShopOrderStatus, ShopStatusPresentation> = {
     tone: "critical",
     hint: "Your payment did not go through. Nothing was charged.",
   },
+  partially_refunded: {
+    label: "Partly refunded",
+    tone: "warning",
+    hint: "Part of this order has been refunded to your original payment method.",
+  },
+  refunded: {
+    label: "Refunded",
+    tone: "neutral",
+    hint: "This order has been refunded to your original payment method.",
+  },
 };
 
-export type EditionAvailabilityKind = "available" | "limited" | "sold_out";
+/** "£40.00 refunded" for an order that has been refunded in whole or part; null otherwise. */
+export function resolveShopOrderRefundLine(order: {
+  status: ShopOrderStatus;
+  refundedPence?: number;
+}): string | null {
+  if (order.status !== "refunded" && order.status !== "partially_refunded") return null;
+  if (!order.refundedPence) return null;
+  return `${formatGbpPence(order.refundedPence)} refunded`;
+}
+
+export type EditionAvailabilityKind = "available" | "sold_out";
 
 const EDITION_AVAILABILITY: Record<EditionAvailabilityKind, ShopStatusPresentation> = {
   available: { label: "Available", tone: "success" },
-  limited: { label: "Limited", tone: "warning" },
   sold_out: { label: "Sold out", tone: "neutral" },
 };
 
@@ -75,17 +90,11 @@ export function resolveShopOrderStatusPresentation(
   return ORDER_STATUS[status];
 }
 
-export function resolveEditionAvailabilityPresentation(input: {
-  editionsAvailable: number;
-  totalEditions: number;
-}): ShopStatusPresentation {
-  if (input.editionsAvailable <= 0) {
-    return EDITION_AVAILABILITY.sold_out;
-  }
-  if (input.totalEditions > 0 && input.editionsAvailable / input.totalEditions <= 0.2) {
-    return EDITION_AVAILABILITY.limited;
-  }
-  return EDITION_AVAILABILITY.available;
+/** Public availability is only ever "Available" or "Sold out"; there is no low-stock tier. */
+export function resolveEditionAvailabilityPresentation(
+  state: EditionAvailabilityKind,
+): ShopStatusPresentation {
+  return EDITION_AVAILABILITY[state];
 }
 
 /** Catalogue cards show Price on request and Sold out only; for_sale has no badge. */

@@ -58,13 +58,13 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
     });
   }
 
-  async findSuppression(emailHash: string): Promise<boolean> {
+  async findSuppression(emailHash: string): Promise<EmailSuppressionReason | null> {
     const [supNow] = await this.db
-      .select({ emailHash: emailSuppression.emailHash })
+      .select({ reason: emailSuppression.reason })
       .from(emailSuppression)
       .where(eq(emailSuppression.emailHash, emailHash))
       .limit(1);
-    return supNow != null;
+    return supNow?.reason ?? null;
   }
 
   async markSuppressed(outboxId: string, reason: string): Promise<void> {

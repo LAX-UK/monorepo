@@ -2,7 +2,7 @@ export type ArtworkSaleState = "for_sale" | "price_on_application" | "sold";
 
 export type EditionAvailabilityReadModel = {
   totalEditions: number;
-  editionsAvailable: number;
+  state: "available" | "sold_out";
 };
 
 export type ArtworkImageReadModel = {

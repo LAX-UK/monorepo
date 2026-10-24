@@ -9,21 +9,31 @@ const names = [
 
 type PayoutTemplateName = (typeof names)[number];
 
+/**
+ * Who a payout notice is written for. Sellers read about their own payout and are sent to Sold &
+ * payouts in Bid; staff get the operational wording and are sent to the admin payouts queue.
+ */
+type PayoutAudience = "seller" | "staff";
+
 type PayoutTemplateVars = {
-  /** notify finance-role members when a payout transfer fails after retries. */
+  /** Tells the seller's finance members a payout could not be paid; a staff copy goes to ops. */
   "payout-transfer-failed-notice": {
+    audience: PayoutAudience;
     recipientFirstName?: string | null;
     entityName: string;
     payoutId: string;
     payoutAmount: string;
     payoutCurrency: string;
+    /** Raw payment-provider error; shown to staff only. */
     failureReason: string;
     supportContactEmail: string;
-    adminPayoutsUrl: string;
+    /** Sold & payouts for sellers, the admin payouts queue for staff. */
+    payoutsUrl: string;
     sellerPayoutSetupUrl?: string | null;
   };
-  /** notify finance-role members when a payout cannot start because Connect is not payout-ready. */
+  /** Tells the seller's members a payout cannot start because their payout account is not ready. */
   "payout-transfer-blocked-notice": {
+    audience: PayoutAudience;
     recipientFirstName?: string | null;
     entityName: string;
     payoutId: string;
@@ -31,7 +41,8 @@ type PayoutTemplateVars = {
     payoutCurrency: string;
     blockReason: string;
     supportContactEmail: string;
-    adminPayoutsUrl: string;
+    payoutsUrl: string;
+    sellerPayoutSetupUrl?: string | null;
   };
   "payout-initiated-notice": {
     recipientFirstName?: string | null;
@@ -39,15 +50,16 @@ type PayoutTemplateVars = {
     payoutId: string;
     amount: string;
     currency: string;
-    adminPayoutsUrl: string;
+    payoutsUrl: string;
   };
   "payout-clawback-required-notice": {
+    audience: PayoutAudience;
     recipientFirstName?: string | null;
     entityName: string;
     payoutId: string;
     netAmount: string;
     currency: string;
-    adminPayoutsUrl: string;
+    payoutsUrl: string;
   };
 };
 
@@ -62,4 +74,4 @@ export const payoutTemplates = {
   },
 } satisfies TemplateDomainSlice<PayoutTemplateName, PayoutTemplateVars>;
 
-export type { PayoutTemplateName, PayoutTemplateVars };
+export type { PayoutAudience, PayoutTemplateName, PayoutTemplateVars };

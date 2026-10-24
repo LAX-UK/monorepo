@@ -16,42 +16,35 @@ const artwork = (overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDet
   salesChannel: "shop",
   eligibleForEditionAllocation: true,
   printPricePence: 12000,
-  availability: { totalEditions: 24, editionsAvailable: 10 },
+  availability: { totalEditions: 24, state: "available" },
   ...overrides,
 });
 
 describe("presentArtworkAvailability", () => {
-  it("presents available editions with allocation guidance", () => {
+  it("presents an available edition with its size and allocation guidance", () => {
     expect(presentArtworkAvailability(artwork())).toEqual({
       status: { label: "Available", tone: "success" },
-      headline: "10 of 24 editions available",
+      headline: "Limited edition of 24",
       detail: "Edition numbers are assigned when your order is fulfilled.",
-      meter: { available: 10, total: 24 },
     });
   });
 
-  it("uses limited language at the twenty-percent threshold", () => {
+  it("shows a sold-out edition with a next step", () => {
     expect(
       presentArtworkAvailability(
-        artwork({ availability: { totalEditions: 10, editionsAvailable: 2 } }),
-      ),
-    ).toMatchObject({
-      status: { label: "Limited", tone: "warning" },
-      detail: "Only a few remain from this edition of 10.",
-    });
-  });
-
-  it("turns zero remaining editions into a claimed state with a next step", () => {
-    expect(
-      presentArtworkAvailability(
-        artwork({ availability: { totalEditions: 24, editionsAvailable: 0 } }),
+        artwork({ availability: { totalEditions: 24, state: "sold_out" } }),
       ),
     ).toEqual({
       status: { label: "Sold out", tone: "neutral" },
-      headline: "All 24 editions are currently claimed",
-      detail: "Join the list and we will email you if one is released.",
-      meter: { available: 0, total: 24 },
+      headline: "Limited edition of 24",
+      detail: null,
     });
+  });
+
+  it("never shows a remaining count, a low-stock warning or a meter", () => {
+    const view = presentArtworkAvailability(artwork());
+    expect(view).not.toHaveProperty("meter");
+    expect(JSON.stringify(view)).not.toMatch(/\d+ of \d+|only a few|claimed|remain/i);
   });
 
   it("reports sold works as unavailable regardless of edition data", () => {
@@ -60,14 +53,13 @@ describe("presentArtworkAvailability", () => {
         artwork({
           saleState: "sold",
           eligibleForEditionAllocation: false,
-          availability: { totalEditions: 0, editionsAvailable: 0 },
+          availability: { totalEditions: 0, state: "sold_out" },
         }),
       ),
     ).toEqual({
       status: { label: "Sold out", tone: "neutral" },
       headline: "This work is no longer available",
       detail: null,
-      meter: null,
     });
   });
 
@@ -76,14 +68,13 @@ describe("presentArtworkAvailability", () => {
       presentArtworkAvailability(
         artwork({
           eligibleForEditionAllocation: false,
-          availability: { totalEditions: 0, editionsAvailable: 0 },
+          availability: { totalEditions: 0, state: "sold_out" },
         }),
       ),
     ).toEqual({
       status: { label: "Original", tone: "neutral" },
       headline: "Original work — one of one",
       detail: "A unique piece, not part of an edition series.",
-      meter: null,
     });
   });
 });

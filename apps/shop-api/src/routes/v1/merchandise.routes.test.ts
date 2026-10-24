@@ -26,7 +26,7 @@ describe("merchandise routes", () => {
                     variantId: "550e8400-e29b-41d4-a716-446655440099",
                     sku: "CAP-001",
                     pricePence: 2500,
-                    availableCount: 3,
+                    availability: "available" as const,
                   },
                 ],
               }
@@ -55,7 +55,16 @@ describe("merchandise routes", () => {
           slug: "acceptance-test-cap",
           title: "Acceptance test cap",
           description: null,
-          variants: [],
+          variants: [
+            {
+              variantId: "550e8400-e29b-41d4-a716-446655440099",
+              sku: "CAP-001",
+              pricePence: 2500,
+              availability: "available" as const,
+              // A count slipping into the record must still not reach the response.
+              availableCount: 3,
+            } as never,
+          ],
         }),
       },
     });
@@ -66,6 +75,13 @@ describe("merchandise routes", () => {
       url: "/v1/merchandise/products/acceptance-test-cap",
     });
     expect(response.statusCode).toBe(200);
+    expect(response.body).not.toContain("availableCount");
+    expect(response.json().variants[0]).toEqual({
+      variantId: "550e8400-e29b-41d4-a716-446655440099",
+      sku: "CAP-001",
+      pricePence: 2500,
+      availability: "available",
+    });
     await app.close();
   });
 

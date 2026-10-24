@@ -4,14 +4,18 @@ import type { INotificationFactory } from "./interfaces/notification-factory.js"
 
 /** SRP: builds persisted notification rows from domain events. */
 export class NotificationFactory implements INotificationFactory {
-  createOutbid(lot: Lot, outbidUserId: string): CreateNotificationRow {
+  createOutbid(
+    lot: Lot,
+    outbidUserId: string,
+    opts?: { currentBid?: string },
+  ): CreateNotificationRow {
     return {
       userId: outbidUserId,
       type: "outbid",
       title: "You have been outbid",
       message: `Another bidder placed a higher bid on "${lot.title}".`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: { lotTitle: lot.title, ...(opts?.currentBid ? { bidAmount: opts.currentBid } : {}) },
     };
   }
 
@@ -28,8 +32,31 @@ export class NotificationFactory implements INotificationFactory {
       lotId: lot.id,
       meta: {
         lotTitle: lot.title,
+        bidAmount: lot.currentPrice,
         ...(opts?.hammerPrice ? { hammerPrice: opts.hammerPrice } : {}),
         ...(opts?.totalDue ? { totalDue: opts.totalDue } : {}),
+      },
+    };
+  }
+
+  createEndedSeller(
+    lot: Lot,
+    sellerId: string,
+    opts?: { hammerPrice?: string },
+  ): CreateNotificationRow {
+    const sold = typeof opts?.hammerPrice === "string" && opts.hammerPrice.length > 0;
+    return {
+      userId: sellerId,
+      type: "lot_ended_seller",
+      title: sold ? "Your lot has sold" : "Your lot closed unsold",
+      message: sold
+        ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
+        : `"${lot.title}" closed without a sale.`,
+      lotId: lot.id,
+      meta: {
+        lotTitle: lot.title,
+        outcome: sold ? "sold" : "unsold",
+        ...(sold && opts?.hammerPrice ? { hammerPrice: opts.hammerPrice } : {}),
       },
     };
   }
@@ -78,14 +105,14 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
-  createPaymentReceived(lot: Lot, buyerId: string): CreateNotificationRow {
+  createPaymentReceived(lot: Lot, buyerId: string, amount?: string): CreateNotificationRow {
     return {
       userId: buyerId,
       type: "payment_received",
       title: "Payment received",
       message: `Your payment for "${lot.title}" was recorded.`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: { lotTitle: lot.title, audience: "buyer", ...(amount ? { amount } : {}) },
     };
   }
 
@@ -100,7 +127,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Payment received",
       message: `Payment of ${amount} was recorded for "${lot.title}".`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: { lotTitle: lot.title, audience: "seller", amount },
     };
   }
 

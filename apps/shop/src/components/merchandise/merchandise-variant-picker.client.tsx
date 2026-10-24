@@ -14,7 +14,7 @@ type Props = {
 };
 
 function firstInStockVariantId(product: PublicMerchandiseProductDetail): string {
-  const inStock = product.variants.find((variant) => variant.availableCount > 0);
+  const inStock = product.variants.find((variant) => variant.availability === "available");
   return inStock?.variantId ?? product.variants[0]?.variantId ?? "";
 }
 
@@ -24,7 +24,7 @@ export function MerchandiseVariantPicker({ product }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const selected = product.variants.find((variant) => variant.variantId === selectedVariantId);
-  const canAdd = Boolean(selected && selected.availableCount > 0);
+  const canAdd = Boolean(selected && selected.availability === "available");
 
   function addToBasket() {
     if (!selectedVariantId || !canAdd) return;
@@ -50,7 +50,7 @@ export function MerchandiseVariantPicker({ product }: Props) {
         <legend className="font-semibold">Choose a variant</legend>
         <ul className="flex flex-col gap-2">
           {product.variants.map((variant) => {
-            const soldOut = variant.availableCount <= 0;
+            const soldOut = variant.availability === "sold_out";
             return (
               <li key={variant.variantId}>
                 <label className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export function MerchandiseVariantPicker({ product }: Props) {
                   />
                   <span className={soldOut ? "text-on-surface-variant" : undefined}>
                     {variant.sku} · {formatGbpPence(variant.pricePence)} ·{" "}
-                    {soldOut ? "Sold out" : `${variant.availableCount} available`}
+                    {soldOut ? "Sold out" : "Available"}
                   </span>
                 </label>
               </li>

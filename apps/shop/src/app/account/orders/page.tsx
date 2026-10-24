@@ -2,7 +2,10 @@ import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { resolveShopOrderStatusPresentation } from "@/lib/presenters/shop-status-presentation";
+import {
+  resolveShopOrderRefundLine,
+  resolveShopOrderStatusPresentation,
+} from "@/lib/presenters/shop-status-presentation";
 import { listShopOrders } from "@/lib/shop-commerce.server";
 import {
   resolveShopArtistPortalLinked,
@@ -106,6 +109,7 @@ export default async function AccountOrdersPage() {
         <ul className="shop-orders__list">
           {ordersResult.data.map((order) => {
             const status = resolveShopOrderStatusPresentation(order.status);
+            const refundLine = resolveShopOrderRefundLine(order);
             const firstLine = order.lines[0];
             const titleLine = firstLine?.artworkTitle ?? "Order";
             return (
@@ -117,6 +121,7 @@ export default async function AccountOrdersPage() {
                     </span>
                     <span className="shop-orders__status-hint">
                       {formatShopDateTime(order.createdAt)}
+                      {refundLine ? ` · ${refundLine}` : ""}
                     </span>
                   </span>
                   <span className="shop-orders__list-status">

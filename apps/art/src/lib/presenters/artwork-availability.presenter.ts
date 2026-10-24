@@ -6,7 +6,8 @@ export type ArtworkAvailabilityView = {
   status: ArtStatusPresentation;
   headline: string;
   detail: string | null;
-  meter: { available: number; total: number } | null;
+  /** True for an edition run, so the page can show the "Limited edition of N" line. */
+  isEdition: boolean;
 };
 
 export function presentArtworkAvailability(artwork: PublicArtworkDetail): ArtworkAvailabilityView {
@@ -15,7 +16,7 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
       status: { label: "Sold out", tone: "neutral" },
       headline: "This work is no longer available",
       detail: null,
-      meter: null,
+      isEdition: false,
     };
   }
 
@@ -28,39 +29,30 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
             ? "Original work from a limited edition"
             : "Original work from an open edition",
         detail: "This impression is sold by the gallery rather than allocated online.",
-        meter: null,
+        isEdition: false,
       };
     }
     return {
       status: { label: "Original", tone: "neutral" },
       headline: "Original work — one of one",
       detail: "A unique piece, not part of an edition series.",
-      meter: null,
+      isEdition: false,
     };
   }
 
-  const { editionsAvailable, totalEditions } = artwork.availability;
-  const status = resolveEditionAvailabilityPresentation({
-    editionsAvailable,
-    totalEditions,
-  });
+  const { totalEditions, state } = artwork.availability;
+  const status = resolveEditionAvailabilityPresentation(state);
+  const size = totalEditions > 0 ? `Limited edition of ${totalEditions}` : "Limited edition";
 
-  if (editionsAvailable <= 0) {
-    return {
-      status,
-      headline: `All ${totalEditions} editions are currently claimed`,
-      detail: null,
-      meter: { available: editionsAvailable, total: totalEditions },
-    };
+  // The status pill beside the headline carries "Available" or "Sold out".
+  if (state === "sold_out") {
+    return { status, headline: size, detail: null, isEdition: true };
   }
 
-  const limited = status.tone === "warning";
   return {
     status,
-    headline: `${editionsAvailable} of ${totalEditions} editions available`,
-    detail: limited
-      ? `Only a few remain from this edition of ${totalEditions}.`
-      : "Edition numbers are assigned when your purchase is confirmed.",
-    meter: { available: editionsAvailable, total: totalEditions },
+    headline: size,
+    detail: "Edition numbers are assigned when your purchase is confirmed.",
+    isEdition: true,
   };
 }

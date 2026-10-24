@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { PublicAvailabilityStateSchema } from "./artwork-public.js";
 
 export const PublicMerchandiseProductSchema = Type.Object(
   {
@@ -19,7 +20,8 @@ export const PublicMerchandiseVariantSchema = Type.Object(
     variantId: Type.String({ format: "uuid" }),
     sku: Type.String({ minLength: 1 }),
     pricePence: Type.Integer({ minimum: 0 }),
-    availableCount: Type.Integer({ minimum: 0 }),
+    /** In stock or not; the remaining quantity is never public. */
+    availability: PublicAvailabilityStateSchema,
   },
   { additionalProperties: false },
 );
