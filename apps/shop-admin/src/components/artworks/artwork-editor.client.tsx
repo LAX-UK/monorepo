@@ -23,6 +23,7 @@ import {
   createArtwork,
   getArtworkDetail,
   saveArtwork,
+  saveArtworkPrice,
   setArtworkVisibility,
 } from "@/server/application/admin-artwork-actions.server";
 import {
@@ -154,12 +155,15 @@ export function ArtworkEditor({
     currentYear,
   } as const;
   const dirty = isArtworkFormDirty(values, baseline);
-  const guard = useUnsavedNavigationGuard(dirty && permissions.write);
+  const readOnly = !permissions.write;
+  /** Finance: the edition price is the only thing they may change. */
+  const priceOnly = readOnly && permissions.setPrice && mode === "edit";
+  const canSave = permissions.write || priceOnly;
+  const guard = useUnsavedNavigationGuard(dirty && canSave);
   const attempted = failedSubmits > 0;
   const clientErrors = attempted ? validateArtworkForm(values, context) : {};
   const errors = { ...serverErrors, ...clientErrors };
   const summary = artworkErrorSummary(errors);
-  const readOnly = !permissions.write;
 
   // Move focus to the summary once per failed submit, not on every keystroke after it.
   useEffect(() => {
@@ -205,12 +209,18 @@ export function ArtworkEditor({
     // Optimistic: the form reads as saved at once; a refusal puts the edits back as unsaved.
     const previous = baseline;
     setBaseline(values);
-    const result = await saveArtwork({
-      artworkId: record.artworkId,
-      body: buildArtworkUpdateBody(values, context, record.printPricePence),
-      expectedVersion,
-      idempotencyKey,
-    }).catch(() => ({ ok: false, kind: "failed", message: "Save failed. Try again." }) as const);
+    const body = buildArtworkUpdateBody(values, context, record.printPricePence);
+    const save = priceOnly
+      ? saveArtworkPrice({
+          artworkId: record.artworkId,
+          printPricePence: body.printPricePence ?? null,
+          expectedVersion,
+          idempotencyKey,
+        })
+      : saveArtwork({ artworkId: record.artworkId, body, expectedVersion, idempotencyKey });
+    const result = await save.catch(
+      () => ({ ok: false, kind: "failed", message: "Save failed. Try again." }) as const,
+    );
     setSaving(false);
     if (!result.ok) {
       setBaseline(previous);
@@ -328,7 +338,7 @@ export function ArtworkEditor({
             : undefined
         }
         primaryAction={
-          readOnly ? undefined : (
+          !canSave ? undefined : (
             <StaffButton
               type="submit"
               form="artwork-form"
@@ -367,6 +377,11 @@ export function ArtworkEditor({
         </Notice>
       ) : null}
       {formError ? <Notice tone="danger" alert title={formError} /> : null}
+      {priceOnly ? (
+        <Notice title="You can change the edition price">
+          The other details are edited by staff who manage the catalogue.
+        </Notice>
+      ) : null}
       {dirty && mode === "edit" && visibility?.primary ? (
         <p className="sr-only" aria-live="polite">
           Save your changes before you{" "}
@@ -560,7 +575,7 @@ export function ArtworkEditor({
               }
               error={errors.price}
               id={artworkFieldId("price")}
-              disabled={readOnly || !permissions.setPrice}
+              disabled={!permissions.setPrice}
             >
               <MoneyInput
                 value={typedPence.ok ? typedPence.pence : null}
@@ -697,7 +712,7 @@ export function ArtworkEditor({
           </Field>
         </FormSection>
 
-        {readOnly ? null : (
+        {!canSave ? null : (
           <FormActions className="border-t border-staff-line-subtle pt-4">
             <StaffButton asChild variant="secondary">
               <Link href="/artworks">Cancel</Link>

@@ -15,6 +15,7 @@ import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { afterArtCatalogueWrite } from "./art-cache-invalidation.js";
 
 const ArtistParams = Type.Object({ artistId: Type.String({ format: "uuid" }) });
 
@@ -67,7 +68,12 @@ export async function registerAdminArtistRoutes(app: FastifyInstance, deps: Admi
       async (request) => {
         const actor = catalogueWriter(request);
         const { artistId } = request.params as Static<typeof ArtistParams>;
-        return deps.artistCatalogue.setArtistArchived({ ...actor, artistId, archived });
+        const result = await deps.artistCatalogue.setArtistArchived({
+          ...actor,
+          artistId,
+          archived,
+        });
+        return afterArtCatalogueWrite(request, deps.artCache, "artists", result);
       },
     );
   }

@@ -75,7 +75,7 @@ export function createDrizzleArtistCatalogueWriter(
               .limit(1);
             if (!artist) throw notFound("Artist not found");
             if ((artist.archivedAt !== null) === input.archived) {
-              return { artistId: artist.id, archived: input.archived };
+              return { artistId: artist.id, archived: input.archived, refreshesArt: false };
             }
             if (input.archived) {
               const [published] = await session
@@ -103,7 +103,8 @@ export function createDrizzleArtistCatalogueWriter(
               beforeJson: { archived: !input.archived },
               afterJson: { archived: input.archived },
             });
-            return { artistId: artist.id, archived: input.archived };
+            // The artist's page and directory entry appear or disappear on lax.art.
+            return { artistId: artist.id, archived: input.archived, refreshesArt: true };
           },
         }),
       ),

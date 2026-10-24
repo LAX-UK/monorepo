@@ -66,6 +66,7 @@ describe("lax.art cache invalidation on editorial writes", () => {
   it("notifies after a publish has been committed", async () => {
     const order: string[] = [];
     const invalidator = {
+      invalidateCatalogue: vi.fn(async () => {}),
       invalidateEditorial: vi.fn(async () => {
         order.push("invalidated");
       }),
@@ -87,7 +88,10 @@ describe("lax.art cache invalidation on editorial writes", () => {
   });
 
   it("does not notify when the write fails and rolls back", async () => {
-    const invalidator = { invalidateEditorial: vi.fn(async () => {}) };
+    const invalidator = {
+      invalidateCatalogue: vi.fn(async () => {}),
+      invalidateEditorial: vi.fn(async () => {}),
+    };
     const app = await buildApp(invalidator, {
       setPagePublication: async () => {
         throw new Error("transaction rolled back");
@@ -105,6 +109,7 @@ describe("lax.art cache invalidation on editorial writes", () => {
 
   it("keeps the staff response unchanged when the notification fails", async () => {
     const invalidator = {
+      invalidateCatalogue: vi.fn(async () => {}),
       invalidateEditorial: vi.fn(async () => {
         throw new Error("lax.art unreachable");
       }),
@@ -121,7 +126,10 @@ describe("lax.art cache invalidation on editorial writes", () => {
   });
 
   it("notifies for placement writes", async () => {
-    const invalidator = { invalidateEditorial: vi.fn(async () => {}) };
+    const invalidator = {
+      invalidateCatalogue: vi.fn(async () => {}),
+      invalidateEditorial: vi.fn(async () => {}),
+    };
     const app = await buildApp(invalidator, { replacePlacementSlot: async () => {} });
     const response = await app.inject({
       method: "PUT",
@@ -135,7 +143,10 @@ describe("lax.art cache invalidation on editorial writes", () => {
   });
 
   it("does not notify for reads or preview-token signing", async () => {
-    const invalidator = { invalidateEditorial: vi.fn(async () => {}) };
+    const invalidator = {
+      invalidateCatalogue: vi.fn(async () => {}),
+      invalidateEditorial: vi.fn(async () => {}),
+    };
     const app = await buildApp(invalidator);
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
       subject: "editor-subject",

@@ -61,7 +61,14 @@ const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> =
     "order.read",
     "enquiry.read",
   ],
-  finance: ["fee.approve", "refund.write", "payout.mark_paid", "audit.read", "order.read"],
+  finance: [
+    "fee.approve",
+    "refund.write",
+    "payout.mark_paid",
+    "audit.read",
+    "order.read",
+    "artwork_price.write",
+  ],
   catalogue_editor: ["catalogue.write", "editorial.write", "editorial.publish"],
 };
 

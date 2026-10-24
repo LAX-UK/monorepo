@@ -20,7 +20,12 @@ describe("parseRevalidateTags", () => {
     expect(parseRevalidateTags({ tags: ["art:editorial", "art:editorial"] })).toEqual([
       "art:editorial",
     ]);
+    expect(parseRevalidateTags({ tags: ["art:artworks", "art:artists"] })).toEqual([
+      "art:artworks",
+      "art:artists",
+    ]);
     expect(parseRevalidateTags({ tags: ["art:catalogue"] })).toBeNull();
+    expect(parseRevalidateTags({ tags: ["art:categories"] })).toBeNull();
     expect(parseRevalidateTags({ tags: [] })).toBeNull();
     expect(parseRevalidateTags({})).toBeNull();
     expect(parseRevalidateTags(null)).toBeNull();

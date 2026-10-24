@@ -30,6 +30,12 @@ export interface AdminArtworkReader {
   getArtwork(artworkId: string): Promise<AdminArtworkDetail | null>;
 }
 
+/**
+ * True when the committed change alters what lax.art serves, so its cached catalogue should be
+ * refreshed. Not part of any HTTP response.
+ */
+export type ArtRefresh = { refreshesArt: boolean };
+
 type StaffWrite = {
   actorSubjectId: string;
   idempotencyKey: string;
@@ -68,6 +74,13 @@ export type UpdateArtworkInput = StaffWrite &
     expectedVersion: string;
   };
 
+/** The edition price alone, for staff with `artwork_price.write` but not `catalogue.write`. */
+export type SetArtworkPriceInput = StaffWrite & {
+  artworkId: string;
+  printPricePence: number | null;
+  expectedVersion: string;
+};
+
 export type SetArtworkVisibilityInput = StaffWrite & {
   artworkId: string;
   action: AdminArtworkVisibilityAction;
@@ -89,13 +102,16 @@ export type BulkArtworkVisibilityInput = StaffWrite & {
 export interface ArtworkCatalogueWriter {
   createArtwork(
     input: CreateArtworkInput,
-  ): Promise<{ artworkId: string; slug: string; version: string }>;
-  updateArtwork(input: UpdateArtworkInput): Promise<{ version: string }>;
-  setVisibility(input: SetArtworkVisibilityInput): Promise<AdminArtworkVersionResponse>;
+  ): Promise<{ artworkId: string; slug: string; version: string } & ArtRefresh>;
+  updateArtwork(input: UpdateArtworkInput): Promise<{ version: string } & ArtRefresh>;
+  setPrice(input: SetArtworkPriceInput): Promise<{ version: string } & ArtRefresh>;
+  setVisibility(
+    input: SetArtworkVisibilityInput,
+  ): Promise<AdminArtworkVersionResponse & ArtRefresh>;
   /** One transaction; each artwork gets its own outcome so one refusal never blocks the rest. */
   applyBulkVisibility(
     input: BulkArtworkVisibilityInput,
-  ): Promise<AdminArtworkBulkVisibilityResponse>;
+  ): Promise<AdminArtworkBulkVisibilityResponse & ArtRefresh>;
 }
 
 export type CreateArtistInput = StaffWrite & {
@@ -109,5 +125,5 @@ export interface ArtistCatalogueWriter {
   createArtist(input: CreateArtistInput): Promise<{ artistId: string; slug: string }>;
   setArtistArchived(
     input: StaffWrite & { artistId: string; archived: boolean },
-  ): Promise<{ artistId: string; archived: boolean }>;
+  ): Promise<{ artistId: string; archived: boolean } & ArtRefresh>;
 }

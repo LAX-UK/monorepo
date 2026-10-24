@@ -186,6 +186,19 @@ function changedFields(
   return { beforeJson, afterJson };
 }
 
+function onStorefront(artwork: Pick<ArtworkRow, "publishedAt" | "archivedAt">): boolean {
+  return artwork.publishedAt !== null && artwork.archivedAt === null;
+}
+
+/**
+ * Whether lax.art shows something different after this change: the artwork is (or was) on the
+ * lax.art channel and was or is now visible there. Draft-only edits change nothing it serves.
+ */
+function changesArtStorefront(before: ArtworkRow, after: ArtworkRow): boolean {
+  const onArt = before.salesChannel === "art" || after.salesChannel === "art";
+  return onArt && (onStorefront(before) || onStorefront(after));
+}
+
 type VisibilityOutcome =
   | { outcome: "changed" | "unchanged"; artwork: ArtworkRow }
   | { outcome: "refused"; message: string };
@@ -364,6 +377,8 @@ export function createDrizzleArtworkCatalogueWriter(
               artworkId: artwork.id,
               slug: artwork.slug,
               version: artwork.updatedAt.toISOString(),
+              // A new artwork is a draft: nothing on lax.art changes until it is published.
+              refreshesArt: false,
             };
           },
         }),
@@ -449,7 +464,61 @@ export function createDrizzleArtworkCatalogueWriter(
               targetId: input.artworkId,
               ...diff,
             });
-            return { version: after.updatedAt.toISOString() };
+            return {
+              version: after.updatedAt.toISOString(),
+              refreshesArt: changesArtStorefront(before, after),
+            };
+          },
+        }),
+      ),
+
+    setPrice: (input) =>
+      uow.run((tx) =>
+        withAdminIdempotency({
+          tx,
+          commandType: "artwork.set_price",
+          idempotencyKey: input.idempotencyKey,
+          actorSubjectId: input.actorSubjectId,
+          requestPayload: input,
+          run: async () => {
+            const before = await lockArtwork(tx, input.artworkId);
+            if (before.updatedAt.getTime() !== new Date(input.expectedVersion).getTime()) {
+              throw new StaleVersionError("This artwork", before.updatedAt.toISOString());
+            }
+            assertEditionPrice({
+              pricePence: input.printPricePence,
+              eligibleForEditionAllocation: before.eligibleForEditionAllocation,
+            });
+            assertLivePriceKept({
+              published: onStorefront(before),
+              eligibleForEditionAllocation: before.eligibleForEditionAllocation,
+              saleState: before.saleState,
+              printPricePence: input.printPricePence,
+            });
+            if (input.printPricePence === before.printPricePence) {
+              return { version: before.updatedAt.toISOString(), refreshesArt: false };
+            }
+            const [after] = await shopPhaseDbSession(tx)
+              .update(shopArtwork)
+              .set({ printPricePence: input.printPricePence, updatedAt: new Date() })
+              .where(eq(shopArtwork.id, input.artworkId))
+              .returning();
+            if (!after) {
+              throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Failed to save artwork", 500);
+            }
+            await tx.audit.append({
+              actorSubjectId: input.actorSubjectId,
+              capability: PRICE_CAPABILITY,
+              action: "set_artwork_price",
+              targetType: "shop_artwork",
+              targetId: input.artworkId,
+              beforeJson: { printPricePence: before.printPricePence },
+              afterJson: { printPricePence: after.printPricePence },
+            });
+            return {
+              version: after.updatedAt.toISOString(),
+              refreshesArt: changesArtStorefront(before, after),
+            };
           },
         }),
       ),
@@ -469,6 +538,8 @@ export function createDrizzleArtworkCatalogueWriter(
             return {
               version: result.artwork.updatedAt.toISOString(),
               state: await stateOf(tx, result.artwork),
+              refreshesArt:
+                result.outcome === "changed" && changesArtStorefront(artwork, result.artwork),
             };
           },
         }),
@@ -493,6 +564,7 @@ export function createDrizzleArtworkCatalogueWriter(
               .for("update");
             const byId = new Map(rows.map((row) => [row.id, row]));
             const results = [];
+            let refreshesArt = false;
             for (const artworkId of input.artworkIds) {
               const artwork = byId.get(artworkId);
               if (!artwork) {
@@ -500,13 +572,16 @@ export function createDrizzleArtworkCatalogueWriter(
                 continue;
               }
               const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId);
+              if (result.outcome === "changed" && changesArtStorefront(artwork, result.artwork)) {
+                refreshesArt = true;
+              }
               results.push(
                 result.outcome === "refused"
                   ? { artworkId, outcome: "refused" as const, message: result.message }
                   : { artworkId, outcome: result.outcome },
               );
             }
-            return { results };
+            return { results, refreshesArt };
           },
         }),
       ),

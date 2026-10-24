@@ -54,3 +54,25 @@ describe("createHttpArtCacheInvalidator", () => {
     ).rejects.toThrow("ECONNREFUSED");
   });
 });
+
+describe("createHttpArtCacheInvalidator catalogue refresh", () => {
+  it.each([
+    ["artworks", ["art:artworks", "art:editorial"]],
+    ["artists", ["art:artists", "art:artworks", "art:editorial"]],
+  ] as const)("purges the %s lists and the editorial pages that show them", async (scope, tags) => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
+    await createHttpArtCacheInvalidator({ ...config, fetchImpl }).invalidateCatalogue(scope);
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ tags });
+  });
+
+  it("retries once, then rejects so the caller can log it", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 503 }));
+    await expect(
+      createHttpArtCacheInvalidator({ ...config, fetchImpl, retryDelayMs: 0 }).invalidateCatalogue(
+        "artworks",
+      ),
+    ).rejects.toThrow("503");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});

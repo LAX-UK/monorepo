@@ -24,7 +24,10 @@ const VERSION = "2026-01-02T00:00:00.000Z";
 
 async function buildApp(
   help: Partial<HelpRepository> = {},
-  artCache: ArtCacheInvalidator = { invalidateEditorial: async () => {} },
+  artCache: ArtCacheInvalidator = {
+    invalidateEditorial: async () => {},
+    invalidateCatalogue: async () => {},
+  },
 ) {
   vi.mocked(verifyBearerToken).mockResolvedValue({
     subject: "editor-subject",
@@ -225,7 +228,10 @@ describe("admin help routes", () => {
   });
 
   it("tells lax.art to drop its cache after a committed help write", async () => {
-    const invalidator = { invalidateEditorial: vi.fn(async () => {}) };
+    const invalidator = {
+      invalidateCatalogue: vi.fn(async () => {}),
+      invalidateEditorial: vi.fn(async () => {}),
+    };
     const app = await buildApp({ setCategoryPublication: async () => true }, invalidator);
     const res = await app.inject({
       method: "POST",

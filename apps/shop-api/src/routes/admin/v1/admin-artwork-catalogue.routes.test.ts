@@ -13,6 +13,7 @@ vi.mock("@auction/auth/token-verifier", () => ({
 }));
 
 import { createShopApiApp } from "../../../app.js";
+import type { ArtCacheInvalidator } from "../../../application/ports/art-cache-invalidator.js";
 import type {
   AdminArtworkReader,
   ArtistCatalogueWriter,
@@ -66,6 +67,7 @@ type Overrides = {
   writer?: Partial<ArtworkCatalogueWriter>;
   artists?: Partial<ArtistCatalogueWriter>;
   listArtists?: ReturnType<typeof vi.fn>;
+  artCache?: ArtCacheInvalidator;
 };
 
 async function buildApp(role: ShopStaffRole, overrides: Overrides = {}) {
@@ -99,6 +101,7 @@ async function buildApp(role: ShopStaffRole, overrides: Overrides = {}) {
         },
         artworkCatalogue: { ...base.admin.artworkCatalogue, ...overrides.writer },
         artistCatalogue: { ...base.admin.artistCatalogue, ...overrides.artists },
+        artCache: overrides.artCache ?? base.admin.artCache,
       },
     }),
     logger: false,
@@ -142,38 +145,110 @@ const writes = [
 ] as const;
 
 const WITHOUT_CATALOGUE: ShopStaffRole[] = ["account_manager", "broker", "operations", "finance"];
+/** Finance holds artwork_price.write: it may read artworks and set prices, nothing else. */
+const WITHOUT_ARTWORK_ACCESS: ShopStaffRole[] = ["account_manager", "broker", "operations"];
+
+const priceWrite = {
+  method: "PUT",
+  url: `/admin/v1/artworks/${ARTWORK}/price`,
+  payload: { printPricePence: 52_000, expectedVersion: VERSION },
+} as const;
 
 describe("admin artwork catalogue routes", () => {
   describe("capabilities", () => {
-    it.each(
-      WITHOUT_CATALOGUE.flatMap((role) => [...reads, ...writes].map((route) => ({ role, route }))),
-    )("forbids $role on $route.method $route.url", async ({ role, route }) => {
-      const app = await buildApp(role);
-      const response = await app.inject({ ...route, headers });
-      expect(response.statusCode).toBe(403);
+    it.each(WITHOUT_CATALOGUE.flatMap((role) => writes.map((route) => ({ role, route }))))(
+      "forbids $role catalogue writes on $route.method $route.url",
+      async ({ role, route }) => {
+        const app = await buildApp(role);
+        const response = await app.inject({ ...route, headers });
+        expect(response.statusCode).toBe(403);
+        await app.close();
+      },
+    );
+
+    it.each(WITHOUT_ARTWORK_ACCESS.flatMap((role) => reads.map((route) => ({ role, route }))))(
+      "forbids $role reads on $route.method $route.url",
+      async ({ role, route }) => {
+        const app = await buildApp(role);
+        const response = await app.inject({ ...route, headers });
+        expect(response.statusCode).toBe(403);
+        await app.close();
+      },
+    );
+
+    it("lets finance read the artwork list to find what to price", async () => {
+      const app = await buildApp("finance");
+      const response = await app.inject({ ...reads[0], headers });
+      expect(response.statusCode).toBe(200);
       await app.close();
     });
 
-    it.each([...reads, ...writes])("rejects an unauthenticated $method $url", async (route) => {
-      const app = await buildApp("shop_admin");
-      const response = await app.inject({ method: route.method, url: route.url });
-      expect(response.statusCode).toBe(401);
+    it.each<[ShopStaffRole, number]>([
+      ["shop_admin", 200],
+      ["finance", 200],
+      ["catalogue_editor", 403],
+      ["account_manager", 403],
+      ["broker", 403],
+      ["operations", 403],
+    ])("answers %s setting a price with %i", async (role, status) => {
+      const setPrice = vi.fn(async () => ({ version: VERSION, refreshesArt: false }));
+      const app = await buildApp(role, { writer: { setPrice } });
+      const response = await app.inject({ ...priceWrite, headers });
+      expect(response.statusCode).toBe(status);
+      if (status === 200) {
+        expect(setPrice).toHaveBeenCalledWith({
+          artworkId: ARTWORK,
+          printPricePence: 52_000,
+          expectedVersion: VERSION,
+          actorSubjectId: `${role}-subject`,
+          idempotencyKey: IDEMPOTENCY_KEY,
+        });
+      } else {
+        expect(setPrice).not.toHaveBeenCalled();
+      }
       await app.close();
     });
 
-    it.each(writes)("requires an idempotency key on $method $url", async (route) => {
-      const app = await buildApp("catalogue_editor");
-      const { "idempotency-key": _omitted, ...withoutKey } = headers;
-      const response = await app.inject({ ...route, headers: withoutKey });
-      expect(response.statusCode).toBe(400);
+    it("clears the price when it is omitted, and refuses zero", async () => {
+      const setPrice = vi.fn(async () => ({ version: VERSION, refreshesArt: false }));
+      const app = await buildApp("finance", { writer: { setPrice } });
+      await app.inject({ ...priceWrite, payload: { expectedVersion: VERSION }, headers });
+      expect(setPrice).toHaveBeenCalledWith(expect.objectContaining({ printPricePence: null }));
+      const zero = await app.inject({
+        ...priceWrite,
+        payload: { printPricePence: 0, expectedVersion: VERSION },
+        headers,
+      });
+      expect(zero.statusCode).toBe(400);
       await app.close();
     });
+
+    it.each([...reads, ...writes, priceWrite])(
+      "rejects an unauthenticated $method $url",
+      async (route) => {
+        const app = await buildApp("shop_admin");
+        const response = await app.inject({ method: route.method, url: route.url });
+        expect(response.statusCode).toBe(401);
+        await app.close();
+      },
+    );
+
+    it.each([...writes, priceWrite])(
+      "requires an idempotency key on $method $url",
+      async (route) => {
+        const app = await buildApp("shop_admin");
+        const { "idempotency-key": _omitted, ...withoutKey } = headers;
+        const response = await app.inject({ ...route, headers: withoutKey });
+        expect(response.statusCode).toBe(400);
+        await app.close();
+      },
+    );
 
     it.each<[ShopStaffRole, boolean]>([
       ["shop_admin", true],
       ["catalogue_editor", false],
     ])("tells the writer whether %s may set prices", async (role, canSetPrice) => {
-      const updateArtwork = vi.fn(async () => ({ version: VERSION }));
+      const updateArtwork = vi.fn(async () => ({ version: VERSION, refreshesArt: false }));
       const app = await buildApp(role, { writer: { updateArtwork } });
       const response = await app.inject({ ...writes[1], headers });
       expect(response.statusCode).toBe(200);
@@ -295,6 +370,7 @@ describe("admin artwork catalogue routes", () => {
         artworkId: ARTWORK,
         slug: "harbour-at-dusk",
         version: VERSION,
+        refreshesArt: false,
       }));
       const app = await buildApp("shop_admin", { writer: { createArtwork } });
       const response = await app.inject({ ...writes[0], headers });
@@ -335,7 +411,10 @@ describe("admin artwork catalogue routes", () => {
     });
 
     it("passes the version and artwork to an update", async () => {
-      const updateArtwork = vi.fn(async () => ({ version: "2026-03-01T10:05:00.000Z" }));
+      const updateArtwork = vi.fn(async () => ({
+        version: "2026-03-01T10:05:00.000Z",
+        refreshesArt: false,
+      }));
       const app = await buildApp("shop_admin", { writer: { updateArtwork } });
       const response = await app.inject({ ...writes[1], headers });
       expect(response.json()).toEqual({ version: "2026-03-01T10:05:00.000Z" });
@@ -375,7 +454,11 @@ describe("admin artwork catalogue routes", () => {
     it.each(["publish", "unpublish", "archive", "restore"] as const)(
       "sends the %s action for one artwork",
       async (action) => {
-        const setVisibility = vi.fn(async () => ({ version: VERSION, state: "live" as const }));
+        const setVisibility = vi.fn(async () => ({
+          version: VERSION,
+          state: "live" as const,
+          refreshesArt: false,
+        }));
         const app = await buildApp("catalogue_editor", { writer: { setVisibility } });
         const response = await app.inject({
           method: "POST",
@@ -465,7 +548,11 @@ describe("admin artwork catalogue routes", () => {
       ["archive", true],
       ["restore", false],
     ] as const)("%ss an artist", async (segment, archived) => {
-      const setArtistArchived = vi.fn(async () => ({ artistId: ARTIST, archived }));
+      const setArtistArchived = vi.fn(async () => ({
+        artistId: ARTIST,
+        archived,
+        refreshesArt: false,
+      }));
       const app = await buildApp("catalogue_editor", { artists: { setArtistArchived } });
       const response = await app.inject({
         method: "POST",
@@ -505,5 +592,109 @@ describe("admin artwork catalogue routes", () => {
       expect(listArtists).toHaveBeenCalledWith({ q: "ada", status: "active" });
       await app.close();
     });
+  });
+});
+
+describe("lax.art refresh after catalogue writes", () => {
+  function invalidator(fails = false) {
+    return {
+      invalidateEditorial: vi.fn(async () => {}),
+      invalidateCatalogue: vi.fn(async () => {
+        if (fails) throw new Error("lax.art unreachable");
+      }),
+    };
+  }
+
+  it.each([
+    ["publish", "POST", `/admin/v1/artworks/${ARTWORK}/publish`],
+    ["unpublish", "POST", `/admin/v1/artworks/${ARTWORK}/unpublish`],
+    ["archive", "POST", `/admin/v1/artworks/${ARTWORK}/archive`],
+  ] as const)("refreshes artworks after a %s that changed lax.art", async (_name, method, url) => {
+    const artCache = invalidator();
+    const setVisibility = vi.fn(async () => ({
+      version: VERSION,
+      state: "draft" as const,
+      refreshesArt: true,
+    }));
+    const app = await buildApp("catalogue_editor", { writer: { setVisibility }, artCache });
+    const response = await app.inject({ method, url, headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ version: VERSION, state: "draft" });
+    await vi.waitFor(() => expect(artCache.invalidateCatalogue).toHaveBeenCalledWith("artworks"));
+    await app.close();
+  });
+
+  it("refreshes after an update and a bulk change that touched lax.art", async () => {
+    const artCache = invalidator();
+    const app = await buildApp("shop_admin", {
+      artCache,
+      writer: {
+        updateArtwork: vi.fn(async () => ({ version: VERSION, refreshesArt: true })),
+        applyBulkVisibility: vi.fn(async () => ({
+          results: [{ artworkId: ARTWORK, outcome: "changed" as const }],
+          refreshesArt: true,
+        })),
+      },
+    });
+    const update = await app.inject({ ...writes[1], headers });
+    expect(update.json()).toEqual({ version: VERSION });
+    const bulk = await app.inject({ ...writes[6], headers });
+    expect(bulk.json()).toEqual({ results: [{ artworkId: ARTWORK, outcome: "changed" }] });
+    await vi.waitFor(() => expect(artCache.invalidateCatalogue).toHaveBeenCalledTimes(2));
+    await app.close();
+  });
+
+  it("refreshes artists after an artist is archived", async () => {
+    const artCache = invalidator();
+    const app = await buildApp("catalogue_editor", {
+      artCache,
+      artists: {
+        setArtistArchived: vi.fn(async () => ({
+          artistId: ARTIST,
+          archived: true,
+          refreshesArt: true,
+        })),
+      },
+    });
+    const response = await app.inject({ ...writes[8], headers });
+    expect(response.json()).toEqual({ artistId: ARTIST, archived: true });
+    await vi.waitFor(() => expect(artCache.invalidateCatalogue).toHaveBeenCalledWith("artists"));
+    await app.close();
+  });
+
+  it("leaves lax.art alone when nothing it serves changed", async () => {
+    const artCache = invalidator();
+    const app = await buildApp("shop_admin", { artCache });
+    await app.inject({ ...writes[0], headers });
+    await app.inject({ ...writes[2], headers });
+    expect(artCache.invalidateCatalogue).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("does not run when the write is refused", async () => {
+    const artCache = invalidator();
+    const setVisibility = vi.fn(async () => {
+      throw new ShopDomainError("Add an image before publishing");
+    });
+    const app = await buildApp("shop_admin", { writer: { setVisibility }, artCache });
+    const response = await app.inject({ ...writes[2], headers });
+    expect(response.statusCode).toBe(409);
+    expect(artCache.invalidateCatalogue).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("keeps the staff response when lax.art cannot be reached", async () => {
+    const artCache = invalidator(true);
+    const setVisibility = vi.fn(async () => ({
+      version: VERSION,
+      state: "live" as const,
+      refreshesArt: true,
+    }));
+    const app = await buildApp("shop_admin", { writer: { setVisibility }, artCache });
+    const response = await app.inject({ ...writes[2], headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ version: VERSION, state: "live" });
+    await vi.waitFor(() => expect(artCache.invalidateCatalogue).toHaveBeenCalled());
+    await app.close();
   });
 });

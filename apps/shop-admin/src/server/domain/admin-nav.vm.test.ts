@@ -61,6 +61,12 @@ describe("buildAdminNavGroups", () => {
     expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
   });
 
+  it("lets finance open artworks to set prices, but not artists", () => {
+    const hrefs = navHrefsFor("finance");
+    expect(hrefs).toContain("/artworks");
+    expect(hrefs).not.toContain("/artists");
+  });
+
   it("lets account managers view orders and enquiries", () => {
     const hrefs = navHrefsFor("account_manager");
     expect(hrefs).toEqual(expect.arrayContaining(["/orders", "/enquiries", "/clients"]));

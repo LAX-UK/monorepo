@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createArtwork = vi.fn();
 const saveArtwork = vi.fn();
+const saveArtworkPrice = vi.fn();
 const setArtworkVisibility = vi.fn();
 const getArtworkDetail = vi.fn();
 const push = vi.fn();
@@ -17,6 +18,7 @@ const toastError = vi.fn();
 vi.mock("@/server/application/admin-artwork-actions.server", () => ({
   createArtwork,
   saveArtwork,
+  saveArtworkPrice,
   setArtworkVisibility,
   getArtworkDetail,
   searchArtistOptions: vi.fn(async () => []),
@@ -148,6 +150,7 @@ describe("artwork editor", () => {
     for (const mock of [
       createArtwork,
       saveArtwork,
+      saveArtworkPrice,
       setArtworkVisibility,
       getArtworkDetail,
       push,
@@ -367,5 +370,25 @@ describe("artwork editor", () => {
     renderEditor({ permissions: { write: false, setPrice: false } });
     expect(screen.getByLabelText("Title")).toBeDisabled();
     expect(screen.queryByRole("button", { name: /Save/ })).toBeNull();
+  });
+
+  it("lets finance change only the price, through the price endpoint", async () => {
+    saveArtworkPrice.mockResolvedValue({ ok: true, data: { version: THEIRS } });
+    renderEditor({ permissions: { write: false, setPrice: true } });
+    expect(screen.getByLabelText("Title")).toBeDisabled();
+    expect(screen.getByText("You can change the edition price")).toBeInTheDocument();
+    typeInto(/Price per edition/, "520");
+    fireEvent.click(screen.getAllByRole("button", { name: "Save changes" })[0] as HTMLElement);
+    await waitFor(() =>
+      expect(saveArtworkPrice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          artworkId: detail.artworkId,
+          printPricePence: 52_000,
+          expectedVersion: OPENED,
+        }),
+      ),
+    );
+    expect(saveArtwork).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Unpublish" })).toBeNull();
   });
 });

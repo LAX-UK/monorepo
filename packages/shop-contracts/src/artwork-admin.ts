@@ -123,6 +123,19 @@ export const AdminArtworkUpdateBodySchema = Type.Object(
 );
 export type AdminArtworkUpdateBody = Static<typeof AdminArtworkUpdateBodySchema>;
 
+/**
+ * The edition price alone, for staff who may set prices but not edit the catalogue. Omitted
+ * clears the price.
+ */
+export const AdminArtworkPriceBodySchema = Type.Object(
+  {
+    printPricePence: Type.Optional(PricePenceSchema),
+    expectedVersion: CatalogueVersionSchema,
+  },
+  { additionalProperties: false },
+);
+export type AdminArtworkPriceBody = Static<typeof AdminArtworkPriceBodySchema>;
+
 export const ADMIN_ARTWORK_VISIBILITY_ACTIONS = [
   "publish",
   "unpublish",

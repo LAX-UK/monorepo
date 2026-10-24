@@ -166,6 +166,8 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       idempotencyKey: key(),
     });
     expect(published.state).toBe("live");
+    // A LAX Shop artwork: nothing on lax.art changes, so it is not asked to refresh.
+    expect(published.refreshesArt).toBe(false);
     const onStorefront = requireDefined(
       await storefront.getPublicArtworkBySlug(artwork.slug),
       "public artwork",
@@ -314,7 +316,34 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
         actorSubjectId: ACTOR,
         idempotencyKey: key(),
       }),
-    ).resolves.toEqual({ artistId: artwork.artistId, archived: true });
+    ).resolves.toEqual({ artistId: artwork.artistId, archived: true, refreshesArt: true });
     expect((await detailOf(artwork.artworkId)).publishBlockers).toContain("artist_archived");
+  });
+
+  it("sets the price alone, audits it, and refuses one on an original", async () => {
+    const { writer, auditActions } = setup();
+    const artwork = await newArtwork("price-only");
+    const opened = await detailOf(artwork.artworkId);
+    const saved = await writer.setPrice({
+      artworkId: artwork.artworkId,
+      printPricePence: 52_000,
+      expectedVersion: opened.version,
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    expect(saved.refreshesArt).toBe(false);
+    expect((await detailOf(artwork.artworkId)).printPricePence).toBe(52_000);
+    expect(await auditActions(artwork.artworkId)).toEqual(["create_artwork", "set_artwork_price"]);
+
+    const original = await newArtwork("price-only-original", { editions: false });
+    await expect(
+      writer.setPrice({
+        artworkId: original.artworkId,
+        printPricePence: 52_000,
+        expectedVersion: (await detailOf(original.artworkId)).version,
+        actorSubjectId: ACTOR,
+        idempotencyKey: key(),
+      }),
+    ).rejects.toThrow("Originals are sold by enquiry");
   });
 });

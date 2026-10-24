@@ -10,6 +10,8 @@ import {
   type AdminArtworkListQuery,
   AdminArtworkListQuerySchema,
   AdminArtworkListSchema,
+  type AdminArtworkPriceBody,
+  AdminArtworkPriceBodySchema,
   type AdminArtworkUpdateBody,
   AdminArtworkUpdateBodySchema,
   AdminArtworkVersionResponseSchema,
@@ -26,11 +28,16 @@ import type { ImportArtworkCommand } from "../../../application/ports/artwork-im
 import { notFound } from "../../../errors/shop-api-error.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
+  requireAnyShopStaffCapability,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { afterArtCatalogueWrite } from "./art-cache-invalidation.js";
 
 const ArtworkParams = Type.Object({ id: Type.String({ format: "uuid" }) });
+
+/** Catalogue editors, and staff who set prices without editing the catalogue (finance). */
+const ARTWORK_READERS = ["catalogue.write", "artwork_price.write"] as const;
 
 /** Descriptions run to 10,000 characters and a gallery to 20 images; the app default is 1 KB. */
 const ARTWORK_BODY_LIMIT = 65_536;
@@ -118,7 +125,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireAnyShopStaffCapability(request, ARTWORK_READERS);
       return deps.adminRead.artworks.listArtworks(request.query as AdminArtworkListQuery);
     },
   );
@@ -137,7 +144,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireAnyShopStaffCapability(request, ARTWORK_READERS);
       const { id } = request.params as Static<typeof ArtworkParams>;
       const artwork = await deps.adminRead.artworks.getArtwork(id);
       if (!artwork) throw notFound("Artwork not found");
@@ -158,12 +165,13 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
     async (request) => {
       const actor = catalogueWriter(request);
       const body = request.body as AdminArtworkCreateBody;
-      return deps.artworkCatalogue.createArtwork({
+      const result = await deps.artworkCatalogue.createArtwork({
         ...actor,
         ...cleanArtworkFields(body),
         slug: body.slug,
         eligibleForEditionAllocation: body.eligibleForEditionAllocation,
       });
+      return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
     },
   );
 
@@ -182,12 +190,38 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
       const actor = catalogueWriter(request);
       const { id } = request.params as Static<typeof ArtworkParams>;
       const body = request.body as AdminArtworkUpdateBody;
-      return deps.artworkCatalogue.updateArtwork({
+      const result = await deps.artworkCatalogue.updateArtwork({
         ...actor,
         ...cleanArtworkFields(body),
         artworkId: id,
         expectedVersion: body.expectedVersion,
       });
+      return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
+    },
+  );
+
+  app.put(
+    "/artworks/:id/price",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: ArtworkParams,
+        body: AdminArtworkPriceBodySchema,
+        response: { 200: Type.Object({ version: Type.String() }), ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "artwork_price.write");
+      const { id } = request.params as Static<typeof ArtworkParams>;
+      const body = request.body as AdminArtworkPriceBody;
+      const result = await deps.artworkCatalogue.setPrice({
+        artworkId: id,
+        printPricePence: body.printPricePence ?? null,
+        expectedVersion: body.expectedVersion,
+        actorSubjectId: requireShopAdminSubject(request),
+        idempotencyKey: requireIdempotencyKey(request),
+      });
+      return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
     },
   );
 
@@ -204,7 +238,12 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
       async (request) => {
         const { canSetPrice: _unused, ...actor } = catalogueWriter(request);
         const { id } = request.params as Static<typeof ArtworkParams>;
-        return deps.artworkCatalogue.setVisibility({ ...actor, artworkId: id, action });
+        const result = await deps.artworkCatalogue.setVisibility({
+          ...actor,
+          artworkId: id,
+          action,
+        });
+        return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
       },
     );
   }
@@ -222,11 +261,12 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
     async (request) => {
       const { canSetPrice: _unused, ...actor } = catalogueWriter(request);
       const body = request.body as AdminArtworkBulkVisibilityBody;
-      return deps.artworkCatalogue.applyBulkVisibility({
+      const result = await deps.artworkCatalogue.applyBulkVisibility({
         ...actor,
         action: body.action,
         artworkIds: body.artworkIds,
       });
+      return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
     },
   );
 

@@ -223,15 +223,10 @@ describe("archiving an artist", () => {
 });
 
 describe("edition price capability", () => {
-  it("is held by shop admins only", () => {
+  it("is held by shop admins and finance only", () => {
     expect(roleHasCapability("shop_admin", "artwork_price.write")).toBe(true);
-    for (const role of [
-      "catalogue_editor",
-      "account_manager",
-      "broker",
-      "operations",
-      "finance",
-    ] as const) {
+    expect(roleHasCapability("finance", "artwork_price.write")).toBe(true);
+    for (const role of ["catalogue_editor", "account_manager", "broker", "operations"] as const) {
       expect(roleHasCapability(role, "artwork_price.write")).toBe(false);
     }
   });

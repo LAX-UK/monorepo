@@ -86,6 +86,26 @@ export async function saveArtwork(input: {
   });
 }
 
+/** The edition price alone, for staff who may set prices but not edit the catalogue. */
+export async function saveArtworkPrice(input: {
+  artworkId: string;
+  printPricePence: number | null;
+  expectedVersion: string;
+  idempotencyKey: string;
+}): Promise<AdminMutationResult<{ version: string }>> {
+  const path = artworkPath(input.artworkId);
+  if (!path) return invalidInput;
+  return forwardAdminJsonMutation({
+    bffPath: `${path}/price`,
+    method: "PUT",
+    jsonBody: {
+      ...(input.printPricePence === null ? {} : { printPricePence: input.printPricePence }),
+      expectedVersion: input.expectedVersion,
+    },
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
 export async function setArtworkVisibility(input: {
   artworkId: string;
   action: AdminArtworkVisibilityAction;
