@@ -1,20 +1,18 @@
+import { TooltipProvider } from "@auction/ui/components/tooltip";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@auction/ui/components/tooltip", () => ({
-  TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
-  Tooltip: ({ children }: { children: React.ReactNode }) => children,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => children,
-  TooltipContent: () => null,
-}));
 vi.mock("@/lib/ui/notify", () => ({ notify: { error: vi.fn() } }));
 
 const { StaffEditableTitle } = await import("./staff-editable-title");
 
 describe("StaffEditableTitle", () => {
   it("keeps the rename button and the rename field outside the page heading", () => {
-    render(<StaffEditableTitle value="Blue Study" label="lot" editable onSave={vi.fn()} />);
+    render(
+      <TooltipProvider>
+        <StaffEditableTitle value="Blue Study" label="lot" editable onSave={vi.fn()} />
+      </TooltipProvider>,
+    );
     const heading = screen.getByRole("heading", { level: 1, name: "Blue Study" });
     const rename = screen.getByRole("button", { name: "Rename lot" });
     expect(heading).not.toContainElement(rename);
@@ -27,7 +25,11 @@ describe("StaffEditableTitle", () => {
 
   it("shows the new name at once and rolls back when saving fails", async () => {
     const onSave = vi.fn().mockResolvedValue({ ok: false, error: "Not allowed" });
-    render(<StaffEditableTitle value="Blue Study" label="lot" editable onSave={onSave} />);
+    render(
+      <TooltipProvider>
+        <StaffEditableTitle value="Blue Study" label="lot" editable onSave={onSave} />
+      </TooltipProvider>,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Rename lot" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Rename lot" }), {
       target: { value: "Blue Study, 1962" },
@@ -43,7 +45,11 @@ describe("StaffEditableTitle", () => {
   });
 
   it("offers no rename to roles that cannot edit", () => {
-    render(<StaffEditableTitle value="Blue Study" label="lot" editable={false} onSave={vi.fn()} />);
+    render(
+      <TooltipProvider>
+        <StaffEditableTitle value="Blue Study" label="lot" editable={false} onSave={vi.fn()} />
+      </TooltipProvider>,
+    );
     expect(screen.queryByRole("button", { name: "Rename lot" })).not.toBeInTheDocument();
   });
 });
