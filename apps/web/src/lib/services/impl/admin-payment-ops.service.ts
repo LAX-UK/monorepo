@@ -15,10 +15,19 @@ export class AdminPaymentOpsService implements IAdminPaymentOpsService {
     );
   }
 
-  async refund(paymentId: string): Promise<ServiceResult<Record<string, unknown>>> {
+  async refund(
+    paymentId: string,
+    reason?: string,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/payments/${encodeURIComponent(paymentId)}/refund`,
-      { method: "POST" },
+      reason
+        ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason }),
+          }
+        : { method: "POST" },
     );
   }
 

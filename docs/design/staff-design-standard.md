@@ -37,9 +37,9 @@ Severity for audit findings:
 
 | Status | Rules |
 | --- | --- |
-| `MET` | 55 |
-| `PARTIAL` | 16 |
-| `GAP` | 3 |
+| `MET` | 58 |
+| `PARTIAL` | 14 |
+| `GAP` | 2 |
 | `APP` | 11 |
 
 Counted from each rule's **Kit** line by its first status. A rule the kit meets for its parts,
@@ -279,10 +279,10 @@ table scrolls horizontally.**
 **TBL-5. Filters: one search field, filter buttons, then chips. Use no query builder.**
 
 - **Rule:**
-  - **Search** is 256px wide and 32px high. It submits on Enter and searches IDs, names and
-    emails.
-  - **Filter buttons**, at most 4 visible, each open a checklist with counts. Further filters go
-    behind "More filters", which opens a panel.
+  - **Search** fills the toolbar row and is 32px high. It submits on Enter and searches IDs,
+    names and emails.
+  - **One "Filter" button** opens a sheet holding every filter, applied together. It shows how
+    many filters are on. A date period that filters the rows sits beside it.
   - **Applied filters** show as removable chips, with "Clear all" when there are two or more.
   - Range filters (amount, date) use presets plus two fields.
   - Filter state lives in the URL.
@@ -292,10 +292,10 @@ table scrolls horizontally.**
   - Every applied filter shows as a chip.
   - Removing a chip updates the URL and the list.
   - Esc in search clears it.
-  - Each filter button shows the number of values that are on.
-- **Kit:** `PARTIAL`. `TableSearch`, `FilterMenu` (checklist with counts), `ActiveFilterChips`
-  and `DateRangeFilter` all exist. There is no amount-range filter, no "More filters" panel and
-  no single-select (radio) filter.
+  - The Filter button shows the number of filters that are on.
+- **Kit:** `PARTIAL`. `TableSearch` (`fullWidth`), `FilterSheet` (checklist, single-select and
+  date-range sections, staged until "Apply filters"), `ActiveFilterChips` and `DateRangeFilter`,
+  laid out by `ListPage`. There is no amount-range section.
 - **Sources:** [polaris-filters] [stripe-export]
 
 **TBL-6. Saved views: built-in views as tabs with counts, team views in code, and personal views
@@ -345,7 +345,9 @@ saved per person.**
 - **Rule:**
   - A click anywhere on the row outside a control opens the record (panel or page). Enter does
     the same.
-  - The last column is 40px wide and holds a 24px ghost `…` button.
+  - The last column is 56px wide and holds a 24px ghost `…` button.
+  - Money and irreversible actions in the menu open a confirm dialog with the amount; no row
+    carries an inline red button.
   - At most **one** frequent action may be inline, for example "Mark packed".
   - Destructive items come last in the menu, after a separator, in danger text.
   - The row's title cell is a real link, so cmd-click opens it in a new tab.
@@ -355,9 +357,10 @@ saved per person.**
   - Cmd-click a row title: it opens a new tab.
   - The `…` is visible without hover.
   - Delete or Refund is last in the menu and red.
-- **Kit:** `PARTIAL`. Row open (click and Enter) and `OverflowMenu` (destructive last) exist, and the
-  selection cell never opens the row (TBL-15). A standard actions column and title-link
-  convention are not built in.
+- **Kit:** `MET`. Row open (click and Enter), `RowActions` and `rowActionsColumn` (the 56px last
+  column, header for screen readers only, at the right of each row on a phone; `ListPage`
+  adds it from `table.rowActions`), `OverflowMenu` (destructive last), and the selection cell
+  never opens the row (TBL-15). Making the title cell a link is `APP`.
 - **Sources:** [primer-dt] [carbon-dt] [retool-rows]
 
 **TBL-9. Inline edit only for one-value fields that change often, such as status, assignee or
@@ -409,7 +412,9 @@ for previous and next.**
   hidden. Reordering is optional (P2).
 - **Why:** finance and fulfilment want different columns from the same orders list.
 - **Check:** hide a column, reload, and it stays hidden. "Reset columns" is available.
-- **Kit:** `GAP`.
+- **Kit:** `MET`. `ColumnsMenu` with `useColumnVisibility` (remembered per list in this browser,
+  "Reset columns", the first column locked, defaults through `defaultHiddenColumns`), placed by
+  `ListPage`.
 - **Sources:** [carbon-dt] [polaris-filters]
 
 **TBL-13. Numbers, money and dates are formatted and aligned consistently.**
@@ -541,8 +546,9 @@ independent and heavy.**
 - **Check:**
   - Order and payment pages have no tabs.
   - When tabs exist, each has a URL, and reload keeps the tab.
-- **Kit:** `MET` for the parts (`Section`, `KeyValueList`, `TabNav`). The layout grid is `APP`.
-  Consider a `RecordLayout` component (P2).
+- **Kit:** `MET`. `DetailPage` lays out the header, a summary card, optional tabs, and the main
+  column beside a rail (2fr / 1fr from 1280px), built from `Section`, `KeyValueList` and
+  `TabNav`.
 - **Sources:** [polaris-details]
 
 **PRD-4. Every reference can be copied in one click.**
@@ -1253,7 +1259,8 @@ badge text.**
 - **Why:** this cuts clutter, while the access page explains a shared link.
 - **Check:** sign in as each role. The nav lists only reachable pages. Paste a forbidden URL and
   you see the access page.
-- **Kit:** `APP`. Consider an `AccessDeniedState` (P2).
+- **Kit:** `APP`. `AccessDeniedState` (also `access="denied"` on `ListPage` and `DetailPage`)
+  draws the access page; deciding what each role sees stays with the app.
 - **Sources:** [carbon-disabled] [uxtigers-inactive]
 
 **PRM-2. Disable with a reason what this record's *state* blocks.**
@@ -1283,8 +1290,9 @@ badge text.**
   contrast and stays copyable.
 - **Check:** as a view-only role, there are no disabled inputs, all values can be selected and
   copied, and the header says View only.
-- **Kit:** `PARTIAL`. Read-only field styling and `KeyValueList` exist. There is no "View only"
-  header marker.
+- **Kit:** `MET`. Read-only field styling, `KeyValueList`, and `ViewOnlyBadge`, which
+  `access="read-only"` on `ListPage` and `DetailPage` shows in the header while dropping the
+  primary action and row selection.
 - **Sources:** [carbon-readonly]
 
 **PRM-4. Actions check permissions on the server. The UI only mirrors those rules.**
@@ -1331,8 +1339,9 @@ badge text.**
 - **Why:** tiles without a decision attached are decoration and slow the page.
 - **Check:** for each tile, ask "who changes what when this moves?" If there is no answer,
   remove it.
-- **Kit:** `MET` (`StatGrid`: no charts, a hint with positive or negative tone). Linking tiles is
-  `APP`. Positive and negative tones also need a ▲/▼ glyph so they don't rely on colour alone.
+- **Kit:** `MET`. `MetricStrip`: at most four metrics in one bordered row, the period stated, a
+  comparison only when given, with a ▲/▼ glyph and a spoken direction so tone is never the only
+  cue, and metrics that link to the list behind them. `StatGrid` remains for record pages.
 - **Sources:** [polaris-details] [wcag-use-of-color]
 
 **DSH-3. Counts in the nav, on Overview and on view tabs agree, and each is labelled as yours or
@@ -1516,9 +1525,9 @@ records how. **Open** items are still to build.
 
 1. **Open.** **`StatusBadge` `shape`** (ring, dot, check, alert), defined once in each domain's status map.
    (CRF-7)
-2. **Open.** **Column visibility menu** (`ColumnsMenu`), remembered per list, with "Reset". (TBL-12)
-3. **Open.** **Filter set completion.** Single-select filter, amount-range filter, and a "More filters"
-   panel. (TBL-5)
+2. **Done.** **Column visibility menu** (`ColumnsMenu`, `useColumnVisibility`), remembered per list, with "Reset columns". (TBL-12)
+3. **Open.** **Filter set completion.** `FilterSheet` holds checklist, single-select and date sections; an amount-range section is still
+   to come. (TBL-5)
 4. **Open.** **Page-size control** in `TablePagination` (25, 50, 100). (TBL-10)
 5. **Open.** **`CopyButton` / `CopyableId` exported** for headers, cells and menus. (PRD-4, PRD-K4)
 6. **Open.** **Motion tokens:** `--duration-staff-fast` 100, `-base` 150, `-panel` 200, and
@@ -1526,12 +1535,12 @@ records how. **Open** items are still to build.
 7. **Open.** **Type.** Restrict `text-staff-2xs` to digits and `kbd`. Add a 14/22 `prose` style for
    reading text. (CRF-12)
 8. **Done.** **Filter-chip remove button** has a 24px target. (CRF-17)
-9. **Open.** **`StatGrid` hint glyphs:** ▲ and ▼ alongside the positive and negative tones. (DSH-2)
+9. **Done.** **Comparison glyphs:** ▲ and ▼ with a spoken direction, in `MetricStrip`. (DSH-2)
 10. **Open.** **Wizard parts:** `StepIndicator` and `ReviewList` ("Check your answers"). (FRM-13)
 11. **Open.** **`ProgressBar` and `JobStatus`**, plus a top-bar jobs indicator slot. (FBK-6) This is P2 for
     the kit, but promote it to P1 when imports or bulk payouts ship.
-12. **Open.** **"View only" marker** for `PageHeader`, and `AccessDeniedState`. (PRM-1, PRM-3)
-13. **Open.** **`RecordLayout`:** a two-column 2fr/1fr grid that stacks below 1280px. (PRD-3)
+12. **Done.** **"View only" marker** (`ViewOnlyBadge`) and `AccessDeniedState`. (PRM-1, PRM-3)
+13. **Done.** **`DetailPage`:** header, summary, then a 2fr/1fr main and rail that stacks below 1280px. (PRD-3)
 
 ---
 

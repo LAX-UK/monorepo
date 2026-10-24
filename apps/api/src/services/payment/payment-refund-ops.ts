@@ -13,6 +13,7 @@ export async function refundPayment(
   paymentId: string,
   actingLegalEntityId?: string | null,
   userStaffRole?: string | null,
+  staffReason?: string,
 ): Promise<Result<void, AuthzError | PaymentProviderError>> {
   const isPlatformFinanceWrite = roleHasCapability(
     userRole as UserRole,
@@ -84,6 +85,7 @@ export async function refundPayment(
       adminUserId,
       stripeRefundId,
       via: "admin_manual",
+      ...(staffReason ? { staffReason } : {}),
       sourceEventId: `admin_refund:${paymentId}`,
       clawbackNote: `Admin refund: ${paymentId}`,
       logViaField: false,

@@ -88,7 +88,7 @@ jobs:
         run: pnpm lint:lib-admin-boundaries
 
       - name: Staff UI guardrails
-        run: pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition
+        run: pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition && pnpm lint:staff-list-template
 
       - name: E2E portfolio guard
         run: pnpm lint:e2e-portfolio

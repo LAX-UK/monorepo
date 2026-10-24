@@ -71,32 +71,28 @@ To add a new bell item: append to `STAFF_HEADER_ATTENTION_SPECS`, gate with `Cap
 3. Use `ShellChromeIconButton` or existing shell primitives for styling.
 4. Add vitest on `staff-shell-header` or `app-shell.test.tsx`.
 
-## Finance list pipeline (Pipeline A)
+## List pages
 
-Reference implementation: [`/admin/payments`](../app/admin/(finance)/payments/page.tsx).
+Every list page is built on the staff kit's `ListPage` template (`@auction/staff-ui`). Reference
+implementation: [`/admin/payments`](../app/admin/(finance)/payments/page.tsx).
 
 ```
-page.tsx → build*ListPageModel → CatalogListShell → *Board
+page.tsx → load*ListPage (server) → *-staff-list.vm.ts (rows, views, metrics) → *StaffList (ListPage)
 ```
 
 | Piece | Payments example |
 |-------|------------------|
-| Page model | [`build-payments-list-page-model.ts`](../lib/admin/build-payments-list-page-model.ts) |
-| Shell | [`CatalogListShell`](../components/admin/catalog/catalog-list-shell.tsx) |
-| Breadcrumbs | [`CatalogBreadcrumbs`](../components/admin/catalog/catalog-breadcrumbs.tsx) — Finance trail |
-| Filters | Module toolbar + `FilterChipRow` / active filter chips from VM |
-| Board | [`AdminPaymentsBoard`](../components/admin/admin-payments-board/) |
+| Loader | [`load-payments-list-page.ts`](../admin/finance/load-payments-list-page.ts) |
+| View model | [`payments-staff-list.vm.ts`](../admin/finance/payments-staff-list.vm.ts) |
+| List | [`PaymentsStaffList`](../../components/admin/payments/payments-staff-list.tsx) |
+| Money actions | [`usePaymentMoneyActions`](../../components/admin/payments/payment-money-actions.tsx) |
 
-**Checklist for Disputes / Payouts:**
-
-1. Add `build-*-list-page-model.ts` — query parse, chip hrefs, export filters, pagination helpers.
-2. Replace `AdminListShell` with `CatalogListShell` + finance breadcrumbs.
-3. Keep existing board + filter toolbar; wire VM outputs only.
-4. Add vitest on the page model.
+`scripts/check-staff-list-template.mjs` lists the pages still to move onto `ListPage`; a new
+list page that is not on it fails CI.
 
 ## Scaling checklist — new admin module page
 
-- **List/board:** `CatalogListShell` + presenters (`StatusChip`, `DeliveryModePill`) — see catalog sales/lots and finance payments.
+- **List:** `ListPage` from `@auction/staff-ui` with a `*-staff-list.vm.ts` — see payments.
 - **Detail tab:** `detail-board/` primitives + entity VM — see [`detail-board/README.md`](../components/admin/catalog/detail-board/README.md).
 - **Entity attention:** `packages/domain` contributors (sale-scoped) or sidebar/header nav-count specs (`staff-nav.ts`, `build-staff-header-attention-items.ts`).
 

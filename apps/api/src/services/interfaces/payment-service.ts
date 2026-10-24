@@ -69,6 +69,8 @@ export interface IPaymentAdminService {
     paymentId: string,
     actingLegalEntityId?: string | null,
     userStaffRole?: string | null,
+    /** The staff member's written reason, kept on the audit event. */
+    staffReason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>>;
 
   refundManualReviewPayment(

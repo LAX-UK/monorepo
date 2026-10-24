@@ -135,6 +135,39 @@ describe("payment finance entity authorization", () => {
     );
   });
 
+  it("passes the staff member's refund reason through for the audit event", async () => {
+    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+
+    const res = await app.request(`/payments/${paymentId}/refund`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "  Buyer withdrew within the cooling-off period  " }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(entityStaffPayment.refundPayment).toHaveBeenCalledWith(
+      "u1",
+      "staff",
+      paymentId,
+      undefined,
+      "finance_ops",
+      "Buyer withdrew within the cooling-off period",
+    );
+  });
+
+  it("refuses a refund reason that is too short to explain anything", async () => {
+    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+
+    const res = await app.request(`/payments/${paymentId}/refund`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "oops" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(entityStaffPayment.refundPayment).not.toHaveBeenCalled();
+  });
+
   it("lets finance_ops capture platform-wide without an acting entity", async () => {
     const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
 

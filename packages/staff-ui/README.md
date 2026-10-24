@@ -86,6 +86,42 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
   saved views), `TableSearch`, `FilterMenu`, `ActiveFilterChips`, `DensityToggle`,
   `TablePagination`, `ListPageSkeleton`, `DateRangeFilter` (presets plus two date fields, whole
   London days as `YYYY-MM-DD`).
+- **Page templates**: every list page is a `ListPage`, every record page a `DetailPage`, so both
+  tools read the same.
+  - `ListPage`, in one fixed order: the page header (title, one line of purpose, actions with
+    Export among the secondary ones); an `AttentionStrip` (one line per issue, linking to the
+    filtered view, never dismissable); a `MetricStrip` (at most four numbers in one bordered row,
+    with their period); then one table surface: view tabs (overflowing into "More"), search ·
+    `FilterSheet` · period · `ColumnsMenu` · density, the applied filters as chips, the table
+    with a `…` menu on every row (`table.rowActions`), and pagination. Loading, empty, no
+    results, error with retry, read-only and no access are props of the template.
+    `scripts/check-staff-list-template.mjs` fails CI for a new list page built without it.
+  - `DetailPage`: breadcrumbs and the record pager, title with status, key facts and actions, a
+    summary card, an optional notice and tabs, then sections beside a rail for activity.
+  - Parts: `MetricStrip`, `AttentionStrip`, `FilterSheet`, `ColumnsMenu` and
+    `useColumnVisibility`, `RowActions` and `rowActionsColumn`, `AccessDeniedState`,
+    `ViewOnlyBadge`.
+
+  ```tsx
+  <ListPage
+    title="Payments"
+    description="Buyer payments for won lots."
+    Link={Link}
+    listKey="bid-admin.payments"
+    secondaryActions={<ExportButton … />}
+    attention={[{ id: "review", count: 10, label: "payments need manual review", href }]}
+    metrics={{ label: "Payments summary", period: "All payments", items }}
+    views={<DataViews … />}
+    search={<TableSearch fullWidth … />}
+    filters={<FilterSheet sections={…} onApply={…} />}
+    activeFilters={chips}
+    onClearFilters={clear}
+    filtered={filtered}
+    empty={{ title: "No payments yet" }}
+    table={{ columns, data, getRowId, defaultSort, rowActions: { label, actions } }}
+    pagination={{ summary: "1–50 of 312 payments", prevHref, nextHref }}
+  />
+  ```
 - **Overview**: `AttentionList` (queues that need someone, linking to the filtered list).
 - **Record pages**: `Section`, `KeyValueList`, `Timeline`, `RelativeTime`, `TruncatedText`,
   `StatGrid`, `StatusBadge` with

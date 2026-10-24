@@ -18,7 +18,7 @@ type Props = {
  *
  * Queue drawer contract: primary `<dl>` fields must be human-readable (names, links, badges).
  * UUIDs, Stripe IDs, and raw JSON belong in `AdminTechnicalIdDisclosure` or `AdminJsonDisclosure`.
- * Reference: `payments-board/drawer.tsx`, `payouts-board/drawer.tsx`.
+ * Reference: `payouts-board/drawer.tsx`.
  */
 export function AdminTechnicalIdDisclosure({ items, triggerLabel = "Show reference IDs" }: Props) {
   const panelId = useId();

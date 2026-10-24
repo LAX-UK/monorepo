@@ -1,4 +1,4 @@
-import { CircleAlert, Inbox, SearchX } from "lucide-react";
+import { CircleAlert, Eye, Inbox, Lock, SearchX } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 
@@ -64,6 +64,51 @@ export function NoResultsState(props: StateProps) {
 /** Loading failed: say what failed, without jargon, and offer a retry. */
 export function ErrorState(props: StateProps) {
   return <StateFrame {...props} icon={<CircleAlert />} tone="danger" role="alert" />;
+}
+
+/**
+ * The role cannot open this page: names what is locked, the role that can, and who to ask. Not a
+ * 404 and not an empty list, so a shared link explains itself.
+ */
+export function AccessDeniedState({
+  resource,
+  requiredRole,
+  contact = "an admin on your team",
+  className,
+  headingLevel,
+}: {
+  /** What is locked: "Payments". */
+  resource: string;
+  /** Who can open it: "Finance". */
+  requiredRole?: string;
+  contact?: string;
+  className?: string;
+  headingLevel?: "h2" | "h3";
+}) {
+  return (
+    <StateFrame
+      icon={<Lock />}
+      tone="neutral"
+      title={`You don’t have access to ${resource}`}
+      description={
+        requiredRole
+          ? `${resource} is open to the ${requiredRole} role. Ask ${contact} if you need it.`
+          : `Ask ${contact} if you need it.`
+      }
+      {...(className ? { className } : {})}
+      {...(headingLevel ? { headingLevel } : {})}
+    />
+  );
+}
+
+/** A quiet marker in a page header for roles that can look but not change: "View only · Finance". */
+export function ViewOnlyBadge({ role }: { role?: string }) {
+  return (
+    <span className="inline-flex h-6 items-center gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted">
+      <Eye aria-hidden className="size-3.5" strokeWidth={1.75} />
+      View only{role ? ` · ${role}` : ""}
+    </span>
+  );
 }
 
 /** A block placeholder with the exact geometry of what will load, so nothing shifts. */

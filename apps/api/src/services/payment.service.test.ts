@@ -409,6 +409,7 @@ describe("PaymentService", () => {
       pay.id,
       undefined,
       "super_admin",
+      "Buyer withdrew within the cooling-off period",
     );
     expect(result.isOk()).toBe(true);
     expect(stripe.createRefund).toHaveBeenCalledWith({
@@ -419,7 +420,12 @@ describe("PaymentService", () => {
     expect(order).toEqual(["stripe_refund", "db_refund", "event"]);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, "re_abc");
     expect(publisher.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: "payment.refunded" }),
+      expect.objectContaining({
+        eventType: "payment.refunded",
+        payload: expect.objectContaining({
+          staffReason: "Buyer withdrew within the cooling-off period",
+        }),
+      }),
     );
   });
 

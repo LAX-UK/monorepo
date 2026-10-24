@@ -1,14 +1,19 @@
 import "server-only";
 
-import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { paymentsListController } from "@/lib/admin/admin-list-controllers";
-import { detectAnomalies, detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import {
   type PaymentsListSearchParams,
   buildPaymentsListPageModel,
 } from "@/lib/admin/build-payments-list-page-model";
+import {
+  type PaymentsListSearch,
+  activePaymentsView,
+  paymentsListHref,
+  paymentsRangeSummary,
+  toManualReviewStaffRows,
+  toPaymentsStaffRows,
+} from "@/lib/admin/finance/payments-staff-list.vm";
 import { manualReviewListController } from "@/lib/admin/manual-review-list-controller";
-import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
@@ -31,6 +36,11 @@ const EMPTY_MANUAL_SUMMARY = {
   sofHolds: 0,
 };
 
+/** Shown in place of the rows; the raw HTTP failure stays in the server logs. */
+const PAYMENTS_LOAD_ERROR = "We could not reach the payments service. Try again in a moment.";
+const MANUAL_REVIEW_LOAD_ERROR =
+  "We could not load the manual review queue. Try again in a moment.";
+
 type SessionUser = Awaited<ReturnType<typeof getServerSessionUser>>;
 
 /** What the signed-in staff member may do to a payment, from the rules the API enforces. */
@@ -43,61 +53,64 @@ function paymentActionCapabilities(sessionUser: SessionUser) {
   };
 }
 
+/** The search params as plain strings, so the client can build view and filter links. */
+function plainSearch(sp: PaymentsListSearchParams): PaymentsListSearch {
+  return Object.fromEntries(
+    Object.entries(sp).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
 export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
   const model = buildPaymentsListPageModel(sp);
-  const periodDays = parseAdminKpiPeriod(sp.period);
-  const paymentsTrendPromise = getAdminPaymentsKpiTrend(periodDays).catch(() => ({
-    currentTotal: 0,
-    priorTotal: 0,
-    dailyCounts: [] as number[],
-  }));
+  const search = plainSearch(sp);
+  const view = activePaymentsView(search);
+  const navCountsPromise = getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
 
   if (model.manualReviewQueue) {
-    const [manualResult, sessionUser, paymentsTrend] = await Promise.all([
+    const [manualResult, sessionUser, navCounts] = await Promise.all([
       manualReviewListController.fetch(model.manualReviewQuery).then(
         (result) => ({ ...result, error: null as string | null }),
-        (error) => ({
+        () => ({
           rows: [] as Awaited<ReturnType<typeof manualReviewListController.fetch>>["rows"],
           allRows: [] as Awaited<ReturnType<typeof manualReviewListController.fetch>>["allRows"],
           summary: EMPTY_MANUAL_SUMMARY,
-          error: error instanceof Error ? error.message : "Could not load manual review payments.",
+          error: MANUAL_REVIEW_LOAD_ERROR as string | null,
         }),
       ),
       getServerSessionUser(),
-      paymentsTrendPromise,
+      navCountsPromise,
     ]);
     return {
       mode: "manual-review" as const,
-      model,
-      periodDays,
-      paymentsTrend,
-      rows: manualResult.rows,
-      allRows: manualResult.allRows,
+      search,
+      view,
+      reasonFilter: model.manualReviewReasonFilter,
+      rows: toManualReviewStaffRows(manualResult.rows),
+      queueSize: manualResult.allRows.length,
       summary: manualResult.summary,
       loadError: manualResult.error,
       ...paymentActionCapabilities(sessionUser),
       canOpenComplianceQueues: sessionUser
         ? canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
         : false,
-      anomalies: detectAnomalies(
-        { manualReviewCount: manualResult.rows.length },
-        { manualReviewCount: 0 },
-      ),
+      attentionCounts: {
+        manualReviewCount: manualResult.allRows.length,
+        disputesOpen: navCounts.disputesOpen,
+      },
     };
   }
 
-  const [paymentResult, navCounts, paymentsTrend, sessionUser] = await Promise.all([
+  const [paymentResult, navCounts, sessionUser] = await Promise.all([
     paymentsListController.fetch(model.query).then(
       (result) => ({ ...result, error: null as string | null }),
-      (error) => ({
+      () => ({
         rows: [] as AdminPaymentTableRow[],
         paymentsSummary: EMPTY_PAYMENT_SUMMARY,
         total: 0,
-        error: error instanceof Error ? error.message : "Could not load payments.",
+        error: PAYMENTS_LOAD_ERROR as string | null,
       }),
     ),
-    getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
-    paymentsTrendPromise,
+    navCountsPromise,
     getServerSessionUser(),
   ]);
   const buyerIds = [...new Set(paymentResult.rows.map((row) => row.buyerId).filter(Boolean))];
@@ -109,39 +122,35 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
   }));
   const summary = paymentResult.paymentsSummary ?? EMPTY_PAYMENT_SUMMARY;
   const total = paymentResult.total ?? rows.length;
+  const { offset, limit } = model.query;
 
   return {
     mode: "payments" as const,
-    model,
-    periodDays,
-    paymentsTrend,
-    rows,
+    search,
+    view,
+    rows: toPaymentsStaffRows(rows),
     summary,
     total,
     loadError: paymentResult.error,
     ...paymentActionCapabilities(sessionUser),
-    anomalies: detectAnomaliesFromNavCounts(navCounts, {
-      awaitingCaptureVolume: summary.pending,
-    }),
+    attentionCounts: {
+      manualReviewCount: navCounts.manualReviewCount,
+      disputesOpen: navCounts.disputesOpen,
+    },
+    exportFilters: model.exportFilters,
     pagination:
-      !paymentResult.error && total > 0
+      !paymentResult.error && rows.length > 0
         ? {
-            offset: model.query.offset,
-            limit: model.query.limit,
-            countOnPage: rows.length,
+            summary: paymentsRangeSummary(offset, rows.length, total),
             prevHref:
-              model.query.offset > 0
-                ? model.buildPaginationHref({
-                    offset: Math.max(0, model.query.offset - model.query.limit),
-                  })
-                : null,
+              offset > 0 ? paymentsListHref(search, { offset: Math.max(0, offset - limit) }) : null,
             nextHref:
-              model.query.offset + rows.length < total
-                ? model.buildPaginationHref({
-                    offset: model.query.offset + model.query.limit,
-                  })
+              offset + rows.length < total
+                ? paymentsListHref(search, { offset: offset + limit })
                 : null,
           }
         : null,
   };
 }
+
+export type AdminPaymentsListPage = Awaited<ReturnType<typeof loadAdminPaymentsListPage>>;

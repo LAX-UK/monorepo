@@ -55,3 +55,13 @@ export const adminRefundBuyerBodySchema = z.object({
 });
 
 export type AdminRefundBuyerInput = z.infer<typeof adminRefundBuyerBodySchema>;
+
+/**
+ * Refunding a captured payment from the staff tools (`POST /payments/:id/refund`). The reason is
+ * kept on the audit event; it is optional so seller-entity callers without one still work.
+ */
+export const paymentRefundBodySchema = z.object({
+  reason: z.string().trim().min(ADMIN_REFUND_BUYER_REASON_MIN).max(500).optional(),
+});
+
+export type PaymentRefundInput = z.infer<typeof paymentRefundBodySchema>;

@@ -17,6 +17,7 @@
     "lint:lib-admin-boundaries": "node scripts/check-lib-admin-boundaries.mjs",
     "lint:staff-legacy-shell": "node scripts/check-staff-legacy-shell.mjs",
     "lint:staff-route-composition": "node scripts/check-staff-route-composition.mjs",
+    "lint:staff-list-template": "node scripts/check-staff-list-template.mjs",
     "lint:z-schema-transform": "node scripts/check-z-schema-transform.mjs",
     "lint:e2e-portfolio": "pnpm --filter @auction/web check:e2e-portfolio",
     "lint:e2e-tags": "pnpm --filter @auction/web check:e2e-tags",
