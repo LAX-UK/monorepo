@@ -6,6 +6,8 @@
   --brand-obsidian: #000000;
   /* LAX Bid accent only (PRODUCT_ACCENTS in brand-identity.ts). */
   --brand-midnight: #091f5b;
+  /* Bid's navy re-tuned for dark surfaces (PRODUCT_ACCENTS_ON_DARK.bid), for Bid's name as text. */
+  --brand-midnight-on-dark: #a5b7e9;
   --brand-light-gray: #b8b9c0;
   --brand-light-cream: #f2f1df;
   --brand-accent-gold: #d4af37;

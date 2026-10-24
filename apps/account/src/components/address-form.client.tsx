@@ -1,5 +1,7 @@
 "use client";
 
+import { Button, LoadingButton } from "@/components/account-button";
+import { CARD, CARD_PADDING, CARD_TITLE, FIELD } from "@/components/account-ui";
 import {
   type AddressFieldErrors,
   type AddressFormValues,
@@ -9,10 +11,8 @@ import {
   validateAddressForm,
 } from "@/server/domain/account-addresses.vm";
 import type { AccountAddressInput } from "@auction/identity-contracts/account";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import {
   Select,
   SelectContent,
@@ -75,7 +75,7 @@ export function AddressForm({
       <div className="space-y-1.5">
         <Label htmlFor={id}>{label}</Label>
         <Input
-          className="h-11"
+          className={FIELD}
           id={id}
           name={field}
           type={options.type ?? "text"}
@@ -106,7 +106,7 @@ export function AddressForm({
   return (
     <form
       aria-labelledby={`${formId}-heading`}
-      className="-mx-4 space-y-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-5"
+      className={`space-y-4 ${CARD} ${CARD_PADDING}`}
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -119,7 +119,7 @@ export function AddressForm({
         onSubmit(result.input);
       }}
     >
-      <h3 id={`${formId}-heading`} className="font-headline text-base font-medium text-on-surface">
+      <h3 id={`${formId}-heading`} className={CARD_TITLE}>
         {heading}
       </h3>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -134,7 +134,7 @@ export function AddressForm({
         <Select value={values.country} onValueChange={(value) => set("country", value)}>
           <SelectTrigger
             id={countryId}
-            className="min-h-11"
+            className={FIELD}
             aria-invalid={countryError ? true : undefined}
             aria-describedby={countryError ? `${countryId}-error` : undefined}
           >

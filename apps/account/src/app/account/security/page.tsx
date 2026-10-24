@@ -28,6 +28,8 @@ export default async function SecurityPage() {
   const facts = readAccountSecurityFacts(overview, liveSecurity);
   const groups = buildSecurityGroups(facts, links);
   const backupCodes = buildBackupCodesSection(facts);
+  const settings = groups.filter((group) => group.id !== "your-account");
+  const accountGroups = groups.filter((group) => group.id === "your-account");
 
   return (
     <AccountShell>
@@ -35,7 +37,7 @@ export default async function SecurityPage() {
         title="Security"
         description="Your password, two-step verification and the devices you're signed in on."
       />
-      {groups.map((group) => (
+      {settings.map((group) => (
         <SettingsGroup key={group.id} group={group} />
       ))}
       {backupCodes ? (
@@ -46,6 +48,10 @@ export default async function SecurityPage() {
         pagePath={ACCOUNT_ROUTES.security}
         reauthHref={buildReauthHref(ACCOUNT_ROUTES.security)}
       />
+      {/* Deleting the account is the one irreversible step, so it comes last on the page. */}
+      {accountGroups.map((group) => (
+        <SettingsGroup key={group.id} group={group} />
+      ))}
     </AccountShell>
   );
 }

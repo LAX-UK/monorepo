@@ -1,10 +1,12 @@
 "use client";
 
+import { LoadingButton } from "@/components/account-button";
+import { FIELD } from "@/components/account-ui";
+import { ProductText } from "@/components/product-name";
 import { renameAccountAction } from "@/server/application/account-identity-actions.server";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
@@ -68,7 +70,7 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
       <div className="space-y-1.5">
         <Label htmlFor={inputId}>Name</Label>
         <Input
-          className="h-11"
+          className={FIELD}
           id={inputId}
           name="name"
           autoComplete="name"
@@ -82,16 +84,16 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
           aria-describedby={state.kind === "idle" ? undefined : messageId}
         />
         <p className="text-xs text-on-surface-variant">
-          Your name is shared with LAX Bid, LAX Shop and lax.art.
+          <ProductText text="Your name is shared with LAX Bid, LAX Shop and lax.art." />
         </p>
-      </div>
-      <div id={messageId} aria-live="polite">
-        {state.kind === "error" ? (
-          <p role="alert" className="text-sm text-error">
-            {state.message}
-          </p>
-        ) : null}
-        {state.kind === "saved" ? <p className="text-sm text-success">{state.message}</p> : null}
+        <div id={messageId} aria-live="polite">
+          {state.kind === "error" ? (
+            <p role="alert" className="text-sm text-error">
+              {state.message}
+            </p>
+          ) : null}
+          {state.kind === "saved" ? <p className="text-sm text-success">{state.message}</p> : null}
+        </div>
       </div>
       <LoadingButton
         type="submit"
@@ -99,7 +101,7 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
         loading={pending}
         loadingLabel="Saving…"
         disabled={unchanged}
-        className="min-h-11"
+        className="self-start"
       >
         Save name
       </LoadingButton>

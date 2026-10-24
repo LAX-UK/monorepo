@@ -1,5 +1,7 @@
 "use client";
 
+import { Button, LoadingButton } from "@/components/account-button";
+import { FIELD } from "@/components/account-ui";
 import {
   sendPhoneCodeAction,
   verifyPhoneAction,
@@ -8,10 +10,8 @@ import type { AccountActionResult } from "@/server/domain/account-action-result"
 import { normalisePhoneInput, phoneEntryLabel } from "@/server/domain/account-contact.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { ACCOUNT_PHONE_CODE_LENGTH } from "@auction/identity-contracts/account";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
@@ -123,7 +123,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
         <div className="space-y-1.5">
           <Label htmlFor={phoneId}>Phone number</Label>
           <Input
-            className="h-11"
+            className={FIELD}
             id={phoneId}
             name="phone"
             type="tel"
@@ -181,7 +181,7 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
         <div className="space-y-1.5">
           <Label htmlFor={codeId}>Verification code</Label>
           <Input
-            className="h-11"
+            className={FIELD}
             id={codeId}
             name="code"
             autoComplete="one-time-code"

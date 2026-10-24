@@ -1,3 +1,4 @@
+import { textOf } from "@/test/text-of";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PersonalNameForm } from "./personal-name-form.client";
@@ -28,6 +29,8 @@ describe("PersonalNameForm", () => {
   });
 
   it("says where the name is used", () => {
-    expect(render("Ada")).toContain("Your name is shared with LAX Bid, LAX Shop and lax.art.");
+    expect(textOf(render("Ada"))).toContain(
+      "Your name is shared with LAX Bid, LAX Shop and lax.art.",
+    );
   });
 });

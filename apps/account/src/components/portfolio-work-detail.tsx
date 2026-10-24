@@ -1,6 +1,6 @@
+import { Button } from "@/components/account-button";
 import { formatDate, formatMinorUnits } from "@/lib/format-money";
 import type { WorkDetailVm } from "@/server/domain/portfolio-work-detail.vm";
-import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import {
   Table,
@@ -13,7 +13,8 @@ import {
   TableRow,
 } from "@auction/ui/components/table";
 import { CARD, CARD_PADDING, CARD_TITLE } from "./account-ui";
-import { CurrencyAmounts, WorkThumbnail } from "./portfolio-parts";
+import { CurrencyAmounts, SENTENCE_CASE_BADGE, WorkThumbnail } from "./portfolio-parts";
+import { ProductText } from "./product-name";
 
 function Section({
   id,
@@ -45,7 +46,9 @@ function AcquisitionRecord({ work }: { work: WorkDetailVm }) {
         <dt className="text-on-surface-variant">Acquired</dt>
         <dd>{formatDate(work.acquiredAt)}</dd>
         <dt className="text-on-surface-variant">Product</dt>
-        <dd>{work.productLabel}</dd>
+        <dd>
+          <ProductText text={work.productLabel} />
+        </dd>
         <dt className="text-on-surface-variant">Seller business</dt>
         <dd>{work.businessName}</dd>
       </dl>
@@ -134,13 +137,15 @@ function Actions({ work }: { work: WorkDetailVm }) {
       <ul className="flex flex-wrap gap-3">
         {work.actions.map((action) => (
           <li key={action.key}>
-            <Button asChild variant="outline" className="min-h-11">
+            <Button asChild variant="outline">
               <a href={action.href}>{action.label}</a>
             </Button>
           </li>
         ))}
       </ul>
-      <p className="text-xs text-on-surface-variant">These open {work.productLabel}.</p>
+      <p className="text-xs text-on-surface-variant">
+        These open <ProductText text={work.productLabel} />.
+      </p>
     </Section>
   );
 }
@@ -156,7 +161,9 @@ export function PortfolioWorkDetail({ work }: { work: WorkDetailVm }) {
             {work.title}
           </h1>
           {work.artist ? <p className="text-sm text-on-surface-variant">{work.artist}</p> : null}
-          <StatusBadge variant={work.statusTone}>{work.statusLabel}</StatusBadge>
+          <StatusBadge variant={work.statusTone} className={SENTENCE_CASE_BADGE}>
+            {work.statusLabel}
+          </StatusBadge>
         </div>
       </header>
       <AcquisitionRecord work={work} />

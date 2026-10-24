@@ -35,6 +35,15 @@
   /* Links stay neutral and underlined (they share the text colour), so colour is never the only cue. */
   --color-link: var(--brand-obsidian);
   --color-ring: var(--color-product-accent);
+  /* Product names (the ProductName component): each product in its own lockup's accent, Shop and
+     Art in ink until they choose one. Bid's navy is allowed here and nowhere else in Account, so
+     naming Bid is the only place it shows; Account's own controls never use it. */
+  --color-product-bid: var(--brand-midnight);
+  --color-product-shop: var(--color-on-surface);
+  --color-product-art: var(--color-on-surface);
+  --color-product-account: var(--color-product-accent);
+  /* Edge of a text field or select: 4.54:1 on white, so the field is visible (WCAG 1.4.11). */
+  --color-control-border: #767676;
   --color-surface-container: #eeeeee;
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
@@ -77,6 +86,8 @@ html.dark {
   --color-accent-brand: var(--color-product-accent);
   --color-link: var(--brand-light-cream);
   --color-ring: var(--color-product-accent);
+  --color-product-bid: var(--brand-midnight-on-dark);
+  --color-control-border: #8c8c88;
   --color-surface-container: #333534;
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;
@@ -126,4 +137,12 @@ html.dark {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
   }
+}
+
+/* The shared @auction/ui controls draw their focus ring in --color-primary (obsidian or cream).
+   Account's focus ring is its teal, so the ring colour is re-pointed here. This sits outside any
+   layer on purpose: unlayered rules win over Tailwind's utilities layer. */
+.focus-visible\:ring-primary:focus-visible,
+.focus\:ring-primary:focus {
+  --tw-ring-color: var(--color-ring);
 }

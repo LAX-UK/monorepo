@@ -1,10 +1,12 @@
 "use client";
 
+import { LoadingButton } from "@/components/account-button";
+import { FIELD } from "@/components/account-ui";
+import { ProductText } from "@/components/product-name";
 import { requestAccountDeletionAction } from "@/server/application/account-identity-actions.server";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
@@ -58,7 +60,9 @@ export function DeleteAccountForm({ phrase, consequences, returnTo }: DeleteAcco
     >
       <ul className="list-disc space-y-2 pl-5 text-sm text-on-surface">
         {consequences.map((line) => (
-          <li key={line}>{line}</li>
+          <li key={line}>
+            <ProductText text={line} />
+          </li>
         ))}
       </ul>
       <div className="space-y-1.5">
@@ -66,7 +70,7 @@ export function DeleteAccountForm({ phrase, consequences, returnTo }: DeleteAcco
           Type <span className="font-semibold">{phrase}</span> to confirm
         </Label>
         <Input
-          className="h-11"
+          className={FIELD}
           id={inputId}
           name="confirmation"
           autoComplete="off"

@@ -1,7 +1,7 @@
 "use client";
 
+import { Button } from "@/components/account-button";
 import { AccountFrame } from "@/components/shell/account-frame";
-import { Button } from "@auction/ui/components/button";
 
 /** A client boundary cannot read the session or the product URLs, so it shows the bare shell. */
 export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {

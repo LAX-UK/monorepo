@@ -1,5 +1,5 @@
+import { Button } from "@/components/account-button";
 import { AccountShell } from "@/components/account-shell";
-import { Button } from "@auction/ui/components/button";
 import { connection } from "next/server";
 
 export default async function NotFound() {

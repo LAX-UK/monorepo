@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/account-button";
 import { NoticeTitle } from "@/components/account-ui";
 import { regenerateBackupCodesAction } from "@/server/application/account-identity-actions.server";
 import type { BackupCodesActionResult } from "@/server/domain/account-action-result";
@@ -11,7 +12,6 @@ import {
 } from "@/server/domain/account-backup-codes.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

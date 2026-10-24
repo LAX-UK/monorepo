@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@/components/account-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { AccountAvatar } from "./account-avatar";
 import type { AccountViewer } from "./account-viewer";

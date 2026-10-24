@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/account-button";
+import { FIELD } from "@/components/account-ui";
 import {
   type FilterChange,
   type FilterFieldVm,
@@ -8,7 +10,7 @@ import {
   filterHref,
   singularOf,
 } from "@/lib/filter-query";
-import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import {
@@ -150,7 +152,7 @@ export function ActiveFilterChips({
               variant="ghost"
               onClick={() => onRemove(chip.name)}
               aria-label={`Remove ${chip.group} filter: ${chip.text}`}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-product-accent bg-product-accent/10 px-3.5 text-sm font-medium text-on-surface transition-colors hover:bg-product-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-product-accent bg-product-accent/10 px-3.5 text-sm font-medium text-on-surface transition-colors hover:bg-product-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {chip.text}
               <RemoveIcon />
@@ -271,19 +273,13 @@ export function FilterToolbar({ action, noun, search, fields, shown, total }: Fi
               placeholder={search.placeholder}
               autoComplete="off"
               enterKeyHint="search"
-              className="h-11 pl-9"
+              className={cn(FIELD, "pl-9")}
             />
           </form>
         ) : null}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button
-              ref={filterButton}
-              type="button"
-              variant="outline"
-              size="md"
-              className="shrink-0 gap-2 text-sm"
-            >
+            <Button ref={filterButton} type="button" variant="outline" className="shrink-0 gap-2">
               Filter
               {activeCount > 0 ? (
                 <>
@@ -300,20 +296,20 @@ export function FilterToolbar({ action, noun, search, fields, shown, total }: Fi
           </SheetTrigger>
           <SheetContent
             side={isWide ? "right" : "bottom"}
-            className={isWide ? "flex w-full max-w-md flex-col gap-0 p-0" : undefined}
+            className={isWide ? "flex w-full max-w-md flex-col gap-0 bg-surface p-0" : "bg-surface"}
           >
             <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex flex-col gap-1 px-5 pb-3 pt-5 pr-14">
+              <div className="flex flex-col gap-1 px-6 pt-6 pr-16 pb-5">
                 <SheetTitle className="font-headline">Filter {noun}</SheetTitle>
                 <SheetDescription>Results update as you choose.</SheetDescription>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <FilterPanelFields
                   fields={fields}
                   onChoose={(name, value) => go({ kind: "field", name, value })}
                 />
               </div>
-              <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-container-lowest px-5 py-3">
+              <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border-hairline bg-surface px-6 py-4">
                 {activeCount > 0 || hasSearch ? (
                   <Button
                     type="button"
@@ -328,7 +324,7 @@ export function FilterToolbar({ action, noun, search, fields, shown, total }: Fi
                   <span />
                 )}
                 <SheetClose asChild>
-                  <Button type="button" variant="cta" size="md" className="text-sm">
+                  <Button type="button" variant="cta">
                     Show {shown} {shown === 1 ? singularOf(noun) : noun}
                   </Button>
                 </SheetClose>

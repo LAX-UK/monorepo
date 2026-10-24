@@ -1,3 +1,4 @@
+import { textOf } from "@/test/text-of";
 import { buildHoldings, holdingsFilterOptions } from "@auction/lax-ecosystem";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -114,7 +115,7 @@ describe("PortfolioHoldings", () => {
   it("counts by artist and product, never as percentages", () => {
     const html = render(works);
     expect(html).toContain("Ada Artist 1");
-    expect(html).toContain("LAX Shop 1");
+    expect(textOf(html)).toContain("LAX Shop 1");
     expect(html).not.toMatch(/\d%/);
   });
 

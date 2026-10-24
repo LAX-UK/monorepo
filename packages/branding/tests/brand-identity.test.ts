@@ -70,6 +70,13 @@ describe("PRODUCT_ACCENTS", () => {
     expect(contrast(dark, ACCOUNT_DARK_SURFACE)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("keeps Bid's name readable as text on Account's light and dark surfaces", () => {
+    expect(contrast(PRODUCT_ACCENTS.bid ?? "", ACCOUNT_LIGHT_SURFACE)).toBeGreaterThanOrEqual(4.5);
+    const dark = PRODUCT_ACCENTS_ON_DARK.bid ?? "";
+    expect(contrast(dark, ACCOUNT_DARK_PAGE)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(dark, ACCOUNT_DARK_SURFACE)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("keeps a readable label on Account's teal primary button in both themes", () => {
     expect(contrast("#ffffff", PRODUCT_ACCENTS.account ?? "")).toBeGreaterThanOrEqual(4.5);
     expect(

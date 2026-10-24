@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/account-button";
 import { NoticeTitle } from "@/components/account-ui";
 import {
   browserLocalStorage,
@@ -8,7 +9,6 @@ import {
 } from "@/lib/complete-account-dismissal";
 import { MarketingCloseIcon, MarketingInfoIcon } from "@auction/marketing-ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { useEffect, useState } from "react";
 
 /**

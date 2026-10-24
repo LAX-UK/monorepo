@@ -1,7 +1,7 @@
+import { Button } from "@/components/account-button";
 import { AccountSection, NoticeTitle } from "@/components/account-ui";
 import type { DevicesSectionVm } from "@/server/domain/account-devices-section.vm";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { SignedInDevicesList } from "./signed-in-devices-list.client";
 
 type SignedInDevicesSectionProps = {

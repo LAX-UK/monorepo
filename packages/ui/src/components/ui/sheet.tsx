@@ -77,10 +77,10 @@ const SheetContent = React.forwardRef<
           <>
             {children}
             <SheetPrimitive.Close
-              className="absolute right-4 top-4 -m-2.5 rounded-sm p-2.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
+              className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md opacity-70 ring-offset-background transition-[opacity,background-color] hover:bg-surface-container-low hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none"
               aria-label="Close"
             >
-              <X className="h-4 w-4" aria-hidden />
+              <X className="size-5" aria-hidden />
               <span className="sr-only">Close</span>
             </SheetPrimitive.Close>
           </>

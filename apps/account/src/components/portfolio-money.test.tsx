@@ -1,3 +1,4 @@
+import { textOf } from "@/test/text-of";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ART_BUSINESS, moneyEntry } from "../server/domain/portfolio-fixtures.test-util";
@@ -70,7 +71,7 @@ describe("PortfolioMoney", () => {
   it("lays the phone ledger out as compact rows: amount, type and business, date, status", () => {
     const html = render(entries);
     expect(html).toContain('aria-label="Ledger"');
-    expect(html).toContain("Owed by you · LAX Bid Ltd");
+    expect(textOf(html)).toContain("Owed by you · LAX Bid Ltd");
     expect(html).toContain("1 Mar 2026");
   });
 

@@ -3,6 +3,7 @@ import { MarketingCarouselPreviousIcon, MarketingViewAllChevron } from "@auction
 import { cn } from "@auction/ui";
 import { AlertTitle } from "@auction/ui/components/alert";
 import type { ReactNode } from "react";
+import { withProductNames } from "./product-name";
 
 /**
  * The shared look of an Account page, so every page keeps one rhythm (an 8px scale):
@@ -17,6 +18,16 @@ export const CARD_PADDING = "p-4 sm:p-6";
 export const EMPTY_STATE = "rounded-2xl border-solid border-border-hairline bg-surface";
 export const SECTION_TITLE = "font-headline text-xl font-semibold text-on-surface";
 export const CARD_TITLE = "font-headline text-lg font-semibold text-on-surface";
+/**
+ * Text fields and selects: 44px tall on the card surface, with an edge that clears 3:1 (the
+ * shared field's 25% border is too faint to see on white or on the dark surface).
+ */
+export const FIELD = "h-11 border-control-border bg-surface";
+/** Rows of a list card: 64px, whether a row holds two lines of text or a 44px button. */
+export const LIST_ROW = "flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 sm:px-6";
+/** A quiet tag beside a title ("This device"), matching the product tags. */
+export const TAG =
+  "inline-flex w-fit shrink-0 items-center rounded-full bg-surface px-2 py-0.5 text-xs leading-5 font-medium whitespace-nowrap ring-1 ring-border-hairline ring-inset text-on-surface-variant";
 
 /** "Back to <where>" above a page that sits below another page. */
 export function BackLink({ href, label }: { href: string; label: string }) {
@@ -54,7 +65,9 @@ export function AccountPageHeader({
         {title}
       </h1>
       {description ? (
-        <p className="max-w-prose text-base leading-7 text-on-surface-variant">{description}</p>
+        <p className="max-w-prose text-base leading-7 text-on-surface-variant">
+          {withProductNames(description)}
+        </p>
       ) : null}
     </header>
   );
@@ -90,7 +103,9 @@ export function AccountSection({
           </h2>
           {actions}
         </div>
-        {description ? <p className="text-sm text-on-surface-variant">{description}</p> : null}
+        {description ? (
+          <p className="text-sm text-on-surface-variant">{withProductNames(description)}</p>
+        ) : null}
       </div>
       {children}
     </section>
@@ -126,9 +141,13 @@ export function ListCardRow({
   const body = (
     <>
       <span className="min-w-0 flex-1 basis-28">
-        <span className="block text-sm font-medium text-on-surface">{title}</span>
+        <span className="block text-sm font-medium text-on-surface">
+          {withProductNames(title, "inherit")}
+        </span>
         {subtitle ? (
-          <span className="mt-0.5 block text-xs text-on-surface-variant">{subtitle}</span>
+          <span className="mt-0.5 block text-xs text-on-surface-variant">
+            {withProductNames(subtitle)}
+          </span>
         ) : null}
       </span>
       {value ? (
@@ -139,8 +158,7 @@ export function ListCardRow({
       {trailing ? <span className="order-2 shrink-0 sm:order-3">{trailing}</span> : null}
     </>
   );
-  const row =
-    "flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 sm:flex-nowrap sm:px-6";
+  const row = cn(LIST_ROW, "sm:flex-nowrap");
   return (
     <li>
       {href ? (
@@ -168,7 +186,9 @@ export function SettingsGroup({ group }: { group: SettingsGroupVm }) {
           />
         ))}
       </ListCard>
-      {group.footer ? <p className="text-xs text-on-surface-variant">{group.footer}</p> : null}
+      {group.footer ? (
+        <p className="text-xs text-on-surface-variant">{withProductNames(group.footer)}</p>
+      ) : null}
     </AccountSection>
   );
 }

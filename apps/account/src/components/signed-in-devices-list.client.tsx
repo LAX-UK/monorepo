@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/account-button";
 import {
   signOutDeviceAction,
   signOutOtherDevicesAction,
@@ -12,11 +13,11 @@ import {
   buildSignOutDeviceConfirm,
   buildSignOutOthersConfirm,
 } from "@/server/domain/account-sessions.vm";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ListCard } from "./account-ui";
+import { LIST_ROW, ListCard, TAG } from "./account-ui";
+import { ProductText } from "./product-name";
 
 type Target = { kind: "device"; row: SessionRowVm } | { kind: "others" };
 
@@ -28,15 +29,11 @@ type SignedInDevicesListProps = {
 
 function DeviceRow({ row, onSignOut }: { row: SessionRowVm; onSignOut?: () => void }) {
   return (
-    <li className="flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+    <li className={LIST_ROW}>
       <div className="min-w-0 flex-1 basis-48">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-on-surface">
           {row.deviceLabel}
-          {row.isCurrent ? (
-            <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-xs font-medium text-on-surface-variant">
-              This device
-            </span>
-          ) : null}
+          {row.isCurrent ? <span className={TAG}>This device</span> : null}
         </p>
         <p className="mt-0.5 text-xs text-on-surface-variant">{row.detail}</p>
       </div>
@@ -44,8 +41,7 @@ function DeviceRow({ row, onSignOut }: { row: SessionRowVm; onSignOut?: () => vo
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="min-h-11 shrink-0"
+          className="shrink-0"
           aria-label={`Sign out ${row.deviceLabel}`}
           onClick={onSignOut}
         >
@@ -127,7 +123,7 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 self-start"
+          className="self-start"
           onClick={() => {
             setNotice(null);
             setTarget({ kind: "others" });
@@ -148,7 +144,9 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
           title={confirm.title}
           body={
             <>
-              <p>{confirm.body}</p>
+              <p>
+                <ProductText text={confirm.body} />
+              </p>
               {error ? (
                 <p role="alert" className="mt-3 text-error">
                   {error}

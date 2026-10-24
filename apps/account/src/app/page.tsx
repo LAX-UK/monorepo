@@ -1,5 +1,7 @@
 import signInGallery from "@/assets/signin-gallery.webp";
+import { Button } from "@/components/account-button";
 import { NoticeTitle } from "@/components/account-ui";
+import { ProductName } from "@/components/product-name";
 import { AccountFooter } from "@/components/shell/account-frame";
 import { AccountThemeToggle } from "@/components/shell/account-theme-toggle.client";
 import { SignInProducts } from "@/components/sign-in-products";
@@ -10,7 +12,6 @@ import { buildAccountProducts } from "@/server/domain/account-products.vm";
 import { signInNotice } from "@/server/domain/sign-in-notice.vm";
 import { LaxLockup } from "@auction/marketing-ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +68,10 @@ export default async function LandingPage({
               One account for all of LAX
             </h1>
             <p className="text-base leading-7 text-on-surface-variant">
-              Sign in once to manage your details, security and works across Bid, Shop and Art.
+              Sign in once to manage your details, security and works across{" "}
+              <ProductName product="bid">Bid</ProductName>,{" "}
+              <ProductName product="shop">Shop</ProductName> and{" "}
+              <ProductName product="art">Art</ProductName>.
             </p>
           </div>
           {notice ? (
@@ -91,11 +95,11 @@ export default async function LandingPage({
             >
               <a href={LOGIN_HREF}>{notice ? "Try signing in again" : "Sign in"}</a>
             </Button>
-            <p className="text-sm text-on-surface-variant">
-              New to LAX?{" "}
+            <p className="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant">
+              New to LAX?
               <a
                 href={LOGIN_HREF}
-                className="font-medium text-on-surface underline underline-offset-4"
+                className="inline-flex min-h-11 items-center rounded-sm font-medium text-on-surface underline underline-offset-4"
               >
                 Create an account
               </a>
