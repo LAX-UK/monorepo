@@ -3,6 +3,11 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { ArtistPicker } from "@/components/artworks/artist-picker.client";
 import { ArtworkMediaField } from "@/components/artworks/artwork-media-field.client";
+import {
+  ReadOnlyDetails,
+  ReadOnlyMedia,
+  ReadOnlySearchListing,
+} from "@/components/artworks/artwork-read-only-sections";
 import { useUnsavedNavigationGuard } from "@/components/use-unsaved-changes-guard";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
@@ -405,119 +410,123 @@ export function ArtworkEditor({
           </div>
         ) : null}
 
-        <FormSection
-          title="Details"
-          description="What the work is and who made it, as shown on its storefront page."
-        >
-          <Field
-            label="Title"
-            error={errors.title}
-            id={artworkFieldId("title")}
-            disabled={readOnly}
+        {readOnly && record ? (
+          <ReadOnlyDetails values={values} record={record} />
+        ) : (
+          <FormSection
+            title="Details"
+            description="What the work is and who made it, as shown on its storefront page."
           >
-            <TextInput
-              value={values.title}
-              autoComplete="off"
-              onChange={(event) => update(withTitle(values, event.target.value))}
-            />
-          </Field>
-          {mode === "create" ? (
             <Field
-              label="Web address"
-              description="Lower case words joined by hyphens. Fixed once the artwork is created."
-              error={errors.slug}
-              id={artworkFieldId("slug")}
-            >
-              <TextInput
-                value={values.slug}
-                leading={<span className="text-staff-muted">/artworks/</span>}
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => update({ slug: event.target.value, slugEdited: true })}
-              />
-            </Field>
-          ) : (
-            <KeyValueList
-              items={[
-                {
-                  label: "Web address",
-                  value: `/artworks/${record?.slug ?? ""}`,
-                  ...(record ? { copyValue: record.slug } : {}),
-                },
-              ]}
-            />
-          )}
-          <Field
-            label="Artist"
-            error={errors.artistId}
-            id={artworkFieldId("artistId")}
-            disabled={readOnly}
-          >
-            <ArtistPicker
-              value={values.artistId}
-              selectedName={values.artistName}
-              onChange={(artist) =>
-                update({ artistId: artist?.id ?? null, artistName: artist?.label ?? null })
-              }
-            />
-          </Field>
-          <FieldRow>
-            <Field
-              label="Year"
-              optional
-              error={errors.yearCreated}
-              id={artworkFieldId("yearCreated")}
+              label="Title"
+              error={errors.title}
+              id={artworkFieldId("title")}
               disabled={readOnly}
             >
               <TextInput
-                inputMode="numeric"
+                value={values.title}
                 autoComplete="off"
-                placeholder={String(currentYear)}
-                value={values.yearCreated}
-                onChange={(event) => update({ yearCreated: event.target.value })}
+                onChange={(event) => update(withTitle(values, event.target.value))}
               />
             </Field>
+            {mode === "create" ? (
+              <Field
+                label="Web address"
+                description="Lower case words joined by hyphens. Fixed once the artwork is created."
+                error={errors.slug}
+                id={artworkFieldId("slug")}
+              >
+                <TextInput
+                  value={values.slug}
+                  leading={<span className="text-staff-muted">/artworks/</span>}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) => update({ slug: event.target.value, slugEdited: true })}
+                />
+              </Field>
+            ) : (
+              <KeyValueList
+                items={[
+                  {
+                    label: "Web address",
+                    value: `/artworks/${record?.slug ?? ""}`,
+                    ...(record ? { copyValue: record.slug } : {}),
+                  },
+                ]}
+              />
+            )}
             <Field
-              label="Medium"
+              label="Artist"
+              error={errors.artistId}
+              id={artworkFieldId("artistId")}
+              disabled={readOnly}
+            >
+              <ArtistPicker
+                value={values.artistId}
+                selectedName={values.artistName}
+                onChange={(artist) =>
+                  update({ artistId: artist?.id ?? null, artistName: artist?.label ?? null })
+                }
+              />
+            </Field>
+            <FieldRow>
+              <Field
+                label="Year"
+                optional
+                error={errors.yearCreated}
+                id={artworkFieldId("yearCreated")}
+                disabled={readOnly}
+              >
+                <TextInput
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder={String(currentYear)}
+                  value={values.yearCreated}
+                  onChange={(event) => update({ yearCreated: event.target.value })}
+                />
+              </Field>
+              <Field
+                label="Medium"
+                optional
+                error={errors.medium}
+                id={artworkFieldId("medium")}
+                disabled={readOnly}
+              >
+                <TextInput
+                  placeholder="Oil on linen"
+                  value={values.medium}
+                  onChange={(event) => update({ medium: event.target.value })}
+                />
+              </Field>
+            </FieldRow>
+            <Field
+              label="Dimensions"
               optional
-              error={errors.medium}
-              id={artworkFieldId("medium")}
+              description="As it should read, such as 60 × 80 cm."
+              error={errors.dimensions}
+              id={artworkFieldId("dimensions")}
               disabled={readOnly}
             >
               <TextInput
-                placeholder="Oil on linen"
-                value={values.medium}
-                onChange={(event) => update({ medium: event.target.value })}
+                value={values.dimensions}
+                onChange={(event) => update({ dimensions: event.target.value })}
               />
             </Field>
-          </FieldRow>
-          <Field
-            label="Dimensions"
-            optional
-            description="As it should read, such as 60 × 80 cm."
-            error={errors.dimensions}
-            id={artworkFieldId("dimensions")}
-            disabled={readOnly}
-          >
-            <TextInput
-              value={values.dimensions}
-              onChange={(event) => update({ dimensions: event.target.value })}
-            />
-          </Field>
-          <Field
-            label="Description"
-            optional
-            error={errors.description}
-            id={artworkFieldId("description")}
-            disabled={readOnly}
-          >
-            <TextArea
-              rows={6}
-              value={values.description}
-              onChange={(event) => update({ description: event.target.value })}
-            />
-          </Field>
-        </FormSection>
+            <Field
+              label="Description"
+              optional
+              error={errors.description}
+              id={artworkFieldId("description")}
+              disabled={readOnly}
+            >
+              <TextArea
+                rows={6}
+                value={values.description}
+                onChange={(event) => update({ description: event.target.value })}
+              />
+            </Field>
+          </FormSection>
+        )}
 
         <FormSection
           title="Editions and pricing"
@@ -587,56 +596,71 @@ export function ArtworkEditor({
             </Field>
           ) : null}
 
-          <Field label="Sale" id="artwork-sale-state" disabled={readOnly}>
-            <EnumSelect
-              value={values.saleState}
-              onValueChange={(saleState) => update({ saleState })}
-              options={ADMIN_ARTWORK_SALE_STATES.map((value) => ({
-                value,
-                label: SALE_STATE_LABELS[value],
-                ...(value === "price_on_application"
-                  ? { description: "Shows “Price on application” and takes enquiries" }
-                  : value === "sold"
-                    ? { description: "The original has sold" }
-                    : {
-                        description: "Buyable at the edition price, or by enquiry for an original",
-                      }),
-              }))}
-              className="sm:max-w-80"
-            />
-          </Field>
+          {readOnly ? (
+            <KeyValueList items={[{ label: "Sale", value: SALE_STATE_LABELS[values.saleState] }]} />
+          ) : (
+            <Field label="Sale" id="artwork-sale-state" disabled={readOnly}>
+              <EnumSelect
+                value={values.saleState}
+                onValueChange={(saleState) => update({ saleState })}
+                options={ADMIN_ARTWORK_SALE_STATES.map((value) => ({
+                  value,
+                  label: SALE_STATE_LABELS[value],
+                  ...(value === "price_on_application"
+                    ? { description: "Shows “Price on application” and takes enquiries" }
+                    : value === "sold"
+                      ? { description: "The original has sold" }
+                      : {
+                          description:
+                            "Buyable at the edition price, or by enquiry for an original",
+                        }),
+                }))}
+                className="sm:max-w-80"
+              />
+            </Field>
+          )}
         </FormSection>
 
-        <FormSection
-          title="Media"
-          description="The first image is the primary one: it leads the gallery and is the thumbnail in lists."
-        >
-          <ArtworkMediaField
-            id={artworkFieldId("images")}
-            images={values.images}
-            importedImageUrl={record?.importedImageUrl ?? null}
-            disabled={readOnly}
-            error={errors.images}
-            onChange={(images) => update({ images })}
-          />
-        </FormSection>
+        {readOnly && record ? (
+          <ReadOnlyMedia images={values.images} importedImageUrl={record.importedImageUrl} />
+        ) : (
+          <FormSection
+            title="Media"
+            description="The first image is the primary one: it leads the gallery and is the thumbnail in lists."
+          >
+            <ArtworkMediaField
+              id={artworkFieldId("images")}
+              images={values.images}
+              importedImageUrl={record?.importedImageUrl ?? null}
+              disabled={readOnly}
+              error={errors.images}
+              onChange={(images) => update({ images })}
+            />
+          </FormSection>
+        )}
 
         <FormSection
           title="Visibility"
           description="Where the artwork is sold, and whether it is on the storefront."
         >
-          <Field label="Sales channel" id="artwork-channel" disabled={readOnly}>
-            <SegmentedControl
-              label="Sales channel"
-              size="md"
-              value={values.salesChannel}
-              onValueChange={(salesChannel) => update({ salesChannel })}
-              options={ADMIN_ARTWORK_CHANNELS.map((value) => ({
-                value,
-                label: CHANNEL_LABELS[value],
-              }))}
+          {readOnly ? (
+            <KeyValueList
+              items={[{ label: "Sales channel", value: CHANNEL_LABELS[values.salesChannel] }]}
             />
-          </Field>
+          ) : (
+            <Field label="Sales channel" id="artwork-channel" disabled={readOnly}>
+              <SegmentedControl
+                label="Sales channel"
+                size="md"
+                value={values.salesChannel}
+                onValueChange={(salesChannel) => update({ salesChannel })}
+                options={ADMIN_ARTWORK_CHANNELS.map((value) => ({
+                  value,
+                  label: CHANNEL_LABELS[value],
+                }))}
+              />
+            </Field>
+          )}
           {record ? (
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2 text-staff-sm text-staff-muted">
@@ -678,39 +702,43 @@ export function ArtworkEditor({
           )}
         </FormSection>
 
-        <FormSection
-          title="Search listing"
-          description="How the page appears in search results. Leave blank to use the title and description."
-        >
-          <Field
-            label="Search title"
-            optional
-            description={counter(values.seoTitle, SEO_TITLE_MAX_LENGTH)}
-            error={errors.seoTitle}
-            id={artworkFieldId("seoTitle")}
-            disabled={readOnly}
+        {readOnly && record ? (
+          <ReadOnlySearchListing values={values} />
+        ) : (
+          <FormSection
+            title="Search listing"
+            description="How the page appears in search results. Leave blank to use the title and description."
           >
-            <TextInput
-              value={values.seoTitle}
-              placeholder={values.title.trim() || "The artwork's title"}
-              onChange={(event) => update({ seoTitle: event.target.value })}
-            />
-          </Field>
-          <Field
-            label="Search description"
-            optional
-            description={counter(values.seoDescription, SEO_DESCRIPTION_MAX_LENGTH)}
-            error={errors.seoDescription}
-            id={artworkFieldId("seoDescription")}
-            disabled={readOnly}
-          >
-            <TextArea
-              rows={3}
-              value={values.seoDescription}
-              onChange={(event) => update({ seoDescription: event.target.value })}
-            />
-          </Field>
-        </FormSection>
+            <Field
+              label="Search title"
+              optional
+              description={counter(values.seoTitle, SEO_TITLE_MAX_LENGTH)}
+              error={errors.seoTitle}
+              id={artworkFieldId("seoTitle")}
+              disabled={readOnly}
+            >
+              <TextInput
+                value={values.seoTitle}
+                placeholder={values.title.trim() || "The artwork's title"}
+                onChange={(event) => update({ seoTitle: event.target.value })}
+              />
+            </Field>
+            <Field
+              label="Search description"
+              optional
+              description={counter(values.seoDescription, SEO_DESCRIPTION_MAX_LENGTH)}
+              error={errors.seoDescription}
+              id={artworkFieldId("seoDescription")}
+              disabled={readOnly}
+            >
+              <TextArea
+                rows={3}
+                value={values.seoDescription}
+                onChange={(event) => update({ seoDescription: event.target.value })}
+              />
+            </Field>
+          </FormSection>
+        )}
 
         {!canSave ? null : (
           <FormActions className="border-t border-staff-line-subtle pt-4">

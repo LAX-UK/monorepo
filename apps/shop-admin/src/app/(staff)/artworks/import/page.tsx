@@ -18,6 +18,8 @@ export default function ImportArtworkPage() {
         title="Import by catalogue key"
         description="Creates the artwork, or updates the one already imported under the same key. A new import starts as a draft; publish it from the artwork list or editor. To add a new artwork by hand, use New artwork instead."
       />
+      {/* The form titles itself one level down; this keeps the page's heading outline in order. */}
+      <h2 className="sr-only">Catalogue row</h2>
       <ImportArtworkForm />
     </div>
   );

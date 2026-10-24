@@ -368,14 +368,16 @@ describe("artwork editor", () => {
 
   it("is read-only for staff who cannot change the catalogue", () => {
     renderEditor({ permissions: { write: false, setPrice: false } });
-    expect(screen.getByLabelText("Title")).toBeDisabled();
+    expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
+    expect(screen.getByText("Oil on linen")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save/ })).toBeNull();
   });
 
   it("lets finance change only the price, through the price endpoint", async () => {
     saveArtworkPrice.mockResolvedValue({ ok: true, data: { version: THEIRS } });
     renderEditor({ permissions: { write: false, setPrice: true } });
-    expect(screen.getByLabelText("Title")).toBeDisabled();
+    expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
+    expect(screen.getByText("Oil on linen")).toBeInTheDocument();
     expect(screen.getByText("You can change the edition price")).toBeInTheDocument();
     typeInto(/Price per edition/, "520");
     fireEvent.click(screen.getAllByRole("button", { name: "Save changes" })[0] as HTMLElement);
