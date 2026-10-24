@@ -17,7 +17,7 @@ import { saleDetailTabHref } from "@/lib/admin/sales/sale-detail-routes";
 import type { AdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import type { AdminSaleDetailMetrics } from "@/lib/data/http/admin-sale-detail-metrics.server";
 import type { AdminSaleOverviewKpiTrends } from "@/lib/data/http/admin-sale-overview-kpi-trends.server";
-import { formatMoney } from "@/lib/ui/format";
+import { formatKpiMoney } from "@/lib/ui/format";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 import { saleModeBidChannels } from "@auction/validators";
 
@@ -186,7 +186,7 @@ export function buildSaleOverviewViewModel(input: {
   const published = metrics?.publishedLotCount ?? publishedLotCount(lots);
   const lotTotal = metrics?.lotCount ?? lots.length;
 
-  const hammerDisplay = metrics?.totalHammer != null ? formatMoney(metrics.totalHammer) : "—";
+  const hammerDisplay = metrics?.totalHammer != null ? formatKpiMoney(metrics.totalHammer) : "—";
 
   const kpiTiles: DetailBoardKpiTile[] = [
     withTrendOverlay(
@@ -205,7 +205,7 @@ export function buildSaleOverviewViewModel(input: {
       {
         id: "estimate",
         label: "Aggregate estimate",
-        value: metrics?.aggregateEstimate ? formatMoney(metrics.aggregateEstimate) : "—",
+        value: metrics?.aggregateEstimate ? formatKpiMoney(metrics.aggregateEstimate) : "—",
         compareHint: metrics?.aggregateEstimateDeltaHint ?? "Pending metrics",
         trendTone: "muted",
       },
@@ -229,7 +229,7 @@ export function buildSaleOverviewViewModel(input: {
       {
         id: "revenue",
         label: "Expected revenue",
-        value: metrics?.expectedRevenue ? formatMoney(metrics.expectedRevenue) : "—",
+        value: metrics?.expectedRevenue ? formatKpiMoney(metrics.expectedRevenue) : "—",
         compareHint: metrics?.expectedRevenueHint ?? "Incl. buyer's premium",
         trendTone: "success",
       },

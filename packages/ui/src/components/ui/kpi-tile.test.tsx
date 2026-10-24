@@ -26,4 +26,13 @@ describe("KpiTile", () => {
     expect(value.className).toMatch(/truncate/);
     expect(value.className).toMatch(/text-xl/);
   });
+
+  it("lets the sparkline wrap below the value instead of squeezing it", () => {
+    const { container } = render(
+      <KpiTile label="Total volume" value="£83,750" trend={[1, 2, 3]} />,
+    );
+    const row = container.querySelector(".flex-wrap.items-end");
+    expect(row).not.toBeNull();
+    expect(screen.getByTitle("£83,750").parentElement?.className).not.toMatch(/flex-1/);
+  });
 });

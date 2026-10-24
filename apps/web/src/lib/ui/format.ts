@@ -184,6 +184,33 @@ export function formatCompactMoney(
   }).format(amount);
 }
 
+/**
+ * Money for a KPI tile: whole pounds below 100k, compact above, so the value fits a tile
+ * without truncating ("£83,750", "£1.2m"). Zero reads "£0".
+ */
+export function formatKpiMoney(
+  amount: number | string | null | undefined,
+  currency = PLATFORM_DEFAULT_CURRENCY,
+  locale = DEFAULT_MONEY_LOCALE,
+): string {
+  const n = typeof amount === "string" ? Number.parseFloat(amount) : amount;
+  if (n == null || !Number.isFinite(n)) return "—";
+  const code = normalizeCurrencyCode(currency);
+  if (Math.abs(n) < 100_000) {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: 0,
+    }).format(n);
+  }
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: code,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
+}
+
 /** Em dash for empty table cells and null values */
 export function dash(value: string | null | undefined): string {
   if (value == null || value === "") return "—";

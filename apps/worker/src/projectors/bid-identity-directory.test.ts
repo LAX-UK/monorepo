@@ -125,6 +125,47 @@ describe("applyBidIdentityDirectoryEvent", () => {
     expect(db.updateWhere).toHaveBeenCalledOnce();
   });
 
+  it("keeps the event-order guard inside the subject filter so other rows are untouched", async () => {
+    const db = createTx();
+
+    await applyBidIdentityDirectoryEvent(
+      db.tx as never,
+      event(11, "user.profile_updated", {
+        schemaVersion: 1,
+        subjectId: "subject-1",
+        name: "Renamed",
+        email: "renamed@example.test",
+        updatedAt: "2026-08-19T11:00:00.000Z",
+      }),
+      replicatedAt,
+    );
+
+    const where = new PgDialect().sqlToQuery(db.updateWhere.mock.calls[0]?.[0] as SQL);
+    expect(where.sql).toBe(
+      '(("bid_identity_directory"."subject_id" = $1 or "bid_identity_directory"."merged_into_subject_id" = $2) and ("bid_identity_directory"."last_event_id" is null or "bid_identity_directory"."last_event_id" < $3))',
+    );
+    expect(where.params).toEqual(["subject-1", "subject-1", 11]);
+  });
+
+  it("keeps the event-order guard inside the subject filter when deleting an identity", async () => {
+    const db = createTx();
+
+    await applyBidIdentityDirectoryEvent(
+      db.tx as never,
+      event(30, "user.identity_deleted", {
+        schemaVersion: 1,
+        subjectId: "subject-1",
+        deletedAt: "2026-08-19T11:00:00.000Z",
+      }),
+      replicatedAt,
+    );
+
+    const where = new PgDialect().sqlToQuery(db.deleteWhere.mock.calls[0]?.[0] as SQL);
+    expect(where.sql).toBe(
+      '(("bid_identity_directory"."subject_id" = $1 or "bid_identity_directory"."merged_into_subject_id" = $2) and ("bid_identity_directory"."last_event_id" is null or "bid_identity_directory"."last_event_id" < $3))',
+    );
+  });
+
   it("projects explicit nullable profile fields without clearing omitted fields", async () => {
     const db = createTx();
 
