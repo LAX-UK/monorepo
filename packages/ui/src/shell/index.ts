@@ -7,3 +7,4 @@ export type {
 } from "./admin-shell.js";
 export { EntityList } from "./entity-list.js";
 export type { EntityListProps } from "./entity-list.js";
+export { resolveActiveNavHref } from "./admin-nav-match.js";

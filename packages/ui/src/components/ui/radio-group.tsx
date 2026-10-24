@@ -21,8 +21,12 @@ function RadioGroup({
 
 function RadioGroupItem({
   className,
+  indicatorClassName,
   ...props
-}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item> & {
+  /** Restyles the inner dot, e.g. to follow a product's own ink colour. */
+  indicatorClassName?: string;
+}) {
   return (
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
@@ -36,7 +40,12 @@ function RadioGroupItem({
         data-slot="radio-group-indicator"
         className="relative flex items-center justify-center"
       >
-        <CircleIcon className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 fill-primary" />
+        <CircleIcon
+          className={cn(
+            "absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 fill-primary",
+            indicatorClassName,
+          )}
+        />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   );

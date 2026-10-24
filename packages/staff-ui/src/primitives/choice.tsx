@@ -1,0 +1,120 @@
+"use client";
+
+import { Checkbox } from "@auction/ui/components/checkbox";
+import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import { Switch } from "@auction/ui/components/switch";
+import type * as React from "react";
+import { cn } from "../lib/cn.js";
+
+/*
+ * Checkbox, radio and switch: the shared Radix-backed primitives from @auction/ui, drawn at the
+ * staff scale. 16px boxes (radius xs), ink when on, the hairline when off, and the same focus ring
+ * as every other control. Each sits in a 32px row with its label so the hit area is generous.
+ */
+
+const boxBase = [
+  "size-4 shrink-0 border border-staff-line-strong bg-staff-surface shadow-none",
+  "hover:border-staff-line-hover",
+  "staff-focus focus-visible:ring-0 focus-visible:ring-offset-0",
+  "disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:opacity-100",
+  "aria-invalid:border-staff-danger",
+].join(" ");
+
+export function StaffCheckbox({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Checkbox>) {
+  return (
+    <Checkbox
+      className={cn(
+        boxBase,
+        "rounded-staff-xs text-staff-on-ink",
+        "data-[state=checked]:border-staff-ink data-[state=checked]:bg-staff-ink data-[state=checked]:text-staff-on-ink",
+        "data-[state=indeterminate]:border-staff-ink data-[state=indeterminate]:bg-staff-ink",
+        "disabled:data-[state=checked]:border-staff-line-strong disabled:data-[state=checked]:bg-staff-line-strong",
+        "[&_svg]:size-3 [&_svg]:stroke-[2.5]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function StaffRadioGroup({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof RadioGroup>) {
+  return <RadioGroup className={cn("grid gap-1", className)} {...props} />;
+}
+
+export function StaffRadio({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof RadioGroupItem>) {
+  return (
+    <RadioGroupItem
+      className={cn(
+        boxBase,
+        "rounded-full text-staff-ink",
+        "data-[state=checked]:border-staff-ink",
+        "focus-visible:border-staff-ink focus-visible:ring-0",
+        className,
+      )}
+      indicatorClassName="size-2 fill-staff-ink stroke-none"
+      {...props}
+    />
+  );
+}
+
+export function StaffSwitch({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Switch>) {
+  return (
+    <Switch
+      className={cn(
+        "h-5 w-8 border-0 p-0.5",
+        "staff-focus focus-visible:outline-staff-focus",
+        "data-[state=unchecked]:bg-staff-line-strong data-[state=checked]:bg-staff-ink",
+        "hover:data-[state=unchecked]:bg-staff-line-hover",
+        "disabled:opacity-100 disabled:data-[state=checked]:bg-staff-line-hover disabled:data-[state=unchecked]:bg-staff-line",
+        className,
+      )}
+      thumbClassName="size-4 bg-staff-surface shadow-staff-xs data-[state=checked]:translate-x-3 data-[state=unchecked]:translate-x-0"
+      {...props}
+    />
+  );
+}
+
+/** A checkbox, radio or switch with its label in one 32px row, label clickable. */
+export function ChoiceRow({
+  control,
+  label,
+  description,
+  htmlFor,
+  disabled = false,
+  className,
+}: {
+  control: React.ReactNode;
+  label: React.ReactNode;
+  description?: React.ReactNode;
+  htmlFor: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-h-control-sm items-start gap-2.5 py-1.5", className)}>
+      <span className="flex h-5 items-center">{control}</span>
+      <label
+        htmlFor={htmlFor}
+        className={cn(
+          "flex flex-col text-staff-sm text-staff-fg",
+          disabled ? "cursor-not-allowed text-staff-disabled" : "cursor-pointer",
+        )}
+      >
+        <span className="font-medium">{label}</span>
+        {description ? <span className="text-staff-xs text-staff-muted">{description}</span> : null}
+      </label>
+    </div>
+  );
+}

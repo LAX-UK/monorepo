@@ -1,0 +1,181 @@
+/*
+ * LAX staff design system tokens.
+ *
+ * One file, imported by LAX Admin (apps/shop-admin) and Bid admin (apps/web), so both staff tools
+ * draw from the same scales. Every colour is a `light-dark()` pair, so a single declaration serves
+ * both schemes: the scheme follows `color-scheme`, which `.dark` (both apps' theme switch) and
+ * `data-staff-theme="system"` (follow the operating system) set below.
+ *
+ * Rules (see packages/staff-ui/README.md):
+ *   - Components use these tokens only; no raw hex, no ad-hoc sizes.
+ *   - Neutral by default. A product accent (navy for Bid, none yet for LAX Admin) marks identity
+ *     only: the product mark and the active-nav indicator. Buttons, links, focus and selection
+ *     stay neutral in both products (LAX colour rule, docs/DESIGN_SYSTEM.md).
+ *   - Status colours are shared and never change per product.
+ */
+
+@theme {
+  /* Type. Outfit carries the interface (compact, legible at 13px); Montserrat sets page and
+     panel titles. Sizes pair with a fixed line height on a 4px grid. */
+  --font-staff: var(--font-outfit), var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-staff-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+
+  --text-staff-2xs: 11px;
+  --text-staff-2xs--line-height: 16px;
+  --text-staff-xs: 12px;
+  --text-staff-xs--line-height: 16px;
+  --text-staff-sm: 13px;
+  --text-staff-sm--line-height: 20px;
+  --text-staff-md: 14px;
+  --text-staff-md--line-height: 20px;
+  --text-staff-lg: 16px;
+  --text-staff-lg--line-height: 24px;
+  --text-staff-xl: 20px;
+  --text-staff-xl--line-height: 28px;
+
+  /* Radius: xs badges and checkboxes, sm controls, md cards and menus, lg dialogs and sheets. */
+  --radius-staff-xs: 4px;
+  --radius-staff-sm: 6px;
+  --radius-staff-md: 8px;
+  --radius-staff-lg: 12px;
+
+  /* Control heights. 32px compact (toolbars, table actions), 36px default (forms), 24px inline
+     (badges, kbd), 40px large (the ⌘K field). Coarse pointers grow to 44px; see .staff-target. */
+  --spacing-control-xs: 24px;
+  --spacing-control-sm: 32px;
+  --spacing-control-md: 36px;
+  --spacing-control-lg: 40px;
+
+  /* Elevation. Level 0 is flat with a hairline (page, cards, tables). xs lifts secondary buttons
+     off the surface; md floats menus, popovers and the bulk-action bar; lg holds dialogs, sheets
+     and the command palette. Dark mode deepens the shadow and relies on the hairline for edges. */
+  --shadow-staff-xs: 0 1px 1px light-dark(rgb(16 18 18 / 0.05), rgb(0 0 0 / 0.3));
+  --shadow-staff-md: 0 2px 4px -1px light-dark(rgb(16 18 18 / 0.06), rgb(0 0 0 / 0.3)), 0 8px 24px
+    -4px light-dark(rgb(16 18 18 / 0.12), rgb(0 0 0 / 0.5));
+  --shadow-staff-lg: 0 4px 12px -4px light-dark(rgb(16 18 18 / 0.08), rgb(0 0 0 / 0.35)), 0 24px
+    64px -12px light-dark(rgb(16 18 18 / 0.24), rgb(0 0 0 / 0.6));
+
+  /* Neutrals. Surfaces step from canvas (the page) through surface (cards, tables) to raised
+     (menus, dialogs). Interaction states are translucent so they read the same on any surface. */
+  --color-staff-canvas: light-dark(#f7f7f6, #111313);
+  --color-staff-surface: light-dark(#ffffff, #181a1a);
+  --color-staff-sunken: light-dark(#f3f3f2, #141616);
+  --color-staff-raised: light-dark(#ffffff, #202323);
+  --color-staff-hover: light-dark(rgb(16 18 18 / 0.045), rgb(255 255 255 / 0.055));
+  --color-staff-pressed: light-dark(rgb(16 18 18 / 0.08), rgb(255 255 255 / 0.09));
+  --color-staff-selected: light-dark(rgb(16 18 18 / 0.06), rgb(255 255 255 / 0.075));
+  --color-staff-line: light-dark(#e5e5e3, #2b2e2e);
+  --color-staff-line-subtle: light-dark(#eeeeec, #222525);
+  --color-staff-line-strong: light-dark(#d0d0ce, #3d4141);
+  --color-staff-line-hover: light-dark(#b3b5b4, #535757);
+  --color-staff-fg: light-dark(#181a1a, #ededeb);
+  --color-staff-muted: light-dark(#5b5e5e, #a4a7a7);
+  --color-staff-subtle: light-dark(#727575, #8c8f8f);
+  --color-staff-disabled: light-dark(#a9abab, #5a5d5d);
+  --color-staff-ink: light-dark(#181a1a, #ededeb);
+  --color-staff-ink-hover: light-dark(#323535, #ffffff);
+  --color-staff-on-ink: light-dark(#ffffff, #111313);
+  --color-staff-focus: light-dark(#181a1a, #ededeb);
+  --color-staff-scrim: light-dark(rgb(17 19 19 / 0.32), rgb(0 0 0 / 0.6));
+
+  /* Product accent: identity only. Each shell sets data-staff-product; see below. */
+  --color-staff-accent: light-dark(#181a1a, #ededeb);
+
+  /* Status tones: background, text and dot. Text meets 4.5:1 on its background in both schemes. */
+  --color-staff-neutral-bg: light-dark(#f0f0ef, #282b2b);
+  --color-staff-neutral-fg: light-dark(#454848, #c4c7c7);
+  --color-staff-neutral-dot: light-dark(#8d9090, #858888);
+  --color-staff-info-bg: light-dark(#edf2fd, rgb(91 141 239 / 0.16));
+  --color-staff-info-fg: light-dark(#2550b4, #9dbcf7);
+  --color-staff-info-dot: light-dark(#2f62cf, #6f9bf2);
+  --color-staff-success-bg: light-dark(#eaf5ec, rgb(64 178 98 / 0.16));
+  --color-staff-success-fg: light-dark(#1b6b2f, #86d59a);
+  --color-staff-success-dot: light-dark(#2a9148, #4fbf6c);
+  --color-staff-warning-bg: light-dark(#fdf3dc, rgb(232 166 48 / 0.16));
+  --color-staff-warning-fg: light-dark(#7d4a00, #f2c46d);
+  --color-staff-warning-dot: light-dark(#d98e0b, #e8a630);
+  --color-staff-danger-bg: light-dark(#fcecea, rgb(240 82 70 / 0.16));
+  --color-staff-danger-fg: light-dark(#a8261b, #f6a49c);
+  --color-staff-danger-dot: light-dark(#d93a2b, #f0675b);
+  --color-staff-danger: light-dark(#b42318, #e5574b);
+  --color-staff-danger-hover: light-dark(#931c13, #f06b60);
+  --color-staff-on-danger: light-dark(#ffffff, #ffffff);
+  --color-staff-live-dot: light-dark(#e83030, #ff5a4f);
+}
+
+:root:not(.dark) {
+  color-scheme: light;
+}
+
+:root[data-staff-theme="system"]:not(.dark):not(.light) {
+  color-scheme: light dark;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Product identity. Bid's navy has no dark-surface counterpart (PRODUCT_ACCENTS_ON_DARK), so its
+   indicator falls back to the neutral ink in dark mode. LAX Admin has no accent yet. */
+[data-staff-product="bid"] {
+  --color-staff-accent: light-dark(#091f5b, #ededeb);
+}
+
+/* Icons: one stroke weight across the kit, whatever size an icon is drawn at. */
+[data-staff-ui] svg.lucide {
+  stroke-width: 1.75;
+}
+
+[data-staff-ui] {
+  font-family: var(--font-staff);
+  font-feature-settings: "ss01" off;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* The one focus treatment: a 2px ring offset from the control. `staff-focus-inset` draws it inside
+   the box for rows and cells, where an outside ring would be clipped by the table. */
+@utility staff-focus {
+  &:focus-visible {
+    outline: 2px solid var(--color-staff-focus);
+    outline-offset: 2px;
+  }
+}
+
+@utility staff-focus-inset {
+  &:focus-visible {
+    outline: 2px solid var(--color-staff-focus);
+    outline-offset: -2px;
+  }
+}
+
+/* Interaction overlays. Painted as a background image over whatever the base colour is, so hover,
+   pressed and selected read the same on white, on a sunken row or on a tinted badge. */
+@utility staff-overlay-hover {
+  background-image: linear-gradient(var(--color-staff-hover), var(--color-staff-hover));
+}
+
+@utility staff-overlay-pressed {
+  background-image: linear-gradient(var(--color-staff-pressed), var(--color-staff-pressed));
+}
+
+@utility staff-overlay-selected {
+  background-image: linear-gradient(var(--color-staff-selected), var(--color-staff-selected));
+}
+
+/* Touch targets: dense controls stay 32-36px for a mouse and grow to 44px for a finger. */
+@utility staff-target {
+  @media (pointer: coarse) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-staff-ui] *,
+  [data-staff-ui] *::before,
+  [data-staff-ui] *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
