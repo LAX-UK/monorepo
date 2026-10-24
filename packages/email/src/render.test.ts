@@ -191,13 +191,76 @@ describe("renderEmail", () => {
       payoutCurrency: "GBP",
       failureReason: "No account",
       supportContactEmail: "support@lax.bid",
-      adminPayoutsUrl: "https://lax.bid/admin/payouts",
+      audience: "staff",
+      payoutsUrl: "https://lax.bid/admin/payouts",
       sellerPayoutSetupUrl: "https://lax.bid/dashboard/seller/connect",
     });
     expect(rendered.html).toContain("Amount");
     expect(rendered.html).toContain("No account");
     expect(rendered.html).toContain("po_123");
     expect(rendered.html).toContain("https://lax.bid/dashboard/seller/connect");
+  });
+
+  it("words payout notices for the seller and never links them to the admin queue", async () => {
+    const base = {
+      recipientFirstName: "Sam",
+      entityName: "Acme Ltd",
+      payoutId: "po_123",
+      supportContactEmail: "support@lax.bid",
+      payoutsUrl: "https://lax.bid/dashboard/seller/payouts",
+      audience: "seller" as const,
+    };
+    const failed = await renderEmail("payout-transfer-failed-notice", {
+      ...base,
+      payoutAmount: "100.00",
+      payoutCurrency: "GBP",
+      failureReason: "account_closed: raw provider error",
+      sellerPayoutSetupUrl: "https://lax.bid/dashboard/seller/connect",
+    });
+    expect(failed.subject).toBe("We could not send your payout for Acme Ltd");
+    expect(failed.html).toContain("https://lax.bid/dashboard/seller/payouts");
+    expect(failed.html).not.toContain("raw provider error");
+    expect(failed.html).not.toContain("finance team");
+    expect(failed.html).not.toContain("/admin/");
+
+    const blocked = await renderEmail("payout-transfer-blocked-notice", {
+      ...base,
+      payoutAmount: "100.00",
+      payoutCurrency: "GBP",
+      blockReason: "Connect account not ready",
+    });
+    expect(blocked.html).toContain("Sold &amp; payouts");
+    expect(blocked.html).not.toContain("/admin/");
+
+    const initiated = await renderEmail("payout-initiated-notice", {
+      ...base,
+      amount: "100.00",
+      currency: "GBP",
+    });
+    expect(initiated.html).toContain("https://lax.bid/dashboard/seller/payouts");
+
+    const clawback = await renderEmail("payout-clawback-required-notice", {
+      ...base,
+      netAmount: "-20.00",
+      currency: "GBP",
+    });
+    expect(clawback.html).toContain("https://lax.bid/dashboard/seller/payouts");
+    expect(clawback.html).not.toContain("manual reconciliation");
+  });
+
+  it("keeps the operational wording and admin link for the staff copy of a blocked payout", async () => {
+    const rendered = await renderEmail("payout-transfer-blocked-notice", {
+      audience: "staff",
+      entityName: "Acme Ltd",
+      payoutId: "po_123",
+      payoutAmount: "100.00",
+      payoutCurrency: "GBP",
+      blockReason: "Connect account not ready",
+      supportContactEmail: "support@lax.bid",
+      payoutsUrl: "https://lax.bid/admin/payouts",
+    });
+    expect(rendered.subject).toBe("Payout blocked for Acme Ltd");
+    expect(rendered.html).toContain("https://lax.bid/admin/payouts");
   });
 
   it("renders social-account-linked with provider-specific copy", async () => {

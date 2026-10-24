@@ -1,6 +1,10 @@
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
+import {
+  listStaffAlertTargets,
+  sellerPayoutsUrlFor,
+} from "./notification-fanout/notification-fanout-helpers.js";
 
 const PROJECTOR_NAME = "payout_transfer_failed_notify";
 
@@ -66,6 +70,7 @@ export async function processPayoutTransferFailedNotify(options: {
           to: m.email,
           userId: m.userId,
           vars: {
+            audience: "seller",
             recipientFirstName: m.firstName,
             entityName: context.entityName,
             payoutId: row.aggregateId,
@@ -73,11 +78,39 @@ export async function processPayoutTransferFailedNotify(options: {
             payoutCurrency: context.payoutCurrency,
             failureReason,
             supportContactEmail,
-            adminPayoutsUrl,
+            payoutsUrl: sellerPayoutsUrlFor(adminPayoutsUrl),
             sellerPayoutSetupUrl,
           },
           category: "transactional",
           idempotencyKey: `payout-transfer-failed-notice:${row.aggregateId}:${m.userId}`,
+        });
+      }
+
+      // Staff need the provider's raw error and the admin queue; the seller copy has neither.
+      const staffTargets = await listStaffAlertTargets(
+        ctx.staffOpsRecipientReader,
+        ctx.adminEmailAddress,
+      );
+      for (const target of staffTargets) {
+        await emailService.enqueue({
+          template: "payout-transfer-failed-notice",
+          to: target.to,
+          ...(target.userId ? { userId: target.userId } : {}),
+          ...(target.snapshot ? { recipientResolution: "snapshot" as const } : {}),
+          vars: {
+            audience: "staff",
+            recipientFirstName: target.firstName,
+            entityName: context.entityName,
+            payoutId: row.aggregateId,
+            payoutAmount: context.payoutAmount,
+            payoutCurrency: context.payoutCurrency,
+            failureReason,
+            supportContactEmail,
+            payoutsUrl: adminPayoutsUrl,
+            sellerPayoutSetupUrl,
+          },
+          category: "transactional",
+          idempotencyKey: `payout-transfer-failed-notice:${row.aggregateId}:${target.keySuffix}`,
         });
       }
       maxId = row.id;

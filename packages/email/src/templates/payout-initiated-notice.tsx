@@ -1,12 +1,11 @@
-import { COLORS } from "@auction/branding";
-import { Link } from "@react-email/components";
+import { Button } from "../components/Button.js";
 import { FactCard } from "../components/FactCard.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
 export const subject = (vars: TemplateVarsByName["payout-initiated-notice"]) =>
-  `Payout initiated for ${vars.entityName}`;
+  `Your payout for ${vars.entityName} is on its way`;
 
 export default function PayoutInitiatedNoticeEmail(
   vars: TemplateVarsByName["payout-initiated-notice"],
@@ -15,12 +14,13 @@ export default function PayoutInitiatedNoticeEmail(
     <Layout
       category="finance"
       eyebrow="Payout"
-      preview={`Payout initiated for ${vars.entityName}`}
-      title="Payout initiated"
+      preview={`A payout for ${vars.entityName} is on its way`}
+      title="Your payout is on its way"
     >
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
       <TextBlock>
-        A payout for <strong>{vars.entityName}</strong> has been initiated.
+        We have started a payout for <strong>{vars.entityName}</strong>. It usually reaches your
+        bank account within a few working days.
       </TextBlock>
       <FactCard
         rows={[
@@ -28,16 +28,7 @@ export default function PayoutInitiatedNoticeEmail(
           { label: "Payout ID", value: vars.payoutId, mono: true },
         ]}
       />
-      <TextBlock>
-        You can review it in the{" "}
-        <Link
-          href={vars.adminPayoutsUrl}
-          style={{ color: COLORS.link, textDecoration: "underline" }}
-        >
-          admin payouts dashboard
-        </Link>
-        .
-      </TextBlock>
+      <Button href={vars.payoutsUrl}>View sold lots and payouts</Button>
     </Layout>
   );
 }
