@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
-  transpilePackages: ["@auction/ui"],
+  transpilePackages: ["@auction/ui", "@auction/staff-ui"],
   async redirects() {
     // The inbox replaced the read-only list; keep bookmarks and emailed links working.
     return [{ source: "/general-enquiries", destination: "/enquiries", permanent: true }];

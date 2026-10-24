@@ -1,5 +1,4 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { CreateProductionTaskForm } from "@/components/forms/operations/create-production-task-form.client";
 import { ProductionQueue } from "@/components/production/production-queue.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
@@ -45,9 +44,8 @@ export default async function ShopAdminProductionPage({
     <div className="space-y-8">
       <PageHeader
         title="Production"
-        description="Made-to-order work for editions that have been sold but not yet produced."
+        description="Made-to-order work for editions that have been sold but not yet produced. Send an item to production from its order."
       />
-      <CreateProductionTaskForm />
       <section aria-labelledby="production-tasks-heading" className="flex flex-col gap-4">
         <h2 id="production-tasks-heading" className="text-lg font-medium text-on-surface">
           Tasks

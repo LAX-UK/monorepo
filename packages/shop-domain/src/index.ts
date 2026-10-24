@@ -118,6 +118,8 @@ export {
 export {
   SHOP_FULFILMENT_STATUSES,
   canTransitionFulfilmentStatus,
+  isShopFulfilmentStatus,
+  nextFulfilmentStatuses,
   type ShopFulfilmentStatus,
 } from "./fulfilment-state.js";
 export {

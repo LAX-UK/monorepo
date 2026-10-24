@@ -5,7 +5,7 @@ import { adminSuspendUserResultAction, adminUnsuspendUserResultAction } from "@/
 import { Can } from "@/lib/auth/capabilities";
 import { USER_MODERATION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -27,11 +27,11 @@ export function UserSuspendAction({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const button = suspendedAt ? (
-    <Button
-      type="button"
+    <StaffButton
       variant="secondary"
-      className={fullWidthButton ? "min-h-11 w-full" : "min-h-11"}
-      disabled={pending}
+      size="sm"
+      className={fullWidthButton ? "w-full sm:w-auto" : undefined}
+      loading={pending}
       onClick={() => {
         startTransition(() => {
           void (async () => {
@@ -47,18 +47,18 @@ export function UserSuspendAction({
       }}
     >
       {fullWidthButton ? "Unsuspend account" : "Unsuspend"}
-    </Button>
+    </StaffButton>
   ) : (
     <>
-      <Button
-        type="button"
-        variant="destructive"
-        className={fullWidthButton ? "min-h-11 w-full" : "min-h-11"}
-        disabled={pending}
+      <StaffButton
+        variant="danger-secondary"
+        size="sm"
+        className={fullWidthButton ? "w-full sm:w-auto" : undefined}
+        loading={pending}
         onClick={() => setConfirmOpen(true)}
       >
         {fullWidthButton ? "Suspend account" : "Suspend"}
-      </Button>
+      </StaffButton>
       <TypedConfirmationDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

@@ -142,7 +142,7 @@ describe("buildAdminNavGroups", () => {
   it("shows only the overview without capabilities", () => {
     expect(
       flattenAdminNav(buildAdminNavGroups({ capabilities: [], features: ALL_FEATURES })),
-    ).toEqual([{ href: "/overview", label: "Overview" }]);
+    ).toEqual([{ href: "/overview", icon: "overview", label: "Overview" }]);
   });
 
   describe("enquiry attention count", () => {

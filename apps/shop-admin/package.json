@@ -20,6 +20,7 @@
     "@auction/identity-rp": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
     "@auction/shop-domain": "workspace:*",
+    "@auction/staff-ui": "workspace:*",
     "@auction/ui": "workspace:*",
     "@sinclair/typebox": "^0.34.41",
     "@tanstack/react-table": "^8.21.3",

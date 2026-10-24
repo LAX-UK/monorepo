@@ -31,6 +31,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  max,
   or,
   sql,
 } from "drizzle-orm";
@@ -547,9 +548,32 @@ export function createDrizzleAdminReadRepository(
       async listStaffMembers(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
+        // Name and email come from the person's shop profile; "last active" is their latest
+        // admin action, the only activity this service records for staff.
+        const lastActiveAt = db
+          .select({
+            actorSubjectId: shopAdminAudit.actorSubjectId,
+            lastActiveAt: max(shopAdminAudit.createdAt).as("last_active_at"),
+          })
+          .from(shopAdminAudit)
+          .groupBy(shopAdminAudit.actorSubjectId)
+          .as("staff_last_active");
         const rows = await db
-          .select()
+          .select({
+            member: shopStaffMember,
+            displayName: shopUserProfile.name,
+            email: shopUserProfile.email,
+            lastActiveAt: lastActiveAt.lastActiveAt,
+          })
           .from(shopStaffMember)
+          .leftJoin(
+            shopUserProfile,
+            eq(shopUserProfile.identitySubjectId, shopStaffMember.identitySubjectId),
+          )
+          .leftJoin(
+            lastActiveAt,
+            eq(lastActiveAt.actorSubjectId, shopStaffMember.identitySubjectId),
+          )
           .where(
             cursor
               ? keysetBeforeCreatedAtId(shopStaffMember.createdAt, shopStaffMember.id, cursor)
@@ -557,13 +581,20 @@ export function createDrizzleAdminReadRepository(
           )
           .orderBy(...orderByMsTimestampIdDesc(shopStaffMember.createdAt, shopStaffMember.id))
           .limit(limit + 1);
-        return paginateByCreatedAtId(rows, limit, (row) => ({
-          staffMemberId: row.id,
-          identitySubjectId: row.identitySubjectId,
-          role: row.role,
-          disabledAt: row.disabledAt?.toISOString() ?? null,
-          createdAt: row.createdAt.toISOString(),
-        }));
+        return paginateByCreatedAtId(
+          rows.map((row) => ({ ...row, id: row.member.id, createdAt: row.member.createdAt })),
+          limit,
+          (row) => ({
+            staffMemberId: row.member.id,
+            identitySubjectId: row.member.identitySubjectId,
+            displayName: row.displayName?.trim() || null,
+            email: row.email?.trim() || null,
+            lastActiveAt: row.lastActiveAt ? new Date(row.lastActiveAt).toISOString() : null,
+            role: row.member.role,
+            disabledAt: row.member.disabledAt?.toISOString() ?? null,
+            createdAt: row.member.createdAt.toISOString(),
+          }),
+        );
       },
     },
     catalogue: {

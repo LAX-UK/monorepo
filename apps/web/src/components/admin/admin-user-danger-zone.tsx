@@ -1,5 +1,5 @@
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { UserSuspendAction, UserTwoFactorResetAction } from "@/components/admin/admin-user-actions";
+import { DangerZone, DangerZoneAction } from "@auction/staff-ui";
 
 type Props = {
   userId: string;
@@ -8,30 +8,29 @@ type Props = {
   twoFactorEnabled?: boolean;
 };
 
+/**
+ * Account-level actions that are hard to undo, at the foot of a person's page. Each action is
+ * one row: what it does on the left, its button on the right.
+ */
 export function AdminUserDangerZone({ userId, suspendedAt, twoFactorEnabled = false }: Props) {
   return (
-    <section
-      aria-labelledby="user-danger-zone-title"
-      className="rounded-xl border border-error/40 bg-error/5 p-5"
-    >
-      <AdminSectionLabel id="user-danger-zone-title" as="h2" className="text-error">
-        Danger zone
-      </AdminSectionLabel>
-      <p className="mt-2 font-body text-sm text-on-surface-variant">
-        Suspending blocks this user from signing in and taking actions on the platform.
-      </p>
-      <div className="mt-4">
-        <UserSuspendAction userId={userId} suspendedAt={suspendedAt} fullWidthButton />
-      </div>
+    <DangerZone>
       {twoFactorEnabled ? (
-        <div className="mt-4 space-y-2">
-          <p className="font-body text-sm text-on-surface-variant">
-            If this person has lost their authenticator app and backup codes, reset two-step
-            verification so they can sign in again. Check who they are first.
-          </p>
-          <UserTwoFactorResetAction userId={userId} fullWidthButton />
-        </div>
+        <DangerZoneAction
+          title="Reset two-step verification"
+          description="For someone who has lost their authenticator app and backup codes. Check who they are first; they are signed out everywhere and emailed that support reset it."
+          action={<UserTwoFactorResetAction userId={userId} />}
+        />
       ) : null}
-    </section>
+      <DangerZoneAction
+        title={suspendedAt ? "Unsuspend account" : "Suspend account"}
+        description={
+          suspendedAt
+            ? "Lets this person sign in and bid again."
+            : "Blocks this person from signing in and taking actions on the platform."
+        }
+        action={<UserSuspendAction userId={userId} suspendedAt={suspendedAt} fullWidthButton />}
+      />
+    </DangerZone>
   );
 }

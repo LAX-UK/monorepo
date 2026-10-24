@@ -28,6 +28,7 @@ export type AdminClientDetailTab = {
   label: string;
   content: ReactNode;
   badge?: ReactNode;
+  count?: number;
 };
 
 function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOverviewSection[] {
@@ -137,6 +138,7 @@ export function buildAdminClientDetailTabs(
       id: "won-lots",
       label: "Won lots",
       badge: <AdminDetailTabCountBadge count={wonLots.length} />,
+      count: wonLots.length,
       content: <AdminUserWonLotsPanel wonLots={wonLots} />,
     },
   ];
@@ -146,6 +148,7 @@ export function buildAdminClientDetailTabs(
       id: "bids",
       label: "Bids",
       badge: <AdminDetailTabCountBadge count={bids.length} />,
+      count: bids.length,
       content: <AdminUserBidsPanel bids={bids} clientLabel={bundle.user.name} />,
     });
   }
@@ -155,6 +158,7 @@ export function buildAdminClientDetailTabs(
       id: "payments",
       label: "Payments",
       badge: <AdminDetailTabCountBadge count={payments.length} />,
+      count: payments.length,
       content: <AdminUserPaymentsPanel payments={payments} />,
     });
   }

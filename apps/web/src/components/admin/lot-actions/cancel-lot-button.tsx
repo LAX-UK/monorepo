@@ -3,7 +3,7 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminCancelLotResultAction } from "@/lib/actions/admin";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -20,15 +20,14 @@ export function CancelLotButton({ lotId, disabled }: Props) {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        disabled={disabled || pending}
+      <StaffButton
+        variant="danger-secondary"
+        disabled={disabled}
+        loading={pending}
         onClick={() => setOpen(true)}
       >
         Cancel auction
-      </Button>
+      </StaffButton>
       <TypedConfirmationDialog
         open={open}
         onOpenChange={setOpen}

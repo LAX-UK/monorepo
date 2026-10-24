@@ -6,7 +6,7 @@ import { lotPublishBlockedReason } from "@/lib/admin/catalog-readiness";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton } from "@auction/staff-ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
@@ -56,15 +56,15 @@ export function PublishLotButton({
 
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
+      <StaffButton
+        variant="primary"
         disabled={publishDisabled}
+        loading={pending}
         title={readinessBlockedReason ?? undefined}
         onClick={() => setOpen(true)}
       >
         Publish
-      </Button>
+      </StaffButton>
       <TypedConfirmationDialog
         open={open}
         onOpenChange={setOpen}

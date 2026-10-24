@@ -1,24 +1,11 @@
-import { AdminBulkSelectionProvider } from "@/components/admin/admin-bulk-selection-bridge";
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
-import { AdminUsersFilterToolbar } from "@/components/admin/admin-users-filter-toolbar";
-import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { AdminClientsBoardContainer } from "@/components/admin/clients-board/container";
-import {
-  AdminUserListBulkBar,
-  PeopleClientsMobileCards,
-} from "@/components/admin/people/people-users-mobile-cards";
-import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { ExportButton } from "@/components/exports/export-button";
-import {
-  buildClientsListKpiTiles,
-  buildClientsMobileMetrics,
-} from "@/lib/admin/people/build-clients-list-kpi-tiles";
+import { ClientsStaffList } from "@/components/admin/people/clients-staff-list";
+import { toClientsStaffRows } from "@/lib/admin/people/clients-staff-list.vm";
 import { loadAdminClientsListPage } from "@/lib/admin/people/load-clients-list-page";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { USERS_DIRECTORY_ACCESS, USER_MODERATION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { PageHeader } from "@auction/staff-ui";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -31,96 +18,44 @@ export default async function AdminClientsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await requireAdminCapability(USERS_DIRECTORY_ACCESS, "/admin/clients");
   const sp = await searchParams;
-  const error = safeDecodeAdminErrorParam(sp.error);
   const { model, rows, summary, total, loadError, pagination } = await loadAdminClientsListPage(sp);
-  const isPaginationEmpty = !loadError && total > 0 && rows.length === 0 && !model.hasFilters;
+  const first = (pagination?.offset ?? 0) + 1;
 
   return (
-    <AdminBulkSelectionProvider>
-      <CatalogListShell
+    <div className="flex flex-col gap-6">
+      <PageHeader
         title="Clients"
-        description="Browse collector and seller accounts. Filter by verification, KYC, persona, activity dates, and more."
-        hasFilters={model.hasFilters}
-        resetHref={model.basePath}
-        bulkBar={<AdminUserListBulkBar />}
-        mobileCards={
-          !loadError && rows.length > 0 ? <PeopleClientsMobileCards rows={rows} /> : null
-        }
-        mobileSummary={
-          !loadError ? (
-            <CatalogListMobileSummary metrics={buildClientsMobileMetrics(summary)} />
-          ) : null
-        }
-        kpiStrip={
-          !loadError ? (
-            <AdminTrendKpiBand
-              ariaLabel="Client summary"
-              tiles={buildClientsListKpiTiles(summary)}
-            />
-          ) : null
-        }
-        errorAlert={
-          error || loadError ? (
-            <AdminListAlert title="Could not load clients">{loadError ?? error}</AdminListAlert>
-          ) : null
-        }
-        filters={
-          !loadError ? (
-            <AdminUsersFilterToolbar
-              filterDefaults={model.listFilters}
-              activeFilterCount={model.activeFilterCount}
-              activeFilterChips={model.activeFilterChips}
-              toolbarEnd={<ExportButton entityType="clients" filters={model.exportFilters} />}
-            />
-          ) : null
-        }
-        filtersSelfContained
-        empty={
-          !loadError && rows.length === 0 ? (
-            <FilterEmptyState
-              entity="clients"
-              segment="admin"
-              hasActiveFilters={model.hasFilters}
-              clearFiltersHref={model.basePath}
-              {...(isPaginationEmpty
-                ? {
-                    title: "No clients on this page",
-                    description: "Try a previous page or adjust pagination.",
-                  }
-                : !model.hasFilters
-                  ? {
-                      description: "Client accounts will appear here once users sign up.",
-                    }
-                  : {})}
-            />
-          ) : null
-        }
+        description="Collector and seller accounts. Open a client to see their activity, identity checks and account controls."
+      />
+      <ClientsStaffList
+        rows={toClientsStaffRows(rows, model.listReturnTarget)}
+        search={sp}
+        counts={{ total: summary.total, active: summary.active, suspended: summary.suspended }}
+        filterChips={model.activeFilterChips.map((chip) => ({
+          id: chip.id,
+          label: chip.label,
+          clearHref: chip.clearHref,
+        }))}
         pagination={
-          pagination ? (
-            <CatalogPagination
-              offset={pagination.offset}
-              limit={pagination.limit}
-              countOnPage={pagination.countOnPage}
-              total={pagination.total}
-              prevHref={pagination.prevHref}
-              nextHref={pagination.nextHref}
-            />
-          ) : null
+          rows.length > 0
+            ? {
+                summary: `${first}–${first + rows.length - 1} of ${total} clients`,
+                prevHref: pagination?.prevHref ?? null,
+                nextHref: pagination?.nextHref ?? null,
+              }
+            : null
         }
-      >
-        {!loadError && rows.length > 0 ? (
-          <AdminClientsBoardContainer
-            rows={rows}
-            totalMatches={total}
-            hasActiveFilters={model.hasFilters}
-            selectedClientId={model.selectedClientId}
-            listReturnTarget={model.listReturnTarget}
-            clearPreviewHref={model.buildDrawerHref(null)}
-            externalMobileCards
-          />
-        ) : null}
-      </CatalogListShell>
-    </AdminBulkSelectionProvider>
+        canModerate={userHasAccessTo(
+          user.role as UserRole,
+          user.staffRole ?? null,
+          USER_MODERATION_ACCESS,
+        )}
+        exportFilters={model.exportFilters}
+        loadError={loadError}
+        filtered={model.hasFilters}
+      />
+    </div>
   );
 }

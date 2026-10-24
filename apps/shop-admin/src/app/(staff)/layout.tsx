@@ -1,14 +1,22 @@
 export const dynamic = "force-dynamic";
 
-import { AdminAccountMenu } from "@/components/admin-account-menu";
 import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffReauthHref } from "@/lib/staff-layout-redirect";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
+import { loadStaffIdentity } from "@/server/application/load-staff-identity";
+import { getShopAdminContainer } from "@/server/container";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
+import { staffDisplayName } from "@/server/domain/staff-identity.vm";
+import { staffProducts } from "@/server/domain/staff-products.vm";
 import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
-import { Toaster } from "@auction/ui";
-import { headers } from "next/headers";
+import {
+  STAFF_NAV_COOKIE,
+  STAFF_THEME_COOKIE,
+  StaffToaster,
+  parseStaffTheme,
+} from "@auction/staff-ui";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -31,21 +39,33 @@ export default async function StaffLayout({ children }: { children: ReactNode })
   }
 
   const session = sessionResult.data;
-  const enquirySummary = await loadEnquirySummary(session.capabilities);
+  const [enquirySummary, identity, jar] = await Promise.all([
+    loadEnquirySummary(session.capabilities),
+    loadStaffIdentity(),
+    cookies(),
+  ]);
   const navGroups = buildAdminNavGroups({
     capabilities: session.capabilities,
     features: session.features,
     enquiryAttentionCount: enquirySummary?.needsAttentionCount ?? 0,
   });
+  const roleLabel = staffRoleLabel(session.role);
   return (
     <>
       <ShopAdminShell
         navGroups={navGroups}
-        account={<AdminAccountMenu roleLabel={staffRoleLabel(session.role)} />}
+        products={staffProducts(getShopAdminContainer().config)}
+        user={{
+          name: staffDisplayName(identity, roleLabel),
+          ...(identity.email ? { email: identity.email } : {}),
+          roleLabel,
+        }}
+        initialTheme={parseStaffTheme(jar.get(STAFF_THEME_COOKIE)?.value)}
+        defaultCollapsed={jar.get(STAFF_NAV_COOKIE)?.value === "collapsed"}
       >
         {children}
       </ShopAdminShell>
-      <Toaster />
+      <StaffToaster />
     </>
   );
 }

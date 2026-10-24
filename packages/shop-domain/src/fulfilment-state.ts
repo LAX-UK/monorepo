@@ -24,6 +24,17 @@ const ALLOWED: Readonly<Record<ShopFulfilmentStatus, readonly ShopFulfilmentStat
   cancelled: [],
 };
 
+/** The statuses a fulfilment can move to from `from`, in workflow order; empty when final. */
+export function nextFulfilmentStatuses(
+  from: ShopFulfilmentStatus,
+): readonly ShopFulfilmentStatus[] {
+  return ALLOWED[from];
+}
+
+export function isShopFulfilmentStatus(value: string): value is ShopFulfilmentStatus {
+  return (SHOP_FULFILMENT_STATUSES as readonly string[]).includes(value);
+}
+
 export function canTransitionFulfilmentStatus(
   from: ShopFulfilmentStatus,
   to: ShopFulfilmentStatus,

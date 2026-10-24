@@ -9,16 +9,12 @@ import {
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
-import { Button } from "@auction/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@auction/ui/components/dropdown-menu";
-import { ExternalLink, MoreHorizontal } from "lucide-react";
+import { OverflowMenu, StaffButton, type StaffLinkComponent } from "@auction/staff-ui";
+import { Copy, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   lotId: string;
@@ -39,6 +35,11 @@ type Props = {
   showEditCatalog: boolean;
 };
 
+/**
+ * The lot page's actions: the one that moves the lot forward (publish, or edit) is the primary
+ * button; cancelling the auction is a red secondary; the rest sit in the overflow menu, with
+ * delete last. Each appears only for roles the API lets do it.
+ */
 export function AdminLotDetailActions({
   lotId,
   lotTitle,
@@ -55,6 +56,7 @@ export function AdminLotDetailActions({
   showEditLot,
   showEditCatalog,
 }: Props) {
+  const router = useRouter();
   const { open: deleteOpen, setOpen: setDeleteOpen } = useDeleteLotDialog();
   const editHref = showEditCatalog
     ? `/admin/lots/${lotId}/edit/catalog`
@@ -64,7 +66,7 @@ export function AdminLotDetailActions({
     : showEditLot
       ? "Edit lot"
       : showEditCatalog
-        ? "Edit catalog copy"
+        ? "Edit catalogue copy"
         : null;
 
   const publishViaSale = saleStatus === "draft";
@@ -72,15 +74,47 @@ export function AdminLotDetailActions({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {editLabel ? (
-        <Button variant="outline" size="sm" asChild>
-          <Link href={editHref}>{editLabel}</Link>
-        </Button>
-      ) : null}
       {publishViaSale && canPublish ? (
-        <p className="max-w-xs font-body text-xs text-on-surface-variant">
-          {draftSaleLotPublishBanner()}
-        </p>
+        <p className="max-w-xs text-staff-xs text-staff-muted">{draftSaleLotPublishBanner()}</p>
+      ) : null}
+      <OverflowMenu
+        label="More lot actions"
+        Link={NextLink}
+        actions={[
+          {
+            id: "view",
+            label: "View on site",
+            icon: ExternalLink,
+            onSelect: () => window.open(publicHref, "_blank", "noopener"),
+          },
+          {
+            id: "duplicate",
+            label: "Duplicate as draft",
+            icon: Copy,
+            onSelect: () => router.push(`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`),
+          },
+          ...(canDelete
+            ? [
+                {
+                  id: "delete",
+                  label: "Delete lot…",
+                  icon: Trash2,
+                  tone: "danger" as const,
+                  onSelect: () => setDeleteOpen(true),
+                },
+              ]
+            : []),
+        ]}
+      />
+      {canCancel ? <CancelLotButton lotId={lotId} /> : null}
+      {editLabel ? (
+        <StaffButton
+          asChild
+          variant={showLotPublish ? "secondary" : "primary"}
+          icon={<Pencil aria-hidden />}
+        >
+          <Link href={editHref}>{editLabel}</Link>
+        </StaffButton>
       ) : null}
       {showLotPublish ? (
         <PublishLotButton
@@ -90,40 +124,6 @@ export function AdminLotDetailActions({
           publishReadiness={publishReadiness}
         />
       ) : null}
-      {canCancel ? <CancelLotButton lotId={lotId} /> : null}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="sm" aria-label="More lot actions">
-            <MoreHorizontal className="size-4" aria-hidden />
-            <span className="sr-only">More</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          {canDelete ? (
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onSelect={(e) => {
-                e.preventDefault();
-                setDeleteOpen(true);
-              }}
-            >
-              Delete lot
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem asChild>
-            <Link href={`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`}>
-              Duplicate draft
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href={publicHref} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 size-4 opacity-70" aria-hidden />
-              View on site
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
       {canDelete ? (
         <DeleteLotDialog
           lotId={lotId}

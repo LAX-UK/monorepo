@@ -86,6 +86,8 @@ describe("admin read routes", () => {
       fulfilment: "uk_insured_delivery",
       totalPence: 1000,
       buyerSubjectId: "buyer",
+      buyerName: "Ada Lovelace",
+      buyerEmail: "ada@example.com",
       stripeCheckoutSessionId: null,
       stripePaymentIntentId: null,
       paidAt: "2026-01-01T00:00:00.000Z",
@@ -93,6 +95,7 @@ describe("admin read routes", () => {
       lines: [],
       fulfilmentRecord: null,
       refunds: [],
+      activity: [],
     });
     const app = createShopApiApp({ deps, logger: false });
     await app.ready();

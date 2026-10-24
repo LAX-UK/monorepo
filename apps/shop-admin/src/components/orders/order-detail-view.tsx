@@ -1,0 +1,256 @@
+import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
+import {
+  FulfilmentUpdateForm,
+  OrderHeaderActions,
+  OrderLineMenu,
+  SendToProductionButton,
+} from "@/components/orders/order-actions.client";
+import {
+  buildOrderTimeline,
+  canRefundOrder,
+  fulfilmentOptionLabel,
+  orderLineLabel,
+  presentFulfilmentStatus,
+  presentOrderStatus,
+  presentProductionStatus,
+  presentRefundStatus,
+} from "@/server/domain/order-detail.vm";
+import { orderNumber } from "@/server/domain/order-list.vm";
+import type { AdminOrderDetail } from "@auction/shop-contracts";
+import {
+  KeyValueList,
+  MappedStatusBadge,
+  MetaItem,
+  PageHeader,
+  Section,
+  StatusBadge,
+  Timeline,
+  formatGbp,
+  formatStaffDateTime,
+  humanizeStatus,
+} from "@auction/staff-ui";
+
+export type OrderPermissions = {
+  refund: boolean;
+  fulfilment: boolean;
+  production: boolean;
+};
+
+/** Capability names as the session lists them; the API checks the same ones. */
+export function orderPermissions(capabilities: readonly string[]): OrderPermissions {
+  return {
+    refund: capabilities.includes("refund.write"),
+    fulfilment: capabilities.includes("fulfilment.write"),
+    production: capabilities.includes("production.write"),
+  };
+}
+
+/**
+ * One order: what was bought, where it is, what was refunded and everything that happened, with
+ * the actions this person's role allows. Main column for the work, side column for reference.
+ */
+export function OrderDetailView({
+  detail,
+  permissions,
+}: {
+  detail: AdminOrderDetail;
+  permissions: OrderPermissions;
+}) {
+  const number = orderNumber(detail.orderId);
+  const buyer = detail.buyerName ?? detail.buyerEmail ?? "Unknown buyer";
+  const refundedPence = detail.refunds
+    .filter((refund) => refund.status !== "failed" && refund.status !== "cancelled")
+    .reduce((sum, refund) => sum + refund.amountPence, 0);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        breadcrumbs={
+          <AdminBreadcrumbs
+            list={{ label: "Orders", href: "/orders" }}
+            current={`Order ${number}`}
+          />
+        }
+        title={`Order ${number}`}
+        status={<MappedStatusBadge status={detail.status} present={presentOrderStatus} />}
+        meta={
+          <>
+            <MetaItem label="Total">{formatGbp(detail.totalPence)}</MetaItem>
+            <MetaItem label="Buyer">{buyer}</MetaItem>
+            <MetaItem label="Placed">{formatStaffDateTime(detail.createdAt)}</MetaItem>
+          </>
+        }
+        primaryAction={
+          <OrderHeaderActions
+            detail={detail}
+            canRefund={permissions.refund && canRefundOrder(detail)}
+          />
+        }
+      />
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Section
+            title="Items"
+            description={`${detail.lines.length} on this order`}
+            bodyClassName="p-0"
+          >
+            <ul className="divide-y divide-staff-line-subtle">
+              {detail.lines.map((line) => (
+                <li
+                  key={line.orderLineId}
+                  className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-staff-sm font-medium text-staff-fg">
+                      {orderLineLabel(line)}
+                    </p>
+                    <p className="text-staff-xs text-staff-muted tabular-nums">
+                      {formatGbp(line.unitPricePence)}
+                      {line.sku ? ` · ${line.sku}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {line.production ? (
+                      <span className="flex items-center gap-2 text-staff-xs text-staff-muted">
+                        Production
+                        <StatusBadge tone={presentProductionStatus(line.production.status).tone}>
+                          {presentProductionStatus(line.production.status).label}
+                        </StatusBadge>
+                      </span>
+                    ) : permissions.production && line.editionId ? (
+                      <SendToProductionButton line={line} />
+                    ) : null}
+                    <OrderLineMenu line={line} canCancel={permissions.refund} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Section>
+
+          <Section
+            title="Fulfilment"
+            description={fulfilmentOptionLabel(
+              detail.fulfilmentRecord?.option ?? detail.fulfilment,
+            )}
+            action={
+              detail.fulfilmentRecord ? (
+                <MappedStatusBadge
+                  status={detail.fulfilmentRecord.status}
+                  present={presentFulfilmentStatus}
+                />
+              ) : null
+            }
+          >
+            {detail.fulfilmentRecord ? (
+              <div className="flex flex-col gap-5">
+                <KeyValueList
+                  items={[
+                    {
+                      label: "Tracking",
+                      value: detail.fulfilmentRecord.trackingNumber
+                        ? `${detail.fulfilmentRecord.carrier ?? "Carrier"} ${detail.fulfilmentRecord.trackingNumber}`
+                        : null,
+                      ...(detail.fulfilmentRecord.trackingNumber
+                        ? { copyValue: detail.fulfilmentRecord.trackingNumber }
+                        : {}),
+                    },
+                    {
+                      label: "Last updated",
+                      value: formatStaffDateTime(detail.fulfilmentRecord.updatedAt),
+                    },
+                  ]}
+                />
+                {permissions.fulfilment ? (
+                  <div className="border-t border-staff-line-subtle pt-4">
+                    <FulfilmentUpdateForm fulfilment={detail.fulfilmentRecord} />
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-staff-sm text-staff-muted">
+                Fulfilment starts once the order is paid.
+              </p>
+            )}
+          </Section>
+
+          <Section
+            title="Refunds"
+            {...(refundedPence > 0
+              ? { description: `${formatGbp(refundedPence)} refunded or pending` }
+              : {})}
+            {...(detail.refunds.length ? { bodyClassName: "p-0" } : {})}
+          >
+            {detail.refunds.length === 0 ? (
+              <p className="text-staff-sm text-staff-muted">No refunds on this order.</p>
+            ) : (
+              <ul className="divide-y divide-staff-line-subtle">
+                {detail.refunds.map((refund) => {
+                  const line = detail.lines.find(
+                    (candidate) => candidate.orderLineId === refund.orderLineId,
+                  );
+                  return (
+                    <li
+                      key={refund.refundId}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-staff-sm font-medium text-staff-fg tabular-nums">
+                          {formatGbp(refund.amountPence)}
+                        </p>
+                        <p className="truncate text-staff-xs text-staff-muted">
+                          {line ? orderLineLabel(line) : "Whole order"} ·{" "}
+                          {humanizeStatus(refund.source)} · {formatStaffDateTime(refund.createdAt)}
+                        </p>
+                      </div>
+                      <MappedStatusBadge status={refund.status} present={presentRefundStatus} />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Section>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-6">
+          <Section title="Customer">
+            <KeyValueList
+              items={[
+                { label: "Name", value: detail.buyerName },
+                {
+                  label: "Email",
+                  value: detail.buyerEmail,
+                  ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
+                },
+                { label: "Account", value: "LAX Account", copyValue: detail.buyerSubjectId },
+              ]}
+            />
+          </Section>
+          <Section title="Payment">
+            <KeyValueList
+              items={[
+                { label: "Total", value: formatGbp(detail.totalPence), numeric: true },
+                {
+                  label: "Paid",
+                  value: detail.paidAt ? formatStaffDateTime(detail.paidAt) : "Not paid",
+                },
+                ...(detail.stripePaymentIntentId
+                  ? [
+                      {
+                        label: "Stripe payment",
+                        value: `${detail.stripePaymentIntentId.slice(0, 14)}…`,
+                        copyValue: detail.stripePaymentIntentId,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </Section>
+          <Section title="Activity">
+            <Timeline label="Order activity" events={buildOrderTimeline(detail)} />
+          </Section>
+        </div>
+      </div>
+    </div>
+  );
+}

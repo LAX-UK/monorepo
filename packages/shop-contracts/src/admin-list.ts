@@ -164,6 +164,11 @@ export const AdminArtistListSchema = createCursorListResponseSchema(AdminArtistL
 export const AdminStaffMemberListItemSchema = Type.Object({
   staffMemberId: Type.String({ format: "uuid" }),
   identitySubjectId: Type.String(),
+  /** From the person's LAX profile; null until they have signed in to a LAX product. */
+  displayName: Type.Union([Type.String(), Type.Null()]),
+  email: Type.Union([Type.String(), Type.Null()]),
+  /** Their latest recorded admin action, as a proxy for last active; null if none. */
+  lastActiveAt: Type.Union([Type.String(), Type.Null()]),
   role: Type.String(),
   disabledAt: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
@@ -172,6 +177,7 @@ export const AdminStaffMemberListItemSchema = Type.Object({
 export const AdminStaffMemberListSchema = createCursorListResponseSchema(
   AdminStaffMemberListItemSchema,
 );
+export type AdminStaffMemberList = Static<typeof AdminStaffMemberListSchema>;
 
 /** Each figure is present only when the caller's role may open the list it counts. */
 export const AdminOverviewKpisSchema = Type.Object({
