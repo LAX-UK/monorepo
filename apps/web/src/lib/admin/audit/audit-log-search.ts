@@ -71,7 +71,7 @@ export function auditLogHref(
   const next = { ...patch };
   // Dropping the actor drops its display name too.
   if (next.actor === null || next.actor === "") next.actorLabel = null;
-  return buildListHref(AUDIT_LOG_PATH, current, { offset: 0, ...next });
+  return buildListHref(AUDIT_LOG_PATH, current, { offset: null, ...next });
 }
 
 export type AuditFilterChip = { id: string; label: string; clearHref: string };

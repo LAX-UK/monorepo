@@ -1,10 +1,10 @@
 "use client";
 
+import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import {
-  DetailActivityPreviewSection,
   DetailAttentionTable,
   DetailBoardKpiStrip,
   DetailEntityTable,
@@ -83,12 +83,28 @@ export function SaleOverviewTab({
   );
 
   const activityPreview = (
-    <DetailActivityPreviewSection
-      events={activityEvents}
-      exportFilters={{ aggregateType: "sale", aggregateId: saleId }}
-      emptyMessage="No sale activity recorded yet. Events appear when the sale is published, cancelled, or ended."
-      viewAllHref={`/admin/sales/${saleId}/activity`}
-    />
+    <div id="activity">
+      <CatalogDetailTabCard
+        title="Recent activity"
+        description="Timeline of changes and key events."
+        countBadge={activityEvents.length}
+        footer={
+          <Link
+            href={`/admin/audit?entity=sale&q=${encodeURIComponent(saleId)}`}
+            className="font-label text-xs text-link hover:underline"
+          >
+            Open in the audit log
+          </Link>
+        }
+      >
+        <AuditTimeline
+          label="Sale activity"
+          events={activityEvents}
+          limit={5}
+          empty="No sale activity recorded yet. Events appear when the sale is published, cancelled, or ended."
+        />
+      </CatalogDetailTabCard>
+    </div>
   );
 
   return (

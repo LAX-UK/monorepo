@@ -1,25 +1,18 @@
 "use client";
 
+import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { useLotDetailReadiness } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { lotEditResumeHref } from "@/lib/admin/catalog-readiness";
-import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import type { AdminLotAttention } from "@/lib/data/http/admin-lot-attention.server";
 import type { AdminLotDetailMetrics } from "@/lib/data/http/admin-lot-detail-metrics.server";
 import type { AdminLotOverviewKpiTrends } from "@/lib/data/http/admin-lot-overview-kpi-trends.server";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { buildLotOverviewViewModel } from "@/lib/data/view-models/lot-overview.vm";
-import {
-  KeyValueList,
-  Section,
-  StaffButton,
-  StatGrid,
-  StatusBadge,
-  Timeline,
-} from "@auction/staff-ui";
+import { KeyValueList, Section, StaffButton, StatGrid, StatusBadge } from "@auction/staff-ui";
 import type { Lot } from "@auction/types";
 import { Progress } from "@auction/ui/components/progress";
 import { ArrowRight, TriangleAlert } from "lucide-react";
@@ -37,11 +30,6 @@ type Props = {
   kpiTrends?: AdminLotOverviewKpiTrends | null;
   kpiPeriodDays?: AdminKpiPeriodDays;
 };
-
-/** "Bid Placed" → "Bid placed": staff copy is sentence case. */
-function sentenceCase(text: string): string {
-  return text.charAt(0) + text.slice(1).toLowerCase();
-}
 
 const SEVERITY_TONE = {
   critical: "danger",
@@ -229,15 +217,11 @@ export function LotOverviewTab({
             </StaffButton>
           }
         >
-          <Timeline
+          <AuditTimeline
             label="Lot activity"
             empty="No lot activity recorded yet."
-            events={activityEvents.map((event) => ({
-              id: event.id,
-              title: sentenceCase(domainEventLabel(event.eventType)),
-              at: new Date(event.occurredAt).toISOString(),
-              actor: event.actorUserId ? "Staff" : "System",
-            }))}
+            events={activityEvents}
+            limit={5}
           />
         </Section>
 

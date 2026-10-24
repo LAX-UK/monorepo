@@ -3,6 +3,7 @@ import "server-only";
 import { getAdminAuditLog } from "@/lib/data/http/admin-audit.reader";
 import {
   AUDIT_LOG_PAGE_SIZE,
+  AUDIT_LOG_PATH,
   type AuditLogSearch,
   auditLogHref,
   buildAuditFilterChips,
@@ -27,6 +28,7 @@ export async function loadAdminAuditLogPage(
     filters,
     hasFilters: hasAuditLogFilters(filters),
     chips: buildAuditFilterChips(filters, sp),
+    clearAllHref: filters.view ? `${AUDIT_LOG_PATH}?view=${filters.view}` : AUDIT_LOG_PATH,
   };
 
   try {
@@ -80,5 +82,5 @@ export async function loadAdminAuditLogPage(
 
 function auditLogHrefAt(sp: AuditLogSearch, offset: number): string {
   // Paging keeps every filter; only the offset moves.
-  return auditLogHref(sp, { offset });
+  return auditLogHref(sp, { offset: offset > 0 ? offset : null });
 }
