@@ -1,6 +1,6 @@
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
-import { resolveStaffLayoutRedirect, staffReauthHref } from "./staff-layout-redirect";
+import { resolveStaffLayoutRedirect, staffSignInHref } from "./staff-layout-redirect";
 
 describe("resolveStaffLayoutRedirect", () => {
   const session = {
@@ -53,10 +53,16 @@ describe("resolveStaffLayoutRedirect", () => {
   });
 });
 
-describe("staffReauthHref", () => {
-  it("includes reason when not authorized", () => {
+describe("staffSignInHref", () => {
+  it("sends an account that is not staff to the sign-in error page", () => {
     expect(
-      staffReauthHref({ action: "reauth", returnTo: "/orders", reason: "not_authorized" }),
-    ).toBe("/api/auth/reauth?returnTo=%2Forders&reason=not_authorized");
+      staffSignInHref({ action: "reauth", returnTo: "/orders", reason: "not_authorized" }),
+    ).toBe("/login?error=not_authorized&returnTo=%2Forders");
+  });
+
+  it("starts sign-in with a GET that does not end the session", () => {
+    const href = staffSignInHref({ action: "reauth", returnTo: "/orders" });
+    expect(href).toBe("/api/auth/login?returnTo=%2Forders");
+    expect(href).not.toContain("reauth");
   });
 });

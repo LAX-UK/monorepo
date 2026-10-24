@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
+  requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
@@ -23,7 +24,7 @@ const CreateOriginalSaleBodySchema = Type.Object({
 
 const IssueOriginalSaleInvoiceBodySchema = Type.Object({
   buyerEmail: Type.String({ format: "email" }),
-  buyerName: Type.Optional(Type.String()),
+  buyerName: Type.Optional(Type.String({ maxLength: 200 })),
 });
 
 const IssueOriginalSaleInvoiceResponseSchema = Type.Object({
@@ -49,7 +50,7 @@ export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps
     },
     async (request) => {
       requireShopStaffCapability(request, "original_sale.write");
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         artworkId: string;
@@ -58,16 +59,19 @@ export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps
         reservationExpiresAt?: string;
         salesChannel?: "shop" | "art";
       };
-      const result = await deps.originalSales.createReservation({
-        artworkId: body.artworkId,
-        buyerPartyId: body.buyerPartyId,
-        salePricePence: body.salePricePence,
-        actorSubjectId: subject,
-        ...(body.reservationExpiresAt !== undefined
-          ? { reservationExpiresAt: body.reservationExpiresAt }
-          : {}),
-        ...(body.salesChannel !== undefined ? { salesChannel: body.salesChannel } : {}),
-      });
+      const result = await deps.originalSales.createReservation(
+        {
+          artworkId: body.artworkId,
+          buyerPartyId: body.buyerPartyId,
+          salePricePence: body.salePricePence,
+          actorSubjectId: subject,
+          ...(body.reservationExpiresAt !== undefined
+            ? { reservationExpiresAt: body.reservationExpiresAt }
+            : {}),
+          ...(body.salesChannel !== undefined ? { salesChannel: body.salesChannel } : {}),
+        },
+        { idempotencyKey, actorSubjectId: subject },
+      );
       return { id: result.originalSaleId, status: result.status };
     },
   );
@@ -88,11 +92,11 @@ export async function registerAdminOriginalSaleRoutes(app: FastifyInstance, deps
     },
     async (request) => {
       requireShopStaffCapability(request, "original_sale.write");
-      requireIdempotencyKey(request);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const { originalSaleId } = request.params as { originalSaleId: string };
       const body = request.body as { buyerEmail: string; buyerName?: string };
-      const idempotencyKey = request.headers["idempotency-key"] as string;
       return deps.originalSales.issueInvoice({
         originalSaleId,
         buyerEmail: body.buyerEmail,

@@ -9,6 +9,7 @@ import {
   requiredText,
 } from "@/lib/form-validation";
 import { decideSaleAuthorityRequest } from "@/server/application/admin-people-actions.server";
+import { SALE_AUTHORITY_NOTE_MAX_LENGTH } from "@auction/shop-contracts";
 import { Button, ConfirmDialog } from "@auction/ui";
 import { useState } from "react";
 import { AdminForm } from "../admin-form";
@@ -91,6 +92,7 @@ export function DecideSaleAuthorityRequestForm({
           label="Evidence note (required to approve)"
           className="sm:col-span-2"
           rows={2}
+          maxLength={SALE_AUTHORITY_NOTE_MAX_LENGTH}
           value={evidenceNote}
           error={errors.evidenceNote}
           disabled={mutation.pending}
@@ -101,6 +103,7 @@ export function DecideSaleAuthorityRequestForm({
           label="Decline reason (required to decline)"
           className="sm:col-span-2"
           rows={2}
+          maxLength={SALE_AUTHORITY_NOTE_MAX_LENGTH}
           value={declineReason}
           error={errors.declineReason}
           disabled={mutation.pending}

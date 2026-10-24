@@ -1178,6 +1178,8 @@ export const shopSaleFee = pgTable(
     vatRateBp: integer("vat_rate_bp"),
     vatPence: integer("vat_pence"),
     status: shopSaleFeeStatusEnum("status").default("pending").notNull(),
+    /** Null for fees created before the creator was recorded. */
+    createdBySubjectId: text("created_by_subject_id"),
     approvedBySubjectId: text("approved_by_subject_id"),
     approvedAt: timestamp("approved_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),

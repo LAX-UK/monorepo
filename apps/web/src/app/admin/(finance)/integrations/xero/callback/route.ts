@@ -1,3 +1,4 @@
+import { xeroCallbackErrorCodeForStatus } from "@/lib/admin/finance/xero-callback-error";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getSiteUrl } from "@/lib/site-url";
 import { normalizeXeroCallbackUrl } from "@auction/validators";
@@ -22,16 +23,9 @@ export async function GET(req: NextRequest) {
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    let msg = `HTTP ${res.status}`;
-    try {
-      const j = JSON.parse(text) as { error?: string };
-      if (j.error) msg = j.error;
-    } catch {
-      /* ignore */
-    }
+    // The API's error text stays out of the redirect; the page shows a sentence for the code.
     return NextResponse.redirect(
-      adminXeroUrl(`/admin/integrations/xero?error=${encodeURIComponent(msg)}`),
+      adminXeroUrl(`/admin/integrations/xero?error=${xeroCallbackErrorCodeForStatus(res.status)}`),
     );
   }
 

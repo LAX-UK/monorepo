@@ -42,12 +42,17 @@ export function resolveStaffLayoutRedirect(
   return { action: "fail", detail: sessionResult.status };
 }
 
-export function staffReauthHref(
+/**
+ * Where the layout sends staff who need to sign in again. A page redirect is a GET, which must
+ * not end the session, so it goes straight to the sign-in start or, for an account that is not
+ * staff, to the sign-in error page whose "Use a different account" button signs out with a POST.
+ */
+export function staffSignInHref(
   redirect: Extract<StaffLayoutRedirect, { action: "reauth" }>,
 ): string {
-  const params = new URLSearchParams({ returnTo: redirect.returnTo });
+  const returnTo = encodeURIComponent(redirect.returnTo);
   if (redirect.reason === "not_authorized") {
-    params.set("reason", "not_authorized");
+    return `/login?error=not_authorized&returnTo=${returnTo}`;
   }
-  return `/api/auth/reauth?${params.toString()}`;
+  return `/api/auth/login?returnTo=${returnTo}`;
 }

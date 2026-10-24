@@ -9,6 +9,7 @@ import {
   requiredText,
 } from "@/lib/form-validation";
 import { grantArtworkSaleAuthority } from "@/server/application/admin-people-actions.server";
+import { SALE_AUTHORITY_NOTE_MAX_LENGTH } from "@auction/shop-contracts";
 import { ConfirmDialog } from "@auction/ui";
 import { useState } from "react";
 import { AdminForm } from "../admin-form";
@@ -99,6 +100,7 @@ export function GrantSaleAuthorityForm({
           name="evidenceNote"
           label="Evidence note"
           rows={2}
+          maxLength={SALE_AUTHORITY_NOTE_MAX_LENGTH}
           value={evidenceNote}
           error={errors.evidenceNote}
           disabled={mutation.pending}

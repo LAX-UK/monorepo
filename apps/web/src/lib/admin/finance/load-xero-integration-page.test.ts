@@ -26,4 +26,14 @@ describe("loadAdminXeroIntegrationPage", () => {
     expect(result.status?.connected).toBe(false);
     expect(result.loadError).toBeNull();
   });
+
+  it("shows a fixed sentence for a callback error code", async () => {
+    const result = await loadAdminXeroIntegrationPage({ error: "rejected" });
+    expect(result.error).toContain("Start the connection again");
+  });
+
+  it("does not show text from the URL that is not a callback error code", async () => {
+    const result = await loadAdminXeroIntegrationPage({ error: "Call us on 0123 456 789" });
+    expect(result.error).toBe("Xero could not be connected.");
+  });
 });

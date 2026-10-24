@@ -2,6 +2,10 @@ import {
   ADMIN_REFUND_NOTE_MAX_LENGTH,
   ADMIN_REFUND_REASONS,
   type AdminRefundReason,
+  FULFILMENT_CARRIER_MAX_LENGTH,
+  FULFILMENT_TRACKING_NUMBER_MAX_LENGTH,
+  FULFILMENT_TRACKING_NUMBER_PATTERN,
+  PAYOUT_PAID_REFERENCE_MAX_LENGTH,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
@@ -26,14 +30,19 @@ const CreateProductionTaskBodySchema = Type.Object({
 
 const UpdateFulfilmentBodySchema = Type.Object({
   fulfilmentId: Type.String({ format: "uuid" }),
-  status: Type.String({ minLength: 1 }),
-  carrier: Type.Optional(Type.String()),
-  trackingNumber: Type.Optional(Type.String()),
+  status: Type.String({ minLength: 1, maxLength: 40 }),
+  carrier: Type.Optional(Type.String({ maxLength: FULFILMENT_CARRIER_MAX_LENGTH })),
+  trackingNumber: Type.Optional(
+    Type.String({
+      maxLength: FULFILMENT_TRACKING_NUMBER_MAX_LENGTH,
+      pattern: FULFILMENT_TRACKING_NUMBER_PATTERN,
+    }),
+  ),
 });
 
 const RecordPossessionBodySchema = Type.Object({
   fulfilmentId: Type.String({ format: "uuid" }),
-  status: Type.String({ minLength: 1 }),
+  status: Type.String({ minLength: 1, maxLength: 40 }),
   possessionAt: Type.String({ format: "date-time" }),
 });
 
@@ -47,7 +56,7 @@ const RequestRefundBodySchema = Type.Object({
 
 const MarkPayoutPaidBodySchema = Type.Object({
   payoutId: Type.String({ format: "uuid" }),
-  paidReference: Type.String({ minLength: 1 }),
+  paidReference: Type.String({ minLength: 1, maxLength: PAYOUT_PAID_REFERENCE_MAX_LENGTH }),
 });
 
 const CancelAfterPossessionBodySchema = Type.Object({

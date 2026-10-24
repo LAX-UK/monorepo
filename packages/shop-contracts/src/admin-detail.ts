@@ -185,6 +185,16 @@ export const ADMIN_REFUND_REASONS = [
 ] as const;
 export type AdminRefundReason = (typeof ADMIN_REFUND_REASONS)[number];
 export const ADMIN_REFUND_NOTE_MAX_LENGTH = 500;
+/** Evidence note on an approval and reason on a decline of a sale-authority request. */
+export const SALE_AUTHORITY_NOTE_MAX_LENGTH = 1000;
+export const FULFILMENT_CARRIER_MAX_LENGTH = 80;
+export const FULFILMENT_TRACKING_NUMBER_MAX_LENGTH = 64;
+/**
+ * A tracking number goes into a customer email and a carrier link, so it is letters, digits,
+ * spaces and hyphens, starting with a letter or digit.
+ */
+export const FULFILMENT_TRACKING_NUMBER_PATTERN = "^[A-Za-z0-9][A-Za-z0-9 -]*$";
+export const PAYOUT_PAID_REFERENCE_MAX_LENGTH = 120;
 
 export type AdminClientDetail = Static<typeof AdminClientDetailSchema>;
 export type AdminArtistDetail = Static<typeof AdminArtistDetailSchema>;

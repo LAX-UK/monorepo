@@ -1,6 +1,6 @@
 import "server-only";
 
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { xeroCallbackErrorMessage } from "@/lib/admin/finance/xero-callback-error";
 import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
@@ -22,7 +22,7 @@ export type XeroIntegrationPageModel = {
 export async function loadAdminXeroIntegrationPage(
   sp: XeroIntegrationSearchParams,
 ): Promise<XeroIntegrationPageModel> {
-  const error = safeDecodeAdminErrorParam(sp.error);
+  const error = xeroCallbackErrorMessage(sp.error);
   const connected = sp.connected === "1";
 
   let status: Awaited<ReturnType<typeof getAdminXeroIntegrationStatus>> | null = null;

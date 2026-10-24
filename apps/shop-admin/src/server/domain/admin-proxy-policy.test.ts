@@ -40,6 +40,36 @@ describe("resolveAdminProxyTarget", () => {
     expect(resolved?.requiresRecentAuth).toBe(true);
   });
 
+  const ID = "11111111-1111-4111-8111-111111111111";
+  it.each([
+    ["POST", `/api/admin/original-sales/${ID}/invoice`],
+    ["POST", `/api/admin/sale-authority-requests/${ID}/decision`],
+    ["POST", `/api/admin/artworks/${ID}/sale-authority`],
+    ["POST", `/api/admin/sale-fees/${ID}/approve`],
+  ])("requires recent auth for %s %s", (method, bffPath) => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath,
+      shopApiBaseUrl: "http://shop-api:3011",
+      method,
+    });
+    expect(resolved?.requiresRecentAuth).toBe(true);
+  });
+
+  it.each([
+    ["POST", "/api/admin/original-sales"],
+    ["POST", `/api/admin/artworks/${ID}/publish`],
+    ["POST", "/api/admin/artworks/import"],
+    ["PUT", "/api/admin/saved-views/order"],
+    ["GET", `/api/admin/original-sales/${ID}/invoice`],
+  ])("does not require recent auth for %s %s", (method, bffPath) => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath,
+      shopApiBaseUrl: "http://shop-api:3011",
+      method,
+    });
+    expect(resolved?.requiresRecentAuth).toBe(false);
+  });
+
   it("does not require recent auth to list staff", () => {
     const resolved = resolveAdminProxyTarget({
       bffPath: "/api/admin/staff",

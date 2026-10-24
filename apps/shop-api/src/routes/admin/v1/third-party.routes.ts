@@ -18,7 +18,7 @@ const CreateHoldBodySchema = Type.Object({
   editionId: Type.String({ format: "uuid" }),
   clientPartyId: Type.String({ format: "uuid" }),
   expiresAt: Type.String({ format: "date-time" }),
-  note: Type.Optional(Type.String()),
+  note: Type.Optional(Type.String({ maxLength: 1000 })),
 });
 
 const RecordThirdPartySaleBodySchema = Type.Object({
@@ -48,7 +48,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "stock_hold.write");
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         editionId: string;
@@ -63,6 +63,7 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
         expiresAt: body.expiresAt,
         actorSubjectId: subject,
         actorRole: role,
+        idempotencyKey,
         ...(body.note !== undefined ? { note: body.note } : {}),
       });
       return { id: result.holdId, status: result.status };
@@ -84,15 +85,18 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "stock_hold.write");
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const params = request.params as { holdId: string };
       const auth = request.shopAdminAuth;
-      const result = await deps.stockHolds.releaseHold({
-        holdId: params.holdId,
-        actorSubjectId: subject,
-        actorRole: auth?.role ?? "broker",
-      });
+      const result = await deps.stockHolds.releaseHold(
+        {
+          holdId: params.holdId,
+          actorSubjectId: subject,
+          actorRole: auth?.role ?? "broker",
+        },
+        { idempotencyKey, actorSubjectId: subject },
+      );
       return { id: result.holdId, status: result.status };
     },
   );
@@ -105,14 +109,17 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
         body: RecordThirdPartySaleBodySchema,
         response: {
           200: IdResponseSchema,
+          400: ShopApiErrorBodySchema,
           403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
           501: ShopApiErrorBodySchema,
         },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "third_party_sale.write");
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const body = request.body as {
         editionId: string;
@@ -120,10 +127,10 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
         buyerPartyId: string;
         grossPence: number;
       };
-      const result = await deps.thirdPartySales.recordSale({
-        ...body,
-        actorSubjectId: subject,
-      });
+      const result = await deps.thirdPartySales.recordSale(
+        { ...body, actorSubjectId: subject },
+        { idempotencyKey, actorSubjectId: subject },
+      );
       return { id: result.saleId, status: result.status };
     },
   );
@@ -138,6 +145,8 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
         response: {
           200: IdResponseSchema,
           403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
           501: ShopApiErrorBodySchema,
         },
       },
@@ -145,13 +154,13 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
     async (request) => {
       requireShopStaffCapability(request, "fee.approve");
       requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const params = request.params as { feeId: string };
-      const result = await deps.saleFees.approveFee({
-        feeId: params.feeId,
-        actorSubjectId: subject,
-      });
+      const result = await deps.saleFees.approveFee(
+        { feeId: params.feeId, actorSubjectId: subject },
+        { idempotencyKey, actorSubjectId: subject },
+      );
       return { id: result.feeId, status: result.status };
     },
   );

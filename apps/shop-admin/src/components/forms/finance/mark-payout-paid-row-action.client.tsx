@@ -4,6 +4,7 @@ import { AdminMutationFeedback } from "@/components/admin-mutation-feedback";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import { formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import { markPayoutPaid } from "@/server/application/admin-operations-actions.server";
+import { PAYOUT_PAID_REFERENCE_MAX_LENGTH } from "@auction/shop-contracts";
 import { Button, ConfirmDialog, Input } from "@auction/ui";
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ export function MarkPayoutPaidRowAction({
       <Input
         aria-label={`Paid reference for ${ownerDisplayName}`}
         placeholder="Paid reference"
+        maxLength={PAYOUT_PAID_REFERENCE_MAX_LENGTH}
         value={paidReference}
         disabled={pending}
         onChange={(event) => setPaidReference(event.target.value)}

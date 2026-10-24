@@ -16,6 +16,7 @@ import {
   AdminArtworkUpdateBodySchema,
   AdminArtworkVersionResponseSchema,
   CatalogueConflictBodySchema,
+  SALE_AUTHORITY_NOTE_MAX_LENGTH,
   SeoFieldsWriteProperties,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
@@ -29,6 +30,7 @@ import { notFound } from "../../../errors/shop-api-error.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireAnyShopStaffCapability,
+  requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
@@ -97,7 +99,7 @@ const ImportArtworkResponseSchema = Type.Object({
 const GrantSaleAuthorityBodySchema = Type.Object({
   ownerPartyId: Type.String({ format: "uuid" }),
   authorisedCount: Type.Integer({ minimum: 0, maximum: 10 }),
-  evidenceNote: Type.String({ minLength: 1 }),
+  evidenceNote: Type.String({ minLength: 1, maxLength: SALE_AUTHORITY_NOTE_MAX_LENGTH }),
   requestId: Type.Optional(Type.String({ format: "uuid" })),
 });
 
@@ -288,15 +290,19 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
     },
     async (request) => {
       requireShopStaffCapability(request, "catalogue.write");
-      requireIdempotencyKey(request);
+      const idempotencyKey = requireIdempotencyKey(request);
       const body = request.body as ImportArtworkCommand;
-      return deps.importArtwork(body);
+      return deps.importArtwork(body, {
+        idempotencyKey,
+        actorSubjectId: requireShopAdminSubject(request),
+      });
     },
   );
 
   app.post(
     "/artworks/:id/sale-authority",
     {
+      bodyLimit: 8_192,
       schema: {
         tags: ["shop-admin"],
         params: Type.Object({ id: Type.String({ format: "uuid" }) }),
@@ -312,7 +318,8 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
     },
     async (request) => {
       requireShopStaffCapability(request, "sale_authority.write");
-      requireIdempotencyKey(request);
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
+      const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const { id: artworkId } = request.params as { id: string };
       const body = request.body as {
@@ -321,14 +328,17 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
         evidenceNote: string;
         requestId?: string;
       };
-      return deps.grantSaleAuthority({
-        artworkId,
-        ownerPartyId: body.ownerPartyId,
-        authorisedCount: body.authorisedCount,
-        evidenceNote: body.evidenceNote,
-        recordedBySubjectId: subject,
-        ...(body.requestId ? { requestId: body.requestId } : {}),
-      });
+      return deps.grantSaleAuthority(
+        {
+          artworkId,
+          ownerPartyId: body.ownerPartyId,
+          authorisedCount: body.authorisedCount,
+          evidenceNote: body.evidenceNote,
+          recordedBySubjectId: subject,
+          ...(body.requestId ? { requestId: body.requestId } : {}),
+        },
+        { idempotencyKey, actorSubjectId: subject },
+      );
     },
   );
 }

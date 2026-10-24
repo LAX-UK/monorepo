@@ -1,3 +1,5 @@
+import { isStepUpPath } from "@auction/shop-contracts";
+
 export type AdminProxyRule = {
   /** BFF path prefix without trailing slash, e.g. /api/admin */
   bffPrefix: string;
@@ -9,19 +11,6 @@ export type AdminProxyRule = {
 export const ADMIN_PROXY_RULES: readonly AdminProxyRule[] = [
   { bffPrefix: "/api/admin", upstreamPrefix: "/admin/v1", requiresRecentAuth: false },
 ];
-
-/**
- * Mutations under these prefixes move money or change who has access, so the
- * session must have authenticated recently. Mirrors the checks in shop-api.
- */
-const STEP_UP_PATH_PREFIXES = [
-  "/admin/v1/refunds",
-  "/admin/v1/payouts",
-  "/admin/v1/sale-fees",
-  "/admin/v1/fulfilment/possession",
-  "/admin/v1/cancellations",
-  "/admin/v1/staff/grants",
-] as const;
 
 function segmentIsUnsafe(segment: string): boolean {
   if (segment === ".." || segment === ".") {
@@ -73,10 +62,10 @@ export function resolveAdminProxyTarget(input: {
   }
   const upstreamPath = `${rule.upstreamPrefix}${suffix}`;
   const normalizedPathname = new URL(upstreamPath, "http://admin.local").pathname;
-  const isStepUpRoute = STEP_UP_PATH_PREFIXES.some((prefix) =>
-    normalizedPathname.startsWith(prefix),
-  );
-  const requiresRecentAuth = input.method.toUpperCase() !== "GET" && isStepUpRoute;
+  // Mutations on the shared list (money, access, selling rights) need a recent sign-in; shop-api
+  // checks the same list, see SHOP_ADMIN_STEP_UP_PATHS.
+  const requiresRecentAuth =
+    input.method.toUpperCase() !== "GET" && isStepUpPath(normalizedPathname);
   return {
     upstreamUrl: new URL(upstreamPath, `${input.shopApiBaseUrl}/`),
     requiresRecentAuth,
