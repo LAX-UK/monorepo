@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerAdminPlatformRoutesSlice } from "../container.js";
+import { createAdminIdempotency } from "../middleware/admin-idempotency.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requireAuctionManage,
   requireFinanceAccess,
   requirePlatformShell,
 } from "../middleware/require-capability.js";
+import { createRequireRecentStaffAuth } from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
@@ -14,7 +16,7 @@ import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
 import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
-import type { AdminHono } from "./admin/_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./admin/_shared.js";
 import { attachAdminAtgRoutes } from "./admin/atg.routes.js";
 import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
@@ -63,6 +65,11 @@ export function createAdminRoutes(
   }>();
   r.use("*", requireAuth);
 
+  const guards: AdminStaffMutationGuards = {
+    requireStepUp: createRequireRecentStaffAuth(container.admin.stepUp),
+    idempotent: (scope) => createAdminIdempotency(container.admin.idempotencyStore, scope),
+  };
+
   const platform: AdminHono = new Hono();
   platform.use("*", requirePlatformShell);
   platform.use(
@@ -103,17 +110,17 @@ export function createAdminRoutes(
   attachAdminLotFulfilmentRoutes(platform, container);
   attachAdminLotsCatalogRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
-  attachAdminLotsRoutes(platform, container);
+  attachAdminLotsRoutes(platform, container, guards);
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
   attachAdminEmailRoutes(platform, container);
-  attachAdminUsersDirectoryRoutes(platform, container);
+  attachAdminUsersDirectoryRoutes(platform, container, guards);
   attachAdminComplianceRoutes(platform, container);
-  attachAdminUsersManagementRoutes(platform, container);
-  attachAdminImpersonationRoutes(platform, container);
+  attachAdminUsersManagementRoutes(platform, container, guards);
+  attachAdminImpersonationRoutes(platform, container, guards);
   attachAdminSecurityRoutes(platform, container.admin.staffTwoFactorPolicy);
-  attachAdminStaffAccessRoutes(platform, container.admin.staffAccess);
-  attachAdminTwoFactorResetRoutes(platform, container.admin.twoFactorReset);
+  attachAdminStaffAccessRoutes(platform, container.admin.staffAccess, guards);
+  attachAdminTwoFactorResetRoutes(platform, container.admin.twoFactorReset, guards);
   attachAdminSavedViewRoutes(platform, container.admin.savedViews);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
@@ -144,7 +151,7 @@ export function createAdminRoutes(
   // Payments are a finance screen: finance_ops fails the platform shell, so these mount here.
   // Each route carries its own capability guard.
   attachAdminPaymentsListRoutes(finance, container);
-  attachAdminPaymentsManualReviewRoutes(finance, container);
+  attachAdminPaymentsManualReviewRoutes(finance, container, guards);
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
 

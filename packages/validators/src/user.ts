@@ -192,8 +192,11 @@ export const adminUserIdsLookupQuerySchema = z.object({
 
 export type AdminUserIdsLookupQuery = z.infer<typeof adminUserIdsLookupQuerySchema>;
 
+/** A suspension names why, so the audit entry can answer it later. */
+export const ADMIN_SUSPEND_REASON_MIN = 10;
+export const ADMIN_SUSPEND_REASON_MAX = 500;
 export const adminSuspendBodySchema = z.object({
-  reason: z.string().max(500).optional(),
+  reason: z.string().trim().min(ADMIN_SUSPEND_REASON_MIN).max(ADMIN_SUSPEND_REASON_MAX),
 });
 
 /** A reason is required so the audit entry says why someone's sign-in protection was removed. */
@@ -202,8 +205,16 @@ export const adminResetTwoFactorBodySchema = z.object({
   reason: z.string().trim().min(ADMIN_TWO_FACTOR_RESET_REASON_MIN).max(500),
 });
 
-export const adminBulkUsersBodySchema = z.object({
-  ids: z.array(z.string().min(1).max(191)).min(1).max(50),
-  op: z.enum(["suspend", "unsuspend"]),
-  reason: z.string().max(500).optional(),
-});
+export const adminBulkUsersBodySchema = z
+  .object({
+    ids: z.array(z.string().min(1).max(191)).min(1).max(50),
+    op: z.enum(["suspend", "unsuspend"]),
+    reason: z.string().trim().max(ADMIN_SUSPEND_REASON_MAX).optional(),
+  })
+  .refine(
+    (body) => body.op !== "suspend" || (body.reason?.length ?? 0) >= ADMIN_SUSPEND_REASON_MIN,
+    {
+      path: ["reason"],
+      message: `A reason of at least ${ADMIN_SUSPEND_REASON_MIN} characters is required to suspend`,
+    },
+  );

@@ -171,6 +171,7 @@ export class StaffAccessAdminService {
     role: string,
   ): Promise<Result<StaffAccessDetail, StaffAccessError>> {
     if (!canManage(actor)) return err(forbidden);
+    if (actor.userId === subjectId) return err({ status: 400, message: "cannot_change_own_role" });
     if (!laxStaffRoleOption(product, role)) {
       return err({ status: 400, message: `unknown_${product}_role` });
     }

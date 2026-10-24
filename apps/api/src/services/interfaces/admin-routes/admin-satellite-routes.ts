@@ -6,7 +6,9 @@ import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-re
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
+import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { IAtgAdminService } from "../atg-admin-service.js";
+import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type {
@@ -64,6 +66,10 @@ export type AdminStaffSecurityRouteServices = {
     "summaries" | "detail" | "setRemoteRole" | "revokeRemote" | "myTools"
   >;
   savedViews: Pick<AdminSavedViewService, "list" | "create" | "rename" | "reorder" | "remove">;
+  /** Whether the signed-in staff member's Identity session is recent enough (step-up). */
+  stepUp: IStaffStepUpGuard;
+  /** Replays a staff money action when the same Idempotency-Key is sent again. */
+  idempotencyStore: IIdempotencyStore;
 };
 
 export type { IQueueInspector, IQueueMutator };

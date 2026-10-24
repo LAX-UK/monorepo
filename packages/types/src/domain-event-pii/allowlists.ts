@@ -124,6 +124,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "currency",
     "via",
     "reason",
+    "staffReason",
   ]),
   /** Buyer payment paused because seller was archived before capture. */
   "payment.requires_manual_review": new Set([
@@ -247,7 +248,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.two_factor_reset_by_staff": new Set(["reason"]),
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
-  "bid.user_suspended": new Set(),
+  /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
+  "bid.user_suspended": new Set(["reason", "bulk"]),
+  "bid.user_unsuspended": new Set(["bulk"]),
   "lax.staff_access.granted": new Set([
     "subjectId",
     "product",

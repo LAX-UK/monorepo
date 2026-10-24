@@ -4,7 +4,7 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireUserModeration } from "../../middleware/require-capability.js";
 import type { AdminTwoFactorResetService } from "../../services/admin/admin-two-factor-reset.service.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 const userParamSchema = z.object({ userId: z.string().min(1) });
 
@@ -12,10 +12,12 @@ const userParamSchema = z.object({ userId: z.string().min(1) });
 export function attachAdminTwoFactorResetRoutes(
   platform: AdminHono,
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">,
+  guards: AdminStaffMutationGuards,
 ): void {
   platform.post(
     "/users/:userId/two-factor/reset",
     requireUserModeration,
+    guards.requireStepUp,
     zValidator("param", userParamSchema),
     zValidator("json", adminResetTwoFactorBodySchema),
     async (c) => {

@@ -10,6 +10,7 @@ import type { ContainerPayoutRoutesSlice } from "../container.js";
 import { respondFinanceRouteOutcome } from "../lib/finance-route-response.js";
 import { mapPayoutStatementOutcomeToHttp } from "../lib/payout-statement-http.js";
 import { zValidator } from "../lib/z-validator.js";
+import { createAdminIdempotency } from "../middleware/admin-idempotency.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requirePayoutProcess,
@@ -18,6 +19,7 @@ import {
 } from "../middleware/require-capability.js";
 import { requireEntityCapability } from "../middleware/require-entity-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import { createRequireRecentStaffAuth } from "../middleware/require-recent-staff-auth.js";
 import type { AdminFinancePayoutRoutesContainer } from "../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import {
@@ -25,6 +27,7 @@ import {
   PayoutPermissionError,
   PayoutStatusTransitionError,
 } from "../services/interfaces/payout.js";
+const SETTLEMENT_LOCK_TTL_SECONDS = 120;
 const payoutIdParam = z.object({ payoutId: z.string().uuid() });
 const settlementPreviewQuery = z.object({ legalEntityId: z.string().uuid() });
 const markPaidBodySchema = z.object({
@@ -111,10 +114,16 @@ export function createAdminPayoutRoutes(
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
+  const r = new Hono<{
+    Variables: { userId?: string; userRole?: string; identitySessionId?: string };
+  }>();
   const adminRead = requirePayoutRead;
   const adminMutate = requirePayoutProcess;
   const adminReverse = requirePayoutReverse;
+  const requireStepUp = createRequireRecentStaffAuth(container.admin.stepUp);
+  const idempotent = (scope: string) =>
+    createAdminIdempotency(container.admin.idempotencyStore, scope);
+  const settlementLocks = container.admin.idempotencyStore;
 
   /** GET /admin/payouts/:payoutId/statement.pdf — lazy PDF via worker (`payout.read`). */
   r.get(
@@ -167,6 +176,8 @@ export function createAdminPayoutRoutes(
     "/run-settlement",
     requireAuth,
     adminMutate,
+    requireStepUp,
+    idempotent("payouts.run-settlement"),
     zValidator("json", runSettlementSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -174,13 +185,23 @@ export function createAdminPayoutRoutes(
       if (!body.legalEntityId) {
         return c.json({ error: "legal_entity_id_required_until_bulk_implemented" }, 400);
       }
-      const result = await container.admin.payouts.createSettlement(userId, {
-        legalEntityId: body.legalEntityId,
-        periodStart: new Date(0),
-        periodEnd: new Date(),
-      });
-      if (!result.ok) return c.json({ error: result.reason }, 409);
-      return c.json({ data: result.payout }, 201);
+      // One run per legal entity at a time: payments already on a payout are not offered again,
+      // so a second run after the first finishes finds nothing pending and answers 409.
+      const lockKey = `admin-settlement-lock:${body.legalEntityId}`;
+      if (!(await settlementLocks.tryClaim(lockKey, SETTLEMENT_LOCK_TTL_SECONDS))) {
+        return c.json({ error: "settlement_in_progress" }, 409);
+      }
+      try {
+        const result = await container.admin.payouts.createSettlement(userId, {
+          legalEntityId: body.legalEntityId,
+          periodStart: new Date(0),
+          periodEnd: new Date(),
+        });
+        if (!result.ok) return c.json({ error: result.reason }, 409);
+        return c.json({ data: result.payout }, 201);
+      } finally {
+        await settlementLocks.delete(lockKey);
+      }
     },
   );
 
@@ -211,6 +232,8 @@ export function createAdminPayoutRoutes(
     "/:payoutId/mark-paid",
     requireAuth,
     adminMutate,
+    requireStepUp,
+    idempotent("payouts.mark-paid"),
     zValidator("param", payoutIdParam),
     zValidator("json", markPaidBodySchema),
     async (c) => {
@@ -233,6 +256,8 @@ export function createAdminPayoutRoutes(
     "/:payoutId/reverse",
     requireAuth,
     adminReverse,
+    requireStepUp,
+    idempotent("payouts.reverse"),
     zValidator("param", payoutIdParam),
     zValidator("json", adminManualReversePayoutSchema),
     async (c) => {

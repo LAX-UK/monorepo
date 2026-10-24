@@ -23,6 +23,8 @@ const paymentRefundedAdminPayloadSchemaV1 = z.object({
   via: z.enum(["admin_manual", "admin_manual_review"]),
   stripeRefundId: z.string().nullable(),
   reason: z.enum(["seller_archived"]).optional(),
+  /** Staff-typed reason for a manual-review refund. */
+  staffReason: z.string().min(1).max(500).optional(),
   reconciled: z.literal(true).optional(),
 });
 

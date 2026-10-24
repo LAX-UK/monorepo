@@ -142,6 +142,27 @@ describe("StaffAccessAdminService", () => {
     expect(result._unsafeUnwrapErr()).toEqual({ status: 400, message: "cannot_revoke_self" });
     expect(access.requestRevoke).not.toHaveBeenCalled();
   });
+
+  it("does not let an admin change their own Shop role, even to a role they may hold", async () => {
+    const { service, access } = setup();
+
+    const result = await service.setRemoteRole(SUPER, SUPER.userId, "shop", "broker");
+
+    expect(result._unsafeUnwrapErr()).toEqual({ status: 400, message: "cannot_change_own_role" });
+    expect(access.requestGrant).not.toHaveBeenCalled();
+  });
+
+  it("records who revoked a Shop role, as it does for a grant", async () => {
+    const { service, access } = setup();
+
+    await service.revokeRemote(SUPER, "usr_a", "shop");
+
+    expect(access.requestRevoke).toHaveBeenCalledWith({
+      subjectId: "usr_a",
+      product: "shop",
+      actorSubjectId: SUPER.userId,
+    });
+  });
 });
 
 describe("platformView", () => {

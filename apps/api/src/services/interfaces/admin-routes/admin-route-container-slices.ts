@@ -1,3 +1,4 @@
+import type { AdminStaffSecurityRouteServices } from "./admin-satellite-routes.js";
 import type { AdminRouteServices } from "./index.js";
 
 type AdminRoutePick<K extends keyof AdminRouteServices> = {
@@ -59,7 +60,8 @@ export type AdminFinancePayoutRoutesContainer = Pick<
   import("../../../container.js").Container,
   "userSuspensionChecker"
 > & {
-  admin: Pick<AdminRouteServices, "payouts">;
+  admin: Pick<AdminRouteServices, "payouts"> &
+    Pick<AdminStaffSecurityRouteServices, "stepUp" | "idempotencyStore">;
 };
 
 export type AdminSatelliteJobQueuesRoutesContainer = AdminRoutePick<"jobQueues">;

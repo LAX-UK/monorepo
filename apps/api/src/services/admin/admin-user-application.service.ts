@@ -7,7 +7,7 @@ import type {
   IAdminUserBrowseReader,
 } from "@auction/persistence/interfaces";
 import { AuthzError } from "../../lib/errors.js";
-import type { AdminUserService } from "../admin-user.service.js";
+import type { AdminActor, AdminUserService } from "../admin-user.service.js";
 import type {
   AdminUserDetailResponse,
   IAdminUserApplicationService,
@@ -104,21 +104,12 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     }
   }
 
-  suspend(
-    actorRole: string,
-    actorStaffRole: string | null | undefined,
-    userId: string,
-    reason: string | null,
-  ): Promise<void> {
-    return this.adminUsers.suspend(actorRole, actorStaffRole, userId, reason);
+  suspend(actor: AdminActor, userId: string, reason: string): Promise<void> {
+    return this.adminUsers.suspend(actor, userId, reason);
   }
 
-  unsuspend(
-    actorRole: string,
-    actorStaffRole: string | null | undefined,
-    userId: string,
-  ): Promise<void> {
-    return this.adminUsers.unsuspend(actorRole, actorStaffRole, userId);
+  unsuspend(actor: AdminActor, userId: string): Promise<void> {
+    return this.adminUsers.unsuspend(actor, userId);
   }
 
   activityFor(
@@ -149,21 +140,18 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
   }
 
   async bulkSuspendOrUnsuspend(input: {
-    actorRole: string;
-    actorStaffRole: string | null | undefined;
+    actor: AdminActor;
     ids: string[];
     op: "suspend" | "unsuspend";
-    reason: string | null | undefined;
+    reason: string | undefined;
   }): Promise<{ count: number }> {
-    const { actorRole, actorStaffRole, ids, op, reason } = input;
-    for (const userId of ids) {
-      if (op === "suspend") {
-        await this.adminUsers.suspend(actorRole, actorStaffRole, userId, reason ?? null);
-      } else {
-        await this.adminUsers.unsuspend(actorRole, actorStaffRole, userId);
-      }
+    const { actor, ids, op, reason } = input;
+    if (op === "suspend") {
+      await this.adminUsers.suspendMany(actor, ids, reason ?? "", true);
+    } else {
+      await this.adminUsers.unsuspendMany(actor, ids, true);
     }
-    return { count: ids.length };
+    return { count: new Set(ids).size };
   }
 
   updateProfileName(userId: string, name: string) {

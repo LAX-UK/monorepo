@@ -97,12 +97,8 @@ export function createUserProfileServices(
     adminUserKycReader,
     savedSearchRepository,
   } = repos;
-  const {
-    impersonationSessionService,
-    impersonationAuditService,
-    authAuditPublisher,
-    cachedUserSuspensionChecker,
-  } = platform;
+  const { impersonationSessionService, impersonationAuditService, cachedUserSuspensionChecker } =
+    platform;
   const { marketingEventService, mediaUrlResolver, mediaAssetEnricher, imageCleanupService } =
     complianceMedia;
   const { dashboardQueryService, saleService, artistProfileService } = catalog;
@@ -188,7 +184,6 @@ export function createUserProfileServices(
 
   const adminSuspender = new DrizzleAdminUserSuspender(db, {
     emailService,
-    authAudit: authAuditPublisher,
     accountSuspendedSupportEmail: env.EMAIL_REPLY_TO?.trim() || "support@lax.bid",
   });
   const adminUserService = new AdminUserService(

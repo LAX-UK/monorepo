@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { InMemoryIdempotencyStore, stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
 const adminUserId = "admin-user-id";
@@ -35,6 +36,8 @@ describe("admin impersonation routes", () => {
           endImpersonation: vi.fn(),
           recordFailedEnd: vi.fn(),
         },
+        stepUp: stubStepUpGuard(true),
+        idempotencyStore: new InMemoryIdempotencyStore(),
       },
     } as unknown as Container;
 
@@ -44,6 +47,7 @@ describe("admin impersonation routes", () => {
         role: "staff",
         staffRole: "super_admin",
         scopes: ["bid.write"],
+        identitySessionId: "session-1",
       }),
     };
 

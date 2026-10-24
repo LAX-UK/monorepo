@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { InMemoryIdempotencyStore, stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminPayoutRoutes } from "./payouts.js";
 
 const payoutId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -13,7 +14,11 @@ function mountApp(role: string, staffRole?: string) {
   };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    admin: { payouts },
+    admin: {
+      payouts,
+      stepUp: stubStepUpGuard(true),
+      idempotencyStore: new InMemoryIdempotencyStore(),
+    },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({
@@ -21,6 +26,7 @@ function mountApp(role: string, staffRole?: string) {
       role,
       ...(staffRole ? { staffRole } : {}),
       scopes: ["bid.write"],
+      identitySessionId: "session-1",
     }),
   };
   app.route("/admin/payouts", createAdminPayoutRoutes(container, authenticator));
@@ -49,7 +55,7 @@ describe("admin payout routes — reverse", () => {
 
     const res = await app.request(`/admin/payouts/${payoutId}/reverse`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "idempotency-key": "reverse-key-0001" },
       body: JSON.stringify({
         reason: "duplicate payment bookkeeping correction required here",
         confirmationPhrase: "REVERSE PAYOUT wrong-id",
@@ -71,7 +77,7 @@ describe("admin payout routes — reverse", () => {
     const reason = "duplicate payment bookkeeping correction required here";
     const res = await app.request(`/admin/payouts/${payoutId}/reverse`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "idempotency-key": "reverse-key-0002" },
       body: JSON.stringify({
         reason,
         confirmationPhrase: `REVERSE PAYOUT ${payoutId}`,

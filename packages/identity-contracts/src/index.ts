@@ -40,6 +40,11 @@ export {
   type AccountProfileResponse,
 } from "./account-profile.js";
 export {
+  STAFF_STEP_UP_MAX_AGE_SECONDS,
+  STAFF_STEP_UP_REQUIRED,
+  isRecentStaffAuthentication,
+} from "./staff-step-up.js";
+export {
   ACCOUNT_REAUTH_REQUIRED,
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,

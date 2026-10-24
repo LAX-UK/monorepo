@@ -176,9 +176,28 @@ export interface IAdminUserRoleManager {
   ): Promise<void>;
 }
 
+/** Thrown when a staff-role change would leave Bid admin without an active super_admin. */
+export class LastSuperAdminError extends Error {
+  readonly code = "last_super_admin" as const;
+  constructor() {
+    super("Cannot remove the last active super admin");
+    this.name = "LastSuperAdminError";
+  }
+}
+
 export interface IAdminUserSuspender {
-  suspend(userId: string, reason: string | null): Promise<void>;
-  unsuspend(userId: string): Promise<void>;
+  /**
+   * Suspends every account and records one audit event each in a single transaction, so a
+   * batch is applied whole or not at all. `bulk` marks events that came from a bulk action.
+   */
+  suspendMany(input: {
+    userIds: string[];
+    reason: string;
+    actorUserId: string;
+    bulk: boolean;
+  }): Promise<void>;
+  /** Lifts the suspension on every account, with one audit event each, in one transaction. */
+  unsuspendMany(input: { userIds: string[]; actorUserId: string; bulk: boolean }): Promise<void>;
 }
 
 export interface IAdminUserActivityReader {

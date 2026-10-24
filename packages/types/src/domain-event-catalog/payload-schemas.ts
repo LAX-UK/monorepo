@@ -5,6 +5,13 @@ export const looseDomainEventPayloadV1 = z.record(z.string(), z.unknown());
 export const emptyDomainEventPayloadV1 = z.object({}).strict();
 const rfc3339Timestamp = z.string().datetime({ offset: true });
 
+/** A staff suspension: why, and whether it was one of a bulk action. The actor is the event's. */
+export const bidUserSuspendedPayloadSchemaV1 = z
+  .object({ reason: z.string().min(1).max(500), bulk: z.boolean() })
+  .strict();
+
+export const bidUserUnsuspendedPayloadSchemaV1 = z.object({ bulk: z.boolean() }).strict();
+
 export const userRegisteredPayloadSchemaV1 = z.object({
   userId: z.string(),
   email: z.string(),

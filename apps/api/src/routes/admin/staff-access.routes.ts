@@ -7,6 +7,7 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { STAFF_TOOLS_READ_SCOPE } from "../../middleware/bid-scope-policy.js";
 import { createRequireAuth } from "../../middleware/require-auth.js";
+import { requireUserInvite } from "../../middleware/require-capability.js";
 import {
   STAFF_ACCESS_SUMMARY_BATCH,
   type StaffAccessActor,
@@ -14,7 +15,7 @@ import {
   type StaffAccessError,
 } from "../../services/admin/staff-access-admin.service.js";
 import type { IAuthenticator } from "../../services/interfaces/authenticator.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 const summariesBodySchema = z.object({
   subjectIds: z.array(z.string().min(1)).max(STAFF_ACCESS_SUMMARY_BATCH),
@@ -68,6 +69,7 @@ export function attachAdminStaffAccessRoutes(
     StaffAccessAdminService,
     "summaries" | "detail" | "setRemoteRole" | "revokeRemote"
   >,
+  guards: AdminStaffMutationGuards,
 ): void {
   platform.post("/staff/access/summaries", zValidator("json", summariesBodySchema), async (c) =>
     respond(c, await staffAccess.summaries(actorOf(c), c.req.valid("json").subjectIds)),
@@ -79,6 +81,8 @@ export function attachAdminStaffAccessRoutes(
 
   platform.put(
     "/staff/:userId/access/:product",
+    requireUserInvite,
+    guards.requireStepUp,
     zValidator("param", remoteProductParamSchema),
     zValidator("json", roleBodySchema),
     async (c) => {
@@ -90,6 +94,8 @@ export function attachAdminStaffAccessRoutes(
 
   platform.delete(
     "/staff/:userId/access/:product",
+    requireUserInvite,
+    guards.requireStepUp,
     zValidator("param", remoteProductParamSchema),
     async (c) => {
       const { userId, product } = c.req.valid("param");

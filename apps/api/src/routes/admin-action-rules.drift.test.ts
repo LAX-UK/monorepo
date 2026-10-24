@@ -15,6 +15,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { InMemoryIdempotencyStore, stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
 /**
@@ -37,6 +38,8 @@ function buildApp(staffRole: UserStaffRole) {
         isSuspended: vi.fn().mockResolvedValue(false),
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
+      stepUp: stubStepUpGuard(true),
+      idempotencyStore: new InMemoryIdempotencyStore(),
     },
     redis: {},
   } as unknown as Container;
@@ -46,6 +49,7 @@ function buildApp(staffRole: UserStaffRole) {
       role: "staff",
       staffRole,
       scopes: ["bid.read", "bid.write"],
+      identitySessionId: "session-1",
     }),
   };
   const app = new Hono();

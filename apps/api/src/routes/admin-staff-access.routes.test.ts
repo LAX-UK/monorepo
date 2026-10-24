@@ -3,9 +3,10 @@ import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { InMemoryIdempotencyStore, stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
-function buildApp() {
+function buildApp(options: { recent?: boolean } = {}) {
   const staffAccess = {
     summaries: vi.fn().mockResolvedValue(ok([])),
     detail: vi.fn().mockResolvedValue(ok({ subjectId: "usr_a", platforms: [], history: [] })),
@@ -21,6 +22,8 @@ function buildApp() {
       },
       staffTwoFactorPolicy: { readStaffPolicy: vi.fn(), setStaffPolicy: vi.fn() },
       staffAccess,
+      stepUp: stubStepUpGuard(options.recent ?? true),
+      idempotencyStore: new InMemoryIdempotencyStore(),
     },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
@@ -29,6 +32,7 @@ function buildApp() {
       role: "staff",
       staffRole: "super_admin",
       scopes: ["bid.read", "bid.write"],
+      identitySessionId: "session-1",
     }),
   };
   const app = new Hono();
@@ -75,5 +79,30 @@ describe("admin staff access routes", () => {
 
     expect(res.status).toBe(400);
     expect(staffAccess.revokeRemote).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in before granting or revoking a remote role", async () => {
+    const { app, staffAccess } = buildApp({ recent: false });
+
+    const grant = await app.request("/admin/staff/usr_a/access/shop", json("PUT", { role: "x" }));
+    const revoke = await app.request("/admin/staff/usr_a/access/shop", json("DELETE"));
+
+    for (const res of [grant, revoke]) {
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({
+        error: "Recent sign-in required",
+        code: "step_up_required",
+      });
+    }
+    expect(staffAccess.setRemoteRole).not.toHaveBeenCalled();
+    expect(staffAccess.revokeRemote).not.toHaveBeenCalled();
+  });
+
+  it("still reads access without a recent sign-in", async () => {
+    const { app } = buildApp({ recent: false });
+
+    const res = await app.request("/admin/staff/usr_a/access", json("GET"));
+
+    expect(res.status).toBe(200);
   });
 });

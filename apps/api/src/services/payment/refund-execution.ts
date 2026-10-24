@@ -38,6 +38,8 @@ export async function executePaymentRefundLedger(
     stripeRefundId: string | null;
     via: "admin_manual" | "admin_manual_review";
     eventReason?: "seller_archived";
+    /** The staff member's written reason, kept on the audit event. */
+    staffReason?: string;
     sourceEventId: string;
     clawbackNote: string;
     logViaField: boolean;
@@ -76,6 +78,7 @@ export async function executePaymentRefundLedger(
         via: "admin_manual" | "admin_manual_review";
         stripeRefundId: string | null;
         reason?: "seller_archived";
+        staffReason?: string;
       } = {
         amount: payment.amount,
         currency: "GBP",
@@ -85,6 +88,9 @@ export async function executePaymentRefundLedger(
       };
       if (input.eventReason !== undefined) {
         payload.reason = input.eventReason;
+      }
+      if (input.staffReason !== undefined) {
+        payload.staffReason = input.staffReason;
       }
       await deps.domainEventSink.withTx(tx).publish({
         aggregateType: "payment",

@@ -15,11 +15,12 @@ import {
   requireWithdrawalDecision,
 } from "../../middleware/require-capability.js";
 import type { AdminLotsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 export function attachAdminLotsRoutes(
   platform: AdminHono,
   container: AdminLotsRoutesContainer,
+  guards: AdminStaffMutationGuards,
 ): void {
   /** GET /admin/lots/browse — attachable draft lots for sale setup picker. */
   platform.get(
@@ -120,6 +121,7 @@ export function attachAdminLotsRoutes(
   platform.post(
     "/lots/:id/approve-withdrawal-request",
     requireWithdrawalDecision,
+    guards.requireStepUp,
     zValidator("param", lotIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -141,6 +143,7 @@ export function attachAdminLotsRoutes(
   platform.post(
     "/lots/:id/decline-withdrawal-request",
     requireWithdrawalDecision,
+    guards.requireStepUp,
     zValidator("param", lotIdParamSchema),
     zValidator("json", declineWithdrawalRequestBodySchema),
     async (c) => {
