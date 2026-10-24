@@ -4,7 +4,7 @@ import type { PortalPayout } from "@auction/shop-contracts";
 export type PayoutStatusVm = {
   /** "Paid 18 Sept 2026", "Due 2 Oct 2026", "Waiting for refund period to end". */
   label: string;
-  tone: "success" | "pending" | "neutral";
+  tone: "success" | "info" | "warning" | "neutral";
   /** Whether the money has reached the seller, is still to come, or will not be paid. */
   stage: "paid" | "to_come" | "cancelled";
 };
@@ -27,11 +27,11 @@ export function describePayoutStatus(
     case "due":
       return {
         label: dates?.payoutDueAt ? `Due ${formatDate(dates.payoutDueAt)}` : "Due",
-        tone: "pending",
+        tone: "info",
         stage: "to_come",
       };
     case "pending_refund_period":
-      return { label: "Waiting for refund period to end", tone: "neutral", stage: "to_come" };
+      return { label: "Waiting for refund period to end", tone: "warning", stage: "to_come" };
     case "cancelled":
       return { label: "Cancelled", tone: "neutral", stage: "cancelled" };
     default:

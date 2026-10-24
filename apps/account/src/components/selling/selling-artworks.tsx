@@ -1,5 +1,6 @@
-import { AccountSection, EMPTY_STATE, ListCard, ListCardRow } from "@/components/account-ui";
+import { AccountSection, CARD, EMPTY_STATE, ListCard, ListCardRow } from "@/components/account-ui";
 import type { ArtistArtworkVm, ArtistSaleVm } from "@/server/domain/selling/selling-artworks.vm";
+import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import {
   Table,
@@ -10,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
-import { MONEY, SellingStatus, formatPence } from "./selling-parts";
+import { CELL, EDGE, MONEY, ROW, SellingStatus, formatPence } from "./selling-parts";
 
 function Amount({ pence }: { pence: number | null }) {
   if (pence === null) {
@@ -66,28 +67,32 @@ export function ArtistSalesList({ sales }: { sales: ArtistSaleVm[] }) {
         />
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className={cn(CARD, "hidden overflow-hidden md:block")}>
             <Table>
               <TableCaption className="sr-only">Sales of your work, newest first.</TableCaption>
               <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">Artwork</TableHead>
-                  <TableHead scope="col">Sold</TableHead>
-                  <TableHead scope="col" className="text-right">
+                <TableRow className={ROW}>
+                  <TableHead scope="col" className={cn(EDGE, "h-11")}>
+                    Artwork
+                  </TableHead>
+                  <TableHead scope="col" className={cn(EDGE, "h-11")}>
+                    Sold
+                  </TableHead>
+                  <TableHead scope="col" className={cn(EDGE, "h-11 text-right")}>
                     Sale price
                   </TableHead>
-                  <TableHead scope="col" className="text-right">
+                  <TableHead scope="col" className={cn(EDGE, "h-11 text-right")}>
                     LAX fees
                   </TableHead>
-                  <TableHead scope="col" className="text-right">
+                  <TableHead scope="col" className={cn(EDGE, "h-11 text-right")}>
                     Net to you
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sales.map((sale) => (
-                  <TableRow key={sale.saleId}>
-                    <TableCell>
+                  <TableRow key={sale.saleId} className={ROW}>
+                    <TableCell className={CELL}>
                       <span className="block font-medium text-on-surface">{sale.title}</span>
                       <span className="block text-xs text-on-surface-variant">
                         {[sale.edition, sale.resaleRoyalty ? "Resale royalty applies" : null]
@@ -95,17 +100,19 @@ export function ArtistSalesList({ sales }: { sales: ArtistSaleVm[] }) {
                           .join(" · ")}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={CELL}>
                       <span className="block whitespace-nowrap">
                         {sale.soldOn ?? "Date not recorded"}
                       </span>
                       <span className="block text-xs text-on-surface-variant">{sale.channel}</span>
                     </TableCell>
-                    <TableCell className={MONEY}>{formatPence(sale.salePricePence)}</TableCell>
-                    <TableCell className={MONEY}>
+                    <TableCell className={cn(CELL, MONEY)}>
+                      {formatPence(sale.salePricePence)}
+                    </TableCell>
+                    <TableCell className={cn(CELL, MONEY)}>
                       <Amount pence={sale.feesPence} />
                     </TableCell>
-                    <TableCell className={`${MONEY} font-semibold text-on-surface`}>
+                    <TableCell className={cn(CELL, MONEY, "font-semibold text-on-surface")}>
                       <Amount pence={sale.netPence} />
                     </TableCell>
                   </TableRow>
@@ -115,7 +122,7 @@ export function ArtistSalesList({ sales }: { sales: ArtistSaleVm[] }) {
           </div>
           <ul
             aria-label="Sales of your work"
-            className="flex flex-col divide-y divide-border-hairline md:hidden"
+            className={cn(CARD, "flex flex-col divide-y divide-border-hairline px-4 md:hidden")}
           >
             {sales.map((sale) => (
               <li key={sale.saleId} className="flex flex-col gap-1 py-4">

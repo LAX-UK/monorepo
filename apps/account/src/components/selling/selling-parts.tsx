@@ -5,19 +5,21 @@ import type { SellingTabVm } from "@/server/domain/selling/selling-routes";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Skeleton } from "@auction/ui/components/skeleton";
-import { StatusBadge } from "@auction/ui/components/status-badge";
-import { SENTENCE_CASE_BADGE } from "../portfolio-parts";
+export type SellingStatusTone = "success" | "info" | "warning" | "neutral" | "danger";
 
-export type SellingStatusTone = "success" | "pending" | "neutral" | "danger";
+/**
+ * Filled badges in Account's status colours. Text sits on the matching container in its
+ * darkest readable colour, so every tone clears 4.5:1 in light and dark.
+ */
+const STATUS_TONE: Record<SellingStatusTone, string> = {
+  success: "bg-success-container text-on-success-container",
+  info: "bg-info-container text-on-surface",
+  warning: "bg-warning-container text-on-surface",
+  neutral: "bg-surface-container-high text-on-surface-variant",
+  danger: "bg-error-container text-on-error-container",
+};
 
-const STATUS_VARIANT = {
-  success: "success",
-  pending: "info",
-  neutral: "neutral",
-  danger: "danger",
-} as const;
-
-/** A state in words, in the same sentence-case badge the portfolio uses. */
+/** A state in words, as a filled badge in one shape across the Selling pages. */
 export function SellingStatus({
   label,
   tone,
@@ -28,14 +30,25 @@ export function SellingStatus({
   className?: string;
 }) {
   return (
-    <StatusBadge variant={STATUS_VARIANT[tone]} className={cn(SENTENCE_CASE_BADGE, className)}>
+    <span
+      className={cn(
+        "inline-flex w-fit shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs leading-5 font-medium whitespace-nowrap",
+        STATUS_TONE[tone],
+        className,
+      )}
+    >
       {label}
-    </StatusBadge>
+    </span>
   );
 }
 
 /** Shop records seller money in pounds. */
 export const formatPence = (pence: number) => formatMinorUnits(pence, "GBP");
+
+/** Table rows in a card, with hairline dividers and the card's own side padding. */
+export const ROW = "border-b border-border-hairline hover:bg-transparent";
+export const EDGE = "px-3 first:pl-4 last:pr-4 sm:first:pl-6 sm:last:pr-6";
+export const CELL = `${EDGE} py-3`;
 
 /** Money in a column: right-aligned with figures of one width, so amounts line up. */
 export const MONEY = "text-right tabular-nums whitespace-nowrap";

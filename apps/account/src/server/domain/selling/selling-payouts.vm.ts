@@ -2,6 +2,7 @@ import type {
   PortalPayeeConnectStatus,
   PortalPayeeConnectSurface,
   PortalPayout,
+  PortalSaleStatement,
 } from "@auction/shop-contracts";
 import type { PayoutAccountRead } from "../../ports/selling-gateway";
 import { type PayoutStatusVm, describePayoutStatus } from "./selling-payout-status";
@@ -76,6 +77,8 @@ function describeStage(status: PortalPayeeConnectStatus): Omit<PayoutAccountVm, 
 
 export type PayoutRowVm = {
   payoutId: string;
+  /** What the payout is for: "Harbour Print · Edition 12", or "Payout" when the sale is unknown. */
+  title: string;
   netPence: number;
   grossPence: number;
   feesPence: number;
@@ -87,11 +90,24 @@ export type PayoutsListVm = {
   totals: { paidPence: number; toComePence: number };
 };
 
-export function buildPayoutsList(payouts: readonly PortalPayout[]): PayoutsListVm {
+/** Names a payout by the sale it pays for; Shop pays each sold edition on its own. */
+function payoutTitle(sale: PortalSaleStatement | undefined): string {
+  if (!sale) return "Payout";
+  return sale.editionNumber != null
+    ? `${sale.artworkTitle} · Edition ${sale.editionNumber}`
+    : sale.artworkTitle;
+}
+
+export function buildPayoutsList(
+  payouts: readonly PortalPayout[],
+  sales: readonly PortalSaleStatement[] = [],
+): PayoutsListVm {
+  const saleByPayout = new Map(sales.map((sale) => [sale.payoutId, sale]));
   const rows = [...payouts]
     .sort((a, b) => ((a.paidAt ?? a.payoutDueAt) < (b.paidAt ?? b.payoutDueAt) ? 1 : -1))
     .map((payout) => ({
       payoutId: payout.payoutId,
+      title: payoutTitle(saleByPayout.get(payout.payoutId)),
       netPence: payout.netPence,
       grossPence: payout.grossPence,
       feesPence: payout.deductionsPence,

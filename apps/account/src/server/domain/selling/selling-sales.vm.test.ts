@@ -84,6 +84,13 @@ describe("describePayoutStatus", () => {
     );
     expect(describePayoutStatus("due", null).label).toBe("Due");
   });
+
+  it("uses one tone per state: paid green, due info, waiting warning, cancelled neutral", () => {
+    expect(describePayoutStatus("paid", null).tone).toBe("success");
+    expect(describePayoutStatus("due", null).tone).toBe("info");
+    expect(describePayoutStatus("pending_refund_period", null).tone).toBe("warning");
+    expect(describePayoutStatus("cancelled", null).tone).toBe("neutral");
+  });
 });
 
 describe("buildSalesPage", () => {

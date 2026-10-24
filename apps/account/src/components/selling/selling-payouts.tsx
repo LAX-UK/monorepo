@@ -30,6 +30,9 @@ export function SellingPayoutsList({ list }: { list: PayoutsListVm }) {
             <li key={row.payoutId} id={`payout-${row.payoutId}`} className="scroll-mt-4">
               <div className={cn(LIST_ROW, "py-3")}>
                 <div className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
+                  <span className="text-sm font-medium break-words text-on-surface">
+                    {row.title}
+                  </span>
                   <SellingStatus
                     label={row.status.label}
                     tone={row.status.tone}

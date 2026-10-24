@@ -41,6 +41,37 @@ describe("buildPayoutAccount", () => {
 });
 
 describe("buildPayoutsList", () => {
+  it("names each payout by the sale it pays for", () => {
+    const payout = {
+      payoutId: "44444444-4444-4444-8444-444444444444",
+      grossPence: 85_000,
+      deductionsPence: 17_000,
+      netPence: 68_000,
+      status: "due",
+      payoutDueAt: "2026-11-02T00:00:00Z",
+      paidAt: null,
+    };
+    const sale = {
+      saleId: "55555555-5555-4555-8555-555555555555",
+      channel: "direct" as const,
+      artworkId: "66666666-6666-4666-8666-666666666666",
+      artworkSlug: "harbour-print",
+      artworkTitle: "Harbour Print",
+      editionNumber: 12,
+      soldAt: "2026-10-20T10:00:00Z",
+      grossPence: 85_000,
+      feesPence: 17_000,
+      netPence: 68_000,
+      payoutId: payout.payoutId,
+      payoutStatus: "due",
+    };
+    expect(buildPayoutsList([payout], [sale]).rows[0]?.title).toBe("Harbour Print · Edition 12");
+    expect(buildPayoutsList([payout], [{ ...sale, editionNumber: null }]).rows[0]?.title).toBe(
+      "Harbour Print",
+    );
+    expect(buildPayoutsList([payout]).rows[0]?.title).toBe("Payout");
+  });
+
   it("totals what was paid apart from what is to come, and leaves cancelled out", () => {
     const list = buildPayoutsList([
       {

@@ -66,8 +66,15 @@ export async function loadPayoutAccountSection(
 export async function loadPayoutsSection(
   handle: SessionHandle,
 ): Promise<SectionLoad<PayoutsListVm>> {
-  const rows = rowsOf(await getLaxAccountContainer().selling.readPayouts(handle));
-  return rows ? { status: "ok", view: buildPayoutsList(rows) } : { status: "unavailable" };
+  const { selling } = getLaxAccountContainer();
+  const [payouts, sales] = await Promise.all([
+    selling.readPayouts(handle),
+    selling.readSales(handle),
+  ]);
+  const rows = rowsOf(payouts);
+  if (!rows) return { status: "unavailable" };
+  // Without the sales each payout is still listed, only without its artwork's name.
+  return { status: "ok", view: buildPayoutsList(rows, rowsOf(sales) ?? []) };
 }
 
 export async function loadArtistSection(handle: SessionHandle): Promise<SectionLoad<ArtistPageVm>> {
