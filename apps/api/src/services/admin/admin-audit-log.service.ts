@@ -10,7 +10,7 @@ import type {
   AdminAuditLogEntry,
   AdminAuditLogSearch,
   IAdminAuditLogService,
-} from "../interfaces/admin-routes.js";
+} from "../interfaces/admin-routes/admin-operations-routes.js";
 
 /**
  * What the caller may see of one event: the payload is minimised for them and stripped of

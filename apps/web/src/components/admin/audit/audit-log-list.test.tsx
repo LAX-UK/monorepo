@@ -1,53 +1,7 @@
 import type { AuditLogRowModel } from "@/lib/admin/audit/audit-log.vm";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AuditLogList, type AuditLogListProps } from "./audit-log-list";
-
-// Radix sheets, popovers, menus and command lists keep positioning and focus loops running in
-// jsdom; these stand-ins keep the open/close contract so the list's own behaviour is tested.
-vi.mock("@auction/ui/components/sheet", () => ({
-  Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-testid="sheet">{children}</div> : null,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-  SheetDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  SheetClose: ({ children }: { children: React.ReactNode }) => children,
-}));
-vi.mock("@auction/ui/components/popover", () => ({
-  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ children }: { children: React.ReactNode }) => children,
-  PopoverContent: () => null,
-}));
-vi.mock("@auction/ui/components/dropdown-menu", () => {
-  const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
-  return {
-    DropdownMenu: Pass,
-    DropdownMenuTrigger: Pass,
-    DropdownMenuContent: () => null,
-    DropdownMenuItem: Pass,
-    DropdownMenuCheckboxItem: Pass,
-    DropdownMenuLabel: Pass,
-    DropdownMenuSeparator: () => null,
-  };
-});
-vi.mock("@auction/ui/components/command", () => {
-  const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
-  return {
-    Command: Pass,
-    CommandInput: Pass,
-    CommandList: Pass,
-    CommandEmpty: Pass,
-    CommandGroup: Pass,
-    CommandItem: Pass,
-  };
-});
-vi.mock("@auction/ui/components/tooltip", () => ({
-  TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
-  Tooltip: ({ children }: { children: React.ReactNode }) => children,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => children,
-  TooltipContent: () => null,
-}));
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -148,7 +102,7 @@ describe("AuditLogList", () => {
 
     fireEvent.click(within(screen.getByRole("grid", { name: "Audit log" })).getByText("Ada Staff"));
 
-    const panel = screen.getByTestId("sheet");
+    const panel = screen.getByRole("dialog");
     expect(within(panel).getByText("What changed")).toBeInTheDocument();
     expect(within(panel).getByText("consigned")).toBeInTheDocument();
     expect(within(panel).getByText("withdrawn")).toBeInTheDocument();
