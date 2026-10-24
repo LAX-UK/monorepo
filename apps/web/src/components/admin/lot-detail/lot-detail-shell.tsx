@@ -103,6 +103,7 @@ export function LotDetailShell({
     <CatalogPostCreateSessionRoot>
       <div className="flex flex-col gap-6">
         <PageHeader
+          renderHeading
           breadcrumbs={
             <StaffBreadcrumbs
               Link={NextLink}

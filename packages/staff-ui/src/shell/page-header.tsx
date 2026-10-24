@@ -7,6 +7,11 @@ export const STAFF_PAGE_TITLE_CLASS =
 
 export type PageHeaderProps = {
   title: React.ReactNode;
+  /**
+   * Renders the page's heading itself instead of wrapping `title` in an `h1`, for headings that
+   * carry their own controls (e.g. rename). It must still render exactly one `h1`.
+   */
+  renderHeading?: boolean;
   /** One sentence: what this page is for. */
   description?: React.ReactNode;
   /** Breadcrumbs above the title (StaffBreadcrumbs). */
@@ -32,6 +37,7 @@ export type PageHeaderProps = {
  */
 export function PageHeader({
   title,
+  renderHeading = false,
   description,
   breadcrumbs,
   status,
@@ -49,7 +55,7 @@ export function PageHeader({
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className={STAFF_PAGE_TITLE_CLASS}>{title}</h1>
+            {renderHeading ? title : <h1 className={STAFF_PAGE_TITLE_CLASS}>{title}</h1>}
             {status}
           </div>
           {description ? (

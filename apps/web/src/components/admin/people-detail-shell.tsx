@@ -90,6 +90,7 @@ export function PeopleDetailShell({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        renderHeading={!title}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}
