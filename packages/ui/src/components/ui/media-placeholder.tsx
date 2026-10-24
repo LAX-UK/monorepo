@@ -87,7 +87,7 @@ export function MediaPlaceholder({
       {normalizedLabel ? (
         <span
           className={cn(
-            "absolute inset-0 flex items-center justify-center px-2 text-center font-mono text-[9px] tracking-normal",
+            "absolute inset-0 flex items-center justify-center px-2 text-center font-mono text-xs tracking-normal",
             LABEL_CLASS[tone],
           )}
         >
