@@ -49,6 +49,12 @@ export function loadShopCrossProductFooterLinks(): LaxProductLinkVm[] {
   return buildCrossProductFooterLinks(resolved.config);
 }
 
+/** The lax.art base URL, or null when it is not configured for this environment. */
+export function loadShopArtBaseUrl(): URL | null {
+  const art = loadShopCrossProductFooterLinks().find((link) => link.id === "art");
+  return art ? new URL(art.href) : null;
+}
+
 export function loadShopStorefrontBaseUrl(): URL {
   const isNextProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
   const raw =

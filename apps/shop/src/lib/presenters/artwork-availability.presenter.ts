@@ -17,14 +17,6 @@ export function presentArtworkAvailability(artwork: PublicArtworkDetail): Artwor
     };
   }
 
-  if (!artwork.eligibleForEditionAllocation) {
-    return {
-      status: { label: "Original", tone: "neutral" },
-      headline: "Original work — one of one",
-      detail: "A unique piece, not part of an edition series.",
-    };
-  }
-
   const { totalEditions, state } = artwork.availability;
   const status = resolveEditionAvailabilityPresentation(state);
   const size = totalEditions > 0 ? `Limited edition of ${totalEditions}` : "Limited edition";

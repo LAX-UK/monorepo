@@ -1,10 +1,9 @@
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
 import type { ShopInterestReadResult } from "@/lib/shop-fetch-result";
-import { type ArtworkInterestIntent, parseArtworkInterestStatus } from "@auction/shop-contracts";
+import { parseArtworkInterestStatus } from "@auction/shop-contracts";
 
 function logInterestReadFailure(input: {
   slug: string;
-  intent: ArtworkInterestIntent;
   status: number;
   body: string;
 }): void {
@@ -13,20 +12,16 @@ function logInterestReadFailure(input: {
     "[shop] artwork interest read failed (server-side, not visible in browser Network)",
     {
       slug: input.slug,
-      intent: input.intent,
       status: input.status,
       body: input.body.slice(0, 400),
     },
   );
 }
 
-export async function fetchArtworkInterestStatus(
-  slug: string,
-  intent: ArtworkInterestIntent = "notify_me",
-): Promise<ShopInterestReadResult> {
+export async function fetchArtworkInterestStatus(slug: string): Promise<ShopInterestReadResult> {
   try {
     const response = await shopCommerceRequest(
-      `/commerce/artworks/${encodeURIComponent(slug)}/interest?intent=${encodeURIComponent(intent)}`,
+      `/commerce/artworks/${encodeURIComponent(slug)}/interest?intent=notify_me`,
       { headers: { accept: "application/json" } },
     );
     const bodyText = await response.text();
@@ -34,11 +29,11 @@ export async function fetchArtworkInterestStatus(
     if (response.status === 401) return { status: "unauthorized" };
     if (response.status === 404) return { status: "not_found" };
     if (response.status === 503 || response.status === 502 || response.status === 504) {
-      logInterestReadFailure({ slug, intent, status: response.status, body: bodyText });
+      logInterestReadFailure({ slug, status: response.status, body: bodyText });
       return { status: "commerce_unavailable" };
     }
     if (!response.ok) {
-      logInterestReadFailure({ slug, intent, status: response.status, body: bodyText });
+      logInterestReadFailure({ slug, status: response.status, body: bodyText });
       return { status: "failed" };
     }
 
@@ -46,7 +41,7 @@ export async function fetchArtworkInterestStatus(
     try {
       json = JSON.parse(bodyText) as unknown;
     } catch {
-      logInterestReadFailure({ slug, intent, status: response.status, body: bodyText });
+      logInterestReadFailure({ slug, status: response.status, body: bodyText });
       return { status: "failed" };
     }
 
@@ -56,7 +51,6 @@ export async function fetchArtworkInterestStatus(
     if (process.env.NODE_ENV === "development") {
       console.warn("[shop] artwork interest read threw (server-side)", {
         slug,
-        intent,
         error: error instanceof Error ? error.message : String(error),
       });
     }

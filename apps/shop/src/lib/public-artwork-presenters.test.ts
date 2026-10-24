@@ -24,12 +24,6 @@ describe("formatEditionAvailabilitySummary", () => {
     expect(formatEditionAvailabilitySummary(summary())).toBe("Limited edition of 24 · Available");
   });
 
-  it("labels originals without allocation", () => {
-    expect(formatEditionAvailabilitySummary(summary({ eligibleForEditionAllocation: false }))).toBe(
-      "Original — one of one",
-    );
-  });
-
   it("shows a sold-out edition without a count", () => {
     expect(
       formatEditionAvailabilitySummary(

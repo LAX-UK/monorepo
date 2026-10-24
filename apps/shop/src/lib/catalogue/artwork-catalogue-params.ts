@@ -10,15 +10,11 @@ export const ARTWORK_CATALOGUE_SORTS = ["newest", "titleAsc", "priceAsc", "price
 
 export type ArtworkCatalogueSort = (typeof ARTWORK_CATALOGUE_SORTS)[number];
 
-export const ARTWORK_CATALOGUE_TYPES = ["all", "original", "edition"] as const;
-export type ArtworkCatalogueType = (typeof ARTWORK_CATALOGUE_TYPES)[number];
-
 export type ArtworkCatalogueUrlState = {
   q?: string;
   categorySlug?: string;
   artistSlug?: string;
-  saleState?: "for_sale" | "price_on_application" | "sold";
-  type: ArtworkCatalogueType;
+  saleState?: "for_sale" | "sold";
   minPrice?: number;
   maxPrice?: number;
   sort: ArtworkCatalogueSort;
@@ -42,7 +38,7 @@ function parseOptionalInt(value: string | undefined): number | undefined {
 }
 
 function parseSaleState(value: string | undefined): ArtworkCatalogueUrlState["saleState"] {
-  if (value === "for_sale" || value === "price_on_application" || value === "sold") {
+  if (value === "for_sale" || value === "sold") {
     return value;
   }
   return undefined;
@@ -53,17 +49,6 @@ function parseSort(value: string | undefined): ArtworkCatalogueSort {
     return value as ArtworkCatalogueSort;
   }
   return "newest";
-}
-
-function parseType(
-  typeRaw: string | undefined,
-  editionEligibleRaw: string | undefined,
-): ArtworkCatalogueType {
-  if (typeRaw && (ARTWORK_CATALOGUE_TYPES as readonly string[]).includes(typeRaw)) {
-    return typeRaw as ArtworkCatalogueType;
-  }
-  if (editionEligibleRaw === "true") return "edition";
-  return "all";
 }
 
 function normalizePriceBounds(
@@ -87,7 +72,6 @@ export function parseArtworkCatalogueParams(
     parseOptionalInt(firstString(searchParams.maxPrice)),
   );
   const state: ArtworkCatalogueUrlState = {
-    type: parseType(firstString(searchParams.type), firstString(searchParams.editionEligible)),
     sort: parseSort(firstString(searchParams.sort)),
   };
   const q = firstString(searchParams.q)?.trim();
@@ -117,7 +101,6 @@ export function artworkCatalogueHref(
   if (next.categorySlug) params.set("categorySlug", next.categorySlug);
   if (next.artistSlug) params.set("artistSlug", next.artistSlug);
   if (next.saleState) params.set("saleState", next.saleState);
-  if (next.type !== "all") params.set("type", next.type);
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
   if (next.sort !== "newest") params.set("sort", next.sort);
@@ -153,7 +136,7 @@ export function artworkCatalogueFilterHref(
 }
 
 export function artworkCatalogueClearHref(): string {
-  return artworkCatalogueHref({ type: "all", sort: "newest" });
+  return artworkCatalogueHref({ sort: "newest" });
 }
 
 export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlState): number {
@@ -162,7 +145,6 @@ export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlSta
   if (state.categorySlug) count += 1;
   if (state.artistSlug) count += 1;
   if (state.saleState) count += 1;
-  if (state.type !== "all") count += 1;
   if (state.minPrice !== undefined) count += 1;
   if (state.maxPrice !== undefined) count += 1;
   return count;
@@ -170,14 +152,7 @@ export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlSta
 
 const SALE_STATE_LABELS: Record<NonNullable<ArtworkCatalogueUrlState["saleState"]>, string> = {
   for_sale: "For sale",
-  price_on_application: "Price on request",
   sold: "Sold",
-};
-
-const TYPE_LABELS: Record<ArtworkCatalogueType, string> = {
-  all: "All artworks",
-  original: "Originals",
-  edition: "Prints & multiples",
 };
 
 export function buildArtworkCatalogueActiveChips(
@@ -193,13 +168,6 @@ export function buildArtworkCatalogueActiveChips(
       key: "q",
       label: `Search: ${state.q}`,
       removeHref: artworkCatalogueFilterHref(state, { q: null }),
-    });
-  }
-  if (state.type !== "all") {
-    chips.push({
-      key: "type",
-      label: TYPE_LABELS[state.type],
-      removeHref: artworkCatalogueFilterHref(state, { type: "all" }),
     });
   }
   if (state.saleState) {
@@ -249,18 +217,12 @@ export function artworkCatalogueHasActiveFilters(state: ArtworkCatalogueUrlState
   return countActiveArtworkCatalogueFilters(state) > 0;
 }
 
-export function artworkCataloguePageTitle(state: ArtworkCatalogueUrlState): string {
-  if (state.type === "edition") return "Prints & Multiples";
-  return "Artworks";
-}
-
 export type ArtworkCatalogueFetchInput = {
   limit?: number;
   cursor?: string;
   categorySlug?: string;
   artistSlug?: string;
-  saleState?: "for_sale" | "price_on_application" | "sold";
-  type?: ArtworkCatalogueType;
+  saleState?: "for_sale" | "sold";
   minPrice?: number;
   maxPrice?: number;
   sort?: ArtworkCatalogueSort;
@@ -275,7 +237,6 @@ export function artworkCatalogueFetchQuery(
   if (state.categorySlug) query.categorySlug = state.categorySlug;
   if (state.artistSlug) query.artistSlug = state.artistSlug;
   if (state.saleState) query.saleState = state.saleState;
-  if (state.type !== "all") query.type = state.type;
   if (state.minPrice !== undefined) query.minPrice = state.minPrice * 100;
   if (state.maxPrice !== undefined) query.maxPrice = state.maxPrice * 100;
   if (state.sort !== "newest") query.sort = state.sort;

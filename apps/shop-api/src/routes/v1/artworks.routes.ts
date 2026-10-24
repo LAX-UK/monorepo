@@ -56,6 +56,11 @@ const ListQuerySchema = Type.Object({
   q: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
 });
 
+/** The Shop channel sells limited editions only; originals are served to the lax.art channel. */
+function isShopChannel(salesChannel: "shop" | "art" | undefined): boolean {
+  return salesChannel === "shop";
+}
+
 export async function registerArtworkRoutes(app: FastifyInstance, catalogue: CatalogueRoutesDeps) {
   app.get(
     "/v1/artworks",
@@ -102,7 +107,11 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
         ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
         ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),
-        ...(query.type !== undefined ? { artworkType: query.type } : {}),
+        ...(isShopChannel(query.salesChannel)
+          ? { artworkType: "edition" as const }
+          : query.type !== undefined
+            ? { artworkType: query.type }
+            : {}),
         ...(query.minPrice !== undefined ? { minPricePence: query.minPrice } : {}),
         ...(query.maxPrice !== undefined ? { maxPricePence: query.maxPrice } : {}),
         ...(query.sort !== undefined ? { sort: query.sort } : {}),
@@ -154,7 +163,11 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
       const { slug } = request.params as { slug: string };
       const { salesChannel } = request.query as { salesChannel?: "shop" | "art" };
       const artwork = await catalogue.getPublicArtwork(slug);
-      if (!artwork || (salesChannel !== undefined && artwork.salesChannel !== salesChannel)) {
+      if (
+        !artwork ||
+        (salesChannel !== undefined && artwork.salesChannel !== salesChannel) ||
+        (isShopChannel(salesChannel) && !artwork.eligibleForEditionAllocation)
+      ) {
         throw notFound("Artwork not found");
       }
       return presentArtworkDetail(artwork);

@@ -62,25 +62,6 @@ describe("ArtworkUnavailablePanel", () => {
     expect(document.querySelector(".shop-detail__interest-hint.shop-detail__notice")).toBeNull();
   });
 
-  it("shows enquiry registration for authenticated originals", () => {
-    render(
-      <ArtworkUnavailablePanel
-        viewer={{
-          kind: "authenticated",
-          email: "a@example.com",
-          displayName: "Alex",
-          accountHref: "/account",
-          logoutHref: "/logout",
-        }}
-        artworkSlug="string-study"
-        reason="price_enquiry"
-        interestRead={{ status: "ok", data: { subscribed: false } }}
-      />,
-    );
-    expect(screen.getByRole("button", { name: "Register interest" })).toBeTruthy();
-    expect(screen.queryByText(/Join LAX to receive updates/i)).toBeNull();
-  });
-
   it("prompts sign-in again when commerce rejects the session", () => {
     render(
       <ArtworkUnavailablePanel
@@ -92,12 +73,12 @@ describe("ArtworkUnavailablePanel", () => {
           logoutHref: "/logout",
         }}
         artworkSlug="string-study"
-        reason="price_enquiry"
+        reason="edition_sold_out"
         interestRead={{ status: "unauthorized" }}
       />,
     );
     expect(screen.getByRole("link", { name: "Sign in again" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Register interest" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Notify me" })).toBeNull();
   });
 
   it("does not offer interest actions when the work is sold", () => {

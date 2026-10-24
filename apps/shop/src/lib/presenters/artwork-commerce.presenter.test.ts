@@ -1,7 +1,6 @@
 import type { PublicArtworkDetail } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
-  isArtworkPriceEnquiryAvailable,
   isArtworkPurchasable,
   resolveArtworkUnavailableReason,
 } from "./artwork-commerce.presenter.js";
@@ -30,34 +29,25 @@ describe("artwork commerce presenter", () => {
     expect(resolveArtworkUnavailableReason(artwork())).toBeNull();
   });
 
-  it("blocks price enquiry when editions are sold out even if sale state is POA", () => {
+  it("reports a sold-out edition even if sale state is price on application", () => {
     const soldOutPoa = artwork({
       saleState: "price_on_application",
       availability: { totalEditions: 24, state: "sold_out" },
     });
-    expect(isArtworkPriceEnquiryAvailable(soldOutPoa)).toBe(false);
     expect(resolveArtworkUnavailableReason(soldOutPoa)).toBe("edition_sold_out");
   });
 
-  it("allows price enquiry for available originals on request", () => {
-    const poaOriginal = artwork({
-      saleState: "price_on_application",
-      eligibleForEditionAllocation: false,
-      printPricePence: null,
-      availability: { totalEditions: 0, state: "sold_out" },
-    });
-    expect(isArtworkPriceEnquiryAvailable(poaOriginal)).toBe(true);
-    expect(resolveArtworkUnavailableReason(poaOriginal)).toBe("price_enquiry");
+  it("offers no purchase or enquiry path for an edition without a price", () => {
+    const poaEdition = artwork({ saleState: "price_on_application", printPricePence: null });
+    expect(isArtworkPurchasable(poaEdition)).toBe(false);
+    expect(resolveArtworkUnavailableReason(poaEdition)).toBeNull();
   });
 
-  it("does not invite enquiry for sold originals", () => {
+  it("reports sold works as sold", () => {
     const sold = artwork({
       saleState: "sold",
-      eligibleForEditionAllocation: false,
       printPricePence: null,
-      availability: { totalEditions: 0, state: "sold_out" },
     });
-    expect(isArtworkPriceEnquiryAvailable(sold)).toBe(false);
     expect(resolveArtworkUnavailableReason(sold)).toBe("sold");
   });
 });

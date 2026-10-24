@@ -3,9 +3,9 @@ import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailabl
 import { ShopMediaImage } from "@/components/media/shop-media-image.server";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
+import { resolveOriginalArtworkUrl } from "@/lib/original-artwork-url.server";
 import { presentArtworkAvailability } from "@/lib/presenters/artwork-availability.presenter";
 import {
-  isArtworkPriceEnquiryAvailable,
   isArtworkPurchasable,
   resolveArtworkUnavailableReason,
 } from "@/lib/presenters/artwork-commerce.presenter";
@@ -20,7 +20,7 @@ import { cn } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
@@ -32,17 +32,6 @@ const EDITION_WHAT_YOU_GET_BULLETS = [
   "Edition number assigned when your order is fulfilled",
   "Order updates and documents in your LAX account",
 ] as const;
-
-const ORIGINAL_WHAT_YOU_GET_BULLETS = [
-  "Certificate of authenticity for the original work",
-  "Provenance and sale handled by LAX",
-  "Insured delivery or collection arranged after purchase",
-  "Documents in your LAX account when applicable",
-] as const;
-
-function artworkTypeEyebrow(artwork: { eligibleForEditionAllocation: boolean }): string {
-  return artwork.eligibleForEditionAllocation ? "Limited edition print" : "Original artwork";
-}
 
 export async function generateMetadata({ params }: ArtworkPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -81,24 +70,17 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
       ? basketResult.data.lines.find((line) => line.artworkSlug === slug)
       : undefined;
   if (!artwork) {
+    const originalOnArt = await resolveOriginalArtworkUrl(slug);
+    if (originalOnArt) permanentRedirect(originalOnArt);
     notFound();
   }
   const printPricePence = artwork.printPricePence;
   const purchasable = isArtworkPurchasable(artwork);
-  const priceEnquiryAvailable = isArtworkPriceEnquiryAvailable(artwork);
   const unavailableReason = resolveArtworkUnavailableReason(artwork);
-  const interestIntent =
-    unavailableReason === "edition_sold_out"
-      ? "notify_me"
-      : unavailableReason === "price_enquiry"
-        ? "enquiry"
-        : artwork.eligibleForEditionAllocation
-          ? "notify_me"
-          : "enquiry";
   const availability = presentArtworkAvailability(artwork);
   const interestRead =
-    viewer.kind === "authenticated" && unavailableReason !== "sold"
-      ? await fetchArtworkInterestStatus(slug, interestIntent)
+    viewer.kind === "authenticated" && unavailableReason === "edition_sold_out"
+      ? await fetchArtworkInterestStatus(slug)
       : { status: "guest" as const };
 
   return (
@@ -129,7 +111,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
           </div>
           <div className="shop-detail__content">
             <div className="shop-detail__heading">
-              <p className="shop-detail__eyebrow">{artworkTypeEyebrow(artwork)}</p>
+              <p className="shop-detail__eyebrow">Limited edition print</p>
               <h1>{artwork.title}</h1>
               <p className="shop-detail__artist">
                 <Link
@@ -142,11 +124,6 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
             </div>
 
             <div className="shop-detail__purchase">
-              {priceEnquiryAvailable ? (
-                <p className="shop-detail__price-lead">
-                  Price on request. Contact LAX and we will share the price for this work.
-                </p>
-              ) : null}
               {purchasable && printPricePence !== null ? (
                 <>
                   <p className="shop-detail__price-lead">
@@ -165,7 +142,6 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                   artworkSlug={artwork.slug}
                   reason={unavailableReason}
                   interestRead={interestRead}
-                  isEdition={artwork.eligibleForEditionAllocation}
                 />
               ) : null}
             </div>
@@ -191,10 +167,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
             <section className="shop-detail__section" aria-labelledby="what-you-get-heading">
               <h2 id="what-you-get-heading">What you get</h2>
               <ul className="shop-detail__bullets">
-                {(artwork.eligibleForEditionAllocation
-                  ? EDITION_WHAT_YOU_GET_BULLETS
-                  : ORIGINAL_WHAT_YOU_GET_BULLETS
-                ).map((line) => (
+                {EDITION_WHAT_YOU_GET_BULLETS.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>

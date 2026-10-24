@@ -9,10 +9,9 @@ import type {
   PublicCategorySummary,
 } from "@auction/shop-contracts";
 
-export type HomeSectionKey = "originals" | "categories" | "prints" | "artists";
+export type HomeSectionKey = "categories" | "prints" | "artists";
 
 export type HomePageComposerResult = {
-  originals: PublicArtworkSummary[];
   categories: PublicCategorySummary[];
   prints: PublicArtworkSummary[];
   artists: PublicArtistSummary[];
@@ -24,21 +23,13 @@ function errorMessage(error: unknown): string {
 }
 
 export async function composeHomePageData(): Promise<HomePageComposerResult> {
-  const [originalsResult, categoriesResult, printsResult, artistsResult] = await Promise.allSettled(
-    [
-      fetchPublicArtworks({ limit: 12, placement: "featured_originals" }),
-      fetchPublicCategories({ placement: "featured_categories" }),
-      fetchPublicArtworks({ limit: 12, placement: "featured_prints" }),
-      fetchPublicArtists({ limit: 12, placement: "featured_artists" }),
-    ],
-  );
+  const [categoriesResult, printsResult, artistsResult] = await Promise.allSettled([
+    fetchPublicCategories({ placement: "featured_categories" }),
+    fetchPublicArtworks({ limit: 12, placement: "featured_prints" }),
+    fetchPublicArtists({ limit: 12, placement: "featured_artists" }),
+  ]);
 
   const sectionErrors: Partial<Record<HomeSectionKey, string>> = {};
-
-  const originals = originalsResult.status === "fulfilled" ? originalsResult.value.items : [];
-  if (originalsResult.status === "rejected") {
-    sectionErrors.originals = errorMessage(originalsResult.reason);
-  }
 
   const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value.items : [];
   if (categoriesResult.status === "rejected") {
@@ -55,5 +46,5 @@ export async function composeHomePageData(): Promise<HomePageComposerResult> {
     sectionErrors.artists = errorMessage(artistsResult.reason);
   }
 
-  return { originals, categories, prints, artists, sectionErrors };
+  return { categories, prints, artists, sectionErrors };
 }

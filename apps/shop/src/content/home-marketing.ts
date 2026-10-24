@@ -1,17 +1,5 @@
 import type { ShopStatusPresentation } from "@/lib/presenters/shop-status-presentation";
 
-export type HomeOriginalCard = {
-  id: string;
-  image: string | null;
-  imageAlt: string;
-  title: string;
-  artistLine: string;
-  dimensions: string;
-  availabilityNote: string;
-  status?: ShopStatusPresentation;
-  href: string;
-};
-
 export type HomeCategoryCard = {
   id: string;
   image: string | null;
@@ -49,7 +37,7 @@ export type HomeSectionLink = {
 
 export const homeHero = {
   title: "This Week's Arrivals",
-  copy: "Discover original works, emerging artists, and distinctive perspectives from around the world through a more considered approach to collecting art.",
+  copy: "Discover limited-edition prints from emerging and established artists, made to be collected and lived with.",
   ctaLabel: "Discover",
   ctaHref: "#shop-prints",
   layers: [
@@ -60,12 +48,6 @@ export const homeHero = {
 };
 
 export const homeSections = {
-  originals: {
-    title: "Originals",
-    subtitle: "One-of-a-kind works available to enquire",
-    actionLabel: "View all",
-    actionHref: "/artworks?type=original",
-  } satisfies HomeSectionLink,
   categories: {
     title: "Shop by Category",
     subtitle: "Collect by medium and discipline",
@@ -76,7 +58,7 @@ export const homeSections = {
     title: "Prints & Multiples",
     subtitle: "Limited editions from the LAX catalogue",
     actionLabel: "View all",
-    actionHref: "/artworks?type=edition",
+    actionHref: "/artworks",
   } satisfies HomeSectionLink,
   artists: {
     title: "Featured Artists",

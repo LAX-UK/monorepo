@@ -1,4 +1,4 @@
-import type { OrderStatus, PublicArtworkSummary } from "@auction/shop-contracts";
+import type { OrderStatus } from "@auction/shop-contracts";
 import type {
   EditionCustodyStatus,
   EditionListingStatus,
@@ -7,22 +7,10 @@ import type {
 import { formatGbpPence } from "@auction/shop-portal/vm";
 import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 
-type PublicArtworkSaleState = PublicArtworkSummary["saleState"];
-
 export type ShopStatusPresentation = {
   label: string;
   tone: DotStatusPillTone;
   hint?: string;
-};
-
-const ARTWORK_SALE_STATE: Record<PublicArtworkSaleState, ShopStatusPresentation> = {
-  for_sale: { label: "For sale", tone: "success" },
-  price_on_application: {
-    label: "Price on request",
-    tone: "accent",
-    hint: "Contact LAX and we will share the price for this work.",
-  },
-  sold: { label: "Sold", tone: "neutral" },
 };
 
 export type ShopOrderStatus = OrderStatus;
@@ -78,12 +66,6 @@ const EDITION_AVAILABILITY: Record<EditionAvailabilityKind, ShopStatusPresentati
   sold_out: { label: "Sold out", tone: "neutral" },
 };
 
-export function resolveArtworkSaleStatePresentation(
-  saleState: PublicArtworkSaleState,
-): ShopStatusPresentation {
-  return ARTWORK_SALE_STATE[saleState];
-}
-
 export function resolveShopOrderStatusPresentation(
   status: ShopOrderStatus,
 ): ShopStatusPresentation {
@@ -95,17 +77,6 @@ export function resolveEditionAvailabilityPresentation(
   state: EditionAvailabilityKind,
 ): ShopStatusPresentation {
   return EDITION_AVAILABILITY[state];
-}
-
-/** Catalogue cards show Price on request and Sold out only; for_sale has no badge. */
-export function resolveCatalogueArtworkBadgePresentation(
-  saleState: PublicArtworkSaleState,
-): ShopStatusPresentation | null {
-  if (saleState === "for_sale") return null;
-  if (saleState === "sold") {
-    return { label: "Sold out", tone: "neutral" };
-  }
-  return resolveArtworkSaleStatePresentation(saleState);
 }
 
 const PORTAL_LISTING_STATUS: Record<EditionListingStatus, ShopStatusPresentation> = {

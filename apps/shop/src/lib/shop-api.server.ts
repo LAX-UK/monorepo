@@ -85,12 +85,10 @@ async function readValidatedJson<T>(
 export async function fetchPublicArtworks(input: {
   limit?: number;
   cursor?: string;
-  placement?: "featured_originals" | "featured_prints";
+  placement?: "featured_prints";
   categorySlug?: string;
   artistSlug?: string;
-  saleState?: "for_sale" | "price_on_application" | "sold";
-  editionEligible?: boolean;
-  type?: "all" | "original" | "edition";
+  saleState?: "for_sale" | "sold";
   minPrice?: number;
   maxPrice?: number;
   sort?: "newest" | "titleAsc" | "priceAsc" | "priceDesc";
@@ -103,10 +101,6 @@ export async function fetchPublicArtworks(input: {
   if (input.placement) params.set("placement", input.placement);
   if (input.categorySlug) params.set("categorySlug", input.categorySlug);
   if (input.artistSlug) params.set("artistSlug", input.artistSlug);
-  if (input.editionEligible !== undefined) {
-    params.set("editionEligible", String(input.editionEligible));
-  }
-  if (input.type && input.type !== "all") params.set("type", input.type);
   if (input.minPrice !== undefined) params.set("minPrice", String(input.minPrice));
   if (input.maxPrice !== undefined) params.set("maxPrice", String(input.maxPrice));
   if (input.sort && input.sort !== "newest") params.set("sort", input.sort);
@@ -124,8 +118,18 @@ export async function fetchPublicArtworkCatalogue(): Promise<PublicArtworkList> 
   return fetchPublicArtworks({ limit: 24 });
 }
 
-export async function fetchPublicArtworkBySlug(slug: string): Promise<PublicArtworkDetail | null> {
-  const response = await shopApiFetch(`/v1/artworks/${encodeURIComponent(slug)}`, SLUG_LOOKUP);
+/**
+ * Looks an artwork up in one sales channel. The Shop channel only ever returns limited editions;
+ * the `art` channel is used to recognise an original that now lives on lax.art.
+ */
+export async function fetchPublicArtworkBySlug(
+  slug: string,
+  salesChannel: "shop" | "art" = "shop",
+): Promise<PublicArtworkDetail | null> {
+  const response = await shopApiFetch(
+    `/v1/artworks/${encodeURIComponent(slug)}?salesChannel=${salesChannel}`,
+    SLUG_LOOKUP,
+  );
   if (response.status === 404) {
     return null;
   }

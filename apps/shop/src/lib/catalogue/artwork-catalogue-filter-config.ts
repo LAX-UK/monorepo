@@ -1,7 +1,6 @@
-import type { ArtworkCatalogueSort, ArtworkCatalogueType } from "./artwork-catalogue-params";
+import type { ArtworkCatalogueSort } from "./artwork-catalogue-params";
 
 export const ARTWORK_FILTER_GROUPS = [
-  { value: "type", title: "Artwork type" },
   { value: "availability", title: "Availability" },
   { value: "category", title: "Category" },
   { value: "artist", title: "Artist" },
@@ -10,25 +9,11 @@ export const ARTWORK_FILTER_GROUPS = [
 
 export type ArtworkFilterGroupValue = (typeof ARTWORK_FILTER_GROUPS)[number]["value"];
 
-export const ARTWORK_FILTER_DEFAULT_OPEN: ArtworkFilterGroupValue[] = [
-  "type",
-  "availability",
-  "category",
-];
-
-export const ARTWORK_TYPE_OPTIONS: ReadonlyArray<{
-  value: ArtworkCatalogueType;
-  label: string;
-}> = [
-  { value: "all", label: "All artworks" },
-  { value: "original", label: "Originals" },
-  { value: "edition", label: "Prints & multiples" },
-];
+export const ARTWORK_FILTER_DEFAULT_OPEN: ArtworkFilterGroupValue[] = ["availability", "category"];
 
 export const ARTWORK_SALE_STATE_OPTIONS = [
   { value: "", label: "Any availability" },
   { value: "for_sale", label: "For sale" },
-  { value: "price_on_application", label: "Price on request" },
   { value: "sold", label: "Sold" },
 ] as const;
 

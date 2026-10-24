@@ -2,7 +2,6 @@ import { CatalogueStatusSection } from "@/components/home/sections/catalogue-sta
 import { CategoriesSection } from "@/components/home/sections/categories-section";
 import { FeaturedArtistsSection } from "@/components/home/sections/featured-artists-section";
 import { HeroSection } from "@/components/home/sections/hero-section";
-import { OriginalsSection } from "@/components/home/sections/originals-section";
 import { PrintsSection } from "@/components/home/sections/prints-section";
 import { SignupSection } from "@/components/home/sections/signup-section";
 import { ShopReveal } from "@/components/home/shop-reveal";
@@ -15,7 +14,7 @@ export async function ShopHomePage() {
   const [data, viewer] = await Promise.all([composeHomePageData(), loadShopViewerState()]);
   const vm = buildHomePageViewModel(data);
   const failedSections = Object.keys(vm.sectionErrors);
-  const showGlobalAlert = failedSections.length === 4;
+  const showGlobalAlert = failedSections.length === 3;
 
   return (
     <>
@@ -24,34 +23,27 @@ export async function ShopHomePage() {
         <CatalogueStatusSection message="Catalogue sections are temporarily unavailable." />
       ) : null}
       <ShopReveal index={1}>
-        <OriginalsSection
-          section={vm.sections.originals}
-          cards={vm.originals}
-          {...(vm.sectionErrors.originals ? { errorMessage: vm.sectionErrors.originals } : {})}
-        />
-      </ShopReveal>
-      <ShopReveal index={2}>
         <CategoriesSection
           section={vm.sections.categories}
           cards={vm.categories}
           {...(vm.sectionErrors.categories ? { errorMessage: vm.sectionErrors.categories } : {})}
         />
       </ShopReveal>
-      <ShopReveal index={3}>
+      <ShopReveal index={2}>
         <PrintsSection
           section={vm.sections.prints}
           cards={vm.printCards}
           {...(vm.sectionErrors.prints ? { errorMessage: vm.sectionErrors.prints } : {})}
         />
       </ShopReveal>
-      <ShopReveal index={4}>
+      <ShopReveal index={3}>
         <FeaturedArtistsSection
           section={vm.sections.artists}
           cards={vm.artists}
           {...(vm.sectionErrors.artists ? { errorMessage: vm.sectionErrors.artists } : {})}
         />
       </ShopReveal>
-      <ShopReveal index={5}>
+      <ShopReveal index={4}>
         <SignupSection signup={vm.signup} cta={homeSignupCta(viewer)} />
       </ShopReveal>
     </>
