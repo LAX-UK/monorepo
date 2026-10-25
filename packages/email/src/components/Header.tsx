@@ -23,7 +23,7 @@ export function Header({ product }: { product: LaxBrandProduct }) {
     />
   );
   return (
-    <Section style={section}>
+    <Section style={product === "bid" ? section : { ...section, margin: "0 0 24px" }}>
       {product === "bid" ? (
         <Link href={EMAIL_SITE_URL} style={logoLink}>
           {image}
@@ -31,7 +31,8 @@ export function Header({ product }: { product: LaxBrandProduct }) {
       ) : (
         <div style={logoLink}>{image}</div>
       )}
-      <div style={goldRule} />
+      {/* The gold rule is LAX Bid's auction mark; other products' headers end at the lockup. */}
+      {product === "bid" ? <div style={goldRule} /> : null}
     </Section>
   );
 }

@@ -14,9 +14,9 @@ export function DocumentHeading({ children, accentColor }: DocumentHeadingProps)
         borderTop: `2px solid ${accentColor}`,
         color: COLORS.ink,
         fontFamily: FONT_STACK_HEADING,
-        fontSize: "28px",
-        fontWeight: 400,
-        lineHeight: "36px",
+        fontSize: "26px",
+        fontWeight: 600,
+        lineHeight: "34px",
         margin: "0 0 20px",
         paddingTop: "16px",
       }}

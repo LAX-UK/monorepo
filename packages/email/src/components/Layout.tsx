@@ -4,7 +4,7 @@ import {
   type EmailCategory,
   FONT_STACK_BODY,
   type LaxBrandProduct,
-  categoryAccentColor,
+  emailAccentColor,
 } from "@auction/branding";
 import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
 import { type ReactNode, useContext } from "react";
@@ -38,9 +38,9 @@ export function Layout({
   product,
   children,
 }: LayoutProps) {
-  const accent = categoryAccentColor(category);
   const renderedFor = useContext(EmailProductContext);
   const resolvedProduct = product ?? renderedFor;
+  const accent = emailAccentColor(resolvedProduct, category);
 
   return (
     <Html lang="en">
@@ -54,7 +54,7 @@ export function Layout({
         <Container style={container}>
           <Section style={inner}>
             {header === "account" ? <AccountHeader /> : <Header product={resolvedProduct} />}
-            <Eyebrow category={category} label={eyebrow} />
+            <Eyebrow accentColor={accent} label={eyebrow} />
             <DocumentHeading accentColor={accent}>{title}</DocumentHeading>
             {children}
             <LegalFooter
