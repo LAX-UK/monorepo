@@ -6,6 +6,7 @@ import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { toIssueItems } from "@/lib/admin/detail-board/to-issue-items";
+import type { DetailStatRow } from "@/lib/admin/detail-board/types";
 import { useSaleAttentionDismiss } from "@/lib/admin/detail-board/use-sale-attention-dismiss";
 import type { AdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import type { AdminSaleDetailMetrics } from "@/lib/data/http/admin-sale-detail-metrics.server";
@@ -18,6 +19,7 @@ import {
   KeyValueList,
   Section,
   StaffButton,
+  StaffDate,
   type StaffLinkComponent,
   StatGrid,
 } from "@auction/staff-ui";
@@ -26,6 +28,14 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 const NextLink: StaffLinkComponent = Link;
+
+/** A fact for a key-value list; a date reads in London time with its zone. */
+function statItem(row: DetailStatRow) {
+  return {
+    label: row.label,
+    value: row.dateIso ? <StaffDate value={row.dateIso} withTime /> : row.value,
+  };
+}
 
 /** Four numbers per stage: before the sale, what is lined up; once it runs, what it makes. */
 function tilesFor(status: Sale["status"]): readonly string[] {
@@ -108,7 +118,7 @@ export function SaleOverviewTab({
         />
       </Section>
       <Section title="Record">
-        <KeyValueList items={vm.auditRows.map((row) => ({ label: row.label, value: row.value }))} />
+        <KeyValueList items={vm.auditRows.map(statItem)} />
       </Section>
     </>
   );
@@ -123,17 +133,7 @@ export function SaleOverviewTab({
             id: tile.id,
             label: tile.label,
             value: tile.value,
-            ...(tile.compareHint || tile.deltaPercent
-              ? {
-                  hint: [tile.deltaPercent, tile.compareHint].filter(Boolean).join(" "),
-                  hintTone:
-                    tile.deltaDirection === "up"
-                      ? ("positive" as const)
-                      : tile.deltaDirection === "down"
-                        ? ("negative" as const)
-                        : ("neutral" as const),
-                }
-              : {}),
+            ...(tile.compareHint ? { hint: tile.compareHint } : {}),
           }))}
       />
       <IssueList

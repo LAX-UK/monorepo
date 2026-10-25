@@ -218,7 +218,7 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
           />
         }
         attention={props.attention}
-        metrics={{ label: "Submissions summary", period: "Today", items: props.metrics }}
+        metrics={{ label: "Submissions summary", period: "Review desk", items: props.metrics }}
         views={<DataViews views={props.views} activeId={props.activeQueue} Link={ListLink} />}
         search={
           <TableSearch

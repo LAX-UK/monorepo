@@ -145,7 +145,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
       {
         id: "sale",
         header: "Sale",
-        width: "22%",
+        width: "17%",
         hideBelow: "lg",
         mobile: "meta",
         cell: (row) =>
@@ -158,7 +158,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
       {
         id: "estimate",
         header: "Estimate",
-        width: "168px",
+        width: "148px",
         numeric: true,
         hideBelow: "xl",
         mobile: "hidden",
@@ -167,7 +167,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
       {
         id: "hammer",
         header: "Hammer",
-        width: "120px",
+        width: "112px",
         numeric: true,
         sortable: true,
         defaultSortDirection: "desc",
@@ -177,7 +177,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
       {
         id: "ends",
         header: "Ends",
-        width: "176px",
+        width: "172px",
         sortable: true,
         defaultSortDirection: "asc",
         hideBelow: "md",

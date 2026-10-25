@@ -33,7 +33,9 @@ export function LotCatalogueStep({
 
   return (
     <div className="flex flex-col gap-6">
-      <LotTypeSummaryBanner profile={profile} onEditLotType={onEditLotType} />
+      {onEditLotType ? (
+        <LotTypeSummaryBanner profile={profile} onEditLotType={onEditLotType} />
+      ) : null}
       <CataloguePricingSection form={form} fields={profile.fields} />
       <CatalogueBiddingSection form={form} fields={profile.fields} />
       <CatalogueScheduleSection form={form} fields={profile.fields} sales={sales} />

@@ -9,7 +9,7 @@ export function lotFormStepIntro(stepId: LotFormStepId): {
     case "identity":
       return {
         title: "What is this lot?",
-        body: "Give the lot a working title, category, and auction format. You can refine catalogue copy later.",
+        body: "Give the lot a title, a description and its lot type. The catalogue copy can be refined later.",
         nextHint: "Assign a sale and seller",
       };
     case "sale-seller":

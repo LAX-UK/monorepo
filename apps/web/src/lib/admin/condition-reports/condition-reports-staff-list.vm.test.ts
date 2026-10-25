@@ -100,12 +100,11 @@ describe("condition reports staff list view model", () => {
     expect(many?.label).toBe("requests are waiting to be picked up");
   });
 
-  it("shows four headline numbers from the summary", () => {
+  it("shows the open, fulfilled and declined counts; the total is the All requests tab", () => {
     expect(conditionReportsMetrics({ ...summary, total: 1234 }).map((m) => m.value)).toEqual([
       "5",
       "12",
       "3",
-      "1,234",
     ]);
   });
 

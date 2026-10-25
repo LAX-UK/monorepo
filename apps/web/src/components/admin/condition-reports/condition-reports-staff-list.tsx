@@ -139,7 +139,7 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
         roleLabel="Catalogue"
         attention={props.attention}
         {...(props.metrics
-          ? { metrics: { label: "Request summary", period: "All requests", items: props.metrics } }
+          ? { metrics: { label: "Request summary", period: "All time", items: props.metrics } }
           : {})}
         views={<DataViews views={props.views} activeId={lens} Link={ListLink} />}
         loading={pending}

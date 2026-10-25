@@ -39,7 +39,7 @@ export const adminSaleTierRowSchema = z.object({
 
 export const adminSaleFormValuesSchema = z
   .object({
-    title: z.string().min(1, "Title is required").max(500),
+    title: z.string().min(1, "Enter a title").max(500),
     description: z.string().max(10_000),
     coverImages: z.array(mediaReferenceSchema).max(20),
     categoryId: z.string(),

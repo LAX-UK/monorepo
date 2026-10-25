@@ -5,6 +5,7 @@ import { useLotDetailReadiness } from "@/components/admin/lot-detail/lot-detail-
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { toIssueItems } from "@/lib/admin/detail-board/to-issue-items";
+import type { DetailStatRow } from "@/lib/admin/detail-board/types";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import type { AdminLotAttention } from "@/lib/data/http/admin-lot-attention.server";
 import type { AdminLotDetailMetrics } from "@/lib/data/http/admin-lot-detail-metrics.server";
@@ -18,6 +19,7 @@ import {
   RecordImage,
   Section,
   StaffButton,
+  StaffDate,
   type StaffLinkComponent,
   StatGrid,
 } from "@auction/staff-ui";
@@ -26,6 +28,14 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 const NextLink: StaffLinkComponent = Link;
+
+/** A fact for a key-value list; a date reads in London time with its zone. */
+function statItem(row: DetailStatRow) {
+  return {
+    label: row.label,
+    value: row.dateIso ? <StaffDate value={row.dateIso} withTime /> : row.value,
+  };
+}
 
 type Props = {
   lotId: string;
@@ -133,7 +143,7 @@ export function LotOverviewTab({
         <KeyValueList
           items={vm.auditRows
             .filter((row) => row.id === "created" || row.id === "updated")
-            .map((row) => ({ label: row.label, value: row.value }))}
+            .map(statItem)}
         />
       </Section>
     </>
@@ -146,34 +156,20 @@ export function LotOverviewTab({
         items={vm.kpiTiles.slice(0, 4).map((tile) => ({
           id: tile.id,
           label: tile.label,
-          value: tile.value,
-          ...(tile.compareHint || tile.deltaPercent
-            ? {
-                hint: [tile.deltaPercent, tile.compareHint].filter(Boolean).join(" "),
-                hintTone:
-                  tile.deltaDirection === "up"
-                    ? ("positive" as const)
-                    : tile.deltaDirection === "down"
-                      ? ("negative" as const)
-                      : ("neutral" as const),
-              }
-            : {}),
+          // Whole pounds for a range, as the lists show it: "£2,000–£3,000".
+          value:
+            tile.id === "estimate"
+              ? tile.value.replace(/\.00/g, "").replace(" – ", "–")
+              : tile.value,
+          ...(tile.compareHint ? { hint: tile.compareHint } : {}),
         }))}
       />
       <IssueList Link={NextLink} items={issues} allClear={null} />
       <Section title="Pricing and timing">
-        <KeyValueList
-          items={vm.commercialRows
-            .filter(keep)
-            .map((row) => ({ label: row.label, value: row.value }))}
-        />
+        <KeyValueList items={vm.commercialRows.filter(keep).map(statItem)} />
       </Section>
       <Section id="catalogue" title="Catalogue entry">
-        <KeyValueList
-          items={vm.catalogueRows
-            .filter(keep)
-            .map((row) => ({ label: row.label, value: row.value }))}
-        />
+        <KeyValueList items={vm.catalogueRows.filter(keep).map(statItem)} />
       </Section>
     </DetailColumns>
   );

@@ -127,13 +127,12 @@ export function conditionReportsAttention(
   ];
 }
 
-/** Headline numbers across every request, from the list summary. */
+/** Headline numbers across every request; the total is the All requests tab's count. */
 export function conditionReportsMetrics(summary: AdminConditionReportListSummary): Metric[] {
   return [
     { id: "open", label: "Open", value: count.format(summary.open) },
     { id: "fulfilled", label: "Fulfilled", value: count.format(summary.fulfilled) },
     { id: "declined", label: "Declined", value: count.format(summary.declined) },
-    { id: "total", label: "All requests", value: count.format(summary.total) },
   ];
 }
 

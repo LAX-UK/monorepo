@@ -17,8 +17,8 @@ export function CatalogueImagesSection({ form, fields }: Props) {
   if (!fields.images.visible) return null;
   return (
     <FormSection
-      title="Photos"
-      description="The lot's photos, in order, with a description of each."
+      title="Media"
+      description="The lot's photos, in order, each with a description for screen readers."
     >
       <Field
         id={`${LOT_FORM_ID}-images`}

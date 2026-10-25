@@ -24,5 +24,6 @@ export function submissionSlaTone(days: number): SubmissionSlaTone {
 }
 
 export function formatSubmissionSlaLabel(days: number): string {
+  if (days === 0) return "Under a day";
   return days === 1 ? "1 day waiting" : `${days} days waiting`;
 }
