@@ -26,7 +26,7 @@ import { MarketingCatalogView } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
 const CATALOGUE_TITLE = "Artworks";
-const CATALOGUE_DESCRIPTION = "Limited-edition prints, each shown whole, with the edition size.";
+const CATALOGUE_DESCRIPTION = "Limited-edition prints by LAX artists, delivered across the UK.";
 
 type ArtworksIndexPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -101,39 +101,34 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
         .catch(() => [])
     : [];
 
+  // Only paged results need a pager; when every edition is on the page the count says it all.
+  const pager =
+    previousHref || nextCursor ? (
+      <nav aria-label="Catalogue pages" className="shop-catalogue-pager">
+        <p className="shop-catalogue-pager__status">
+          Showing {items.length} {items.length === 1 ? "edition" : "editions"} on this page
+          {totalCount !== undefined ? ` of ${totalCount}` : ""}
+        </p>
+        <div className="shop-catalogue-pager__links">
+          {previousHref ? (
+            <ShopCataloguePagerLink href={previousHref}>Previous editions</ShopCataloguePagerLink>
+          ) : null}
+          {nextCursor ? (
+            <ShopCataloguePagerLink
+              href={artworkCataloguePagerHref(state, {
+                cursor: nextCursor,
+                back: state.cursor ?? "",
+              })}
+            >
+              Next editions
+            </ShopCataloguePagerLink>
+          ) : null}
+        </div>
+      </nav>
+    ) : null;
+
   return (
-    <ShopCatalogueHub
-      title={CATALOGUE_TITLE}
-      description={description}
-      footer={
-        items.length === 0 ? null : (
-          <div className="shop-catalogue-pager">
-            <p className="shop-catalogue-pager__status">
-              Showing {items.length} {items.length === 1 ? "edition" : "editions"}
-              {state.cursor ? " on this page" : ""}
-              {totalCount !== undefined ? ` of ${totalCount}` : ""}
-            </p>
-            <div className="shop-catalogue-pager__links">
-              {previousHref ? (
-                <ShopCataloguePagerLink href={previousHref}>
-                  Previous editions
-                </ShopCataloguePagerLink>
-              ) : null}
-              {nextCursor ? (
-                <ShopCataloguePagerLink
-                  href={artworkCataloguePagerHref(state, {
-                    cursor: nextCursor,
-                    back: state.cursor ?? "",
-                  })}
-                >
-                  Next editions
-                </ShopCataloguePagerLink>
-              ) : null}
-            </div>
-          </div>
-        )
-      }
-    >
+    <ShopCatalogueHub title={CATALOGUE_TITLE} description={description}>
       <ArtworkCatalogueBrowse
         state={state}
         resultCount={resultCount}
@@ -186,11 +181,14 @@ export default async function ArtworksIndexPage({ searchParams }: ArtworksIndexP
             ) : null}
           </div>
         ) : (
-          <MarketingCatalogView
-            value={view}
-            grid={<CatalogueGrid items={items} />}
-            list={<CatalogueList items={items} />}
-          />
+          <>
+            <MarketingCatalogView
+              value={view}
+              grid={<CatalogueGrid items={items} />}
+              list={<CatalogueList items={items} />}
+            />
+            {pager}
+          </>
         )}
       </ArtworkCatalogueBrowse>
     </ShopCatalogueHub>
