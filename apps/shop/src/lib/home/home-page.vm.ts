@@ -10,8 +10,8 @@ import { SHOP_RETURNS_LINE, shopDeliveryLine } from "@/lib/presenters/artwork-pu
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import type { HomePageComposerResult, HomeSectionKey } from "./home-page.composer";
 
-/** A home section with fewer works than this is left out rather than shown half empty. */
-export const HOME_MIN_SECTION_ITEMS = 3;
+/** The grid shows whole desktop rows of four: eight, four, or none. */
+const HOME_GRID_ROW = 4;
 const HOME_GRID_ITEMS = 8;
 
 export type HomeHeroVm = {
@@ -40,11 +40,13 @@ export type HomePageViewModel = {
 };
 
 function heroLead(artistCount: number | null): string {
-  if (artistCount === null || artistCount === 0) {
-    return "Prints from limited editions, each with its edition size stated. Prices include VAT.";
-  }
-  const artists = artistCount === 1 ? "one artist" : `${artistCount} artists`;
-  return `Prints by ${artists}, each from a limited edition with its size stated. Prices include VAT.`;
+  const artists =
+    artistCount === null || artistCount === 0
+      ? "LAX artists"
+      : artistCount === 1
+        ? "one LAX artist"
+        : `${artistCount} LAX artists`;
+  return `Limited-edition prints by ${artists}. Prices include VAT.`;
 }
 
 /**
@@ -57,8 +59,9 @@ export function buildHomePageViewModel(input: HomePageComposerResult): HomePageV
   const others = featureItem
     ? input.editions.filter((item) => item.slug !== featureItem.slug)
     : input.editions;
-  const rest = others.length >= HOME_MIN_SECTION_ITEMS ? others : input.editions;
-  const editions = rest.slice(0, HOME_GRID_ITEMS);
+  const rest = others.length >= HOME_GRID_ROW ? others : input.editions;
+  const fullRows = Math.floor(Math.min(rest.length, HOME_GRID_ITEMS) / HOME_GRID_ROW);
+  const editions = rest.slice(0, fullRows * HOME_GRID_ROW);
 
   return {
     hero: {
@@ -70,7 +73,7 @@ export function buildHomePageViewModel(input: HomePageComposerResult): HomePageV
       returnsLine: SHOP_RETURNS_LINE,
       feature: featureItem ? toCatalogueArtworkCardVm(featureItem) : null,
     },
-    editions: editions.length >= HOME_MIN_SECTION_ITEMS ? editions : [],
+    editions,
     artists: buildCatalogueArtistCards(input.artists.filter((artist) => artist.artworkCount > 0)),
     steps: [
       {

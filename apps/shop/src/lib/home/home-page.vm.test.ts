@@ -29,13 +29,15 @@ describe("buildHomePageViewModel", () => {
   it("names what Shop sells and counts the artists only when the count is known", () => {
     expect(buildHomePageViewModel({ ...base, artistCount: 3 }).hero).toMatchObject({
       title: "Limited editions and prints",
-      lead: "Prints by 3 artists, each from a limited edition with its size stated. Prices include VAT.",
+      lead: "Limited-edition prints by 3 LAX artists. Prices include VAT.",
       primary: { label: "Browse editions", href: "/artworks" },
     });
-    expect(buildHomePageViewModel({ ...base, artistCount: 1 }).hero.lead).toMatch(
-      /^Prints by one artist/,
+    expect(buildHomePageViewModel({ ...base, artistCount: 1 }).hero.lead).toBe(
+      "Limited-edition prints by one LAX artist. Prices include VAT.",
     );
-    expect(buildHomePageViewModel(base).hero.lead).not.toMatch(/\d/);
+    expect(buildHomePageViewModel(base).hero.lead).toBe(
+      "Limited-edition prints by LAX artists. Prices include VAT.",
+    );
   });
 
   it("features the first edition with an image, and leaves it out of the grid", () => {
@@ -46,16 +48,19 @@ describe("buildHomePageViewModel", () => {
     expect(vm.editions.map((item) => item.slug)).toEqual(["a", "c", "d", "e", "f", "g", "h", "i"]);
   });
 
-  it("leaves out a section with fewer than three editions", () => {
-    const vm = buildHomePageViewModel({ ...base, editions: [edition("a"), edition("b")] });
-    expect(vm.hero.feature?.slug).toBe("a");
-    expect(vm.editions).toEqual([]);
-    // Three on sale: the grid keeps the featured one rather than drop to two.
-    const three = buildHomePageViewModel({
-      ...base,
-      editions: [edition("a"), edition("b"), edition("c")],
-    });
-    expect(three.editions.map((item) => item.slug)).toEqual(["a", "b", "c"]);
+  it("shows whole rows of four: eight, four or none", () => {
+    const make = (count: number) =>
+      buildHomePageViewModel({
+        ...base,
+        editions: Array.from({ length: count }, (_, i) => edition(`e${i}`)),
+      }).editions.length;
+    expect(make(7)).toBe(4);
+    expect(make(6)).toBe(4);
+    expect(make(5)).toBe(4);
+    // Four on sale: the grid keeps the featured one rather than drop to three.
+    expect(make(4)).toBe(4);
+    expect(make(3)).toBe(0);
+    expect(make(12)).toBe(8);
   });
 
   it("lists only artists with editions", () => {
