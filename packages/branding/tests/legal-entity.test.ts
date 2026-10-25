@@ -61,10 +61,19 @@ describe("LAX legal entities", () => {
   });
 
   it("shows a named placeholder for unconfirmed registration details", () => {
+    const facts = legalEntityFacts(legalEntityFor("bid"));
+    expect(facts.companyNumber).toBe("[TO CONFIRM: London Auction Xchange LTD company number]");
+    expect(facts.vatNumber).toBe(
+      "[TO CONFIRM: London Auction Xchange LTD VAT registration number]",
+    );
+    expect(facts.registeredIn).toBe("England and Wales");
+  });
+
+  it("uses London Art Exchange Ltd's published details and leaves out its VAT number", () => {
     const facts = legalEntityFacts(legalEntityFor("shop"));
-    expect(facts.companyNumber).toBe("[TO CONFIRM: London Art Exchange Ltd company number]");
-    expect(facts.vatNumber).toBe("[TO CONFIRM: London Art Exchange Ltd VAT registration number]");
-    expect(legalEntityFacts(legalEntityFor("bid")).registeredIn).toBe("England and Wales");
+    expect(facts.companyNumber).toBe("12874213");
+    expect(facts.registeredIn).toBe("England and Wales");
+    expect(facts.vatNumber).toBeNull();
   });
 
   it("writes the gallery as lax.art", () => {

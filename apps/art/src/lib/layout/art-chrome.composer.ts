@@ -9,9 +9,9 @@ import { buildArtFooterVm } from "@/lib/layout/art-footer.vm";
 import type { ArtFooterVm } from "@/lib/layout/art-footer.vm";
 import { loadArtHeaderNav } from "@/lib/layout/art-header-nav.server";
 import type { ArtHeaderNavData } from "@/lib/layout/art-nav.vm";
-import { loadLinkableArtNotices } from "@/lib/legal/art-notice-publication.server";
+import { loadLinkableArtPolicies } from "@/lib/legal/art-policy-publication.server";
 import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
-import type { ArtExchangeNoticeSlug } from "@auction/marketing-ui";
+import type { LaxArtPolicySlug } from "@auction/marketing-ui";
 
 export type ArtChromeVm = {
   productLinks: LaxProductLinkVm[];
@@ -19,8 +19,8 @@ export type ArtChromeVm = {
   account: AccountChromeState;
   headerNav: ArtHeaderNavData | null;
   footer: ArtFooterVm;
-  /** Privacy and cookie notices that can be linked on this deployment. */
-  linkableNotices: ArtExchangeNoticeSlug[];
+  /** Policies that can be linked on this deployment. */
+  linkablePolicies: LaxArtPolicySlug[];
 };
 
 /** Root layout chrome — product directory, account, header mega-menu data and footer. */
@@ -32,9 +32,9 @@ export async function composeArtChrome(): Promise<ArtChromeVm> {
     loadArtHeaderNav(),
   ]);
 
-  const linkableNotices = loadLinkableArtNotices();
+  const linkablePolicies = loadLinkableArtPolicies();
   return {
-    linkableNotices,
+    linkablePolicies,
     productLinks,
     crossProductLinks,
     account,
@@ -43,7 +43,7 @@ export async function composeArtChrome(): Promise<ArtChromeVm> {
       crossProductLinks,
       accountState: toArtFooterAccountState(account),
       cookieSettings: Boolean(loadArtEnv().ART_GA_MEASUREMENT_ID),
-      linkableNotices,
+      linkablePolicies,
     }),
   };
 }

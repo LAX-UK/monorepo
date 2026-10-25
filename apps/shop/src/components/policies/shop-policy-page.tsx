@@ -22,6 +22,7 @@ export function ShopPolicyPage({ document, release, draft, hubLinks }: ShopPolic
         draft={draft}
         hubLabel="Shop policies"
         hubLinks={hubLinks}
+        company="shop"
       />
     </MarketingDetailShell>
   );

@@ -443,7 +443,11 @@ export {
   formatLegalPolicyDate,
 } from "./legal/policy/legal-policy-page.js";
 export {
-  ART_EXCHANGE_NOTICES,
-  ART_EXCHANGE_NOTICE_RELEASES,
-  type ArtExchangeNoticeSlug,
-} from "./legal/notices/art-exchange-notices.js";
+  LAX_ART_LEGAL_INDEX,
+  LAX_ART_POLICIES,
+  LAX_ART_POLICY_ORDER,
+  type LaxArtPolicy,
+  type LaxArtPolicySlug,
+  isLaxArtPolicySlug,
+} from "./legal/london-art-exchange/index.js";
+export { LegalPolicyIndex, type LegalPolicyIndexProps } from "./legal/legal-policy-index.js";

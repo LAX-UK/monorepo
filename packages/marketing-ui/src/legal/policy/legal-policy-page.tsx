@@ -1,4 +1,4 @@
-import { legalEntityFor } from "@auction/branding";
+import { type LaxOperatedProduct, legalEntityFor, legalOperatorSentence } from "@auction/branding";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { LegalDocument, LegalNotice, LegalPlaceholder, LegalSection } from "../legal-document.js";
@@ -66,8 +66,8 @@ function PolicyBlock({ block }: { block: LegalPolicyBlock }): ReactNode {
     case "subheading":
       return <h3>{block.text}</h3>;
     case "list": {
-      const items = block.items.map((item) => (
-        <li key={item}>
+      const items = block.items.map((item, index) => (
+        <li key={`${index}-${item}`}>
           <PolicyText text={item} />
         </li>
       ));
@@ -88,16 +88,16 @@ function PolicyBlock({ block }: { block: LegalPolicyBlock }): ReactNode {
               </tr>
             </thead>
             <tbody>
-              {block.rows.map((row) => (
-                <tr key={row[0]}>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={`${rowIndex}-${row[0]}`}>
                   {row.map((cell, index) =>
                     index === 0 ? (
-                      <th key={cell} scope="row">
+                      <th key={`${rowIndex}-${cell}`} scope="row">
                         <PolicyText text={cell} />
                       </th>
                     ) : (
                       <td
-                        key={`${row[0]}-${block.columns[index]}`}
+                        key={`${rowIndex}-${block.columns[index]}`}
                         data-label={block.columns[index]}
                       >
                         <PolicyText text={cell} />
@@ -143,7 +143,11 @@ export type LegalPolicyPageProps = {
   hubLabel: string;
   /** Policy pages that may be linked on this deployment. */
   hubLinks: readonly LegalHubLink[];
+  /** Ends the page with the registered details of the company that runs this product. */
+  company?: LaxOperatedProduct;
 };
+
+const COMPANY_SECTION_ID = "company-details";
 
 /**
  * A policy written in code (see `LegalPolicyDocument`) on the shared legal layout, with the
@@ -155,10 +159,14 @@ export function LegalPolicyPage({
   draft,
   hubLabel,
   hubLinks,
+  company,
 }: LegalPolicyPageProps) {
   const toc =
     document.sections.length >= TOC_MIN_SECTIONS
-      ? document.sections.map((section) => ({ id: section.id, label: section.heading }))
+      ? [
+          ...document.sections.map((section) => ({ id: section.id, label: section.heading })),
+          ...(company ? [{ id: COMPANY_SECTION_ID, label: "Company details" }] : []),
+        ]
       : undefined;
   return (
     <LegalHub label={hubLabel} links={hubLinks}>
@@ -167,6 +175,7 @@ export function LegalPolicyPage({
         lastUpdated={{
           label: formatLegalPolicyDate(release.lastUpdated),
           iso: release.lastUpdated,
+          ...(release.dateLabel ? { prefix: release.dateLabel } : {}),
         }}
         version={release.version}
         notice={
@@ -179,12 +188,18 @@ export function LegalPolicyPage({
             </LegalNotice>
           ) : null
         }
-        lead={<PolicyText text={document.summary} />}
+        {...(document.lead ? { lead: <PolicyText text={document.lead} /> } : {})}
         {...(toc ? { toc } : {})}
       >
         {document.sections.map((section) => (
           <PolicySection key={section.id} section={section} />
         ))}
+        {company ? (
+          <LegalSection id={COMPANY_SECTION_ID} heading="Company details">
+            <p>{legalOperatorSentence(company)}</p>
+            <LegalEntityDetails entities={[legalEntityFor(company)]} />
+          </LegalSection>
+        ) : null}
       </LegalDocument>
     </LegalHub>
   );

@@ -1,10 +1,10 @@
-import { SHOP_HELP_LINK, SHOP_POLICY_LINKS, SHOP_PRIVACY_LINKS } from "@/content/footer-nav.config";
+import { SHOP_POLICY_LINKS } from "@/content/footer-nav.config";
 import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import type { MarketingFooterColumn } from "@auction/marketing-ui";
+import { LAX_ART_LEGAL_INDEX, type MarketingFooterColumn } from "@auction/marketing-ui";
 
 export type ShopFooterVm = {
   columns: MarketingFooterColumn[];
@@ -38,7 +38,7 @@ function accountColumn(state: ShopFooterAccountState): MarketingFooterColumn {
 
 /**
  * Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by
- * the shell). Legal is Shop's retail policies, then the privacy notice and cookie policy.
+ * the shell). Legal lists the London Art Exchange Ltd policies Shop publishes, then lax.art's legal index.
  */
 export function buildShopFooterVm(input: {
   crossProductLinks: readonly LaxProductLinkVm[];
@@ -59,7 +59,6 @@ export function buildShopFooterVm(input: {
         { label: "Artists", href: "/artists" },
         { label: "Categories", href: "/categories" },
         { label: "Basket", href: "/basket" },
-        ...policyLinks([SHOP_HELP_LINK]),
       ],
     },
     accountColumn(input.accountState),
@@ -71,7 +70,14 @@ export function buildShopFooterVm(input: {
       links: input.crossProductLinks.map((link) => ({ label: link.label, href: link.href })),
     });
   }
-  const legalLinks = [...policyLinks(SHOP_POLICY_LINKS), ...policyLinks(SHOP_PRIVACY_LINKS)];
+  const artLink = input.crossProductLinks.find((link) => link.id === "art");
+  const legalLinks = [
+    ...policyLinks(SHOP_POLICY_LINKS),
+    // The full list, including policies Shop does not publish itself, is lax.art's legal index.
+    ...(artLink
+      ? [{ label: LAX_ART_LEGAL_INDEX.title, href: new URL("/legal", artLink.href).toString() }]
+      : []),
+  ];
   if (legalLinks.length > 0) {
     columns.push({ id: "legal", title: "Legal", links: legalLinks });
   }

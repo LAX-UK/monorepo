@@ -34,8 +34,10 @@ export type LegalPolicySection = {
 export type LegalPolicyDocument<Slug extends string = string> = {
   slug: Slug;
   title: string;
-  /** Meta description and the lead paragraph under the title. */
+  /** Meta description. */
   summary: string;
+  /** Opening paragraph under the title, when the page has one. */
+  lead?: LegalPolicyText;
   sections: readonly LegalPolicySection[];
 };
 
@@ -50,6 +52,8 @@ export type LegalPolicyRelease = {
   version: string;
   /** ISO date (YYYY-MM-DD) of the last wording change. */
   lastUpdated: string;
+  /** How the date is introduced; "Last updated" unless the policy says otherwise. */
+  dateLabel?: string;
 };
 
 export type LegalPolicyVisibility = "published" | "draft-preview" | "hidden";
@@ -106,7 +110,9 @@ function blockTexts(block: LegalPolicyBlock): string[] {
     case "panel":
       return [block.title, ...block.blocks.flatMap(blockTexts)];
     case "company":
-      return Object.values(legalEntityFacts(legalEntityFor(block.product)));
+      return Object.values(legalEntityFacts(legalEntityFor(block.product))).filter(
+        (fact): fact is string => fact !== null,
+      );
   }
 }
 
@@ -115,6 +121,7 @@ export function legalPolicyTexts(document: LegalPolicyDocument): string[] {
   return [
     document.title,
     document.summary,
+    ...(document.lead ? [document.lead] : []),
     ...document.sections.flatMap((section) => [
       section.heading,
       ...section.blocks.flatMap(blockTexts),

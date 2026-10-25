@@ -10,6 +10,14 @@ const bid: LaxProductLinkVm = {
   external: true,
 };
 
+const art: LaxProductLinkVm = {
+  id: "art",
+  label: "lax.art",
+  href: "https://art.example/",
+  current: false,
+  external: true,
+};
+
 const ALL_POLICIES = ["terms", "delivery", "returns", "help", "privacy", "cookies"] as const;
 
 describe("buildShopFooterVm", () => {
@@ -25,7 +33,7 @@ describe("buildShopFooterVm", () => {
       expect(hrefs).not.toContain(hidden);
     }
     expect(vm.columns.find((column) => column.id === "legal")?.links.map((l) => l.label)).toEqual([
-      "Terms of sale",
+      "Terms of Sale",
     ]);
   });
 
@@ -38,9 +46,9 @@ describe("buildShopFooterVm", () => {
     expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account"]);
   });
 
-  it("orders shop, account, products, then Shop policies and its own privacy documents", () => {
+  it("orders shop, account, products, then the policies and lax.art's legal index", () => {
     const vm = buildShopFooterVm({
-      crossProductLinks: [bid],
+      crossProductLinks: [bid, art],
       accountState: { kind: "guest" },
       linkablePolicies: ALL_POLICIES,
     });
@@ -54,13 +62,15 @@ describe("buildShopFooterVm", () => {
       { label: "Sign in", href: "/login" },
       { label: "Create account", href: "/register" },
     ]);
-    expect(vm.columns[0]?.links.at(-1)).toEqual({ label: "Help and contact", href: "/help" });
+    expect(vm.columns[0]?.links.at(-1)).toEqual({ label: "Basket", href: "/basket" });
     expect(vm.columns[3]?.links).toEqual([
-      { label: "Terms of sale", href: "/terms" },
-      { label: "Delivery and collection", href: "/delivery" },
-      { label: "Cancellations and returns", href: "/returns" },
-      { label: "Privacy notice", href: "/privacy" },
-      { label: "Cookie policy", href: "/cookies" },
+      { label: "Terms of Sale", href: "/terms" },
+      { label: "Returns & Cancellation", href: "/returns" },
+      { label: "Shipping & Delivery", href: "/delivery" },
+      { label: "Privacy Notice", href: "/privacy" },
+      { label: "Cookie Preferences", href: "/cookies" },
+      { label: "Complaints & ADR", href: "/help" },
+      { label: "Legal & Policies", href: "https://art.example/legal" },
     ]);
     const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
     expect(hrefs.filter((href) => href.startsWith("https://bid.example/"))).toEqual([
@@ -77,10 +87,11 @@ describe("buildShopFooterVm", () => {
     expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account", "legal"]);
     expect(vm.columns[2]?.links.map((link) => link.href)).toEqual([
       "/terms",
-      "/delivery",
       "/returns",
+      "/delivery",
       "/privacy",
       "/cookies",
+      "/help",
     ]);
     expect(vm.columns[1]?.links).toEqual([{ label: "Account status", href: "/account/disabled" }]);
   });

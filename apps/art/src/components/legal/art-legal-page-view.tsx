@@ -6,8 +6,8 @@ import type {
   ArtEditorialPageResult,
   EditorialPageVm,
 } from "@/lib/editorial/editorial-pages.composer";
-import { visibleArtLegalLinks } from "@/lib/layout/art-legal-links";
-import { loadLinkableArtNotices } from "@/lib/legal/art-notice-publication.server";
+import { artLegalLinks } from "@/lib/layout/art-legal-links";
+import { loadLinkableArtPolicies } from "@/lib/legal/art-policy-publication.server";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { legalEntityFor, legalOperatorSentence } from "@auction/branding";
 import { LegalDocument, LegalEntityDetails, LegalHub, LegalSection } from "@auction/marketing-ui";
@@ -33,7 +33,7 @@ export function ArtLegalPageView({
   const bodyToc = editorialLegalToc(page.body);
   const toc =
     bodyToc.length > 0 ? [...bodyToc, { id: WHO_WE_ARE_ID, label: "Who we are" }] : undefined;
-  const links = visibleArtLegalLinks(loadLinkableArtNotices()).map((link) => ({
+  const links = artLegalLinks(loadLinkableArtPolicies()).map((link) => ({
     href: link.href,
     label: link.label,
     current: link.slug === page.slug,

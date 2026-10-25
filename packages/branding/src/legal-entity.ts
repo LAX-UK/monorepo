@@ -28,8 +28,11 @@ export type LegalEntity = {
   readonly registeredAddress: RegisteredAddress;
   /** Companies House number, when confirmed. Never copied between companies. */
   readonly companyNumber?: string;
-  /** VAT registration number, when confirmed. Never copied between companies. */
-  readonly vatNumber?: string;
+  /**
+   * VAT registration number, when confirmed. `null` means the company publishes none, so the
+   * detail is left out instead of shown as a placeholder. Never copied between companies.
+   */
+  readonly vatNumber?: string | null;
 };
 
 const NEW_CAVENDISH_STREET: RegisteredAddress = {
@@ -56,7 +59,11 @@ export const LEGAL_ENTITIES: Readonly<Record<LegalEntityId, LegalEntity>> = {
     id: "london-art-exchange",
     name: "London Art Exchange Ltd",
     tradingName: "London Art Exchange",
+    registeredIn: "England and Wales",
     registeredAddress: NEW_CAVENDISH_STREET,
+    // As published on www.thelax.art, which gives no VAT number.
+    companyNumber: "12874213",
+    vatNumber: null,
   },
 };
 
@@ -130,7 +137,8 @@ export function legalEntityFacts(entity: LegalEntity): {
   name: string;
   registeredIn: string;
   companyNumber: string;
-  vatNumber: string;
+  /** `null` when the company publishes no VAT number. */
+  vatNumber: string | null;
   registeredAddress: string;
 } {
   return {
@@ -139,7 +147,10 @@ export function legalEntityFacts(entity: LegalEntity): {
       entity.registeredIn ??
       legalPlaceholder(`country of registration of ${entity.name}, for example England and Wales`),
     companyNumber: entity.companyNumber ?? legalPlaceholder(`${entity.name} company number`),
-    vatNumber: entity.vatNumber ?? legalPlaceholder(`${entity.name} VAT registration number`),
+    vatNumber:
+      entity.vatNumber === null
+        ? null
+        : (entity.vatNumber ?? legalPlaceholder(`${entity.name} VAT registration number`)),
     registeredAddress: entity.registeredAddress.inline,
   };
 }

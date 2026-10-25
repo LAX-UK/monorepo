@@ -7,6 +7,8 @@ export type LegalLastUpdated = {
   label: string;
   /** ISO date for `<time dateTime>`, when known. */
   iso?: string;
+  /** Words before the date; defaults to "Last updated". */
+  prefix?: string;
 };
 
 export type LegalDocumentProps = {
@@ -55,7 +57,7 @@ export function LegalDocument({
           <p className="lax-legal__meta">
             {lastUpdated ? (
               <>
-                Last updated{" "}
+                {lastUpdated.prefix ?? "Last updated"}{" "}
                 {lastUpdated.iso ? (
                   <time dateTime={lastUpdated.iso}>{lastUpdated.label}</time>
                 ) : (

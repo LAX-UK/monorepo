@@ -36,10 +36,14 @@ export function LegalEntityDetails({ entities }: LegalEntityDetailsProps) {
             </dd>
             <dt>Registered office</dt>
             <dd>{facts.registeredAddress}</dd>
-            <dt>VAT number</dt>
-            <dd>
-              <Fact value={facts.vatNumber} />
-            </dd>
+            {facts.vatNumber === null ? null : (
+              <>
+                <dt>VAT number</dt>
+                <dd>
+                  <Fact value={facts.vatNumber} />
+                </dd>
+              </>
+            )}
           </dl>
         );
       })}

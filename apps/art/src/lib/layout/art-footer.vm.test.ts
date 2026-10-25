@@ -1,12 +1,15 @@
+import { LAX_ART_POLICY_ORDER } from "@auction/marketing-ui";
 import { describe, expect, it } from "vitest";
 import { buildArtFooterVm } from "./art-footer.vm";
+
+const ALL_POLICIES = LAX_ART_POLICY_ORDER;
 
 function legalLinks(cookieSettings: boolean) {
   const vm = buildArtFooterVm({
     crossProductLinks: [],
     accountState: { kind: "guest" },
     cookieSettings,
-    linkableNotices: ["privacy", "cookies"],
+    linkablePolicies: ALL_POLICIES,
   });
   return vm.columns.find((column) => column.id === "legal")?.links ?? [];
 }
@@ -33,7 +36,7 @@ describe("buildArtFooterVm", () => {
       ],
       accountState: { kind: "guest" },
       cookieSettings: false,
-      linkableNotices: ["privacy", "cookies"],
+      linkablePolicies: ALL_POLICIES,
     });
     expect(vm.columns.map((column) => column.id)).toEqual([
       "about",
@@ -53,7 +56,7 @@ describe("buildArtFooterVm", () => {
       crossProductLinks: [],
       accountState: { kind: "authenticated" },
       cookieSettings: false,
-      linkableNotices: ["privacy", "cookies"],
+      linkablePolicies: ALL_POLICIES,
     });
     const linksOf = (id: string) => vm.columns.find((column) => column.id === id)?.links ?? [];
     expect(vm.columns.map((column) => column.title)).toEqual([
@@ -73,22 +76,26 @@ describe("buildArtFooterVm", () => {
       "/help",
     ]);
     expect(linksOf("legal").map((link) => link.href)).toEqual([
-      "/legal/privacy",
-      "/legal/cookies",
+      "/legal",
+      "/legal/terms",
       "/legal/returns",
       "/legal/shipping",
-      "/legal/terms",
+      "/legal/privacy",
+      "/legal/cookies",
+      "/legal/complaints",
       "/legal/accessibility",
-      "/legal/modern-slavery",
+      "/legal/aml-identity-checks",
+      "/legal/reviews",
+      "/legal/ethical-sourcing",
     ]);
   });
 
-  it("leaves out the privacy and cookie notices while they are hidden drafts", () => {
+  it("leaves out policies that cannot be linked, such as drafts on production", () => {
     const vm = buildArtFooterVm({
       crossProductLinks: [],
       accountState: { kind: "guest" },
       cookieSettings: false,
-      linkableNotices: [],
+      linkablePolicies: ["terms"],
     });
     const legal = vm.columns.find((column) => column.id === "legal")?.links ?? [];
     expect(legal.map((link) => link.href)).not.toContain("/legal/privacy");

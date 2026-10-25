@@ -31,6 +31,8 @@ const SCANNED_ROOTS = [
 
 const SOURCE_FILE = /\.(ts|tsx|mts|js|mjs)$/;
 const TEST_FILE = /(\.test\.|\.spec\.|\.test-util\.|\/testing\/|\/__tests__\/|\/e2e\/)/;
+/** Policies published verbatim from the business team; they name the company in their own words. */
+const VERBATIM_POLICY_DIR = "packages/marketing-ui/src/legal/london-art-exchange/";
 
 /** Registered company names, in any casing of the suffix. */
 const COMPANY_NAME = /London Auction Xchange|London Art Exchange (Ltd|Limited)\b/i;
@@ -58,7 +60,7 @@ function findViolations(pattern: RegExp): string[] {
   for (const root of SCANNED_ROOTS) {
     for (const file of listSources(join(REPO_ROOT, root))) {
       const rel = relative(REPO_ROOT, file);
-      if (TEST_FILE.test(rel)) continue;
+      if (TEST_FILE.test(rel) || rel.startsWith(VERBATIM_POLICY_DIR)) continue;
       readFileSync(file, "utf8")
         .split("\n")
         .forEach((line, index) => {

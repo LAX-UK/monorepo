@@ -1,20 +1,23 @@
-import { ART_EXCHANGE_NOTICES } from "@auction/marketing-ui";
-import { DELIVERY_AND_COLLECTION } from "./delivery";
-import { HELP_AND_CONTACT } from "./help";
-import { CANCELLATIONS_AND_RETURNS } from "./returns";
-import { SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES, type ShopPolicySlug } from "./shop-policy-status";
+import { LAX_ART_POLICIES } from "@auction/marketing-ui";
+import {
+  SHOP_POLICY_PATHS,
+  SHOP_POLICY_RELEASES,
+  SHOP_POLICY_SOURCES,
+  type ShopPolicySlug,
+} from "./shop-policy-status";
 import type { ShopPolicyDocument } from "./shop-policy.types";
-import { TERMS_OF_SALE } from "./terms-of-sale";
+
+const documentFor = (slug: ShopPolicySlug) => LAX_ART_POLICIES[SHOP_POLICY_SOURCES[slug]].document;
 
 export const SHOP_POLICY_DOCUMENTS: Readonly<Record<ShopPolicySlug, ShopPolicyDocument>> = {
-  terms: TERMS_OF_SALE,
-  delivery: DELIVERY_AND_COLLECTION,
-  returns: CANCELLATIONS_AND_RETURNS,
-  help: HELP_AND_CONTACT,
-  privacy: ART_EXCHANGE_NOTICES.privacy,
-  cookies: ART_EXCHANGE_NOTICES.cookies,
+  terms: documentFor("terms"),
+  delivery: documentFor("delivery"),
+  returns: documentFor("returns"),
+  help: documentFor("help"),
+  privacy: documentFor("privacy"),
+  cookies: documentFor("cookies"),
 };
 
-export { SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES };
+export { SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES, SHOP_POLICY_SOURCES };
 export type { ShopPolicySlug };
 export type { ShopPolicyBlock, ShopPolicyDocument, ShopPolicySection } from "./shop-policy.types";
