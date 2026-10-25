@@ -48,8 +48,8 @@ describe("buildOverviewTiles", () => {
     });
     expect(tiles.map((tile) => tile.href)).toEqual([
       "/fulfilment",
-      "/payouts",
-      "/holds",
+      "/payouts?view=due",
+      "/holds?view=active",
       "/requests",
       "/enquiries?status=new",
     ]);

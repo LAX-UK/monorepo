@@ -5,7 +5,7 @@ import {
   DeclineRequestDialog,
   type SaleRequestRow,
 } from "@/components/requests/sale-request-dialogs.client";
-import { useWorkList } from "@/components/use-work-list.client";
+import { knownFacts, useWorkList } from "@/components/use-work-list.client";
 import { requestedEditionsLabel } from "@/server/domain/sale-authority.vm";
 import { saleRequestsList } from "@/server/domain/sales-lists.vm";
 import { presentStatus } from "@/server/domain/staff-status";
@@ -210,7 +210,7 @@ export function SaleRequestsList({
         }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 { label: "Their note", value: opened.note ?? null },
                 ...(opened.status === "rejected"
                   ? [{ label: "Reason given", value: opened.declineReason ?? null }]
@@ -226,7 +226,7 @@ export function SaleRequestsList({
                     : null,
                 },
                 { label: "Request ID", value: opened.requestId, copyValue: opened.requestId },
-              ]
+              ])
             : []
         }
         footer={

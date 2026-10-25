@@ -119,3 +119,10 @@ export function filterChip<F extends string>(
     },
   ];
 }
+
+/** A panel's facts without the ones that are empty for this record, so it never lists blanks. */
+export function knownFacts<T extends { value: unknown }>(items: readonly T[]): T[] {
+  return items.filter(
+    (item) => item.value !== null && item.value !== undefined && item.value !== "",
+  );
+}

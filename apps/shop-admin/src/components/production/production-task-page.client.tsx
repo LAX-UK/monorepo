@@ -14,7 +14,6 @@ import {
 } from "@/server/domain/production-queue.vm";
 import type { AdminProductionTaskDetail, ProductionTaskStaff } from "@auction/shop-contracts";
 import {
-  CellLink,
   DetailPage,
   EnumSelect,
   Field,
@@ -66,14 +65,7 @@ export function ProductionTaskPage({
         status={<MappedStatusBadge status={task.status} present={presentProductionStatus} />}
         meta={
           <>
-            <MetaItem label="Order">
-              <CellLink href={orderHref} Link={NextLink}>
-                {orderNumber(task.orderId)}
-              </CellLink>
-            </MetaItem>
-            <MetaItem label="Assignee">
-              {task.assignee ? productionAssigneeName(task.assignee) : "Unassigned"}
-            </MetaItem>
+            <MetaItem label="Order">{orderNumber(task.orderId)}</MetaItem>
             <MetaItem label="Created">
               {formatStaffDateTime(task.createdAt, { zoneLabel: true })}
             </MetaItem>

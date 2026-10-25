@@ -1,6 +1,6 @@
 "use client";
 
-import { useWorkList } from "@/components/use-work-list.client";
+import { knownFacts, useWorkList } from "@/components/use-work-list.client";
 import { orderNumber } from "@/server/domain/order-list.vm";
 import { disputesList } from "@/server/domain/sales-lists.vm";
 import { presentStatus } from "@/server/domain/staff-status";
@@ -222,7 +222,7 @@ export function DisputesList({
         }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 { label: "Buyer", value: opened.buyerName ?? null },
                 {
                   label: "Buyer email",
@@ -233,14 +233,14 @@ export function DisputesList({
                   label: "Closed",
                   value: opened.closedAt
                     ? formatStaffDateTime(opened.closedAt, { zoneLabel: true })
-                    : "Still open",
+                    : null,
                 },
                 {
                   label: "Dispute reference",
                   value: opened.stripeDisputeId,
                   copyValue: opened.stripeDisputeId,
                 },
-              ]
+              ])
             : []
         }
       >

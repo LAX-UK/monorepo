@@ -165,15 +165,22 @@ export function defineWorkList<F extends string>(config: WorkListConfig<F>) {
     filtered(state: WorkListState<F>): boolean {
       return Boolean(state.q) || filterIds.some((id) => Boolean(state.filters[id]));
     },
-    /** Each view with its count, summed from the per-status counts. */
+    /**
+     * Each view with its count, summed from the per-status counts. Without counts (the list did
+     * not load, or an older API) the views show no number rather than a false zero.
+     */
     views(state: WorkListState<F>, counts: Readonly<Record<string, number>> | undefined) {
       return config.views.map((view) => ({
         id: view.id,
         label: view.label,
         href: href(state, { view: view.id }),
-        count: Object.entries(counts ?? {})
-          .filter(([status]) => !view.statuses || view.statuses.includes(status))
-          .reduce((sum, [, value]) => sum + value, 0),
+        ...(counts
+          ? {
+              count: Object.entries(counts)
+                .filter(([status]) => !view.statuses || view.statuses.includes(status))
+                .reduce((sum, [, value]) => sum + value, 0),
+            }
+          : {}),
       }));
     },
     pageSize(state: WorkListState<F>): number {

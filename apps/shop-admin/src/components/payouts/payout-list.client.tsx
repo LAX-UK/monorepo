@@ -1,7 +1,7 @@
 "use client";
 
 import { MarkPayoutPaidDialog } from "@/components/payouts/mark-payout-paid-dialog.client";
-import { filterChip, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
 import {
   type PayoutRow,
   markPaidAvailability,
@@ -19,7 +19,6 @@ import {
   ListPage,
   MappedStatusBadge,
   type OverflowAction,
-  OverflowMenu,
   PersonCell,
   StaffButton,
   StaffDate,
@@ -274,24 +273,9 @@ export function PayoutList({
               ]
             : []
         }
-        overflow={
-          opened ? (
-            <OverflowMenu
-              label={`More actions for the payout to ${opened.ownerDisplayName}`}
-              actions={[
-                {
-                  id: "copy",
-                  label: "Copy payout reference",
-                  icon: Copy,
-                  onSelect: () => copyReference(opened),
-                },
-              ]}
-            />
-          ) : null
-        }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 { label: "Gross", value: formatStaffMoney(opened.grossPence), numeric: true },
                 {
                   label: "Deductions",
@@ -299,23 +283,30 @@ export function PayoutList({
                   numeric: true,
                 },
                 { label: "Source", value: payoutSourceLabel(opened.source) },
-                {
-                  label: "Paid",
-                  value: opened.paidAt
-                    ? formatStaffDateTime(opened.paidAt, { zoneLabel: true })
-                    : null,
-                },
-                {
-                  label: "Transfer reference",
-                  value: opened.paidReference ?? null,
-                  ...(opened.paidReference ? { copyValue: opened.paidReference } : {}),
-                },
+                // How it was paid, once it has been.
+                ...(opened.paidAt
+                  ? [
+                      {
+                        label: "Paid",
+                        value: formatStaffDateTime(opened.paidAt, { zoneLabel: true }),
+                      },
+                    ]
+                  : []),
+                ...(opened.paidReference
+                  ? [
+                      {
+                        label: "Transfer reference",
+                        value: opened.paidReference,
+                        copyValue: opened.paidReference,
+                      },
+                    ]
+                  : []),
                 {
                   label: "Payout reference",
                   value: payoutReference(opened.payoutId),
                   copyValue: opened.payoutId,
                 },
-              ]
+              ])
             : []
         }
         footer={

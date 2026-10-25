@@ -2,7 +2,7 @@
 
 import { IssueInvoiceDialog } from "@/components/sales/issue-invoice-dialog.client";
 import { NewOriginalSaleDialog } from "@/components/sales/new-original-sale-dialog.client";
-import { useWorkList } from "@/components/use-work-list.client";
+import { knownFacts, useWorkList } from "@/components/use-work-list.client";
 import { originalSalesList } from "@/server/domain/sales-lists.vm";
 import {
   type OriginalSaleRow,
@@ -229,7 +229,7 @@ export function OriginalSalesList({
         }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 {
                   label: "Buyer email",
                   value: opened.buyerEmail ?? null,
@@ -246,7 +246,7 @@ export function OriginalSalesList({
                   value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
                 },
                 { label: "Sale ID", value: opened.saleId, copyValue: opened.saleId },
-              ]
+              ])
             : []
         }
         footer={

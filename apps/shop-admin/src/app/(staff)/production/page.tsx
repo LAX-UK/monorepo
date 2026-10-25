@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Production" };
 
-const EMPTY: AdminProductionTaskList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: Omit<AdminProductionTaskList, "counts"> = { items: [], nextCursor: null };
 
 export default async function ShopAdminProductionPage({
   searchParams,

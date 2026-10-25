@@ -154,7 +154,8 @@ export function FulfilmentEditForm({
   onDone: () => void;
   /** Told when a move is chosen or cleared, so a panel can warn before closing. */
   onDirtyChange?: (dirty: boolean) => void;
-  cancelLabel?: string;
+  /** Null leaves Cancel out, where the surrounding panel already closes. */
+  cancelLabel?: string | null;
 }) {
   const mutation = useAdminAction();
   const options = fulfilmentNextOptions(fulfilment.status);
@@ -269,9 +270,11 @@ export function FulfilmentEditForm({
         </FieldRow>
       ) : null}
       <FormActions>
-        <StaffButton variant="ghost" onClick={onDone} disabled={mutation.pending}>
-          {cancelLabel}
-        </StaffButton>
+        {cancelLabel ? (
+          <StaffButton variant="ghost" onClick={onDone} disabled={mutation.pending}>
+            {cancelLabel}
+          </StaffButton>
+        ) : null}
         <StaffButton type="submit" variant="primary" loading={mutation.pending}>
           {showPossession ? "Record possession" : "Save"}
         </StaffButton>

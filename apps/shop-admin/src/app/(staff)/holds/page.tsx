@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Stock holds" };
 
-const EMPTY: AdminStockHoldList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminStockHoldList = { items: [], nextCursor: null };
 
 export default async function HoldsPage({
   searchParams,

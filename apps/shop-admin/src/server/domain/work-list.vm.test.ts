@@ -98,6 +98,11 @@ describe("a work list's views", () => {
     expect(views.find((view) => view.id === "done")?.href).toBe("/fulfilment?view=done");
   });
 
+  it("shows no number on a view when the counts are missing, rather than a false zero", () => {
+    const views = payoutsList.views(payoutsList.parse({}), undefined);
+    expect(views.every((view) => view.count === undefined)).toBe(true);
+  });
+
   it("labels views in words", () => {
     const labels = saleRequestsList.views(saleRequestsList.parse({}), {}).map((view) => view.label);
     expect(labels).toEqual(["Waiting for review", "Approved", "Declined", "Withdrawn", "All"]);

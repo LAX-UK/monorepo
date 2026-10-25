@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Payouts" };
 
-const EMPTY: AdminPayoutList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminPayoutList = { items: [], nextCursor: null };
 
 export default async function PayoutsPage({
   searchParams,

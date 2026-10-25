@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Fulfilment" };
 
-const EMPTY: AdminFulfilmentList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminFulfilmentList = { items: [], nextCursor: null };
 
 export default async function ShopAdminFulfilmentPage({
   searchParams,

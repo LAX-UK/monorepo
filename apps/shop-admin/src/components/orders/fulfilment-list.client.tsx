@@ -1,7 +1,7 @@
 "use client";
 
 import { FulfilmentEditForm } from "@/components/orders/fulfilment-section.client";
-import { filterChip, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
 import {
   type FulfilmentRow,
   fulfilmentOrderHref,
@@ -126,7 +126,7 @@ export function FulfilmentList({
       {
         id: "option",
         header: "Delivery",
-        width: "22%",
+        width: "232px",
         hideBelow: "md",
         mobile: "meta",
         cell: (row) => fulfilmentOptionLabel(row.option),
@@ -256,6 +256,7 @@ export function FulfilmentList({
           data: page.items,
           getRowId: (row) => row.fulfilmentId,
           defaultDensity: "comfortable",
+          defaultHiddenColumns: ["tracking"],
           ...list.sort,
           onRowOpen: (row) => list.panel.show(row.fulfilmentId),
           activeRowId: list.panel.openId,
@@ -304,7 +305,7 @@ export function FulfilmentList({
         }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 { label: "Buyer", value: opened.buyerName ?? opened.buyerEmail ?? null },
                 {
                   label: "Tracking",
@@ -323,12 +324,12 @@ export function FulfilmentList({
                     ? formatStaffDateTime(opened.paidAt, { zoneLabel: true })
                     : null,
                 },
-              ]
+              ])
             : []
         }
       >
         {opened && nextOptions.length > 0 ? (
-          <PanelSection title="Move on">
+          <PanelSection title="Next step">
             <FulfilmentEditForm
               key={opened.fulfilmentId}
               fulfilment={{
@@ -340,7 +341,7 @@ export function FulfilmentList({
               }}
               paidAt={opened.paidAt ?? null}
               onDirtyChange={setDirty}
-              cancelLabel="Close"
+              cancelLabel={null}
               onDone={() => {
                 setDirty(false);
                 list.panel.show(null);

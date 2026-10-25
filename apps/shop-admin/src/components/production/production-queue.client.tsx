@@ -55,7 +55,8 @@ export function ProductionQueue({
   loadFailed = false,
 }: {
   state: WorkListState<"assignee">;
-  page: AdminProductionTaskList;
+  /** Counts are left out when the list did not load. */
+  page: Omit<AdminProductionTaskList, "counts"> & { counts?: AdminProductionTaskList["counts"] };
   assignees: ProductionTaskStaff[];
   currentSubject: string;
   loadFailed?: boolean;

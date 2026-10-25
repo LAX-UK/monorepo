@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Original sales" };
 
-const EMPTY: AdminOriginalSaleList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminOriginalSaleList = { items: [], nextCursor: null };
 
 export default async function ShopAdminOriginalSalesPage({
   searchParams,

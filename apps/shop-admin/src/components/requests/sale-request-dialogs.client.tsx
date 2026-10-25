@@ -71,8 +71,6 @@ export function ApproveRequestDialog({
       >
         <KeyValueList
           items={[
-            { label: "Artwork", value: request.artworkTitle },
-            { label: "Owner", value: request.ownerDisplayName },
             { label: "Request", value: requestedEditionsLabel(request.requestedCount) },
             ...(request.note ? [{ label: "Their note", value: request.note }] : []),
           ]}

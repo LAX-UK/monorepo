@@ -2,7 +2,7 @@
 
 import { NewHoldDialog } from "@/components/sales/new-hold-dialog.client";
 import { useAdminAction } from "@/components/use-admin-action.client";
-import { useWorkList } from "@/components/use-work-list.client";
+import { knownFacts, useWorkList } from "@/components/use-work-list.client";
 import { releaseStockHold } from "@/server/application/admin-sales-actions.server";
 import { editionLabel } from "@/server/domain/lookup-options.vm";
 import { holdsList } from "@/server/domain/sales-lists.vm";
@@ -212,7 +212,6 @@ export function HoldsList({
           data: page.items,
           getRowId: (row) => row.holdId,
           defaultDensity: "comfortable",
-          defaultHiddenColumns: ["created"],
           ...list.sort,
           onRowOpen: (row) => list.panel.show(row.holdId),
           activeRowId: list.panel.openId,
@@ -256,7 +255,7 @@ export function HoldsList({
         }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 { label: "Broker", value: opened.brokerName ?? null },
                 { label: "Note", value: opened.note ?? null },
                 {
@@ -266,7 +265,7 @@ export function HoldsList({
                     : null,
                 },
                 { label: "Hold ID", value: opened.holdId, copyValue: opened.holdId },
-              ]
+              ])
             : []
         }
         footer={

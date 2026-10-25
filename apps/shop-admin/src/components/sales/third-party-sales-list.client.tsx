@@ -2,7 +2,7 @@
 
 import { RecordThirdPartySaleDialog } from "@/components/sales/record-third-party-sale-dialog.client";
 import { useAdminAction } from "@/components/use-admin-action.client";
-import { filterChip, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
 import { approveSaleFee } from "@/server/application/admin-sales-actions.server";
 import { editionLabel } from "@/server/domain/lookup-options.vm";
 import { thirdPartySalesList } from "@/server/domain/sales-lists.vm";
@@ -157,7 +157,7 @@ export function ThirdPartySalesList({
       {
         id: "buyer",
         header: "Buyer",
-        width: "22%",
+        width: "208px",
         hideBelow: "md",
         mobile: "meta",
         cell: (row) =>
@@ -180,7 +180,7 @@ export function ThirdPartySalesList({
       {
         id: "fee",
         header: "Fee",
-        width: "232px",
+        width: "216px",
         hideBelow: "lg",
         mobile: "hidden",
         truncate: false,
@@ -346,7 +346,7 @@ export function ThirdPartySalesList({
         }
         summary={
           opened
-            ? [
+            ? knownFacts([
                 { label: "Seller", value: opened.sellerName ?? null },
                 { label: "Buyer", value: opened.buyerName ?? null },
                 {
@@ -356,7 +356,7 @@ export function ThirdPartySalesList({
                     : null,
                 },
                 { label: "Sale ID", value: opened.saleId, copyValue: opened.saleId },
-              ]
+              ])
             : []
         }
         footer={

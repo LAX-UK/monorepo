@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Disputes" };
 
-const EMPTY: AdminDisputeList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminDisputeList = { items: [], nextCursor: null };
 
 export default async function DisputesPage({
   searchParams,

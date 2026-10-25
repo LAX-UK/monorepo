@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Third-party sales" };
 
-const EMPTY: AdminThirdPartySaleList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminThirdPartySaleList = { items: [], nextCursor: null };
 
 export default async function ThirdPartySalesPage({
   searchParams,

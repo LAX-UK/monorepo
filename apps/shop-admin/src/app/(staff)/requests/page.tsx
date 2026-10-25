@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Sale limit requests" };
 
-const EMPTY: AdminSaleAuthorityRequestList = { items: [], nextCursor: null, counts: {} };
+const EMPTY: AdminSaleAuthorityRequestList = { items: [], nextCursor: null };
 
 export default async function RequestsPage({
   searchParams,
