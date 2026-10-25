@@ -9,6 +9,7 @@ import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
 import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
@@ -504,6 +505,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),
         listArtworkObjectTypeFacets: createListArtworkObjectTypeFacetsHandler(catalogueReader),
+        countArtworkFacets: createCountArtworkFacetsHandler(catalogueReader),
         listPublicCategories: createListPublicCategoriesHandler(categoryReader),
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),

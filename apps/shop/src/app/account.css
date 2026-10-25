@@ -552,19 +552,6 @@ a.shop-order-detail__line-title:hover {
   color: var(--color-on-surface);
 }
 
-.shop-catalogue__card-link {
-  position: relative;
-  display: block;
-  text-decoration: none;
-  color: inherit;
-}
-
-.shop-catalogue__card-link::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
 .shop-catalogue__artist-link {
   position: relative;
   z-index: 1;

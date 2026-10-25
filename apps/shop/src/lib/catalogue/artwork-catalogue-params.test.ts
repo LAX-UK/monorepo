@@ -16,8 +16,17 @@ describe("artwork catalogue params", () => {
 
   it("drops the retired price-on-request availability", () => {
     expect(parseArtworkCatalogueParams({ saleState: "price_on_application" })).not.toHaveProperty(
-      "saleState",
+      "availability",
     );
+  });
+
+  it("reads availability, and maps links from the old sale-state filter onto it", () => {
+    expect(parseArtworkCatalogueParams({ availability: "sold_out" }).availability).toBe("sold_out");
+    expect(parseArtworkCatalogueParams({ saleState: "for_sale" }).availability).toBe("available");
+    expect(parseArtworkCatalogueParams({ saleState: "sold" }).availability).toBe("sold_out");
+    const state = parseArtworkCatalogueParams({ saleState: "for_sale" });
+    expect(artworkCatalogueFilterHref(state)).toBe("/artworks?availability=available");
+    expect(artworkCatalogueFetchQuery(state)).toEqual({ availability: "available" });
   });
 
   it("clears cursor when building filter hrefs", () => {
@@ -42,13 +51,13 @@ describe("artwork catalogue params", () => {
       q: "vessel",
       categorySlug: "painting",
       artistSlug: "flora-powers",
-      saleState: "for_sale",
+      availability: "available",
       minPrice: "100",
       maxPrice: "500",
     });
     const cleared = draftToPartialState({
       q: "",
-      saleState: "",
+      availability: "",
       categorySlug: "",
       artistSlug: "",
       minPrice: "",
@@ -58,7 +67,7 @@ describe("artwork catalogue params", () => {
     expect(href).not.toContain("q=");
     expect(href).not.toContain("categorySlug=");
     expect(href).not.toContain("artistSlug=");
-    expect(href).not.toContain("saleState=");
+    expect(href).not.toContain("availability=");
     expect(href).not.toContain("minPrice=");
     expect(href).not.toContain("maxPrice=");
   });

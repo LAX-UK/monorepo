@@ -11,6 +11,11 @@ describe("catalogue handlers", () => {
       listPublicArtworks,
       getPublicArtworkBySlug: async () => null,
       listObjectTypeFacets: async () => [],
+      countFacets: async () => ({
+        availability: { available: 0, soldOut: 0 },
+        categories: [],
+        artists: [],
+      }),
     });
     const input = {
       limit: 12,

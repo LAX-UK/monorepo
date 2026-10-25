@@ -52,7 +52,9 @@ export {
   ENQUIRY_CONTACT_NAME_MAX_LENGTH,
 } from "./enquiry-contact.js";
 export {
+  PublicArtworkAvailabilityFilterSchema,
   PublicArtworkDetailSchema,
+  PublicArtworkFacetCountsSchema,
   PublicArtworkListSchema,
   PublicArtworkObjectTypeFacetListSchema,
   PublicArtworkObjectTypeFacetSchema,
@@ -67,6 +69,7 @@ export {
   PublicEditionAvailabilitySchema,
   ShopApiErrorBodySchema,
   type PublicArtworkDetail,
+  type PublicArtworkFacetCounts,
   type PublicArtworkList,
   type PublicArtworkObjectTypeFacet,
   type PublicArtworkObjectTypeFacetList,
@@ -520,6 +523,7 @@ export {
   parsePublicArtistDetail,
   parsePublicArtistList,
   parsePublicArtworkDetail,
+  parsePublicArtworkFacetCounts,
   parsePublicArtworkList,
   parsePublicArtworkObjectTypeFacets,
   parsePublicCategoryList,

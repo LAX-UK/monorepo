@@ -244,55 +244,116 @@
   margin-bottom: 1.5rem;
 }
 
+/* One grid rhythm for editions everywhere: 2 columns on phones, 3 from 1024px, 4 from 1280px. */
 .shop-catalogue__list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .shop-catalogue__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--shop-space-8) var(--shop-space-4);
 }
 
 @media (min-width: 64rem) {
   .shop-catalogue__list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: var(--shop-space-6);
   }
 }
 
-.shop-catalogue__card {
-  border: 0;
-  border-radius: var(--radius-card);
-  padding: 0;
-  background: var(--color-surface);
+@media (min-width: 80rem) {
+  .shop-catalogue__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
+.shop-catalogue__list > li {
+  min-width: 0;
+}
+
+.shop-catalogue__card {
+  position: relative;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* A consistent 4:5 mat; the work sits inside it whole, whatever its proportions. */
 .shop-catalogue__media {
   aspect-ratio: 4 / 5;
-  background: var(--color-surface-container);
+  border-radius: 0;
+  background: var(--color-surface-container-low);
 }
 
+.shop-catalogue__frame {
+  position: absolute;
+  inset: 8%;
+}
+
+.shop-catalogue__frame img {
+  object-fit: contain;
+}
+
+/* Fixed line boxes keep artist, edition and price on the same baselines across a row. */
 .shop-catalogue__body {
-  padding: var(--shop-card-pad-y) var(--shop-card-pad-x);
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  row-gap: var(--shop-space-1);
+  padding: var(--shop-space-3) 0 0;
 }
 
 .shop-catalogue__title {
+  display: -webkit-box;
+  min-height: calc(2 * 1.5rem);
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-on-surface);
   font-family: var(--font-body);
-  font-size: var(--shop-text-lg);
+  font-size: var(--shop-text-md);
   font-weight: 500;
-  margin: 0 0 var(--shop-space-1);
-  width: 100%;
+  line-height: 1.5rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.shop-catalogue__status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  margin: 0 0 0.5rem;
+.shop-catalogue__card .shop-catalogue__artist-link {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--shop-text-sm);
+  /* 24px tall, so the link meets the minimum target size between two text lines. */
+  line-height: 1.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-catalogue__edition,
+.shop-catalogue__price {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-catalogue__edition {
+  color: var(--color-on-surface-variant);
+}
+
+.shop-catalogue__price {
+  margin-top: var(--shop-space-1);
+  color: var(--color-on-surface);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-catalogue__price[data-state="sold_out"] {
+  color: var(--color-on-surface-variant);
+  font-weight: 500;
 }
 
 .shop-catalogue__card a {
@@ -300,27 +361,41 @@
   text-decoration: none;
 }
 
-.shop-catalogue__card:hover a,
-.shop-catalogue__card:focus-within a {
+.shop-catalogue__card .shop-catalogue__artist-link {
+  color: var(--color-on-surface-variant);
+}
+
+.shop-catalogue__card:hover .shop-catalogue__title,
+.shop-catalogue__card:focus-within .shop-catalogue__title {
   /* Link and text colours are the same neutral, so hover needs a non-colour cue. */
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 
-.shop-catalogue__artist {
-  color: var(--color-on-surface);
-  margin: 0 0 0.5rem;
+.shop-catalogue__title-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
 }
 
-.shop-catalogue__dimensions {
-  color: var(--color-on-surface);
-  font-size: 0.875rem;
-  margin: 0 0 0.5rem;
+.shop-catalogue__title-link:focus-visible {
+  outline: none;
 }
 
-.shop-catalogue__meta {
-  font-size: 0.875rem;
-  margin: 0;
+.shop-catalogue__card:has(.shop-catalogue__title-link:focus-visible) {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 4px;
+}
+
+.shop-catalogue__card .shop-catalogue__artist-link {
+  position: relative;
+  z-index: 1;
+}
+
+.shop-catalogue__card .shop-catalogue__artist-link:hover {
+  color: var(--color-on-surface);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .shop-catalogue__next {
@@ -337,4 +412,53 @@
   color: var(--color-on-error-container);
   padding: 1rem 1.25rem;
   border-radius: var(--radius-card);
+}
+
+/* Filter options: label left, count right, one row height for every option. */
+.shop-filter-option {
+  width: 100%;
+  min-height: 2.25rem;
+  justify-content: space-between;
+  gap: var(--shop-space-3);
+  text-align: left;
+}
+
+.shop-filter-option__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shop-filter-option__count {
+  flex-shrink: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* In the phone sheet options are touch targets. */
+@media (pointer: coarse) {
+  .shop-filter-option {
+    min-height: 2.75rem;
+  }
+}
+
+/* No results: the message, then editions on sale now, so the page never ends empty. */
+.shop-catalogue-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-12);
+}
+
+.shop-catalogue-empty__more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-catalogue-empty__heading {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
 }

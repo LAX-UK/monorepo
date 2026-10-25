@@ -20,6 +20,12 @@ export type ArtworkRarityFilter = (typeof ARTWORK_RARITIES)[number];
 /** A single sale state, or `available` for every work that is not sold (for sale or POA). */
 export type ArtworkSaleStateFilter = "for_sale" | "price_on_application" | "sold" | "available";
 
+/**
+ * Whether an edition can be bought now: priced, for sale and with a sellable copy. Unlike
+ * `saleState`, which an edition keeps as `for_sale` after its last copy sells.
+ */
+export type ArtworkAvailabilityFilter = "available" | "sold_out";
+
 export type NormalizedArtworkCatalogueFilters = {
   placement?: "featured_originals" | "featured_prints";
   categorySlug?: string;
@@ -30,6 +36,7 @@ export type NormalizedArtworkCatalogueFilters = {
   sourceOriginalSlug?: string;
   salesChannel?: "shop" | "art";
   saleState?: ArtworkSaleStateFilter;
+  availability?: ArtworkAvailabilityFilter;
   q?: string;
   artworkType: ArtworkCatalogueType;
   /** Any of these object types (OR). */
@@ -51,6 +58,7 @@ export type RawArtworkCatalogueFilters = {
   sourceOriginalSlug?: string;
   salesChannel?: "shop" | "art";
   saleState?: ArtworkSaleStateFilter;
+  availability?: ArtworkAvailabilityFilter;
   q?: string;
   artworkType?: ArtworkCatalogueType;
   objectTypes?: readonly string[];
@@ -123,6 +131,9 @@ export function normalizeArtworkCatalogueFilters(
       : {}),
     ...(salesChannel ? { salesChannel } : {}),
     ...(raw.saleState ? { saleState: raw.saleState } : {}),
+    ...(raw.availability === "available" || raw.availability === "sold_out"
+      ? { availability: raw.availability }
+      : {}),
     ...(raw.q?.trim() ? { q: raw.q.trim() } : {}),
     artworkType,
     ...(objectTypes.length > 0 ? { objectTypes } : {}),

@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopEdition, shopOrder } from "@auction/db/schema";
+import { shopArtwork, shopEdition, shopOrder } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { editionArtworkOnStorefrontSql } from "./artwork-visibility-sql.js";
 
@@ -68,6 +68,22 @@ export async function sellableCountsByArtworkIds(
     .groupBy(shopEdition.artworkId);
   return new Map(rows.map((row) => [row.artworkId, Number(row.available ?? 0)]));
 }
+
+/**
+ * The catalogue's "Available" in SQL, for queries over `shop_artwork`: not sold, and for an
+ * edition at least one sellable copy. Mirrors `publicEditionAvailability` and the Shop card's
+ * sold-out label, so a filter count always matches the cards it returns.
+ */
+export const artworkAvailableNowSql = sql`(
+  ${shopArtwork.saleState} <> 'sold'
+  and (
+    not ${shopArtwork.eligibleForEditionAllocation}
+    or exists (
+      select 1 from ${shopEdition}
+      where ${shopEdition.artworkId} = ${shopArtwork.id} and ${sellableEditionCoreSql}
+    )
+  )
+)`;
 
 export async function countSellableForArtwork(db: Database, artworkId: string): Promise<number> {
   const map = await sellableCountsByArtworkIds(db, [artworkId]);

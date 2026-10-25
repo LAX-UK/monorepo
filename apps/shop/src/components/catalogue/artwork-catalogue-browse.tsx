@@ -3,6 +3,7 @@
 import {
   type ArtworkCatalogueDraft,
   ArtworkCatalogueFilterBody,
+  type AvailabilityCounts,
   type CatalogueFilterOption,
   artworkDraftFromState,
   draftToPartialState,
@@ -51,6 +52,7 @@ type Props = {
   resultCount: number;
   categories: CatalogueFilterOption[];
   artists: CatalogueFilterOption[];
+  availabilityCounts: AvailabilityCounts;
   /** Server-resolved layout; the switcher keeps it in sync with `?view=`. */
   view: CatalogLayoutView;
   children: ReactNode;
@@ -64,6 +66,7 @@ export function ArtworkCatalogueBrowse({
   resultCount,
   categories,
   artists,
+  availabilityCounts,
   view,
   children,
 }: Props) {
@@ -87,7 +90,7 @@ export function ArtworkCatalogueBrowse({
     [router],
   );
 
-  const countLabel = `${resultCount} artwork${resultCount === 1 ? "" : "s"}`;
+  const countLabel = `${resultCount} ${resultCount === 1 ? "edition" : "editions"}`;
   const applyLabel = "Apply filters";
   const activeCount = countActiveArtworkCatalogueFilters(state);
   const chips = buildArtworkCatalogueActiveChips(state, { categories, artists });
@@ -108,9 +111,9 @@ export function ArtworkCatalogueBrowse({
 
   const sortControl = (
     <label className="flex items-center gap-2">
-      <span className="sr-only">Sort artworks</span>
+      <span className="sr-only">Sort editions</span>
       <select
-        className="shop-field max-w-[11rem]"
+        className="shop-field w-[8.5rem] sm:w-auto sm:max-w-[11rem]"
         value={state.sort}
         disabled={pending}
         onChange={(event) =>
@@ -191,6 +194,7 @@ export function ArtworkCatalogueBrowse({
                 onDraftChange={setDraft}
                 categories={categories}
                 artists={artists}
+                availabilityCounts={availabilityCounts}
                 showResultCount={false}
                 className={MARKETING_FILTER_RAIL_IN_SHEET}
               />
@@ -217,6 +221,7 @@ export function ArtworkCatalogueBrowse({
             onFilterCommit={applyDraft}
             categories={categories}
             artists={artists}
+            availabilityCounts={availabilityCounts}
             showResultCount={false}
             className={MARKETING_FILTER_RAIL_STICKY}
           />

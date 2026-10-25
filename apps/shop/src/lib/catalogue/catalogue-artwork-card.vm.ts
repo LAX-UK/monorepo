@@ -12,6 +12,11 @@ export type CatalogueArtworkCardVm = {
   imageAlt: string;
   dimensions: string | null;
   status: ShopStatusPresentation | null;
+  /** "Limited edition of 24", or null when the size is not catalogued. */
+  editionLine: string | null;
+  /** The price incl. VAT, or "Sold out" in its place; a card states its status once. */
+  priceLine: string | null;
+  soldOut: boolean;
   metaLine: string;
   href: string;
 };
@@ -42,7 +47,13 @@ function formatCatalogueCardMetaLine(item: PublicArtworkSummary): string {
   return availability;
 }
 
+function formatCatalogueCardPriceLine(item: PublicArtworkSummary): string | null {
+  if (isCatalogueArtworkSoldOut(item)) return "Sold out";
+  return item.printPricePence !== null ? formatGbpPence(item.printPricePence) : null;
+}
+
 export function toCatalogueArtworkCardVm(item: PublicArtworkSummary): CatalogueArtworkCardVm {
+  const { totalEditions } = item.availability;
   return {
     slug: item.slug,
     title: item.title,
@@ -52,6 +63,9 @@ export function toCatalogueArtworkCardVm(item: PublicArtworkSummary): CatalogueA
     imageAlt: `${item.title} by ${item.artistName}`,
     dimensions: item.dimensions,
     status: resolveCatalogueArtworkCardBadge(item),
+    editionLine: totalEditions > 0 ? `Limited edition of ${totalEditions}` : null,
+    priceLine: formatCatalogueCardPriceLine(item),
+    soldOut: isCatalogueArtworkSoldOut(item),
     metaLine: formatCatalogueCardMetaLine(item),
     href: `/artworks/${item.slug}`,
   };

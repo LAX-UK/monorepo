@@ -15,6 +15,8 @@ import {
 import {
   type PublicArtworkDetail,
   PublicArtworkDetailSchema,
+  type PublicArtworkFacetCounts,
+  PublicArtworkFacetCountsSchema,
   type PublicArtworkList,
   PublicArtworkListSchema,
   type PublicArtworkObjectTypeFacetList,
@@ -110,6 +112,13 @@ export function parsePublicArtworkObjectTypeFacets(
 ): PublicArtworkObjectTypeFacetList {
   if (!Value.Check(PublicArtworkObjectTypeFacetListSchema, value)) {
     throw new ShopContractParseError("Invalid public artwork object type facets payload");
+  }
+  return value;
+}
+
+export function parsePublicArtworkFacetCounts(value: unknown): PublicArtworkFacetCounts {
+  if (!Value.Check(PublicArtworkFacetCountsSchema, value)) {
+    throw new ShopContractParseError("Invalid public artwork facet counts payload");
   }
   return value;
 }
