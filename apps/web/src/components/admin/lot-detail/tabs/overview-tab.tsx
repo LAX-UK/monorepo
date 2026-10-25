@@ -161,7 +161,6 @@ export function LotOverviewTab({
             tile.id === "estimate"
               ? tile.value.replace(/\.00/g, "").replace(" – ", "–")
               : tile.value,
-          ...(tile.compareHint ? { hint: tile.compareHint } : {}),
         }))}
       />
       <IssueList Link={NextLink} items={issues} allClear={null} />

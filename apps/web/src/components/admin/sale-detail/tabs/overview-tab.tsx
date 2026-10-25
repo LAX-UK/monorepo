@@ -133,7 +133,6 @@ export function SaleOverviewTab({
             id: tile.id,
             label: tile.label,
             value: tile.value,
-            ...(tile.compareHint ? { hint: tile.compareHint } : {}),
           }))}
       />
       <IssueList
