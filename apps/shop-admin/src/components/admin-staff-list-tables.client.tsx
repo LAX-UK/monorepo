@@ -1,8 +1,7 @@
 "use client";
 
 import { AdminStaffDataTable } from "@/components/admin-staff-data-table";
-import { DecideSaleAuthorityRequestForm } from "@/components/forms/people/decide-sale-authority-request-form.client";
-import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
+import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -83,58 +82,6 @@ export function ClientsStaffListTable({ items }: { items: ClientRow[] }) {
   );
 }
 
-type RequestRow = {
-  requestId: string;
-  artworkTitle: string;
-  ownerDisplayName: string;
-  requestedCount: number;
-  status: string;
-};
-
-export function SaleAuthorityRequestsStaffListTable({ items }: { items: RequestRow[] }) {
-  const columns = useMemo<ColumnDef<RequestRow, unknown>[]>(
-    () => [
-      { accessorKey: "artworkTitle", header: "Artwork" },
-      { accessorKey: "ownerDisplayName", header: "Owner" },
-      {
-        id: "requested",
-        header: "Requested",
-        cell: ({ row }) => String(row.original.requestedCount),
-      },
-      { accessorKey: "status", header: "Status" },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) =>
-          row.original.status === "pending" ? (
-            <DecideSaleAuthorityRequestForm
-              requestId={row.original.requestId}
-              requestedCount={row.original.requestedCount}
-              artworkTitle={row.original.artworkTitle}
-              ownerDisplayName={row.original.ownerDisplayName}
-            />
-          ) : (
-            "—"
-          ),
-      },
-    ],
-    [],
-  );
-  return (
-    <AdminStaffDataTable
-      columns={columns}
-      data={items}
-      getRowId={(row) => row.requestId}
-      empty={{
-        title: "No requests waiting",
-        description:
-          "Artists ask for a higher sale limit from their account. New requests will be listed here for review.",
-      }}
-      ariaLabel="Sale limit requests"
-    />
-  );
-}
-
 type AuditRow = {
   auditId: string;
   actorSubjectId: string;
@@ -187,56 +134,6 @@ export function AuditStaffListTable({ items }: { items: AuditRow[] }) {
         description: "Changes made by staff are recorded here, newest first.",
       }}
       ariaLabel="Audit log"
-    />
-  );
-}
-
-type DisputeRow = {
-  disputeId: string;
-  orderId: string;
-  stripeDisputeId: string;
-  status: string;
-  amountPence: number;
-  openedAt: string;
-};
-
-export function DisputesStaffListTable({ items }: { items: DisputeRow[] }) {
-  const columns = useMemo<ColumnDef<DisputeRow, unknown>[]>(
-    () => [
-      { accessorKey: "status", header: "Status" },
-      {
-        id: "amount",
-        header: "Amount",
-        cell: ({ row }) => formatAdminDetailGbpPence(row.original.amountPence),
-      },
-      {
-        id: "order",
-        header: "Order",
-        cell: ({ row }) => (
-          <Link href={`/orders/${row.original.orderId}`} className="underline">
-            {row.original.orderId.slice(0, 8)}
-          </Link>
-        ),
-      },
-      { accessorKey: "stripeDisputeId", header: "Stripe dispute" },
-      {
-        id: "opened",
-        header: "Opened",
-        cell: ({ row }) => formatAdminDetailDateTime(row.original.openedAt),
-      },
-    ],
-    [],
-  );
-  return (
-    <AdminStaffDataTable
-      columns={columns}
-      data={items}
-      getRowId={(row) => row.disputeId}
-      empty={{
-        title: "No disputes",
-        description: "Card disputes raised with the payment provider will be listed here.",
-      }}
-      ariaLabel="Disputes"
     />
   );
 }

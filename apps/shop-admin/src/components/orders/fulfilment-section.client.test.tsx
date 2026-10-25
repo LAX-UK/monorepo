@@ -287,7 +287,9 @@ describe("recording possession", () => {
     fireEvent.change(screen.getByLabelText("Time, 24-hour clock"), { target: { value: "14:05" } });
     fireEvent.click(screen.getByRole("button", { name: "Record possession" }));
 
-    expect(await screen.findByRole("link", { name: "Sign in again" })).toBeInTheDocument();
+    const stepUp = await screen.findByRole("dialog", { name: "Confirm it’s you" });
+    expect(stepUp).toHaveTextContent("To update this fulfilment, sign in again.");
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   });
 
   it("treats a later move to the same status as an ordinary update", () => {

@@ -1,40 +1,34 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { DisputesStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { DisputesList } from "@/components/disputes/disputes-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
-import type { AdminDisputeListItem } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/ui";
+import { disputesList } from "@/server/domain/sales-lists.vm";
+import type { AdminDisputeList } from "@auction/shop-contracts";
 import { redirect } from "next/navigation";
 
-type DisputeList = { items: AdminDisputeListItem[]; nextCursor: string | null };
-
 export const metadata = { title: "Disputes" };
+
+const EMPTY: AdminDisputeList = { items: [], nextCursor: null, counts: {} };
 
 export default async function DisputesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cursor?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { cursor } = await searchParams;
-  const result = await fetchAdminJson<DisputeList>(adminListPath("disputes", { cursor }));
+  const state = disputesList.parse(await searchParams);
+  const result = await fetchAdminJson<AdminDisputeList>(
+    adminListPath("disputes", { cursor: state.cursor, query: disputesList.apiQuery(state) }),
+  );
   if (result.status === "unauthorized") redirect("/login");
-  if (result.status !== "ok") {
+  if (result.status === "forbidden" || result.status === "not_found") {
     return <AdminFailedPage title="Disputes" status={result.status} />;
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Disputes"
-        description="Card disputes raised with the payment provider, newest first."
-      />
-      <DisputesStaffListTable items={result.data.items} />
-      <AdminListCursorNav
-        pathname="/disputes"
-        cursor={cursor}
-        nextCursor={result.data.nextCursor}
-      />
-    </div>
+    <DisputesList
+      state={state}
+      page={result.status === "ok" ? result.data : EMPTY}
+      loadFailed={result.status === "failed"}
+    />
   );
 }

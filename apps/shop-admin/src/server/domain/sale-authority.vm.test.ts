@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   AUTHORISED_COUNT_MAX,
   AUTHORISED_COUNT_OPTIONS,
+  checkApproveRequest,
   checkGrantAuthority,
   grantButtonLabel,
+  requestedEditionsLabel,
 } from "./sale-authority.vm";
 
 const OWNER = { id: "p1" };
@@ -97,5 +99,30 @@ describe("checkGrantAuthority", () => {
       ok: false,
       errors: { evidenceNote: `Use ${SALE_AUTHORITY_NOTE_MAX_LENGTH} characters or fewer.` },
     });
+  });
+});
+
+describe("checkApproveRequest", () => {
+  it("passes the chosen count and the trimmed evidence", () => {
+    expect(checkApproveRequest({ count: "3", evidenceNote: "  Signed agreement  " })).toEqual({
+      ok: true,
+      body: { authorisedCount: 3, evidenceNote: "Signed agreement" },
+    });
+  });
+
+  it("asks for a count in range and for the evidence", () => {
+    expect(checkApproveRequest({ count: null, evidenceNote: " " })).toEqual({
+      ok: false,
+      errors: {
+        count: "Choose how many editions they may sell.",
+        evidenceNote: "Say what the approval is based on, such as a signed agreement.",
+      },
+    });
+    expect(checkApproveRequest({ count: "11", evidenceNote: "Note" }).ok).toBe(false);
+  });
+
+  it("says how many editions were asked for", () => {
+    expect(requestedEditionsLabel(1)).toBe("Asked for 1 edition");
+    expect(requestedEditionsLabel(4)).toBe("Asked for 4 editions");
   });
 });

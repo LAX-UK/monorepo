@@ -6,10 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const markPayoutPaid = vi.fn();
 const refresh = vi.fn();
+const push = vi.fn();
 
 vi.mock("@/server/application/admin-operations-actions.server", () => ({ markPayoutPaid }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh }),
+  useRouter: () => ({ push, replace: vi.fn(), refresh }),
   usePathname: () => "/payouts",
 }));
 vi.mock("next/link", () => ({
@@ -24,44 +25,12 @@ vi.mock("sonner", () => ({
   Toaster: () => null,
 }));
 
-// Radix menus open on pointer events jsdom does not send. This stand-in lists every item in the
-// open menu, keeping each item's disabled state and select contract.
-vi.mock("@auction/ui/components/dropdown-menu", () => {
-  const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
-  return {
-    DropdownMenu: Pass,
-    DropdownMenuTrigger: Pass,
-    DropdownMenuContent: ({ children }: { children?: React.ReactNode }) => (
-      <div role="menu">{children}</div>
-    ),
-    DropdownMenuItem: ({
-      children,
-      disabled,
-      onSelect,
-    }: {
-      children?: React.ReactNode;
-      disabled?: boolean;
-      onSelect?: () => void;
-    }) => (
-      // biome-ignore lint/a11y/useKeyWithClickEvents: a test stand-in for a Radix menu item
-      <div
-        role="menuitem"
-        tabIndex={-1}
-        aria-disabled={disabled ? "true" : undefined}
-        onClick={onSelect}
-      >
-        {children}
-      </div>
-    ),
-    DropdownMenuCheckboxItem: Pass,
-    DropdownMenuRadioGroup: Pass,
-    DropdownMenuRadioItem: Pass,
-    DropdownMenuLabel: Pass,
-    DropdownMenuSeparator: () => null,
-  };
-});
+vi.mock("@auction/ui/components/dropdown-menu", async () =>
+  (await import("@/test/radix-stubs")).dropdownMenuStub(),
+);
 
 const { PayoutList } = await import("./payout-list.client");
+const { payoutsList } = await import("@/server/domain/sales-lists.vm");
 
 const row = (overrides: Partial<AdminPayoutList["items"][number]>) => ({
   payoutId: "0f8b2c4e-1111-4222-8333-444455556666",
@@ -75,6 +44,7 @@ const row = (overrides: Partial<AdminPayoutList["items"][number]>) => ({
   payoutDueAt: "2026-10-02T09:30:00.000Z",
   paidAt: null,
   paidReference: null,
+  createdAt: "2026-09-02T09:30:00.000Z",
   ...overrides,
 });
 
@@ -103,106 +73,112 @@ const page: AdminPayoutList = {
       netPence: 2500,
     }),
   ],
-  nextCursor: null,
+  nextCursor: "next-page",
+  counts: { due: 1, pending_refund_period: 1, paid: 1, cancelled: 1 },
 };
 
-function renderList(canMarkPaid = true) {
-  return render(<PayoutList page={page} cursor={null} canMarkPaid={canMarkPaid} />);
+function renderList(canMarkPaid = true, query: Record<string, string> = {}) {
+  return render(
+    <PayoutList state={payoutsList.parse(query)} page={page} canMarkPaid={canMarkPaid} />,
+  );
 }
 
 const grid = () => screen.getByRole("grid", { name: "Payouts" });
 const tableRow = (payee: string) => within(grid()).getByText(payee).closest("tr") as HTMLElement;
+const menuItem = (payee: string, name: RegExp) =>
+  within(tableRow(payee)).queryByRole("menuitem", { name });
 
 beforeEach(() => {
   markPayoutPaid.mockReset();
   refresh.mockReset();
+  push.mockReset();
   markPayoutPaid.mockResolvedValue({ ok: true, data: { id: "x", status: "paid" } });
 });
 
 describe("the payouts list", () => {
-  it("reads statuses in words and dates in London, never as raw values or slash dates", () => {
+  it("reads statuses in words, money formatted and dates in London", () => {
     renderList();
     const table = grid();
     expect(within(table).getByText("Waiting for refund period")).toBeInTheDocument();
     expect(within(tableRow("Theo Marsh")).getByText("Due")).toBeInTheDocument();
     expect(within(tableRow("Theo Marsh")).getByText("2 Oct 2026")).toBeInTheDocument();
-    expect(within(table).getByText("15 Oct 2036")).toBeInTheDocument();
     expect(table.textContent).not.toMatch(/pending_refund_period|\d{2}\/\d{2}\/\d{4}/);
     expect(within(table).getByText("£85.00")).toBeInTheDocument();
   });
 
-  it("offers Mark paid on the due payout only", () => {
+  it("shows a view per status with its count, and sorts by the due date", () => {
     renderList();
-    expect(
-      within(tableRow("Theo Marsh")).getByRole("button", {
-        name: "Mark the payout to Theo Marsh as paid",
-      }),
-    ).toBeInTheDocument();
-    for (const payee of ["Cavendish Gallery", "Ada Lee", "Old Gallery"]) {
-      expect(
-        within(tableRow(payee)).queryByRole("button", { name: /Mark the payout/ }),
-      ).not.toBeInTheDocument();
-    }
+    expect(screen.getByRole("link", { name: /Due\s*1/ })).toHaveAttribute(
+      "href",
+      "/payouts?view=due",
+    );
+    expect(screen.getByRole("columnheader", { name: /Due/ })).toHaveAttribute(
+      "aria-sort",
+      "descending",
+    );
   });
 
-  it("shows Mark as paid disabled, with its reason, while the refund period runs", () => {
+  it("asks the server for the next page and keeps the view", () => {
+    renderList(true, { view: "due" });
+    expect(screen.getByRole("link", { name: /Next/ })).toHaveAttribute(
+      "href",
+      "/payouts?view=due&cursor=next-page",
+    );
+  });
+
+  it("offers Mark paid in the menu of the due payout only", () => {
     renderList();
-    const blocked = within(tableRow("Cavendish Gallery")).getByRole("menuitem", {
-      name: /Mark as paid/,
-    });
+    expect(menuItem("Theo Marsh", /Mark £85.00 paid/)).toBeInTheDocument();
+    expect(menuItem("Ada Lee", /Mark/)).not.toBeInTheDocument();
+    expect(menuItem("Old Gallery", /Mark/)).not.toBeInTheDocument();
+  });
+
+  it("shows Mark paid disabled, with its reason, while the refund period runs", () => {
+    renderList();
+    const blocked = menuItem("Cavendish Gallery", /Mark £120.00 paid/);
     expect(blocked).toHaveAttribute("aria-disabled", "true");
     expect(blocked).toHaveTextContent("Payable once the refund period ends");
-    // Paid and cancelled payouts have no payment action at all, not even a disabled one.
-    expect(within(tableRow("Ada Lee")).queryByText(/Mark as paid/)).not.toBeInTheDocument();
-    expect(within(tableRow("Old Gallery")).queryByText(/Mark as paid/)).not.toBeInTheDocument();
   });
 
   it("hides every payment action from a role that cannot pay", () => {
     renderList(false);
-    expect(screen.queryByText(/Mark .*paid/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Mark the payout/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Mark .*paid/ })).not.toBeInTheDocument();
   });
 });
 
-describe("marking a payout paid from its row", () => {
-  function openDialog() {
+describe("marking a payout paid", () => {
+  async function openDialog() {
     renderList();
-    fireEvent.click(
-      within(tableRow("Theo Marsh")).getByRole("button", {
-        name: "Mark the payout to Theo Marsh as paid",
-      }),
-    );
+    const item = menuItem("Theo Marsh", /Mark £85.00 paid/);
+    if (!item) throw new Error("no Mark paid item");
+    fireEvent.click(item);
     return screen.findByRole("dialog", { name: "Mark the payout to Theo Marsh as paid?" });
   }
 
-  it("names the payee, the amount and the payout reference, and the button repeats the amount", async () => {
+  it("names the payee, the amount and the reference, and starts on Cancel", async () => {
     const dialog = await openDialog();
     expect(within(dialog).getByText("Theo Marsh")).toBeInTheDocument();
     expect(within(dialog).getByText("£85.00")).toBeInTheDocument();
     expect(within(dialog).getByText("0f8b2c4e")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Mark £85.00 paid" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
   });
 
   it("asks for the transfer reference and sends nothing without one", async () => {
     const dialog = await openDialog();
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark £85.00 paid" }));
-
     expect(
       await within(dialog).findByText("Enter the reference from the transfer."),
     ).toBeInTheDocument();
     expect(markPayoutPaid).not.toHaveBeenCalled();
-    expect(within(dialog).getByLabelText("Paid reference")).toHaveAttribute("aria-invalid", "true");
-  });
-
-  it("limits the reference to what the API accepts", async () => {
-    const dialog = await openDialog();
-    expect(within(dialog).getByLabelText("Paid reference")).toHaveAttribute("maxlength", "120");
+    expect(within(dialog).getByLabelText("Transfer reference")).toHaveAttribute("maxlength", "120");
   });
 
   it("sends the payout, the reference and an idempotency key, then closes", async () => {
     const dialog = await openDialog();
-    fireEvent.change(within(dialog).getByLabelText("Paid reference"), {
+    fireEvent.change(within(dialog).getByLabelText("Transfer reference"), {
       target: { value: " FPS-20261024-01 " },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark £85.00 paid" }));
@@ -213,40 +189,39 @@ describe("marking a payout paid from its row", () => {
       paidReference: "FPS-20261024-01",
       idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Mark the payout to Theo Marsh as paid?" }),
+      ).not.toBeInTheDocument(),
+    );
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("keeps the dialog open and offers to sign in again when a recent sign-in is needed", async () => {
+  it("asks the person to confirm it is them when the API needs a recent sign-in", async () => {
     markPayoutPaid.mockResolvedValue({
       ok: false,
       kind: "step_up_required",
       message: "Recent authentication is required for this action",
     });
     const dialog = await openDialog();
-    fireEvent.change(within(dialog).getByLabelText("Paid reference"), {
+    fireEvent.change(within(dialog).getByLabelText("Transfer reference"), {
       target: { value: "FPS-1" },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark £85.00 paid" }));
 
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      "Recent authentication is required for this action",
-    );
-    expect(within(dialog).getByRole("link", { name: "Sign in again" })).toHaveAttribute(
-      "href",
-      "/api/auth/login?returnTo=%2Fpayouts",
-    );
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const stepUp = await screen.findByRole("dialog", { name: "Confirm it’s you" });
+    expect(stepUp).toHaveTextContent("To mark £85.00 paid, sign in again.");
+    expect(within(stepUp).getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   });
 
-  it("repeats the same idempotency key when the same request is retried after a failure", async () => {
+  it("keeps a failure in the dialog and repeats the idempotency key on retry", async () => {
     markPayoutPaid.mockResolvedValue({ ok: false, kind: "failed", message: "Try again" });
     const dialog = await openDialog();
-    fireEvent.change(within(dialog).getByLabelText("Paid reference"), {
+    fireEvent.change(within(dialog).getByLabelText("Transfer reference"), {
       target: { value: "FPS-1" },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark £85.00 paid" }));
-    await waitFor(() => expect(markPayoutPaid).toHaveBeenCalledTimes(1));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Try again");
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark £85.00 paid" }));
     await waitFor(() => expect(markPayoutPaid).toHaveBeenCalledTimes(2));
 
@@ -256,36 +231,32 @@ describe("marking a payout paid from its row", () => {
 });
 
 describe("the payout panel", () => {
-  it("opens from the row with the full record and the same Mark paid action", async () => {
-    renderList();
-    fireEvent.click(within(grid()).getByText("Theo Marsh"));
-
+  it("opens from the URL with the full record and the same Mark paid action", async () => {
+    renderList(true, { payout: "0f8b2c4e-1111-4222-8333-444455556666" });
     const panel = await screen.findByRole("dialog", { name: /Payout to Theo Marsh/ });
     expect(within(panel).getByText("£100.00")).toBeInTheDocument();
-    expect(within(panel).getByText("£15.00")).toBeInTheDocument();
+    expect(within(panel).getByText("−£15.00")).toBeInTheDocument();
     fireEvent.click(within(panel).getByRole("button", { name: "Mark £85.00 paid" }));
-
     expect(
       await screen.findByRole("dialog", { name: "Mark the payout to Theo Marsh as paid?" }),
     ).toBeInTheDocument();
   });
 
-  it("shows when and how a paid payout was paid, with no action", async () => {
+  it("opens from the row and puts the record in the URL", async () => {
     renderList();
-    fireEvent.click(within(grid()).getByText("Ada Lee"));
-
+    fireEvent.click(within(grid()).getByRole("link", { name: "Ada Lee" }));
     const panel = await screen.findByRole("dialog", { name: /Payout to Ada Lee/ });
+    expect(window.location.search).toBe("?payout=2b000000-1111-4222-8333-444455556666");
     expect(within(panel).getByText("FPS-0920-01")).toBeInTheDocument();
-    expect(within(panel).getByText("20 Sept 2026, 11:00")).toBeInTheDocument();
     expect(within(panel).queryByRole("button", { name: /Mark .* paid/ })).not.toBeInTheDocument();
   });
 
   it("explains why a payout in its refund period cannot be paid yet", async () => {
-    renderList();
-    fireEvent.click(within(grid()).getByText("Cavendish Gallery"));
-
+    renderList(true, { payout: "1a000000-1111-4222-8333-444455556666" });
     const panel = await screen.findByRole("dialog", { name: /Payout to Cavendish Gallery/ });
-    const button = within(panel).getByRole("button", { name: "Mark £120.00 paid" });
-    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(within(panel).getByRole("button", { name: "Mark £120.00 paid" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });

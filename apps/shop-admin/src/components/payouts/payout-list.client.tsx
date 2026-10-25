@@ -1,38 +1,38 @@
 "use client";
 
 import { MarkPayoutPaidDialog } from "@/components/payouts/mark-payout-paid-dialog.client";
-import { useListNavigation } from "@/components/use-list-navigation.client";
+import { filterChip, useWorkList } from "@/components/use-work-list.client";
 import {
   type PayoutRow,
   markPaidAvailability,
-  payoutQueueKey,
   payoutReference,
   payoutSourceLabel,
   presentPayoutStatus,
 } from "@/server/domain/payout-list.vm";
-import type { AdminPayoutList } from "@auction/shop-contracts";
+import { payoutsList } from "@/server/domain/sales-lists.vm";
+import type { WorkListState } from "@/server/domain/work-list.vm";
+import { ADMIN_PAYOUT_SOURCES, type AdminPayoutList } from "@auction/shop-contracts";
 import {
   type DataColumn,
-  DataTable,
-  DataTableToolbar,
-  DensityToggle,
   DetailPanel,
-  EmptyState,
-  KeyValueList,
+  FilterSheet,
+  ListPage,
   MappedStatusBadge,
   type OverflowAction,
   OverflowMenu,
-  PanelSection,
+  PersonCell,
   StaffButton,
-  TablePagination,
-  formatGbp,
+  StaffDate,
+  StaffMoney,
   formatStaffDate,
   formatStaffDateTime,
+  formatStaffMoney,
   toast,
-  useTableDensity,
 } from "@auction/staff-ui";
-import { Banknote, Copy } from "@auction/staff-ui/icons";
+import { Banknote, Copy, PanelRight } from "@auction/staff-ui/icons";
 import { useMemo, useState } from "react";
+
+type PayoutState = WorkListState<"source">;
 
 function copyReference(payout: PayoutRow) {
   void navigator.clipboard
@@ -40,46 +40,50 @@ function copyReference(payout: PayoutRow) {
     .then(() => toast.success("Payout reference copied"));
 }
 
-/** The row's `…` menu: Mark paid (disabled with its reason while blocked) and Copy reference. */
-function payoutMenuActions(payout: PayoutRow, canMarkPaid: boolean) {
+/** Mark paid, as the row menu and the panel offer it: available, or disabled with its reason. */
+function markPaidAction(
+  payout: PayoutRow,
+  canMarkPaid: boolean,
+  onPay: () => void,
+): OverflowAction | null {
   const availability = markPaidAvailability(payout, { canMarkPaid });
-  const actions: OverflowAction[] = [];
-  if (availability.kind === "blocked") {
-    actions.push({
-      id: "mark-paid",
-      label: "Mark as paid…",
-      icon: Banknote,
-      disabledReason: availability.reason,
-    });
-  }
-  actions.push({
-    id: "copy",
-    label: "Copy payout reference",
-    icon: Copy,
-    onSelect: () => copyReference(payout),
-  });
-  return actions;
+  if (availability.kind === "hidden") return null;
+  return {
+    id: "mark-paid",
+    label: `Mark ${formatStaffMoney(payout.netPence)} paid…`,
+    icon: Banknote,
+    ...(availability.kind === "blocked"
+      ? { disabledReason: availability.reason }
+      : { onSelect: onPay }),
+  };
 }
 
 /**
- * The payouts list. Marking paid is one click on a due row (or in its panel), and always passes
- * through a confirmation that names the payee, the amount and the reference. Payouts that cannot
- * be paid show no action, or a disabled one that says why.
+ * Payouts on the staff list template: a view per status with counts, search by payee or
+ * reference, a source filter, the due date as the server sort, and a record panel linked from
+ * the URL (`?payout=`). Marking paid always passes through the kit confirm that names the payee,
+ * the amount and the reference.
  */
 export function PayoutList({
+  state,
   page,
-  cursor,
   canMarkPaid,
+  loadFailed = false,
 }: {
+  state: PayoutState;
   page: AdminPayoutList;
-  cursor: string | null;
   canMarkPaid: boolean;
+  loadFailed?: boolean;
 }) {
-  const { pending, Link: ListLink } = useListNavigation();
-  const [density, setDensity] = useTableDensity("payouts");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const list = useWorkList({
+    list: payoutsList,
+    state,
+    page,
+    noun: { one: "payout", other: "payouts" },
+    search: { label: "Search payouts", placeholder: "Search by payee or payout reference" },
+  });
   const [payingId, setPayingId] = useState<string | null>(null);
-  const opened = page.items.find((item) => item.payoutId === openId) ?? null;
+  const opened = page.items.find((item) => item.payoutId === list.panel.openId) ?? null;
   const paying = page.items.find((item) => item.payoutId === payingId) ?? null;
 
   const columns = useMemo<DataColumn<PayoutRow>[]>(
@@ -88,18 +92,32 @@ export function PayoutList({
         id: "payee",
         header: "Payee",
         mobile: "title",
-        sortable: true,
-        sortValue: (row) => row.ownerDisplayName.toLowerCase(),
-        cell: (row) => <span className="font-medium text-staff-fg">{row.ownerDisplayName}</span>,
+        truncate: false,
+        cell: (row) => (
+          <PersonCell
+            name={row.ownerDisplayName}
+            secondary={`Ref ${payoutReference(row.payoutId)}`}
+            href={list.panelHref(row.payoutId)}
+            Link={list.panel.PanelLink}
+          />
+        ),
       },
       {
-        id: "reference",
-        header: "Reference",
-        width: "120px",
+        id: "status",
+        header: "Status",
+        width: "216px",
+        mobile: "badge",
+        truncate: false,
+        cell: (row) => <MappedStatusBadge status={row.status} present={presentPayoutStatus} />,
+      },
+      {
+        id: "amount",
+        header: "Amount",
+        width: "128px",
         numeric: true,
-        hideBelow: "lg",
-        mobile: "hidden",
-        cell: (row) => <span className="text-staff-muted">{payoutReference(row.payoutId)}</span>,
+        mobile: "meta",
+        truncate: false,
+        cell: (row) => <StaffMoney minor={row.netPence} />,
       },
       {
         id: "source",
@@ -110,172 +128,210 @@ export function PayoutList({
         cell: (row) => payoutSourceLabel(row.source),
       },
       {
-        id: "amount",
-        header: "Amount",
-        width: "120px",
-        numeric: true,
-        sortable: true,
-        sortValue: (row) => row.netPence,
-        defaultSortDirection: "desc",
-        mobile: "meta",
-        cell: (row) => formatGbp(row.netPence),
-      },
-      {
-        id: "status",
-        header: "Status",
-        width: "216px",
-        sortable: true,
-        sortValue: payoutQueueKey,
-        mobile: "badge",
-        cell: (row) => <MappedStatusBadge status={row.status} present={presentPayoutStatus} />,
-      },
-      {
         id: "due",
         header: "Due",
-        width: "120px",
-        numeric: true,
+        width: "136px",
         sortable: true,
-        sortValue: (row) => row.payoutDueAt,
+        defaultSortDirection: "asc",
         mobile: "meta",
-        cell: (row) => <time dateTime={row.payoutDueAt}>{formatStaffDate(row.payoutDueAt)}</time>,
+        truncate: false,
+        cell: (row) => <StaffDate value={row.payoutDueAt} />,
       },
       {
-        id: "actions",
-        header: "Actions",
+        id: "created",
+        header: "Created",
         width: "176px",
+        sortable: true,
+        defaultSortDirection: "desc",
+        hideBelow: "lg",
         mobile: "hidden",
-        cell: (row) => {
-          const inline = markPaidAvailability(row, { canMarkPaid }).kind === "available";
-          return (
-            <span className="flex items-center justify-end gap-1">
-              {inline ? (
-                <StaffButton
-                  size="sm"
-                  variant="secondary"
-                  aria-label={`Mark the payout to ${row.ownerDisplayName} as paid`}
-                  onClick={() => setPayingId(row.payoutId)}
-                >
-                  Mark paid
-                </StaffButton>
-              ) : null}
-              <OverflowMenu
-                size="icon-sm"
-                label={`Actions for the payout to ${row.ownerDisplayName}`}
-                actions={payoutMenuActions(row, canMarkPaid)}
-              />
-            </span>
-          );
-        },
+        truncate: false,
+        cell: (row) => (row.createdAt ? <StaffDate value={row.createdAt} withTime /> : null),
       },
     ],
-    [canMarkPaid],
+    [list.panelHref, list.panel.PanelLink],
   );
 
-  const availability = opened ? markPaidAvailability(opened, { canMarkPaid }) : null;
+  const sourceChip = filterChip(
+    payoutsList,
+    state,
+    list.navigate,
+    "source",
+    (value) => `Source: ${payoutSourceLabel(value)}`,
+  );
+  const openedPay = opened
+    ? markPaidAction(opened, canMarkPaid, () => setPayingId(opened.payoutId))
+    : null;
 
   return (
     <>
-      <DataTable
-        label="Payouts"
-        columns={columns}
-        data={page.items}
-        getRowId={(row) => row.payoutId}
-        defaultSort={{ columnId: "status", direction: "asc" }}
-        density={density}
-        loading={pending}
-        onRowOpen={(row) => setOpenId(row.payoutId)}
-        activeRowId={openId}
-        toolbar={<DataTableToolbar end={<DensityToggle value={density} onChange={setDensity} />} />}
-        empty={
-          <EmptyState
-            illustration="ledger"
-            title="No payouts yet"
-            description="Money owed to artists and owners appears here once a sale has completed."
+      <ListPage<PayoutRow>
+        title="Payouts"
+        description="Money owed to artists and owners after a sale. Mark a due payout paid once the transfer has left the bank."
+        Link={list.Link}
+        listKey="lax-admin.payouts"
+        views={list.views}
+        search={list.search}
+        filters={
+          <FilterSheet
+            title="Filter payouts"
+            sections={[
+              {
+                kind: "radio",
+                id: "source",
+                label: "Source",
+                anyLabel: "Any source",
+                options: ADMIN_PAYOUT_SOURCES.map((source) => ({
+                  value: source,
+                  label: payoutSourceLabel(source),
+                })),
+                value: state.filters.source ?? "",
+              },
+            ]}
+            onApply={(values) =>
+              list.navigate(payoutsList.href(state, { source: (values.source as string) || null }))
+            }
           />
         }
-        footer={
-          page.items.length > 0 ? (
-            <TablePagination
-              summary={`${page.items.length} ${page.items.length === 1 ? "payout" : "payouts"} on this page`}
-              prevHref={cursor ? "/payouts" : null}
-              prevLabel="First page"
-              nextHref={
-                page.nextCursor ? `/payouts?cursor=${encodeURIComponent(page.nextCursor)}` : null
+        activeFilters={[...list.searchChip, ...sourceChip]}
+        onClearFilters={list.clearFilters}
+        loading={list.pending}
+        filtered={list.filtered}
+        error={
+          loadFailed
+            ? {
+                title: "Payouts did not load",
+                description: "Something went wrong on our side. Try again in a moment.",
+                onRetry: () => list.navigate(payoutsList.href(state)),
               }
-              Link={ListLink}
-            />
-          ) : null
+            : null
         }
+        empty={
+          state.view === "due"
+            ? {
+                illustration: "ledger",
+                title: "Nothing due to pay",
+                description: "Payouts become due once the refund period on the sale has ended.",
+              }
+            : {
+                illustration: "ledger",
+                title: "No payouts yet",
+                description:
+                  "Money owed to artists and owners appears here once a sale has completed.",
+              }
+        }
+        noResults={{
+          title: "No payouts match",
+          description: "Try another payee or reference, or clear the filters.",
+        }}
+        table={{
+          columns,
+          data: page.items,
+          getRowId: (row) => row.payoutId,
+          defaultDensity: "comfortable",
+          defaultHiddenColumns: ["created"],
+          ...list.sort,
+          onRowOpen: (row) => list.panel.show(row.payoutId),
+          activeRowId: list.panel.openId,
+          rowActions: {
+            label: (row) => `Actions for the payout to ${row.ownerDisplayName}`,
+            actions: (row) =>
+              [
+                {
+                  id: "open",
+                  label: "Open details",
+                  icon: PanelRight,
+                  onSelect: () => list.panel.show(row.payoutId),
+                },
+                markPaidAction(row, canMarkPaid, () => setPayingId(row.payoutId)),
+                {
+                  id: "copy",
+                  label: "Copy payout reference",
+                  icon: Copy,
+                  onSelect: () => copyReference(row),
+                },
+              ].filter((action): action is OverflowAction => action !== null),
+          },
+        }}
+        pageSize={list.pageSize}
+        pagination={list.pagination}
       />
 
       <DetailPanel
         open={opened !== null}
         onOpenChange={(open) => {
-          if (!open) setOpenId(null);
+          if (!open) list.panel.show(null);
         }}
         title={opened ? `Payout to ${opened.ownerDisplayName}` : "Payout"}
-        description={
-          opened ? `${formatGbp(opened.netPence)} · ${payoutReference(opened.payoutId)}` : ""
-        }
         status={
           opened ? <MappedStatusBadge status={opened.status} present={presentPayoutStatus} /> : null
         }
+        meta={
+          opened
+            ? [
+                { label: "Net to pay", value: formatStaffMoney(opened.netPence) },
+                { label: "Due", value: formatStaffDate(opened.payoutDueAt) },
+              ]
+            : []
+        }
+        overflow={
+          opened ? (
+            <OverflowMenu
+              label={`More actions for the payout to ${opened.ownerDisplayName}`}
+              actions={[
+                {
+                  id: "copy",
+                  label: "Copy payout reference",
+                  icon: Copy,
+                  onSelect: () => copyReference(opened),
+                },
+              ]}
+            />
+          ) : null
+        }
+        summary={
+          opened
+            ? [
+                { label: "Gross", value: formatStaffMoney(opened.grossPence), numeric: true },
+                {
+                  label: "Deductions",
+                  value: formatStaffMoney(-opened.deductionsPence),
+                  numeric: true,
+                },
+                { label: "Source", value: payoutSourceLabel(opened.source) },
+                {
+                  label: "Paid",
+                  value: opened.paidAt
+                    ? formatStaffDateTime(opened.paidAt, { zoneLabel: true })
+                    : null,
+                },
+                {
+                  label: "Transfer reference",
+                  value: opened.paidReference ?? null,
+                  ...(opened.paidReference ? { copyValue: opened.paidReference } : {}),
+                },
+                {
+                  label: "Payout reference",
+                  value: payoutReference(opened.payoutId),
+                  copyValue: opened.payoutId,
+                },
+              ]
+            : []
+        }
         footer={
-          opened && availability && availability.kind !== "hidden" ? (
+          opened && openedPay ? (
             <StaffButton
               variant="primary"
               icon={<Banknote aria-hidden />}
-              {...(availability.kind === "blocked" ? { disabledReason: availability.reason } : {})}
-              onClick={() => {
-                setPayingId(opened.payoutId);
-                setOpenId(null);
-              }}
+              {...(openedPay.disabledReason ? { disabledReason: openedPay.disabledReason } : {})}
+              onClick={() => setPayingId(opened.payoutId)}
             >
-              Mark {formatGbp(opened.netPence)} paid
+              Mark {formatStaffMoney(opened.netPence)} paid
             </StaffButton>
           ) : null
         }
       >
-        {opened ? (
-          <>
-            <PanelSection title="Payment">
-              <KeyValueList
-                items={[
-                  { label: "Payee", value: opened.ownerDisplayName },
-                  { label: "Gross", value: formatGbp(opened.grossPence), numeric: true },
-                  {
-                    label: "Deductions",
-                    value: formatGbp(opened.deductionsPence),
-                    numeric: true,
-                  },
-                  { label: "Net to pay", value: formatGbp(opened.netPence), numeric: true },
-                ]}
-              />
-            </PanelSection>
-            <PanelSection title="Record">
-              <KeyValueList
-                items={[
-                  {
-                    label: "Payout reference",
-                    value: payoutReference(opened.payoutId),
-                    copyValue: opened.payoutId,
-                  },
-                  { label: "Source", value: payoutSourceLabel(opened.source) },
-                  { label: "Due", value: formatStaffDate(opened.payoutDueAt) },
-                  {
-                    label: "Paid",
-                    value: opened.paidAt ? formatStaffDateTime(opened.paidAt) : null,
-                  },
-                  {
-                    label: "Paid reference",
-                    value: opened.paidReference ?? null,
-                    ...(opened.paidReference ? { copyValue: opened.paidReference } : {}),
-                  },
-                ]}
-              />
-            </PanelSection>
-          </>
-        ) : null}
+        {null}
       </DetailPanel>
 
       {paying ? (

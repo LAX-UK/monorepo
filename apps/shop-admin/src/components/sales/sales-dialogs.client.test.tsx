@@ -44,6 +44,9 @@ vi.mock("sonner", () => ({
 vi.mock("@auction/ui/components/popover", async () =>
   (await import("@/test/radix-stubs")).popoverStub(),
 );
+vi.mock("@auction/ui/components/dropdown-menu", async () =>
+  (await import("@/test/radix-stubs")).dropdownMenuStub(),
+);
 
 const { installLayoutStubs } = await import("@/test/radix-stubs");
 installLayoutStubs();
@@ -54,6 +57,9 @@ const { IssueInvoiceDialog } = await import("./issue-invoice-dialog.client");
 const { OriginalSalesList } = await import("./original-sales-list.client");
 const { ThirdPartySalesList } = await import("./third-party-sales-list.client");
 const { HoldsList } = await import("./holds-list.client");
+const { holdsList, originalSalesList, thirdPartySalesList } = await import(
+  "@/server/domain/sales-lists.vm"
+);
 
 const ok = { ok: true, data: { id: "x", status: "ok" } };
 
@@ -239,6 +245,11 @@ describe("issuing an invoice", () => {
 });
 
 describe("the lists offer each action only where the record and the role allow it", () => {
+  const rowOf = (text: string) =>
+    within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
+  const item = (text: string, name: RegExp) =>
+    within(rowOf(text)).queryByRole("menuitem", { name });
+
   const sale = (status: string, id: string, title: string) => ({
     saleId: id,
     artworkId: `a-${id}`,
@@ -248,6 +259,7 @@ describe("the lists offer each action only where the record and the role allow i
     createdAt: "2026-10-01T09:00:00.000Z",
     buyerName: "Ada Lovelace",
     buyerEmail: "ada@example.com",
+    reservationExpiresAt: null,
   });
   const originals = {
     items: [
@@ -256,25 +268,24 @@ describe("the lists offer each action only where the record and the role allow i
       sale("paid", "s3", "Paid Work"),
     ],
     nextCursor: null,
+    counts: { reserved: 1, invoiced: 1, paid: 1 },
   };
+  const originalsState = originalSalesList.parse({});
 
   it("invoices a reservation, says so for an invoiced sale, and offers nothing once paid", () => {
-    render(<OriginalSalesList page={originals} cursor={null} canSell />);
-    expect(
-      screen.getByRole("button", { name: "Issue the invoice for Reserved Work" }),
-    ).toBeEnabled();
-    expect(
-      screen.getByRole("button", { name: "Issue the invoice for Invoiced Work" }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(
-      screen.queryByRole("button", { name: "Issue the invoice for Paid Work" }),
-    ).not.toBeInTheDocument();
+    render(<OriginalSalesList state={originalsState} page={originals} canSell />);
+    expect(item("Reserved Work", /Issue £1,000.00 invoice/)).not.toHaveAttribute("aria-disabled");
+    expect(item("Invoiced Work", /Issue £1,000.00 invoice/)).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(item("Paid Work", /Issue/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reserve original" })).toBeInTheDocument();
   });
 
   it("hides every sales action from a role that cannot sell originals", () => {
-    render(<OriginalSalesList page={originals} cursor={null} canSell={false} />);
-    expect(screen.queryByRole("button", { name: /Issue the invoice/ })).not.toBeInTheDocument();
+    render(<OriginalSalesList state={originalsState} page={originals} canSell={false} />);
+    expect(screen.queryByRole("menuitem", { name: /Issue/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reserve original" })).not.toBeInTheDocument();
   });
 
@@ -289,6 +300,9 @@ describe("the lists offer each action only where the record and the role allow i
         grossPence: 120000,
         recordedAt: "2026-10-02T09:00:00.000Z",
         fees: [{ feeId: "f1", label: "Commission", amountPence: 12000, status: "pending" }],
+        sellerName: "Grace Hopper",
+        buyerName: "Ada Lovelace",
+        createdAt: "2026-10-02T09:00:00.000Z",
       },
       {
         saleId: "t2",
@@ -299,23 +313,31 @@ describe("the lists offer each action only where the record and the role allow i
         grossPence: 90000,
         recordedAt: "2026-10-03T09:00:00.000Z",
         fees: [{ feeId: "f2", label: "Commission", amountPence: 9000, status: "approved" }],
+        sellerName: "Grace Hopper",
+        buyerName: "Ada Lovelace",
+        createdAt: "2026-10-03T09:00:00.000Z",
       },
     ],
     nextCursor: null,
+    counts: { recorded: 2 },
   };
+  const thirdPartyState = thirdPartySalesList.parse({});
 
   it("lets finance approve a pending fee from its sale, repeating the amount, and not an approved one", async () => {
     render(
-      <ThirdPartySalesList page={thirdParty} cursor={null} canRecord={false} canApproveFees />,
+      <ThirdPartySalesList
+        state={thirdPartyState}
+        page={thirdParty}
+        canRecord={false}
+        canApproveFees
+      />,
     );
     expect(screen.queryByRole("button", { name: "Record sale" })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Approve the fee on Night Garden, edition 4" }),
-    ).not.toBeInTheDocument();
+    expect(item("Night Garden, edition 4", /Approve/)).not.toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Approve the fee on Vessel Study, edition 1" }),
-    );
+    const approve = item("Vessel Study, edition 1", /Approve £120.00 fee/);
+    if (!approve) throw new Error("no approve item");
+    fireEvent.click(approve);
     const dialog = await screen.findByRole("dialog", {
       name: "Approve the £120.00 commission fee on Vessel Study, edition 1?",
     });
@@ -330,10 +352,15 @@ describe("the lists offer each action only where the record and the role allow i
 
   it("lets operations record a sale but not approve its fee", () => {
     render(
-      <ThirdPartySalesList page={thirdParty} cursor={null} canRecord canApproveFees={false} />,
+      <ThirdPartySalesList
+        state={thirdPartyState}
+        page={thirdParty}
+        canRecord
+        canApproveFees={false}
+      />,
     );
     expect(screen.getByRole("button", { name: "Record sale" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Approve the fee/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Approve/ })).not.toBeInTheDocument();
   });
 
   const holds = {
@@ -347,6 +374,10 @@ describe("the lists offer each action only where the record and the role allow i
         expiresAt: "2026-11-01T09:00:00.000Z",
         brokerPartyId: null,
         clientPartyId: "p1",
+        clientName: "Ada Lovelace",
+        brokerName: null,
+        note: null,
+        createdAt: "2026-10-01T09:00:00.000Z",
       },
       {
         holdId: "h2",
@@ -357,23 +388,27 @@ describe("the lists offer each action only where the record and the role allow i
         expiresAt: "2026-09-01T09:00:00.000Z",
         brokerPartyId: null,
         clientPartyId: "p1",
+        clientName: "Ada Lovelace",
+        brokerName: null,
+        note: null,
+        createdAt: "2026-08-01T09:00:00.000Z",
       },
     ],
     nextCursor: null,
+    counts: { active: 1, expired: 1 },
   };
 
   it("releases an active hold after confirming, and not an ended one", async () => {
-    render(<HoldsList page={holds} cursor={null} canHold />);
-    expect(
-      screen.queryByRole("button", { name: "Release the hold on Night Garden, edition 4" }),
-    ).not.toBeInTheDocument();
+    render(<HoldsList state={holdsList.parse({})} page={holds} canHold />);
+    expect(item("Night Garden, edition 4", /Release/)).not.toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Release the hold on Vessel Study, edition 2" }),
-    );
+    const release = item("Vessel Study, edition 2", /Release hold/);
+    if (!release) throw new Error("no release item");
+    fireEvent.click(release);
     const dialog = await screen.findByRole("dialog", {
       name: "Release the hold on Vessel Study, edition 2?",
     });
+    expect(dialog).toHaveTextContent("Ada Lovelace loses their hold on it");
     fireEvent.click(within(dialog).getByRole("button", { name: "Release hold" }));
 
     await waitFor(() => expect(releaseStockHold).toHaveBeenCalledTimes(1));
