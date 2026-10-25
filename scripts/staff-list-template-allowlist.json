@@ -19,7 +19,6 @@
     { "page": "lax-admin:settings/page.tsx", "reason": "Settings" }
   ],
   "pending": [
-    { "page": "bid-admin:(platform)/artists/page.tsx" },
     { "page": "bid-admin:(platform)/clients/page.tsx" },
     { "page": "bid-admin:(platform)/event-rsvps/page.tsx" },
     { "page": "bid-admin:(platform)/invitations/page.tsx" },

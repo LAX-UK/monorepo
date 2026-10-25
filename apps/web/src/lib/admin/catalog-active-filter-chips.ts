@@ -1,4 +1,3 @@
-export { buildArtistsActiveFilterChips } from "@/lib/admin/filter-chips/artists";
 export {
   FULFILMENT_STATUS_LABELS,
   buildFulfilmentActiveFilterChips,
