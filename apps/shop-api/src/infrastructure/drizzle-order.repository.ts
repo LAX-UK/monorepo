@@ -29,6 +29,7 @@ function deliveryAddressFromOrder(
     return null;
   }
   return {
+    ...(order.deliveryRecipientName ? { recipientName: order.deliveryRecipientName } : {}),
     line1: order.deliveryLine1,
     ...(order.deliveryLine2 ? { line2: order.deliveryLine2 } : {}),
     city: order.deliveryCity,

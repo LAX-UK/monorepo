@@ -7,6 +7,10 @@ import type { createMergeBasketsHandler } from "./application/handlers/commerce-
 import type { createRemoveBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type { createResumeCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createUpsertBasketLineHandler } from "./application/handlers/commerce-handlers.js";
+import type {
+  createListSavedDeliveryAddressesHandler,
+  createSaveDeliveryAddressHandler,
+} from "./application/handlers/delivery-address-book.handler.js";
 import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
 import type {
   StripeCheckoutAsyncFailedDto,
@@ -32,6 +36,11 @@ export type CommerceRoutesDeps = {
   cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
   getOrder: ReturnType<typeof createGetOrderHandler>;
+  /** The LAX Account address book; absent where Identity's machine client is not configured. */
+  savedAddresses?: {
+    list: ReturnType<typeof createListSavedDeliveryAddressesHandler>;
+    save: ReturnType<typeof createSaveDeliveryAddressHandler>;
+  };
 };
 
 export type StripeWebhookDeps = {

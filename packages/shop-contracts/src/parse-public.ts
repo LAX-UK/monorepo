@@ -39,6 +39,8 @@ import {
   OrderListSchema,
   type OrderSummary,
   OrderSummarySchema,
+  type SavedDeliveryAddressList,
+  SavedDeliveryAddressListSchema,
 } from "./commerce-public.js";
 import {
   type GeneralEnquiryRow,
@@ -191,6 +193,13 @@ export function parseOrderList(value: unknown): OrderList {
 export function parseOrderSummary(value: unknown): OrderSummary {
   if (!Value.Check(OrderSummarySchema, value)) {
     throw new ShopContractParseError("Invalid order payload");
+  }
+  return value;
+}
+
+export function parseSavedDeliveryAddressList(value: unknown): SavedDeliveryAddressList {
+  if (!Value.Check(SavedDeliveryAddressListSchema, value)) {
+    throw new ShopContractParseError("Invalid saved address payload");
   }
   return value;
 }

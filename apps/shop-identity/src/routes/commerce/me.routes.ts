@@ -9,6 +9,15 @@ import { proxyEnquiry } from "./proxy-enquiry.js";
 import { proxyJson } from "./proxy-json.js";
 
 export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): void {
+  /** Saved delivery addresses from the person's LAX Account address book, for checkout. */
+  app.get("/commerce/me/addresses", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/addresses",
+      scopes: "shop.read",
+    }),
+  );
+
   app.get("/commerce/me/collection", (c) =>
     proxyAuthenticatedCommerce(c, deps, {
       method: "GET",

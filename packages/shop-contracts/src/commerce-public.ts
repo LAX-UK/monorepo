@@ -12,6 +12,8 @@ export type ShopFulfilmentOption = Static<typeof ShopFulfilmentOptionSchema>;
 
 export const ShopDeliveryAddressSchema = Type.Object(
   {
+    /** Who the parcel is for; absent from orders placed before checkout asked for it. */
+    recipientName: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
     line1: Type.String({ minLength: 1 }),
     line2: Type.Optional(Type.String()),
     city: Type.String({ minLength: 1 }),
@@ -22,6 +24,39 @@ export const ShopDeliveryAddressSchema = Type.Object(
 );
 
 export type ShopDeliveryAddress = Static<typeof ShopDeliveryAddressSchema>;
+
+/**
+ * An address from the person's LAX Account address book, as checkout offers it. Only the fields
+ * a delivery needs are passed on; the book itself is managed in LAX Account.
+ */
+export const SavedDeliveryAddressSchema = Type.Object(
+  {
+    id: Type.String({ format: "uuid" }),
+    label: Type.String(),
+    recipientName: Type.String(),
+    line1: Type.String(),
+    line2: Type.Union([Type.String(), Type.Null()]),
+    city: Type.String(),
+    postcode: Type.String(),
+    /** ISO 3166-1 alpha-2. Online checkout delivers to GB only. */
+    country: Type.String({ minLength: 2, maxLength: 2 }),
+    phone: Type.Union([Type.String(), Type.Null()]),
+    isDefaultShipping: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+
+/** `available` is false when the address book could not be read; checkout then asks for entry. */
+export const SavedDeliveryAddressListSchema = Type.Object(
+  {
+    available: Type.Boolean(),
+    addresses: Type.Array(SavedDeliveryAddressSchema),
+  },
+  { additionalProperties: false },
+);
+
+export type SavedDeliveryAddress = Static<typeof SavedDeliveryAddressSchema>;
+export type SavedDeliveryAddressList = Static<typeof SavedDeliveryAddressListSchema>;
 
 export const BasketLineSchema = Type.Object(
   {

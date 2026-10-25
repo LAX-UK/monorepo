@@ -33,6 +33,7 @@ export type BasketRecord = {
 };
 
 export type ShopDeliveryAddress = {
+  recipientName?: string;
   line1: string;
   line2?: string;
   city: string;
@@ -58,6 +59,7 @@ export type CheckoutOrderResult = {
 };
 
 export type ShopDeliveryAddressRecord = {
+  recipientName?: string;
   line1: string;
   line2?: string;
   city: string;

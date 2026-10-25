@@ -168,6 +168,7 @@ export function createDrizzleCheckoutRepository(
               totalPence: total,
               idempotencyKey: input.idempotencyKey,
               checkoutExpiresAt,
+              deliveryRecipientName: deliveryAddress?.recipientName?.trim() || null,
               deliveryLine1: deliveryAddress?.line1 ?? null,
               deliveryLine2: deliveryAddress?.line2 ?? null,
               deliveryCity: deliveryAddress?.city ?? null,

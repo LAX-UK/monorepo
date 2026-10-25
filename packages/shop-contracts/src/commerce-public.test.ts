@@ -1,7 +1,7 @@
 import { Value } from "@sinclair/typebox/value";
 import { describe, expect, it } from "vitest";
 import { ORDER_STATUS_VALUES, OrderStatusSchema, OrderSummarySchema } from "./commerce-public.js";
-import { parseOrderSummary } from "./parse-public.js";
+import { parseOrderSummary, parseSavedDeliveryAddressList } from "./parse-public.js";
 
 describe("OrderSummarySchema", () => {
   it("accepts a null delivery address", () => {
@@ -54,5 +54,50 @@ describe("OrderSummarySchema", () => {
     for (const status of ORDER_STATUS_VALUES) {
       expect(Value.Check(OrderStatusSchema, status)).toBe(true);
     }
+  });
+
+  it("accepts a delivery address with or without a recipient name, never an empty one", () => {
+    const order = { ...base, status: "paid" as const };
+    const address = { line1: "1 High Street", city: "London", postcode: "SW1A 1AA", country: "GB" };
+    expect(Value.Check(OrderSummarySchema, { ...order, deliveryAddress: address })).toBe(true);
+    expect(
+      Value.Check(OrderSummarySchema, {
+        ...order,
+        deliveryAddress: { ...address, recipientName: "Ada Lovelace" },
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(OrderSummarySchema, {
+        ...order,
+        deliveryAddress: { ...address, recipientName: "" },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("parseSavedDeliveryAddressList", () => {
+  const saved = {
+    id: "550e8400-e29b-41d4-a716-846655440002",
+    label: "Home",
+    recipientName: "Ada Lovelace",
+    line1: "1 High Street",
+    line2: null,
+    city: "London",
+    postcode: "SW1A 1AA",
+    country: "GB",
+    phone: null,
+    isDefaultShipping: true,
+  };
+
+  it("parses the list", () => {
+    expect(
+      parseSavedDeliveryAddressList({ available: true, addresses: [saved] }).addresses,
+    ).toEqual([saved]);
+  });
+
+  it("refuses fields the contract does not name", () => {
+    expect(() =>
+      parseSavedDeliveryAddressList({ available: true, addresses: [{ ...saved, version: 1 }] }),
+    ).toThrow();
   });
 });

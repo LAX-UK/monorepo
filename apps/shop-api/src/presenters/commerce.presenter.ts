@@ -67,6 +67,9 @@ export function presentOrder(record: OrderRecord): OrderSummary {
     paidAt: record.paidAt ? record.paidAt.toISOString() : null,
     deliveryAddress: record.deliveryAddress
       ? {
+          ...(record.deliveryAddress.recipientName
+            ? { recipientName: record.deliveryAddress.recipientName }
+            : {}),
           line1: record.deliveryAddress.line1,
           ...(record.deliveryAddress.line2 ? { line2: record.deliveryAddress.line2 } : {}),
           city: record.deliveryAddress.city,
