@@ -121,6 +121,8 @@ const RETIRED_VENDOR_SCAN_PREFIXES = ["apps/", "packages/", "scripts/", ".github
 const RETIRED_VENDOR_DOC_ALLOWLIST = new Set([
   "docs/archive/runbooks/identity-boundary-cutover.md",
   "docs/runbooks/shop-mvp-spec.md",
+  // London Art Exchange Ltd's published privacy notice, carried word for word from thelax.art.
+  "packages/marketing-ui/src/legal/london-art-exchange/privacy.ts",
 ]);
 
 const RETIRED_VENDOR_PATTERNS = [
