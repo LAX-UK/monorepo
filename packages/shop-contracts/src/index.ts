@@ -333,6 +333,7 @@ export {
   AdminProductionTaskUpdateBodySchema,
   AdminProductionTaskUpdateResponseSchema,
   PRODUCTION_TASK_SEARCH_MAX_LENGTH,
+  PRODUCTION_TASK_SORTS,
   PRODUCTION_TASK_STATUSES,
   ProductionTaskStatusSchema,
   type AdminProductionAssigneesResponse,
@@ -343,6 +344,7 @@ export {
   type AdminProductionTaskListQuery,
   type AdminProductionTaskUpdateBody,
   type AdminProductionTaskUpdateResponse,
+  type ProductionTaskSort,
   type ProductionTaskStaff,
   type ProductionTaskStatus,
 } from "./admin-production.js";

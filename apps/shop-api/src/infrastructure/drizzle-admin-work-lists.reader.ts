@@ -137,9 +137,13 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
       const { direction } = parseSort<"updated">(input.sort, "updated_desc");
       const search = searchPatterns(input.q);
       const open = [...ADMIN_FULFILMENT_OPEN_STATUSES];
-      const filters = [
+      // The stage is a view, like the status: it narrows the rows but not the counts.
+      const view = [
         input.stage === "open" ? inArray(shopFulfilment.status, open) : undefined,
         input.stage === "done" ? notInArray(shopFulfilment.status, open) : undefined,
+        input.status ? eq(shopFulfilment.status, input.status) : undefined,
+      ];
+      const filters = [
         input.option ? eq(shopFulfilment.option, input.option) : undefined,
         search
           ? or(
@@ -169,7 +173,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
           .where(
             and(
               ...filters,
-              input.status ? eq(shopFulfilment.status, input.status) : undefined,
+              ...view,
               cursor
                 ? keysetAfter(shopFulfilment.updatedAt, shopFulfilment.id, cursor, direction)
                 : undefined,

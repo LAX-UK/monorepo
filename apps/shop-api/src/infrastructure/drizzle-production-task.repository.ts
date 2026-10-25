@@ -19,7 +19,7 @@ import type {
   ProductionTaskFilters,
   ProductionTaskRepository,
 } from "../application/ports/production-task.repository.js";
-import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
+import { keysetAfter, orderByMsTimestampId } from "./admin-created-at-keyset.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { insertShopAdminAudit } from "./shop-admin-audit.js";
 
@@ -161,6 +161,7 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
   return {
     async list(input) {
       const filters = filterConditions(input.filters);
+      const direction = input.direction ?? "desc";
       const [rows, countRows] = await Promise.all([
         selectTasks(db)
           .where(
@@ -170,15 +171,18 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
                 ? eq(shopProductionTask.status, input.filters.status)
                 : undefined,
               input.cursor
-                ? keysetBeforeCreatedAtId(
+                ? keysetAfter(
                     shopProductionTask.createdAt,
                     shopProductionTask.id,
                     input.cursor,
+                    direction,
                   )
                 : undefined,
             ),
           )
-          .orderBy(...orderByMsTimestampIdDesc(shopProductionTask.createdAt, shopProductionTask.id))
+          .orderBy(
+            ...orderByMsTimestampId(shopProductionTask.createdAt, shopProductionTask.id, direction),
+          )
           .limit(input.limit + 1),
         db
           .select({ status: shopProductionTask.status, total: count() })
