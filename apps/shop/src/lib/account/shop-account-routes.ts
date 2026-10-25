@@ -6,6 +6,9 @@ import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
 /** Shop's account area is "Your orders"; `/account` is only an entry point to it. */
 export const SHOP_ORDERS_HREF = "/account/orders";
 
+/** Edition alerts live in a section of Your orders, the only page of Shop's account area. */
+export const SHOP_EDITION_ALERTS_HREF = `${SHOP_ORDERS_HREF}#edition-alerts`;
+
 export function shopOrderHref(orderId: string): string {
   return `${SHOP_ORDERS_HREF}/${encodeURIComponent(orderId)}`;
 }

@@ -1,11 +1,12 @@
 import { createDbFromPool } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
-import { shopArtwork, shopArtworkCategory, shopCategory } from "@auction/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { shopArtwork, shopArtworkCategory, shopCategory, shopEdition } from "@auction/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleArtworkCatalogueRepository } from "./drizzle-artwork-catalogue.repository.js";
+import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const shopUrl = process.env.DATABASE_URL_SHOP;
@@ -83,6 +84,85 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
     expect(pageOne.nextCursor).toBeTruthy();
     expect(pageTwo.items).toHaveLength(1);
     expect(pageTwo.items[0]?.slug).not.toBe(pageOne.items[0]?.slug);
+
+    await db.delete(shopArtworkCategory).where(eq(shopArtworkCategory.categoryId, category.id));
+    await db.delete(shopCategory).where(eq(shopCategory.id, category.id));
+  });
+
+  it("filters by availability and counts each filter group without its own filter", async () => {
+    const db = createDbFromPool(shopPool);
+    const writer = createPublishedArtworkImportWriter(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const edition = async (key: string, artist: string) => ({
+      slug: `integration-facets-${suffix}-${key}`,
+      ...(await writer.importArtwork({
+        importKey: `integration:facets:${suffix}:${key}`,
+        slug: `integration-facets-${suffix}-${key}`,
+        title: `Facet ${key}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-facets-${artist}-${suffix}`,
+        artistDisplayName: `Facet ${artist}`,
+        eligibleForEditionAllocation: true,
+        printPricePence: 5_000,
+      })),
+    });
+    const onSale = await edition("on-sale", "ann");
+    const soldOut = await edition("sold-out", "ann");
+    const other = await edition("other", "bea");
+    // Authorise one copy of the first edition; the others have nothing for sale.
+    const [laxEdition] = await db
+      .select({ ownerPartyId: shopEdition.ownerPartyId })
+      .from(shopEdition)
+      .where(and(eq(shopEdition.artworkId, onSale.artworkId), eq(shopEdition.allocation, "lax")))
+      .limit(1);
+    if (!laxEdition?.ownerPartyId) throw new Error("fixture edition missing");
+    await createDrizzleSaleAuthorityWriter(db, "off").grantSaleAuthority({
+      artworkId: onSale.artworkId,
+      ownerPartyId: laxEdition.ownerPartyId,
+      authorisedCount: 1,
+      evidenceNote: "facet fixture",
+      recordedBySubjectId: "integration-staff",
+    });
+    const [category] = await db
+      .insert(shopCategory)
+      .values({ slug: `integration-facets-${suffix}`, label: "Facet category" })
+      .returning({ id: shopCategory.id });
+    if (!category) throw new Error("category missing");
+    await db.insert(shopArtworkCategory).values([
+      { artworkId: onSale.artworkId, categoryId: category.id },
+      { artworkId: soldOut.artworkId, categoryId: category.id },
+    ]);
+    const q = `integration-facets-${suffix}`;
+
+    const available = await repository.listPublicArtworks({
+      limit: 10,
+      filter: { q, availability: "available", artworkType: "edition", sort: "newest" },
+    });
+    expect(available.items.map((item) => item.slug)).toEqual([onSale.slug]);
+    const gone = await repository.listPublicArtworks({
+      limit: 10,
+      filter: { q, availability: "sold_out", artworkType: "edition", sort: "newest" },
+    });
+    expect(gone.items.map((item) => item.slug).sort()).toEqual([other.slug, soldOut.slug].sort());
+
+    const facets = await repository.countFacets({
+      q,
+      availability: "available",
+      artistSlugs: [`integration-facets-ann-${suffix}`],
+      artworkType: "edition",
+      sort: "newest",
+    });
+    // Availability ignores its own filter but keeps the artist one.
+    expect(facets.availability).toEqual({ available: 1, soldOut: 1 });
+    // Artists ignore the artist filter but keep availability.
+    expect(facets.artists).toEqual([
+      { slug: `integration-facets-ann-${suffix}`, name: "Facet ann", count: 1 },
+    ]);
+    expect(facets.categories).toEqual([
+      { slug: `integration-facets-${suffix}`, label: "Facet category", count: 1 },
+    ]);
 
     await db.delete(shopArtworkCategory).where(eq(shopArtworkCategory.categoryId, category.id));
     await db.delete(shopCategory).where(eq(shopCategory.id, category.id));

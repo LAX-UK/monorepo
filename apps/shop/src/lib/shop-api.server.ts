@@ -4,6 +4,7 @@ import {
   type PublicArtistDetail,
   type PublicArtistList,
   type PublicArtworkDetail,
+  type PublicArtworkFacetCounts,
   type PublicArtworkList,
   type PublicCategoryList,
   type PublicCategorySummary,
@@ -13,6 +14,7 @@ import {
   parsePublicArtistDetail,
   parsePublicArtistList,
   parsePublicArtworkDetail,
+  parsePublicArtworkFacetCounts,
   parsePublicArtworkList,
   parsePublicCategoryList,
   parsePublicCategorySummary,
@@ -89,28 +91,57 @@ export async function fetchPublicArtworks(input: {
   categorySlug?: string;
   artistSlug?: string;
   saleState?: "for_sale" | "sold";
+  availability?: "available" | "sold_out";
   minPrice?: number;
   maxPrice?: number;
   sort?: "newest" | "titleAsc" | "priceAsc" | "priceDesc";
   q?: string;
 }): Promise<PublicArtworkList> {
-  const params = new URLSearchParams();
+  const params = catalogueFilterParams(input);
   params.set("limit", String(input.limit ?? 24));
-  params.set("salesChannel", "shop");
   if (input.cursor) params.set("cursor", input.cursor);
   if (input.placement) params.set("placement", input.placement);
-  if (input.categorySlug) params.set("categorySlug", input.categorySlug);
-  if (input.artistSlug) params.set("artistSlug", input.artistSlug);
-  if (input.minPrice !== undefined) params.set("minPrice", String(input.minPrice));
-  if (input.maxPrice !== undefined) params.set("maxPrice", String(input.maxPrice));
   if (input.sort && input.sort !== "newest") params.set("sort", input.sort);
-  if (input.saleState) params.set("saleState", input.saleState);
-  if (input.q) params.set("q", input.q);
   const response = await shopApiFetch(`/v1/artworks?${params.toString()}`);
   if (!response.ok) {
     throw new ShopApiBffError("upstream", `Shop catalogue request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicArtworkList, "artwork list");
+}
+
+type CatalogueFilterInput = {
+  categorySlug?: string;
+  artistSlug?: string;
+  saleState?: "for_sale" | "sold";
+  availability?: "available" | "sold_out";
+  minPrice?: number;
+  maxPrice?: number;
+  q?: string;
+};
+
+/** Shop-channel filter params, shared by the list and its filter counts. */
+function catalogueFilterParams(input: CatalogueFilterInput): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("salesChannel", "shop");
+  if (input.categorySlug) params.set("categorySlug", input.categorySlug);
+  if (input.artistSlug) params.set("artistSlug", input.artistSlug);
+  if (input.minPrice !== undefined) params.set("minPrice", String(input.minPrice));
+  if (input.maxPrice !== undefined) params.set("maxPrice", String(input.maxPrice));
+  if (input.saleState) params.set("saleState", input.saleState);
+  if (input.availability) params.set("availability", input.availability);
+  if (input.q) params.set("q", input.q);
+  return params;
+}
+
+/** Counts beside each catalogue filter option, for the same filters as the list. */
+export async function fetchPublicArtworkFacets(
+  input: CatalogueFilterInput,
+): Promise<PublicArtworkFacetCounts> {
+  const response = await shopApiFetch(`/v1/artwork-facets?${catalogueFilterParams(input)}`);
+  if (!response.ok) {
+    throw new ShopApiBffError("upstream", `Shop facet request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicArtworkFacetCounts, "artwork facets");
 }
 
 /** @deprecated Prefer fetchPublicArtworks for filtered home sections. */

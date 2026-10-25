@@ -52,14 +52,19 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /** Edition alert: the edition someone asked about can be bought again. */
   queueEditionAvailable(
     tx: ShopNotificationTx,
     input: {
       idempotencyKey: string;
-      identitySubjectId: string;
+      /** Resolved by the caller: the account's address, else the one the guest gave. */
+      to: string;
       artworkSlug: string;
       artworkTitle: string;
+      artistName: string;
       artworkUrl: string;
+      /** Stops this address's alerts without signing in; also sent as List-Unsubscribe. */
+      unsubscribeUrl: string;
     },
   ): Promise<void>;
 

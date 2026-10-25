@@ -1,87 +1,98 @@
 /** @vitest-environment jsdom */
 import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailable-panel";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/app/actions/artwork-interest.actions", () => ({
+  registerEditionAlert: vi.fn(),
+  stopEditionAlertForArtwork: vi.fn(),
+}));
+
+const member = {
+  kind: "authenticated" as const,
+  email: "a@example.com",
+  displayName: "Alex",
+  accountHref: "/account",
+  logoutHref: "/logout",
+};
 
 describe("ArtworkUnavailablePanel", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("links guests to storefront login with returnTo for notify-me", () => {
+  it("lets a guest leave an email address without signing in", () => {
     render(
       <ArtworkUnavailablePanel
         viewer={{ kind: "guest", loginHref: "/login", registerHref: "/register" }}
         artworkSlug="reed-study"
         reason="edition_sold_out"
-        interestRead={{ status: "ok", data: { subscribed: false } }}
+        interestRead={{ status: "guest" }}
       />,
     );
-    const link = screen.getByRole("link", { name: "Sign in to get notified" });
-    expect(link.getAttribute("href")).toBe("/login?returnTo=%2Fartworks%2Freed-study");
+    expect(
+      screen.getByRole("heading", { name: "Get an email if this edition is back" }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Email address")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Email me" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /sign in/i })).toBeNull();
   });
 
-  it("shows notify button for authenticated viewers when interest loaded", () => {
+  it("offers a signed-in shopper the account address", () => {
     render(
       <ArtworkUnavailablePanel
-        viewer={{
-          kind: "authenticated",
-          email: "a@example.com",
-          displayName: "Alex",
-          accountHref: "/account",
-          logoutHref: "/logout",
-        }}
+        viewer={member}
         artworkSlug="reed-study"
         reason="edition_sold_out"
         interestRead={{ status: "ok", data: { subscribed: false } }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Notify me" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Create a LAX account" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Email me if it is back" })).toBeTruthy();
+    expect(screen.getByText("a@example.com")).toBeTruthy();
+    expect(screen.queryByLabelText("Email address")).toBeNull();
   });
 
-  it("still offers registration when interest status failed to load", () => {
+  it("shows a waiting alert with a way to stop it", () => {
     render(
       <ArtworkUnavailablePanel
-        viewer={{
-          kind: "authenticated",
-          email: "a@example.com",
-          displayName: "Alex",
-          accountHref: "/account",
-          logoutHref: "/logout",
-        }}
+        viewer={member}
         artworkSlug="reed-study"
         reason="edition_sold_out"
-        interestRead={{ status: "failed" as const }}
+        interestRead={{ status: "ok", data: { subscribed: true } }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Notify me" })).toBeTruthy();
-    expect(screen.getByText(/couldn't check your saved preference/i)).toBeTruthy();
-    expect(document.querySelector(".shop-detail__interest-panel")).toBeTruthy();
-    expect(document.querySelector(".shop-detail__interest-hint")).toBeTruthy();
-    expect(document.querySelector(".shop-detail__interest-hint.shop-detail__notice")).toBeNull();
+    expect(screen.getByText("You are on the list")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stop this alert" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Manage alerts" }).getAttribute("href")).toBe(
+      "/account/orders#edition-alerts",
+    );
   });
 
-  it("prompts sign-in again when commerce rejects the session", () => {
+  it("still offers the alert when the saved state could not be read", () => {
     render(
       <ArtworkUnavailablePanel
-        viewer={{
-          kind: "authenticated",
-          email: "a@example.com",
-          displayName: "Alex",
-          accountHref: "/account",
-          logoutHref: "/logout",
-        }}
-        artworkSlug="string-study"
+        viewer={member}
+        artworkSlug="reed-study"
+        reason="edition_sold_out"
+        interestRead={{ status: "failed" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Email me if it is back" })).toBeTruthy();
+  });
+
+  it("falls back to the email form when the sign-in has lapsed", () => {
+    render(
+      <ArtworkUnavailablePanel
+        viewer={member}
+        artworkSlug="reed-study"
         reason="edition_sold_out"
         interestRead={{ status: "unauthorized" }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Sign in again" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Notify me" })).toBeNull();
+    expect(screen.getByLabelText("Email address")).toBeTruthy();
   });
 
-  it("does not offer interest actions when the work is sold", () => {
+  it("does not offer an alert when the work itself is sold", () => {
     render(
       <ArtworkUnavailablePanel
         viewer={{ kind: "guest", loginHref: "/login", registerHref: "/register" }}
@@ -90,7 +101,7 @@ describe("ArtworkUnavailablePanel", () => {
         interestRead={{ status: "guest" }}
       />,
     );
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
     expect(screen.getByText(/no longer available to purchase/i)).toBeTruthy();
   });
 });

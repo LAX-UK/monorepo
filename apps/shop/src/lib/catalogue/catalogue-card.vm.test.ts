@@ -27,6 +27,9 @@ describe("catalogue card view models", () => {
       status: { label: "Sold out", tone: "neutral" },
       dimensions: "40 × 50 cm",
       metaLine: "Limited edition of 24 · Sold out",
+      editionLine: "Limited edition of 24",
+      priceLine: "Sold out",
+      soldOut: true,
     });
   });
 
@@ -48,6 +51,27 @@ describe("catalogue card view models", () => {
         availability: { totalEditions: 12, state: "available" },
       }).metaLine,
     ).toMatch(/^£850/);
+  });
+
+  it("puts the price on its own line and leaves the edition size to the line above", () => {
+    const card = toCatalogueArtworkCardVm({
+      slug: "harbor-print",
+      title: "Harbor Print",
+      artistName: "Flora Powers",
+      artistSlug: "flora-powers",
+      imageUrl: null,
+      saleState: "for_sale",
+      dimensions: null,
+      yearCreated: null,
+      medium: null,
+      salesChannel: "shop",
+      eligibleForEditionAllocation: true,
+      printPricePence: 85000,
+      availability: { totalEditions: 12, state: "available" },
+    });
+    expect(card.editionLine).toBe("Limited edition of 12");
+    expect(card.priceLine).toMatch(/^£850/);
+    expect(card.soldOut).toBe(false);
   });
 
   it("maps artist and category media through shared catalogue view models", () => {

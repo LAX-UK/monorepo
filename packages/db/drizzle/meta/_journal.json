@@ -1618,6 +1618,13 @@
       "when": 1795248000000,
       "tag": "0230_shop_artwork_source_original",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1795334400000,
+      "tag": "0231_shop_edition_alerts",
+      "breakpoints": true
     }
   ]
 }

@@ -180,14 +180,16 @@
 .shop-detail__interest-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
-  padding: 1rem 1.25rem;
+  gap: var(--shop-space-3);
+  padding: var(--shop-space-6);
   background: var(--color-surface-container-low);
 }
 
 .shop-detail__interest-panel-title {
   margin: 0;
   color: var(--color-on-surface);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
   font-weight: 600;
   line-height: 1.4;
 }
@@ -198,56 +200,11 @@
   line-height: 1.6;
 }
 
-.shop-detail__interest-hint,
 .shop-detail__interest-feedback {
   margin: 0;
   color: var(--color-on-surface-variant);
   font-size: 0.875rem;
   line-height: 1.5;
-}
-
-.shop-detail__interest-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.625rem;
-}
-
-.shop-detail__interest-outline {
-  box-sizing: border-box;
-  display: inline-flex;
-  min-height: 2.75rem;
-  width: auto;
-  max-width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--color-on-surface);
-  font-family: var(--font-body);
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.5;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.shop-detail__interest-outline:hover {
-  opacity: 0.9;
-}
-
-.shop-detail__interest-outline--active {
-  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border-hairline));
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
-}
-
-.shop-detail__interest-outline-icon {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
 }
 
 .shop-detail__notice--alert {
@@ -380,4 +337,53 @@
   color: var(--color-on-error-container);
   padding: 1rem 1.25rem;
   border-radius: var(--radius-card);
+}
+
+/* Filter options: label left, count right, one row height for every option. */
+.shop-filter-option {
+  width: 100%;
+  min-height: 2.25rem;
+  justify-content: space-between;
+  gap: var(--shop-space-3);
+  text-align: left;
+}
+
+.shop-filter-option__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shop-filter-option__count {
+  flex-shrink: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* In the phone sheet options are touch targets. */
+@media (pointer: coarse) {
+  .shop-filter-option {
+    min-height: 2.75rem;
+  }
+}
+
+/* No results: the message, then editions on sale now, so the page never ends empty. */
+.shop-catalogue-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-12);
+}
+
+.shop-catalogue-empty__more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-catalogue-empty__heading {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
 }

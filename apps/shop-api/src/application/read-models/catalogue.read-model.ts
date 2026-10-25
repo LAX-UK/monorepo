@@ -28,6 +28,16 @@ export type ArtworkObjectTypeFacetReadModel = {
   coverImageUrl: string | null;
 };
 
+/**
+ * Counts beside each catalogue filter option. Each group is counted with every other filter
+ * applied but not its own, so an option shows how many works choosing it would give.
+ */
+export type ArtworkFacetCountsReadModel = {
+  availability: { available: number; soldOut: number };
+  categories: Array<{ slug: string; label: string; count: number }>;
+  artists: Array<{ slug: string; name: string; count: number }>;
+};
+
 export type ArtworkSummaryReadModel = {
   slug: string;
   title: string;

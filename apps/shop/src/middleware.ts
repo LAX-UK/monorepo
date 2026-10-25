@@ -32,6 +32,8 @@ const SKIP_PREFIXES = [
   "/account/disabled",
   "/account/post-sign-in",
   "/api/",
+  // Unsubscribe links from alert emails work without a session and never bounce through sign-in.
+  "/alerts/",
 ];
 
 export async function middleware(request: NextRequest) {

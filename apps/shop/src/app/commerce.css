@@ -548,6 +548,7 @@
 }
 
 .shop-catalogue-pager {
+  margin-top: var(--shop-space-8);
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;

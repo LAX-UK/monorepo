@@ -1,6 +1,9 @@
 import { legalEntityFor } from "@auction/branding";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
-import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
+import {
+  createEditionAlertRateLimiter,
+  createEnquiryRateLimiter,
+} from "./application/enquiry-rate-limit.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
@@ -93,6 +96,11 @@ export function createMinimalShopApiTestDeps(
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtwork: async () => null,
       listArtworkObjectTypeFacets: async () => [],
+      countArtworkFacets: async () => ({
+        availability: { available: 0, soldOut: 0 },
+        categories: [],
+        artists: [],
+      }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),
@@ -106,6 +114,14 @@ export function createMinimalShopApiTestDeps(
       registerArtworkInterest: async () => "registered" as const,
       getArtworkInterest: async () => ({ subscribed: false }),
       enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
+      editionAlerts: {
+        register: async () => "registered" as const,
+        listForSubject: async () => [],
+        cancelForSubject: async () => "not_found" as const,
+        previewUnsubscribe: async () => null,
+        unsubscribe: async () => null,
+      },
+      editionAlertRateLimiter: createEditionAlertRateLimiter(createInMemoryFixedWindowCounter()),
     },
     staffReader: {
       findActiveByIdentitySubject: async () => null,

@@ -21,6 +21,9 @@ export type LayoutProps = {
   category: EmailCategory;
   title: string;
   unsubscribeUrl?: string | null;
+  /** Footer overrides for mail that is not about an order or an account, e.g. edition alerts. */
+  footerReason?: string;
+  unsubscribeLabel?: string;
   /** `account` uses the left-aligned LAX Account lockup for security notices. */
   header?: "wordmark" | "account";
   /** Product the email belongs to; defaults to the one `renderEmail` resolves for the template. */
@@ -34,6 +37,8 @@ export function Layout({
   category,
   title,
   unsubscribeUrl,
+  footerReason,
+  unsubscribeLabel,
   header = "wordmark",
   product,
   children,
@@ -59,6 +64,8 @@ export function Layout({
             {children}
             <LegalFooter
               {...(unsubscribeUrl != null ? { unsubscribeUrl } : {})}
+              {...(footerReason ? { reason: footerReason } : {})}
+              {...(unsubscribeLabel ? { unsubscribeLabel } : {})}
               product={resolvedProduct}
             />
           </Section>

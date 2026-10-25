@@ -49,6 +49,7 @@ import {
   toArtworkCatalogueRow,
   toPublicArtworkSummaries,
 } from "./public-artwork-rows.js";
+import { artworkAvailableNowSql } from "./shop-edition-availability.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
 const priceTierSql = sql<number>`CASE WHEN ${shopArtwork.printPricePence} IS NULL THEN 1 ELSE 0 END`;
@@ -124,6 +125,11 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   } else if (filter.saleState) {
     conditions.push(eq(shopArtwork.saleState, filter.saleState));
   }
+  if (filter.availability === "available") {
+    conditions.push(artworkAvailableNowSql);
+  } else if (filter.availability === "sold_out") {
+    conditions.push(sql`not ${artworkAvailableNowSql}`);
+  }
   if (filter.salesChannel) {
     conditions.push(eq(shopArtwork.salesChannel, filter.salesChannel));
   }
@@ -131,7 +137,15 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
     conditions.push(inArray(shopArtist.slug, filter.artistSlugs));
   }
   if (filter.categorySlug) {
-    conditions.push(eq(shopCategory.slug, filter.categorySlug));
+    // A subquery rather than a join, so an artwork in several categories is never counted twice.
+    conditions.push(
+      sql`exists (
+        select 1 from ${shopArtworkCategory}
+        inner join ${shopCategory} on ${shopCategory.id} = ${shopArtworkCategory.categoryId}
+        where ${shopArtworkCategory.artworkId} = ${shopArtwork.id}
+          and ${shopCategory.slug} = ${filter.categorySlug}
+      )`,
+    );
   }
   if (filter.minPricePence !== undefined) {
     conditions.push(
@@ -280,7 +294,7 @@ export function createDrizzleArtworkCatalogueRepository(
       let totalCount: number | undefined;
 
       if (placement === "featured_originals" || placement === "featured_prints") {
-        let placementQuery = db
+        const placementQuery = db
           .select({
             ...publicArtworkColumns,
             placementPosition: shopHomePlacement.position,
@@ -290,12 +304,6 @@ export function createDrizzleArtworkCatalogueRepository(
           .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
           .$dynamic();
-
-        if (filter?.categorySlug) {
-          placementQuery = placementQuery
-            .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
-            .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id));
-        }
 
         rows = await placementQuery
           .where(
@@ -316,28 +324,19 @@ export function createDrizzleArtworkCatalogueRepository(
           .orderBy(asc(shopHomePlacement.position))
           .limit(limit);
       } else {
-        let query = db
+        const query = db
           .select(publicArtworkColumns)
           .from(shopArtwork)
           .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
           .$dynamic();
 
-        let countQuery = db
+        const countQuery = db
           .select({ total: count() })
           .from(shopArtwork)
           .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
           .$dynamic();
-
-        if (filter?.categorySlug) {
-          query = query
-            .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
-            .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id));
-          countQuery = countQuery
-            .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
-            .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id));
-        }
 
         const whereParts = [...conditions];
         if (cursor) {
@@ -423,6 +422,48 @@ export function createDrizzleArtworkCatalogueRepository(
         printSize,
         sourceOriginalSlug,
       });
+    },
+
+    async countFacets(filter) {
+      const { availability: _availability, ...availabilityScope } = filter;
+      const { categorySlug: _category, ...categoryScope } = filter;
+      const { artistSlugs: _artists, ...artistScope } = filter;
+      const [availabilityRows, categoryRows, artistRows] = await Promise.all([
+        db
+          .select({
+            total: count(),
+            available: sql<number>`count(*) filter (where ${artworkAvailableNowSql})`,
+          })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(availabilityScope))),
+        db
+          .select({ slug: shopCategory.slug, label: shopCategory.label, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
+          .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id))
+          .where(and(...buildArtworkFilters(categoryScope)))
+          .groupBy(shopCategory.slug, shopCategory.label, shopCategory.sortOrder)
+          .orderBy(asc(shopCategory.sortOrder), asc(shopCategory.label)),
+        db
+          .select({ slug: shopArtist.slug, name: shopParty.displayName, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(artistScope)))
+          .groupBy(shopArtist.slug, shopParty.displayName)
+          .orderBy(asc(shopParty.displayName)),
+      ]);
+      const total = Number(availabilityRows[0]?.total ?? 0);
+      const available = Number(availabilityRows[0]?.available ?? 0);
+      return {
+        availability: { available, soldOut: total - available },
+        categories: categoryRows.map((row) => ({ ...row, count: Number(row.count) })),
+        artists: artistRows.map((row) => ({ ...row, count: Number(row.count) })),
+      };
     },
 
     async listObjectTypeFacets({ salesChannel }) {

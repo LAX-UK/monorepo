@@ -58,24 +58,6 @@ describe("artwork interest routes", () => {
     await app.close();
   });
 
-  it("rejects BFF-only tokens for availability alerts, which need an account", async () => {
-    const app = createShopApiApp({
-      deps: createMinimalShopApiTestDeps(),
-      logger: false,
-    });
-    await app.ready();
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/artworks/test-slug/interest",
-      headers: {
-        authorization: "Bearer test-bff-token-minimum-32-characters-long",
-      },
-      payload: {},
-    });
-    expect(response.statusCode).toBe(401);
-    await app.close();
-  });
-
   it("passes enquiry message and contact phone to the handler", async () => {
     const { app, registerArtworkInterest } = await buildApp();
     const response = await app.inject({
@@ -100,19 +82,16 @@ describe("artwork interest routes", () => {
     await app.close();
   });
 
-  it("drops message and phone for notify_me interest", async () => {
+  it("hands notify_me requests to edition alerts, not to the enquiry inbox", async () => {
     const { app, registerArtworkInterest } = await buildApp();
-    await app.inject({
+    const response = await app.inject({
       method: "POST",
       url: "/v1/artworks/test-slug/interest",
       headers: userHeaders,
       payload: { intent: "notify_me", message: "ignored", contactPhone: "+44 20 7946 0000" },
     });
-    expect(registerArtworkInterest).toHaveBeenCalledWith({
-      artworkSlug: "test-slug",
-      sender: ACCOUNT,
-      intent: "notify_me",
-    });
+    expect(response.statusCode).toBe(200);
+    expect(registerArtworkInterest).not.toHaveBeenCalled();
     await app.close();
   });
 

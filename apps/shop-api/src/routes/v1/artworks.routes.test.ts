@@ -15,6 +15,11 @@ function createCatalogueDeps() {
       }),
       getPublicArtwork: async (slug) => (slug === "demo" ? mockArtworkDetail() : null),
       listArtworkObjectTypeFacets: async () => [],
+      countArtworkFacets: async () => ({
+        availability: { available: 0, soldOut: 0 },
+        categories: [],
+        artists: [],
+      }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),
@@ -24,6 +29,46 @@ function createCatalogueDeps() {
 }
 
 describe("artworks routes", () => {
+  it("counts filter options with the same filters as the list, editions only on Shop", async () => {
+    const deps = createCatalogueDeps();
+    const countArtworkFacets = vi.fn(async () => ({
+      availability: { available: 3, soldOut: 1 },
+      categories: [{ slug: "prints", label: "Prints", count: 4 }],
+      artists: [{ slug: "emmett-king", name: "Emmett King", count: 2 }],
+    }));
+    deps.catalogue.countArtworkFacets = countArtworkFacets;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/artwork-facets?salesChannel=shop&availability=available&artistSlug=emmett-king&sort=priceAsc",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().availability).toEqual({ available: 3, soldOut: 1 });
+    expect(countArtworkFacets).toHaveBeenCalledWith({
+      salesChannel: "shop",
+      availability: "available",
+      artistSlugs: ["emmett-king"],
+      artworkType: "edition",
+    });
+    await app.close();
+  });
+
+  it("passes the availability filter to the list and rejects unknown values", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(async () => ({ items: [] }));
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    await app.inject({ method: "GET", url: "/v1/artworks?availability=sold_out" });
+    expect(listPublicArtworks).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: expect.objectContaining({ availability: "sold_out" }) }),
+    );
+    const bad = await app.inject({ method: "GET", url: "/v1/artworks?availability=maybe" });
+    expect(bad.statusCode).toBe(400);
+    await app.close();
+  });
+
   it("returns public list without owner fields", async () => {
     const app = createShopApiApp({ deps: createCatalogueDeps(), logger: false });
     await app.ready();
@@ -264,6 +309,11 @@ describe("artworks routes", () => {
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtworkBySlug: async () => null,
       listObjectTypeFacets: async () => [],
+      countFacets: async () => ({
+        availability: { available: 0, soldOut: 0 },
+        categories: [],
+        artists: [],
+      }),
     });
     const app = createShopApiApp({ deps, logger: false });
     await app.ready();

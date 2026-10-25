@@ -11,10 +11,10 @@ export type ArtworkFilterGroupValue = (typeof ARTWORK_FILTER_GROUPS)[number]["va
 
 export const ARTWORK_FILTER_DEFAULT_OPEN: ArtworkFilterGroupValue[] = ["availability", "category"];
 
-export const ARTWORK_SALE_STATE_OPTIONS = [
+export const ARTWORK_AVAILABILITY_OPTIONS = [
   { value: "", label: "Any availability" },
-  { value: "for_sale", label: "For sale" },
-  { value: "sold", label: "Sold" },
+  { value: "available", label: "Available" },
+  { value: "sold_out", label: "Sold out" },
 ] as const;
 
 export const ARTWORK_SORT_OPTIONS: ReadonlyArray<{

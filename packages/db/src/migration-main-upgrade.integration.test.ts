@@ -20,7 +20,7 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
-const FINAL_FOLDER_MILLIS = 1795248000000;
+const FINAL_FOLDER_MILLIS = 1795334400000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -729,6 +729,78 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
         "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'shop_artwork' AND column_name = 'source_original_artwork_id'",
       );
       expect(columns.rows).toEqual([]);
+    });
+  });
+
+  it("keeps one waiting edition alert per email or account, allows a new one after it ends, and rolls back", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+
+      const party = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_party (display_name) VALUES ('Alert Artist') RETURNING id",
+      );
+      const artist = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_artist (party_id, slug) VALUES ($1, 'alert-artist') RETURNING id",
+        [party.rows[0]?.id],
+      );
+      const artwork = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_artwork (slug, title, artist_id, eligible_for_edition_allocation, import_key) VALUES ('alert-edition', 'Edition', $1, true, 'migration:alert-edition') RETURNING id",
+        [artist.rows[0]?.id],
+      );
+      const artworkId = artwork.rows[0]?.id;
+      const insertAlert = (email: string | null, subject: string | null) =>
+        pool.query<{ id: string }>(
+          "INSERT INTO public.shop_artwork_interest (artwork_id, intent, contact_email, identity_subject_id) VALUES ($1, 'notify_me', $2, $3) RETURNING id",
+          [artworkId, email, subject],
+        );
+
+      const guest = await insertAlert("Collector@Example.test", null);
+      // The same address in another case is the same person.
+      await expect(insertAlert("collector@example.test", null)).rejects.toThrow(
+        /shop_artwork_interest_alert_email_uid/,
+      );
+      await insertAlert("member@example.test", "subject-alert");
+      await expect(insertAlert("other@example.test", "subject-alert")).rejects.toThrow(
+        /shop_artwork_interest_alert_subject_uid/,
+      );
+
+      // A stopped alert no longer blocks a new one.
+      await pool.query(
+        "UPDATE public.shop_artwork_interest SET cancelled_at = now() WHERE id = $1",
+        [guest.rows[0]?.id],
+      );
+      await insertAlert("collector@example.test", null);
+
+      // Enquiries cannot carry alert state.
+      await expect(
+        pool.query(
+          "INSERT INTO public.shop_artwork_interest (artwork_id, intent, identity_subject_id, cancelled_at) VALUES ($1, 'enquiry', 'subject-enquiry', now())",
+          [artworkId],
+        ),
+      ).rejects.toThrow(/shop_artwork_interest_alert_columns_ck/);
+      await pool.query(
+        "INSERT INTO public.shop_artwork_interest (artwork_id, intent, identity_subject_id) VALUES ($1, 'enquiry', 'subject-enquiry')",
+        [artworkId],
+      );
+      await expect(
+        pool.query(
+          "INSERT INTO public.shop_artwork_interest (artwork_id, intent, identity_subject_id) VALUES ($1, 'enquiry', 'subject-enquiry')",
+          [artworkId],
+        ),
+      ).rejects.toThrow(/shop_artwork_interest_enquiry_subject_uid/);
+
+      await executeMigrationSql(pool, "0231_rollback.sql");
+      const columns = await pool.query(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'shop_artwork_interest' AND column_name IN ('cancelled_at', 'unsubscribe_token_hash')",
+      );
+      expect(columns.rows).toEqual([]);
+      const remaining = await pool.query<{ contact_email: string | null }>(
+        "SELECT contact_email FROM public.shop_artwork_interest WHERE intent = 'notify_me' ORDER BY contact_email",
+      );
+      expect(remaining.rows.map((row) => row.contact_email)).toEqual([
+        "collector@example.test",
+        "member@example.test",
+      ]);
     });
   });
 

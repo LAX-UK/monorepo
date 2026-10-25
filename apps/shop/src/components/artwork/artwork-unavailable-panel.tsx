@@ -1,10 +1,7 @@
-import { ArtworkNotifyMeButton } from "@/components/artwork/artwork-notify-me-button";
-import { ShopInterestOutlineLink } from "@/components/artwork/shop-interest-cta";
+import { ArtworkEditionAlert } from "@/components/artwork/artwork-edition-alert";
 import type { ArtworkUnavailableReason } from "@/lib/presenters/artwork-commerce.presenter";
 import type { ShopInterestReadResult } from "@/lib/shop-fetch-result";
 import type { ShopViewerState } from "@/lib/shop-viewer-state";
-import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
-import { MarketingBellIcon, MarketingUserIcon } from "@auction/marketing-ui";
 
 type Props = {
   viewer: ShopViewerState;
@@ -15,8 +12,9 @@ type Props = {
 
 const COPY: Record<ArtworkUnavailableReason, { title: string; description: string }> = {
   edition_sold_out: {
-    title: "This edition is sold out",
-    description: "Join the list and we will email you if an edition is released.",
+    title: "Get an email if this edition is back",
+    description:
+      "Sold editions sometimes come back, when an order is cancelled or a reserved copy is released. We will email you once if that happens.",
   },
   sold: {
     title: "Sold out",
@@ -24,69 +22,30 @@ const COPY: Record<ArtworkUnavailableReason, { title: string; description: strin
   },
 };
 
-function interestReadHint(interestRead: ShopInterestReadResult): string | null {
-  if (interestRead.status === "unauthorized") {
-    return "Sign in again to update your preference.";
-  }
-  if (
-    interestRead.status === "failed" ||
-    interestRead.status === "not_found" ||
-    interestRead.status === "commerce_unavailable"
-  ) {
-    return "We couldn't check your saved preference. You can still submit below.";
-  }
-  return null;
-}
-
+/** The sold-out next step: an edition alert that works with or without signing in. */
 export function ArtworkUnavailablePanel({ viewer, artworkSlug, reason, interestRead }: Props) {
-  const returnTo = `/artworks/${encodeURIComponent(artworkSlug)}`;
   const { title, description } = COPY[reason];
-
-  const interestStatusKnown = interestRead.status === "ok";
-  const interestSubscribed = interestStatusKnown && interestRead.data.subscribed;
-  const interestLoadFailed =
-    interestRead.status !== "ok" &&
-    interestRead.status !== "guest" &&
-    interestRead.status !== "unauthorized";
-  const interestHint = interestReadHint(interestRead);
-
-  const showInterestActions = reason !== "sold";
+  const titleId = `alert-title-${artworkSlug}`;
 
   return (
-    <div className="shop-detail__interest-panel">
-      <p className="shop-detail__interest-panel-title">{title}</p>
+    <section className="shop-detail__interest-panel" aria-labelledby={titleId}>
+      <h2 id={titleId} className="shop-detail__interest-panel-title">
+        {title}
+      </h2>
       <p className="shop-detail__interest-panel-body">{description}</p>
-      {showInterestActions ? (
-        <>
-          {interestHint ? <p className="shop-detail__interest-hint">{interestHint}</p> : null}
-          <div className="shop-detail__interest-actions">
-            {viewer.kind === "authenticated" ? (
-              interestRead.status === "unauthorized" ? (
-                <ShopInterestOutlineLink
-                  href={shopStorefrontLoginHref(returnTo)}
-                  icon={<MarketingUserIcon className="size-4" />}
-                >
-                  Sign in again
-                </ShopInterestOutlineLink>
-              ) : (
-                <ArtworkNotifyMeButton
-                  slug={artworkSlug}
-                  initialSubscribed={interestLoadFailed ? false : interestSubscribed}
-                />
-              )
-            ) : viewer.kind === "guest" ? (
-              <ShopInterestOutlineLink
-                href={shopStorefrontLoginHref(returnTo)}
-                icon={<MarketingBellIcon className="size-4" />}
-              >
-                Sign in to get notified
-              </ShopInterestOutlineLink>
-            ) : (
-              <p className="shop-detail__interest-feedback">{viewer.message}</p>
-            )}
-          </div>
-        </>
-      ) : null}
-    </div>
+      {reason === "sold" ? null : viewer.kind === "authenticated" &&
+        interestRead.status !== "unauthorized" ? (
+        <ArtworkEditionAlert
+          slug={artworkSlug}
+          viewer={{ kind: "account", email: viewer.email }}
+          initialWaiting={interestRead.status === "ok" && interestRead.data.subscribed}
+        />
+      ) : viewer.kind === "guest" || viewer.kind === "authenticated" ? (
+        // A sign-in that has lapsed can still leave an address, like a guest.
+        <ArtworkEditionAlert slug={artworkSlug} viewer={{ kind: "guest" }} />
+      ) : (
+        <p className="shop-detail__interest-feedback">{viewer.message}</p>
+      )}
+    </section>
   );
 }

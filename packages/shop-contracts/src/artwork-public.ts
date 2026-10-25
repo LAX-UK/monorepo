@@ -152,6 +152,42 @@ export const PublicArtworkObjectTypeFacetListSchema = Type.Object({
   items: Type.Array(PublicArtworkObjectTypeFacetSchema),
 });
 
+/** Catalogue availability filter: can be bought now, or sold out. */
+export const PublicArtworkAvailabilityFilterSchema = Type.Union([
+  Type.Literal("available"),
+  Type.Literal("sold_out"),
+]);
+
+const FacetCount = Type.Integer({ minimum: 0 });
+
+/**
+ * Counts beside each catalogue filter option. A group is counted with the other filters applied
+ * but not its own; options with no works are left out.
+ */
+export const PublicArtworkFacetCountsSchema = Type.Object(
+  {
+    availability: Type.Object(
+      { available: FacetCount, soldOut: FacetCount },
+      { additionalProperties: false },
+    ),
+    categories: Type.Array(
+      Type.Object(
+        { slug: Type.String({ minLength: 1 }), label: Type.String(), count: FacetCount },
+        { additionalProperties: false },
+      ),
+    ),
+    artists: Type.Array(
+      Type.Object(
+        { slug: Type.String({ minLength: 1 }), name: Type.String(), count: FacetCount },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+export type PublicArtworkFacetCounts = typeof PublicArtworkFacetCountsSchema.static;
+
 export const ShopApiErrorBodySchema = Type.Object({
   code: Type.String(),
   message: Type.String(),

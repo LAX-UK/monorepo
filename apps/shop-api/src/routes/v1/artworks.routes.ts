@@ -1,5 +1,7 @@
 import {
+  PublicArtworkAvailabilityFilterSchema,
   PublicArtworkDetailSchema,
+  PublicArtworkFacetCountsSchema,
   PublicArtworkListSchema,
   PublicArtworkObjectTypeFacetListSchema,
   PublicArtworkSaleStateSchema,
@@ -9,12 +11,12 @@ import {
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
+import type { Static } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import {
   ARTWORK_OBJECT_TYPES,
   ARTWORK_RARITIES,
 } from "../../application/artwork-catalogue-filters.js";
-import type { ArtworkSaleStateFilter } from "../../application/artwork-catalogue-filters.js";
 import type { CatalogueRoutesDeps } from "../../catalogue-route-deps.js";
 import { notFound } from "../../errors/shop-api-error.js";
 import { presentArtworkDetail, presentArtworkList } from "../../presenters/catalogue.presenter.js";
@@ -50,6 +52,8 @@ const ListQuerySchema = Type.Object({
       description: "`available` returns every work that is not sold (for sale or POA).",
     }),
   ),
+  /** `available` can be bought now; `sold_out` cannot (a sold edition keeps `for_sale`). */
+  availability: Type.Optional(PublicArtworkAvailabilityFilterSchema),
   editionEligible: Type.Optional(Type.Boolean()),
   type: Type.Optional(PublicArtworkTypeFilterSchema),
   minPrice: Type.Optional(Type.Integer({ minimum: 0 })),
@@ -61,6 +65,34 @@ const ListQuerySchema = Type.Object({
 /** The Shop channel sells limited editions only; originals are served to the lax.art channel. */
 function isShopChannel(salesChannel: "shop" | "art" | undefined): boolean {
   return salesChannel === "shop";
+}
+
+type ListQuery = Static<typeof ListQuerySchema>;
+
+/** The catalogue filters a list or facet request asks for. */
+function filterFromQuery(query: ListQuery) {
+  return {
+    ...(query.placement !== undefined ? { placement: query.placement } : {}),
+    ...(query.categorySlug !== undefined ? { categorySlug: query.categorySlug } : {}),
+    ...(query.artistSlug !== undefined ? { artistSlugs: splitCommaList(query.artistSlug) } : {}),
+    ...(query.relatedTo !== undefined ? { relatedToSlug: query.relatedTo } : {}),
+    ...(query.sourceOriginal !== undefined ? { sourceOriginalSlug: query.sourceOriginal } : {}),
+    ...(query.objectType !== undefined ? { objectTypes: splitCommaList(query.objectType) } : {}),
+    ...(query.rarity !== undefined ? { rarities: splitCommaList(query.rarity) } : {}),
+    ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
+    ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
+    ...(query.availability !== undefined ? { availability: query.availability } : {}),
+    ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),
+    ...(isShopChannel(query.salesChannel)
+      ? { artworkType: "edition" as const }
+      : query.type !== undefined
+        ? { artworkType: query.type }
+        : {}),
+    ...(query.minPrice !== undefined ? { minPricePence: query.minPrice } : {}),
+    ...(query.maxPrice !== undefined ? { maxPricePence: query.maxPrice } : {}),
+    ...(query.sort !== undefined ? { sort: query.sort } : {}),
+    ...(query.q !== undefined ? { q: query.q } : {}),
+  };
 }
 
 export async function registerArtworkRoutes(app: FastifyInstance, catalogue: CatalogueRoutesDeps) {
@@ -77,56 +109,36 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
       },
     },
     async (request) => {
-      const query = request.query as {
-        limit?: number;
-        cursor?: string;
-        placement?: "featured_originals" | "featured_prints";
-        categorySlug?: string;
-        artistSlug?: string;
-        relatedTo?: string;
-        sourceOriginal?: string;
-        objectType?: string;
-        rarity?: string;
-        salesChannel?: "shop" | "art";
-        saleState?: ArtworkSaleStateFilter;
-        editionEligible?: boolean;
-        type?: "all" | "original" | "edition";
-        minPrice?: number;
-        maxPrice?: number;
-        sort?: "newest" | "titleAsc" | "priceAsc" | "priceDesc";
-        q?: string;
-      };
-      const filter = {
-        ...(query.placement !== undefined ? { placement: query.placement } : {}),
-        ...(query.categorySlug !== undefined ? { categorySlug: query.categorySlug } : {}),
-        ...(query.artistSlug !== undefined
-          ? { artistSlugs: splitCommaList(query.artistSlug) }
-          : {}),
-        ...(query.relatedTo !== undefined ? { relatedToSlug: query.relatedTo } : {}),
-        ...(query.sourceOriginal !== undefined ? { sourceOriginalSlug: query.sourceOriginal } : {}),
-        ...(query.objectType !== undefined
-          ? { objectTypes: splitCommaList(query.objectType) }
-          : {}),
-        ...(query.rarity !== undefined ? { rarities: splitCommaList(query.rarity) } : {}),
-        ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
-        ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
-        ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),
-        ...(isShopChannel(query.salesChannel)
-          ? { artworkType: "edition" as const }
-          : query.type !== undefined
-            ? { artworkType: query.type }
-            : {}),
-        ...(query.minPrice !== undefined ? { minPricePence: query.minPrice } : {}),
-        ...(query.maxPrice !== undefined ? { maxPricePence: query.maxPrice } : {}),
-        ...(query.sort !== undefined ? { sort: query.sort } : {}),
-        ...(query.q !== undefined ? { q: query.q } : {}),
-      };
+      const query = request.query as ListQuery & { limit?: number; cursor?: string };
+      const filter = filterFromQuery(query);
       const input = {
         limit: query.limit ?? 20,
         ...(query.cursor !== undefined ? { cursor: query.cursor } : {}),
         ...(Object.keys(filter).length > 0 ? { filter } : {}),
       };
       return presentArtworkList(await catalogue.listPublicArtworks(input));
+    },
+  );
+
+  app.get(
+    "/v1/artwork-facets",
+    {
+      schema: {
+        tags: ["catalogue"],
+        querystring: ListQuerySchema,
+        response: {
+          200: PublicArtworkFacetCountsSchema,
+          400: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      const {
+        sort: _sort,
+        placement: _placement,
+        ...filter
+      } = filterFromQuery(request.query as ListQuery);
+      return catalogue.countArtworkFacets(filter);
     },
   );
 
