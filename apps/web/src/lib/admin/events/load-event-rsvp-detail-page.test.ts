@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadAdminEventRsvpDetailPage } from "./load-event-rsvp-detail-page";
 
-const { getDetail, getRsvps, getGuests } = vi.hoisted(() => ({
+const { getDetail, getRsvps, getGuests, getSale } = vi.hoisted(() => ({
   getDetail: vi.fn(),
   getRsvps: vi.fn(),
   getGuests: vi.fn(),
+  getSale: vi.fn(),
+}));
+
+vi.mock("@/lib/data/http/admin-sale-registrations.reader", () => ({
+  getAdminSaleById: getSale,
 }));
 
 vi.mock("@/lib/data/http/onsite-event.server", () => ({
@@ -25,6 +30,7 @@ describe("loadAdminEventRsvpDetailPage", () => {
       saleId: "sale-1",
     });
     getRsvps.mockResolvedValue([{ id: "rsvp-1" }]);
+    getSale.mockResolvedValue({ sale: { title: "Hybrid sale" } });
     getGuests.mockResolvedValue({
       counts: { rsvped: 1, galaCheckedIn: 0, salePresent: 0, paddled: 0 },
     });
@@ -36,7 +42,18 @@ describe("loadAdminEventRsvpDetailPage", () => {
     expect(model.detail?.title).toBe("Preview Night");
     expect(model.rsvps).toHaveLength(1);
     expect(model.venueDayCounts?.rsvped).toBe(1);
+    expect(model.linkedSaleTitle).toBe("Hybrid sale");
     expect(model.loadError).toBeNull();
+  });
+
+  it("keeps the page when the linked sale or its counts cannot be read", async () => {
+    getSale.mockRejectedValue(new Error("down"));
+    getGuests.mockRejectedValue(new Error("down"));
+    const model = await loadAdminEventRsvpDetailPage({ slug: "preview-night" });
+    expect(model.notFound).toBe(false);
+    expect(model.detail?.title).toBe("Preview Night");
+    expect(model.linkedSaleTitle).toBeNull();
+    expect(model.venueDayCounts).toBeNull();
   });
 
   it("returns notFound when event is missing", async () => {

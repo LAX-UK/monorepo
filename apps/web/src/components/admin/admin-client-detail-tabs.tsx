@@ -1,8 +1,4 @@
 import { AdminClientArtistProfilesPanel } from "@/components/admin/admin-client-artist-profiles-panel";
-import {
-  AdminDetailTabAttentionBadge,
-  AdminDetailTabCountBadge,
-} from "@/components/admin/admin-detail-tab-badges";
 import { AdminUserAmlPanel } from "@/components/admin/admin-user-aml-panel";
 import {
   AdminUserBidsPanel,
@@ -11,155 +7,84 @@ import {
   AdminUserWonLotsPanel,
 } from "@/components/admin/admin-user-commerce-panel";
 import { AdminUserKycHistoryPanel } from "@/components/admin/admin-user-kyc-history-panel";
-import {
-  type AdminUserOverviewSection,
-  AdminUserOverviewSections,
-} from "@/components/admin/admin-user-overview-sections";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
-import { AdminUserReadinessPanel } from "@/components/admin/admin-user-readiness-panel";
 import { AdminUserSofPanel } from "@/components/admin/admin-user-sof-panel";
-import { PeopleOverviewTab } from "@/components/admin/people/people-overview-tab";
+import type { PeopleDetailTab } from "@/components/admin/people-detail-shell";
 import type { AdminClientDetailBundle } from "@/lib/admin/load-admin-client-detail";
-import { buildPeopleOverviewViewModel } from "@/lib/data/view-models/people-overview.vm";
-import type { ReactNode } from "react";
+import { buildClientOverviewStats } from "@/lib/data/view-models/people-overview.vm";
+import { StatGrid } from "@auction/staff-ui";
 
-export type AdminClientDetailTab = {
-  id: string;
-  label: string;
-  content: ReactNode;
-  badge?: ReactNode;
-  count?: number;
-};
+export type AdminClientDetailTab = PeopleDetailTab;
 
-function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOverviewSection[] {
-  const {
-    user,
-    linkedArtists,
-    legalEntities,
-    kycSessions,
-    amlScreenings,
-    canViewAml,
-    canViewKyc,
-    amlScreeningBySessionId,
-    readinessSnapshot,
-    sofCases,
-    canViewSof,
-  } = bundle;
-
-  return [
-    {
-      id: "readiness",
-      label: "Readiness",
-      content: <AdminUserReadinessPanel snapshot={readinessSnapshot} />,
-    },
-    {
-      id: "profile",
-      label: "Profile",
-      content: <AdminUserProfilePanel user={user} />,
-    },
-    ...(canViewKyc
-      ? [
-          {
-            id: "kyc-history",
-            label: "KYC",
-            content: (
-              <AdminUserKycHistoryPanel
-                sessions={kycSessions}
-                currentKycSessionId={user.currentKycSessionId}
-                amlScreeningBySessionId={amlScreeningBySessionId}
-              />
-            ),
-          } satisfies AdminUserOverviewSection,
-        ]
-      : []),
-    ...(canViewAml
-      ? [
-          {
-            id: "aml",
-            label: "AML",
-            content: <AdminUserAmlPanel screenings={amlScreenings} />,
-          } satisfies AdminUserOverviewSection,
-        ]
-      : []),
-    ...(canViewSof
-      ? [
-          {
-            id: "sof",
-            label: "SoF",
-            content: <AdminUserSofPanel cases={sofCases} />,
-          } satisfies AdminUserOverviewSection,
-        ]
-      : []),
-    {
-      id: "artist-profiles",
-      label: "Artists",
-      content: (
+function overviewTab(bundle: AdminClientDetailBundle): PeopleDetailTab {
+  const { user, payments, summaryMetrics } = bundle;
+  return {
+    id: "overview",
+    label: "Overview",
+    content: (
+      <>
+        <StatGrid
+          label="Client summary"
+          items={buildClientOverviewStats({ summaryMetrics, payments })}
+        />
+        <AdminUserProfilePanel user={user} />
+        {bundle.canViewKyc ? (
+          <AdminUserKycHistoryPanel
+            sessions={bundle.kycSessions}
+            currentKycSessionId={user.currentKycSessionId}
+            amlScreeningBySessionId={bundle.amlScreeningBySessionId}
+          />
+        ) : null}
+        {bundle.canViewAml ? <AdminUserAmlPanel screenings={bundle.amlScreenings} /> : null}
+        {bundle.canViewSof ? <AdminUserSofPanel cases={bundle.sofCases} /> : null}
         <AdminClientArtistProfilesPanel
           userId={user.id}
           userName={user.name}
-          linkedArtists={linkedArtists}
+          linkedArtists={bundle.linkedArtists}
+          canCreate={bundle.canWriteArtists}
         />
-      ),
-    },
-    {
-      id: "legal-entities",
-      label: "Entities",
-      content: <AdminUserLegalEntitiesPanel legalEntities={legalEntities} />,
-    },
-  ];
+        <AdminUserLegalEntitiesPanel legalEntities={bundle.legalEntities} />
+      </>
+    ),
+  };
 }
 
-/** Declarative tab definitions for the admin client detail page (OCP extension point). */
-export function buildAdminClientDetailTabs(
-  bundle: AdminClientDetailBundle,
-): AdminClientDetailTab[] {
-  const { payments, wonLots, bids, attentionItems, canViewFinance, canViewBids } = bundle;
-  const overviewSections = buildOverviewSections(bundle);
-
-  const overviewVm = buildPeopleOverviewViewModel({
-    summaryMetrics: bundle.summaryMetrics,
-    readinessSnapshot: bundle.readinessSnapshot,
-    attentionCount: attentionItems.length,
-    payments: bundle.payments,
-  });
-
-  const tabs: AdminClientDetailTab[] = [
-    {
-      id: "overview",
-      label: "Overview",
-      badge: attentionItems.length > 0 ? <AdminDetailTabAttentionBadge /> : undefined,
-      content: (
-        <PeopleOverviewTab kpiTiles={overviewVm.kpiTiles} ariaLabel="Client summary">
-          <AdminUserOverviewSections sections={overviewSections} />
-        </PeopleOverviewTab>
-      ),
-    },
+/**
+ * The tabs of a client's page: an overview, and the heavier lists (won lots, bids, payments)
+ * each on its own `?tab=` URL, left out when the viewer's role cannot see them.
+ */
+export function buildAdminClientDetailTabs(bundle: AdminClientDetailBundle): PeopleDetailTab[] {
+  const tabs: PeopleDetailTab[] = [
+    overviewTab(bundle),
     {
       id: "won-lots",
       label: "Won lots",
-      badge: <AdminDetailTabCountBadge count={wonLots.length} />,
-      count: wonLots.length,
-      content: <AdminUserWonLotsPanel wonLots={wonLots} />,
+      count: bundle.wonLots.length,
+      content: <AdminUserWonLotsPanel wonLots={bundle.wonLots} />,
     },
   ];
 
-  if (canViewBids) {
+  if (bundle.canViewBids) {
     tabs.push({
       id: "bids",
       label: "Bids",
-      badge: <AdminDetailTabCountBadge count={bids.length} />,
-      count: bids.length,
-      content: <AdminUserBidsPanel bids={bids} clientLabel={bundle.user.name} />,
+      count: bundle.bidsTotal,
+      content: (
+        <AdminUserBidsPanel
+          bids={bundle.bids}
+          total={bundle.bidsTotal}
+          clientLabel={bundle.user.name}
+        />
+      ),
     });
   }
 
-  if (canViewFinance) {
+  if (bundle.canViewFinance) {
     tabs.push({
       id: "payments",
       label: "Payments",
-      badge: <AdminDetailTabCountBadge count={payments.length} />,
-      count: payments.length,
-      content: <AdminUserPaymentsPanel payments={payments} />,
+      count: bundle.payments.length,
+      content: <AdminUserPaymentsPanel payments={bundle.payments} />,
     });
   }
 

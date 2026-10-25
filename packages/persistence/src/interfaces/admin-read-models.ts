@@ -32,6 +32,8 @@ export type AuditLogRecord = {
 export type AuditLogSearchInput = {
   limit: number;
   offset: number;
+  /** Order by time of event; defaults to `at_desc` (newest first). */
+  sort?: "at_desc" | "at_asc";
   /** Matches the event type, the entity id and the actor's name or email. */
   q?: string;
   /**

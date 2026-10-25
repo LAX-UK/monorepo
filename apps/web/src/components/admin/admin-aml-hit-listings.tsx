@@ -1,89 +1,79 @@
+import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
 import { amlWatchlistCategoryLabel } from "@/lib/admin/status-badge-variants";
 import type { AdminAmlScreeningHitRow } from "@/lib/data/http/compliance.server";
+import { type KeyValueItem, KeyValueList } from "@auction/staff-ui";
 
 type Props = {
   hits: AdminAmlScreeningHitRow[];
-  /** Compact layout for client profile panels (fewer hits, shorter snippets). */
+  /** Fewer hits and listings, for a client's page; the AML list has the full detail. */
   compact?: boolean;
 };
 
+function hitItems(hit: AdminAmlScreeningHitRow, compact: boolean): KeyValueItem[] {
+  const listings = Object.entries(hit.listings).flatMap(([category, entries]) =>
+    entries && entries.length > 0
+      ? [
+          {
+            label: amlWatchlistCategoryLabel[category] ?? category,
+            value: (
+              <ul className="flex flex-col gap-1.5">
+                {(compact ? entries.slice(0, 2) : entries).map((entry, index) => (
+                  <li key={`${entry.sourceName}-${index}`}>
+                    <span>{entry.sourceName}</span>
+                    {entry.date ? <span className="text-staff-muted">, {entry.date}</span> : null}
+                    {entry.snippet ? (
+                      <span className="block text-staff-muted">{entry.snippet}</span>
+                    ) : null}
+                    {entry.sourceUrl ? (
+                      <a
+                        href={entry.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2"
+                      >
+                        View source
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ),
+          },
+        ]
+      : [],
+  );
+  return [
+    { label: "Match types", value: hit.matchTypes.join(", ") || null },
+    { label: "Countries", value: hit.countries.join(", ") || null },
+    { label: "Date of birth", value: formatBirthDate(hit.dateOfBirth) },
+    ...listings,
+  ];
+}
+
+/** The people and listings a watchlist screening matched, one block per hit. */
 export function AdminAmlHitListings({ hits, compact = false }: Props) {
   if (hits.length === 0) {
-    return <p className="text-sm text-on-surface-variant">No hit detail recorded.</p>;
+    return <p className="text-staff-sm text-staff-muted">No hit detail recorded.</p>;
   }
-
-  const visibleHits = compact ? hits.slice(0, 2) : hits;
+  const visible = compact ? hits.slice(0, 2) : hits;
+  const hidden = hits.length - visible.length;
 
   return (
-    <div className={compact ? "space-y-3" : "space-y-4"}>
-      {visibleHits.map((hit, index) => (
+    <div className="flex flex-col gap-3">
+      {visible.map((hit, index) => (
         <div
           key={`${hit.matchedName ?? "hit"}-${index}`}
-          className="rounded-md border border-outline-variant/40 p-3"
+          className="rounded-staff-sm border border-staff-line px-3 py-2"
         >
-          <p className="font-medium text-sm">{hit.matchedName ?? "Unknown matched name"}</p>
-          {hit.matchTypes.length > 0 ? (
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Match types: {hit.matchTypes.join(", ")}
-            </p>
-          ) : null}
-          {hit.countries.length > 0 ? (
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Countries: {hit.countries.join(", ")}
-            </p>
-          ) : null}
-          {hit.dateOfBirth ? (
-            <p className="mt-1 text-xs text-on-surface-variant">DOB: {hit.dateOfBirth}</p>
-          ) : null}
-          <div className="mt-3 space-y-2">
-            {Object.entries(hit.listings).map(([category, listings]) =>
-              listings && listings.length > 0 ? (
-                <div key={category}>
-                  <p className="font-label text-[10px] uppercase text-on-surface-variant">
-                    {amlWatchlistCategoryLabel[category] ?? category}
-                  </p>
-                  <ul className="mt-1 space-y-2 text-sm">
-                    {(compact ? listings.slice(0, 2) : listings).map((listing, listingIndex) => (
-                      <li key={`${listing.sourceName}-${listingIndex}`}>
-                        <p>{listing.sourceName}</p>
-                        {listing.date ? (
-                          <p className="text-xs text-on-surface-variant">{listing.date}</p>
-                        ) : null}
-                        {listing.snippet ? (
-                          <p
-                            className={
-                              compact
-                                ? "mt-1 line-clamp-2 text-xs text-on-surface-variant"
-                                : "mt-1 text-xs text-on-surface-variant"
-                            }
-                          >
-                            {listing.snippet}
-                          </p>
-                        ) : null}
-                        {listing.sourceUrl ? (
-                          <a
-                            href={listing.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-link underline"
-                          >
-                            View source
-                          </a>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null,
-            )}
-          </div>
+          <p className="py-1 text-staff-sm font-medium text-staff-fg">
+            {hit.matchedName ?? "Name not given"}
+          </p>
+          <KeyValueList items={hitItems(hit, compact)} />
         </div>
       ))}
-      {compact && hits.length > visibleHits.length ? (
-        <p className="text-xs text-on-surface-variant">
-          +{hits.length - visibleHits.length} more hit
-          {hits.length - visibleHits.length === 1 ? "" : "s"} — open the screenings list for full
-          detail.
+      {hidden > 0 ? (
+        <p className="text-staff-sm text-staff-muted">
+          {hidden} more {hidden === 1 ? "hit" : "hits"}. Open the AML list for the full detail.
         </p>
       ) : null}
     </div>

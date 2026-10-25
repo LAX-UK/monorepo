@@ -26,7 +26,7 @@ export function buildStaffListPageModel(sp: StaffListSearchParams) {
 
   return {
     basePath: STAFF_LIST_PATH,
-    query: { offset, limit },
+    query: { offset, limit, sort: listFilters.sort },
     listQueryParams,
     listFilters,
     selectedStaffId,

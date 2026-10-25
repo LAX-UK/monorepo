@@ -124,7 +124,7 @@ export interface IAdminInvitationApplicationService {
   ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>>;
   getPage(
     filters: import("@auction/persistence/interfaces").InvitationAdminListFilters,
-    page: { limit: number; offset: number },
+    page: import("@auction/persistence/interfaces").InvitationAdminListPage,
   ): Promise<AdminInvitationListPage>;
   revoke(input: { actorUserId: string; invitationId: string }): Promise<
     Result<void, InvitationError>

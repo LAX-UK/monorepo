@@ -112,7 +112,11 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
       .from(domainEvent)
       .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, domainEvent.actorUserId))
       .leftJoin(bidUserProfile, eq(bidUserProfile.userId, domainEvent.actorUserId))
-      .orderBy(desc(domainEvent.occurredAt), desc(domainEvent.id))
+      .orderBy(
+        ...(input.sort === "at_asc"
+          ? [asc(domainEvent.occurredAt), asc(domainEvent.id)]
+          : [desc(domainEvent.occurredAt), desc(domainEvent.id)]),
+      )
       .limit(input.limit)
       .offset(input.offset);
     const rows = where ? await rowsQuery.where(where) : await rowsQuery;

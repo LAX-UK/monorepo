@@ -1,3 +1,4 @@
+import type { AuditLogFilters } from "@/lib/admin/audit/audit-log-search";
 import type { AuditLogRowModel } from "@/lib/admin/audit/audit-log.vm";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -21,7 +22,6 @@ const row: AuditLogRowModel = {
     type: "lot",
     typeLabel: "Lot",
     id: "0b7e4a52-8b3c",
-    shortId: "0b7e4a52",
     href: "/admin/lots/0b7e4a52-8b3c",
   },
   summary: "Status: consigned → withdrawn",
@@ -37,7 +37,7 @@ const row: AuditLogRowModel = {
   },
 };
 
-const filters = {
+const filters: AuditLogFilters = {
   view: null,
   q: "",
   actor: "",
@@ -46,6 +46,7 @@ const filters = {
   action: "",
   from: "",
   to: "",
+  sort: "at_desc",
   offset: 0,
 };
 
@@ -72,7 +73,7 @@ describe("AuditLogList", () => {
     expect(within(grid).getByText("Ada Staff")).toBeInTheDocument();
     expect(within(grid).getByText("ada@example.com")).toBeInTheDocument();
     expect(within(grid).getByText("Withdrawal declined")).toBeInTheDocument();
-    expect(within(grid).getByRole("link", { name: "0b7e4a52…" })).toHaveAttribute(
+    expect(within(grid).getByRole("link", { name: "Lot" })).toHaveAttribute(
       "href",
       "/admin/lots/0b7e4a52-8b3c",
     );

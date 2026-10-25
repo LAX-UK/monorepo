@@ -31,6 +31,7 @@ export async function loadAdminInvitationsListPage(sp: InvitationsListSearchPara
         ? await findAdminInvitationInList(selectedId, {
             pageSize: model.query.limit,
             knownTotal: page.total,
+            sort: model.listQueryParams.sort,
             ...(model.listQueryParams.status ? { status: model.listQueryParams.status } : {}),
           })
         : null;

@@ -1,76 +1,69 @@
+import { buildClientSummaryMetrics, sumCapturedPayments } from "@/lib/admin/admin-user-metrics";
 import { describe, expect, it } from "vitest";
-import { buildPeopleOverviewViewModel } from "./people-overview.vm";
+import { buildClientOverviewStats } from "./people-overview.vm";
 
-describe("buildPeopleOverviewViewModel", () => {
-  it("builds client health KPI tiles", () => {
-    const vm = buildPeopleOverviewViewModel({
-      summaryMetrics: {
-        lifetimeSpend: 1250.5,
-        lotsWon: 3,
-        submissionsCount: 2,
-        memberSinceIso: "2024-06-01T00:00:00.000Z",
-      },
-      readinessSnapshot: {
-        identity: {
-          emailVerified: true,
-          kycStatus: "approved",
-          securityStatusAvailable: true,
-          twoFactorEnabled: true,
-        },
-        compliance: { amlHoldActive: false, amlReviewPending: false, latestAmlDecision: null },
-        commerce: {
-          legalEntityCount: 1,
-          connectGapsCount: 0,
-          lotsWon: 3,
-          lifetimeSpendLabel: "£1,250.50",
-        },
-        nextAction: { label: "Review", href: "?tab=overview", tone: "ready" },
-      },
-      attentionCount: 2,
-      payments: [
-        {
-          id: "pay_1",
-          lotId: "lot_1",
-          buyerId: "u1",
-          sellerId: "s1",
-          amount: "100.00",
-          platformFee: "0",
-          status: "pending",
-          createdAt: new Date("2024-06-02T00:00:00.000Z"),
-          xeroInvoiceNumber: null,
-          xeroOnlineInvoiceUrl: null,
-          xeroSyncStatus: null,
-          xeroLastError: null,
-        },
-      ],
-    });
+const summaryMetrics = {
+  lifetimeSpend: 1250.5,
+  lotsWon: 3,
+  submissionsCount: 2,
+  memberSinceIso: "2024-06-01T00:00:00.000Z",
+};
 
-    expect(vm.kpiTiles).toHaveLength(6);
-    expect(vm.kpiTiles.map((tile) => tile.id)).toEqual([
-      "lifetime",
-      "outstanding",
-      "completion",
-      "won",
-      "cases",
-      "submissions",
-    ]);
-    expect(vm.kpiTiles[1]?.value).not.toBe("—");
-    expect(vm.kpiTiles[2]?.value).toBe("100%");
+const pending = {
+  id: "pay_1",
+  lotId: "lot_1",
+  buyerId: "u1",
+  sellerId: "s1",
+  amount: "100.00",
+  platformFee: "0",
+  status: "pending" as const,
+  createdAt: new Date("2024-06-02T00:00:00.000Z"),
+  xeroInvoiceNumber: null,
+  xeroOnlineInvoiceUrl: null,
+  xeroSyncStatus: null,
+  xeroLastError: null,
+};
+
+describe("buildClientOverviewStats", () => {
+  it("gives the four headline numbers with what is owed", () => {
+    const stats = buildClientOverviewStats({ summaryMetrics, payments: [pending] });
+
+    expect(stats.map((stat) => stat.id)).toEqual(["lifetime", "outstanding", "won", "submissions"]);
+    expect(stats[0]?.value).toContain("1,250.50");
+    expect(stats[1]?.value).toContain("100.00");
+    expect(stats[1]?.hint).toBe("Payment due");
+    expect(stats[2]?.value).toBe("3");
   });
 
-  it("builds staff KPI tiles without commerce metrics", () => {
-    const vm = buildPeopleOverviewViewModel({
-      isStaff: true,
-      summaryMetrics: {
-        lifetimeSpend: null,
-        lotsWon: null,
-        submissionsCount: null,
-        memberSinceIso: "2024-01-01T00:00:00.000Z",
-      },
-      attentionCount: 0,
+  it("shows a dash rather than zero for what is not known", () => {
+    const stats = buildClientOverviewStats({
+      summaryMetrics: { ...summaryMetrics, lifetimeSpend: null, lotsWon: null },
     });
 
-    expect(vm.kpiTiles.length).toBe(3);
-    expect(vm.kpiTiles.some((tile) => tile.id === "member")).toBe(true);
+    expect(stats[0]?.value).toBe("—");
+    expect(stats[1]?.value).toBe("—");
+    expect(stats[1]?.hint).toBe("Nothing due");
+    expect(stats[2]?.value).toBe("—");
+  });
+
+  it("counts only captured payments as paid, so what is owed is never added twice", () => {
+    const payments = [
+      { ...pending, id: "pay_captured", amount: "4000.00", status: "captured" as const },
+      { ...pending, id: "pay_pending", amount: "1810.00" },
+    ];
+    const lifetimeSpend = sumCapturedPayments(payments);
+    const stats = buildClientOverviewStats({
+      summaryMetrics: buildClientSummaryMetrics({
+        lifetimeSpend,
+        lotsWon: 2,
+        submissionsCount: 0,
+        memberSinceIso: "2024-06-01T00:00:00.000Z",
+      }),
+      payments,
+    });
+
+    expect(stats[0]).toMatchObject({ label: "Paid to date", hint: "Captured payments" });
+    expect(stats[0]?.value).toContain("4,000.00");
+    expect(stats[1]?.value).toContain("1,810.00");
   });
 });

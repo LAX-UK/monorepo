@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_ADMIN_INVITATIONS_LIST_SUMMARY,
+  buildAdminInvitationsSearchParams,
   parseAdminInvitationsPageBody,
 } from "./invitations.shared";
 
@@ -71,5 +72,16 @@ describe("parseAdminInvitationsPageBody", () => {
         { limit: 50, offset: 0 },
       ),
     ).toThrow("Invalid invitations list total in API response");
+  });
+});
+
+describe("buildAdminInvitationsSearchParams", () => {
+  it("sends a non-default sort and omits the default", () => {
+    expect(
+      buildAdminInvitationsSearchParams({ limit: 50, offset: 0, sort: "email_asc" }).get("sort"),
+    ).toBe("email_asc");
+    expect(
+      buildAdminInvitationsSearchParams({ limit: 50, offset: 0, sort: "created_desc" }).has("sort"),
+    ).toBe(false);
   });
 });

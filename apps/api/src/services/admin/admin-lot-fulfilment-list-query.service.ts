@@ -1,4 +1,5 @@
 import type {
+  AdminLotFulfilmentListSort,
   AdminLotFulfilmentListSummary,
   ILotFulfilmentRepository,
   LotFulfilmentListRow,
@@ -18,6 +19,7 @@ export type AdminLotFulfilmentListQueryFilter = {
   status?: LotFulfilmentRow["status"];
   limit: number;
   offset: number;
+  sort?: AdminLotFulfilmentListSort;
 };
 
 /** Paginated admin lot fulfilment queue read model (no mutation logic). */
@@ -37,6 +39,7 @@ export class AdminLotFulfilmentListQueryService {
         ...listFilter,
         limit: filter.limit,
         offset: filter.offset,
+        ...(filter.sort !== undefined ? { sort: filter.sort } : {}),
       }),
       this.fulfilment.countMatching(listFilter),
       this.fulfilment.summarizeForAdmin(baseFilter),

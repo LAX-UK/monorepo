@@ -1,23 +1,24 @@
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 import { signupPersonaFilterLabel } from "@/lib/admin/signup-persona-presenter";
+import { staffIdentityStatus } from "@/lib/admin/staff-kit-status";
 import type { UsersListFilters } from "@/lib/admin/users-list-query";
+import { formatStaffDay } from "@auction/staff-ui";
 
-const USER_SORT_LABELS: Record<string, string> = {
-  created_desc: "Newest first",
-  created_asc: "Oldest first",
-  name_asc: "Name A–Z",
-  name_desc: "Name Z–A",
-  kyc_status: "KYC status",
-};
+function identityLabel(status: string): string {
+  return staffIdentityStatus(status).label;
+}
 
-const KYC_STATUS_LABELS: Record<string, string> = {
-  unverified: "Unverified",
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-};
+function dayRangeLabel(from: string | undefined, to: string | undefined): string {
+  if (from && to) return `${formatStaffDay(from)} to ${formatStaffDay(to)}`;
+  if (from) return `from ${formatStaffDay(from)}`;
+  return `until ${formatStaffDay(to ?? "")}`;
+}
 
+/**
+ * The filters in force as chips. The account standing is a view tab and the sort shows in the
+ * column header, so neither is a chip.
+ */
 export function buildUsersActiveFilterChips(
   basePath: string,
   sp: SearchParams,
@@ -32,19 +33,6 @@ export function buildUsersActiveFilterChips(
       clearHref: omitParamsHref(basePath, sp, ["q"]),
     });
   }
-  if (filters.accountStatus) {
-    chips.push({
-      id: "status",
-      label: `Status: ${filters.accountStatus}`,
-      clearHref: omitParamsHref(basePath, sp, ["status", "suspended"]),
-    });
-  } else if (filters.suspendedOnly) {
-    chips.push({
-      id: "suspended",
-      label: "Suspended only",
-      clearHref: omitParamsHref(basePath, sp, ["suspended"]),
-    });
-  }
   if (filters.emailVerified === true) {
     chips.push({
       id: "emailVerified",
@@ -54,27 +42,27 @@ export function buildUsersActiveFilterChips(
   } else if (filters.emailVerified === false) {
     chips.push({
       id: "emailVerified",
-      label: "Email unverified",
+      label: "Email not verified",
       clearHref: omitParamsHref(basePath, sp, ["emailVerified"]),
     });
   }
   if (filters.kycStatuses?.length) {
     chips.push({
       id: "kycStatuses",
-      label: `KYC: ${filters.kycStatuses.map((s) => KYC_STATUS_LABELS[s] ?? s).join(", ")}`,
+      label: `Identity: ${filters.kycStatuses.map(identityLabel).join(", ")}`,
       clearHref: omitParamsHref(basePath, sp, ["kycStatuses", "kycStatus"]),
     });
   } else if (filters.kycStatus) {
     chips.push({
       id: "kycStatus",
-      label: `KYC: ${KYC_STATUS_LABELS[filters.kycStatus] ?? filters.kycStatus}`,
+      label: `Identity: ${identityLabel(filters.kycStatus)}`,
       clearHref: omitParamsHref(basePath, sp, ["kycStatus", "kycStatuses"]),
     });
   }
   if (filters.persona) {
     chips.push({
       id: "persona",
-      label: `Persona: ${signupPersonaFilterLabel(filters.persona)}`,
+      label: `Signed up as: ${signupPersonaFilterLabel(filters.persona)}`,
       clearHref: omitParamsHref(basePath, sp, ["persona"]),
     });
   }
@@ -101,24 +89,16 @@ export function buildUsersActiveFilterChips(
   if (filters.createdFrom || filters.createdTo) {
     chips.push({
       id: "created",
-      label: `Joined: ${filters.createdFrom ?? "…"} – ${filters.createdTo ?? "…"}`,
+      label: `Joined ${dayRangeLabel(filters.createdFrom, filters.createdTo)}`,
       clearHref: omitParamsHref(basePath, sp, ["createdFrom", "createdTo"]),
     });
   }
   if (filters.kycVerifiedFrom || filters.kycVerifiedTo) {
     chips.push({
       id: "kycVerified",
-      label: `KYC verified: ${filters.kycVerifiedFrom ?? "…"} – ${filters.kycVerifiedTo ?? "…"}`,
+      label: `Identity verified ${dayRangeLabel(filters.kycVerifiedFrom, filters.kycVerifiedTo)}`,
       clearHref: omitParamsHref(basePath, sp, ["kycVerifiedFrom", "kycVerifiedTo"]),
     });
   }
-  if (filters.sort && filters.sort !== "created_desc") {
-    chips.push({
-      id: "sort",
-      label: `Sort: ${USER_SORT_LABELS[filters.sort] ?? filters.sort}`,
-      clearHref: omitParamsHref(basePath, sp, ["sort"]),
-    });
-  }
-
   return chips;
 }

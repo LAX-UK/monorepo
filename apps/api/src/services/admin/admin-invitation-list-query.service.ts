@@ -1,6 +1,7 @@
 import type {
   IUserInvitationRepository,
   InvitationAdminListFilters,
+  InvitationAdminListPage,
   InvitationAdminListRow,
 } from "@auction/persistence/interfaces";
 
@@ -24,7 +25,7 @@ export class AdminInvitationListQueryService {
 
   async getPage(
     filters: InvitationAdminListFilters,
-    page: { limit: number; offset: number },
+    page: InvitationAdminListPage,
   ): Promise<AdminInvitationListPage> {
     const [rows, counts] = await Promise.all([
       this.invites.listAdmin(filters, page),

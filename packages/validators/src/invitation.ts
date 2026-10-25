@@ -74,7 +74,19 @@ export const adminBulkInvitationsBodySchema = z.object({
 
 const invitationListStatusSchema = z.enum(["pending", "accepted", "revoked", "expired"]);
 
+export const adminInvitationsListSortValues = [
+  "created_desc",
+  "created_asc",
+  "expires_asc",
+  "expires_desc",
+  "email_asc",
+  "email_desc",
+] as const;
+export const adminInvitationsListSortSchema = z.enum(adminInvitationsListSortValues);
+export type AdminInvitationsListSort = z.infer<typeof adminInvitationsListSortSchema>;
+
 export const adminInvitationsListQuerySchema = z.object({
+  sort: adminInvitationsListSortSchema.optional(),
   limit: z.coerce.number().int().min(1).max(200).optional().default(200),
   offset: z.coerce.number().int().min(0).optional().default(0),
   status: invitationListStatusSchema.optional(),

@@ -36,6 +36,7 @@ describe("loadAdminAuditLogPage", () => {
     expect(getLog).toHaveBeenCalledWith({
       limit: 50,
       offset: 50,
+      sort: "at_desc",
       actorUserId: "u1",
       view: "catalogue",
       aggregateType: "lot",
@@ -48,6 +49,16 @@ describe("loadAdminAuditLogPage", () => {
     expect(page.pagination?.nextHref).toContain("view=catalogue");
     expect(page.model.hasFilters).toBe(true);
     expect(page.loadError).toBeNull();
+  });
+
+  it("passes a chosen sort to the API and keeps it in the paging links", async () => {
+    getLog.mockResolvedValue({ rows: [event("1")], total: 120 });
+
+    const page = await loadAdminAuditLogPage({ sort: "at_asc" }, viewer);
+
+    expect(getLog).toHaveBeenCalledWith(expect.objectContaining({ sort: "at_asc" }));
+    expect(page.pagination?.nextHref).toContain("sort=at_asc");
+    expect(page.model.hasFilters).toBe(false);
   });
 
   it("has no paging links when everything fits on one page", async () => {

@@ -52,6 +52,7 @@ export interface IAdminDomainEventQueryService {
 export type AdminAuditLogSearch = {
   limit: number;
   offset: number;
+  sort?: "at_desc" | "at_asc";
   q?: string;
   actorUserId?: string;
   view?: import("@auction/types").AuditLogView;

@@ -78,6 +78,22 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
     });
   });
 
+  it("passes a sort to the service and rejects an unknown one", async () => {
+    const { get, search } = setup({ role: "staff", staffRole: "super_admin" });
+
+    expect((await get("/log?sort=at_asc")).status).toBe(200);
+    expect(search).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      includePii: false,
+      sort: "at_asc",
+    });
+
+    search.mockClear();
+    expect((await get("/log?sort=newest")).status).toBe(400);
+    expect(search).not.toHaveBeenCalled();
+  });
+
   it("defaults to the first page of 50", async () => {
     const { get, search } = setup({ role: "staff", staffRole: "staff_viewer" });
 

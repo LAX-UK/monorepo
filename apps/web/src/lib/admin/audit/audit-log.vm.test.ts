@@ -34,7 +34,7 @@ describe("toAuditLogRows", () => {
       tone: "danger",
       summary: "Reason: Still consigned",
       actor: { name: "Ada Staff", email: "ada@example.com", kind: "staff" },
-      entity: { typeLabel: "Lot", shortId: "0b7e4a52" },
+      entity: { typeLabel: "Lot", id: "0b7e4a52-8b3c-4e97-a4d6-2c9e7b1f5a08" },
     });
     expect(model?.entity.href).toBe("/admin/lots/0b7e4a52-8b3c-4e97-a4d6-2c9e7b1f5a08");
     expect(model?.at).toBe("2026-10-24T09:30:00.000Z");

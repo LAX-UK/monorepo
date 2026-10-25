@@ -1,135 +1,157 @@
+"use client";
+
 import { AdminAmlHitListings } from "@/components/admin/admin-aml-hit-listings";
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
-import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { formatAmlCheckType } from "@/lib/admin/admin-user-presenters";
-import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { formatAmlCategoriesLabel } from "@/lib/admin/status-badge-variants";
 import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
-import { buildAdminAmlTableRow } from "@/lib/data/view-models/admin-aml-table.vm";
-import { Surface } from "@auction/ui/components/surface";
+import {
+  type DataColumn,
+  EmptyState,
+  type KeyValueItem,
+  KeyValueList,
+  Section,
+  StaffButton,
+  StaffDate,
+  StatusBadge,
+} from "@auction/staff-ui";
 import Link from "next/link";
 
 const VERIFF_STATION_BASE =
   process.env.NEXT_PUBLIC_VERIFF_STATION_URL ?? "https://station.veriff.com";
 
+const EARLIER_SCREENINGS_SHOWN = 10;
+
+function Badge({ domain, status }: { domain: "amlMatch" | "amlDecision"; status: string }) {
+  const presentation = staffStatus(domain, status);
+  return <StatusBadge tone={presentation.tone}>{presentation.label}</StatusBadge>;
+}
+
+function hitsLabel(screening: AdminAmlScreeningRow): string {
+  const count = `${screening.totalHits} ${screening.totalHits === 1 ? "hit" : "hits"}`;
+  if (screening.totalHits === 0 || screening.categories.length === 0) return count;
+  return `${count}: ${formatAmlCategoriesLabel(screening.categories)}`;
+}
+
+const earlierColumns: DataColumn<AdminAmlScreeningRow>[] = [
+  {
+    id: "screened",
+    header: "Screened",
+    sortable: true,
+    defaultSortDirection: "desc",
+    mobile: "meta",
+    sortValue: (screening) => Date.parse(screening.screenedAt),
+    cell: (screening) => <StaffDate value={screening.screenedAt} withTime />,
+  },
+  {
+    id: "match",
+    header: "Match",
+    width: "180px",
+    mobile: "title",
+    truncate: false,
+    cell: (screening) => <Badge domain="amlMatch" status={screening.matchStatus} />,
+  },
+  {
+    id: "hits",
+    header: "Hits",
+    mobile: "hidden",
+    cell: (screening) => <span className="text-staff-muted">{hitsLabel(screening)}</span>,
+  },
+];
+
+/** The client's latest watchlist screening with its hits, and the earlier ones in a table. */
 export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreeningRow[] }) {
   const latest = screenings[0] ?? null;
+  const earlier = screenings.slice(1);
   const queueHref = latest
     ? `/admin/compliance/aml?screening=${encodeURIComponent(latest.id)}`
     : "/admin/compliance/aml";
 
+  const action = (
+    <StaffButton asChild size="sm" variant="secondary">
+      <Link href={queueHref}>
+        {latest?.reviewStatus === "pending" ? "Review screening" : "Open AML list"}
+      </Link>
+    </StaffButton>
+  );
+
+  if (!latest) {
+    return (
+      <Section
+        id="aml"
+        title="Watchlist screening"
+        description="Sanctions and politically exposed person checks."
+        action={action}
+        className="scroll-mt-20"
+        bodyClassName="p-0"
+      >
+        <EmptyState
+          headingLevel="h3"
+          title="No watchlist screenings yet"
+          description="A screening appears here after the client's identity check has been screened against watchlists."
+        />
+      </Section>
+    );
+  }
+
+  const facts: KeyValueItem[] = [
+    { label: "Match", value: <Badge domain="amlMatch" status={latest.matchStatus} /> },
+    { label: "Decision", value: <Badge domain="amlDecision" status={latest.decisionOutcome} /> },
+    { label: "Review", value: latest.reviewStatus === "pending" ? "Awaiting review" : "Reviewed" },
+    { label: "Hits", value: hitsLabel(latest) },
+    { label: "Screened", value: <StaffDate value={latest.screenedAt} withTime /> },
+    { label: "Check type", value: formatAmlCheckType(latest.checkType) },
+    {
+      label: "Veriff verification",
+      value: (
+        <a
+          href={`${VERIFF_STATION_BASE}/verifications/${latest.providerSessionId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2"
+        >
+          Open in Veriff
+        </a>
+      ),
+    },
+    {
+      label: "Veriff session ID",
+      value: latest.providerSessionId,
+      copyValue: latest.providerSessionId,
+    },
+  ];
+
   return (
-    <Surface variant="quiet" padding="md" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <AdminSectionLabel>AML / watchlist screening</AdminSectionLabel>
-        <Link href={queueHref} className="text-xs text-link underline">
-          {latest?.reviewStatus === "pending" ? "Review screening" : "Open AML list"}
-        </Link>
-      </div>
-      {!latest ? (
-        <div className="space-y-2 text-sm text-on-surface-variant">
-          <p>No watchlist screenings on record.</p>
-          <p className="text-xs">
-            If Veriff shows PEP or sanctions results for this client, confirm the PEP &amp;
-            Sanctions webhook URL is enabled in the Veriff portal, then backfill the session or wait
-            for the next screening webhook.
-          </p>
+    <>
+      <Section
+        id="aml"
+        title="Watchlist screening"
+        description="Sanctions and politically exposed person checks. Latest screening."
+        action={action}
+        className="scroll-mt-20"
+      >
+        <div className="flex flex-col gap-4">
+          <KeyValueList items={facts} columns={2} />
+          {latest.hits.length > 0 ? <AdminAmlHitListings hits={latest.hits} compact /> : null}
         </div>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border-hairline/60 bg-surface-container-low/40 px-3 py-2">
-            <AdminStatusBadge domain="amlMatch" status={latest.matchStatus} size="sm" />
-            <AdminStatusBadge domain="amlDecision" status={latest.decisionOutcome} size="sm" />
-            <span className="font-body text-sm text-on-surface-variant">
-              {latest.totalHits} hit{latest.totalHits === 1 ? "" : "s"} ·{" "}
-              {formatAmlCategoriesLabel(latest.categories)}
-            </span>
-            {latest.reviewStatus === "pending" ? (
-              <AdminStatusBadge
-                domain="amlDecision"
-                status="pending"
-                label="Awaiting review"
-                size="sm"
-              />
-            ) : null}
-          </div>
-
-          <CollapsibleSection
-            title="Screening details"
-            defaultOpen={latest.reviewStatus === "pending"}
-          >
-            <div className="space-y-3 p-4">
-              <dl className="grid gap-2 text-sm md:grid-cols-2">
-                <div>
-                  <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                    Screened
-                  </dt>
-                  <dd>{formatAdminUserDate(latest.screenedAt)}</dd>
-                </div>
-                <div>
-                  <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                    Check type
-                  </dt>
-                  <dd>{formatAmlCheckType(latest.checkType)}</dd>
-                </div>
-                <div className="md:col-span-2">
-                  <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                    Veriff verification
-                  </dt>
-                  <dd>
-                    <a
-                      href={`${VERIFF_STATION_BASE}/verifications/${latest.providerSessionId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-link underline"
-                    >
-                      Open in Veriff
-                    </a>
-                  </dd>
-                </div>
-              </dl>
-              <AdminTechnicalIdDisclosure
-                triggerLabel="Show Veriff session ID"
-                items={[
-                  {
-                    label: "Veriff session",
-                    value: latest.providerSessionId,
-                    copyLabel: "Veriff session ID",
-                  },
-                ]}
-              />
-              {latest.hits.length > 0 ? (
-                <div>
-                  <h4 className="font-label text-[10px] uppercase text-on-surface-variant">
-                    Hit detail
-                  </h4>
-                  <div className="mt-2">
-                    <AdminAmlHitListings hits={latest.hits} compact />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </CollapsibleSection>
-
-          {screenings.length > 1 ? (
-            <CollapsibleSection title={`Older screenings (${screenings.length - 1})`}>
-              <ul className="divide-y divide-outline-variant/30 p-4">
-                {screenings.slice(1, 4).map((s) => {
-                  const row = buildAdminAmlTableRow(s);
-                  return (
-                    <li key={s.id} className="py-2 text-sm text-on-surface-variant">
-                      {formatAdminUserDate(s.screenedAt)} · {row.matchStatusLabel} ·{" "}
-                      {row.categoriesLabel}
-                    </li>
-                  );
-                })}
-              </ul>
-            </CollapsibleSection>
-          ) : null}
-        </>
-      )}
-    </Surface>
+      </Section>
+      {earlier.length > 0 ? (
+        <RelatedRecordsSection
+          title="Earlier screenings"
+          description={
+            earlier.length > EARLIER_SCREENINGS_SHOWN
+              ? `The latest ${EARLIER_SCREENINGS_SHOWN} of ${earlier.length}.`
+              : undefined
+          }
+          label="Earlier watchlist screenings"
+          columns={earlierColumns}
+          data={earlier.slice(0, EARLIER_SCREENINGS_SHOWN)}
+          getRowId={(screening) => screening.id}
+          defaultSort={{ columnId: "screened", direction: "desc" }}
+          empty={{ title: "No earlier screenings", description: "Earlier screenings appear here." }}
+        />
+      ) : null}
+    </>
   );
 }

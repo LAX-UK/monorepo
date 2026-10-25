@@ -444,6 +444,8 @@ export type {
 export type {
   ConsumeInviteResult,
   InvitationAdminListFilters,
+  InvitationAdminListPage,
+  InvitationAdminListSort,
   InvitationAdminListRow,
   InvitationInsert,
   InvitationRow,
@@ -792,6 +794,7 @@ export type { ISaleSoftDeleteSideEffects } from "./sale-soft-delete.js";
 export type {
   AdminLotFulfilmentBaseFilter,
   AdminLotFulfilmentListFilter,
+  AdminLotFulfilmentListSort,
   AdminLotFulfilmentListSummary,
   ILotFulfilmentPaymentHook,
   ILotFulfilmentRepository,

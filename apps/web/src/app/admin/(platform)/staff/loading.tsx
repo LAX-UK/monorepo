@@ -1,13 +1,11 @@
-import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function StaffLoading() {
   return (
-    <PeopleListPageSkeleton
+    <ListPageSkeleton
       title="Staff"
-      description="Loading staff…"
-      kpiTiles={4}
-      tableRows={10}
-      tableColumns={6}
+      description="Everyone who works in the staff tools, their role and the LAX tools they can use."
+      columns={["Staff member", "Account", "Staff role", "LAX access", "Last sign-in"]}
     />
   );
 }

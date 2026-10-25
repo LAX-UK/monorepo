@@ -1,9 +1,11 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
-export default function Loading() {
+export default function EventRsvpsLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8">
-      <PageSkeleton variant="table" />
-    </div>
+    <ListPageSkeleton
+      title="Event RSVPs"
+      description="Guest lists, passes and door check-in for invitation-only events. Live bidding runs in Saleroom."
+      columns={["Event", "Status", "RSVPs", "Starts"]}
+    />
   );
 }

@@ -1,12 +1,7 @@
 "use client";
 
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
+import { type CheckInMode, CheckInView } from "@/components/admin/event-rsvps/check-in-view";
 import { useCallback, useState } from "react";
-import { CheckInResultBanner } from "./check-in-result-banner";
-import { CheckInScanTab } from "./check-in-scan-tab";
-import { CheckInSearchTab } from "./check-in-search-tab";
-import { CheckInStatsHeader } from "./check-in-stats-header";
 import { useBarcodeScanner } from "./use-barcode-scanner";
 import { useGuestSearch } from "./use-guest-search";
 import { useOnsiteCheckIn } from "./use-onsite-check-in";
@@ -16,8 +11,9 @@ type Props = {
   title: string;
 };
 
+/** Wires the door check-in page to the scanner, the guest search and the check-in requests. */
 export function OnsiteEventCheckInConsole({ slug, title }: Props) {
-  const [activeTab, setActiveTab] = useState("scan");
+  const [mode, setMode] = useState<CheckInMode>("scan");
   const [manualToken, setManualToken] = useState("");
 
   const checkIn = useOnsiteCheckIn(slug);
@@ -31,7 +27,7 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
   );
 
   const { cameraSupported, videoRef } = useBarcodeScanner({
-    active: activeTab === "scan",
+    active: mode === "scan",
     busyRef: checkIn.busyRef,
     onScan: handleScan,
   });
@@ -54,65 +50,37 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
   );
 
   return (
-    <div className="space-y-6">
-      <CheckInStatsHeader
-        title={title}
-        stats={checkIn.stats}
-        statsError={checkIn.statsError}
-        dryRunBusy={checkIn.dryRunBusy}
-        dryRunError={checkIn.dryRunError}
-        dryRunConfirmOpen={checkIn.dryRunConfirmOpen}
-        onDryRunConfirmOpenChange={checkIn.setDryRunConfirmOpen}
-        onEnableDryRun={checkIn.enableDryRun}
-        onDisableDryRun={checkIn.disableDryRun}
-      />
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="scan">Scan QR</TabsTrigger>
-          <TabsTrigger value="search">Search name</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="scan">
-          <CheckInScanTab
-            videoRef={videoRef}
-            cameraSupported={cameraSupported}
-            manualToken={manualToken}
-            onManualTokenChange={setManualToken}
-            busy={checkIn.busy}
-            onCheckIn={(token) => void handleManualCheckIn(token)}
-          />
-        </TabsContent>
-
-        <TabsContent value="search">
-          <CheckInSearchTab
-            searchQuery={guestSearch.searchQuery}
-            onSearchQueryChange={guestSearch.setSearchQuery}
-            searchResults={guestSearch.searchResults}
-            searchError={guestSearch.searchError}
-            searching={guestSearch.searching}
-            busy={checkIn.busy}
-            onCheckIn={handleRsvpCheckIn}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {checkIn.busy ? (
-        <p className="font-body text-sm text-on-surface-variant" aria-live="polite">
-          Checking in…
-        </p>
-      ) : null}
-
-      {checkIn.networkError ? (
-        <AdminListAlert title="Could not reach the server">
-          {checkIn.networkError}
-          <span className="mt-2 block">
-            Try again or use Search name to admit the guest manually.
-          </span>
-        </AdminListAlert>
-      ) : null}
-
-      {checkIn.result ? <CheckInResultBanner result={checkIn.result} /> : null}
-    </div>
+    <CheckInView
+      slug={slug}
+      title={title}
+      stats={checkIn.stats}
+      statsError={checkIn.statsError}
+      dryRunBusy={checkIn.dryRunBusy}
+      dryRunError={checkIn.dryRunError}
+      dryRunConfirmOpen={checkIn.dryRunConfirmOpen}
+      onDryRunConfirmOpenChange={checkIn.setDryRunConfirmOpen}
+      onEnableDryRun={checkIn.enableDryRun}
+      onDisableDryRun={checkIn.disableDryRun}
+      mode={mode}
+      onModeChange={setMode}
+      busy={checkIn.busy}
+      networkError={checkIn.networkError}
+      result={checkIn.result}
+      scan={{
+        videoRef,
+        cameraSupported,
+        manualToken,
+        onManualTokenChange: setManualToken,
+        onCheckIn: (token) => void handleManualCheckIn(token),
+      }}
+      search={{
+        query: guestSearch.searchQuery,
+        onQueryChange: guestSearch.setSearchQuery,
+        results: guestSearch.searchResults,
+        error: guestSearch.searchError,
+        searching: guestSearch.searching,
+        onCheckIn: handleRsvpCheckIn,
+      }}
+    />
   );
 }

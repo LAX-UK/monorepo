@@ -1,6 +1,7 @@
 import type {
   IUserInvitationRepository,
   InvitationAdminListFilters,
+  InvitationAdminListPage,
 } from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 import type { IAdminInvitationApplicationService } from "../interfaces/admin-routes.js";
@@ -30,7 +31,7 @@ export class AdminInvitationApplicationService implements IAdminInvitationApplic
 
   getPage(
     filters: InvitationAdminListFilters,
-    page: { limit: number; offset: number },
+    page: InvitationAdminListPage,
   ): Promise<AdminInvitationListPage> {
     return this.listQuery.getPage(filters, page);
   }

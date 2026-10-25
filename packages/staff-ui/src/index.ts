@@ -177,6 +177,7 @@ export {
   CellLink,
   CellThumbnail,
   EmptyValue,
+  PersonCell,
   PrimaryCell,
   StaffDate,
   StaffMoney,

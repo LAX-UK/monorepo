@@ -72,6 +72,11 @@ export type DataTableProps<T> = {
   stickyToolbar?: boolean;
   /** Pagination, inside the card below the table. */
   footer?: React.ReactNode;
+  /**
+   * The table sits inside a `Section` (a record's related rows) and the section is the card:
+   * the table draws no border or rounded corners of its own.
+   */
+  embedded?: boolean;
   className?: string;
 };
 
@@ -171,6 +176,7 @@ export function DataTable<T>({
   toolbar,
   stickyToolbar = true,
   footer,
+  embedded = false,
   className,
 }: DataTableProps<T>) {
   const [localSort, setLocalSort] = React.useState<SortState | null>(defaultSort ?? null);
@@ -455,7 +461,12 @@ export function DataTable<T>({
       <TooltipProvider delayDuration={STAFF_TRUNCATION_TOOLTIP_DELAY_MS}>
         <div className={cn("relative", className)}>
           {/* Clips the rounded corners without becoming a scroll container, so headers can stick. */}
-          <div className="overflow-clip rounded-staff-md border border-staff-line bg-staff-surface">
+          <div
+            className={cn(
+              "overflow-clip bg-staff-surface",
+              !embedded && "rounded-staff-md border border-staff-line",
+            )}
+          >
             {toolbar ? (
               <div
                 ref={toolbarRef}

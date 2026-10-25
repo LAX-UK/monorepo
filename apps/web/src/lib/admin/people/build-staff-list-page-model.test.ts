@@ -22,4 +22,16 @@ describe("buildStaffListPageModel", () => {
     expect(model.buildDrawerHref("staff-456")).toContain("staff=staff-456");
     expect(model.buildDrawerHref(null)).not.toContain("staff=");
   });
+
+  it("forwards a valid sort and does not treat it as a filter", () => {
+    const model = buildStaffListPageModel({ sort: "name_asc" });
+    expect(model.listQueryParams.sort).toBe("name_asc");
+    expect(model.hasFilters).toBe(false);
+    expect(model.activeFilterCount).toBe(0);
+    expect(model.activeFilterChips).toEqual([]);
+  });
+
+  it("ignores an unknown sort", () => {
+    expect(buildStaffListPageModel({ sort: "bogus" }).listQueryParams).not.toHaveProperty("sort");
+  });
 });

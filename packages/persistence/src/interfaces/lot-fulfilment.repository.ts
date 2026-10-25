@@ -2,7 +2,14 @@ import type { lotFulfilment } from "@auction/db/schema";
 
 export type LotFulfilmentRow = typeof lotFulfilment.$inferSelect;
 
-export type LotFulfilmentListRow = LotFulfilmentRow & { lotTitle: string | null };
+export type LotFulfilmentListRow = LotFulfilmentRow & {
+  lotTitle: string | null;
+  lotNumber: number | null;
+  saleId: string | null;
+  saleTitle: string | null;
+};
+
+export type AdminLotFulfilmentListSort = "updated_desc" | "updated_asc" | "lot_asc" | "lot_desc";
 
 export type LotFulfilmentAddressSnapshot = {
   addressId: string;
@@ -58,7 +65,12 @@ export interface ILotFulfilmentRepository {
   insert(input: InsertLotFulfilmentInput): Promise<void>;
   updateByLotId(lotId: string, patch: UpdateLotFulfilmentInput): Promise<void>;
   listForAdmin(
-    options?: AdminLotFulfilmentListFilter & { limit?: number; offset?: number },
+    options?: AdminLotFulfilmentListFilter & {
+      limit?: number;
+      offset?: number;
+      /** Defaults to `updated_desc` (most recently changed first). */
+      sort?: AdminLotFulfilmentListSort;
+    },
   ): Promise<{ items: LotFulfilmentListRow[]; total: number }>;
   countMatching(filter: AdminLotFulfilmentListFilter): Promise<number>;
   summarizeForAdmin(

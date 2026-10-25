@@ -373,9 +373,10 @@ export function DataViews({
               size="sm"
               icon={<Plus aria-hidden />}
               onClick={() => setNaming({ name: "" })}
-              className="text-staff-muted"
+              // On a phone the label hides so the view tabs keep their room; the name stays.
+              className="text-staff-muted max-sm:gap-0 max-sm:px-2"
             >
-              Save view
+              <span className="max-sm:sr-only">Save view</span>
             </StaffButton>
           ) : null}
           <ViewsMenu

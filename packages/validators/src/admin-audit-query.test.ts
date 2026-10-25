@@ -64,6 +64,12 @@ describe("adminAuditLogQuerySchema", () => {
     expect(adminAuditLogQuerySchema.safeParse({ aggregateId: "abc" }).success).toBe(false);
   });
 
+  it("accepts a sort and rejects an unknown one", () => {
+    expect(adminAuditLogQuerySchema.parse({}).sort).toBeUndefined();
+    expect(adminAuditLogQuerySchema.parse({ sort: "at_asc" }).sort).toBe("at_asc");
+    expect(adminAuditLogQuerySchema.safeParse({ sort: "actor_asc" }).success).toBe(false);
+  });
+
   it("caps the page size", () => {
     expect(adminAuditLogQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
   });

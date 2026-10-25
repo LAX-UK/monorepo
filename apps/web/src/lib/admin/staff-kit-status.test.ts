@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { staffStatus } from "./staff-kit-status";
+import {
+  staffArrivalStatus,
+  staffIdentitySessionStatus,
+  staffIdentityStatus,
+  staffStatus,
+} from "./staff-kit-status";
+
+describe("identity statuses", () => {
+  it("says Not verified for someone who never started an identity check", () => {
+    for (const stored of ["unverified", "unknown", "", null, undefined]) {
+      expect(staffIdentityStatus(stored)).toEqual({ label: "Not verified", tone: "neutral" });
+    }
+    expect(staffStatus("kyc", "unverified").label).toBe("Not verified");
+  });
+
+  it("reads each stage of an identity check in words", () => {
+    expect(staffIdentityStatus("approved")).toEqual({ label: "Verified", tone: "success" });
+    expect(staffIdentityStatus("pending").label).toBe("Submitted");
+    expect(staffIdentityStatus("under_review").label).toBe("In review");
+    expect(staffIdentityStatus("rejected").tone).toBe("danger");
+  });
+
+  it("names a verification session's outcome, and humanises one it does not know", () => {
+    expect(staffIdentitySessionStatus("resubmission_requested").label).toBe(
+      "Resubmission requested",
+    );
+    expect(staffIdentitySessionStatus("declined").tone).toBe("danger");
+    expect(staffIdentitySessionStatus("needs_document_scan").label).toBe("Needs document scan");
+  });
+});
 
 describe("staffStatus", () => {
   it("tells a draft lot from a scheduled one", () => {
@@ -52,6 +81,20 @@ describe("staffStatus", () => {
       tone: "info",
     });
     expect(staffStatus("conditionReport", "declined").tone).toBe("neutral");
+  });
+
+  it("maps onsite event statuses, including closed RSVPs", () => {
+    expect(staffStatus("onsiteEvent", "published")).toEqual({
+      label: "Published",
+      tone: "success",
+    });
+    expect(staffStatus("onsiteEvent", "draft").tone).toBe("neutral");
+    expect(staffStatus("onsiteEvent", "closed").label).toBe("RSVPs closed");
+  });
+
+  it("tells an arrived guest from one still expected", () => {
+    expect(staffArrivalStatus(true)).toEqual({ label: "Arrived", tone: "success" });
+    expect(staffArrivalStatus(false)).toEqual({ label: "Not arrived", tone: "neutral" });
   });
 
   it("never shows a raw value for a status it does not know", () => {

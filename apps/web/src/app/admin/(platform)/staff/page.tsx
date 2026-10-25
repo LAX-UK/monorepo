@@ -1,23 +1,16 @@
-import { AdminBulkSelectionProvider } from "@/components/admin/admin-bulk-selection-bridge";
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminStaffFilterToolbar } from "@/components/admin/admin-staff-filter-toolbar";
-import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
-import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import {
-  AdminUserListBulkBar,
-  PeopleStaffMobileCards,
-} from "@/components/admin/people/people-users-mobile-cards";
-import { AdminStaffBoardContainer } from "@/components/admin/staff-board/container";
-import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import {
-  buildStaffListKpiTiles,
-  buildStaffMobileMetrics,
-} from "@/lib/admin/people/build-staff-list-kpi-tiles";
+import { StaffDirectoryList } from "@/components/admin/people/staff-directory-list";
+import { peopleRangeSummary } from "@/lib/admin/people/clients-staff-list.vm";
 import { loadAdminStaffListPage } from "@/lib/admin/people/load-staff-list-page";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { toStaffDirectoryRows } from "@/lib/admin/people/staff-directory-list.vm";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import {
+  INVITATIONS_ACCESS,
+  USERS_DIRECTORY_ACCESS,
+  USER_MODERATION_ACCESS,
+  USER_ROLE_MANAGEMENT_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -30,91 +23,41 @@ export default async function AdminStaffPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await requireAdminCapability(USERS_DIRECTORY_ACCESS, "/admin/staff");
+  const role = user.role as UserRole;
+  const staffRole = user.staffRole ?? null;
   const sp = await searchParams;
-  const error = safeDecodeAdminErrorParam(sp.error);
   const { model, rows, access, summary, total, loadError, pagination } =
     await loadAdminStaffListPage(sp);
-  const isPaginationEmpty = !loadError && total > 0 && rows.length === 0 && !model.hasFilters;
 
   return (
-    <AdminBulkSelectionProvider>
-      <CatalogListShell
-        title="Staff"
-        description="Internal team directory. Filter by staff role or suspension, and manage capabilities from each profile."
-        hasFilters={model.hasFilters}
-        resetHref={model.basePath}
-        bulkBar={<AdminUserListBulkBar />}
-        filtersSelfContained
-        mobileCards={
-          !loadError && rows.length > 0 ? (
-            <PeopleStaffMobileCards rows={rows} access={access} />
-          ) : null
-        }
-        mobileSummary={
-          !loadError ? (
-            <CatalogListMobileSummary metrics={buildStaffMobileMetrics(summary)} />
-          ) : null
-        }
-        kpiStrip={
-          !loadError ? (
-            <AdminTrendKpiBand ariaLabel="Staff summary" tiles={buildStaffListKpiTiles(summary)} />
-          ) : null
-        }
-        errorAlert={
-          error || loadError ? (
-            <AdminListAlert title="Could not load staff">{loadError ?? error}</AdminListAlert>
-          ) : null
-        }
-        filters={
-          !loadError ? (
-            <AdminStaffFilterToolbar
-              activeFilterCount={model.activeFilterCount}
-              activeFilterChips={model.activeFilterChips}
-            />
-          ) : null
-        }
-        empty={
-          !loadError && rows.length === 0 ? (
-            <FilterEmptyState
-              entity="staff"
-              segment="admin"
-              hasActiveFilters={model.hasFilters}
-              clearFiltersHref={model.basePath}
-              {...(isPaginationEmpty
-                ? {
-                    title: "No staff on this page",
-                    description: "Try a previous page or adjust pagination.",
-                  }
-                : {})}
-            />
-          ) : null
-        }
-        pagination={
-          pagination ? (
-            <CatalogPagination
-              offset={pagination.offset}
-              limit={pagination.limit}
-              countOnPage={pagination.countOnPage}
-              total={pagination.total}
-              prevHref={pagination.prevHref}
-              nextHref={pagination.nextHref}
-            />
-          ) : null
-        }
-      >
-        {!loadError && rows.length > 0 ? (
-          <AdminStaffBoardContainer
-            rows={rows}
-            access={access}
-            totalMatches={total}
-            hasActiveFilters={model.hasFilters}
-            selectedStaffId={model.selectedStaffId}
-            listReturnTarget={model.listReturnTarget}
-            clearPreviewHref={model.buildDrawerHref(null)}
-            externalMobileCards
-          />
-        ) : null}
-      </CatalogListShell>
-    </AdminBulkSelectionProvider>
+    <StaffDirectoryList
+      rows={toStaffDirectoryRows(rows, access, model.listReturnTarget)}
+      search={sp}
+      counts={{ total: summary.total, active: summary.active, suspended: summary.suspended }}
+      filterChips={model.activeFilterChips.map((chip) => ({
+        id: chip.id,
+        label: chip.label,
+        clearHref: chip.clearHref,
+      }))}
+      pageSize={model.query.limit}
+      pagination={
+        rows.length > 0
+          ? {
+              summary: peopleRangeSummary(model.query.offset, rows.length, total, {
+                one: "staff member",
+                other: "staff members",
+              }),
+              prevHref: pagination?.prevHref ?? null,
+              nextHref: pagination?.nextHref ?? null,
+            }
+          : null
+      }
+      canModerate={userHasAccessTo(role, staffRole, USER_MODERATION_ACCESS)}
+      canManageRoles={userHasAccessTo(role, staffRole, USER_ROLE_MANAGEMENT_ACCESS)}
+      canInvite={userHasAccessTo(role, staffRole, INVITATIONS_ACCESS)}
+      loadError={loadError}
+      filtered={model.hasFilters}
+    />
   );
 }

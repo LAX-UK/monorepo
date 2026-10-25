@@ -67,6 +67,36 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
     expect(getPage).toHaveBeenCalledWith({ limit: 50, offset: 0 });
   });
 
+  it("GET /lot-fulfilment passes a sort and rejects an unknown one", async () => {
+    const getPage = vi.fn().mockResolvedValue({
+      rows: [],
+      total: 0,
+      offset: 0,
+      limit: 50,
+      summary: { total: 0, awaitingPickup: 0, inTransit: 0, statusCounts: {} },
+    });
+    const container = createFulfilmentContainer({ lotFulfilment: { getPage } as never });
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "staff-1",
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const ok200 = await app.request("http://test/admin/lot-fulfilment?sort=lot_desc");
+    expect(ok200.status).toBe(200);
+    expect(getPage).toHaveBeenCalledWith({ limit: 50, offset: 0, sort: "lot_desc" });
+
+    getPage.mockClear();
+    const bad = await app.request("http://test/admin/lot-fulfilment?sort=status_asc");
+    expect(bad.status).toBe(400);
+    expect(getPage).not.toHaveBeenCalled();
+  });
+
   it("POST /lot-fulfilment/:lotId/release delegates approveRelease", async () => {
     const approveRelease = vi.fn().mockResolvedValue(ok({ lotId: LOT_ID, status: "released" }));
     const container = createFulfilmentContainer({ lotFulfilment: { approveRelease } as never });

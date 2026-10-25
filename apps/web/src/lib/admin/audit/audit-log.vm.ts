@@ -21,8 +21,6 @@ export type AuditEntity = {
   typeLabel: string;
   type: string;
   id: string;
-  /** First eight characters of the id, for text that must stay short. */
-  shortId: string;
   /** The page for this record, when the viewer can open one. */
   href: string | null;
 };
@@ -174,7 +172,6 @@ export function toAuditLogRows(
         type: row.aggregateType,
         typeLabel: auditEntityTypeLabel(row.aggregateType),
         id: row.aggregateId,
-        shortId: row.aggregateId.slice(0, 8),
         href: auditEntityHref(row.aggregateType, row.aggregateId, viewer),
       },
       summary: summariseAuditEvent(detail),

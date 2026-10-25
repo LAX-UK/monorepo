@@ -53,11 +53,15 @@ const eventTypeField = z
 const calendarDateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 
 /**
- * Staff audit log: filtered, newest first. `eventTypes` is a comma-separated list of exact event
+ * Staff audit log: filtered, newest first unless `sort` says otherwise. `eventTypes` is a comma-separated list of exact event
  * types; `view` narrows to a family of events; `from` and `to` are whole London days, inclusive.
  */
+export const adminAuditLogSortSchema = z.enum(["at_desc", "at_asc"]);
+export type AdminAuditLogSort = z.infer<typeof adminAuditLogSortSchema>;
+
 export const adminAuditLogQuerySchema = z
   .object({
+    sort: adminAuditLogSortSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     offset: z.coerce.number().int().min(0).max(50_000).default(0),
     q: z.string().trim().max(100).optional(),

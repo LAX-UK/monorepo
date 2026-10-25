@@ -145,7 +145,7 @@ export const FormErrorSummary = React.forwardRef<HTMLDivElement, FormErrorSummar
                   onClick={(event) => {
                     if (focusField(error.fieldId)) event.preventDefault();
                   }}
-                  className="staff-focus rounded-staff-xs font-medium underline underline-offset-2 hover:decoration-2"
+                  className="staff-focus inline-block rounded-staff-xs font-medium leading-6 underline underline-offset-2 hover:decoration-2"
                 >
                   {error.message}
                 </a>

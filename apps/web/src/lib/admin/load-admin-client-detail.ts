@@ -5,13 +5,9 @@ import {
 } from "@/lib/admin/admin-user-metrics";
 import type { AdminUserSummaryMetrics } from "@/lib/admin/admin-user-metrics";
 import {
-  type AdminUserReadinessSnapshot,
   type BuildInput,
   type UserAttentionItem,
-  type UserDetailRailContext,
-  buildAdminUserReadinessSnapshot,
   buildUserAttentionItems,
-  buildUserDetailRailContext,
 } from "@/lib/admin/admin-user-readiness.vm";
 import { loadAdminUserDetail } from "@/lib/admin/load-admin-user-detail";
 import {
@@ -34,6 +30,7 @@ import { getAdminUserSourceOfFunds } from "@/lib/data/http/compliance.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   AML_REVIEW_ACCESS,
+  ARTIST_WRITE_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
   FINANCE_ACCESS,
@@ -66,13 +63,13 @@ export type AdminClientDetailBundle = {
   canViewKyc: boolean;
   canManageRoles: boolean;
   canModerate: boolean;
+  canWriteArtists: boolean;
   bids: AdminUserBidRow[];
+  bidsTotal: number;
   lifetimeSpend: number;
   submissionsCount: number;
   amlScreeningBySessionId: Record<string, AdminAmlScreeningRow>;
-  readinessSnapshot: AdminUserReadinessSnapshot;
   attentionItems: UserAttentionItem[];
-  railContext: UserDetailRailContext;
   summaryMetrics: AdminUserSummaryMetrics;
   legalEntitiesForActions: { id: string; displayName: string }[];
 };
@@ -100,6 +97,8 @@ export const loadAdminClientDetail = cache(
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_ROLE_MANAGEMENT_ACCESS);
     const canModerate =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_MODERATION_ACCESS);
+    const canWriteArtists =
+      sessionUser != null && userHasAccessTo(actorRole, actorStaff, ARTIST_WRITE_ACCESS);
 
     const [
       linkedArtists,
@@ -139,8 +138,6 @@ export const loadAdminClientDetail = cache(
       user,
       legalEntities,
       amlScreenings,
-      lotsWon: wonLots.length,
-      lifetimeSpend,
       canViewAml,
     };
 
@@ -160,13 +157,13 @@ export const loadAdminClientDetail = cache(
       canViewKyc,
       canManageRoles,
       canModerate,
+      canWriteArtists,
       bids: bidsResult.rows,
+      bidsTotal: bidsResult.total,
       lifetimeSpend,
       submissionsCount,
       amlScreeningBySessionId,
-      readinessSnapshot: buildAdminUserReadinessSnapshot(vmInput),
       attentionItems: buildUserAttentionItems(vmInput),
-      railContext: buildUserDetailRailContext(vmInput),
       summaryMetrics: buildClientSummaryMetrics({
         lifetimeSpend,
         lotsWon: wonLots.length,

@@ -1,18 +1,25 @@
-import { formatDateTime } from "@/lib/ui/format";
+import {
+  Field,
+  Notice,
+  StaffButton,
+  StatusBadge,
+  TextInput,
+  formatStaffDateTime,
+} from "@auction/staff-ui";
 import type { OnsiteEventCheckInSearchRow } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
+import { Search } from "lucide-react";
 
 type Props = {
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
-  searchResults: OnsiteEventCheckInSearchRow[];
+  searchResults: readonly OnsiteEventCheckInSearchRow[];
   searchError: string | null;
   searching: boolean;
   busy: boolean;
   onCheckIn: (rsvpId: string) => void;
 };
 
+/** Find a guest by name or email and admit them. */
 export function CheckInSearchTab({
   searchQuery,
   onSearchQueryChange,
@@ -22,43 +29,58 @@ export function CheckInSearchTab({
   busy,
   onCheckIn,
 }: Props) {
+  const query = searchQuery.trim();
   return (
-    <div className="space-y-4">
-      <Input
-        value={searchQuery}
-        onChange={(e) => onSearchQueryChange(e.target.value)}
-        placeholder="Search by name or email"
-        aria-label="Search guests"
-      />
-      <div className="space-y-2">
-        {searching ? <p className="font-body text-sm text-on-surface-variant">Searching…</p> : null}
-        {searchError ? <p className="font-body text-sm text-destructive">{searchError}</p> : null}
-        {!searching &&
-        !searchError &&
-        searchQuery.trim().length >= 2 &&
-        searchResults.length === 0 ? (
-          <p className="font-body text-sm text-on-surface-variant">
-            No guests match “{searchQuery.trim()}”.
-          </p>
-        ) : null}
-        {searchResults.map((row) => (
-          <Button
-            key={row.rsvpId}
-            type="button"
-            variant="outline"
-            className="flex h-auto w-full min-h-11 flex-col items-start rounded-lg px-4 py-3 text-left"
-            disabled={busy}
-            aria-label={`Check in ${row.name}`}
-            onClick={() => onCheckIn(row.rsvpId)}
-          >
-            <span className="font-medium">{row.name}</span>
-            <span className="font-body text-xs text-on-surface-variant">
-              {row.email} · {row.attendanceSegmentLabel}
-              {row.checkedInAt ? ` · Checked in ${formatDateTime(row.checkedInAt)}` : ""}
-            </span>
-          </Button>
-        ))}
-      </div>
+    <div className="flex flex-col gap-4">
+      <Field label="Search guests" description="Type at least two letters of a name or email.">
+        <TextInput
+          value={searchQuery}
+          onChange={(event) => onSearchQueryChange(event.target.value)}
+          placeholder="Name or email"
+          autoComplete="off"
+          leading={<Search aria-hidden />}
+        />
+      </Field>
+      {searching ? <p className="text-staff-sm text-staff-muted">Searching…</p> : null}
+      {searchError ? (
+        <Notice tone="danger" alert title="The search did not finish">
+          {searchError}
+        </Notice>
+      ) : null}
+      {!searching && !searchError && query.length >= 2 && searchResults.length === 0 ? (
+        <p className="text-staff-sm text-staff-muted">No guests match “{query}”.</p>
+      ) : null}
+      {searchResults.length > 0 ? (
+        <ul className="divide-y divide-staff-line-subtle overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface">
+          {searchResults.map((row) => (
+            <li
+              key={row.rsvpId}
+              className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-staff-md font-medium text-staff-fg">{row.name}</span>
+                <span className="truncate text-staff-sm text-staff-muted">
+                  {row.email} · {row.attendanceSegmentLabel}
+                </span>
+                {row.checkedInAt ? (
+                  <span className="flex items-center gap-2 text-staff-sm text-staff-muted">
+                    <StatusBadge tone="success">Arrived</StatusBadge>
+                    {formatStaffDateTime(row.checkedInAt, { zoneLabel: true })}
+                  </span>
+                ) : null}
+              </div>
+              <StaffButton
+                variant={row.checkedInAt ? "secondary" : "primary"}
+                disabled={busy}
+                aria-label={`Check in ${row.name}`}
+                onClick={() => onCheckIn(row.rsvpId)}
+              >
+                Check in
+              </StaffButton>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

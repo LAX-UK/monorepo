@@ -4,17 +4,28 @@ import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { GetAdminUserListParams } from "@/lib/data/http/admin-users.types";
 import type { UserStaffRole } from "@auction/types";
 import { userStaffRoles } from "@auction/types";
+import { adminUserListSortEnum } from "@auction/validators";
+import type { z } from "zod";
+
+export type StaffListSort = z.infer<typeof adminUserListSortEnum>;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 export type StaffListFilters = {
   q?: string;
   staffRole?: string;
-  suspendedOnly?: boolean;
+  /** The account-standing view tab; not a filter, so it is never counted or chipped. */
+  accountStatus?: "active" | "suspended";
+  /** How the list is ordered; not a filter, so it is never counted or chipped. */
+  sort?: StaffListSort;
 };
 
 function isStaffRole(s: string | undefined): s is UserStaffRole {
   return s != null && (userStaffRoles as readonly string[]).includes(s);
+}
+
+function isStaffListSort(s: string | undefined): s is StaffListSort {
+  return s != null && (adminUserListSortEnum.options as readonly string[]).includes(s);
 }
 
 function omitParamsHref(basePath: string, sp: SearchParams, omit: readonly string[]): string {
@@ -29,11 +40,21 @@ export function parseStaffListFilters(sp: SearchParams): StaffListFilters {
   const q = firstString(sp.q)?.trim();
   const staffRoleRaw = firstString(sp.staffRole);
   const staffRole = isStaffRole(staffRoleRaw) ? staffRoleRaw : undefined;
-  const suspendedOnly = firstString(sp.suspended) === "1";
+  const statusRaw = firstString(sp.status);
+  // `suspended=1` is the older spelling of the Suspended view.
+  const accountStatus =
+    statusRaw === "active" || statusRaw === "suspended"
+      ? statusRaw
+      : firstString(sp.suspended) === "1"
+        ? "suspended"
+        : undefined;
+  const sortRaw = firstString(sp.sort);
+  const sort = isStaffListSort(sortRaw) ? sortRaw : undefined;
   return {
     ...(q ? { q } : {}),
     ...(staffRole ? { staffRole } : {}),
-    ...(suspendedOnly ? { suspendedOnly: true } : {}),
+    ...(accountStatus ? { accountStatus } : {}),
+    ...(sort ? { sort } : {}),
   };
 }
 
@@ -47,7 +68,8 @@ export function staffListFiltersToGetAdminUserListParams(
     role: "staff",
     ...(filters.q ? { q: filters.q } : {}),
     ...(filters.staffRole ? { staffRole: filters.staffRole } : {}),
-    ...(filters.suspendedOnly ? { suspendedOnly: true } : {}),
+    ...(filters.accountStatus ? { accountStatus: filters.accountStatus } : {}),
+    ...(filters.sort ? { sort: filters.sort } : {}),
   };
 }
 
@@ -55,7 +77,6 @@ export function countStaffListActiveFilters(filters: StaffListFilters): number {
   let n = 0;
   if (filters.q?.trim()) n += 1;
   if (filters.staffRole) n += 1;
-  if (filters.suspendedOnly) n += 1;
   return n;
 }
 
@@ -80,17 +101,9 @@ export function buildStaffActiveFilterChips(
   if (filters.staffRole) {
     chips.push({
       id: "staffRole",
-      label: `Role: ${staffRoleLabel(filters.staffRole as UserStaffRole)}`,
+      label: `Staff role: ${staffRoleLabel(filters.staffRole as UserStaffRole)}`,
       clearHref: omitParamsHref(basePath, sp, ["staffRole"]),
     });
   }
-  if (filters.suspendedOnly) {
-    chips.push({
-      id: "suspended",
-      label: "Suspended only",
-      clearHref: omitParamsHref(basePath, sp, ["suspended"]),
-    });
-  }
-
   return chips;
 }

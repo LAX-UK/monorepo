@@ -61,8 +61,8 @@ export function invitationCanRevoke(row: InvitationLifecycleInput): boolean {
 export function invitationResendDisabledReason(row: InvitationLifecycleInput): string | null {
   if (invitationCanResend(row)) return null;
   if (row.status === "accepted") return "Already accepted";
-  if (row.status === "revoked") return "Invitation revoked";
-  return "Cannot resend this invitation";
+  if (row.status === "revoked") return "Revoked. Send a new invitation instead";
+  return "This invitation cannot be resent";
 }
 
 export function invitationRevokeDisabledReason(row: InvitationLifecycleInput): string | null {
@@ -70,7 +70,7 @@ export function invitationRevokeDisabledReason(row: InvitationLifecycleInput): s
   if (row.status === "accepted") return "Already accepted";
   if (row.status === "revoked") return "Already revoked";
   if (row.status === "expired" || row.expiresAt.getTime() <= Date.now()) {
-    return "Expired — resend to issue a new link";
+    return "Expired. Resend it to send a new link";
   }
-  return "Cannot revoke this invitation";
+  return "This invitation cannot be revoked";
 }

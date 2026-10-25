@@ -50,6 +50,7 @@ export class AdminAuditLogService implements IAdminAuditLogService {
       limit: input.limit,
       offset: input.offset,
       matchClientActors: input.includePii,
+      ...(input.sort ? { sort: input.sort } : {}),
       ...(input.q ? { q: input.q } : {}),
       ...(input.actorUserId ? { actorUserId: input.actorUserId } : {}),
       ...(input.eventTypes?.length ? { eventTypes: input.eventTypes } : {}),

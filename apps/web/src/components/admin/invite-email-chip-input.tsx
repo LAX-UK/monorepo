@@ -6,180 +6,145 @@ import {
   mergeInviteEmails,
   partitionInviteEmails,
 } from "@/lib/admin/parse-invite-email-list";
-import { cn } from "@auction/ui";
-import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton, TextInput } from "@auction/staff-ui";
 import { X } from "lucide-react";
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 type Props = {
   emails: string[];
   onChange: (emails: string[]) => void;
+  /** Reports what could not be added (an invalid address, the batch limit), or null once cleared. */
+  onProblem?: (message: string | null) => void;
   disabled?: boolean;
+  /** Read from the surrounding `Field` when omitted. */
   id?: string;
-  "aria-describedby"?: string;
-  "aria-invalid"?: boolean;
 };
 
 function normalizeToken(raw: string): string {
-  return raw.trim().toLowerCase().replace(/,+$/, "");
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[,;]+$/, "");
 }
 
-export function InviteEmailChipInput({
-  emails,
-  onChange,
-  disabled = false,
-  id: idProp,
-  "aria-describedby": ariaDescribedBy,
-  "aria-invalid": ariaInvalid,
-}: Props) {
-  const autoId = useId();
-  const inputId = idProp ?? autoId;
-  const inputRef = useRef<HTMLInputElement>(null);
+/**
+ * Collects email addresses: type one and press Enter or a comma, or paste a list. Added
+ * addresses sit below the field as removable chips. Addresses that are not valid are never
+ * added; `onProblem` says which, so the surrounding field can show it.
+ */
+export function InviteEmailChipInput({ emails, onChange, onProblem, disabled = false, id }: Props) {
   const [draft, setDraft] = useState("");
-  const [inlineError, setInlineError] = useState<string | null>(null);
-
   const atCap = emails.length >= MAX_INVITE_BATCH;
+  const limitMessage = `You can invite up to ${MAX_INVITE_BATCH} people at a time.`;
 
   const addToken = useCallback(
     (raw: string) => {
       const token = normalizeToken(raw);
       if (!token) return;
-      setInlineError(null);
-
       if (!isValidInviteEmail(token)) {
-        setInlineError(`Invalid email: ${token}`);
+        onProblem?.(`${token} is not a valid email address.`);
         return;
       }
-
       const { merged, truncated } = mergeInviteEmails(emails, [token]);
       if (truncated) {
-        setInlineError(`Maximum ${MAX_INVITE_BATCH} recipients per batch`);
+        onProblem?.(limitMessage);
         return;
       }
+      onProblem?.(null);
       onChange(merged);
       setDraft("");
     },
-    [emails, onChange],
+    [emails, onChange, onProblem, limitMessage],
   );
 
   const addMany = useCallback(
     (raw: string) => {
-      setInlineError(null);
       const { valid, invalid } = partitionInviteEmails(raw);
-      if (invalid.length > 0) {
-        setInlineError(`Invalid email${invalid.length === 1 ? "" : "s"}: ${invalid.join(", ")}`);
-      }
-      if (valid.length === 0) return;
-
       const { merged, truncated } = mergeInviteEmails(emails, valid);
-      onChange(merged);
-      setDraft("");
+      if (valid.length > 0) {
+        onChange(merged);
+        setDraft("");
+      }
       if (truncated) {
-        setInlineError(`Maximum ${MAX_INVITE_BATCH} recipients per batch`);
+        onProblem?.(limitMessage);
+      } else if (invalid.length > 0) {
+        onProblem?.(
+          invalid.length === 1
+            ? `${invalid[0]} is not a valid email address.`
+            : `These are not valid email addresses: ${invalid.join(", ")}.`,
+        );
+      } else {
+        onProblem?.(null);
       }
     },
-    [emails, onChange],
+    [emails, onChange, onProblem, limitMessage],
   );
 
   const removeEmail = (email: string) => {
     onChange(emails.filter((e) => e !== email));
-    setInlineError(null);
+    onProblem?.(null);
   };
 
   return (
-    <div className="space-y-1.5">
-      <fieldset
-        disabled={disabled}
-        className={cn(
-          "m-0 flex min-h-11 min-w-0 flex-wrap items-center gap-2 rounded-lg border border-input bg-surface-container-lowest p-3",
-          "focus-within:ring-2 focus-within:ring-primary/30 focus-within:ring-offset-1",
-          ariaInvalid && "border-error",
-          disabled && "cursor-not-allowed opacity-60",
-        )}
-      >
-        {emails.map((email) => (
-          <Badge key={email} variant="outline" className="gap-1 pr-1 font-body text-xs normal-case">
-            {email}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              className="size-auto rounded-full p-0.5 text-on-surface-variant hover:text-on-surface"
-              aria-label={`Remove ${email}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                removeEmail(email);
-              }}
-            >
-              <X className="size-3" aria-hidden />
-            </Button>
-          </Badge>
-        ))}
-        <input
-          ref={inputRef}
-          id={inputId}
-          type="text"
-          inputMode="email"
-          autoComplete="off"
-          disabled={disabled || atCap}
-          value={draft}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
-          placeholder={
-            emails.length === 0
-              ? "Type an email or paste a list"
-              : atCap
-                ? "Batch limit reached"
-                : "Add another…"
+    <div className="flex flex-col gap-2">
+      <TextInput
+        {...(id ? { id } : {})}
+        type="text"
+        inputMode="email"
+        autoComplete="off"
+        disabled={disabled || atCap}
+        value={draft}
+        placeholder={atCap ? "Batch limit reached" : "name@example.com"}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value.includes(",") || value.includes(";")) {
+            addMany(value);
+            return;
           }
-          className="min-w-[8rem] flex-1 border-0 bg-transparent font-body text-sm text-on-surface outline-none placeholder:text-on-surface-variant"
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v.includes(",") || v.includes(";")) {
-              addMany(v);
-              return;
-            }
-            setDraft(v);
-            setInlineError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addToken(draft);
-              return;
-            }
-            if (e.key === "," || e.key === ";") {
-              e.preventDefault();
-              addToken(draft);
-              return;
-            }
-            if (e.key === "Backspace" && draft === "") {
-              const last = emails.at(-1);
-              if (last) removeEmail(last);
-            }
-          }}
-          onBlur={() => {
-            if (draft.trim()) addToken(draft);
-          }}
-          onPaste={(e) => {
-            const text = e.clipboardData.getData("text");
-            if (!/[,;\s\n]/.test(text)) return;
-            e.preventDefault();
-            addMany(text);
-          }}
-        />
-      </fieldset>
-      {inlineError ? (
-        <p className="font-body text-xs text-error" role="alert">
-          {inlineError}
-        </p>
-      ) : null}
-      {atCap ? (
-        <p className="font-body text-xs text-on-surface-variant">
-          Maximum {MAX_INVITE_BATCH} recipients per batch
-        </p>
+          setDraft(value);
+          onProblem?.(null);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === "," || event.key === ";") {
+            event.preventDefault();
+            addToken(draft);
+            return;
+          }
+          if (event.key === "Backspace" && draft === "") {
+            const last = emails.at(-1);
+            if (last) removeEmail(last);
+          }
+        }}
+        onBlur={() => {
+          if (draft.trim()) addToken(draft);
+        }}
+        onPaste={(event) => {
+          const text = event.clipboardData.getData("text");
+          if (!/[,;\s]/.test(text.trim())) return;
+          event.preventDefault();
+          addMany(text);
+        }}
+      />
+      {emails.length > 0 ? (
+        <ul aria-label="Added recipients" className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+          {emails.map((email) => (
+            <li
+              key={email}
+              className="inline-flex h-control-xs max-w-full items-center gap-0.5 rounded-staff-xs bg-staff-neutral-bg pl-2 text-staff-sm text-staff-neutral-fg"
+            >
+              <span className="truncate">{email}</span>
+              <StaffButton
+                variant="ghost"
+                size="icon-xs"
+                disabled={disabled}
+                aria-label={`Remove ${email}`}
+                onClick={() => removeEmail(email)}
+              >
+                <X aria-hidden />
+              </StaffButton>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

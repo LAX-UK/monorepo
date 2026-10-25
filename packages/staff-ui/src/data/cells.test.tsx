@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
+import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@auction/ui/components/tooltip", () =>
   import("../test/radix-stubs.js").then((m) => m.tooltip),
 );
 
-const { PrimaryCell } = await import("./cells.js");
+const { PersonCell, PrimaryCell } = await import("./cells.js");
 
 describe("PrimaryCell", () => {
   it("puts the record's picture before its link and second line", () => {
@@ -32,5 +33,41 @@ describe("PrimaryCell", () => {
       </PrimaryCell>,
     );
     expect(screen.getByRole("img", { name: "No photos yet" })).toBeInTheDocument();
+  });
+});
+
+describe("PersonCell", () => {
+  const Link = ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+
+  it("shows initials at the 12px step, the name as a link and the email under it", () => {
+    const { container } = render(
+      <PersonCell
+        name="Ada Lovelace"
+        secondary="ada@example.com"
+        href="/admin/clients/1"
+        Link={Link}
+      />,
+    );
+    const avatar = container.querySelector('[data-slot="avatar"]');
+    expect(avatar).toHaveTextContent("AL");
+    expect(avatar).toHaveClass("text-staff-xs");
+    expect(avatar).toHaveAttribute("aria-hidden");
+    expect(screen.getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
+      "href",
+      "/admin/clients/1",
+    );
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+  });
+
+  it("never turns the platform into a person called S", () => {
+    const { container } = render(<PersonCell name="System" kind="system" />);
+    const avatar = container.querySelector('[data-slot="avatar"]');
+    expect(avatar).not.toHaveTextContent("S");
+    expect(avatar?.querySelector("svg")).not.toBeNull();
+    expect(screen.getByText("System")).toBeInTheDocument();
   });
 });

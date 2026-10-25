@@ -13,7 +13,7 @@ export function toStaffStatus(variant: StatusBadgeVariant, label: string): Statu
   return { label, tone: variant };
 }
 
-type CatalogueDomain = "lot" | "sale" | "submission" | "conditionReport";
+type CatalogueDomain = "lot" | "sale" | "submission" | "conditionReport" | "onsiteEvent";
 
 /**
  * The catalogue families as staff read them. The shared registry gives drafts and scheduled
@@ -54,6 +54,12 @@ const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentatio
     fulfilled: { label: "Fulfilled", tone: "success" },
     declined: { label: "Declined", tone: "neutral" },
   },
+  onsiteEvent: {
+    draft: { label: "Draft", tone: "neutral" },
+    published: { label: "Published", tone: "success" },
+    closed: { label: "RSVPs closed", tone: "neutral" },
+    cancelled: { label: "Cancelled", tone: "danger" },
+  },
 };
 
 function isCatalogueDomain(domain: StatusDomain): domain is CatalogueDomain {
@@ -77,6 +83,7 @@ export function staffStatus(
   status: string,
   context?: StaffStatusContext,
 ): StatusPresentation {
+  if (domain === "kyc") return staffIdentityStatus(status);
   if (isCatalogueDomain(domain)) {
     if (domain === "lot" && status === "ended") return endedLotStatus(context?.lot);
     return CATALOGUE_STATUS[domain][status] ?? { label: humanizeStatus(status), tone: "neutral" };
@@ -94,4 +101,47 @@ function endedLotStatus(context: LotStatusContext | undefined): StatusPresentati
   if (winner != null || context?.hasWinner === true) return { label: "Sold", tone: "success" };
   if (winner === null || context?.hasWinner === false) return { label: "Unsold", tone: "neutral" };
   return { label: "Ended", tone: "neutral" };
+}
+
+const IDENTITY_STATUS: Record<string, StatusPresentation> = {
+  approved: { label: "Verified", tone: "success" },
+  pending: { label: "Submitted", tone: "warning" },
+  submitted: { label: "Submitted", tone: "warning" },
+  under_review: { label: "In review", tone: "warning" },
+  rejected: { label: "Rejected", tone: "danger" },
+  expired: { label: "Expired", tone: "warning" },
+  unverified: { label: "Not verified", tone: "neutral" },
+};
+
+/**
+ * A person's identity check as staff read it. Someone who never started one is "Not verified",
+ * never the stored value "unverified".
+ */
+export function staffIdentityStatus(status: string | null | undefined): StatusPresentation {
+  if (!status || status === "unknown") return { label: "Not verified", tone: "neutral" };
+  return IDENTITY_STATUS[status] ?? { label: humanizeStatus(status), tone: "neutral" };
+}
+
+const IDENTITY_SESSION_STATUS: Record<string, StatusPresentation> = {
+  approved: { label: "Approved", tone: "success" },
+  declined: { label: "Declined", tone: "danger" },
+  resubmission_requested: { label: "Resubmission requested", tone: "warning" },
+  review: { label: "In review", tone: "warning" },
+  expired: { label: "Expired", tone: "neutral" },
+  abandoned: { label: "Abandoned", tone: "neutral" },
+  created: { label: "Started", tone: "info" },
+  started: { label: "Started", tone: "info" },
+  submitted: { label: "Submitted", tone: "info" },
+};
+
+/** One identity check (a verification session) with the provider, as staff read its outcome. */
+export function staffIdentitySessionStatus(status: string): StatusPresentation {
+  return IDENTITY_SESSION_STATUS[status] ?? { label: humanizeStatus(status), tone: "neutral" };
+}
+
+/** A guest on an event's list: arrived at the door, or still expected. */
+export function staffArrivalStatus(arrived: boolean): StatusPresentation {
+  return arrived
+    ? { label: "Arrived", tone: "success" }
+    : { label: "Not arrived", tone: "neutral" };
 }

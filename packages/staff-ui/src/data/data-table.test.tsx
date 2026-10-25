@@ -360,6 +360,18 @@ describe("DataTable layout", () => {
     expect(document.querySelector("[data-staff-sticky-header]")).not.toBeInTheDocument();
   });
 
+  it("draws its own card unless it sits inside a section", () => {
+    const { container, rerender } = render(
+      <DataTable label="People" columns={columns} data={rows} getRowId={(r) => r.id} />,
+    );
+    expect(container.querySelector(".border-staff-line")).toBeInTheDocument();
+    rerender(
+      <DataTable label="People" columns={columns} data={rows} getRowId={(r) => r.id} embedded />,
+    );
+    expect(container.querySelector(".border-staff-line")).not.toBeInTheDocument();
+    expect(container.querySelector(".rounded-staff-md")).not.toBeInTheDocument();
+  });
+
   it("shortens text cells but never numeric ones", () => {
     render(<DataTable label="People" columns={columns} data={rows} getRowId={(r) => r.id} />);
     const firstRow = within(screen.getByRole("table", { name: "People" })).getAllByRole("row")[1];

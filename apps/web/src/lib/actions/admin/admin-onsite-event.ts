@@ -13,7 +13,6 @@ import {
 import { SALEROOM_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { createOnsiteEventBodySchema, updateOnsiteEventBodySchema } from "@auction/validators";
-import { redirect } from "next/navigation";
 
 export async function adminCreateOnsiteEventAction(
   input: unknown,
@@ -39,7 +38,7 @@ export async function adminCreateOnsiteEventAction(
     }
     const { slug } = readDataEnvelope(body, onsiteEventSlugSchema, "POST /admin/event-rsvps");
     if (!slug) return actionFailure("Unexpected response from server");
-    redirect(`/admin/event-rsvps/${encodeURIComponent(slug)}`);
+    return actionSuccess({ slug });
   });
 }
 

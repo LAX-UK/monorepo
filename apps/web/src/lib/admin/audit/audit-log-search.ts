@@ -19,8 +19,13 @@ export type AuditLogFilters = {
   action: string;
   from: string;
   to: string;
+  /** Order of events; not a filter. */
+  sort: AuditLogSort;
   offset: number;
 };
+
+export type AuditLogSort = "at_desc" | "at_asc";
+export const AUDIT_LOG_DEFAULT_SORT: AuditLogSort = "at_desc";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -47,6 +52,7 @@ export function parseAuditLogSearch(sp: AuditLogSearch): AuditLogFilters {
     action: first(sp.action).slice(0, 120),
     from: lo,
     to: hi,
+    sort: first(sp.sort) === "at_asc" ? "at_asc" : AUDIT_LOG_DEFAULT_SORT,
     offset: Number.isFinite(offset) && offset > 0 ? Math.min(offset, 50_000) : 0,
   };
 }
@@ -72,6 +78,11 @@ export function auditLogHref(
   // Dropping the actor drops its display name too.
   if (next.actor === null || next.actor === "") next.actorLabel = null;
   return buildListHref(AUDIT_LOG_PATH, current, { offset: null, ...next });
+}
+
+/** The log URL sorted by `sort`; the default order leaves the URL clean. */
+export function auditLogSortHref(current: AuditLogSearch, sort: AuditLogSort): string {
+  return auditLogHref(current, { sort: sort === AUDIT_LOG_DEFAULT_SORT ? null : sort });
 }
 
 export type AuditFilterChip = { id: string; label: string; clearHref: string };
@@ -110,7 +121,7 @@ export function buildAuditFilterChips(
   if (filters.entity) {
     chips.push({
       id: "entity",
-      label: `Entity: ${auditEntityTypeLabel(filters.entity)}`,
+      label: `Record: ${auditEntityTypeLabel(filters.entity)}`,
       clearHref: auditLogHref(current, { entity: null }),
     });
   }

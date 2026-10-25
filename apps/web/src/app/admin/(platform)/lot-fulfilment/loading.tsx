@@ -1,13 +1,11 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
-export default function AdminLotFulfilmentLoading() {
+export default function LotFulfilmentLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Lot fulfilment"
-      description="Loading fulfilment…"
-      kpiTiles={3}
-      tableRows={8}
-      tableColumns={5}
+      description="Sold lots from payment to the buyer: release, then ship or hand over for collection."
+      columns={["Lot", "Step", "Method", "Last change"]}
     />
   );
 }

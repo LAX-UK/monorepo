@@ -109,6 +109,6 @@ describe("disabled reasons", () => {
         openedAt: null,
         inviteEmailLastStatus: null,
       }),
-    ).toBe("Expired — resend to issue a new link");
+    ).toBe("Expired. Resend it to send a new link");
   });
 });

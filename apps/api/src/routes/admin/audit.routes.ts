@@ -48,7 +48,7 @@ export function attachAdminAuditRoutes(
 
   /**
    * GET /admin/audit/log — the staff audit log: filtered by actor, entity, action, view, text and
-   * date, newest first, with a total for paging. Each event names its actor and never carries
+   * date, newest first by default (`sort=at_asc` reverses it), with a total for paging. Each event names its actor and never carries
    * credentials.
    */
   platform.get(
@@ -60,6 +60,7 @@ export function attachAdminAuditRoutes(
       const data = await container.admin.auditLog.search({
         limit: query.limit,
         offset: query.offset,
+        ...(query.sort ? { sort: query.sort } : {}),
         includePii: wantsPii(c),
         ...(query.q ? { q: query.q } : {}),
         ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}),

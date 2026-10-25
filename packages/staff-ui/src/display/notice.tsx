@@ -1,9 +1,13 @@
-import { CircleAlert, Info, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 
 const toneClass = {
   info: { box: "border-staff-info-dot/30 bg-staff-info-bg text-staff-info-fg", Icon: Info },
+  success: {
+    box: "border-staff-success-dot/30 bg-staff-success-bg text-staff-success-fg",
+    Icon: CircleCheck,
+  },
   warning: {
     box: "border-staff-warning-dot/35 bg-staff-warning-bg text-staff-warning-fg",
     Icon: TriangleAlert,

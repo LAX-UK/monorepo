@@ -5,7 +5,7 @@ import {
   setOnsiteEventCheckInDryRun,
 } from "@/lib/data/http/onsite-event-check-in.client";
 import type { OnsiteEventCheckInResult, OnsiteEventCheckInSearchRow } from "@auction/types";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OnsiteEventCheckInConsole } from "./check-in-console";
 import { resultTitle, resultTone } from "./check-in-result-banner";
@@ -59,72 +59,83 @@ beforeEach(() => {
 
 describe("result presentation helpers", () => {
   it.each([
-    ["VALID", "Admit — checked in", "border-emerald-500"],
-    ["DRY_RUN_VALID", "Admit — dry run (not recorded)", "border-emerald-500"],
-    ["ALREADY_CHECKED_IN", "Already checked in", "border-amber-500"],
-    ["INVALID", "Pass not recognised", "border-red-500"],
-    ["WRONG_EVENT", "Wrong event", "border-red-500"],
-    ["EVENT_CLOSED", "Check-in closed", "border-red-500"],
-  ] as const)("maps %s to title and tone", (status, title, toneClass) => {
+    ["VALID", "Admit: checked in", "success"],
+    ["DRY_RUN_VALID", "Admit: dry run, not recorded", "success"],
+    ["ALREADY_CHECKED_IN", "Already checked in", "warning"],
+    ["INVALID", "Pass not recognised", "danger"],
+    ["WRONG_EVENT", "Wrong event", "danger"],
+    ["EVENT_CLOSED", "Check-in closed", "danger"],
+  ] as const)("maps %s to title and tone", (status, title, tone) => {
     const result =
       status === "INVALID" || status === "WRONG_EVENT" || status === "EVENT_CLOSED"
         ? ({ status } as OnsiteEventCheckInResult)
         : ({ status, guest } as OnsiteEventCheckInResult);
     expect(resultTitle(result)).toBe(title);
-    expect(resultTone(status)).toContain(toneClass);
+    expect(resultTone(status)).toBe(tone);
   });
 });
 
 describe("OnsiteEventCheckInConsole", () => {
-  it("renders title and arrival stats", async () => {
+  it("renders the title, arrival counts and a live badge", async () => {
     render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
-    expect(screen.getByText("Preview Night")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Preview Night check-in" })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText("3 / 10 arrived")).toBeInTheDocument();
+      expect(screen.getByText("3 of 10")).toBeInTheDocument();
     });
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    const strip = screen.getByRole("region", { name: "Arrivals" });
+    expect(within(strip).getByText("Still to arrive")).toBeInTheDocument();
+    expect(within(strip).getByText("7")).toBeInTheDocument();
   });
 
-  it("checks in via manual token", async () => {
+  it("checks in via a pasted token and shows the guest", async () => {
     render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
 
-    const input = screen.getByLabelText(/paste pass link/i);
+    const input = screen.getByLabelText(/paste a pass link/i);
     fireEvent.change(input, { target: { value: "token-abc" } });
     fireEvent.click(screen.getByRole("button", { name: "Check in" }));
 
     await waitFor(() => {
       expect(checkInOnsiteEventGuest).toHaveBeenCalledWith(SLUG, { token: "token-abc" });
     });
-    expect(screen.getByText("Admit — checked in")).toBeInTheDocument();
+    expect(await screen.findByText("Admit: checked in")).toBeInTheDocument();
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
   });
 
-  it("shows network error on check-in failure", async () => {
+  it("leaves Check in inert, and says why, until a token is pasted", () => {
+    render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
+    const button = screen.getByRole("button", { name: "Check in" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(button);
+    expect(checkInOnsiteEventGuest).not.toHaveBeenCalled();
+  });
+
+  it("shows a network error on check-in failure", async () => {
     vi.mocked(checkInOnsiteEventGuest).mockRejectedValue(new Error("network down"));
     render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
 
-    fireEvent.change(screen.getByLabelText(/paste pass link/i), {
+    fireEvent.change(screen.getByLabelText(/paste a pass link/i), {
       target: { value: "bad-token" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Check in" }));
 
     await waitFor(() => {
       expect(screen.getByText("Could not reach the server")).toBeInTheDocument();
-      expect(screen.getByText("network down")).toBeInTheDocument();
     });
+    expect(screen.getByRole("alert")).toHaveTextContent("network down");
   });
 
-  it("enables dry-run mode from the header toggle", async () => {
+  it("turns dry run on from the header", async () => {
     render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
 
-    await waitFor(() => screen.getByRole("button", { name: "Dry-run off" }));
-    fireEvent.click(screen.getByRole("button", { name: "Dry-run off" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Turn on dry run" }));
 
     await waitFor(() => {
       expect(setOnsiteEventCheckInDryRun).toHaveBeenCalledWith(SLUG, true);
     });
   });
 
-  it("opens confirm dialog when turning off dry-run", async () => {
+  it("asks before going live and only then turns dry run off", async () => {
     vi.mocked(fetchOnsiteEventCheckInStats).mockResolvedValue({
       total: 10,
       checkedIn: 3,
@@ -132,10 +143,15 @@ describe("OnsiteEventCheckInConsole", () => {
     });
     render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
 
-    await waitFor(() => screen.getByRole("button", { name: "Dry-run on" }));
-    fireEvent.click(screen.getByRole("button", { name: "Dry-run on" }));
-
+    fireEvent.click(await screen.findByRole("button", { name: "Go live" }));
     expect(screen.getByText("Go live with check-in?")).toBeInTheDocument();
+    expect(setOnsiteEventCheckInDryRun).not.toHaveBeenCalled();
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Go live" }));
+    await waitFor(() => {
+      expect(setOnsiteEventCheckInDryRun).toHaveBeenCalledWith(SLUG, false);
+    });
   });
 
   it("shows camera unavailable when BarcodeDetector is absent", async () => {
@@ -147,14 +163,28 @@ describe("OnsiteEventCheckInConsole", () => {
     });
   });
 
-  it("submits manual token on Enter key", async () => {
+  it("submits the pasted token with Enter", async () => {
     render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
-    const input = screen.getByLabelText(/paste pass link/i);
+    const input = screen.getByLabelText(/paste a pass link/i);
     fireEvent.change(input, { target: { value: "enter-token" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    const form = input.closest("form");
+    if (!form) throw new Error("expected the token field to sit in a form");
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(checkInOnsiteEventGuest).toHaveBeenCalledWith(SLUG, { token: "enter-token" });
+    });
+  });
+
+  it("searches by name and checks the guest in", async () => {
+    render(<OnsiteEventCheckInConsole slug={SLUG} title="Preview Night" />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Search name" }));
+    fireEvent.change(screen.getByLabelText("Search guests"), { target: { value: "ada" } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Check in Ada Lovelace" }));
+    await waitFor(() => {
+      expect(checkInOnsiteEventGuest).toHaveBeenCalledWith(SLUG, { rsvpId: guest.rsvpId });
     });
   });
 });

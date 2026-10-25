@@ -24,7 +24,10 @@ export type StaffDialogProps = {
   initialFocusRef?: React.RefObject<HTMLElement | null>;
 };
 
-/** A focused task or confirmation over the page: 440px (560px for `md`), radius lg, shadow lg. */
+/**
+ * A focused task or confirmation over the page: 440px (560px for `md`), radius lg, shadow lg. A
+ * tall body scrolls between the fixed title and footer, so the actions stay in reach on a phone.
+ */
 export function StaffDialog({
   open,
   onOpenChange,
@@ -51,11 +54,11 @@ export function StaffDialog({
             }
           : {})}
         className={cn(
-          "w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-staff-lg border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-lg sm:rounded-staff-lg",
+          "flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-staff-lg border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-lg sm:rounded-staff-lg",
           size === "md" ? "max-w-[560px]" : "max-w-[440px]",
         )}
       >
-        <div className="flex flex-col gap-1.5 px-5 pt-5 pb-4">
+        <div className="flex shrink-0 flex-col gap-1.5 px-5 pt-5 pb-4">
           <DialogTitle className="font-staff text-staff-lg font-semibold tracking-normal text-staff-fg">
             {title}
           </DialogTitle>
@@ -67,9 +70,11 @@ export function StaffDialog({
             <DialogDescription className="sr-only">{title}</DialogDescription>
           )}
         </div>
-        {children ? <div className="px-5 pb-4">{children}</div> : null}
+        {children ? (
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+        ) : null}
         {footer ? (
-          <div className="flex flex-col-reverse gap-2 border-t border-staff-line bg-staff-sunken px-5 py-3 sm:flex-row sm:justify-end">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-staff-line bg-staff-sunken px-5 py-3 sm:flex-row sm:justify-end">
             {footer}
           </div>
         ) : null}
@@ -115,8 +120,8 @@ export type ConfirmActionDialogProps = {
 
 /**
  * Confirms a consequential action. Says exactly what will happen; the confirm button repeats the
- * verb and amount ("Refund £20.00"), and danger actions are red. Focus starts on Cancel (or on
- * the first field to fill), so Enter never confirms by accident. Friction scales with damage: add
+ * verb and amount ("Refund £20.00"), and danger actions are red. Focus starts on Cancel, so
+ * Enter never confirms by accident. Friction scales with damage: add
  * a `reason` for actions that are audited, and `typedConfirmation` for the catastrophic few.
  */
 export function ConfirmActionDialog({
@@ -149,11 +154,9 @@ export function ConfirmActionDialog({
   }, [open]);
 
   const typedMatches = typedConfirmation === undefined || typed === typedConfirmation;
-  const initialFocusRef = reason
-    ? reasonRef
-    : typedConfirmation !== undefined
-      ? typedRef
-      : cancelRef;
+  // Cancel takes focus first, even when there is a reason or phrase to type, so Enter or a
+  // stray key never starts the action; the person tabs on to the field.
+  const initialFocusRef = cancelRef;
 
   const confirm = () => {
     const trimmed = reasonText.trim();

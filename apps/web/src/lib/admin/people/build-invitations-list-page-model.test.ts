@@ -19,9 +19,26 @@ describe("buildInvitationsListPageModel", () => {
       offset: 25,
       status: "pending",
       q: "alice",
+      sort: "created_desc",
     });
     expect(model.hasFilters).toBe(true);
     expect(model.activeFilterCount).toBe(2);
     expect(model.buildPaginationHref({ offset: 0 })).toContain("offset=0");
+  });
+
+  it("carries a valid sort and does not count it as a filter", () => {
+    const model = buildInvitationsListPageModel({ sort: "expires_asc" });
+    expect(model.listQueryParams.sort).toBe("expires_asc");
+    expect(model.query.sort).toBe("expires_asc");
+    expect(model.hasFilters).toBe(false);
+    expect(model.activeFilterCount).toBe(0);
+    expect(model.activeFilterChips).toEqual([]);
+  });
+
+  it("falls back to newest first for an unknown sort", () => {
+    expect(buildInvitationsListPageModel({ sort: "name_asc" }).listQueryParams.sort).toBe(
+      "created_desc",
+    );
+    expect(buildInvitationsListPageModel({}).listQueryParams.sort).toBe("created_desc");
   });
 });

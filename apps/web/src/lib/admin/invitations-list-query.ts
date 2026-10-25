@@ -1,6 +1,8 @@
 import { buildListHref, firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import type { AdminListQueryBase } from "@/lib/admin/i-admin-list-controller";
+import { adminInvitationsListSortValues } from "@auction/validators";
+import type { AdminInvitationsListSort } from "@auction/validators";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -19,13 +21,22 @@ export type InvitationsListFilters = {
   status?: InvitationListStatus;
 };
 
+export type InvitationListSort = AdminInvitationsListSort;
+export const INVITATIONS_DEFAULT_SORT: InvitationListSort = "created_desc";
+
 /** Full invitations list query (pagination + filters) — single parse for RSC and controllers. */
 export type InvitationsListQuery = AdminListQueryBase & {
   status?: InvitationListStatus;
+  /** Always set: the URL value, or the default order. */
+  sort: InvitationListSort;
 };
 
 function isInvitationStatus(s: string | undefined): s is InvitationListStatus {
   return s != null && (INVITATION_STATUSES as readonly string[]).includes(s);
+}
+
+function parseInvitationsSort(raw: string | undefined): InvitationListSort {
+  return adminInvitationsListSortValues.find((s) => s === raw) ?? INVITATIONS_DEFAULT_SORT;
 }
 
 function omitParamsHref(basePath: string, sp: SearchParams, omit: readonly string[]): string {
@@ -44,6 +55,7 @@ export function parseInvitationsListQuery(sp: SearchParams): InvitationsListQuer
   return {
     ...base,
     limit: Math.min(200, base.limit),
+    sort: parseInvitationsSort(base.sort),
     ...(status ? { status } : {}),
   };
 }

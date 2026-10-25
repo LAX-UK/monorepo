@@ -9,6 +9,17 @@ import { StaffButton } from "./button.js";
 import { StaffMenu, StaffMenuContent, StaffMenuItem, StaffMenuTrigger } from "./menu.js";
 
 /** A count beside a tab or nav label, in tabular figures. */
+const COUNT = new Intl.NumberFormat("en-GB");
+const COMPACT_COUNT = new Intl.NumberFormat("en-GB", {
+  notation: "compact",
+  maximumFractionDigits: 0,
+});
+
+/** A count in full ("1,284"); above 99,999 in compact form ("312k") so a tab keeps its size. */
+export function formatCount(value: number): string {
+  return value > 99_999 ? COMPACT_COUNT.format(value) : COUNT.format(value);
+}
+
 export function Count({
   value,
   tone = "neutral",
@@ -28,7 +39,7 @@ export function Count({
         className,
       )}
     >
-      {value > 999 ? "999+" : value}
+      {formatCount(value)}
     </span>
   );
 }

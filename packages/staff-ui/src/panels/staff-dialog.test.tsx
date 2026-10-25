@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ConfirmActionDialog } from "./staff-dialog.js";
+import { ConfirmActionDialog, StaffDialog } from "./staff-dialog.js";
 
 function renderDialog(props: Partial<React.ComponentProps<typeof ConfirmActionDialog>> = {}) {
   const onConfirm = vi.fn();
@@ -20,6 +20,24 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ConfirmActionDi
   return onConfirm;
 }
 
+describe("StaffDialog", () => {
+  it("scrolls a tall body and keeps the actions outside it", () => {
+    render(
+      <StaffDialog
+        open
+        onOpenChange={() => {}}
+        title="Invite people"
+        footer={<button type="button">Send</button>}
+      >
+        <p>Long form</p>
+      </StaffDialog>,
+    );
+    const body = screen.getByText("Long form").parentElement;
+    expect(body).toHaveClass("overflow-y-auto");
+    expect(body).not.toContainElement(screen.getByRole("button", { name: "Send" }));
+  });
+});
+
 describe("ConfirmActionDialog", () => {
   it("starts on Cancel, so Enter never confirms by accident", async () => {
     renderDialog();
@@ -31,7 +49,8 @@ describe("ConfirmActionDialog", () => {
       reason: { label: "Reason for the refund", minLength: 10 },
     });
     const field = screen.getByLabelText("Reason for the refund");
-    await waitFor(() => expect(field).toHaveFocus());
+    // Cancel keeps the first focus even with a field to fill.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus());
 
     fireEvent.click(screen.getByRole("button", { name: "Refund £20.00" }));
     expect(onConfirm).not.toHaveBeenCalled();

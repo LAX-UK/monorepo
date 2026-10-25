@@ -179,7 +179,7 @@ export function usersListFiltersToExportFilters(
 export function countUsersListActiveFilters(filters: UsersListFilters): number {
   let n = 0;
   if (filters.q) n += 1;
-  if (filters.accountStatus || filters.suspendedOnly) n += 1;
+  if (filters.suspendedOnly && !filters.accountStatus) n += 1;
   if (filters.emailVerified !== undefined) n += 1;
   if (filters.kycStatus || filters.kycStatuses?.length) n += 1;
   if (filters.persona) n += 1;
@@ -187,7 +187,6 @@ export function countUsersListActiveFilters(filters: UsersListFilters): number {
   if (filters.hasMobile !== undefined) n += 1;
   if (filters.createdFrom || filters.createdTo) n += 1;
   if (filters.kycVerifiedFrom || filters.kycVerifiedTo) n += 1;
-  if (filters.sort && filters.sort !== "created_desc") n += 1;
   return n;
 }
 

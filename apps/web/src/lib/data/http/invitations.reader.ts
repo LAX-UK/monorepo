@@ -48,7 +48,12 @@ export async function getAdminInvitationsPage(
 /** Walk list pages until an invitation id is found (off-page preview). */
 export async function findAdminInvitationInList(
   invitationId: string,
-  opts?: { pageSize?: number; knownTotal?: number; status?: AdminInvitationsPageParams["status"] },
+  opts?: {
+    pageSize?: number;
+    knownTotal?: number;
+    status?: AdminInvitationsPageParams["status"];
+    sort?: AdminInvitationsPageParams["sort"];
+  },
 ): Promise<AdminInvitationSummary | null> {
   const limit = opts?.pageSize ?? 50;
   let offset = 0;
@@ -59,6 +64,7 @@ export async function findAdminInvitationInList(
       limit,
       offset,
       ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.sort ? { sort: opts.sort } : {}),
     });
     total = page.total;
     const found = page.rows.find((row) => row.id === invitationId);
