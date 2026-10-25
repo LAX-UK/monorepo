@@ -1,4 +1,4 @@
-import { SHOP_POLICY_LINKS } from "@/content/footer-nav.config";
+import { SHOP_HELP_LINK, SHOP_POLICY_LINKS } from "@/content/footer-nav.config";
 import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { laxAccountUrl } from "@/lib/lax-account-url";
@@ -59,6 +59,7 @@ export function buildShopFooterVm(input: {
         { label: "Artists", href: "/artists" },
         { label: "Categories", href: "/categories" },
         { label: "Basket", href: "/basket" },
+        ...policyLinks([SHOP_HELP_LINK]),
       ],
     },
     accountColumn(input.accountState),

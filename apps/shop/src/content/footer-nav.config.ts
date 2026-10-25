@@ -12,6 +12,12 @@ import {
 
 type ShopPolicyLink = { slug: ShopPolicySlug; label: string; href: string };
 
+export const SHOP_HELP_LINK: ShopPolicyLink = {
+  slug: "help",
+  label: "Help and contact",
+  href: SHOP_POLICY_PATHS.help,
+};
+
 const SHOP_SLUG_BY_SOURCE = new Map(
   (Object.entries(SHOP_POLICY_SOURCES) as [ShopPolicySlug, LaxArtPolicySlug][]).map(
     ([shopSlug, source]) => [source, shopSlug],
@@ -43,6 +49,13 @@ export function buildShopLegalMenu(input: {
   artBaseUrl: URL | null;
 }): ShopLegalMenuLink[] {
   const links: ShopLegalMenuLink[] = [];
+  if (input.current === "help" || input.linkable.includes("help")) {
+    links.push({
+      label: SHOP_HELP_LINK.label,
+      href: SHOP_HELP_LINK.href,
+      current: input.current === "help",
+    });
+  }
   if (input.artBaseUrl) {
     links.push({
       label: LAX_ART_LEGAL_INDEX.title,

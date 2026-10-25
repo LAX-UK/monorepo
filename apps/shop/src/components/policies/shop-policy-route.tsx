@@ -5,8 +5,11 @@ import {
   SHOP_POLICY_PATHS,
   SHOP_POLICY_RELEASES,
   type ShopPolicySlug,
+  buildShopHelpDocument,
 } from "@/content/policies";
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import {
   loadLinkableShopPolicies,
   loadShopPolicyVisibility,
@@ -15,8 +18,19 @@ import { NOINDEX_ROBOTS } from "@/lib/seo/shop-indexing";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+function documentFor(slug: ShopPolicySlug) {
+  if (slug === "help") {
+    return buildShopHelpDocument({
+      ordersHref: SHOP_ORDERS_HREF,
+      accountHref: laxAccountUrl(),
+      artBaseUrl: loadShopArtBaseUrl(),
+    });
+  }
+  return SHOP_POLICY_DOCUMENTS[slug];
+}
+
 export function shopPolicyMetadata(slug: ShopPolicySlug): Metadata {
-  const document = SHOP_POLICY_DOCUMENTS[slug];
+  const document = documentFor(slug);
   const visibility = loadShopPolicyVisibility(slug);
   return {
     title: `${document.title} | LAX Shop`,
@@ -38,10 +52,11 @@ export function ShopPolicyRoute({ slug }: { slug: ShopPolicySlug }) {
   });
   return (
     <ShopPolicyPage
-      document={SHOP_POLICY_DOCUMENTS[slug]}
+      document={documentFor(slug)}
       release={SHOP_POLICY_RELEASES[slug]}
       draft={visibility === "draft-preview"}
       hubLinks={hubLinks}
+      {...(slug === "help" ? {} : { company: "shop" as const })}
     />
   );
 }

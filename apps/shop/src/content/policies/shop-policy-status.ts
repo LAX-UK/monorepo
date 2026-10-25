@@ -24,14 +24,23 @@ export const SHOP_POLICY_PATHS: Readonly<Record<ShopPolicySlug, string>> = {
   cookies: "/cookies",
 };
 
+/** Shop pages that publish a London Art Exchange Ltd policy; /help is Shop's own page. */
+export type ShopSourcedPolicySlug = Exclude<ShopPolicySlug, "help">;
+
 /** The London Art Exchange Ltd policy each Shop page publishes. */
-export const SHOP_POLICY_SOURCES: Readonly<Record<ShopPolicySlug, LaxArtPolicySlug>> = {
+export const SHOP_POLICY_SOURCES: Readonly<Record<ShopSourcedPolicySlug, LaxArtPolicySlug>> = {
   terms: "terms",
   delivery: "shipping",
   returns: "returns",
-  help: "complaints",
   privacy: "privacy",
   cookies: "cookies",
+};
+
+/** Help and contact: contact details and links, not a policy. */
+export const SHOP_HELP_RELEASE: LegalPolicyRelease = {
+  status: "approved",
+  version: "1.0",
+  lastUpdated: "2026-10-25",
 };
 
 export type ShopPolicyStatus = LegalPolicyStatus;
@@ -41,7 +50,7 @@ export const SHOP_POLICY_RELEASES: Readonly<Record<ShopPolicySlug, ShopPolicyRel
   terms: LAX_ART_POLICIES[SHOP_POLICY_SOURCES.terms].release,
   delivery: LAX_ART_POLICIES[SHOP_POLICY_SOURCES.delivery].release,
   returns: LAX_ART_POLICIES[SHOP_POLICY_SOURCES.returns].release,
-  help: LAX_ART_POLICIES[SHOP_POLICY_SOURCES.help].release,
+  help: SHOP_HELP_RELEASE,
   privacy: LAX_ART_POLICIES[SHOP_POLICY_SOURCES.privacy].release,
   cookies: LAX_ART_POLICIES[SHOP_POLICY_SOURCES.cookies].release,
 };

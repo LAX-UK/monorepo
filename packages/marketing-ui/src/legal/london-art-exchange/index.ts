@@ -13,6 +13,7 @@ import { TERMS_POLICY } from "./terms.js";
 /**
  * The published policies of London Art Exchange Ltd, which runs lax.art and LAX Shop. Both
  * products read this one source; the text is the business team's, taken from www.thelax.art.
+ * One internal note to staff was left out of the cookie notice (see `cookies.ts`).
  */
 export type LaxArtPolicySlug =
   | "terms"

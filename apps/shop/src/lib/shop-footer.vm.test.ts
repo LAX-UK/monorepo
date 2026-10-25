@@ -62,14 +62,13 @@ describe("buildShopFooterVm", () => {
       { label: "Sign in", href: "/login" },
       { label: "Create account", href: "/register" },
     ]);
-    expect(vm.columns[0]?.links.at(-1)).toEqual({ label: "Basket", href: "/basket" });
+    expect(vm.columns[0]?.links.at(-1)).toEqual({ label: "Help and contact", href: "/help" });
     expect(vm.columns[3]?.links).toEqual([
       { label: "Terms of Sale", href: "/terms" },
       { label: "Returns & Cancellation", href: "/returns" },
       { label: "Shipping & Delivery", href: "/delivery" },
       { label: "Privacy Notice", href: "/privacy" },
       { label: "Cookie Preferences", href: "/cookies" },
-      { label: "Complaints & ADR", href: "/help" },
       { label: "Legal & Policies", href: "https://art.example/legal" },
     ]);
     const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
@@ -91,7 +90,6 @@ describe("buildShopFooterVm", () => {
       "/delivery",
       "/privacy",
       "/cookies",
-      "/help",
     ]);
     expect(vm.columns[1]?.links).toEqual([{ label: "Account status", href: "/account/disabled" }]);
   });

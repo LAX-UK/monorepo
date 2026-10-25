@@ -3,6 +3,8 @@ import type { LegalPolicyDocument } from "../policy/policy-document.js";
 /**
  * Cookie Notice and Preference Controls, as published by London Art Exchange Ltd at https://www.thelax.art/cookie-notice
  * (version 1.0, effective 2026-08-12). Business-team text: keep the wording and clause numbers.
+ * Section 4 leaves out the live page's note to staff that the former cookie_client_id,
+ * popup_shown_v2 and accept_cookies_i cookies must be removed before the notice goes live.
  */
 export const COOKIES_POLICY: LegalPolicyDocument<"cookies"> = {
   slug: "cookies",
@@ -149,7 +151,7 @@ export const COOKIES_POLICY: LegalPolicyDocument<"cookies"> = {
         },
         {
           type: "paragraph",
-          text: "The former 10-year cookie_client_id, popup_shown_v2 and accept_cookies_i implementations must be removed before this notice goes live. The replacement consent record is limited to 90 days. PHPSESSID remains session-only and must use Secure, HttpOnly and SameSite=Lax or SameSite=Strict as appropriate.",
+          text: "The replacement consent record is limited to 90 days. PHPSESSID remains session-only and must use Secure, HttpOnly and SameSite=Lax or SameSite=Strict as appropriate.",
         },
       ],
     },

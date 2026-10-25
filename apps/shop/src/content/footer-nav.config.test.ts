@@ -11,13 +11,14 @@ describe("buildShopLegalMenu", () => {
       artBaseUrl: new URL("https://art.example"),
     });
     expect(menu.map((link) => [link.label, link.href])).toEqual([
+      ["Help and contact", "/help"],
       ["Legal & Policies", "https://art.example/legal"],
       ["Terms of Sale", "/terms"],
       ["Returns & Cancellation", "/returns"],
       ["Shipping & Delivery", "/delivery"],
       ["Privacy Notice", "/privacy"],
       ["Cookie Preferences", "/cookies"],
-      ["Complaints & ADR", "/help"],
+      ["Complaints & ADR", "https://art.example/legal/complaints"],
       ["Accessibility", "https://art.example/legal/accessibility"],
       ["AML & Identity", "https://art.example/legal/aml-identity-checks"],
       ["Reviews Policy", "https://art.example/legal/reviews"],

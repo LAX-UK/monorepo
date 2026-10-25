@@ -4,13 +4,14 @@ import {
   SHOP_POLICY_DOCUMENTS,
   SHOP_POLICY_RELEASES,
   SHOP_POLICY_SOURCES,
-  type ShopPolicySlug,
+  type ShopSourcedPolicySlug,
+  buildShopHelpDocument,
 } from "./index";
 import { shopPolicyPlaceholders, shopPolicyTexts } from "./shop-policy-text";
 
-const slugs = Object.keys(SHOP_POLICY_DOCUMENTS) as ShopPolicySlug[];
+const slugs = Object.keys(SHOP_POLICY_DOCUMENTS) as ShopSourcedPolicySlug[];
 
-function pageText(slug: ShopPolicySlug): string {
+function pageText(slug: ShopSourcedPolicySlug): string {
   return shopPolicyTexts(SHOP_POLICY_DOCUMENTS[slug]).join("\n");
 }
 
@@ -43,5 +44,29 @@ describe("Shop policy pages", () => {
     expect(terms).toContain("London Art Exchange Ltd");
     expect(terms).toContain("company number 12874213");
     for (const slug of slugs) expect(pageText(slug), slug).not.toContain("London Auction Xchange");
+  });
+
+  it("make help a contact page with the live details and plain links", () => {
+    const help = buildShopHelpDocument({
+      ordersHref: "/account/orders",
+      accountHref: "https://account.example/account",
+      artBaseUrl: new URL("https://art.example"),
+    });
+    const text = shopPolicyTexts(help).join("\n");
+    for (const detail of [
+      "info(@)lax.art",
+      "Sales Office: +44 0800 208 4800",
+      "General Enquiries: +44 020 804 41334",
+      "156 New Cavendish St, London W1W 6YW",
+      "[Your orders](/account/orders)",
+      "[LAX Account](https://account.example/account)",
+      "[Shipping & Delivery](/delivery)",
+      "[Returns & Cancellation](/returns)",
+      "[Terms of Sale](/terms)",
+      "[Complaints & ADR](https://art.example/legal/complaints)",
+    ]) {
+      expect(text).toContain(detail);
+    }
+    expect(SHOP_POLICY_RELEASES.help.status).toBe("approved");
   });
 });
