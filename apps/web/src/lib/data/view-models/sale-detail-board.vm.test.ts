@@ -12,7 +12,7 @@ import {
 import {
   filterSaleRegistrations,
   matchesSaleRegistrationSearch,
-  registrationStatusTone,
+  registrationCheckInStatus,
 } from "./sale-registrations-tab.vm";
 
 describe("sale-registrations-tab.vm", () => {
@@ -45,10 +45,11 @@ describe("sale-registrations-tab.vm", () => {
     expect(matchesSaleRegistrationSearch(rows[0], "bob")).toBe(false);
   });
 
-  it("registrationStatusTone maps registry variants to dot tones", () => {
-    expect(registrationStatusTone("approved")).toBe("success");
-    expect(registrationStatusTone("pending")).toBe("warning");
-    expect(registrationStatusTone("rejected")).toBe("critical");
+  it("registrationCheckInStatus follows the bidder to the door", () => {
+    expect(registrationCheckInStatus(rows[1])?.label).toBe("Checked in");
+    expect(registrationCheckInStatus(rows[0])).toBeNull();
+    const approved = { status: "approved", checkedInAt: null, paddleNumber: null } as never;
+    expect(registrationCheckInStatus(approved)?.label).toBe("Awaiting paddle");
   });
 });
 

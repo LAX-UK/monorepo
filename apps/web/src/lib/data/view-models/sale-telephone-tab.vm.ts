@@ -1,46 +1,19 @@
-import type { DetailBoardFilter, DetailBoardKpiTile } from "@/lib/admin/detail-board/types";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
+import type { SegmentOption } from "@auction/staff-ui";
 
-export type SaleTelephoneFilter = "all" | "active" | "requested" | "completed";
+export type SaleTelephoneFilter = "all" | "active" | "requested" | "closed";
 
-export const SALE_TELEPHONE_FILTERS: DetailBoardFilter<SaleTelephoneFilter>[] = [
-  { id: "all", label: "All" },
-  { id: "active", label: "Active" },
-  { id: "requested", label: "Requested" },
-  { id: "completed", label: "Completed" },
+export const SALE_TELEPHONE_FILTERS: readonly SegmentOption<SaleTelephoneFilter>[] = [
+  { value: "all", label: "All" },
+  { value: "requested", label: "Requested" },
+  { value: "active", label: "Active" },
+  { value: "closed", label: "Closed" },
 ];
 
-export function buildSaleTelephoneKpiTiles(
-  rows: readonly AdminTelephoneBookingRow[],
-): DetailBoardKpiTile[] {
-  const requested = rows.filter((r) => r.status === "requested").length;
-  const inProgress = rows.filter(
-    (r) => r.status === "in_progress" || r.status === "confirmed",
-  ).length;
-  const completed = rows.filter((r) => r.status === "completed").length;
-  const cancelled = rows.filter((r) => r.status === "cancelled").length;
-
-  return [
-    {
-      id: "total",
-      label: "Total bookings",
-      value: String(rows.length),
-      compareHint: requested > 0 ? `${requested} awaiting confirm` : "On file",
-    },
-    {
-      id: "active",
-      label: "Active lines",
-      value: String(inProgress),
-      compareHint: inProgress > 0 ? "Clerk may be on line" : "None in progress",
-    },
-    {
-      id: "completed",
-      label: "Completed",
-      value: String(completed),
-      compareHint: cancelled > 0 ? `${cancelled} cancelled` : "Closed lines",
-    },
-  ];
+/** A booking that has finished, one way or the other. */
+export function isTelephoneBookingClosed(row: Pick<AdminTelephoneBookingRow, "status">): boolean {
+  return row.status === "cancelled" || row.status === "completed";
 }
 
 export function filterSaleTelephoneBookings(
@@ -49,11 +22,11 @@ export function filterSaleTelephoneBookings(
 ): AdminTelephoneBookingRow[] {
   switch (filter) {
     case "active":
-      return rows.filter((r) => r.status !== "cancelled" && r.status !== "completed");
+      return rows.filter((r) => !isTelephoneBookingClosed(r));
     case "requested":
       return rows.filter((r) => r.status === "requested");
-    case "completed":
-      return rows.filter((r) => r.status === "completed" || r.status === "cancelled");
+    case "closed":
+      return rows.filter(isTelephoneBookingClosed);
     default:
       return [...rows];
   }
@@ -74,5 +47,5 @@ export function matchesSaleTelephoneSearch(row: AdminTelephoneBookingRow, query:
 }
 
 export function telephoneBidderLabel(row: AdminTelephoneBookingRow): string {
-  return row.userName ?? row.userEmail ?? row.userId;
+  return row.userName ?? row.userEmail ?? "Unnamed bidder";
 }

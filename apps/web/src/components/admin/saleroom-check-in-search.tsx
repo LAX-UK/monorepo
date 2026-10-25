@@ -1,9 +1,8 @@
 "use client";
 
+import { staffIdentityStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
+import { Field, PersonCell, StaffButton, TextInput, cn } from "@auction/staff-ui";
 
 type Props = {
   query: string;
@@ -19,6 +18,7 @@ function displayName(candidate: AdminCheckInCandidate): string {
   return candidate.name ?? candidate.email;
 }
 
+/** Finds the client to check in by name or email, and lists who matched. */
 export function SaleroomCheckInSearch({
   query,
   onQueryChange,
@@ -28,58 +28,58 @@ export function SaleroomCheckInSearch({
   selectedUserId,
   onSelectCandidate,
 }: Props) {
+  const tooShort = query.trim().length < 2;
+  const hint = searching
+    ? "Searching…"
+    : tooShort
+      ? "Type at least two characters of their name or email."
+      : candidates.length === 0 && !searchError
+        ? "No clients match. Check the spelling, or ask them to create an account first."
+        : undefined;
+
   return (
     <>
-      <div className="space-y-1">
-        <Label htmlFor="check-in-search">Search client</Label>
-        <Input
-          id="check-in-search"
+      <Field label="Find a client" {...(hint ? { description: hint } : {})} error={searchError}>
+        <TextInput
+          type="search"
           value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Type email or name (min 2 characters)"
-          className="font-body text-sm"
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Name or email"
           autoComplete="off"
         />
-        {query.trim().length < 2 ? (
-          <p className="font-body text-xs text-on-surface-variant">
-            Type email or name (min 2 characters)
-          </p>
-        ) : null}
-        {searching ? <p className="font-body text-xs text-on-surface-variant">Searching…</p> : null}
-        {searchError ? (
-          <p className="font-body text-xs text-destructive" role="alert">
-            {searchError}
-          </p>
-        ) : null}
-      </div>
+      </Field>
 
       {candidates.length > 0 ? (
-        <ul className="space-y-2" aria-label="Search results">
-          {candidates.map((c) => {
-            const selected = c.userId === selectedUserId;
-            const existingPaddle = c.eligibleEntities.find(
-              (e) => e.existingRegistration?.paddleNumber != null,
+        <ul
+          aria-label="Search results"
+          className="divide-y divide-staff-line-subtle overflow-hidden rounded-staff-md border border-staff-line"
+        >
+          {candidates.map((candidate) => {
+            const selected = candidate.userId === selectedUserId;
+            const existingPaddle = candidate.eligibleEntities.find(
+              (entity) => entity.existingRegistration?.paddleNumber != null,
             )?.existingRegistration?.paddleNumber;
+            const identity = staffIdentityStatus(candidate.kycStatus).label;
             return (
-              <li key={c.userId}>
-                <Button
-                  type="button"
+              <li key={candidate.userId}>
+                <StaffButton
                   variant="ghost"
                   aria-pressed={selected}
-                  className={`h-auto w-full justify-start rounded-md border px-3 py-2 text-left whitespace-normal ${
-                    selected
-                      ? "border-primary bg-primary/5"
-                      : "border-border-hairline hover:bg-surface-container-low/60"
-                  }`}
-                  onClick={() => onSelectCandidate(c.userId)}
+                  onClick={() => onSelectCandidate(candidate.userId)}
+                  className={cn(
+                    "h-auto w-full justify-between gap-3 rounded-none px-3 py-2.5 text-left font-normal",
+                    selected && "bg-staff-selected",
+                  )}
                 >
-                  <p className="font-medium">{displayName(c)}</p>
-                  <p className="font-body text-xs text-on-surface-variant">{c.email}</p>
-                  <p className="mt-1 font-body text-xs text-on-surface-variant">
-                    KYC: {c.kycStatus}
-                    {existingPaddle != null ? <> · Already paddle #{existingPaddle}</> : null}
-                  </p>
-                </Button>
+                  <PersonCell
+                    name={displayName(candidate)}
+                    secondary={candidate.name ? candidate.email : null}
+                  />
+                  <span className="shrink-0 text-staff-xs text-staff-muted">
+                    {identity}
+                    {existingPaddle != null ? ` · Paddle ${existingPaddle}` : ""}
+                  </span>
+                </StaffButton>
               </li>
             );
           })}

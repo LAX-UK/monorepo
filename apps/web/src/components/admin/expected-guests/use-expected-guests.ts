@@ -3,7 +3,7 @@
 import type { AdminExpectedGuestRow } from "@/lib/data/http/admin-expected-guests.server";
 import type { OnsiteEventSegmentOption } from "@auction/types";
 import { useMemo, useState } from "react";
-import { guestDisplayName, segmentLabel } from "./guest-helpers";
+import { segmentLabel } from "./guest-helpers";
 
 export function useExpectedGuestsSearch(
   items: AdminExpectedGuestRow[],
@@ -35,13 +35,3 @@ export function useExpectedGuestsSearch(
 
   return { search, setSearch, filtered, stats };
 }
-
-export function useGuestCheckInEntity(guest: AdminExpectedGuestRow) {
-  const [entityId, setEntityId] = useState(() => {
-    const personal = guest.eligibleEntities.find((e) => e.kind === "individual");
-    return personal?.id ?? guest.eligibleEntities[0]?.id ?? "";
-  });
-  return { entityId, setEntityId };
-}
-
-export { guestDisplayName };

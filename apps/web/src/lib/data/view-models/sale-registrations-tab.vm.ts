@@ -1,48 +1,33 @@
-import type { DetailBoardFilter, DetailBoardKpiTile } from "@/lib/admin/detail-board/types";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin-sale-registrations.types";
-import { registrationDotStatus } from "@/lib/presenters/status/dot-status-presenters";
-import type { DotStatusPillTone } from "@auction/ui";
+import type { SegmentOption, StatusPresentation } from "@auction/staff-ui";
 
-export type SaleRegistrationsFilter = "all" | "approved" | "pending" | "checked_in" | "awaiting";
+export type SaleRegistrationsFilter =
+  | "all"
+  | "approved"
+  | "pending"
+  | "rejected"
+  | "checked_in"
+  | "awaiting";
 
-export const SALE_REGISTRATIONS_FILTERS: DetailBoardFilter<SaleRegistrationsFilter>[] = [
-  { id: "all", label: "All" },
-  { id: "approved", label: "Approved" },
-  { id: "pending", label: "Pending" },
-  { id: "checked_in", label: "Checked in" },
-  { id: "awaiting", label: "Awaiting" },
+const ONLINE_FILTERS: SegmentOption<SaleRegistrationsFilter>[] = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
 ];
 
-export function buildSaleRegistrationsKpiTiles(
-  rows: readonly AdminSaleRegistrationRow[],
-): DetailBoardKpiTile[] {
-  const pending = rows.filter((r) => r.status === "pending").length;
-  const approved = rows.filter((r) => r.status === "approved").length;
-  const checkedIn = rows.filter((r) => r.checkedInAt != null).length;
-  const rejected = rows.filter((r) => r.status === "rejected").length;
-  const checkedInPct =
-    approved > 0 ? `${Math.round((checkedIn / approved) * 1000) / 10}% of approved` : "—";
+const SALEROOM_FILTERS: SegmentOption<SaleRegistrationsFilter>[] = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "awaiting", label: "Awaiting paddle" },
+  { value: "checked_in", label: "Checked in" },
+];
 
-  return [
-    {
-      id: "total",
-      label: "Total registrations",
-      value: String(rows.length),
-      compareHint: pending > 0 ? `${pending} pending` : "On file",
-    },
-    {
-      id: "checked-in",
-      label: "Checked in",
-      value: String(checkedIn),
-      compareHint: checkedInPct,
-    },
-    {
-      id: "rejected",
-      label: "Rejected",
-      value: String(rejected),
-      compareHint: rejected > 0 ? "Needs review" : "None flagged",
-    },
-  ];
+/** The status filters a sale offers: saleroom sales track paddles and check-in instead of rejections. */
+export function saleRegistrationsFilters(
+  saleroom: boolean,
+): readonly SegmentOption<SaleRegistrationsFilter>[] {
+  return saleroom ? SALEROOM_FILTERS : ONLINE_FILTERS;
 }
 
 export function filterSaleRegistrations(
@@ -54,6 +39,8 @@ export function filterSaleRegistrations(
       return rows.filter((r) => r.status === "approved");
     case "pending":
       return rows.filter((r) => r.status === "pending");
+    case "rejected":
+      return rows.filter((r) => r.status === "rejected");
     case "checked_in":
       return rows.filter((r) => r.checkedInAt != null);
     case "awaiting":
@@ -79,29 +66,15 @@ export function matchesSaleRegistrationSearch(
 }
 
 export function registrationBidderLabel(row: AdminSaleRegistrationRow): string {
-  return row.userName ?? row.userEmail ?? row.userId;
+  return row.userName ?? row.userEmail ?? "Unnamed bidder";
 }
 
-export function registrationStatusTone(
-  status: AdminSaleRegistrationRow["status"],
-): DotStatusPillTone {
-  return registrationDotStatus(status).tone;
-}
-
-export function registrationStatusLabel(status: AdminSaleRegistrationRow["status"]): string {
-  return registrationDotStatus(status).label;
-}
-
-export function registrationCheckInTone(row: AdminSaleRegistrationRow): DotStatusPillTone {
-  if (row.checkedInAt) return "success";
-  if (row.status === "approved" && row.paddleNumber == null) return "warning";
-  if (row.status === "approved") return "info";
-  return "neutral";
-}
-
-export function registrationCheckInLabel(row: AdminSaleRegistrationRow): string {
-  if (row.checkedInAt) return "Checked in";
-  if (row.status === "approved" && row.paddleNumber == null) return "Awaiting paddle";
-  if (row.status === "approved") return "Approved";
-  return "—";
+/** Where an approved bidder stands at the door: checked in, waiting for a paddle, or ready. */
+export function registrationCheckInStatus(
+  row: AdminSaleRegistrationRow,
+): StatusPresentation | null {
+  if (row.checkedInAt) return { label: "Checked in", tone: "success" };
+  if (row.status !== "approved") return null;
+  if (row.paddleNumber == null) return { label: "Awaiting paddle", tone: "warning" };
+  return { label: "Paddle assigned", tone: "info" };
 }

@@ -145,3 +145,45 @@ export function staffArrivalStatus(arrived: boolean): StatusPresentation {
     ? { label: "Arrived", tone: "success" }
     : { label: "Not arrived", tone: "neutral" };
 }
+
+const TELEPHONE_BOOKING_STATUS: Record<string, StatusPresentation> = {
+  requested: { label: "Requested", tone: "warning" },
+  confirmed: { label: "Confirmed", tone: "info" },
+  in_progress: { label: "In progress", tone: "info", live: true },
+  completed: { label: "Completed", tone: "success" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+};
+
+/** A telephone bidding line: asked for, confirmed, being worked now, finished or cancelled. */
+export function staffTelephoneBookingStatus(status: string): StatusPresentation {
+  return TELEPHONE_BOOKING_STATUS[status] ?? { label: humanizeStatus(status), tone: "neutral" };
+}
+
+const ATG_AUCTION_STATUS: Record<string, StatusPresentation> = {
+  pending: { label: "Pending", tone: "neutral" },
+  created: { label: "On ATG as a draft", tone: "info" },
+  approved: { label: "Approved", tone: "info" },
+  published: { label: "Published", tone: "success" },
+  closed: { label: "Closed", tone: "neutral" },
+};
+
+/** A sale's auction on the ATG White Label; null when it has not been pushed. */
+export function staffAtgAuctionStatus(status: string | null | undefined): StatusPresentation {
+  if (!status) return { label: "Not on ATG", tone: "neutral" };
+  return ATG_AUCTION_STATUS[status] ?? { label: humanizeStatus(status), tone: "neutral" };
+}
+
+/** One lot's state on ATG, from the fields the sync records. */
+export function staffAtgLotStatus(lot: {
+  atgLotId: string | null;
+  lastError: string | null;
+  sold: boolean | null;
+  numberOfBids: number | null;
+}): StatusPresentation {
+  if (lot.lastError) return { label: "Sync error", tone: "danger" };
+  if (!lot.atgLotId) return { label: "Not pushed", tone: "neutral" };
+  if (lot.sold) return { label: "Sold", tone: "success" };
+  const bids = lot.numberOfBids ?? 0;
+  if (bids > 0) return { label: bids === 1 ? "1 bid" : `${bids} bids`, tone: "info" };
+  return { label: "On ATG", tone: "info" };
+}

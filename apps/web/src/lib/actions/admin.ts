@@ -132,6 +132,12 @@ export const adminApproveSaleRegistrationAction = _adminApproveSaleRegistrationA
 import { adminRejectSaleRegistrationAction as _adminRejectSaleRegistrationAction } from "./admin/admin-sale-registrations";
 export const adminRejectSaleRegistrationAction = _adminRejectSaleRegistrationAction;
 
+import { adminDecideSaleRegistrationResultAction as _adminDecideSaleRegistrationResultAction } from "./admin/admin-sale-registrations";
+export const adminDecideSaleRegistrationResultAction = _adminDecideSaleRegistrationResultAction;
+
+import { adminTelephoneBookingResultAction as _adminTelephoneBookingResultAction } from "./admin/admin-telephone";
+export const adminTelephoneBookingResultAction = _adminTelephoneBookingResultAction;
+
 import { adminUpdateSaleRegistrationBidLimitAction as _adminUpdateSaleRegistrationBidLimitAction } from "./admin/admin-sale-registrations";
 export const adminUpdateSaleRegistrationBidLimitAction = _adminUpdateSaleRegistrationBidLimitAction;
 

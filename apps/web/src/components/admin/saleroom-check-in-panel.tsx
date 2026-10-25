@@ -7,8 +7,8 @@ import {
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";
+import { Notice, Section, StaffButton, staffButtonVariants } from "@auction/staff-ui";
 import type { SaleDeliveryMode } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -193,49 +193,40 @@ export function SaleroomCheckInPanel({
 
   if (success) {
     return (
-      <div
-        id="check-in"
-        className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-5"
-        aria-live="polite"
-      >
-        <p className="font-body text-sm text-on-surface">
-          {success.markedPresentOnly ? (
+      <Section id="check-in" title="In-room check-in" className="scroll-mt-20">
+        <Notice
+          tone="success"
+          title={
+            success.markedPresentOnly
+              ? `${success.name} is marked present`
+              : `Paddle ${success.paddleNumber} assigned to ${success.name}`
+          }
+          actions={
             <>
-              <strong>{success.name}</strong> marked present.
+              <Link
+                href={`/admin/saleroom/${encodeURIComponent(saleId)}?checkedIn=1`}
+                className={staffButtonVariants({ variant: "primary", size: "sm" })}
+              >
+                Open clerk console
+              </Link>
+              <StaffButton size="sm" variant="secondary" onClick={resetForAnother}>
+                Check in another
+              </StaffButton>
             </>
-          ) : (
-            <>
-              Paddle <strong className="tabular-nums">{success.paddleNumber}</strong> assigned to{" "}
-              <strong>{success.name}</strong>.
-            </>
-          )}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="default">
-            <Link href={`/admin/saleroom/${saleId}?checkedIn=1`}>Open clerk console</Link>
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={resetForAnother}>
-            Check in another
-          </Button>
-        </div>
-      </div>
+          }
+        />
+      </Section>
     );
   }
 
   return (
-    <div
+    <Section
       id="check-in"
-      className="rounded-lg border border-border-hairline bg-surface-container-low/30 p-5"
+      title="In-room check-in"
+      description="For bidders attending in person. The client needs an account and a completed identity check."
+      className="scroll-mt-20"
     >
-      <div className="space-y-1">
-        <h3 className="font-headline text-base font-semibold text-on-surface">In-room check-in</h3>
-        <p className="font-body text-sm text-on-surface-variant">
-          For bidders attending in person. The client must already have an account and completed
-          KYC.
-        </p>
-      </div>
-
-      <div className="mt-4 space-y-4">
+      <div className="flex flex-col gap-4">
         <SaleroomCheckInSearch
           query={query}
           onQueryChange={setQuery}
@@ -263,6 +254,6 @@ export function SaleroomCheckInPanel({
           />
         ) : null}
       </div>
-    </div>
+    </Section>
   );
 }

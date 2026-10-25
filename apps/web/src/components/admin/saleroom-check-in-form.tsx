@@ -1,22 +1,13 @@
 "use client";
 
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
+import { decimalToMinorUnits } from "@/lib/data/view-models/client-commerce-tab.vm";
 import {
   BID_LIMIT_FIELD_LABEL,
   bidLimitFieldHelp,
   bidLimitFieldPlaceholder,
 } from "@/lib/saleroom/bid-limit-field-copy";
-import { formatMoney } from "@/lib/ui/format";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
+import { EnumSelect, Field, Notice, StaffButton, StaffMoney, TextInput } from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -34,6 +25,7 @@ type Props = {
   onCheckIn: (assignPaddle: boolean) => void;
 };
 
+/** The chosen client's details for check-in: buying entity, optional bid cap and paddle. */
 export function SaleroomCheckInForm({
   candidate,
   saleCurrency,
@@ -56,129 +48,129 @@ export function SaleroomCheckInForm({
     entityId.length > 0;
 
   const blockerMessages: string[] = [];
-  if (candidate.suspended) blockerMessages.push("Account is suspended.");
+  if (candidate.suspended) blockerMessages.push("The account is suspended.");
   if (candidate.kycStatus !== "approved") {
     blockerMessages.push("Identity verification is not complete.");
   }
-  if (!candidate.emailVerified) blockerMessages.push("Email address is not verified.");
+  if (!candidate.emailVerified) blockerMessages.push("The email address is not verified.");
 
   const selectedEntity = eligibleEntities.find((e) => e.id === entityId);
   const existingLimit = selectedEntity?.existingRegistration?.bidLimit;
+  const blockedReason = prerequisitesOk ? undefined : "Resolve the account issues first";
 
   return (
-    <div className="space-y-3 rounded-md border border-border-hairline p-4">
+    <div className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-sunken p-4">
       {blockerMessages.length > 0 ? (
-        <ul className="space-y-1" role="alert">
-          {blockerMessages.map((msg) => (
-            <li key={msg} className="font-body text-xs text-destructive">
-              {msg}
-            </li>
-          ))}
-          <li>
+        <Notice
+          tone="danger"
+          alert
+          title="This client cannot be checked in yet"
+          actions={
             <Link
-              href={`/admin/clients/${candidate.userId}`}
-              className="font-body text-xs text-link underline"
+              href={`/admin/clients/${encodeURIComponent(candidate.userId)}`}
+              className="text-staff-sm font-medium underline underline-offset-2"
             >
-              Open client profile
+              Open client
             </Link>
-          </li>
-        </ul>
+          }
+        >
+          {blockerMessages.join(" ")}
+        </Notice>
       ) : null}
 
-      <div className="space-y-1">
-        <Label htmlFor="check-in-entity">Buying as</Label>
-        <Select
-          value={entityId}
+      <Field label="Buying as" disabled={pending}>
+        <EnumSelect
+          value={entityId || null}
           onValueChange={(id) => {
             onEntityIdChange(id);
-            const ent = eligibleEntities.find((e) => e.id === id);
-            const limit = ent?.existingRegistration?.bidLimit;
+            const entity = eligibleEntities.find((e) => e.id === id);
+            const limit = entity?.existingRegistration?.bidLimit;
             onBidLimitChange(limit?.replace(/\.00$/, "") ?? "");
           }}
-        >
-          <SelectTrigger id="check-in-entity" className="font-body text-sm">
-            <SelectValue placeholder="Select entity…" />
-          </SelectTrigger>
-          <SelectContent>
-            {eligibleEntities.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.displayName} ({e.role})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          options={eligibleEntities.map((entity) => ({
+            value: entity.id,
+            label: `${entity.displayName} (${entity.role})`,
+          }))}
+          placeholder="Choose an entity"
+        />
+      </Field>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label htmlFor="check-in-bid-limit">{BID_LIMIT_FIELD_LABEL}</Label>
-          <Input
-            id="check-in-bid-limit"
-            type="number"
-            min={0}
-            step="0.01"
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label={BID_LIMIT_FIELD_LABEL}
+          description={bidLimitFieldHelp(saleCurrency)}
+          optional
+          disabled={pending}
+        >
+          <TextInput
+            inputMode="decimal"
+            autoComplete="off"
+            leading={<span className="text-staff-muted">{saleCurrency}</span>}
             value={bidLimit}
-            onChange={(e) => onBidLimitChange(e.target.value)}
+            onChange={(event) => onBidLimitChange(event.target.value)}
             placeholder={bidLimitFieldPlaceholder(saleCurrency)}
-            className="font-body text-sm"
+            className="tabular-nums"
           />
-          <p className="font-body text-xs text-on-surface-variant">
-            {bidLimitFieldHelp(saleCurrency)}
-          </p>
           {existingLimit && bidLimit.trim() === "" ? (
-            <p className="font-body text-xs text-secondary">
-              Current limit: {formatMoney(existingLimit, saleCurrency)}
+            <p className="mt-1.5 text-staff-xs text-staff-muted">
+              Current limit:{" "}
+              <StaffMoney minor={decimalToMinorUnits(existingLimit)} currency={saleCurrency} />
             </p>
           ) : null}
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="check-in-paddle">Paddle number</Label>
-          <Input
-            id="check-in-paddle"
+        </Field>
+        <Field
+          label="Paddle number"
+          description="Leave blank to give the next free paddle."
+          optional
+          disabled={pending}
+        >
+          <TextInput
+            inputMode="numeric"
+            autoComplete="off"
             value={paddleNumber}
-            onChange={(e) => onPaddleNumberChange(e.target.value)}
-            placeholder="Leave blank to auto-assign"
-            className="font-body text-sm tabular-nums"
+            onChange={(event) => onPaddleNumberChange(event.target.value)}
+            className="tabular-nums"
           />
-        </div>
+        </Field>
       </div>
 
       {submitError ? (
-        <p className="font-body text-xs text-destructive" role="alert" aria-live="polite">
+        <Notice tone="danger" alert title="Check-in did not go through">
           {submitError}
-        </p>
+        </Notice>
       ) : null}
 
-      {isHybrid ? (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            disabled={!prerequisitesOk || pending}
-            onClick={() => onCheckIn(false)}
-            className="min-h-10"
-          >
-            {pending ? "Checking in…" : "Mark present"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!prerequisitesOk || pending}
+      <div className="flex flex-wrap gap-2">
+        {isHybrid ? (
+          <>
+            <StaffButton
+              variant="primary"
+              loading={pending}
+              {...(blockedReason ? { disabledReason: blockedReason } : {})}
+              onClick={() => onCheckIn(false)}
+            >
+              Mark present
+            </StaffButton>
+            <StaffButton
+              variant="secondary"
+              loading={pending}
+              {...(blockedReason ? { disabledReason: blockedReason } : {})}
+              onClick={() => onCheckIn(true)}
+            >
+              Give paddle
+            </StaffButton>
+          </>
+        ) : (
+          <StaffButton
+            variant="primary"
+            loading={pending}
+            {...(blockedReason ? { disabledReason: blockedReason } : {})}
             onClick={() => onCheckIn(true)}
-            className="min-h-10"
           >
-            {pending ? "Checking in…" : "Give paddle"}
-          </Button>
-        </div>
-      ) : (
-        <Button
-          type="button"
-          disabled={!prerequisitesOk || pending}
-          onClick={() => onCheckIn(true)}
-          className="min-h-10"
-        >
-          {pending ? "Checking in…" : "Check in and assign paddle"}
-        </Button>
-      )}
+            Check in and assign paddle
+          </StaffButton>
+        )}
+      </div>
     </div>
   );
 }
