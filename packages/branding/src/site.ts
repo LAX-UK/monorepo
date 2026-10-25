@@ -1,12 +1,14 @@
-/** Single source of truth for marketing / SEO branding (SRP). */
+/** Single source of truth for LAX Bid's marketing / SEO branding (SRP). */
+
+import { LEGAL_ENTITIES } from "./legal-entity.js";
 
 export const SITE_NAME = "LAX.BID";
 export const SITE_SHORT_NAME = "LAX.BID";
-export const SITE_COMPANY_NAME = "London Art Exchange";
+/** The company behind LAX Bid, as named in Bid's copy and descriptions. */
+export const SITE_COMPANY_NAME = LEGAL_ENTITIES["london-auction-xchange"].tradingName;
 export const SITE_SEO_NAME = `${SITE_NAME} by ${SITE_COMPANY_NAME}`;
 export const SITE_ALTERNATE_NAMES = ["LAX", SITE_COMPANY_NAME, SITE_SEO_NAME] as const;
-export const SITE_TAGLINE =
-  "The dedicated auction platform of London Art Exchange for fine art, rare collectibles, and culturally significant assets.";
+export const SITE_TAGLINE = `The dedicated auction platform of ${SITE_COMPANY_NAME} for fine art, rare collectibles, and culturally significant assets.`;
 export const SITE_TWITTER_HANDLE = "@lax_bid";
 export const SITE_CONTACT_EMAIL = "info@lax.bid";
 export const SITE_SUPPORT_EMAIL = "support@lax.bid";

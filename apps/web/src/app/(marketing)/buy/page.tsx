@@ -7,6 +7,7 @@ import {
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
+import { SITE_SEO_NAME } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -17,8 +18,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Buying at LAX.BID",
-  description:
-    "How to buy at LAX.BID by London Art Exchange: browse auctions, register, verify your identity, bid, settle payment, and arrange shipping or collection.",
+  description: `How to buy at ${SITE_SEO_NAME}: browse auctions, register, verify your identity, bid, settle payment, and arrange shipping or collection.`,
   path: "/buy",
 });
 

@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
   "Accept invitation",
-  "Accept access to London Art Exchange platforms with your LAX account.",
+  "Accept access to LAX products with your LAX Account.",
 );
 
 const UNAVAILABLE_COPY = {

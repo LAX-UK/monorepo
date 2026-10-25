@@ -1,6 +1,7 @@
 import { LegalPage, LegalUL } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { legalPolicyRoutes, policyRouteLabel } from "@/components/marketing/policy-routes";
+import { SITE_SEO_NAME } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -14,8 +15,7 @@ const policyIndex = legalPolicyRoutes.map((route) => ({
 
 export const metadata: Metadata = metadataForStatic({
   title: "Legal",
-  description:
-    "Conditions of Business, Privacy Notice, Shipping & Logistics, and key policies for LAX.BID by London Art Exchange.",
+  description: `Conditions of Business, Privacy Notice, Shipping & Logistics, and key policies for ${SITE_SEO_NAME}.`,
   path: "/legal",
 });
 
@@ -27,12 +27,11 @@ export default function LegalHubPage() {
           path: "/legal",
           breadcrumbName: "Legal",
           pageName: "Legal",
-          description:
-            "Conditions of Business, Privacy Notice, Shipping & Logistics, and key policies for LAX.BID by London Art Exchange.",
+          description: `Conditions of Business, Privacy Notice, Shipping & Logistics, and key policies for ${SITE_SEO_NAME}.`,
         })}
       </script>
       <LegalPage title="Legal" lastUpdated="21 April 2026" kicker={null} dividerUnderDate embedded>
-        <p>Key policies for collectors using LAX.BID by London Art Exchange.</p>
+        <p>Key policies for collectors using {SITE_SEO_NAME}.</p>
         <LegalUL>
           {policyIndex.map((item) => (
             <li key={item.href}>

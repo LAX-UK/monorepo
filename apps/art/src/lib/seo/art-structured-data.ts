@@ -5,7 +5,6 @@ import {
   type JsonLd,
   LAX_PRODUCT_NAMES,
   LAX_SOCIAL_LINKS,
-  SITE_COMPANY_NAME,
   breadcrumbJsonLd,
   legalEntityFor,
   localBusinessJsonLd,
@@ -58,7 +57,7 @@ export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
   const shared = {
     name: ART_SITE_NAME,
     legalName: operator.name,
-    alternateName: [SITE_COMPANY_NAME],
+    alternateName: [operator.tradingName],
     url,
     description: ART_SITE_DESCRIPTION,
     logo,

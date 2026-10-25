@@ -12,7 +12,7 @@ import { Suspense } from "react";
 
 export const metadata = metadataForPrivate(
   "Set a password",
-  "Choose a password for faster sign-in on London Art Exchange.",
+  "Choose a password for faster sign-in on LAX Bid.",
 );
 
 export default async function ActivateSetPasswordPage({

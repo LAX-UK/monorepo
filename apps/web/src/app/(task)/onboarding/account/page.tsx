@@ -12,7 +12,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Finish setting up your account",
-  "Tell us how you plan to use London Art Exchange and accept our Conditions of Business.",
+  "Tell us how you plan to use LAX Bid and accept our Conditions of Business.",
 );
 
 function splitName(name: string): { firstName: string; lastName: string } {

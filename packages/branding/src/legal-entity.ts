@@ -21,6 +21,8 @@ export type LegalEntity = {
   readonly id: LegalEntityId;
   /** Registered company name, exactly as filed. */
   readonly name: string;
+  /** Name used in marketing copy and descriptions: "LAX.BID by London Auction Xchange". */
+  readonly tradingName: string;
   /** Jurisdiction of registration, when confirmed. */
   readonly registeredIn?: string;
   readonly registeredAddress: RegisteredAddress;
@@ -46,12 +48,14 @@ export const LEGAL_ENTITIES: Readonly<Record<LegalEntityId, LegalEntity>> = {
   "london-auction-xchange": {
     id: "london-auction-xchange",
     name: "London Auction Xchange LTD",
+    tradingName: "London Auction Xchange",
     registeredIn: "England and Wales",
     registeredAddress: NEW_CAVENDISH_STREET,
   },
   "london-art-exchange": {
     id: "london-art-exchange",
     name: "London Art Exchange Ltd",
+    tradingName: "London Art Exchange",
     registeredAddress: NEW_CAVENDISH_STREET,
   },
 };

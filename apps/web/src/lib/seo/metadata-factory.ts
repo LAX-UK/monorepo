@@ -139,8 +139,7 @@ export function metadataForPressHub(opts?: {
   const base = getSiteUrl();
   const url = `${base}/press`;
   const title = "Press & media";
-  let description =
-    "Press coverage archive, auction-day photography, and media resources for journalists covering LAX.BID by London Art Exchange.";
+  let description = `Press coverage archive, auction-day photography, and media resources for journalists covering ${SITE_SEO_NAME}.`;
   if (opts?.searchQuery) {
     description = `Press coverage matching “${opts.searchQuery}” — ${description}`;
   } else if (opts?.year != null) {

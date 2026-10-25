@@ -1,6 +1,12 @@
 import { LegalH2, LegalPage, LegalUL } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
-import { SITE_NAME, SITE_SUPPORT_EMAIL, legalEntityFor, legalOperatorSentence } from "@/lib/brand";
+import {
+  SITE_NAME,
+  SITE_SEO_NAME,
+  SITE_SUPPORT_EMAIL,
+  legalEntityFor,
+  legalOperatorSentence,
+} from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -12,8 +18,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Privacy Notice",
-  description:
-    "Privacy Notice for LAX.BID by London Art Exchange and how personal data is collected, used, and protected.",
+  description: `Privacy Notice for ${SITE_SEO_NAME} and how personal data is collected, used, and protected.`,
   path: "/privacy",
 });
 
@@ -227,8 +232,7 @@ export default function PrivacyPage() {
           path: "/privacy",
           breadcrumbName: "Privacy Notice",
           pageName: "Privacy notice",
-          description:
-            "Privacy Notice for LAX.BID by London Art Exchange and how personal data is collected, used, and protected.",
+          description: `Privacy Notice for ${SITE_SEO_NAME} and how personal data is collected, used, and protected.`,
         })}
       </script>
       <LegalPage

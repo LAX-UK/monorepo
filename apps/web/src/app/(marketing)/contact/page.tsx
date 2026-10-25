@@ -10,6 +10,7 @@ import {
   SITE_BUSINESS_ADDRESS_LINES,
   SITE_CONTACT_EMAIL,
   SITE_PRESS_EMAIL,
+  SITE_SEO_NAME,
   SITE_SUPPORT_EMAIL,
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
@@ -22,8 +23,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Contact",
-  description:
-    "Contact LAX.BID by London Art Exchange for bidding, consignments, platform support, press, and media.",
+  description: `Contact ${SITE_SEO_NAME} for bidding, consignments, platform support, press, and media.`,
   path: "/contact",
 });
 

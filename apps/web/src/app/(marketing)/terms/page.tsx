@@ -5,6 +5,7 @@ import {
   SITE_BUYERS_PREMIUM_STANDARD,
   SITE_BUYERS_PREMIUM_THRESHOLD,
   SITE_NAME,
+  SITE_SEO_NAME,
   SITE_UK_VAT_RATE,
   legalEntityFor,
 } from "@/lib/brand";
@@ -16,8 +17,7 @@ const OPERATOR = legalEntityFor("bid");
 
 export const metadata: Metadata = metadataForStatic({
   title: "Conditions of Business",
-  description:
-    "Conditions of Business governing auctions, private sales, bidding, and consignments on LAX.BID by London Art Exchange.",
+  description: `Conditions of Business governing auctions, private sales, bidding, and consignments on ${SITE_SEO_NAME}.`,
   path: "/terms",
 });
 
@@ -489,8 +489,7 @@ export default function TermsPage() {
           path: "/terms",
           breadcrumbName: "Conditions of Business",
           pageName: "LAX.BID — Conditions of Business",
-          description:
-            "Conditions of Business governing auctions, private sales, bidding, and consignments on LAX.BID by London Art Exchange.",
+          description: `Conditions of Business governing auctions, private sales, bidding, and consignments on ${SITE_SEO_NAME}.`,
         })}
       </script>
       <LegalPage

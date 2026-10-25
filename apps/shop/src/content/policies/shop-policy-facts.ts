@@ -1,9 +1,4 @@
-import {
-  SITE_BUSINESS_ADDRESS_INLINE,
-  SITE_COMPANY_NAME,
-  legalEntityFacts,
-  legalEntityFor,
-} from "@auction/branding";
+import { SITE_BUSINESS_ADDRESS_INLINE, legalEntityFacts, legalEntityFor } from "@auction/branding";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 import { formatGbpPence } from "@auction/shop-portal/vm";
 
@@ -16,7 +11,7 @@ const SELLER = legalEntityFacts(legalEntityFor("shop"));
 
 export const SHOP_POLICY_FACTS = {
   sellerLegalName: SELLER.name,
-  sellerTradingName: SITE_COMPANY_NAME,
+  sellerTradingName: legalEntityFor("shop").tradingName,
   contactEmail: "[TO CONFIRM: Shop customer service email address]",
   contactPhone: "[TO CONFIRM: customer service phone number, or remove]",
   contactHours: "[TO CONFIRM: customer service opening hours]",

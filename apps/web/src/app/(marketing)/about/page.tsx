@@ -19,7 +19,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "About",
-  description: "Learn about LAX.BID, the dedicated auction platform of London Art Exchange.",
+  description: `Learn about ${SITE_NAME}, the dedicated auction platform of ${SITE_COMPANY_NAME}.`,
   path: "/about",
 });
 
@@ -31,8 +31,7 @@ export default function AboutPage() {
           path: "/about",
           breadcrumbName: "About",
           pageName: "About LAX.BID",
-          description:
-            "Learn about LAX.BID, the dedicated auction platform of London Art Exchange.",
+          description: `Learn about ${SITE_NAME}, the dedicated auction platform of ${SITE_COMPANY_NAME}.`,
         })}
       </script>
       <LegalPage
