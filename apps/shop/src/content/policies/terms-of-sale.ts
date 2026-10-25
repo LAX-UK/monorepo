@@ -37,15 +37,10 @@ export const TERMS_OF_SALE: ShopPolicyDocument = {
           type: "paragraph",
           text: `LAX Shop is run by **${F.sellerLegalName}**, trading as ${F.sellerTradingName} (“LAX”, “we”, “us”). [TO CONFIRM: trading name as it should appear on the terms]`,
         },
+        { type: "company" },
         {
           type: "list",
-          items: [
-            `Registered in ${F.registeredIn}, company number ${F.companyNumber}`,
-            `Registered office: ${F.registeredAddress}`,
-            `VAT number: ${F.vatNumber}`,
-            `Email: ${F.contactEmail}`,
-            `Phone: ${F.contactPhone}, ${F.contactHours}`,
-          ],
+          items: [`Email: ${F.contactEmail}`, `Phone: ${F.contactPhone}, ${F.contactHours}`],
         },
         {
           type: "paragraph",

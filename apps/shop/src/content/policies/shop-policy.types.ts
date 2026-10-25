@@ -19,7 +19,9 @@ export type ShopPolicyBlock =
       rows: readonly (readonly ShopPolicyText[])[];
     }
   /** A boxed passage, such as the model cancellation form. */
-  | { type: "panel"; title: string; blocks: readonly ShopPolicyBlock[] };
+  | { type: "panel"; title: string; blocks: readonly ShopPolicyBlock[] }
+  /** The registered details of the company that runs LAX Shop, as on every LAX legal page. */
+  | { type: "company" };
 
 export type ShopPolicySection = {
   /** Anchor id: lowercase words joined by hyphens. */

@@ -1,8 +1,10 @@
 import type { ShopPolicyBlock, ShopPolicyDocument, ShopPolicySection } from "@/content/policies";
 import type { ShopPolicyRelease } from "@/content/policies/shop-policy-status";
 import { parseShopPolicyText } from "@/content/policies/shop-policy-text";
+import { legalEntityFor } from "@auction/branding";
 import {
   LegalDocument,
+  LegalEntityDetails,
   LegalHub,
   type LegalHubLink,
   LegalNotice,
@@ -110,6 +112,8 @@ function PolicyBlock({ block }: { block: ShopPolicyBlock }): ReactNode {
           </table>
         </div>
       );
+    case "company":
+      return <LegalEntityDetails entities={[legalEntityFor("shop")]} />;
     case "panel":
       return (
         <section className="lax-legal__panel" aria-label={block.title}>

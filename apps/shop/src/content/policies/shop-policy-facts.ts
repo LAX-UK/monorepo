@@ -11,16 +11,12 @@ import { formatGbpPence } from "@auction/shop-portal/vm";
  * Facts the policy pages share. Values confirmed in code are read from their source so the pages
  * cannot drift from checkout; everything else is a visible `[TO CONFIRM: …]` placeholder.
  */
-/** LAX Shop is operated by London Art Exchange Ltd; its details come from `@auction/branding`. */
+/** The company that runs LAX Shop; its registered details render from `@auction/branding`. */
 const SELLER = legalEntityFacts(legalEntityFor("shop"));
 
 export const SHOP_POLICY_FACTS = {
   sellerLegalName: SELLER.name,
   sellerTradingName: SITE_COMPANY_NAME,
-  companyNumber: SELLER.companyNumber,
-  registeredIn: SELLER.registeredIn,
-  registeredAddress: SELLER.registeredAddress,
-  vatNumber: SELLER.vatNumber,
   contactEmail: "[TO CONFIRM: Shop customer service email address]",
   contactPhone: "[TO CONFIRM: customer service phone number, or remove]",
   contactHours: "[TO CONFIRM: customer service opening hours]",

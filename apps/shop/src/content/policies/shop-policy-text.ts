@@ -1,3 +1,4 @@
+import { legalEntityFacts, legalEntityFor } from "@auction/branding";
 import type { ShopPolicyBlock, ShopPolicyDocument, ShopPolicyText } from "./shop-policy.types";
 
 export type ShopPolicyTextPart =
@@ -36,6 +37,8 @@ function blockTexts(block: ShopPolicyBlock): string[] {
       return [block.caption, ...block.columns, ...block.rows.flat()];
     case "panel":
       return [block.title, ...block.blocks.flatMap(blockTexts)];
+    case "company":
+      return Object.values(legalEntityFacts(legalEntityFor("shop")));
   }
 }
 
