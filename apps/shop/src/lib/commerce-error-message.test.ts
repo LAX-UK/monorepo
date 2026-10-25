@@ -14,7 +14,7 @@ describe("commerceErrorMessage", () => {
       /no longer available/i,
     );
     expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.QUANTITY_LIMIT }, "x")).toBe(
-      "You can buy up to 2 of each edition in one order.",
+      "You have reached the limit for this edition in one order.",
     );
     expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.BASKET_CONFLICT }, "x")).toMatch(
       /another device/i,

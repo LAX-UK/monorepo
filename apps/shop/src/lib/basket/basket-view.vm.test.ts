@@ -1,6 +1,6 @@
 import type { BasketLine } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
-import { presentBasketLine, presentBasketSummary } from "./basket-view.vm";
+import { basketLineStepperHint, presentBasketLine, presentBasketSummary } from "./basket-view.vm";
 
 const edition: BasketLine = {
   lineId: "00000000-0000-4000-8000-000000000001",
@@ -19,6 +19,7 @@ const edition: BasketLine = {
   artistName: "Emmett King",
   artistSlug: "emmett-king",
   editionSize: 24,
+  orderLimit: 2,
   maxQuantity: 2,
 };
 
@@ -34,26 +35,46 @@ describe("presentBasketLine", () => {
       unitPrice: "£120.00",
       maxQuantity: 2,
       limitHint: "Limit 2 per order",
+      cappedByAvailability: false,
       restore: { kind: "edition", artworkSlug: "warm-basket" },
     });
   });
 
-  it("states the rule, not the stock, when the ceiling is lower than the rule", () => {
-    const vm = presentBasketLine({ ...edition, maxQuantity: 1 });
-    expect(vm.maxQuantity).toBe(1);
-    expect(vm.limitHint).toBe("Limit 2 per order");
+  it("takes the limit copy from the line's own limit", () => {
+    expect(presentBasketLine({ ...edition, orderLimit: 3, maxQuantity: 3 }).limitHint).toBe(
+      "Limit 3 per order",
+    );
+    expect(
+      presentBasketLine({ ...edition, orderLimit: null, maxQuantity: 5 }).limitHint,
+    ).toBeNull();
   });
 
-  it("falls back to the rule when an older shop-api sends no ceiling or artist", () => {
-    const { maxQuantity: _m, artistName: _a, artistSlug: _s, editionSize: _e, ...older } = edition;
+  it("gives a reason, not a count, when availability stops the stepper below the limit", () => {
+    const vm = presentBasketLine({ ...edition, maxQuantity: 1 });
+    expect(vm.cappedByAvailability).toBe(true);
+    expect(basketLineStepperHint(vm, 1)).toBe("No more available to order");
+    const atLimit = presentBasketLine({ ...edition, quantity: 2 });
+    expect(basketLineStepperHint(atLimit, 2)).toBe("Limit 2 per order");
+  });
+
+  it("reads a response from an older shop-api without a ceiling, limit or artist", () => {
+    const {
+      maxQuantity: _m,
+      orderLimit: _o,
+      artistName: _a,
+      artistSlug: _s,
+      editionSize: _e,
+      ...older
+    } = edition;
     const vm = presentBasketLine(older);
-    expect(vm.maxQuantity).toBe(2);
+    expect(vm.maxQuantity).toBe(24);
+    expect(vm.limitHint).toBeNull();
     expect(vm.artistName).toBeNull();
     expect(vm.detail).toBeNull();
     expect(vm.imageAlt).toBe("Warm Basket");
   });
 
-  it("shows a merchandise line by its SKU, with no edition rule", () => {
+  it("shows a merchandise line by its SKU", () => {
     const vm = presentBasketLine({
       ...edition,
       artworkSlug: null,
@@ -65,6 +86,7 @@ describe("presentBasketLine", () => {
       artistName: null,
       artistSlug: null,
       editionSize: null,
+      orderLimit: null,
       maxQuantity: 24,
     });
     expect(vm).toMatchObject({
@@ -78,23 +100,23 @@ describe("presentBasketLine", () => {
 });
 
 describe("presentBasketSummary", () => {
-  it("adds UK insured delivery, as checkout does by default, to reach the total", () => {
-    const summary = presentBasketSummary({
-      lines: [edition, { ...edition, lineId: "x", quantity: 2 }],
-      merchandiseSubtotalPence: 36000,
-    });
+  it("sums the line totals and counts every copy, then adds UK insured delivery", () => {
+    const summary = presentBasketSummary([
+      { unitPricePence: 12000, quantity: 2 },
+      { unitPricePence: 8500, quantity: 1 },
+    ]);
     expect(summary).toMatchObject({
       itemCountLabel: "Subtotal (3 items)",
-      subtotal: "£360.00",
+      subtotal: "£325.00",
       delivery: "£15.00",
-      total: "£375.00",
+      total: "£340.00",
       deliveryNote: "Collection in London is free. Choose it at checkout.",
     });
   });
 
   it("counts one item in the singular", () => {
-    expect(
-      presentBasketSummary({ lines: [edition], merchandiseSubtotalPence: 12000 }).itemCountLabel,
-    ).toBe("Subtotal (1 item)");
+    expect(presentBasketSummary([{ unitPricePence: 12000, quantity: 1 }]).itemCountLabel).toBe(
+      "Subtotal (1 item)",
+    );
   });
 });

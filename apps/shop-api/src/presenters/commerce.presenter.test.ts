@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { BasketRecord, OrderRecord } from "../application/ports/commerce.ports.js";
 import { presentBasket, presentOrder } from "./commerce.presenter.js";
 
+const LIMIT = { editionOrderLimit: 2 };
+
 function sampleBasket(overrides: Partial<BasketRecord> = {}): BasketRecord {
   return {
     basketId: "basket-1",
@@ -33,7 +35,7 @@ function sampleBasket(overrides: Partial<BasketRecord> = {}): BasketRecord {
 
 describe("presentBasket", () => {
   it("computes merchandise subtotal from unit prices and quantities", () => {
-    const view = presentBasket(sampleBasket());
+    const view = presentBasket(sampleBasket(), LIMIT);
     expect(view.merchandiseSubtotalPence).toBe(24000);
     expect(view.lines[0]?.priceChanged).toBe(false);
     expect(view.lines[0]?.outOfStock).toBe(false);
@@ -63,6 +65,7 @@ describe("presentBasket", () => {
           },
         ],
       }),
+      LIMIT,
     );
     expect(view.lines[0]?.priceChanged).toBe(true);
     expect(view.lines[0]?.outOfStock).toBe(true);
@@ -73,16 +76,44 @@ describe("presentBasket", () => {
   it("caps an edition line at the per-order limit, lowered to what can be sold", () => {
     const line = sampleBasket().lines[0];
     if (!line) throw new Error("fixture");
-    const plenty = presentBasket(sampleBasket({ lines: [{ ...line, sellableCount: 20 }] }));
+    const plenty = presentBasket(sampleBasket({ lines: [{ ...line, sellableCount: 20 }] }), LIMIT);
     expect(plenty.lines[0]?.maxQuantity).toBe(2);
     const one = presentBasket(
       sampleBasket({ lines: [{ ...line, quantity: 1, sellableCount: 1 }] }),
+      LIMIT,
     );
     expect(one.lines[0]?.maxQuantity).toBe(1);
     const none = presentBasket(
       sampleBasket({ lines: [{ ...line, quantity: 1, sellableCount: 0 }] }),
+      LIMIT,
     );
     expect(none.lines[0]?.maxQuantity).toBe(1);
+    expect(plenty.lines[0]?.orderLimit).toBe(2);
+  });
+
+  it("leaves only the stock as the ceiling when no order limit is set", () => {
+    const line = sampleBasket().lines[0];
+    if (!line) throw new Error("fixture");
+    const view = presentBasket(sampleBasket({ lines: [{ ...line, sellableCount: 5 }] }), {
+      editionOrderLimit: null,
+    });
+    expect(view.lines[0]?.orderLimit).toBeNull();
+    expect(view.lines[0]?.maxQuantity).toBe(5);
+  });
+
+  it("sums line totals, quantity included, for the subtotal", () => {
+    const line = sampleBasket().lines[0];
+    if (!line) throw new Error("fixture");
+    const view = presentBasket(
+      sampleBasket({
+        lines: [
+          { ...line, quantity: 2, unitPricePence: 12000 },
+          { ...line, lineId: "line-2", quantity: 1, unitPricePence: 8500 },
+        ],
+      }),
+      LIMIT,
+    );
+    expect(view.merchandiseSubtotalPence).toBe(32500);
   });
 
   it("names the artist and the edition size on an edition line", () => {
@@ -92,6 +123,7 @@ describe("presentBasket", () => {
       sampleBasket({
         lines: [{ ...line, artistName: "Emmett King", artistSlug: "emmett-king", editionSize: 24 }],
       }),
+      LIMIT,
     );
     expect(view.lines[0]).toMatchObject({
       artistName: "Emmett King",

@@ -624,13 +624,14 @@
   font-family: var(--font-body, inherit);
   font-size: var(--shop-text-sm);
   font-weight: 500;
-  color: var(--color-on-surface-variant);
+  color: var(--color-on-surface);
   cursor: pointer;
 }
 
 .shop-basket__remove:hover:not(:disabled) {
   background: var(--color-surface-container-low);
-  color: var(--color-on-surface);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .shop-basket__remove:disabled {
@@ -799,9 +800,10 @@
   background: var(--color-surface-container-low);
 }
 
+/* Disabled reads as off: a faded glyph, no hover, and the hint under the control says why. */
 .shop-qty__button:disabled {
   color: var(--color-on-surface-variant);
-  opacity: 0.45;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 

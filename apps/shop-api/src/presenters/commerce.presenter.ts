@@ -6,7 +6,10 @@ import type {
   OrderRecord,
 } from "../application/ports/commerce.ports.js";
 
-export function presentBasket(record: BasketRecord): BasketView {
+export function presentBasket(
+  record: BasketRecord,
+  options: { editionOrderLimit: number | null },
+): BasketView {
   const merchandiseSubtotalPence = computeMerchandiseSubtotal(
     record.lines.map((line) => ({
       unitPricePence: pence(line.unitPricePence),
@@ -34,8 +37,9 @@ export function presentBasket(record: BasketRecord): BasketView {
       artistName: line.artistName,
       artistSlug: line.artistSlug,
       editionSize: line.editionSize,
+      orderLimit: line.artworkId ? options.editionOrderLimit : null,
       maxQuantity: basketLineMaxQuantity({
-        kind: line.artworkId ? "edition" : "merchandise",
+        orderLimit: line.artworkId ? options.editionOrderLimit : null,
         sellableCount: line.sellableCount,
       }),
     })),

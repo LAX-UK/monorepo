@@ -109,7 +109,7 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
       if (!basket) {
         throw notFound("Basket");
       }
-      return presentBasket(basket);
+      return presentBasket(basket, { editionOrderLimit: deps.editionOrderLimit });
     },
   );
 
@@ -134,7 +134,7 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
       const owner = resolveBasketOwner(request);
       const input = parseUpsertBasketLineBody(request.body, owner, deps.merchandiseEnabled);
       const basket = await deps.upsertBasketLine(input);
-      return presentBasket(basket);
+      return presentBasket(basket, { editionOrderLimit: deps.editionOrderLimit });
     },
   );
 
@@ -154,7 +154,7 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
         owner: resolveBasketOwner(request),
         lineId,
       });
-      return presentBasket(basket);
+      return presentBasket(basket, { editionOrderLimit: deps.editionOrderLimit });
     },
   );
 
@@ -177,7 +177,7 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
         from: { kind: "anonymous", tokenHash: hashBasketToken(body.fromToken) },
         to: { kind: "subject", identitySubjectId: subject },
       });
-      return presentBasket(basket);
+      return presentBasket(basket, { editionOrderLimit: deps.editionOrderLimit });
     },
   );
 }

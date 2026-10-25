@@ -44,6 +44,7 @@ export function createCommerceServices(
     domainEventMode,
     vatPolicy: loadShopVatPolicy(env),
     merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+    editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
   });
 
   const notifications = createDrizzleShopNotificationPublisher();
@@ -69,6 +70,7 @@ export function createCommerceServices(
   return {
     commerce: {
       merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+      editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
       getBasket: createGetBasketHandler(repository),
       upsertBasketLine: createUpsertBasketLineHandler(repository),
       removeBasketLine: createRemoveBasketLineHandler(repository),

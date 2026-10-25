@@ -57,7 +57,10 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     const db = createShopDb(shopPool);
     const imported = await importTestArtwork(db, "basket-limit");
     await grantLaxSaleAuthority(db, imported.artworkId, 4);
-    const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
+    const repo = createDrizzleBasketRepository(db, {
+      merchandiseEnabled: true,
+      editionOrderLimit: 2,
+    });
     const owner = {
       kind: "anonymous" as const,
       tokenHash: hashBasketToken(`guest-basket-limit-${integrationSuffix("limit")}`),

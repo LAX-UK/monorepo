@@ -21,6 +21,8 @@ export type StripeWebhookDispatchResult =
 
 export type CommerceRoutesDeps = {
   merchandiseEnabled: boolean;
+  /** Copies of one edition an order may hold; null leaves only the stock. */
+  editionOrderLimit: number | null;
   getBasket: ReturnType<typeof createGetBasketHandler>;
   upsertBasketLine: ReturnType<typeof createUpsertBasketLineHandler>;
   removeBasketLine: ReturnType<typeof createRemoveBasketLineHandler>;

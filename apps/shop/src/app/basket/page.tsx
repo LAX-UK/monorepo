@@ -16,7 +16,6 @@ import {
   basketCheckoutBlockReasons,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
-import { presentBasketSummary } from "@/lib/basket/basket-view.vm";
 import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
 import { fetchPublicArtworks } from "@/lib/shop-api.server";
 import { fetchShopBasket, listShopOrders } from "@/lib/shop-commerce.server";
@@ -24,7 +23,7 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
-import type { BasketLine, BasketView } from "@auction/shop-contracts";
+import type { BasketLine } from "@auction/shop-contracts";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
@@ -41,39 +40,17 @@ async function loadSuggestedEditions() {
   }
 }
 
-function BasketSummary({
-  basket,
+/** The summary's actions; the figures above them follow the lines on the client. */
+function BasketSummaryActions({
   checkoutAction,
   blocked,
 }: {
-  basket: BasketView;
   checkoutAction: ReactNode;
   blocked: boolean;
 }) {
-  const summary = presentBasketSummary(basket);
   const linkable = loadLinkableShopPolicies();
   return (
     <>
-      <h2 id="basket-summary-heading" className="shop-basket__summary-title">
-        Order summary
-      </h2>
-      <dl className="shop-basket__sums">
-        <div className="shop-basket__sum">
-          <dt>{summary.itemCountLabel}</dt>
-          <dd>{summary.subtotal}</dd>
-        </div>
-        <div className="shop-basket__sum">
-          <dt>{summary.deliveryLabel}</dt>
-          <dd>{summary.delivery}</dd>
-        </div>
-        <div className="shop-basket__sum shop-basket__sum--total">
-          <dt>Total</dt>
-          <dd>{summary.total}</dd>
-        </div>
-      </dl>
-      <p className="shop-basket__summary-note">
-        {summary.vatNote}. {summary.deliveryNote}
-      </p>
       {blocked ? (
         <ShopNotice tone="info">Update your basket before checkout.</ShopNotice>
       ) : (
@@ -133,10 +110,9 @@ export default async function BasketPage() {
       </Button>
     );
 
-  const summaryPanel =
+  const summaryActions =
     basketResult.status === "ok" && lines.length > 0 ? (
-      <BasketSummary
-        basket={basketResult.data}
+      <BasketSummaryActions
         checkoutAction={pendingCheckoutOrder ? null : checkoutAction}
         blocked={!canProceedToCheckout(basketResult.data) && !pendingCheckoutOrder}
       />
@@ -215,7 +191,11 @@ export default async function BasketPage() {
                 {basketCheckoutBlockMessage(basketCheckoutBlockReasons(basketResult.data))}
               </ShopNotice>
             ) : null}
-            <BasketLinesClient lines={lines} summary={summaryPanel} emptyState={emptyState} />
+            <BasketLinesClient
+              lines={lines}
+              summaryActions={summaryActions}
+              emptyState={emptyState}
+            />
           </>
         )}
       </ShopCommercePageShell>

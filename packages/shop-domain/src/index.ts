@@ -64,7 +64,6 @@ export {
   computeMerchandiseSubtotal,
   computeOrderTotal,
   SHOP_BASKET_LINE_QUANTITY_MAX,
-  SHOP_EDITION_ORDER_LIMIT,
   type BasketLineInput,
 } from "./basket-totals.js";
 export {

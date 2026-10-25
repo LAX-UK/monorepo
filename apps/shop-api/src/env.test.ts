@@ -32,6 +32,31 @@ describe("loadShopApiEnv LAX_ART_PUBLIC_URL", () => {
   });
 });
 
+describe("loadShopApiEnv SHOP_EDITION_ORDER_LIMIT", () => {
+  it("defaults to two copies of an edition per order", () => {
+    expect(loadShopApiEnv(productionNodeBase()).SHOP_EDITION_ORDER_LIMIT).toBe(2);
+  });
+
+  it("takes a whole number, or none to leave only the stock", () => {
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_EDITION_ORDER_LIMIT: "4" }))
+        .SHOP_EDITION_ORDER_LIMIT,
+    ).toBe(4);
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_EDITION_ORDER_LIMIT: "none" }))
+        .SHOP_EDITION_ORDER_LIMIT,
+    ).toBeNull();
+  });
+
+  it("rejects anything else", () => {
+    for (const value of ["0", "-1", "two", "1.5"]) {
+      expect(() =>
+        loadShopApiEnv(productionNodeBase({ SHOP_EDITION_ORDER_LIMIT: value })),
+      ).toThrow();
+    }
+  });
+});
+
 describe("loadShopApiEnv lax.art revalidation", () => {
   const secret = "r".repeat(32);
 

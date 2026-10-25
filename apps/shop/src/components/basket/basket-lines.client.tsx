@@ -7,10 +7,15 @@ import {
   setBasketLineQuantity,
   setMerchandiseBasketLineQuantity,
 } from "@/app/actions/basket.actions";
+import { BasketSummary } from "@/components/basket/basket-summary";
 import { ShopQuantityStepper } from "@/components/commerce/shop-quantity-stepper";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
-import { type BasketLineVm, presentBasketLine } from "@/lib/basket/basket-view.vm";
+import {
+  type BasketLineVm,
+  basketLineStepperHint,
+  presentBasketLine,
+} from "@/lib/basket/basket-view.vm";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { MarketingTrashIcon } from "@auction/marketing-ui";
 import type { BasketLine } from "@auction/shop-contracts";
@@ -25,8 +30,8 @@ export const BASKET_UNDO_MS = 10_000;
 
 type Props = {
   lines: BasketLine[];
-  /** Order summary beside the lines on wide screens; only shown while the basket has lines. */
-  summary?: ReactNode;
+  /** Checkout action and policy links under the order summary; null hides the summary. */
+  summaryActions?: ReactNode;
   /** Shown when nothing is left, under any Undo rows, so the last removal can still be undone. */
   emptyState: ReactNode;
 };
@@ -54,7 +59,7 @@ function BasketLineThumbnail({ vm }: { vm: BasketLineVm }) {
   );
 }
 
-export function BasketLinesClient({ lines, summary, emptyState }: Props) {
+export function BasketLinesClient({ lines, summaryActions, emptyState }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -203,9 +208,15 @@ export function BasketLinesClient({ lines, summary, emptyState }: Props) {
               )}
             </ul>
           </section>
-          {vms.length > 0 && summary ? (
+          {vms.length > 0 && summaryActions ? (
             <aside aria-labelledby="basket-summary-heading" className="shop-basket__summary-panel">
-              {summary}
+              <BasketSummary
+                lines={vms.map((vm) => ({
+                  unitPricePence: vm.unitPricePence,
+                  quantity: quantities[vm.lineId] ?? vm.quantity,
+                }))}
+                actions={summaryActions}
+              />
             </aside>
           ) : null}
         </div>
@@ -297,7 +308,7 @@ function BasketLineRow({
               value={quantity}
               max={Math.max(vm.maxQuantity, 1)}
               itemLabel={vm.title}
-              hint={vm.limitHint}
+              hint={basketLineStepperHint(vm, quantity)}
               disabled={pending}
               onChange={onQuantity}
             />

@@ -116,6 +116,17 @@ export const shopApiEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  /**
+   * Copies of one edition a single order may hold, shown to shoppers as "Limit N per order".
+   * "none" leaves only the stock as the limit.
+   */
+  SHOP_EDITION_ORDER_LIMIT: z
+    .string()
+    .default("2")
+    .refine((value) => value === "none" || /^[1-9]\d?$/.test(value), {
+      message: 'SHOP_EDITION_ORDER_LIMIT must be "none" or a whole number from 1 to 24',
+    })
+    .transform((value) => (value === "none" ? null : Math.min(Number(value), 24))),
   SHOP_EDITORIAL_ENABLED: z
     .enum(["true", "false"])
     .default("false")
