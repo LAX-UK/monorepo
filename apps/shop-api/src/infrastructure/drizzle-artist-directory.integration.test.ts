@@ -48,7 +48,7 @@ describe.skipIf(!hasShopIntegrationDb)("artist directory search", () => {
 
     const all = await reader.listPublicArtists({ limit: 50, sort: "nameAsc" });
     const first = await reader.listPublicArtists({ limit: 1, sort: "nameAsc" });
-    expect(first.total).toBe(all.items.length);
+    expect(first.total).toBe(all.total);
     if (all.items.length < 2) return;
     expect(first.nextNameCursor).toBeDefined();
 
