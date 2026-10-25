@@ -14,6 +14,8 @@ export const PublicArtistSummarySchema = Type.Object(
 
 export const PublicArtistListSchema = Type.Object({
   items: Type.Array(PublicArtistSummarySchema),
+  /** Artists matching the filters across all pages; absent for curated placements. */
+  total: Type.Optional(Type.Integer({ minimum: 0 })),
   nextCursor: Type.Optional(Type.String()),
 });
 

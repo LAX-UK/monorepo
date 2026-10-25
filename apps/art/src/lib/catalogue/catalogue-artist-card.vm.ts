@@ -13,6 +13,8 @@ export type CatalogueArtistCardVm = {
   /** Nationality and years, else discipline or works count; null hides the line. */
   caption: string | null;
   href: string;
+  /** "3 works" on lax.art; null when unknown or none. */
+  worksLabel: string | null;
   /** Seeds the Follow button; guests always start unfollowed. */
   following: boolean;
 };
@@ -52,6 +54,7 @@ export function buildCatalogueArtistCards(
     imageAlt: `Portrait of ${item.name}`,
     name: item.name,
     caption: formatArtistLifeLine(item) ?? item.discipline ?? worksCaption(item.artworkCount),
+    worksLabel: item.artworkCount > 0 ? worksCaption(item.artworkCount) : null,
     href: artistHref(item.slug),
     following: followedSlugs.has(item.slug),
   }));
@@ -66,6 +69,7 @@ export function buildFollowedArtistCards(
     imageAlt: `Portrait of ${item.artistName}`,
     name: item.artistName,
     caption: null,
+    worksLabel: null,
     href: artistHref(item.artistSlug),
     following: true,
   }));

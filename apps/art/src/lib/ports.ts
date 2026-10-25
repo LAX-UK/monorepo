@@ -81,6 +81,8 @@ export type ArtCataloguePort = {
   listArtworkObjectTypes(): Promise<PublicArtworkObjectTypeFacetList>;
   /** LAX Shop editions made from the original with this slug. */
   listShopEditionsOfOriginal(originalSlug: string, limit: number): Promise<PublicArtworkList>;
+  /** LAX Shop editions by the artist with this slug (the Shop and lax.art share artists). */
+  listShopEditionsByArtist(artistSlug: string, limit: number): Promise<PublicArtworkList>;
 };
 
 export type ArtViewerPort = {

@@ -168,15 +168,23 @@ export async function fetchPublicCategoryBySlug(
   return readValidatedJson(response, parsePublicCategorySummary, "category detail");
 }
 
+/** Artists with editions in the Shop; artists with only originals live on lax.art. */
 export async function fetchPublicArtists(input: {
   limit?: number;
   cursor?: string;
   placement?: "featured_artists";
+  q?: string;
+  letter?: string;
+  sort?: "newest" | "nameAsc" | "nameDesc";
 }): Promise<PublicArtistList> {
   const params = new URLSearchParams();
   params.set("limit", String(input.limit ?? 24));
+  params.set("salesChannel", "shop");
   if (input.cursor) params.set("cursor", input.cursor);
   if (input.placement) params.set("placement", input.placement);
+  if (input.q) params.set("q", input.q);
+  if (input.letter) params.set("letter", input.letter);
+  if (input.sort) params.set("sort", input.sort);
   const response = await shopApiFetch(`/v1/artists?${params.toString()}`);
   if (!response.ok) {
     throw new ShopApiBffError("upstream", `Shop artists request failed (${response.status})`);

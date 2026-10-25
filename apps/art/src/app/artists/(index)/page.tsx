@@ -1,72 +1,70 @@
-import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import { ArtArtistGrid } from "@/components/catalogue/art-artist-grid";
-import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
-import { composeArtistsPage, parseArtistLetter } from "@/lib/catalogue/artists-page.composer";
-import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingAlphabetFilter } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { composeArtistsPage } from "@/lib/catalogue/artists-page.composer";
+import {
+  MarketingArtistDirectory,
+  marketingArtistDirectoryHref,
+  parseMarketingArtistDirectoryQuery,
+} from "@auction/marketing-ui";
 import type { Metadata } from "next";
-import Link from "next/link";
 
-type ArtistsSearchParams = { cursor?: string | string[]; letter?: string | string[] };
+type ArtistsSearchParams = Record<string, string | string[] | undefined>;
 
 type ArtistsPageProps = {
   searchParams: Promise<ArtistsSearchParams>;
 };
 
+const DESCRIPTION = "Discover artists with works available through the London Art Exchange.";
+
 export async function generateMetadata({ searchParams }: ArtistsPageProps): Promise<Metadata> {
-  const params = await searchParams;
-  const letter = parseArtistLetter(params.letter);
+  const query = parseMarketingArtistDirectoryQuery(await searchParams);
+  const filtered = Boolean(query.q || query.show || query.sort || query.cursor);
+  const letter = query.letter?.toUpperCase();
   return {
     title: letter ? `Artists: ${letter} | lax.art` : "Artists | lax.art",
     description: "Artists represented on lax.art.",
-    alternates: { canonical: letter ? `/artists?letter=${letter.toLowerCase()}` : "/artists" },
-    ...(params.cursor ? { robots: { index: false, follow: true } } : {}),
+    alternates: { canonical: query.letter ? `/artists?letter=${query.letter}` : "/artists" },
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
 export default async function ArtistsIndexPage({ searchParams }: ArtistsPageProps) {
   const vm = await composeArtistsPage(artServices, await searchParams);
+  const { query } = vm;
+  const filtered = Boolean(query.q || query.show || query.letter);
 
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8 py-6 lg:py-10")}>
-      <ArtPageHeader
-        title="Artists"
-        description="Discover artists with works available through the London Art Exchange."
-      />
-      {vm.featured.length > 0 ? (
-        <ArtSection id="featured-artists" title="Featured artists">
-          <ArtArtistGrid
-            cards={vm.featured}
-            favoriteAuth={vm.favoriteAuth}
-            aria-label="Featured artists"
-          />
-        </ArtSection>
-      ) : null}
-      <MarketingAlphabetFilter basePath="/artists" active={vm.letter} />
-
+    <MarketingArtistDirectory
+      basePath="/artists"
+      title="Artists"
+      description={DESCRIPTION}
+      query={query}
+      total={vm.total}
+      pageCount={vm.cards.length}
+      nextCursor={vm.nextCursor ?? undefined}
+    >
       {vm.failed ? (
         <ArtStatusState
           variant="error"
           title="Artists unavailable"
           description="We could not load artists. Try again shortly."
           actions={
-            <ArtStatusStateLink
-              href={vm.letter ? `/artists?letter=${vm.letter.toLowerCase()}` : "/artists"}
-            >
+            <ArtStatusStateLink href={marketingArtistDirectoryHref("/artists", query)}>
               Retry
             </ArtStatusStateLink>
           }
         />
       ) : vm.cards.length === 0 ? (
-        vm.letter ? (
+        filtered ? (
           <ArtStatusState
             variant="empty"
-            title={`No artists under ${vm.letter}`}
-            description="Try another letter or browse the full directory."
+            title={
+              query.letter && !query.q && !query.show
+                ? `No artists under ${query.letter.toUpperCase()}`
+                : "No artists match these filters"
+            }
+            description="Try another letter or search, or browse the full directory."
             actions={<ArtStatusStateLink href="/artists">Show all artists</ArtStatusStateLink>}
           />
         ) : (
@@ -81,17 +79,12 @@ export default async function ArtistsIndexPage({ searchParams }: ArtistsPageProp
         <ArtArtistGrid
           cards={vm.cards}
           favoriteAuth={vm.favoriteAuth}
-          aria-label={vm.letter ? `Artists starting with ${vm.letter}` : "Artists"}
+          nameAs="h2"
+          aria-label={
+            query.letter ? `Artists starting with ${query.letter.toUpperCase()}` : "Artists"
+          }
         />
       )}
-
-      {vm.nextPageHref ? (
-        <nav aria-label="Pagination" className="flex justify-center">
-          <Button asChild variant="outline" className="min-h-11 font-label">
-            <Link href={vm.nextPageHref}>Next page</Link>
-          </Button>
-        </nav>
-      ) : null}
-    </div>
+    </MarketingArtistDirectory>
   );
 }

@@ -11,10 +11,11 @@ import { artServices } from "@/lib/art-services.server";
 import { composeArtistMetadata, composeArtistPage } from "@/lib/artist/artist-page.composer";
 import { ARTIST_SECTION_IDS } from "@/lib/artist/artist-profile.vm";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
-import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { FOCUS_RING, MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingSplitFeature, MarketingSubNav } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 type ArtistPageProps = {
   params: Promise<{ slug: string }>;
@@ -35,15 +36,28 @@ const SECTION = cn(MARKETING_PAGE_SHELL, "py-8 lg:py-12");
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { slug } = await params;
-  const result = await composeArtistPage(artServices, slug, loadArtStorefrontBaseUrl());
+  const siteUrl = loadArtStorefrontBaseUrl();
+  const result = await composeArtistPage(artServices, slug, siteUrl);
   if (result.kind !== "ok") notFoundOrUnavailable(result.kind, "Artist");
 
   const { vm } = result;
+  const pageUrl = new URL(`/artists/${encodeURIComponent(vm.slug)}`, siteUrl).toString();
   const worksHref = `/artworks?artistSlug=${encodeURIComponent(vm.slug)}`;
   return (
     <article className="flex flex-col pb-10 lg:pb-16">
       <ArtJsonLd data={vm.structuredData} />
-      <ArtArtistHero vm={vm} />
+      <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-6 pt-4 pb-8 lg:pb-12")}>
+        <Link
+          href="/artists"
+          className={cn(
+            "inline-flex min-h-11 w-fit items-center rounded-sm font-body text-sm text-on-surface-variant hover:text-on-surface hover:underline",
+            FOCUS_RING,
+          )}
+        >
+          ← Back to artists
+        </Link>
+        <ArtArtistHero vm={vm} pageUrl={pageUrl} />
+      </div>
       {vm.sectionTabs.length > 0 ? (
         <MarketingSubNav
           mode="anchor"

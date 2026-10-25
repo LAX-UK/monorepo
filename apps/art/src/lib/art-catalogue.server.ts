@@ -129,6 +129,23 @@ export async function fetchShopEditionsOfOriginal(
   return readValidatedJson(response, parsePublicArtworkList, "shop editions");
 }
 
+/** LAX Shop editions by an artist, read from the Shop channel so only live editions return. */
+export async function fetchShopEditionsByArtist(
+  artistSlug: string,
+  limit: number,
+): Promise<PublicArtworkList> {
+  const params = new URLSearchParams({
+    salesChannel: "shop",
+    artistSlug,
+    limit: String(limit),
+  });
+  const response = await artCatalogueFetch(`/v1/artworks?${params.toString()}`);
+  if (!response.ok) {
+    throw new ArtApiBffError("upstream", `Shop editions request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicArtworkList, "shop editions");
+}
+
 export async function fetchArtChannelArtworkBySlug(
   slug: string,
 ): Promise<PublicArtworkDetail | null> {

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopHomePlacement, shopParty } from "@auction/db/schema";
 import { maxItemsForPlacement } from "@auction/shop-domain";
-import { and, asc, desc, eq, exists, ilike, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gt, ilike, lt, or, sql } from "drizzle-orm";
 import type {
   ArtistDirectoryReader,
   ListPublicArtistsInput,
@@ -42,6 +42,7 @@ export function createDrizzleArtistDirectoryRepository(
         input.placement === "featured_artists" ? maxItemsForPlacement("featured_artists") : null;
       const limit = Math.min(Math.max(input.limit, 1), placementCap ?? 50);
       const cursor = input.cursor;
+      const nameCursor = input.nameCursor;
       const sort = input.sort ?? "newest";
       const letter = input.letter?.trim().slice(0, 1).toUpperCase();
       const channelFilter = input.salesChannel
@@ -118,33 +119,60 @@ export function createDrizzleArtistDirectoryRepository(
         };
       }
 
-      const rows = await db
-        .select(artistSelect)
-        .from(shopArtist)
-        .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(
-          and(
-            sort === "newest" && cursor
-              ? or(
-                  lt(shopArtist.createdAt, cursor.createdAt),
-                  and(eq(shopArtist.createdAt, cursor.createdAt), lt(shopArtist.id, cursor.id)),
-                )
-              : undefined,
-            input.q
-              ? or(
-                  ilike(shopParty.displayName, `%${input.q}%`),
-                  ilike(shopArtist.slug, `%${input.q}%`),
-                )
-              : undefined,
-            letter && /^[A-Z]$/.test(letter)
-              ? sql`upper(substr(${shopParty.displayName}, 1, 1)) = ${letter}`
-              : undefined,
-            channelFilter,
-            publicArtistVisible(),
-          ),
-        )
-        .orderBy(...orderByForArtistSort(sort))
-        .limit(limit + 1);
+      const listFilters = [
+        input.q
+          ? or(ilike(shopParty.displayName, `%${input.q}%`), ilike(shopArtist.slug, `%${input.q}%`))
+          : undefined,
+        letter && /^[A-Z]$/.test(letter)
+          ? sql`upper(substr(${shopParty.displayName}, 1, 1)) = ${letter}`
+          : undefined,
+        channelFilter,
+        publicArtistVisible(),
+      ];
+
+      const [rows, totalRows] = await Promise.all([
+        db
+          .select(artistSelect)
+          .from(shopArtist)
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(
+            and(
+              sort === "newest" && cursor
+                ? or(
+                    lt(shopArtist.createdAt, cursor.createdAt),
+                    and(eq(shopArtist.createdAt, cursor.createdAt), lt(shopArtist.id, cursor.id)),
+                  )
+                : undefined,
+              sort === "nameAsc" && nameCursor
+                ? or(
+                    gt(shopParty.displayName, nameCursor.name),
+                    and(
+                      eq(shopParty.displayName, nameCursor.name),
+                      gt(shopArtist.id, nameCursor.id),
+                    ),
+                  )
+                : undefined,
+              sort === "nameDesc" && nameCursor
+                ? or(
+                    lt(shopParty.displayName, nameCursor.name),
+                    and(
+                      eq(shopParty.displayName, nameCursor.name),
+                      lt(shopArtist.id, nameCursor.id),
+                    ),
+                  )
+                : undefined,
+              ...listFilters,
+            ),
+          )
+          .orderBy(...orderByForArtistSort(sort))
+          .limit(limit + 1),
+        db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(shopArtist)
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...listFilters)),
+      ]);
+      const total = Number(totalRows[0]?.total ?? 0);
 
       const hasMore = rows.length > limit;
       const page = hasMore ? rows.slice(0, limit) : rows;
@@ -174,16 +202,20 @@ export function createDrizzleArtistDirectoryRepository(
         ),
       );
       const last = page.at(-1);
+      if (hasMore && last && (sort === "nameAsc" || sort === "nameDesc")) {
+        return { items, total, nextNameCursor: { name: last.name, id: last.artistId } };
+      }
       if (hasMore && last && sort === "newest") {
         return {
           items,
+          total,
           nextCursor: {
             createdAt: last.createdAt,
             id: last.artistId,
           },
         };
       }
-      return { items };
+      return { items, total };
     },
 
     async getPublicArtistBySlug(slug: string) {

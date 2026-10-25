@@ -9,7 +9,11 @@ import type {
   PublicCategorySummary,
 } from "@auction/shop-contracts";
 import { encodeArtworkListCursor } from "../application/artwork-catalogue-cursor.js";
-import { encodeCatalogueCursor, encodeSortLabelCursor } from "../application/catalogue-cursor.js";
+import {
+  encodeCatalogueCursor,
+  encodeNameCursor,
+  encodeSortLabelCursor,
+} from "../application/catalogue-cursor.js";
 import type { ListPublicArtistsResult } from "../application/ports/artist-directory.reader.js";
 import type { ListPublicArtworksResult } from "../application/ports/artwork-catalogue.reader.js";
 import type { ListPublicCategoriesResult } from "../application/ports/category-catalogue.reader.js";
@@ -101,7 +105,9 @@ export function presentArtistDetail(model: ArtistDetailReadModel): PublicArtistD
 export function presentArtistList(result: ListPublicArtistsResult): PublicArtistList {
   return {
     items: result.items.map(presentArtistSummary),
+    ...(result.total !== undefined ? { total: result.total } : {}),
     ...(result.nextCursor ? { nextCursor: encodeCatalogueCursor(result.nextCursor) } : {}),
+    ...(result.nextNameCursor ? { nextCursor: encodeNameCursor(result.nextNameCursor) } : {}),
   };
 }
 

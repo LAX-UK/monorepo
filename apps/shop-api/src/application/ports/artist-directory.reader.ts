@@ -1,4 +1,4 @@
-import type { CatalogueCursor } from "../catalogue-cursor.js";
+import type { CatalogueCursor, NameCursor } from "../catalogue-cursor.js";
 import type {
   ArtistDetailReadModel,
   ArtistSummaryReadModel,
@@ -8,7 +8,10 @@ export type PublicArtistSort = "newest" | "nameAsc" | "nameDesc";
 
 export type ListPublicArtistsInput = {
   limit: number;
+  /** Position for the newest-first sort. */
   cursor?: CatalogueCursor;
+  /** Position for the name sorts. */
+  nameCursor?: NameCursor;
   placement?: "featured_artists";
   /** Case-insensitive match on artist name or slug; ignored for curated placements. */
   q?: string;
@@ -21,7 +24,10 @@ export type ListPublicArtistsInput = {
 
 export type ListPublicArtistsResult = {
   items: ArtistSummaryReadModel[];
+  /** Artists matching the filters across all pages; absent for curated placements. */
+  total?: number;
   nextCursor?: CatalogueCursor;
+  nextNameCursor?: NameCursor;
 };
 
 export interface ArtistDirectoryReader {

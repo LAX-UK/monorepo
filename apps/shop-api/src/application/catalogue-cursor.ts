@@ -75,3 +75,30 @@ export function decodeCatalogueCursor(value: string | undefined): CatalogueCurso
     throw new InvalidCatalogueCursorError();
   }
 }
+
+/** Keyset position in a list sorted by name: the last name shown and its id as a tie-break. */
+export type NameCursor = {
+  name: string;
+  id: string;
+};
+
+export function encodeNameCursor(cursor: NameCursor): string {
+  return Buffer.from(JSON.stringify({ name: cursor.name, id: cursor.id })).toString("base64url");
+}
+
+export function decodeNameCursor(value: string | undefined): NameCursor | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as {
+      name?: unknown;
+      id?: unknown;
+    };
+    if (typeof parsed.name !== "string" || typeof parsed.id !== "string" || !parsed.id) {
+      throw new InvalidCatalogueCursorError();
+    }
+    return { name: parsed.name, id: parsed.id };
+  } catch (error) {
+    if (error instanceof InvalidCatalogueCursorError) throw error;
+    throw new InvalidCatalogueCursorError();
+  }
+}

@@ -1,31 +1,53 @@
 import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-button.client";
-import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
+import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtistPageVm } from "@/lib/artist/artist-page.composer";
-import { MarketingPageTitle } from "@auction/marketing-ui";
+import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
+import {
+  MarketingArtistCrossLinks,
+  MarketingArtistFacts,
+  MarketingArtistHero,
+  MarketingShareButton,
+  marketingArtistFacts,
+} from "@auction/marketing-ui";
 
-/** Keeps the outline Follow legible on the hero scrim by borrowing the band's foreground. */
-const ON_MEDIA_FOLLOW =
-  "border-current bg-transparent text-inherit hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] hover:text-inherit aria-pressed:border-transparent aria-pressed:bg-[var(--color-hero-foreground)] aria-pressed:text-on-surface";
-
-/** Figma artist hero (`439:6125`): name, nationality and life span, and an outline Follow. */
-export function ArtArtistHero({ vm }: { vm: ArtistPageVm }) {
-  const content = {
-    title: vm.name,
-    eyebrow: vm.discipline,
-    subtitle: vm.lifeLine,
-    actions: (
-      <ArtArtistFollowButton
-        slug={vm.slug}
-        name={vm.name}
-        initialFollowing={vm.following}
-        auth={vm.favoriteAuth}
-        {...(vm.heroUrl ? { className: ON_MEDIA_FOLLOW } : {})}
-      />
-    ),
-  };
-  return vm.heroUrl ? (
-    <ArtMediaPageTitle variant="media" image={{ src: vm.heroUrl }} priority {...content} />
-  ) : (
-    <MarketingPageTitle {...content} />
+/**
+ * The shared LAX artist hero (as on LAX Bid and LAX Shop): portrait on a mat, name, nationality,
+ * life span and discipline, Follow, Share and, when the Shop has editions, a link to them. The
+ * biography keeps its own section below.
+ */
+export function ArtArtistHero({ vm, pageUrl }: { vm: ArtistPageVm; pageUrl: string }) {
+  const portrait = vm.portraitUrl ?? vm.heroUrl;
+  return (
+    <MarketingArtistHero
+      name={vm.name}
+      facts={<MarketingArtistFacts facts={marketingArtistFacts(vm.facts)} />}
+      actions={
+        <>
+          <ArtArtistFollowButton
+            slug={vm.slug}
+            name={vm.name}
+            initialFollowing={vm.following}
+            auth={vm.favoriteAuth}
+            className="min-h-11 min-w-24 px-5 text-sm font-medium normal-case tracking-normal"
+          />
+          <MarketingShareButton url={pageUrl} title={vm.name} />
+        </>
+      }
+      crossLinks={<MarketingArtistCrossLinks links={vm.crossLinks} />}
+      portrait={
+        portrait ? (
+          <ArtMediaImage
+            src={portrait}
+            alt={vm.portraitAlt}
+            label={ART_MEDIA_LABELS.artistPortrait}
+            aspect={[4, 5]}
+            sizes="(min-width: 48rem) 40vw, 18rem"
+            priority
+            className="absolute inset-0 size-full"
+            imgClassName="object-cover"
+          />
+        ) : null
+      }
+    />
   );
 }

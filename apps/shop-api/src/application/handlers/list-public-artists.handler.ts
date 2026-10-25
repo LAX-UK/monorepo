@@ -1,4 +1,4 @@
-import { decodeCatalogueCursor } from "../catalogue-cursor.js";
+import { decodeCatalogueCursor, decodeNameCursor } from "../catalogue-cursor.js";
 import type {
   ArtistDirectoryReader,
   ListPublicArtistsResult,
@@ -23,12 +23,15 @@ export function createListPublicArtistsHandler(
   reader: ArtistDirectoryReader,
 ): ListPublicArtistsHandler {
   return (input) => {
-    const cursor = decodeCatalogueCursor(input.cursor);
+    const byName = input.sort === "nameAsc" || input.sort === "nameDesc";
+    const cursor = byName ? null : decodeCatalogueCursor(input.cursor);
+    const nameCursor = byName ? decodeNameCursor(input.cursor) : null;
     const q = input.q?.trim();
     const letter = input.letter?.trim().toUpperCase();
     return reader.listPublicArtists({
       limit: input.limit,
       ...(cursor ? { cursor } : {}),
+      ...(nameCursor ? { nameCursor } : {}),
       ...(input.placement ? { placement: input.placement } : {}),
       ...(q ? { q } : {}),
       ...(letter && /^[A-Z]$/.test(letter) ? { letter } : {}),
