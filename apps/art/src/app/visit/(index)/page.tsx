@@ -84,6 +84,7 @@ export default async function VisitPage() {
                           src={venue.imageUrl}
                           alt=""
                           label="Gallery"
+                          placeholderTitle={venue.name}
                           priority={index === 0}
                           sizes="(min-width: 48rem) 45vw, 100vw"
                           className="absolute inset-0 size-full"

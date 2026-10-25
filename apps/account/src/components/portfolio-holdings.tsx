@@ -253,6 +253,7 @@ export function PortfolioHoldings({
       />
       {holdings.noResults ? (
         <EmptyState
+          illustration="search"
           className={EMPTY_STATE}
           headingLevel="h3"
           title="No works match these filters"

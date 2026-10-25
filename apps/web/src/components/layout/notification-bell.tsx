@@ -13,6 +13,7 @@ import {
 } from "@/lib/services/client/notifications-inbox.client";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
@@ -100,9 +101,13 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
           ) : null}
           <div className="max-h-80 overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-4 py-6 text-center font-body text-sm text-on-surface-variant">
-                No notifications yet.
-              </p>
+              <EmptyState
+                variant="plain"
+                size="compact"
+                headingLevel="h3"
+                illustration="plinth"
+                title="No notifications yet"
+              />
             ) : (
               items.map((n) => (
                 <div

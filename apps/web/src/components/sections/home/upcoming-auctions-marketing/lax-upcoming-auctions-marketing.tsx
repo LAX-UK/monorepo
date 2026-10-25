@@ -6,7 +6,6 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { UpcomingAuctionsMarketingClient } from "./upcoming-auctions-marketing-client";
 
@@ -40,7 +39,7 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
           />
           <MarketingEmptyState
             variant="marketing"
-            icon={<Calendar aria-hidden />}
+            illustration="gavel"
             title="No auctions scheduled"
             description="Our next auction is being prepared. Sign up for our newsletter to be the first to know."
             action={

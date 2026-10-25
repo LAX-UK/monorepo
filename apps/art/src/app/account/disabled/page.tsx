@@ -10,6 +10,7 @@ export default function ArtDisabledAccountPage() {
     <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
       <ArtStatusState
         variant="error"
+        icon="lock"
         layout="page"
         titleAs="h1"
         title="Access restricted"

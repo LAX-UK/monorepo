@@ -30,6 +30,7 @@ export function ArtistArtworksList({ artworks }: { artworks: ArtistArtworkVm[] }
     <AccountSection id="artworks" title="Artworks">
       {artworks.length === 0 ? (
         <EmptyState
+          illustration="easel"
           className={EMPTY_STATE}
           headingLevel="h3"
           title="No artworks listed yet"
@@ -60,6 +61,7 @@ export function ArtistSalesList({ sales }: { sales: ArtistSaleVm[] }) {
     >
       {sales.length === 0 ? (
         <EmptyState
+          illustration="ledger"
           className={EMPTY_STATE}
           headingLevel="h3"
           title="No sales recorded yet"

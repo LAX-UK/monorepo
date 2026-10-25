@@ -45,6 +45,7 @@ export default async function ArtSearchPage({ searchParams }: SearchPageProps) {
       <ArtSearchForm defaultValue={vm.query} className="lg:hidden" />
       {vm.status === "unavailable" ? (
         <ArtStatusState
+          layout="page"
           variant="error"
           titleAs="h1"
           title="Search unavailable"

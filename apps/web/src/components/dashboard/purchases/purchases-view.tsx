@@ -23,7 +23,6 @@ import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
 import type { PayNowVm, PortfolioAnalyticsVm } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { Button } from "@auction/ui/components/button";
-import { Inbox } from "lucide-react";
 import Link from "next/link";
 
 type PurchasesViewProps = {
@@ -122,7 +121,7 @@ export function PurchasesView({
             ) : (
               <DashboardEmptyState
                 variant="hero"
-                icon={<Inbox aria-hidden />}
+                illustration="parcel"
                 title={DASHBOARD_EMPTY.purchases.title}
                 description={DASHBOARD_EMPTY.purchases.description}
                 action={

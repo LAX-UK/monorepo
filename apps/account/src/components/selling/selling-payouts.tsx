@@ -19,6 +19,7 @@ export function SellingPayoutsList({ list }: { list: PayoutsListVm }) {
     >
       {list.rows.length === 0 ? (
         <EmptyState
+          illustration="ledger"
           className={EMPTY_STATE}
           headingLevel="h3"
           title="No payouts yet"

@@ -110,6 +110,7 @@ export function SellingEditions({ page }: { page: EditionsPageVm }) {
   if (page.rows.length === 0) {
     return (
       <EmptyState
+        illustration="easel"
         className={EMPTY_STATE}
         headingLevel="h2"
         title="No editions to sell yet"

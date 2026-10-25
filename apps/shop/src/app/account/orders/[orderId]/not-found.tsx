@@ -11,7 +11,7 @@ export default function AccountOrderNotFound() {
       <ShopStatusState
         layout="page"
         variant="empty"
-        icon="search"
+        icon="ticket"
         title="We could not find this order"
         titleAs="h2"
         description="It may belong to another LAX account. Check that you are signed in with the email you used at checkout."

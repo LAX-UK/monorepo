@@ -127,6 +127,12 @@ export {
 export { DataTable } from "./components/ui/data-table.js";
 export { EmptyState } from "./components/ui/empty-state.js";
 export type { EmptyStateProps } from "./components/ui/empty-state.js";
+export { LAX_ILLUSTRATION_NAMES, LaxIllustration } from "./components/ui/lax-illustration.js";
+export type {
+  LaxIllustrationName,
+  LaxIllustrationProps,
+  LaxIllustrationSize,
+} from "./components/ui/lax-illustration.js";
 export { PageHeader } from "./components/ui/page-header.js";
 export type { PageHeaderProps } from "./components/ui/page-header.js";
 export { PaginationFooter } from "./components/ui/pagination-footer.js";

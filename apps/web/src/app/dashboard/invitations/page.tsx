@@ -14,7 +14,6 @@ import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { Button } from "@auction/ui/components/button";
-import { Inbox } from "lucide-react";
 import Link from "next/link";
 
 export default async function InvitationsInboxPage() {
@@ -64,7 +63,7 @@ export default async function InvitationsInboxPage() {
       {!loadFailure && pending.length === 0 ? (
         <DashboardEmptyState
           variant="hero"
-          icon={<Inbox className="size-6" aria-hidden />}
+          illustration="plinth"
           title={DASHBOARD_EMPTY.invitations.title}
           description={DASHBOARD_EMPTY.invitations.description}
           action={

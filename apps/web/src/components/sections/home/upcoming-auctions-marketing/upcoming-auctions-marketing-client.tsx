@@ -15,7 +15,6 @@ import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { DisplayHeading } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { UpcomingAuctionMarketingCard } from "./upcoming-auction-marketing-card";
@@ -121,7 +120,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
         {visible.length === 0 ? (
           <MarketingEmptyState
             variant="marketing"
-            icon={<Calendar aria-hidden />}
+            illustration="gavel"
             title="No auctions match this filter"
             description="Try another filter or browse the full catalogue."
             action={

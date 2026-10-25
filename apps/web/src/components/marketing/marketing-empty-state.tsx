@@ -1,6 +1,6 @@
 import {
-  EmptyStateIllustration,
   type EmptyStateIllustrationKey,
+  resolveEmptyStateIllustration,
 } from "@/components/illustrations/empty-state-illustrations";
 import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
 import {
@@ -100,13 +100,7 @@ function resolveMotifSlot(
   illustrationKey: EmptyStateIllustrationKey | null,
   icon: ReactNode | undefined,
 ): ReactNode | undefined {
-  if (illustrationKey) {
-    return (
-      <div className="marketing-status-state__illustration">
-        <EmptyStateIllustration name={illustrationKey} />
-      </div>
-    );
-  }
+  if (illustrationKey) return undefined;
   if (icon) {
     return <div className="marketing-status-state__custom-icon">{icon}</div>;
   }
@@ -134,7 +128,13 @@ export function MarketingEmptyState({
     <MarketingStatusState
       variant={visualVariant}
       layout={layout}
-      motif={motifSlot ? null : resolveMotif(context)}
+      motif={
+        motifSlot
+          ? null
+          : illustrationKey
+            ? resolveEmptyStateIllustration(illustrationKey)
+            : resolveMotif(context)
+      }
       {...(motifSlot ? { motifSlot } : {})}
       title={title}
       {...(description !== undefined ? { description } : {})}

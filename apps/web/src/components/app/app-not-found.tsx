@@ -36,7 +36,7 @@ export function AppNotFound({
 }: AppNotFoundProps) {
   const leading = illustration ? (
     <div className="mb-6">
-      <EmptyStateIllustration name={illustration} className="mx-auto h-20 w-32" />
+      <EmptyStateIllustration name={illustration} size="page" />
     </div>
   ) : undefined;
 

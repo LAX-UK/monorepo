@@ -1,6 +1,7 @@
 import { Button } from "@/components/account-button";
 import { formatDate, formatMinorUnits } from "@/lib/format-money";
 import type { WorkDetailVm } from "@/server/domain/portfolio-work-detail.vm";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import {
   Table,
@@ -53,9 +54,13 @@ function AcquisitionRecord({ work }: { work: WorkDetailVm }) {
         <dd>{work.businessName}</dd>
       </dl>
       {work.costLines.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">
-          No cost lines have been recorded for this work yet.
-        </p>
+        <EmptyState
+          variant="plain"
+          size="compact"
+          headingLevel="h3"
+          illustration="ledger"
+          title="No cost lines have been recorded for this work yet"
+        />
       ) : (
         <Table>
           <TableCaption className="sr-only">
@@ -97,9 +102,13 @@ function Documents({ work }: { work: WorkDetailVm }) {
   return (
     <Section id="documents" heading="Documents">
       {work.documents.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">
-          No documents are listed for this work yet.
-        </p>
+        <EmptyState
+          variant="plain"
+          size="compact"
+          headingLevel="h3"
+          illustration="ledger"
+          title="No documents are listed for this work yet"
+        />
       ) : (
         <ul className="flex flex-col divide-y divide-border-hairline">
           {work.documents.map((doc) => (

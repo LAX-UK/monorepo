@@ -43,6 +43,7 @@ export default async function PortfolioMoneyPage({
       />
       {page.showEmptyState ? (
         <EmptyState
+          illustration="ledger"
           className={EMPTY_STATE}
           headingLevel="h2"
           title="No money to show yet"

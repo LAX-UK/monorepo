@@ -13,7 +13,7 @@ import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import type { Lot, PublicLotView } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { Gavel, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -115,7 +115,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
       {requestedIds.length === 0 && !hadRawButNoValidUuids ? (
         <DashboardEmptyState
           variant="hero"
-          icon={<Gavel aria-hidden />}
+          illustration="gavel"
           title="Your basket is empty"
           description="Open your purchases and start checkout on any won lot — each lot is settled through its own invoice."
           action={

@@ -9,7 +9,6 @@ import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
-import { FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -56,7 +55,7 @@ export default async function OrganisationDocumentsPage({
         <div>
           {docs.length === 0 ? (
             <DashboardEmptyState
-              icon={<FileText className="size-6" aria-hidden />}
+              illustration="ledger"
               title="No documents yet"
               description="Use onboarding to add KYB files for this organisation."
               action={

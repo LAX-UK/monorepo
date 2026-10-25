@@ -162,6 +162,7 @@ export function SellingSales({ page }: { page: SalesPageVm }) {
   if (page.totalCount === 0) {
     return (
       <EmptyState
+        illustration="ledger"
         className={EMPTY_STATE}
         headingLevel="h2"
         title="No sales yet"
@@ -197,6 +198,7 @@ export function SellingSales({ page }: { page: SalesPageVm }) {
 
       {page.noneInPeriod ? (
         <EmptyState
+          illustration="search"
           className={EMPTY_STATE}
           headingLevel="h2"
           title="No sales in this period"
