@@ -367,11 +367,13 @@ export function ArtworkList({
             />
           ) : viewLabel ? (
             <EmptyState
+              illustration="easel"
               title={`No ${viewLabel} artworks`}
               description="Artworks move here as they are published, sell out or are archived."
             />
           ) : (
             <EmptyState
+              illustration="easel"
               title="No artworks yet"
               description="Add the first artwork; it starts as a draft until you publish it."
               action={

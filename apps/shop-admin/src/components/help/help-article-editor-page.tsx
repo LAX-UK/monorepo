@@ -5,7 +5,8 @@ import type { HelpArticleDetail } from "@/lib/help-forms";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
 import type { HelpAdminCategoryRow } from "@auction/shop-contracts";
-import { Button, EmptyState, PageHeader } from "@auction/ui";
+import { EmptyState } from "@auction/staff-ui";
+import { Button, PageHeader } from "@auction/ui";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -48,6 +49,7 @@ export async function HelpArticleEditorPage({
         <PageHeader title={title} />
         <EmptyState
           headingLevel="h2"
+          illustration="frame"
           title="Create a category first"
           description="Every question belongs to a category, so add one before writing questions."
           action={

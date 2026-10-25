@@ -15,6 +15,7 @@ import {
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import type { FieldErrors } from "@/lib/form-validation";
 import type { EditorialBlock } from "@auction/shop-contracts";
+import { EmptyState } from "@auction/staff-ui";
 import { Button } from "@auction/ui";
 import { type ReactNode, useState } from "react";
 
@@ -111,7 +112,13 @@ export function EditorialBlockEditor({
     <section className="space-y-3" aria-label="Body blocks">
       <h3 className="text-base font-medium">Body blocks ({items.length})</h3>
       {items.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">No blocks yet. Add one below.</p>
+        <EmptyState
+          size="compact"
+          headingLevel="h3"
+          illustration="easel"
+          title="No blocks yet"
+          description="Add one below."
+        />
       ) : (
         <ol className="space-y-3">
           {items.map((item, index) => {

@@ -11,6 +11,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { EMPTY_STATE_APPS, checkEmptyStateSource } from "./empty-state-guardrail.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const WEB_SRC = path.join(ROOT, "apps/web/src");
@@ -173,7 +174,29 @@ async function checkNoGoogleFonts() {
   return violations;
 }
 
+async function checkEmptyStates() {
+  const violations = [];
+  for (const app of EMPTY_STATE_APPS) {
+    const src = path.join(ROOT, "apps", app, "src");
+    if (!existsSync(src)) continue;
+    for (const file of (await walk(src)).filter((f) => !isSkipped(f) && f.endsWith(".tsx"))) {
+      violations.push(
+        ...checkEmptyStateSource(path.relative(ROOT, file), await readFile(file, "utf8")),
+      );
+    }
+  }
+  return violations;
+}
+
 let failed = false;
+
+const emptyStateViolations = await checkEmptyStates();
+if (emptyStateViolations.length > 0) {
+  failed = true;
+  console.error("error: empty states must use the shared component and illustration set:\n");
+  for (const v of emptyStateViolations) console.error(`  ${v}`);
+  console.error("");
+}
 
 const fontViolations = await checkNoGoogleFonts();
 if (fontViolations.length > 0) {

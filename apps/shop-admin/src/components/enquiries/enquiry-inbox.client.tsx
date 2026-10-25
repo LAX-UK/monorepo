@@ -11,7 +11,8 @@ import {
   hasActiveEnquiryFilters,
 } from "@/server/domain/enquiry-inbox.vm";
 import type { AdminEnquiryListResponse } from "@auction/shop-contracts";
-import { Button, EmptyState, TableSkeleton } from "@auction/ui";
+import { EmptyState, NoResultsState } from "@auction/staff-ui";
+import { Button, TableSkeleton } from "@auction/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
 
@@ -45,7 +46,7 @@ export function EnquiryInbox({
         </output>
       ) : page.items.length === 0 ? (
         filtered ? (
-          <EmptyState
+          <NoResultsState
             headingLevel="h2"
             title="No enquiries match these filters"
             description="Try a different search, or clear the filters to see everything."
@@ -58,6 +59,7 @@ export function EnquiryInbox({
         ) : (
           <EmptyState
             headingLevel="h2"
+            illustration="plinth"
             title="No enquiries yet"
             description="Messages sent from lax.art, and questions about artworks, will appear here."
           />

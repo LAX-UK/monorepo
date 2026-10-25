@@ -10,7 +10,8 @@ import {
   toHelpArticleListRow,
 } from "@/server/domain/help-list.vm";
 import type { HelpAdminArticleRow, HelpAdminCategoryRow } from "@auction/shop-contracts";
-import { Button, EmptyState, EntityTableShell, FilterRow, Input, PageHeader } from "@auction/ui";
+import { EmptyState, NoResultsState } from "@auction/staff-ui";
+import { Button, EntityTableShell, FilterRow, Input, PageHeader } from "@auction/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -95,6 +96,7 @@ export async function HelpArticlesListPage({ search }: { search: HelpArticleList
         />
         <EmptyState
           headingLevel="h2"
+          illustration="frame"
           title="No questions yet"
           description={
             categories.length === 0
@@ -160,7 +162,7 @@ export async function HelpArticlesListPage({ search }: { search: HelpArticleList
               ]}
             />
             {rows.length === 0 ? (
-              <EmptyState
+              <NoResultsState
                 headingLevel="h2"
                 title="No questions match"
                 description="Try a different search, or show every category and status."

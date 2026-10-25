@@ -511,6 +511,7 @@ export function StaffDirectory({
         empty={
           members.length === 0 ? (
             <EmptyState
+              illustration="plinth"
               title="No staff yet"
               description="Add the first person with a LAX login to give them access."
             />

@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/ui/format";
 import { SegmentToggle } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DateRangePicker } from "@auction/ui/components/date-range-picker";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { Skeleton } from "@auction/ui/components/skeleton";
 import { AUCTION_ZONE_LABEL } from "@auction/ui/lib/datetime";
 import type {
@@ -132,9 +133,14 @@ function QrAnalyticsContent({
       </div>
 
       {analytics.totalScans === 0 ? (
-        <p className="text-on-surface-variant">
-          No scans yet. Printed labels will appear here after scanning.
-        </p>
+        <EmptyState
+          variant="plain"
+          size="compact"
+          headingLevel="h3"
+          illustration="search"
+          title="No scans yet"
+          description="Printed labels will appear here after scanning."
+        />
       ) : (
         <>
           <QrTrendChart data={trendData} granularity={analytics.granularity} />
