@@ -23,6 +23,7 @@ import {
   saleLotsBoardFilters,
 } from "@/lib/data/view-models/sale-lots-tab.vm";
 import {
+  CellLink,
   type DataColumn,
   DataTableToolbar,
   EmptyValue,
@@ -55,6 +56,8 @@ type Props = {
   canManageAuction?: boolean;
   categories?: CategoryNode[];
   englishOnlyAuctionsLocked?: boolean;
+  /** Each lot's artist name by artist ID. */
+  artistNameById?: Readonly<Record<string, string>>;
 };
 
 type SaleLotRow = {
@@ -111,6 +114,7 @@ export function SaleLotsTabBoard({
   canManageAuction = false,
   categories = [],
   englishOnlyAuctionsLocked = false,
+  artistNameById = {},
 }: Props) {
   const router = useRouter();
   const confirm = useStaffConfirm();
@@ -199,6 +203,9 @@ export function SaleLotsTabBoard({
       success: "Lots returned to inventory",
     });
 
+  const artistOf = (row: SaleLotRow) =>
+    row.lot.artistId ? (artistNameById[row.lot.artistId] ?? null) : null;
+
   const columns: DataColumn<SaleLotRow>[] = [
     {
       id: "number",
@@ -225,6 +232,25 @@ export function SaleLotsTabBoard({
           {row.title}
         </PrimaryCell>
       ),
+    },
+    {
+      id: "artist",
+      header: "Artist",
+      width: "180px",
+      sortable: true,
+      sortValue: (row) => artistOf(row)?.toLowerCase() ?? null,
+      hideBelow: "md",
+      mobile: "meta",
+      cell: (row) => {
+        const name = artistOf(row);
+        return name && row.lot.artistId ? (
+          <CellLink href={`/admin/artists/${row.lot.artistId}`} Link={Link}>
+            {name}
+          </CellLink>
+        ) : (
+          <EmptyValue />
+        );
+      },
     },
     {
       id: "status",

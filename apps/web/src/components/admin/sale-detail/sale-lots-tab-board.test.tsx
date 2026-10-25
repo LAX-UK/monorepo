@@ -114,6 +114,22 @@ describe("SaleLotsTabBoard", () => {
     expect(second.getByText("Draft")).toBeInTheDocument();
   });
 
+  it("names each lot's artist with a link to the artist", () => {
+    render(
+      <SaleLotsTabBoard
+        saleId="sale-1"
+        sale={SALE}
+        lots={[{ ...LOTS[0], artistId: "artist-1" } as Lot, LOTS[1] as Lot]}
+        artistNameById={{ "artist-1": "Mary Fedden" }}
+      />,
+    );
+    // The table and the phone layout both carry the link.
+    expect(screen.getAllByRole("link", { name: "Mary Fedden" })[0]).toHaveAttribute(
+      "href",
+      "/admin/artists/artist-1",
+    );
+  });
+
   it("offers the setup page and attaching an existing lot while the sale is a draft", () => {
     render(<SaleLotsTabBoard saleId="sale-1" sale={SALE} lots={LOTS} canManageAuction />);
 

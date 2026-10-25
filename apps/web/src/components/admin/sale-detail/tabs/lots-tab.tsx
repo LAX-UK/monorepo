@@ -8,6 +8,7 @@ type Props = {
   canManageAuction?: boolean;
   categories?: CategoryNode[];
   englishOnlyAuctionsLocked?: boolean;
+  artistNameById?: Record<string, string>;
 };
 
 export function SaleLotsTab({
@@ -17,6 +18,7 @@ export function SaleLotsTab({
   canManageAuction = false,
   categories = [],
   englishOnlyAuctionsLocked = false,
+  artistNameById = {},
 }: Props) {
   return (
     <SaleLotsTabBoard
@@ -31,6 +33,7 @@ export function SaleLotsTab({
       canManageAuction={canManageAuction}
       categories={categories}
       englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+      artistNameById={artistNameById}
     />
   );
 }

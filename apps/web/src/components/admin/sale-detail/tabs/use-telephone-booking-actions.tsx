@@ -1,5 +1,6 @@
 "use client";
 
+import { StaffMemberPicker } from "@/components/admin/staff/staff-member-picker";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { adminTelephoneBookingResultAction } from "@/lib/actions/admin";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
@@ -8,6 +9,7 @@ import {
   isTelephoneBookingClosed,
   telephoneBidderLabel,
 } from "@/lib/data/view-models/sale-telephone-tab.vm";
+import { SALEROOM_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import {
   Field,
@@ -16,7 +18,6 @@ import {
   StaffButton,
   StaffDialog,
   TextArea,
-  TextInput,
   formatStaffMoney,
 } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,6 @@ import { useCallback, useRef, useState, useTransition } from "react";
 type Edit = { kind: "clerk" | "notes"; row: AdminTelephoneBookingRow };
 
 const NOTES_MAX = 2000;
-const CLERK_MAX = 191;
 
 /** Assigns the clerk who takes a line, or edits the staff notes kept with a booking. */
 function BookingEditDialog({
@@ -51,7 +51,7 @@ function BookingEditDialog({
   const bidder = edit ? telephoneBidderLabel(edit.row) : "";
 
   const validate = (text: string) =>
-    isClerk && text.trim() === "" ? "Enter the clerk's user ID." : null;
+    isClerk && text.trim() === "" ? "Choose the clerk who takes this line." : null;
 
   const submit = () => {
     if (!edit) return;
@@ -123,18 +123,21 @@ function BookingEditDialog({
         ) : null}
         {isClerk ? (
           <Field
-            label="Clerk user ID"
-            description="The account ID of the staff member taking the line."
+            label="Clerk"
+            description="Staff who can take telephone bids in the saleroom."
             error={error}
             disabled={busy}
           >
-            <TextInput
-              value={value}
-              maxLength={CLERK_MAX}
-              autoComplete="off"
-              onChange={(event) => {
-                setValue(event.target.value);
-                if (attempted) setError(validate(event.target.value));
+            <StaffMemberPicker
+              value={value || null}
+              access={SALEROOM_ACCESS}
+              placeholder="Choose the clerk"
+              disabled={busy}
+              invalid={Boolean(error)}
+              onValueChange={(option) => {
+                const next = option?.id ?? "";
+                setValue(next);
+                if (attempted) setError(validate(next));
               }}
             />
           </Field>
