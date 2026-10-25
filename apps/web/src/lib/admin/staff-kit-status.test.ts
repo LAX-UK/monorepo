@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { staffStatus } from "./staff-kit-status";
+import { staffArrivalStatus, staffStatus } from "./staff-kit-status";
 
 describe("staffStatus", () => {
   it("tells a draft lot from a scheduled one", () => {
@@ -52,6 +52,20 @@ describe("staffStatus", () => {
       tone: "info",
     });
     expect(staffStatus("conditionReport", "declined").tone).toBe("neutral");
+  });
+
+  it("maps onsite event statuses, including closed RSVPs", () => {
+    expect(staffStatus("onsiteEvent", "published")).toEqual({
+      label: "Published",
+      tone: "success",
+    });
+    expect(staffStatus("onsiteEvent", "draft").tone).toBe("neutral");
+    expect(staffStatus("onsiteEvent", "closed").label).toBe("RSVPs closed");
+  });
+
+  it("tells an arrived guest from one still expected", () => {
+    expect(staffArrivalStatus(true)).toEqual({ label: "Arrived", tone: "success" });
+    expect(staffArrivalStatus(false)).toEqual({ label: "Not arrived", tone: "neutral" });
   });
 
   it("never shows a raw value for a status it does not know", () => {

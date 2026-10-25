@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
+import { getAdminSaleById } from "@/lib/data/http/admin-sale-registrations.reader";
 import {
   getAdminOnsiteEventDetail,
   getAdminOnsiteEventRsvps,
@@ -18,6 +19,8 @@ export type EventRsvpDetailPageModel = {
     salePresent: number;
     paddled: number;
   } | null;
+  /** The linked sale's name, so the page shows it instead of its id. */
+  linkedSaleTitle: string | null;
   loadError: string | null;
   notFound: boolean;
 };
@@ -40,6 +43,7 @@ export async function loadAdminEventRsvpDetailPage({
         detail: null,
         rsvps: [],
         venueDayCounts: null,
+        linkedSaleTitle: null,
         loadError: null,
         notFound: true,
       };
@@ -53,13 +57,16 @@ export async function loadAdminEventRsvpDetailPage({
     }
 
     let venueDayCounts: EventRsvpDetailPageModel["venueDayCounts"] = null;
+    let linkedSaleTitle: string | null = null;
     if (detail.saleId) {
-      try {
-        const linked = await getAdminExpectedGuests(detail.saleId);
-        venueDayCounts = linked.counts;
-      } catch {
-        // Non-fatal — RSVP list still renders.
-      }
+      const saleId = detail.saleId;
+      const [guests, sale] = await Promise.allSettled([
+        getAdminExpectedGuests(saleId),
+        getAdminSaleById(saleId),
+      ]);
+      // Non-fatal: the RSVP list still renders without the venue-day counts or the sale's name.
+      if (guests.status === "fulfilled") venueDayCounts = guests.value.counts;
+      if (sale.status === "fulfilled") linkedSaleTitle = sale.value?.sale.title ?? null;
     }
 
     return {
@@ -67,6 +74,7 @@ export async function loadAdminEventRsvpDetailPage({
       detail,
       rsvps,
       venueDayCounts,
+      linkedSaleTitle,
       loadError,
       notFound: false,
     };
@@ -76,6 +84,7 @@ export async function loadAdminEventRsvpDetailPage({
       detail: null,
       rsvps: [],
       venueDayCounts: null,
+      linkedSaleTitle: null,
       loadError: e instanceof Error ? e.message : "Could not load onsite event data.",
       notFound: false,
     };

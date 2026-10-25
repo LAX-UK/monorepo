@@ -1,7 +1,8 @@
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { OnsiteEventAdminPanel } from "@/components/admin/event-rsvps/onsite-event-admin-panel";
+import {
+  OnsiteEventDetail,
+  OnsiteEventUnavailable,
+} from "@/components/admin/event-rsvps/onsite-event-detail";
 import { OnsiteEventRefreshOnReturn } from "@/components/admin/event-rsvps/onsite-event-refresh-on-return";
-import { OperationsDetailShell } from "@/components/admin/operations-detail-shell";
 import { loadAdminEventRsvpDetailPage } from "@/lib/admin/events/load-event-rsvp-detail-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminOnsiteEventDetail } from "@/lib/data/http/onsite-event.server";
@@ -32,9 +33,7 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
 
   if (!model.detail) {
     return (
-      <OperationsDetailShell slug={slug} title={slug} description="Onsite event">
-        <AdminListAlert>{model.loadError ?? "Could not load onsite event data."}</AdminListAlert>
-      </OperationsDetailShell>
+      <OnsiteEventUnavailable message={model.loadError ?? "Could not load onsite event data."} />
     );
   }
 
@@ -43,23 +42,13 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
       <Suspense fallback={null}>
         <OnsiteEventRefreshOnReturn />
       </Suspense>
-      <OperationsDetailShell
-        slug={slug}
-        title={model.detail.title}
-        description="Guest RSVPs, pass delivery, and arrival tracking."
-      >
-        <OnsiteEventAdminPanel
-          slug={slug}
-          title={model.detail.title}
-          segmentOptions={model.detail.segmentOptions}
-          micrositeUrl={model.detail.micrositeUrl}
-          saleId={model.detail.saleId}
-          venueDayCounts={model.venueDayCounts}
-          rsvps={model.rsvps}
-          error={error ?? model.loadError}
-          chromeless
-        />
-      </OperationsDetailShell>
+      <OnsiteEventDetail
+        event={model.detail}
+        rsvps={model.rsvps}
+        venueDayCounts={model.venueDayCounts}
+        linkedSaleTitle={model.linkedSaleTitle}
+        loadError={error ?? model.loadError}
+      />
     </>
   );
 }

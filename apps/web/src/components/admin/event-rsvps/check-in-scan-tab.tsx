@@ -1,10 +1,9 @@
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Surface } from "@auction/ui/components/surface";
+import { Field, Notice, StaffButton, TextInput } from "@auction/staff-ui";
 import type { RefObject } from "react";
 
 type Props = {
   videoRef: RefObject<HTMLVideoElement | null>;
+  /** True when the browser can scan, false when it cannot, null while that is being checked. */
   cameraSupported: boolean | null;
   manualToken: string;
   onManualTokenChange: (value: string) => void;
@@ -12,6 +11,7 @@ type Props = {
   onCheckIn: (token: string) => void;
 };
 
+/** Scan a pass with the camera, or paste its link or token. */
 export function CheckInScanTab({
   videoRef,
   cameraSupported,
@@ -20,50 +20,53 @@ export function CheckInScanTab({
   busy,
   onCheckIn,
 }: Props) {
+  const token = manualToken.trim();
   return (
-    <div className="space-y-4">
-      <Surface className="overflow-hidden p-0">
-        <video
-          ref={videoRef}
-          className="aspect-[4/3] w-full bg-black object-cover"
-          muted
-          playsInline
-          aria-label="QR code scanner camera preview"
-        />
-      </Surface>
-      {cameraSupported === null ? (
-        <p className="font-body text-sm text-on-surface-variant">Starting camera…</p>
-      ) : null}
+    <div className="flex flex-col gap-4">
       {cameraSupported === false ? (
-        <output aria-live="polite" className="block font-body text-sm text-on-surface-variant">
-          Camera scanning is unavailable on this device. Paste the pass link or token below, or use
-          Search name.
-        </output>
+        <Notice tone="info" title="Camera scanning is unavailable on this device">
+          Paste the pass link or token below, or search for the guest by name.
+        </Notice>
+      ) : (
+        <div className="overflow-hidden rounded-staff-md border border-staff-line bg-staff-sunken">
+          <video
+            ref={videoRef}
+            className="aspect-[4/3] w-full object-cover"
+            muted
+            playsInline
+            aria-label="QR code scanner camera preview"
+          />
+        </div>
+      )}
+      {cameraSupported === null ? (
+        <p className="text-staff-sm text-staff-muted">Starting camera…</p>
       ) : null}
-      <div className="space-y-2">
-        <label className="font-body text-sm text-on-surface-variant" htmlFor="manual-token">
-          Or paste pass link / token
-        </label>
-        <Input
-          id="manual-token"
-          value={manualToken}
-          onChange={(e) => onManualTokenChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && manualToken.trim() && !busy) {
-              onCheckIn(manualToken.trim());
-            }
-          }}
-          placeholder="https://event.lax.bid/pass/…"
-        />
-        <Button
-          type="button"
-          className="w-full min-h-11"
-          disabled={!manualToken.trim() || busy}
-          onClick={() => onCheckIn(manualToken.trim())}
+      <form
+        noValidate
+        className="flex flex-col gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (token && !busy) onCheckIn(token);
+        }}
+      >
+        <Field label="Or paste a pass link or token" id="check-in-manual-token">
+          <TextInput
+            value={manualToken}
+            onChange={(event) => onManualTokenChange(event.target.value)}
+            placeholder="https://event.lax.bid/pass/…"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Field>
+        <StaffButton
+          type="submit"
+          variant="primary"
+          loading={busy}
+          {...(token ? {} : { disabledReason: "Paste a pass link or token first" })}
         >
-          {busy ? "Checking in…" : "Check in"}
-        </Button>
-      </div>
+          Check in
+        </StaffButton>
+      </form>
     </div>
   );
 }

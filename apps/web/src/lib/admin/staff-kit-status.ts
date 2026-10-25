@@ -13,7 +13,7 @@ export function toStaffStatus(variant: StatusBadgeVariant, label: string): Statu
   return { label, tone: variant };
 }
 
-type CatalogueDomain = "lot" | "sale" | "submission" | "conditionReport";
+type CatalogueDomain = "lot" | "sale" | "submission" | "conditionReport" | "onsiteEvent";
 
 /**
  * The catalogue families as staff read them. The shared registry gives drafts and scheduled
@@ -53,6 +53,12 @@ const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentatio
     in_progress: { label: "In progress", tone: "info" },
     fulfilled: { label: "Fulfilled", tone: "success" },
     declined: { label: "Declined", tone: "neutral" },
+  },
+  onsiteEvent: {
+    draft: { label: "Draft", tone: "neutral" },
+    published: { label: "Published", tone: "success" },
+    closed: { label: "RSVPs closed", tone: "neutral" },
+    cancelled: { label: "Cancelled", tone: "danger" },
   },
 };
 
@@ -94,4 +100,11 @@ function endedLotStatus(context: LotStatusContext | undefined): StatusPresentati
   if (winner != null || context?.hasWinner === true) return { label: "Sold", tone: "success" };
   if (winner === null || context?.hasWinner === false) return { label: "Unsold", tone: "neutral" };
   return { label: "Ended", tone: "neutral" };
+}
+
+/** A guest on an event's list: arrived at the door, or still expected. */
+export function staffArrivalStatus(arrived: boolean): StatusPresentation {
+  return arrived
+    ? { label: "Arrived", tone: "success" }
+    : { label: "Not arrived", tone: "neutral" };
 }
