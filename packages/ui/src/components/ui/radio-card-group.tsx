@@ -1,15 +1,19 @@
 "use client";
 
-import { type Ref, useId } from "react";
+import { type ReactNode, type Ref, useId } from "react";
 import { cn } from "../../lib/utils.js";
 import { Label } from "./label.js";
 import { RadioGroup, RadioGroupItem } from "./radio-group.js";
 
 export type RadioCardOption = {
   value: string;
-  label: string;
-  description?: string;
+  label: ReactNode;
+  description?: ReactNode;
+  /** Shown at the end of the card's first line, such as a price. */
+  meta?: ReactNode;
   disabled?: boolean;
+  /** Id for this option's radio, so an error summary can link to it; generated otherwise. */
+  id?: string;
 };
 
 export type RadioCardGroupProps = {
@@ -25,7 +29,10 @@ export type RadioCardGroupProps = {
   inputRef?: Ref<HTMLButtonElement>;
 };
 
-/** Accessible card-style single-select built on {@link RadioGroup}. */
+/**
+ * Accessible card-style single-select built on {@link RadioGroup}. Each card has the stable
+ * hooks `radio-card__label`, `radio-card__meta` and `radio-card__description` for product styling.
+ */
 export function RadioCardGroup({
   legend,
   hideLegend = false,
@@ -54,7 +61,7 @@ export function RadioCardGroup({
       </legend>
       <RadioGroup value={value} onValueChange={onValueChange} className="flex flex-col gap-3">
         {options.map((option, index) => {
-          const id = `${groupId}-${option.value}`;
+          const id = option.id ?? `${groupId}-${option.value}`;
           return (
             <Label
               key={option.value}
@@ -72,12 +79,19 @@ export function RadioCardGroup({
                 disabled={option.disabled}
                 ref={index === 0 ? inputRef : undefined}
               />
-              <span className="flex min-w-0 flex-col gap-1">
-                <span className="font-body text-sm font-medium text-on-surface">
-                  {option.label}
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="radio-card__label font-body text-sm font-medium text-on-surface">
+                    {option.label}
+                  </span>
+                  {option.meta ? (
+                    <span className="radio-card__meta shrink-0 font-body text-sm font-medium text-on-surface">
+                      {option.meta}
+                    </span>
+                  ) : null}
                 </span>
                 {option.description ? (
-                  <span className="font-body text-xs text-on-surface-variant">
+                  <span className="radio-card__description font-body text-xs text-on-surface-variant">
                     {option.description}
                   </span>
                 ) : null}
