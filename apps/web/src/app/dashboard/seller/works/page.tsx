@@ -23,7 +23,6 @@ import {
   sellerCan,
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { Button } from "@auction/ui/components/button";
-import { Inbox } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { toOrgWorkRows } from "./org-works.vm";
@@ -92,7 +91,7 @@ export default async function SellerWorksPage() {
           {rows.length === 0 ? (
             <DashboardEmptyState
               variant="hero"
-              icon={<Inbox aria-hidden />}
+              illustration="easel"
               title="No works yet"
               description="Lots won for this organisation appear here, whichever member placed the winning bid."
               action={

@@ -24,7 +24,6 @@ import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { toLotCardTimingVM } from "@auction/validators";
-import { Heart } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -164,7 +163,7 @@ export default async function DashboardWatchlistPage({
         ) : (
           <DashboardEmptyState
             variant="hero"
-            icon={<Heart aria-hidden />}
+            illustration="frame"
             title={DASHBOARD_EMPTY.watchlist.title}
             description={DASHBOARD_EMPTY.watchlist.description}
             action={

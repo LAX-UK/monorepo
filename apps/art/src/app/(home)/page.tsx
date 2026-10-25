@@ -179,6 +179,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
                         src={gallery.imageUrl}
                         alt=""
                         label="Gallery"
+                        placeholderTitle={gallery.name}
                         sizes="(min-width: 48rem) 45vw, 100vw"
                         className="absolute inset-0 size-full"
                         imgClassName="object-cover"

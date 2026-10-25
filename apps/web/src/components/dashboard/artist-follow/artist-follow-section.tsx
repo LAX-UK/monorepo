@@ -17,7 +17,6 @@ import {
 import { resolveArtistFollowProfiles } from "@/lib/data/artist-follow-profiles.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { Button } from "@auction/ui/components/button";
-import { Heart } from "lucide-react";
 import Link from "next/link";
 
 export async function ArtistFollowSection({
@@ -75,7 +74,7 @@ export async function ArtistFollowSection({
       {!loadFailure && rows.length === 0 ? (
         <DashboardEmptyState
           variant="hero"
-          icon={<Heart aria-hidden />}
+          illustration="easel"
           title={DASHBOARD_EMPTY.artistFollow.title}
           description={DASHBOARD_EMPTY.artistFollow.description}
           action={

@@ -11,7 +11,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type ShopStatusStateVariant = "empty" | "error";
-export type ShopStatusStateIcon = "bag" | "search" | "alert";
+/** A drawing from the LAX illustration set; `bag` is the parcel, `alert` the askew frame. */
+export type ShopStatusStateIcon = MarketingStatusStateMotif;
 
 type ShopStatusStateProps = {
   variant: ShopStatusStateVariant;
@@ -43,17 +44,17 @@ function resolveLayout(
   return "inline";
 }
 
+/** Errors keep the askew frame unless the state is about access or a missing page. */
+const ERROR_MOTIFS = new Set<MarketingStatusStateMotif>(["askew", "lock", "ticket"]);
+
 function resolveMotif(
   variant: ShopStatusStateVariant,
   icon: ShopStatusStateIcon | undefined,
 ): MarketingStatusStateMotif {
   if (variant === "error") {
-    return "alert";
+    return icon && ERROR_MOTIFS.has(icon) ? icon : "alert";
   }
-  if (icon === "bag" || icon === "search") {
-    return icon;
-  }
-  return "gallery";
+  return icon ?? "gallery";
 }
 
 function resolveAnnouncement(

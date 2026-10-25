@@ -125,6 +125,10 @@
       "types": "./dist/components/ui/dot-status-pill.d.ts",
       "default": "./dist/components/ui/dot-status-pill.js"
     },
+    "./components/lax-illustration": {
+      "types": "./dist/components/ui/lax-illustration.d.ts",
+      "default": "./dist/components/ui/lax-illustration.js"
+    },
     "./components/media-placeholder": {
       "types": "./dist/components/ui/media-placeholder.d.ts",
       "default": "./dist/components/ui/media-placeholder.js"

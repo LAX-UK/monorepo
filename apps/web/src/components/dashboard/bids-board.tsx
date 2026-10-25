@@ -30,7 +30,7 @@ import { DataTable } from "@auction/ui/components/data-table";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { toRequiredIsoString } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Download, Gavel, History } from "lucide-react";
+import { Download, History } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -368,7 +368,7 @@ export function BidsBoard({
           {currentRows.all.length === 0 ? (
             <DashboardEmptyState
               variant="hero"
-              icon={<Gavel aria-hidden />}
+              illustration="gavel"
               title={
                 tab === "active"
                   ? DASHBOARD_EMPTY.bids.title

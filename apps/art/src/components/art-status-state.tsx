@@ -11,7 +11,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type ArtStatusStateVariant = "empty" | "error";
-export type ArtStatusStateIcon = "search" | "search-remove" | "gallery";
+/** A drawing from the LAX illustration set; `gallery` is the empty frame. */
+export type ArtStatusStateIcon = MarketingStatusStateMotif;
 
 type ArtStatusStateProps = {
   variant: ArtStatusStateVariant;
@@ -26,11 +27,14 @@ type ArtStatusStateProps = {
   className?: string;
 };
 
+/** Errors keep the askew frame unless the state is about access or a missing page. */
+const ERROR_MOTIFS = new Set<MarketingStatusStateMotif>(["askew", "lock", "ticket"]);
+
 function resolveMotif(
   variant: ArtStatusStateVariant,
   icon: ArtStatusStateIcon | undefined,
 ): MarketingStatusStateMotif {
-  if (variant === "error") return "alert";
+  if (variant === "error") return icon && ERROR_MOTIFS.has(icon) ? icon : "alert";
   return icon ?? "gallery";
 }
 

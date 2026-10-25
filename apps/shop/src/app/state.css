@@ -6,13 +6,8 @@
   font-size: clamp(1.375rem, 3vw, 1.875rem);
 }
 
-.shop-detail__state-media .marketing-status-state__motif {
-  width: clamp(7rem, 18vw, 10rem);
-  height: clamp(7rem, 18vw, 10rem);
-}
-
-.shop-detail__state-media .marketing-status-state__motif-plate {
-  border-radius: 0.25rem;
+.shop-detail__state-media .marketing-status-state__art {
+  width: clamp(8rem, 20vw, 12rem);
 }
 
 /* Route loading skeletons */

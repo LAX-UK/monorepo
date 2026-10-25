@@ -77,7 +77,7 @@ export default async function AccountOrdersPage() {
         <ShopStatusState
           layout="page"
           variant="empty"
-          icon="bag"
+          icon="parcel"
           title="No orders yet"
           titleAs="h2"
           description="When you buy an edition, the order and its progress appear here."

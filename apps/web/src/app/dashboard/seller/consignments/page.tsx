@@ -20,7 +20,7 @@ import {
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { FileStack, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import {
   CONSIGNMENT_TABS,
@@ -113,7 +113,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
           {rows.length === 0 ? (
             <DashboardEmptyState
               variant="hero"
-              icon={<FileStack aria-hidden />}
+              illustration="easel"
               title={DASHBOARD_EMPTY.consignments.title}
               description={DASHBOARD_EMPTY.consignments.description}
               {...(canCreateSubmission

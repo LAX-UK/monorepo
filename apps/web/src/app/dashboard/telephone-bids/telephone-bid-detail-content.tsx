@@ -13,6 +13,7 @@ import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import Link from "next/link";
@@ -189,9 +190,14 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
           Bids on your behalf
         </h2>
         {linkedBids.length === 0 ? (
-          <p className="mt-3 font-body text-sm text-on-surface-variant">
-            No telephone bids placed yet. Your clerk will bid for you during the live call.
-          </p>
+          <EmptyState
+            variant="plain"
+            size="compact"
+            headingLevel="h3"
+            illustration="gavel"
+            title="No telephone bids placed yet"
+            description="Your clerk will bid for you during the live call."
+          />
         ) : (
           <ul className="mt-4 divide-y divide-border-hairline">
             {linkedBids.map((bid) => (

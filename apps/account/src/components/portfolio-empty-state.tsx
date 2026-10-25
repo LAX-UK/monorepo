@@ -25,6 +25,7 @@ export function PortfolioEmptyState({
   if (kind === "new_collector") {
     return (
       <EmptyState
+        illustration="frame"
         className={EMPTY_STATE}
         headingLevel="h2"
         title={
@@ -51,6 +52,7 @@ export function PortfolioEmptyState({
   if (kind === "only_awaiting_payment") {
     return (
       <EmptyState
+        illustration="ledger"
         className={EMPTY_STATE}
         headingLevel="h2"
         title="Pay to add your works to your portfolio"

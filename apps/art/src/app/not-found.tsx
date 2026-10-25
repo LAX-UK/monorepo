@@ -7,7 +7,7 @@ export default function ArtNotFound() {
     <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
       <ArtStatusState
         variant="empty"
-        icon="search"
+        icon="ticket"
         layout="page"
         titleAs="h1"
         title="Page not found"

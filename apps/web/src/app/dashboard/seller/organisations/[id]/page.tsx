@@ -16,6 +16,7 @@ import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { connectRequirementsAttentionCount, getConnectGapState } from "@auction/connect";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
@@ -207,7 +208,13 @@ export default async function OrganisationOverviewPage({
         {memberAvatars.length > 0 ? (
           <MembersAvatarStack members={memberAvatars} max={8} />
         ) : (
-          <p className="text-sm text-on-surface-variant">No team members loaded yet.</p>
+          <EmptyState
+            variant="plain"
+            size="compact"
+            headingLevel="h3"
+            illustration="plinth"
+            title="No team members loaded yet"
+          />
         )}
       </DashboardSection>
 

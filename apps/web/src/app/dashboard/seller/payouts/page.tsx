@@ -30,7 +30,6 @@ import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
-import { WalletCards } from "lucide-react";
 import Link from "next/link";
 
 export default async function SellerPayoutsPage() {
@@ -165,7 +164,7 @@ export default async function SellerPayoutsPage() {
       {payouts.length === 0 && !listFailure ? (
         <DashboardEmptyState
           variant="hero"
-          icon={<WalletCards aria-hidden />}
+          illustration="ledger"
           title={DASHBOARD_EMPTY.sellerPayouts.title}
           description={DASHBOARD_EMPTY.sellerPayouts.description}
           action={

@@ -1,6 +1,7 @@
 import {
   EmptyStateIllustration,
   type EmptyStateIllustrationKey,
+  resolveEmptyStateIllustration,
 } from "@/components/illustrations/empty-state-illustrations";
 import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
 import { cn } from "@auction/ui";
@@ -11,7 +12,7 @@ type EmptyProps = Omit<ComponentProps<typeof EmptyState>, "variant">;
 
 export type DashboardEmptyStateVariant = "quiet" | "hero";
 
-export type DashboardEmptyStateProps = Omit<EmptyProps, "title"> & {
+export type DashboardEmptyStateProps = Omit<EmptyProps, "title" | "illustration"> & {
   variant?: DashboardEmptyStateVariant;
   title: ReactNode;
   headingLevel?: "h2" | "h3";
@@ -19,14 +20,15 @@ export type DashboardEmptyStateProps = Omit<EmptyProps, "title"> & {
   illustration?: EmptyStateIllustrationKey;
 };
 
+/** Every state carries a drawing: the caller's, the context's, or the empty frame. */
 function resolveIllustrationKey(
   illustration: EmptyStateIllustrationKey | undefined,
   context: EmptyStateContext | undefined,
+  hasIcon: boolean,
 ): EmptyStateIllustrationKey | null {
   if (illustration) return illustration;
-  if (!context) return null;
-  if (context === "noResults" || context === "filtered") return null;
-  return CONTEXT_DEFAULT_ILLUSTRATION[context];
+  if (context) return CONTEXT_DEFAULT_ILLUSTRATION[context] ?? "frame";
+  return hasIcon ? null : "frame";
 }
 
 /** Dashboard-scoped empty state — `quiet` (inline lists) or `hero` (whole-page). */
@@ -43,10 +45,7 @@ export function DashboardEmptyState({
 }: DashboardEmptyStateProps) {
   const headingId = useId();
   const Heading = headingLevel;
-  const resolvedKey = resolveIllustrationKey(illustrationKey, context);
-  const resolvedIllustration = resolvedKey ? (
-    <EmptyStateIllustration name={resolvedKey} />
-  ) : undefined;
+  const resolvedKey = resolveIllustrationKey(illustrationKey, context, Boolean(icon));
 
   if (variant === "hero") {
     return (
@@ -57,8 +56,10 @@ export function DashboardEmptyState({
         )}
         aria-labelledby={headingId}
       >
-        {resolvedIllustration ? <div className="mb-5">{resolvedIllustration}</div> : null}
-        {icon ? (
+        {resolvedKey ? (
+          <EmptyStateIllustration name={resolvedKey} size="page" className="mb-8" />
+        ) : null}
+        {icon && !resolvedKey ? (
           <div className="mb-5 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary sm:mb-6 sm:size-16 [&_svg]:size-6 sm:[&_svg]:size-8">
             {icon}
           </div>
@@ -70,7 +71,9 @@ export function DashboardEmptyState({
           {title}
         </Heading>
         {description ? (
-          <p className="mt-3 max-w-md font-body text-sm text-on-surface-variant">{description}</p>
+          <p className="mt-3 max-w-md font-[family-name:var(--font-outfit,var(--font-body))] text-sm text-on-surface-variant md:text-base">
+            {description}
+          </p>
         ) : null}
         {action ? (
           <div className="mt-8 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
@@ -92,8 +95,8 @@ export function DashboardEmptyState({
   };
   if (description) quietProps.description = description;
   if (action) quietProps.action = action;
-  if (resolvedIllustration) quietProps.illustration = resolvedIllustration;
-  if (icon) quietProps.icon = icon;
+  if (resolvedKey) quietProps.illustration = resolveEmptyStateIllustration(resolvedKey);
+  else if (icon) quietProps.icon = icon;
 
   return (
     <section aria-labelledby={headingId}>

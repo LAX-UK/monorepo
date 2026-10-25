@@ -27,7 +27,6 @@ import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
-import { Building2 } from "lucide-react";
 import Link from "next/link";
 
 type HubMembership = LegalEntitySummary;
@@ -138,7 +137,7 @@ export default async function OrganisationsHubPage() {
       {!loadFailure && orgs.length === 0 ? (
         <DashboardEmptyState
           variant="hero"
-          icon={<Building2 className="size-6" aria-hidden />}
+          illustration="plinth"
           title={DASHBOARD_EMPTY.organisations.title}
           description={DASHBOARD_EMPTY.organisations.description}
           action={

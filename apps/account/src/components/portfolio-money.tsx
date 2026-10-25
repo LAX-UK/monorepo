@@ -241,6 +241,7 @@ export function PortfolioMoney({
       />
       {money.noResults ? (
         <EmptyState
+          illustration="search"
           className={EMPTY_STATE}
           headingLevel="h2"
           title="No money entries match these filters"

@@ -5,6 +5,7 @@ import { fetchLotBidHistoryRows } from "@/lib/bid/fetch-lot-bid-history.client";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { Skeleton } from "@auction/ui";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { useEffect, useState } from "react";
 
 type BidHistoryRow = {
@@ -93,7 +94,13 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
             {error}
           </p>
         ) : rows == null || rows.length === 0 ? (
-          <p className="text-on-surface-variant">No bids recorded for this lot yet.</p>
+          <EmptyState
+            variant="plain"
+            size="compact"
+            headingLevel="h3"
+            illustration="gavel"
+            title="No bids recorded for this lot yet"
+          />
         ) : (
           <>
             {ownershipWarning ? (

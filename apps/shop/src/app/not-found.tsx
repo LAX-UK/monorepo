@@ -9,6 +9,7 @@ export default function ShopNotFoundPage() {
     <MarketingDetailShell shellClassName="shop-page shop-page--not-found">
       <ShopStatusState
         variant="empty"
+        icon="ticket"
         title="Page not found"
         titleAs="h1"
         description="This shop page does not exist or may have moved."

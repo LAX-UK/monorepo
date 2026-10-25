@@ -13,6 +13,8 @@ export type MediaImageProps = {
   src: string | null | undefined;
   alt: string;
   label?: string | undefined;
+  /** The work's title for the placeholder mat; defaults to `alt`. */
+  placeholderTitle?: string | undefined;
   tone?: MediaPlaceholderProps["tone"] | undefined;
   aspect?: MediaPlaceholderProps["aspect"] | undefined;
   shape?: MediaPlaceholderProps["shape"] | undefined;
@@ -35,6 +37,7 @@ export function MediaImage({
   src,
   alt,
   label,
+  placeholderTitle,
   tone = "auto",
   aspect,
   shape = "rect",
@@ -89,6 +92,7 @@ export function MediaImage({
           shape={shape}
           loading={Boolean(normalizedSrc && status === "loading")}
           {...(label !== undefined ? { label } : {})}
+          {...((placeholderTitle ?? alt) ? { title: placeholderTitle ?? alt } : {})}
           {...(placeholderClassName !== undefined ? { className: placeholderClassName } : {})}
         />
       ) : null}

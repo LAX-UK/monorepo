@@ -1,25 +1,29 @@
 import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
-import { MediaPlaceholder } from "@auction/ui/components/media-placeholder";
+import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
 import { Slot } from "@radix-ui/react-slot";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import {
-  MarketingBagIcon,
-  MarketingCircleAlertIcon,
-  MarketingSearchIcon,
-  MarketingSearchRemoveIcon,
-} from "./marketing-icons.js";
+import { MarketingCircleAlertIcon } from "./marketing-icons.js";
 
-export type MarketingStatusStateLayout = "inline" | "page" | "banner";
+export type MarketingStatusStateLayout = "inline" | "page" | "banner" | "compact";
 export type MarketingStatusStateVariant = "empty" | "error";
-export type MarketingStatusStateMotif = "search" | "search-remove" | "bag" | "gallery" | "alert";
+/**
+ * A drawing from the LAX illustration set. The older names stay as aliases: `gallery` is the
+ * empty frame, `search-remove` the magnifier, `bag` the parcel and `alert` the askew frame.
+ */
+export type MarketingStatusStateMotif =
+  | LaxIllustrationName
+  | "search-remove"
+  | "bag"
+  | "gallery"
+  | "alert";
 export type MarketingStatusStateAnnouncement = "none" | "polite" | "assertive";
 
 export type MarketingStatusStateProps = {
   variant?: MarketingStatusStateVariant;
   layout?: MarketingStatusStateLayout;
   motif?: MarketingStatusStateMotif | null;
-  /** Overrides the built-in hatched plate (e.g. legacy illustrations or contextual icons). */
+  /** Overrides the drawing (e.g. a contextual product mark). */
   motifSlot?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
@@ -31,54 +35,34 @@ export type MarketingStatusStateProps = {
 
 export type MarketingStatusMotifProps = {
   motif: MarketingStatusStateMotif;
+  size?: "page" | "panel" | "compact";
   className?: string;
 };
 
-const MOTIF_ICONS = {
-  search: MarketingSearchIcon,
-  "search-remove": MarketingSearchRemoveIcon,
-  bag: MarketingBagIcon,
-  alert: MarketingCircleAlertIcon,
-} as const;
+const MOTIF_ALIASES: Partial<Record<MarketingStatusStateMotif, LaxIllustrationName>> = {
+  gallery: "frame",
+  "search-remove": "search",
+  bag: "parcel",
+  alert: "askew",
+};
 
-export function MarketingStatusMotif({ motif, className }: MarketingStatusMotifProps) {
-  if (motif === "alert") {
-    return (
-      <div
-        className={cn(
-          "marketing-status-state__motif marketing-status-state__motif--alert",
-          className,
-        )}
-        aria-hidden="true"
-        data-testid="marketing-status-motif-alert"
-      >
-        <span className="marketing-status-state__motif-alert-mark">
-          <MarketingCircleAlertIcon className="marketing-status-state__motif-alert-icon" />
-        </span>
-      </div>
-    );
-  }
+export function resolveStatusIllustration(motif: MarketingStatusStateMotif): LaxIllustrationName {
+  return MOTIF_ALIASES[motif] ?? (motif as LaxIllustrationName);
+}
 
-  const Icon = motif === "gallery" ? null : MOTIF_ICONS[motif];
-
+export function MarketingStatusMotif({
+  motif,
+  size = "panel",
+  className,
+}: MarketingStatusMotifProps) {
+  const name = resolveStatusIllustration(motif);
   return (
     <div
       className={cn("marketing-status-state__motif", className)}
       aria-hidden="true"
       data-testid={`marketing-status-motif-${motif}`}
     >
-      <div className="marketing-status-state__motif-plate">
-        <MediaPlaceholder
-          label="Gallery"
-          tone="auto"
-          className="marketing-status-state__motif-hatch"
-        />
-        {Icon ? (
-          <span className="marketing-status-state__motif-glyph">
-            <Icon className="marketing-status-state__motif-glyph-icon" />
-          </span>
-        ) : null}
-      </div>
+      <LaxIllustration name={name} size={size} className="marketing-status-state__art" />
     </div>
   );
 }
@@ -141,7 +125,10 @@ export function MarketingStatusState({
   const resolvedMotif =
     motifSlot ??
     (motif ? (
-      <MarketingStatusMotif motif={variant === "error" && motif === "gallery" ? "alert" : motif} />
+      <MarketingStatusMotif
+        motif={variant === "error" && motif === "gallery" ? "alert" : motif}
+        size={layout === "page" ? "page" : layout === "compact" ? "compact" : "panel"}
+      />
     ) : null);
 
   return (
