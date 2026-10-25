@@ -101,3 +101,11 @@ export function headerProductLinkClass(
     extra,
   );
 }
+
+/**
+ * A product name in the top product bar. Names keep their written form ("LAX Bid", "lax.art"),
+ * so the bar never upper-cases them, whatever the surrounding utility row does.
+ */
+export function headerProductNameClass(tone: MarketingHeaderTone, current: boolean): string {
+  return headerProductLinkClass(tone, current, "normal-case tracking-normal");
+}

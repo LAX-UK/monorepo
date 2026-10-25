@@ -28,7 +28,7 @@ import {
   type MarketingUtilityBarItem,
   headerChromeClassName,
   headerChromeIconClass,
-  headerProductLinkClass,
+  headerProductNameClass,
   useHeaderChrome,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -99,7 +99,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
             className="justify-start"
             items={utilityItems}
             resolveLinkClassName={(item: MarketingUtilityBarItem) =>
-              headerProductLinkClass(headerTone, item.current ?? false)
+              headerProductNameClass(headerTone, item.current ?? false)
             }
             trailing={
               <>

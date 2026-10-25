@@ -136,6 +136,7 @@ export {
   headerMegaNavChevronClass,
   headerMegaNavTriggerClass,
   headerProductLinkClass,
+  headerProductNameClass,
   headerSearchTriggerClass,
   headerUtilityLinkClass,
 } from "./header/header-chrome-tone.js";
