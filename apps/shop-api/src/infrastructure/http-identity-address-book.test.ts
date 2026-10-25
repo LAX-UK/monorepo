@@ -23,7 +23,9 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 function setup(responses: Response[]) {
-  const fetchImpl = vi.fn(async () => responses.shift() ?? json({}, 500));
+  const fetchImpl = vi.fn(
+    async (_url: string, _init?: RequestInit) => responses.shift() ?? json({}, 500),
+  );
   const book = createHttpIdentityAddressBook({
     issuerBaseUrl: "http://identity.test/",
     clientId: "machine",
