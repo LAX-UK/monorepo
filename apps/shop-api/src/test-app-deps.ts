@@ -1,3 +1,4 @@
+import { legalEntityFor } from "@auction/branding";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
@@ -19,7 +20,7 @@ export function createMinimalShopApiTestDeps(
       LOG_LEVEL: "error",
       SHOP_API_PUBLIC_BASE_URL: "http://localhost:3011",
       SHOP_STOREFRONT_URL: "http://localhost:3020",
-      LAX_ART_LEGAL_NAME: "London Art Exchange Ltd",
+      LAX_ART_LEGAL_NAME: legalEntityFor("art").name,
       OIDC_ISSUER_URL: "http://localhost:3001",
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
