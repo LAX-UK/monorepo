@@ -28,6 +28,9 @@ describe("admin-user-presenters", () => {
   it("formats AML check type", () => {
     expect(formatAmlCheckType("initial_result")).toBe("Initial screening");
     expect(formatAmlCheckType(null)).toBe("—");
+    expect(formatAmlCheckType("updated_result")).toBe("Ongoing monitoring");
+    expect(formatAmlCheckType("enhanced")).toBe("Enhanced check");
+    expect(formatAmlCheckType("manual_rescreen")).toBe("Manual rescreen");
   });
 
   it("formats KYC status phrases", () => {
