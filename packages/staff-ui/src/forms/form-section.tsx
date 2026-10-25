@@ -45,16 +45,35 @@ export function FieldRow({ children }: { children: React.ReactNode }) {
   return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
 }
 
-/** The form's actions: primary last (right), aligned to the fields. */
+/**
+ * The form's actions: primary last (right), aligned to the fields. `sticky` keeps them in view at
+ * the foot of the window on long forms, on the page surface with a hairline above. `start` holds
+ * what sits apart on the left (Cancel, a save status).
+ */
 export function FormActions({
   children,
+  start,
+  sticky = false,
   className,
 }: {
   children: React.ReactNode;
+  start?: React.ReactNode;
+  sticky?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>{children}</div>
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2",
+        start ? "justify-between" : "justify-end",
+        sticky &&
+          "sticky bottom-0 z-10 -mx-4 border-t border-staff-line bg-staff-canvas px-4 py-3 sm:-mx-6 sm:px-6",
+        className,
+      )}
+    >
+      {start ? <div className="flex flex-wrap items-center gap-2">{start}</div> : null}
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
+    </div>
   );
 }
 

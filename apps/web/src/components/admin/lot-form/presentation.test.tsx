@@ -1,5 +1,4 @@
 import { AdminLotForm } from "@/components/admin/lot-form/wizard";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -67,27 +66,7 @@ const defaultValues = {
 } as unknown as AdminLotFormValues;
 
 describe("AdminLotForm edit presentation", () => {
-  it("suppresses inline mobile footer actions when an external form id is provided", () => {
-    render(
-      <AdminLotForm
-        mode="edit"
-        lotId="lot-1"
-        defaultValues={defaultValues}
-        categories={[]}
-        artists={[]}
-        htmlFormId={CATALOG_FORM_IDS.lot}
-        lotEditSection="auction"
-      />,
-    );
-
-    const saveButton = screen.getByRole("button", { name: /save changes/i });
-    const footer = saveButton.parentElement;
-    expect(footer).not.toBeNull();
-    expect(footer?.className).toContain("hidden");
-    expect(footer?.className).toContain("lg:flex");
-  });
-
-  it("keeps inline footer actions visible on all breakpoints without an external form id", () => {
+  it("keeps the save actions in view on every breakpoint", () => {
     render(
       <AdminLotForm
         mode="edit"
@@ -99,7 +78,7 @@ describe("AdminLotForm edit presentation", () => {
     );
 
     const saveButton = screen.getByRole("button", { name: /save changes/i });
-    const footer = saveButton.parentElement;
+    const footer = saveButton.closest(".sticky");
     expect(footer?.className).toContain("flex");
     expect(footer?.className).not.toContain("hidden lg:flex");
   });

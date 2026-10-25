@@ -20,10 +20,12 @@ export async function validateWizardStep<TSchema extends ZodTypeAny, TValues ext
   form: UseFormReturn<TValues>,
   schema: TSchema,
   stepFields: readonly FieldPath<TValues>[],
+  /** Leave focus alone when the form's error summary takes it. */
+  { focus = true }: { focus?: boolean } = {},
 ): Promise<boolean> {
   if (!stepFields.length) return true;
 
-  const triggerOk = await form.trigger(stepFields, { shouldFocus: true });
+  const triggerOk = await form.trigger(stepFields, { shouldFocus: focus });
 
   const values = form.getValues();
   const parsed = await schema.safeParseAsync(values);

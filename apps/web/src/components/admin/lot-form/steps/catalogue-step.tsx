@@ -32,7 +32,7 @@ export function LotCatalogueStep({
   const profile = getLotCatalogueProfile(auctionType);
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-6">
       <LotTypeSummaryBanner profile={profile} onEditLotType={onEditLotType} />
       <CataloguePricingSection form={form} fields={profile.fields} />
       <CatalogueBiddingSection form={form} fields={profile.fields} />

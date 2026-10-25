@@ -1,8 +1,7 @@
 "use client";
 
 import { isEditableTarget } from "@/lib/hotkeys/is-editable-target";
-import { cn } from "@auction/ui";
-import { StickySaveBar } from "@auction/ui";
+import { FormActions, cn } from "@auction/staff-ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WizardStepIndicator, type WizardStepSpec } from "./step-indicator";
@@ -269,8 +268,18 @@ export function AdminFormWizard({
   const nextStepLabel = steps[stepIndex + 1]?.label;
   const useSidebar = layout === "sidebar";
 
+  const indicatorProps = {
+    steps,
+    currentIndex: stepIndex,
+    onStepClick: (index: number) => void handleStepClick(index),
+    stepNavigationDisabled: stepJumpPending || pending,
+  };
+  const saveStatus = draftKey ? (
+    <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
+  ) : null;
+
   return (
-    <div className={className ?? "space-y-8"}>
+    <div className={cn("flex flex-col gap-6", className)}>
       {showResume && storedDraft ? (
         <WizardResumeBanner
           draft={storedDraft}
@@ -287,73 +296,46 @@ export function AdminFormWizard({
         />
       ) : null}
       {useSidebar ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)] lg:items-start">
-          <div className="min-w-0 space-y-6">
-            <div className="flex flex-col gap-2 border-b border-border-hairline pb-4 lg:hidden">
-              <WizardStepIndicator
-                steps={steps}
-                currentIndex={stepIndex}
-                onStepClick={(index) => void handleStepClick(index)}
-                stepNavigationDisabled={stepJumpPending || pending}
-              />
-              {draftKey ? (
-                <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
-              ) : null}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start">
+          <div className="flex min-w-0 flex-col gap-6">
+            <div className="flex flex-col gap-2 lg:hidden">
+              <WizardStepIndicator {...indicatorProps} />
+              {saveStatus}
             </div>
-            <div className="min-h-[12rem]">{stepBody}</div>
+            {stepBody}
           </div>
-          <aside className="hidden lg:block lg:sticky lg:top-24">
-            <WizardVerticalStepper
-              steps={steps}
-              currentIndex={stepIndex}
-              onStepClick={(index) => void handleStepClick(index)}
-              stepNavigationDisabled={stepJumpPending || pending}
-            />
-            {draftKey ? (
-              <div className="mt-4 border-t border-outline-variant/30 pt-4">
-                <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
-              </div>
-            ) : null}
+          <aside className="hidden flex-col gap-4 lg:sticky lg:top-24 lg:flex">
+            <WizardVerticalStepper {...indicatorProps} />
+            {saveStatus}
           </aside>
         </div>
       ) : (
         <>
-          <div className="border-b border-border-hairline pb-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <WizardStepIndicator
-                steps={steps}
-                currentIndex={stepIndex}
-                onStepClick={(index) => void handleStepClick(index)}
-                stepNavigationDisabled={stepJumpPending || pending}
-              />
-              {draftKey ? (
-                <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
-              ) : null}
-            </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <WizardStepIndicator {...indicatorProps} />
+            {saveStatus}
           </div>
-          <div className="min-h-[12rem]">{stepBody}</div>
+          {stepBody}
         </>
       )}
-      <StickySaveBar
+      <FormActions
         sticky={stickyActions}
-        className={cn(stickyActions && hideStickyOnMobile && "hidden lg:block")}
+        start={leadingSlot}
+        {...(stickyActions && hideStickyOnMobile ? { className: "hidden lg:flex" } : {})}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {leadingSlot ?? <span />}
-          <div ref={submitRef}>
-            <WizardActions
-              isFirst={isFirst}
-              isLast={isLast}
-              onBack={handleBack}
-              onNext={() => void handleNext()}
-              submitSlot={submitSlot}
-              showSubmitOnAllSteps={showSubmitOnAllSteps}
-              pending={pending}
-              {...(nextStepLabel ? { nextLabel: nextStepLabel } : {})}
-            />
-          </div>
+        <div ref={submitRef} className="contents">
+          <WizardActions
+            isFirst={isFirst}
+            isLast={isLast}
+            onBack={handleBack}
+            onNext={() => void handleNext()}
+            submitSlot={submitSlot}
+            showSubmitOnAllSteps={showSubmitOnAllSteps}
+            pending={pending}
+            {...(nextStepLabel ? { nextLabel: nextStepLabel } : {})}
+          />
         </div>
-      </StickySaveBar>
+      </FormActions>
     </div>
   );
 }

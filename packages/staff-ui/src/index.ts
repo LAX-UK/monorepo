@@ -115,6 +115,8 @@ export { EnumSelect } from "./forms/enum-select.js";
 export type { EnumOption, EnumSelectProps } from "./forms/enum-select.js";
 export { EntityPicker } from "./forms/entity-picker.js";
 export type { EntityOption, EntityPickerProps } from "./forms/entity-picker.js";
+export { EntityMultiPicker } from "./forms/entity-multi-picker.js";
+export type { EntityMultiPickerProps } from "./forms/entity-multi-picker.js";
 export {
   DangerZone,
   DangerZoneAction,
@@ -124,6 +126,9 @@ export {
   FormSection,
 } from "./forms/form-section.js";
 export type { FormErrorSummaryProps } from "./forms/form-section.js";
+export { ReviewSection, StepHeader, StepIndicator } from "./forms/wizard.js";
+export { ListEditor } from "./forms/list-editor.js";
+export type { WizardStep } from "./forms/wizard.js";
 
 // Data
 export { DataTable } from "./data/data-table.js";
@@ -188,6 +193,8 @@ export {
   DetailPageSkeleton,
 } from "./templates/detail-page.js";
 export type { DetailPageProps } from "./templates/detail-page.js";
+export { FormPage, FormPageSkeleton } from "./templates/form-page.js";
+export type { FormPageProps } from "./templates/form-page.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
 export { SavedViewsError, sameViewQuery, useSavedViews, viewQuery } from "./data/saved-views.js";
 export type {

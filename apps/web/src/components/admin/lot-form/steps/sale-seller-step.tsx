@@ -1,31 +1,22 @@
 "use client";
 
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { UnderlineInput } from "@/components/ui/input";
-import { RhfCombobox } from "@/components/ui/rhf-combobox";
-import { RhfLegalEntityPicker } from "@/components/ui/rhf-legal-entity-picker";
-import { RhfSelect } from "@/components/ui/rhf-select";
-import { LabelCaps } from "@/components/ui/typography";
+import { StaffEntityField, StaffTextField } from "@/components/admin/forms/staff-form-fields";
+import { searchLegalEntityOptions } from "@/lib/admin/pickers/staff-entity-search";
 import {
   parseSaleWindowFromSale,
   proposeLotTimesWithinWindow,
 } from "@/lib/admin/sale-lot-window-sync";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
-import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
+import { FieldRow, FormSection, Notice, StaffButton, formatStaffDate } from "@auction/staff-ui";
 import type { Sale } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
 import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
 import { type UseFormReturn, useWatch } from "react-hook-form";
+import { LOT_FORM_ID } from "../lot-field-spec";
 
 type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
 
@@ -34,194 +25,130 @@ type Props = {
   sales: SaleOption[];
 };
 
-const SALE_COMBOBOX_THRESHOLD = 20;
-
 function applySaleScheduleToLot(form: UseFormReturn<AdminLotFormValues>, sale: SaleOption) {
   const window = parseSaleWindowFromSale(sale);
+  const set = (name: "startTime" | "endTime", value: Date) =>
+    form.setValue(name, toDatetimeFormString(value), { shouldDirty: true, shouldValidate: true });
   if (saleModeInheritsLotTiming(sale.deliveryMode)) {
-    form.setValue("startTime", toDatetimeFormString(sale.startTime), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue("endTime", toDatetimeFormString(sale.endTime), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    set("startTime", sale.startTime);
+    set("endTime", sale.endTime);
     return;
   }
-
   const startRaw = form.getValues("startTime");
   const endRaw = form.getValues("endTime");
   const lotStart = startRaw?.trim() ? instantFromDatetimeFormString(startRaw) : sale.startTime;
   const lotEnd = endRaw?.trim() ? instantFromDatetimeFormString(endRaw) : sale.endTime;
   const proposed = proposeLotTimesWithinWindow({ startTime: lotStart, endTime: lotEnd }, window);
-  form.setValue("startTime", toDatetimeFormString(proposed.startTime), {
-    shouldDirty: true,
-    shouldValidate: true,
-  });
-  form.setValue("endTime", toDatetimeFormString(proposed.endTime), {
-    shouldDirty: true,
-    shouldValidate: true,
-  });
+  set("startTime", proposed.startTime);
+  set("endTime", proposed.endTime);
 }
 
+/**
+ * Who owns the lot and which sale it is in. Only draft sales can take a new lot; a lot already in
+ * a published sale shows its sale read-only, since moving it means returning it to inventory.
+ */
 export function LotSaleSellerStep({ form, sales }: Props) {
-  const sellerDisplayName = useWatch({
-    control: form.control,
-    name: "sellerDisplayName",
-  });
-  const selectedSaleId = form.watch("saleId");
-  const selectedSale = sales.find((s) => s.id === selectedSaleId) ?? null;
-  const saleAssignmentLocked = selectedSale != null && selectedSale.status !== "draft";
-
-  const pickerSales = sales.filter((s) => s.status === "draft");
-  const saleOptions = pickerSales.map((s) => ({
-    value: s.id,
-    label: `${s.title} (draft)`,
-  }));
-  const useSaleCombobox = pickerSales.length > SALE_COMBOBOX_THRESHOLD;
+  const sellerDisplayName = useWatch({ control: form.control, name: "sellerDisplayName" });
+  const sellerId = useWatch({ control: form.control, name: "sellerLegalEntityId" });
+  const selectedSaleId = useWatch({ control: form.control, name: "saleId" });
+  const selectedSale = sales.find((sale) => sale.id === selectedSaleId) ?? null;
+  const locked = selectedSale != null && selectedSale.status !== "draft";
+  const draftSales = sales.filter((sale) => sale.status === "draft");
 
   return (
-    <CatalogFormSection
-      title="Sale & seller"
-      description="Assign the owning legal entity and the sale this lot belongs to. Online lots must fall within the sale window; onsite lots inherit the sale schedule."
-      collapsible={false}
+    <FormSection
+      title="Sale and seller"
+      description="The legal entity that owns the lot and is paid for it, and the sale it is in. Online lots close inside the sale's window; saleroom lots take the sale's times."
     >
-      <FormField
+      <StaffEntityField
         control={form.control}
         name="sellerLegalEntityId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <LabelCaps>Seller (legal entity)</LabelCaps>
-            </FormLabel>
-            <RhfLegalEntityPicker
-              value={field.value || null}
-              displayLabel={sellerDisplayName?.trim() || null}
-              onChange={(id, row) =>
-                applySellerLegalEntitySelection(
-                  field.onChange,
-                  (name) =>
-                    form.setValue("sellerDisplayName", name, {
-                      shouldDirty: true,
-                      shouldValidate: false,
-                    }),
-                  id,
-                  row,
-                )
-              }
-            />
-            <p className="mt-2 font-body text-xs text-on-surface-variant">
-              The legal entity that owns this lot and receives payout.
-            </p>
-            <FormMessage />
-          </FormItem>
-        )}
+        formId={LOT_FORM_ID}
+        label="Seller"
+        description="The legal entity that owns this lot and receives the payout."
+        search={searchLegalEntityOptions}
+        selected={
+          sellerId && sellerDisplayName?.trim()
+            ? { id: sellerId, label: sellerDisplayName.trim() }
+            : null
+        }
+        placeholder="Choose a seller"
+        searchPlaceholder="Search by organisation or name"
+        emptyText="No legal entities match."
+        onChanged={(option) =>
+          form.setValue("sellerDisplayName", option?.label ?? "", {
+            shouldDirty: true,
+            shouldValidate: false,
+          })
+        }
       />
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="saleId"
-          render={({ field }) => {
-            function onSaleChange(nextSaleId: string) {
-              field.onChange(nextSaleId);
-              const sale = sales.find((s) => s.id === nextSaleId);
-              if (sale) applySaleScheduleToLot(form, sale);
+      {locked && selectedSale ? (
+        <>
+          <Notice
+            tone="info"
+            title="This lot is in a published sale"
+            actions={
+              <StaffButton asChild size="sm" variant="secondary">
+                <Link href={`/admin/sales/${selectedSale.id}`}>Open sale</Link>
+              </StaffButton>
             }
-
-            return (
-              <FormItem>
-                <FormLabel>
-                  <LabelCaps>Assign to sale</LabelCaps>
-                </FormLabel>
-                {saleAssignmentLocked && selectedSale ? (
-                  <div className="mt-1 space-y-2">
-                    <p className="font-body text-sm text-on-surface">
-                      {selectedSale.title}{" "}
-                      <span className="text-on-surface-variant">({selectedSale.status})</span>
-                    </p>
-                    <p className="font-body text-xs text-on-surface-variant">
-                      This lot is attached to a published sale. Reassigning requires auction ops to
-                      return the lot to inventory first.
-                    </p>
-                    <Link
-                      href={`/admin/sales/${selectedSale.id}`}
-                      className="font-body text-xs text-link hover:underline"
-                    >
-                      View sale →
-                    </Link>
-                  </div>
-                ) : useSaleCombobox ? (
-                  <RhfCombobox
-                    value={field.value || ""}
-                    onChange={onSaleChange}
-                    onBlur={field.onBlur}
-                    placeholder="Select a draft sale"
-                    options={saleOptions}
-                    className="mt-1 w-full font-body text-sm"
-                  />
-                ) : (
-                  <RhfSelect
-                    value={field.value || ""}
-                    onValueChange={onSaleChange}
-                    onBlur={field.onBlur}
-                    placeholder="Select a draft sale"
-                    options={saleOptions}
-                    triggerClassName="mt-1 w-full font-body text-sm"
-                  />
-                )}
-                {pickerSales.length === 0 && !saleAssignmentLocked ? (
-                  <p className="mt-2 font-body text-xs text-on-surface-variant">
-                    No draft sales are available yet.{" "}
-                    <Link href="/admin/sales/new" className="text-link hover:underline">
-                      Create a sale
-                    </Link>{" "}
-                    first, then return to assign this lot.
-                  </p>
-                ) : null}
-                {selectedSale?.status === "draft" ? (
-                  <Alert className="mt-3">
-                    <AlertDescription className="space-y-2 font-body text-xs">
-                      <p>{draftSaleLotPublishBanner()}</p>
-                      <Link
-                        href={`/admin/sales/${selectedSale.id}/setup?step=review`}
-                        className="text-link hover:underline"
-                      >
-                        Open sale setup to publish →
-                      </Link>
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
-        <FormField
-          control={form.control}
-          name="lotNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <LabelCaps>Lot number (optional)</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 42"
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-    </CatalogFormSection>
+          >
+            {selectedSale.title} is {staffStatus("sale", selectedSale.status).label.toLowerCase()}.
+            To move the lot, return it to inventory from the lot's actions first.
+          </Notice>
+          <StaffTextField
+            control={form.control}
+            name="lotNumber"
+            formId={LOT_FORM_ID}
+            label="Lot number"
+            optional
+            integer
+            placeholder="e.g. 42"
+          />
+        </>
+      ) : (
+        <FieldRow>
+          <StaffEntityField
+            control={form.control}
+            name="saleId"
+            formId={LOT_FORM_ID}
+            label="Sale"
+            description={
+              draftSales.length === 0
+                ? "No draft sales yet. Create a sale first to add this lot to it."
+                : selectedSale
+                  ? draftSaleLotPublishBanner()
+                  : "Only draft sales can take a new lot."
+            }
+            options={draftSales.map((sale) => ({
+              id: sale.id,
+              label: sale.title,
+              description: [
+                deliveryModeShortLabel(sale.deliveryMode),
+                formatStaffDate(sale.startTime),
+              ]
+                .filter(Boolean)
+                .join(" · "),
+            }))}
+            placeholder="Choose a draft sale"
+            searchPlaceholder="Search draft sales"
+            emptyText="No draft sales match."
+            onChanged={(option) => {
+              const sale = option ? sales.find((item) => item.id === option.id) : null;
+              if (sale) applySaleScheduleToLot(form, sale);
+            }}
+          />
+          <StaffTextField
+            control={form.control}
+            name="lotNumber"
+            formId={LOT_FORM_ID}
+            label="Lot number"
+            optional
+            integer
+            placeholder="e.g. 42"
+          />
+        </FieldRow>
+      )}
+    </FormSection>
   );
 }

@@ -44,28 +44,28 @@ export const adminLotMarketingFormValuesSchema = z
       if (!lowRaw || Number.isNaN(low) || low < 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Enter a valid low estimate",
+          message: "Enter the low estimate in pounds",
           path: ["estimate", "low"],
         });
       }
       if (!highRaw || Number.isNaN(high) || high < 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Enter a valid high estimate",
+          message: "Enter the high estimate in pounds",
           path: ["estimate", "high"],
         });
       }
       if (!Number.isNaN(low) && !Number.isNaN(high) && low > high) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Low estimate must be less than or equal to high",
+          message: "The high estimate must be at least the low estimate",
           path: ["estimate", "high"],
         });
       }
       if (!currencyRaw) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Currency is required when estimate is set",
+          message: "Choose the estimate's currency",
           path: ["estimate", "currency"],
         });
       }

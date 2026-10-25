@@ -1,7 +1,7 @@
 "use client";
 
 import { formatRelativeTime } from "@/lib/ui/format";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/staff-ui";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,10 +27,7 @@ export function WizardDraftSaveIndicator({ status, savedAt, className }: Props) 
 
   return (
     <p
-      className={cn(
-        "flex items-center gap-1.5 font-body text-xs text-on-surface-variant",
-        className,
-      )}
+      className={cn("flex items-center gap-1.5 text-staff-xs text-staff-muted", className)}
       aria-live="polite"
       aria-atomic="true"
     >

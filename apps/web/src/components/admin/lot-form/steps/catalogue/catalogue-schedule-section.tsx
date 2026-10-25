@@ -1,8 +1,6 @@
 "use client";
 
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
-import { LabelCaps } from "@/components/ui/typography";
+import { StaffDateTimeField } from "@/components/admin/forms/staff-form-fields";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
 import {
   parseSaleWindowFromSale,
@@ -10,18 +8,13 @@ import {
 } from "@/lib/admin/sale-lot-window-sync";
 import { attachLotScheduleConflictBanner } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { FieldRow, FormSection, Notice, StaffButton, formatStaffDateTime } from "@auction/staff-ui";
 import type { Sale } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
-import {
-  formatDatetimeDisplayHuman,
-  instantFromDatetimeFormString,
-  toDatetimeFormString,
-} from "@auction/ui/lib/datetime";
+import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { lotTimingViolationAgainstSale, saleModeInheritsLotTiming } from "@auction/validators";
 import { useEffect } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import { LOT_FORM_ID, lotFieldProps } from "../../lot-field-spec";
 
 type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
 
@@ -59,7 +52,7 @@ export function CatalogueScheduleSection({ form, fields, sales }: Props) {
 
   const saleWindowLabel =
     sale != null
-      ? `${formatDatetimeDisplayHuman(toDatetimeFormString(sale.startTime))} – ${formatDatetimeDisplayHuman(toDatetimeFormString(sale.endTime))}`
+      ? `${formatStaffDateTime(sale.startTime, { zoneLabel: true })} to ${formatStaffDateTime(sale.endTime, { zoneLabel: true })}`
       : null;
 
   let scheduleViolation: string | null = null;
@@ -94,82 +87,53 @@ export function CatalogueScheduleSection({ form, fields, sales }: Props) {
   }
 
   return (
-    <CatalogFormSection
+    <FormSection
       title="Schedule"
       description={
         inheritsTiming
-          ? "This lot inherits the sale opening and closing times."
-          : "When bidding opens and closes. Lot times must fall within the sale window."
+          ? "This lot takes its sale's opening and closing times."
+          : "When bidding opens and closes. The times must fall inside the sale's window."
       }
-      collapsible={false}
     >
-      {saleWindowLabel ? (
-        <p className="font-body text-sm text-on-surface-variant">
-          Sale window (London): <span className="text-on-surface">{saleWindowLabel}</span>
-        </p>
+      {sale ? (
+        <Notice tone="info" title={inheritsTiming ? "Times follow the sale" : "Sale window"}>
+          {saleWindowLabel}
+          {inheritsTiming ? ". The lot's times move with the sale's." : null}
+        </Notice>
       ) : null}
-
-      {inheritsTiming && sale ? (
-        <p className="rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-          Opens {formatDatetimeDisplayHuman(toDatetimeFormString(sale.startTime))} and closes{" "}
-          {formatDatetimeDisplayHuman(toDatetimeFormString(sale.endTime))} — matching the sale
-          schedule. Lot times sync automatically when they drift from the sale window.
-        </p>
-      ) : null}
-
       {scheduleViolation ? (
-        <Alert variant="destructive">
-          <AlertDescription className="space-y-3">
-            <p>{attachLotScheduleConflictBanner()}</p>
-            <Button type="button" size="sm" variant="outline" onClick={syncToSaleWindow}>
+        <Notice
+          tone="danger"
+          title="The lot closes outside its sale"
+          actions={
+            <StaffButton type="button" size="sm" variant="secondary" onClick={syncToSaleWindow}>
               Sync to sale window
-            </Button>
-          </AlertDescription>
-        </Alert>
+            </StaffButton>
+          }
+        >
+          {attachLotScheduleConflictBanner()}
+        </Notice>
       ) : null}
-
       {!inheritsTiming ? (
-        <div className="grid gap-6 sm:grid-cols-2">
+        <FieldRow>
           {fields.startTime.visible ? (
-            <FormField
+            <StaffDateTimeField
               control={form.control}
               name="startTime"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <LabelCaps>{fields.startTime.label}</LabelCaps>
-                  </FormLabel>
-                  <RhfDateTimePicker
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
+              formId={LOT_FORM_ID}
+              {...lotFieldProps(fields.startTime)}
             />
           ) : null}
           {fields.endTime.visible ? (
-            <FormField
+            <StaffDateTimeField
               control={form.control}
               name="endTime"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <LabelCaps>{fields.endTime.label}</LabelCaps>
-                  </FormLabel>
-                  <RhfDateTimePicker
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
+              formId={LOT_FORM_ID}
+              {...lotFieldProps(fields.endTime)}
             />
           ) : null}
-        </div>
+        </FieldRow>
       ) : null}
-    </CatalogFormSection>
+    </FormSection>
   );
 }
