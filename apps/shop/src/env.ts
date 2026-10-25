@@ -16,6 +16,13 @@ const shopEnvSchema = z.object({
   SHOP_ALLOW_INDEXING: z.enum(["true", "false"]).optional(),
   /** Deployment the image was built for ("test" or "prod"); hides draft policy pages on prod. */
   SHOP_DEPLOY_ENV: z.string().min(1).optional(),
+  /**
+   * Working days from order to UK delivery ("3-5") and to collection being ready ("2"), as
+   * operations commit to them. Checkout shows expected dates only when these are set, so it
+   * never promises a time nobody has agreed.
+   */
+  SHOP_UK_DELIVERY_WORKING_DAYS: z.string().min(1).optional(),
+  SHOP_COLLECTION_READY_WORKING_DAYS: z.string().min(1).optional(),
 });
 
 export type ShopEnv = z.infer<typeof shopEnvSchema>;
@@ -36,6 +43,9 @@ export function loadShopEnv(
     SHOP_IMAGE_REMOTE_HOSTS: source.SHOP_IMAGE_REMOTE_HOSTS?.trim() || undefined,
     SHOP_ALLOW_INDEXING: source.SHOP_ALLOW_INDEXING?.trim() || undefined,
     SHOP_DEPLOY_ENV: source.SHOP_DEPLOY_ENV?.trim() || undefined,
+    SHOP_UK_DELIVERY_WORKING_DAYS: source.SHOP_UK_DELIVERY_WORKING_DAYS?.trim() || undefined,
+    SHOP_COLLECTION_READY_WORKING_DAYS:
+      source.SHOP_COLLECTION_READY_WORKING_DAYS?.trim() || undefined,
   });
   const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
   const hasBidPublicUrl = Boolean(parsed.LAX_BID_PUBLIC_URL ?? parsed.WEB_ORIGIN);

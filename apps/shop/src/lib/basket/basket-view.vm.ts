@@ -1,9 +1,6 @@
-import type { BasketLine } from "@auction/shop-contracts";
-import {
-  FULFILMENT_SURCHARGE_PENCE,
-  SHOP_BASKET_LINE_QUANTITY_MAX,
-  fulfilmentSurchargePence,
-} from "@auction/shop-domain";
+import { checkoutDeliverySummaryRow } from "@/lib/checkout/checkout-delivery";
+import type { BasketLine, ShopFulfilmentOption } from "@auction/shop-contracts";
+import { FULFILMENT_SURCHARGE_PENCE, SHOP_BASKET_LINE_QUANTITY_MAX } from "@auction/shop-domain";
 import { formatGbpPence } from "@auction/shop-portal/vm";
 
 export type BasketLineVm = {
@@ -96,39 +93,40 @@ export type BasketSummaryVm = {
   delivery: string;
   /** Collection is offered at checkout; say so before the shopper gets there. */
   deliveryNote: string;
+  /** "Total", or "Total before delivery" where delivery cannot be priced online. */
+  totalLabel: string;
   total: string;
   vatNote: string;
 };
 
 /**
- * The basket's full cost for the default choice, UK insured delivery, using the same surcharge
- * checkout charges, so the total here is the total at checkout.
+ * The order's full cost: the basket shows it for the default choice, UK insured delivery, and
+ * checkout for the choice made. Both use this one calculation and the surcharge shop-api
+ * charges, so the total in the basket is the total at checkout.
  */
 export function presentBasketSummary(
   lines: ReadonlyArray<Pick<BasketLine, "unitPricePence" | "quantity">>,
+  fulfilment: ShopFulfilmentOption = "uk_insured_delivery",
 ): BasketSummaryVm {
   const items = lines.reduce((total, line) => total + line.quantity, 0);
-  // The sum of the line totals, as shop-api and checkout compute it.
+  // The sum of the line totals, as shop-api computes it.
   const subtotalPence = lines.reduce(
     (total, line) => total + line.unitPricePence * line.quantity,
     0,
   );
-  // The pricing checkout uses for its default option, so both totals agree.
-  const deliveryPence = fulfilmentSurchargePence("uk_insured_delivery");
-  const collection = Math.min(
-    FULFILMENT_SURCHARGE_PENCE.collect_new_cavendish,
-    FULFILMENT_SURCHARGE_PENCE.collect_brunswick,
-  );
+  const delivery = checkoutDeliverySummaryRow(fulfilment);
+  const collection = FULFILMENT_SURCHARGE_PENCE.collect_new_cavendish;
   return {
     itemCountLabel: items === 1 ? "Subtotal (1 item)" : `Subtotal (${items} items)`,
     subtotal: formatGbpPence(subtotalPence),
-    deliveryLabel: "UK insured delivery",
-    delivery: formatGbpPence(deliveryPence),
+    deliveryLabel: delivery.label,
+    delivery: delivery.value,
     deliveryNote:
       collection === 0
         ? "Collection in London is free. Choose it at checkout."
-        : `Collection in London from ${formatGbpPence(collection)}. Choose it at checkout.`,
-    total: formatGbpPence(subtotalPence + deliveryPence),
+        : `Collection in London is ${formatGbpPence(collection)}. Choose it at checkout.`,
+    totalLabel: fulfilment === "international_quotation" ? "Total before delivery" : "Total",
+    total: formatGbpPence(subtotalPence + delivery.pence),
     vatNote: "Prices include VAT",
   };
 }

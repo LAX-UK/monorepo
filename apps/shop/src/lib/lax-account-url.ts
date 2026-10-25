@@ -15,6 +15,8 @@ export const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
 /** LAX Account pages that replace the retired Shop account tabs. */
 export const LAX_ACCOUNT_PATHS = {
   home: "/account",
+  /** The LAX-wide address book checkout reads saved addresses from. */
+  addresses: "/account/profile#addresses",
   /** Every work the person owns or is selling, with each work's documents. */
   portfolio: "/account/portfolio",
   /** The portfolio filtered to works bought through LAX Shop. */

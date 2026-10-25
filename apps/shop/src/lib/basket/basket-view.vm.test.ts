@@ -114,6 +114,19 @@ describe("presentBasketSummary", () => {
     });
   });
 
+  it("works out checkout's total for the delivery chosen there", () => {
+    const lines = [{ unitPricePence: 12000, quantity: 1 }];
+    expect(presentBasketSummary(lines, "collect_new_cavendish")).toMatchObject({
+      deliveryLabel: "Collection in London",
+      delivery: "Free",
+      total: "£120.00",
+    });
+    expect(presentBasketSummary(lines, "international_quotation")).toMatchObject({
+      totalLabel: "Total before delivery",
+      total: "£120.00",
+    });
+  });
+
   it("counts one item in the singular", () => {
     expect(presentBasketSummary([{ unitPricePence: 12000, quantity: 1 }]).itemCountLabel).toBe(
       "Subtotal (1 item)",

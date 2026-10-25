@@ -3,9 +3,11 @@ import type { ShopFetchResult } from "@/lib/shop-fetch-result";
 import {
   type BasketView,
   type OrderSummary,
+  type SavedDeliveryAddress,
   parseBasketResponse,
   parseOrderList,
   parseOrderSummary,
+  parseSavedDeliveryAddressList,
 } from "@auction/shop-contracts";
 import { cache } from "react";
 
@@ -64,6 +66,22 @@ export async function listShopOrders(): Promise<ShopFetchResult<OrderSummary[]>>
     return { status: "ok", data: items };
   } catch {
     return { status: "failed" };
+  }
+}
+
+/**
+ * The shopper's LAX Account saved addresses for checkout. Any failure reads as an empty book, so
+ * checkout always offers the address form.
+ */
+export async function fetchShopSavedAddresses(): Promise<SavedDeliveryAddress[]> {
+  try {
+    const response = await shopCommerceRequest("/commerce/me/addresses", {
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return [];
+    return parseSavedDeliveryAddressList(await response.json()).addresses;
+  } catch {
+    return [];
   }
 }
 

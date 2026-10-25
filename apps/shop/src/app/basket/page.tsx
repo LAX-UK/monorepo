@@ -98,16 +98,21 @@ export default async function BasketPage() {
         Checkout
       </ShopCommerceButton>
     ) : (
-      <Button
-        asChild
-        variant="cta"
-        size="md"
-        className={shopButtonClassName("cta", "commerce", "w-full")}
-      >
-        <ShopAuthLink href={shopStorefrontLoginHref("/checkout")}>
-          Sign in to check out
-        </ShopAuthLink>
-      </Button>
+      <>
+        <Button
+          asChild
+          variant="cta"
+          size="md"
+          className={shopButtonClassName("cta", "commerce", "w-full")}
+        >
+          <ShopAuthLink href={shopStorefrontLoginHref("/checkout")}>
+            Sign in to check out
+          </ShopAuthLink>
+        </Button>
+        <p className="shop-basket__summary-note">
+          Sign in or create a LAX Account to pay. Your basket is kept and you come back to checkout.
+        </p>
+      </>
     );
 
   const summaryActions =

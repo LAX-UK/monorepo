@@ -507,29 +507,6 @@ a.shop-order-detail__line-title:hover {
   border-radius: 999px;
 }
 
-.shop-checkout-steps__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  list-style: none;
-  margin: 0 0 1.25rem;
-  padding: 0;
-  font-size: 0.8125rem;
-}
-
-.shop-checkout-steps__item {
-  color: var(--color-on-surface-variant);
-}
-
-.shop-checkout-steps__item.is-current {
-  color: var(--color-on-surface);
-  font-weight: 600;
-}
-
-.shop-checkout-steps__item.is-complete {
-  color: var(--color-on-surface);
-}
-
 .shop-catalogue__artist-link {
   position: relative;
   z-index: 1;
