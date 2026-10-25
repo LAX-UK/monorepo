@@ -93,7 +93,7 @@ export type AdminDisputeStatus = (typeof ADMIN_DISPUTE_STATUSES)[number];
 // Sorts: the first of each list is the default ----------------------------------------------
 
 export const ADMIN_FULFILMENT_SORTS = ["updated_desc", "updated_asc"] as const;
-export const ADMIN_PAYOUT_SORTS = ["due_desc", "due_asc", "created_desc", "created_asc"] as const;
+export const ADMIN_PAYOUT_SORTS = ["due_asc", "due_desc", "created_desc", "created_asc"] as const;
 export const ADMIN_STOCK_HOLD_SORTS = [
   "created_desc",
   "created_asc",

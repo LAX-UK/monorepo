@@ -35,6 +35,30 @@ export function fulfilmentMoveKind(
   return POSSESSION_STATUSES.includes(to) && !state.possessionRecorded ? "possession" : "update";
 }
 
+const MOVE_LABELS: Record<ShopFulfilmentStatus, string> = {
+  pending_production: "Return to production queue",
+  in_production: "Start production",
+  awaiting_dispatch: "Mark ready to dispatch",
+  in_transit: "Mark in transit",
+  ready_for_collection: "Mark ready for collection",
+  collected: "Mark collected",
+  in_storage: "Move to storage",
+  delivered: "Mark delivered",
+  cancelled: "Cancel fulfilment",
+};
+
+/** The submit button names the chosen move; before one is chosen it reads "Move on". */
+export function fulfilmentMoveLabel(to: ShopFulfilmentStatus | null): string {
+  return to ? MOVE_LABELS[to] : "Move on";
+}
+
+/** The minute the form opened, as an instant: the default moment of possession. */
+export function possessionDefault(now: Date): string {
+  const minute = new Date(now);
+  minute.setUTCSeconds(0, 0);
+  return minute.toISOString();
+}
+
 export function movesNeedTracking(to: ShopFulfilmentStatus): boolean {
   return DISPATCH_STATUSES.includes(to);
 }

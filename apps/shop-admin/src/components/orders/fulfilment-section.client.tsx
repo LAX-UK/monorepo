@@ -10,7 +10,9 @@ import {
   checkFulfilmentEdit,
   fulfilmentEditPermission,
   fulfilmentMoveKind,
+  fulfilmentMoveLabel,
   movesNeedTracking,
+  possessionDefault,
 } from "@/server/domain/fulfilment-edit.vm";
 import {
   fulfilmentNextOptions,
@@ -163,9 +165,10 @@ export function FulfilmentEditForm({
   const [status, setStatus] = useState<ShopFulfilmentStatus | null>(null);
   const [carrier, setCarrier] = useState(fulfilment.carrier ?? "");
   const [tracking, setTracking] = useState(fulfilment.trackingNumber ?? "");
-  const [possessionAt, setPossessionAt] = useState<string | null>(null);
-  const [submits, setSubmits] = useState(0);
   const [now] = useState(() => new Date());
+  // Possession defaults to now (London time in the field); staff change it when it was earlier.
+  const [possessionAt, setPossessionAt] = useState<string | null>(() => possessionDefault(now));
+  const [submits, setSubmits] = useState(0);
 
   const kind = status ? fulfilmentMoveKind(status, { possessionRecorded }) : null;
   const showTracking = status !== null && movesNeedTracking(status);
@@ -238,7 +241,7 @@ export function FulfilmentEditForm({
       {showPossession ? (
         <Field
           label="Customer took possession"
-          description="When the customer received or collected the work. It starts their cancellation period."
+          description="When the customer received or collected the work; now, unless it was earlier. It starts their cancellation period."
           error={errors.possessionAt}
         >
           <DateTimeInput
@@ -276,7 +279,7 @@ export function FulfilmentEditForm({
           </StaffButton>
         ) : null}
         <StaffButton type="submit" variant="primary" loading={mutation.pending}>
-          {showPossession ? "Record possession" : "Save"}
+          {fulfilmentMoveLabel(status)}
         </StaffButton>
       </FormActions>
       {mutation.stepUpDialog}

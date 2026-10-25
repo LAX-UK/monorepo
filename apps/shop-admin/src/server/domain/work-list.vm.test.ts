@@ -8,7 +8,7 @@ describe("a work list's URL", () => {
       view: "due",
       q: " Ada ",
       source: "original_sale",
-      sort: "due_asc",
+      sort: "due_desc",
       limit: "100",
       cursor: "c1",
       payout: "p1",
@@ -16,7 +16,7 @@ describe("a work list's URL", () => {
     expect(state).toEqual({
       view: "due",
       q: "Ada",
-      sort: "due_asc",
+      sort: "due_desc",
       cursor: "c1",
       limit: "100",
       filters: { source: "original_sale" },
@@ -65,7 +65,7 @@ describe("a work list's sort", () => {
   it("always shows a sort, the default when the URL has none", () => {
     expect(payoutsList.sortState(payoutsList.parse({}))).toEqual({
       columnId: "due",
-      direction: "desc",
+      direction: "asc",
     });
     expect(payoutsList.sortState(payoutsList.parse({ sort: "created_asc" }))).toEqual({
       columnId: "created",
@@ -74,8 +74,8 @@ describe("a work list's sort", () => {
   });
 
   it("keeps the default out of the URL", () => {
-    expect(payoutsList.sortParam({ columnId: "due", direction: "desc" })).toBeNull();
-    expect(payoutsList.sortParam({ columnId: "due", direction: "asc" })).toBe("due_asc");
+    expect(payoutsList.sortParam({ columnId: "due", direction: "asc" })).toBeNull();
+    expect(payoutsList.sortParam({ columnId: "due", direction: "desc" })).toBe("due_desc");
     expect(payoutsList.sortParam({ columnId: "payee", direction: "asc" })).toBeNull();
   });
 });

@@ -218,7 +218,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listPayouts(input: AdminPayoutListQuery): Promise<WorkListResult<AdminPayoutListItem>> {
       const limit = resolveLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
-      const { key, direction } = parseSort<"due" | "created">(input.sort, "due_desc");
+      const { key, direction } = parseSort<"due" | "created">(input.sort, "due_asc");
       const sortColumn =
         key === "created" ? shopPayoutLedger.createdAt : shopPayoutLedger.payoutDueAt;
       const search = searchPatterns(input.q);

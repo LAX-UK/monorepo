@@ -79,8 +79,8 @@ const LISTS = [
   {
     name: "payouts",
     role: "finance",
-    url: "/admin/v1/payouts?status=due&source=original_sale&q=Ada&sort=due_asc",
-    expected: { status: "due", source: "original_sale", q: "Ada", sort: "due_asc" },
+    url: "/admin/v1/payouts?status=due&source=original_sale&q=Ada&sort=due_desc",
+    expected: { status: "due", source: "original_sale", q: "Ada", sort: "due_desc" },
     bad: ["status=pending", "source=bank", "sort=amount_desc"],
     wire: (deps: Deps) => {
       const spy = vi.fn(async () => page);

@@ -78,7 +78,7 @@ export const payoutsList = defineWorkList({
   defaultView: "all",
   filters: { source: ADMIN_PAYOUT_SOURCES },
   sorts: { due: { asc: "due_asc", desc: "due_desc" }, ...created },
-  defaultSort: "due_desc",
+  defaultSort: "due_asc",
   panelParam: "payout",
   searchMaxLength: ADMIN_WORK_LIST_SEARCH_MAX_LENGTH,
 });

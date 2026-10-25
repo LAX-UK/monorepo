@@ -106,7 +106,7 @@ describe("the payouts list", () => {
     expect(within(table).getByText("£85.00")).toBeInTheDocument();
   });
 
-  it("shows a view per status with its count, and sorts by the due date", () => {
+  it("shows a view per status with its count, and sorts soonest due first", () => {
     renderList();
     expect(screen.getByRole("link", { name: /Due\s*1/ })).toHaveAttribute(
       "href",
@@ -114,7 +114,7 @@ describe("the payouts list", () => {
     );
     expect(screen.getByRole("columnheader", { name: /Due/ })).toHaveAttribute(
       "aria-sort",
-      "descending",
+      "ascending",
     );
   });
 
