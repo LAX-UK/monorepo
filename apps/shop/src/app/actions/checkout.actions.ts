@@ -44,7 +44,9 @@ export async function startCheckout(input: {
   const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3020";
   const proto = headerStore.get("x-forwarded-proto") ?? "http";
   const origin = `${proto}://${host}`;
-  const idempotencyKey = `checkout:${input.basketId}:${input.fulfilment}`;
+  // One key per basket: a retry with changed delivery details updates the same pending order
+  // (shop-api reconciles it), so a basket can never hold two pending orders.
+  const idempotencyKey = `checkout:${input.basketId}:order`;
   const response = await shopCommerceRequest(
     "/commerce/checkout",
     {

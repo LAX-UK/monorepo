@@ -103,7 +103,9 @@ export function createStripeShopCheckoutGateway(options: {
             503,
           );
         }
-        const fakeSessionId = `fake_${input.orderId}`;
+        const fakeSessionId = input.sessionRevision
+          ? `fake_${input.orderId}_${input.sessionRevision}`
+          : `fake_${input.orderId}`;
         return {
           checkoutUrl: `${options.storefrontUrl}/checkout/confirmation?orderId=${input.orderId}&session_id=${fakeSessionId}`,
           sessionId: fakeSessionId,
@@ -141,7 +143,11 @@ export function createStripeShopCheckoutGateway(options: {
             statement_descriptor_suffix: "LAX SHOP",
           },
         },
-        { idempotencyKey: `checkout:shop-order:${input.orderId}` },
+        {
+          idempotencyKey: input.sessionRevision
+            ? `checkout:shop-order:${input.orderId}:${input.sessionRevision}`
+            : `checkout:shop-order:${input.orderId}`,
+        },
       );
       if (!session.url) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Stripe session missing url", 500);

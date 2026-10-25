@@ -26,7 +26,12 @@ import {
   loadBasketRecord,
   repriceBasketLinesIfNeeded,
 } from "./shop-basket.persistence.js";
-import { assertReplayableCheckoutOrder } from "./shop-checkout-order-validation.js";
+import {
+  type ReplayedCheckout,
+  checkoutDeliveryDetails,
+  deliveryColumns,
+  replayCheckoutOrder,
+} from "./shop-checkout-replay.js";
 import {
   reserveEditionsForCheckoutOrder,
   reserveProductVariantsForCheckoutOrder,
@@ -49,6 +54,37 @@ export function createDrizzleCheckoutRepository(
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
+
+  /** The payment session for a pending order: the open one, or a new one when it needs one. */
+  async function openPaymentSession(
+    input: { subject: string; successUrl: string; cancelUrl: string },
+    pending: ReplayedCheckout,
+  ) {
+    const [orderRow] = await db
+      .select()
+      .from(shopOrder)
+      .where(eq(shopOrder.id, pending.orderId))
+      .limit(1);
+    const [stripeLines, customerEmail] = await Promise.all([
+      loadCheckoutStripePresentation(db, pending.orderId),
+      resolveShopUserEmail(db, input.subject),
+    ]);
+    return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
+      orderId: pending.orderId,
+      totalPence: pending.totalPence,
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl,
+      checkoutExpiresAt: pending.checkoutExpiresAt,
+      needsStripeSession: pending.needsStripeSession,
+      existingSessionId: orderRow?.stripeCheckoutSessionId ?? null,
+      existingCheckoutExpiresAt: orderRow?.checkoutExpiresAt ?? null,
+      lines: stripeLines,
+      fulfilmentSurchargePence: orderRow?.fulfilmentSurchargePence ?? 0,
+      customerEmail,
+      ...(pending.sessionRevision ? { sessionRevision: pending.sessionRevision } : {}),
+    });
+  }
+
   return {
     async createCheckoutOrder(input) {
       let deliveryAddress = input.deliveryAddress;
@@ -93,6 +129,28 @@ export function createDrizzleCheckoutRepository(
       assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
       assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
 
+      const details = checkoutDeliveryDetails({
+        fulfilment: input.fulfilment,
+        deliveryAddress,
+        deliveryPhone: input.deliveryPhone,
+      });
+      const replay = (existing: typeof shopOrder.$inferSelect) =>
+        replayCheckoutOrder(db, paymentGateway, existing, {
+          subject: input.subject,
+          details,
+          checkoutExpiresAt: new Date(Date.now() + CHECKOUT_SESSION_TTL_MS),
+        });
+
+      // A retry finds its order before the basket, which the first attempt has already retired.
+      const [earlier] = await db
+        .select()
+        .from(shopOrder)
+        .where(eq(shopOrder.idempotencyKey, input.idempotencyKey))
+        .limit(1);
+      if (earlier) {
+        return openPaymentSession(input, await replay(earlier));
+      }
+
       const basket = await loadBasketRecord(db, input.basketId);
       if (basket.owner.kind !== "subject" || basket.owner.identitySubjectId !== input.subject) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Basket ownership mismatch", 403);
@@ -128,14 +186,7 @@ export function createDrizzleCheckoutRepository(
       const checkoutExpiresAt = new Date(Date.now() + CHECKOUT_SESSION_TTL_MS);
       const reservedUntil = reservedUntilFromCheckoutExpiry(checkoutExpiresAt);
 
-      type PendingCheckout = {
-        orderId: string;
-        totalPence: number;
-        checkoutExpiresAt: Date;
-        needsStripeSession: boolean;
-      };
-
-      let pending: PendingCheckout;
+      let pending: ReplayedCheckout | { replayOf: typeof shopOrder.$inferSelect };
       try {
         pending = await db.transaction(async (tx) => {
           const locked = await tx
@@ -146,16 +197,7 @@ export function createDrizzleCheckoutRepository(
             .limit(1);
           const existing = locked[0];
           if (existing) {
-            assertReplayableCheckoutOrder(existing, {
-              subject: input.subject,
-              fulfilment: input.fulfilment,
-            });
-            return {
-              orderId: existing.id,
-              totalPence: existing.totalPence,
-              checkoutExpiresAt: existing.checkoutExpiresAt ?? checkoutExpiresAt,
-              needsStripeSession: !existing.stripeCheckoutSessionId,
-            };
+            return { replayOf: existing };
           }
 
           const [order] = await tx
@@ -168,13 +210,7 @@ export function createDrizzleCheckoutRepository(
               totalPence: total,
               idempotencyKey: input.idempotencyKey,
               checkoutExpiresAt,
-              deliveryRecipientName: deliveryAddress?.recipientName?.trim() || null,
-              deliveryLine1: deliveryAddress?.line1 ?? null,
-              deliveryLine2: deliveryAddress?.line2 ?? null,
-              deliveryCity: deliveryAddress?.city ?? null,
-              deliveryPostcode: deliveryAddress?.postcode ?? null,
-              deliveryCountry: deliveryAddress?.country ?? null,
-              deliveryPhone: input.deliveryPhone?.trim() || null,
+              ...deliveryColumns(details),
             })
             .returning({ id: shopOrder.id });
           if (!order) {
@@ -249,45 +285,16 @@ export function createDrizzleCheckoutRepository(
           if (!existing) {
             throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Checkout idempotency race", 500);
           }
-          assertReplayableCheckoutOrder(existing, {
-            subject: input.subject,
-            fulfilment: input.fulfilment,
-          });
-          pending = {
-            orderId: existing.id,
-            totalPence: existing.totalPence,
-            checkoutExpiresAt: existing.checkoutExpiresAt ?? checkoutExpiresAt,
-            needsStripeSession: !existing.stripeCheckoutSessionId,
-          };
+          pending = await replay(existing);
         } else {
           throw error;
         }
       }
 
-      const [orderRow] = await db
-        .select()
-        .from(shopOrder)
-        .where(eq(shopOrder.id, pending.orderId))
-        .limit(1);
-
-      const [stripeLines, customerEmail] = await Promise.all([
-        loadCheckoutStripePresentation(db, pending.orderId),
-        resolveShopUserEmail(db, input.subject),
-      ]);
-
-      return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
-        orderId: pending.orderId,
-        totalPence: pending.totalPence,
-        successUrl: input.successUrl,
-        cancelUrl: input.cancelUrl,
-        checkoutExpiresAt: pending.checkoutExpiresAt,
-        needsStripeSession: pending.needsStripeSession,
-        existingSessionId: orderRow?.stripeCheckoutSessionId ?? null,
-        existingCheckoutExpiresAt: orderRow?.checkoutExpiresAt ?? null,
-        lines: stripeLines,
-        fulfilmentSurchargePence: orderRow?.fulfilmentSurchargePence ?? fulfilmentSurcharge,
-        customerEmail,
-      });
+      return openPaymentSession(
+        input,
+        "replayOf" in pending ? await replay(pending.replayOf) : pending,
+      );
     },
     async resumeCheckoutOrder(input) {
       const [order] = await db
