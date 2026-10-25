@@ -99,6 +99,7 @@ export function AdminClientArtistProfilesPanel({
     <>
       <RelatedRecordsSection
         id="artist-profiles"
+        density="comfortable"
         title="Artist profiles"
         description="Catalogue profiles linked to this client as the maker or owner."
         {...(create ? { action: create } : {})}

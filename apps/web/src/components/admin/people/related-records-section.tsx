@@ -1,4 +1,11 @@
-import { type DataColumn, DataTable, EmptyState, Section, type SortState } from "@auction/staff-ui";
+import {
+  type DataColumn,
+  DataTable,
+  EmptyState,
+  Section,
+  type SortState,
+  type TableDensity,
+} from "@auction/staff-ui";
 import type { ReactNode } from "react";
 
 type Props<T> = {
@@ -22,6 +29,8 @@ type Props<T> = {
   footer?: ReactNode;
   /** A search or filter row above the table. */
   toolbar?: ReactNode;
+  /** Comfortable when a cell carries a second line (a lot and its sale); compact otherwise. */
+  density?: TableDensity;
 };
 
 /**
@@ -42,6 +51,7 @@ export function RelatedRecordsSection<T>({
   empty,
   footer,
   toolbar,
+  density = "compact",
 }: Props<T>) {
   return (
     <Section
@@ -58,7 +68,7 @@ export function RelatedRecordsSection<T>({
         columns={columns}
         data={data}
         getRowId={getRowId}
-        density="compact"
+        density={density}
         defaultSort={defaultSort}
         stickyHeader={false}
         stickyToolbar={false}

@@ -204,6 +204,7 @@ export function AdminUserBidsPanel({
   return (
     <RelatedRecordsSection
       id="bids"
+      density="comfortable"
       title="Bids"
       description="Recent bidding by this client, newest first."
       label="Client bids"
@@ -303,6 +304,7 @@ export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
   return (
     <RelatedRecordsSection
       id="won-lots"
+      density="comfortable"
       title="Won lots"
       description="Lots this client has won across all sales."
       label="Won lots"

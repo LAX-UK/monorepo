@@ -157,11 +157,14 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
       {
         id: "access",
         header: "LAX access",
-        width: "22%",
+        width: "152px",
         hideBelow: "lg",
         mobile: "hidden",
-        truncate: false,
-        cell: (row) => (row.access.length > 0 ? <AccessBadges access={row.access} /> : null),
+        // One line per row: the tools by name here, each tool's role in the panel.
+        cell: (row) =>
+          row.access.length > 0
+            ? row.access.map((label) => label.split(" · ")[0]).join(", ")
+            : null,
       },
       {
         id: "twoFactor",

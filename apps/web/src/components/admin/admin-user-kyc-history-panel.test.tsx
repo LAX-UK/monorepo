@@ -70,7 +70,7 @@ describe("AdminUserKycHistoryPanel", () => {
     panel([session()]);
     expect(screen.queryByText("Ada Lovelace")).toBeNull();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "View details" })[0] as HTMLElement);
+    fireEvent.click(screen.getAllByRole("button", { name: "Details" })[0] as HTMLElement);
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("PASSPORT GB ending 4321")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open in Veriff" })).toHaveAttribute(

@@ -66,6 +66,10 @@ function detailItems(
 
   return [
     {
+      label: "Decided",
+      value: session.decisionAt ? <StaffDate value={session.decisionAt} withTime /> : "Not yet",
+    },
+    {
       label: "Verification result",
       value: session.decisionReasonLabel
         ? `${session.decisionReasonLabel}${session.decisionReasonCode != null ? ` (code ${session.decisionReasonCode})` : ""}`
@@ -82,7 +86,7 @@ function detailItems(
       label: "Document valid",
       value:
         session.verifiedIdValidFrom || session.verifiedIdExpiry
-          ? `${session.verifiedIdValidFrom ?? "—"} to ${session.verifiedIdExpiry ?? "—"}`
+          ? `${formatBirthDate(session.verifiedIdValidFrom) ?? "not given"} to ${formatBirthDate(session.verifiedIdExpiry) ?? "not given"}`
           : null,
     },
     { label: "Nationality", value: nationality || null },
@@ -130,7 +134,7 @@ export function AdminUserKycHistoryPanel({
     {
       id: "result",
       header: "Result",
-      width: "200px",
+      width: "176px",
       mobile: "title",
       truncate: false,
       cell: (session) => {
@@ -155,18 +159,6 @@ export function AdminUserKycHistoryPanel({
       cell: (session) => <StaffDate value={session.createdAt} withTime />,
     },
     {
-      id: "decided",
-      header: "Decided",
-      width: "192px",
-      truncate: false,
-      sortable: true,
-      defaultSortDirection: "desc",
-      hideBelow: "md",
-      mobile: "hidden",
-      sortValue: (session) => (session.decisionAt ? Date.parse(session.decisionAt) : null),
-      cell: (session) => <StaffDate value={session.decisionAt} withTime />,
-    },
-    {
       id: "watchlist",
       header: "Watchlist",
       hideBelow: "lg",
@@ -184,13 +176,13 @@ export function AdminUserKycHistoryPanel({
       id: "details",
       header: "Details",
       headerHidden: true,
-      width: "128px",
+      width: "112px",
       truncate: false,
       mobile: "actions",
       cell: (session) => (
         <div className="flex justify-end">
           <StaffButton size="sm" variant="ghost" onClick={() => setOpenId(session.id)}>
-            View details
+            Details
           </StaffButton>
         </div>
       ),
