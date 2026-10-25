@@ -64,6 +64,8 @@ export {
 } from "./display/truncated-text.js";
 export { AttentionList } from "./display/attention-list.js";
 export { IssueList } from "./display/issue-list.js";
+export { Checklist } from "./display/checklist.js";
+export type { ChecklistItem } from "./display/checklist.js";
 export type { IssueItem } from "./display/issue-list.js";
 export type { AttentionItem } from "./display/attention-list.js";
 export type { TimelineEvent } from "./display/timeline.js";
@@ -113,6 +115,10 @@ export type {
 } from "./forms/unsaved-changes.js";
 export { FileDropzone } from "./forms/file-dropzone.js";
 export type { FileDropzoneProps } from "./forms/file-dropzone.js";
+export { MediaGrid } from "./forms/media-grid.js";
+export type { MediaGridItem, MediaGridProps } from "./forms/media-grid.js";
+export { UploadQueue } from "./forms/upload-queue.js";
+export type { UploadQueueItem } from "./forms/upload-queue.js";
 export type { MoneyInputProps } from "./forms/money-input.js";
 export { PercentInput } from "./forms/percent-input.js";
 export type { PercentInputProps } from "./forms/percent-input.js";
