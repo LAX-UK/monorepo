@@ -9,5 +9,7 @@ export default async function AdminSaleDocumentsPage({ params }: Props) {
   const { id } = await params;
   const page = await loadAdminSaleDocumentsPage(id);
 
-  return <SaleDocumentsTab saleId={page.saleId} documents={page.documents} />;
+  return (
+    <SaleDocumentsTab saleId={page.saleId} saleTitle={page.saleTitle} documents={page.documents} />
+  );
 }

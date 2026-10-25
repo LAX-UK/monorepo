@@ -1,7 +1,9 @@
 "use client";
 
+import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { MediaImage } from "@/components/ui/media-image";
+import { downloadSaleMediaCsv, matchesSaleMediaSearch } from "@/lib/admin/exports/sale-files-csv";
 import { notify } from "@/lib/ui/notify";
 import {
   EmptyState,
@@ -11,18 +13,30 @@ import {
   MediaGrid,
   Notice,
   Section,
+  SegmentedControl,
   StaffButton,
+  TableSearch,
   TextInput,
   UnsavedChangesGuard,
   UploadQueue,
 } from "@auction/staff-ui";
 import type { SaleDayMediaRef } from "@auction/types";
 import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { ACCEPT_ALL, type DayMediaItem } from "./day-photos/day-media-types";
 import { useDayPhotosTab } from "./day-photos/use-day-photos-tab";
 
+type MediaFilter = "all" | "image" | "video";
+
+const FILTERS = [
+  { value: "all", label: "All" },
+  { value: "image", label: "Photos" },
+  { value: "video", label: "Videos" },
+] as const;
+
 type Props = {
   saleId: string;
+  saleTitle: string;
   saleStatus: string;
   initialDayImages: SaleDayMediaRef[];
   previewUrlByKey: Record<string, string>;
@@ -39,6 +53,7 @@ function label(item: DayMediaItem, index: number) {
  */
 export function SaleDayPhotosTab({
   saleId,
+  saleTitle,
   saleStatus,
   initialDayImages,
   previewUrlByKey,
@@ -49,6 +64,19 @@ export function SaleDayPhotosTab({
   const media = useDayPhotosTab({ saleId, saleStatus, initialDayImages, previewUrlByKey });
   const { items, isEnded, saving } = media;
   const editable = canManage && !saving;
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<MediaFilter>("all");
+  const filtering = query.trim() !== "" || filter !== "all";
+  const positionOf = useMemo(() => new Map(items.map((item, i) => [item.id, i])), [items]);
+  const at = (item: DayMediaItem) => positionOf.get(item.id) ?? 0;
+  const visible = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          (filter === "all" || item.mediaType === filter) && matchesSaleMediaSearch(item, query),
+      ),
+    [items, filter, query],
+  );
 
   const remove = (index: number) => {
     const item = items[index];
@@ -58,7 +86,7 @@ export function SaleDayPhotosTab({
       return;
     }
     confirm.ask({
-      title: `Remove ${label(item, index).toLowerCase()} from the sale page?`,
+      title: `Remove ${label(item, at(item)).toLowerCase()} from the sale page?`,
       description: "It is taken off the public gallery straight away.",
       confirmLabel: "Remove from gallery",
       tone: "danger",
@@ -94,16 +122,60 @@ export function SaleDayPhotosTab({
             />
           ) : null}
           {items.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <TableSearch
+                label="Search media"
+                placeholder="Search captions, alt text or files"
+                value={query}
+                onSearch={setQuery}
+                live
+              />
+              <SegmentedControl<MediaFilter>
+                label="Show"
+                value={filter}
+                onValueChange={setFilter}
+                options={FILTERS}
+              />
+              <div className="ml-auto">
+                <CsvExportMenu
+                  noun="media items"
+                  shown={visible.length}
+                  total={items.length}
+                  onExport={(scope) => {
+                    const rows = scope === "shown" ? visible : items;
+                    downloadSaleMediaCsv(
+                      rows,
+                      rows.map((item) => at(item) + 1),
+                      saleTitle,
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+          {filtering && visible.length > 0 && editable ? (
+            <p className="text-staff-sm text-staff-muted">
+              Clear the search and filter to reorder or remove items.
+            </p>
+          ) : null}
+          {items.length > 0 && visible.length === 0 ? (
+            <EmptyState
+              headingLevel="h3"
+              title="No media matches"
+              description="Try a different search or show all media."
+            />
+          ) : null}
+          {visible.length > 0 ? (
             <MediaGrid
-              items={items}
+              items={visible}
               noun="item"
-              disabled={!editable}
-              renderPreview={(item, index) =>
+              disabled={!editable || filtering}
+              renderPreview={(item) =>
                 item.mediaType === "video" ? (
                   // biome-ignore lint/a11y/useMediaCaption: staff preview of an uploaded clip; captions are not authored here.
                   <video
                     src={item.previewUrl}
-                    aria-label={item.caption || label(item, index)}
+                    aria-label={item.caption || label(item, at(item))}
                     className="size-full object-cover"
                     controls
                     preload="metadata"
@@ -111,19 +183,19 @@ export function SaleDayPhotosTab({
                 ) : (
                   <MediaImage
                     src={item.previewUrl}
-                    alt={item.alt || label(item, index)}
-                    label={label(item, index)}
+                    alt={item.alt || label(item, at(item))}
+                    label={label(item, at(item))}
                     imgClassName="size-full object-cover"
                     sizes="240px"
                   />
                 )
               }
-              renderDetails={(item, index) => (
+              renderDetails={(item) => (
                 <div className="flex flex-col gap-2">
                   <Field label="Caption" optional disabled={!editable}>
                     <TextInput
                       size="sm"
-                      aria-label={`Caption for ${label(item, index).toLowerCase()}`}
+                      aria-label={`Caption for ${label(item, at(item)).toLowerCase()}`}
                       maxLength={280}
                       value={item.caption}
                       disabled={!editable}
@@ -134,7 +206,7 @@ export function SaleDayPhotosTab({
                     <Field label="Alt text" optional disabled={!editable}>
                       <TextInput
                         size="sm"
-                        aria-label={`Alt text for ${label(item, index).toLowerCase()}`}
+                        aria-label={`Alt text for ${label(item, at(item)).toLowerCase()}`}
                         maxLength={280}
                         value={item.alt}
                         disabled={!editable}

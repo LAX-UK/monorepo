@@ -65,6 +65,8 @@ type Props<TKind extends string> = {
   /** Staff who cannot change the record see the files without the upload. */
   canManage?: boolean;
   empty: { title: string; description: string };
+  /** A search in force on the page: only matching files are listed. */
+  matches?: (doc: EntityDocument) => boolean;
 };
 
 /** A file on its way in, kept with what was chosen for it so a retry sends the same. */
@@ -95,6 +97,7 @@ export function StaffDocumentsSection<K extends string>({
   actions,
   canManage = true,
   empty,
+  matches,
 }: Props<K>) {
   const router = useRouter();
   const formId = useId();
@@ -282,10 +285,14 @@ export function StaffDocumentsSection<K extends string>({
         description={description}
         label={title}
         columns={columns}
-        data={documents}
+        data={matches ? documents.filter(matches) : documents}
         getRowId={(doc) => doc.id}
         defaultSort={{ columnId: "added", direction: "desc" }}
-        empty={empty}
+        empty={
+          matches && documents.length > 0
+            ? { title: "No documents match", description: "Try a different search." }
+            : empty
+        }
       >
         {canManage ? (
           <div className="flex flex-col gap-3">

@@ -15,13 +15,15 @@ type Props = {
   saleId: string;
   documents: EntityDocument[];
   canManage?: boolean;
+  /** A search in force: only matching files are listed. */
+  matches?: (doc: EntityDocument) => boolean;
 };
 
 /**
  * A sale's files in two groups, each listed once: what registered bidders can open (terms and
  * catalogue) and staff-only files. Each group adds and removes its own files.
  */
-export function SaleDocumentsPanel({ saleId, documents, canManage = true }: Props) {
+export function SaleDocumentsPanel({ saleId, documents, canManage = true, matches }: Props) {
   const { bidderDocs, internalDocs } = useMemo(
     () => ({
       bidderDocs: documents.filter((d) => d.kind === "terms" || d.kind === "catalog"),
@@ -49,6 +51,7 @@ export function SaleDocumentsPanel({ saleId, documents, canManage = true }: Prop
         documents={bidderDocs}
         actions={actions}
         canManage={canManage}
+        {...(matches ? { matches } : {})}
         empty={{
           title: "No bidder documents yet",
           description: "Upload the terms of sale or a catalogue PDF for registered bidders.",
@@ -63,6 +66,7 @@ export function SaleDocumentsPanel({ saleId, documents, canManage = true }: Prop
         documents={internalDocs}
         actions={actions}
         canManage={canManage}
+        {...(matches ? { matches } : {})}
         empty={{
           title: "No internal documents yet",
           description: "Upload consignment paperwork, insurance or other files for staff.",

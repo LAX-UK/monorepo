@@ -60,6 +60,7 @@ describe("SaleDayPhotosTab", () => {
     renderWithViewer(
       <SaleDayPhotosTab
         saleId="sale-1"
+        saleTitle="Modern British Art"
         saleStatus="ended"
         initialDayImages={[{ key: photo }]}
         previewUrlByKey={{ [photo]: "https://cdn.example/1.jpg" }}
@@ -81,6 +82,7 @@ describe("SaleDayPhotosTab", () => {
     renderWithViewer(
       <SaleDayPhotosTab
         saleId="sale-1"
+        saleTitle="Modern British Art"
         saleStatus="active"
         initialDayImages={[]}
         previewUrlByKey={{}}
@@ -97,6 +99,7 @@ describe("SaleDayPhotosTab", () => {
     renderWithViewer(
       <SaleDayPhotosTab
         saleId="sale-1"
+        saleTitle="Modern British Art"
         saleStatus="ended"
         initialDayImages={[{ key: photo, caption: "Opening night" }]}
         previewUrlByKey={{ [photo]: "https://cdn.example/1.jpg" }}
@@ -119,6 +122,7 @@ describe("SaleDayPhotosTab", () => {
     renderWithViewer(
       <SaleDayPhotosTab
         saleId="sale-1"
+        saleTitle="Modern British Art"
         saleStatus="ended"
         initialDayImages={[]}
         previewUrlByKey={{}}
@@ -131,5 +135,49 @@ describe("SaleDayPhotosTab", () => {
     fireEvent.change(input, { target: { files: [file] } });
     expect(await screen.findByText("The file is over 200 MB.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry floor.mp4" })).toBeInTheDocument();
+  });
+
+  it("refuses a file that is too large with removal only, without sending it", async () => {
+    renderWithViewer(
+      <SaleDayPhotosTab
+        saleId="sale-1"
+        saleTitle="Modern British Art"
+        saleStatus="ended"
+        initialDayImages={[]}
+        previewUrlByKey={{}}
+        canManage
+      />,
+    );
+
+    const input = screen.getByLabelText(/^Upload photos and videos/);
+    const file = new File(["x"], "whole-evening.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 300 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(await screen.findByText("This file is over the 200 MB limit.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry whole-evening.mp4" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Remove whole-evening.mp4" })).toBeInTheDocument();
+  });
+
+  it("searches and filters the gallery, and stops reordering while filtered", () => {
+    renderWithViewer(
+      <SaleDayPhotosTab
+        saleId="sale-1"
+        saleTitle="Modern British Art"
+        saleStatus="ended"
+        initialDayImages={[
+          { key: photo, caption: "Opening night" },
+          { key: "uploads/clip.mp4", mediaType: "video", caption: "Hammer down" },
+        ]}
+        previewUrlByKey={{}}
+        canManage
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Videos" }));
+    expect(screen.queryByRole("textbox", { name: "Caption for photo 1" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Caption for video 2" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Clear the search and filter to reorder or remove items."),
+    ).toBeInTheDocument();
   });
 });
