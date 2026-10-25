@@ -8,7 +8,7 @@ import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
+import { MARKETING_ARTIST_GRID_CLASS } from "@auction/marketing-ui";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -26,14 +26,7 @@ export function ArtistBrowseGrid({
   profileLinkContext?: ArtistProfileLinkContext;
 }) {
   return (
-    <ul
-      className={cn(
-        "gap-3 md:gap-6",
-        sparseGridClasses(rows.length, {
-          multi: "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 md:gap-6 lg:grid-cols-3",
-        }),
-      )}
-    >
+    <ul className={MARKETING_ARTIST_GRID_CLASS} aria-label="Artists">
       {rows.map((a) => (
         <ArtistDirectoryCard
           key={a.id}

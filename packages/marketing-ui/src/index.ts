@@ -279,8 +279,72 @@ export {
 export {
   MarketingAlphabetFilter,
   type MarketingAlphabetFilterProps,
+  type MarketingAlphabetLetterCount,
   marketingAlphabetHref,
 } from "./marketing-alphabet-filter.js";
+export {
+  MarketingArtistFacts,
+  type MarketingArtistFact,
+  type MarketingArtistFactInput,
+  type MarketingArtistFactsProps,
+  formatMarketingArtistLifespan,
+  marketingArtistFacts,
+  marketingArtistFactsLine,
+} from "./marketing-artist-facts.js";
+export { MarketingArtistHero, type MarketingArtistHeroProps } from "./marketing-artist-hero.js";
+export {
+  MarketingArtistCard,
+  type MarketingArtistCardProps,
+  MarketingArtistGrid,
+  type MarketingArtistGridProps,
+  MARKETING_ARTIST_GRID_CLASS,
+  marketingArtistInitials,
+} from "./marketing-artist-card.js";
+export {
+  MarketingArtistCrossLinks,
+  type MarketingArtistCrossLink,
+  type MarketingArtistCrossLinksProps,
+} from "./marketing-artist-cross-links.js";
+export {
+  MarketingWorkCard,
+  type MarketingWorkCardProps,
+  MarketingWorkGrid,
+  type MarketingWorkGridProps,
+  MARKETING_WORK_GRID_CLASS,
+} from "./marketing-work-card.js";
+export {
+  MarketingFilterLinkGroups,
+  type MarketingFilterLink,
+  type MarketingFilterLinkGroup,
+  type MarketingFilterLinkGroupsProps,
+} from "./marketing-filter-link-groups.js";
+export { MarketingSortLinks, type MarketingSortLinksProps } from "./marketing-sort-links.js";
+export {
+  type MarketingArtistDirectoryControls,
+  type MarketingArtistDirectoryQuery,
+  type MarketingArtistDirectorySort,
+  marketingArtistDirectoryControls,
+  marketingArtistDirectoryFilterCount,
+  marketingArtistDirectoryHref,
+  parseMarketingArtistDirectoryQuery,
+} from "./marketing-artist-directory-query.js";
+export {
+  MarketingArtistDirectory,
+  type MarketingArtistDirectoryProps,
+  marketingArtistCountLabel,
+} from "./marketing-artist-directory.js";
+export {
+  MarketingLinkFilterSheet,
+  type MarketingLinkFilterSheetProps,
+} from "./marketing-link-filter-sheet.js";
+export {
+  MarketingDirectory,
+  MarketingDirectoryHeader,
+  type MarketingDirectoryHeaderProps,
+  type MarketingDirectoryProps,
+  MarketingDirectorySearch,
+  type MarketingDirectorySearchProps,
+} from "./marketing-directory.js";
 export {
   CATALOG_VIEW_PARAM,
   type BuildViewQueryParamsOptions,

@@ -67,7 +67,7 @@ export async function loadArtistDetailPage(input: {
   ]);
   if (!registry) notFound();
 
-  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName });
+  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName }, searchParams);
 
   const relatedRows = await loadRelatedDirectoryArtists(id, registry);
 
