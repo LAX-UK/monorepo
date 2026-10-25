@@ -1,25 +1,40 @@
 import "server-only";
 
 import {
+  type AmlListSearch,
+  amlListHref,
+  amlRangeSummary,
+  toAmlStaffRows,
+} from "@/lib/admin/compliance/aml-staff-list.vm";
+import {
   type AmlListSearchParams,
   buildAmlListPageModel,
 } from "@/lib/admin/compliance/build-aml-list-page-model";
 import type { SessionUser } from "@/lib/data/contracts";
+import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
 import {
   getAdminAmlScreeningById,
   getAdminAmlScreeningsPage,
 } from "@/lib/data/http/compliance-aml.reader";
 import { EMPTY_ADMIN_AML_LIST_SUMMARY } from "@/lib/data/http/compliance-aml.shared";
-import {
-  type AdminAmlTableRow,
-  buildAdminAmlTableRow,
-  buildAdminAmlTableRows,
-} from "@/lib/data/view-models/admin-aml-table.vm";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 
+/** Shown in place of the rows; the raw failure stays in the server logs. */
+const AML_LOAD_ERROR = "We could not load the AML screenings. Try again in a moment.";
+
+/** The search params as plain strings, so the client can build links. */
+function plainSearch(sp: AmlListSearchParams): AmlListSearch {
+  return Object.fromEntries(
+    Object.entries(sp).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
 export async function loadAdminAmlListPage(sp: AmlListSearchParams, user: SessionUser) {
   const model = buildAmlListPageModel(sp);
+  const search = plainSearch(sp);
   const role = user.role as UserRole;
   const staffRole = user.staffRole ?? null;
   const capabilities = {
@@ -27,60 +42,60 @@ export async function loadAdminAmlListPage(sp: AmlListSearchParams, user: Sessio
     canDecide: userHasAccessTo(role, staffRole, MLRO_DECISION_ACCESS),
     currentUserId: user.id,
   };
+  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+  const attentionCounts = {
+    manualReviewCount: navCounts.manualReviewCount,
+    sourceOfFundsPending: navCounts.sourceOfFundsPending,
+  };
 
   try {
     const selectedId = model.selectedScreeningId;
-    const needsSelectedFetch = selectedId != null && selectedId.length > 0;
     const [page, selectedRow] = await Promise.all([
       getAdminAmlScreeningsPage(model.listQueryParams),
-      needsSelectedFetch ? getAdminAmlScreeningById(selectedId) : Promise.resolve(null),
+      selectedId ? getAdminAmlScreeningById(selectedId).catch(() => null) : Promise.resolve(null),
     ]);
-    const rows: AdminAmlTableRow[] = buildAdminAmlTableRows(page.rows);
-    const selectedFromPage = selectedId
-      ? (rows.find((row) => row.id === selectedId) ?? null)
-      : null;
-    const selected = selectedFromPage ?? (selectedRow ? buildAdminAmlTableRow(selectedRow) : null);
+    const selectedOnPage = selectedId ? page.rows.some((row) => row.id === selectedId) : false;
+    const needed = [...page.rows, ...(selectedRow && !selectedOnPage ? [selectedRow] : [])];
+    const users = await getAdminUsersByIds(needed.map((row) => row.userId)).catch(() => []);
+    const labels = new Map(users.map((entry) => [entry.id, entry.name || entry.email || null]));
+    const rows = toAmlStaffRows(page.rows, labels);
+    const selected =
+      selectedRow && !selectedOnPage ? (toAmlStaffRows([selectedRow], labels)[0] ?? null) : null;
+    const { offset, limit } = model.query;
     return {
-      model,
+      search,
       rows,
       selected,
+      selectedId: selectedId ?? null,
       summary: page.summary,
-      total: page.total,
-      hasNextPage: page.hasNextPage,
       loadError: null as string | null,
       capabilities,
+      attentionCounts,
+      pageSize: limit,
       pagination:
-        page.total > 0 && (model.query.offset > 0 || page.hasNextPage)
+        rows.length > 0
           ? {
-              offset: model.query.offset,
-              limit: model.query.limit,
-              countOnPage: rows.length,
-              total: page.total,
+              summary: amlRangeSummary(offset, rows.length, page.total),
               prevHref:
-                model.query.offset > 0
-                  ? model.buildPaginationHref({
-                      offset: Math.max(0, model.query.offset - model.query.limit),
-                    })
-                  : null,
-              nextHref: page.hasNextPage
-                ? model.buildPaginationHref({
-                    offset: model.query.offset + model.query.limit,
-                  })
-                : null,
+                offset > 0 ? amlListHref(search, { offset: Math.max(0, offset - limit) }) : null,
+              nextHref: page.hasNextPage ? amlListHref(search, { offset: offset + limit }) : null,
             }
           : null,
     };
-  } catch (error) {
+  } catch {
     return {
-      model,
-      rows: [] as AdminAmlTableRow[],
-      selected: null as AdminAmlTableRow | null,
+      search,
+      rows: [] as ReturnType<typeof toAmlStaffRows>,
+      selected: null,
+      selectedId: null,
       summary: EMPTY_ADMIN_AML_LIST_SUMMARY,
-      total: 0,
-      hasNextPage: false,
-      loadError: error instanceof Error ? error.message : "Could not load AML screenings.",
+      loadError: AML_LOAD_ERROR as string | null,
       capabilities,
+      attentionCounts,
+      pageSize: model.query.limit,
       pagination: null,
     };
   }
 }
+
+export type AdminAmlListPage = Awaited<ReturnType<typeof loadAdminAmlListPage>>;

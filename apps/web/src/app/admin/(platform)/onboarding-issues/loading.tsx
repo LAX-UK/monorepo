@@ -1,13 +1,12 @@
-import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminOnboardingIssuesLoading() {
   return (
-    <PeopleListPageSkeleton
+    <ListPageSkeleton
       title="Onboarding issues"
-      description="Loading onboarding issues…"
-      kpiTiles={0}
-      showFilterBar={false}
-      showTabBar
+      description="Entities, artists, KYC sessions, lead organisations and documents waiting on staff."
+      metrics={3}
+      columns={["Entity", "Status", "Waiting", "Created"]}
     />
   );
 }

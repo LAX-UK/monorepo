@@ -120,7 +120,7 @@ export function ExportButton({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           {disabled && disabledReason ? (
             <TooltipProvider>

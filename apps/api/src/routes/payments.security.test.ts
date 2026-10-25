@@ -8,6 +8,7 @@ import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-con
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { MyPaymentRowDTO } from "../services/payment-me-presenter.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createPaymentRoutes } from "./payments.js";
 
 const paymentId = "11111111-1111-4111-8111-111111111111";
@@ -16,6 +17,8 @@ const entityId = "22222222-2222-4222-8222-222222222222";
 type MountOptions = {
   membershipRole?: string;
   staffRole?: string;
+  /** Whether the session's sign-in is recent enough for money actions; defaults to true. */
+  recentSignIn?: boolean;
   /** Authenticator session id; defaults to "u1". */
   sessionUserId?: string;
   listMyPayments?: (
@@ -99,12 +102,14 @@ function mount(role: string, opts: MountOptions = {}) {
     },
     impersonationAuditService: { recordSessionTimedOut: vi.fn() },
     impersonationSessionService: { validateForRequest: vi.fn() },
+    admin: { stepUp: stubStepUpGuard(opts.recentSignIn ?? true) },
   } as unknown as ContainerPaymentHttpRoutesSlice;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn(async () =>
       sessionUserId
         ? {
             id: sessionUserId,
+            identitySessionId: "session-1",
             role: role as UserRole,
             staffRole: (opts.staffRole ?? null) as UserStaffRole | null,
             scopes: ["bid.read", "bid.write"],
@@ -153,6 +158,23 @@ describe("payment finance entity authorization", () => {
       "finance_ops",
       "Buyer withdrew within the cooling-off period",
     );
+  });
+
+  it("asks staff for a recent sign-in before a refund", async () => {
+    const { app, entityStaffPayment } = mount("staff", {
+      staffRole: "finance_ops",
+      recentSignIn: false,
+    });
+
+    const res = await app.request(`/payments/${paymentId}/refund`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Buyer withdrew within the cooling-off period" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "step_up_required" });
+    expect(entityStaffPayment.refundPayment).not.toHaveBeenCalled();
   });
 
   it("refuses a refund reason that is too short to explain anything", async () => {

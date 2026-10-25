@@ -35,6 +35,8 @@ export type AdminPayoutRow = {
   statementUrl: string | null;
   statementGenerationError: string | null;
   createdAt: string;
+  /** The seller's display name, joined by the list read. */
+  legalEntityName?: string | null;
 };
 
 export function isPaymentStatus(s: string): s is PaymentStatus {
@@ -104,5 +106,9 @@ export function parseAdminPayoutRow(raw: unknown): AdminPayoutRow {
     statementGenerationError:
       o.statementGenerationError == null ? null : String(o.statementGenerationError),
     createdAt: String(o.createdAt ?? ""),
+    legalEntityName:
+      typeof o.legalEntityName === "string" && o.legalEntityName.trim()
+        ? o.legalEntityName.trim()
+        : null,
   };
 }

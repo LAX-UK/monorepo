@@ -21,6 +21,10 @@ export const adminPaymentTableRowSchema = z
       id: base.id,
       lotId: base.lotId,
       lotTitle: String(row.lotTitle ?? base.lotId),
+      lotNumber:
+        typeof row.lotNumber === "number" && Number.isFinite(row.lotNumber) ? row.lotNumber : null,
+      saleTitle:
+        typeof row.saleTitle === "string" && row.saleTitle.trim() ? row.saleTitle.trim() : null,
       buyerId: base.buyerId,
       buyerLabel: row.buyerLabel == null ? null : String(row.buyerLabel),
       sellerId: base.sellerId,

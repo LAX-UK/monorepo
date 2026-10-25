@@ -1,14 +1,15 @@
 import "server-only";
 
 import {
-  type DisputesListSearchParams,
-  buildDisputesListPageModel,
-} from "@/lib/admin/build-disputes-list-page-model";
-import { getAdminDisputesPage } from "@/lib/data/http/disputes.server";
-import { adminDisputesKeys } from "@/lib/data/queries/admin-disputes";
-import { getQueryClient } from "@/lib/query/get-query-client";
+  type DisputesListSearch,
+  activeDisputesView,
+  disputesListHref,
+  disputesRangeSummary,
+  disputesViewTotal,
+  toDisputesStaffRows,
+} from "@/lib/admin/finance/disputes-staff-list.vm";
+import { disputesListController } from "@/lib/admin/list-controllers/disputes-list-controller";
 import type { AdminDisputeCaseSummary } from "@auction/types";
-import { dehydrate } from "@tanstack/react-query";
 
 const EMPTY_SUMMARY: AdminDisputeCaseSummary = {
   open: 0,
@@ -18,48 +19,56 @@ const EMPTY_SUMMARY: AdminDisputeCaseSummary = {
   closed: 0,
 };
 
-export async function loadAdminDisputesListPage(sp: DisputesListSearchParams) {
-  const model = buildDisputesListPageModel(sp);
+/** Shown in place of the rows; the raw HTTP failure stays in the server logs. */
+const DISPUTES_LOAD_ERROR = "We could not reach the disputes service. Try again in a moment.";
+
+/** The search params as plain strings, so the client can build view links. */
+function plainSearch(sp: DisputesListSearch): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(sp).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
+export async function loadAdminDisputesListPage(sp: DisputesListSearch) {
+  const query = disputesListController.parseQuery(sp);
+  const search = plainSearch(sp);
+  const view = activeDisputesView(search);
+  const base = { search, view, pageSize: query.limit };
+
   try {
-    const queryClient = getQueryClient();
-    const result = await getAdminDisputesPage(model.listQueryParams);
-    queryClient.setQueryData(adminDisputesKeys.list(model.listQueryParams), result);
+    const page = await disputesListController.fetch(query);
+    const rows = toDisputesStaffRows(page.rows);
+    const summary = page.summary ?? EMPTY_SUMMARY;
+    const { offset, limit } = query;
+    const total = Math.max(disputesViewTotal(view, summary), offset + rows.length);
     return {
-      model,
-      rows: result.rows,
-      hasNextPage: result.hasNextPage,
-      summary: result.summary,
-      dehydratedState: dehydrate(queryClient),
+      ...base,
+      rows,
+      summary,
       loadError: null as string | null,
       pagination:
-        model.query.offset > 0 || result.hasNextPage
+        rows.length > 0
           ? {
-              offset: model.query.offset,
-              limit: model.query.limit,
-              countOnPage: result.rows.length,
+              summary: disputesRangeSummary(offset, rows.length, total),
               prevHref:
-                model.query.offset > 0
-                  ? model.buildPaginationHref({
-                      offset: Math.max(0, model.query.offset - model.query.limit),
-                    })
+                offset > 0
+                  ? disputesListHref(search, { offset: Math.max(0, offset - limit) })
                   : null,
-              nextHref: result.hasNextPage
-                ? model.buildPaginationHref({
-                    offset: model.query.offset + model.query.limit,
-                  })
+              nextHref: page.hasNextPage
+                ? disputesListHref(search, { offset: offset + limit })
                 : null,
             }
           : null,
     };
-  } catch (error) {
+  } catch {
     return {
-      model,
+      ...base,
       rows: [],
-      hasNextPage: false,
       summary: EMPTY_SUMMARY,
-      dehydratedState: undefined,
-      loadError: error instanceof Error ? error.message : "Could not load dispute cases.",
+      loadError: DISPUTES_LOAD_ERROR as string | null,
       pagination: null,
     };
   }
 }
+
+export type AdminDisputesListPage = Awaited<ReturnType<typeof loadAdminDisputesListPage>>;

@@ -15,6 +15,7 @@ import { StaffButton } from "../primitives/button.js";
 import { ChoiceRow, StaffCheckbox, StaffRadio, StaffRadioGroup } from "../primitives/choice.js";
 import { TextInput } from "../primitives/input.js";
 import { Count } from "../primitives/tabs.js";
+import { useStaffShortcut } from "../shell/shortcuts.js";
 import {
   DEFAULT_DATE_PRESETS,
   type DateRangePreset,
@@ -129,6 +130,13 @@ export function FilterSheet({
   };
   const clearAll = () =>
     setDraft(Object.fromEntries(sections.map((section) => [section.id, emptyValue(section)])));
+  useStaffShortcut({
+    id: "staff:open-list-filters",
+    keys: "f",
+    label: "Open filters",
+    group: "Lists",
+    handler: () => openSheet(true),
+  });
 
   return (
     <>
@@ -137,12 +145,13 @@ export function FilterSheet({
         variant="secondary"
         icon={<ListFilter aria-hidden />}
         aria-haspopup="dialog"
+        aria-keyshortcuts="f"
         aria-expanded={open}
         onClick={() => openSheet(true)}
         className={cn(activeCount > 0 && "border-staff-line-hover")}
       >
         Filter
-        {activeCount > 0 ? <Count value={activeCount} tone="attention" className="-mr-1" /> : null}
+        {activeCount > 0 ? <Count value={activeCount} className="-mr-1" /> : null}
       </StaffButton>
       <Sheet open={open} onOpenChange={openSheet}>
         <SheetContent
@@ -160,7 +169,7 @@ export function FilterSheet({
           >
             <header className="flex items-start gap-3 border-b border-staff-line px-5 py-4">
               <div className="min-w-0 flex-1">
-                <SheetTitle className="font-staff-display text-staff-lg font-semibold text-staff-fg">
+                <SheetTitle className="font-staff text-staff-lg font-semibold text-staff-fg">
                   {title}
                 </SheetTitle>
                 <SheetDescription

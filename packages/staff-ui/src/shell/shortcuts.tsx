@@ -27,6 +27,11 @@ export type StaffShortcut = {
   handler: (event: KeyboardEvent) => void;
   /** Also fire while focus is in a text field; for modifier combinations such as "mod+s". */
   allowInFields?: boolean;
+  /**
+   * Listed in the `?` sheet but handled where it applies (Enter on a focused row, Escape in a
+   * panel), so the registry never intercepts it.
+   */
+  passive?: boolean;
 };
 
 type Registry = {
@@ -152,7 +157,7 @@ export function StaffShortcutsProvider({
       const active = entries.current;
       for (const keys of candidates) {
         // The newest registration wins, so a page or dialog can take over a key.
-        const match = [...active].reverse().find((entry) => entry.keys === keys);
+        const match = [...active].reverse().find((entry) => !entry.passive && entry.keys === keys);
         if (!match) continue;
         if (typing && !match.allowInFields) return;
         if (!enabled && isSingleKey(match.keys)) return;
@@ -160,7 +165,7 @@ export function StaffShortcutsProvider({
         match.handler(event);
         return;
       }
-      if (!typing && active.some((entry) => entry.keys.startsWith(`${name} `))) {
+      if (!typing && active.some((entry) => !entry.passive && entry.keys.startsWith(`${name} `))) {
         prefix.current = { key: name, at: now };
       }
     };
@@ -200,6 +205,7 @@ export function useStaffShortcut(shortcut: StaffShortcut | null): void {
   const label = shortcut?.label;
   const group = shortcut?.group;
   const allowInFields = shortcut?.allowInFields;
+  const passive = shortcut?.passive;
   React.useEffect(() => {
     if (!register || !id || !keys || !label || !group) return;
     return register({
@@ -208,9 +214,10 @@ export function useStaffShortcut(shortcut: StaffShortcut | null): void {
       label,
       group,
       ...(allowInFields ? { allowInFields } : {}),
+      ...(passive ? { passive } : {}),
       handler: (event) => handler.current?.(event),
     });
-  }, [register, id, keys, label, group, allowInFields]);
+  }, [register, id, keys, label, group, allowInFields, passive]);
 }
 
 /** The `?` sheet: every shortcut that works right now, grouped, and searchable. */

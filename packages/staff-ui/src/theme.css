@@ -207,6 +207,19 @@
   );
 }
 
+/* From 768px the list toolbar sticks above the column headers. */
+@media (min-width: 48rem) {
+  :root:has([data-staff-shell] [data-staff-sticky-toolbar]) {
+    scroll-padding-top: calc(
+      var(--spacing-staff-top-bar) +
+      var(--staff-table-toolbar-height, 0px) +
+      var(--spacing-staff-table-header) +
+      var(--spacing) *
+      2
+    );
+  }
+}
+
 :root:has([data-staff-bulk-bar]) {
   scroll-padding-bottom: var(--spacing-staff-bulk-bar-clearance);
 }

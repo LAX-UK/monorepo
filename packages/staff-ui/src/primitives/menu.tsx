@@ -6,6 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
@@ -19,7 +21,18 @@ import { ShortcutKeys } from "./input.js";
  * md, hairline) holding 32px items; destructive items are red and sit last, after a separator.
  */
 
-export const StaffMenu = DropdownMenu;
+/**
+ * A menu that leaves the page as it is: non-modal, so opening it never hides the rest of the page
+ * from assistive technology (a hidden page with a focusable skip link fails WCAG), while focus
+ * still moves into the menu, arrows move through it, and Escape or a click outside closes it and
+ * returns focus to the button.
+ */
+export function StaffMenu({
+  modal = false,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenu>) {
+  return <DropdownMenu modal={modal} {...props} />;
+}
 export const StaffMenuTrigger = DropdownMenuTrigger;
 
 export function StaffMenuContent({
@@ -100,6 +113,25 @@ export function StaffMenuCheckboxItem({
   return (
     <DropdownMenuCheckboxItem
       className={cn(itemClass, "pl-8 [&>span>span>svg]:size-4", className)}
+      {...props}
+    />
+  );
+}
+
+export const StaffMenuRadioGroup = DropdownMenuRadioGroup;
+
+/** One choice of several in a menu (density, page size); the chosen one shows a dot. */
+export function StaffMenuRadioItem({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuRadioItem>) {
+  return (
+    <DropdownMenuRadioItem
+      className={cn(
+        itemClass,
+        "pl-8 [&>span>span>svg]:size-2 [&>span>span>svg]:fill-current",
+        className,
+      )}
       {...props}
     />
   );

@@ -20,6 +20,8 @@ vi.mock("@auction/ui/components/dropdown-menu", () => {
     DropdownMenuItem: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
     DropdownMenuLabel: Pass,
     DropdownMenuCheckboxItem: Pass,
+    DropdownMenuRadioGroup: Pass,
+    DropdownMenuRadioItem: Pass,
     DropdownMenuSeparator: () => null,
   };
 });

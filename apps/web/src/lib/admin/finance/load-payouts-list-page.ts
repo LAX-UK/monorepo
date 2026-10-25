@@ -1,94 +1,102 @@
 import "server-only";
 
-import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
-import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import {
-  type PayoutsListSearchParams,
-  buildPayoutsListPageModel,
-} from "@/lib/admin/build-payouts-list-page-model";
-import { getAdminPayoutsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
+  type PayoutsListSearch,
+  activePayoutsView,
+  payoutsListHref,
+  payoutsRangeSummary,
+  toPayoutsStaffRows,
+} from "@/lib/admin/finance/payouts-staff-list.vm";
+import { payoutsListController } from "@/lib/admin/list-controllers/payouts-list-controller";
+import { getAdminLegalEntityById } from "@/lib/data/http/admin-legal-entities.reader";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminPayoutsPage } from "@/lib/data/http/admin-payouts.reader";
 import { EMPTY_ADMIN_PAYOUT_LIST_SUMMARY } from "@/lib/data/http/admin-payouts.shared";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { PAYOUT_PROCESS_ACCESS, PAYOUT_REVERSE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 
-export async function loadAdminPayoutsListPage(sp: PayoutsListSearchParams) {
-  const model = buildPayoutsListPageModel(sp);
-  const periodDays = parseAdminKpiPeriod(sp.period);
+/** Shown in place of the rows; the raw HTTP failure stays in the server logs. */
+const PAYOUTS_LOAD_ERROR = "We could not reach the payouts service. Try again in a moment.";
 
-  const [sessionUser, payoutsTrend, navCounts] = await Promise.all([
+/** The search params as plain strings, so the client can build view and filter links. */
+function plainSearch(sp: PayoutsListSearch): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(sp).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
+/** The filtered seller's name, for its chip, when no row on the page carries it. */
+async function sellerFilterName(
+  legalEntityId: string | undefined,
+  rows: readonly { legalEntityId: string; legalEntityName?: string | null }[],
+): Promise<string | null> {
+  if (!legalEntityId) return null;
+  const onPage = rows.find((row) => row.legalEntityId === legalEntityId)?.legalEntityName;
+  if (onPage) return onPage;
+  const entity = await getAdminLegalEntityById(legalEntityId).catch(() => null);
+  return entity?.displayName?.trim() || null;
+}
+
+export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
+  const query = payoutsListController.parseQuery(sp);
+  const search = plainSearch(sp);
+
+  const [sessionUser, navCounts] = await Promise.all([
     getServerSessionUser().catch(() => null),
-    getAdminPayoutsKpiTrend(periodDays).catch(() => ({
-      currentTotal: 0,
-      priorTotal: 0,
-      dailyCounts: [] as number[],
-    })),
     getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
   ]);
-
   const role = (sessionUser?.role ?? "client") as UserRole;
   const staffRole = sessionUser?.staffRole ?? null;
-  const capabilities = {
-    canProcess: userHasAccessTo(role, staffRole, PAYOUT_PROCESS_ACCESS),
-    canReverse: userHasAccessTo(role, staffRole, PAYOUT_REVERSE_ACCESS),
+  const base = {
+    search,
+    view: activePayoutsView(search),
+    capabilities: {
+      canProcess: userHasAccessTo(role, staffRole, PAYOUT_PROCESS_ACCESS),
+      canReverse: userHasAccessTo(role, staffRole, PAYOUT_REVERSE_ACCESS),
+    },
+    disputesOpen: navCounts.disputesOpen,
+    exportFilters: payoutsListController.exportFilters?.(query) ?? {},
+    pageSize: query.limit,
   };
 
   try {
-    const page = await getAdminPayoutsPage(model.listQueryParams);
-    const { summary } = page;
-    const anomalies = detectAnomaliesFromNavCounts(navCounts, {
-      clawbackPending: summary.clawbackPending,
-      failedPayouts: summary.readiness.failedCount + summary.readiness.reversedCount,
-    });
-
+    const page = await payoutsListController.fetchPage(query);
+    // Seller names come with the rows; only a filtered seller with no row here is looked up.
+    const filterName = await sellerFilterName(query.legalEntityId, page.rows);
+    const rows = toPayoutsStaffRows(page.rows);
+    const { offset, limit } = query;
     return {
-      model,
-      periodDays,
-      payoutsTrend,
-      rows: page.rows,
-      summary,
-      total: page.total,
-      hasNextPage: page.hasNextPage,
+      ...base,
+      rows,
+      summary: page.summary,
+      sellerFilterName: filterName,
       loadError: null as string | null,
-      anomalies,
-      capabilities,
       pagination:
-        page.total > 0 && (model.query.offset > 0 || page.hasNextPage)
+        rows.length > 0
           ? {
-              offset: model.query.offset,
-              limit: model.query.limit,
-              countOnPage: page.rows.length,
-              total: page.total,
+              summary: payoutsRangeSummary(offset, rows.length, page.total),
               prevHref:
-                model.query.offset > 0
-                  ? model.buildPaginationHref({
-                      offset: Math.max(0, model.query.offset - model.query.limit),
-                    })
+                offset > 0
+                  ? payoutsListHref(search, { offset: Math.max(0, offset - limit) })
                   : null,
-              nextHref: page.hasNextPage
-                ? model.buildPaginationHref({
-                    offset: model.query.offset + model.query.limit,
-                  })
-                : null,
+              nextHref:
+                offset + rows.length < page.total
+                  ? payoutsListHref(search, { offset: offset + limit })
+                  : null,
             }
           : null,
     };
-  } catch (error) {
+  } catch {
     return {
-      model,
-      periodDays,
-      payoutsTrend,
+      ...base,
       rows: [],
       summary: EMPTY_ADMIN_PAYOUT_LIST_SUMMARY,
-      total: 0,
-      hasNextPage: false,
-      loadError: error instanceof Error ? error.message : "Could not load payouts.",
-      anomalies: [],
-      capabilities,
+      sellerFilterName: null,
+      loadError: PAYOUTS_LOAD_ERROR as string | null,
       pagination: null,
     };
   }
 }
+
+export type AdminPayoutsListPage = Awaited<ReturnType<typeof loadAdminPayoutsListPage>>;

@@ -1,13 +1,12 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminComplianceSofLoading() {
   return (
-    <CatalogListPageSkeleton
-      title="Source of Funds"
-      description="Loading Source of Funds cases…"
-      kpiTiles={3}
-      tableRows={8}
-      tableColumns={4}
+    <ListPageSkeleton
+      title="Source of funds"
+      description="Settlement is blocked until a pending case is approved by an MLRO, after an analyst's triage. A rejected case keeps blocking until it is reopened."
+      metrics={3}
+      columns={["Buyer", "Status", "Trigger", "Exposure", "Triage", "Opened"]}
     />
   );
 }

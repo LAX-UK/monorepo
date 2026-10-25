@@ -31,11 +31,13 @@ export {
   StaffMenuContent,
   StaffMenuItem,
   StaffMenuLabel,
+  StaffMenuRadioGroup,
+  StaffMenuRadioItem,
   StaffMenuSeparator,
   StaffMenuTrigger,
   StaffTooltip,
 } from "./primitives/menu.js";
-export { Count, SegmentedControl, TabNav } from "./primitives/tabs.js";
+export { Count, OverflowTabs, SegmentedControl, TabNav } from "./primitives/tabs.js";
 export type { SegmentOption, TabNavItem } from "./primitives/tabs.js";
 
 // Display
@@ -154,6 +156,22 @@ export type {
 export { ColumnsMenu, useColumnVisibility, visibleColumns } from "./data/columns-menu.js";
 export type { ColumnVisibility } from "./data/columns-menu.js";
 export { RowActions, rowActionsColumn } from "./data/row-actions.js";
+export { DisplayMenu } from "./data/display-menu.js";
+export {
+  STAFF_DEFAULT_PAGE_SIZE,
+  STAFF_PAGE_SIZES,
+  parseStaffPageSize,
+} from "./lib/page-size.js";
+export type { DisplayPageSize } from "./data/display-menu.js";
+export {
+  CellLink,
+  EmptyValue,
+  PrimaryCell,
+  StaffDate,
+  StaffMoney,
+  isEmptyCellValue,
+  staffCellLinkClass,
+} from "./data/cells.js";
 
 // Page templates
 export { ListPage } from "./templates/list-page.js";
@@ -184,7 +202,7 @@ export type {
 
 // Panels
 export { DetailPanel, PanelSection } from "./panels/detail-panel.js";
-export type { DetailPanelProps } from "./panels/detail-panel.js";
+export type { DetailPanelProps, PanelMetaFact } from "./panels/detail-panel.js";
 export { ConfirmActionDialog, StaffDialog } from "./panels/staff-dialog.js";
 export type {
   ConfirmActionDialogProps,

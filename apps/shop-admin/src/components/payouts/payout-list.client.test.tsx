@@ -54,6 +54,8 @@ vi.mock("@auction/ui/components/dropdown-menu", () => {
       </div>
     ),
     DropdownMenuCheckboxItem: Pass,
+    DropdownMenuRadioGroup: Pass,
+    DropdownMenuRadioItem: Pass,
     DropdownMenuLabel: Pass,
     DropdownMenuSeparator: () => null,
   };

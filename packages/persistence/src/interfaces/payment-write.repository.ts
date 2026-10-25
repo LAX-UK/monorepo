@@ -59,6 +59,9 @@ export type ListPaymentsAdminTableFilter = {
 
 export type AdminPaymentTableRowDto = PaymentRecord & {
   lotTitle: string;
+  /** The lot's number in its sale, for the list's second line ("Lot 12 · Autumn sale"). */
+  lotNumber?: number | null;
+  saleTitle?: string | null;
   buyerLabel: string | null;
   fulfilmentStatus: string | null;
   buyerId: string;

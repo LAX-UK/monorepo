@@ -6,7 +6,7 @@ Both tools are built on `@auction/staff-ui` and look and behave the same.
 - **Who it is for:** staff who work in these tools all day, such as fulfilment, finance, catalogue,
   editorial, compliance and auction operations. They are experts and repeat the same tasks hundreds
   of times. The design should be calm, dense, keyboard-first and predictable.
-- **Fixed constraints:** Outfit for the interface and Montserrat for titles. Primary buttons are
+- **Fixed constraints:** Outfit for the interface and Montserrat for page titles only. Primary buttons are
   neutral ink (black in light mode). Product accents appear only on the tool tile and the
   active-nav bar.
 - **Kit:** `packages/staff-ui` (`@auction/staff-ui`). Each rule records what the kit provides.
@@ -201,6 +201,24 @@ previous or next record in that list.**
 
 ## 2. Data tables
 
+**TBL-0. A list page is one fixed frame.**
+
+- **Rule:**
+  - Header, attention strip, metric strip and the table surface stack 24px apart, and the three
+    surfaces share one look: radius md (8px), a 1px hairline and the surface fill.
+  - The metric strip's period caption and its labels are 12px muted; values are 20px semibold in
+    tabular figures.
+  - The toolbar row is: search (fills the row), Filter, period (when the rows have one), Display.
+  - Only the search gets a row of its own. Without search, Filter, period and Display sit at the
+    right of the view tabs; with no tabs either, a slim row carries the record count on the left
+    ("12 screenings") and the controls on the right. No band is left holding a control or two.
+  - Menus (Display, row `…`, Export) are non-modal: opening one never hides the page from
+    assistive technology, while focus still moves into the menu and back to its button.
+  - View tabs carry the same `Count` everywhere and overflow into "More" when they do not fit;
+    record-section tabs (`TabNav`) are the same tabs.
+- **Kit:** `MET` (`ListPage` with `resultCount`, `MetricStrip`, `AttentionStrip`, `OverflowTabs`
+  behind `DataViews` and `TabNav`).
+
 **TBL-1. Two densities: 36px compact and 44px comfortable, remembered per list.**
 
 - **Rule:**
@@ -216,8 +234,9 @@ previous or next record in that list.**
   - Measure the rows: 36 or 44px.
   - Toggle density, reload, and the choice persists.
   - No row grows taller because a cell wraps.
-- **Kit:** `MET` (`DataTable` `density`, `DensityToggle`, `useTableDensity`). Picking the
-  default per list is `APP`.
+- **Kit:** `MET` (`DataTable` `density`, `useTableDensity`, and the "Rows" choice in the
+  `ListPage` "Display" menu). Picking the default per list is `APP`: a list whose first cell has a
+  second line (`PrimaryCell` `secondary`) defaults to comfortable.
 - **Sources:** [carbon-dt] [carbon-dt-style] [primer-dt]
 
 **TBL-2. Column choice and order follow the question staff ask of the list.**
@@ -250,7 +269,10 @@ table scrolls horizontally.**
 - **Check:**
   - Scroll a 50-row list: the column headers stay visible.
   - At 900px with a wide table, scroll sideways: the identifier column stays put.
-- **Kit:** `MET`. `DataTable` keeps its header under the top bar by default (`stickyHeader`): the card
+- **Kit:** `MET`. From 768px the table's toolbar (views, search, Filter, Display, chips) sticks
+  under the top bar too (`stickyToolbar`), with the column headers under it; the page's scroll
+  padding counts both, so a row reached by keyboard is never hidden. `DataTable` keeps its header
+  under the top bar by default (`stickyHeader`): the card
   clips with `overflow: clip`, which is not a scroll container, so `position: sticky` works against
   the page. When the columns are wider than the card, the table scrolls sideways instead and
   `stickyFirstColumn` keeps the identifier (and the selection column) in view with a hairline.
@@ -282,7 +304,10 @@ table scrolls horizontally.**
   - **Search** fills the toolbar row and is 32px high. It submits on Enter and searches IDs,
     names and emails.
   - **One "Filter" button** opens a sheet holding every filter, applied together. It shows how
-    many filters are on. A date period that filters the rows sits beside it.
+    many filters are on, and `f` opens it. A date period that filters the rows sits beside it.
+  - **One "Display" button** at the end of the row holds how the list is shown: columns, rows
+    (comfortable 44px or compact 36px), rows per page (25, 50, 100) and "Reset to default".
+    There is no separate Columns button and no density icons.
   - **Applied filters** show as removable chips, with "Clear all" when there are two or more.
   - Range filters (amount, date) use presets plus two fields.
   - Filter state lives in the URL.
@@ -357,7 +382,13 @@ saved per person.**
   - Cmd-click a row title: it opens a new tab.
   - The `…` is visible without hover.
   - Delete or Refund is last in the menu and red.
-- **Kit:** `MET`. Row open (click and Enter), `RowActions` and `rowActionsColumn` (the 56px last
+- **Cells:** the first cell is a `PrimaryCell`: a real link in medium weight, with an optional
+  muted second line ("Lot 12 · Autumn sale"). Other links in cells are `CellLink` (same colour as
+  the text, underline on hover). A missing value is one muted em dash, read as "None"; a cell
+  that renders nothing gets it automatically.
+- **Kit:** `MET`. `PrimaryCell`, `CellLink`, `EmptyValue` (automatic for empty cells). Row
+  hover, a 2px inset focus ring, `j`/`k` from anywhere on the page into the rows, and Enter or a
+  click to open. Row open (click and Enter), `RowActions` and `rowActionsColumn` (the 56px last
   column, header for screen readers only, at the right of each row on a phone; `ListPage`
   adds it from `table.rowActions`), `OverflowMenu` (destructive last), and the selection cell
   never opens the row (TBL-15). Making the title cell a link is `APP`.
@@ -384,8 +415,9 @@ for previous and next.**
   - Infinite scroll is never used in tables.
 - **Why:** page URLs can be shared, page sizes are predictable, and select-all has a scope.
 - **Check:** page 3's URL reloads page 3, and the summary is in tabular figures.
-- **Kit:** `PARTIAL`. `TablePagination` has the summary, links and first-page label. A
-  page-size control is missing.
+- **Kit:** `MET`. `TablePagination` has the summary, links and first-page label; "Rows per page"
+  is in the `ListPage` "Display" menu (`pageSize`), and `parseStaffPageSize` reads `?limit=` so
+  only 25, 50 or 100 reach the API.
 - **Sources:** [carbon-dt] [atl-dynamic-table]
 
 **TBL-11. Every list has four distinct states that keep the table's frame.**
@@ -408,13 +440,13 @@ for previous and next.**
 
 **TBL-12. Columns can be shown or hidden per list, and the choice is remembered.**
 
-- **Rule:** the "Columns" menu sits in the toolbar's right side. The identifier column cannot be
+- **Rule:** columns are chosen in the toolbar's "Display" menu. The identifier column cannot be
   hidden. Reordering is optional (P2).
 - **Why:** finance and fulfilment want different columns from the same orders list.
 - **Check:** hide a column, reload, and it stays hidden. "Reset columns" is available.
-- **Kit:** `MET`. `ColumnsMenu` with `useColumnVisibility` (remembered per list in this browser,
-  "Reset columns", the first column locked, defaults through `defaultHiddenColumns`), placed by
-  `ListPage`.
+- **Kit:** `MET`. `DisplayMenu` with `useColumnVisibility` (remembered per list in this browser,
+  the first column locked, defaults through `defaultHiddenColumns`), placed by `ListPage`.
+  "Reset to default" restores columns, rows and page size together.
 - **Sources:** [carbon-dt] [polaris-filters]
 
 **TBL-13. Numbers, money and dates are formatted and aligned consistently.**
@@ -437,7 +469,11 @@ for previous and next.**
   - Money columns line up on the decimal point.
   - No `10/11/2026`-style dates.
   - Live-sale times show BST or GMT.
-- **Kit:** `MET`. `formatStaffDate`, `formatStaffTime`, `formatStaffDateTime(value, { zoneLabel })` (adds
+- **Cells:** dates in lists use `StaffDate`: "24 Oct 2026" in the cell (or with the time, where
+  the moment matters), the exact London time with BST or GMT on hover and in `<time datetime>`.
+  Amounts sit in `numeric` columns (right-aligned, tabular figures), via `StaffMoney` or
+  `formatStaffMoney`.
+- **Kit:** `MET`. `StaffDate`, `StaffMoney`, `formatStaffDate`, `formatStaffTime`, `formatStaffDateTime(value, { zoneLabel })` (adds
   BST or GMT), `formatStaffMoney` (minus sign, ISO code for other currencies) and `RelativeTime`
   (exact time in a tooltip and in `<time datetime>`), all in London time. Numeric columns use
   `tabular-nums` and right alignment.
@@ -492,8 +528,13 @@ facts underneath.**
   - It says how many rows it will export.
   - Exports over 5,000 rows run as a job (FBK-6).
 - **Why:** Stripe exports from the filtered list with column choice.
+- **Contract:** the list and its export are built from one parsed query. A Bid list controller
+  implements `exportFilters(query)` (paging dropped, see `listExportFilters`), the loader passes
+  the result to the export control, and the export provider applies every filter the list does.
+  The control goes in `ListPage` `exportAction`, first among the header's secondary actions.
 - **Check:** filter, export, and the CSV matches the list's count.
-- **Kit:** `APP`.
+- **Kit:** `PARTIAL`. `ListPage` `exportAction` places it. Building the filters from the list's
+  query is `APP` (Bid Payments and Payouts follow it).
 - **Sources:** [stripe-export]
 
 ---
@@ -594,8 +635,17 @@ independent and heavy.**
 - **Why:** this applies the panel-or-page decision above.
 - **Check:** a panel never holds tabs or a money action without confirmation. It has a URL, and
   Esc returns focus to the row.
-- **Kit:** `MET` for the panel (`DetailPanel` widths, focus return, header actions slot, footer).
-  URL and J/K are `APP` (NAV-6, NAV-7).
+- **Header:** a panel uses the record page's header pattern: title, status badge, a meta line of
+  2–4 facts, header actions ("Open full page"), then the `…` with the same actions as the row
+  menu. Under it, a notice about the record, the key-value summary, sections, and activity last.
+  - A fact is said once. The summary leaves out anything the meta line shows, and anything the
+    title, a status badge or the line under the title shows, named in `headerFacts` (typed to
+    the summary's own labels, so a renamed label fails the build).
+  - Focus starts on the panel's title, as in a dialog, so no focus ring shows on a header button
+    until the person presses Tab.
+- **Kit:** `MET` for the panel (`DetailPanel` widths, focus on the title and back to the row,
+  `meta` as facts that `summary` never repeats, `headerActions`, `overflow`, `notice`,
+  `summary`, `activity`, footer). URL and J/K are `APP` (NAV-6, NAV-7).
 - **Sources:** [notion-peek]
 
 **PRD-8. Edit sections in place. Use a page-level edit mode only for long documents.**
@@ -1049,6 +1099,11 @@ invalid (for fields).**
   - Height 20px, radius 4px, 12px label at weight 500, sentence case, 6px dot.
   - One status map per domain, such as `defineStatusMap(orderStatus)`. A status the code does not
     know renders as neutral with a humanised label.
+  - Every status family in both tools uses the same five tones and the same dot-plus-label badge.
+    Bid maps each family once (`staffStatus(domain, status)` in
+    `apps/web/src/lib/admin/staff-kit-status.ts`, over the shared status registry: payment,
+    fulfilment, payout, dispute, AML, source of funds, legal entity and the rest); pages never
+    choose a tone themselves.
   - Tone meanings:
 
     | Tone | Meaning |
@@ -1150,8 +1205,8 @@ on `:focus-visible` only.**
 | 12/16 | Column headers, hints, badges, captions |
 | **13/20** | Default UI text: tables, menus, nav |
 | 14/20 | Form values, panel body, section titles |
-| 16/24 | Panel and dialog titles (Montserrat) |
-| 20/28 | Page titles (Montserrat) |
+| 16/24 | Panel and dialog titles (Outfit, semibold) |
+| 20/28 | Page titles (Montserrat, the only Montserrat in the tools) |
 
 - **Rule:**
   - Weights are 400, 500 and 600 only.
@@ -1361,7 +1416,7 @@ everyone's.**
 | Scope | Keys |
 | --- | --- |
 | Global | `⌘K` search · `?` shortcuts help · `g` then `o` Orders, `g` then `l` Lots (go-to chords) · `/` focus list search |
-| Lists | `↑ ↓` or `j k` move · `↵` open · `x` or `Space` select · `⇧`+click range · `Esc` clear · `⌘↵` open in new tab |
+| Lists | `/` search · `f` filters · `↑ ↓` or `j k` move (from anywhere on the page) · `↵` open · `x` or `Space` select · `⇧`+click range · `Esc` clear or close · `⌘↵` open in new tab |
 | Records | `j k` previous or next record (NAV-6) · `e` edit · `⌘S` save · `⌘C` copy record ID when nothing is selected · `Esc` close panel |
 
 - **Rule:**
@@ -1377,8 +1432,10 @@ everyone's.**
 - **Kit:** `MET`. `StaffShortcutsProvider` (mounted by `StaffShell`) with `useStaffShortcut` handles
   single keys, modifier combinations and two-key sequences (`g` then `o`), never fires
   single-key shortcuts while typing, and lets people turn them off from the account menu. The kit
-  binds `?` (sheet), `/` (`TableSearch`), J, K, X and Shift+click in lists, and J and K in
-  `RecordPager`. Each tool's `g` go-to chords are `APP`.
+  binds `?` (sheet), `/` (`TableSearch`), `f` (`FilterSheet`), J and K from anywhere on a list
+  page, X and Shift+click in lists, and J and K in `RecordPager`. Keys handled where they apply
+  (Enter on a row, Escape in a panel) are listed in the sheet as `passive` entries. Each tool's
+  `g` go-to chords are `APP`.
 - **Sources:** [primer-kbd] [wcag-char-key] [linear-kbd-help] [intercom-cmdk]
 
 **PRD-K2. Teach shortcuts where actions live.**
@@ -1525,10 +1582,10 @@ records how. **Open** items are still to build.
 
 1. **Open.** **`StatusBadge` `shape`** (ring, dot, check, alert), defined once in each domain's status map.
    (CRF-7)
-2. **Done.** **Column visibility menu** (`ColumnsMenu`, `useColumnVisibility`), remembered per list, with "Reset columns". (TBL-12)
+2. **Done.** **Display menu** (`DisplayMenu`): columns, rows, rows per page and "Reset to default" in one toolbar button. (TBL-1, TBL-10, TBL-12)
 3. **Open.** **Filter set completion.** `FilterSheet` holds checklist, single-select and date sections; an amount-range section is still
    to come. (TBL-5)
-4. **Open.** **Page-size control** in `TablePagination` (25, 50, 100). (TBL-10)
+4. **Done.** **Page size** (25, 50, 100) in the Display menu, read with `parseStaffPageSize`. (TBL-10)
 5. **Open.** **`CopyButton` / `CopyableId` exported** for headers, cells and menus. (PRD-4, PRD-K4)
 6. **Open.** **Motion tokens:** `--duration-staff-fast` 100, `-base` 150, `-panel` 200, and
    `--ease-staff-out` / `-in`. (CRF-14)

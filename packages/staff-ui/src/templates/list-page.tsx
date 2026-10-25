@@ -1,13 +1,13 @@
 "use client";
 
 import type * as React from "react";
-import { ColumnsMenu, useColumnVisibility, visibleColumns } from "../data/columns-menu.js";
+import { useColumnVisibility, visibleColumns } from "../data/columns-menu.js";
 import { DataTable, type DataTableProps } from "../data/data-table.js";
+import { DisplayMenu, type DisplayPageSize } from "../data/display-menu.js";
 import { rowActionsColumn } from "../data/row-actions.js";
 import {
   type ActiveFilter,
   ActiveFilterChips,
-  DensityToggle,
   TablePagination,
   useTableDensity,
 } from "../data/toolbar.js";
@@ -21,6 +21,7 @@ import {
   NoResultsState,
   ViewOnlyBadge,
 } from "../display/states.js";
+import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
 import type { StaffLinkComponent } from "../shell/link.js";
 import type { OverflowAction } from "../shell/overflow-menu.js";
@@ -41,7 +42,7 @@ export type ListPageTable<T> = Omit<
     /** "Actions for payment LAX-1042". */
     label: (row: T) => string;
   };
-  /** Columns that start hidden; the person can show them from "Columns". */
+  /** Columns that start hidden; the person can show them from "Display". */
   defaultHiddenColumns?: readonly string[];
   /** Columns that can never be hidden; defaults to the first. */
   lockedColumns?: readonly string[];
@@ -55,8 +56,14 @@ export type ListPageProps<T> = {
   description?: React.ReactNode;
   /** The one primary action, e.g. "New lot". Hidden for read-only access. */
   primaryAction?: React.ReactNode;
-  /** Up to two secondary actions; Export goes here. */
+  /** Up to two secondary actions besides Export. */
   secondaryActions?: React.ReactNode;
+  /**
+   * Export of what the list shows: an export control built from the same query as the rows (the
+   * view, search and every filter, without the page), so the file always matches the list. Sits
+   * first among the header's secondary actions.
+   */
+  exportAction?: React.ReactNode;
   /** An OverflowMenu with the page's remaining actions. */
   overflow?: React.ReactNode;
   Link: StaffLinkComponent;
@@ -94,6 +101,13 @@ export type ListPageProps<T> = {
   onClearFilters?: () => void;
 
   table: ListPageTable<T>;
+  /**
+   * How many records the list holds, "12 screenings". Shown at the left of the slim row that
+   * carries "Display" when the list has no view tabs, search or filters.
+   */
+  resultCount?: React.ReactNode;
+  /** Rows per page (25, 50 or 100; 50 by default), offered in "Display". */
+  pageSize?: DisplayPageSize | null;
   /** "1–50 of 312" and previous/next links. */
   pagination?: {
     summary: React.ReactNode;
@@ -120,9 +134,12 @@ export type ListPageProps<T> = {
  * 1. Page header: title, one line of purpose, actions (Export among the secondary ones).
  * 2. Attention strip (optional): one compact line per issue, each linking to a filtered view.
  * 3. Metric strip (optional): up to four numbers in one bordered row, with their period.
- * 4. One table surface: view tabs, then search · Filter · period · Columns · density, then the
- *    applied filters as chips, then the table (sticky header, a sort, `…` on every row), then
- *    the count and pagination.
+ * 4. One table surface: view tabs, then search · Filter · period · Display, then the applied
+ *    filters as chips (all of it sticking under the top bar), then the table (sticky header, a
+ *    sort, `…` on every row), then the count and pagination.
+ *
+ * The four blocks sit 24px apart and share one surface: radius md, a hairline border and the
+ * surface fill.
  *
  * Loading, empty, no results, error, read-only and no access are all states of this one frame.
  */
@@ -131,6 +148,7 @@ export function ListPage<T>({
   description,
   primaryAction,
   secondaryActions,
+  exportAction,
   overflow,
   Link,
   listKey,
@@ -146,6 +164,8 @@ export function ListPage<T>({
   activeFilters = [],
   onClearFilters,
   table,
+  resultCount,
+  pageSize,
   pagination,
   loading = false,
   filtered,
@@ -168,6 +188,13 @@ export function ListPage<T>({
   } = table;
   const readOnly = access === "read-only";
   const [density, setDensity] = useTableDensity(listKey, defaultDensity);
+  const headerSecondary =
+    exportAction || secondaryActions ? (
+      <>
+        {exportAction}
+        {secondaryActions}
+      </>
+    ) : null;
   const visibility = useColumnVisibility(listKey, defaultHiddenColumns);
   const locked = lockedColumns ?? (allColumns[0] ? [allColumns[0].id] : []);
   const shown = visibleColumns(allColumns, visibility.hidden, locked);
@@ -183,7 +210,7 @@ export function ListPage<T>({
         ? { status: <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> }
         : {})}
       {...(access !== "denied" && !readOnly && primaryAction ? { primaryAction } : {})}
-      {...(access !== "denied" && secondaryActions ? { secondaryActions } : {})}
+      {...(access !== "denied" && headerSecondary ? { secondaryActions: headerSecondary } : {})}
       {...(access !== "denied" && overflow ? { overflow } : {})}
     />
   );
@@ -199,25 +226,53 @@ export function ListPage<T>({
     );
   }
 
-  const hasViewOptions = allColumns.length > 1;
+  const hasViewOptions = allColumns.length > 1 || Boolean(pageSize);
+  const display = hasViewOptions ? (
+    <DisplayMenu
+      columns={allColumns}
+      visibility={visibility}
+      locked={locked}
+      density={density}
+      onDensityChange={setDensity}
+      defaultDensity={defaultDensity}
+      {...(pageSize ? { pageSize } : {})}
+    />
+  ) : null;
+  // The search is the only thing that needs a row of its own. Without it, the controls (Filter,
+  // period, Display) join the view tabs, or sit in a slim row beside the record count; no band
+  // is ever left holding a control or two and empty space.
+  const controls =
+    filters || period || display ? (
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {filters}
+        {period}
+        {display}
+      </div>
+    ) : null;
   const toolbar = (
     <div className="flex flex-col">
-      {views ? <div className="border-b border-staff-line-subtle px-2">{views}</div> : null}
-      <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">{search}</div>
-        {filters || period ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {filters}
-            {period}
-          </div>
-        ) : null}
-        {hasViewOptions ? (
-          <div className="hidden items-center gap-2 md:flex">
-            <ColumnsMenu columns={allColumns} visibility={visibility} locked={locked} />
-            <DensityToggle value={density} onChange={setDensity} />
-          </div>
-        ) : null}
-      </div>
+      {views ? (
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-2 px-2",
+            search && "border-b border-staff-line-subtle",
+          )}
+        >
+          <div className="min-w-0 flex-1">{views}</div>
+          {!search && controls ? <div className="py-1 pr-1">{controls}</div> : null}
+        </div>
+      ) : null}
+      {search ? (
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+          <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">{search}</div>
+          {controls}
+        </div>
+      ) : !views && (controls || resultCount) ? (
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 py-1.5 pr-3 pl-4">
+          <p className="text-staff-sm text-staff-muted tabular-nums">{resultCount}</p>
+          {controls}
+        </div>
+      ) : null}
       {activeFilters.length > 0 ? (
         <div className="border-t border-staff-line-subtle px-3 py-2">
           <ActiveFilterChips
@@ -258,20 +313,16 @@ export function ListPage<T>({
   return (
     <div className="flex flex-col gap-6">
       {header}
-      {attention?.some((item) => item.count > 0) || (metrics && !error) ? (
-        <div className="flex flex-col gap-4">
-          {attention ? <AttentionStrip items={attention} Link={Link} /> : null}
-          {metrics && !error ? (
-            <MetricStrip
-              label={metrics.label}
-              period={metrics.period}
-              items={metrics.items}
-              loading={loading && metrics.items.length === 0}
-              Link={Link}
-              {...(metrics.action ? { action: metrics.action } : {})}
-            />
-          ) : null}
-        </div>
+      {attention ? <AttentionStrip items={attention} Link={Link} /> : null}
+      {metrics && !error ? (
+        <MetricStrip
+          label={metrics.label}
+          period={metrics.period}
+          items={metrics.items}
+          loading={loading && metrics.items.length === 0}
+          Link={Link}
+          {...(metrics.action ? { action: metrics.action } : {})}
+        />
       ) : null}
       <DataTable
         {...tableProps}

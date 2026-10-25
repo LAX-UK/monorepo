@@ -17,6 +17,7 @@ describe("buildAdminDisputeTableRow", () => {
       lotTitle: "Vase",
     });
     expect(row.amountDisplay.primary).toContain("125");
+    expect(row.amountCents).toBe(12500);
     expect(row.reasonLabel).toBe("Fraudulent");
     expect(row.lotTitle).toBe("Vase");
   });

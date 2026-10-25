@@ -28,6 +28,7 @@ const payment: PaymentsStaffRow = {
   id: "pay_1",
   lotId: "lot_1",
   lotTitle: "Golden Hour",
+  lotContext: "Lot 12 · Autumn sale",
   buyerId: "user_1",
   buyer: "Ada Lovelace",
   sellerId: "seller_1",

@@ -8,7 +8,9 @@ import { STAFF_TRUNCATION_TOOLTIP_DELAY_MS, TruncatedText } from "../display/tru
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
 import { StaffCheckbox } from "../primitives/choice.js";
+import { useStaffShortcut } from "../shell/shortcuts.js";
 import { BulkActionBar, TableSelectionProvider } from "./bulk-action-bar.js";
+import { EmptyValue, isEmptyCellValue } from "./cells.js";
 import type {
   BulkSelectionScope,
   DataColumn,
@@ -63,6 +65,11 @@ export type DataTableProps<T> = {
   empty?: React.ReactNode;
   /** Search, filters and views, inside the card above the table. */
   toolbar?: React.ReactNode;
+  /**
+   * Keeps the toolbar in view under the top bar while the page scrolls, with the column headers
+   * sticking under it (default, from 768px).
+   */
+  stickyToolbar?: boolean;
   /** Pagination, inside the card below the table. */
   footer?: React.ReactNode;
   className?: string;
@@ -92,6 +99,25 @@ function ariaSort(column: { id: string }, sort: SortState | null) {
 
 function truncationOf<T>(column: DataColumn<T>) {
   return column.truncate ?? (column.numeric ? false : "end");
+}
+
+/** The element's height, kept current; 0 when off or not measurable. */
+function useElementHeight(ref: React.RefObject<HTMLElement | null>, on: boolean) {
+  const [height, setHeight] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const element = ref.current;
+    if (!on || !element) {
+      setHeight(0);
+      return;
+    }
+    const measure = () => setHeight(Math.round(element.getBoundingClientRect().height));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, on]);
+  return height;
 }
 
 /** True when the table is wider than its card and has to scroll sideways. */
@@ -143,6 +169,7 @@ export function DataTable<T>({
   error,
   empty,
   toolbar,
+  stickyToolbar = true,
   footer,
   className,
 }: DataTableProps<T>) {
@@ -157,6 +184,17 @@ export function DataTable<T>({
   const tableRef = React.useRef<HTMLTableElement>(null);
   const overflowing = useHorizontalOverflow(wrapperRef, tableRef);
   const headerSticks = stickyHeader && !overflowing;
+  const toolbarRef = React.useRef<HTMLDivElement>(null);
+  const toolbarHeight = useElementHeight(toolbarRef, Boolean(toolbar && stickyToolbar));
+  // The page's scroll padding reads it too, so a row moved to by keyboard stops below the toolbar.
+  React.useEffect(() => {
+    if (toolbarHeight === 0) return;
+    const root = document.documentElement;
+    root.style.setProperty("--staff-table-toolbar-height", `${toolbarHeight}px`);
+    return () => {
+      root.style.removeProperty("--staff-table-toolbar-height");
+    };
+  }, [toolbarHeight]);
   const firstColumnSticks = stickyFirstColumn && overflowing;
 
   const rows = React.useMemo(() => {
@@ -231,6 +269,61 @@ export function DataTable<T>({
     // Respects the page's scroll padding, so the row stops clear of the header and bulk bar.
     row?.scrollIntoView?.({ block: "nearest" });
   };
+
+  // J and K from anywhere on the page land on the table's current row; once a row has focus the
+  // row's own keys move on from there. Only in the table layout, where rows take focus.
+  const enterRows = () => {
+    if (!wrapperRef.current || wrapperRef.current.offsetParent === null) return;
+    const focused = rowRefs.current.findIndex((row) => row === document.activeElement);
+    focusRow(focused >= 0 ? focused : focusIndex);
+  };
+  const keyboardRows = interactiveRows && rows.length > 0 && !loading;
+  useStaffShortcut(
+    keyboardRows
+      ? {
+          id: "staff:list-next-row",
+          keys: "j",
+          label: "Next row",
+          group: "Lists",
+          handler: enterRows,
+        }
+      : null,
+  );
+  useStaffShortcut(
+    keyboardRows
+      ? {
+          id: "staff:list-previous-row",
+          keys: "k",
+          label: "Previous row",
+          group: "Lists",
+          handler: enterRows,
+        }
+      : null,
+  );
+  useStaffShortcut(
+    keyboardRows && onRowOpen
+      ? {
+          id: "staff:list-open-row",
+          keys: "enter",
+          label: "Open the focused row",
+          group: "Lists",
+          passive: true,
+          handler: () => {},
+        }
+      : null,
+  );
+  useStaffShortcut(
+    keyboardRows && onRowOpen
+      ? {
+          id: "staff:list-close-panel",
+          keys: "escape",
+          label: "Close the open panel or menu",
+          group: "Lists",
+          passive: true,
+          handler: () => {},
+        }
+      : null,
+  );
 
   const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>, index: number, row: T) => {
     if (event.target !== event.currentTarget) return;
@@ -314,8 +407,9 @@ export function DataTable<T>({
   const canSelectMatching =
     selectAllMatching && !allMatching && allSelected && selectAllMatching.total > rows.length;
 
+  // Under the top bar, and under the toolbar when that sticks too.
   const stickyHeadCell = headerSticks
-    ? "sticky top-[var(--staff-sticky-top,0px)] z-10 bg-staff-surface shadow-[inset_0_-1px_0_var(--color-staff-line)]"
+    ? "sticky top-[calc(var(--staff-sticky-top,0px)+var(--staff-table-toolbar-height,0px))] z-10 bg-staff-surface shadow-[inset_0_-1px_0_var(--color-staff-line)]"
     : "";
   // Sticky cells need an opaque fill; they inherit the row's hover and selected overlays.
   const stickyBodyCell = "sticky z-[1] bg-staff-surface [background-image:inherit]";
@@ -362,7 +456,18 @@ export function DataTable<T>({
         <div className={cn("relative", className)}>
           {/* Clips the rounded corners without becoming a scroll container, so headers can stick. */}
           <div className="overflow-clip rounded-staff-md border border-staff-line bg-staff-surface">
-            {toolbar ? <div className="border-b border-staff-line">{toolbar}</div> : null}
+            {toolbar ? (
+              <div
+                ref={toolbarRef}
+                {...(stickyToolbar ? { "data-staff-sticky-toolbar": "" } : {})}
+                className={cn(
+                  "border-b border-staff-line bg-staff-surface",
+                  stickyToolbar && "md:sticky md:top-[var(--staff-sticky-top,0px)] md:z-20",
+                )}
+              >
+                {toolbar}
+              </div>
+            ) : null}
 
             {error ? (
               error
@@ -568,7 +673,9 @@ export function DataTable<T>({
                                 ) : null}
                                 {columns.map((column, columnIndex) => {
                                   const truncate = truncationOf(column);
-                                  const content = column.cell(row);
+                                  const value = column.cell(row);
+                                  const empty = isEmptyCellValue(value);
+                                  const content = empty ? <EmptyValue /> : value;
                                   return (
                                     <td
                                       key={column.id}
@@ -583,7 +690,7 @@ export function DataTable<T>({
                                           firstSticky(selectable ? "left-11" : "left-0"),
                                       )}
                                     >
-                                      {truncate === false ? (
+                                      {truncate === false || empty ? (
                                         content
                                       ) : (
                                         <TruncatedText mode={truncate}>{content}</TruncatedText>

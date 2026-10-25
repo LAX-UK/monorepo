@@ -1,5 +1,6 @@
 import {
   paymentStatuses,
+  payoutStatuses,
   userEmailStatuses,
   userKycStatuses,
   userRoles,
@@ -110,7 +111,12 @@ export const exportFiltersByEntitySchema = z.discriminatedUnion("entityType", [
   }),
   z.object({
     entityType: z.literal("payouts"),
-    filters: z.object({ legalEntityId: z.string().uuid().optional() }).default({}),
+    filters: z
+      .object({
+        legalEntityId: z.string().uuid().optional(),
+        status: z.enum(payoutStatuses).optional(),
+      })
+      .default({}),
   }),
 ]);
 

@@ -2,6 +2,7 @@ import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-param
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
 import { getAdminDisputesPage } from "@/lib/data/http/disputes.server";
 import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
+import { parseStaffPageSize } from "@auction/staff-ui";
 
 export type DisputesListQuery = AdminListQueryBase & {
   status?: "open" | "under_review" | "closed" | undefined;
@@ -17,7 +18,7 @@ export const disputesListController: IAdminListController<AdminDisputeTableRow, 
         statusRaw === "open" || statusRaw === "under_review" || statusRaw === "closed"
           ? statusRaw
           : undefined;
-      return { ...base, limit: Math.min(200, base.limit), status };
+      return { ...base, limit: parseStaffPageSize(firstString(sp.limit)), status };
     },
     async fetch(q) {
       const result = await getAdminDisputesPage({

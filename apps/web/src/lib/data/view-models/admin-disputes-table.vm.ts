@@ -7,6 +7,7 @@ export type AdminDisputeTableRow = {
   paymentId: string;
   status: DisputeCaseStatus;
   amountDisplay: AdminTableMoneyDisplay;
+  amountCents: number;
   currency: string;
   reason: string | null;
   reasonLabel: string;
@@ -52,6 +53,7 @@ export function buildAdminDisputeTableRow(row: AdminDisputeCaseRow): AdminDisput
     paymentId: row.paymentId,
     status: row.status,
     amountDisplay: formatMoneyFromCents(row.amountCents, row.currency),
+    amountCents: row.amountCents,
     currency: row.currency,
     reason: row.reason,
     reasonLabel: reasonLabel(row.reason),

@@ -13,18 +13,6 @@ export function PeopleListPageSkeleton(props: PeopleListPageSkeletonProps) {
   return <AdminListPageSkeleton {...props} />;
 }
 
-/** Legal entities directory list loading state. */
-export function LegalEntitiesListSkeleton() {
-  return (
-    <PeopleListPageSkeleton
-      title="Legal entities"
-      description="Loading…"
-      kpiTiles={4}
-      tableColumns={6}
-    />
-  );
-}
-
 /** Invitations page: invite form + sent list. */
 export function InvitationsListPageSkeleton() {
   return (

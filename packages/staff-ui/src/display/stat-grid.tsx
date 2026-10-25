@@ -34,7 +34,7 @@ export function StatGrid({
       {items.map((item) => (
         <div key={item.id} className="flex flex-col gap-1 bg-staff-surface px-4 py-3">
           <span className="text-staff-xs text-staff-muted">{item.label}</span>
-          <span className="font-staff-display text-staff-lg font-semibold text-staff-fg tabular-nums">
+          <span className="text-staff-lg font-semibold text-staff-fg tabular-nums">
             {item.value}
           </span>
           {item.hint ? (

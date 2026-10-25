@@ -142,7 +142,8 @@ export function WorkInboxWidget({
 
   const sharedBulkAction = useMemo((): AdminWorkItemAction | null => {
     if (selectedItems.length === 0) return null;
-    const first = selectedItems[0]?.actions ?? [];
+    // Refunds are never bulk: each one needs its own reason and confirm.
+    const first = (selectedItems[0]?.actions ?? []).filter((action) => action !== "refund");
     return (
       first.find((action) => selectedItems.every((item) => item.actions.includes(action))) ?? null
     );

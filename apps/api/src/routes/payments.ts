@@ -32,6 +32,10 @@ import {
   createRequireLegalEntityContext,
 } from "../middleware/require-legal-entity-context.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import {
+  type RequireRecentStaffAuth,
+  createRequireRecentStaffAuth,
+} from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 const sourceOfFundsCaseIdParamSchema = z.object({ id: z.string().uuid() });
@@ -60,6 +64,14 @@ export function createPaymentRoutes(
     onImpersonationExpired: (input) =>
       container.impersonationAuditService.recordSessionTimedOut(input),
   });
+  // Refunds move money back out, so staff need a recent sign-in (403 `step_up_required`
+  // otherwise). Built on first use, so routes that never refund need no step-up service.
+  let staffStepUp: RequireRecentStaffAuth | null = null;
+  const requireStaffRefundStepUp: MiddlewareHandler = (c, next) => {
+    if (c.get("userRole") !== "staff") return next();
+    staffStepUp ??= createRequireRecentStaffAuth(container.admin.stepUp);
+    return staffStepUp(c, next);
+  };
   const buyerPaymentHttp = container.finance.buyerPaymentHttp;
   const entityStaffPayment = container.finance.entityStaffPayment;
   const r = new Hono<{
@@ -283,6 +295,7 @@ export function createPaymentRoutes(
     requireAuth,
     requireContext,
     requireFinanceEntityWrite,
+    requireStaffRefundStepUp,
     zValidator("param", paymentIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;

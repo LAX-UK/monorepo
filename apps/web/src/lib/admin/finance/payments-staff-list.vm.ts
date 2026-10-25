@@ -1,14 +1,9 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
-import { toStaffStatus } from "@/lib/admin/staff-kit-status";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin-ops-dashboard.types";
 import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
-import {
-  lotFulfilmentStatusLabel,
-  paymentStatusLabel,
-  paymentStatusToBadgeVariant,
-  resolveStatusPresentation,
-} from "@/lib/presenters/status-presentation";
+import { lotFulfilmentStatusLabel, paymentStatusLabel } from "@/lib/presenters/status-presentation";
 import {
   type AttentionStripItem,
   type Metric,
@@ -34,6 +29,8 @@ export type PaymentsStaffRow = {
   id: string;
   lotId: string;
   lotTitle: string;
+  /** "Lot 12 · Autumn sale", under the lot title; null when the lot is in no sale. */
+  lotContext: string | null;
   buyerId: string;
   buyer: string;
   sellerId: string;
@@ -57,19 +54,32 @@ export type PaymentsStaffRow = {
 };
 
 export function presentPaymentStatus(status: PaymentStatus): StatusPresentation {
-  return toStaffStatus(paymentStatusToBadgeVariant(status), paymentStatusLabel[status] ?? status);
+  return staffStatus("payment", status);
+}
+
+/** "Lot 12 · Autumn sale", "Lot 12" or "Autumn sale"; null when there is neither. */
+export function paymentLotContext(row: {
+  lotNumber?: number | null;
+  saleTitle?: string | null;
+}): string | null {
+  const parts = [
+    typeof row.lotNumber === "number" ? `Lot ${row.lotNumber}` : null,
+    row.saleTitle?.trim() || null,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export function toPaymentsStaffRows(rows: readonly AdminPaymentTableRow[]): PaymentsStaffRow[] {
   return rows.map((row) => {
     const pence = parsePoundsToPence(row.amount);
     const fulfilment = row.fulfilmentStatus
-      ? resolveStatusPresentation("fulfilment", row.fulfilmentStatus)
+      ? staffStatus("fulfilment", row.fulfilmentStatus)
       : null;
     return {
       id: row.id,
       lotId: row.lotId,
       lotTitle: row.lotTitle,
+      lotContext: paymentLotContext(row),
       buyerId: row.buyerId,
       buyer: row.buyerLabel?.trim() || "Buyer",
       sellerId: row.sellerId,
@@ -78,7 +88,7 @@ export function toPaymentsStaffRows(rows: readonly AdminPaymentTableRow[]): Paym
       platformFee: formatPaymentAmount(row.platformFee),
       status: row.status,
       statusPresentation: presentPaymentStatus(row.status),
-      fulfilment: fulfilment ? toStaffStatus(fulfilment.variant, fulfilment.label) : null,
+      fulfilment,
       createdAt: row.createdAt,
       xero: {
         invoiceNumber: row.xeroInvoiceNumber,

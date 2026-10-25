@@ -1,4 +1,5 @@
 import {
+  type PayoutStatus,
   type UserRole,
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
@@ -23,18 +24,25 @@ async function assertClientPayoutAccess(
   }
 }
 
+type PayoutExportFilters = { legalEntityId?: string; status?: PayoutStatus };
+
 async function resolvePayoutScope(
   ctx: ExportAuthContext,
-  filters: { legalEntityId?: string },
+  filters: PayoutExportFilters,
   legalEntityRepo: Pick<ILegalEntityRepository, "findActiveMembership">,
-): Promise<{ legalEntityId?: string }> {
+): Promise<{ legalEntityId?: string; status?: PayoutStatus }> {
   const role = normalizeUserRoleOrClient(ctx.userRole) as UserRole;
   const staff = normalizeUserStaffRole(ctx.userStaffRole ?? undefined);
   const isStaffReader =
     roleHasCapability(role, "payout.read", staff) || canAccessPlatformAdminRoutes(role, staff);
 
+  const statusScope = filters.status ? { status: filters.status } : {};
+
   if (isStaffReader) {
-    return filters.legalEntityId ? { legalEntityId: filters.legalEntityId } : {};
+    return {
+      ...(filters.legalEntityId ? { legalEntityId: filters.legalEntityId } : {}),
+      ...statusScope,
+    };
   }
 
   if (role !== "client") {
@@ -46,13 +54,13 @@ async function resolvePayoutScope(
     throw new AuthzError("Payout export requires legalEntityId", 403);
   }
   await assertClientPayoutAccess(ctx, legalEntityId, legalEntityRepo);
-  return { legalEntityId };
+  return { legalEntityId, ...statusScope };
 }
 
 export function createPayoutsProvider(
   payoutRepo: Pick<IPayoutRepository, "list" | "countMatching">,
   legalEntityRepo: Pick<ILegalEntityRepository, "findActiveMembership">,
-): ExportProvider<{ legalEntityId?: string }> {
+): ExportProvider<PayoutExportFilters> {
   return {
     entityType: "payouts",
     async authorize(ctx, filters) {

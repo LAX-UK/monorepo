@@ -41,6 +41,11 @@ type ItemProps = Children & {
   className?: string;
 };
 
+const RadioContext = React.createContext<{
+  value?: string | undefined;
+  onValueChange?: ((value: string) => void) | undefined;
+}>({});
+
 /** Menus render their content in place, always open, so items can be found and chosen. */
 export const dropdownMenu = {
   DropdownMenu: ({ children }: Children) => <>{children}</>,
@@ -79,8 +84,27 @@ export const dropdownMenu = {
   ),
   DropdownMenuLabel: ({ children }: Children) => <div>{children}</div>,
   DropdownMenuSeparator: () => <hr />,
-  DropdownMenuRadioGroup: ({ children }: Children) => <>{children}</>,
-  DropdownMenuRadioItem: ({ children }: Children) => <div>{children}</div>,
+  DropdownMenuRadioGroup: ({
+    children,
+    value,
+    onValueChange,
+  }: Children & { value?: string; onValueChange?: (value: string) => void }) => (
+    <RadioContext.Provider value={{ value, onValueChange }}>{children}</RadioContext.Provider>
+  ),
+  DropdownMenuRadioItem: ({ children, value }: Children & { value: string }) => {
+    const group = React.useContext(RadioContext);
+    return (
+      <div
+        role="menuitemradio"
+        tabIndex={-1}
+        aria-checked={group.value === value}
+        onClick={() => group.onValueChange?.(value)}
+        onKeyDown={() => {}}
+      >
+        {children}
+      </div>
+    );
+  },
 };
 
 /** A plain open/close panel standing in for Radix's popover. */

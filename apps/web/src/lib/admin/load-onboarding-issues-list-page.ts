@@ -5,82 +5,103 @@ import {
   buildOnboardingIssuesListPageModel,
 } from "@/lib/admin/build-onboarding-issues-list-page-model";
 import {
+  type OnboardingListSearch,
+  type OnboardingStaffRow,
+  onboardingListHref,
+  onboardingRangeSummary,
+  toOnboardingStaffRow,
+  toOnboardingStaffRows,
+} from "@/lib/admin/onboarding-issues-staff-list.vm";
+import {
   findAdminOnboardingIssueInLens,
   getAdminOnboardingIssuesPage,
 } from "@/lib/data/http/admin-onboarding-issues.reader";
-import {
-  type AdminOnboardingIssueRow,
-  EMPTY_ADMIN_ONBOARDING_ISSUES_CROSS_SUMMARY,
-} from "@/lib/data/http/admin-onboarding-issues.shared";
+import { EMPTY_ADMIN_ONBOARDING_ISSUES_CROSS_SUMMARY } from "@/lib/data/http/admin-onboarding-issues.shared";
 import { mapOnboardingCrossSummary } from "@/lib/data/view-models/admin-onboarding-issues.vm";
+
+/** Shown in place of the rows; the raw failure stays in the server logs. */
+const ONBOARDING_LOAD_ERROR = "We could not load the onboarding issues. Try again in a moment.";
+const ONBOARDING_FORBIDDEN = "You do not have access to onboarding issues.";
+
+/** The search params as plain strings, so the client can build queue and paging links. */
+function plainSearch(sp: OnboardingIssuesListSearchParams): OnboardingListSearch {
+  return Object.fromEntries(
+    Object.entries(sp).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
 
 export async function loadAdminOnboardingIssuesListPage(sp: OnboardingIssuesListSearchParams) {
   const model = buildOnboardingIssuesListPageModel(sp);
+  const search = plainSearch(sp);
+  const { tab, offset, limit } = model.query;
 
   try {
     const selectedId = model.selectedItemId;
-    const needsSelectedFetch = selectedId != null && selectedId.length > 0;
     const page = await getAdminOnboardingIssuesPage(model.listQueryParams);
     const selectedFromPage = selectedId
       ? (page.rows.find((row) => row.id === selectedId) ?? null)
       : null;
     const selectedOffPage =
-      needsSelectedFetch && !selectedFromPage
+      selectedId && !selectedFromPage
         ? await findAdminOnboardingIssueInLens(model.listQueryParams.tab, selectedId, {
-            pageSize: model.query.limit,
+            pageSize: limit,
             knownTotal: page.total,
           })
         : null;
-    const selected: AdminOnboardingIssueRow | null = selectedFromPage ?? selectedOffPage;
+    const selectedRow = selectedFromPage ?? selectedOffPage;
+    const rows = toOnboardingStaffRows(tab, page.rows, model.listReturnTarget);
+    const selected = selectedRow
+      ? toOnboardingStaffRow(tab, selectedRow, model.listReturnTarget)
+      : null;
 
     return {
-      model,
-      tab: model.query.tab,
-      rows: page.rows,
+      search,
+      tab,
+      rows,
       selected,
-      summary: page.summary,
+      selectedId: selectedId ?? null,
+      /** An item was asked for by link and is no longer in this queue. */
+      previewDegraded: Boolean(selectedId && !selected),
       queueSummary: mapOnboardingCrossSummary(page.summary),
       lensSummary: page.lensSummary,
+      offset,
       total: page.total,
-      hasNextPage: page.hasNextPage,
       loadError: null as string | null,
-      previewDegraded: Boolean(selectedId && !selected),
+      pageSize: limit,
       pagination:
-        page.total > 0 && (model.query.offset > 0 || page.hasNextPage)
+        rows.length > 0
           ? {
-              offset: model.query.offset,
-              limit: model.query.limit,
-              countOnPage: page.rows.length,
-              total: page.total,
+              summary: onboardingRangeSummary(offset, rows.length, page.total),
               prevHref:
-                model.query.offset > 0
-                  ? model.buildPaginationHref({
-                      offset: Math.max(0, model.query.offset - model.query.limit),
-                    })
+                offset > 0
+                  ? onboardingListHref(search, { offset: Math.max(0, offset - limit) })
                   : null,
               nextHref: page.hasNextPage
-                ? model.buildPaginationHref({
-                    offset: model.query.offset + model.query.limit,
-                  })
+                ? onboardingListHref(search, { offset: offset + limit })
                 : null,
             }
           : null,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not load onboarding issues.";
+    const forbidden = error instanceof Error && error.message === "forbidden";
     return {
-      model,
-      tab: model.query.tab,
-      rows: [] as AdminOnboardingIssueRow[],
-      selected: null as AdminOnboardingIssueRow | null,
-      summary: EMPTY_ADMIN_ONBOARDING_ISSUES_CROSS_SUMMARY,
+      search,
+      tab,
+      rows: [] as OnboardingStaffRow[],
+      selected: null as OnboardingStaffRow | null,
+      selectedId: null,
+      previewDegraded: false,
       queueSummary: mapOnboardingCrossSummary(EMPTY_ADMIN_ONBOARDING_ISSUES_CROSS_SUMMARY),
       lensSummary: null,
+      offset,
       total: 0,
-      hasNextPage: false,
-      loadError: message === "forbidden" ? "Access denied" : message,
-      previewDegraded: false,
+      loadError: forbidden ? ONBOARDING_FORBIDDEN : ONBOARDING_LOAD_ERROR,
+      pageSize: limit,
       pagination: null,
     };
   }
 }
+
+export type AdminOnboardingIssuesListPage = Awaited<
+  ReturnType<typeof loadAdminOnboardingIssuesListPage>
+>;

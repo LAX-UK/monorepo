@@ -1,13 +1,12 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function PayoutsLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Payouts"
-      description="Loading payouts…"
-      kpiTiles={6}
-      tableRows={8}
-      tableColumns={4}
+      description="Seller payouts. Run settlement, add adjustments, mark transfers as paid and reverse payouts."
+      metrics={4}
+      columns={["Period", "Status", "Seller", "Net", "Paid"]}
     />
   );
 }
