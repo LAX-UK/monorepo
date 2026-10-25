@@ -61,6 +61,8 @@ export {
   TruncatedText,
 } from "./display/truncated-text.js";
 export { AttentionList } from "./display/attention-list.js";
+export { IssueList } from "./display/issue-list.js";
+export type { IssueItem } from "./display/issue-list.js";
 export type { AttentionItem } from "./display/attention-list.js";
 export type { TimelineEvent } from "./display/timeline.js";
 export {
@@ -179,7 +181,12 @@ export {
 // Page templates
 export { ListPage } from "./templates/list-page.js";
 export type { ListPageAccess, ListPageProps, ListPageTable } from "./templates/list-page.js";
-export { DetailPage } from "./templates/detail-page.js";
+export {
+  DetailColumns,
+  DetailError,
+  DetailPage,
+  DetailPageSkeleton,
+} from "./templates/detail-page.js";
 export type { DetailPageProps } from "./templates/detail-page.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
 export { SavedViewsError, sameViewQuery, useSavedViews, viewQuery } from "./data/saved-views.js";
