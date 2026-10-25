@@ -1,10 +1,13 @@
 import { ShopViewAllLink } from "@/components/home/shop-view-all-link";
-import type { HomeSectionLink } from "@/content/home-marketing";
 import { MarketingSectionHeader } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
 
-type ShopSectionHeaderProps = HomeSectionLink & {
+type ShopSectionHeaderProps = {
   headingId: string;
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  actionHref?: string;
 };
 
 export function ShopSectionHeader({

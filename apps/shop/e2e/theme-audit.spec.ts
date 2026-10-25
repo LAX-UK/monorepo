@@ -30,7 +30,6 @@ test.describe("Shop theme audit @a11y", () => {
 
         const axe = await new AxeBuilder({ page })
           .include("#main-content")
-          .exclude(".shop-home__hero")
           .withRules(["color-contrast"])
           .analyze();
         const contrast = axe.violations.filter((v) => v.id === "color-contrast");

@@ -95,7 +95,7 @@ describe("Shop commerce architecture SSOT", () => {
 
     assert.ok(
       readFileSync(
-        join(root, "apps/shop/src/components/home/cards/print-card.tsx"),
+        join(root, "apps/shop/src/components/home/cards/artist-card.tsx"),
         "utf8",
       ).includes("@auction/marketing-ui"),
     );
@@ -103,7 +103,7 @@ describe("Shop commerce architecture SSOT", () => {
 
   it("keeps MVP navigation honest and artwork routes resilient", () => {
     const navigationSources = [
-      "apps/shop/src/content/home-marketing.ts",
+      "apps/shop/src/lib/home/home-page.vm.ts",
       "apps/shop/src/content/footer-nav.config.ts",
       "apps/shop/src/components/header/header-nav.config.ts",
     ];
