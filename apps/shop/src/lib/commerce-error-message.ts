@@ -1,4 +1,5 @@
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { SHOP_EDITION_ORDER_LIMIT } from "@auction/shop-domain";
 
 export type CommerceFailureBody = {
   error?: string;
@@ -33,7 +34,10 @@ export function commerceErrorMessage(body: unknown, fallback: string): string {
   const code = record.code;
   switch (code) {
     case SHOP_API_ERROR_CODES.OUT_OF_STOCK:
+      // Never a count: saying how many are left would let a stepper probe the stock.
       return "This edition is no longer available in the quantity requested.";
+    case SHOP_API_ERROR_CODES.QUANTITY_LIMIT:
+      return `You can buy up to ${SHOP_EDITION_ORDER_LIMIT} of each edition in one order.`;
     case SHOP_API_ERROR_CODES.PRICE_CHANGED:
       return "The price changed. Refresh your basket and try again.";
     case SHOP_API_ERROR_CODES.BASKET_CONFLICT:

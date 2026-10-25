@@ -1,5 +1,5 @@
 import type { BasketView, CheckoutSession, OrderSummary } from "@auction/shop-contracts";
-import { computeMerchandiseSubtotal, pence } from "@auction/shop-domain";
+import { basketLineMaxQuantity, computeMerchandiseSubtotal, pence } from "@auction/shop-domain";
 import type {
   BasketRecord,
   CheckoutOrderResult,
@@ -31,6 +31,13 @@ export function presentBasket(record: BasketRecord): BasketView {
       priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
       outOfStock: line.quantity > line.sellableCount,
       imageUrl: line.imageUrl,
+      artistName: line.artistName,
+      artistSlug: line.artistSlug,
+      editionSize: line.editionSize,
+      maxQuantity: basketLineMaxQuantity({
+        kind: line.artworkId ? "edition" : "merchandise",
+        sellableCount: line.sellableCount,
+      }),
     })),
   };
 }

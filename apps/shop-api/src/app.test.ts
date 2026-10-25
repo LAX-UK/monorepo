@@ -50,6 +50,9 @@ describe("createShopApiApp", () => {
                 quantity,
                 sellableCount: 3,
                 imageUrl: null,
+                artistName: null,
+                artistSlug: null,
+                editionSize: null,
               },
             ],
           };

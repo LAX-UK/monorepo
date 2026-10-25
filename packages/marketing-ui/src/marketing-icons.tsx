@@ -24,16 +24,19 @@ import {
   MapPin,
   Maximize2,
   Menu,
+  Minus,
   Moon,
   Pause,
   Phone,
   Play,
+  Plus,
   Ruler,
   Search,
   SearchX,
   Share2,
   ShoppingBag,
   Sun,
+  Trash2,
   Truck,
   Undo2,
   User,
@@ -214,4 +217,16 @@ export function MarketingZoomOutIcon({ className, ...props }: MarketingIconProps
 /** Size and scale. */
 export function MarketingRulerIcon({ className, ...props }: MarketingIconProps) {
   return <Ruler className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingMinusIcon({ className, ...props }: MarketingIconProps) {
+  return <Minus className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingPlusIcon({ className, ...props }: MarketingIconProps) {
+  return <Plus className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingTrashIcon({ className, ...props }: MarketingIconProps) {
+  return <Trash2 className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }

@@ -22,6 +22,9 @@ function sampleBasket(overrides: Partial<BasketRecord> = {}): BasketRecord {
         quantity: 2,
         sellableCount: 5,
         imageUrl: "/warm.webp",
+        artistName: null,
+        artistSlug: null,
+        editionSize: null,
       },
     ],
     ...overrides,
@@ -54,6 +57,9 @@ describe("presentBasket", () => {
             quantity: 3,
             sellableCount: 1,
             imageUrl: null,
+            artistName: null,
+            artistSlug: null,
+            editionSize: null,
           },
         ],
       }),
@@ -62,6 +68,36 @@ describe("presentBasket", () => {
     expect(view.lines[0]?.outOfStock).toBe(true);
     expect(view.lines[0]?.soldOut).toBe(false);
     expect(view.lines[0]).not.toHaveProperty("sellableCount");
+  });
+
+  it("caps an edition line at the per-order limit, lowered to what can be sold", () => {
+    const line = sampleBasket().lines[0];
+    if (!line) throw new Error("fixture");
+    const plenty = presentBasket(sampleBasket({ lines: [{ ...line, sellableCount: 20 }] }));
+    expect(plenty.lines[0]?.maxQuantity).toBe(2);
+    const one = presentBasket(
+      sampleBasket({ lines: [{ ...line, quantity: 1, sellableCount: 1 }] }),
+    );
+    expect(one.lines[0]?.maxQuantity).toBe(1);
+    const none = presentBasket(
+      sampleBasket({ lines: [{ ...line, quantity: 1, sellableCount: 0 }] }),
+    );
+    expect(none.lines[0]?.maxQuantity).toBe(1);
+  });
+
+  it("names the artist and the edition size on an edition line", () => {
+    const line = sampleBasket().lines[0];
+    if (!line) throw new Error("fixture");
+    const view = presentBasket(
+      sampleBasket({
+        lines: [{ ...line, artistName: "Emmett King", artistSlug: "emmett-king", editionSize: 24 }],
+      }),
+    );
+    expect(view.lines[0]).toMatchObject({
+      artistName: "Emmett King",
+      artistSlug: "emmett-king",
+      editionSize: 24,
+    });
   });
 });
 

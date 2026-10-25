@@ -507,28 +507,6 @@ a.shop-order-detail__line-title:hover {
   border-radius: 999px;
 }
 
-.shop-basket__layout {
-  display: grid;
-  gap: 1.5rem;
-}
-
-@media (min-width: 64rem) {
-  .shop-basket__layout {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
-    align-items: start;
-  }
-}
-
-.shop-basket__summary-panel {
-  border: 1px solid var(--color-border-hairline);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  background: var(--color-surface-container-low);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .shop-checkout-steps__list {
   display: flex;
   flex-wrap: wrap;

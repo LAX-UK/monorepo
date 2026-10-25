@@ -7,6 +7,7 @@ import {
   shopProductVariant,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { SHOP_EDITION_ORDER_LIMIT } from "@auction/shop-domain";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import type {
   BasketRepository,
@@ -166,6 +167,13 @@ async function upsertArtworkLine(
   }
   if (artwork.printPricePence === null) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Artwork has no listed price", 400);
+  }
+  if (input.quantity > SHOP_EDITION_ORDER_LIMIT) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.QUANTITY_LIMIT,
+      `Limit ${SHOP_EDITION_ORDER_LIMIT} per order`,
+      409,
+    );
   }
   const unitPricePence = artwork.printPricePence;
   return db.transaction(async (tx) => {

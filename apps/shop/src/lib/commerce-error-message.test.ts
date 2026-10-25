@@ -13,6 +13,9 @@ describe("commerceErrorMessage", () => {
     expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.OUT_OF_STOCK }, "x")).toMatch(
       /no longer available/i,
     );
+    expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.QUANTITY_LIMIT }, "x")).toBe(
+      "You can buy up to 2 of each edition in one order.",
+    );
     expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.BASKET_CONFLICT }, "x")).toMatch(
       /another device/i,
     );
