@@ -63,6 +63,30 @@ describe("ConfirmActionDialog", () => {
     expect(onConfirm).toHaveBeenCalledWith({ reason: "Damaged in transit" });
   });
 
+  it("takes a one-line answer in a single-line field, with its own message when empty", async () => {
+    const onConfirm = renderDialog({
+      title: "Mark £85.00 to Ada Lovelace as paid?",
+      confirmLabel: "Mark £85.00 paid",
+      tone: "default",
+      reason: {
+        label: "Transfer reference",
+        singleLine: true,
+        missingMessage: "Enter the reference from the transfer.",
+      },
+    });
+    const field = screen.getByLabelText("Transfer reference");
+    expect(field.tagName).toBe("INPUT");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus());
+
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.getByText("Enter the reference from the transfer.")).toBeInTheDocument();
+
+    fireEvent.change(field, { target: { value: " BACS-20441 " } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(onConfirm).toHaveBeenCalledWith({ reason: "BACS-20441" });
+  });
+
   it("keeps a catastrophic action disabled until the reference is typed exactly", () => {
     const onConfirm = renderDialog({
       title: "Delete sale LAX-10432?",

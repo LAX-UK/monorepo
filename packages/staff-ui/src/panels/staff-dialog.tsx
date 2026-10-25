@@ -92,6 +92,13 @@ export type ConfirmReason = {
   minLength?: number;
   maxLength?: number;
   placeholder?: string;
+  /**
+   * A one-line answer, such as a bank or transfer reference, in a single-line field where Enter
+   * confirms. Reasons in sentences keep the default multi-line field.
+   */
+  singleLine?: boolean;
+  /** Said when the field is left empty, e.g. "Enter the reference from the transfer." */
+  missingMessage?: string;
 };
 
 export type ConfirmActionDialogProps = {
@@ -139,7 +146,7 @@ export function ConfirmActionDialog({
   children,
 }: ConfirmActionDialogProps) {
   const cancelRef = React.useRef<HTMLButtonElement>(null);
-  const reasonRef = React.useRef<HTMLTextAreaElement>(null);
+  const reasonRef = React.useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const typedRef = React.useRef<HTMLInputElement>(null);
   const [reasonText, setReasonText] = React.useState("");
   const [reasonError, setReasonError] = React.useState<string | null>(null);
@@ -162,9 +169,11 @@ export function ConfirmActionDialog({
     const trimmed = reasonText.trim();
     if (reason && trimmed.length < minLength) {
       setReasonError(
-        minLength > 1
-          ? `Enter a reason of at least ${minLength} characters.`
-          : `Enter ${reason.label.toLowerCase()}.`,
+        trimmed.length === 0 && reason.missingMessage
+          ? reason.missingMessage
+          : minLength > 1
+            ? `Enter a reason of at least ${minLength} characters.`
+            : `Enter ${reason.label.toLowerCase()}.`,
       );
       reasonRef.current?.focus();
       return;
@@ -211,18 +220,40 @@ export function ConfirmActionDialog({
               error={reasonError}
               disabled={loading}
             >
-              <TextArea
-                ref={reasonRef}
-                value={reasonText}
-                maxLength={reason.maxLength ?? 500}
-                placeholder={reason.placeholder}
-                onChange={(event) => {
-                  setReasonText(event.target.value);
-                  if (reasonError && event.target.value.trim().length >= minLength) {
-                    setReasonError(null);
-                  }
-                }}
-              />
+              {reason.singleLine ? (
+                <TextInput
+                  ref={reasonRef}
+                  value={reasonText}
+                  maxLength={reason.maxLength ?? 500}
+                  placeholder={reason.placeholder}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) => {
+                    setReasonText(event.target.value);
+                    if (reasonError && event.target.value.trim().length >= minLength) {
+                      setReasonError(null);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    if (!loading) confirm();
+                  }}
+                />
+              ) : (
+                <TextArea
+                  ref={reasonRef}
+                  value={reasonText}
+                  maxLength={reason.maxLength ?? 500}
+                  placeholder={reason.placeholder}
+                  onChange={(event) => {
+                    setReasonText(event.target.value);
+                    if (reasonError && event.target.value.trim().length >= minLength) {
+                      setReasonError(null);
+                    }
+                  }}
+                />
+              )}
             </Field>
           ) : null}
           {typedConfirmation !== undefined ? (
