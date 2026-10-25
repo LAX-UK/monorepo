@@ -42,6 +42,7 @@ export function Layout({
   return (
     <Html lang="en">
       <Head>
+        <title>{title}</title>
         <meta content="light" name="color-scheme" />
         <meta content="light" name="supported-color-schemes" />
       </Head>

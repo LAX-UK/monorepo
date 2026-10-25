@@ -1,4 +1,9 @@
-import { type EmailCategory, FONT_STACK_BODY, categoryAccentColor } from "@auction/branding";
+import {
+  COLORS,
+  type EmailCategory,
+  FONT_STACK_BODY,
+  categoryAccentColor,
+} from "@auction/branding";
 import { Section, Text } from "@react-email/components";
 
 type EyebrowProps = {
@@ -10,7 +15,8 @@ export function Eyebrow({ label, category }: EyebrowProps) {
   const accent = categoryAccentColor(category);
   return (
     <Section style={wrap}>
-      <Text style={{ ...text, color: accent, fontFamily: FONT_STACK_BODY }}>
+      {/* The dot carries the category colour; the label stays at text contrast (gold on white is not). */}
+      <Text style={{ ...text, color: COLORS.textSecondary, fontFamily: FONT_STACK_BODY }}>
         <span
           aria-hidden
           style={{
@@ -29,7 +35,7 @@ const wrap = {
 };
 
 const text = {
-  fontSize: "11px",
+  fontSize: "12px",
   fontWeight: 600,
   letterSpacing: "0.16em",
   lineHeight: "16px",
