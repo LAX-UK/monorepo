@@ -186,10 +186,29 @@ describe("artwork form payloads", () => {
       printPricePence: 45_050,
       saleState: "for_sale",
       salesChannel: "shop",
+      sourceOriginalArtworkId: null,
       images: [],
       seoTitle: null,
       seoDescription: null,
     });
+  });
+
+  it("links an edition to its original, and never sends a link for an original", () => {
+    const ORIGINAL = "33333333-3333-4333-8333-333333333333";
+    const linked = filled({ sourceOriginalId: ORIGINAL, sourceOriginalTitle: "Harbour, original" });
+    expect(buildArtworkCreateBody(linked, create).sourceOriginalArtworkId).toBe(ORIGINAL);
+    expect(
+      buildArtworkCreateBody({ ...linked, editionRun: "original" }, create).sourceOriginalArtworkId,
+    ).toBeNull();
+
+    const stored = artworkFormValues({
+      ...detail,
+      sourceOriginal: { artworkId: ORIGINAL, slug: "harbour-original", title: "Harbour, original" },
+    });
+    expect(stored.sourceOriginalId).toBe(ORIGINAL);
+    expect(stored.sourceOriginalTitle).toBe("Harbour, original");
+    expect(isArtworkFormDirty({ ...stored, sourceOriginalId: null }, stored)).toBe(true);
+    expect(artworkFormValues(detail).sourceOriginalId).toBeNull();
   });
 
   it("never sends a price for an original, and omits a blank one", () => {

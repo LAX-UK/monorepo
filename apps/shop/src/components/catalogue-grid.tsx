@@ -4,14 +4,18 @@ import { buildCatalogueArtworkCards } from "@/lib/catalogue/catalogue-artwork-ca
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import { MarketingCardMedia, MarketingCardReveal, MarketingCardShell } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
+import { cn } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 
 type CatalogueGridProps = {
   items: PublicArtworkSummary[];
+  /** Card titles are h2 on a listing page, h3 inside a titled section. */
+  titleLevel?: 2 | 3;
+  className?: string;
 };
 
-export function CatalogueGrid({ items }: CatalogueGridProps) {
+export function CatalogueGrid({ items, titleLevel = 2, className }: CatalogueGridProps) {
   if (items.length === 0) {
     return (
       <ShopStatusState
@@ -29,9 +33,10 @@ export function CatalogueGrid({ items }: CatalogueGridProps) {
   }
 
   const cards = buildCatalogueArtworkCards(items);
+  const Title = titleLevel === 3 ? "h3" : "h2";
 
   return (
-    <ul className="shop-catalogue__list">
+    <ul className={cn("shop-catalogue__list", className)}>
       {cards.map((card, index) => (
         <li key={card.slug}>
           <MarketingCardReveal index={index}>
@@ -51,7 +56,7 @@ export function CatalogueGrid({ items }: CatalogueGridProps) {
                 />
               </MarketingCardMedia>
               <div className="shop-catalogue__body">
-                <h2 className="shop-catalogue__title">{card.title}</h2>
+                <Title className="shop-catalogue__title">{card.title}</Title>
                 {card.status ? (
                   <div className="shop-catalogue__status">
                     <DotStatusPill label={card.status.label} tone={card.status.tone} />

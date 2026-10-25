@@ -22,6 +22,7 @@ vi.mock("@/server/application/admin-artwork-actions.server", () => ({
   setArtworkVisibility,
   getArtworkDetail,
   searchArtistOptions: vi.fn(async () => []),
+  searchOriginalArtworkOptions: vi.fn(async () => []),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace, refresh }),
@@ -256,6 +257,31 @@ describe("artwork editor", () => {
       pending.resolve({ ok: true, data: { version: THEIRS } });
       await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Changes saved"));
       expect(refresh).toHaveBeenCalled();
+    });
+
+    it("shows the linked original and saves the link removed", async () => {
+      const ORIGINAL = "33333333-3333-4333-8333-333333333333";
+      saveArtwork.mockResolvedValue({ ok: true, data: { version: THEIRS } });
+      renderEditor({
+        detail: {
+          ...detail,
+          sourceOriginal: {
+            artworkId: ORIGINAL,
+            slug: "harbour-original",
+            title: "Harbour, original",
+          },
+        },
+      });
+      expect(screen.getByText("Harbour, original")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Remove link" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Save changes" })[0] as HTMLElement);
+      await waitFor(() =>
+        expect(saveArtwork).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: expect.objectContaining({ sourceOriginalArtworkId: null }),
+          }),
+        ),
+      );
     });
 
     it("puts the edits back as unsaved when the save is refused", async () => {

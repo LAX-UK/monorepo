@@ -30,6 +30,7 @@ import "./footer.css";
 import "./header.css";
 import "./home.css";
 import "./policy.css";
+import "./product.css";
 import "./state.css";
 import "./elements.css";
 

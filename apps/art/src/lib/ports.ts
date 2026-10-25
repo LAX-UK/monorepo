@@ -79,6 +79,8 @@ export type ArtCataloguePort = {
   listCategories(query?: { limit?: number }): Promise<PublicCategoryList>;
   /** Medium tiles: object types with works on lax.art, each with a cover image. */
   listArtworkObjectTypes(): Promise<PublicArtworkObjectTypeFacetList>;
+  /** LAX Shop editions made from the original with this slug. */
+  listShopEditionsOfOriginal(originalSlug: string, limit: number): Promise<PublicArtworkList>;
 };
 
 export type ArtViewerPort = {

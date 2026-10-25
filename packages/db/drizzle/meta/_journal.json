@@ -1611,6 +1611,13 @@
       "when": 1795161600000,
       "tag": "0229_shop_sale_fee_creator",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1795248000000,
+      "tag": "0230_shop_artwork_source_original",
+      "breakpoints": true
     }
   ]
 }

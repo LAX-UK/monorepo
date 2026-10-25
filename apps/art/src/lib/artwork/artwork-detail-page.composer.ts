@@ -7,7 +7,12 @@ import {
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
-import type { ArtCataloguePort, ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
+import type {
+  ArtCataloguePort,
+  ArtEcosystemPort,
+  ArtFavoritesReadPort,
+  ArtViewerPort,
+} from "@/lib/ports";
 import { presentArtworkAvailability } from "@/lib/presenters/artwork-availability.presenter";
 import {
   isArtworkEnquiryAvailable,
@@ -31,6 +36,12 @@ import {
   buildArtworkKeySpecs,
   buildArtworkMediumSpecs,
 } from "./artwork-detail.vm";
+import {
+  SHOP_EDITIONS_LIMIT,
+  type ShopEditionLinkVm,
+  buildShopEditionLinks,
+  shopBaseUrl,
+} from "./shop-editions.vm";
 
 export type ArtEnquiryContact = {
   name: string;
@@ -92,6 +103,8 @@ export type ArtworkDetailVm = {
   specialistContact: ArtworkSpecialistContactVm;
   /** Null hides the artist block (the artist read failed or returned nothing). */
   artist: ArtworkArtistVm | null;
+  /** LAX Shop editions made from this original; empty hides "Editions available in LAX Shop". */
+  shopEditions: ShopEditionLinkVm[];
   saved: boolean;
   favoriteAuth: ArtFavoriteAuth;
   structuredData: JsonLd[];
@@ -161,7 +174,12 @@ function buildArtistVm(
 }
 
 export async function composeArtworkDetailPage(
-  services: { catalogue: ArtCataloguePort; viewer: ArtViewerPort; favorites: ArtFavoritesReadPort },
+  services: {
+    catalogue: ArtCataloguePort;
+    viewer: ArtViewerPort;
+    favorites: ArtFavoritesReadPort;
+    ecosystem: ArtEcosystemPort;
+  },
   input: { slug: string; enquireRequested: boolean; siteUrl: URL },
 ): Promise<ArtworkDetailPageResult> {
   const favoritesPromise = loadViewerFavoriteContext(services, artworkHref(input.slug), {
@@ -182,8 +200,13 @@ export async function composeArtworkDetailPage(
   const relatedPromise = loadRelatedArtworks(services.catalogue, artwork);
   // The artist block is optional: a failed read hides it instead of failing the page.
   const artistPromise = services.catalogue.getArtist(artwork.artistSlug).catch(() => null);
+  const shopEditionsPromise = loadShopEditions(services, artwork);
   const favorites = await favoritesPromise;
-  const [relatedPage, artist] = await Promise.all([relatedPromise, artistPromise]);
+  const [relatedPage, artist, shopEditions] = await Promise.all([
+    relatedPromise,
+    artistPromise,
+    shopEditionsPromise,
+  ]);
   const availability = presentArtworkAvailability(artwork);
 
   return {
@@ -216,11 +239,29 @@ export async function composeArtworkDetailPage(
       enquiry: resolveEnquiry(artwork, favorites.viewer, input.enquireRequested),
       specialistContact: resolveSpecialistContact(favorites.viewer),
       artist: artist ? buildArtistVm(artist, favorites.followedArtistSlugs) : null,
+      shopEditions,
       saved: favorites.savedArtworkSlugs.has(artwork.slug),
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artworkJsonLd(artwork, input.siteUrl),
     },
   };
+}
+
+/**
+ * Editions of an original on LAX Shop. Optional, like the artist block: a failed read, or a Shop
+ * URL that is not configured, leaves the section out instead of failing the page.
+ */
+async function loadShopEditions(
+  services: { catalogue: ArtCataloguePort; ecosystem: ArtEcosystemPort },
+  artwork: PublicArtworkDetail,
+): Promise<ShopEditionLinkVm[]> {
+  if (artwork.eligibleForEditionAllocation) return [];
+  const shop = shopBaseUrl(services.ecosystem.crossProductLinks());
+  if (!shop) return [];
+  const editions = await services.catalogue
+    .listShopEditionsOfOriginal(artwork.slug, SHOP_EDITIONS_LIMIT)
+    .catch(() => ({ items: [] }));
+  return buildShopEditionLinks(editions.items, shop);
 }
 
 export const RELATED_ARTWORKS_LIMIT = 4;

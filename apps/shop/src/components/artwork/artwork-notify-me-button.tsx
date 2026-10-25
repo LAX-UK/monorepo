@@ -5,7 +5,7 @@ import { ShopNotice } from "@/components/shop-notice";
 import { MarketingBellIcon, MarketingBellRingIcon } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 type Props = {
   slug: string;
@@ -24,13 +24,6 @@ export function ArtworkNotifyMeButton({
   const [message, setMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const successRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (subscribed) {
-      successRef.current?.focus();
-    }
-  }, [subscribed]);
 
   if (subscribed) {
     return (
@@ -45,7 +38,7 @@ export function ArtworkNotifyMeButton({
           <MarketingBellRingIcon className="size-4" />
           On the list
         </Button>
-        <div ref={successRef} tabIndex={-1} aria-live="polite" className="outline-none">
+        <div aria-live="polite">
           <ShopNotice tone="success">
             {subscribedMessage ?? "We will notify you when this work is available online."}
           </ShopNotice>

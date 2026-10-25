@@ -1,23 +1,36 @@
-import { AddToBasketButton } from "@/components/artwork/add-to-basket-button";
+import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
+import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
+import { ArtworkPurchaseFacts } from "@/components/artwork/artwork-purchase-facts";
+import { ArtworkSpecList } from "@/components/artwork/artwork-spec-list";
 import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailable-panel";
-import { ShopMediaImage } from "@/components/media/shop-media-image.server";
+import { CatalogueGrid } from "@/components/catalogue-grid";
+import { ShopJsonLd } from "@/components/seo/shop-json-ld";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
+import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
+import { buildArtworkProductPage } from "@/lib/artwork/artwork-product-page.vm";
+import {
+  loadShopArtBaseUrl,
+  loadShopStorefrontBaseUrl,
+} from "@/lib/ecosystem/product-directory.server";
 import { resolveOriginalArtworkUrl } from "@/lib/original-artwork-url.server";
-import { presentArtworkAvailability } from "@/lib/presenters/artwork-availability.presenter";
+import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
 import {
   isArtworkPurchasable,
   resolveArtworkUnavailableReason,
 } from "@/lib/presenters/artwork-commerce.presenter";
-import { fetchPublicArtworkBySlug } from "@/lib/shop-api.server";
+import { artworkProductJsonLd } from "@/lib/seo/artwork-structured-data";
+import { fetchPublicArtworkBySlug, fetchPublicArtworks } from "@/lib/shop-api.server";
 import { fetchArtworkInterestStatus } from "@/lib/shop-artwork-interest.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
+import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { FOCUS_RING } from "@auction/branding";
-import { MarketingDetailShell } from "@auction/marketing-ui";
-import { formatGbpPence } from "@auction/shop-portal/vm";
+import {
+  MarketingArrowUpRightIcon,
+  MarketingCheckIcon,
+  MarketingDetailShell,
+} from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -26,12 +39,8 @@ type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-const EDITION_WHAT_YOU_GET_BULLETS = [
-  "Certificate of authenticity for your edition",
-  "Professional packaging and insured UK delivery options at checkout",
-  "Edition number assigned when your order is fulfilled",
-  "Order updates and documents in your LAX account",
-] as const;
+/** Enough of the artist's editions to fill "Editions by {artist}" after leaving this one out. */
+const ARTIST_EDITIONS_FETCH = 9;
 
 export async function generateMetadata({ params }: ArtworkPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -58,6 +67,19 @@ export async function generateMetadata({ params }: ArtworkPageProps): Promise<Me
   }
 }
 
+function policyHref(linkable: readonly ShopPolicySlug[], slug: ShopPolicySlug): string | null {
+  return linkable.includes(slug) ? SHOP_POLICY_PATHS[slug] : null;
+}
+
+function OutboundLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a href={href} className={cn("shop-product__outbound", FOCUS_RING)}>
+      {children}
+      <MarketingArrowUpRightIcon className="shop-product__outbound-icon" />
+    </a>
+  );
+}
+
 export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
   const { slug } = await params;
   const [artwork, viewer, basketResult] = await Promise.all([
@@ -65,115 +87,176 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
     loadShopViewerState(),
     fetchShopBasket(),
   ]);
-  const basketLine =
-    basketResult.status === "ok"
-      ? basketResult.data.lines.find((line) => line.artworkSlug === slug)
-      : undefined;
   if (!artwork) {
     const originalOnArt = await resolveOriginalArtworkUrl(slug);
     if (originalOnArt) permanentRedirect(originalOnArt);
     notFound();
   }
-  const printPricePence = artwork.printPricePence;
+  const basketLine =
+    basketResult.status === "ok"
+      ? basketResult.data.lines.find((line) => line.artworkSlug === slug)
+      : undefined;
   const purchasable = isArtworkPurchasable(artwork);
   const unavailableReason = resolveArtworkUnavailableReason(artwork);
-  const availability = presentArtworkAvailability(artwork);
-  const interestRead =
+  const [artistEditions, interestRead] = await Promise.all([
+    fetchPublicArtworks({ artistSlug: artwork.artistSlug, limit: ARTIST_EDITIONS_FETCH })
+      .then((list) => list.items)
+      .catch(() => []),
     viewer.kind === "authenticated" && unavailableReason === "edition_sold_out"
-      ? await fetchArtworkInterestStatus(slug)
-      : { status: "guest" as const };
+      ? fetchArtworkInterestStatus(slug)
+      : Promise.resolve({ status: "guest" as const }),
+  ]);
+  const vm = buildArtworkProductPage({ artwork, artistEditions, artBaseUrl: loadShopArtBaseUrl() });
+  const linkablePolicies = loadLinkableShopPolicies();
+  const returnTo = `/artworks/${encodeURIComponent(artwork.slug)}`;
+  const primaryImageUrl = vm.gallery.images[0]?.url ?? null;
 
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--detail">
+      <ShopJsonLd data={artworkProductJsonLd(artwork, loadShopStorefrontBaseUrl())} />
       <ShopCommercePageShell
         header={{
-          title: artwork.title,
+          title: vm.title,
           suppressTitle: true,
           breadcrumbs: [
             { label: "Shop", href: "/" },
             { label: "Artworks", href: "/artworks" },
-            { label: artwork.title },
+            { label: vm.title },
           ],
         }}
         contentClassName="shop-detail-route"
       >
-        <article className="shop-detail">
-          <div className="shop-detail__media shop-detail__media--image">
-            <ShopMediaImage
-              src={artwork.imageUrl}
-              alt={`${artwork.title} by ${artwork.artistName}`}
-              label={SHOP_MEDIA_LABELS.artwork}
-              aspect={[4, 5]}
-              sizes="(min-width: 48rem) 58vw, 100vw"
-              priority
-              className="absolute inset-0 size-full"
-            />
+        <article className="shop-product">
+          <div className="shop-product__media">
+            <ArtworkGallery title={vm.title} gallery={vm.gallery} />
           </div>
-          <div className="shop-detail__content">
-            <div className="shop-detail__heading">
-              <p className="shop-detail__eyebrow">Limited edition print</p>
-              <h1>{artwork.title}</h1>
-              <p className="shop-detail__artist">
-                <Link
-                  href={`/artists/${encodeURIComponent(artwork.artistSlug)}`}
-                  className={cn("text-link underline underline-offset-4", FOCUS_RING)}
-                >
-                  {artwork.artistName}
+
+          <div className="shop-product__summary">
+            <header className="shop-product__heading">
+              <p className="shop-product__eyebrow">Limited edition print</p>
+              <h1 className="shop-product__title">{vm.title}</h1>
+              <p className="shop-product__artist">
+                <Link href={vm.artistHref} className={cn("shop-inline-link", FOCUS_RING)}>
+                  {vm.artistName}
                 </Link>
               </p>
-            </div>
+              {vm.sizeSummary ? <p className="shop-product__size">{vm.sizeSummary}</p> : null}
+            </header>
 
-            <div className="shop-detail__purchase">
-              {purchasable && printPricePence !== null ? (
-                <>
-                  <p className="shop-detail__price-lead">
-                    {formatGbpPence(printPricePence)}{" "}
-                    <span className="text-on-surface-variant">(tax inclusive)</span>
-                  </p>
-                  <AddToBasketButton
-                    slug={artwork.slug}
-                    inBasket={Boolean(basketLine)}
-                    basketLineId={basketLine?.lineId ?? null}
+            {purchasable && vm.purchase ? (
+              <ArtworkBuyBox
+                slug={vm.slug}
+                title={vm.title}
+                artistName={vm.artistName}
+                imageUrl={primaryImageUrl}
+                purchase={vm.purchase}
+                inBasket={Boolean(basketLine)}
+                basketLineId={basketLine?.lineId ?? null}
+                signInHref={shopStorefrontLoginHref(returnTo)}
+                facts={
+                  <ArtworkPurchaseFacts
+                    deliveryLine={vm.purchase.deliveryLine}
+                    returnsLine={vm.purchase.returnsLine}
+                    deliveryHref={policyHref(linkablePolicies, "delivery")}
+                    returnsHref={policyHref(linkablePolicies, "returns")}
                   />
-                </>
-              ) : unavailableReason ? (
+                }
+              />
+            ) : unavailableReason ? (
+              <div className="shop-buy shop-buy--sold-out">
+                {vm.purchase ? (
+                  <>
+                    <div className="shop-buy__price">
+                      <p className="shop-buy__amount">{vm.purchase.priceLabel}</p>
+                      <p className="shop-buy__vat">{vm.purchase.vatNote}</p>
+                    </div>
+                    <p className="shop-buy__edition">
+                      {vm.purchase.editionSize}
+                      <span aria-hidden="true"> · </span>
+                      <span className="shop-buy__availability" data-state="sold_out">
+                        Sold out
+                      </span>
+                    </p>
+                  </>
+                ) : null}
                 <ArtworkUnavailablePanel
                   viewer={viewer}
                   artworkSlug={artwork.slug}
                   reason={unavailableReason}
                   interestRead={interestRead}
                 />
-              ) : null}
-            </div>
-
-            <section className="shop-detail__section" aria-labelledby="availability-heading">
-              <h2 id="availability-heading">Availability</h2>
-              <div className="shop-detail__availability-heading">
-                <p>{availability.headline}</p>
-                <DotStatusPill label={availability.status.label} tone={availability.status.tone} />
               </div>
-              {availability.detail ? (
-                <p className="shop-detail__availability-detail">{availability.detail}</p>
-              ) : null}
-            </section>
+            ) : null}
 
-            {artwork.description ? (
-              <section className="shop-detail__section" aria-labelledby="about-work-heading">
-                <h2 id="about-work-heading">About the work</h2>
-                <p>{artwork.description}</p>
+            {vm.specs.length > 0 ? (
+              <section className="shop-product__section" aria-labelledby="details-heading">
+                <h2 id="details-heading">Details</h2>
+                <ArtworkSpecList rows={vm.specs} />
               </section>
             ) : null}
 
-            <section className="shop-detail__section" aria-labelledby="what-you-get-heading">
-              <h2 id="what-you-get-heading">What you get</h2>
-              <ul className="shop-detail__bullets">
-                {EDITION_WHAT_YOU_GET_BULLETS.map((line) => (
-                  <li key={line}>{line}</li>
+            {vm.description ? (
+              <section className="shop-product__section" aria-labelledby="about-work-heading">
+                <h2 id="about-work-heading">About the work</h2>
+                <p className="shop-product__prose">{vm.description}</p>
+              </section>
+            ) : null}
+
+            <section className="shop-product__section" aria-labelledby="included-heading">
+              <h2 id="included-heading">Included</h2>
+              <ul className="shop-product__included">
+                {vm.included.map((item) => (
+                  <li key={item}>
+                    <MarketingCheckIcon className="shop-product__included-icon" />
+                    {item}
+                  </li>
                 ))}
               </ul>
             </section>
+
+            {vm.crossLinks.originalOnArtHref ? (
+              <section className="shop-product__section" aria-labelledby="original-heading">
+                <h2 id="original-heading">The original</h2>
+                <p className="shop-product__prose">
+                  This edition is made from an original work by {vm.artistName}, sold through
+                  lax.art.
+                </p>
+                <OutboundLink href={vm.crossLinks.originalOnArtHref}>
+                  See the original at lax.art
+                </OutboundLink>
+              </section>
+            ) : null}
+
+            {vm.crossLinks.artistOnArtHref ? (
+              <section className="shop-product__section" aria-labelledby="artist-heading">
+                <h2 id="artist-heading">The artist</h2>
+                <OutboundLink href={vm.crossLinks.artistOnArtHref}>
+                  About the artist on lax.art
+                </OutboundLink>
+              </section>
+            ) : null}
           </div>
         </article>
+
+        {vm.related.items.length > 0 ? (
+          <section className="shop-product__related" aria-labelledby="related-heading">
+            <div className="shop-product__related-header">
+              <h2 id="related-heading">{vm.related.title}</h2>
+              <Link
+                href={vm.related.viewAllHref}
+                className={cn("shop-inline-link", FOCUS_RING)}
+                aria-label={`View all editions by ${vm.artistName}`}
+              >
+                View all
+              </Link>
+            </div>
+            <CatalogueGrid
+              items={vm.related.items}
+              titleLevel={3}
+              className="shop-catalogue__list--four"
+            />
+          </section>
+        ) : null}
       </ShopCommercePageShell>
     </MarketingDetailShell>
   );

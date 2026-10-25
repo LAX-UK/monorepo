@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -344,6 +345,14 @@ export const shopArtwork = pgTable(
     printFrame: text("print_frame"),
     zohoProductId: text("zoho_product_id"),
     salesChannel: shopSalesChannelEnum("sales_channel").default("shop").notNull(),
+    /**
+     * For an edition: the original artwork it was made from (sold on lax.art). Lets each page link
+     * to the other. Null when the edition has no original in the catalogue.
+     */
+    sourceOriginalArtworkId: uuid("source_original_artwork_id").references(
+      (): AnyPgColumn => shopArtwork.id,
+      { onDelete: "set null" },
+    ),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     version: integer("version").default(1).notNull(),
@@ -362,6 +371,11 @@ export const shopArtwork = pgTable(
     uniqueIndex("shop_artwork_import_key_uid").on(table.importKey),
     index("shop_artwork_artist_idx").on(table.artistId),
     index("shop_artwork_created_id_idx").on(table.createdAt, table.id),
+    index("shop_artwork_source_original_idx").on(table.sourceOriginalArtworkId),
+    check(
+      "shop_artwork_source_original_not_self",
+      sql`${table.sourceOriginalArtworkId} IS NULL OR ${table.sourceOriginalArtworkId} <> ${table.id}`,
+    ),
   ],
 );
 

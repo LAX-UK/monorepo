@@ -40,6 +40,8 @@ const ListQuerySchema = Type.Object({
   /** One slug or a comma-separated list. */
   artistSlug: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
   relatedTo: Type.Optional(Type.String({ minLength: 1 })),
+  /** Editions made from the original with this slug ("Editions available in LAX Shop"). */
+  sourceOriginal: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   objectType: Type.Optional(commaListOf(ARTWORK_OBJECT_TYPES)),
   rarity: Type.Optional(commaListOf(ARTWORK_RARITIES)),
   salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
@@ -82,6 +84,7 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
         categorySlug?: string;
         artistSlug?: string;
         relatedTo?: string;
+        sourceOriginal?: string;
         objectType?: string;
         rarity?: string;
         salesChannel?: "shop" | "art";
@@ -100,6 +103,7 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
           ? { artistSlugs: splitCommaList(query.artistSlug) }
           : {}),
         ...(query.relatedTo !== undefined ? { relatedToSlug: query.relatedTo } : {}),
+        ...(query.sourceOriginal !== undefined ? { sourceOriginalSlug: query.sourceOriginal } : {}),
         ...(query.objectType !== undefined
           ? { objectTypes: splitCommaList(query.objectType) }
           : {}),

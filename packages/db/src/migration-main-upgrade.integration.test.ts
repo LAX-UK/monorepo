@@ -20,7 +20,7 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
-const FINAL_FOLDER_MILLIS = 1795161600000;
+const FINAL_FOLDER_MILLIS = 1795248000000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -682,6 +682,51 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
       await executeMigrationSql(pool, "0228_rollback.sql");
       const columns = await pool.query(
         "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name IN ('published_at', 'archived_at') AND table_name IN ('shop_artwork', 'shop_artist')",
+      );
+      expect(columns.rows).toEqual([]);
+    });
+  });
+
+  it("links an edition to its source original, clears the link when the original goes, and rolls back", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+
+      const party = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_party (display_name) VALUES ('Source Artist') RETURNING id",
+      );
+      const artist = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_artist (party_id, slug) VALUES ($1, 'source-artist') RETURNING id",
+        [party.rows[0]?.id],
+      );
+      const artistId = artist.rows[0]?.id;
+      const original = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_artwork (slug, title, artist_id, eligible_for_edition_allocation, sales_channel, import_key) VALUES ('source-original', 'Original', $1, false, 'art', 'migration:source-original') RETURNING id",
+        [artistId],
+      );
+      const originalId = original.rows[0]?.id;
+      const edition = await pool.query<{ id: string; source_original_artwork_id: string | null }>(
+        "INSERT INTO public.shop_artwork (slug, title, artist_id, eligible_for_edition_allocation, import_key, source_original_artwork_id) VALUES ('source-edition', 'Edition', $1, true, 'migration:source-edition', $2) RETURNING id, source_original_artwork_id",
+        [artistId, originalId],
+      );
+      expect(edition.rows[0]?.source_original_artwork_id).toBe(originalId);
+
+      // An artwork cannot be its own source.
+      await expect(
+        pool.query(
+          "UPDATE public.shop_artwork SET source_original_artwork_id = id WHERE slug = 'source-edition'",
+        ),
+      ).rejects.toThrow(/shop_artwork_source_original_not_self/);
+
+      // Removing the original clears the link instead of blocking the delete.
+      await pool.query("DELETE FROM public.shop_artwork WHERE id = $1", [originalId]);
+      const cleared = await pool.query(
+        "SELECT source_original_artwork_id FROM public.shop_artwork WHERE slug = 'source-edition'",
+      );
+      expect(cleared.rows[0]).toEqual({ source_original_artwork_id: null });
+
+      await executeMigrationSql(pool, "0230_rollback.sql");
+      const columns = await pool.query(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'shop_artwork' AND column_name = 'source_original_artwork_id'",
       );
       expect(columns.rows).toEqual([]);
     });

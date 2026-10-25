@@ -87,6 +87,26 @@ async function loadArtworkImages(
     .filter((row): row is ArtworkImageReadModel => row !== null);
 }
 
+/**
+ * The original's slug while lax.art shows it (published, not archived, on the lax.art channel),
+ * so the storefront never links to a page that is not there.
+ */
+async function loadLinkableOriginalSlug(db: Database, artworkId: string): Promise<string | null> {
+  const [original] = await db
+    .select({ slug: shopArtwork.slug })
+    .from(shopArtwork)
+    .where(
+      and(
+        eq(shopArtwork.id, artworkId),
+        eq(shopArtwork.salesChannel, "art"),
+        eq(shopArtwork.eligibleForEditionAllocation, false),
+        publicArtworkVisible(),
+      ),
+    )
+    .limit(1);
+  return original?.slug ?? null;
+}
+
 function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefined): SQL[] {
   const conditions: SQL[] = [publicArtworkVisible()];
   if (!filter) {
@@ -134,6 +154,13 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   }
   if (filter.rarities) {
     conditions.push(inArray(shopArtwork.rarity, filter.rarities));
+  }
+  if (filter.sourceOriginalSlug) {
+    conditions.push(
+      sql`${shopArtwork.sourceOriginalArtworkId} = (
+        SELECT id FROM shop_artwork WHERE slug = ${filter.sourceOriginalSlug} LIMIT 1
+      )`,
+    );
   }
   if (filter.relatedToSlug) {
     conditions.push(
@@ -372,6 +399,9 @@ export function createDrizzleArtworkCatalogueRepository(
           artistSlug: shopArtist.slug,
           eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
           printPricePence: shopArtwork.printPricePence,
+          printPaper: shopArtwork.printPaper,
+          printSize: shopArtwork.printSize,
+          sourceOriginalArtworkId: shopArtwork.sourceOriginalArtworkId,
         })
         .from(shopArtwork)
         .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
@@ -381,11 +411,18 @@ export function createDrizzleArtworkCatalogueRepository(
       if (!row) {
         return null;
       }
-      const editionCounts = await editionCountsByArtworkId(db, [row.artworkId]);
-      const images = await loadArtworkImages(db, row.artworkId, resolveMediaUrl);
-      return toPublicArtworkDetail(
-        toArtworkCatalogueRow({ ...row, createdAt: new Date() }, editionCounts, images),
-      );
+      const { printPaper, printSize, sourceOriginalArtworkId, ...selected } = row;
+      const [editionCounts, images, sourceOriginalSlug] = await Promise.all([
+        editionCountsByArtworkId(db, [row.artworkId]),
+        loadArtworkImages(db, row.artworkId, resolveMediaUrl),
+        sourceOriginalArtworkId ? loadLinkableOriginalSlug(db, sourceOriginalArtworkId) : null,
+      ]);
+      return toPublicArtworkDetail({
+        ...toArtworkCatalogueRow({ ...selected, createdAt: new Date() }, editionCounts, images),
+        printPaper,
+        printSize,
+        sourceOriginalSlug,
+      });
     },
 
     async listObjectTypeFacets({ salesChannel }) {

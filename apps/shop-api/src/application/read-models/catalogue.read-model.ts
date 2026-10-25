@@ -55,6 +55,10 @@ export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
   widthCm: number | null;
   depthCm: number | null;
   hasCertificate: boolean;
+  printPaper: string | null;
+  printSize: string | null;
+  /** The linked original's slug while it is on lax.art; otherwise null. */
+  sourceOriginalSlug: string | null;
   provenance: string | null;
   exhibitionHistory: string | null;
   seoTitle: string | null;

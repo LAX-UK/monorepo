@@ -7,6 +7,7 @@ import {
   assertEditionPrice,
   assertEditionRunUnchanged,
   assertLivePriceKept,
+  assertSourceOriginal,
   isArtworkSoldOut,
   summariseEditionRun,
 } from "./artwork-catalogue.js";
@@ -229,5 +230,50 @@ describe("edition price capability", () => {
     for (const role of ["catalogue_editor", "account_manager", "broker", "operations"] as const) {
       expect(roleHasCapability(role, "artwork_price.write")).toBe(false);
     }
+  });
+});
+
+describe("source original", () => {
+  const original = { artworkId: "original", eligibleForEditionAllocation: false };
+
+  it("lets an edition link to an original, and anything clear its link", () => {
+    expect(() =>
+      assertSourceOriginal({
+        artworkId: "edition",
+        eligibleForEditionAllocation: true,
+        source: original,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertSourceOriginal({
+        artworkId: "original",
+        eligibleForEditionAllocation: false,
+        source: null,
+      }),
+    ).not.toThrow();
+  });
+
+  it("refuses a link from an original, to an edition, or to itself", () => {
+    expect(() =>
+      assertSourceOriginal({
+        artworkId: "other",
+        eligibleForEditionAllocation: false,
+        source: original,
+      }),
+    ).toThrow("Only an edition");
+    expect(() =>
+      assertSourceOriginal({
+        artworkId: "edition",
+        eligibleForEditionAllocation: true,
+        source: { artworkId: "edition-2", eligibleForEditionAllocation: true },
+      }),
+    ).toThrow("not another edition");
+    expect(() =>
+      assertSourceOriginal({
+        artworkId: "edition",
+        eligibleForEditionAllocation: true,
+        source: { artworkId: "edition", eligibleForEditionAllocation: false },
+      }),
+    ).toThrow("its own original");
   });
 });
