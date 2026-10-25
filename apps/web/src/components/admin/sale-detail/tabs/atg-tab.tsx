@@ -165,6 +165,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
   const syncing = waiting != null && !waiting.slow;
   const busy = confirm.busy || syncing;
   const linkedLots = view.lots.filter((lot) => lot.atgLotId).length;
+  const failedLotCount = view.lots.filter((lot) => lot.lastError).length;
   const showResults = view.linked && (published || closed);
   const results = showResults ? resultsSummary(view) : null;
 
@@ -367,7 +368,12 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
 
       {view.lastError && !syncing ? (
         <Notice tone="danger" alert title="The last sync reported a problem">
-          <span className="whitespace-pre-line">{view.lastError}</span>
+          {failedLotCount > 0 ? (
+            // Each lot's own error is on its row below; say it once.
+            `${failedLotCount === 1 ? "One lot" : `${failedLotCount} lots`} did not sync. ${failedLotCount === 1 ? "It is" : "They are"} marked in the list of lots.`
+          ) : (
+            <span className="whitespace-pre-line">{view.lastError}</span>
+          )}
         </Notice>
       ) : null}
 

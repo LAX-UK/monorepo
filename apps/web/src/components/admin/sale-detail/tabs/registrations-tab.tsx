@@ -103,7 +103,12 @@ export function SaleRegistrationsTab({
         width: "200px",
         hideBelow: "lg",
         mobile: "hidden",
-        cell: (row) => row.buyerLegalEntityDisplayName,
+        // The bidder's own name is already in the first column; only a company is new here.
+        cell: (row) =>
+          row.buyerLegalEntityDisplayName &&
+          row.buyerLegalEntityDisplayName !== registrationBidderLabel(row)
+            ? row.buyerLegalEntityDisplayName
+            : "Themselves",
       },
       {
         id: "status",

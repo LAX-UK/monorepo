@@ -297,6 +297,7 @@ export function StaffDocumentsSection<K extends string>({
             </FieldRow>
             <FileDropzone
               label="Upload a document"
+              kind="file"
               accept={DOCUMENT_ACCEPT}
               multiple
               compact={documents.length > 0}

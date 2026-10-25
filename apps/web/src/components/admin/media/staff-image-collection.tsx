@@ -99,7 +99,9 @@ export function StaffImageCollection({
   const hint =
     remaining === 0
       ? `${maxFiles} is the most. Remove one to add another.`
-      : `${formats}, up to ${sizeLimit(kind)} each. ${remaining} more can be added.`;
+      : value.length === 0
+        ? `${formats}, up to ${sizeLimit(kind)} each. Up to ${maxFiles} files.`
+        : `${formats}, up to ${sizeLimit(kind)} each. ${remaining} more can be added.`;
 
   return (
     <div className="flex flex-col gap-3">

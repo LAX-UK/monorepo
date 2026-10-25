@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus } from "lucide-react";
+import { FileUp, ImagePlus } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { useStaffField } from "./field.js";
@@ -19,6 +19,8 @@ export type FileDropzoneProps = {
   id?: string;
   /** One line, for adding more once some files are in. */
   compact?: boolean;
+  /** Pictures (default) or any file, for the icon. */
+  kind?: "image" | "file";
   className?: string;
 };
 
@@ -43,6 +45,7 @@ export function FileDropzone({
   hint,
   id,
   compact = false,
+  kind = "image",
   className,
 }: FileDropzoneProps) {
   const field = useStaffField();
@@ -51,6 +54,7 @@ export function FileDropzone({
   const hintId = hint ? `${inputId}-hint` : undefined;
   const isDisabled = disabled ?? field?.disabled ?? false;
   const [dragging, setDragging] = React.useState(false);
+  const Icon = kind === "file" ? FileUp : ImagePlus;
   const describedBy = [field?.describedBy, hintId].filter(Boolean).join(" ") || undefined;
 
   const take = (list: FileList | null) => {
@@ -102,7 +106,7 @@ export function FileDropzone({
           event.target.value = "";
         }}
       />
-      <ImagePlus
+      <Icon
         aria-hidden
         className={cn("size-5", isDisabled ? "text-staff-disabled" : "text-staff-subtle")}
         strokeWidth={1.75}
@@ -115,13 +119,15 @@ export function FileDropzone({
       >
         {label}
       </span>
-      <span className="text-staff-xs text-staff-muted">
-        {dragging
-          ? "Drop to upload"
-          : compact
-            ? "or drag files here"
-            : "Drag files here, or click to browse"}
-      </span>
+      {isDisabled ? null : (
+        <span className="text-staff-xs text-staff-muted">
+          {dragging
+            ? "Drop to upload"
+            : compact
+              ? "or drag files here"
+              : "Drag files here, or click to browse"}
+        </span>
+      )}
       {hint ? (
         <span
           id={hintId}
