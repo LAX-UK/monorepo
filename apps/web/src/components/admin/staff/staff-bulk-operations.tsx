@@ -4,20 +4,15 @@ import { notifyOrphanDraftSales } from "@/lib/admin/bulk-ops/orphan-draft-sale-n
 import type { BulkOperation, BulkOperationRunOptions } from "@/lib/admin/bulk-ops/types";
 import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler";
 import { notify } from "@/lib/ui/notify";
-import { ConfirmActionDialog, Field, StaffButton, TextArea, TextInput } from "@auction/staff-ui";
+import { ConfirmActionDialog, StaffButton } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-type Pending =
-  | { kind: "confirm"; operation: BulkOperation }
-  | { kind: "typed"; operation: BulkOperation }
-  | { kind: "reason"; operation: BulkOperation }
-  | null;
-
 /**
  * A list's bulk operations as buttons in the staff bulk-action bar. Each operation keeps its own
- * safeguard: a confirmation, a typed phrase for destructive ones, or a reason. Results report
- * through the usual toasts, and partial failures keep the failed rows selected.
+ * safeguard through the kit confirm: a plain confirmation, a reason kept in the audit log, or the
+ * typed phrase for destructive ones. Results report through the usual toasts, and partial
+ * failures keep the failed rows selected.
  */
 export function StaffBulkOperations({
   operations,
@@ -32,9 +27,7 @@ export function StaffBulkOperations({
 }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
-  const [pending, setPending] = useState<Pending>(null);
-  const [typed, setTyped] = useState("");
-  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState<BulkOperation | null>(null);
   const count = selectedIds.length;
   const label = `${count} ${count === 1 ? noun.one : noun.other}`;
 
@@ -58,18 +51,16 @@ export function StaffBulkOperations({
   };
 
   const start = (operation: BulkOperation) => {
-    setTyped("");
-    setReason("");
-    if (operation.typedConfirm) setPending({ kind: "typed", operation });
-    else if (operation.reasonPrompt) setPending({ kind: "reason", operation });
-    else if (operation.confirm) setPending({ kind: "confirm", operation });
-    else execute(operation);
+    if (operation.typedConfirm || operation.reasonPrompt || operation.confirm) {
+      setPending(operation);
+    } else {
+      execute(operation);
+    }
   };
 
   const ordered = [...operations].sort((a, b) => Number(a.destructive) - Number(b.destructive));
-  const op = pending?.operation;
-  const phrase = op?.typedConfirm?.confirmationPhrase(count) ?? "";
-  const minReason = op?.reasonPrompt?.minLength ?? 1;
+  const op = pending;
+  const phrase = op?.typedConfirm?.confirmationPhrase(count);
 
   return (
     <>
@@ -89,7 +80,7 @@ export function StaffBulkOperations({
         <ConfirmActionDialog
           open
           onOpenChange={(open) => {
-            if (!open) setPending(null);
+            if (!open && !busy) setPending(null);
           }}
           title={op.typedConfirm?.title ?? op.reasonPrompt?.title ?? `${op.label} ${label}?`}
           description={
@@ -98,40 +89,22 @@ export function StaffBulkOperations({
           confirmLabel={op.typedConfirm?.actionLabel ?? op.reasonPrompt?.actionLabel ?? op.label}
           tone={op.destructive ? "danger" : "default"}
           loading={busy}
-          onConfirm={() => {
-            if (pending?.kind === "typed") {
-              if (typed.trim() !== phrase) return;
-              execute(op, { confirmationPhrase: typed.trim() });
-            } else if (pending?.kind === "reason") {
-              if (reason.trim().length < minReason) return;
-              execute(op, { reason: reason.trim() });
-            } else {
-              execute(op);
-            }
+          {...(op.reasonPrompt
+            ? {
+                reason: {
+                  label: op.reasonPrompt.fieldLabel,
+                  placeholder: op.reasonPrompt.placeholder,
+                  ...(op.reasonPrompt.minLength ? { minLength: op.reasonPrompt.minLength } : {}),
+                },
+              }
+            : {})}
+          {...(phrase !== undefined ? { typedConfirmation: phrase } : {})}
+          onConfirm={({ reason }) => {
+            if (phrase !== undefined) execute(op, { confirmationPhrase: phrase });
+            else if (op.reasonPrompt) execute(op, { reason });
+            else execute(op);
           }}
-        >
-          {pending?.kind === "typed" ? (
-            <Field
-              label={`Type “${phrase}” to confirm`}
-              error={typed && typed.trim() !== phrase ? "The text does not match yet." : null}
-            >
-              <TextInput
-                value={typed}
-                onChange={(event) => setTyped(event.target.value)}
-                autoFocus
-              />
-            </Field>
-          ) : null}
-          {pending?.kind === "reason" && op.reasonPrompt ? (
-            <Field label={op.reasonPrompt.fieldLabel}>
-              <TextArea
-                value={reason}
-                placeholder={op.reasonPrompt.placeholder}
-                onChange={(event) => setReason(event.target.value)}
-              />
-            </Field>
-          ) : null}
-        </ConfirmActionDialog>
+        />
       ) : null}
     </>
   );

@@ -79,9 +79,17 @@ export function getSaleBulkOperations(canManageSales: boolean): BulkOperation[] 
         id: "cancel",
         label: "Cancel",
         destructive: true,
-        confirm:
-          "Cancel selected sales? Live or scheduled sales will be cancelled. Registrations may need review.",
-        run: (ids) => runSequential(ids, (id) => adminCancelSaleResultAction(id), "Cancel"),
+        reasonPrompt: {
+          title: "Cancel the selected sales?",
+          description:
+            "Bidding stops on live and scheduled sales and their lots. Approved registrations may need a follow-up. This cannot be undone.",
+          fieldLabel: "Reason for cancelling",
+          placeholder: "Kept with each sale and in the audit log",
+          actionLabel: "Cancel sales",
+          minLength: 3,
+        },
+        run: (ids, opts) =>
+          runSequential(ids, (id) => adminCancelSaleResultAction(id, opts?.reason), "Cancel"),
       },
       {
         id: "delete-drafts",
