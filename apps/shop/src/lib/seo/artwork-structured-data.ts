@@ -1,9 +1,16 @@
-import { type JsonLd, breadcrumbJsonLd } from "@auction/branding";
+import {
+  type JsonLd,
+  LAX_PRODUCT_NAMES,
+  breadcrumbJsonLd,
+  legalEntityFor,
+} from "@auction/branding";
 import type { PublicArtworkDetail } from "@auction/shop-contracts";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 
 const SCHEMA = "https://schema.org";
-const SHOP_NAME = "LAX Shop";
+const SHOP_NAME = LAX_PRODUCT_NAMES.shop;
+/** The company that sells Shop editions. */
+const SELLER_LEGAL_NAME = legalEntityFor("shop").name;
 
 function absolute(siteUrl: URL, pathOrUrl: string): string {
   return new URL(pathOrUrl, siteUrl).toString();
@@ -35,7 +42,7 @@ function offer(artwork: PublicArtworkDetail, url: string): JsonLd | undefined {
     },
     availability: `${SCHEMA}/${soldOut ? "SoldOut" : "InStock"}`,
     itemCondition: `${SCHEMA}/NewCondition`,
-    seller: { "@type": "Organization", name: SHOP_NAME },
+    seller: { "@type": "Organization", name: SHOP_NAME, legalName: SELLER_LEGAL_NAME },
     shippingDetails: {
       "@type": "OfferShippingDetails",
       shippingRate: {

@@ -86,7 +86,7 @@ function artworkOffer(artwork: PublicArtworkDetail, url: string): JsonLd | undef
     price: (artwork.printPricePence / 100).toFixed(2),
     priceCurrency: "GBP",
     availability: `${SCHEMA}/${soldOut ? "SoldOut" : "InStock"}`,
-    seller: { "@type": "Organization", name: ART_SITE_NAME },
+    seller: { "@type": "Organization", name: ART_SITE_NAME, legalName: legalEntityFor("art").name },
   };
 }
 

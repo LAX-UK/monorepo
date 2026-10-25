@@ -150,6 +150,7 @@ describe("product structured data", () => {
         priceSpecification: { valueAddedTaxIncluded: true, price: "120.00" },
         shippingDetails: { shippingRate: { value: "15.00", currency: "GBP" } },
         hasMerchantReturnPolicy: { merchantReturnDays: 14 },
+        seller: { name: "LAX Shop", legalName: "London Art Exchange Ltd" },
       },
     });
     expect(breadcrumbs?.["@type"]).toBe("BreadcrumbList");
