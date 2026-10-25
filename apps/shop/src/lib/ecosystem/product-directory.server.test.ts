@@ -37,7 +37,7 @@ describe("loadShopStorefrontBaseUrl", () => {
 });
 
 describe("loadShopCrossProductFooterLinks", () => {
-  it("links LAX Art to the configured Art URL", () => {
+  it("links lax.art to the configured Art URL", () => {
     stubShopEnv({
       NODE_ENV: "production",
       LAX_SHOP_STOREFRONT_URL: "https://shop.lax.art",
@@ -47,7 +47,7 @@ describe("loadShopCrossProductFooterLinks", () => {
     expect(art?.href).toBe("https://test-art.lax.bid");
   });
 
-  it("omits LAX Art rather than linking to localhost when it is unset in production", () => {
+  it("omits lax.art rather than linking to localhost when it is unset in production", () => {
     stubShopEnv({ NODE_ENV: "production", LAX_SHOP_STOREFRONT_URL: "https://shop.lax.art" });
     const links = loadShopCrossProductFooterLinks();
     expect(links.map((l) => l.id)).toEqual(["bid"]);

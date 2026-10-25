@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: ExhibitionPageProps): Promise
   if (result.status !== "ok") notFoundOrUnavailable(result.status, "Exhibition");
   const { exhibition } = result.data;
   return {
-    title: `${exhibition.title} | LAX Art`,
+    title: `${exhibition.title} | lax.art`,
     ...(exhibition.summary ? { description: exhibition.summary } : {}),
     alternates: { canonical: `/exhibitions/${encodeURIComponent(exhibition.slug)}` },
     openGraph: {

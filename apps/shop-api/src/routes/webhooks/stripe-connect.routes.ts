@@ -6,7 +6,7 @@ export type StripeConnectWebhookDeps = {
   syncAccount(event: unknown): Promise<"applied" | "orphan" | "ignored">;
 };
 
-/** Connect endpoint: receives events from connected accounts on the LAX Art platform. */
+/** Connect endpoint: receives events from connected accounts on the lax.art platform. */
 export async function registerStripeConnectWebhookRoutes(
   app: FastifyInstance,
   deps: StripeConnectWebhookDeps,

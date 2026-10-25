@@ -39,11 +39,11 @@ describe("buildPagePayload", () => {
 
   it("trims SEO overrides and rejects an over-long SEO title", () => {
     const ok = buildPagePayload(
-      { slug: "faq", title: "FAQ", seoTitle: "  FAQ | LAX Art ", seoDescription: " Answers. " },
+      { slug: "faq", title: "FAQ", seoTitle: "  FAQ | lax.art ", seoDescription: " Answers. " },
       blocks,
     );
     expect(ok.ok && ok.payload).toMatchObject({
-      seoTitle: "FAQ | LAX Art",
+      seoTitle: "FAQ | lax.art",
       seoDescription: "Answers.",
     });
     const tooLong = buildPagePayload(

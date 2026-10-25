@@ -31,7 +31,7 @@ import type { ReactNode } from "react";
 
 /** Keeps the legacy www.thelax.art home page's ranking intent ("London art gallery", "art for sale"). */
 export const metadata: Metadata = {
-  title: "London Art Gallery | Original Art for Sale | LAX Art",
+  title: "London Art Gallery | Original Art for Sale | lax.art",
   description:
     "London Art Exchange, the gallery at 156 New Cavendish Street, London: original paintings, prints and sculptures for sale, private viewings and art advisory.",
   alternates: { canonical: "/" },

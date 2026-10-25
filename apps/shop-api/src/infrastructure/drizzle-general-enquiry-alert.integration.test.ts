@@ -24,7 +24,7 @@ describe.skipIf(!hasShopIntegrationDb)("general enquiry staff alert", () => {
     await ownerPool.end();
   });
 
-  it("queues a LAX Art alert with the guest contact in the same transaction as the enquiry", async () => {
+  it("queues a lax.art alert with the guest contact in the same transaction as the enquiry", async () => {
     const db = createShopDb(shopPool);
     const repo = createDrizzleEditorialRepository(db, {
       resolveMediaUrl: (value) => value ?? null,

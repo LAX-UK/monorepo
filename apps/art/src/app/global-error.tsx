@@ -21,7 +21,7 @@ export default function ArtGlobalError({
       <body style={{ fontFamily: "system-ui, sans-serif", margin: 0, padding: "4rem 1.5rem" }}>
         <main id="main-content" style={{ maxWidth: "36rem", margin: "0 auto" }}>
           <h1>Something went wrong</h1>
-          <p>We could not load LAX Art. Try again or return home.</p>
+          <p>We could not load lax.art. Try again or return home.</p>
           <p style={{ display: "flex", gap: "1rem" }}>
             <Button type="button" variant="default" onClick={reset}>
               Try again

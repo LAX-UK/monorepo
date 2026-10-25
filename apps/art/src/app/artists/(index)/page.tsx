@@ -21,7 +21,7 @@ export async function generateMetadata({ searchParams }: ArtistsPageProps): Prom
   const params = await searchParams;
   const letter = parseArtistLetter(params.letter);
   return {
-    title: letter ? `Artists: ${letter} | LAX Art` : "Artists | LAX Art",
+    title: letter ? `Artists: ${letter} | lax.art` : "Artists | lax.art",
     description: "Artists represented on lax.art.",
     alternates: { canonical: letter ? `/artists?letter=${letter.toLowerCase()}` : "/artists" },
     ...(params.cursor ? { robots: { index: false, follow: true } } : {}),

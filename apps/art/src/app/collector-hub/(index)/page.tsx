@@ -17,7 +17,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Collector Hub | LAX Art",
+  title: "Collector Hub | lax.art",
   description: "Advisory, collection care and ways to work with the London Art Exchange team.",
   alternates: { canonical: "/collector-hub" },
 };

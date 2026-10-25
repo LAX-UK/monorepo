@@ -21,7 +21,7 @@ export default async function ArtSessionExpiredPage({ searchParams }: ArtSession
         layout="page"
         titleAs="h1"
         title="Session expired"
-        description="Your LAX Art session timed out for your security. Sign in again to pick up where you left off."
+        description="Your lax.art session timed out for your security. Sign in again to pick up where you left off."
         actions={
           <>
             <ArtStatusStateLink href={vm.signInHref} priority="primary">

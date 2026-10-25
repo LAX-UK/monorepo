@@ -12,7 +12,7 @@ type HelpPageProps = {
 export async function generateMetadata({ searchParams }: HelpPageProps): Promise<Metadata> {
   const { q, category } = parseHelpParams(await searchParams);
   return {
-    title: "Help centre | LAX Art",
+    title: "Help centre | lax.art",
     description:
       "Answers to common questions about buying, delivery, returns, private viewings and your LAX account.",
     alternates: { canonical: "/help" },

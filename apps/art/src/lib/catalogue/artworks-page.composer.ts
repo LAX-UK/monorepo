@@ -73,7 +73,7 @@ export function composeArtworksPageMetadata(
       canonical: landing.path,
     };
   }
-  return { title: `${artworkCataloguePageTitle(state)} | LAX Art`, canonical: "/artworks" };
+  return { title: `${artworkCataloguePageTitle(state)} | lax.art`, canonical: "/artworks" };
 }
 
 export async function composeArtworksPage(

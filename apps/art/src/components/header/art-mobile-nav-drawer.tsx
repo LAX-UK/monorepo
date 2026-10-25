@@ -58,7 +58,7 @@ export function ArtMobileNavDrawer({
         <Link
           href="/"
           className={cn("shrink-0 rounded-sm", FOCUS_RING)}
-          aria-label="LAX Art home"
+          aria-label="lax.art home"
           onClick={close}
         >
           <LaxLogo className="art-header__logo" />

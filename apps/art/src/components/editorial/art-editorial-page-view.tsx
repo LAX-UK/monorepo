@@ -96,7 +96,7 @@ export function editorialPageMetadata(
   { notFoundWhenDisabled = false }: { notFoundWhenDisabled?: boolean } = {},
 ): Metadata {
   if (result.status === "disabled" && !notFoundWhenDisabled) {
-    return { title: `${fallbackTitle} | LAX Art`, robots: { index: false, follow: false } };
+    return { title: `${fallbackTitle} | lax.art`, robots: { index: false, follow: false } };
   }
   if (result.status !== "ok") notFoundOrUnavailable(result.status, fallbackTitle);
   return {
