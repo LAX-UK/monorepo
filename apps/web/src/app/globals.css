@@ -11,6 +11,9 @@
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 /* The staff design system (Bid admin's shell, tables, panels and forms). */
 @source "../../../../packages/staff-ui/src/**/*.{ts,tsx}";
+/* Shared marketing components and layout constants used by the public Bid pages. */
+@source "../../../../packages/marketing-ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/branding/src/**/*.ts";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
