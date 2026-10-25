@@ -64,7 +64,14 @@ export function presentPayoutStatus(status: PayoutStatus): StatusPresentation {
   return staffStatus("payout", status);
 }
 
+/** Settlements that cover everything up to a date store the epoch as their start. */
+const OPEN_PERIOD_START_BEFORE_MS = 86_400_000;
+
 export function payoutPeriod(start: string, end: string): string {
+  const startMs = Date.parse(start);
+  if (Number.isNaN(startMs) || startMs < OPEN_PERIOD_START_BEFORE_MS) {
+    return `Up to ${formatStaffDate(end)}`;
+  }
   return `${formatStaffDate(start)} – ${formatStaffDate(end)}`;
 }
 

@@ -28,6 +28,7 @@ async function handle(request: Request, pathSegments: string[]): Promise<Respons
       clock: container.clock,
       sessionId,
       bffPath,
+      search: new URL(request.url).search,
       method: request.method,
       origin: request.headers.get("origin"),
       csrfHeader: request.headers.get("x-csrf-token"),

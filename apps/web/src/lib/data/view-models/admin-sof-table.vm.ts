@@ -81,7 +81,7 @@ function triageLabel(recommendation: string | null): string {
 
 function moneyLabel(currency: string, amount: string): string {
   const trimmed = amount.trim();
-  return trimmed.length > 0 ? `${currency} ${trimmed}` : currency;
+  return trimmed.length > 0 ? formatMoney(trimmed, currency) : currency;
 }
 
 export function formatExposurePence(pence: number, currency = "GBP"): string {

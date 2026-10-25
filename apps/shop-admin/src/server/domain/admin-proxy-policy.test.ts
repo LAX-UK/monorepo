@@ -12,6 +12,27 @@ describe("resolveAdminProxyTarget", () => {
     expect(resolved?.requiresRecentAuth).toBe(false);
   });
 
+  it("forwards the query string, which the saved-views list needs to name its list", () => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath: "/api/admin/saved-views",
+      shopApiBaseUrl: "http://shop-api:3011",
+      method: "GET",
+      search: "?listKey=orders",
+    });
+    expect(resolved?.upstreamUrl.pathname).toBe("/admin/v1/saved-views");
+    expect(resolved?.upstreamUrl.searchParams.get("listKey")).toBe("orders");
+  });
+
+  it("does not read a path-like query value as a path segment", () => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath: "/api/admin/orders",
+      shopApiBaseUrl: "http://shop-api:3011",
+      method: "GET",
+      search: "?q=a/../b",
+    });
+    expect(resolved?.upstreamUrl.search).toBe("?q=a/../b");
+  });
+
   it("flags finance mutations for recent auth but not GET reads", () => {
     const read = resolveAdminProxyTarget({
       bffPath: "/api/admin/payouts",

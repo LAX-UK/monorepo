@@ -51,6 +51,8 @@ export function resolveAdminProxyTarget(input: {
   bffPath: string;
   shopApiBaseUrl: string;
   method: string;
+  /** The request's query string, with or without the leading "?". Forwarded as it came. */
+  search?: string;
 }): { upstreamUrl: URL; requiresRecentAuth: boolean } | null {
   const rule = ADMIN_PROXY_RULES[0];
   if (!rule || !input.bffPath.startsWith(`${rule.bffPrefix}/`)) {
@@ -66,8 +68,11 @@ export function resolveAdminProxyTarget(input: {
   // checks the same list, see SHOP_ADMIN_STEP_UP_PATHS.
   const requiresRecentAuth =
     input.method.toUpperCase() !== "GET" && isStepUpPath(normalizedPathname);
+  const upstreamUrl = new URL(upstreamPath, `${input.shopApiBaseUrl}/`);
+  const search = input.search?.replace(/^\?/, "");
+  if (search) upstreamUrl.search = search;
   return {
-    upstreamUrl: new URL(upstreamPath, `${input.shopApiBaseUrl}/`),
+    upstreamUrl,
     requiresRecentAuth,
   };
 }

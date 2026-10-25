@@ -7,7 +7,7 @@ import {
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
-import { formatMoney } from "@/lib/ui/format";
+import { formatMoney, formatPeriod } from "@/lib/ui/format";
 import type { Payout } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 
@@ -18,7 +18,7 @@ type PayoutRowProps = {
 
 function PayoutRowCard({ payout, sellerEntityId }: PayoutRowProps) {
   const rowPadding = useDashboardListRowPaddingClass();
-  const periodLabel = `${new Date(payout.periodStart).toLocaleDateString("en-GB")} → ${new Date(payout.periodEnd).toLocaleDateString("en-GB")}`;
+  const periodLabel = formatPeriod(payout.periodStart, payout.periodEnd);
 
   return (
     <DashboardListRowCard
@@ -84,10 +84,7 @@ export function PayoutsDesktopList({ payouts, sellerEntityId }: Props) {
               className="grid gap-3 text-sm sm:grid-cols-[1fr_auto_auto_auto] sm:items-center"
             >
               <div>
-                <p className="font-medium">
-                  {new Date(p.periodStart).toLocaleDateString("en-GB")} →{" "}
-                  {new Date(p.periodEnd).toLocaleDateString("en-GB")}
-                </p>
+                <p className="font-medium">{formatPeriod(p.periodStart, p.periodEnd)}</p>
                 <p className="text-xs tabular-nums text-on-surface-variant">
                   Gross {formatMoney(p.grossAmount, p.currency)} · Fees{" "}
                   {formatMoney(p.platformFee, p.currency)}

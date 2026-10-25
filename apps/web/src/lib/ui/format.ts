@@ -73,6 +73,22 @@ export function formatDate(
   return dateFormatter({ day: "numeric", month: "short", year: "numeric" }, locale).format(d);
 }
 
+/**
+ * A payout period as "1 Jan 2026 → 22 Jun 2026". Settlements that cover everything up to the end
+ * date are stored with an epoch start (1 Jan 1970); that reads as "Up to 22 Jun 2026".
+ */
+export function formatPeriod(
+  start: Date | string | number | null | undefined,
+  end: Date | string | number | null | undefined,
+  locale = DEFAULT_DATE_LOCALE,
+): string {
+  const from = toDate(start);
+  const to = toDate(end);
+  const openStart = from == null || from.getTime() < 86_400_000;
+  if (openStart) return to ? `Up to ${formatDate(to, locale)}` : "—";
+  return `${formatDate(from, locale)} → ${formatDate(to, locale)}`;
+}
+
 /** Dense table date with 2-digit year, e.g. 19 May 26 */
 export function formatDateShort(
   value: Date | string | number | null | undefined,
