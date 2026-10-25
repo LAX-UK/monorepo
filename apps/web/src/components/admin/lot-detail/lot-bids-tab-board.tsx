@@ -1,88 +1,127 @@
 "use client";
 
-import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
+import type { LotBidTableRow } from "@/lib/data/view-models/lot-bids-tab.vm";
 import {
-  DetailBoardKpiStrip,
-  DetailBoardShell,
-  DetailEntityTable,
-} from "@/components/admin/catalog/detail-board";
-import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
-import { type LotBidTableRow, buildLotBidsKpiTiles } from "@/lib/data/view-models/lot-bids-tab.vm";
-import { formatMoney } from "@/lib/ui/format";
+  type DataColumn,
+  PersonCell,
+  StaffDate,
+  type StaffLinkComponent,
+  StaffMoney,
+  StatusBadge,
+  parsePoundsToPence,
+  rowActionsColumn,
+} from "@auction/staff-ui";
+import { UserRound } from "lucide-react";
 import Link from "next/link";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   lotId: string;
   rows: LotBidTableRow[];
+  /** Only the latest bids were loaded. */
   capped?: boolean;
 };
 
-export function LotBidsTabBoard({ lotId, rows, capped = false }: Props) {
-  const kpiTiles = buildLotBidsKpiTiles(rows);
+function pence(amount: string | null): number | null {
+  if (!amount) return null;
+  const parsed = parsePoundsToPence(amount);
+  return parsed.ok ? parsed.pence : null;
+}
 
-  return (
-    <div className="space-y-6">
-      <DetailBoardKpiStrip ariaLabel="Bid summary" tiles={kpiTiles} />
-      <DetailBoardShell
-        title="Bid history"
-        description="All bids placed on this lot, newest first."
-        count={rows.length}
-      >
-        {capped ? (
-          <p className="mb-4 font-body text-sm text-on-surface-variant">
-            Showing the latest 100 bids.{" "}
-            <Link href={lotDetailTabHref(lotId, "overview")} className="text-link hover:underline">
-              View lot overview →
-            </Link>
-          </p>
-        ) : null}
-        <DetailEntityTable
-          rows={rows}
-          getRowId={(row) => row.id}
-          emptyTitle="No bids yet"
-          emptyDescription="Bids appear when the lot is live and bidders place offers."
-          columns={[
-            {
-              id: "amount",
-              header: "Amount",
-              cell: (row) => (
-                <span className="font-medium tabular-nums">
-                  {formatMoney(row.amount)}
-                  {row.isWinning ? (
-                    <span className="ml-2 rounded bg-success/10 px-1.5 py-0.5 font-label text-[10px] uppercase text-success">
-                      Winning
-                    </span>
-                  ) : null}
-                </span>
-              ),
-            },
-            {
-              id: "type",
-              header: "Type",
-              cell: (row) => (
-                <span className="text-on-surface-variant">
-                  {row.isAutoBid ? "Auto" : "Manual"}
-                  {row.maxAutoBidAmount ? (
-                    <span className="mt-0.5 block text-[11px] text-on-surface-variant/80">
-                      Max {formatMoney(row.maxAutoBidAmount)}
-                    </span>
-                  ) : null}
-                </span>
-              ),
-            },
+const columns: DataColumn<LotBidTableRow>[] = [
+  {
+    id: "amount",
+    header: "Amount",
+    numeric: true,
+    width: "140px",
+    sortable: true,
+    defaultSortDirection: "desc",
+    sortValue: (row) => pence(row.amount),
+    mobile: "title",
+    cell: (row) => <StaffMoney minor={pence(row.amount)} />,
+  },
+  {
+    id: "state",
+    header: "Standing",
+    width: "120px",
+    mobile: "badge",
+    cell: (row) =>
+      row.isWinning ? <StatusBadge tone="success">Winning</StatusBadge> : <span>Outbid</span>,
+  },
+  {
+    id: "bidder",
+    header: "Bidder",
+    mobile: "meta",
+    cell: (row) => (
+      <PersonCell
+        name={row.bidderLabel}
+        {...(row.bidderId ? { href: `/admin/clients/${row.bidderId}`, Link: NextLink } : {})}
+      />
+    ),
+  },
+  {
+    id: "type",
+    header: "Type",
+    hideBelow: "md",
+    cell: (row) =>
+      row.isAutoBid ? (
+        <span className="flex flex-col">
+          <span>Automatic</span>
+          {row.maxAutoBidAmount ? (
+            <span className="text-staff-xs text-staff-muted">
+              Up to <StaffMoney minor={pence(row.maxAutoBidAmount)} />
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        "Placed by the bidder"
+      ),
+  },
+  {
+    id: "placed",
+    header: "Placed",
+    width: "180px",
+    sortable: true,
+    defaultSortDirection: "desc",
+    sortValue: (row) => new Date(row.placedAtIso).getTime(),
+    mobile: "meta",
+    cell: (row) => <StaffDate value={row.placedAtIso} withTime />,
+  },
+  rowActionsColumn<LotBidTableRow>({
+    label: (row) => `Actions for the bid from ${row.bidderLabel}`,
+    Link: NextLink,
+    actions: (row) =>
+      row.bidderId
+        ? [
             {
               id: "bidder",
-              header: "Bidder",
-              cell: (row) => <span>{row.bidderLabel}</span>,
+              label: "Open bidder",
+              icon: UserRound,
+              href: `/admin/clients/${row.bidderId}`,
             },
-            {
-              id: "placed",
-              header: "Placed",
-              cell: (row) => <AdminTableDateTimeCell iso={row.placedAtIso} mode="timestamp" />,
-            },
-          ]}
-        />
-      </DetailBoardShell>
-    </div>
+          ]
+        : [],
+  }),
+];
+
+/** Every bid on the lot, newest first, with who placed it and whether it is winning. */
+export function LotBidsTabBoard({ rows, capped = false }: Props) {
+  return (
+    <RelatedRecordsSection<LotBidTableRow>
+      title="Bids"
+      label="Bids on this lot"
+      columns={columns}
+      data={rows}
+      getRowId={(row) => row.id}
+      defaultSort={{ columnId: "placed", direction: "desc" }}
+      density="comfortable"
+      empty={{
+        title: "No bids yet",
+        description: "Bids appear here once the lot is open and bidders place them.",
+      }}
+      {...(capped ? { footer: "Showing the latest 100 bids." } : {})}
+    />
   );
 }

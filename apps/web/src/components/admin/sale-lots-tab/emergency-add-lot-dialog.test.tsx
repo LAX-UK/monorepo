@@ -10,7 +10,9 @@ vi.mock("@/lib/actions/admin-sales", () => ({
 vi.mock("@/lib/actions/admin-legal-entities-browse", () => ({
   searchAdminLegalEntitiesBrowseAction: vi.fn(),
 }));
-vi.mock("@/components/forms/image-upload-field", () => ({ ImageUploadField: () => null }));
+vi.mock("@/components/admin/media/staff-image-collection", () => ({
+  StaffImageCollection: () => null,
+}));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 
 function renderDialog(deliveryMode: "online" | "onsite" = "online") {

@@ -15,6 +15,7 @@ vi.mock("@/lib/forms/image/use-upload-gallery", () => ({
     items: [],
     uploadFiles: vi.fn(),
     retry: vi.fn(),
+    dismiss: vi.fn(),
   }),
 }));
 
@@ -46,12 +47,12 @@ describe("SaleIdentityStep", () => {
     verifyStreamUrlActionMock.mockReset();
   });
 
-  it("reveals add and manage actions for cover images", () => {
+  it("shows the cover images in order with a way to add and reorder them", () => {
     render(<SaleIdentityHarness />);
 
-    expect(screen.getByRole("button", { name: "Add cover images" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Manage" }));
-    expect(screen.getByRole("button", { name: "Move auction cover 1 later" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Add cover images/)).toBeInTheDocument();
+    expect(screen.getByText("Main")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move cover image 1" })).toBeInTheDocument();
   });
 
   it("toggles the conditional homepage hero video URL field", () => {

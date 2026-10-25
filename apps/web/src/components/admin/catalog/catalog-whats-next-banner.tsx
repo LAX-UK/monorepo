@@ -38,7 +38,8 @@ export function CatalogWhatsNextBanner({ entityLabel, readiness, dismissKey }: P
 
   return (
     <CatalogPublishReadiness
-      title={`Your ${entityLabel} draft is saved`}
+      title="Before you publish"
+      description={`Your ${entityLabel} draft is saved. Finish these to publish it.`}
       readiness={readiness}
       dismissKey={dismissKey}
       onDismiss={registerBannerDismiss}

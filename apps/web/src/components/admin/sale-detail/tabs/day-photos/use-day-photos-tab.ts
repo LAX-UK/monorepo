@@ -1,11 +1,10 @@
 "use client";
 
+import type { StaffActionResult } from "@/components/admin/staff/use-staff-confirm";
 import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
-import { notify } from "@/lib/ui/notify";
+import type { UploadQueueItem } from "@auction/staff-ui";
 import type { SaleDayMediaRef } from "@auction/types";
-import { KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { type DayMediaItem, itemsToDayImages, refToItem } from "./day-media-types";
@@ -15,143 +14,147 @@ type UseDayPhotosTabArgs = {
   saleStatus: string;
   initialDayImages: SaleDayMediaRef[];
   previewUrlByKey: Record<string, string>;
-  canManage: boolean;
 };
 
+type QueuedUpload = UploadQueueItem & { file: File };
+
+/**
+ * The auction day media being arranged: what is in the gallery, files on their way in, and saving.
+ * Before the sale ends nothing is saved (the gallery is published with the results); afterwards
+ * saving publishes the gallery, and removing an item saves at once.
+ */
 export function useDayPhotosTab({
   saleId,
   saleStatus,
   initialDayImages,
   previewUrlByKey,
-  canManage,
 }: UseDayPhotosTabArgs) {
   const router = useRouter();
   const [items, setItems] = useState<DayMediaItem[]>(() =>
     initialDayImages.map((r) => refToItem(r, previewUrlByKey)),
   );
+  const [queue, setQueue] = useState<QueuedUpload[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { uploadFile } = useUploadObjectLifecycle();
   const isEnded = saleStatus === "ended";
+  const savedRef = useRef(JSON.stringify(itemsToDayImages(items)));
+  const dirty = JSON.stringify(itemsToDayImages(items)) !== savedRef.current;
 
-  const savedRef = useRef<string>(
-    JSON.stringify(initialDayImages.map((r) => refToItem(r, previewUrlByKey))),
-  );
-  const dirty = JSON.stringify(items) !== savedRef.current;
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const uploadFiles = useCallback(
-    async (files: FileList | File[]) => {
-      const arr = Array.from(files);
-      for (const file of arr) {
-        const tempId = `uploading-${Date.now()}-${file.name}`;
-        const mediaType: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
+  const send = useCallback(
+    async (upload: QueuedUpload) => {
+      const mediaType: "image" | "video" = upload.file.type.startsWith("video/")
+        ? "video"
+        : "image";
+      try {
+        const uploaded = await uploadFile(upload.file, "sale_day");
+        const previewUrl = URL.createObjectURL(upload.file);
         setItems((prev) => [
           ...prev,
-          { id: tempId, key: "", mediaType, previewUrl: "", caption: "", alt: "", uploading: true },
+          { id: uploaded.key, key: uploaded.key, mediaType, previewUrl, caption: "", alt: "" },
         ]);
-        try {
-          const uploaded = await uploadFile(file, "sale_day");
-          const objectUrl = URL.createObjectURL(file);
-          setItems((prev) =>
-            prev.map((it) =>
-              it.id === tempId
-                ? {
-                    id: uploaded.key,
-                    key: uploaded.key,
-                    mediaType,
-                    previewUrl: objectUrl,
-                    caption: "",
-                    alt: "",
-                    uploading: false,
-                  }
-                : it,
-            ),
-          );
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Upload failed";
-          setItems((prev) =>
-            prev.map((it) =>
-              it.id === tempId ? { ...it, uploading: false, uploadError: message } : it,
-            ),
-          );
-          notify.error("Upload failed", { description: message });
-        }
+        setQueue((prev) => prev.filter((item) => item.id !== upload.id));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "The upload failed.";
+        setQueue((prev) =>
+          prev.map((item) =>
+            item.id === upload.id ? { ...item, status: "error", error: message } : item,
+          ),
+        );
       }
     },
     [uploadFile],
   );
 
-  const persistDayImages = useCallback(
-    async (nextItems: DayMediaItem[]): Promise<boolean> => {
-      const pending = nextItems.filter((it) => it.uploading);
-      if (pending.length > 0) {
-        notify.error("Please wait for uploads to finish before saving.");
-        return false;
-      }
-      if (!isEnded) {
-        return true;
-      }
-      setSaving(true);
-      try {
-        const result = await adminUpdateSaleResultAction(saleId, {
-          dayImages: itemsToDayImages(nextItems),
-        });
-        if (result.ok) {
-          savedRef.current = JSON.stringify(nextItems);
-          router.refresh();
-          return true;
-        }
-        notify.error("Save failed", {
-          description: !result.ok && result.error ? result.error : "Please try again.",
-        });
-        return false;
-      } finally {
-        setSaving(false);
+  const uploadFiles = useCallback(
+    (files: File[]) => {
+      for (const file of files) {
+        const upload: QueuedUpload = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          status: "uploading",
+          progress: 30,
+          file,
+        };
+        setQueue((prev) => [...prev, upload]);
+        void send(upload);
       }
     },
-    [isEnded, router, saleId],
+    [send],
   );
 
-  const handleSave = useCallback(async () => {
-    const ok = await persistDayImages(items);
-    if (ok && isEnded) {
-      notify.success("Auction day media saved");
-    }
-  }, [isEnded, items, persistDayImages]);
-
-  const handleRemoveConfirmed = useCallback(
-    async (itemId: string) => {
-      if (saving) return;
-      const next = items.filter((it) => it.id !== itemId);
-      if (!isEnded || !canManage) {
-        setItems(next);
-        return;
-      }
-      const ok = await persistDayImages(next);
-      if (!ok) return;
-      setItems(next);
-      notify.success("Media removed");
+  const retry = useCallback(
+    (id: string) => {
+      const upload = queue.find((item) => item.id === id);
+      if (!upload) return;
+      const next: QueuedUpload = {
+        id: upload.id,
+        name: upload.name,
+        file: upload.file,
+        status: "uploading",
+        progress: 30,
+      };
+      setQueue((prev) => prev.map((item) => (item.id === id ? next : item)));
+      void send(next);
     },
-    [canManage, isEnded, items, persistDayImages, saving],
+    [queue, send],
   );
 
-  const anyUploading = items.some((it) => it.uploading);
+  const dismissUpload = useCallback((id: string) => {
+    setQueue((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const persist = useCallback(
+    async (nextItems: DayMediaItem[]): Promise<StaffActionResult> => {
+      const result = await adminUpdateSaleResultAction(saleId, {
+        dayImages: itemsToDayImages(nextItems),
+      });
+      if (!result.ok) return { ok: false, error: result.error ?? "The media was not saved." };
+      savedRef.current = JSON.stringify(itemsToDayImages(nextItems));
+      router.refresh();
+      return { ok: true };
+    },
+    [router, saleId],
+  );
+
+  const save = useCallback(async () => {
+    setSaving(true);
+    setSaveError(null);
+    const result = await persist(items);
+    setSaving(false);
+    if (!result.ok) setSaveError(result.error);
+    return result.ok;
+  }, [items, persist]);
+
+  /** Removes an item; after the sale it also saves, so the public gallery loses it at once. */
+  const removeAndSave = useCallback(
+    async (itemId: string): Promise<StaffActionResult> => {
+      const next = items.filter((item) => item.id !== itemId);
+      const result = await persist(next);
+      if (result.ok) setItems(next);
+      return result;
+    },
+    [items, persist],
+  );
+
+  const update = useCallback((itemId: string, patch: Partial<DayMediaItem>) => {
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
+  }, []);
 
   return {
     items,
     setItems,
-    saving,
-    isEnded,
-    canManage,
-    dirty,
-    sensors,
+    update,
+    queue,
     uploadFiles,
-    handleSave,
-    handleRemoveConfirmed,
-    anyUploading,
+    retry,
+    dismissUpload,
+    saving,
+    saveError,
+    save,
+    removeAndSave,
+    isEnded,
+    dirty,
+    anyUploading: queue.some((item) => item.status !== "error"),
   };
 }

@@ -1,111 +1,73 @@
 "use client";
 
-import { DetailBoardKpiStrip } from "@/components/admin/catalog/detail-board";
-import {
-  CatalogMediaCollectionActions,
-  CatalogMediaWorkspace,
-} from "@/components/admin/catalog/media";
-import { LotImageManager } from "@/components/admin/lot-image-manager";
+import { LotCatalogueImagesField } from "@/components/admin/lot-catalogue-images-field";
 import { type LotImageSaveEntry, useLotImagesSave } from "@/lib/admin/lots/use-lot-images-save";
-import { useMediaCollectionUi } from "@/lib/admin/media/use-media-collection-ui";
-import { buildLotImagesKpiTiles } from "@/lib/data/view-models/lot-images-tab.vm";
-import { Button } from "@auction/ui/components/button";
-import { useEffect, useMemo, useState } from "react";
+import { FormActions, Notice, Section, StaffButton, UnsavedChangesGuard } from "@auction/staff-ui";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type Props = {
   lotId: string;
   initialImages: string[];
   initialAlts: (string | undefined)[];
+  /** Staff who cannot edit the catalogue see the photos without the tools. */
+  canEdit?: boolean;
 };
 
-export function LotImagesTabBoard({ lotId, initialImages, initialAlts }: Props) {
-  const { save, pending, lastResult } = useLotImagesSave(lotId);
+/**
+ * The lot's photos: upload, order (the first is the main image in listings), alt text and
+ * removal, saved together. Leaving with unsaved changes asks first; a failed save stays here.
+ */
+export function LotImagesTabBoard({ lotId, initialImages, initialAlts, canEdit = true }: Props) {
+  const router = useRouter();
+  const { save, pending, lastResult, error } = useLotImagesSave(lotId);
   const [entries, setEntries] = useState<LotImageSaveEntry[]>(
     initialImages.map((key, i) => ({ key, alt: initialAlts[i] ?? "" })),
   );
   const [dirty, setDirty] = useState(false);
-  const [inspectIndex, setInspectIndex] = useState<number | null>(null);
-
-  const {
-    showAdd,
-    showManage,
-    addButtonRef,
-    manageButtonRef,
-    closeAddPanel,
-    toggleAdd,
-    toggleManage,
-  } = useMediaCollectionUi({
-    collectionLength: entries.length,
-    inspectTarget: inspectIndex,
-    setInspectTarget: setInspectIndex,
-  });
-
-  const kpiTiles = useMemo(() => buildLotImagesKpiTiles(entries.length), [entries.length]);
-
-  function handleChange(next: LotImageSaveEntry[]) {
-    setEntries(next);
-    setDirty(true);
-  }
 
   useEffect(() => {
     if (lastResult === "ok" || lastResult === "partial") setDirty(false);
   }, [lastResult]);
 
   return (
-    <div className="space-y-6">
-      <DetailBoardKpiStrip ariaLabel="Image summary" tiles={kpiTiles} />
-      <CatalogMediaWorkspace
-        title="Images"
-        description="Upload, reorder, and describe lot images. The catalogue hero is always shown first."
-        count={entries.length}
-        actions={
-          <CatalogMediaCollectionActions
-            addButtonRef={addButtonRef}
-            manageButtonRef={manageButtonRef}
-            showAdd={showAdd}
-            showManage={showManage}
-            onToggleAdd={toggleAdd}
-            onToggleManage={toggleManage}
-            addLabel="Add images"
-            manageLabel="Manage"
-          />
-        }
-        saveBar={
-          dirty ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-body text-sm text-on-surface-variant">
-                You have unsaved image changes.
-              </p>
-              <Button
-                type="button"
-                onClick={() => save(entries)}
-                disabled={pending}
-                size="sm"
-                variant="cta"
-              >
-                {pending ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
-          ) : undefined
-        }
-        footer={
-          <span aria-live="polite">
-            {entries.length} image{entries.length === 1 ? "" : "s"}
-            {pending ? " · Saving…" : dirty ? " · Unsaved changes" : " · All changes saved"}
-          </span>
-        }
-      >
-        <LotImageManager
+    <Section
+      title="Photos"
+      description="The first photo is the main image in listings and the catalogue."
+    >
+      <div className="flex flex-col gap-4">
+        {error ? (
+          <Notice tone={lastResult === "partial" ? "warning" : "danger"} title={error} alert />
+        ) : null}
+        <LotCatalogueImagesField
           value={entries}
-          onChange={handleChange}
-          disabled={pending}
-          showAddPanel={showAdd}
-          onCloseAddPanel={closeAddPanel}
-          showManage={showManage}
-          inspectIndex={inspectIndex}
-          onInspectIndex={setInspectIndex}
+          onChange={(next) => {
+            setEntries(next);
+            setDirty(true);
+          }}
+          disabled={!canEdit || pending}
         />
-      </CatalogMediaWorkspace>
-    </div>
+        {canEdit && dirty ? (
+          <FormActions
+            start={<span className="text-staff-sm text-staff-muted">Unsaved changes</span>}
+          >
+            <StaffButton
+              type="button"
+              variant="primary"
+              loading={pending}
+              onClick={() => save(entries)}
+            >
+              Save photos
+            </StaffButton>
+          </FormActions>
+        ) : null}
+      </div>
+      <UnsavedChangesGuard
+        dirty={canEdit && dirty}
+        label="these photos"
+        navigate={router.push}
+        interceptBack={false}
+      />
+    </Section>
   );
 }

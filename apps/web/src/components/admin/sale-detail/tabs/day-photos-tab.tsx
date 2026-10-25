@@ -1,388 +1,207 @@
 "use client";
 
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import {
-  DetailBoardKpiStrip,
-  DetailBoardToolbar,
-  DetailNoticeBanner,
-} from "@/components/admin/catalog/detail-board";
-import {
-  CatalogMediaAddPanel,
-  CatalogMediaCollectionActions,
-  CatalogMediaInspector,
-  CatalogMediaWorkspace,
-  MediaReorderLiveRegion,
-  useMediaReorderAnnouncement,
-} from "@/components/admin/catalog/media";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { MediaImage } from "@/components/ui/media-image";
-import { downloadSaleMediaCsv } from "@/lib/admin/export-sale-media-csv";
-import { useMediaCollectionUi } from "@/lib/admin/media/use-media-collection-ui";
+import { notify } from "@/lib/ui/notify";
 import {
-  SALE_MEDIA_FILTERS,
-  type SaleMediaFilter,
-  buildSaleMediaKpiTiles,
-  filterSaleMediaItems,
-  matchesSaleMediaSearch,
-} from "@/lib/data/view-models/sale-media-tab.vm";
+  EmptyState,
+  Field,
+  FileDropzone,
+  FormActions,
+  MediaGrid,
+  Notice,
+  Section,
+  StaffButton,
+  TextInput,
+  UnsavedChangesGuard,
+  UploadQueue,
+} from "@auction/staff-ui";
 import type { SaleDayMediaRef } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import { DndContext, closestCenter } from "@dnd-kit/core";
-import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useState } from "react";
-import { DayMediaCard } from "./day-photos/day-media-card";
-import { DayPhotosUploadTriggers } from "./day-photos/day-photos-upload-triggers";
+import { useRouter } from "next/navigation";
+import { ACCEPT_ALL, type DayMediaItem } from "./day-photos/day-media-types";
 import { useDayPhotosTab } from "./day-photos/use-day-photos-tab";
 
 type Props = {
   saleId: string;
-  saleTitle: string;
   saleStatus: string;
   initialDayImages: SaleDayMediaRef[];
   previewUrlByKey: Record<string, string>;
   canManage: boolean;
 };
 
-export function SaleDayPhotosTab(props: Props) {
-  const {
-    items,
-    setItems,
-    saving,
-    isEnded,
-    canManage,
-    dirty,
-    sensors,
-    uploadFiles,
-    handleSave,
-    handleRemoveConfirmed,
-    anyUploading,
-  } = useDayPhotosTab(props);
+function label(item: DayMediaItem, index: number) {
+  return `${item.mediaType === "video" ? "Video" : "Photo"} ${index + 1}`;
+}
 
-  const [filter, setFilter] = useState<SaleMediaFilter>("all");
-  const [search, setSearch] = useState("");
-  const [inspectId, setInspectId] = useState<string | null>(null);
-  const { message, announceMove } = useMediaReorderAnnouncement();
-  const {
-    showAdd,
-    showManage,
-    setShowManage,
-    addButtonRef,
-    manageButtonRef,
-    addPanelRef,
-    closeAddPanel,
-    toggleAdd,
-    toggleManage,
-  } = useMediaCollectionUi({
-    collectionLength: items.length,
-    inspectTarget: inspectId,
-    setInspectTarget: setInspectId,
-  });
-  const isPublished = isEnded;
-  const reorderFiltered = filter !== "all" || search.trim().length > 0;
+/**
+ * Photos and short clips from the saleroom floor. They can be arranged before the sale ends and
+ * are published to the sale page once it has ended; until then nothing here is saved.
+ */
+export function SaleDayPhotosTab({
+  saleId,
+  saleStatus,
+  initialDayImages,
+  previewUrlByKey,
+  canManage,
+}: Props) {
+  const router = useRouter();
+  const confirm = useStaffConfirm();
+  const media = useDayPhotosTab({ saleId, saleStatus, initialDayImages, previewUrlByKey });
+  const { items, isEnded, saving } = media;
+  const editable = canManage && !saving;
 
-  useEffect(() => {
-    if (reorderFiltered) setShowManage(false);
-  }, [reorderFiltered, setShowManage]);
-
-  const visibleItems = useMemo(
-    () =>
-      filterSaleMediaItems(items, filter, isPublished).filter((item) =>
-        matchesSaleMediaSearch(
-          item.mediaType === "video"
-            ? {
-                mediaType: "video",
-                key: item.key,
-                ...(item.caption.trim() ? { caption: item.caption.trim() } : {}),
-              }
-            : {
-                key: item.key,
-                ...(item.caption.trim() ? { caption: item.caption.trim() } : {}),
-                ...(item.alt.trim() ? { alt: item.alt.trim() } : {}),
-              },
-          search,
-        ),
-      ),
-    [items, filter, isPublished, search],
-  );
-
-  const moveItem = (index: number, offset: -1 | 1) => {
-    const target = index + offset;
-    if (target < 0 || target >= items.length) return;
-    announceMove(`media item ${index + 1}`, index, target);
-    setItems((prev) => arrayMove(prev, index, target));
+  const remove = (index: number) => {
+    const item = items[index];
+    if (!item) return;
+    if (!isEnded) {
+      media.setItems(items.filter((_, i) => i !== index));
+      return;
+    }
+    confirm.ask({
+      title: `Remove ${label(item, index).toLowerCase()} from the sale page?`,
+      description: "It is taken off the public gallery straight away.",
+      confirmLabel: "Remove from gallery",
+      tone: "danger",
+      run: () => media.removeAndSave(item.id),
+      success: "Removed from the gallery",
+      onSuccess: () => {},
+    });
   };
 
-  const inspectedItem = inspectId ? items.find((item) => item.id === inspectId) : null;
-  const inspectedIndex = inspectedItem ? items.findIndex((item) => item.id === inspectId) : -1;
-
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       {!isEnded ? (
-        <DetailNoticeBanner
-          title="Draft mode"
-          message="Media uploaded before the auction ends remains internal. Publishing becomes available once the sale is completed."
-        />
+        <Notice tone="info" title="Published once the sale ends">
+          Media added now stays on this page only and is lost if you leave. Add it after the sale
+          ends to publish it to the sale page.
+        </Notice>
       ) : null}
-
-      <DetailBoardKpiStrip ariaLabel="Media summary" tiles={buildSaleMediaKpiTiles(items)} />
-
-      <CatalogMediaWorkspace
-        title="Media"
-        description="Event photos and short video clips from the saleroom floor."
-        count={visibleItems.length}
-        actions={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-9 gap-1.5"
-              disabled={items.length === 0}
-              onClick={() => downloadSaleMediaCsv(items, props.saleTitle)}
-            >
-              Export
-            </Button>
-            {canManage ? (
-              <CatalogMediaCollectionActions
-                addButtonRef={addButtonRef}
-                manageButtonRef={manageButtonRef}
-                showAdd={showAdd}
-                showManage={showManage}
-                onToggleAdd={toggleAdd}
-                onToggleManage={toggleManage}
-                addLabel="Add media"
-                manageLabel="Manage"
-                manageDisabled={reorderFiltered}
-              />
-            ) : null}
-          </>
-        }
-        toolbar={
-          <DetailBoardToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search media…"
-            filters={SALE_MEDIA_FILTERS}
-            activeFilter={filter}
-            onFilterChange={setFilter}
-            filterAriaLabel="Filter media"
-            trailing={
-              reorderFiltered ? (
-                <span className="font-body text-xs text-on-surface-variant">
-                  Clear filters to reorder.
-                </span>
-              ) : null
-            }
-          />
-        }
-        addPanel={
-          canManage && showAdd ? (
-            <CatalogMediaAddPanel
-              panelRef={addPanelRef}
-              title="Add media"
-              description="Upload photos or short video clips from the saleroom floor."
-              onCancel={closeAddPanel}
-            >
-              <DayPhotosUploadTriggers
-                disabled={saving || anyUploading}
-                onFilesSelected={uploadFiles}
-              />
-            </CatalogMediaAddPanel>
-          ) : undefined
-        }
-        liveRegion={<MediaReorderLiveRegion message={message} />}
-        saveBar={
-          dirty ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {isEnded ? (
-                <>
-                  <p className="font-body text-sm text-on-surface-variant">
-                    You have unsaved media changes.
-                  </p>
-                  <Button
-                    onClick={() => void handleSave()}
-                    disabled={saving || anyUploading}
-                    variant="cta"
-                    size="sm"
-                  >
-                    {saving ? "Saving…" : "Save media"}
-                  </Button>
-                </>
-              ) : (
-                <p className="font-body text-sm text-on-surface-variant">
-                  Draft changes are kept only on this page and are discarded if you navigate away.
-                  Publishing becomes available once the sale ends.
-                </p>
-              )}
-            </div>
-          ) : undefined
-        }
-        footer={
-          <span aria-live="polite">
-            {`Showing ${visibleItems.length} of ${items.length}`}
-            {anyUploading ? " · Uploading…" : ""}
-            {dirty && !saving ? " · Unsaved changes" : ""}
-            {saving ? " · Saving…" : ""}
-          </span>
-        }
+      {media.saveError ? (
+        <Notice tone="danger" alert title="The media was not saved">
+          {media.saveError}
+        </Notice>
+      ) : null}
+      <Section
+        title="Auction day media"
+        description="The first item leads the gallery on the sale page."
       >
-        {items.length === 0 && !showAdd ? (
-          canManage ? (
-            <AdminEmptyState
+        <div className="flex flex-col gap-4">
+          {items.length === 0 && !canManage ? (
+            <EmptyState
+              headingLevel="h3"
               title="No auction day media yet"
-              description="Add photos or short video clips from the saleroom floor."
-              action={
-                <Button type="button" size="sm" onClick={toggleAdd}>
-                  Add your first media
-                </Button>
-              }
+              description="Photos and videos from the saleroom appear here after the sale."
             />
-          ) : (
-            <AdminEmptyState
-              title="No auction day media yet"
-              description="Auction day photos and videos will appear here."
-            />
-          )
-        ) : visibleItems.length === 0 ? (
-          <AdminEmptyState
-            title="No matching media"
-            description="Try a different search or filter."
-          />
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => {
-              if (!showManage) return;
-              const { active, over } = event;
-              if (over && active.id !== over.id) {
-                setItems((prev) => {
-                  const from = prev.findIndex((it) => it.id === active.id);
-                  const to = prev.findIndex((it) => it.id === over.id);
-                  if (from >= 0 && to >= 0) announceMove(`media item ${from + 1}`, from, to);
-                  return arrayMove(prev, from, to);
-                });
-              }
-            }}
-          >
-            <SortableContext items={visibleItems.map((it) => it.id)} strategy={rectSortingStrategy}>
-              <ol className="grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
-                {visibleItems.map((item) => {
-                  const itemIndex = items.findIndex((it) => it.id === item.id);
-                  return (
-                    <DayMediaCard
-                      key={item.id}
-                      item={item}
-                      index={itemIndex}
-                      showManage={showManage}
-                      published={isPublished}
-                      disabled={!canManage || saving}
-                      isLast={itemIndex === items.length - 1}
-                      isSelected={inspectId === item.id}
-                      removeConfirmTitle={
-                        isEnded ? "Remove from public gallery?" : "Remove from draft list?"
-                      }
-                      removeConfirmBody={
-                        isEnded
-                          ? "Remove this item from the public gallery? This cannot be undone."
-                          : "Remove this item from your draft list? You can re-upload before the sale ends."
-                      }
-                      onRemoveConfirmed={() => handleRemoveConfirmed(item.id)}
-                      onOpenInspector={() => setInspectId(item.id)}
-                      onMoveUp={() => moveItem(itemIndex, -1)}
-                      onMoveDown={() => moveItem(itemIndex, 1)}
-                    />
-                  );
-                })}
-              </ol>
-            </SortableContext>
-          </DndContext>
-        )}
-      </CatalogMediaWorkspace>
-
-      {inspectedItem ? (
-        <CatalogMediaInspector
-          open
-          onOpenChange={(open) => {
-            if (!open) setInspectId(null);
-          }}
-          title={`${inspectedItem.mediaType === "video" ? "Video" : "Photo"} ${inspectedIndex + 1} details`}
-          description={
-            inspectedItem.mediaType === "video"
-              ? "Add an optional caption. Video metadata is read-only here."
-              : "Add a caption and alt text for accessibility and search."
-          }
-          preview={
-            inspectedItem.mediaType === "video" ? (
-              inspectedItem.previewUrl ? (
-                <video
-                  src={inspectedItem.previewUrl}
-                  className="aspect-video w-full bg-surface-container object-cover"
-                  controls
-                  preload="metadata"
-                >
-                  <track kind="captions" srcLang="en" label="" />
-                </video>
-              ) : undefined
-            ) : (
-              <MediaImage
-                src={inspectedItem.previewUrl}
-                alt={inspectedItem.alt || `Photo ${inspectedIndex + 1}`}
-                label={inspectedItem.caption || `Photo ${inspectedIndex + 1}`}
-                imgClassName="size-full object-cover"
-                sizes="320px"
-              />
-            )
-          }
-        >
-          <div>
-            <Label htmlFor="sale-media-caption">Caption</Label>
-            <Input
-              id="sale-media-caption"
-              type="text"
-              placeholder="Caption (optional)"
-              maxLength={280}
-              value={inspectedItem.caption}
-              onChange={(event) =>
-                setItems((prev) =>
-                  prev.map((it) =>
-                    it.id === inspectedItem.id ? { ...it, caption: event.target.value } : it,
-                  ),
+          ) : null}
+          {items.length > 0 ? (
+            <MediaGrid
+              items={items}
+              noun="item"
+              disabled={!editable}
+              renderPreview={(item, index) =>
+                item.mediaType === "video" ? (
+                  // biome-ignore lint/a11y/useMediaCaption: staff preview of an uploaded clip; captions are not authored here.
+                  <video
+                    src={item.previewUrl}
+                    aria-label={item.caption || label(item, index)}
+                    className="size-full object-cover"
+                    controls
+                    preload="metadata"
+                  />
+                ) : (
+                  <MediaImage
+                    src={item.previewUrl}
+                    alt={item.alt || label(item, index)}
+                    label={label(item, index)}
+                    imgClassName="size-full object-cover"
+                    sizes="240px"
+                  />
                 )
               }
-              disabled={!canManage || saving || inspectedItem.uploading}
-              className="mt-1 min-h-10 text-sm"
+              renderDetails={(item, index) => (
+                <div className="flex flex-col gap-2">
+                  <Field label="Caption" optional disabled={!editable}>
+                    <TextInput
+                      size="sm"
+                      aria-label={`Caption for ${label(item, index).toLowerCase()}`}
+                      maxLength={280}
+                      value={item.caption}
+                      disabled={!editable}
+                      onChange={(event) => media.update(item.id, { caption: event.target.value })}
+                    />
+                  </Field>
+                  {item.mediaType === "image" ? (
+                    <Field label="Alt text" optional disabled={!editable}>
+                      <TextInput
+                        size="sm"
+                        aria-label={`Alt text for ${label(item, index).toLowerCase()}`}
+                        maxLength={280}
+                        value={item.alt}
+                        disabled={!editable}
+                        onChange={(event) => media.update(item.id, { alt: event.target.value })}
+                      />
+                    </Field>
+                  ) : null}
+                </div>
+              )}
+              onMove={(from, to) => {
+                const next = [...items];
+                const [moved] = next.splice(from, 1);
+                if (!moved) return;
+                next.splice(to, 0, moved);
+                media.setItems(next);
+              }}
+              onRemove={remove}
             />
-          </div>
-          {inspectedItem.mediaType === "image" ? (
-            <div>
-              <Label htmlFor="sale-media-alt">Alt text</Label>
-              <Input
-                id="sale-media-alt"
-                type="text"
-                placeholder="Alt text (for SEO and accessibility)"
-                maxLength={280}
-                value={inspectedItem.alt}
-                onChange={(event) =>
-                  setItems((prev) =>
-                    prev.map((it) =>
-                      it.id === inspectedItem.id ? { ...it, alt: event.target.value } : it,
-                    ),
-                  )
-                }
-                disabled={!canManage || saving || inspectedItem.uploading}
-                className="mt-1 min-h-10 text-sm"
-              />
-            </div>
-          ) : (
-            <p className="font-body text-xs text-on-surface-variant">
-              Status: {isPublished ? "Published" : "Draft until the sale ends"}
-              {inspectedItem.uploadError ? ` · ${inspectedItem.uploadError}` : ""}
-            </p>
-          )}
-        </CatalogMediaInspector>
-      ) : null}
+          ) : null}
+          {media.queue.length > 0 ? (
+            <UploadQueue
+              items={media.queue}
+              onRetry={media.retry}
+              onDismiss={media.dismissUpload}
+            />
+          ) : null}
+          {canManage ? (
+            <FileDropzone
+              label={items.length === 0 ? "Upload photos and videos" : "Add photos and videos"}
+              accept={ACCEPT_ALL}
+              multiple
+              compact={items.length > 0}
+              disabled={saving}
+              hint="JPEG, PNG or WebP photos, MP4 or WebM clips, up to 200 MB each."
+              onFiles={media.uploadFiles}
+            />
+          ) : null}
+          {canManage && isEnded && media.dirty ? (
+            <FormActions
+              start={<span className="text-staff-sm text-staff-muted">Unsaved changes</span>}
+            >
+              <StaffButton
+                type="button"
+                variant="primary"
+                loading={saving}
+                {...(media.anyUploading
+                  ? { disabledReason: "Wait for the uploads to finish" }
+                  : {})}
+                onClick={async () => {
+                  if (await media.save()) {
+                    notify.success("Auction day media saved");
+                  }
+                }}
+              >
+                Save and publish
+              </StaffButton>
+            </FormActions>
+          ) : null}
+        </div>
+      </Section>
+      <UnsavedChangesGuard
+        dirty={canManage && media.dirty}
+        label="the auction day media"
+        navigate={router.push}
+        interceptBack={false}
+      />
+      {confirm.dialog}
     </div>
   );
 }

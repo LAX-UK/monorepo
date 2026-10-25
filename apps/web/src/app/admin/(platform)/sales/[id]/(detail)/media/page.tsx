@@ -20,7 +20,6 @@ export default async function AdminSaleMediaPage({ params }: Props) {
   return (
     <SaleDayPhotosTab
       saleId={page.saleId}
-      saleTitle={page.saleTitle}
       saleStatus={page.saleStatus}
       initialDayImages={page.initialDayImages}
       previewUrlByKey={page.previewUrlByKey}

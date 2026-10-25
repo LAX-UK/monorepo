@@ -31,6 +31,8 @@ type Props<T> = {
   toolbar?: ReactNode;
   /** Comfortable when a cell carries a second line (a lot and its sale); compact otherwise. */
   density?: TableDensity;
+  /** Work below the rows, such as a way to add one, separated by a hairline. */
+  children?: ReactNode;
 };
 
 /**
@@ -52,6 +54,7 @@ export function RelatedRecordsSection<T>({
   footer,
   toolbar,
   density = "compact",
+  children,
 }: Props<T>) {
   return (
     <Section
@@ -92,6 +95,7 @@ export function RelatedRecordsSection<T>({
             }
           : {})}
       />
+      {children ? <div className="border-t border-staff-line p-4">{children}</div> : null}
     </Section>
   );
 }

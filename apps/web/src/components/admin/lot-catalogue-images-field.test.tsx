@@ -5,9 +5,12 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/forms/image/use-upload-gallery", () => ({
   useUploadGallery: () => ({
-    items: [],
+    items: [
+      { id: "u1", fileName: "back.jpg", status: "error", message: "The file is over 10 MB." },
+    ],
     uploadFiles: vi.fn(),
     retry: vi.fn(),
+    dismiss: vi.fn(),
   }),
 }));
 
@@ -17,18 +20,28 @@ describe("LotCatalogueImagesField", () => {
     { key: "https://cdn.example/detail.jpg", alt: "Artwork detail" },
   ];
 
-  it("keeps add and manage capabilities available for a non-empty form gallery", () => {
-    renderWithViewer(<LotCatalogueImagesField value={images} onChange={vi.fn()} />);
+  it("lists the photos in order with their alt text, a failed upload and a way to add more", () => {
+    const onChange = vi.fn();
+    renderWithViewer(<LotCatalogueImagesField value={images} onChange={onChange} />);
 
-    expect(screen.getByRole("button", { name: "Add images" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Manage" }));
-    expect(screen.getByRole("button", { name: "Move lot image 1 later" })).toBeInTheDocument();
+    expect(screen.getByText("Main")).toBeInTheDocument();
+    expect(screen.getByText("The file is over 10 MB.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Add photos/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Alt text for photo 2" }), {
+      target: { value: "Signature" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith([
+      images[0],
+      { key: "https://cdn.example/detail.jpg", alt: "Signature" },
+    ]);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Move photo 1" }), { key: "ArrowRight" });
+    expect(onChange).toHaveBeenLastCalledWith([images[1], images[0]]);
   });
 
-  it("remains read-only when disabled", () => {
+  it("offers no changes when disabled", () => {
     renderWithViewer(<LotCatalogueImagesField value={images} onChange={vi.fn()} disabled />);
 
-    expect(screen.queryByRole("button", { name: "Add images" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Manage" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Move photo/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Add photos/)).toBeDisabled();
   });
 });

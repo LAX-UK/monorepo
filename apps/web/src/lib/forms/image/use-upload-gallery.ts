@@ -114,6 +114,11 @@ export function useUploadGallery({ kind, value, onChange, maxFiles, onError }: A
     [items, uploadOne, value],
   );
 
+  /** Drops a failed upload from the list without retrying it. */
+  const dismiss = useCallback((itemId: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== itemId));
+  }, []);
+
   const clearFinished = useCallback(() => {
     setItems((prev) => prev.filter((i) => i.status === "uploading" || i.status === "validating"));
   }, []);
@@ -126,5 +131,5 @@ export function useUploadGallery({ kind, value, onChange, maxFiles, onError }: A
     return () => window.clearTimeout(timeout);
   }, [items]);
 
-  return { items, uploadFiles, retry, clearFinished };
+  return { items, uploadFiles, retry, dismiss, clearFinished };
 }

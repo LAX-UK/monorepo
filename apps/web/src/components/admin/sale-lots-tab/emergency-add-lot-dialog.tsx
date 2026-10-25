@@ -1,10 +1,10 @@
 "use client";
 
+import { StaffImageCollection } from "@/components/admin/media/staff-image-collection";
 import {
   LotWindowFields,
   isoToFormString,
 } from "@/components/admin/sale-lots-tab/lot-window-fields";
-import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { searchAdminLegalEntitiesBrowseAction } from "@/lib/actions/admin-legal-entities-browse";
 import { adminAddLotToSaleResultAction } from "@/lib/actions/admin-sales";
 import { deliveryModeExplanation } from "@/lib/admin/sale-setup/field-copy";
@@ -299,14 +299,15 @@ export function EmergencyAddLotDialog({
             onChange={(event) => patch({ description: event.target.value })}
           />
         </Field>
-        <Field label="Images" error={errors.images} disabled={busy}>
-          {/* The shared uploader; the staff upload field replaces it when it lands. */}
-          <ImageUploadField
+        <Field label="Photos" error={errors.images} disabled={busy}>
+          <StaffImageCollection
             kind="lot_image"
-            value={draft.images}
-            onChange={(images) => patch({ images })}
+            value={draft.images.map((key) => ({ key }))}
+            onChange={(next) => patch({ images: next.map((entry) => entry.key) })}
+            noun="photo"
+            primaryLabel="Main"
+            uploadLabel={draft.images.length === 0 ? "Upload photos" : "Add photos"}
             disabled={busy}
-            multiple
             maxFiles={50}
           />
         </Field>
