@@ -1,8 +1,17 @@
 import { LotsStaffList } from "@/components/admin/lots/lots-staff-list";
-import { AdminWithdrawalsBoard } from "@/components/admin/withdrawals-board";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
 import { loadAdminLotsListPage } from "@/lib/admin/lots/load-lots-list-page";
-import { toLotsStaffRows } from "@/lib/admin/lots/lots-staff-list.vm";
+import {
+  lotsAttention,
+  lotsFilterChips,
+  lotsListHref,
+  lotsMetrics,
+  lotsRangeSummary,
+  lotsViews,
+  toLotsStaffRows,
+} from "@/lib/admin/lots/lots-staff-list.vm";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import {
   LOTS_ACCESS,
@@ -10,11 +19,9 @@ import {
   WITHDRAWAL_DECISION_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { PageHeader, Section, StaffButton } from "@auction/staff-ui";
+import { formatStaffDate } from "@auction/staff-ui";
 import { type UserRole, userHasAccessTo } from "@auction/types";
-import { Plus } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate("Lots", "Catalogue and manage auction lots.");
@@ -26,81 +33,63 @@ export default async function AdminLotsPage({
 }: { searchParams: Promise<LotsSearch> }) {
   const user = await requireAdminCapability(LOTS_ACCESS, "/admin/lots");
   const role = user.role as UserRole;
-  const canManageAuction = userHasAccessTo(role, user.staffRole ?? null, SALES_ACCESS);
-  const canManageCatalog = userHasAccessTo(role, user.staffRole ?? null, LOTS_ACCESS);
-  const canDecideWithdrawals = userHasAccessTo(
-    role,
-    user.staffRole ?? null,
-    WITHDRAWAL_DECISION_ACCESS,
-  );
+  const staffRole = user.staffRole ?? null;
   const sp = await searchParams;
   if (sp.view === "pipeline") {
     redirect(buildListHref("/admin/lots", sp, { view: "", offset: 0 }));
   }
   const vm = await loadAdminLotsListPage(sp);
-  const { model, pageRows, hasNextPage, listPaginationTotal } = vm;
+  const { model, pageRows, hasNextPage, listPaginationTotal, lotFilterOptions } = vm;
   const { query } = model;
-  const first = query.offset + 1;
-  const last = query.offset + pageRows.length;
+  const rows = toLotsStaffRows(vm.lotTableRows, vm.withdrawalRequestedAt);
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Lots"
-        description="Publish, schedule and triage catalogue lots. Open a lot to see it beside the list."
-        {...(canManageCatalog
-          ? {
-              primaryAction: (
-                <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
-                  <Link href="/admin/lots/new">New lot</Link>
-                </StaffButton>
-              ),
-            }
-          : {})}
-      />
-      {model.attentionLens && !vm.withdrawalLoadError && vm.withdrawalTasks.length > 0 ? (
-        <Section
-          title="Withdrawal requests"
-          description={`${vm.withdrawalTasks.length} waiting for a decision`}
-        >
-          <AdminWithdrawalsBoard tasks={vm.withdrawalTasks} canDecide={canDecideWithdrawals} />
-        </Section>
-      ) : null}
-      <LotsStaffList
-        rows={toLotsStaffRows(vm.lotTableRows)}
-        search={sp}
-        lenses={vm.lensesItems}
-        activeLens={model.activeLens}
-        filterChips={vm.activeFilterChips.map((chip) => ({
-          id: chip.id,
-          label: chip.label,
-          clearHref: chip.clearHref,
-        }))}
-        sales={vm.lotFilterOptions.sales.map((sale) => ({ id: sale.id, title: sale.title }))}
-        artists={vm.lotFilterOptions.artists.map((artist) => ({
+    <LotsStaffList
+      rows={rows}
+      search={sp}
+      views={lotsViews(vm.lensesItems)}
+      activeLens={model.activeLens}
+      attention={lotsAttention(sp, {
+        withdrawalsPending: Object.keys(vm.withdrawalRequestedAt).length,
+        draftsMissingPhotos: vm.lotsSummary.needsAttentionCount,
+      })}
+      metrics={lotsMetrics(vm.lotsSummary)}
+      filterChips={lotsFilterChips(vm.activeFilterChips)}
+      filterOptions={{
+        sales: lotFilterOptions.sales.map((sale) => ({
+          id: sale.id,
+          label: sale.title,
+          description: [staffStatus("sale", sale.status).label, formatStaffDate(sale.startTime)]
+            .filter(Boolean)
+            .join(" · "),
+        })),
+        artists: lotFilterOptions.artists.map((artist) => ({
           id: artist.id,
-          displayName: artist.displayName,
-        }))}
-        pagination={
-          pageRows.length > 0
-            ? {
-                summary: `${first}–${last}${listPaginationTotal !== undefined ? ` of ${listPaginationTotal}` : ""} lots`,
-                prevHref:
-                  query.offset > 0
-                    ? model.buildPaginationHref({ offset: Math.max(0, query.offset - query.limit) })
-                    : null,
-                nextHref: hasNextPage
-                  ? model.buildPaginationHref({ offset: query.offset + query.limit })
+          label: artist.displayName,
+        })),
+        categories: categoryPickerOptions(lotFilterOptions.categories),
+      }}
+      pageSize={query.limit}
+      pagination={
+        pageRows.length > 0 && !model.withdrawalsLens
+          ? {
+              summary: lotsRangeSummary(query.offset, pageRows.length, listPaginationTotal),
+              prevHref:
+                query.offset > 0
+                  ? lotsListHref(sp, { offset: Math.max(0, query.offset - query.limit) })
                   : null,
-              }
-            : null
-        }
-        canManageCatalog={canManageCatalog}
-        canManageAuction={canManageAuction}
-        exportFilters={model.exportFilters}
-        listError={vm.listError}
-        filtered={model.hasListFilters}
-      />
-    </div>
+              nextHref: hasNextPage
+                ? lotsListHref(sp, { offset: query.offset + query.limit })
+                : null,
+            }
+          : null
+      }
+      canManageCatalog={userHasAccessTo(role, staffRole, LOTS_ACCESS)}
+      canManageAuction={userHasAccessTo(role, staffRole, SALES_ACCESS)}
+      canDecideWithdrawals={userHasAccessTo(role, staffRole, WITHDRAWAL_DECISION_ACCESS)}
+      exportFilters={model.exportFilters}
+      listError={vm.listError}
+      filtered={model.hasListFilters && model.activeLens !== "withdrawals"}
+    />
   );
 }

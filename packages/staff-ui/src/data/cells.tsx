@@ -1,6 +1,7 @@
 "use client";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
+import { ImageOff } from "lucide-react";
 import type * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { formatStaffDate, formatStaffDateTime, formatStaffMoney } from "../lib/format.js";
@@ -32,9 +33,38 @@ export function isEmptyCellValue(value: React.ReactNode): boolean {
 }
 
 /**
+ * A record's picture at row size: 32px, radius xs, with a hairline. A record with no picture yet
+ * shows a dashed placeholder, so the column still lines up and the gap is visible.
+ */
+export function CellThumbnail({ src, label }: { src: string | null; label?: string }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        width={32}
+        height={32}
+        loading="lazy"
+        className="size-8 shrink-0 rounded-staff-xs border border-staff-line bg-staff-sunken object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      role="img"
+      aria-label={label ?? "No picture yet"}
+      className="flex size-8 shrink-0 items-center justify-center rounded-staff-xs border border-dashed border-staff-line-strong text-staff-subtle [&_svg]:size-3.5"
+    >
+      <ImageOff aria-hidden />
+    </span>
+  );
+}
+
+/**
  * The row's first cell: what the row is, as a real link (so cmd-click opens a new tab) in medium
  * weight, and an optional muted second line ("Lot 12 · Autumn sale"). Lists whose first cell
- * has a second line default to comfortable rows; keep the line to one short fact or two.
+ * has a second line default to comfortable rows; keep the line to one short fact or two. With
+ * `thumbnail`, the record's picture sits before the text (a placeholder when it has none).
  */
 export function PrimaryCell({
   children,
@@ -42,6 +72,7 @@ export function PrimaryCell({
   Link,
   secondary,
   external = false,
+  thumbnail,
 }: {
   children: React.ReactNode;
   href?: string | null;
@@ -49,7 +80,27 @@ export function PrimaryCell({
   secondary?: React.ReactNode;
   /** Opens outside the tool, in a new tab. */
   external?: boolean;
+  /** The record's picture; `src: null` shows the "no picture yet" placeholder. */
+  thumbnail?: { src: string | null; missingLabel?: string };
 }) {
+  if (thumbnail) {
+    return (
+      <span className="flex min-w-0 items-center gap-3">
+        <CellThumbnail
+          src={thumbnail.src}
+          {...(thumbnail.missingLabel ? { label: thumbnail.missingLabel } : {})}
+        />
+        <PrimaryCell
+          {...(href !== undefined ? { href } : {})}
+          {...(Link ? { Link } : {})}
+          secondary={secondary}
+          external={external}
+        >
+          {children}
+        </PrimaryCell>
+      </span>
+    );
+  }
   const label = href ? (
     external || !Link ? (
       <a

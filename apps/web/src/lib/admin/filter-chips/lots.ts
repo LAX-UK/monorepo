@@ -14,7 +14,7 @@ const LOT_STATUS_LABELS: Record<string, string> = {
   scheduled: "Scheduled",
   active: "Live",
   ended: "Ended",
-  cancelled: "Cancelled",
+  cancelled: "Withdrawn",
 };
 
 export function buildLotsActiveFilterChips(

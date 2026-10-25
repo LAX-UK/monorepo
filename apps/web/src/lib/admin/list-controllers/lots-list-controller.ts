@@ -2,6 +2,7 @@ import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-param
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
 import type { ListLotsParams } from "@/lib/data/contracts";
 import { getAdminLotList } from "@/lib/data/http/admin.server";
+import { parseStaffPageSize } from "@auction/staff-ui";
 import type { LotStatus } from "@auction/types";
 
 export type LotsListQuery = AdminListQueryBase & {
@@ -30,7 +31,7 @@ export const lotsListController: IAdminListController<
     const needsPhotos = firstString(sp.needsPhotos) === "1";
     const qRaw = base.q?.trim();
     const q = qRaw ? qRaw.slice(0, 200) : undefined;
-    const limit = Math.min(200, base.limit);
+    const limit = parseStaffPageSize(firstString(sp.limit));
     return {
       ...base,
       limit,

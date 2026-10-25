@@ -1,0 +1,88 @@
+import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
+import { EMPTY_ADMIN_LOTS_LIST_SUMMARY } from "@/lib/data/http/admin-lots-summary.server";
+import { describe, expect, it } from "vitest";
+import {
+  LOTS_DEFAULT_SORT,
+  lotPanelHref,
+  lotsAttention,
+  lotsFilterChips,
+  lotsMetrics,
+  lotsRangeSummary,
+  lotsSortHref,
+  lotsSortState,
+  toLotsStaffRows,
+} from "./lots-staff-list.vm";
+
+const row: AdminLotTableRow = {
+  id: "lot_1",
+  title: "Blue Interior",
+  lotNumber: 12,
+  thumbnailUrl: null,
+  estimateDisplay: { primary: "—" },
+  imageCount: 0,
+  artistLabel: "Ada Lovelace",
+  saleId: "sale_1",
+  saleTitle: "Autumn Contemporary",
+  saleStatus: "draft",
+  saleDeliveryMode: "online",
+  auctionType: "english",
+  status: "ended",
+  endTimeIso: "2026-10-20T18:00:00.000Z",
+  endTimeLabel: "",
+  hammerDisplay: { primary: "£4,200.00" },
+  canDelete: false,
+  hasWinner: true,
+  createdAtIso: "2026-09-01T09:00:00.000Z",
+};
+
+describe("lots staff list view model", () => {
+  it("reads an ended lot with a winner as sold, and leaves empty money empty", () => {
+    const [lot] = toLotsStaffRows([row], { lot_1: "2026-10-21T10:00:00.000Z" });
+    expect(lot?.status).toEqual({ label: "Sold", tone: "success" });
+    expect(lot?.estimate).toBeNull();
+    expect(lot?.hammer).toBe("£4,200.00");
+    expect(lot?.context).toBe("Lot 12 · Ada Lovelace");
+    expect(lot?.inDraftSale).toBe(true);
+    expect(lot?.withdrawalRequestedAt).toBe("2026-10-21T10:00:00.000Z");
+  });
+
+  it("links the waiting work to the views that hold it, in plain words", () => {
+    const [withdrawals, photos] = lotsAttention(
+      {},
+      { withdrawalsPending: 1, draftsMissingPhotos: 3 },
+    );
+    expect(withdrawals?.label).toBe("seller has asked to withdraw a lot");
+    expect(withdrawals?.href).toBe("/admin/lots?lens=withdrawals");
+    expect(photos?.label).toBe("draft lots have no photos");
+  });
+
+  it("formats the hammer total in full", () => {
+    const metrics = lotsMetrics({ ...EMPTY_ADMIN_LOTS_LIST_SUMMARY, totalHammerValue: "1604812" });
+    expect(metrics.find((metric) => metric.id === "hammer")?.value).toBe("£1,604,812.00");
+  });
+
+  it("never repeats the search or the sort as a chip", () => {
+    const chips = lotsFilterChips([
+      { id: "q", label: "Search: blue", clearHref: "/admin/lots" },
+      { id: "sort", label: "Sort: Ending soon", clearHref: "/admin/lots" },
+      { id: "saleId", label: "Sale: Autumn Contemporary", clearHref: "/admin/lots" },
+    ]);
+    expect(chips.map((chip) => chip.id)).toEqual(["saleId"]);
+  });
+
+  it("always shows a sorted column, newest first by default", () => {
+    expect(lotsSortState(undefined)).toEqual(LOTS_DEFAULT_SORT);
+    expect(lotsSortState("endingAsc")).toEqual({ columnId: "ends", direction: "asc" });
+    expect(lotsSortHref({ sort: "hammerDesc" }, LOTS_DEFAULT_SORT)).toBe("/admin/lots");
+  });
+
+  it("opens a lot's panel in the URL without losing the page", () => {
+    expect(lotPanelHref({ offset: "50" }, "lot_1")).toBe("/admin/lots?offset=50&lot=lot_1");
+  });
+
+  it("counts the range with plural forms", () => {
+    expect(lotsRangeSummary(0, 1, 1)).toBe("1–1 of 1 lot");
+    expect(lotsRangeSummary(50, 50, 1204)).toBe("51–100 of 1,204 lots");
+    expect(lotsRangeSummary(0, 50, undefined)).toBe("1–50 lots");
+  });
+});

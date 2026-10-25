@@ -8,7 +8,7 @@ export function applyLotsLensBadges(
   counts: AdminLotsLensCounts,
 ): CatalogSegmentItem[] {
   return lenses.map((lens) => {
-    const count = counts[lens.id as LotLensId];
+    const count = counts[lens.id as Exclude<LotLensId, "withdrawals">];
     return {
       ...lens,
       ...(count != null && count > 0 ? { badge: count } : {}),

@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@auction/ui/components/sheet", () =>
   import("../test/radix-stubs.js").then((m) => m.sheet),
 );
+vi.mock("@auction/ui/components/popover", () =>
+  import("../test/radix-stubs.js").then((m) => m.popover),
+);
 vi.mock("@auction/ui/components/tooltip", () =>
   import("../test/radix-stubs.js").then((m) => m.tooltip),
 );
@@ -66,6 +69,34 @@ describe("FilterSheet", () => {
       created: { from: "2026-10-18", to: "2026-10-24" },
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("picks one record by name for a long list, and counts it as a filter", () => {
+    const onApply = vi.fn();
+    render(
+      <FilterSheet
+        sections={[
+          {
+            kind: "entity",
+            id: "saleId",
+            label: "Sale",
+            value: "",
+            options: [
+              { id: "sale-1", label: "Autumn Contemporary", description: "Online · 12 Nov 2026" },
+              { id: "sale-2", label: "Winter Prints", description: "Gallery · 3 Dec 2026" },
+            ],
+          },
+        ]}
+        onApply={onApply}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Filter/ })).toHaveTextContent(/^Filter$/);
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Sale" }));
+    fireEvent.click(screen.getByRole("option", { name: /Winter Prints/ }));
+    expect(screen.getByRole("combobox", { name: "Sale" })).toHaveTextContent("Winter Prints");
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    expect(onApply).toHaveBeenCalledWith({ saleId: "sale-2" });
   });
 
   it("clears every section in the draft, and cancel keeps what was applied", () => {

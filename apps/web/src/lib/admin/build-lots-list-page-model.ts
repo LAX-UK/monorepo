@@ -30,6 +30,7 @@ export function buildLotsListPageModel(
 ) {
   const activeLens = lotActiveLensId(sp);
   const attentionLens = activeLens === "attention";
+  const withdrawalsLens = activeLens === "withdrawals";
   const sort = isLotListSortKey(sp.sort) ? sp.sort : undefined;
 
   const query = lotsListController.parseQuery({
@@ -88,6 +89,7 @@ export function buildLotsListPageModel(
     query,
     activeLens,
     attentionLens,
+    withdrawalsLens,
     sort,
     effectiveSort,
     effectiveStatus,
