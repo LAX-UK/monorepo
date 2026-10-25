@@ -31,7 +31,8 @@ describe("ConfirmActionDialog", () => {
       reason: { label: "Reason for the refund", minLength: 10 },
     });
     const field = screen.getByLabelText("Reason for the refund");
-    await waitFor(() => expect(field).toHaveFocus());
+    // Cancel keeps the first focus even with a field to fill.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus());
 
     fireEvent.click(screen.getByRole("button", { name: "Refund £20.00" }));
     expect(onConfirm).not.toHaveBeenCalled();

@@ -1,10 +1,11 @@
 "use client";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
-import { ImageOff } from "lucide-react";
+import { Cog, ImageOff } from "lucide-react";
 import type * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { formatStaffDate, formatStaffDateTime, formatStaffMoney } from "../lib/format.js";
+import { initialsOf } from "../shell/account-menu.js";
 import type { StaffLinkComponent } from "../shell/link.js";
 
 /*
@@ -210,4 +211,51 @@ export function StaffMoney({
 }) {
   if (minor === null || minor === undefined || Number.isNaN(minor)) return <EmptyValue />;
   return <span className="tabular-nums">{formatStaffMoney(minor, currency)}</span>;
+}
+
+/**
+ * A person in a cell: a 24px avatar with their initials at 12px, the name (a link when `href` is
+ * given) and an optional muted second line, usually the email. Work done by the platform itself
+ * (`kind: "system"`) shows a cog instead of initials, so "System" never reads as a person called S.
+ */
+export function PersonCell({
+  name,
+  secondary,
+  href,
+  Link,
+  kind = "person",
+}: {
+  name: string;
+  secondary?: React.ReactNode;
+  href?: string | null;
+  Link?: StaffLinkComponent;
+  kind?: "person" | "system";
+}) {
+  const label =
+    href && Link ? (
+      <Link href={href} className={cn(staffCellLinkClass, "font-medium text-staff-fg")}>
+        {name}
+      </Link>
+    ) : (
+      <span className="block truncate font-medium text-staff-fg">{name}</span>
+    );
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <span
+        aria-hidden
+        data-slot="avatar"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-staff-neutral-bg text-staff-xs font-semibold text-staff-neutral-fg"
+      >
+        {kind === "system" ? <Cog className="size-3.5" strokeWidth={1.75} /> : initialsOf(name)}
+      </span>
+      {isEmptyCellValue(secondary) ? (
+        <span className="flex min-w-0">{label}</span>
+      ) : (
+        <span className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 leading-[18px] [&>a]:leading-[18px]">{label}</span>
+          <span className="truncate text-staff-xs leading-4 text-staff-muted">{secondary}</span>
+        </span>
+      )}
+    </span>
+  );
 }

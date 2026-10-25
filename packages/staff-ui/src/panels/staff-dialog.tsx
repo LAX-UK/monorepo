@@ -115,8 +115,8 @@ export type ConfirmActionDialogProps = {
 
 /**
  * Confirms a consequential action. Says exactly what will happen; the confirm button repeats the
- * verb and amount ("Refund £20.00"), and danger actions are red. Focus starts on Cancel (or on
- * the first field to fill), so Enter never confirms by accident. Friction scales with damage: add
+ * verb and amount ("Refund £20.00"), and danger actions are red. Focus starts on Cancel, so
+ * Enter never confirms by accident. Friction scales with damage: add
  * a `reason` for actions that are audited, and `typedConfirmation` for the catastrophic few.
  */
 export function ConfirmActionDialog({
@@ -149,11 +149,9 @@ export function ConfirmActionDialog({
   }, [open]);
 
   const typedMatches = typedConfirmation === undefined || typed === typedConfirmation;
-  const initialFocusRef = reason
-    ? reasonRef
-    : typedConfirmation !== undefined
-      ? typedRef
-      : cancelRef;
+  // Cancel takes focus first, even when there is a reason or phrase to type, so Enter or a
+  // stray key never starts the action; the person tabs on to the field.
+  const initialFocusRef = cancelRef;
 
   const confirm = () => {
     const trimmed = reasonText.trim();

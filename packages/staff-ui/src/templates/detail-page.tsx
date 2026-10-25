@@ -13,6 +13,11 @@ export type DetailPageProps = {
   pager?: React.ReactNode;
   /** The record's human name or reference. */
   title: React.ReactNode;
+  /**
+   * The title renders its own `h1` (a heading with a rename button) instead of being wrapped in
+   * one. It must still render exactly one `h1`.
+   */
+  renderHeading?: boolean;
   /** Status badge(s) beside the title; at most two. */
   status?: React.ReactNode;
   /** A line of 3–5 key facts (MetaItem) under the title. */
@@ -55,6 +60,7 @@ export function DetailPage({
   breadcrumbs,
   pager,
   title,
+  renderHeading = false,
   status,
   meta,
   primaryAction,
@@ -92,6 +98,7 @@ export function DetailPage({
   const header = (
     <PageHeader
       title={title}
+      renderHeading={renderHeading}
       {...(crumbs ? { breadcrumbs: crumbs } : {})}
       {...(statusNode && access !== "denied" ? { status: statusNode } : {})}
       {...(meta && access !== "denied" ? { meta } : {})}
