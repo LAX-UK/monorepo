@@ -19,7 +19,7 @@ export type ShopPayeeConnectClientConfig = {
   connectConfigured: boolean;
 };
 
-/** Portal use cases for a payee's LAX Art payout account. */
+/** Portal use cases for a payee's lax.art payout account. */
 export interface ShopPayeeConnectPort {
   getClientConfig(): ShopPayeeConnectClientConfig;
   getStatusForSubject(identitySubjectId: string): Promise<ShopPayeeConnectStatus>;

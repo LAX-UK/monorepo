@@ -16,7 +16,7 @@ export default async function ArtSignInErrorPage({ searchParams }: ArtSignInErro
   const reference = artCallbackErrorReference(reason);
   const vm = buildArtReauthVm(undefined, "/account");
   const supportHref = `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent(
-    `LAX Art sign-in problem (${reference})`,
+    `lax.art sign-in problem (${reference})`,
   )}`;
 
   return (

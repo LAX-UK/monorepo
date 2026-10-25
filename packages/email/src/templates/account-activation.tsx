@@ -3,7 +3,7 @@ import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
-export const subject = "Activate your London Art Exchange account";
+export const subject = "Activate your LAX Account";
 
 export default function AccountActivation({
   activationUrl,
@@ -19,9 +19,9 @@ export default function AccountActivation({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Click the button below to activate your London Art Exchange account. You&apos;ll confirm on
-        a secure page, then you can optionally set a password. This link expires in{" "}
-        {expirationMinutes} minutes and can only be used once.
+        Click the button below to activate your LAX Account. You&apos;ll confirm on a secure page,
+        then you can optionally set a password. This link expires in {expirationMinutes} minutes and
+        can only be used once.
       </TextBlock>
       <Button href={activationUrl}>Activate account</Button>
       <TextBlock>

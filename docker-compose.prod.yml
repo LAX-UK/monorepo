@@ -151,7 +151,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SENTRY_DSN_WORKER: ${SENTRY_DSN_WORKER:-}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-postmark}
-      EMAIL_FROM: ${EMAIL_FROM:-LAX.BID by London Art Exchange <no-reply@mail.lax.bid>}
+      EMAIL_FROM: ${EMAIL_FROM:-LAX <no-reply@mail.lax.bid>}
       EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
       POSTMARK_SERVER_TOKEN: ${POSTMARK_SERVER_TOKEN:-}
       POSTMARK_TRANSACTIONAL_STREAM: ${POSTMARK_TRANSACTIONAL_STREAM:-outbound}

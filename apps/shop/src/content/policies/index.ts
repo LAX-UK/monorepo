@@ -1,17 +1,27 @@
-import { DELIVERY_AND_COLLECTION } from "./delivery";
-import { HELP_AND_CONTACT } from "./help";
-import { CANCELLATIONS_AND_RETURNS } from "./returns";
-import { SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES, type ShopPolicySlug } from "./shop-policy-status";
+import { LAX_ART_POLICIES } from "@auction/marketing-ui";
+import {
+  SHOP_HELP_RELEASE,
+  SHOP_POLICY_PATHS,
+  SHOP_POLICY_RELEASES,
+  SHOP_POLICY_SOURCES,
+  type ShopPolicySlug,
+  type ShopSourcedPolicySlug,
+} from "./shop-policy-status";
 import type { ShopPolicyDocument } from "./shop-policy.types";
-import { TERMS_OF_SALE } from "./terms-of-sale";
 
-export const SHOP_POLICY_DOCUMENTS: Readonly<Record<ShopPolicySlug, ShopPolicyDocument>> = {
-  terms: TERMS_OF_SALE,
-  delivery: DELIVERY_AND_COLLECTION,
-  returns: CANCELLATIONS_AND_RETURNS,
-  help: HELP_AND_CONTACT,
+const documentFor = (slug: ShopSourcedPolicySlug) =>
+  LAX_ART_POLICIES[SHOP_POLICY_SOURCES[slug]].document;
+
+/** London Art Exchange Ltd's policies on Shop routes; /help is built by `buildShopHelpDocument`. */
+export const SHOP_POLICY_DOCUMENTS: Readonly<Record<ShopSourcedPolicySlug, ShopPolicyDocument>> = {
+  terms: documentFor("terms"),
+  delivery: documentFor("delivery"),
+  returns: documentFor("returns"),
+  privacy: documentFor("privacy"),
+  cookies: documentFor("cookies"),
 };
 
-export { SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES };
-export type { ShopPolicySlug };
+export { buildShopHelpDocument } from "./help";
+export { SHOP_HELP_RELEASE, SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES, SHOP_POLICY_SOURCES };
+export type { ShopPolicySlug, ShopSourcedPolicySlug };
 export type { ShopPolicyBlock, ShopPolicyDocument, ShopPolicySection } from "./shop-policy.types";

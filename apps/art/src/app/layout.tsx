@@ -24,15 +24,15 @@ export function generateMetadata(): Metadata {
   const verification = loadArtEnv().ART_GOOGLE_SITE_VERIFICATION;
   return {
     metadataBase: loadArtStorefrontBaseUrl(),
-    title: "LAX Art",
+    title: "lax.art",
     description: SITE_DESCRIPTION,
     icons: laxFaviconMetadataIcons(),
     openGraph: {
       type: "website",
-      title: "LAX Art",
+      title: "lax.art",
       description: SITE_DESCRIPTION,
       url: "/",
-      siteName: "LAX Art",
+      siteName: "lax.art",
     },
     ...(isArtIndexingAllowed() ? {} : { robots: NOINDEX_ROBOTS }),
     ...(verification ? { verification: { google: verification } } : {}),
@@ -77,6 +77,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ArtAnalyticsConsent
               measurementId={measurementId}
               initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
+              cookiePolicyLinked={chrome.linkablePolicies.includes("cookies")}
             />
           ) : null}
         </ArtSmoothScroll>

@@ -325,8 +325,8 @@ describe("composeArtworkDetailMetadata", () => {
     services.catalogue.getArtwork.mockResolvedValue(artworkDetail({ description: null }));
     await expect(composeArtworkDetailMetadata(services.catalogue, "warm-basket")).resolves.toEqual({
       kind: "ok",
-      title: "Warm Basket | LAX Art",
-      description: "Warm Basket by Flora Powers at LAX Art.",
+      title: "Warm Basket | lax.art",
+      description: "Warm Basket by Flora Powers at lax.art.",
       canonicalPath: "/artworks/warm-basket",
       imageUrl: "/warm-basket.webp",
     });
@@ -336,14 +336,14 @@ describe("composeArtworkDetailMetadata", () => {
     const services = fakeArtServices();
     services.catalogue.getArtwork.mockResolvedValue(
       artworkDetail({
-        seoTitle: "Warm Basket by Flora Powers | The LAX Art",
+        seoTitle: "Warm Basket by Flora Powers | lax.art",
         seoDescription: "Original still life by Flora Powers.",
       }),
     );
     await expect(
       composeArtworkDetailMetadata(services.catalogue, "warm-basket"),
     ).resolves.toMatchObject({
-      title: "Warm Basket by Flora Powers | The LAX Art",
+      title: "Warm Basket by Flora Powers | lax.art",
       description: "Original still life by Flora Powers.",
     });
   });

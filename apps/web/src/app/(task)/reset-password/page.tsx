@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
   "Reset password",
-  "Choose a new password for your London Art Exchange account.",
+  "Choose a new password for your LAX Account.",
 );
 
 export default async function ResetPasswordPage({

@@ -52,6 +52,7 @@ describe("Art structured data", () => {
       price: "450.00",
       priceCurrency: "GBP",
       availability: "https://schema.org/SoldOut",
+      seller: { name: "lax.art", legalName: "London Art Exchange Ltd" },
     });
   });
 

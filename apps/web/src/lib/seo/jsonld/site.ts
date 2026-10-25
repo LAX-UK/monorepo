@@ -5,6 +5,7 @@ import {
   SITE_NAME,
   SITE_TAGLINE,
   SITE_TELEPHONE_SCHEMA,
+  legalEntityFor,
   localBusinessJsonLd as sharedLocalBusinessJsonLd,
   organizationJsonLd as sharedOrganizationJsonLd,
   personJsonLd as sharedPersonJsonLd,
@@ -16,6 +17,7 @@ export function organizationJsonLd(): Record<string, unknown> {
   const base = getSiteUrl();
   return sharedOrganizationJsonLd({
     name: SITE_NAME,
+    legalName: legalEntityFor("bid").name,
     alternateName: SITE_ALTERNATE_NAMES,
     url: base,
     description: SITE_TAGLINE,
@@ -45,6 +47,7 @@ export function personJsonLd(opts: {
 export function localBusinessJsonLd(): Record<string, unknown> {
   return sharedLocalBusinessJsonLd({
     name: SITE_NAME,
+    legalName: legalEntityFor("bid").name,
     alternateName: SITE_ALTERNATE_NAMES,
     url: getSiteUrl(),
     description: SITE_TAGLINE,

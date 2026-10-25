@@ -41,7 +41,7 @@ export function ArtEditorialCard({
         <ArtMediaImage
           src={card.imageUrl}
           alt=""
-          label={card.kicker ?? "LAX Art"}
+          label={card.kicker ?? "lax.art"}
           sizes={SIZES[aspect]}
           priority={priority}
           className="absolute inset-0 size-full"

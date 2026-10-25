@@ -20,7 +20,7 @@ import {
 const ctx: ShopPortfolioContext = {
   shopOrigin: "https://shop.lax.art",
   artOrigin: "https://lax.art",
-  legalName: "LAX Art Ltd",
+  legalName: "London Art Exchange Ltd",
   imageUrl: (key) => (key ? `https://cdn.lax.art/${key}` : null),
 };
 
@@ -54,7 +54,7 @@ describe("buildShopPortfolioItems: editions", () => {
       image: "https://cdn.lax.art/artworks/quiet-orchard.jpg",
       acquiredAt: "2026-05-02T12:00:00.000Z",
       status: "owned",
-      business: { key: "lax_art", legalName: "LAX Art Ltd" },
+      business: { key: "lax_art", legalName: "London Art Exchange Ltd" },
     });
     expect(item?.paid.lines).toEqual([
       { kind: "price", amount: 45_000, currency: "GBP" },
@@ -206,7 +206,7 @@ describe("buildShopMoneyEntries", () => {
         currency: "GBP",
         occurredAt: "2026-05-02T12:00:00.000Z",
         href: "https://shop.lax.art/account/orders/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-        business: { key: "lax_art", legalName: "LAX Art Ltd" },
+        business: { key: "lax_art", legalName: "London Art Exchange Ltd" },
       }),
     ]);
   });

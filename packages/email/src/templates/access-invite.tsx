@@ -8,13 +8,12 @@ type Vars = TemplateVarsByName["access-invite"];
 
 function destination(vars: Pick<Vars, "scope" | "orgName">): string {
   return vars.scope === "organisation" && vars.orgName
-    ? `${vars.orgName} on London Art Exchange`
-    : "the London Art Exchange team";
+    ? `${vars.orgName} on LAX Bid`
+    : "the LAX team";
 }
 
 export function subject(vars: Vars): string {
-  const target =
-    vars.scope === "organisation" && vars.orgName ? vars.orgName : "London Art Exchange";
+  const target = vars.scope === "organisation" && vars.orgName ? vars.orgName : "LAX";
   return vars.existingAccount
     ? `You've been given access to ${target}`
     : `You're invited to join ${target}`;
@@ -22,7 +21,7 @@ export function subject(vars: Vars): string {
 
 export default function AccessInviteEmail(vars: Vars) {
   const { actionUrl, existingAccount, expiresAt, grants, inviteeEmail, inviterName } = vars;
-  const who = inviterName || "The London Art Exchange team";
+  const who = inviterName || "The LAX team";
   return (
     <Layout
       category="account"

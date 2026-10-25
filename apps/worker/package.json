@@ -18,6 +18,7 @@
   "dependencies": {
     "@auction/background-runtime": "workspace:*",
     "@auction/bidding-runtime": "workspace:*",
+    "@auction/branding": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/email": "workspace:^",

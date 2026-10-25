@@ -26,6 +26,9 @@ RUN pnpm turbo run build --filter=@auction/art
 FROM node:22-alpine AS runner
 WORKDIR /app
 ARG IMAGE_SHA=unknown
+# "test" or "prod". On prod, draft privacy and cookie notices return 404 and are not linked.
+ARG ART_DEPLOY_ENV=
+ENV ART_DEPLOY_ENV=$ART_DEPLOY_ENV
 ENV NODE_ENV=production
 ENV PORT=3050
 ENV HOSTNAME=0.0.0.0

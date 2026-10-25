@@ -3,7 +3,7 @@ import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { buildShopFooterVm } from "@/lib/shop-footer.vm";
-import { FOCUS_RING, siteCopyrightLine } from "@auction/branding";
+import { FOCUS_RING, productCopyrightLine } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { LaxLogo } from "@auction/marketing-ui";
 import {
@@ -64,7 +64,7 @@ export function ShopFooter({
       }
       columns={vm.columns}
       socials={<MarketingFooterSocials />}
-      copyright={siteCopyrightLine()}
+      copyright={productCopyrightLine("shop")}
       renderLink={renderLink}
     />
   );

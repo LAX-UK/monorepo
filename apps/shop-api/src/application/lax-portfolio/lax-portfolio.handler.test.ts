@@ -12,7 +12,7 @@ function handlers(flags: { portalOwnershipEnabled: boolean; payoutsEnabled: bool
     context: {
       shopOrigin: "https://shop.lax.art",
       artOrigin: "https://lax.art",
-      legalName: "LAX Art Ltd",
+      legalName: "London Art Exchange Ltd",
     },
     resolveMediaUrl: (key) => (key ? `https://cdn.lax.art/${key}` : null),
   });

@@ -1,37 +1,14 @@
-import type { ShopPolicySlug } from "./shop-policy-status";
+import type {
+  LaxArtPolicySlug,
+  LegalPolicyBlock,
+  LegalPolicyDocument,
+  LegalPolicySection,
+  LegalPolicyText,
+} from "@auction/marketing-ui";
 
-/**
- * Policy text is plain strings with three inline marks, parsed by `parseShopPolicyText`:
- * - `[label](/href)` a link (site paths or `#anchor`)
- * - `**text**` strong emphasis
- * - `[TO CONFIRM: what is needed]` a placeholder the owner or lawyer must fill before approval
- */
-export type ShopPolicyText = string;
-
-export type ShopPolicyBlock =
-  | { type: "paragraph"; text: ShopPolicyText }
-  | { type: "subheading"; text: string }
-  | { type: "list"; items: readonly ShopPolicyText[]; ordered?: boolean }
-  | {
-      type: "table";
-      caption: string;
-      columns: readonly string[];
-      rows: readonly (readonly ShopPolicyText[])[];
-    }
-  /** A boxed passage, such as the model cancellation form. */
-  | { type: "panel"; title: string; blocks: readonly ShopPolicyBlock[] };
-
-export type ShopPolicySection = {
-  /** Anchor id: lowercase words joined by hyphens. */
-  id: string;
-  heading: string;
-  blocks: readonly ShopPolicyBlock[];
-};
-
-export type ShopPolicyDocument = {
-  slug: ShopPolicySlug;
-  title: string;
-  /** Meta description and the lead paragraph under the title. */
-  summary: string;
-  sections: readonly ShopPolicySection[];
-};
+/** Shop's policy pages use the shared LAX policy model (see `LegalPolicyDocument`). */
+export type ShopPolicyText = LegalPolicyText;
+export type ShopPolicyBlock = LegalPolicyBlock;
+export type ShopPolicySection = LegalPolicySection;
+/** A London Art Exchange Ltd policy, published on a Shop route (see `SHOP_POLICY_SOURCES`). */
+export type ShopPolicyDocument = LegalPolicyDocument<LaxArtPolicySlug>;

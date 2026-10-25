@@ -28,7 +28,7 @@ import {
   type MarketingUtilityBarItem,
   headerChromeClassName,
   headerChromeIconClass,
-  headerProductLinkClass,
+  headerProductNameClass,
   useHeaderChrome,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -99,7 +99,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
             className="justify-start"
             items={utilityItems}
             resolveLinkClassName={(item: MarketingUtilityBarItem) =>
-              headerProductLinkClass(headerTone, item.current ?? false)
+              headerProductNameClass(headerTone, item.current ?? false)
             }
             trailing={
               <>
@@ -128,7 +128,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
               <Link
                 href="/"
                 className={cn("min-w-[76px] shrink-0 rounded-sm lg:py-2.5", FOCUS_RING)}
-                aria-label="LAX Art home"
+                aria-label="lax.art home"
               >
                 <LaxLogo className="art-header__logo" />
               </Link>

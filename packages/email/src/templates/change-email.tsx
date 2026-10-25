@@ -36,8 +36,8 @@ export default function ChangeEmail({
       ) : (
         <>
           <TextBlock>
-            We received a request to change your London Art Exchange email from {oldEmail} to{" "}
-            {newEmail}. Click below to confirm you still control {oldEmail} and approve this change.
+            We received a request to change your LAX Account email from {oldEmail} to {newEmail}.
+            Click below to confirm you still control {oldEmail} and approve this change.
           </TextBlock>
           <Button href={confirmationUrl}>Confirm from current email</Button>
         </>

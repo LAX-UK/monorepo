@@ -14,7 +14,7 @@ import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Exhibitions | LAX Art",
+  title: "Exhibitions | lax.art",
   description: "Current, upcoming and past exhibitions from the London Art Exchange gallery.",
   alternates: { canonical: "/exhibitions" },
 };

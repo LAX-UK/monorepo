@@ -3,7 +3,7 @@ import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
-export const subject = "Verify your London Art Exchange email";
+export const subject = "Verify your LAX Account email";
 
 export default function VerifyEmail({
   verificationUrl,
@@ -19,9 +19,7 @@ export default function VerifyEmail({
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>Confirm this email address to finish setting up your account.</TextBlock>
       <Button href={verificationUrl}>Verify email</Button>
-      <TextBlock>
-        If you did not create a London Art Exchange account, you can ignore this email.
-      </TextBlock>
+      <TextBlock>If you did not create a LAX Account, you can ignore this email.</TextBlock>
     </Layout>
   );
 }

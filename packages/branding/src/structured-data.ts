@@ -26,6 +26,8 @@ export type OpeningHoursInput = {
 
 export type OrganizationJsonLdInput = {
   name: string;
+  /** Registered company name (schema.org `legalName`), from `legalEntityFor`. */
+  legalName?: string;
   url: string;
   alternateName?: readonly string[];
   description?: string;
@@ -82,6 +84,7 @@ export function organizationJsonLd(input: OrganizationJsonLdInput): JsonLd {
     "@context": SCHEMA_CONTEXT,
     "@type": "Organization",
     name: input.name,
+    ...optional("legalName", input.legalName),
     ...optional("alternateName", input.alternateName),
     url: input.url,
     ...optional("description", input.description),
@@ -104,6 +107,7 @@ export function localBusinessJsonLd(input: LocalBusinessJsonLdInput): JsonLd {
     "@context": SCHEMA_CONTEXT,
     "@type": input.type ?? "LocalBusiness",
     name: input.name,
+    ...optional("legalName", input.legalName),
     ...optional("alternateName", input.alternateName),
     url: input.url,
     ...optional("description", input.description),

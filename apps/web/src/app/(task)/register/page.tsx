@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
   "Create account",
-  "Register for a London Art Exchange account to bid, sell, and manage your collection.",
+  "Register for a LAX Account to bid, sell, and manage your collection.",
 );
 
 export default async function RegisterPage({

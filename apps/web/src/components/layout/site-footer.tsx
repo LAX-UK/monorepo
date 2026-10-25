@@ -6,7 +6,7 @@ import { FooterNavLink } from "@/components/layout/footer-nav-link";
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
-import { siteCopyrightLine } from "@/lib/brand";
+import { productCopyrightLine } from "@/lib/brand";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { MarketingFooter, type MarketingFooterLink } from "@auction/marketing-ui";
@@ -48,7 +48,7 @@ export function SiteFooter({ crossProductLinks = [] }: SiteFooterProps = {}) {
       }
       columns={buildBidFooterColumns(crossProductLinks)}
       socials={<FooterSocials />}
-      copyright={siteCopyrightLine()}
+      copyright={productCopyrightLine("bid")}
       renderLink={renderLink}
     />
   );

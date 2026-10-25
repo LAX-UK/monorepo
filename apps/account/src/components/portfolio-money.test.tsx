@@ -37,7 +37,7 @@ const entries = [
 describe("PortfolioMoney", () => {
   it("shows a summary card per business, Bid then Art", () => {
     const html = render(entries);
-    expect(html.indexOf("LAX Bid Ltd")).toBeLessThan(html.indexOf("LAX Art Ltd"));
+    expect(html.indexOf("LAX Bid Ltd")).toBeLessThan(html.indexOf("London Art Exchange Ltd"));
     expect(html).toContain('aria-label="Totals by business"');
   });
 

@@ -12,14 +12,14 @@ export type PayoutAccountViewModel = {
   surface: PortalPayeeConnectSurface;
 };
 
-/** One LAX Art payout account covers lax.art and shop.lax.art; Bid payouts are separate (D38). */
+/** One London Art Exchange payout account covers lax.art and LAX Shop; Bid payouts are separate (D38). */
 export function buildPayoutAccountViewModel(
   status: PortalPayeeConnectStatus | null,
 ): PayoutAccountViewModel {
   if (!status?.stripeAccountId) {
     return {
       stage: "not_started",
-      title: "Set up your LAX Art payout account",
+      title: "Set up your lax.art and LAX Shop payout account",
       description:
         "Add your details and bank account once to receive payouts from lax.art and shop.lax.art. " +
         "This is separate from any LAX.bid payout account.",

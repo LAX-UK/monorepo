@@ -49,24 +49,24 @@ export const ARTWORK_MEDIUM_LANDINGS = [
     path: "/paintings",
     objectType: "painting",
     title: "Paintings",
-    metaTitle: "Paintings for Sale | LAX Art",
+    metaTitle: "Paintings for Sale | lax.art",
     metaDescription:
-      "Original paintings for sale from emerging and established artists, available to view at LAX Art in London.",
+      "Original paintings for sale from emerging and established artists, available to view at lax.art in London.",
   },
   {
     path: "/prints",
     objectType: "print",
     title: "Prints",
-    metaTitle: "Art Prints for Sale | LAX Art",
+    metaTitle: "Art Prints for Sale | lax.art",
     metaDescription:
-      "Limited edition and open edition art prints for sale, chosen by the LAX Art gallery in London.",
+      "Limited edition and open edition art prints for sale, chosen by the lax.art gallery in London.",
   },
   {
     path: "/sculptures",
     objectType: "sculpture",
     title: "Sculptures",
-    metaTitle: "Sculptures for Sale | LAX Art",
-    metaDescription: "Contemporary sculpture for sale from artists represented by LAX Art, London.",
+    metaTitle: "Sculptures for Sale | lax.art",
+    metaDescription: "Contemporary sculpture for sale from artists represented by lax.art, London.",
   },
 ] as const satisfies readonly ArtworkMediumLanding[];
 

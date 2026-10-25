@@ -1,6 +1,6 @@
 import { FOCUS_RING } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { type MarketingHeaderTone, headerProductLinkClass } from "@auction/marketing-ui";
+import { type MarketingHeaderTone, headerProductNameClass } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 
 type Props = {
@@ -17,7 +17,7 @@ export function LaxProductSwitcher({ links, headerTone = "on-light" }: Props) {
         link.current ? (
           <span
             key={link.id}
-            className={headerProductLinkClass(headerTone, true)}
+            className={headerProductNameClass(headerTone, true)}
             aria-current="page"
           >
             {link.label}
@@ -26,7 +26,7 @@ export function LaxProductSwitcher({ links, headerTone = "on-light" }: Props) {
           <a
             key={link.id}
             href={link.href}
-            className={cn(headerProductLinkClass(headerTone, false), FOCUS_RING)}
+            className={cn(headerProductNameClass(headerTone, false), FOCUS_RING)}
             rel="noopener noreferrer"
           >
             {link.label}

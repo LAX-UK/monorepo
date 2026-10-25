@@ -6,14 +6,14 @@ import {
   MarketingBreadcrumb,
 } from "@/components/marketing/marketing-breadcrumb";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
+import { SITE_SEO_NAME } from "@/lib/brand";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, faqPageJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Frequently Asked Questions",
-  description:
-    "Frequently asked questions about buying, selling, accounts, and support on LAX.BID by London Art Exchange.",
+  description: `Frequently asked questions about buying, selling, accounts, and support on ${SITE_SEO_NAME}.`,
   path: "/faq",
 });
 

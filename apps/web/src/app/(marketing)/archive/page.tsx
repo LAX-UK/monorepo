@@ -11,6 +11,7 @@ import {
   buildArchivePageQuery,
   countActiveArchiveFilters,
 } from "@/lib/archive/build-archive-params";
+import { SITE_SEO_NAME } from "@/lib/brand";
 import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/catalog/catalog.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -31,8 +32,7 @@ import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Past auctions",
-  description:
-    "Browse past auctions, realized prices, and archived lots from LAX.BID by London Art Exchange.",
+  description: `Browse past auctions, realized prices, and archived lots from ${SITE_SEO_NAME}.`,
   path: "/archive",
 });
 

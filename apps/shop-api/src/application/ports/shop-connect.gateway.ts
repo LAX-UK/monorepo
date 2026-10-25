@@ -15,7 +15,7 @@ export type ShopConnectAccountFlags = {
   disabledReason: string | null;
 };
 
-/** Stripe Connect calls on the LAX Art platform; one adapter per Stripe platform account. */
+/** Stripe Connect calls on the lax.art platform; one adapter per Stripe platform account. */
 export interface ShopConnectGateway {
   createAccount(prefill: ShopConnectAccountPrefill): Promise<{ stripeAccountId: string }>;
   retrieveAccountFlags(stripeAccountId: string): Promise<ShopConnectAccountFlags>;

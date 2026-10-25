@@ -10,8 +10,8 @@ describe("renderEmail", () => {
       buyerEmail: "ada@example.com",
     };
     const art = await renderEmail("shop-artwork-enquiry-alert", { ...vars, storefront: "art" });
-    expect(art.subject).toBe("New LAX Art artwork enquiry");
-    expect(art.html).toContain("LAX Art enquiry");
+    expect(art.subject).toBe("New lax.art artwork enquiry");
+    expect(art.html).toContain("lax.art enquiry");
 
     const legacy = await renderEmail("shop-artwork-enquiry-alert", vars);
     expect(legacy.subject).toBe("New Shop artwork enquiry");
@@ -24,7 +24,7 @@ describe("renderEmail", () => {
       message: "Saturday morning?",
       contextSlug: "lax-marylebone",
     });
-    expect(rendered.subject).toBe("New LAX Art enquiry: Private viewing");
+    expect(rendered.subject).toBe("New lax.art enquiry: Private viewing");
     expect(rendered.text).toContain("Regarding: lax-marylebone");
     expect(rendered.text).toContain("Saturday morning?");
   });
@@ -61,7 +61,7 @@ describe("renderEmail", () => {
       userName: "Ada",
     });
 
-    expect(rendered.subject).toBe("Verify your London Art Exchange email");
+    expect(rendered.subject).toBe("Verify your LAX Account email");
     expect(rendered.html).toContain("Verify your email");
     expect(rendered.text).toContain("Confirm this email address");
   });
@@ -74,7 +74,7 @@ describe("renderEmail", () => {
       expirationMinutes: 15,
     });
 
-    expect(rendered.subject).toBe("Your London Art Exchange sign-in link");
+    expect(rendered.subject).toBe("Your LAX Account sign-in link");
     expect(rendered.html).toContain("Sign in to your account");
     expect(rendered.html).toContain("Sign in");
     expect(rendered.text).toContain(signInUrl);
@@ -94,7 +94,7 @@ describe("renderEmail", () => {
       actionUrl: "https://lax.bid/register?invite=tok",
       expiresAt: "2026-10-17",
     });
-    expect(rendered.subject).toBe("You're invited to join London Art Exchange");
+    expect(rendered.subject).toBe("You're invited to join LAX");
     expect(rendered.html).toContain("Specialist — Appraises consignments.");
     expect(rendered.html).toContain("Broker");
     expect(rendered.text).toContain("Create account and accept");
@@ -111,7 +111,7 @@ describe("renderEmail", () => {
       actionUrl: "https://lax.bid/dashboard/invitations/accept/tok",
     });
     expect(rendered.subject).toBe("You've been given access to Acme Gallery");
-    expect(rendered.text).toContain("Acme Gallery on London Art Exchange");
+    expect(rendered.text).toContain("Acme Gallery on LAX Bid");
     expect(rendered.text).toContain("Accept and sign in");
   });
 
@@ -176,10 +176,61 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("support@lax.bid");
   });
 
-  it("includes hosted logo URL and legal name in rendered HTML", async () => {
+  it("shows the LAX Account lockup and names both companies on LAX Account mail", async () => {
     const rendered = await renderEmail("welcome", { userName: "Ada" });
-    expect(rendered.html).toMatch(/https?:\/\/.+\/email\/lax-logo\.png/);
-    expect(rendered.html).toContain("London Auction Xchange LTD");
+    expect(rendered.html).toMatch(/https?:\/\/.+\/email\/lax-account-lockup\.png/);
+    expect(rendered.html).not.toContain("lax-logo.png");
+    expect(rendered.text).toContain(
+      "LAX Account is provided by London Auction Xchange LTD and London Art Exchange Ltd.",
+    );
+  });
+
+  it("names the company of the product the person signed up through", async () => {
+    const shop = await renderEmail("verify-email", {
+      verificationUrl: "https://account.lax.bid/verify",
+      product: "shop",
+    });
+    expect(shop.text).toContain("LAX Shop is operated by London Art Exchange Ltd.");
+    expect(shop.text).not.toContain("London Auction Xchange LTD");
+
+    const bid = await renderEmail("reset-password", {
+      resetLink: "https://account.lax.bid/reset",
+      userEmail: "ada@example.com",
+      expirationMinutes: 60,
+      product: "bid",
+    });
+    expect(bid.text).toContain("LAX Bid is operated by London Auction Xchange LTD.");
+  });
+
+  it("names each product's own company on product mail", async () => {
+    const bid = await renderEmail("bid-outbid", {
+      lotTitle: "Lot 1",
+      lotUrl: "https://lax.bid/lot/1",
+      unsubscribeUrl: "https://lax.bid/unsubscribe",
+    });
+    expect(bid.text).toContain("© ");
+    expect(bid.text).toContain("London Auction Xchange LTD. All rights reserved.");
+    expect(bid.text).not.toContain("London Art Exchange Ltd");
+
+    const shop = await renderEmail("shop-order-receipt", {
+      orderId: "ord-1",
+      totalAmount: "£100.00",
+      vatAmount: "£16.67",
+      orderUrl: "https://shop.lax.art/account/orders/ord-1",
+      lineSummary: "Print",
+    });
+    expect(shop.text).toContain("London Art Exchange Ltd. All rights reserved.");
+    expect(shop.text).not.toContain("London Auction Xchange LTD");
+    expect(shop.html).toContain("/email/lax-shop-lockup.png");
+    expect(shop.html).toContain('alt="LAX Shop"');
+    expect(shop.html).not.toContain("lax-logo.png");
+
+    const art = await renderEmail("art-general-enquiry-alert", {
+      topicLabel: "Private viewing",
+      buyerEmail: "ada@example.com",
+      message: "Saturday?",
+    });
+    expect(art.text).toContain("lax.art is operated by London Art Exchange Ltd.");
   });
 
   it("renders payout transfer failed with fact card fields", async () => {

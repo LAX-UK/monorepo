@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Draft preview | LAX Art",
+  title: "Draft preview | lax.art",
   robots: { index: false, follow: false, nocache: true },
   referrer: "no-referrer",
 };

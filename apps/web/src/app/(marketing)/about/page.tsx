@@ -8,6 +8,7 @@ import {
   SITE_BUSINESS_ADDRESS_INLINE,
   SITE_BUSINESS_HOURS_LABEL,
   SITE_COMPANY_NAME,
+  SITE_HOUSE_NAME,
   SITE_NAME,
 } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
@@ -19,7 +20,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "About",
-  description: "Learn about LAX.BID, the dedicated auction platform of London Art Exchange.",
+  description: `Learn about ${SITE_NAME}, the dedicated auction platform of ${SITE_COMPANY_NAME}.`,
   path: "/about",
 });
 
@@ -31,8 +32,7 @@ export default function AboutPage() {
           path: "/about",
           breadcrumbName: "About",
           pageName: "About LAX.BID",
-          description:
-            "Learn about LAX.BID, the dedicated auction platform of London Art Exchange.",
+          description: `Learn about ${SITE_NAME}, the dedicated auction platform of ${SITE_COMPANY_NAME}.`,
         })}
       </script>
       <LegalPage
@@ -52,7 +52,7 @@ export default function AboutPage() {
         embedded
       >
         <p>
-          {SITE_NAME} is the dedicated auction platform of {SITE_COMPANY_NAME}, developed to
+          {SITE_NAME} is the dedicated auction platform of {SITE_HOUSE_NAME}, developed to
           facilitate the structured sale and acquisition of fine art, rare collectibles, and
           culturally significant assets.
         </p>
@@ -65,13 +65,13 @@ export default function AboutPage() {
         <MarketingSectionReveal index={0}>
           <LegalH2>Our Foundation</LegalH2>
           <p>
-            {SITE_COMPANY_NAME} was incorporated in 2020 with the intention of establishing a more
+            {SITE_HOUSE_NAME} was incorporated in 2020 with the intention of establishing a more
             structured and disciplined approach to the sale of fine art and collectible assets. From
             the outset, the business has operated with a focus on curation, control, and
             consistency, favouring a measured release of works over volume-led distribution.
           </p>
           <p>
-            In the years following its incorporation, {SITE_COMPANY_NAME} has engaged with over 200
+            In the years following its incorporation, {SITE_HOUSE_NAME} has engaged with over 200
             private clients, facilitating transactions across both primary and secondary markets,
             alongside a programme of exhibitions and private viewings. This activity has provided a
             foundation not only of client relationships, but of operational experience in managing
@@ -118,7 +118,7 @@ export default function AboutPage() {
         <MarketingSectionReveal index={2}>
           <LegalH2>Positioning</LegalH2>
           <p>
-            {SITE_NAME} represents the progression of {SITE_COMPANY_NAME} into a fully realised
+            {SITE_NAME} represents the progression of {SITE_HOUSE_NAME} into a fully realised
             auction house model. It has been developed to provide a structured environment for the
             sale of carefully selected works and assets, where supply is controlled, presentation is
             considered, and outcomes are determined through transparent bidding mechanisms.
@@ -170,7 +170,7 @@ export default function AboutPage() {
         <MarketingSectionReveal index={5}>
           <LegalH2>Location</LegalH2>
           <p>
-            {SITE_COMPANY_NAME} operates from its Marylebone premises at{" "}
+            {SITE_HOUSE_NAME} operates from its Marylebone premises at{" "}
             {SITE_BUSINESS_ADDRESS_INLINE}
             <br />
             {SITE_BUSINESS_HOURS_LABEL}

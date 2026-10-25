@@ -1,5 +1,6 @@
 import { render } from "@react-email/render";
 import type { ReactElement } from "react";
+import { EmailProductContext, emailProductFor } from "./email-product.js";
 import TwoFactorDisabledEmail, {
   subject as twoFactorDisabledSubject,
 } from "./templates/2fa-disabled.js";
@@ -438,7 +439,11 @@ export async function renderEmail<T extends TemplateName>(
   vars: TemplateVarsByName[T],
 ): Promise<RenderedEmail> {
   const entry = renderers[template] as TemplateRenderer<T>;
-  const component = entry.component(vars);
+  const component = (
+    <EmailProductContext.Provider value={emailProductFor(template, vars)}>
+      {entry.component(vars)}
+    </EmailProductContext.Provider>
+  );
   const html = await render(component);
   const text = await render(component, { plainText: true });
   const subject = typeof entry.subject === "function" ? entry.subject(vars) : entry.subject;

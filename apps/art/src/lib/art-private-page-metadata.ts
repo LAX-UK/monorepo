@@ -8,6 +8,6 @@ const artPrivatePageMetadata: Metadata = {
 export function artPrivatePageTitle(title: string): Metadata {
   return {
     ...artPrivatePageMetadata,
-    title: `${title} | LAX Art`,
+    title: `${title} | lax.art`,
   };
 }

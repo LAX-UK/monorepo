@@ -28,7 +28,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Art Hub | LAX Art",
+  title: "Art Hub | lax.art",
   description:
     "Stories, conversations and films from the artists, exhibitions and people behind the London Art Exchange.",
   alternates: { canonical: "/art-hub" },

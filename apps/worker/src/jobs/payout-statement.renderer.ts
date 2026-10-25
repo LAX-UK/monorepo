@@ -1,4 +1,5 @@
 import { finished } from "node:stream/promises";
+import { legalEntityFor, productCopyrightLine } from "@auction/branding";
 import PDFDocument from "pdfkit";
 import type { WorkerEnv } from "../env.js";
 import type {
@@ -38,8 +39,10 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   const entityDisplayName =
     entityRow.legalName?.trim() || entityRow.displayName?.trim() || entityRow.id.slice(0, 8);
 
-  doc.fontSize(18).text("LAX", { continued: false });
-  doc.moveDown(0.25);
+  const issuer = legalEntityFor("bid");
+  doc.fontSize(18).text("LAX Bid", { continued: false });
+  doc.fontSize(9).text(`${issuer.name}, ${issuer.registeredAddress.inline}`);
+  doc.moveDown(0.5);
   doc.fontSize(14).text("Payout statement", { underline: true });
   doc.moveDown();
   doc.fontSize(10);
@@ -120,6 +123,7 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
     `Settlement / processed: ${pRow.processedAt ? pRow.processedAt.toISOString().slice(0, 10) : "—"}`,
   );
   doc.text(`Questions: ${contact}`);
+  doc.text(productCopyrightLine("bid"));
   doc.fillColor("#000000");
 
   doc.end();

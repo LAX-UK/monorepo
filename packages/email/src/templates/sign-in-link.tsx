@@ -3,7 +3,7 @@ import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
-export const subject = "Your London Art Exchange sign-in link";
+export const subject = "Your LAX Account sign-in link";
 
 export default function SignInLink({
   signInUrl,
@@ -19,8 +19,8 @@ export default function SignInLink({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Click the button below to sign in to London Art Exchange. This link expires in{" "}
-        {expirationMinutes} minutes and can only be used once.
+        Click the button below to sign in to LAX Account. This link expires in {expirationMinutes}{" "}
+        minutes and can only be used once.
       </TextBlock>
       <Button href={signInUrl}>Sign in</Button>
       <TextBlock>

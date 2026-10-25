@@ -15,10 +15,10 @@ describe("structured data builders", () => {
   });
 
   it("omits optional organisation fields that are not supplied", () => {
-    expect(organizationJsonLd({ name: "LAX Art", url: "https://www.thelax.art" })).toEqual({
+    expect(organizationJsonLd({ name: "lax.art", url: "https://www.thelax.art" })).toEqual({
       "@context": "https://schema.org",
       "@type": "Organization",
-      name: "LAX Art",
+      name: "lax.art",
       url: "https://www.thelax.art",
     });
   });
@@ -26,7 +26,7 @@ describe("structured data builders", () => {
   it("builds a gallery with address and opening hours", () => {
     const gallery = localBusinessJsonLd({
       type: "ArtGallery",
-      name: "LAX Art",
+      name: "lax.art",
       url: "https://www.thelax.art",
       address: {
         streetAddress: "156 New Cavendish Street",
@@ -44,7 +44,7 @@ describe("structured data builders", () => {
   });
 
   it("adds a search action only when a template is given", () => {
-    const base = { name: "LAX Art", url: "https://www.thelax.art" };
+    const base = { name: "lax.art", url: "https://www.thelax.art" };
     expect(websiteJsonLd(base)).not.toHaveProperty("potentialAction");
     expect(
       websiteJsonLd({ ...base, searchUrlTemplate: `${base.url}/artworks?q={search_term_string}` }),

@@ -1,3 +1,4 @@
+import { legalOperatorSentence } from "@auction/branding";
 import type { AccountLinksVm } from "./account-links";
 import { ACCOUNT_ROUTES, type SettingsGroupVm } from "./account-settings.vm";
 
@@ -34,6 +35,7 @@ export function buildPrivacyGroups(
     groups.push({
       id: "policies",
       label: "Policies",
+      footer: legalOperatorSentence("account"),
       rows: [
         { title: "Privacy policy", href: links.support.privacyPolicy },
         { title: "Terms of use", href: links.support.terms },

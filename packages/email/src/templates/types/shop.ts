@@ -34,7 +34,7 @@ type ShopTemplateVars = {
     guest?: boolean;
     message?: string;
     contactPhone?: string;
-    /** Storefront the enquiry came from; absent on alerts queued before LAX Art branding. */
+    /** Storefront the enquiry came from; absent on alerts queued before lax.art branding. */
     storefront?: "shop" | "art";
   };
   "shop-edition-available-notify": {

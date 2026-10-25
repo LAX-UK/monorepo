@@ -336,7 +336,7 @@ export async function composeArtworkDetailMetadata(
       title: seoMetadataTitle(artwork, artwork.title),
       description:
         seoMetadataDescription(artwork, artwork.description) ??
-        `${artwork.title} by ${artwork.artistName} at LAX Art.`,
+        `${artwork.title} by ${artwork.artistName} at lax.art.`,
       canonicalPath: artworkHref(artwork.slug),
       imageUrl: artwork.imageUrl,
     };

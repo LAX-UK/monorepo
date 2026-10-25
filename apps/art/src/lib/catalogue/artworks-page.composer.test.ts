@@ -102,7 +102,7 @@ describe("composeArtworksPage", () => {
 describe("composeArtworksPageMetadata", () => {
   it("canonicalises landing media to their legacy URL with their own copy", () => {
     expect(composeArtworksPageMetadata({ objectType: "print", sort: "priceAsc" })).toEqual({
-      title: "Art Prints for Sale | LAX Art",
+      title: "Art Prints for Sale | lax.art",
       description: expect.stringContaining("art prints"),
       canonical: "/prints",
     });
@@ -110,7 +110,7 @@ describe("composeArtworksPageMetadata", () => {
 
   it("keeps every other view on /artworks", () => {
     expect(composeArtworksPageMetadata({ type: "edition" })).toEqual({
-      title: "Prints & Multiples | LAX Art",
+      title: "Prints & Multiples | lax.art",
       canonical: "/artworks",
     });
     expect(composeArtworksPageMetadata({ objectType: "photography" }).canonical).toBe("/artworks");

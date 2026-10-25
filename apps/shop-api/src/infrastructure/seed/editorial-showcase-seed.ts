@@ -70,7 +70,7 @@ const STORY_BODY = blocks([
   {
     type: "quote",
     text: "We want collectors to meet the work before they live with it.",
-    attribution: "LAX Art gallery team",
+    attribution: "lax.art gallery team",
   },
   { type: "artworkRail", headline: "Available now", artworkSlugs: SEED_ARTWORK_SLUGS },
   {

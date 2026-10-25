@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { EDITORIAL_LEGAL_SLUGS, editorialPageHref } from "@/lib/editorial/editorial-page-routes";
+import { LAX_ART_POLICIES, isLaxArtPolicySlug } from "@auction/marketing-ui";
 import { describe, expect, it } from "vitest";
 import { createLegacyRedirectResolver, legacyRedirects } from "./legacy-redirects";
 
@@ -80,7 +81,9 @@ describe("committed legacy redirect map", () => {
   it("targets editorial pages on their canonical routes", () => {
     for (const [from, to] of entries) {
       const legal = /^\/legal\/([^/]+)$/.exec(to)?.[1];
-      if (legal) expect(EDITORIAL_LEGAL_SLUGS.has(legal), from).toBe(true);
+      if (legal) {
+        expect(EDITORIAL_LEGAL_SLUGS.has(legal) || isLaxArtPolicySlug(legal), from).toBe(true);
+      }
       const page = /^\/collector-hub\/([^/]+)$/.exec(to)?.[1];
       if (page) expect(editorialPageHref(page), from).toBe(to);
     }
@@ -89,6 +92,12 @@ describe("committed legacy redirect map", () => {
   it("uses site-relative paths or https URLs only", () => {
     for (const [from, to] of entries) {
       expect(to.startsWith("/") || to.startsWith("https://"), from).toBe(true);
+    }
+  });
+
+  it("sends every policy's address on the previous site to its lax.art page", () => {
+    for (const policy of Object.values(LAX_ART_POLICIES)) {
+      expect(legacyRedirects[policy.legacyPath], policy.legacyPath).toBe(policy.artPath);
     }
   });
 });

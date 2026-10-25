@@ -5,7 +5,7 @@ import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-const description = "Activate your London Art Exchange account with a secure sign-in link.";
+const description = "Activate your LAX Account with a secure sign-in link.";
 
 export const metadata: Metadata = metadataForPrivate("Activate account", description);
 

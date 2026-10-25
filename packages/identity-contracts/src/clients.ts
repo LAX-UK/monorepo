@@ -103,7 +103,7 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
     [REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB]: {
       clientId: REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB,
       kind: OidcClientKind.Confidential,
-      displayName: "LAX Art Web",
+      displayName: "lax.art Web",
       redirectUris: [
         "http://localhost:3051/auth/callback",
         "https://www.thelax.art/auth/callback",

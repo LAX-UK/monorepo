@@ -3,6 +3,7 @@ import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import {
   SITE_BUSINESS_ADDRESS_LINES,
   SITE_CONTACT_EMAIL,
+  SITE_SEO_NAME,
   SITE_SUPPORT_EMAIL,
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
@@ -14,8 +15,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Shipping & Logistics",
-  description:
-    "Shipping, collection, insurance, and logistics information for lots purchased through LAX.BID by London Art Exchange.",
+  description: `Shipping, collection, insurance, and logistics information for lots purchased through ${SITE_SEO_NAME}.`,
   path: "/shipping",
 });
 
@@ -27,8 +27,7 @@ export default function ShippingPage() {
           path: "/shipping",
           breadcrumbName: "Shipping & Logistics",
           pageName: "Shipping & Logistics",
-          description:
-            "Shipping, collection, insurance, and logistics information for lots purchased through LAX.BID by London Art Exchange.",
+          description: `Shipping, collection, insurance, and logistics information for lots purchased through ${SITE_SEO_NAME}.`,
         })}
       </script>
       <LegalPage

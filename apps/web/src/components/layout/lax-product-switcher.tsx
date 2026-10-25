@@ -1,5 +1,6 @@
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { headerProductNameClass } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -17,7 +18,7 @@ export function LaxProductSwitcher({ links, className }: Props) {
         link.current ? (
           <span
             key={link.id}
-            className="font-label text-xs uppercase tracking-[0.22em] text-on-surface"
+            className={headerProductNameClass("on-light", true)}
             aria-current="page"
           >
             {link.label}
@@ -26,10 +27,7 @@ export function LaxProductSwitcher({ links, className }: Props) {
           <a
             key={link.id}
             href={link.href}
-            className={cn(
-              "font-label text-xs uppercase tracking-[0.22em] text-on-surface-variant transition-colors hover:text-link",
-              FOCUS_RING,
-            )}
+            className={cn(headerProductNameClass("on-light", false), FOCUS_RING)}
             rel="noopener noreferrer"
           >
             {link.label}
@@ -38,10 +36,7 @@ export function LaxProductSwitcher({ links, className }: Props) {
           <Link
             key={link.id}
             href={link.href}
-            className={cn(
-              "font-label text-xs uppercase tracking-[0.22em] text-on-surface-variant transition-colors hover:text-link",
-              FOCUS_RING,
-            )}
+            className={cn(headerProductNameClass("on-light", false), FOCUS_RING)}
           >
             {link.label}
           </Link>

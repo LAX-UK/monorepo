@@ -29,7 +29,7 @@ const isoDateTimeSchema = Type.String({
 /** Integer minor units (pence, cents). Never a float, so sums stay exact. */
 const minorUnitsSchema = Type.Integer({ minimum: 0 });
 
-/** Separate legal businesses; LAX Shop trades under LAX Art. */
+/** Separate legal businesses: LAX Bid is London Auction Xchange LTD; LAX Shop and lax.art are London Art Exchange Ltd. */
 export const LAX_BUSINESS_KEYS = ["lax_bid", "lax_art"] as const;
 export type LaxBusinessKey = (typeof LAX_BUSINESS_KEYS)[number];
 

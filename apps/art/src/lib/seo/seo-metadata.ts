@@ -1,6 +1,6 @@
 export type SeoOverrides = { seoTitle?: string | null; seoDescription?: string | null };
 
-const BRAND_SUFFIX = " | LAX Art";
+const BRAND_SUFFIX = " | lax.art";
 export const META_DESCRIPTION_MAX_LENGTH = 160;
 
 /** Overrides are used verbatim: imported legacy titles already carry their branding. */

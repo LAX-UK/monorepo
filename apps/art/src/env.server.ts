@@ -15,6 +15,8 @@ const artEnvSchema = z.object({
   SHOP_IMAGE_REMOTE_HOSTS: z.string().min(1).optional(),
   /** `true`/`false` overrides the production-host indexing gate (e.g. a pre-launch audit). */
   ART_ALLOW_INDEXING: z.enum(["true", "false"]).optional(),
+  /** "test" or "prod", from the image build. On prod, draft legal notices 404 and are not linked. */
+  ART_DEPLOY_ENV: z.string().min(1).optional(),
   /** GA4 web stream; loaded only after the visitor accepts analytics cookies. */
   ART_GA_MEASUREMENT_ID: z
     .string()
@@ -43,6 +45,7 @@ export function loadArtEnv(
     SHOP_STOREFRONT_URL: source.SHOP_STOREFRONT_URL?.trim() || undefined,
     SHOP_IMAGE_REMOTE_HOSTS: source.SHOP_IMAGE_REMOTE_HOSTS?.trim() || undefined,
     ART_ALLOW_INDEXING: source.ART_ALLOW_INDEXING?.trim() || undefined,
+    ART_DEPLOY_ENV: source.ART_DEPLOY_ENV?.trim() || undefined,
     ART_GA_MEASUREMENT_ID: source.ART_GA_MEASUREMENT_ID?.trim() || undefined,
     ART_GOOGLE_SITE_VERIFICATION: source.ART_GOOGLE_SITE_VERIFICATION?.trim() || undefined,
     ART_REVALIDATE_SECRET: source.ART_REVALIDATE_SECRET?.trim() || undefined,

@@ -1,21 +1,24 @@
 import { LegalH2, LegalPage, LegalUL } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import {
-  SITE_BUSINESS_ADDRESS_LINES,
-  SITE_LEGAL_NAME,
   SITE_NAME,
+  SITE_SEO_NAME,
   SITE_SUPPORT_EMAIL,
+  legalEntityFor,
+  legalOperatorSentence,
 } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+
+const OPERATOR = legalEntityFor("bid");
+const CONTROLLER_ADDRESS_LINES = [OPERATOR.name, ...OPERATOR.registeredAddress.lines];
 import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Privacy Notice",
-  description:
-    "Privacy Notice for LAX.BID by London Art Exchange and how personal data is collected, used, and protected.",
+  description: `Privacy Notice for ${SITE_SEO_NAME} and how personal data is collected, used, and protected.`,
   path: "/privacy",
 });
 
@@ -229,8 +232,7 @@ export default function PrivacyPage() {
           path: "/privacy",
           breadcrumbName: "Privacy Notice",
           pageName: "Privacy notice",
-          description:
-            "Privacy Notice for LAX.BID by London Art Exchange and how personal data is collected, used, and protected.",
+          description: `Privacy Notice for ${SITE_SEO_NAME} and how personal data is collected, used, and protected.`,
         })}
       </script>
       <LegalPage
@@ -242,8 +244,8 @@ export default function PrivacyPage() {
         embedded
       >
         <p>
-          This Privacy Notice explains how {SITE_LEGAL_NAME}, trading as {SITE_NAME}, collects,
-          uses, stores, shares, and protects personal data when you use our website, register for an
+          This Privacy Notice explains how {OPERATOR.name}, trading as {SITE_NAME}, collects, uses,
+          stores, shares, and protects personal data when you use our website, register for an
           account, bid in an auction, consign property, purchase or sell a lot, contact us,
           subscribe to communications, or otherwise interact with our platform.
         </p>
@@ -254,9 +256,13 @@ export default function PrivacyPage() {
           prevent fraud, support buyers and sellers, and provide a secure and professional auction
           experience.
         </p>
+        <p>
+          You sign in to {SITE_NAME} with your LAX Account. {legalOperatorSentence("account")} This
+          notice covers LAX Bid and the account details LAX Bid uses.
+        </p>
         <p>For the purposes of UK data protection law, the data controller is:</p>
         <address className="not-italic">
-          {SITE_BUSINESS_ADDRESS_LINES.map((line) => (
+          {CONTROLLER_ADDRESS_LINES.map((line) => (
             <span key={line}>
               {line}
               <br />
@@ -547,7 +553,7 @@ export default function PrivacyPage() {
         </p>
         <p>Postal address:</p>
         <address className="not-italic">
-          {SITE_BUSINESS_ADDRESS_LINES.map((line) => (
+          {CONTROLLER_ADDRESS_LINES.map((line) => (
             <span key={line}>
               {line}
               <br />

@@ -136,6 +136,7 @@ export {
   headerMegaNavChevronClass,
   headerMegaNavTriggerClass,
   headerProductLinkClass,
+  headerProductNameClass,
   headerSearchTriggerClass,
   headerUtilityLinkClass,
 } from "./header/header-chrome-tone.js";
@@ -406,3 +407,47 @@ export {
   type MarketingLinkListItem,
   type MarketingLinkListProps,
 } from "./marketing-link-list.js";
+export {
+  LegalDocument,
+  type LegalDocumentProps,
+  LegalHeading,
+  type LegalHeadingProps,
+  type LegalLastUpdated,
+  LegalNotice,
+  type LegalNoticeProps,
+  LegalPlaceholder,
+  LegalSection,
+  type LegalSectionProps,
+} from "./legal/legal-document.js";
+export { LegalEntityDetails, type LegalEntityDetailsProps } from "./legal/legal-entity-details.js";
+export { LegalHub, type LegalHubLink, type LegalHubProps } from "./legal/legal-hub.js";
+export { LegalToc, type LegalTocItem, type LegalTocProps } from "./legal/legal-toc.js";
+export {
+  type LegalPolicyBlock,
+  type LegalPolicyDocument,
+  type LegalPolicyRelease,
+  type LegalPolicySection,
+  type LegalPolicyStatus,
+  type LegalPolicyText,
+  type LegalPolicyTextPart,
+  type LegalPolicyVisibility,
+  isProductionDeployEnv,
+  legalPolicyPlaceholders,
+  legalPolicyTexts,
+  parseLegalPolicyText,
+  resolveLegalPolicyVisibility,
+} from "./legal/policy/policy-document.js";
+export {
+  LegalPolicyPage,
+  type LegalPolicyPageProps,
+  formatLegalPolicyDate,
+} from "./legal/policy/legal-policy-page.js";
+export {
+  LAX_ART_LEGAL_INDEX,
+  LAX_ART_POLICIES,
+  LAX_ART_POLICY_ORDER,
+  type LaxArtPolicy,
+  type LaxArtPolicySlug,
+  isLaxArtPolicySlug,
+} from "./legal/london-art-exchange/index.js";
+export { LegalPolicyIndex, type LegalPolicyIndexProps } from "./legal/legal-policy-index.js";

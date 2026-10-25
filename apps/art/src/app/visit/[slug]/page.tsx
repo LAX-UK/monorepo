@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: VenuePageProps): Promise<Meta
   if (result.status !== "ok") notFoundOrUnavailable(result.status, "Venue");
   const { venue, addressLine } = result.data;
   return {
-    title: `${venue.name} | Visit | LAX Art`,
+    title: `${venue.name} | Visit | lax.art`,
     description: addressLine
       ? `Opening hours, directions and private viewings at ${venue.name}, ${addressLine}.`
       : `Opening hours and private viewings at ${venue.name}.`,

@@ -149,7 +149,7 @@ export async function composeArtistMetadata(
   if (!artist) return { kind: "not_found" };
   const description =
     seoMetadataDescription(artist, artist.shortBio ?? artist.bio) ??
-    `Discover works by ${artist.name} at LAX Art.`;
+    `Discover works by ${artist.name} at lax.art.`;
   return {
     kind: "ok",
     title: seoMetadataTitle(artist, artist.name),

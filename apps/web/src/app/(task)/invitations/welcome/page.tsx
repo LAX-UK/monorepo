@@ -12,7 +12,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Your LAX access",
-  "Open the London Art Exchange platforms you now have access to.",
+  "Open the LAX products you now have access to.",
 );
 
 export default async function StaffAccessWelcomePage({

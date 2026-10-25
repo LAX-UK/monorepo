@@ -26,7 +26,7 @@ export default async function ArtSignedOutPage({ searchParams }: ArtSignedOutPag
         layout="page"
         titleAs="h1"
         title="Signed out"
-        description="Your LAX Art session has ended. You can keep browsing while signed out."
+        description="Your lax.art session has ended. You can keep browsing while signed out."
         actions={
           <>
             <ArtStatusStateLink href={vm.signInHref} priority="primary">

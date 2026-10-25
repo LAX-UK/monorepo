@@ -3,7 +3,7 @@ import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
 
-export const subject = "Reset your London Art Exchange password";
+export const subject = "Reset your LAX Account password";
 
 export default function ResetPassword({
   resetLink,
@@ -19,9 +19,7 @@ export default function ResetPassword({
       title="Reset your password"
     >
       <TextBlock>Hi {userName || userEmail},</TextBlock>
-      <TextBlock>
-        We received a request to reset the password for your London Art Exchange account.
-      </TextBlock>
+      <TextBlock>We received a request to reset the password for your LAX Account.</TextBlock>
       <Button href={resetLink}>Reset password</Button>
       <TextBlock>This link expires in {expirationMinutes} minutes.</TextBlock>
       <TextBlock>If you did not request a reset, you can ignore this email.</TextBlock>

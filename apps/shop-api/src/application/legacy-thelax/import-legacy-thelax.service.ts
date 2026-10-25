@@ -108,7 +108,7 @@ function taxonomyIntro(taxonomy: LegacyTaxonomy): string {
       : taxonomy.taxonomy === "style"
         ? `in the ${taxonomy.name} style`
         : `from the ${taxonomy.name} period`;
-  return `Browse original artworks and editions ${subject} from the LAX Art collection, with details on each artist, medium and availability.`;
+  return `Browse original artworks and editions ${subject} from the lax.art collection, with details on each artist, medium and availability.`;
 }
 
 /** Same-URL routes and the home page resolve to themselves inside rewritten content. */

@@ -60,7 +60,7 @@ describe("admin editorial routes", () => {
         slug: "about-us",
         title: "About us",
         body: [],
-        seoTitle: "About LAX Art | London Gallery",
+        seoTitle: "About lax.art | London Gallery",
         seoDescription: null,
       },
     });
@@ -68,7 +68,7 @@ describe("admin editorial routes", () => {
     expect(createPage).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: "about-us",
-        seoTitle: "About LAX Art | London Gallery",
+        seoTitle: "About lax.art | London Gallery",
         seoDescription: null,
         updatedBy: "editor",
       }),

@@ -8,11 +8,11 @@ import {
 
 describe("seo metadata", () => {
   it("uses a trimmed override title verbatim, else brands the fallback", () => {
-    expect(seoMetadataTitle({ seoTitle: "  Banksy Prints | The LAX Art " }, "Banksy")).toBe(
-      "Banksy Prints | The LAX Art",
+    expect(seoMetadataTitle({ seoTitle: "  Banksy Prints | lax.art " }, "Banksy")).toBe(
+      "Banksy Prints | lax.art",
     );
-    expect(seoMetadataTitle({ seoTitle: "   " }, "Banksy")).toBe("Banksy | LAX Art");
-    expect(seoMetadataTitle({}, "Banksy")).toBe("Banksy | LAX Art");
+    expect(seoMetadataTitle({ seoTitle: "   " }, "Banksy")).toBe("Banksy | lax.art");
+    expect(seoMetadataTitle({}, "Banksy")).toBe("Banksy | lax.art");
   });
 
   it("prefers the override description and collapses whitespace in the fallback", () => {

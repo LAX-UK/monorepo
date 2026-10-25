@@ -24,7 +24,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Verify email",
-  "Confirm your London Art Exchange account email address.",
+  "Confirm your LAX Account email address.",
 );
 
 export default async function VerifyEmailPage({

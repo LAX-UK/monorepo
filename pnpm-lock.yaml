@@ -157,6 +157,9 @@ importers:
       '@auction/bidding-runtime':
         specifier: workspace:*
         version: link:../../packages/bidding-runtime
+      '@auction/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@auction/connect':
         specifier: workspace:*
         version: link:../../packages/connect
@@ -664,6 +667,9 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@auction/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@auction/connect':
         specifier: workspace:*
         version: link:../../packages/connect
@@ -1061,6 +1067,9 @@ importers:
       '@auction/bidding-runtime':
         specifier: workspace:*
         version: link:../../packages/bidding-runtime
+      '@auction/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -1621,6 +1630,9 @@ importers:
 
   packages/lax-ecosystem:
     dependencies:
+      '@auction/branding':
+        specifier: workspace:*
+        version: link:../branding
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.52

@@ -12,6 +12,7 @@ import { SellPrepareSection } from "@/components/marketing/sell-journey/sell-pre
 import { SellProcessSection } from "@/components/marketing/sell-journey/sell-process-section";
 import { SellValuationSection } from "@/components/marketing/sell-journey/sell-valuation-section";
 import { SellPageClosingPromo } from "@/components/marketing/sell-page-closing-promo";
+import { SITE_SEO_NAME } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { SELL_PAGE_INTRO, SELL_TIME_EXPECTATIONS } from "@/lib/marketing/sell-flow-copy";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
@@ -25,8 +26,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Selling with LAX.BID",
-  description:
-    "How to sell with LAX.BID by London Art Exchange: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.",
+  description: `How to sell with ${SITE_SEO_NAME}: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.`,
   path: "/sell",
 });
 

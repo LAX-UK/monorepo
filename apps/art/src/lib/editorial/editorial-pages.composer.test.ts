@@ -698,7 +698,7 @@ describe("composeEditorialPage metadata", () => {
     });
     const result = await composeEditorialPage(services, "about-us");
     if (result.status !== "ok") throw new Error("expected ok");
-    expect(result.data.metaTitle).toBe("About us | LAX Art");
+    expect(result.data.metaTitle).toBe("About us | lax.art");
     expect(result.data.metaDescription).toBe(paragraph);
   });
 
@@ -710,13 +710,13 @@ describe("composeEditorialPage metadata", () => {
         slug: "about-us",
         title: "About us",
         body: [],
-        seoTitle: "About The LAX Art | London Gallery",
+        seoTitle: "About lax.art | London Gallery",
         seoDescription: "Our story.",
       },
     });
     const result = await composeEditorialPage(services, "about-us");
     if (result.status !== "ok") throw new Error("expected ok");
-    expect(result.data.metaTitle).toBe("About The LAX Art | London Gallery");
+    expect(result.data.metaTitle).toBe("About lax.art | London Gallery");
     expect(result.data.metaDescription).toBe("Our story.");
   });
 });

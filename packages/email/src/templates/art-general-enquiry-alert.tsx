@@ -4,7 +4,7 @@ import type { TemplateVarsByName } from "../types.js";
 
 type Vars = TemplateVarsByName["art-general-enquiry-alert"];
 
-export const subject = ({ topicLabel }: Vars) => `New LAX Art enquiry: ${topicLabel}`;
+export const subject = ({ topicLabel }: Vars) => `New lax.art enquiry: ${topicLabel}`;
 
 /** Staff alert for lax.art contact, viewing, advisory and selling enquiries. */
 export default function ArtGeneralEnquiryAlertEmail({
@@ -19,7 +19,7 @@ export default function ArtGeneralEnquiryAlertEmail({
   return (
     <Layout
       category="alert"
-      eyebrow="LAX Art enquiry"
+      eyebrow="lax.art enquiry"
       preview={`${topicLabel} enquiry from ${buyerEmail}.`}
       title={topicLabel}
     >

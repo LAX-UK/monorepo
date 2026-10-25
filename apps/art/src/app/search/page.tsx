@@ -13,7 +13,7 @@ type SearchPageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "Search | LAX Art",
+  title: "Search | lax.art",
   robots: { index: false, follow: true },
 };
 

@@ -156,8 +156,8 @@ describe("composeArtistPage", () => {
     services.catalogue.getArtist.mockResolvedValue({ ...artist, bio: null, shortBio: null });
     await expect(composeArtistMetadata(services.catalogue, "flora-powers")).resolves.toEqual({
       kind: "ok",
-      title: "Flora Powers | LAX Art",
-      description: "Discover works by Flora Powers at LAX Art.",
+      title: "Flora Powers | lax.art",
+      description: "Discover works by Flora Powers at lax.art.",
       canonicalPath: "/artists/flora-powers",
     });
   });
@@ -178,12 +178,12 @@ describe("composeArtistPage", () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue({
       ...artist,
-      seoTitle: "Flora Powers Paintings | The LAX Art",
+      seoTitle: "Flora Powers Paintings | lax.art",
       seoDescription: "Browse original paintings by Flora Powers.",
     });
     await expect(composeArtistMetadata(services.catalogue, "flora-powers")).resolves.toEqual({
       kind: "ok",
-      title: "Flora Powers Paintings | The LAX Art",
+      title: "Flora Powers Paintings | lax.art",
       description: "Browse original paintings by Flora Powers.",
       canonicalPath: "/artists/flora-powers",
     });

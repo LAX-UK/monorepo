@@ -17,6 +17,7 @@ import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-fo
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
+import { SITE_SEO_NAME } from "@/lib/brand";
 import { getServerLotCount, getServerLotReader } from "@/lib/catalog/catalog.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -69,8 +70,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     (typeof sp.ending === "string" && sp.ending.trim().length > 0);
   return metadataForListing({
     title: "Search lots",
-    description:
-      "Search curated fine art lots by title \u2014 browse live inventory from LAX.BID by London Art Exchange.",
+    description: `Search curated fine art lots by title \u2014 browse live inventory from ${SITE_SEO_NAME}.`,
     path: "/search",
     noIndex: hasFilteredState,
   });
