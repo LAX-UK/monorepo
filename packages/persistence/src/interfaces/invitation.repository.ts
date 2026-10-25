@@ -48,6 +48,21 @@ export type InvitationAdminListRow = InvitationSummary & {
   invitedByName: string | null;
 };
 
+export type InvitationAdminListSort =
+  | "created_desc"
+  | "created_asc"
+  | "expires_asc"
+  | "expires_desc"
+  | "email_asc"
+  | "email_desc";
+
+export type InvitationAdminListPage = {
+  limit: number;
+  offset: number;
+  /** Defaults to `created_desc` (newest first). */
+  sort?: InvitationAdminListSort;
+};
+
 export type InvitationAdminListFilters = {
   status?: InvitationRow["status"];
   q?: string;
@@ -89,7 +104,7 @@ export interface IUserInvitationRepository {
   listGrants(invitationId: string): Promise<LaxStaffGrant[]>;
   listAdmin(
     filters: InvitationAdminListFilters,
-    page: { limit: number; offset: number },
+    page: InvitationAdminListPage,
   ): Promise<InvitationAdminListRow[]>;
   /** Exact list totals (pagination + KPI badges). `total` respects filters; pending/accepted are global. */
   counts(filters: InvitationAdminListFilters): Promise<{

@@ -6,6 +6,7 @@ import {
   type UserStaffRole,
   laxStaffAccessProductSchema,
 } from "@auction/types";
+import type { AdminInvitationsListSort } from "@auction/validators";
 import { z } from "zod";
 
 export type AdminInvitationSummary = {
@@ -47,6 +48,8 @@ export type AdminInvitationsPageParams = {
   offset: number;
   status?: InvitationListStatus;
   q?: string;
+  /** Omitted for the default, newest invited first. */
+  sort?: AdminInvitationsListSort;
 };
 
 export type AdminInvitationsPage = {
@@ -141,6 +144,7 @@ export function buildAdminInvitationsSearchParams(
   });
   if (params.status) qs.set("status", params.status);
   if (params.q) qs.set("q", params.q);
+  if (params.sort && params.sort !== "created_desc") qs.set("sort", params.sort);
   return qs;
 }
 

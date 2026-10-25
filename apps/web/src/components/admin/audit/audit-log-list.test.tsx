@@ -1,3 +1,4 @@
+import type { AuditLogFilters } from "@/lib/admin/audit/audit-log-search";
 import type { AuditLogRowModel } from "@/lib/admin/audit/audit-log.vm";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -37,7 +38,7 @@ const row: AuditLogRowModel = {
   },
 };
 
-const filters = {
+const filters: AuditLogFilters = {
   view: null,
   q: "",
   actor: "",
@@ -46,6 +47,7 @@ const filters = {
   action: "",
   from: "",
   to: "",
+  sort: "at_desc",
   offset: 0,
 };
 

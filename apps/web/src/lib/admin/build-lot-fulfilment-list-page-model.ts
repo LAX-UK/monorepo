@@ -1,6 +1,11 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 
+import {
+  ADMIN_LOT_FULFILMENT_DEFAULT_SORT,
+  type AdminLotFulfilmentListSort,
+} from "@/lib/data/http/admin-lot-fulfilment.shared";
+
 export const LOT_FULFILMENT_LIST_PATH = "/admin/lot-fulfilment";
 
 const FILTER_STATUSES = [
@@ -13,11 +18,23 @@ const FILTER_STATUSES = [
   "cancelled",
 ] as const;
 
+const SORTS: readonly AdminLotFulfilmentListSort[] = [
+  "updated_desc",
+  "updated_asc",
+  "lot_asc",
+  "lot_desc",
+];
+
+function parseSort(raw: string | undefined): AdminLotFulfilmentListSort {
+  return SORTS.find((s) => s === raw) ?? ADMIN_LOT_FULFILMENT_DEFAULT_SORT;
+}
+
 export type LotFulfilmentListSearchParams = {
   error?: string;
   success?: string;
   status?: string;
   q?: string;
+  sort?: string;
   limit?: string;
   offset?: string;
   lot?: string;
@@ -34,6 +51,7 @@ export function buildLotFulfilmentListPageModel(sp: LotFulfilmentListSearchParam
   const offset = Math.max(0, base.offset);
   const status = parseStatusFilter(firstString(sp.status));
   const q = base.q?.trim() || undefined;
+  const sort = parseSort(firstString(sp.sort));
   const selectedLotId = sp.lot?.trim() || undefined;
 
   const listQueryParams = {
@@ -41,11 +59,12 @@ export function buildLotFulfilmentListPageModel(sp: LotFulfilmentListSearchParam
     offset,
     ...(status ? { status } : {}),
     ...(q ? { q } : {}),
+    sort,
   };
 
   return {
     basePath: LOT_FULFILMENT_LIST_PATH,
-    query: { offset, limit, status, q },
+    query: { offset, limit, status, q, sort },
     listQueryParams,
     selectedLotId,
     returnStatus: status ?? "",

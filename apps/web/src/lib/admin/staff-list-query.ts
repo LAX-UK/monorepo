@@ -4,6 +4,10 @@ import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { GetAdminUserListParams } from "@/lib/data/http/admin-users.types";
 import type { UserStaffRole } from "@auction/types";
 import { userStaffRoles } from "@auction/types";
+import { adminUserListSortEnum } from "@auction/validators";
+import type { z } from "zod";
+
+export type StaffListSort = z.infer<typeof adminUserListSortEnum>;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -11,10 +15,16 @@ export type StaffListFilters = {
   q?: string;
   staffRole?: string;
   suspendedOnly?: boolean;
+  /** How the list is ordered; not a filter, so it is never counted or chipped. */
+  sort?: StaffListSort;
 };
 
 function isStaffRole(s: string | undefined): s is UserStaffRole {
   return s != null && (userStaffRoles as readonly string[]).includes(s);
+}
+
+function isStaffListSort(s: string | undefined): s is StaffListSort {
+  return s != null && (adminUserListSortEnum.options as readonly string[]).includes(s);
 }
 
 function omitParamsHref(basePath: string, sp: SearchParams, omit: readonly string[]): string {
@@ -30,10 +40,13 @@ export function parseStaffListFilters(sp: SearchParams): StaffListFilters {
   const staffRoleRaw = firstString(sp.staffRole);
   const staffRole = isStaffRole(staffRoleRaw) ? staffRoleRaw : undefined;
   const suspendedOnly = firstString(sp.suspended) === "1";
+  const sortRaw = firstString(sp.sort);
+  const sort = isStaffListSort(sortRaw) ? sortRaw : undefined;
   return {
     ...(q ? { q } : {}),
     ...(staffRole ? { staffRole } : {}),
     ...(suspendedOnly ? { suspendedOnly: true } : {}),
+    ...(sort ? { sort } : {}),
   };
 }
 
@@ -48,6 +61,7 @@ export function staffListFiltersToGetAdminUserListParams(
     ...(filters.q ? { q: filters.q } : {}),
     ...(filters.staffRole ? { staffRole: filters.staffRole } : {}),
     ...(filters.suspendedOnly ? { suspendedOnly: true } : {}),
+    ...(filters.sort ? { sort: filters.sort } : {}),
   };
 }
 

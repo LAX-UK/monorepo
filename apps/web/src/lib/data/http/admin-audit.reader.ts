@@ -24,6 +24,8 @@ export type {
 /** Filters of the staff audit log, as the API's `/admin/audit/log` takes them. */
 export type AdminAuditLogParams = {
   limit?: number;
+  /** Omitted for the default, newest first. */
+  sort?: "at_desc" | "at_asc";
   offset?: number;
   q?: string;
   actorUserId?: string;
@@ -40,6 +42,7 @@ export function auditLogQueryString(params: AdminAuditLogParams): string {
   const qs = new URLSearchParams();
   qs.set("limit", String(params.limit ?? 50));
   qs.set("offset", String(params.offset ?? 0));
+  if (params.sort && params.sort !== "at_desc") qs.set("sort", params.sort);
   if (params.q) qs.set("q", params.q);
   if (params.actorUserId) qs.set("actorUserId", params.actorUserId);
   if (params.view) qs.set("view", params.view);

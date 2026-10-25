@@ -1,9 +1,10 @@
 import type { Database } from "@auction/db";
-import { lot, lotFulfilment } from "@auction/db/schema";
-import { and, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
+import { lot, lotFulfilment, sale } from "@auction/db/schema";
+import { and, asc, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
 import type {
   AdminLotFulfilmentBaseFilter,
   AdminLotFulfilmentListFilter,
+  AdminLotFulfilmentListSort,
   AdminLotFulfilmentListSummary,
   ILotFulfilmentRepository,
   InsertLotFulfilmentInput,
@@ -29,6 +30,19 @@ function buildListWhereClause(filter?: AdminLotFulfilmentListFilter) {
     ...(searchWhere ? [searchWhere] : []),
   ];
   return filters.length > 0 ? and(...filters) : undefined;
+}
+
+function buildListOrderBy(sort: AdminLotFulfilmentListSort = "updated_desc") {
+  switch (sort) {
+    case "updated_asc":
+      return [asc(lotFulfilment.updatedAt), asc(lotFulfilment.id)];
+    case "lot_asc":
+      return [asc(lot.title), asc(lotFulfilment.id)];
+    case "lot_desc":
+      return [desc(lot.title), desc(lotFulfilment.id)];
+    default:
+      return [desc(lotFulfilment.updatedAt), desc(lotFulfilment.id)];
+  }
 }
 
 function summarizeFromStatusCounts(
@@ -92,7 +106,13 @@ export class DrizzleLotFulfilmentRepository implements ILotFulfilmentRepository 
     return summarizeFromStatusCounts(statusCounts);
   }
 
-  async listForAdmin(options?: AdminLotFulfilmentListFilter & { limit?: number; offset?: number }) {
+  async listForAdmin(
+    options?: AdminLotFulfilmentListFilter & {
+      limit?: number;
+      offset?: number;
+      sort?: AdminLotFulfilmentListSort;
+    },
+  ) {
     const limit = Math.min(100, Math.max(1, options?.limit ?? 50));
     const offset = Math.max(0, options?.offset ?? 0);
     const listFilter: AdminLotFulfilmentListFilter = {
@@ -107,10 +127,14 @@ export class DrizzleLotFulfilmentRepository implements ILotFulfilmentRepository 
       .select({
         ...getTableColumns(lotFulfilment),
         lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        saleId: lot.saleId,
+        saleTitle: sale.title,
       })
       .from(lotFulfilment)
       .innerJoin(lot, eq(lotFulfilment.lotId, lot.id))
-      .orderBy(desc(lotFulfilment.updatedAt))
+      .leftJoin(sale, eq(lot.saleId, sale.id))
+      .orderBy(...buildListOrderBy(options?.sort))
       .limit(limit)
       .offset(offset);
     const rows = whereClause ? await listBase.where(whereClause) : await listBase;

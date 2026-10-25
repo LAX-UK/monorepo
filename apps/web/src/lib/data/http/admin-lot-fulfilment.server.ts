@@ -6,6 +6,10 @@ export type AdminLotFulfilmentListRow = {
   id: string;
   lotId: string;
   lotTitle: string | null;
+  lotNumber: number | null;
+  saleId: string | null;
+  saleTitle: string | null;
+  updatedAt: string;
   status: string;
   paymentId: string | null;
   fulfilmentMethod: string | null;
@@ -19,6 +23,10 @@ function parseAdminLotFulfilmentListRow(raw: unknown): AdminLotFulfilmentListRow
     id: String(o.id ?? ""),
     lotId: String(o.lotId ?? ""),
     lotTitle: o.lotTitle == null ? null : String(o.lotTitle),
+    lotNumber: o.lotNumber == null ? null : Number(o.lotNumber),
+    saleId: o.saleId == null ? null : String(o.saleId),
+    saleTitle: o.saleTitle == null ? null : String(o.saleTitle),
+    updatedAt: o.updatedAt == null ? "" : String(o.updatedAt),
     status: String(o.status ?? ""),
     paymentId: o.paymentId == null ? null : String(o.paymentId),
     fulfilmentMethod: o.fulfilmentMethod == null ? null : String(o.fulfilmentMethod),

@@ -32,7 +32,16 @@ export const lotFulfilmentStatusSchema = z.enum([
 
 export type LotFulfilmentStatus = z.infer<typeof lotFulfilmentStatusSchema>;
 
+export const adminLotFulfilmentListSortSchema = z.enum([
+  "updated_desc",
+  "updated_asc",
+  "lot_asc",
+  "lot_desc",
+]);
+export type AdminLotFulfilmentListSort = z.infer<typeof adminLotFulfilmentListSortSchema>;
+
 export const adminLotFulfilmentListQuerySchema = z.object({
+  sort: adminLotFulfilmentListSortSchema.optional(),
   status: lotFulfilmentStatusSchema.optional(),
   q: z.string().trim().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),

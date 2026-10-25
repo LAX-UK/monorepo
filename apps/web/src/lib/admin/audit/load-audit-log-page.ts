@@ -35,6 +35,7 @@ export async function loadAdminAuditLogPage(
     const page = await getAdminAuditLog({
       limit: AUDIT_LOG_PAGE_SIZE,
       offset: filters.offset,
+      sort: filters.sort,
       ...(filters.q ? { q: filters.q } : {}),
       ...(filters.actor ? { actorUserId: filters.actor } : {}),
       ...(filters.view ? { view: filters.view } : {}),

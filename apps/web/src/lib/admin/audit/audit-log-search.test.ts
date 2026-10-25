@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   auditLogHref,
+  auditLogSortHref,
   buildAuditFilterChips,
   hasAuditLogFilters,
   parseAuditLogSearch,
@@ -29,8 +30,26 @@ describe("parseAuditLogSearch", () => {
       action: "payment.refunded",
       from: "2026-10-01",
       to: "2026-10-24",
+      sort: "at_desc",
       offset: 100,
     });
+  });
+
+  it("reads the sort and ignores an unknown one; a sort is not a filter", () => {
+    const asc = parseAuditLogSearch({ sort: "at_asc" });
+    expect(asc.sort).toBe("at_asc");
+    expect(hasAuditLogFilters(asc)).toBe(false);
+    expect(parseAuditLogSearch({ sort: "actor" }).sort).toBe("at_desc");
+    expect(parseAuditLogSearch({}).sort).toBe("at_desc");
+  });
+
+  it("builds sort links that leave the URL clean for the default order", () => {
+    expect(auditLogSortHref({ view: "finance", offset: "50" }, "at_asc")).toBe(
+      "/admin/audit?view=finance&sort=at_asc",
+    );
+    expect(auditLogSortHref({ view: "finance", sort: "at_asc" }, "at_desc")).toBe(
+      "/admin/audit?view=finance",
+    );
   });
 
   it("ignores an unknown view, malformed days and a bad offset", () => {

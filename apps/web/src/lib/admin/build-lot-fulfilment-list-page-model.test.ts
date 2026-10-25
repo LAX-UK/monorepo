@@ -16,9 +16,19 @@ describe("buildLotFulfilmentListPageModel", () => {
       offset: 25,
       status: "awaiting_release",
       q: "vase",
+      sort: "updated_desc",
     });
     expect(model.selectedLotId).toBe("lot-123");
     expect(model.buildDrawerHref("lot-456")).toContain("lot=lot-456");
     expect(model.buildDrawerHref(null)).not.toContain("lot=");
+  });
+
+  it("parses sort from the URL and ignores unknown values", () => {
+    const sorted = buildLotFulfilmentListPageModel({ sort: "lot_asc" });
+    expect(sorted.query.sort).toBe("lot_asc");
+    expect(sorted.listQueryParams.sort).toBe("lot_asc");
+    expect(buildLotFulfilmentListPageModel({ sort: "bogus" }).listQueryParams.sort).toBe(
+      "updated_desc",
+    );
   });
 });

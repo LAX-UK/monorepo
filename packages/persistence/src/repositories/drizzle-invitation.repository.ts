@@ -13,7 +13,9 @@ import type {
   ConsumeInviteResult,
   IUserInvitationRepository,
   InvitationAdminListFilters,
+  InvitationAdminListPage,
   InvitationAdminListRow,
+  InvitationAdminListSort,
   InvitationInsert,
   InvitationRow,
   InvitationSummary,
@@ -33,6 +35,23 @@ function buildAdminListWhere(filters: InvitationAdminListFilters): SQL | undefin
   }
   if (clauses.length === 0) return undefined;
   return and(...clauses);
+}
+
+function adminListOrderBy(sort: InvitationAdminListSort = "created_desc"): SQL[] {
+  switch (sort) {
+    case "created_asc":
+      return [asc(userInvitation.createdAt), asc(userInvitation.id)];
+    case "expires_asc":
+      return [asc(userInvitation.expiresAt), asc(userInvitation.id)];
+    case "expires_desc":
+      return [desc(userInvitation.expiresAt), desc(userInvitation.id)];
+    case "email_asc":
+      return [asc(userInvitation.email), asc(userInvitation.id)];
+    case "email_desc":
+      return [desc(userInvitation.email), desc(userInvitation.id)];
+    default:
+      return [desc(userInvitation.createdAt), desc(userInvitation.id)];
+  }
 }
 
 function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
@@ -300,7 +319,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
 
   async listAdmin(
     filters: InvitationAdminListFilters,
-    page: { limit: number; offset: number },
+    page: InvitationAdminListPage,
   ): Promise<InvitationAdminListRow[]> {
     const inviteEmailLastStatus = emailOutbox.status;
     const invitedByName = sql<string | null>`coalesce(${inviter.name}, ${inviter.email})`;
@@ -328,7 +347,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       .leftJoin(emailOutbox, eq(userInvitation.lastEmailOutboxId, emailOutbox.id))
       .leftJoin(inviter, eq(userInvitation.createdByUserId, inviter.subjectId))
       .where(where)
-      .orderBy(desc(userInvitation.createdAt))
+      .orderBy(...adminListOrderBy(page.sort))
       .limit(page.limit)
       .offset(page.offset);
     const grants = await selectGrants(

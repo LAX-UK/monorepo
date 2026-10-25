@@ -79,4 +79,31 @@ describe("admin invitation routes — list page", () => {
       { limit: 25, offset: 0 },
     );
   });
+
+  it("passes sort to the page and omits it when absent", async () => {
+    const { app, invitations } = mountApp("super_admin");
+    invitations.getPage.mockResolvedValue({
+      rows: [],
+      total: 0,
+      offset: 0,
+      limit: 200,
+      summary: { total: 0, pending: 0, accepted: 0 },
+    });
+
+    expect((await app.request("http://test/invitations?sort=email_desc")).status).toBe(200);
+    expect(invitations.getPage).toHaveBeenLastCalledWith(
+      {},
+      { limit: 200, offset: 0, sort: "email_desc" },
+    );
+
+    await app.request("http://test/invitations");
+    expect(invitations.getPage).toHaveBeenLastCalledWith({}, { limit: 200, offset: 0 });
+  });
+
+  it("rejects an unknown sort", async () => {
+    const { app, invitations } = mountApp("super_admin");
+    const res = await app.request("http://test/invitations?sort=name_asc");
+    expect(res.status).toBe(400);
+    expect(invitations.getPage).not.toHaveBeenCalled();
+  });
 });

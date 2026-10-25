@@ -1,10 +1,20 @@
 import { isIndexableObject } from "@/lib/data/http/object-guards";
+import type { AdminLotFulfilmentListSort } from "@auction/validators";
 import { z } from "zod";
+
+export type { AdminLotFulfilmentListSort };
+
+export const ADMIN_LOT_FULFILMENT_DEFAULT_SORT: AdminLotFulfilmentListSort = "updated_desc";
 
 export type AdminLotFulfilmentListRow = {
   id: string;
   lotId: string;
   lotTitle: string | null;
+  lotNumber: number | null;
+  saleId: string | null;
+  saleTitle: string | null;
+  /** ISO timestamp of the last change. */
+  updatedAt: string;
   status: string;
   paymentId: string | null;
   fulfilmentMethod: string | null;
@@ -24,6 +34,7 @@ export type AdminLotFulfilmentPageParams = {
   offset: number;
   status?: string;
   q?: string;
+  sort?: AdminLotFulfilmentListSort;
 };
 
 export type AdminLotFulfilmentPage = {
@@ -46,6 +57,10 @@ const rowSchema = z.object({
   id: z.coerce.string(),
   lotId: z.coerce.string(),
   lotTitle: z.union([z.null(), z.coerce.string()]),
+  lotNumber: z.union([z.null(), z.coerce.number().int()]).default(null),
+  saleId: z.union([z.null(), z.coerce.string()]).default(null),
+  saleTitle: z.union([z.null(), z.coerce.string()]).default(null),
+  updatedAt: z.coerce.string(),
   status: z.coerce.string(),
   paymentId: z.union([z.null(), z.coerce.string()]),
   fulfilmentMethod: z.union([z.null(), z.coerce.string()]),
@@ -77,6 +92,9 @@ export function buildAdminLotFulfilmentSearchParams(
   });
   if (params.status) qs.set("status", params.status);
   if (params.q) qs.set("q", params.q);
+  if (params.sort && params.sort !== ADMIN_LOT_FULFILMENT_DEFAULT_SORT) {
+    qs.set("sort", params.sort);
+  }
   return qs;
 }
 

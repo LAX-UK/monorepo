@@ -14,6 +14,7 @@ export type InvitationsListSearchParams = Record<string, string | string[] | und
   error?: string;
   q?: string;
   status?: string;
+  sort?: string;
   limit?: string;
   offset?: string;
   invitation?: string;
@@ -27,6 +28,7 @@ export function buildInvitationsListPageModel(sp: InvitationsListSearchParams) {
   const listQueryParams = {
     offset: query.offset,
     limit: query.limit,
+    sort: query.sort,
     ...(query.status ? { status: query.status } : {}),
     ...(query.q ? { q: query.q } : {}),
   };

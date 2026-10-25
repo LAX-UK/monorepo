@@ -28,6 +28,7 @@ export function attachAdminLotFulfilmentRoutes(
         ...(query.status !== undefined ? { status: query.status } : {}),
         limit,
         offset,
+        ...(query.sort !== undefined ? { sort: query.sort } : {}),
       });
       return c.json({
         data: page.rows,
