@@ -29,7 +29,7 @@ function resolveSellerPreview(
   sellerNamesById: ReadonlyMap<string, string | null> | undefined,
 ): string {
   if (!entityId) return "Unknown seller";
-  return sellerNamesById?.get(entityId) ?? `ID: ${entityId.slice(0, 8)}…`;
+  return sellerNamesById?.get(entityId) ?? "Unnamed seller";
 }
 
 function resolveCategoryPreview(
