@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { encodeCatalogueCursor, encodeNameCursor } from "../catalogue-cursor.js";
 import type {
   ArtistDirectoryReader,
   ListPublicArtistsInput,
@@ -36,5 +37,21 @@ describe("createListPublicArtistsHandler", () => {
     const { reader, inputs } = recordingReader();
     await createListPublicArtistsHandler(reader)({ limit: 20, letter: "1" });
     expect(inputs).toEqual([{ limit: 20 }]);
+  });
+
+  it("reads a name cursor for the name sorts and a date cursor otherwise", async () => {
+    const { reader, inputs } = recordingReader();
+    const handler = createListPublicArtistsHandler(reader);
+    await handler({
+      limit: 24,
+      sort: "nameAsc",
+      cursor: encodeNameCursor({ name: "Juno Frost", id: "a-1" }),
+    });
+    const createdAt = new Date("2026-09-15T12:00:00.000Z");
+    await handler({ limit: 24, cursor: encodeCatalogueCursor({ createdAt, id: "a-2" }) });
+    expect(inputs).toEqual([
+      { limit: 24, sort: "nameAsc", nameCursor: { name: "Juno Frost", id: "a-1" } },
+      { limit: 24, cursor: { createdAt, id: "a-2" } },
+    ]);
   });
 });

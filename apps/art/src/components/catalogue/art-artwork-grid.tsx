@@ -1,7 +1,7 @@
 import { ArtArtworkCard } from "@/components/catalogue/art-artwork-card";
 import type { CatalogueArtworkCardVm } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import { MarketingCardReveal } from "@auction/marketing-ui";
+import { MARKETING_WORK_GRID_CLASS, MarketingCardReveal } from "@auction/marketing-ui";
 
 export type ArtArtworkGridProps = {
   cards: readonly CatalogueArtworkCardVm[];
@@ -11,8 +11,8 @@ export type ArtArtworkGridProps = {
   "aria-label"?: string;
 };
 
-export const ART_ARTWORK_GRID_CLASS =
-  "grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 xl:grid-cols-4 lg:gap-x-6";
+/** The shared LAX works grid, so lax.art, Shop and Bid lay works out the same way. */
+export const ART_ARTWORK_GRID_CLASS = MARKETING_WORK_GRID_CLASS;
 
 export function ArtArtworkGrid({
   cards,

@@ -137,6 +137,35 @@ describe("composeArtistPage", () => {
     expect(result.vm.lifeLine).toBeNull();
   });
 
+  it("links to the artist's Shop editions only when the Shop has some", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.ecosystem.crossProductLinks.mockReturnValue([
+      {
+        id: "shop",
+        label: "LAX Shop",
+        href: "https://shop.example/",
+        current: false,
+        external: true,
+      },
+    ]);
+
+    const none = await composeArtistPage(services, "flora-powers", SITE_URL);
+    if (none.kind !== "ok") throw new Error("expected ok");
+    expect(none.vm.crossLinks).toEqual([]);
+
+    services.catalogue.listShopEditionsByArtist.mockResolvedValue({ items: [artworkSummary()] });
+    const some = await composeArtistPage(services, "flora-powers", SITE_URL);
+    if (some.kind !== "ok") throw new Error("expected ok");
+    expect(services.catalogue.listShopEditionsByArtist).toHaveBeenCalledWith("flora-powers", 1);
+    expect(some.vm.crossLinks).toEqual([
+      expect.objectContaining({
+        label: "Editions in LAX Shop",
+        href: "https://shop.example/artists/flora-powers",
+      }),
+    ]);
+  });
+
   it("hides the originals band when the artist has none", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue(artist);

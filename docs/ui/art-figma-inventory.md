@@ -106,7 +106,7 @@ The Deltas column lists only what still differs from Figma. A "Built" row has no
 
 | Figma frame | Node | Route | Status | Deltas |
 | --- | --- | --- | --- | --- |
-| All Artists | `1057:18576` | `/artists` | Partial | Portrait cards with Follow and A–Z are built. Not built: category tile rail and Type-of-art / Nationality dropdowns (the artist list API has no category listing); centred page title. |
+| All Artists | `1057:18576` | `/artists` | Partial | Built on the shared LAX artist directory (`MarketingArtistDirectory`, as on LAX Bid and LAX Shop): title band with search and A–Z, a Show filter rail on desktop and a filter sheet on phones, result count, A–Z / Recently added sort, removable chips, and portrait cards with Follow and a works count. Not built: category tile rail and Type-of-art / Nationality filters (the artist list API has no such facets); centred page title. |
 | Artist profile | `439:6125` | `/artists/[slug]` | Partial | Built: full-bleed hero with nationality and life span and outline Follow, sticky anchor tabs, biography with Read more, Featured works, Originals band, Exhibitions, Films & stories, "Interested in selling a work by …?" opening the general enquiry sheet. Missing: "Represented by LAX" badge (no data flag). Films use the editorial card because story summaries carry no `videoUrl`. |
 | Section (LAX.bid promo) | `459:7359` | `/artists/[slug]` | Missing | Needs artist auction data from LAX.bid. |
 | Mobile (Artworks tab) | `500:3615` / `521:7418` | `/artists/[slug]` | Partial | One responsive page with sticky anchor tabs rather than Artworks / About tabs. No app-bar back and share over the image; no floating Follow pill. |

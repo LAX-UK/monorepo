@@ -2,9 +2,8 @@ import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import { buildCatalogueArtworkCards } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
-import { MarketingCardMedia, MarketingCardReveal, MarketingCardShell } from "@auction/marketing-ui";
+import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
-import { cn } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 
@@ -12,10 +11,20 @@ type CatalogueGridProps = {
   items: PublicArtworkSummary[];
   /** Card titles are h2 on a listing page, h3 inside a titled section. */
   titleLevel?: 2 | 3;
+  /** Leave out the artist line, e.g. on the artist's own page. */
+  hideArtist?: boolean;
+  "aria-label"?: string;
   className?: string;
 };
 
-export function CatalogueGrid({ items, titleLevel = 2, className }: CatalogueGridProps) {
+/** Shop editions as the shared LAX works grid: each work shown whole on a mat. */
+export function CatalogueGrid({
+  items,
+  titleLevel = 2,
+  hideArtist = false,
+  "aria-label": ariaLabel,
+  className,
+}: CatalogueGridProps) {
   if (items.length === 0) {
     return (
       <ShopStatusState
@@ -33,47 +42,46 @@ export function CatalogueGrid({ items, titleLevel = 2, className }: CatalogueGri
   }
 
   const cards = buildCatalogueArtworkCards(items);
-  const Title = titleLevel === 3 ? "h3" : "h2";
 
   return (
-    <ul className={cn("shop-catalogue__list", className)}>
-      {cards.map((card, index) => (
-        <li key={card.slug}>
-          <MarketingCardReveal index={index}>
-            <MarketingCardShell interactive className="shop-catalogue__card">
-              <Link href={card.href} className="shop-catalogue__card-link">
-                <span className="sr-only">
-                  {card.title} by {card.artistName}
-                </span>
-              </Link>
-              <MarketingCardMedia className="shop-catalogue__media">
-                <ShopMediaImage
-                  src={card.imageUrl}
-                  alt={card.imageAlt}
-                  label={SHOP_MEDIA_LABELS.artwork}
-                  sizes="(min-width: 64rem) 25vw, (min-width: 40rem) 50vw, 100vw"
-                  className="absolute inset-0 size-full"
-                />
-              </MarketingCardMedia>
-              <div className="shop-catalogue__body">
-                <Title className="shop-catalogue__title">{card.title}</Title>
-                {card.status ? (
-                  <div className="shop-catalogue__status">
-                    <DotStatusPill label={card.status.label} tone={card.status.tone} />
-                  </div>
-                ) : null}
-                <Link href={`/artists/${card.artistSlug}`} className="shop-catalogue__artist-link">
-                  {card.artistName}
-                </Link>
-                {card.dimensions ? (
-                  <p className="shop-catalogue__dimensions">{card.dimensions}</p>
-                ) : null}
-                <p className="shop-catalogue__meta">{card.metaLine}</p>
-              </div>
-            </MarketingCardShell>
-          </MarketingCardReveal>
-        </li>
+    <MarketingWorkGrid
+      {...(className ? { className } : {})}
+      {...(ariaLabel ? { "aria-label": ariaLabel } : {})}
+    >
+      {cards.map((card) => (
+        <MarketingWorkCard
+          key={card.slug}
+          href={card.href}
+          title={card.title}
+          titleAs={titleLevel === 3 ? "h3" : "h2"}
+          media={
+            <ShopMediaImage
+              src={card.imageUrl}
+              alt={card.imageAlt}
+              label={SHOP_MEDIA_LABELS.artwork}
+              sizes="(min-width: 80rem) 22vw, (min-width: 48rem) 30vw, 50vw"
+              className="absolute inset-0 size-full"
+            />
+          }
+          {...(card.status
+            ? { mediaStatus: <DotStatusPill label={card.status.label} tone={card.status.tone} /> }
+            : {})}
+          {...(hideArtist
+            ? {}
+            : {
+                subtitle: (
+                  <Link
+                    href={`/artists/${card.artistSlug}`}
+                    className="shop-focus-ring rounded-sm hover:text-on-surface hover:underline"
+                  >
+                    {card.artistName}
+                  </Link>
+                ),
+              })}
+          {...(card.dimensions ? { details: <p>{card.dimensions}</p> } : {})}
+          footer={<p>{card.metaLine}</p>}
+        />
       ))}
-    </ul>
+    </MarketingWorkGrid>
   );
 }

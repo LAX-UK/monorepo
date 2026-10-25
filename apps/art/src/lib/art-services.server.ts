@@ -5,6 +5,7 @@ import {
   fetchArtChannelArtworkObjectTypes,
   fetchArtChannelArtworks,
   fetchArtChannelCategories,
+  fetchShopEditionsByArtist,
   fetchShopEditionsOfOriginal,
 } from "@/lib/art-catalogue.server";
 import { artIdentityUrl } from "@/lib/art-identity.server";
@@ -81,6 +82,7 @@ export const artServices: ArtServices = {
     listCategories: fetchArtChannelCategories,
     listArtworkObjectTypes: fetchArtChannelArtworkObjectTypes,
     listShopEditionsOfOriginal: fetchShopEditionsOfOriginal,
+    listShopEditionsByArtist: fetchShopEditionsByArtist,
   },
   viewer: { load: loadArtViewerState },
   favorites: {

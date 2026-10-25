@@ -35,15 +35,17 @@ const SECTION = cn(MARKETING_PAGE_SHELL, "py-8 lg:py-12");
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { slug } = await params;
-  const result = await composeArtistPage(artServices, slug, loadArtStorefrontBaseUrl());
+  const siteUrl = loadArtStorefrontBaseUrl();
+  const result = await composeArtistPage(artServices, slug, siteUrl);
   if (result.kind !== "ok") notFoundOrUnavailable(result.kind, "Artist");
 
   const { vm } = result;
+  const pageUrl = new URL(`/artists/${encodeURIComponent(vm.slug)}`, siteUrl).toString();
   const worksHref = `/artworks?artistSlug=${encodeURIComponent(vm.slug)}`;
   return (
     <article className="flex flex-col pb-10 lg:pb-16">
       <ArtJsonLd data={vm.structuredData} />
-      <ArtArtistHero vm={vm} />
+      <ArtArtistHero vm={vm} pageUrl={pageUrl} />
       {vm.sectionTabs.length > 0 ? (
         <MarketingSubNav
           mode="anchor"

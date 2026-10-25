@@ -1,4 +1,5 @@
 import type { ArtViewerState } from "@/lib/art-viewer-state";
+import { shopBaseUrl } from "@/lib/artwork/shop-editions.vm";
 import {
   type CatalogueArtworkCardVm,
   artistHref,
@@ -9,6 +10,7 @@ import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
   ArtCataloguePort,
+  ArtEcosystemPort,
   ArtEditorialPort,
   ArtFavoritesReadPort,
   ArtViewerPort,
@@ -16,6 +18,7 @@ import type {
 import { artistJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import type { JsonLd } from "@auction/branding";
+import type { MarketingArtistCrossLink, MarketingArtistFactInput } from "@auction/marketing-ui";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
 import {
   type ArtistSectionTab,
@@ -27,6 +30,8 @@ export type ArtistPageVm = {
   slug: string;
   name: string;
   discipline: string | null;
+  /** Nationality, life span and discipline for the hero facts line. */
+  facts: MarketingArtistFactInput;
   bio: string | null;
   portraitUrl: string | null;
   portraitAlt: string;
@@ -41,6 +46,8 @@ export type ArtistPageVm = {
   exhibitions: EditorialCardVm[];
   /** Stories, films and press that feature the artist. */
   stories: EditorialCardVm[];
+  /** "Editions in LAX Shop" when the Shop has editions by this artist (one shared artist list). */
+  crossLinks: MarketingArtistCrossLink[];
   sectionTabs: ArtistSectionTab[];
   viewer: ArtViewerState;
   following: boolean;
@@ -56,12 +63,37 @@ export type ArtistPageResult =
 const FEATURED_WORKS_LIMIT = 8;
 const ORIGINALS_LIMIT = 4;
 
+/**
+ * "Editions in LAX Shop" when the Shop has live editions by the artist. LAX Shop and lax.art
+ * read the same artist list, so the slug is the same artist in both.
+ */
+async function loadShopEditionsLink(
+  services: { catalogue: ArtCataloguePort; ecosystem: ArtEcosystemPort },
+  slug: string,
+): Promise<MarketingArtistCrossLink[]> {
+  const shop = shopBaseUrl(services.ecosystem.crossProductLinks());
+  if (!shop) return [];
+  const editions = await services.catalogue
+    .listShopEditionsByArtist(slug, 1)
+    .catch(() => ({ items: [] }));
+  if (editions.items.length === 0) return [];
+  return [
+    {
+      id: "shop",
+      label: "Editions in LAX Shop",
+      description: "Limited editions and prints",
+      href: new URL(`/artists/${encodeURIComponent(slug)}`, shop).toString(),
+    },
+  ];
+}
+
 export async function composeArtistPage(
   services: {
     catalogue: ArtCataloguePort;
     viewer: ArtViewerPort;
     favorites: ArtFavoritesReadPort;
     editorial: ArtEditorialPort;
+    ecosystem: ArtEcosystemPort;
   },
   slug: string,
   siteUrl: URL,
@@ -100,6 +132,7 @@ export async function composeArtistPage(
       : null;
   const exhibitions = related?.exhibitions.map(exhibitionCard) ?? [];
   const stories = related?.stories.map(storyCard) ?? [];
+  const crossLinks = await loadShopEditionsLink(services, detail.slug);
 
   return {
     kind: "ok",
@@ -107,6 +140,12 @@ export async function composeArtistPage(
       slug: detail.slug,
       name: detail.name,
       discipline: detail.discipline,
+      facts: {
+        nationality: detail.nationality ?? null,
+        birthYear: detail.birthYear ?? null,
+        deathYear: detail.deathYear ?? null,
+        discipline: detail.discipline,
+      },
       bio: detail.bio,
       portraitUrl: detail.portraitUrl,
       portraitAlt: `Portrait of ${detail.name}`,
@@ -117,6 +156,7 @@ export async function composeArtistPage(
       originals: originalCards,
       exhibitions,
       stories,
+      crossLinks,
       sectionTabs: artistSectionTabs({
         works: true,
         originals: originalCards.length > 0,
