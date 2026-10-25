@@ -1,32 +1,52 @@
 "use client";
 
+import { ChoiceRow, EnumSelect, Field, StaffCheckbox, useStaffField } from "@auction/staff-ui";
 import {
   LAX_STAFF_PLATFORMS,
   type LaxStaffAccessProduct,
   laxStaffRoleOption,
 } from "@auction/types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
-import { Switch } from "@auction/ui/components/switch";
-import { useId } from "react";
 
-/** A platform switched on before a role is chosen carries an empty role. */
+/** A platform ticked before a role is chosen carries an empty role. */
 export type DraftPlatformGrant = { product: LaxStaffAccessProduct; role: string };
 
+/** What is wrong with the drafts, and where: no platform ticked, or a ticked one without a role. */
+export type PlatformGrantsIssue = {
+  message: string;
+  target: "access" | "role";
+  product: LaxStaffAccessProduct;
+};
+
 type Props = {
+  /** Id of the group; each platform's checkbox and role field derive theirs from it. */
+  id: string;
   value: DraftPlatformGrant[];
   onChange: (next: DraftPlatformGrant[]) => void;
+  /** Shown under the role field of the platform it names. */
+  roleError?: { product: LaxStaffAccessProduct; message: string } | null;
   disabled?: boolean;
 };
 
-/** One row per LAX platform: switch access on, then pick that platform's role. */
-export function InvitePlatformAccessPicker({ value, onChange, disabled = false }: Props) {
-  const baseId = useId();
+export function platformCheckboxId(groupId: string, product: LaxStaffAccessProduct): string {
+  return `${groupId}-${product}`;
+}
+
+export function platformRoleId(groupId: string, product: LaxStaffAccessProduct): string {
+  return `${groupId}-${product}-role`;
+}
+
+/**
+ * One row per LAX platform: tick the platform to give access, then pick that platform's role.
+ * Sits inside a `Field`, which supplies the group's label, hint and error.
+ */
+export function InvitePlatformAccessPicker({
+  id,
+  value,
+  onChange,
+  roleError = null,
+  disabled = false,
+}: Props) {
+  const field = useStaffField();
 
   function setGrant(product: LaxStaffAccessProduct, role: string | null) {
     const others = value.filter((g) => g.product !== product);
@@ -35,71 +55,80 @@ export function InvitePlatformAccessPicker({ value, onChange, disabled = false }
   }
 
   return (
-    <ul className="m-0 grid list-none gap-3 p-0">
+    <fieldset
+      id={id}
+      tabIndex={-1}
+      {...(field?.describedBy ? { "aria-describedby": field.describedBy } : {})}
+      className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0 outline-none"
+    >
+      <legend className="sr-only">Platform access</legend>
       {LAX_STAFF_PLATFORMS.map((platform) => {
         const grant = value.find((g) => g.product === platform.product);
-        const switchId = `${baseId}-${platform.product}`;
+        const checkboxId = platformCheckboxId(id, platform.product);
         const selected = grant?.role ? laxStaffRoleOption(platform.product, grant.role) : null;
+        const error = roleError?.product === platform.product ? roleError.message : undefined;
         return (
-          <li
-            key={platform.product}
-            className="rounded-lg border border-border-soft bg-surface-container-lowest p-3"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <label htmlFor={switchId} className="grid gap-0.5">
-                <span className="font-body text-sm font-semibold text-on-surface">
-                  {platform.label}
-                </span>
-                <span className="font-body text-xs text-on-surface-variant">
-                  {platform.description}
-                </span>
-              </label>
-              <Switch
-                id={switchId}
-                checked={grant != null}
-                disabled={disabled}
-                aria-label={`Give ${platform.label} access`}
-                onCheckedChange={(on) => setGrant(platform.product, on ? "" : null)}
-              />
-            </div>
-            {grant ? (
-              <div className="mt-3 grid gap-1.5">
-                <Select
+          <div key={platform.product} className="flex flex-col">
+            <ChoiceRow
+              htmlFor={checkboxId}
+              label={platform.label}
+              description={platform.description}
+              disabled={disabled}
+              control={
+                <StaffCheckbox
+                  id={checkboxId}
+                  checked={grant != null}
                   disabled={disabled}
-                  value={grant.role}
-                  onValueChange={(role) => setGrant(platform.product, role)}
+                  onCheckedChange={(on) => setGrant(platform.product, on === true ? "" : null)}
+                />
+              }
+            />
+            {grant ? (
+              <div className="pb-2 pl-6.5">
+                <Field
+                  label={`${platform.label} role`}
+                  id={platformRoleId(id, platform.product)}
+                  description={selected?.summary}
+                  error={error}
+                  disabled={disabled}
                 >
-                  <SelectTrigger
-                    className="min-h-11 w-full font-body text-sm"
-                    aria-label={`${platform.label} role`}
-                  >
-                    <SelectValue placeholder={`Choose a ${platform.label} role`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {platform.roles.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selected ? (
-                  <p className="font-body text-xs text-on-surface-variant">{selected.summary}</p>
-                ) : null}
+                  <EnumSelect
+                    value={grant.role === "" ? null : grant.role}
+                    placeholder={`Choose a ${platform.label} role`}
+                    options={platform.roles.map((role) => ({
+                      value: role.value,
+                      label: role.label,
+                    }))}
+                    onValueChange={(role) => setGrant(platform.product, role)}
+                  />
+                </Field>
               </div>
             ) : null}
-          </li>
+          </div>
         );
       })}
-    </ul>
+    </fieldset>
   );
 }
 
-/** Validates drafts before submit; returns a message for the first platform missing a role. */
-export function platformGrantsError(drafts: readonly DraftPlatformGrant[]): string | null {
-  if (drafts.length === 0) return "Give access to at least one platform";
+/** Checks the drafts before submit; names the first problem and the field it belongs to. */
+export function platformGrantsIssue(
+  drafts: readonly DraftPlatformGrant[],
+): PlatformGrantsIssue | null {
+  const first = LAX_STAFF_PLATFORMS[0];
+  if (drafts.length === 0) {
+    return {
+      message: "Give access to at least one platform.",
+      target: "access",
+      product: first?.product ?? "bid",
+    };
+  }
   const missing = drafts.find((g) => g.role === "");
   if (!missing) return null;
   const label = LAX_STAFF_PLATFORMS.find((p) => p.product === missing.product)?.label;
-  return `Choose a ${label ?? missing.product} role`;
+  return {
+    message: `Choose a ${label ?? missing.product} role.`,
+    target: "role",
+    product: missing.product,
+  };
 }

@@ -145,21 +145,21 @@ export const adminMarkConditionReportInProgressResultAction =
 export const adminFulfilConditionReportResultAction = _adminFulfilConditionReportResultAction;
 export const adminDeclineConditionReportResultAction = _adminDeclineConditionReportResultAction;
 
-import { adminLotFulfilmentReleaseAction as _adminLotFulfilmentReleaseAction } from "./admin/admin-lot-fulfilment";
-export const adminLotFulfilmentReleaseAction = _adminLotFulfilmentReleaseAction;
+import { adminLotFulfilmentReleaseResultAction as _adminLotFulfilmentReleaseResultAction } from "./admin/admin-lot-fulfilment";
+export const adminLotFulfilmentReleaseResultAction = _adminLotFulfilmentReleaseResultAction;
 
-import { adminLotFulfilmentShipAction as _adminLotFulfilmentShipAction } from "./admin/admin-lot-fulfilment";
-export const adminLotFulfilmentShipAction = _adminLotFulfilmentShipAction;
+import { adminLotFulfilmentShipResultAction as _adminLotFulfilmentShipResultAction } from "./admin/admin-lot-fulfilment";
+export const adminLotFulfilmentShipResultAction = _adminLotFulfilmentShipResultAction;
 
-import { adminLotFulfilmentReadyForCollectionAction as _adminLotFulfilmentReadyForCollectionAction } from "./admin/admin-lot-fulfilment";
-export const adminLotFulfilmentReadyForCollectionAction =
-  _adminLotFulfilmentReadyForCollectionAction;
+import { adminLotFulfilmentReadyForCollectionResultAction as _adminLotFulfilmentReadyForCollectionResultAction } from "./admin/admin-lot-fulfilment";
+export const adminLotFulfilmentReadyForCollectionResultAction =
+  _adminLotFulfilmentReadyForCollectionResultAction;
 
-import { adminLotFulfilmentDeliveredAction as _adminLotFulfilmentDeliveredAction } from "./admin/admin-lot-fulfilment";
-export const adminLotFulfilmentDeliveredAction = _adminLotFulfilmentDeliveredAction;
+import { adminLotFulfilmentDeliveredResultAction as _adminLotFulfilmentDeliveredResultAction } from "./admin/admin-lot-fulfilment";
+export const adminLotFulfilmentDeliveredResultAction = _adminLotFulfilmentDeliveredResultAction;
 
-import { adminLotFulfilmentCollectedAction as _adminLotFulfilmentCollectedAction } from "./admin/admin-lot-fulfilment";
-export const adminLotFulfilmentCollectedAction = _adminLotFulfilmentCollectedAction;
+import { adminLotFulfilmentCollectedResultAction as _adminLotFulfilmentCollectedResultAction } from "./admin/admin-lot-fulfilment";
+export const adminLotFulfilmentCollectedResultAction = _adminLotFulfilmentCollectedResultAction;
 
 import { adminSaleroomGoLiveAction as _adminSaleroomGoLiveAction } from "./admin/admin-saleroom";
 export const adminSaleroomGoLiveAction = _adminSaleroomGoLiveAction;

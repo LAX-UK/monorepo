@@ -13,7 +13,7 @@ describe("buildUsersActiveFilterChips persona", () => {
       },
     );
     expect(chips).toContainEqual(
-      expect.objectContaining({ id: "persona", label: "Persona: Individual" }),
+      expect.objectContaining({ id: "persona", label: "Signed up as: Individual" }),
     );
   });
 
@@ -26,7 +26,16 @@ describe("buildUsersActiveFilterChips persona", () => {
       },
     );
     expect(chips).toContainEqual(
-      expect.objectContaining({ id: "persona", label: "Persona: Not set" }),
+      expect.objectContaining({ id: "persona", label: "Signed up as: Not set" }),
     );
+  });
+
+  it("leaves the view's account standing and the sort out of the chips", () => {
+    const chips = buildUsersActiveFilterChips(
+      basePath,
+      { status: "suspended", sort: "name_asc", kycStatus: "unverified" },
+      { accountStatus: "suspended", sort: "name_asc", kycStatus: "unverified" },
+    );
+    expect(chips.map((chip) => chip.label)).toEqual(["Identity: Not verified"]);
   });
 });

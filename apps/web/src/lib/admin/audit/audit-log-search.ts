@@ -121,7 +121,7 @@ export function buildAuditFilterChips(
   if (filters.entity) {
     chips.push({
       id: "entity",
-      label: `Entity: ${auditEntityTypeLabel(filters.entity)}`,
+      label: `Record: ${auditEntityTypeLabel(filters.entity)}`,
       clearHref: auditLogHref(current, { entity: null }),
     });
   }

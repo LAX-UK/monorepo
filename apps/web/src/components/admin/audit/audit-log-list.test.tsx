@@ -22,7 +22,6 @@ const row: AuditLogRowModel = {
     type: "lot",
     typeLabel: "Lot",
     id: "0b7e4a52-8b3c",
-    shortId: "0b7e4a52",
     href: "/admin/lots/0b7e4a52-8b3c",
   },
   summary: "Status: consigned → withdrawn",
@@ -74,7 +73,7 @@ describe("AuditLogList", () => {
     expect(within(grid).getByText("Ada Staff")).toBeInTheDocument();
     expect(within(grid).getByText("ada@example.com")).toBeInTheDocument();
     expect(within(grid).getByText("Withdrawal declined")).toBeInTheDocument();
-    expect(within(grid).getByRole("link", { name: "0b7e4a52…" })).toHaveAttribute(
+    expect(within(grid).getByRole("link", { name: "Lot" })).toHaveAttribute(
       "href",
       "/admin/lots/0b7e4a52-8b3c",
     );

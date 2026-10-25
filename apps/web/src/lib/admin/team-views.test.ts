@@ -18,7 +18,7 @@ describe("Bid admin team views", () => {
     expect(clientsTeamViews().map((view) => [view.label, view.query])).toEqual([
       ["Identity submitted", "kycStatus=pending"],
       ["Email not verified", "emailVerified=0"],
-      ["Newest sign-ups", "sort=created_desc"],
+      ["Deletion requested", "deletionRequested=1"],
     ]);
   });
 

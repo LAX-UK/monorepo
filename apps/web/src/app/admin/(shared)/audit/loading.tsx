@@ -5,7 +5,7 @@ export default function AuditLogLoading() {
     <ListPageSkeleton
       title="Audit log"
       description="Who did what across the platform, and when. Open an event to see exactly what changed."
-      columns={["Time", "Actor", "Action", "Record", "Summary"]}
+      columns={["Action", "Who", "Record", "When"]}
     />
   );
 }

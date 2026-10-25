@@ -63,8 +63,8 @@ export function AuditEventPanel({
                     : row.actor.name,
                 },
                 { label: "Action", value: row.action },
-                { label: "Code", value: row.actionCode, copyValue: row.actionCode },
-                { label: "Record", value: `${row.entity.typeLabel} ${row.entity.shortId}…` },
+                { label: "Event code", value: row.actionCode, copyValue: row.actionCode },
+                { label: "Record", value: row.entity.typeLabel },
                 { label: "Record ID", value: row.entity.id, copyValue: row.entity.id },
                 { label: "When", value: formatStaffDateTime(row.at) },
               ]}

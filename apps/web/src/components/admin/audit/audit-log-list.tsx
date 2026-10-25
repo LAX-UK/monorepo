@@ -1,8 +1,10 @@
 "use client";
 
 import { AuditEventPanel } from "@/components/admin/audit/audit-event-panel";
+import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { searchAuditActorsAction } from "@/lib/actions/admin-audit-actors";
+import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { AuditActionOption } from "@/lib/admin/audit/audit-action-options";
 import {
   AUDIT_LOG_PATH,
@@ -10,6 +12,7 @@ import {
   type AuditLogFilters,
   type AuditLogSearch,
   auditLogHref,
+  auditLogSortHref,
 } from "@/lib/admin/audit/audit-log-search";
 import {
   AUDIT_ENTITY_TYPES,
@@ -17,29 +20,20 @@ import {
   auditEntityTypeLabel,
 } from "@/lib/admin/audit/audit-log.vm";
 import {
-  ActiveFilterChips,
+  CellLink,
   type DataColumn,
-  DataTable,
-  DataTableToolbar,
   DataViews,
-  DateRangeFilter,
-  DensityToggle,
-  EmptyState,
   type EntityOption,
-  EntityPicker,
-  ErrorState,
-  FilterMenu,
-  NoResultsState,
-  StaffButton,
+  FilterSheet,
+  ListPage,
+  PersonCell,
+  PrimaryCell,
+  StaffDate,
   StatusBadge,
-  TablePagination,
   TableSearch,
-  formatStaffDateTime,
-  initialsOf,
-  useTableDensity,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 export type AuditLogListProps = {
   rows: AuditLogRowModel[];
@@ -51,6 +45,7 @@ export type AuditLogListProps = {
   actions: AuditActionOption[];
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
+  /** A search or filter narrows the log (the view tab alone does not). */
   filtered: boolean;
 };
 
@@ -60,6 +55,13 @@ const VIEWS = [
   { id: "catalogue", label: "Catalogue", view: "catalogue" },
   { id: "people", label: "People", view: "people" },
 ] as const;
+
+const VIEW_EMPTY: Record<string, string> = {
+  all: "No events recorded yet",
+  finance: "No finance events yet",
+  catalogue: "No catalogue events yet",
+  people: "No people events yet",
+};
 
 /** Module-level so the picker does not search again each time the list re-renders. */
 async function searchActors(query: string): Promise<EntityOption[]> {
@@ -72,56 +74,23 @@ async function searchActors(query: string): Promise<EntityOption[]> {
   }));
 }
 
-function Actor({ row }: { row: AuditLogRowModel }) {
-  const system = row.actor.kind === "system";
-  return (
-    <span className="flex min-w-0 items-center gap-2.5">
-      <span
-        aria-hidden
-        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-staff-neutral-bg text-staff-2xs font-semibold text-staff-neutral-fg"
-      >
-        {system ? "S" : initialsOf(row.actor.name)}
-      </span>
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate font-medium text-staff-fg">{row.actor.name}</span>
-        {row.actor.email ? (
-          <span className="truncate text-staff-xs text-staff-muted">{row.actor.email}</span>
-        ) : null}
-      </span>
-    </span>
-  );
-}
-
-function Entity({ row }: { row: AuditLogRowModel }) {
-  const { entity } = row;
-  return (
-    <span className="flex min-w-0 flex-col leading-tight">
-      <span className="truncate text-staff-fg">{entity.typeLabel}</span>
-      {entity.href ? (
-        <Link
-          href={entity.href}
-          onClick={(event) => event.stopPropagation()}
-          className="staff-focus w-fit truncate rounded-staff-xs text-staff-xs text-staff-muted underline-offset-2 hover:text-staff-fg hover:underline"
-        >
-          {entity.shortId}…
-        </Link>
-      ) : (
-        <span className="truncate text-staff-xs text-staff-muted">{entity.shortId}…</span>
-      )}
-    </span>
-  );
-}
-
 /**
- * The global audit log in the staff kit: views by area, search, actor, record type, action and
- * date filters held in the URL, server paging, and a panel with the full event.
+ * The global audit log on the staff list template: views by area, search, a filter sheet for
+ * person, record type, action and dates (all held in the URL), newest first by default with the
+ * order switchable on the server, and the full event in a panel deep-linked with `?event=`.
  */
 export function AuditLogList(props: AuditLogListProps) {
   const { rows, search, filters } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [density, setDensity] = useTableDensity("bid-audit");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const open = rows.find((row) => row.id === openId) ?? null;
+  const panelHref = useCallback(
+    (id: string | null) => buildListHref(AUDIT_LOG_PATH, search, { event: id }),
+    [search],
+  );
+  const panel = useListPanel({
+    param: "event",
+    initialId: typeof search.event === "string" ? search.event : null,
+    hrefFor: panelHref,
+  });
   const actionOptions = useMemo<EntityOption[]>(
     () =>
       props.actions.map((action) => ({
@@ -133,198 +102,227 @@ export function AuditLogList(props: AuditLogListProps) {
     [props.actions],
   );
 
-  const columns: DataColumn<AuditLogRowModel>[] = [
-    {
-      id: "when",
-      header: "Time",
-      width: "176px",
-      numeric: true,
-      mobile: "meta",
-      cell: (row) => <span className="text-staff-muted">{formatStaffDateTime(row.at)}</span>,
-    },
-    {
-      id: "actor",
-      header: "Actor",
-      width: "232px",
-      mobile: "meta",
-      cell: (row) => <Actor row={row} />,
-    },
-    {
-      id: "action",
-      header: "Action",
-      width: "264px",
-      mobile: "title",
-      cell: (row) => <StatusBadge tone={row.tone}>{row.action}</StatusBadge>,
-    },
-    {
-      id: "entity",
-      header: "Record",
-      width: "148px",
-      hideBelow: "md",
-      cell: (row) => <Entity row={row} />,
-    },
-    {
-      id: "summary",
-      header: "Summary",
-      hideBelow: "lg",
-      mobile: "hidden",
-      cell: (row) => <span className="line-clamp-2 text-staff-muted">{row.summary}</span>,
-    },
-  ];
+  const columns = useMemo<DataColumn<AuditLogRowModel>[]>(
+    () => [
+      {
+        id: "action",
+        header: "Action",
+        mobile: "title",
+        cell: (row) => (
+          <PrimaryCell href={panelHref(row.id)} Link={panel.PanelLink} secondary={row.summary}>
+            {row.action}
+          </PrimaryCell>
+        ),
+      },
+      {
+        id: "actor",
+        header: "Who",
+        width: "248px",
+        mobile: "meta",
+        cell: (row) => (
+          <PersonCell
+            name={row.actor.name}
+            secondary={row.actor.email}
+            kind={row.actor.kind === "system" ? "system" : "person"}
+          />
+        ),
+      },
+      {
+        id: "entity",
+        header: "Record",
+        width: "176px",
+        hideBelow: "md",
+        mobile: "badge",
+        truncate: false,
+        cell: (row) =>
+          row.entity.href ? (
+            <CellLink href={row.entity.href} Link={Link}>
+              {row.entity.typeLabel}
+            </CellLink>
+          ) : (
+            <StatusBadge tone="neutral">{row.entity.typeLabel}</StatusBadge>
+          ),
+      },
+      {
+        id: "when",
+        header: "When",
+        width: "184px",
+        sortable: true,
+        defaultSortDirection: "desc",
+        mobile: "meta",
+        truncate: false,
+        cell: (row) => <StaffDate value={row.at} withTime />,
+      },
+    ],
+    [panelHref, panel.PanelLink],
+  );
+
+  const open = rows.find((row) => row.id === panel.openId) ?? null;
+  const view = filters.view ?? "all";
 
   return (
     <>
-      <DataTable
-        label="Audit log"
-        columns={columns}
-        data={rows}
-        getRowId={(row) => row.id}
-        density={density}
-        loading={pending}
-        onRowOpen={(row) => setOpenId(row.id)}
-        activeRowId={openId}
-        toolbar={
-          <DataTableToolbar
-            views={
-              <DataViews
-                views={VIEWS.map((view) => ({
-                  id: view.id,
-                  label: view.label,
-                  href: auditLogHref(search, { view: view.view }),
-                }))}
-                activeId={filters.view ?? "all"}
-                Link={ListLink}
-              />
-            }
-            search={
-              <TableSearch
-                key={filters.q}
-                label="Search the audit log"
-                placeholder="Action, person or record ID"
-                value={filters.q}
-                onSearch={(q) => navigate(auditLogHref(search, { q: q || null }))}
-              />
-            }
-            filters={
-              <>
-                <div className="min-w-0 flex-1 basis-36 sm:w-56 sm:flex-none">
-                  <EntityPicker
-                    aria-label="Filter by person"
-                    className="h-control-sm text-staff-sm"
-                    value={filters.actor || null}
-                    selected={
-                      filters.actor
-                        ? { id: filters.actor, label: filters.actorLabel || "Selected person" }
-                        : null
-                    }
-                    search={searchActors}
-                    placeholder="Anyone"
-                    searchPlaceholder="Search by name or email"
-                    emptyText="No one found."
-                    onValueChange={(option) =>
-                      navigate(
-                        auditLogHref(search, {
-                          actor: option?.id ?? null,
-                          actorLabel: option?.label ?? null,
-                        }),
-                      )
-                    }
-                  />
-                </div>
-                <FilterMenu
-                  label="Record"
-                  options={AUDIT_ENTITY_TYPES.map((type) => ({
-                    value: type,
-                    label: auditEntityTypeLabel(type),
-                  }))}
-                  selected={filters.entity ? [filters.entity] : []}
-                  onChange={(values) =>
-                    navigate(
-                      auditLogHref(search, {
-                        entity: values.find((value) => value !== filters.entity) ?? null,
-                      }),
-                    )
-                  }
-                />
-                <div className="min-w-0 flex-1 basis-36 sm:w-52 sm:flex-none">
-                  <EntityPicker
-                    aria-label="Filter by action"
-                    className="h-control-sm text-staff-sm"
-                    value={filters.action || null}
-                    options={actionOptions}
-                    placeholder="Any action"
-                    searchPlaceholder="Search actions"
-                    emptyText="No action matches."
-                    onValueChange={(option) =>
-                      navigate(auditLogHref(search, { action: option?.id ?? null }))
-                    }
-                  />
-                </div>
-                <DateRangeFilter
-                  label="Date"
-                  value={{ from: filters.from, to: filters.to }}
-                  onChange={({ from, to }) =>
-                    navigate(auditLogHref(search, { from: from || null, to: to || null }))
-                  }
-                />
-              </>
-            }
-            activeFilters={
-              <ActiveFilterChips
-                filters={props.chips.map((chip) => ({
-                  id: chip.id,
-                  label: chip.label,
-                  onRemove: () => navigate(chip.clearHref),
-                }))}
-                onClearAll={() => navigate(props.clearAllHref)}
-              />
-            }
-            end={<DensityToggle value={density} onChange={setDensity} />}
+      <ListPage<AuditLogRowModel>
+        title="Audit log"
+        description="Who did what across the platform, and when. Open an event to see exactly what changed."
+        Link={ListLink}
+        listKey="bid-admin.audit"
+        views={
+          <DataViews
+            views={VIEWS.map((item) => ({
+              id: item.id,
+              label: item.label,
+              href: auditLogHref(search, { view: item.view }),
+            }))}
+            activeId={view}
+            Link={ListLink}
           />
         }
+        search={
+          <TableSearch
+            key={filters.q}
+            fullWidth
+            label="Search the audit log"
+            placeholder="Search by action, person or record ID"
+            value={filters.q}
+            onSearch={(q) => navigate(auditLogHref(search, { q: q || null }))}
+          />
+        }
+        filters={
+          <FilterSheet
+            title="Filter the audit log"
+            sections={[
+              {
+                kind: "entity",
+                id: "actor",
+                label: "Person",
+                value: filters.actor,
+                search: searchActors,
+                selected: filters.actor
+                  ? { id: filters.actor, label: filters.actorLabel || "Selected person" }
+                  : null,
+                placeholder: "Anyone",
+                searchPlaceholder: "Search by name or email",
+                emptyText: "No one found.",
+              },
+              {
+                kind: "radio",
+                id: "entity",
+                label: "Record",
+                anyLabel: "Any record",
+                options: AUDIT_ENTITY_TYPES.map((type) => ({
+                  value: type,
+                  label: auditEntityTypeLabel(type),
+                })),
+                value: filters.entity,
+              },
+              {
+                kind: "entity",
+                id: "action",
+                label: "Action",
+                value: filters.action,
+                options: actionOptions,
+                placeholder: "Any action",
+                searchPlaceholder: "Search actions",
+                emptyText: "No action matches.",
+              },
+              {
+                kind: "date-range",
+                id: "date",
+                label: "Date",
+                value: { from: filters.from, to: filters.to },
+              },
+            ]}
+            onApply={(values) => {
+              const date = values.date as { from: string; to: string };
+              const actor = (values.actor as string) || null;
+              navigate(
+                auditLogHref(search, {
+                  actor,
+                  // Keep the person's name for the chip when they are still chosen.
+                  ...(actor && actor === filters.actor ? {} : { actorLabel: null }),
+                  entity: (values.entity as string) || null,
+                  action: (values.action as string) || null,
+                  from: date.from || null,
+                  to: date.to || null,
+                }),
+              );
+            }}
+          />
+        }
+        activeFilters={props.chips.map((chip) => ({
+          id: chip.id,
+          label: chip.label,
+          onRemove: () => navigate(chip.clearHref),
+        }))}
+        onClearFilters={() => navigate(props.clearAllHref)}
+        loading={pending}
+        filtered={props.filtered}
         error={
-          props.loadError ? (
-            <ErrorState
-              title="The audit log did not load"
-              description={props.loadError}
-              action={
-                <StaffButton size="sm" onClick={() => navigate(auditLogHref(search, {}))}>
-                  Try again
-                </StaffButton>
+          props.loadError
+            ? {
+                title: "The audit log did not load",
+                description: props.loadError,
+                onRetry: () => navigate(auditLogHref(search, {})),
               }
-            />
-          ) : undefined
+            : null
         }
-        empty={
-          props.filtered ? (
-            <NoResultsState
-              title="No events match"
-              description="Try another person, action or date range, or clear the filters."
-              action={
-                <StaffButton size="sm" onClick={() => navigate(AUDIT_LOG_PATH)}>
-                  Clear filters
-                </StaffButton>
-              }
-            />
-          ) : (
-            <EmptyState
-              title="No events recorded yet"
-              description="Staff and system actions appear here as they happen."
-            />
-          )
-        }
-        footer={
-          props.pagination ? (
-            <TablePagination
-              summary={props.pagination.summary}
-              prevHref={props.pagination.prevHref}
-              nextHref={props.pagination.nextHref}
-              Link={ListLink}
-            />
-          ) : null
-        }
+        empty={{
+          title: VIEW_EMPTY[view] ?? "No events recorded yet",
+          description: "Staff and system actions appear here as they happen.",
+        }}
+        noResults={{
+          title: "No events match",
+          description: "Try another person, action or date range, or clear the filters.",
+        }}
+        table={{
+          columns,
+          data: rows,
+          getRowId: (row) => row.id,
+          // Each event carries its summary and the person's email as second lines.
+          defaultDensity: "comfortable",
+          defaultSort: { columnId: "when", direction: "desc" },
+          sort: { columnId: "when", direction: filters.sort === "at_asc" ? "asc" : "desc" },
+          onSortChange: (sort) =>
+            navigate(auditLogSortHref(search, sort.direction === "asc" ? "at_asc" : "at_desc")),
+          onRowOpen: (row) => panel.show(row.id),
+          activeRowId: panel.openId,
+          rowActions: {
+            label: (row) => `Actions for ${row.action}`,
+            actions: (row) => [
+              { id: "open", label: "Open event", onSelect: () => panel.show(row.id) },
+              ...(row.entity.href
+                ? [
+                    {
+                      id: "record",
+                      label: `Open ${row.entity.typeLabel.toLowerCase()}`,
+                      href: row.entity.href,
+                    },
+                  ]
+                : []),
+              ...(row.actorUserId
+                ? [
+                    {
+                      id: "by-actor",
+                      label: `Only events by ${row.actor.name}`,
+                      href: auditLogHref(search, {
+                        actor: row.actorUserId,
+                        actorLabel: row.actor.name,
+                      }),
+                    },
+                  ]
+                : []),
+              {
+                id: "on-record",
+                label: "Only events on this record",
+                href: auditLogHref(search, { q: row.entity.id }),
+              },
+            ],
+          },
+        }}
+        pagination={props.pagination}
       />
-      <AuditEventPanel row={open} onClose={() => setOpenId(null)} />
+      <AuditEventPanel row={open} onClose={() => panel.show(null)} />
     </>
   );
 }

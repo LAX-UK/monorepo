@@ -1,9 +1,9 @@
 "use client";
 
-import { createPeopleListRouteError } from "@/components/admin/people/create-people-list-route-error";
+import { createCatalogListRouteError } from "@/components/admin/catalog/create-catalog-list-route-error";
 
-export default createPeopleListRouteError({
+export default createCatalogListRouteError({
   title: "Invitations",
-  backHref: "/admin/invitations",
-  backLabel: "Back to invitations",
+  listLabel: "Invitations",
+  listHref: "/admin/invitations",
 });

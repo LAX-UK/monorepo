@@ -94,7 +94,7 @@ describe("buildAuditFilterChips", () => {
     expect(chips.map((c) => c.label)).toEqual([
       "Search: x",
       "By Ada",
-      "Entity: Lot",
+      "Record: Lot",
       "Action: Lot created",
       "1 Oct 2026 – 24 Oct 2026",
     ]);

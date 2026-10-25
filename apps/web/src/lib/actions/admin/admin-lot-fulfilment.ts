@@ -1,221 +1,107 @@
 "use server";
 
-import { readApiError } from "@/lib/actions/_utils";
-import { assertAdminCapabilityForRedirect } from "@/lib/auth/assert-admin-action-capability";
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
-import { firstZodErrorMessage } from "@/lib/forms/form-result";
+import {
+  type ActionResult,
+  actionFailure,
+  actionSuccess,
+  firstZodErrorMessage,
+  zodErrorToFieldErrors,
+} from "@/lib/forms/form-result";
 import { LOT_FULFILMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import type { ServiceResult } from "@/lib/services/http/service-result";
 import {
   lotFulfilmentCollectBodySchema,
   lotFulfilmentReleaseBodySchema,
   lotFulfilmentShipBodySchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
-const lotFulfilmentLotIdFormSchema = z.object({
-  lotId: z.string().uuid(),
-});
+const lotIdSchema = z.string().uuid();
 
-function adminLotFulfilmentQueuePath(returnStatus: string | undefined): string {
-  const s = returnStatus?.trim();
-  if (s) return `/admin/lot-fulfilment?status=${encodeURIComponent(s)}`;
-  return "/admin/lot-fulfilment";
+/**
+ * Runs one fulfilment step for a lot: checks the role, the lot id and the body, calls the API,
+ * and refreshes the fulfilment queue and payments. Failures come back as a result, never a
+ * redirect, so the dialog that asked can keep them in view.
+ */
+async function runStep(
+  name: string,
+  lotId: string,
+  call: (id: string) => Promise<ServiceResult<unknown>>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction(name, async () => {
+    const denied = await denyUnlessAdminCapability(LOT_FULFILMENT_ACCESS);
+    if (denied) return denied;
+    const id = lotIdSchema.safeParse(lotId);
+    if (!id.success) return actionFailure("This lot could not be found.");
+    const res = await call(id.data);
+    if (!res.ok) return actionFailure(res.message, undefined, res.status, res.code);
+    revalidatePath("/admin/lot-fulfilment");
+    revalidatePath("/admin/payments");
+    return actionSuccess();
+  });
 }
 
-function lotFulfilmentQueueErrorUrl(returnStatus: string | undefined, message: string): string {
-  const base = adminLotFulfilmentQueuePath(returnStatus);
-  const joiner = base.includes("?") ? "&" : "?";
-  return `${base}${joiner}error=${encodeURIComponent(message)}`;
-}
-
-function readLotFulfilmentReturnStatus(formData: FormData): string | undefined {
-  const v = String(formData.get("returnStatus") ?? "").trim();
-  return v || undefined;
-}
-
-async function assertLotFulfilmentAccess(returnStatus: string | undefined): Promise<void> {
-  const denied = await assertAdminCapabilityForRedirect(LOT_FULFILMENT_ACCESS);
-  if (!denied.ok) {
-    redirect(lotFulfilmentQueueErrorUrl(returnStatus, denied.message));
+export async function adminLotFulfilmentReleaseResultAction(
+  lotId: string,
+  values: { notes?: string },
+): Promise<ActionResult<void>> {
+  const notes = values.notes?.trim();
+  const body = lotFulfilmentReleaseBodySchema.safeParse(notes ? { notes } : {});
+  if (!body.success) {
+    return actionFailure(firstZodErrorMessage(body.error), zodErrorToFieldErrors(body.error));
   }
-}
-
-export async function adminLotFulfilmentReleaseAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminLotFulfilmentReleaseAction",
-    async () => {
-      const returnStatus = readLotFulfilmentReturnStatus(formData);
-      await assertLotFulfilmentAccess(returnStatus);
-      const base = adminLotFulfilmentQueuePath(returnStatus);
-      const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
-        lotId: String(formData.get("lotId") ?? "").trim(),
-      });
-      if (!lotParsed.success) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
-      }
-      const notesRaw = String(formData.get("notes") ?? "").trim();
-      const bodyParsed = lotFulfilmentReleaseBodySchema.safeParse(
-        notesRaw ? { notes: notesRaw } : {},
-      );
-      if (!bodyParsed.success) {
-        redirect(
-          lotFulfilmentQueueErrorUrl(
-            returnStatus,
-            firstZodErrorMessage(bodyParsed.error) ?? "Invalid notes",
-          ),
-        );
-      }
-      const res = await getWriteContainer().adminLotFulfilment.release(
-        lotParsed.data.lotId,
-        bodyParsed.data,
-      );
-      if (!res.ok) {
-        redirect(
-          lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Release failed")),
-        );
-      }
-      revalidatePath("/admin/lot-fulfilment");
-      revalidatePath("/admin/payments");
-      redirect(base);
-    },
-    { formData },
+  return runStep("adminLotFulfilmentReleaseResultAction", lotId, (id) =>
+    getWriteContainer().adminLotFulfilment.release(id, body.data),
   );
 }
 
-export async function adminLotFulfilmentShipAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminLotFulfilmentShipAction",
-    async () => {
-      const returnStatus = readLotFulfilmentReturnStatus(formData);
-      await assertLotFulfilmentAccess(returnStatus);
-      const base = adminLotFulfilmentQueuePath(returnStatus);
-      const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
-        lotId: String(formData.get("lotId") ?? "").trim(),
-      });
-      if (!lotParsed.success) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
-      }
-      const bodyParsed = lotFulfilmentShipBodySchema.safeParse({
-        carrier: String(formData.get("carrier") ?? "").trim(),
-        trackingNumber: String(formData.get("trackingNumber") ?? "").trim(),
-      });
-      if (!bodyParsed.success) {
-        redirect(
-          lotFulfilmentQueueErrorUrl(
-            returnStatus,
-            firstZodErrorMessage(bodyParsed.error) ?? "Invalid ship form",
-          ),
-        );
-      }
-      const res = await getWriteContainer().adminLotFulfilment.ship(
-        lotParsed.data.lotId,
-        bodyParsed.data,
-      );
-      if (!res.ok) {
-        redirect(
-          lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Ship update failed")),
-        );
-      }
-      revalidatePath("/admin/lot-fulfilment");
-      revalidatePath("/admin/payments");
-      redirect(base);
-    },
-    { formData },
+export async function adminLotFulfilmentShipResultAction(
+  lotId: string,
+  values: { carrier: string; trackingNumber: string },
+): Promise<ActionResult<void>> {
+  const body = lotFulfilmentShipBodySchema.safeParse({
+    carrier: values.carrier.trim(),
+    trackingNumber: values.trackingNumber.trim(),
+  });
+  if (!body.success) {
+    return actionFailure(firstZodErrorMessage(body.error), zodErrorToFieldErrors(body.error));
+  }
+  return runStep("adminLotFulfilmentShipResultAction", lotId, (id) =>
+    getWriteContainer().adminLotFulfilment.ship(id, body.data),
   );
 }
 
-export async function adminLotFulfilmentReadyForCollectionAction(
-  formData: FormData,
-): Promise<void> {
-  return instrumentServerAction(
-    "adminLotFulfilmentReadyForCollectionAction",
-    async () => {
-      const returnStatus = readLotFulfilmentReturnStatus(formData);
-      await assertLotFulfilmentAccess(returnStatus);
-      const base = adminLotFulfilmentQueuePath(returnStatus);
-      const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
-        lotId: String(formData.get("lotId") ?? "").trim(),
-      });
-      if (!lotParsed.success) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
-      }
-      const res = await getWriteContainer().adminLotFulfilment.readyForCollection(
-        lotParsed.data.lotId,
-      );
-      if (!res.ok) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Update failed")));
-      }
-      revalidatePath("/admin/lot-fulfilment");
-      revalidatePath("/admin/payments");
-      redirect(base);
-    },
-    { formData },
+export async function adminLotFulfilmentReadyForCollectionResultAction(
+  lotId: string,
+): Promise<ActionResult<void>> {
+  return runStep("adminLotFulfilmentReadyForCollectionResultAction", lotId, (id) =>
+    getWriteContainer().adminLotFulfilment.readyForCollection(id),
   );
 }
 
-export async function adminLotFulfilmentDeliveredAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminLotFulfilmentDeliveredAction",
-    async () => {
-      const returnStatus = readLotFulfilmentReturnStatus(formData);
-      await assertLotFulfilmentAccess(returnStatus);
-      const base = adminLotFulfilmentQueuePath(returnStatus);
-      const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
-        lotId: String(formData.get("lotId") ?? "").trim(),
-      });
-      if (!lotParsed.success) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
-      }
-      const res = await getWriteContainer().adminLotFulfilment.delivered(lotParsed.data.lotId);
-      if (!res.ok) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Update failed")));
-      }
-      revalidatePath("/admin/lot-fulfilment");
-      revalidatePath("/admin/payments");
-      redirect(base);
-    },
-    { formData },
+export async function adminLotFulfilmentDeliveredResultAction(
+  lotId: string,
+): Promise<ActionResult<void>> {
+  return runStep("adminLotFulfilmentDeliveredResultAction", lotId, (id) =>
+    getWriteContainer().adminLotFulfilment.delivered(id),
   );
 }
 
-export async function adminLotFulfilmentCollectedAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminLotFulfilmentCollectedAction",
-    async () => {
-      const returnStatus = readLotFulfilmentReturnStatus(formData);
-      await assertLotFulfilmentAccess(returnStatus);
-      const base = adminLotFulfilmentQueuePath(returnStatus);
-      const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
-        lotId: String(formData.get("lotId") ?? "").trim(),
-      });
-      if (!lotParsed.success) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
-      }
-      const bodyParsed = lotFulfilmentCollectBodySchema.safeParse({
-        collectedBy: String(formData.get("collectedBy") ?? "").trim(),
-      });
-      if (!bodyParsed.success) {
-        redirect(
-          lotFulfilmentQueueErrorUrl(
-            returnStatus,
-            firstZodErrorMessage(bodyParsed.error) ?? "Invalid form",
-          ),
-        );
-      }
-      const res = await getWriteContainer().adminLotFulfilment.collected(
-        lotParsed.data.lotId,
-        bodyParsed.data,
-      );
-      if (!res.ok) {
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Update failed")));
-      }
-      revalidatePath("/admin/lot-fulfilment");
-      revalidatePath("/admin/payments");
-      redirect(base);
-    },
-    { formData },
+export async function adminLotFulfilmentCollectedResultAction(
+  lotId: string,
+  values: { collectedBy: string },
+): Promise<ActionResult<void>> {
+  const body = lotFulfilmentCollectBodySchema.safeParse({
+    collectedBy: values.collectedBy.trim(),
+  });
+  if (!body.success) {
+    return actionFailure(firstZodErrorMessage(body.error), zodErrorToFieldErrors(body.error));
+  }
+  return runStep("adminLotFulfilmentCollectedResultAction", lotId, (id) =>
+    getWriteContainer().adminLotFulfilment.collected(id, body.data),
   );
 }

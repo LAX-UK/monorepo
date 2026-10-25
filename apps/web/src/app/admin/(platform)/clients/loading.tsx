@@ -5,7 +5,7 @@ export default function ClientsLoading() {
     <ListPageSkeleton
       title="Clients"
       description="Collector and seller accounts. Open a client to see their activity, identity checks and account controls."
-      columns={["Name", "Email", "Identity", "Account", "Joined"]}
+      columns={["Client", "Account", "Identity", "Signed up as", "Joined"]}
     />
   );
 }
