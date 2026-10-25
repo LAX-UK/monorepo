@@ -35,6 +35,7 @@ export type LotFulfilmentStaffRow = {
   updatedAt: string;
   lotHref: string;
   saleHref: string | null;
+  saleTitle: string | null;
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -59,6 +60,7 @@ export function toLotFulfilmentStaffRows(
     updatedAt: row.updatedAt,
     lotHref: `/admin/lots/${row.lotId}`,
     saleHref: row.saleId ? `/admin/sales/${row.saleId}` : null,
+    saleTitle: row.saleTitle,
   }));
 }
 

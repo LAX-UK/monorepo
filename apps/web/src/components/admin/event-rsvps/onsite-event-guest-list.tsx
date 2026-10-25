@@ -98,6 +98,8 @@ export function OnsiteEventGuestList({ slug, rsvps, segmentOptions }: Props) {
     {
       id: "arrival",
       header: "Arrival",
+      width: "128px",
+      truncate: false,
       mobile: "badge",
       sortable: true,
       sortValue: (row) => (row.checkedInAt ? 1 : 0),
@@ -109,6 +111,7 @@ export function OnsiteEventGuestList({ slug, rsvps, segmentOptions }: Props) {
     {
       id: "arrived-at",
       header: "Arrived at",
+      width: "192px",
       hideBelow: "lg",
       mobile: "hidden",
       truncate: false,
@@ -120,17 +123,6 @@ export function OnsiteEventGuestList({ slug, rsvps, segmentOptions }: Props) {
       hideBelow: "xl",
       mobile: "hidden",
       cell: (row) => row.notes?.trim() || <EmptyValue />,
-    },
-    {
-      id: "updated",
-      header: "Updated",
-      hideBelow: "xl",
-      mobile: "hidden",
-      numeric: true,
-      sortable: true,
-      defaultSortDirection: "desc",
-      sortValue: (row) => Date.parse(row.updatedAt),
-      cell: (row) => <StaffDate value={row.updatedAt} withTime />,
     },
     rowActionsColumn<OnsiteEventRsvpAdminRow>({
       actions: guestActions.actionsFor,

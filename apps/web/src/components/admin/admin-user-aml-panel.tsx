@@ -29,14 +29,15 @@ function Badge({ domain, status }: { domain: "amlMatch" | "amlDecision"; status:
 }
 
 function hitsLabel(screening: AdminAmlScreeningRow): string {
-  return `${screening.totalHits} ${screening.totalHits === 1 ? "hit" : "hits"}, ${formatAmlCategoriesLabel(screening.categories)}`;
+  const count = `${screening.totalHits} ${screening.totalHits === 1 ? "hit" : "hits"}`;
+  if (screening.totalHits === 0 || screening.categories.length === 0) return count;
+  return `${count}: ${formatAmlCategoriesLabel(screening.categories)}`;
 }
 
 const earlierColumns: DataColumn<AdminAmlScreeningRow>[] = [
   {
     id: "screened",
     header: "Screened",
-    numeric: true,
     sortable: true,
     defaultSortDirection: "desc",
     mobile: "meta",

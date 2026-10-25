@@ -230,11 +230,11 @@ export function OnsiteEventForm({
               description="Used in the event's links and cannot be changed later. Lowercase letters, numbers and hyphens, for example lax002."
               error={errors.slug?.message}
             >
-              <TextInput placeholder="lax002" autoComplete="off" {...form.register("slug")} />
+              <TextInput placeholder="e.g. lax002" autoComplete="off" {...form.register("slug")} />
             </Field>
           ) : null}
           <Field label="Title" id={fieldId.title} error={errors.title?.message}>
-            <TextInput placeholder="Opening evening" {...form.register("title")} />
+            <TextInput placeholder="e.g. Opening evening" {...form.register("title")} />
           </Field>
           <Field label="Status" id={fieldId.status}>
             <Controller
@@ -283,7 +283,7 @@ export function OnsiteEventForm({
             <TextInput {...form.register("venue")} />
           </Field>
           <Field label="Dress code" optional id={fieldId.dressCode}>
-            <TextInput placeholder="Smart formal" {...form.register("dressCode")} />
+            <TextInput placeholder="e.g. Smart formal" {...form.register("dressCode")} />
           </Field>
           <Field
             label="Arrival note"
@@ -293,7 +293,7 @@ export function OnsiteEventForm({
           >
             <TextArea
               rows={2}
-              placeholder="Doors 6:00 PM. Personal and non-transferable."
+              placeholder="e.g. Doors open at 6pm. Passes are personal."
               {...form.register("arrivalNote")}
             />
           </Field>
@@ -330,7 +330,7 @@ export function OnsiteEventForm({
                     error={errors.segments?.[index]?.label?.message}
                   >
                     <TextInput
-                      placeholder="Full evening"
+                      placeholder="e.g. Full evening"
                       {...form.register(`segments.${index}.label` as const)}
                     />
                   </Field>
@@ -344,7 +344,7 @@ export function OnsiteEventForm({
                     id={id(`segment-${index}-helper`)}
                   >
                     <TextInput
-                      placeholder="From 7pm"
+                      placeholder="e.g. From 7pm"
                       {...form.register(`segments.${index}.helper` as const)}
                     />
                   </Field>
@@ -383,7 +383,7 @@ export function OnsiteEventForm({
           <Field label="Ops email" optional id={fieldId.opsEmail} error={errors.opsEmail?.message}>
             <TextInput
               type="email"
-              placeholder="events@lax.bid"
+              placeholder="e.g. events@lax.bid"
               autoComplete="off"
               {...form.register("opsEmail")}
             />
@@ -396,7 +396,7 @@ export function OnsiteEventForm({
           >
             <TextInput
               inputMode="url"
-              placeholder="https://event.lax.bid/lax002"
+              placeholder="e.g. https://event.lax.bid/lax002"
               autoComplete="off"
               {...form.register("micrositeUrl")}
             />

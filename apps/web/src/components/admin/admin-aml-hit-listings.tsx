@@ -1,3 +1,4 @@
+import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
 import { amlWatchlistCategoryLabel } from "@/lib/admin/status-badge-variants";
 import type { AdminAmlScreeningHitRow } from "@/lib/data/http/compliance.server";
 import { type KeyValueItem, KeyValueList } from "@auction/staff-ui";
@@ -44,7 +45,7 @@ function hitItems(hit: AdminAmlScreeningHitRow, compact: boolean): KeyValueItem[
   return [
     { label: "Match types", value: hit.matchTypes.join(", ") || null },
     { label: "Countries", value: hit.countries.join(", ") || null },
-    { label: "Date of birth", value: hit.dateOfBirth },
+    { label: "Date of birth", value: formatBirthDate(hit.dateOfBirth) },
     ...listings,
   ];
 }

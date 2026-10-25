@@ -43,6 +43,12 @@ describe("FormErrorSummary", () => {
     expect(screen.getByLabelText("Price")).toHaveFocus();
   });
 
+  it("gives each error link a 24px target, so stacked links are easy to hit", () => {
+    render(<Form shown={errors} />);
+    const link = screen.getByRole("link", { name: "Enter a price of at least £1.00." });
+    expect(link).toHaveClass("inline-block", "leading-6");
+  });
+
   it("with a focus key, refocuses on each failed submit but not while fields are fixed", () => {
     const { rerender } = render(<Form shown={[]} focusKey={0} />);
     rerender(<Form shown={errors} focusKey={1} />);

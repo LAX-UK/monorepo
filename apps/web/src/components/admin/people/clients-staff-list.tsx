@@ -389,7 +389,11 @@ export function ClientQuickView({
           </>
         ) : null
       }
-      meta={row ? [{ label: "Joined", value: formatStaffDateTime(row.joinedAt) }] : []}
+      meta={
+        row
+          ? [{ label: "Joined", value: formatStaffDateTime(row.joinedAt, { zoneLabel: true }) }]
+          : []
+      }
       overflow={
         row && actions.length > 0 ? (
           <OverflowMenu label={`Account actions for ${row.name}`} actions={actions} />
@@ -409,7 +413,7 @@ export function ClientQuickView({
               {
                 label: "Identity verified",
                 value: row.identityVerifiedAt
-                  ? formatStaffDateTime(row.identityVerifiedAt)
+                  ? formatStaffDateTime(row.identityVerifiedAt, { zoneLabel: true })
                   : "Not yet",
               },
               { label: "User ID", value: row.id, copyValue: row.id },

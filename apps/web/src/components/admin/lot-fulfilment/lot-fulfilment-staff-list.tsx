@@ -16,7 +16,6 @@ import {
   type DataColumn,
   DataViews,
   DetailPanel,
-  EmptyValue,
   ListPage,
   Notice,
   type OverflowAction,
@@ -106,7 +105,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         width: "120px",
         hideBelow: "md",
         mobile: "meta",
-        cell: (row) => row.method ?? <EmptyValue />,
+        cell: (row) => row.method ?? null,
       },
       {
         id: "shipping",
@@ -114,7 +113,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         width: "22%",
         hideBelow: "lg",
         mobile: "hidden",
-        cell: (row) => row.shipping ?? <EmptyValue />,
+        cell: (row) => row.shipping ?? null,
       },
       {
         id: "updated",
@@ -277,12 +276,15 @@ export function LotFulfilmentQuickView({
           ? [
               { label: "Method", value: row.method ?? "Not chosen yet" },
               { label: "Carrier and tracking", value: row.shipping ?? "Not shipped" },
-              { label: "Last change", value: formatStaffDateTime(row.updatedAt) },
+              {
+                label: "Last change",
+                value: formatStaffDateTime(row.updatedAt, { zoneLabel: true }),
+              },
               {
                 label: "Sale",
                 value: row.saleHref ? (
                   <CellLink href={row.saleHref} Link={Link}>
-                    {row.context ?? "Open sale"}
+                    {row.saleTitle ?? "Open sale"}
                   </CellLink>
                 ) : (
                   "Not in a sale"

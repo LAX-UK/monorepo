@@ -162,7 +162,9 @@ export function usePersonActions(access: PersonActionAccess) {
       ask({
         title: `Suspend ${person.name}?`,
         description:
-          "They are signed out everywhere and cannot sign in, bid or buy until the account is unsuspended.",
+          person.role === "staff"
+            ? "They are signed out everywhere and cannot use the staff tools until the account is unsuspended."
+            : "They are signed out everywhere and cannot sign in, bid or buy until the account is unsuspended.",
         confirmLabel: "Suspend account",
         tone: "danger",
         reason: {
@@ -182,7 +184,10 @@ export function usePersonActions(access: PersonActionAccess) {
     (person: PersonActionTarget) =>
       ask({
         title: `Unsuspend ${person.name}?`,
-        description: "They can sign in, bid and buy again straight away.",
+        description:
+          person.role === "staff"
+            ? "They can sign in to the staff tools again straight away, with the role they had."
+            : "They can sign in, bid and buy again straight away.",
         confirmLabel: "Unsuspend account",
         stepUpAction: "unsuspend this account",
         run: () => adminUnsuspendUserResultAction(person.id),

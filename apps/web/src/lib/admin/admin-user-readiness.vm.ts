@@ -161,7 +161,7 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "connect-gaps",
       priority: 70,
       message: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}`,
-      nextActionLabel: `Seller setup incomplete on ${connectGaps}. Stage: ${stage}`,
+      nextActionLabel: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}: ${stage.toLowerCase()}`,
       href: "?tab=overview#legal-entities",
       severity: "warning",
       tone: "warning",

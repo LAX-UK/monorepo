@@ -21,6 +21,10 @@ export default async function AdminEventRsvpsPage({
   const sp = await searchParams;
   const { events, publishedCount, loadError } = await loadAdminEventRsvpsHubPage();
   const result = queryEventRsvps(events, sp);
+  const now = Date.now();
+  const upcoming = events.filter(
+    (event) => event.startsAt && new Date(event.startsAt).getTime() > now,
+  ).length;
 
   return (
     <EventRsvpsStaffList
@@ -28,13 +32,18 @@ export default async function AdminEventRsvpsPage({
       search={sp}
       counts={result.counts}
       metrics={[
+        { id: "upcoming", label: "Upcoming", value: upcoming.toLocaleString("en-GB") },
         {
           id: "published",
           label: "Published",
           value: publishedCount.toLocaleString("en-GB"),
           href: `${EVENT_RSVPS_LIST_PATH}?status=published`,
         },
-        { id: "rsvps", label: "RSVPs", value: result.totalRsvps.toLocaleString("en-GB") },
+        {
+          id: "rsvps",
+          label: "RSVPs, all events",
+          value: result.totalRsvps.toLocaleString("en-GB"),
+        },
       ]}
       sort={result.sort}
       pageSize={result.limit}

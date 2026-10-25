@@ -1,6 +1,7 @@
 "use client";
 
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
+import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
 import { staffIdentitySessionStatus, staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminKycSessionRow } from "@/lib/data/http/admin.server";
 import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
@@ -75,7 +76,7 @@ function detailItems(
       value:
         [session.verifiedFirstName, session.verifiedLastName].filter(Boolean).join(" ") || null,
     },
-    { label: "Date of birth", value: session.verifiedDateOfBirth },
+    { label: "Date of birth", value: formatBirthDate(session.verifiedDateOfBirth) },
     { label: "Document", value: document },
     {
       label: "Document valid",
@@ -129,7 +130,7 @@ export function AdminUserKycHistoryPanel({
     {
       id: "result",
       header: "Result",
-      width: "240px",
+      width: "200px",
       mobile: "title",
       truncate: false,
       cell: (session) => {
@@ -145,7 +146,8 @@ export function AdminUserKycHistoryPanel({
     {
       id: "started",
       header: "Started",
-      numeric: true,
+      width: "192px",
+      truncate: false,
       sortable: true,
       defaultSortDirection: "desc",
       mobile: "meta",
@@ -155,7 +157,8 @@ export function AdminUserKycHistoryPanel({
     {
       id: "decided",
       header: "Decided",
-      numeric: true,
+      width: "192px",
+      truncate: false,
       sortable: true,
       defaultSortDirection: "desc",
       hideBelow: "md",

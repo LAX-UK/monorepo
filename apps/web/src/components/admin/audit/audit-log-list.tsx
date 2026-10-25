@@ -29,7 +29,6 @@ import {
   PersonCell,
   PrimaryCell,
   StaffDate,
-  StatusBadge,
   TableSearch,
 } from "@auction/staff-ui";
 import Link from "next/link";
@@ -102,6 +101,11 @@ export function AuditLogList(props: AuditLogListProps) {
     [props.actions],
   );
 
+  const entityOptions = useMemo<EntityOption[]>(
+    () => AUDIT_ENTITY_TYPES.map((type) => ({ id: type, label: auditEntityTypeLabel(type) })),
+    [],
+  );
+
   const columns = useMemo<DataColumn<AuditLogRowModel>[]>(
     () => [
       {
@@ -132,7 +136,7 @@ export function AuditLogList(props: AuditLogListProps) {
         header: "Record",
         width: "176px",
         hideBelow: "md",
-        mobile: "badge",
+        mobile: "meta",
         truncate: false,
         cell: (row) =>
           row.entity.href ? (
@@ -140,7 +144,7 @@ export function AuditLogList(props: AuditLogListProps) {
               {row.entity.typeLabel}
             </CellLink>
           ) : (
-            <StatusBadge tone="neutral">{row.entity.typeLabel}</StatusBadge>
+            row.entity.typeLabel
           ),
       },
       {
@@ -206,15 +210,14 @@ export function AuditLogList(props: AuditLogListProps) {
                 emptyText: "No one found.",
               },
               {
-                kind: "radio",
+                kind: "entity",
                 id: "entity",
                 label: "Record",
-                anyLabel: "Any record",
-                options: AUDIT_ENTITY_TYPES.map((type) => ({
-                  value: type,
-                  label: auditEntityTypeLabel(type),
-                })),
                 value: filters.entity,
+                options: entityOptions,
+                placeholder: "Any record",
+                searchPlaceholder: "Search record types",
+                emptyText: "No record type matches.",
               },
               {
                 kind: "entity",

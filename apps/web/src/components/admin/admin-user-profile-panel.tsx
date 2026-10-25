@@ -1,4 +1,5 @@
 import { formatEmailDeliverabilityStatus, formatUserRole } from "@/lib/admin/admin-user-presenters";
+import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
 import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
@@ -35,7 +36,7 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
       label: "Mobile",
       value: mobile ? `${mobile}${user.mobileCountry ? ` (${user.mobileCountry})` : ""}` : null,
     },
-    { label: "Date of birth", value: user.dateOfBirth },
+    { label: "Date of birth", value: formatBirthDate(user.dateOfBirth) },
     { label: "Account type", value: formatUserRole(user.role) },
     ...(isStaff
       ? [{ label: "Staff role", value: staffRoleLabel(user.staffRole as UserStaffRole | null) }]

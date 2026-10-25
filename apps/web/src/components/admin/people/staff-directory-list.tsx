@@ -20,7 +20,6 @@ import {
   type DataColumn,
   DataViews,
   DetailPanel,
-  EmptyValue,
   FilterSheet,
   ListPage,
   type OverflowAction,
@@ -64,7 +63,7 @@ export function staffActionTarget(row: StaffDirectoryRow): PersonActionTarget {
 }
 
 function AccessBadges({ access }: { access: readonly string[] }) {
-  if (access.length === 0) return <EmptyValue />;
+  if (access.length === 0) return null;
   return (
     <span className="flex min-w-0 flex-wrap gap-1">
       {access.map((label) => (
@@ -162,7 +161,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
         hideBelow: "lg",
         mobile: "hidden",
         truncate: false,
-        cell: (row) => <AccessBadges access={row.access} />,
+        cell: (row) => (row.access.length > 0 ? <AccessBadges access={row.access} /> : null),
       },
       {
         id: "twoFactor",
@@ -179,8 +178,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
         hideBelow: "md",
         mobile: "meta",
         truncate: false,
-        cell: (row) =>
-          row.lastSignInAt ? <StaffDate value={row.lastSignInAt} withTime /> : <EmptyValue />,
+        cell: (row) => (row.lastSignInAt ? <StaffDate value={row.lastSignInAt} withTime /> : null),
       },
       {
         id: "joined",
@@ -356,7 +354,9 @@ export function StaffQuickView({
           ? [
               {
                 label: "Last sign-in",
-                value: row.lastSignInAt ? formatStaffDateTime(row.lastSignInAt) : "Not yet",
+                value: row.lastSignInAt
+                  ? formatStaffDateTime(row.lastSignInAt, { zoneLabel: true })
+                  : "Not yet",
               },
             ]
           : []
@@ -375,7 +375,7 @@ export function StaffQuickView({
                 value: row.access.length > 0 ? <AccessBadges access={row.access} /> : "None",
               },
               { label: "Two-step", value: twoFactorLabel(row.twoFactor) },
-              { label: "Joined", value: formatStaffDateTime(row.joinedAt) },
+              { label: "Joined", value: formatStaffDateTime(row.joinedAt, { zoneLabel: true }) },
               { label: "User ID", value: row.id, copyValue: row.id },
             ]
           : []

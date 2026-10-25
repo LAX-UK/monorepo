@@ -22,7 +22,6 @@ import {
   type DataColumn,
   DataViews,
   DetailPanel,
-  EmptyValue,
   ListPage,
   Notice,
   type OverflowAction,
@@ -237,7 +236,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
         mobile: "hidden",
         truncate: false,
         cell: (row) =>
-          row.status.label === "Accepted" ? <EmptyValue /> : <StaffDate value={row.expiresAt} />,
+          row.status.label === "Accepted" ? null : <StaffDate value={row.expiresAt} />,
       },
     ],
     [panelHref, panel.PanelLink],
@@ -406,7 +405,9 @@ export function InvitationQuickView({
       }}
       title={row?.email ?? "Invitation"}
       status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
-      meta={row ? [{ label: "Sent", value: formatStaffDateTime(row.sentAt) }] : []}
+      meta={
+        row ? [{ label: "Sent", value: formatStaffDateTime(row.sentAt, { zoneLabel: true }) }] : []
+      }
       overflow={
         row ? (
           <OverflowMenu
@@ -439,11 +440,13 @@ export function InvitationQuickView({
               { label: "Invited by", value: row.invitedBy ?? "Not recorded" },
               {
                 label: "Opened",
-                value: row.openedAt ? formatStaffDateTime(row.openedAt) : "Not yet",
+                value: row.openedAt
+                  ? formatStaffDateTime(row.openedAt, { zoneLabel: true })
+                  : "Not yet",
               },
               {
                 label: accepted ? "Link expired" : "Expires",
-                value: formatStaffDateTime(row.expiresAt),
+                value: formatStaffDateTime(row.expiresAt, { zoneLabel: true }),
               },
               { label: "Email delivery", value: row.delivery ?? "Not reported yet" },
               { label: "Invitation ID", value: row.id, copyValue: row.id },

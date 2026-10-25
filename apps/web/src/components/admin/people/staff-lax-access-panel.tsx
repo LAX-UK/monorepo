@@ -41,7 +41,6 @@ const historyColumns: DataColumn<HistoryRow>[] = [
   {
     id: "at",
     header: "When",
-    numeric: true,
     sortable: true,
     defaultSortDirection: "desc",
     width: "176px",

@@ -152,9 +152,7 @@ export function OnsiteEventDetail({
       ];
 
   const summary: KeyValueItem[] = [
-    { label: "Starts", value: when(event.startsAt) },
     { label: "RSVPs close", value: when(event.rsvpCloseAt) },
-    { label: "Venue", value: event.venue },
     { label: "Dress code", value: event.dressCode },
     { label: "Arrival note", value: event.arrivalNote },
     {

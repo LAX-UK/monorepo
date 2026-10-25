@@ -39,7 +39,6 @@ const paymentColumns: DataColumn<AdminPaymentRow>[] = [
   {
     id: "created",
     header: "Created",
-    numeric: true,
     sortable: true,
     defaultSortDirection: "desc",
     width: "176px",
@@ -132,31 +131,20 @@ const bidColumns: DataColumn<AdminUserBidRow>[] = [
       <PrimaryCell
         Link={NextLink}
         href={`/admin/lots/${encodeURIComponent(bid.lotId)}`}
-        secondary={bid.isAutoBid ? "Automatic bid" : null}
+        secondary={
+          [bid.saleTitle, bid.isAutoBid ? "Automatic bid" : null].filter(Boolean).join(" · ") ||
+          null
+        }
       >
         {bid.lotTitle}
       </PrimaryCell>
     ),
   },
   {
-    id: "sale",
-    header: "Sale",
-    hideBelow: "lg",
-    mobile: "meta",
-    cell: (bid) =>
-      bid.saleId && bid.saleTitle ? (
-        <CellLink Link={NextLink} href={`/admin/sales/${encodeURIComponent(bid.saleId)}`}>
-          {bid.saleTitle}
-        </CellLink>
-      ) : (
-        (bid.saleTitle ?? null)
-      ),
-  },
-  {
     id: "channel",
     header: "Placed",
-    width: "128px",
-    hideBelow: "lg",
+    width: "112px",
+    hideBelow: "xl",
     mobile: "hidden",
     cell: (bid) => <span className="text-staff-muted">{clientBidChannelLabel(bid.placedVia)}</span>,
   },
@@ -185,7 +173,6 @@ const bidColumns: DataColumn<AdminUserBidRow>[] = [
   {
     id: "time",
     header: "Time",
-    numeric: true,
     sortable: true,
     defaultSortDirection: "desc",
     width: "176px",
@@ -291,7 +278,6 @@ const wonLotColumns: DataColumn<Lot>[] = [
   {
     id: "ended",
     header: "Ended",
-    numeric: true,
     sortable: true,
     defaultSortDirection: "desc",
     width: "176px",

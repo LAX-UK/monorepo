@@ -7,7 +7,6 @@ import {
   KeyValueList,
   PanelSection,
   StaffButton,
-  StatusBadge,
   formatStaffDateTime,
 } from "@auction/staff-ui";
 import { ArrowRight, ArrowUpRight, LockKeyhole } from "lucide-react";
@@ -41,8 +40,7 @@ export function AuditEventPanel({
       }}
       size="lg"
       title={row?.action ?? "Event"}
-      description={row ? formatStaffDateTime(row.at) : undefined}
-      status={row ? <StatusBadge tone={row.tone}>{row.entity.typeLabel}</StatusBadge> : null}
+      description={row ? formatStaffDateTime(row.at, { zoneLabel: true }) : undefined}
       footer={
         row?.entity.href ? (
           <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>
@@ -62,11 +60,9 @@ export function AuditEventPanel({
                     ? `${row.actor.name} (${row.actor.email})`
                     : row.actor.name,
                 },
-                { label: "Action", value: row.action },
                 { label: "Event code", value: row.actionCode, copyValue: row.actionCode },
                 { label: "Record", value: row.entity.typeLabel },
                 { label: "Record ID", value: row.entity.id, copyValue: row.entity.id },
-                { label: "When", value: formatStaffDateTime(row.at) },
               ]}
             />
           </PanelSection>

@@ -55,7 +55,6 @@ const columns: DataColumn<AdminSofTableRow>[] = [
   {
     id: "opened",
     header: "Opened",
-    numeric: true,
     sortable: true,
     defaultSortDirection: "desc",
     width: "176px",
