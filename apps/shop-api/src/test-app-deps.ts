@@ -199,12 +199,12 @@ export function createMinimalShopApiTestDeps(
             throw new Error("not implemented in test deps");
           },
         },
-        fulfilment: { listFulfilment: async () => ({ items: [], nextCursor: null }) },
-        payouts: { listPayouts: async () => ({ items: [], nextCursor: null }) },
+        fulfilment: { listFulfilment: async () => ({ items: [], nextCursor: null, counts: {} }) },
+        payouts: { listPayouts: async () => ({ items: [], nextCursor: null, counts: {} }) },
         sales: {
-          listStockHolds: async () => ({ items: [], nextCursor: null }),
-          listThirdPartySales: async () => ({ items: [], nextCursor: null }),
-          listOriginalSales: async () => ({ items: [], nextCursor: null }),
+          listStockHolds: async () => ({ items: [], nextCursor: null, counts: {} }),
+          listThirdPartySales: async () => ({ items: [], nextCursor: null, counts: {} }),
+          listOriginalSales: async () => ({ items: [], nextCursor: null, counts: {} }),
         },
         parties: {
           listClientParties: async () => ({ items: [], nextCursor: null }),
@@ -217,7 +217,7 @@ export function createMinimalShopApiTestDeps(
           },
         },
         saleAuthorityRequests: {
-          listRequests: async () => ({ items: [], nextCursor: null }),
+          listRequests: async () => ({ items: [], nextCursor: null, counts: {} }),
           getRequestById: async () => ({
             requestId: "00000000-0000-4000-8000-000000000004",
             artworkId: "00000000-0000-4000-8000-000000000001",
@@ -241,7 +241,7 @@ export function createMinimalShopApiTestDeps(
         },
         compliance: {
           listAuditEntries: async () => ({ items: [], nextCursor: null }),
-          listDisputes: async () => ({ items: [], nextCursor: null }),
+          listDisputes: async () => ({ items: [], nextCursor: null, counts: {} }),
           readEffectiveSettings: async () => ({
             cancellationDaysAfterPossession: null,
             personalisedGoodsCancellationExempt: false,

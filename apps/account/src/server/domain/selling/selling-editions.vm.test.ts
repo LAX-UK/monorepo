@@ -97,6 +97,25 @@ describe("buildEditionsPage", () => {
     });
   });
 
+  it("shows the seller LAX's reason for a declined request beside their own note", () => {
+    const page = buildEditionsPage(
+      [edition()],
+      [
+        request({
+          status: "rejected",
+          note: "For the autumn fair",
+          declineReason: "  We need the signed consignment agreement first. ",
+          handledAt: "2026-10-14T09:00:00Z",
+        }),
+      ],
+    );
+    expect(page.history[0]).toMatchObject({
+      outcome: "Declined",
+      note: "For the autumn fair",
+      declineReason: "We need the signed consignment agreement first.",
+    });
+  });
+
   it("offers Change rather than Request more once the most Shop allows is listed", () => {
     const page = buildEditionsPage([edition({ authorisedCount: 10, committedCount: 0 })], []);
     expect(page.rows[0]?.action?.label).toBe("Change");
@@ -138,6 +157,7 @@ describe("buildEditionsPage", () => {
       "Asked for 2 available to sell · sent 20 Sept 2026 · answered 22 Sept 2026",
     );
     expect(page.history[2]?.detail).toContain("withdrawn 2 Jul 2026");
+    expect(page.history.every((row) => row.declineReason === null)).toBe(true);
   });
 });
 

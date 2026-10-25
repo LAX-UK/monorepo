@@ -19,7 +19,8 @@ export async function rejectSaleAuthorityRequest(
       status: "rejected",
       handledBySubjectId: input.operatorSubjectId,
       handledAt: now,
-      note: input.reason,
+      // The seller's own note stays as they wrote it; the reason is what they are shown.
+      declineReason: input.reason,
     })
     .where(
       and(

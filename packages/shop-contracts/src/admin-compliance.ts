@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminWorkListCountsSchema } from "./admin-work-lists.js";
 
 export const AdminAuditEntrySchema = Type.Object({
   auditId: Type.String({ format: "uuid" }),
@@ -23,11 +24,16 @@ export const AdminDisputeListItemSchema = Type.Object({
   amountPence: Type.Integer(),
   openedAt: Type.String(),
   closedAt: Type.Union([Type.String(), Type.Null()]),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  buyerName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  buyerEmail: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export const AdminDisputeListSchema = Type.Object({
   items: Type.Array(AdminDisputeListItemSchema),
   nextCursor: Type.Union([Type.String(), Type.Null()]),
+  /** Optional so the admin parses responses from an older shop-api. */
+  counts: Type.Optional(AdminWorkListCountsSchema),
 });
 
 export const AdminEffectiveSettingsSchema = Type.Object({
@@ -42,4 +48,5 @@ export const AdminEffectiveSettingsSchema = Type.Object({
 
 export type AdminAuditEntry = Static<typeof AdminAuditEntrySchema>;
 export type AdminDisputeListItem = Static<typeof AdminDisputeListItemSchema>;
+export type AdminDisputeList = Static<typeof AdminDisputeListSchema>;
 export type AdminEffectiveSettings = Static<typeof AdminEffectiveSettingsSchema>;

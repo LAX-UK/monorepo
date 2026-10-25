@@ -1,5 +1,18 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminWorkListCountsSchema } from "./admin-work-lists.js";
 import { createCursorListResponseSchema } from "./cursor-list.js";
+
+const NullableString = Type.Union([Type.String(), Type.Null()]);
+
+/** A work list page: its rows, the next page, and the per-status counts for its views. */
+function workListSchema<T extends ReturnType<typeof Type.Object>>(itemSchema: T) {
+  return Type.Object({
+    items: Type.Array(itemSchema),
+    nextCursor: NullableString,
+    /** Optional so the admin parses responses from an older shop-api. */
+    counts: Type.Optional(AdminWorkListCountsSchema),
+  });
+}
 
 /** The statuses an order moves through; `status` on the list query takes one of these. */
 export const ADMIN_ORDER_STATUSES = [
@@ -63,11 +76,16 @@ export const AdminFulfilmentListItemSchema = Type.Object({
   carrier: Type.Union([Type.String(), Type.Null()]),
   trackingNumber: Type.Union([Type.String(), Type.Null()]),
   updatedAt: Type.String(),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  /** When the customer took possession; it starts their cancellation period. */
+  possessionAt: Type.Optional(NullableString),
+  /** When the order was paid; possession cannot be recorded before it. */
+  paidAt: Type.Optional(NullableString),
+  buyerName: Type.Optional(NullableString),
+  buyerEmail: Type.Optional(NullableString),
 });
 
-export const AdminFulfilmentListSchema = createCursorListResponseSchema(
-  AdminFulfilmentListItemSchema,
-);
+export const AdminFulfilmentListSchema = workListSchema(AdminFulfilmentListItemSchema);
 
 export const AdminPayoutListItemSchema = Type.Object({
   payoutId: Type.String({ format: "uuid" }),
@@ -82,9 +100,10 @@ export const AdminPayoutListItemSchema = Type.Object({
   paidAt: Type.Union([Type.String(), Type.Null()]),
   /** The bank or transfer reference staff entered when paying; optional for older shop-api. */
   paidReference: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  createdAt: Type.Optional(Type.String()),
 });
 
-export const AdminPayoutListSchema = createCursorListResponseSchema(AdminPayoutListItemSchema);
+export const AdminPayoutListSchema = workListSchema(AdminPayoutListItemSchema);
 
 export const AdminStockHoldListItemSchema = Type.Object({
   holdId: Type.String({ format: "uuid" }),
@@ -95,11 +114,14 @@ export const AdminStockHoldListItemSchema = Type.Object({
   expiresAt: Type.String(),
   brokerPartyId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
   clientPartyId: Type.String({ format: "uuid" }),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  clientName: Type.Optional(Type.String()),
+  brokerName: Type.Optional(NullableString),
+  note: Type.Optional(NullableString),
+  createdAt: Type.Optional(Type.String()),
 });
 
-export const AdminStockHoldListSchema = createCursorListResponseSchema(
-  AdminStockHoldListItemSchema,
-);
+export const AdminStockHoldListSchema = workListSchema(AdminStockHoldListItemSchema);
 
 export const AdminThirdPartySaleListItemSchema = Type.Object({
   saleId: Type.String({ format: "uuid" }),
@@ -120,11 +142,13 @@ export const AdminThirdPartySaleListItemSchema = Type.Object({
       }),
     ),
   ),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  sellerName: Type.Optional(Type.String()),
+  buyerName: Type.Optional(Type.String()),
+  createdAt: Type.Optional(Type.String()),
 });
 
-export const AdminThirdPartySaleListSchema = createCursorListResponseSchema(
-  AdminThirdPartySaleListItemSchema,
-);
+export const AdminThirdPartySaleListSchema = workListSchema(AdminThirdPartySaleListItemSchema);
 
 export const AdminOriginalSaleListItemSchema = Type.Object({
   saleId: Type.String({ format: "uuid" }),
@@ -136,11 +160,11 @@ export const AdminOriginalSaleListItemSchema = Type.Object({
   /** The buyer, so the invoice is addressed from the sale. Optional for older shop-api. */
   buyerName: Type.Optional(Type.String()),
   buyerEmail: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  /** When an uninvoiced reservation lapses; null holds it until it is invoiced. */
+  reservationExpiresAt: Type.Optional(NullableString),
 });
 
-export const AdminOriginalSaleListSchema = createCursorListResponseSchema(
-  AdminOriginalSaleListItemSchema,
-);
+export const AdminOriginalSaleListSchema = workListSchema(AdminOriginalSaleListItemSchema);
 
 export const AdminSaleAuthorityRequestListItemSchema = Type.Object({
   requestId: Type.String({ format: "uuid" }),
@@ -151,9 +175,15 @@ export const AdminSaleAuthorityRequestListItemSchema = Type.Object({
   requestedCount: Type.Integer(),
   status: Type.String(),
   createdAt: Type.String(),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  /** What the seller wrote with the request. */
+  note: Type.Optional(NullableString),
+  /** Why LAX declined it, as the seller sees it. */
+  declineReason: Type.Optional(NullableString),
+  handledAt: Type.Optional(NullableString),
 });
 
-export const AdminSaleAuthorityRequestListSchema = createCursorListResponseSchema(
+export const AdminSaleAuthorityRequestListSchema = workListSchema(
   AdminSaleAuthorityRequestListItemSchema,
 );
 

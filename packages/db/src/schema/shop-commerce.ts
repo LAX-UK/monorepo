@@ -759,6 +759,8 @@ export const shopSaleAuthorityRequest = pgTable(
       .references(() => shopParty.id, { onDelete: "restrict" }),
     requestedCount: integer("requested_count").notNull(),
     note: text("note"),
+    /** LAX's reason for declining, shown to the seller; the seller's own note stays in `note`. */
+    declineReason: text("decline_reason"),
     status: shopSaleAuthorityRequestStatusEnum("status").default("pending").notNull(),
     handledBySubjectId: text("handled_by_subject_id"),
     handledAt: timestamp("handled_at", { mode: "date", withTimezone: true }),

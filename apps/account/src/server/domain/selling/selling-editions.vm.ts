@@ -56,6 +56,8 @@ export type RequestHistoryVm = {
   /** "Asked for 5 available · sent 12 Oct 2026 · answered 14 Oct 2026". */
   detail: string;
   note: string | null;
+  /** Why LAX declined the request, in their words; null otherwise. */
+  declineReason: string | null;
 };
 
 export type EditionsPageVm = {
@@ -144,6 +146,8 @@ export function buildEditionsPage(
         ...outcome,
         detail: parts.join(" · "),
         note: cleanNote(request.note),
+        declineReason:
+          request.status === "rejected" ? cleanNote(request.declineReason ?? null) : null,
       };
     });
 

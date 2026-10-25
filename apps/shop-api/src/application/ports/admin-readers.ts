@@ -4,11 +4,18 @@ import type {
   AdminAuditEntry,
   AdminClientDetail,
   AdminDisputeListItem,
+  AdminDisputeListQuery,
   AdminEditionLookupItem,
   AdminEffectiveSettings,
+  AdminFulfilmentListQuery,
   AdminOrderDetail,
+  AdminOriginalSaleListQuery,
   AdminOverviewKpis,
   AdminPartyLookupItem,
+  AdminPayoutListQuery,
+  AdminSaleAuthorityRequestListQuery,
+  AdminStockHoldListQuery,
+  AdminThirdPartySaleListQuery,
   MerchandiseProductDetail,
   MerchandiseProductListItem,
   MerchandiseStatus,
@@ -49,6 +56,9 @@ export type AdminOrderListItem = {
   paidAt: string | null;
 };
 
+/** A work list page with the per-status counts its views show (every filter but status). */
+export type WorkListResult<T> = CursorListResult<T> & { counts: Record<string, number> };
+
 export type AdminFulfilmentListItem = {
   fulfilmentId: string;
   orderId: string;
@@ -57,6 +67,10 @@ export type AdminFulfilmentListItem = {
   carrier: string | null;
   trackingNumber: string | null;
   updatedAt: string;
+  possessionAt: string | null;
+  paidAt: string | null;
+  buyerName: string | null;
+  buyerEmail: string | null;
 };
 
 export type AdminPayoutListItem = {
@@ -71,6 +85,7 @@ export type AdminPayoutListItem = {
   payoutDueAt: string;
   paidAt: string | null;
   paidReference: string | null;
+  createdAt: string;
 };
 
 export type AdminStockHoldListItem = {
@@ -82,6 +97,10 @@ export type AdminStockHoldListItem = {
   expiresAt: string;
   brokerPartyId: string | null;
   clientPartyId: string;
+  clientName: string;
+  brokerName: string | null;
+  note: string | null;
+  createdAt: string;
 };
 
 export type AdminThirdPartySaleListItem = {
@@ -93,6 +112,9 @@ export type AdminThirdPartySaleListItem = {
   grossPence: number;
   recordedAt: string | null;
   fees: Array<{ feeId: string; label: string; amountPence: number; status: string }>;
+  sellerName: string;
+  buyerName: string;
+  createdAt: string;
 };
 
 export type AdminOriginalSaleListItem = {
@@ -104,6 +126,7 @@ export type AdminOriginalSaleListItem = {
   createdAt: string;
   buyerName: string;
   buyerEmail: string | null;
+  reservationExpiresAt: string | null;
 };
 
 export type AdminSaleAuthorityRequestListItem = {
@@ -115,6 +138,9 @@ export type AdminSaleAuthorityRequestListItem = {
   requestedCount: number;
   status: string;
   createdAt: string;
+  note: string | null;
+  declineReason: string | null;
+  handledAt: string | null;
 };
 
 export type AdminPartyListItem = {
@@ -159,24 +185,26 @@ export interface AdminOrderReader {
 }
 
 export interface AdminFulfilmentReader {
-  listFulfilment(input: CursorListInput): Promise<CursorListResult<AdminFulfilmentListItem>>;
+  listFulfilment(input: AdminFulfilmentListQuery): Promise<WorkListResult<AdminFulfilmentListItem>>;
 }
 
 export interface AdminPayoutReader {
-  listPayouts(input: CursorListInput): Promise<CursorListResult<AdminPayoutListItem>>;
+  listPayouts(input: AdminPayoutListQuery): Promise<WorkListResult<AdminPayoutListItem>>;
 }
 
-export type StockHoldListInput = CursorListInput & {
+export type StockHoldListInput = AdminStockHoldListQuery & {
   /** When set, only holds for clients assigned to this broker subject are returned. */
   brokerSubjectId?: string;
 };
 
 export interface AdminSalesReader {
-  listStockHolds(input: StockHoldListInput): Promise<CursorListResult<AdminStockHoldListItem>>;
+  listStockHolds(input: StockHoldListInput): Promise<WorkListResult<AdminStockHoldListItem>>;
   listThirdPartySales(
-    input: CursorListInput,
-  ): Promise<CursorListResult<AdminThirdPartySaleListItem>>;
-  listOriginalSales(input: CursorListInput): Promise<CursorListResult<AdminOriginalSaleListItem>>;
+    input: AdminThirdPartySaleListQuery,
+  ): Promise<WorkListResult<AdminThirdPartySaleListItem>>;
+  listOriginalSales(
+    input: AdminOriginalSaleListQuery,
+  ): Promise<WorkListResult<AdminOriginalSaleListItem>>;
 }
 
 export type ClientPartyListInput = CursorListInput & {
@@ -201,8 +229,8 @@ export type SaleAuthorityRequestDetail = {
 
 export interface AdminSaleAuthorityRequestReader {
   listRequests(
-    input: CursorListInput & { status?: string | undefined },
-  ): Promise<CursorListResult<AdminSaleAuthorityRequestListItem>>;
+    input: AdminSaleAuthorityRequestListQuery,
+  ): Promise<WorkListResult<AdminSaleAuthorityRequestListItem>>;
   getRequestById(requestId: string): Promise<SaleAuthorityRequestDetail>;
 }
 
@@ -230,7 +258,7 @@ export interface AdminOverviewReader {
 
 export interface AdminComplianceReader {
   listAuditEntries(input: CursorListInput): Promise<CursorListResult<AdminAuditEntry>>;
-  listDisputes(input: CursorListInput): Promise<CursorListResult<AdminDisputeListItem>>;
+  listDisputes(input: AdminDisputeListQuery): Promise<WorkListResult<AdminDisputeListItem>>;
   readEffectiveSettings(): Promise<AdminEffectiveSettings>;
 }
 

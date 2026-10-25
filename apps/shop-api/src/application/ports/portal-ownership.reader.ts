@@ -62,6 +62,8 @@ export type PortalSaleAuthorityRequestRow = {
   status: string;
   createdAt: string;
   handledAt: string | null;
+  /** Why LAX declined it; null unless declined. */
+  declineReason: string | null;
 };
 
 export type PortalCollectionEditionItem = {

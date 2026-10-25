@@ -136,6 +136,45 @@ describe("sale-authority decision", () => {
     await app.close();
   });
 
+  it.each([{}, { declineReason: "   " }])(
+    "refuses a decline without a reason the seller can read (%o)",
+    async (reason) => {
+      const rejectSaleAuthorityRequest = vi.fn(async () => ({
+        requestId: REQUEST_ID,
+        status: "rejected" as const,
+      }));
+      const app = await buildApp("shop_admin", { admin: { rejectSaleAuthorityRequest } });
+      const response = await app.inject({
+        method: "POST",
+        url: decisionUrl,
+        headers: headers(),
+        payload: { decision: "decline", ...reason },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe(SHOP_API_ERROR_CODES.VALIDATION);
+      expect(rejectSaleAuthorityRequest).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
+
+  it("passes the trimmed decline reason through", async () => {
+    const rejectSaleAuthorityRequest = vi.fn(async () => ({
+      requestId: REQUEST_ID,
+      status: "rejected" as const,
+    }));
+    const app = await buildApp("shop_admin", { admin: { rejectSaleAuthorityRequest } });
+    await app.inject({
+      method: "POST",
+      url: decisionUrl,
+      headers: headers(),
+      payload: { decision: "decline", declineReason: "  We need the signed agreement.  " },
+    });
+    expect(rejectSaleAuthorityRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "We need the signed agreement." }),
+    );
+    await app.close();
+  });
+
   it("rejects a decline reason over the limit", async () => {
     const app = await buildApp("shop_admin");
     const response = await app.inject({
