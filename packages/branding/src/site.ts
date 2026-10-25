@@ -3,7 +3,6 @@
 export const SITE_NAME = "LAX.BID";
 export const SITE_SHORT_NAME = "LAX.BID";
 export const SITE_COMPANY_NAME = "London Art Exchange";
-export const SITE_LEGAL_NAME = "London Auction Xchange LTD";
 export const SITE_SEO_NAME = `${SITE_NAME} by ${SITE_COMPANY_NAME}`;
 export const SITE_ALTERNATE_NAMES = ["LAX", SITE_COMPANY_NAME, SITE_SEO_NAME] as const;
 export const SITE_TAGLINE =
@@ -63,12 +62,4 @@ const LOGO_LIGHT_PATH_BY_SRC: Record<string, string> = {
 /** Returns the light-on-dark variant for a logo src, if one exists. */
 export function siteLogoLightPath(src: string): string | null {
   return LOGO_LIGHT_PATH_BY_SRC[src] ?? null;
-}
-
-export function siteCopyrightYear(): number {
-  return new Date().getFullYear();
-}
-
-export function siteCopyrightLine(): string {
-  return `© ${siteCopyrightYear()} ${SITE_LEGAL_NAME}. All rights reserved.`;
 }

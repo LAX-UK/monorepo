@@ -1,3 +1,4 @@
+import { legalEntityFor } from "@auction/branding";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { z } from "zod";
 
@@ -27,9 +28,9 @@ export const shopApiEnvSchema = z.object({
   ),
   /**
    * Legal entity that owns Shop and lax.art records in the cross-product portfolio (LAX Shop
-   * trades under LAX Art). Set it to the registered company name in every deployed environment.
+   * and lax.art are both London Art Exchange Ltd). Override it only if the company changes.
    */
-  LAX_ART_LEGAL_NAME: z.string().min(1).default("LAX Art"),
+  LAX_ART_LEGAL_NAME: z.string().min(1).default(legalEntityFor("art").name),
   OIDC_ISSUER_URL: z.string().url().default("http://localhost:3001"),
   OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
   SHOP_API_BFF_TOKEN: z.string().min(32).optional(),

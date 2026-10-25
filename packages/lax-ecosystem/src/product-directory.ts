@@ -1,3 +1,4 @@
+import { LAX_PRODUCT_NAMES } from "@auction/branding";
 import {
   type ProductUrlValidationOptions,
   isAllowedLaxProductUrl,
@@ -55,10 +56,11 @@ export type ResolveProductDirectoryResult =
   | { ok: true; config: ProductDirectoryConfig }
   | { ok: false; error: string };
 
+/** Product names come from the shared brand list, so every top bar and footer writes them alike. */
 const PRODUCT_LABELS: Record<LaxProductId, string> = {
-  bid: "LAX Bid",
-  shop: "LAX Shop",
-  art: "LAX Art",
+  bid: LAX_PRODUCT_NAMES.bid,
+  shop: LAX_PRODUCT_NAMES.shop,
+  art: LAX_PRODUCT_NAMES.art,
 };
 
 export function resolveProductDirectoryConfig(
@@ -84,7 +86,7 @@ export function resolveProductDirectoryConfig(
     return { ok: false, error: "Invalid LAX Shop storefront URL" };
   }
   if (artRaw !== undefined && !isAllowedLaxProductUrl(artRaw, validation)) {
-    return { ok: false, error: "Invalid LAX Art public URL" };
+    return { ok: false, error: "Invalid lax.art public URL" };
   }
 
   try {

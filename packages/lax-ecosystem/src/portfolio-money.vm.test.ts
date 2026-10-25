@@ -18,7 +18,7 @@ describe("buildMoney", () => {
       moneyEntry({ id: "2", direction: "paid" }),
       moneyEntry({ id: "3", direction: "owed_by_you", status: "pending" }),
     ]);
-    expect(vm.groups.map((g) => g.legalName)).toEqual(["LAX Bid Ltd", "LAX Art Ltd"]);
+    expect(vm.groups.map((g) => g.legalName)).toEqual(["LAX Bid Ltd", "London Art Exchange Ltd"]);
     expect(vm.groups[0]?.sections.map((s) => s.section)).toEqual(["owed_by_you", "paid"]);
   });
 

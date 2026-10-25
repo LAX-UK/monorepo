@@ -1,3 +1,4 @@
+import { legalEntityFor } from "@auction/branding";
 import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
@@ -48,10 +49,10 @@ const envSchema = z
     IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /**
-     * Legal entity that owns Bid records in the cross-product portfolio. Defaults to
-     * `SITE_LEGAL_NAME` in `@auction/branding`; override it if the trading entity changes.
+     * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
+     * operator from `legalEntityFor("bid")`; override it only if the company changes.
      */
-    LAX_BID_LEGAL_NAME: z.string().min(1).default("London Auction Xchange LTD"),
+    LAX_BID_LEGAL_NAME: z.string().min(1).default(legalEntityFor("bid").name),
     /** Comma-separated browser origins allowed for CORS (e.g. main web + event microsite). */
     WEB_ORIGINS: z.preprocess((val) => {
       let source = val;
@@ -98,7 +99,7 @@ const envSchema = z
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
     SENTRY_DSN_API: z.preprocess(emptyToUndefined, z.string().url().optional()),
     EMAIL_PROVIDER: z.enum(["console", "postmark"]).default("console"),
-    EMAIL_FROM: z.string().default("LAX.BID by London Art Exchange <no-reply@mail.lax.bid>"),
+    EMAIL_FROM: z.string().default("LAX <no-reply@mail.lax.bid>"),
     EMAIL_REPLY_TO: z.preprocess(emptyToUndefined, z.string().optional()),
     POSTMARK_SERVER_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),

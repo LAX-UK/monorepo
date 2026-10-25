@@ -24,6 +24,7 @@
     "print:test-policy-env": "tsx src/scripts/print-test-policy-env.ts"
   },
   "dependencies": {
+    "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/object-storage": "workspace:*",
     "@auction/db": "workspace:*",

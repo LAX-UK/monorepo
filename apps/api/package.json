@@ -35,6 +35,7 @@
     "@auction/auth": "workspace:*",
     "@auction/background-runtime": "workspace:*",
     "@auction/bidding-runtime": "workspace:*",
+    "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",

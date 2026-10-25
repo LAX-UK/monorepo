@@ -82,7 +82,7 @@ const LABELS: Readonly<Record<LaxLockupKind, string>> = {
   "bid-compact": "LAX Bid",
   exchange: "LAX London Art Exchange",
   shop: "LAX Shop",
-  art: "LAX Art",
+  art: "lax.art",
   account: "LAX Account",
   "account-compact": "LAX Account",
 };

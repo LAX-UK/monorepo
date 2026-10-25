@@ -1,7 +1,7 @@
 import type { LaxMoneyEntryV1, LaxPortfolioItemV1 } from "./lax-portfolio-contract.v1.js";
 
 export const BID_BUSINESS = { key: "lax_bid", legalName: "LAX Bid Ltd" } as const;
-export const ART_BUSINESS = { key: "lax_art", legalName: "LAX Art Ltd" } as const;
+export const ART_BUSINESS = { key: "lax_art", legalName: "London Art Exchange Ltd" } as const;
 
 export function item(overrides: Partial<LaxPortfolioItemV1> = {}): LaxPortfolioItemV1 {
   return {
