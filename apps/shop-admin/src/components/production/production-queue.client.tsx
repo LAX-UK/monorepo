@@ -11,7 +11,8 @@ import {
   productionQueuePageHref,
 } from "@/server/domain/production-queue.vm";
 import type { AdminProductionTaskList, ProductionTaskStaff } from "@auction/shop-contracts";
-import { Button, EmptyState, TableSkeleton } from "@auction/ui";
+import { EmptyState, NoResultsState } from "@auction/staff-ui";
+import { Button, TableSkeleton } from "@auction/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
 
@@ -54,7 +55,7 @@ export function ProductionQueue({
         </output>
       ) : page.items.length === 0 ? (
         filtered ? (
-          <EmptyState
+          <NoResultsState
             headingLevel="h3"
             title="No tasks match these filters"
             description="Try a different search, or clear the filters to see every task."
@@ -71,6 +72,7 @@ export function ProductionQueue({
         ) : (
           <EmptyState
             headingLevel="h3"
+            illustration="easel"
             title="No production tasks"
             description="Create a task with the form above when an edition needs to be made."
           />

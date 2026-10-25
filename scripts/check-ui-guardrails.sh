@@ -9,4 +9,5 @@
 #
 # Usage: ./scripts/check-ui-guardrails.sh
 set -euo pipefail
+node --test "$(dirname "$0")/empty-state-guardrail.test.mjs" >/dev/null
 exec node "$(dirname "$0")/check-ui-guardrails.mjs"

@@ -17,9 +17,9 @@ import {
   statusCounts,
   toEditorialListRow,
 } from "@/server/domain/editorial-list.vm";
+import { EmptyState, NoResultsState } from "@auction/staff-ui";
 import {
   Button,
-  EmptyState,
   EntityTableShell,
   FilterRow,
   Input,
@@ -109,6 +109,7 @@ export async function EditorialListPage({
       {allRows.length === 0 ? (
         <EmptyState
           headingLevel="h2"
+          illustration="frame"
           title={entity.empty.title}
           description={entity.empty.description}
           action={newAction}
@@ -138,7 +139,7 @@ export async function EditorialListPage({
           }
           table={
             page.rows.length === 0 ? (
-              <EmptyState
+              <NoResultsState
                 headingLevel="h2"
                 title={`No ${entity.title.toLowerCase()} match`}
                 description="Try a different search or show every status."

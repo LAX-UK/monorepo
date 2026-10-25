@@ -209,6 +209,7 @@ export function ThirdPartySalesList({
         toolbar={<DataTableToolbar end={<DensityToggle value={density} onChange={setDensity} />} />}
         empty={
           <EmptyState
+            illustration="ledger"
             title="No third-party sales recorded"
             description="Sales made outside the shop appear here once they are recorded."
           />

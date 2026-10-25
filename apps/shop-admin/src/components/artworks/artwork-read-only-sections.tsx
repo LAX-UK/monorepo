@@ -1,7 +1,7 @@
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
 import type { ArtworkFormValues } from "@/lib/artwork-form";
 import type { AdminArtworkDetail } from "@auction/shop-contracts";
-import { FormSection, KeyValueList, StatusBadge } from "@auction/staff-ui";
+import { EmptyState, FormSection, KeyValueList, StatusBadge } from "@auction/staff-ui";
 
 /*
  * What staff without catalogue access see in place of the editor's inputs: the stored values as
@@ -59,7 +59,7 @@ export function ReadOnlyMedia({
             <span className="text-staff-sm text-staff-muted">Imported image</span>
           </div>
         ) : (
-          <p className="text-staff-sm text-staff-muted">No images yet.</p>
+          <EmptyState size="compact" headingLevel="h3" illustration="frame" title="No images yet" />
         )
       ) : (
         <ol aria-label="Images, in display order" className="grid gap-3 sm:grid-cols-2">

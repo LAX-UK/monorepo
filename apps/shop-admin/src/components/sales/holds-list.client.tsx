@@ -146,6 +146,7 @@ export function HoldsList({
         toolbar={<DataTableToolbar end={<DensityToggle value={density} onChange={setDensity} />} />}
         empty={
           <EmptyState
+            illustration="plinth"
             title="No stock holds"
             description="Hold an edition for a client and it will be listed here until it ends or is released."
           />

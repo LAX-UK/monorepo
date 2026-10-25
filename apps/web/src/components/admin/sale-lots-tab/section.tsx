@@ -19,6 +19,7 @@ import { notify } from "@/lib/ui/notify";
 import type { CategoryNode, LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { LayoutGrid, List } from "lucide-react";
 import Link from "next/link";
@@ -326,7 +327,13 @@ export function SaleLotsTabSection({
           )}
           {lots.length === 0 ? (
             <div className="mt-3 space-y-2">
-              <p className="font-body text-sm text-on-surface-variant">No lots attached yet.</p>
+              <EmptyState
+                variant="plain"
+                size="compact"
+                headingLevel="h3"
+                illustration="gavel"
+                title="No lots attached yet"
+              />
               {canEditDraft && saleStatus === "draft" ? (
                 <Button variant="secondary" size="sm" asChild>
                   <Link href={`/admin/sales/${saleId}/setup?step=lots`}>

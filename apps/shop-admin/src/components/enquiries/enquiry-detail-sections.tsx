@@ -2,6 +2,7 @@ import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import type { EnquiryContextLink } from "@/server/domain/enquiry-detail.vm";
 import { enquirySenderName, enquiryStaffName } from "@/server/domain/enquiry-inbox.vm";
 import type { AdminEnquiryDetail, AdminEnquiryNote } from "@auction/shop-contracts";
+import { EmptyState } from "@auction/staff-ui";
 
 const linkClass =
   "text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -21,7 +22,9 @@ export function EnquiryMessage({ message }: { message: string }) {
 
 export function EnquiryNotesThread({ notes }: { notes: AdminEnquiryNote[] }) {
   if (notes.length === 0) {
-    return <p className="text-sm text-on-surface-variant">No notes yet.</p>;
+    return (
+      <EmptyState size="compact" headingLevel="h3" illustration="plinth" title="No notes yet" />
+    );
   }
   return (
     <ol className="flex flex-col gap-3">

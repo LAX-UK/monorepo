@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin/people/staff-access-presenter";
 import type { StaffAccessDetail } from "@/lib/data/http/staff-access.server";
 import { laxStaffPlatform } from "@auction/types";
+import { EmptyState } from "@auction/ui/components/empty-state";
 
 type Props = {
   userId: string;
@@ -72,7 +73,13 @@ export function StaffLaxAccessPanel({ userId, detail, canManage, bidStaffRole }:
         description="Grants and removals on every platform"
       >
         {detail.history.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">No changes recorded yet.</p>
+          <EmptyState
+            variant="plain"
+            size="compact"
+            headingLevel="h3"
+            illustration="ledger"
+            title="No changes recorded yet"
+          />
         ) : (
           <ul className="divide-y divide-border-hairline text-sm">
             {detail.history.map((entry, index) => (

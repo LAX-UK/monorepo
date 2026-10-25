@@ -142,6 +142,7 @@ export function OriginalSalesList({
         toolbar={<DataTableToolbar end={<DensityToggle value={density} onChange={setDensity} />} />}
         empty={
           <EmptyState
+            illustration="ledger"
             title="No original sales yet"
             description="Reserve an original for a buyer and it will appear here as it moves towards payment."
           />

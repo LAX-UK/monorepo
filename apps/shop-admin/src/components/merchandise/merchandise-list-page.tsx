@@ -11,7 +11,8 @@ import {
   toMerchandiseListRow,
 } from "@/server/domain/merchandise-list.vm";
 import type { MerchandiseProductList } from "@auction/shop-contracts";
-import { Button, EmptyState, EntityTableShell, FilterRow, Input, PageHeader } from "@auction/ui";
+import { EmptyState, NoResultsState } from "@auction/staff-ui";
+import { Button, EntityTableShell, FilterRow, Input, PageHeader } from "@auction/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -77,6 +78,7 @@ export async function MerchandiseListPage({ search }: { search: MerchandiseListS
       {rows.length === 0 && !filtered ? (
         <EmptyState
           headingLevel="h2"
+          illustration="easel"
           title="No products yet"
           description="Create a product to start selling merchandise on the shop."
           action={newAction}
@@ -99,7 +101,7 @@ export async function MerchandiseListPage({ search }: { search: MerchandiseListS
           }
           table={
             rows.length === 0 ? (
-              <EmptyState
+              <NoResultsState
                 headingLevel="h2"
                 title="No products match"
                 description="Try a different search, or show every status."

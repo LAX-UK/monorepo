@@ -4,11 +4,19 @@ import {
   productionHistorySummary,
 } from "@/server/domain/production-queue.vm";
 import type { AdminProductionTaskHistoryEntry } from "@auction/shop-contracts";
+import { EmptyState } from "@auction/staff-ui";
 
 /** Every change to a task, oldest first, with who made it. */
 export function ProductionHistory({ history }: { history: AdminProductionTaskHistoryEntry[] }) {
   if (history.length === 0) {
-    return <p className="text-sm text-on-surface-variant">No changes have been recorded yet.</p>;
+    return (
+      <EmptyState
+        size="compact"
+        headingLevel="h3"
+        illustration="ledger"
+        title="No changes have been recorded yet"
+      />
+    );
   }
   return (
     <ol className="flex flex-col gap-3">

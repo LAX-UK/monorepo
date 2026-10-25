@@ -20,7 +20,7 @@ import {
   placementDraftsBySlot,
 } from "@/lib/editorial-placements";
 import { replaceEditorialPlacementSlot } from "@/server/application/admin-editorial-actions.server";
-import { useBeforeUnloadGuard } from "@auction/staff-ui";
+import { EmptyState, useBeforeUnloadGuard } from "@auction/staff-ui";
 import { Button } from "@auction/ui";
 import { useState } from "react";
 
@@ -199,7 +199,12 @@ function PlacementSlotEditor({
         {dirty ? <span className="text-xs text-on-surface-variant">Unsaved changes</span> : null}
       </div>
       {drafts.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">Nothing placed in this slot.</p>
+        <EmptyState
+          size="compact"
+          headingLevel="h3"
+          illustration="frame"
+          title="Nothing placed in this slot"
+        />
       ) : (
         <ol className="space-y-3">
           {drafts.map((draft, index) => (

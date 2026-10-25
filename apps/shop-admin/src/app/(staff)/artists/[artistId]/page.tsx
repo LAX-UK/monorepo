@@ -9,7 +9,7 @@ import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admi
 import { loadArtistPage } from "@/server/application/load-artwork-pages";
 import { presentArtistStatus } from "@/server/domain/artist-list.vm";
 import { presentArtworkState } from "@/server/domain/artwork-list.vm";
-import { MappedStatusBadge, PageHeader, Section } from "@auction/staff-ui";
+import { EmptyState, MappedStatusBadge, PageHeader, Section } from "@auction/staff-ui";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -93,9 +93,13 @@ export default async function ArtistDetailPage({
         }
       >
         {data.artworks.length === 0 ? (
-          <p className="px-4 py-6 text-center text-staff-sm text-staff-muted">
-            No artworks yet. Add one with New artwork.
-          </p>
+          <EmptyState
+            size="compact"
+            headingLevel="h3"
+            illustration="easel"
+            title="No artworks yet"
+            description="Add one with New artwork."
+          />
         ) : (
           <ul className="divide-y divide-staff-line-subtle">
             {data.artworks.map((row) => (

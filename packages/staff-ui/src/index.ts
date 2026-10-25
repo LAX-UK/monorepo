@@ -70,6 +70,7 @@ export {
   EmptyState,
   ErrorState,
   NoResultsState,
+  NotFoundState,
   Section,
   Skeleton,
   ViewOnlyBadge,

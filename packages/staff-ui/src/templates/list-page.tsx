@@ -1,5 +1,6 @@
 "use client";
 
+import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
 import type * as React from "react";
 import { useColumnVisibility, visibleColumns } from "../data/columns-menu.js";
 import { DataTable, type DataTableProps } from "../data/data-table.js";
@@ -123,7 +124,13 @@ export type ListPageProps<T> = {
   /** Loading failed. Replaces the rows, keeps the frame. */
   error?: { title?: string; description: React.ReactNode; onRetry: () => void } | null;
   /** Nothing exists yet: what will appear here and the one action that creates it. */
-  empty: { title: string; description?: React.ReactNode; action?: React.ReactNode };
+  empty: {
+    title: string;
+    description?: React.ReactNode;
+    action?: React.ReactNode;
+    /** The drawing that matches the list: "parcel" for orders, "ledger" for money. */
+    illustration?: LaxIllustrationName;
+  };
   /** Filters matched nothing. */
   noResults?: { title?: string; description?: React.ReactNode };
 };
@@ -303,6 +310,7 @@ export function ListPage<T>({
   ) : (
     <EmptyState
       title={empty.title}
+      {...(empty.illustration ? { illustration: empty.illustration } : {})}
       {...(empty.description ? { description: empty.description } : {})}
       {...(empty.action && !readOnly ? { action: empty.action } : {})}
     />

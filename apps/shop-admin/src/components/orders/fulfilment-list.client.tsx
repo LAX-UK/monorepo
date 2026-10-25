@@ -104,6 +104,7 @@ export function FulfilmentList({
       toolbar={<DataTableToolbar end={<DensityToggle value={density} onChange={setDensity} />} />}
       empty={
         <EmptyState
+          illustration="parcel"
           title="Nothing to fulfil"
           description="Paid orders that still need shipping or collection will appear here."
         />

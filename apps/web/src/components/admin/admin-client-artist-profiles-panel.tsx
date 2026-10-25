@@ -1,6 +1,7 @@
 import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import type { ArtistKind, ArtistProfile, ArtistStatus } from "@auction/types";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
@@ -35,7 +36,13 @@ export function AdminClientArtistProfilesPanel({
         profile directly.
       </p>
       {linkedArtists.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">No linked artist profiles yet.</p>
+        <EmptyState
+          variant="plain"
+          size="compact"
+          headingLevel="h3"
+          illustration="easel"
+          title="No linked artist profiles yet"
+        />
       ) : (
         <ul className="divide-y divide-outline-variant/20 rounded-lg border border-border-hairline bg-surface-container-lowest">
           {linkedArtists.map((a) => {

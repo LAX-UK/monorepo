@@ -14,6 +14,7 @@ import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { buildLotOverviewViewModel } from "@/lib/data/view-models/lot-overview.vm";
 import {
   DetailColumns,
+  EmptyState,
   IssueList,
   KeyValueList,
   RecordImage,
@@ -119,9 +120,13 @@ export function LotOverviewTab({
         {auction.images.length > 0 ? (
           <RecordImage src={auction.images[0] ?? ""} alt={imageAlts[0] ?? auction.title} />
         ) : (
-          <p className="text-staff-sm text-staff-muted">
-            No photos yet. Add them before publishing.
-          </p>
+          <EmptyState
+            size="compact"
+            headingLevel="h3"
+            illustration="frame"
+            title="No photos yet"
+            description="Add them before publishing."
+          />
         )}
       </Section>
       <Section

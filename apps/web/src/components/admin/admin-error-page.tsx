@@ -35,7 +35,7 @@ export function AdminErrorPage({
       className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center"
       role="alert"
     >
-      <EmptyStateIllustration name={illustration} className="h-20 w-32" />
+      <EmptyStateIllustration name={illustration} size="page" className="mb-4" />
       <h1 className="font-display text-2xl text-on-surface">{title}</h1>
       <p className="max-w-md font-body text-sm text-on-surface-variant">{message}</p>
       <div className="flex flex-wrap justify-center gap-2">

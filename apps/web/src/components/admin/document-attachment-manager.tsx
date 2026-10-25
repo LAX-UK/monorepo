@@ -9,6 +9,7 @@ import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -154,7 +155,13 @@ export function DocumentAttachmentManager<TKind extends string>({
         ) : null}
       </div>
       {documents.length === 0 ? (
-        <p className="font-body text-sm text-on-surface-variant">No documents yet.</p>
+        <EmptyState
+          variant="plain"
+          size="compact"
+          headingLevel="h3"
+          illustration="ledger"
+          title="No documents yet"
+        />
       ) : (
         <ul className="space-y-2">
           {documents.map((d) => {

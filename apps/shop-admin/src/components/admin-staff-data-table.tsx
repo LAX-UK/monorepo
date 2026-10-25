@@ -1,6 +1,7 @@
 "use client";
 
-import { DataTable, EmptyState } from "@auction/ui";
+import { EmptyState } from "@auction/staff-ui";
+import { DataTable } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 

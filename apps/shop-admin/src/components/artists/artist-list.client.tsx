@@ -214,11 +214,13 @@ export function ArtistList({
             />
           ) : view === "archived" ? (
             <EmptyState
+              illustration="easel"
               title="No archived artists"
               description="Artists you archive move here. Their sales history stays on record."
             />
           ) : (
             <EmptyState
+              illustration="easel"
               title="No artists yet"
               description="Add an artist, then give them their first artwork."
               action={

@@ -2,6 +2,7 @@
 
 import { ExportJobRow } from "@/components/exports/export-job-row";
 import { useExportJobs } from "@/components/exports/export-jobs-provider";
+import { EmptyState } from "@auction/ui/components/empty-state";
 import {
   Sheet,
   SheetContent,
@@ -37,9 +38,14 @@ export function ExportManagerSheet({ open, onOpenChange }: Props) {
           ) : jobsLoadError ? (
             <p className="font-body text-sm text-warning-on-surface">{jobsLoadError}</p>
           ) : jobs.length === 0 ? (
-            <p className="font-body text-sm text-on-surface-variant">
-              No exports yet — use Export on any list page.
-            </p>
+            <EmptyState
+              variant="plain"
+              size="compact"
+              headingLevel="h3"
+              illustration="ledger"
+              title="No exports yet"
+              description="Use Export on any list page."
+            />
           ) : (
             jobs.map((job) => (
               <ExportJobRow key={job.id} job={job} onCancel={cancelJob} onDownload={downloadJob} />

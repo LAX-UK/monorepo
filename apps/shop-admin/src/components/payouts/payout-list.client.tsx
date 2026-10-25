@@ -188,6 +188,7 @@ export function PayoutList({
         toolbar={<DataTableToolbar end={<DensityToggle value={density} onChange={setDensity} />} />}
         empty={
           <EmptyState
+            illustration="ledger"
             title="No payouts yet"
             description="Money owed to artists and owners appears here once a sale has completed."
           />

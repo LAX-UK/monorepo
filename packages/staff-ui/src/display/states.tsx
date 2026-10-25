@@ -1,4 +1,5 @@
-import { CircleAlert, Eye, Inbox, Lock, SearchX } from "lucide-react";
+import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
+import { Eye } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 
@@ -10,41 +11,53 @@ type StateProps = {
   className?: string;
   /** Use h2 when the state replaces a page's main content; h3 inside a section. */
   headingLevel?: "h2" | "h3";
+  /**
+   * The drawing from the shared LAX illustration set (the public products use the same set).
+   * Each state has a default; pick the object that matches the list ("parcel" for orders).
+   */
+  illustration?: LaxIllustrationName;
+  /** `panel` replaces a list or page; `compact` sits inside a table body or a short section. */
+  size?: "panel" | "compact";
 };
 
+/**
+ * The staff empty state: the public products' layout (drawing, title, one sentence, one action)
+ * set denser, on staff tokens.
+ */
 function StateFrame({
-  icon,
+  illustration,
   title,
   description,
   action,
   className,
   headingLevel = "h2",
-  tone,
+  size = "panel",
   role,
-}: StateProps & { icon: React.ReactNode; tone: "neutral" | "danger"; role?: "alert" }) {
+}: StateProps & { illustration: LaxIllustrationName; role?: "alert" }) {
   const Heading = headingLevel;
+  const compact = size === "compact";
   return (
     <div
       {...(role ? { role } : {})}
+      data-staff-state={illustration}
       className={cn(
-        "flex flex-col items-center justify-center gap-3 px-6 py-12 text-center",
+        "flex flex-col items-center justify-center text-center",
+        compact ? "gap-2 px-4 py-8" : "gap-3 px-6 py-12",
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "flex size-10 items-center justify-center rounded-staff-md [&_svg]:size-5",
-          tone === "danger"
-            ? "bg-staff-danger-bg text-staff-danger-fg"
-            : "bg-staff-neutral-bg text-staff-muted",
-        )}
-      >
-        {icon}
-      </span>
+      <LaxIllustration
+        name={illustration}
+        size="compact"
+        className={cn("text-staff-muted", compact ? "w-16" : "mb-1 w-24")}
+      />
       <div className="flex max-w-sm flex-col gap-1">
-        <Heading className="font-staff text-staff-md font-semibold text-staff-fg">{title}</Heading>
-        {description ? <p className="text-staff-sm text-staff-muted">{description}</p> : null}
+        <Heading className="text-balance font-staff-display text-staff-md font-semibold text-staff-fg">
+          {title}
+        </Heading>
+        {description ? (
+          <p className="text-pretty font-staff text-staff-sm text-staff-muted">{description}</p>
+        ) : null}
       </div>
       {action ? <div className="mt-1 flex items-center gap-2">{action}</div> : null}
     </div>
@@ -52,18 +65,23 @@ function StateFrame({
 }
 
 /** Nothing here yet: say what will appear and how to make the first one. */
-export function EmptyState(props: StateProps) {
-  return <StateFrame {...props} icon={<Inbox />} tone="neutral" />;
+export function EmptyState({ illustration = "plinth", ...props }: StateProps) {
+  return <StateFrame {...props} illustration={illustration} />;
 }
 
 /** Filters matched nothing: say so and offer to clear them. */
-export function NoResultsState(props: StateProps) {
-  return <StateFrame {...props} icon={<SearchX />} tone="neutral" />;
+export function NoResultsState({ illustration = "search", ...props }: StateProps) {
+  return <StateFrame {...props} illustration={illustration} />;
 }
 
-/** Loading failed: say what failed, without jargon, and offer a retry. */
-export function ErrorState(props: StateProps) {
-  return <StateFrame {...props} icon={<CircleAlert />} tone="danger" role="alert" />;
+/** Loading failed: say what failed, without jargon or blame, and offer a retry. */
+export function ErrorState({ illustration = "askew", ...props }: StateProps) {
+  return <StateFrame {...props} illustration={illustration} role="alert" />;
+}
+
+/** A link or record that does not exist (or no longer does). */
+export function NotFoundState({ illustration = "ticket", ...props }: StateProps) {
+  return <StateFrame {...props} illustration={illustration} />;
 }
 
 /**
@@ -87,8 +105,7 @@ export function AccessDeniedState({
 }) {
   return (
     <StateFrame
-      icon={<Lock />}
-      tone="neutral"
+      illustration="lock"
       title={`You don’t have access to ${resource}`}
       description={
         requiredRole

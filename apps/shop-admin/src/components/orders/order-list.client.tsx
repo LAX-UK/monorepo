@@ -309,6 +309,7 @@ export function OrderList({
         loading={pending}
         filtered={filtered}
         empty={{
+          illustration: "parcel",
           title: "No orders yet",
           description: "Orders appear here as soon as a customer completes checkout.",
         }}
