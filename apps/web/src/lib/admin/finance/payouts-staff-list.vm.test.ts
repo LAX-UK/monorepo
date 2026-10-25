@@ -6,6 +6,7 @@ import {
   formatPayoutAmount,
   parseSignedPounds,
   payoutPanelHref,
+  payoutPeriod,
   payoutsAttention,
   payoutsFilterChips,
   payoutsListHref,
@@ -165,5 +166,19 @@ describe("payouts staff list view model", () => {
   it("states the range with the total", () => {
     expect(payoutsRangeSummary(0, 50, 312)).toBe("1–50 of 312 payouts");
     expect(payoutsRangeSummary(0, 1, 1)).toBe("1–1 of 1 payout");
+  });
+});
+
+describe("payoutPeriod", () => {
+  it("shows both ends of a bounded period", () => {
+    expect(payoutPeriod("2026-10-01T00:00:00.000Z", "2026-10-31T00:00:00.000Z")).toBe(
+      "1 Oct 2026 – 31 Oct 2026",
+    );
+  });
+
+  it("reads an epoch start as everything up to the end date", () => {
+    expect(payoutPeriod("1970-01-01T00:00:00.000Z", "2026-06-22T00:00:00.000Z")).toBe(
+      "Up to 22 Jun 2026",
+    );
   });
 });
