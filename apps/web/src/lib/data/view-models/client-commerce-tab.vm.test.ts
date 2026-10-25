@@ -1,9 +1,9 @@
 import type { AdminUserBidRow } from "@/lib/data/http/admin.server";
-import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  CLIENT_BID_CHANNEL_FILTERS,
-  buildClientWonLotGridItems,
+  CLIENT_BID_CHANNEL_OPTIONS,
+  clientBidChannelLabel,
+  decimalToMinorUnits,
   filterClientBids,
   matchesClientBidChannel,
   presentClientBidStatus,
@@ -25,7 +25,7 @@ const sampleBid = (overrides: Partial<AdminUserBidRow> = {}): AdminUserBidRow =>
 
 describe("client bid tab view-model", () => {
   it("maps channel filters to placedVia values", () => {
-    expect(CLIENT_BID_CHANNEL_FILTERS.map((f) => f.id)).toEqual([
+    expect(CLIENT_BID_CHANNEL_OPTIONS.map((f) => f.value)).toEqual([
       "all",
       "online",
       "room",
@@ -36,6 +36,13 @@ describe("client bid tab view-model", () => {
     expect(matchesClientBidChannel(sampleBid({ placedVia: "saleroom" }), "room")).toBe(true);
     expect(matchesClientBidChannel(sampleBid({ placedVia: "telephone" }), "telephone")).toBe(true);
     expect(matchesClientBidChannel(sampleBid({ placedVia: "absentee" }), "telephone")).toBe(true);
+  });
+
+  it("names the channel in words, never the stored value", () => {
+    expect(clientBidChannelLabel("web")).toBe("Online");
+    expect(clientBidChannelLabel(null)).toBe("Online");
+    expect(clientBidChannelLabel("saleroom")).toBe("In the room");
+    expect(clientBidChannelLabel("phone_in")).toBe("Phone in");
   });
 
   it("presents leading/outbid status from isWinning only", () => {
@@ -58,18 +65,10 @@ describe("client bid tab view-model", () => {
     expect(filtered.map((row) => row.id)).toEqual(["b"]);
   });
 
-  it("builds won-lot cards with lot number title and Winning badge", () => {
-    const lot = {
-      id: "lot_1",
-      saleId: "sale_1",
-      lotNumber: 34444,
-      title: "Contemporary Evening Sale",
-      currentPrice: "45000",
-      status: "sold",
-      winnerId: "user_1",
-    } as unknown as Lot;
-    const items = buildClientWonLotGridItems([lot], () => null);
-    expect(items[0]?.title).toBe("Lot#34444");
-    expect(items[0]?.badge).toEqual({ label: "Winning", tone: "success" });
+  it("turns a decimal amount in pounds into minor units", () => {
+    expect(decimalToMinorUnits("1250.50")).toBe(125050);
+    expect(decimalToMinorUnits("45000")).toBe(4500000);
+    expect(decimalToMinorUnits("")).toBeNull();
+    expect(decimalToMinorUnits("n/a")).toBeNull();
   });
 });

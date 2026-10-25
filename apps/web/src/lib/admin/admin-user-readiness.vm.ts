@@ -88,7 +88,7 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "suspended",
       priority: 10,
       message: `Account suspended${user.suspendedReason ? ` · ${user.suspendedReason}` : ""}`,
-      nextActionLabel: "Account suspended — review before taking action",
+      nextActionLabel: "Account suspended. Review before taking action",
       href: "?tab=overview#profile",
       severity: "critical",
       tone: "blocked",
@@ -101,7 +101,7 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "aml-hold",
       priority: 20,
       message: `AML hold active${reason ? ` · ${reason}` : ""}`,
-      nextActionLabel: "AML hold active — resolve before enabling activity",
+      nextActionLabel: "AML hold active. Resolve before enabling activity",
       href: "?tab=overview#profile",
       severity: "critical",
       tone: "blocked",
@@ -113,7 +113,7 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "deletion-requested",
       priority: 30,
       message: `Deletion requested · ${formatAdminUserDate(user.deletionRequestedAt)}`,
-      nextActionLabel: "Deletion requested — review account status",
+      nextActionLabel: "Deletion requested. Review the account status",
       href: "?tab=overview#profile",
       severity: "warning",
       tone: "warning",
@@ -136,8 +136,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
     signals.push({
       id: "kyc-pending",
       priority: 50,
-      message: "KYC verification in progress or awaiting decision",
-      nextActionLabel: "Wait for KYC decision",
+      message: "Identity check in progress or awaiting a decision",
+      nextActionLabel: "Wait for the identity decision",
       href: "?tab=overview#kyc-history",
       severity: "warning",
       tone: "warning",
@@ -146,8 +146,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
     signals.push({
       id: "kyc-issue",
       priority: 60,
-      message: `KYC ${kycStatusPhrase(kycStatus)}`,
-      nextActionLabel: `KYC ${kycStatusPhrase(kycStatus)} — follow up with client`,
+      message: `Identity check ${kycStatusPhrase(kycStatus)}`,
+      nextActionLabel: `Identity check ${kycStatusPhrase(kycStatus)}. Follow up with the client`,
       href: "?tab=overview#kyc-history",
       severity: "warning",
       tone: "warning",
@@ -161,7 +161,7 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "connect-gaps",
       priority: 70,
       message: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}`,
-      nextActionLabel: `Seller setup incomplete (${connectGaps}) · ${stage}`,
+      nextActionLabel: `Seller setup incomplete on ${connectGaps}. Stage: ${stage}`,
       href: "?tab=overview#legal-entities",
       severity: "warning",
       tone: "warning",
@@ -196,7 +196,7 @@ export function buildAdminUserReadinessNextAction(input: BuildInput): ReadinessN
   const top = collectAttentionSignals(input)[0];
   if (!top) {
     return {
-      label: "Ready — no blocking issues",
+      label: "Ready to bid and buy",
       href: "?tab=overview",
       tone: "ready",
     };

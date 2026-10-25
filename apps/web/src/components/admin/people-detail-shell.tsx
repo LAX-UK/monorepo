@@ -1,28 +1,34 @@
 "use client";
 
-import { AdminUserAccountControls } from "@/components/admin/admin-user-account-controls";
-import { AdminUserAttentionBanner } from "@/components/admin/admin-user-attention-banner";
-import { AdminUserDangerZone } from "@/components/admin/admin-user-danger-zone";
+import {
+  type PersonActionAccess,
+  type PersonActionTarget,
+  usePersonActions,
+} from "@/components/admin/people/use-person-actions";
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
 import { adminUpdateClientDisplayNameFieldAction } from "@/lib/actions/admin/field-updates";
 import type { UserAttentionItem, UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
-import { toStaffStatus } from "@/lib/admin/staff-kit-status";
+import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
-import { kycStatusLabel, kycStatusToBadgeVariant } from "@/lib/presenters/status-presentation";
+import { notify } from "@/lib/ui/notify";
 import {
+  DetailColumns,
+  DetailPage,
+  type IssueItem,
+  IssueList,
   MetaItem,
+  type OverflowAction,
   OverflowMenu,
-  PageHeader,
   StaffBreadcrumbs,
+  StaffButton,
+  StaffDate,
   type StaffLinkComponent,
   StatusBadge,
   TabNav,
-  formatStaffDateTime,
-  toast,
 } from "@auction/staff-ui";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { LegalEntity, UserRole, UserStaffRole } from "@auction/types";
 import { Copy, Mail } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -30,49 +36,59 @@ import type { ReactNode } from "react";
 
 const NextLink: StaffLinkComponent = Link;
 
-type TabDef = {
+const ISSUE_TONE = { critical: "danger", warning: "warning", info: "neutral" } as const;
+
+export type PeopleDetailTab = {
   id: string;
   label: string;
   content: ReactNode;
-  badge?: ReactNode;
   count?: number;
 };
 
 type Props = {
   user: AdminUserDetailPayload;
+  /** The list this person was opened from, with `returnTo` applied. */
   listHref: string;
   listLabel: string;
-  tabs: TabDef[];
-  title?: ReactNode;
-  legalEntitiesForActions?: { id: string; displayName: string }[];
+  access: PersonActionAccess;
+  tabs: PeopleDetailTab[];
   attentionItems?: readonly UserAttentionItem[];
+  /** Clients only: the side column with their standing and seller organisations. */
   railContext?: UserDetailRailContext;
+  legalEntitiesForActions?: Pick<LegalEntity, "id" | "displayName">[];
   showContextRail?: boolean;
-  showAccountControls?: boolean;
-  showDangerZone?: boolean;
 };
 
+function copy(value: string, noun: string) {
+  void navigator.clipboard
+    ?.writeText(value)
+    .then(() => notify.success(`${noun} copied`))
+    .catch(() => notify.error(`Could not copy the ${noun.toLowerCase()}`));
+}
+
 /**
- * A person's page (client or staff) in the staff kit: who they are and their standing in the
- * header, sections as tabs that keep `?tab=` bookmarks, account controls, and the danger zone at
- * the foot, shown only to roles that may moderate accounts.
+ * A person's page (client or staff) on the staff record template: who they are and their
+ * standing in the header, account actions in the header and overflow menu (the destructive ones
+ * last, each confirmed through the kit), what needs attention, then the person's sections, as
+ * `?tab=` tabs when there are several, beside a rail of context for clients.
  */
 export function PeopleDetailShell({
   user,
   listHref,
   listLabel,
+  access,
   tabs,
-  title,
-  legalEntitiesForActions = [],
   attentionItems = [],
   railContext,
+  legalEntitiesForActions = [],
   showContextRail = true,
-  showAccountControls = true,
-  showDangerZone = true,
 }: Props) {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
+  const actions = usePersonActions(access);
   const isStaff = user.role === "staff";
+  const canAct = access.canModerate || access.canManageRoles;
+
   const defaultTab = tabs[0]?.id ?? "overview";
   const activeTab = tabs.find((tab) => tab.id === searchParams.get("tab"))?.id ?? defaultTab;
   const tabHref = (id: string) => {
@@ -82,15 +98,55 @@ export function PeopleDetailShell({
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
   };
-  const kyc = toStaffStatus(
-    kycStatusToBadgeVariant(user.kycStatus),
-    kycStatusLabel(user.kycStatus),
-  );
+
+  const standing = staffStatus("user", user.suspendedAt ? "suspended" : "active");
+  const identity = staffIdentityStatus(user.kycStatus);
+  const staffRole = (user.staffRole as UserStaffRole | null) ?? null;
+  const target: PersonActionTarget = {
+    id: user.id,
+    name: user.name,
+    role: user.role as UserRole,
+    staffRole,
+    suspended: Boolean(user.suspendedAt),
+    twoFactorEnabled: user.twoFactorEnabled,
+  };
+
+  const overflow: OverflowAction[] = [
+    {
+      id: "copy-id",
+      label: "Copy user ID",
+      icon: Copy,
+      onSelect: () => copy(user.id, "User ID"),
+    },
+    {
+      id: "copy-email",
+      label: "Copy email",
+      icon: Mail,
+      onSelect: () => copy(user.email, "Email"),
+    },
+    // Changing the role has its own button in the header.
+    ...actions.actionsFor(target).filter((action) => action.id !== "role"),
+  ];
+
+  const issues: IssueItem[] = attentionItems.map((item) => ({
+    id: item.id,
+    label: item.message,
+    tone: ISSUE_TONE[item.severity],
+    action: { label: "Review", href: item.href },
+  }));
+
+  const rail =
+    !isStaff && showContextRail ? (
+      <UserDetailContextRail
+        legalEntities={legalEntitiesForActions}
+        {...(railContext ? { context: railContext } : {})}
+      />
+    ) : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        renderHeading={!title}
+    <>
+      <DetailPage
+        renderHeading
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}
@@ -98,64 +154,55 @@ export function PeopleDetailShell({
           />
         }
         title={
-          title ?? (
-            <StaffEditableTitle
-              value={user.name}
-              label={isStaff ? "staff member" : "client"}
-              editable
-              onSave={(next) => adminUpdateClientDisplayNameFieldAction(user.id, next)}
-            />
-          )
+          <StaffEditableTitle
+            value={user.name}
+            label={isStaff ? "staff member" : "client"}
+            editable={canAct}
+            onSave={(next) => adminUpdateClientDisplayNameFieldAction(user.id, next)}
+          />
         }
         status={
           <>
-            <StatusBadge tone={user.suspendedAt ? "danger" : "success"}>
-              {user.suspendedAt ? "Suspended" : "Active"}
-            </StatusBadge>
+            <StatusBadge tone={standing.tone}>{standing.label}</StatusBadge>
             {isStaff ? (
-              <StatusBadge tone="neutral">
-                {staffRoleLabel(user.staffRole as UserStaffRole | null)}
-              </StatusBadge>
-            ) : null}
+              <StatusBadge tone="neutral">{staffRoleLabel(staffRole)}</StatusBadge>
+            ) : (
+              <StatusBadge tone={identity.tone}>{identity.label}</StatusBadge>
+            )}
           </>
         }
         meta={
           <>
             <MetaItem label="Email">
               {user.email}
-              {user.emailVerified ? "" : " (not verified)"}
+              {user.emailVerified ? null : (
+                <span className="text-staff-muted"> · Not verified</span>
+              )}
             </MetaItem>
-            {!isStaff ? (
-              <MetaItem label="Identity">
-                <StatusBadge tone={kyc.tone}>{kyc.label}</StatusBadge>
-              </MetaItem>
-            ) : null}
-            <MetaItem label="Two-step">{user.twoFactorEnabled ? "On" : "Off"}</MetaItem>
-            <MetaItem label="Joined">{formatStaffDateTime(user.createdAt)}</MetaItem>
+            <MetaItem label="Two-step">
+              {user.securityStatusAvailable
+                ? user.twoFactorEnabled
+                  ? "On"
+                  : "Off"
+                : "Unavailable"}
+            </MetaItem>
+            <MetaItem label="Joined">
+              <StaffDate value={user.createdAt} withTime className="text-staff-fg" />
+            </MetaItem>
           </>
         }
-        overflow={
-          <OverflowMenu
-            label="More account actions"
-            actions={[
-              {
-                id: "copy",
-                label: "Copy user ID",
-                icon: Copy,
-                onSelect: () => {
-                  void navigator.clipboard
-                    ?.writeText(user.id)
-                    .then(() => toast.success("User ID copied"));
-                },
-              },
-              {
-                id: "email",
-                label: "Email this person",
-                icon: Mail,
-                onSelect: () => window.open(`mailto:${user.email}`),
-              },
-            ]}
-          />
+        secondaryActions={
+          access.canManageRoles ? (
+            <StaffButton variant="secondary" onClick={() => actions.changeRole(target)}>
+              Change role
+            </StaffButton>
+          ) : null
+        }
+        overflow={<OverflowMenu label="More account actions" Link={NextLink} actions={overflow} />}
+        access={canAct ? "full" : "read-only"}
+        roleLabel="Accounts"
+        notice={
+          issues.length > 0 ? <IssueList items={issues} Link={NextLink} allClear={null} /> : null
         }
         tabs={
           tabs.length > 1 ? (
@@ -172,46 +219,12 @@ export function PeopleDetailShell({
             />
           ) : null
         }
-      />
-      <AdminUserAttentionBanner items={attentionItems} />
-      <div
-        className={
-          !isStaff && showContextRail
-            ? "grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
-            : undefined
-        }
       >
-        <div className="flex min-w-0 flex-col gap-6">
+        <DetailColumns railLabel="Account context" rail={rail}>
           {tabs.find((tab) => tab.id === activeTab)?.content}
-          {!isStaff && showAccountControls ? (
-            <AdminUserAccountControls
-              userId={user.id}
-              role={user.role as UserRole}
-              staffRole={(user.staffRole as UserStaffRole | null) ?? null}
-              isStaff={isStaff}
-            />
-          ) : null}
-          {showDangerZone ? (
-            <AdminUserDangerZone
-              userId={user.id}
-              suspendedAt={user.suspendedAt}
-              twoFactorEnabled={user.twoFactorEnabled}
-            />
-          ) : null}
-        </div>
-        {!isStaff && showContextRail ? (
-          <UserDetailContextRail
-            email={user.email}
-            legalEntities={legalEntitiesForActions}
-            {...(railContext ? { context: railContext } : {})}
-          />
-        ) : null}
-      </div>
-    </div>
+        </DetailColumns>
+      </DetailPage>
+      {actions.dialogs}
+    </>
   );
-}
-
-/** @deprecated Use PeopleDetailShell — kept for incremental migration. */
-export function AdminUserDetailShell(props: Props) {
-  return <PeopleDetailShell {...props} />;
 }

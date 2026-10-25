@@ -34,6 +34,7 @@ import { getAdminUserSourceOfFunds } from "@/lib/data/http/compliance.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   AML_REVIEW_ACCESS,
+  ARTIST_WRITE_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
   FINANCE_ACCESS,
@@ -66,7 +67,9 @@ export type AdminClientDetailBundle = {
   canViewKyc: boolean;
   canManageRoles: boolean;
   canModerate: boolean;
+  canWriteArtists: boolean;
   bids: AdminUserBidRow[];
+  bidsTotal: number;
   lifetimeSpend: number;
   submissionsCount: number;
   amlScreeningBySessionId: Record<string, AdminAmlScreeningRow>;
@@ -100,6 +103,8 @@ export const loadAdminClientDetail = cache(
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_ROLE_MANAGEMENT_ACCESS);
     const canModerate =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_MODERATION_ACCESS);
+    const canWriteArtists =
+      sessionUser != null && userHasAccessTo(actorRole, actorStaff, ARTIST_WRITE_ACCESS);
 
     const [
       linkedArtists,
@@ -160,7 +165,9 @@ export const loadAdminClientDetail = cache(
       canViewKyc,
       canManageRoles,
       canModerate,
+      canWriteArtists,
       bids: bidsResult.rows,
+      bidsTotal: bidsResult.total,
       lifetimeSpend,
       submissionsCount,
       amlScreeningBySessionId,

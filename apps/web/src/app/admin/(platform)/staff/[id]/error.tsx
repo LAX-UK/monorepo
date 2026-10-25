@@ -1,9 +1,5 @@
 "use client";
 
-import { createAdminDetailRouteError } from "@/components/admin/create-admin-detail-route-error";
+import { createStaffTabError } from "@/components/admin/staff/create-staff-tab-error";
 
-export default createAdminDetailRouteError({
-  title: "Staff profile",
-  backHref: "/admin/staff",
-  backLabel: "Back to staff",
-});
+export default createStaffTabError({ title: "This staff member did not load" });

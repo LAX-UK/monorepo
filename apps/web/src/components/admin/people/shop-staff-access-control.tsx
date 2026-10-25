@@ -1,101 +1,155 @@
 "use client";
 
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   revokeShopStaffAccessAction,
   setShopStaffRoleAction,
 } from "@/lib/admin/people/staff-access.actions";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
+import { EnumSelect, Field, Notice, StaffButton, StaffDialog } from "@auction/staff-ui";
 import { laxStaffPlatform } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 const SHOP_ROLES = laxStaffPlatform("shop").roles;
+const ROLE_OPTIONS = SHOP_ROLES.map((role) => ({
+  value: role.value,
+  label: role.label,
+  description: role.summary,
+}));
 
-export function ShopStaffAccessControl({
+function ShopRoleDialog({
   userId,
+  userName,
   currentRole,
+  onClose,
 }: {
   userId: string;
+  userName: string;
   currentRole: string | null;
+  onClose: () => void;
 }) {
-  const [role, setRole] = useState(currentRole ?? "");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const summary = SHOP_ROLES.find((r) => r.value === role)?.summary;
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const [role, setRole] = useState<string | null>(currentRole);
+  const [roleError, setRoleError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, startTransition] = useTransition();
 
-  const run = (action: () => ReturnType<typeof setShopStaffRoleAction>, success: string) => {
-    startTransition(() => {
-      void (async () => {
-        const result = await action();
-        if (result.ok) {
-          notify.success(success);
-          router.refresh();
-          return;
-        }
-        if (handleStaffStepUp(result)) return;
-        notify.error(result.error);
-      })();
+  const save = () => {
+    if (!role) {
+      setRoleError("Choose a Shop role.");
+      return;
+    }
+    setFailure(null);
+    startTransition(async () => {
+      const result = await setShopStaffRoleAction(userId, role);
+      if (result.ok) {
+        onClose();
+        notify.success("Shop access requested", {
+          description: "It shows here once Shop applies it.",
+        });
+        router.refresh();
+        return;
+      }
+      if (handleStaffStepUp(result)) {
+        onClose();
+        return;
+      }
+      setFailure(result.error);
     });
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Select value={role} onValueChange={setRole} disabled={pending}>
-          <SelectTrigger
-            className="min-h-11 w-full font-body text-sm sm:flex-1"
-            aria-label="Shop role"
-          >
-            <SelectValue placeholder="Choose a Shop role" />
-          </SelectTrigger>
-          <SelectContent>
-            {SHOP_ROLES.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          disabled={pending || !role || role === currentRole}
-          className="min-h-11 w-full sm:w-auto"
+    <StaffDialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+      title={currentRole ? `Change ${userName}'s Shop role` : `Give ${userName} Shop access`}
+      description="Shop applies the change and it is kept in the audit log."
+      initialFocusRef={cancelRef}
+      footer={
+        <>
+          <StaffButton ref={cancelRef} variant="secondary" disabled={busy} onClick={onClose}>
+            Cancel
+          </StaffButton>
+          <StaffButton variant="primary" loading={busy} onClick={save}>
+            {currentRole ? "Save Shop role" : "Give access"}
+          </StaffButton>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {failure ? (
+          <Notice tone="danger" alert title="That did not go through">
+            {failure}
+          </Notice>
+        ) : null}
+        <Field label="Shop role" error={roleError} disabled={busy}>
+          <EnumSelect<string>
+            value={role}
+            onValueChange={(next) => {
+              setRole(next);
+              setRoleError(null);
+            }}
+            options={ROLE_OPTIONS}
+            placeholder="Choose a Shop role"
+          />
+        </Field>
+      </div>
+    </StaffDialog>
+  );
+}
+
+/** Give, change or remove someone's access to LAX Shop. Shop applies it, so it shows as pending. */
+export function ShopStaffAccessControl({
+  userId,
+  userName,
+  currentRole,
+}: {
+  userId: string;
+  userName: string;
+  currentRole: string | null;
+}) {
+  const confirm = useStaffConfirm();
+  const [choosing, setChoosing] = useState(false);
+
+  return (
+    <>
+      <StaffButton variant="secondary" size="sm" onClick={() => setChoosing(true)}>
+        {currentRole ? "Change Shop role" : "Give Shop access"}
+      </StaffButton>
+      {currentRole ? (
+        <StaffButton
+          variant="danger-secondary"
+          size="sm"
           onClick={() =>
-            run(
-              () => setShopStaffRoleAction(userId, role),
-              "Shop access requested. It shows here once Shop applies it.",
-            )
+            confirm.ask({
+              title: `Remove ${userName}'s Shop access?`,
+              description:
+                "They can no longer use the Shop staff tools. Shop applies the removal, so it shows here once it has.",
+              confirmLabel: "Remove Shop access",
+              tone: "danger",
+              stepUpAction: "remove Shop access",
+              run: () => revokeShopStaffAccessAction(userId),
+              success: "Removal requested",
+            })
           }
         >
-          {currentRole ? "Change Shop role" : "Give Shop access"}
-        </Button>
-        {currentRole ? (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={pending}
-            className="min-h-11 w-full sm:w-auto"
-            onClick={() =>
-              run(
-                () => revokeShopStaffAccessAction(userId),
-                "Removal requested. It shows here once Shop applies it.",
-              )
-            }
-          >
-            Remove Shop access
-          </Button>
-        ) : null}
-      </div>
-      {summary ? <p className="text-xs text-on-surface-variant">{summary}</p> : null}
-    </div>
+          Remove Shop access
+        </StaffButton>
+      ) : null}
+      {choosing ? (
+        <ShopRoleDialog
+          userId={userId}
+          userName={userName}
+          currentRole={currentRole}
+          onClose={() => setChoosing(false)}
+        />
+      ) : null}
+      {confirm.dialog}
+    </>
   );
 }

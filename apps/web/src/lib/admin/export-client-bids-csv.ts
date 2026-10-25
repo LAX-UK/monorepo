@@ -1,5 +1,8 @@
 import type { AdminUserBidRow } from "@/lib/data/http/admin.server";
-import { presentClientBidStatus } from "@/lib/data/view-models/client-commerce-tab.vm";
+import {
+  clientBidChannelLabel,
+  presentClientBidStatus,
+} from "@/lib/data/view-models/client-commerce-tab.vm";
 import { formatCsvDocument } from "@auction/exports";
 
 const COLUMNS = [
@@ -18,7 +21,7 @@ function toExportRow(bid: AdminUserBidRow): Record<string, string> {
     sale: bid.saleTitle ?? "",
     amount: bid.amount,
     status: status.label,
-    channel: bid.placedVia ?? "web",
+    channel: clientBidChannelLabel(bid.placedVia),
     placedAt: bid.createdAt.toISOString(),
   };
 }

@@ -1,6 +1,3 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import {
   capabilityDescription,
   capabilityLabel,
@@ -8,76 +5,51 @@ import {
 } from "@/lib/admin/capability-presenter";
 import { listCapabilitiesForStaffRole } from "@/lib/admin/staff-capabilities";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
+import { EmptyState, KeyValueList, Notice, Section } from "@auction/staff-ui";
 import type { UserStaffRole } from "@auction/types";
 
-/** Visible profile cards on staff overview (used for tab count badge). */
-export const STAFF_OVERVIEW_SECTION_COUNT = 4;
-
-export function countStaffCapabilities(staffRole: UserStaffRole | null): number {
-  return listCapabilitiesForStaffRole(staffRole).length;
-}
-
-export function AdminUserCapabilitiesPanel({
-  staffRole,
-}: {
-  staffRole: UserStaffRole | null;
-}) {
-  const caps = listCapabilitiesForStaffRole(staffRole);
-
+/** What a staff role can do in LAX Bid, grouped by area, from the current policy matrix. */
+export function AdminUserCapabilitiesPanel({ staffRole }: { staffRole: UserStaffRole | null }) {
   if (staffRole == null) {
     return (
-      <AdminEmptyState
-        title="Legacy full access"
-        description="No internal staff role is set. This account uses pre–18 June behaviour until a narrow role is assigned."
-      />
+      <Notice tone="warning" title="No staff role is set">
+        This account keeps the full access it had before 18 June until a narrower role is assigned.
+      </Notice>
     );
   }
 
-  if (caps.length === 0) {
+  const groups = groupCapabilitiesForDisplay(listCapabilitiesForStaffRole(staffRole));
+
+  if (groups.length === 0) {
     return (
-      <AdminEmptyState
-        title="No capabilities"
-        description={`Role “${staffRoleLabel(staffRole)}” has no mapped capabilities in the current policy matrix.`}
-      />
+      <Section id="permissions" title="Permissions" className="scroll-mt-20" bodyClassName="p-0">
+        <EmptyState
+          headingLevel="h3"
+          title="No permissions"
+          description={`The ${staffRoleLabel(staffRole)} role has no permissions in the current policy.`}
+        />
+      </Section>
     );
   }
-
-  const groups = groupCapabilitiesForDisplay(caps);
 
   return (
-    <div className="space-y-6">
-      <p className="font-body text-sm text-on-surface-variant">
-        Capabilities granted to{" "}
-        <span className="font-medium capitalize text-on-surface">{staffRoleLabel(staffRole)}</span>{" "}
-        in the current policy matrix.
-      </p>
-      {groups.map((group) => (
-        <CatalogDetailTabCard
+    <>
+      {groups.map((group, index) => (
+        <Section
           key={group.id}
+          {...(index === 0 ? { id: "permissions" } : {})}
           title={group.label}
-          description={`${group.capabilities.length} permission${group.capabilities.length === 1 ? "" : "s"}`}
-          countBadge={group.capabilities.length}
+          description={`${group.capabilities.length} ${group.capabilities.length === 1 ? "permission" : "permissions"} for the ${staffRoleLabel(staffRole)} role`}
+          className="scroll-mt-20"
         >
-          <ul className="divide-y divide-border-hairline">
-            {group.capabilities.map((cap) => (
-              <li
-                key={cap}
-                className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-body text-sm font-medium text-on-surface">
-                    {capabilityLabel(cap)}
-                  </p>
-                  <p className="mt-1 font-body text-xs text-on-surface-variant">
-                    {capabilityDescription(cap)}
-                  </p>
-                </div>
-                <AdminStatusBadge domain="kyc" status="approved" label="Granted" size="sm" />
-              </li>
-            ))}
-          </ul>
-        </CatalogDetailTabCard>
+          <KeyValueList
+            items={group.capabilities.map((capability) => ({
+              label: capabilityLabel(capability),
+              value: capabilityDescription(capability),
+            }))}
+          />
+        </Section>
       ))}
-    </div>
+    </>
   );
 }

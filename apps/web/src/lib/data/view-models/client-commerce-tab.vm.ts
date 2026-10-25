@@ -1,24 +1,23 @@
-import type { DetailCardGridItem } from "@/components/admin/catalog/detail-board/detail-card-grid";
-import type { DetailBoardFilter, DetailBoardKpiTile } from "@/lib/admin/detail-board/types";
 import type { AdminPaymentRow, AdminUserBidRow } from "@/lib/data/http/admin.server";
 import { formatMoney } from "@/lib/format-currency";
-import type { Lot } from "@auction/types";
-import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
-import type { ReactNode } from "react";
+import type { StatItem } from "@auction/staff-ui";
 
 export type ClientBidChannelFilter = "all" | "online" | "room" | "telephone";
 
-/** Channel filter chips — maps to existing `placedVia` values only. */
-export const CLIENT_BID_CHANNEL_FILTERS: DetailBoardFilter<ClientBidChannelFilter>[] = [
-  { id: "all", label: "All" },
-  { id: "online", label: "Online" },
-  { id: "room", label: "Room" },
-  { id: "telephone", label: "Telephone" },
+/** Channel choices for a client's bids, matched against `placedVia`. */
+export const CLIENT_BID_CHANNEL_OPTIONS: readonly {
+  value: ClientBidChannelFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "All" },
+  { value: "online", label: "Online" },
+  { value: "room", label: "Room" },
+  { value: "telephone", label: "Telephone" },
 ];
 
 export type ClientBidStatusPresentation = {
   label: "Leading" | "Outbid";
-  tone: DotStatusPillTone;
+  tone: "info" | "neutral";
 };
 
 export function presentClientBidStatus(bid: AdminUserBidRow): ClientBidStatusPresentation {
@@ -27,6 +26,25 @@ export function presentClientBidStatus(bid: AdminUserBidRow): ClientBidStatusPre
 
 function normalizePlacedVia(placedVia: string | null | undefined): string {
   return (placedVia ?? "web").trim().toLowerCase();
+}
+
+/** How a bid was placed, in the words staff use: web is online, telephone and absentee as named. */
+export function clientBidChannelLabel(placedVia: string | null | undefined): string {
+  switch (normalizePlacedVia(placedVia)) {
+    case "web":
+    case "":
+      return "Online";
+    case "saleroom":
+      return "In the room";
+    case "telephone":
+      return "Telephone";
+    case "absentee":
+      return "Absentee";
+    default: {
+      const words = normalizePlacedVia(placedVia).replace(/[_-]+/g, " ");
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
+  }
 }
 
 export function matchesClientBidChannel(
@@ -68,10 +86,15 @@ export function sumOutstandingPayments(payments: readonly AdminPaymentRow[]): nu
     .reduce((acc, payment) => acc + Number.parseFloat(payment.amount || "0"), 0);
 }
 
-export function buildClientPaymentsKpiTiles(
-  payments: readonly AdminPaymentRow[],
-): DetailBoardKpiTile[] {
-  const lifetime = sumCapturedPayments([...payments]);
+/** A decimal amount in pounds ("1250.50") as minor units (125050); null when it is not a number. */
+export function decimalToMinorUnits(amount: string | null | undefined): number | null {
+  if (amount == null || amount.trim() === "") return null;
+  const value = Number.parseFloat(amount);
+  return Number.isFinite(value) ? Math.round(value * 100) : null;
+}
+
+export function buildClientPaymentStats(payments: readonly AdminPaymentRow[]): StatItem[] {
+  const lifetime = sumCapturedPayments(payments);
   const outstanding = sumOutstandingPayments(payments);
 
   return [
@@ -79,58 +102,24 @@ export function buildClientPaymentsKpiTiles(
       id: "lifetime",
       label: "Lifetime spend",
       value: lifetime > 0 ? formatMoney(lifetime.toFixed(2)) : "—",
-      compareHint: "Captured payments",
-      trendTone: lifetime > 0 ? "accent-gold" : "muted",
+      hint: "Captured payments",
     },
     {
       id: "outstanding",
       label: "Outstanding",
       value: outstanding > 0 ? formatMoney(outstanding.toFixed(2)) : "—",
-      compareHint: outstanding > 0 ? "Payment due" : "Nothing due",
-      trendTone: outstanding > 0 ? "accent-gold" : "muted",
+      hint: outstanding > 0 ? "Payment due" : "Nothing due",
+      ...(outstanding > 0 ? { hintTone: "negative" as const } : {}),
     },
-    {
-      id: "count",
-      label: "Payments",
-      value: String(payments.length),
-      compareHint: "All statuses",
-      trendTone: "secondary",
-    },
+    { id: "count", label: "Payments", value: String(payments.length), hint: "All statuses" },
   ];
-}
-
-export function buildClientWonLotGridItems(
-  wonLots: readonly Lot[],
-  renderImage: (lot: Lot) => ReactNode,
-): DetailCardGridItem[] {
-  return wonLots.map((lot) => ({
-    id: lot.id,
-    href: `/admin/lots/${lot.id}`,
-    image: renderImage(lot),
-    title: lot.lotNumber != null ? `Lot#${lot.lotNumber}` : lot.title,
-    subtitle: lot.lotNumber != null ? lot.title : undefined,
-    badge: { label: "Winning", tone: "success" as const },
-    meta: formatMoney(lot.currentPrice),
-  }));
-}
-
-export function sortPaymentsRecentFirst(payments: readonly AdminPaymentRow[]): AdminPaymentRow[] {
-  return [...payments].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-}
-
-export function matchesClientPaymentSearch(payment: AdminPaymentRow, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return [payment.id, payment.lotId, payment.status, payment.amount].some((field) =>
-    field.toLowerCase().includes(q),
-  );
 }
 
 export function matchesClientBidSearch(bid: AdminUserBidRow, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [bid.lotTitle, bid.saleTitle, bid.amount, bid.placedVia, bid.lotId].some((field) =>
-    field?.toLowerCase().includes(q),
+  return [bid.lotTitle, bid.saleTitle, bid.amount, clientBidChannelLabel(bid.placedVia)].some(
+    (field) => field?.toLowerCase().includes(q),
   );
 }
 

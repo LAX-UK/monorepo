@@ -1,73 +1,132 @@
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+"use client";
+
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import {
   buildSofCaseDetailHref,
   buildSofListHref,
   normalizeSofListStatus,
 } from "@/lib/admin/sof-list-query";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSourceOfFundsRow } from "@/lib/data/http/compliance.server";
-import { buildAdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
-import { Surface } from "@auction/ui/components/surface";
+import {
+  type AdminSofTableRow,
+  buildAdminSofTableRow,
+} from "@/lib/data/view-models/admin-sof-table.vm";
+import {
+  CellLink,
+  type DataColumn,
+  StaffButton,
+  StaffDate,
+  type StaffLinkComponent,
+  StatusBadge,
+} from "@auction/staff-ui";
 import Link from "next/link";
+import { useMemo } from "react";
 
-type Props = {
-  cases: AdminSourceOfFundsRow[];
-};
+const NextLink: StaffLinkComponent = Link;
+const CASES_SHOWN = 5;
 
-export function AdminUserSofPanel({ cases }: Props) {
-  const pending = cases.filter((c) => c.status === "pending");
+const columns: DataColumn<AdminSofTableRow>[] = [
+  {
+    id: "status",
+    header: "Status",
+    width: "200px",
+    mobile: "title",
+    truncate: false,
+    cell: (row) => {
+      const status = staffStatus("sofCase", row.displayStatus);
+      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+    },
+  },
+  {
+    id: "reason",
+    header: "Opened because",
+    mobile: "meta",
+    cell: (row) => <span className="text-staff-muted">{row.triggerLabel}</span>,
+  },
+  {
+    id: "exposure",
+    header: "Exposure",
+    numeric: true,
+    width: "128px",
+    mobile: "meta",
+    cell: (row) => row.exposureLabel,
+  },
+  {
+    id: "opened",
+    header: "Opened",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "176px",
+    mobile: "hidden",
+    sortValue: (row) => Date.parse(row.createdAt),
+    cell: (row) => <StaffDate value={row.createdAt} withTime />,
+  },
+  {
+    id: "open",
+    header: "Open case",
+    headerHidden: true,
+    width: "96px",
+    truncate: false,
+    mobile: "actions",
+    cell: (row) => (
+      <div className="flex justify-end">
+        <CellLink
+          Link={NextLink}
+          href={buildSofCaseDetailHref(row.id, normalizeSofListStatus(row.status))}
+        >
+          Open
+        </CellLink>
+      </div>
+    ),
+  },
+];
+
+/** The client's source of funds cases, newest first, each opening in the compliance queue. */
+export function AdminUserSofPanel({ cases }: { cases: AdminSourceOfFundsRow[] }) {
+  const rows = useMemo(() => cases.map(buildAdminSofTableRow), [cases]);
   const latest = cases[0] ?? null;
+  const hasPending = cases.some((row) => row.status === "pending");
   const queueHref = latest
     ? buildSofCaseDetailHref(latest.id, normalizeSofListStatus(latest.status))
     : buildSofListHref("pending");
 
   return (
-    <Surface variant="quiet" padding="md" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <AdminSectionLabel>Source of Funds</AdminSectionLabel>
-        {latest ? (
-          <Link href={queueHref} className="text-xs text-link underline">
-            {pending.length > 0 ? "Review case" : "View case"}
-          </Link>
-        ) : null}
-      </div>
-      {!latest ? (
-        <p className="text-sm text-on-surface-variant">No Source of Funds cases on record.</p>
-      ) : (
-        <ul className="divide-y divide-outline-variant/30">
-          {cases.slice(0, 5).map((row) => {
-            const vm = buildAdminSofTableRow(row);
-            return (
-              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
-                  <AdminStatusBadge domain="sofCase" status={vm.displayStatus} size="sm" />
-                  <span className="text-on-surface-variant">
-                    {vm.triggerLabel} · {vm.exposureLabel}
-                  </span>
-                  <span className="text-on-surface-variant">
-                    Opened {formatAdminUserDate(row.createdAt)}
-                  </span>
-                </div>
-                <Link
-                  href={buildSofCaseDetailHref(row.id, normalizeSofListStatus(row.status))}
-                  className="text-xs text-link underline"
-                >
-                  Open
+    <RelatedRecordsSection
+      id="sof"
+      title="Source of funds"
+      description="Cases opened when this client's buying passes a compliance threshold."
+      {...(latest
+        ? {
+            action: (
+              <StaffButton asChild size="sm" variant="secondary">
+                <Link href={queueHref}>{hasPending ? "Review case" : "View case"}</Link>
+              </StaffButton>
+            ),
+          }
+        : {})}
+      label="Source of funds cases"
+      columns={columns}
+      data={rows.slice(0, CASES_SHOWN)}
+      getRowId={(row) => row.id}
+      defaultSort={{ columnId: "opened", direction: "desc" }}
+      empty={{
+        title: "No source of funds cases",
+        description: "A case appears here if this client's buying needs a source of funds check.",
+      }}
+      {...(cases.length > CASES_SHOWN
+        ? {
+            footer: (
+              <>
+                Showing {CASES_SHOWN} of {cases.length} cases.{" "}
+                <Link href={buildSofListHref("pending")} className="underline underline-offset-2">
+                  Review cases
                 </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {cases.length > 5 ? (
-        <p className="text-xs text-on-surface-variant">
-          Showing 5 of {cases.length} cases.{" "}
-          <Link href={buildSofListHref("pending")} className="text-link underline">
-            Review cases
-          </Link>
-        </p>
-      ) : null}
-    </Surface>
+              </>
+            ),
+          }
+        : {})}
+    />
   );
 }

@@ -1,106 +1,89 @@
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import type { AdminUserReadinessSnapshot } from "@/lib/admin/admin-user-readiness.vm";
-import { cn } from "@auction/ui";
+import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
+import {
+  type KeyValueItem,
+  KeyValueList,
+  Notice,
+  Section,
+  StaffButton,
+  StatusBadge,
+} from "@auction/staff-ui";
 import Link from "next/link";
 
-const toneClass = {
-  ready: "border-positive/30 bg-positive/5 text-positive",
-  warning: "border-warning/40 bg-warning-container/20 text-on-surface",
-  blocked: "border-live-red/40 bg-live-red/5 text-on-surface",
-} as const;
+const NEXT_STEP_TONE = { ready: "success", warning: "warning", blocked: "danger" } as const;
 
+/**
+ * Whether this client is ready to bid and buy: the next step first, then the identity,
+ * compliance and selling facts it rests on.
+ */
 export function AdminUserReadinessPanel({ snapshot }: { snapshot: AdminUserReadinessSnapshot }) {
   const { identity, compliance, commerce, nextAction } = snapshot;
+  const identityStatus = staffIdentityStatus(identity.kycStatus);
+  const amlDecision = compliance.latestAmlDecision
+    ? staffStatus("amlDecision", compliance.latestAmlDecision)
+    : null;
+
+  const items: KeyValueItem[] = [
+    { label: "Email", value: identity.emailVerified ? "Verified" : "Not verified" },
+    {
+      label: "Identity",
+      value: <StatusBadge tone={identityStatus.tone}>{identityStatus.label}</StatusBadge>,
+    },
+    {
+      label: "Two-step",
+      value: identity.securityStatusAvailable
+        ? identity.twoFactorEnabled
+          ? "On"
+          : "Off"
+        : "Unavailable",
+    },
+    {
+      label: "AML hold",
+      value: compliance.amlHoldActive ? <StatusBadge tone="danger">On hold</StatusBadge> : "None",
+    },
+    {
+      label: "AML review",
+      value: compliance.amlReviewPending ? "Awaiting review" : "None pending",
+    },
+    {
+      label: "Latest AML decision",
+      value: amlDecision ? (
+        <StatusBadge tone={amlDecision.tone}>{amlDecision.label}</StatusBadge>
+      ) : null,
+    },
+    { label: "Legal entities", value: String(commerce.legalEntityCount), numeric: true },
+    {
+      label: "Seller setup",
+      value:
+        commerce.connectGapsCount > 0
+          ? `${commerce.connectGapsCount} ${commerce.connectGapsCount === 1 ? "entity" : "entities"} incomplete`
+          : "Complete",
+    },
+    { label: "Lots won", value: String(commerce.lotsWon), numeric: true },
+    { label: "Lifetime spend", value: commerce.lifetimeSpendLabel, numeric: true },
+  ];
 
   return (
-    <CatalogDetailTabCard
-      title="Client health & readiness"
-      description="Identity, compliance, and commerce readiness for this client."
+    <Section
+      id="readiness"
+      title="Readiness"
+      description="Identity, compliance and selling status for this client."
+      className="scroll-mt-20"
     >
-      <div className={cn("rounded-lg border px-4 py-3", toneClass[nextAction.tone])}>
-        <p className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-          Next action
-        </p>
-        <Link
-          href={nextAction.href}
-          className="mt-1 block font-body text-sm font-medium hover:underline"
-        >
-          {nextAction.label}
-        </Link>
+      <div className="flex flex-col gap-4">
+        <Notice
+          tone={NEXT_STEP_TONE[nextAction.tone]}
+          title={nextAction.label}
+          actions={
+            nextAction.tone === "ready" ? null : (
+              <StaffButton asChild size="sm" variant="secondary">
+                <Link href={nextAction.href}>Review</Link>
+              </StaffButton>
+            )
+          }
+        />
+        <KeyValueList items={items} columns={2} />
       </div>
-
-      <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-        <div className="space-y-2 rounded-md border border-border-hairline/60 bg-surface-container-low/40 p-3">
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Identity</dt>
-          <dd className="flex flex-wrap gap-2">
-            <AdminStatusBadge
-              domain="kyc"
-              status={identity.emailVerified ? "approved" : "pending"}
-              label={identity.emailVerified ? "Email verified" : "Email unverified"}
-              size="sm"
-            />
-            <AdminStatusBadge domain="kyc" status={identity.kycStatus} size="sm" />
-            {identity.securityStatusAvailable ? (
-              <AdminStatusBadge
-                domain="kyc"
-                status={identity.twoFactorEnabled ? "approved" : "unverified"}
-                label={identity.twoFactorEnabled ? "2FA on" : "2FA off"}
-                size="sm"
-              />
-            ) : (
-              <AdminStatusBadge domain="kyc" status="unknown" label="2FA unavailable" size="sm" />
-            )}
-          </dd>
-        </div>
-
-        <div className="space-y-2 rounded-md border border-border-hairline/60 bg-surface-container-low/40 p-3">
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Compliance</dt>
-          <dd className="flex flex-wrap gap-2">
-            {compliance.amlHoldActive ? (
-              <AdminStatusBadge domain="amlHold" status="active" label="AML hold" size="sm" />
-            ) : (
-              <AdminStatusBadge
-                domain="amlDecision"
-                status="approved"
-                label="No AML hold"
-                size="sm"
-              />
-            )}
-            {compliance.amlReviewPending ? (
-              <AdminStatusBadge
-                domain="amlDecision"
-                status="pending"
-                label="Review pending"
-                size="sm"
-              />
-            ) : null}
-            {compliance.latestAmlDecision ? (
-              <AdminStatusBadge
-                domain="amlDecision"
-                status={compliance.latestAmlDecision}
-                size="sm"
-              />
-            ) : null}
-          </dd>
-        </div>
-
-        <div className="space-y-2 rounded-md border border-border-hairline/60 bg-surface-container-low/40 p-3">
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Commerce</dt>
-          <dd className="space-y-1 text-on-surface">
-            <p>
-              {commerce.legalEntityCount} entit{commerce.legalEntityCount === 1 ? "y" : "ies"}
-              {commerce.connectGapsCount > 0
-                ? ` · ${commerce.connectGapsCount} Connect gap(s)`
-                : ""}
-            </p>
-            <p className="text-on-surface-variant">
-              {commerce.lotsWon} lot{commerce.lotsWon === 1 ? "" : "s"} won ·{" "}
-              {commerce.lifetimeSpendLabel} spend
-            </p>
-          </dd>
-        </div>
-      </dl>
-    </CatalogDetailTabCard>
+    </Section>
   );
 }

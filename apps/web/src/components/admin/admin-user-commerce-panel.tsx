@@ -1,335 +1,404 @@
 "use client";
 
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
-import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
-import {
-  DetailBoardKpiStrip,
-  DetailBoardShell,
-  DetailBoardToolbar,
-  DetailCardGrid,
-  DetailEntityTable,
-} from "@/components/admin/catalog/detail-board";
-import { MediaImage } from "@/components/ui/media-image";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { downloadClientBidsCsv } from "@/lib/admin/export-client-bids-csv";
-import { formatAdminTableMoney } from "@/lib/admin/format-admin-table-money";
-import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import { staffStatus, toStaffStatus } from "@/lib/admin/staff-kit-status";
+import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import type { AdminPaymentRow, AdminUserBidRow } from "@/lib/data/http/admin.server";
 import {
-  CLIENT_BID_CHANNEL_FILTERS,
+  CLIENT_BID_CHANNEL_OPTIONS,
   type ClientBidChannelFilter,
-  buildClientPaymentsKpiTiles,
-  buildClientWonLotGridItems,
+  buildClientPaymentStats,
+  clientBidChannelLabel,
+  decimalToMinorUnits,
   filterClientBids,
-  matchesClientPaymentSearch,
   presentClientBidStatus,
-  sortPaymentsRecentFirst,
 } from "@/lib/data/view-models/client-commerce-tab.vm";
 import { getConnectGapState } from "@auction/connect";
+import {
+  CellLink,
+  type DataColumn,
+  DataTableToolbar,
+  PrimaryCell,
+  SegmentedControl,
+  StaffButton,
+  StaffDate,
+  type StaffLinkComponent,
+  StaffMoney,
+  StatGrid,
+  StatusBadge,
+  TableSearch,
+} from "@auction/staff-ui";
 import type { LegalEntity, Lot } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow[] }) {
-  const [search, setSearch] = useState("");
-  const kpiTiles = useMemo(() => buildClientPaymentsKpiTiles(payments), [payments]);
-  const filteredPayments = useMemo(
-    () =>
-      sortPaymentsRecentFirst(payments).filter((payment) =>
-        matchesClientPaymentSearch(payment, search),
+const NextLink: StaffLinkComponent = Link;
+
+const paymentColumns: DataColumn<AdminPaymentRow>[] = [
+  {
+    id: "created",
+    header: "Created",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "176px",
+    mobile: "meta",
+    sortValue: (payment) => payment.createdAt.getTime(),
+    cell: (payment) => <StaffDate value={payment.createdAt} withTime />,
+  },
+  {
+    id: "lot",
+    header: "Lot",
+    mobile: "title",
+    cell: (payment) => (
+      <CellLink Link={NextLink} href={`/admin/lots/${encodeURIComponent(payment.lotId)}`}>
+        Open lot
+      </CellLink>
+    ),
+  },
+  {
+    id: "amount",
+    header: "Amount",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "128px",
+    mobile: "meta",
+    sortValue: (payment) => decimalToMinorUnits(payment.amount),
+    cell: (payment) => <StaffMoney minor={decimalToMinorUnits(payment.amount)} />,
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "176px",
+    mobile: "badge",
+    truncate: false,
+    cell: (payment) => {
+      const status = staffStatus("payment", payment.status);
+      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+    },
+  },
+  {
+    id: "invoice",
+    header: "Invoice",
+    width: "144px",
+    hideBelow: "md",
+    mobile: "hidden",
+    cell: (payment) =>
+      payment.xeroOnlineInvoiceUrl ? (
+        <CellLink href={payment.xeroOnlineInvoiceUrl} external>
+          {payment.xeroInvoiceNumber ?? "View invoice"}
+        </CellLink>
+      ) : (
+        (payment.xeroInvoiceNumber ?? null)
       ),
-    [payments, search],
-  );
+  },
+];
+
+/** What this buyer has paid and owes: headline numbers, then each payment, newest first. */
+export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow[] }) {
+  const stats = useMemo(() => buildClientPaymentStats(payments), [payments]);
 
   return (
-    <div className="space-y-6">
-      <DetailBoardKpiStrip ariaLabel="Payments summary" tiles={kpiTiles} />
-      <DetailBoardShell
+    <>
+      <StatGrid label="Payments summary" items={stats} />
+      <RelatedRecordsSection
+        id="payments"
         title="Payments"
-        description="Captured and outstanding buyer payments."
-        count={filteredPayments.length}
-        toolbar={
-          <DetailBoardToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search payments…"
-          />
-        }
-      >
-        <DetailEntityTable
-          rows={filteredPayments}
-          getRowId={(payment) => payment.id}
-          ariaLabel="Client payments"
-          emptyTitle="No payments"
-          emptyDescription="No payments for this buyer yet."
-          columns={[
-            {
-              id: "lot",
-              header: "Lot",
-              cell: (payment) => (
-                <Link
-                  href={`/admin/lots/${payment.lotId}`}
-                  className="font-headline text-sm font-medium text-on-surface hover:text-link"
-                >
-                  Lot {payment.lotId.slice(0, 8)}…
-                </Link>
-              ),
-            },
-            {
-              id: "amount",
-              header: "Amount",
-              cell: (payment) => (
-                <AdminTableMoneyCell display={formatAdminTableMoney(payment.amount)} />
-              ),
-            },
-            {
-              id: "status",
-              header: "Status",
-              cell: (payment) => (
-                <AdminStatusBadge domain="payment" status={payment.status} size="sm" />
-              ),
-            },
-            {
-              id: "created",
-              header: "Created",
-              cell: (payment) => (
-                <AdminTableDateTimeCell iso={payment.createdAt.toISOString()} mode="timestamp" />
-              ),
-            },
-            {
-              id: "invoice",
-              header: "Invoice",
-              cell: (payment) =>
-                payment.xeroOnlineInvoiceUrl ? (
-                  <a
-                    href={payment.xeroOnlineInvoiceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-body text-xs text-link hover:underline"
-                  >
-                    View
-                  </a>
-                ) : (
-                  <span className="font-body text-xs text-on-surface-variant">—</span>
-                ),
-            },
-          ]}
-        />
-      </DetailBoardShell>
-    </div>
+        description="Captured and outstanding payments from this buyer."
+        label="Client payments"
+        columns={paymentColumns}
+        data={payments}
+        getRowId={(payment) => payment.id}
+        defaultSort={{ columnId: "created", direction: "desc" }}
+        empty={{
+          title: "No payments yet",
+          description: "Payments appear here once this client has won a lot and been invoiced.",
+        }}
+      />
+    </>
   );
 }
 
+const bidColumns: DataColumn<AdminUserBidRow>[] = [
+  {
+    id: "lot",
+    header: "Lot",
+    mobile: "title",
+    sortable: true,
+    sortValue: (bid) => bid.lotTitle.toLowerCase(),
+    cell: (bid) => (
+      <PrimaryCell
+        Link={NextLink}
+        href={`/admin/lots/${encodeURIComponent(bid.lotId)}`}
+        secondary={bid.isAutoBid ? "Automatic bid" : null}
+      >
+        {bid.lotTitle}
+      </PrimaryCell>
+    ),
+  },
+  {
+    id: "sale",
+    header: "Sale",
+    hideBelow: "lg",
+    mobile: "meta",
+    cell: (bid) =>
+      bid.saleId && bid.saleTitle ? (
+        <CellLink Link={NextLink} href={`/admin/sales/${encodeURIComponent(bid.saleId)}`}>
+          {bid.saleTitle}
+        </CellLink>
+      ) : (
+        (bid.saleTitle ?? null)
+      ),
+  },
+  {
+    id: "channel",
+    header: "Placed",
+    width: "128px",
+    hideBelow: "lg",
+    mobile: "hidden",
+    cell: (bid) => <span className="text-staff-muted">{clientBidChannelLabel(bid.placedVia)}</span>,
+  },
+  {
+    id: "amount",
+    header: "Amount",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "128px",
+    mobile: "meta",
+    sortValue: (bid) => decimalToMinorUnits(bid.amount),
+    cell: (bid) => <StaffMoney minor={decimalToMinorUnits(bid.amount)} />,
+  },
+  {
+    id: "result",
+    header: "Result",
+    width: "128px",
+    mobile: "badge",
+    truncate: false,
+    cell: (bid) => {
+      const status = presentClientBidStatus(bid);
+      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+    },
+  },
+  {
+    id: "time",
+    header: "Time",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "176px",
+    mobile: "hidden",
+    sortValue: (bid) => bid.createdAt.getTime(),
+    cell: (bid) => <StaffDate value={bid.createdAt} withTime />,
+  },
+];
+
+/** The most recent bids this client placed, searchable and filterable by channel. */
 export function AdminUserBidsPanel({
   bids,
+  total,
   clientLabel = "client",
 }: {
   bids: AdminUserBidRow[];
+  /** All bids this client has placed, when more than `bids` shows. */
+  total?: number;
   clientLabel?: string;
 }) {
   const [search, setSearch] = useState("");
   const [channel, setChannel] = useState<ClientBidChannelFilter>("all");
-  const filteredBids = useMemo(
+  const filtered = useMemo(
     () => filterClientBids(bids, { search, channel }),
     [bids, search, channel],
   );
+  const filtering = search.trim() !== "" || channel !== "all";
 
   return (
-    <div className="space-y-6">
-      <DetailBoardShell
-        title="Bidding"
-        description="Recent bidding activity for this client."
-        count={filteredBids.length}
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={bids.length === 0}
-            onClick={() => downloadClientBidsCsv(filteredBids, clientLabel)}
-          >
-            Export
-          </Button>
-        }
-        toolbar={
-          <DetailBoardToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search…"
-            filters={CLIENT_BID_CHANNEL_FILTERS}
-            activeFilter={channel}
-            onFilterChange={setChannel}
-            filterAriaLabel="Filter bids by channel"
-          />
-        }
-      >
-        <DetailEntityTable
-          rows={filteredBids}
-          getRowId={(bid) => bid.id}
-          ariaLabel="Client bids"
-          emptyTitle="No bids"
-          emptyDescription="This client has not placed any bids yet."
-          columns={[
-            {
-              id: "lot",
-              header: "Lot#",
-              cell: (bid) => (
-                <div className="min-w-0">
-                  <Link
-                    href={`/admin/lots/${bid.lotId}`}
-                    className="font-headline text-sm font-medium text-on-surface hover:text-link"
-                  >
-                    {bid.lotTitle}
-                  </Link>
-                  {bid.isAutoBid ? (
-                    <p className="mt-0.5 font-body text-[11px] text-on-surface-variant">Auto bid</p>
-                  ) : null}
-                </div>
-              ),
-            },
-            {
-              id: "sale",
-              header: "Sale",
-              cell: (bid) => (
-                <span className="block max-w-[14rem] truncate font-body text-sm text-on-surface">
-                  {bid.saleTitle ?? "—"}
-                </span>
-              ),
-            },
-            {
-              id: "amount",
-              header: "Amount",
-              cell: (bid) => <AdminTableMoneyCell display={formatAdminTableMoney(bid.amount)} />,
-            },
-            {
-              id: "status",
-              header: "Status",
-              cell: (bid) => {
-                const status = presentClientBidStatus(bid);
-                return <DotStatusPill label={status.label} tone={status.tone} />;
-              },
-            },
-            {
-              id: "time",
-              header: "Time",
-              cell: (bid) => (
-                <AdminTableDateTimeCell iso={bid.createdAt.toISOString()} mode="timestamp" />
-              ),
-            },
-          ]}
+    <RelatedRecordsSection
+      id="bids"
+      title="Bids"
+      description="Recent bidding by this client, newest first."
+      label="Client bids"
+      columns={bidColumns}
+      data={filtered}
+      getRowId={(bid) => bid.id}
+      defaultSort={{ columnId: "time", direction: "desc" }}
+      toolbar={
+        <DataTableToolbar
+          search={
+            <TableSearch
+              live
+              label="Search bids"
+              placeholder="Lot, sale or amount"
+              value={search}
+              onSearch={setSearch}
+            />
+          }
+          filters={
+            <SegmentedControl<ClientBidChannelFilter>
+              label="Channel"
+              value={channel}
+              onValueChange={setChannel}
+              options={CLIENT_BID_CHANNEL_OPTIONS}
+            />
+          }
+          end={
+            <StaffButton
+              size="sm"
+              variant="secondary"
+              {...(filtered.length === 0 ? { disabledReason: "There are no bids to export" } : {})}
+              onClick={() => downloadClientBidsCsv(filtered, clientLabel)}
+            >
+              Export CSV
+            </StaffButton>
+          }
         />
-      </DetailBoardShell>
-    </div>
+      }
+      empty={
+        filtering
+          ? { title: "No bids match", description: "Try a different search or channel." }
+          : {
+              title: "No bids yet",
+              description: "Bids appear here once this client starts bidding.",
+            }
+      }
+      {...(total != null && total > bids.length
+        ? { footer: `Showing the latest ${bids.length} of ${total} bids.` }
+        : {})}
+    />
   );
 }
 
-export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
-  const items = buildClientWonLotGridItems(wonLots, (lot) =>
-    lot.images[0] ? (
-      <MediaImage
-        src={lot.images[0]}
-        alt={lot.title}
-        label={lot.title}
-        imgClassName="size-full object-cover"
-        sizes="(max-width: 640px) 50vw, 320px"
-      />
-    ) : (
-      <div className="flex size-full items-center justify-center font-body text-xs text-on-surface-variant">
-        No image
-      </div>
+const wonLotColumns: DataColumn<Lot>[] = [
+  {
+    id: "lot",
+    header: "Lot",
+    mobile: "title",
+    sortable: true,
+    sortValue: (lot) => lot.title.toLowerCase(),
+    cell: (lot) => (
+      <PrimaryCell
+        Link={NextLink}
+        href={`/admin/lots/${encodeURIComponent(lot.id)}`}
+        thumbnail={{ src: lot.images[0] ?? null, missingLabel: "No photo yet" }}
+        secondary={lot.lotNumber != null ? `Lot ${lot.lotNumber}` : null}
+      >
+        {lot.title}
+      </PrimaryCell>
     ),
-  );
+  },
+  {
+    id: "ended",
+    header: "Ended",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "176px",
+    mobile: "meta",
+    sortValue: (lot) => new Date(lot.endTime).getTime(),
+    cell: (lot) => <StaffDate value={lot.endTime} withTime />,
+  },
+  {
+    id: "price",
+    header: "Winning bid",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "desc",
+    width: "144px",
+    mobile: "meta",
+    sortValue: (lot) => decimalToMinorUnits(lot.currentPrice),
+    cell: (lot) => <StaffMoney minor={decimalToMinorUnits(lot.currentPrice)} />,
+  },
+];
 
+/** Lots this client has won, most recently ended first. */
+export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
   return (
-    <div className="space-y-6">
-      <DetailBoardShell
-        title="Won lots"
-        description="Lots this client has won across all sales."
-        count={wonLots.length}
-      >
-        <DetailCardGrid
-          items={items}
-          columns={3}
-          emptyTitle="This client has not won any lots yet."
-        />
-      </DetailBoardShell>
-    </div>
+    <RelatedRecordsSection
+      id="won-lots"
+      title="Won lots"
+      description="Lots this client has won across all sales."
+      label="Won lots"
+      columns={wonLotColumns}
+      data={wonLots}
+      getRowId={(lot) => lot.id}
+      defaultSort={{ columnId: "ended", direction: "desc" }}
+      empty={{
+        title: "No won lots yet",
+        description: "Lots this client wins appear here.",
+      }}
+    />
   );
 }
 
-function PanelHeader({ title, summary }: { title: string; summary?: string }) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <AdminSectionLabel>{title}</AdminSectionLabel>
-      {summary ? (
-        <span className="font-headline text-lg tabular-nums text-on-surface">{summary}</span>
-      ) : null}
-    </div>
-  );
-}
+const entityColumns: DataColumn<LegalEntity>[] = [
+  {
+    id: "name",
+    header: "Name",
+    mobile: "title",
+    sortable: true,
+    sortValue: (entity) => entity.displayName.toLowerCase(),
+    cell: (entity) => (
+      <PrimaryCell Link={NextLink} href={`/admin/legal-entities/${encodeURIComponent(entity.id)}`}>
+        {entity.displayName}
+      </PrimaryCell>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "160px",
+    mobile: "badge",
+    truncate: false,
+    cell: (entity) => {
+      const status = staffStatus("legalEntity", entity.status);
+      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+    },
+  },
+  {
+    id: "setup",
+    header: "Seller setup",
+    width: "280px",
+    hideBelow: "md",
+    mobile: "meta",
+    truncate: false,
+    cell: (entity) => {
+      const gap = getConnectGapState(entity);
+      const stage = toStaffStatus(
+        connectGapStageBadgeVariant(gap.stage),
+        connectGapStageLabel(gap.stage),
+      );
+      return (
+        <span className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone={stage.tone}>{stage.label}</StatusBadge>
+          {gap.missing.length > 0 ? (
+            <span className="text-staff-muted">
+              {gap.missing.length} {gap.missing.length === 1 ? "requirement" : "requirements"} due
+            </span>
+          ) : null}
+        </span>
+      );
+    },
+  },
+];
 
+/** The seller organisations this client created, with their account status and payout setup. */
 export function AdminUserLegalEntitiesPanel({ legalEntities }: { legalEntities: LegalEntity[] }) {
   return (
-    <Surface variant="quiet" padding="md" className="space-y-3">
-      <PanelHeader
-        title="Legal entities"
-        {...(legalEntities.length > 0 ? { summary: String(legalEntities.length) } : {})}
-      />
-      {legalEntities.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">
-          No seller organisations created by this user.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {legalEntities.map((entity) => (
-            <li
-              key={entity.id}
-              className="rounded-md border border-border-hairline bg-surface-container-lowest px-3 py-3"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Link
-                  href={`/admin/legal-entities/${entity.id}`}
-                  className="font-medium text-link hover:underline"
-                >
-                  {entity.displayName}
-                </Link>
-                <AdminStatusBadge domain="legalEntity" status={entity.status} size="sm" />
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {(() => {
-                  const gap = getConnectGapState(entity);
-                  return (
-                    <>
-                      <AdminStatusBadge
-                        domain="legalEntity"
-                        status={
-                          gap.stage === "ready" || gap.stage === "managed_by_lax"
-                            ? "approved"
-                            : "under_review"
-                        }
-                        label={connectGapStageLabel(gap.stage)}
-                        size="sm"
-                      />
-                      {gap.missing.length > 0 ? (
-                        <AdminStatusBadge
-                          domain="legalEntity"
-                          status="restricted"
-                          label={`${gap.missing.length} requirement(s) due`}
-                          size="sm"
-                        />
-                      ) : null}
-                    </>
-                  );
-                })()}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Surface>
+    <RelatedRecordsSection
+      id="legal-entities"
+      title="Legal entities"
+      description="Seller organisations created by this client."
+      label="Legal entities"
+      columns={entityColumns}
+      data={legalEntities}
+      getRowId={(entity) => entity.id}
+      defaultSort={{ columnId: "name", direction: "asc" }}
+      empty={{
+        title: "No legal entities",
+        description: "Seller organisations this client creates appear here.",
+      }}
+    />
   );
 }
