@@ -176,9 +176,10 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("support@lax.bid");
   });
 
-  it("includes the hosted logo and names both companies on LAX Account mail", async () => {
+  it("shows the LAX Account lockup and names both companies on LAX Account mail", async () => {
     const rendered = await renderEmail("welcome", { userName: "Ada" });
-    expect(rendered.html).toMatch(/https?:\/\/.+\/email\/lax-logo\.png/);
+    expect(rendered.html).toMatch(/https?:\/\/.+\/email\/lax-account-lockup\.png/);
+    expect(rendered.html).not.toContain("lax-logo.png");
     expect(rendered.text).toContain(
       "LAX Account is provided by London Auction Xchange LTD and London Art Exchange Ltd.",
     );
@@ -220,6 +221,9 @@ describe("renderEmail", () => {
     });
     expect(shop.text).toContain("London Art Exchange Ltd. All rights reserved.");
     expect(shop.text).not.toContain("London Auction Xchange LTD");
+    expect(shop.html).toContain("/email/lax-shop-lockup.png");
+    expect(shop.html).toContain('alt="LAX Shop"');
+    expect(shop.html).not.toContain("lax-logo.png");
 
     const art = await renderEmail("art-general-enquiry-alert", {
       topicLabel: "Private viewing",

@@ -7,7 +7,8 @@ import {
   categoryAccentColor,
 } from "@auction/branding";
 import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
-import type { ReactNode } from "react";
+import { type ReactNode, useContext } from "react";
+import { EmailProductContext } from "../email-product.js";
 import { AccountHeader } from "./AccountHeader.js";
 import { Eyebrow } from "./Eyebrow.js";
 import { Header } from "./Header.js";
@@ -20,7 +21,7 @@ export type LayoutProps = {
   category: EmailCategory;
   title: string;
   unsubscribeUrl?: string | null;
-  /** `account` swaps the London Art Exchange wordmark for the LAX Account lockup. */
+  /** `account` uses the left-aligned LAX Account lockup for security notices. */
   header?: "wordmark" | "account";
   /** Product the email belongs to; defaults to the one `renderEmail` resolves for the template. */
   product?: LaxBrandProduct;
@@ -38,6 +39,8 @@ export function Layout({
   children,
 }: LayoutProps) {
   const accent = categoryAccentColor(category);
+  const renderedFor = useContext(EmailProductContext);
+  const resolvedProduct = product ?? renderedFor;
 
   return (
     <Html lang="en">
@@ -50,13 +53,13 @@ export function Layout({
       <Body style={body}>
         <Container style={container}>
           <Section style={inner}>
-            {header === "account" ? <AccountHeader /> : <Header />}
+            {header === "account" ? <AccountHeader /> : <Header product={resolvedProduct} />}
             <Eyebrow category={category} label={eyebrow} />
             <DocumentHeading accentColor={accent}>{title}</DocumentHeading>
             {children}
             <LegalFooter
               {...(unsubscribeUrl != null ? { unsubscribeUrl } : {})}
-              {...(product ? { product } : {})}
+              product={resolvedProduct}
             />
           </Section>
         </Container>

@@ -1,28 +1,36 @@
 import {
   COLORS,
-  EMAIL_LOGO_ALT,
-  EMAIL_LOGO_DISPLAY_WIDTH,
-  EMAIL_LOGO_URL,
-  EMAIL_LOGO_URL_2X,
+  EMAIL_PRODUCT_LOGOS,
   EMAIL_SITE_URL,
+  type LaxBrandProduct,
 } from "@auction/branding";
 import { Img, Link, Section } from "@react-email/components";
 
-const displayHeight = Math.round((140 * EMAIL_LOGO_DISPLAY_WIDTH) / 480);
-
-export function Header() {
+/**
+ * The lockup of the product that sends the email. Only Bid's links home: the hosted email
+ * assets and `EMAIL_SITE_URL` belong to LAX Bid.
+ */
+export function Header({ product }: { product: LaxBrandProduct }) {
+  const logo = EMAIL_PRODUCT_LOGOS[product];
+  const image = (
+    <Img
+      alt={logo.alt}
+      height={logo.displayHeight}
+      src={logo.url}
+      srcSet={`${logo.url} 1x, ${logo.url2x} 2x`}
+      style={img}
+      width={logo.displayWidth}
+    />
+  );
   return (
     <Section style={section}>
-      <Link href={EMAIL_SITE_URL} style={logoLink}>
-        <Img
-          alt={EMAIL_LOGO_ALT}
-          height={displayHeight}
-          src={EMAIL_LOGO_URL}
-          srcSet={`${EMAIL_LOGO_URL} 1x, ${EMAIL_LOGO_URL_2X} 2x`}
-          style={img}
-          width={EMAIL_LOGO_DISPLAY_WIDTH}
-        />
-      </Link>
+      {product === "bid" ? (
+        <Link href={EMAIL_SITE_URL} style={logoLink}>
+          {image}
+        </Link>
+      ) : (
+        <div style={logoLink}>{image}</div>
+      )}
       <div style={goldRule} />
     </Section>
   );
