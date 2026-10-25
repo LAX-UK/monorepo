@@ -24,8 +24,8 @@ export default function SocialAccountUnlinkedEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Your {label} account was disconnected from your London Art Exchange account. You can no
-        longer sign in with {label} unless you link it again.
+        Your {label} account was disconnected from your LAX Account. You can no longer sign in with{" "}
+        {label} unless you link it again.
       </TextBlock>
       <TextBlock>
         If you did not make this change, contact support immediately and review your remaining

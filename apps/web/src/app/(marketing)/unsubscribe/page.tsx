@@ -10,7 +10,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForPrivate(
   "Unsubscribe",
-  "Update your London Art Exchange email preferences.",
+  "Update your LAX Bid email preferences.",
 );
 
 export default async function UnsubscribePage({

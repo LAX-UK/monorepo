@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Verify your email",
-  "Check your inbox to finish setting up your London Art Exchange account.",
+  "Check your inbox to finish setting up your LAX Account.",
 );
 
 export default async function VerifyPendingPage({

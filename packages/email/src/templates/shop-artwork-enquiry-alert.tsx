@@ -4,7 +4,7 @@ import type { TemplateVarsByName } from "../types.js";
 
 type Vars = TemplateVarsByName["shop-artwork-enquiry-alert"];
 
-const STOREFRONT_LABEL = { shop: "Shop", art: "LAX Art" } as const;
+const STOREFRONT_LABEL = { shop: "Shop", art: "lax.art" } as const;
 
 function storefrontLabel(storefront: Vars["storefront"]): string {
   return STOREFRONT_LABEL[storefront ?? "shop"];

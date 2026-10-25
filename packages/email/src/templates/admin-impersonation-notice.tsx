@@ -21,13 +21,13 @@ export default function AdminImpersonationNoticeEmail(
     <Layout
       category="admin"
       eyebrow="Account review"
-      preview={`London Art Exchange support is reviewing ${entityName}.`}
+      preview={`LAX Bid support is reviewing ${entityName}.`}
       title="Account review"
     >
       <TextBlock>Hi {recipientFirstName || "there"},</TextBlock>
       <TextBlock>
-        {adminDisplayName} from London Art Exchange (LAX) support is reviewing your organisation
-        account <strong>{entityName}</strong> as part of a support or investigation request.
+        {adminDisplayName} from LAX Bid support is reviewing your organisation account{" "}
+        <strong>{entityName}</strong> as part of a support or investigation request.
       </TextBlock>
       <TextBlock>
         This access is time-limited and is expected to end by <strong>{windowEndDisplay}</strong>{" "}

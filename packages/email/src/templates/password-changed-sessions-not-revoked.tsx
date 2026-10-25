@@ -18,8 +18,8 @@ export default function PasswordChangedSessionsNotRevokedEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Your London Art Exchange password was changed successfully. We could not sign out your other
-        active sessions automatically.
+        Your LAX Account password was changed successfully. We could not sign out your other active
+        sessions automatically.
       </TextBlock>
       <TextBlock>
         For your security, review active sessions and sign out anywhere you do not recognise:{" "}

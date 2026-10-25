@@ -8,7 +8,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForPrivate(
   "Account suspended",
-  "Your London Art Exchange account is suspended.",
+  "Your LAX Account is suspended.",
 );
 
 export default function AccountSuspendedPage() {

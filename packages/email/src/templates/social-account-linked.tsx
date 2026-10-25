@@ -24,8 +24,7 @@ export default function SocialAccountLinkedEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Your {label} account was linked to your London Art Exchange account. You can now sign in
-        with {label}.
+        Your {label} account was linked to your LAX Account. You can now sign in with {label}.
       </TextBlock>
       <TextBlock>
         If you did not make this change, contact support immediately and review your sign-in methods

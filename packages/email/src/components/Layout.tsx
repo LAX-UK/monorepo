@@ -3,6 +3,7 @@ import {
   EMAIL_RADIUS_PX,
   type EmailCategory,
   FONT_STACK_BODY,
+  type LaxBrandProduct,
   categoryAccentColor,
 } from "@auction/branding";
 import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
@@ -21,6 +22,8 @@ export type LayoutProps = {
   unsubscribeUrl?: string | null;
   /** `account` swaps the London Art Exchange wordmark for the LAX Account lockup. */
   header?: "wordmark" | "account";
+  /** Product the email belongs to; defaults to the one `renderEmail` resolves for the template. */
+  product?: LaxBrandProduct;
   children: ReactNode;
 };
 
@@ -31,6 +34,7 @@ export function Layout({
   title,
   unsubscribeUrl,
   header = "wordmark",
+  product,
   children,
 }: LayoutProps) {
   const accent = categoryAccentColor(category);
@@ -49,7 +53,10 @@ export function Layout({
             <Eyebrow category={category} label={eyebrow} />
             <DocumentHeading accentColor={accent}>{title}</DocumentHeading>
             {children}
-            <LegalFooter {...(unsubscribeUrl != null ? { unsubscribeUrl } : {})} />
+            <LegalFooter
+              {...(unsubscribeUrl != null ? { unsubscribeUrl } : {})}
+              {...(product ? { product } : {})}
+            />
           </Section>
         </Container>
       </Body>

@@ -11,7 +11,7 @@ const PROVIDER_LABEL: Record<"google" | "apple", string> = {
 };
 
 export function subject({ provider }: TemplateVarsByName["oauth-account-reset-attempt"]): string {
-  return `Sign in with ${PROVIDER_LABEL[provider]} for your London Art Exchange account`;
+  return `Sign in with ${PROVIDER_LABEL[provider]} for your LAX Account`;
 }
 
 export default function OAuthAccountResetAttempt({
@@ -31,9 +31,9 @@ export default function OAuthAccountResetAttempt({
     >
       <TextBlock>Hi {userName || userEmail},</TextBlock>
       <TextBlock>
-        We received a request to reset the password for your London Art Exchange account, but this
-        account was created using {label}. There is no password to reset — you can sign in directly
-        with {label} below.
+        We received a request to reset the password for your LAX Account, but this account was
+        created using {label}. There is no password to reset — you can sign in directly with {label}{" "}
+        below.
       </TextBlock>
       <Button href={signInUrl}>Sign in with {label}</Button>
       <TextBlock>

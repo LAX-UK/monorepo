@@ -1,4 +1,4 @@
-import type { TemplateDomainSlice } from "./shared.js";
+import type { EmailProductVars, TemplateDomainSlice } from "./shared.js";
 
 const names = [
   "account-suspended",
@@ -35,7 +35,7 @@ type SecurityNoticeVars = {
   secureAccountUrl: string;
 };
 
-type AuthTemplateVars = {
+type AuthTemplateVarsBase = {
   "account-suspended": {
     userName?: string | null;
     supportContactEmail: string;
@@ -115,6 +115,9 @@ type AuthTemplateVars = {
     recipient: "current" | "new";
   };
 };
+
+/** Shared account mail may say which product the person is acting in; the footer then names its company. */
+type AuthTemplateVars = { [K in AuthTemplateName]: AuthTemplateVarsBase[K] & EmailProductVars };
 
 export const authTemplates = {
   names,
