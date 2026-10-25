@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 /** Lists in Bid admin that staff can save views for. Anything else is rejected. */
-export const ADMIN_SAVED_VIEW_LIST_KEYS = ["bid-admin.lots", "bid-admin.clients"] as const;
+export const ADMIN_SAVED_VIEW_LIST_KEYS = [
+  "bid-admin.lots",
+  "bid-admin.clients",
+  "bid-admin.submissions",
+] as const;
 export type AdminSavedViewListKey = (typeof ADMIN_SAVED_VIEW_LIST_KEYS)[number];
 
 export const ADMIN_SAVED_VIEWS_PER_LIST_MAX = 50;

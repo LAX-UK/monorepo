@@ -110,6 +110,17 @@ describe("saved views by role", () => {
     expect(res.status).toBe(status);
   });
 
+  it.each([
+    ["super admin", "super_admin", 200],
+    ["catalogue manager", "catalogue_manager", 200],
+    ["auction manager", "auction_manager", 200],
+    ["staff viewer", "staff_viewer", 403],
+  ])("submissions views for a %s answer %i", async (_label, staffRole, status) => {
+    const { as } = setup();
+    const res = await as(staff(ALICE, staffRole)).list("bid-admin.submissions");
+    expect(res.status).toBe(status);
+  });
+
   it("refuses a customer", async () => {
     const { as } = setup();
     const person = as({ userId: ALICE, role: "client", staffRole: null });
