@@ -29,8 +29,18 @@ export function buildOverviewTiles(input: {
       href: "/fulfilment",
       value: input.kpis.fulfilmentOpenCount,
     },
-    { key: "payouts", label: "Payouts due", href: "/payouts", value: input.kpis.payoutsDueCount },
-    { key: "holds", label: "Active holds", href: "/holds", value: input.kpis.activeHoldsCount },
+    {
+      key: "payouts",
+      label: "Payouts due",
+      href: "/payouts?view=due",
+      value: input.kpis.payoutsDueCount,
+    },
+    {
+      key: "holds",
+      label: "Active holds",
+      href: "/holds?view=active",
+      value: input.kpis.activeHoldsCount,
+    },
     {
       key: "requests",
       label: "Pending limit requests",

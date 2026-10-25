@@ -32,8 +32,13 @@ export const ProductionTaskStaffSchema = Type.Object({
 });
 export type ProductionTaskStaff = Static<typeof ProductionTaskStaffSchema>;
 
+/** Newest first by default; the task id breaks ties either way. */
+export const PRODUCTION_TASK_SORTS = ["created_desc", "created_asc"] as const;
+export type ProductionTaskSort = (typeof PRODUCTION_TASK_SORTS)[number];
+
 /** `assignee` is `me`, `unassigned` or a staff identity subject. */
 export const AdminProductionTaskListQuerySchema = Type.Object({
+  sort: Type.Optional(Type.Union([Type.Literal("created_desc"), Type.Literal("created_asc")])),
   status: Type.Optional(ProductionTaskStatusSchema),
   assignee: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   q: Type.Optional(Type.String({ maxLength: PRODUCTION_TASK_SEARCH_MAX_LENGTH })),

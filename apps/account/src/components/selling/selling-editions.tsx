@@ -100,6 +100,9 @@ function HistoryRow({ row }: { row: RequestHistoryVm }) {
         <SellingStatus label={row.outcome} tone={row.tone} />
       </div>
       <p className="text-xs text-on-surface-variant">{row.detail}</p>
+      {row.declineReason ? (
+        <p className="text-sm text-on-surface">Reason from LAX: {row.declineReason}</p>
+      ) : null}
       {row.note ? <p className="text-xs text-on-surface-variant">Your note: {row.note}</p> : null}
     </li>
   );

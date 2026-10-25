@@ -1,7 +1,12 @@
-import { SALE_AUTHORITY_NOTE_MAX_LENGTH, ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import {
+  SALE_AUTHORITY_NOTE_MAX_LENGTH,
+  SHOP_API_ERROR_CODES,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
+import { ShopApiError } from "../../../errors/shop-api-error.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireRecentAuthentication,
@@ -83,9 +88,18 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
       };
       const idempotencyKey = requireIdempotencyKey(request);
       if (body.decision === "decline") {
+        // The seller is shown the reason, so a decline always carries one.
+        const reason = body.declineReason?.trim();
+        if (!reason) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.VALIDATION,
+            "A decline needs a reason the seller can read",
+            400,
+          );
+        }
         return deps.rejectSaleAuthorityRequest({
           requestId,
-          reason: body.declineReason ?? "Declined by staff",
+          reason,
           operatorSubjectId: subject,
           idempotencyKey,
         });

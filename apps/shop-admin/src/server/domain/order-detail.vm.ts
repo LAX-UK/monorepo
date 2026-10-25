@@ -4,6 +4,7 @@ import {
   type AdminRefundReason,
 } from "@auction/shop-contracts";
 import {
+  SHOP_FULFILMENT_STATUSES,
   type ShopFulfilmentStatus,
   isShopFulfilmentStatus,
   nextFulfilmentStatuses,
@@ -13,12 +14,11 @@ import {
   type EntityOption,
   type EnumOption,
   type TimelineEvent,
-  defineStatusMap,
   formatGbp,
   humanizeStatus,
 } from "@auction/staff-ui";
-import { ORDER_STATUS_LABELS, orderNumber, orderStatusTone } from "./order-list.vm";
-import { PRODUCTION_STATUS_LABELS, productionStatusTone } from "./production-queue.vm";
+import { orderNumber } from "./order-list.vm";
+import { presentStatus, staffStatusLabel } from "./staff-status";
 
 /*
  * How an order reads on its page and in the quick-view panel: one status mapping per domain
@@ -26,58 +26,15 @@ import { PRODUCTION_STATUS_LABELS, productionStatusTone } from "./production-que
  * offer. Pure, so the rules are tested without rendering.
  */
 
-export const presentOrderStatus = defineStatusMap(
-  Object.fromEntries(
-    Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => [
-      status,
-      { label, tone: orderStatusTone(status) },
-    ]),
-  ) as Record<
-    keyof typeof ORDER_STATUS_LABELS,
-    { label: string; tone: ReturnType<typeof orderStatusTone> }
-  >,
-);
+export const presentOrderStatus = presentStatus("order");
 
-export const FULFILMENT_STATUS_LABELS: Record<ShopFulfilmentStatus, string> = {
-  pending_production: "Waiting for production",
-  in_production: "In production",
-  awaiting_dispatch: "Ready to dispatch",
-  in_transit: "In transit",
-  ready_for_collection: "Ready for collection",
-  collected: "Collected",
-  in_storage: "In storage",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
+export const FULFILMENT_STATUS_LABELS = Object.fromEntries(
+  SHOP_FULFILMENT_STATUSES.map((status) => [status, staffStatusLabel("fulfilment", status)]),
+) as Record<ShopFulfilmentStatus, string>;
 
-export const presentFulfilmentStatus = defineStatusMap<ShopFulfilmentStatus>({
-  pending_production: { label: FULFILMENT_STATUS_LABELS.pending_production, tone: "neutral" },
-  in_production: { label: FULFILMENT_STATUS_LABELS.in_production, tone: "info" },
-  awaiting_dispatch: { label: FULFILMENT_STATUS_LABELS.awaiting_dispatch, tone: "warning" },
-  in_transit: { label: FULFILMENT_STATUS_LABELS.in_transit, tone: "info" },
-  ready_for_collection: { label: FULFILMENT_STATUS_LABELS.ready_for_collection, tone: "warning" },
-  collected: { label: FULFILMENT_STATUS_LABELS.collected, tone: "success" },
-  in_storage: { label: FULFILMENT_STATUS_LABELS.in_storage, tone: "neutral" },
-  delivered: { label: FULFILMENT_STATUS_LABELS.delivered, tone: "success" },
-  cancelled: { label: FULFILMENT_STATUS_LABELS.cancelled, tone: "neutral" },
-});
-
-export const presentRefundStatus = defineStatusMap({
-  pending: { label: "Pending", tone: "warning" },
-  succeeded: { label: "Refunded", tone: "success" },
-  failed: { label: "Failed", tone: "danger" },
-  cancelled: { label: "Cancelled", tone: "neutral" },
-});
-
-export function presentProductionStatus(status: string) {
-  const label = (PRODUCTION_STATUS_LABELS as Record<string, string | undefined>)[status];
-  return label
-    ? {
-        label,
-        tone: productionStatusTone(status as keyof typeof PRODUCTION_STATUS_LABELS),
-      }
-    : { label: humanizeStatus(status), tone: "neutral" as const };
-}
+export const presentFulfilmentStatus = presentStatus("fulfilment");
+export const presentRefundStatus = presentStatus("refund");
+export const presentProductionStatus = presentStatus("production");
 
 const FULFILMENT_OPTION_LABELS: Record<string, string> = {
   uk_insured_delivery: "UK insured delivery",

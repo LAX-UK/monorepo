@@ -9,7 +9,9 @@ import {
   checkFulfilmentEdit,
   fulfilmentEditPermission,
   fulfilmentMoveKind,
+  fulfilmentMoveLabel,
   movesNeedTracking,
+  possessionDefault,
 } from "./fulfilment-edit.vm";
 import { fulfilmentNextOptions } from "./order-detail.vm";
 
@@ -236,5 +238,23 @@ describe("checkFulfilmentEdit", () => {
         { ok: true, request: { kind: "update", status: "delivered" } },
       );
     });
+  });
+});
+
+describe("fulfilmentMoveLabel", () => {
+  it("names the chosen move on the button, for every status", () => {
+    expect(fulfilmentMoveLabel("delivered")).toBe("Mark delivered");
+    expect(fulfilmentMoveLabel("ready_for_collection")).toBe("Mark ready for collection");
+    expect(fulfilmentMoveLabel("collected")).toBe("Mark collected");
+    expect(fulfilmentMoveLabel(null)).toBe("Move on");
+    for (const status of SHOP_FULFILMENT_STATUSES) {
+      expect(fulfilmentMoveLabel(status)).not.toMatch(/_|Save|Record/);
+    }
+  });
+
+  it("defaults possession to the current minute", () => {
+    expect(possessionDefault(new Date("2026-10-24T12:00:41.250Z"))).toBe(
+      "2026-10-24T12:00:00.000Z",
+    );
   });
 });

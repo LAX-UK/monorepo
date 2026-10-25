@@ -18,6 +18,8 @@ export type ListProductionTasksInput = {
   filters: ProductionTaskFilters;
   cursor: CatalogueCursor | null;
   limit: number;
+  /** Created newest first unless "asc"; the id breaks ties. */
+  direction?: "asc" | "desc";
 };
 
 export type ProductionTaskPage = {

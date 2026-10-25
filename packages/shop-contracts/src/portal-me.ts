@@ -61,6 +61,8 @@ export const PortalSaleAuthorityRequestSchema = Type.Object({
   status: Type.String(),
   createdAt: Type.String(),
   handledAt: Type.Union([Type.String(), Type.Null()]),
+  /** Why LAX declined the request; optional so older shop-api responses still parse. */
+  declineReason: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export const PortalSaleAuthorityRequestsResponseSchema = Type.Object({

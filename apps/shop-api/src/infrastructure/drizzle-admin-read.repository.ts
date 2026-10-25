@@ -4,20 +4,15 @@ import {
   shopArtist,
   shopArtwork,
   shopClientAssignment,
-  shopDispute,
-  shopEdition,
   shopFulfilment,
   shopOrder,
-  shopOriginalSale,
   shopParty,
   shopPayoutLedger,
   shopProduct,
   shopProductVariant,
   shopSaleAuthorityRequest,
-  shopSaleFee,
   shopStaffMember,
   shopStockHold,
-  shopThirdPartySale,
   shopUserProfile,
 } from "@auction/db/schema";
 import type { OverviewKpiKey } from "@auction/shop-domain";
@@ -48,6 +43,7 @@ import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-creat
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
 import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js";
+import { createDrizzleAdminWorkListsReader } from "./drizzle-admin-work-lists.reader.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { escapeLikePattern } from "./escape-like-pattern.js";
 import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
@@ -132,6 +128,7 @@ export function createDrizzleAdminReadRepository(
   },
 ): AdminReadPorts {
   const detail = createDrizzleAdminDetailReaders(db);
+  const workLists = createDrizzleAdminWorkListsReader(db);
   return {
     artworks: createDrizzleAdminArtworkReader(db, options),
     orders: {
@@ -195,248 +192,12 @@ export function createDrizzleAdminReadRepository(
       },
       getOrderDetail: detail.getOrderDetail,
     },
-    fulfilment: {
-      async listFulfilment(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select()
-          .from(shopFulfilment)
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopFulfilment.updatedAt, shopFulfilment.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopFulfilment.updatedAt, shopFulfilment.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(
-          rows.map((row) => ({ createdAt: row.updatedAt, id: row.id, row })),
-          limit,
-          ({ row }) => ({
-            fulfilmentId: row.id,
-            orderId: row.orderId,
-            status: row.status,
-            option: row.option,
-            carrier: row.carrier,
-            trackingNumber: row.trackingNumber,
-            updatedAt: row.updatedAt.toISOString(),
-          }),
-        );
-      },
-    },
-    payouts: {
-      async listPayouts(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select({
-            payout: shopPayoutLedger,
-            ownerDisplayName: shopParty.displayName,
-          })
-          .from(shopPayoutLedger)
-          .innerJoin(shopParty, eq(shopPayoutLedger.ownerPartyId, shopParty.id))
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopPayoutLedger.createdAt, shopPayoutLedger.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopPayoutLedger.createdAt, shopPayoutLedger.id))
-          .limit(limit + 1);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
-        const last = page.at(-1);
-        return {
-          items: page.map(({ payout, ownerDisplayName }) => ({
-            payoutId: payout.id,
-            ownerPartyId: payout.ownerPartyId,
-            ownerDisplayName,
-            source: payout.source,
-            grossPence: payout.grossPence,
-            deductionsPence: payout.deductionsPence,
-            netPence: payout.netPence,
-            status: payout.status,
-            payoutDueAt: payout.payoutDueAt.toISOString(),
-            paidAt: payout.paidAt?.toISOString() ?? null,
-            paidReference: payout.paidReference ?? null,
-          })),
-          nextCursor:
-            hasMore && last
-              ? encodeCatalogueCursor({
-                  createdAt: truncateCatalogueCursorDate(last.payout.createdAt),
-                  id: last.payout.id,
-                })
-              : null,
-        };
-      },
-    },
+    fulfilment: { listFulfilment: workLists.listFulfilment },
+    payouts: { listPayouts: workLists.listPayouts },
     sales: {
-      async listStockHolds(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const brokerSubjectId = input.brokerSubjectId?.trim();
-        const baseQuery = db
-          .select({
-            hold: shopStockHold,
-            artworkTitle: shopArtwork.title,
-            editionNumber: shopEdition.editionNumber,
-          })
-          .from(shopStockHold)
-          .innerJoin(shopEdition, eq(shopStockHold.editionId, shopEdition.id))
-          .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id));
-
-        const rows = await (brokerSubjectId
-          ? baseQuery
-              .innerJoin(
-                shopClientAssignment,
-                eq(shopStockHold.clientPartyId, shopClientAssignment.clientPartyId),
-              )
-              .where(
-                and(
-                  eq(shopClientAssignment.brokerSubjectId, brokerSubjectId),
-                  cursor
-                    ? keysetBeforeCreatedAtId(shopStockHold.createdAt, shopStockHold.id, cursor)
-                    : undefined,
-                ),
-              )
-          : baseQuery.where(
-              cursor
-                ? keysetBeforeCreatedAtId(shopStockHold.createdAt, shopStockHold.id, cursor)
-                : undefined,
-            )
-        )
-          .orderBy(...orderByMsTimestampIdDesc(shopStockHold.createdAt, shopStockHold.id))
-          .limit(limit + 1);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
-        const last = page.at(-1);
-        return {
-          items: page.map(({ hold, artworkTitle, editionNumber }) => ({
-            holdId: hold.id,
-            editionId: hold.editionId,
-            artworkTitle,
-            editionNumber,
-            status: hold.status,
-            expiresAt: hold.expiresAt.toISOString(),
-            brokerPartyId: hold.brokerPartyId,
-            clientPartyId: hold.clientPartyId,
-          })),
-          nextCursor:
-            hasMore && last
-              ? encodeCatalogueCursor({
-                  createdAt: truncateCatalogueCursorDate(last.hold.createdAt),
-                  id: last.hold.id,
-                })
-              : null,
-        };
-      },
-      async listThirdPartySales(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select({
-            sale: shopThirdPartySale,
-            artworkTitle: shopArtwork.title,
-            editionNumber: shopEdition.editionNumber,
-          })
-          .from(shopThirdPartySale)
-          .innerJoin(shopEdition, eq(shopThirdPartySale.editionId, shopEdition.id))
-          .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopThirdPartySale.createdAt, shopThirdPartySale.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopThirdPartySale.createdAt, shopThirdPartySale.id))
-          .limit(limit + 1);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
-        const last = page.at(-1);
-        const feeRows = page.length
-          ? await db
-              .select()
-              .from(shopSaleFee)
-              .where(
-                inArray(
-                  shopSaleFee.thirdPartySaleId,
-                  page.map(({ sale }) => sale.id),
-                ),
-              )
-              .orderBy(asc(shopSaleFee.createdAt), asc(shopSaleFee.id))
-          : [];
-        return {
-          items: page.map(({ sale, artworkTitle, editionNumber }) => ({
-            saleId: sale.id,
-            editionId: sale.editionId,
-            artworkTitle,
-            editionNumber,
-            status: sale.status,
-            grossPence: sale.grossPence,
-            recordedAt: sale.recordedAt?.toISOString() ?? null,
-            fees: feeRows
-              .filter((fee) => fee.thirdPartySaleId === sale.id)
-              .map((fee) => ({
-                feeId: fee.id,
-                label: fee.label,
-                amountPence: fee.amountPence,
-                status: fee.status,
-              })),
-          })),
-          nextCursor:
-            hasMore && last
-              ? encodeCatalogueCursor({
-                  createdAt: truncateCatalogueCursorDate(last.sale.createdAt),
-                  id: last.sale.id,
-                })
-              : null,
-        };
-      },
-      async listOriginalSales(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select({
-            sale: shopOriginalSale,
-            artworkTitle: shopArtwork.title,
-            buyerName: shopParty.displayName,
-            buyerEmail: shopUserProfile.email,
-          })
-          .from(shopOriginalSale)
-          .innerJoin(shopArtwork, eq(shopOriginalSale.artworkId, shopArtwork.id))
-          .innerJoin(shopParty, eq(shopOriginalSale.buyerPartyId, shopParty.id))
-          .leftJoin(
-            shopUserProfile,
-            eq(shopUserProfile.identitySubjectId, shopParty.identitySubjectId),
-          )
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopOriginalSale.createdAt, shopOriginalSale.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopOriginalSale.createdAt, shopOriginalSale.id))
-          .limit(limit + 1);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
-        const last = page.at(-1);
-        return {
-          items: page.map(({ sale, artworkTitle, buyerName, buyerEmail }) => ({
-            saleId: sale.id,
-            artworkId: sale.artworkId,
-            artworkTitle,
-            status: sale.status,
-            salePricePence: sale.salePricePence,
-            createdAt: sale.createdAt.toISOString(),
-            buyerName,
-            buyerEmail: buyerEmail ?? null,
-          })),
-          nextCursor:
-            hasMore && last
-              ? encodeCatalogueCursor({
-                  createdAt: truncateCatalogueCursorDate(last.sale.createdAt),
-                  id: last.sale.id,
-                })
-              : null,
-        };
-      },
+      listStockHolds: workLists.listStockHolds,
+      listThirdPartySales: workLists.listThirdPartySales,
+      listOriginalSales: workLists.listOriginalSales,
     },
     parties: {
       async listClientParties(input) {
@@ -534,65 +295,7 @@ export function createDrizzleAdminReadRepository(
       getArtistDetail: detail.getArtistDetail,
     },
     saleAuthorityRequests: {
-      async listRequests(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select({
-            request: shopSaleAuthorityRequest,
-            artworkTitle: shopArtwork.title,
-            ownerDisplayName: shopParty.displayName,
-          })
-          .from(shopSaleAuthorityRequest)
-          .innerJoin(shopArtwork, eq(shopSaleAuthorityRequest.artworkId, shopArtwork.id))
-          .innerJoin(shopParty, eq(shopSaleAuthorityRequest.ownerPartyId, shopParty.id))
-          .where(
-            and(
-              input.status
-                ? eq(
-                    shopSaleAuthorityRequest.status,
-                    input.status as (typeof shopSaleAuthorityRequest.status.enumValues)[number],
-                  )
-                : undefined,
-              cursor
-                ? keysetBeforeCreatedAtId(
-                    shopSaleAuthorityRequest.createdAt,
-                    shopSaleAuthorityRequest.id,
-                    cursor,
-                  )
-                : undefined,
-            ),
-          )
-          .orderBy(
-            ...orderByMsTimestampIdDesc(
-              shopSaleAuthorityRequest.createdAt,
-              shopSaleAuthorityRequest.id,
-            ),
-          )
-          .limit(limit + 1);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
-        const last = page.at(-1);
-        return {
-          items: page.map(({ request, artworkTitle, ownerDisplayName }) => ({
-            requestId: request.id,
-            artworkId: request.artworkId,
-            artworkTitle,
-            ownerPartyId: request.ownerPartyId,
-            ownerDisplayName,
-            requestedCount: request.requestedCount,
-            status: request.status,
-            createdAt: request.createdAt.toISOString(),
-          })),
-          nextCursor:
-            hasMore && last
-              ? encodeCatalogueCursor({
-                  createdAt: truncateCatalogueCursorDate(last.request.createdAt),
-                  id: last.request.id,
-                })
-              : null,
-        };
-      },
+      listRequests: workLists.listRequests,
       async getRequestById(requestId: string) {
         const [row] = await db
           .select()
@@ -847,38 +550,7 @@ export function createDrizzleAdminReadRepository(
           createdAt: row.createdAt.toISOString(),
         }));
       },
-      async listDisputes(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select({
-            id: shopDispute.id,
-            orderId: shopDispute.orderId,
-            stripeDisputeId: shopDispute.stripeDisputeId,
-            status: shopDispute.status,
-            amountPence: shopDispute.amountPence,
-            openedAt: shopDispute.openedAt,
-            closedAt: shopDispute.closedAt,
-            createdAt: shopDispute.openedAt,
-          })
-          .from(shopDispute)
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopDispute.openedAt, shopDispute.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopDispute.openedAt, shopDispute.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(rows, limit, (row) => ({
-          disputeId: row.id,
-          orderId: row.orderId,
-          stripeDisputeId: row.stripeDisputeId,
-          status: row.status,
-          amountPence: row.amountPence,
-          openedAt: row.openedAt.toISOString(),
-          closedAt: row.closedAt?.toISOString() ?? null,
-        }));
-      },
+      listDisputes: workLists.listDisputes,
       async readEffectiveSettings() {
         const cancellation = env ? loadShopCancellationPolicy(env as ShopApiEnv) : null;
         const vat = env ? loadShopVatPolicy(env as ShopApiEnv) : null;

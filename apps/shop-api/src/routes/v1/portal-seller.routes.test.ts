@@ -298,6 +298,7 @@ describe("GET /v1/me/seller-access", () => {
               note: null,
               status: "pending",
               createdAt: "2026-01-01T00:00:00.000Z",
+              declineReason: null,
               handledAt: null,
             },
           ],

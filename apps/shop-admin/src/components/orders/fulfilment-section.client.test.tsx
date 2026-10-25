@@ -122,7 +122,7 @@ describe("the fulfilment section", () => {
   it("asks for a status before saving", () => {
     renderSection(record({}));
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move on" }));
 
     expect(screen.getByText("Choose the next status.")).toBeInTheDocument();
     expect(updateFulfilment).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ describe("moving into the post", () => {
     startDispatch();
     fireEvent.change(screen.getByLabelText(/^Carrier/), { target: { value: "DHL" } });
     fireEvent.change(screen.getByLabelText(/^Tracking number/), { target: { value: "AB#1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark in transit" }));
 
     expect(screen.getByText("Use letters, numbers, spaces and hyphens only.")).toBeInTheDocument();
     expect(screen.getByLabelText(/^Tracking number/)).toHaveAttribute("aria-invalid", "true");
@@ -170,7 +170,7 @@ describe("moving into the post", () => {
   it("clears the error as soon as the field is put right", () => {
     startDispatch();
     fireEvent.change(screen.getByLabelText(/^Tracking number/), { target: { value: "AB#1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark in transit" }));
     expect(
       screen.getByText("Add the carrier this tracking number belongs to."),
     ).toBeInTheDocument();
@@ -189,7 +189,7 @@ describe("moving into the post", () => {
     fireEvent.change(screen.getByLabelText(/^Tracking number/), {
       target: { value: "AB 123-456" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark in transit" }));
 
     await waitFor(() => expect(updateFulfilment).toHaveBeenCalledTimes(1));
     expect(updateFulfilment).toHaveBeenCalledWith({
@@ -210,7 +210,7 @@ describe("moving into the post", () => {
       message: "Invalid fulfilment transition from awaiting_dispatch to in_transit",
     });
     startDispatch();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark in transit" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid fulfilment transition");
     expect(screen.getByLabelText(/^Carrier/)).toBeInTheDocument();
@@ -232,12 +232,25 @@ describe("recording possession", () => {
     choose("Delivered");
     expect(screen.getByText("Customer took possession")).toBeInTheDocument();
     expect(screen.getByText(/Europe\/London \((BST|GMT)\)/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Record possession" })).toBeInTheDocument();
+    // The button names the move; possession is a field of it, starting at now.
+    expect(screen.getByRole("button", { name: "Mark delivered" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Customer took possession")).toHaveValue("24 Oct 2026");
+    expect(screen.getByLabelText("Time, 24-hour clock")).toHaveValue("13:00");
+  });
+
+  it("records possession at now when the time is left as it is", async () => {
+    startDelivery();
+    fireEvent.click(screen.getByRole("button", { name: "Mark delivered" }));
+    await waitFor(() => expect(recordFulfilmentPossession).toHaveBeenCalledTimes(1));
+    expect(recordFulfilmentPossession).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "delivered", possessionAt: "2026-10-24T12:00:00.000Z" }),
+    );
   });
 
   it("will not record possession without a moment, in the future, or before the order was paid", () => {
     startDelivery();
-    fireEvent.click(screen.getByRole("button", { name: "Record possession" }));
+    fireEvent.change(screen.getByLabelText("Customer took possession"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Mark delivered" }));
     expect(
       screen.getByText("Enter the date and time the customer took possession."),
     ).toBeInTheDocument();
@@ -261,7 +274,7 @@ describe("recording possession", () => {
       target: { value: "20 Oct 2026" },
     });
     fireEvent.change(screen.getByLabelText("Time, 24-hour clock"), { target: { value: "14:05" } });
-    fireEvent.click(screen.getByRole("button", { name: "Record possession" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark delivered" }));
 
     await waitFor(() => expect(recordFulfilmentPossession).toHaveBeenCalledTimes(1));
     expect(recordFulfilmentPossession).toHaveBeenCalledWith({
@@ -285,9 +298,11 @@ describe("recording possession", () => {
       target: { value: "20 Oct 2026" },
     });
     fireEvent.change(screen.getByLabelText("Time, 24-hour clock"), { target: { value: "14:05" } });
-    fireEvent.click(screen.getByRole("button", { name: "Record possession" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark delivered" }));
 
-    expect(await screen.findByRole("link", { name: "Sign in again" })).toBeInTheDocument();
+    const stepUp = await screen.findByRole("dialog", { name: "Confirm it’s you" });
+    expect(stepUp).toHaveTextContent("To update this fulfilment, sign in again.");
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   });
 
   it("treats a later move to the same status as an ordinary update", () => {

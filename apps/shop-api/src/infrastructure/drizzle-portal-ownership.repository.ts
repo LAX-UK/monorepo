@@ -324,6 +324,7 @@ export function createDrizzlePortalOwnershipRepository(
           artworkTitle: shopArtwork.title,
           requestedCount: shopSaleAuthorityRequest.requestedCount,
           note: shopSaleAuthorityRequest.note,
+          declineReason: shopSaleAuthorityRequest.declineReason,
           status: shopSaleAuthorityRequest.status,
           createdAt: shopSaleAuthorityRequest.createdAt,
           handledAt: shopSaleAuthorityRequest.handledAt,
@@ -343,6 +344,7 @@ export function createDrizzlePortalOwnershipRepository(
         status: row.status,
         createdAt: row.createdAt.toISOString(),
         handledAt: row.handledAt?.toISOString() ?? null,
+        declineReason: row.declineReason ?? null,
       }));
     },
 

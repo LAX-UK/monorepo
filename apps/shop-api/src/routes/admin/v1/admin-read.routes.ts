@@ -6,9 +6,13 @@ import {
   AdminArtworkLookupSchema,
   AdminAuditListSchema,
   AdminClientDetailSchema,
+  type AdminDisputeListQuery,
+  AdminDisputeListQuerySchema,
   AdminDisputeListSchema,
   AdminEditionLookupSchema,
   AdminEffectiveSettingsSchema,
+  type AdminFulfilmentListQuery,
+  AdminFulfilmentListQuerySchema,
   AdminFulfilmentListSchema,
   type AdminLookupQuery,
   AdminLookupQuerySchema,
@@ -16,14 +20,24 @@ import {
   type AdminOrderListQuery,
   AdminOrderListQuerySchema,
   AdminOrderListSchema,
+  type AdminOriginalSaleListQuery,
+  AdminOriginalSaleListQuerySchema,
   AdminOriginalSaleListSchema,
   AdminOverviewKpisSchema,
   AdminPartyListSchema,
   AdminPartyLookupSchema,
+  type AdminPayoutListQuery,
+  AdminPayoutListQuerySchema,
   AdminPayoutListSchema,
+  type AdminSaleAuthorityRequestListQuery,
+  AdminSaleAuthorityRequestListQuerySchema,
   AdminSaleAuthorityRequestListSchema,
   AdminStaffMemberListSchema,
+  type AdminStockHoldListQuery,
+  AdminStockHoldListQuerySchema,
   AdminStockHoldListSchema,
+  type AdminThirdPartySaleListQuery,
+  AdminThirdPartySaleListQuerySchema,
   AdminThirdPartySaleListSchema,
   CursorListQuerySchema,
   SHOP_API_ERROR_CODES,
@@ -42,15 +56,6 @@ import {
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
 import { requireClientPartyReadAccess } from "./admin-client-access.js";
-
-const SaleAuthorityRequestListQuerySchema = Type.Intersect([
-  CursorListQuerySchema,
-  Type.Object({
-    status: Type.Optional(
-      Type.Union([Type.Literal("pending"), Type.Literal("approved"), Type.Literal("rejected")]),
-    ),
-  }),
-]);
 
 const DEFAULT_LOOKUP_LIMIT = 15;
 
@@ -145,14 +150,13 @@ export async function registerAdminReadRoutes(
       {
         schema: {
           tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
+          querystring: AdminFulfilmentListQuerySchema,
           response: { 200: AdminFulfilmentListSchema, 403: ShopApiErrorBodySchema },
         },
       },
       async (request) => {
         requireShopStaffCapability(request, "fulfilment.write");
-        const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.fulfilment.listFulfilment(query);
+        return deps.adminRead.fulfilment.listFulfilment(request.query as AdminFulfilmentListQuery);
       },
     );
 
@@ -161,14 +165,13 @@ export async function registerAdminReadRoutes(
       {
         schema: {
           tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
+          querystring: AdminPayoutListQuerySchema,
           response: { 200: AdminPayoutListSchema, 403: ShopApiErrorBodySchema },
         },
       },
       async (request) => {
         requireShopStaffCapability(request, "payout.mark_paid");
-        const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.payouts.listPayouts(query);
+        return deps.adminRead.payouts.listPayouts(request.query as AdminPayoutListQuery);
       },
     );
   }
@@ -179,7 +182,7 @@ export async function registerAdminReadRoutes(
       {
         schema: {
           tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
+          querystring: AdminStockHoldListQuerySchema,
           response: { 200: AdminStockHoldListSchema, 403: ShopApiErrorBodySchema },
         },
       },
@@ -187,7 +190,7 @@ export async function registerAdminReadRoutes(
         requireShopStaffCapability(request, "stock_hold.write");
         const subject = requireShopAdminSubject(request);
         const role = request.shopAdminAuth?.role;
-        const query = request.query as { cursor?: string; limit?: number };
+        const query = request.query as AdminStockHoldListQuery;
         return deps.adminRead.sales.listStockHolds({
           ...query,
           ...(role === "broker" ? { brokerSubjectId: subject } : {}),
@@ -200,15 +203,16 @@ export async function registerAdminReadRoutes(
       {
         schema: {
           tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
+          querystring: AdminThirdPartySaleListQuerySchema,
           response: { 200: AdminThirdPartySaleListSchema, 403: ShopApiErrorBodySchema },
         },
       },
       async (request) => {
         // Operations record the sales; finance approves each sale's fees from the same list.
         requireAnyShopStaffCapability(request, ["third_party_sale.write", "fee.approve"]);
-        const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.sales.listThirdPartySales(query);
+        return deps.adminRead.sales.listThirdPartySales(
+          request.query as AdminThirdPartySaleListQuery,
+        );
       },
     );
   }
@@ -219,14 +223,13 @@ export async function registerAdminReadRoutes(
       {
         schema: {
           tags: ["shop-admin"],
-          querystring: CursorListQuerySchema,
+          querystring: AdminOriginalSaleListQuerySchema,
           response: { 200: AdminOriginalSaleListSchema, 403: ShopApiErrorBodySchema },
         },
       },
       async (request) => {
         requireShopStaffCapability(request, "original_sale.write");
-        const query = request.query as { cursor?: string; limit?: number };
-        return deps.adminRead.sales.listOriginalSales(query);
+        return deps.adminRead.sales.listOriginalSales(request.query as AdminOriginalSaleListQuery);
       },
     );
   }
@@ -236,14 +239,15 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: SaleAuthorityRequestListQuerySchema,
+        querystring: AdminSaleAuthorityRequestListQuerySchema,
         response: { 200: AdminSaleAuthorityRequestListSchema, 403: ShopApiErrorBodySchema },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "sale_authority.write");
-      const query = request.query as { cursor?: string; limit?: number; status?: string };
-      return deps.adminRead.saleAuthorityRequests.listRequests(query);
+      return deps.adminRead.saleAuthorityRequests.listRequests(
+        request.query as AdminSaleAuthorityRequestListQuery,
+      );
     },
   );
 
@@ -430,14 +434,13 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
+        querystring: AdminDisputeListQuerySchema,
         response: { 200: AdminDisputeListSchema, 403: ShopApiErrorBodySchema },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "audit.read");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.compliance.listDisputes(query);
+      return deps.adminRead.compliance.listDisputes(request.query as AdminDisputeListQuery);
     },
   );
 

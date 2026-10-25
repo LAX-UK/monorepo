@@ -75,3 +75,37 @@ export function checkGrantAuthority(input: {
     },
   };
 }
+
+export type ApproveRequestErrors = Partial<Record<"count" | "evidenceNote", string>>;
+
+export type ApproveRequestCheck =
+  | { ok: true; body: { authorisedCount: number; evidenceNote: string } }
+  | { ok: false; errors: ApproveRequestErrors };
+
+/**
+ * Approving a sale limit request: how many editions the owner may sell (chosen, not typed) and
+ * what the approval is based on, kept in the audit log.
+ */
+export function checkApproveRequest(input: {
+  count: string | null;
+  evidenceNote: string;
+}): ApproveRequestCheck {
+  const errors: ApproveRequestErrors = {};
+  const count = input.count === null ? Number.NaN : Number(input.count);
+  if (!Number.isInteger(count) || count < 0 || count > AUTHORISED_COUNT_MAX) {
+    errors.count = "Choose how many editions they may sell.";
+  }
+  const note = input.evidenceNote.trim();
+  if (!note) {
+    errors.evidenceNote = "Say what the approval is based on, such as a signed agreement.";
+  } else if (note.length > SALE_AUTHORITY_NOTE_MAX_LENGTH) {
+    errors.evidenceNote = `Use ${SALE_AUTHORITY_NOTE_MAX_LENGTH} characters or fewer.`;
+  }
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return { ok: true, body: { authorisedCount: count, evidenceNote: note } };
+}
+
+/** "Asked for 3 editions". */
+export function requestedEditionsLabel(count: number): string {
+  return `Asked for ${count === 1 ? "1 edition" : `${count} editions`}`;
+}

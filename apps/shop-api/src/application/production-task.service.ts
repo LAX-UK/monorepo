@@ -74,6 +74,7 @@ export function createProductionTaskService(deps: {
         },
         cursor: decodeCatalogueCursor(query.cursor),
         limit: query.limit ?? DEFAULT_LIMIT,
+        direction: query.sort === "created_asc" ? "asc" : "desc",
       });
       return {
         items: page.items,

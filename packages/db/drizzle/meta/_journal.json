@@ -1625,6 +1625,13 @@
       "when": 1795334400000,
       "tag": "0231_shop_edition_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1795420800000,
+      "tag": "0232_shop_sale_authority_decline_reason",
+      "breakpoints": true
     }
   ]
 }

@@ -166,9 +166,13 @@ describe("GET /admin/v1/third-party-sales", () => {
                 status: "pending",
               },
             ],
+            sellerName: "Ada Seller",
+            buyerName: "Ben Buyer",
+            createdAt: "2026-10-01T09:00:00.000Z",
           },
         ],
         nextCursor: null,
+        counts: { recorded: 1 },
       });
     });
     expect(response.json().items[0].fees[0]).toMatchObject({

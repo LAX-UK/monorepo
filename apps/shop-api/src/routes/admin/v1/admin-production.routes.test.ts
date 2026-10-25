@@ -165,6 +165,7 @@ describe("production task list", () => {
       },
       cursor: null,
       limit: 10,
+      direction: "desc",
     });
     await app.close();
   });
@@ -185,6 +186,7 @@ describe("production task list", () => {
       filters: { assignee: { type: "unassigned" } },
       cursor: null,
       limit: 25,
+      direction: "desc",
     });
     await app.close();
   });
@@ -209,6 +211,28 @@ describe("production task list", () => {
       headers: auth,
     });
     expect(list.mock.calls[1]?.[0].cursor).toEqual(next);
+    await app.close();
+  });
+
+  it("sorts oldest first when asked, and refuses a sort it does not know", async () => {
+    const list = vi.fn<ProductionTaskRepository["list"]>(async () => ({
+      items: [],
+      nextCursor: null,
+      counts: {},
+    }));
+    const app = await buildApp("operations", { list });
+    await app.inject({
+      method: "GET",
+      url: "/admin/v1/production/tasks?sort=created_asc",
+      headers: auth,
+    });
+    expect(list.mock.calls[0]?.[0].direction).toBe("asc");
+    const unknown = await app.inject({
+      method: "GET",
+      url: "/admin/v1/production/tasks?sort=status_asc",
+      headers: auth,
+    });
+    expect(unknown.statusCode).toBe(400);
     await app.close();
   });
 

@@ -103,3 +103,49 @@ export function installLayoutStubs() {
       removeEventListener: () => {},
     }) as unknown as MediaQueryList;
 }
+
+/**
+ * Radix menus open on pointer events jsdom does not send. This stand-in lists every item of a
+ * menu in place, keeping each item's disabled state and select contract, so a test can choose
+ * a row action directly:
+ *
+ * ```ts
+ * vi.mock("@auction/ui/components/dropdown-menu", async () =>
+ *   (await import("@/test/radix-stubs")).dropdownMenuStub(),
+ * );
+ * ```
+ */
+export function dropdownMenuStub() {
+  const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
+  return {
+    DropdownMenu: Pass,
+    DropdownMenuTrigger: Pass,
+    DropdownMenuContent: ({ children }: { children?: React.ReactNode }) => (
+      <div role="menu">{children}</div>
+    ),
+    DropdownMenuItem: ({
+      children,
+      disabled,
+      onSelect,
+    }: {
+      children?: React.ReactNode;
+      disabled?: boolean;
+      onSelect?: () => void;
+    }) => (
+      // biome-ignore lint/a11y/useKeyWithClickEvents: a test stand-in for a Radix menu item
+      <div
+        role="menuitem"
+        tabIndex={-1}
+        aria-disabled={disabled ? "true" : undefined}
+        onClick={onSelect}
+      >
+        {children}
+      </div>
+    ),
+    DropdownMenuCheckboxItem: Pass,
+    DropdownMenuRadioGroup: Pass,
+    DropdownMenuRadioItem: Pass,
+    DropdownMenuLabel: Pass,
+    DropdownMenuSeparator: () => null,
+  };
+}

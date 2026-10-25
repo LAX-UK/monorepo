@@ -1,7 +1,6 @@
 "use client";
 
-import { StaffMutationError } from "@/components/staff-mutation-error";
-import { useAdminMutation } from "@/components/use-admin-mutation";
+import { useAdminAction } from "@/components/use-admin-action.client";
 import {
   recordFulfilmentPossession,
   updateFulfilment,
@@ -11,7 +10,9 @@ import {
   checkFulfilmentEdit,
   fulfilmentEditPermission,
   fulfilmentMoveKind,
+  fulfilmentMoveLabel,
   movesNeedTracking,
+  possessionDefault,
 } from "@/server/domain/fulfilment-edit.vm";
 import {
   fulfilmentNextOptions,
@@ -39,9 +40,15 @@ import {
   useBeforeUnloadGuard,
 } from "@auction/staff-ui";
 import { PenLine } from "@auction/staff-ui/icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type FulfilmentRecord = NonNullable<AdminOrderDetail["fulfilmentRecord"]>;
+
+/** What moving a fulfilment on needs to know about it. */
+export type FulfilmentMoveTarget = Pick<
+  FulfilmentRecord,
+  "fulfilmentId" | "status" | "carrier" | "trackingNumber" | "possessionAt"
+>;
 
 /**
  * The order's fulfilment: its status, tracking and possession as facts, and Edit to move it on in
@@ -132,30 +139,43 @@ export function FulfilmentSection({
   );
 }
 
-function FulfilmentEditForm({
+/**
+ * Moves a fulfilment to one of the statuses it can reach next, asking for possession time or
+ * carrier and tracking where the move needs them. Used on the order page and in the fulfilment
+ * list's panel; a failed save stays in the form.
+ */
+export function FulfilmentEditForm({
   fulfilment,
   paidAt,
   onDone,
+  onDirtyChange,
+  cancelLabel = "Cancel",
 }: {
-  fulfilment: FulfilmentRecord;
+  fulfilment: FulfilmentMoveTarget;
   paidAt: string | null;
   onDone: () => void;
+  /** Told when a move is chosen or cleared, so a panel can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Null leaves Cancel out, where the surrounding panel already closes. */
+  cancelLabel?: string | null;
 }) {
-  const mutation = useAdminMutation();
+  const mutation = useAdminAction();
   const options = fulfilmentNextOptions(fulfilment.status);
   const possessionRecorded = Boolean(fulfilment.possessionAt);
   const [status, setStatus] = useState<ShopFulfilmentStatus | null>(null);
   const [carrier, setCarrier] = useState(fulfilment.carrier ?? "");
   const [tracking, setTracking] = useState(fulfilment.trackingNumber ?? "");
-  const [possessionAt, setPossessionAt] = useState<string | null>(null);
-  const [submits, setSubmits] = useState(0);
   const [now] = useState(() => new Date());
+  // Possession defaults to now (London time in the field); staff change it when it was earlier.
+  const [possessionAt, setPossessionAt] = useState<string | null>(() => possessionDefault(now));
+  const [submits, setSubmits] = useState(0);
 
   const kind = status ? fulfilmentMoveKind(status, { possessionRecorded }) : null;
   const showTracking = status !== null && movesNeedTracking(status);
   const showPossession = kind === "possession";
   const dirty = status !== null;
   useBeforeUnloadGuard(dirty);
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
   const checked = checkFulfilmentEdit({
     status,
@@ -192,8 +212,12 @@ function FulfilmentEditForm({
       request.kind === "possession"
         ? "Possession recorded"
         : `Fulfilment moved to ${presentFulfilmentStatus(request.status).label.toLowerCase()}`,
+      "update this fulfilment",
     );
-    if (ok) onDone();
+    if (ok) {
+      onDirtyChange?.(false);
+      onDone();
+    }
   };
 
   return (
@@ -205,7 +229,7 @@ function FulfilmentEditForm({
         void save();
       }}
     >
-      <StaffMutationError mutation={mutation} />
+      {mutation.error}
       <Field label="Move to" error={errors.status}>
         <EnumSelect
           value={status}
@@ -217,7 +241,7 @@ function FulfilmentEditForm({
       {showPossession ? (
         <Field
           label="Customer took possession"
-          description="When the customer received or collected the work. It starts their cancellation period."
+          description="When the customer received or collected the work; now, unless it was earlier. It starts their cancellation period."
           error={errors.possessionAt}
         >
           <DateTimeInput
@@ -249,13 +273,16 @@ function FulfilmentEditForm({
         </FieldRow>
       ) : null}
       <FormActions>
-        <StaffButton variant="ghost" onClick={onDone} disabled={mutation.pending}>
-          Cancel
-        </StaffButton>
+        {cancelLabel ? (
+          <StaffButton variant="ghost" onClick={onDone} disabled={mutation.pending}>
+            {cancelLabel}
+          </StaffButton>
+        ) : null}
         <StaffButton type="submit" variant="primary" loading={mutation.pending}>
-          {showPossession ? "Record possession" : "Save"}
+          {fulfilmentMoveLabel(status)}
         </StaffButton>
       </FormActions>
+      {mutation.stepUpDialog}
     </form>
   );
 }
