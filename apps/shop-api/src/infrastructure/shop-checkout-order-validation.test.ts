@@ -14,19 +14,14 @@ describe("assertReplayableCheckoutOrder", () => {
   };
 
   it("accepts a replayable pending order", () => {
-    expect(() =>
-      assertReplayableCheckoutOrder(base, {
-        subject: "sub-1",
-        fulfilment: "uk_insured_delivery",
-      }),
-    ).not.toThrow();
+    expect(() => assertReplayableCheckoutOrder(base, { subject: "sub-1" })).not.toThrow();
   });
 
   it("rejects expired checkout windows", () => {
     expect(() =>
       assertReplayableCheckoutOrder(
         { ...base, checkoutExpiresAt: new Date(Date.now() - 1_000) },
-        { subject: "sub-1", fulfilment: "uk_insured_delivery" },
+        { subject: "sub-1" },
       ),
     ).toThrow(expect.objectContaining({ code: SHOP_API_ERROR_CODES.CONFLICT }));
   });

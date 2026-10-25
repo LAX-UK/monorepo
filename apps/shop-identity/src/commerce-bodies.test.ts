@@ -32,6 +32,30 @@ describe("createCheckoutBodySchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("passes on the recipient name and the save-address choice", () => {
+    const result = schema.safeParse({
+      basketId: "00000000-0000-4000-8000-000000000001",
+      fulfilment: "uk_insured_delivery",
+      idempotencyKey: "idem-key-12345678",
+      successUrl: "http://localhost:3020/checkout/confirmation",
+      cancelUrl: "http://localhost:3020/basket",
+      deliveryAddress: {
+        recipientName: "  Ada Lovelace ",
+        line1: "1 High Street",
+        city: "London",
+        postcode: "sw1a1aa",
+        country: "GB",
+      },
+      deliveryPhone: "07700 900123",
+      saveAddress: true,
+    });
+
+    expect(result.success && result.data).toMatchObject({
+      deliveryAddress: { recipientName: "Ada Lovelace", postcode: "SW1A 1AA" },
+      saveAddress: true,
+    });
+  });
 });
 
 describe("enquiry body schemas", () => {

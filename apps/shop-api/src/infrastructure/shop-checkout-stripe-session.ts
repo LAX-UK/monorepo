@@ -25,6 +25,7 @@ export async function resolveOrCreateStripeCheckoutSession(
     lines: HostedCheckoutLineItem[];
     fulfilmentSurchargePence: number;
     customerEmail: string | null;
+    sessionRevision?: string;
   },
 ): Promise<CheckoutOrderResult> {
   if (input.existingSessionId && input.existingCheckoutExpiresAt) {
@@ -56,6 +57,7 @@ export async function resolveOrCreateStripeCheckoutSession(
     lines: input.lines,
     fulfilmentSurchargePence: input.fulfilmentSurchargePence,
     customerEmail: input.customerEmail,
+    ...(input.sessionRevision ? { sessionRevision: input.sessionRevision } : {}),
   });
 
   const [attached] = await db

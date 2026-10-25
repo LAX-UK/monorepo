@@ -29,6 +29,11 @@ export function shopStorefrontLoginHref(returnTo?: string): string {
   return safe ? `/login?returnTo=${encodeURIComponent(safe)}` : "/login";
 }
 
+export function shopStorefrontRegisterHref(returnTo?: string): string {
+  const safe = safeRelativeReturnPath(returnTo);
+  return safe ? `/register?returnTo=${encodeURIComponent(safe)}` : "/register";
+}
+
 export type ShopViewerGateOutcome = { allowed: true } | { allowed: false; redirectTo: string };
 
 /** Redirect paths for routes that require an authenticated Shop viewer. */

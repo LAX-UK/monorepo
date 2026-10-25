@@ -12,15 +12,17 @@ export type ExistingCheckoutOrderRow = {
   totalPence: number;
 };
 
+/**
+ * An order found under the request's idempotency key can be returned to (or brought up to date
+ * with the request's delivery details) only while it is the same shopper's unpaid, unexpired
+ * order. A different delivery choice is not a reason to refuse: the replay updates the order.
+ */
 export function assertReplayableCheckoutOrder(
   existing: ExistingCheckoutOrderRow,
-  input: { subject: string; fulfilment: ShopFulfilmentOption },
+  input: { subject: string },
 ): void {
   if (existing.identitySubjectId !== input.subject) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
-  }
-  if (existing.fulfilment !== input.fulfilment) {
-    throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Checkout fulfilment mismatch", 409);
   }
   if (existing.status === "paid") {
     throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Order already paid", 409);

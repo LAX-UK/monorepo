@@ -14,18 +14,19 @@ export async function startCheckout(input: {
   fulfilment: ShopFulfilmentOption;
   deliveryAddress?: ShopDeliveryAddressInput;
   deliveryPhone?: string;
-}): Promise<
-  | { kind: "redirect"; checkoutUrl: string }
-  | { kind: "enquiry" }
-  | { kind: "error"; message: string }
-> {
+  /** Add the new delivery address to the shopper's LAX Account address book. */
+  saveAddress?: boolean;
+}): Promise<{ kind: "redirect"; checkoutUrl: string } | { kind: "error"; message: string }> {
   if (input.fulfilment === "international_quotation") {
-    return { kind: "enquiry" };
+    return {
+      kind: "error",
+      message: "Delivery outside the UK is not available online yet. Contact us for a quote.",
+    };
   }
   let deliveryAddress = input.deliveryAddress;
   if (input.fulfilment === "uk_insured_delivery" && deliveryAddress) {
     if (!isValidUkPostcode(deliveryAddress.postcode)) {
-      return { kind: "error", message: "Enter a valid UK postcode (for example SW1A 1AA)." };
+      return { kind: "error", message: "Enter a UK postcode, like SW1A 1AA." };
     }
     deliveryAddress = {
       ...deliveryAddress,
@@ -43,7 +44,9 @@ export async function startCheckout(input: {
   const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3020";
   const proto = headerStore.get("x-forwarded-proto") ?? "http";
   const origin = `${proto}://${host}`;
-  const idempotencyKey = `checkout:${input.basketId}:${input.fulfilment}`;
+  // One key per basket: a retry with changed delivery details updates the same pending order
+  // (shop-api reconciles it), so a basket can never hold two pending orders.
+  const idempotencyKey = `checkout:${input.basketId}:order`;
   const response = await shopCommerceRequest(
     "/commerce/checkout",
     {
@@ -60,6 +63,7 @@ export async function startCheckout(input: {
         cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
         ...(deliveryAddress ? { deliveryAddress } : {}),
         ...(input.deliveryPhone?.trim() ? { deliveryPhone: input.deliveryPhone.trim() } : {}),
+        ...(deliveryAddress && input.saveAddress ? { saveAddress: true } : {}),
       }),
     },
     { applyCookies: true, csrfToken: csrf.token },

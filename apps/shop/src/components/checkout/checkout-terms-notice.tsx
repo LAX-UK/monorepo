@@ -21,11 +21,8 @@ export function CheckoutTermsNotice() {
     <p className="shop-checkout__terms" data-testid="checkout-terms">
       By placing your order you agree to our{" "}
       <CheckoutPolicyLink href={SHOP_POLICY_PATHS.terms}>Terms of sale</CheckoutPolicyLink>. You can
-      cancel within 14 days — see{" "}
-      <CheckoutPolicyLink href={SHOP_POLICY_PATHS.returns}>
-        Cancellations and returns
-      </CheckoutPolicyLink>
-      .
+      cancel within 14 days of receiving your order:{" "}
+      <CheckoutPolicyLink href={SHOP_POLICY_PATHS.returns}>14-day cancellation</CheckoutPolicyLink>.
     </p>
   );
 }

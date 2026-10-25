@@ -21,6 +21,7 @@ export const upsertBasketLineBodySchema = z.union([
 export const DELIVERY_PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{6,19}$/;
 
 const deliveryAddressSchema = z.object({
+  recipientName: z.string().trim().min(1).max(200).optional(),
   line1: z.string().min(1).max(200),
   line2: z.string().max(200).optional(),
   city: z.string().min(1).max(120),
@@ -43,6 +44,7 @@ export function createCheckoutBodySchema(storefrontOrigin: string) {
         .max(20)
         .regex(DELIVERY_PHONE_PATTERN, "Enter a valid delivery phone number")
         .optional(),
+      saveAddress: z.boolean().optional(),
     })
     .superRefine((body, ctx) => {
       for (const field of ["successUrl", "cancelUrl"] as const) {

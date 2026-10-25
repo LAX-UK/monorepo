@@ -2,6 +2,7 @@ import {
   CheckoutSessionSchema,
   OrderStatusSchema,
   OrderSummarySchema,
+  SavedDeliveryAddressListSchema,
   ShopApiErrorBodySchema,
   ShopFulfilmentOptionSchema,
 } from "@auction/shop-contracts";
@@ -98,6 +99,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
           cancelUrl: Type.String({ minLength: 1 }),
           deliveryAddress: Type.Optional(
             Type.Object({
+              recipientName: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
               line1: Type.String({ minLength: 1 }),
               line2: Type.Optional(Type.String()),
               city: Type.String({ minLength: 1 }),
@@ -112,6 +114,8 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
               pattern: "^\\+?[0-9][0-9 ()-]{6,19}$",
             }),
           ),
+          /** Also add the delivery address to the shopper's LAX Account address book. */
+          saveAddress: Type.Optional(Type.Boolean()),
         }),
         response: {
           200: CheckoutSessionSchema,
@@ -130,6 +134,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         successUrl: string;
         cancelUrl: string;
         deliveryAddress?: {
+          recipientName?: string;
           line1: string;
           line2?: string;
           city: string;
@@ -137,6 +142,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
           country: string;
         };
         deliveryPhone?: string;
+        saveAddress?: boolean;
       };
       const deliveryPhone = body.deliveryPhone?.trim();
       if (body.deliveryAddress && !deliveryPhone) {
@@ -156,7 +162,43 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         ...(deliveryPhone ? { deliveryPhone } : {}),
         ...(body.deliveryAddress ? { deliveryAddress: body.deliveryAddress } : {}),
       });
+      const address = body.deliveryAddress;
+      const recipientName = address?.recipientName?.trim();
+      if (body.saveAddress && address && recipientName && deps.savedAddresses) {
+        // After the order exists, so the address book can never hold up or fail a payment.
+        await deps.savedAddresses.save(
+          subject,
+          {
+            recipientName,
+            line1: address.line1.trim(),
+            line2: address.line2?.trim() || null,
+            city: address.city.trim(),
+            postcode: address.postcode.trim(),
+            country: address.country.trim().toUpperCase(),
+            phone: deliveryPhone ?? null,
+          },
+          (error) => request.log.warn({ err: error }, "shop_checkout_address_save_failed"),
+        );
+      }
       return presentCheckoutSession(session);
+    },
+  );
+
+  app.get(
+    "/v1/me/addresses",
+    {
+      schema: {
+        tags: ["commerce"],
+        response: { 200: SavedDeliveryAddressListSchema },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      if (!deps.savedAddresses) return { available: false, addresses: [] };
+      return deps.savedAddresses.list(subject, (error) =>
+        request.log.warn({ err: error }, "shop_saved_addresses_unavailable"),
+      );
     },
   );
 

@@ -33,6 +33,7 @@ export type BasketRecord = {
 };
 
 export type ShopDeliveryAddress = {
+  recipientName?: string;
   line1: string;
   line2?: string;
   city: string;
@@ -58,6 +59,7 @@ export type CheckoutOrderResult = {
 };
 
 export type ShopDeliveryAddressRecord = {
+  recipientName?: string;
   line1: string;
   line2?: string;
   city: string;
@@ -156,6 +158,8 @@ export interface PaymentCheckoutGateway {
     lines: HostedCheckoutLineItem[];
     fulfilmentSurchargePence: number;
     customerEmail?: string | null;
+    /** Distinguishes a replacement session for the same order (after a repricing). */
+    sessionRevision?: string;
   }): Promise<{ checkoutUrl: string; sessionId: string; paymentIntentId: string | null }>;
   resolveHostedCheckout(input: {
     orderId: string;

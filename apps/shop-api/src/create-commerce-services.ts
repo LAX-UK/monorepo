@@ -10,6 +10,10 @@ import {
   createResumeCheckoutOrderHandler,
   createUpsertBasketLineHandler,
 } from "./application/handlers/commerce-handlers.js";
+import {
+  createListSavedDeliveryAddressesHandler,
+  createSaveDeliveryAddressHandler,
+} from "./application/handlers/delivery-address-book.handler.js";
 import type { PaymentEventProcessor } from "./application/ports/payment-event.processor.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
@@ -17,6 +21,7 @@ import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commer
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
+import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
@@ -46,6 +51,16 @@ export function createCommerceServices(
     merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
   });
+
+  // Identity shares one machine client across products; without it checkout asks for entry only.
+  const addressBook =
+    env.IDENTITY_MACHINE_CLIENT_ID && env.IDENTITY_MACHINE_CLIENT_SECRET
+      ? createHttpIdentityAddressBook({
+          issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
+          clientId: env.IDENTITY_MACHINE_CLIENT_ID,
+          clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+        })
+      : null;
 
   const notifications = createDrizzleShopNotificationPublisher();
   const opsAlertEmail = env.SHOP_OPS_ALERT_EMAIL ?? env.SHOP_ENQUIRY_NOTIFICATION_EMAIL ?? null;
@@ -80,6 +95,10 @@ export function createCommerceServices(
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),
+      savedAddresses: {
+        list: createListSavedDeliveryAddressesHandler(addressBook),
+        save: createSaveDeliveryAddressHandler(addressBook),
+      },
     },
     stripeWebhook: {
       webhookSecret: env.STRIPE_WEBHOOK_SECRET,

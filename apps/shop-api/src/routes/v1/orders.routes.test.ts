@@ -107,4 +107,98 @@ describe("orders routes", () => {
     expect(response.body.length).toBeGreaterThan(0);
     await app.close();
   });
+
+  const checkoutPayload = {
+    basketId: "00000000-0000-4000-8000-000000000001",
+    fulfilment: "uk_insured_delivery",
+    idempotencyKey: "idem-key-0001",
+    successUrl: "https://test-shop.lax.bid/checkout/success",
+    cancelUrl: "https://test-shop.lax.bid/checkout",
+    deliveryAddress: {
+      recipientName: "Ada Lovelace",
+      line1: "1 High St",
+      city: "Brighton",
+      postcode: "BN1 1AA",
+      country: "GB",
+    },
+    deliveryPhone: "07700 900123",
+  };
+
+  function checkoutApp(save: ReturnType<typeof vi.fn>) {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "subject-1",
+      payload: { scope: "shop.write" },
+    } as never);
+    const checkoutOrder = vi.fn(async () => ({
+      orderId: "00000000-0000-4000-8000-000000000042",
+      checkoutUrl: "https://checkout.example.test/pay",
+      expiresAt: new Date("2026-11-01T00:00:00.000Z"),
+    }));
+    const deps = createMinimalShopApiTestDeps({
+      commerce: {
+        ...createMinimalShopApiTestDeps().commerce,
+        checkoutOrder,
+        savedAddresses: { list: vi.fn(), save },
+      },
+    });
+    return { app: createShopApiApp({ deps, logger: false }), checkoutOrder };
+  }
+
+  it("passes the recipient name to the order and saves the address only when asked", async () => {
+    const save = vi.fn(async () => "saved" as const);
+    const { app, checkoutOrder } = checkoutApp(save);
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/orders/checkout",
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+      payload: { ...checkoutPayload, saveAddress: true },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(checkoutOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deliveryAddress: expect.objectContaining({ recipientName: "Ada Lovelace" }),
+      }),
+    );
+    expect(save).toHaveBeenCalledWith(
+      "subject-1",
+      expect.objectContaining({
+        recipientName: "Ada Lovelace",
+        line1: "1 High St",
+        line2: null,
+        country: "GB",
+        phone: "07700 900123",
+      }),
+      expect.any(Function),
+    );
+    await app.close();
+  });
+
+  it("does not touch the address book without saveAddress", async () => {
+    const save = vi.fn();
+    const { app } = checkoutApp(save);
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/orders/checkout",
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+      payload: checkoutPayload,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(save).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("answers the saved addresses as unavailable where there is no address book", async () => {
+    const app = createShopApiApp({ deps: createMinimalShopApiTestDeps(), logger: false });
+    await app.ready();
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/me/addresses",
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ available: false, addresses: [] });
+    await app.close();
+  });
 });
