@@ -1,5 +1,6 @@
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
+import { MarketingPageTitle } from "./marketing-page-title.js";
 
 export type MarketingArtistHeroProps = {
   name: string;
@@ -22,6 +23,14 @@ export type MarketingArtistHeroProps = {
   portrait?: ReactNode;
   /** `compact` for product views of an artist (Shop editions); `default` for full profiles. */
   size?: "default" | "compact";
+  /**
+   * `split`: portrait beside the text (LAX Bid, LAX Shop). `band`: the centred full-bleed title
+   * band from the lax.art Figma (`439:6125`), over `backdrop` with a scrim, or plain without one.
+   * The band shows a text eyebrow, the name, facts, badges, actions and links; no portrait.
+   */
+  variant?: "split" | "band";
+  /** Band only: full-bleed image behind the band. */
+  backdrop?: { src: string; alt?: string; priority?: boolean } | null;
   headingId?: string;
   className?: string;
 };
@@ -40,9 +49,46 @@ export function MarketingArtistHero({
   crossLinks,
   portrait,
   size = "default",
+  variant = "split",
+  backdrop,
   headingId = "artist-hero-title",
   className,
 }: MarketingArtistHeroProps) {
+  if (variant === "band") {
+    const content = {
+      title: name,
+      eyebrow: typeof eyebrow === "string" ? eyebrow : null,
+      actions:
+        facts || badges || summary || actions || crossLinks ? (
+          <div
+            className="flex w-full max-w-[600px] flex-col items-center gap-6 sm:gap-8"
+            data-testid="marketing-artist-hero"
+          >
+            {facts}
+            {badges ? <div className="flex flex-wrap justify-center gap-2">{badges}</div> : null}
+            {summary ? (
+              <div className="max-w-prose font-body text-base leading-7">{summary}</div>
+            ) : null}
+            {actions ? (
+              <div className="flex flex-wrap items-center justify-center gap-3">{actions}</div>
+            ) : null}
+            {crossLinks ? <div className="w-full max-w-sm text-left">{crossLinks}</div> : null}
+          </div>
+        ) : null,
+      ...(className ? { className } : {}),
+    };
+    return backdrop ? (
+      <MarketingPageTitle
+        variant="media"
+        image={{ src: backdrop.src, ...(backdrop.alt ? { alt: backdrop.alt } : {}) }}
+        {...(backdrop.priority ? { priority: true } : {})}
+        {...content}
+      />
+    ) : (
+      <MarketingPageTitle {...content} />
+    );
+  }
+
   const compact = size === "compact";
   return (
     <section

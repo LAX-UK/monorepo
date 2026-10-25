@@ -32,7 +32,7 @@ export function MarketingArtistCrossLinks({
   if (links.length === 0) return null;
   return (
     <nav aria-label={ariaLabel} className={className} data-testid="marketing-artist-cross-links">
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className={cn("grid gap-2", links.length > 1 && "sm:grid-cols-2")}>
         {links.map((link) => (
           <li key={link.id} className="min-w-0">
             <a

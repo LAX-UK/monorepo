@@ -55,6 +55,37 @@ describe("MarketingArtistHero", () => {
   });
 });
 
+describe("MarketingArtistHero band", () => {
+  it("renders the centred title band with the shared facts and actions", () => {
+    const { container } = render(
+      <MarketingArtistHero
+        variant="band"
+        name="Rowan Hale"
+        eyebrow="Printmaker"
+        facts={
+          <MarketingArtistFacts
+            size="band"
+            facts={marketingArtistFacts({ nationality: "British", birthYear: 1956 })}
+          />
+        }
+        actions={<a href="/follow">Follow</a>}
+      />,
+    );
+    expect(screen.getByRole("heading", { level: 1, name: "Rowan Hale" })).toBeInTheDocument();
+    expect(screen.getByText("Printmaker")).toBeInTheDocument();
+    expect(screen.getByText("b. 1956")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Follow" })).toBeInTheDocument();
+    expect(container.querySelector("[data-variant]")).toHaveAttribute("data-variant", "plain");
+  });
+
+  it("uses the media band over a backdrop", () => {
+    const { container } = render(
+      <MarketingArtistHero variant="band" name="Rowan Hale" backdrop={{ src: "/hero.jpg" }} />,
+    );
+    expect(container.querySelector("[data-variant]")).toHaveAttribute("data-variant", "media");
+  });
+});
+
 describe("MarketingArtistCrossLinks", () => {
   it("renders nothing without links", () => {
     const { container } = render(<MarketingArtistCrossLinks links={[]} />);

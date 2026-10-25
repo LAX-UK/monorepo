@@ -55,8 +55,11 @@ export function marketingArtistFactsLine(input: MarketingArtistFactInput): strin
 
 export type MarketingArtistFactsProps = {
   facts: readonly MarketingArtistFact[];
-  /** `hero` under the artist name; `card` in directory cards. */
-  size?: "hero" | "card";
+  /**
+   * `hero` under the name in the split hero; `band` centred in the full-bleed band, taking the
+   * band's text colour; `card` in directory cards.
+   */
+  size?: "hero" | "band" | "card";
   className?: string;
 };
 
@@ -74,7 +77,10 @@ export function MarketingArtistFacts({
     <dl
       className={cn(
         "flex flex-wrap items-baseline gap-x-2 gap-y-1 font-body text-on-surface-variant",
-        size === "hero" ? "text-base leading-6 md:text-lg md:leading-7" : "text-sm leading-5",
+        size === "hero" && "text-base leading-6 md:text-lg md:leading-7",
+        size === "band" &&
+          "justify-center text-base leading-6 text-inherit sm:text-xl sm:leading-7",
+        size === "card" && "text-sm leading-5",
         className,
       )}
     >
