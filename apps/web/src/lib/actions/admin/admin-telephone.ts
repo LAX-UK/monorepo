@@ -31,10 +31,6 @@ const telephoneNotesForm = telephoneBookingActionForm.extend({
   notes: z.string().max(2000),
 });
 
-const telephoneCancelForm = telephoneBookingActionForm.extend({
-  reason: z.string().max(500).optional(),
-});
-
 const telephoneStartLineForm = telephoneBookingActionForm.extend({
   lotId: z.string().uuid(),
 });
@@ -47,12 +43,6 @@ const telephonePlaceBidForm = z.object({
   maxAutoBidAmount: z.coerce.number().finite().positive().optional(),
   telephoneBookingId: z.string().uuid().optional(),
 });
-
-function redirectTelephoneBookingError(saleId: string, message: string): never {
-  redirect(
-    `/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings?error=${encodeURIComponent(message)}`,
-  );
-}
 
 async function postTelephoneBookingAction(
   saleId: string,
@@ -78,74 +68,6 @@ function revalidateTelephoneBookingPaths(saleId: string) {
   revalidatePath(`/admin/sales/${saleId}/operations`);
   revalidatePath(`/admin/saleroom/${saleId}`);
   revalidateAdminSaleDetail(saleId);
-}
-
-export async function adminTelephoneBookingConfirmAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminTelephoneBookingConfirmAction",
-    async () => {
-      const parsed = telephoneBookingActionForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        bookingId: String(formData.get("bookingId") ?? "").trim(),
-      });
-      if (!parsed.success) redirectTelephoneBookingError("", "Invalid booking");
-      const { saleId, bookingId } = parsed.data;
-      const res = await postTelephoneBookingAction(saleId, bookingId, "confirm");
-      if (!res.ok) {
-        redirectTelephoneBookingError(saleId, readApiError(res.body, "Confirm failed"));
-      }
-      revalidateTelephoneBookingPaths(saleId);
-      redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
-    },
-    { formData },
-  );
-}
-
-export async function adminTelephoneBookingAssignClerkAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminTelephoneBookingAssignClerkAction",
-    async () => {
-      const parsed = telephoneAssignClerkForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        bookingId: String(formData.get("bookingId") ?? "").trim(),
-        clerkUserId: String(formData.get("clerkUserId") ?? "").trim(),
-      });
-      if (!parsed.success) redirectTelephoneBookingError("", "Invalid clerk assignment");
-      const { saleId, bookingId, clerkUserId } = parsed.data;
-      const res = await postTelephoneBookingAction(saleId, bookingId, "assign-clerk", {
-        clerkUserId,
-      });
-      if (!res.ok) {
-        redirectTelephoneBookingError(saleId, readApiError(res.body, "Assign clerk failed"));
-      }
-      revalidateTelephoneBookingPaths(saleId);
-      redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
-    },
-    { formData },
-  );
-}
-
-export async function adminTelephoneBookingApproveLimitIncreaseAction(
-  formData: FormData,
-): Promise<void> {
-  return instrumentServerAction(
-    "adminTelephoneBookingApproveLimitIncreaseAction",
-    async () => {
-      const parsed = telephoneBookingActionForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        bookingId: String(formData.get("bookingId") ?? "").trim(),
-      });
-      if (!parsed.success) redirectTelephoneBookingError("", "Invalid booking");
-      const { saleId, bookingId } = parsed.data;
-      const res = await postTelephoneBookingAction(saleId, bookingId, "approve-limit-increase");
-      if (!res.ok) {
-        redirectTelephoneBookingError(saleId, readApiError(res.body, "Approve limit failed"));
-      }
-      revalidateTelephoneBookingPaths(saleId);
-      redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
-    },
-    { formData },
-  );
 }
 
 export async function adminTelephoneBookingStartLineAction(formData: FormData): Promise<void> {
@@ -187,77 +109,6 @@ export async function adminTelephoneBookingCompleteLineAction(formData: FormData
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminTelephoneBookingCloseAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminTelephoneBookingCloseAction",
-    async () => {
-      const parsed = telephoneBookingActionForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        bookingId: String(formData.get("bookingId") ?? "").trim(),
-      });
-      if (!parsed.success) redirectTelephoneBookingError("", "Invalid booking");
-      const { saleId, bookingId } = parsed.data;
-      const res = await postTelephoneBookingAction(saleId, bookingId, "close");
-      if (!res.ok) {
-        redirectTelephoneBookingError(saleId, readApiError(res.body, "Close failed"));
-      }
-      revalidateTelephoneBookingPaths(saleId);
-      redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
-    },
-    { formData },
-  );
-}
-
-export async function adminTelephoneBookingCancelAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminTelephoneBookingCancelAction",
-    async () => {
-      const parsed = telephoneCancelForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        bookingId: String(formData.get("bookingId") ?? "").trim(),
-        reason: String(formData.get("reason") ?? "").trim() || undefined,
-      });
-      if (!parsed.success) redirectTelephoneBookingError("", "Invalid booking");
-      const { saleId, bookingId, reason } = parsed.data;
-      const res = await postTelephoneBookingAction(
-        saleId,
-        bookingId,
-        "cancel",
-        reason ? { reason } : {},
-      );
-      if (!res.ok) {
-        redirectTelephoneBookingError(saleId, readApiError(res.body, "Cancel failed"));
-      }
-      revalidateTelephoneBookingPaths(saleId);
-      redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
-    },
-    { formData },
-  );
-}
-
-export async function adminTelephoneBookingNotesAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminTelephoneBookingNotesAction",
-    async () => {
-      const parsed = telephoneNotesForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        bookingId: String(formData.get("bookingId") ?? "").trim(),
-        notes: String(formData.get("notes") ?? ""),
-      });
-      if (!parsed.success) redirectTelephoneBookingError("", "Invalid notes");
-      const { saleId, bookingId, notes } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminTelephone.updateNotes(saleId, bookingId, notes);
-      if (!res.ok) {
-        redirectTelephoneBookingError(saleId, readApiError(res.body, "Save notes failed"));
-      }
-      revalidateTelephoneBookingPaths(saleId);
-      redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
     },
     { formData },
   );

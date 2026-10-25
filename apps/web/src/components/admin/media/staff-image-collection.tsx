@@ -46,6 +46,7 @@ function toQueueItem(item: UploadGalleryItem): UploadQueueItem | null {
       item.status === "error" ? "error" : item.status === "validating" ? "processing" : "uploading",
     ...(item.progress !== undefined ? { progress: item.progress } : {}),
     ...(item.status === "error" && item.message ? { error: item.message } : {}),
+    ...(item.retryable === false ? { retryable: false } : {}),
   };
 }
 

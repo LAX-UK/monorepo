@@ -21,6 +21,7 @@ import {
   EntityPicker,
   EnumSelect,
   Field,
+  FormErrorSummary,
   MoneyInput,
   Notice,
   StaffButton,
@@ -36,6 +37,9 @@ import Link from "next/link";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 const FORM_ID = "emergency-add-lot";
+
+/** The id of a field's control, for the error summary's links. */
+const fieldId = (key: string) => `${FORM_ID}-${key}`;
 
 const AUCTION_TYPE_LABELS: Record<LotAuctionType, string> = {
   english: "English (ascending bids)",
@@ -130,6 +134,8 @@ export function EmergencyAddLotDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [submitted, setSubmitted] = useState(false);
+  /** Counts failed submits, so the error summary takes focus once per attempt. */
+  const [failedSubmits, setFailedSubmits] = useState(0);
   const [failure, setFailure] = useState<{ message: string; savedLotId: string | null } | null>(
     null,
   );
@@ -183,6 +189,7 @@ export function EmergencyAddLotDialog({
     if (!next) {
       setDraft(EMPTY_DRAFT);
       setSubmitted(false);
+      setFailedSubmits(0);
       setFailure(null);
     }
     onOpenChange(next);
@@ -191,7 +198,10 @@ export function EmergencyAddLotDialog({
   const submit = () => {
     setSubmitted(true);
     setFailure(null);
-    if (!parsed.success) return;
+    if (!parsed.success) {
+      setFailedSubmits((n) => n + 1);
+      return;
+    }
     const payload = parsed.data;
     startTransition(async () => {
       const result = await adminAddLotToSaleResultAction(saleId, payload);
@@ -247,6 +257,13 @@ export function EmergencyAddLotDialog({
           submit();
         }}
       >
+        <FormErrorSummary
+          focusKey={failedSubmits}
+          errors={FIELD_ORDER.flatMap((key) => {
+            const message = errors[key];
+            return message ? [{ fieldId: fieldId(key), message }] : [];
+          })}
+        />
         {failure ? (
           <Notice
             tone="danger"
@@ -280,7 +297,7 @@ export function EmergencyAddLotDialog({
           {deliveryModeExplanation(deliveryMode)}
         </Notice>
 
-        <Field label="Title" error={errors.title} disabled={busy}>
+        <Field id={fieldId("title")} label="Title" error={errors.title} disabled={busy}>
           <TextInput
             value={draft.title}
             maxLength={500}
@@ -288,6 +305,7 @@ export function EmergencyAddLotDialog({
           />
         </Field>
         <Field
+          id={fieldId("description")}
           label="Description"
           description="The catalogue description bidders read."
           error={errors.description}
@@ -299,7 +317,7 @@ export function EmergencyAddLotDialog({
             onChange={(event) => patch({ description: event.target.value })}
           />
         </Field>
-        <Field label="Photos" error={errors.images} disabled={busy}>
+        <Field id={fieldId("images")} label="Photos" error={errors.images} disabled={busy}>
           <StaffImageCollection
             kind="lot_image"
             value={draft.images.map((key) => ({ key }))}
@@ -311,7 +329,12 @@ export function EmergencyAddLotDialog({
             maxFiles={50}
           />
         </Field>
-        <Field label="Seller" error={errors.sellerLegalEntityId} disabled={busy}>
+        <Field
+          id={fieldId("sellerLegalEntityId")}
+          label="Seller"
+          error={errors.sellerLegalEntityId}
+          disabled={busy}
+        >
           <EntityPicker
             value={draft.seller?.id ?? null}
             selected={draft.seller}
@@ -322,7 +345,13 @@ export function EmergencyAddLotDialog({
             emptyText="No sellers match."
           />
         </Field>
-        <Field label="Categories" description="Up to 8." error={errors.categoryIds} disabled={busy}>
+        <Field
+          id={fieldId("categoryIds")}
+          label="Categories"
+          description="Up to 8."
+          error={errors.categoryIds}
+          disabled={busy}
+        >
           <EntityMultiPicker
             value={draft.categoryIds}
             onValueChange={(categoryIds) => patch({ categoryIds })}
@@ -334,7 +363,12 @@ export function EmergencyAddLotDialog({
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Auction type" error={errors.auctionType} disabled={busy}>
+          <Field
+            id={fieldId("auctionType")}
+            label="Auction type"
+            error={errors.auctionType}
+            disabled={busy}
+          >
             <EnumSelect<LotAuctionType>
               value={draft.auctionType}
               onValueChange={(auctionType) => patch({ auctionType })}
@@ -342,7 +376,12 @@ export function EmergencyAddLotDialog({
               disabled={busy || englishOnlyAuctionsLocked}
             />
           </Field>
-          <Field label="Starting price" error={errors.startingPrice} disabled={busy}>
+          <Field
+            id={fieldId("startingPrice")}
+            label="Starting price"
+            error={errors.startingPrice}
+            disabled={busy}
+          >
             <MoneyInput
               value={draft.startingPence}
               onValueChange={(startingPence) => patch({ startingPence })}
@@ -358,12 +397,26 @@ export function EmergencyAddLotDialog({
             startError={errors.startTime}
             endError={errors.endTime}
             disabled={busy}
+            idPrefix={FORM_ID}
           />
         )}
       </form>
     </StaffDialog>
   );
 }
+
+/** The order the fields appear in, for the error summary. */
+const FIELD_ORDER: readonly FieldKey[] = [
+  "title",
+  "description",
+  "images",
+  "sellerLegalEntityId",
+  "categoryIds",
+  "auctionType",
+  "startingPrice",
+  "startTime",
+  "endTime",
+];
 
 const FIELD_KEYS: Record<FieldKey, true> = {
   title: true,

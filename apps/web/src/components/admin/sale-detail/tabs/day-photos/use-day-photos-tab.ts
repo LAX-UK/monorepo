@@ -3,6 +3,7 @@
 import type { StaffActionResult } from "@/components/admin/staff/use-staff-confirm";
 import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
+import { getCatalogImagePolicy } from "@/lib/upload/upload-policies.client";
 import type { UploadQueueItem } from "@auction/staff-ui";
 import type { SaleDayMediaRef } from "@auction/types";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,18 @@ type UseDayPhotosTabArgs = {
 };
 
 type QueuedUpload = UploadQueueItem & { file: File };
+
+/** Why a file cannot be sent at all, or null when it can. */
+function refusal(file: File): string | null {
+  const policy = getCatalogImagePolicy("sale_day");
+  if (file.size > policy.maxBytes) {
+    return `This file is over the ${Math.round(policy.maxBytes / 1024 / 1024)} MB limit.`;
+  }
+  if (file.type && !policy.accept.split(",").includes(file.type)) {
+    return "This file type is not supported. Use JPEG, PNG, WebP, MP4 or WebM.";
+  }
+  return null;
+}
 
 /**
  * The auction day media being arranged: what is in the gallery, files on their way in, and saving.
@@ -69,6 +82,21 @@ export function useDayPhotosTab({
   const uploadFiles = useCallback(
     (files: File[]) => {
       for (const file of files) {
+        const refused = refusal(file);
+        if (refused) {
+          setQueue((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              name: file.name,
+              status: "error",
+              error: refused,
+              retryable: false,
+              file,
+            },
+          ]);
+          continue;
+        }
         const upload: QueuedUpload = {
           id: crypto.randomUUID(),
           name: file.name,

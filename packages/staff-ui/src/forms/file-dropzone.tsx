@@ -87,7 +87,8 @@ export function FileDropzone({
         "border-staff-line-strong bg-staff-surface transition-[border-color,background-color] duration-150 ease-out",
         "hover:border-staff-line-hover hover:bg-staff-hover",
         "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-staff-focus",
-        "data-[dragging]:border-staff-fg data-[dragging]:bg-staff-selected",
+        // Held over: the product accent, a solid edge and a tint, so it reads as ready to take the file.
+        "data-[dragging]:border-solid data-[dragging]:border-staff-accent data-[dragging]:bg-staff-accent/[0.07]",
         "data-[disabled]:cursor-not-allowed data-[disabled]:border-staff-line data-[disabled]:bg-staff-sunken data-[disabled]:hover:bg-staff-sunken",
         className,
       )}
@@ -108,7 +109,10 @@ export function FileDropzone({
       />
       <Icon
         aria-hidden
-        className={cn("size-5", isDisabled ? "text-staff-disabled" : "text-staff-subtle")}
+        className={cn(
+          "size-5",
+          isDisabled ? "text-staff-disabled" : dragging ? "text-staff-accent" : "text-staff-subtle",
+        )}
         strokeWidth={1.75}
       />
       <span
@@ -117,15 +121,11 @@ export function FileDropzone({
           isDisabled ? "text-staff-disabled" : "text-staff-fg",
         )}
       >
-        {label}
+        {dragging ? "Drop to upload" : label}
       </span>
-      {isDisabled ? null : (
+      {isDisabled || dragging ? null : (
         <span className="text-staff-xs text-staff-muted">
-          {dragging
-            ? "Drop to upload"
-            : compact
-              ? "or drag files here"
-              : "Drag files here, or click to browse"}
+          {compact ? "or drag files here" : "Drag files here, or click to browse"}
         </span>
       )}
       {hint ? (

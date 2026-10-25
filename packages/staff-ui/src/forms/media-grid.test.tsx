@@ -92,4 +92,26 @@ describe("UploadQueue", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove huge.tif from the list" }));
     expect(onDismiss).toHaveBeenCalledWith("3");
   });
+
+  it("offers only removal for a file that retrying cannot fix", () => {
+    const onDismiss = vi.fn();
+    render(
+      <UploadQueue
+        items={[
+          {
+            id: "1",
+            name: "scan.tif",
+            status: "error",
+            error: "This file type is not supported.",
+            retryable: false,
+          },
+        ]}
+        onRetry={vi.fn()}
+        onDismiss={onDismiss}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Remove scan.tif" }));
+    expect(onDismiss).toHaveBeenCalledWith("1");
+  });
 });

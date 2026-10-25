@@ -14,6 +14,11 @@ export type UploadQueueItem = {
   progress?: number;
   /** Why it failed, as a sentence: "The file is over 20 MB." */
   error?: string;
+  /**
+   * Whether trying again could work: true for a network or server failure, false when the file
+   * itself is refused (wrong type, too large), which offers only removal.
+   */
+  retryable?: boolean;
 };
 
 /**
@@ -88,7 +93,7 @@ export function UploadQueue({
                 </div>
               )}
             </div>
-            {failed && onRetry ? (
+            {failed && onRetry && item.retryable !== false ? (
               <StaffButton
                 size="sm"
                 variant="secondary"
@@ -101,14 +106,25 @@ export function UploadQueue({
               </StaffButton>
             ) : null}
             {failed && onDismiss ? (
-              <StaffButton
-                size="icon-sm"
-                variant="ghost"
-                aria-label={`Remove ${item.name} from the list`}
-                onClick={() => onDismiss(item.id)}
-              >
-                <X aria-hidden />
-              </StaffButton>
+              item.retryable === false ? (
+                <StaffButton
+                  size="sm"
+                  variant="secondary"
+                  aria-label={`Remove ${item.name}`}
+                  onClick={() => onDismiss(item.id)}
+                >
+                  Remove
+                </StaffButton>
+              ) : (
+                <StaffButton
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={`Remove ${item.name} from the list`}
+                  onClick={() => onDismiss(item.id)}
+                >
+                  <X aria-hidden />
+                </StaffButton>
+              )
             ) : null}
           </li>
         );

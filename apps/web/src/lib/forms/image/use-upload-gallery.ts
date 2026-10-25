@@ -18,6 +18,8 @@ export type UploadGalleryItem = {
   progress?: number;
   file?: File;
   replace?: boolean;
+  /** False when the file itself was refused (type or size), so trying again cannot help. */
+  retryable?: boolean;
 };
 
 type Args = {
@@ -63,12 +65,12 @@ export function useUploadGallery({ kind, value, onChange, maxFiles, onError }: A
       const acceptedTypes = new Set(policy.accept.split(","));
       const validationMessage =
         file.size > policy.maxBytes
-          ? `File exceeds the ${Math.round(policy.maxBytes / 1024 / 1024)} MB limit.`
+          ? `This file is over the ${Math.round(policy.maxBytes / 1024 / 1024)} MB limit.`
           : file.type && !acceptedTypes.has(file.type)
-            ? "Unsupported file type."
+            ? "This file type is not supported."
             : null;
       if (validationMessage) {
-        updateItem(itemId, { status: "error", message: validationMessage });
+        updateItem(itemId, { status: "error", message: validationMessage, retryable: false });
         onError?.(validationMessage);
         return null;
       }

@@ -16,6 +16,8 @@ type Props = {
   startError?: string | undefined;
   endError?: string | undefined;
   disabled?: boolean;
+  /** Prefix for the two fields' ids, so an error summary can link to them. */
+  idPrefix?: string;
 };
 
 /** A lot's opening and closing moments, side by side where there is room. */
@@ -27,13 +29,24 @@ export function LotWindowFields({
   startError,
   endError,
   disabled = false,
+  idPrefix,
 }: Props) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Lot opens" error={startError} disabled={disabled}>
+      <Field
+        label="Lot opens"
+        error={startError}
+        disabled={disabled}
+        {...(idPrefix ? { id: `${idPrefix}-startTime` } : {})}
+      >
         <DateTimeInput value={start} onValueChange={onStartChange} timeLabel="Lot opening time" />
       </Field>
-      <Field label="Lot closes" error={endError} disabled={disabled}>
+      <Field
+        label="Lot closes"
+        error={endError}
+        disabled={disabled}
+        {...(idPrefix ? { id: `${idPrefix}-endTime` } : {})}
+      >
         <DateTimeInput value={end} onValueChange={onEndChange} timeLabel="Lot closing time" />
       </Field>
     </div>

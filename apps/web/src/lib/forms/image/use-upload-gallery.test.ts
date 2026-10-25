@@ -117,7 +117,7 @@ describe("useUploadGallery", () => {
     });
 
     expect(uploadFile).not.toHaveBeenCalled();
-    expect(onError).toHaveBeenCalledWith("Unsupported file type.");
+    expect(onError).toHaveBeenCalledWith("This file type is not supported.");
     expect(result.current.items[0]?.status).toBe("error");
   });
 });

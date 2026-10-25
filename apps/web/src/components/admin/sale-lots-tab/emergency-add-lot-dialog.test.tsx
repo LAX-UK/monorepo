@@ -41,11 +41,22 @@ describe("EmergencyAddLotDialog", () => {
 
     fireEvent.click(screen.getByText("Add lot to sale"));
 
-    expect(screen.getByText("Enter a lot title")).toBeInTheDocument();
-    expect(screen.getByText("Add a catalogue description")).toBeInTheDocument();
-    expect(screen.getByText("Add at least one image")).toBeInTheDocument();
-    expect(screen.getByText("Choose a seller")).toBeInTheDocument();
-    expect(screen.getByText("Pick at least one category")).toBeInTheDocument();
+    // The summary at the top takes focus and links each problem to its field.
+    const summary = screen.getByRole("alert", { name: "There is a problem" });
+    expect(summary).toHaveFocus();
+    for (const message of [
+      "Enter a lot title",
+      "Add a catalogue description",
+      "Add at least one image",
+      "Choose a seller",
+      "Pick at least one category",
+    ]) {
+      expect(screen.getAllByText(message)).toHaveLength(2);
+    }
+    expect(screen.getByRole("link", { name: "Enter a lot title" })).toHaveAttribute(
+      "href",
+      "#emergency-add-lot-title",
+    );
     expect(addAction).not.toHaveBeenCalled();
   });
 
@@ -56,7 +67,9 @@ describe("EmergencyAddLotDialog", () => {
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Blue Interior" } });
 
     expect(screen.queryByText("Enter a lot title")).toBeNull();
-    expect(screen.getByText("Add a catalogue description")).toBeInTheDocument();
+    expect(screen.getAllByText("Add a catalogue description")).toHaveLength(2);
+    // Fixing a field never pulls focus back to the summary.
+    expect(screen.getByLabelText("Title")).not.toHaveAttribute("aria-invalid", "true");
   });
 
   it("asks for the lot's own times on an online sale only", () => {

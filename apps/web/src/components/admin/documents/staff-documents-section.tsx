@@ -26,6 +26,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 const DOCUMENT_ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
+const DOCUMENT_MAX_BYTES = 25 * 1024 * 1024;
+
+/** Why a file cannot be attached at all, or null when it can. */
+function refusal(file: File): string | null {
+  if (file.size > DOCUMENT_MAX_BYTES) return "This file is over the 25 MB limit.";
+  if (file.type && !DOCUMENT_ACCEPT.split(",").includes(file.type)) {
+    return "This file type is not supported. Use a PDF, JPEG, PNG or WebP.";
+  }
+  return null;
+}
 
 const UPLOAD_KIND: Record<DocumentEntityKind, DocumentUploadKind> = {
   lot: "lot_document",
@@ -136,6 +146,23 @@ export function StaffDocumentsSection<K extends string>({
   const add = (files: File[]) => {
     for (const file of files) {
       const itemId = crypto.randomUUID();
+      const refused = refusal(file);
+      if (refused) {
+        setQueue((items) => [
+          ...items,
+          {
+            id: itemId,
+            name: file.name,
+            status: "error",
+            error: refused,
+            retryable: false,
+            file,
+            kind,
+            label,
+          },
+        ]);
+        continue;
+      }
       const entry: QueueEntry = {
         id: itemId,
         name: file.name,
