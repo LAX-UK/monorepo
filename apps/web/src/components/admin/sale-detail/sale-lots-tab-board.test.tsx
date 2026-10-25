@@ -109,7 +109,7 @@ describe("SaleLotsTabBoard", () => {
     expect(within(rows[0] as HTMLElement).getByText("First lot")).toBeInTheDocument();
     const second = within(rows[1] as HTMLElement);
     expect(second.getByText("Second lot")).toBeInTheDocument();
-    expect(second.getByText("£1,000.00 to £2,000.00")).toBeInTheDocument();
+    expect(second.getByText("£1,000–£2,000")).toBeInTheDocument();
     expect(second.getByText("£800.00")).toBeInTheDocument();
     expect(second.getByText("Draft")).toBeInTheDocument();
   });

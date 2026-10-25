@@ -22,6 +22,8 @@ export type MediaGridProps<T extends MediaGridItem> = {
   primaryLabel?: string;
   onMove: (from: number, to: number) => void;
   onRemove: (index: number) => void;
+  /** The number shown on a tile when the grid shows a filtered part of a longer set. */
+  numberOf?: (item: T, index: number) => number;
   disabled?: boolean;
   className?: string;
 };
@@ -44,6 +46,7 @@ export function MediaGrid<T extends MediaGridItem>({
   onMove,
   onRemove,
   disabled = false,
+  numberOf,
   className,
 }: MediaGridProps<T>) {
   const [dragFrom, setDragFrom] = React.useState<number | null>(null);
@@ -78,7 +81,8 @@ export function MediaGrid<T extends MediaGridItem>({
       </p>
       <ol className="grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3 lg:grid-cols-4">
         {items.map((item, index) => {
-          const position = `${noun} ${index + 1}`;
+          const number = numberOf ? numberOf(item, index) : index + 1;
+          const position = `${noun} ${number}`;
           const actions: OverflowAction[] = [
             ...(primaryLabel && index > 0
               ? [
@@ -155,7 +159,7 @@ export function MediaGrid<T extends MediaGridItem>({
                 <div className="absolute inset-x-1.5 top-1.5 flex items-start justify-between gap-1">
                   <span className="flex items-center gap-1">
                     <span className="flex h-6 min-w-6 items-center justify-center rounded-staff-xs bg-staff-surface px-1.5 text-staff-xs font-medium tabular-nums text-staff-fg shadow-staff-xs">
-                      {index + 1}
+                      {number}
                     </span>
                     {primaryLabel && index === 0 ? (
                       <span className="flex h-6 items-center rounded-staff-xs bg-staff-ink px-1.5 text-staff-xs font-medium text-staff-on-ink">

@@ -75,6 +75,11 @@ type SaleLotRow = {
   unsold: boolean;
 };
 
+/** "£4,000", as the lists show estimates: whole pounds when there are no pence. */
+function wholePounds(pence: number): string {
+  return formatStaffMoney(pence).replace(/\.00$/, "");
+}
+
 function minor(major: string | null | undefined): number | null {
   if (major === null || major === undefined || major === "") return null;
   const value = Number.parseFloat(major);
@@ -236,7 +241,7 @@ export function SaleLotsTabBoard({
     {
       id: "artist",
       header: "Artist",
-      width: "180px",
+      width: "148px",
       sortable: true,
       sortValue: (row) => artistOf(row)?.toLowerCase() ?? null,
       hideBelow: "md",
@@ -272,14 +277,14 @@ export function SaleLotsTabBoard({
     {
       id: "estimate",
       header: "Estimate",
-      width: "168px",
+      width: "136px",
       numeric: true,
       hideBelow: "lg",
       mobile: "hidden",
       cell: (row) =>
         row.estimate ? (
           <span className="tabular-nums">
-            {formatStaffMoney(row.estimate.low)} to {formatStaffMoney(row.estimate.high)}
+            {wholePounds(row.estimate.low)}–{wholePounds(row.estimate.high)}
           </span>
         ) : (
           <EmptyValue />

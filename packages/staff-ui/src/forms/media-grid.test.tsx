@@ -59,6 +59,12 @@ describe("MediaGrid", () => {
     expect(onMove).toHaveBeenCalledWith(2, 0);
   });
 
+  it("numbers tiles by their place in the whole set when it shows a part of it", () => {
+    renderGrid({ numberOf: (_item, index) => index + 5 });
+    expect(screen.getByRole("button", { name: "Move photo 5" })).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+  });
+
   it("offers no reordering when disabled", () => {
     renderGrid({ disabled: true });
     expect(screen.queryByRole("button", { name: /^Move photo/ })).toBeNull();

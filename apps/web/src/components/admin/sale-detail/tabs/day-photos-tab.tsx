@@ -170,6 +170,7 @@ export function SaleDayPhotosTab({
               items={visible}
               noun="item"
               disabled={!editable || filtering}
+              numberOf={(item) => at(item) + 1}
               renderPreview={(item) =>
                 item.mediaType === "video" ? (
                   // biome-ignore lint/a11y/useMediaCaption: staff preview of an uploaded clip; captions are not authored here.
