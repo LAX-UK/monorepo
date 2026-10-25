@@ -238,37 +238,39 @@ export function ListPage<T>({
       {...(pageSize ? { pageSize } : {})}
     />
   ) : null;
-  // No row ever holds a single control: without search, filters or a period, "Display" joins the
-  // view tabs, or sits in a slim row beside the record count.
-  const hasControls = Boolean(search || filters || period);
+  // The search is the only thing that needs a row of its own. Without it, the controls (Filter,
+  // period, Display) join the view tabs, or sit in a slim row beside the record count; no band
+  // is ever left holding a control or two and empty space.
+  const controls =
+    filters || period || display ? (
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {filters}
+        {period}
+        {display}
+      </div>
+    ) : null;
   const toolbar = (
     <div className="flex flex-col">
       {views ? (
         <div
           className={cn(
             "flex min-w-0 items-center gap-2 px-2",
-            hasControls && "border-b border-staff-line-subtle",
+            search && "border-b border-staff-line-subtle",
           )}
         >
           <div className="min-w-0 flex-1">{views}</div>
-          {!hasControls && display ? <div className="shrink-0 pr-1">{display}</div> : null}
+          {!search && controls ? <div className="py-1 pr-1">{controls}</div> : null}
         </div>
       ) : null}
-      {hasControls ? (
+      {search ? (
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
           <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">{search}</div>
-          {filters || period ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {filters}
-              {period}
-            </div>
-          ) : null}
-          {display}
+          {controls}
         </div>
-      ) : !views && (display || resultCount) ? (
-        <div className="flex min-h-11 items-center justify-between gap-3 py-1.5 pr-3 pl-4">
+      ) : !views && (controls || resultCount) ? (
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 py-1.5 pr-3 pl-4">
           <p className="text-staff-sm text-staff-muted tabular-nums">{resultCount}</p>
-          {display}
+          {controls}
         </div>
       ) : null}
       {activeFilters.length > 0 ? (

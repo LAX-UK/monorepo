@@ -209,9 +209,11 @@ previous or next record in that list.**
   - The metric strip's period caption and its labels are 12px muted; values are 20px semibold in
     tabular figures.
   - The toolbar row is: search (fills the row), Filter, period (when the rows have one), Display.
-  - No band ever holds a single control. A list with no search, filters or period puts Display
-    at the right of the view tabs; with no tabs either, a slim row carries the record count on
-    the left ("12 screenings") and Display on the right.
+  - Only the search gets a row of its own. Without search, Filter, period and Display sit at the
+    right of the view tabs; with no tabs either, a slim row carries the record count on the left
+    ("12 screenings") and the controls on the right. No band is left holding a control or two.
+  - Menus (Display, row `…`, Export) are non-modal: opening one never hides the page from
+    assistive technology, while focus still moves into the menu and back to its button.
   - View tabs carry the same `Count` everywhere and overflow into "More" when they do not fit;
     record-section tabs (`TabNav`) are the same tabs.
 - **Kit:** `MET` (`ListPage` with `resultCount`, `MetricStrip`, `AttentionStrip`, `OverflowTabs`
@@ -636,7 +638,9 @@ independent and heavy.**
 - **Header:** a panel uses the record page's header pattern: title, status badge, a meta line of
   2–4 facts, header actions ("Open full page"), then the `…` with the same actions as the row
   menu. Under it, a notice about the record, the key-value summary, sections, and activity last.
-  - A fact is said once: anything in the meta line is left out of the summary.
+  - A fact is said once. The summary leaves out anything the meta line shows, and anything the
+    title, a status badge or the line under the title shows, named in `headerFacts` (typed to
+    the summary's own labels, so a renamed label fails the build).
   - Focus starts on the panel's title, as in a dialog, so no focus ring shows on a header button
     until the person presses Tab.
 - **Kit:** `MET` for the panel (`DetailPanel` widths, focus on the title and back to the row,

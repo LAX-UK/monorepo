@@ -38,6 +38,7 @@ export function OnboardingIssueQuickView({
       }}
       title={row?.title ?? "Onboarding item"}
       description={row?.kind}
+      headerFacts={["Name", "Client", "Status", "Type"]}
       summary={
         row
           ? [

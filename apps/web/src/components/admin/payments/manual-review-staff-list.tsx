@@ -261,6 +261,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
           ) : null
         }
         notice={openRow ? <HeldPaymentNotice row={openRow} /> : null}
+        headerFacts={["Hold"]}
         summary={openRow ? heldPaymentSummary(openRow) : []}
         meta={
           openRow

@@ -21,7 +21,18 @@ import { ShortcutKeys } from "./input.js";
  * md, hairline) holding 32px items; destructive items are red and sit last, after a separator.
  */
 
-export const StaffMenu = DropdownMenu;
+/**
+ * A menu that leaves the page as it is: non-modal, so opening it never hides the rest of the page
+ * from assistive technology (a hidden page with a focusable skip link fails WCAG), while focus
+ * still moves into the menu, arrows move through it, and Escape or a click outside closes it and
+ * returns focus to the button.
+ */
+export function StaffMenu({
+  modal = false,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenu>) {
+  return <DropdownMenu modal={modal} {...props} />;
+}
 export const StaffMenuTrigger = DropdownMenuTrigger;
 
 export function StaffMenuContent({

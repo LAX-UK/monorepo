@@ -100,22 +100,37 @@ describe("ListPage", () => {
     expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
   });
 
-  it("never gives Display a row of its own", () => {
-    const { unmount } = render(
-      page({ resultCount: "2 payments", views: <nav aria-label="Views">tabs</nav> }),
-    );
-    const display = screen.getByRole("button", { name: "Display" });
-    // With tabs and no search or filters, Display sits in the tabs row.
-    expect(screen.getByRole("navigation", { name: "Views" }).parentElement?.parentElement).toBe(
-      display.parentElement?.parentElement,
-    );
-    expect(screen.queryByText("2 payments")).toBeNull();
-    unmount();
+  it("never leaves a band holding only a control or two", () => {
+    const tabsRow = () =>
+      screen.getByRole("navigation", { name: "Views" }).parentElement?.parentElement as HTMLElement;
+    const display = () => screen.getByRole("button", { name: "Display" });
 
+    // Tabs, no search: Filter and Display join the tabs row.
+    const first = render(
+      page({
+        resultCount: "2 payments",
+        views: <nav aria-label="Views">tabs</nav>,
+        filters: <StaffButton size="sm">Filter</StaffButton>,
+      }),
+    );
+    expect(tabsRow()).toContainElement(display());
+    expect(tabsRow()).toContainElement(screen.getByRole("button", { name: "Filter" }));
+    expect(screen.queryByText("2 payments")).toBeNull();
+    first.unmount();
+
+    // Tabs and search: the search row holds the controls.
+    const second = render(
+      page({
+        views: <nav aria-label="Views">tabs</nav>,
+        search: <input aria-label="Search payments" />,
+      }),
+    );
+    expect(tabsRow()).not.toContainElement(display());
+    second.unmount();
+
+    // No tabs, no search: one slim row, the count on the left and Display on the right.
     render(page({ resultCount: "2 payments" }));
-    // Without tabs: one slim row, the count on the left and Display on the right.
-    const count = screen.getByText("2 payments");
-    expect(count.parentElement).toContainElement(screen.getByRole("button", { name: "Display" }));
+    expect(screen.getByText("2 payments").parentElement).toContainElement(display());
   });
 
   it("puts columns, density, page size and reset in one Display menu", () => {

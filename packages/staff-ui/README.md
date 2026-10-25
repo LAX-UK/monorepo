@@ -94,7 +94,7 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
     with their period); then one table surface: view tabs (overflowing into "More"), search ·
     `FilterSheet` · period · `DisplayMenu` (columns, rows, rows per page, reset), the applied
     filters as chips, the table with a `…` menu on every row (`table.rowActions`), and
-    pagination. No band holds a single control: with no search, filters or period, Display joins
+    pagination. Only the search gets a row of its own: without it, Filter, period and Display join
     the tabs, or a slim row with `resultCount`. The four blocks sit 24px apart and share radius, hairline and fill; from 768px
     the toolbar and the column headers stick under the top bar. Export goes in `exportAction`,
     built from the same query as the rows. Loading, empty, no results, error with retry,
@@ -111,7 +111,9 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
     table itself.
   - Record panel (`DetailPanel`) and `DetailPage` share one header: title, status, a `meta` line
     of facts, actions and the `…` (`overflow`), then a notice, the summary, sections and
-    activity. A meta fact is never repeated in the summary, and focus starts on the title.
+    activity. The summary never repeats a meta fact or a `headerFacts` label (what the title,
+    badges or description show), and focus starts on the title.
+  - Menus (`StaffMenu`, so `OverflowMenu` and `DisplayMenu` too) are non-modal by default.
 
   ```tsx
   <ListPage

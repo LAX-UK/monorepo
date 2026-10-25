@@ -69,6 +69,7 @@ export function DisputeQuickView({
           </StatusBadge>
         ) : null
       }
+      headerFacts={["Reason", "Lot"]}
       summary={
         row
           ? [

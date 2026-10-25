@@ -19,7 +19,11 @@ import { ConfirmActionDialog } from "./staff-dialog.js";
 /** One key fact in a panel's meta line: "Buyer Ada Lovelace". */
 export type PanelMetaFact = { label: string; value: React.ReactNode };
 
-export type DetailPanelProps = {
+/**
+ * `L` is the union of the summary's labels, so `headerFacts` can only name facts the summary
+ * really has: a renamed summary label breaks the build instead of quietly showing a fact twice.
+ */
+export type DetailPanelProps<L extends string = string> = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: React.ReactNode;
@@ -43,7 +47,13 @@ export type DetailPanelProps = {
    * Key facts as a key-value list at the top of the panel, as on the record page. Facts already
    * in `meta` are dropped here.
    */
-  summary?: readonly KeyValueItem[];
+  summary?: readonly (KeyValueItem & { label: L })[];
+  /**
+   * Summary facts the header already shows: the title (the record's name), a status badge or the
+   * line under the title. They are left out of the summary, as `meta` facts are, so a panel says
+   * each fact once.
+   */
+  headerFacts?: readonly NoInfer<L>[];
   /** The record's activity (a Timeline), last in the panel under "Activity". */
   activity?: React.ReactNode;
   /** Sticky footer actions; the primary action last. */
@@ -65,7 +75,7 @@ export type DetailPanelProps = {
  * for `lg`), full width on a phone. Focus moves into the panel on open and returns to the row
  * that opened it on close; Escape and the close button both close it.
  */
-export function DetailPanel({
+export function DetailPanel<L extends string = string>({
   open,
   onOpenChange,
   title,
@@ -76,17 +86,21 @@ export function DetailPanel({
   overflow,
   notice,
   summary,
+  headerFacts,
   activity,
   footer,
   size = "md",
   dirty = false,
   dirtyLabel,
   children,
-}: DetailPanelProps) {
+}: DetailPanelProps<L>) {
   const [confirmingClose, setConfirmingClose] = React.useState(false);
   const titleRef = React.useRef<HTMLHeadingElement>(null);
-  const metaLabels = new Set((meta ?? []).map((fact) => fact.label));
-  const summaryItems = (summary ?? []).filter((item) => !metaLabels.has(item.label));
+  const shown = new Set<string>([
+    ...(meta ?? []).map((fact) => fact.label),
+    ...(headerFacts ?? []),
+  ]);
+  const summaryItems = (summary ?? []).filter((item) => !shown.has(item.label));
   const prompt = discardPrompt(dirtyLabel);
   const requestOpenChange = (next: boolean) => {
     if (!next && dirty) setConfirmingClose(true);

@@ -74,7 +74,7 @@ function reviewBlocker(
 
 /**
  * A watchlist screening beside the list, in the record header pattern: the client and both
- * statuses, a meta line (screened, hits, triage), "Open client" and the same `…` menu as the row.
+ * statuses, a meta line (screened, hits), "Open client" and the same `…` menu as the row.
  * The two stages of the maker-checker sit under Review, the next step in the footer; every
  * decision opens the row's confirm dialog.
  */
@@ -105,6 +105,7 @@ export function AmlQuickView({
       }}
       title={row?.client ?? "Screening"}
       description="Watchlist screening"
+      headerFacts={["Client", "Match", "Policy outcome", "Watchlist hits"]}
       summary={
         row
           ? [
@@ -137,7 +138,6 @@ export function AmlQuickView({
           ? [
               { label: "Screened", value: <StaffDate value={row.screenedAt} /> },
               { label: "Hits", value: row.totalHits },
-              { label: "Triage", value: row.triage.label },
             ]
           : []
       }
