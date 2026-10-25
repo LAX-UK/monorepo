@@ -1,6 +1,6 @@
 import { formatEmailDeliverabilityStatus, formatUserRole } from "@/lib/admin/admin-user-presenters";
 import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
-import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
@@ -25,13 +25,10 @@ function dateTime(value: string | null) {
 export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }) {
   const isStaff = user.role === "staff";
   const mobile = formatPhoneDisplay(user.mobile);
-  const standing = staffStatus("user", user.suspendedAt ? "suspended" : "active");
-  const identity = staffIdentityStatus(user.kycStatus);
   const holdReason = formatAmlHoldReason(user.amlHoldReason);
 
   const profile: KeyValueItem[] = [
     { label: "Full name", value: user.name },
-    { label: "Email", value: user.email, copyValue: user.email },
     {
       label: "Mobile",
       value: mobile ? `${mobile}${user.mobileCountry ? ` (${user.mobileCountry})` : ""}` : null,
@@ -41,12 +38,7 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
     ...(isStaff
       ? [{ label: "Staff role", value: staffRoleLabel(user.staffRole as UserStaffRole | null) }]
       : [{ label: "Signed up as", value: formatSignupPersona(user.signupPersona) }]),
-    { label: "Created", value: dateTime(user.createdAt) },
     { label: "Last updated", value: dateTime(user.updatedAt) },
-    {
-      label: "Account status",
-      value: <StatusBadge tone={standing.tone}>{standing.label}</StatusBadge>,
-    },
     ...(user.suspendedAt ? [{ label: "Suspended", value: dateTime(user.suspendedAt) }] : []),
     ...(user.suspendedReason ? [{ label: "Suspension reason", value: user.suspendedReason }] : []),
     ...(user.deletionRequestedAt
@@ -94,10 +86,6 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
     ...(isStaff
       ? []
       : [
-          {
-            label: "Identity",
-            value: <StatusBadge tone={identity.tone}>{identity.label}</StatusBadge>,
-          },
           ...(user.kycVerifiedAt
             ? [{ label: "Identity verified", value: dateTime(user.kycVerifiedAt) }]
             : []),

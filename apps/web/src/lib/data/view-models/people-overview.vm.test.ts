@@ -1,3 +1,4 @@
+import { buildClientSummaryMetrics, sumCapturedPayments } from "@/lib/admin/admin-user-metrics";
 import { describe, expect, it } from "vitest";
 import { buildClientOverviewStats } from "./people-overview.vm";
 
@@ -43,5 +44,26 @@ describe("buildClientOverviewStats", () => {
     expect(stats[1]?.value).toBe("—");
     expect(stats[1]?.hint).toBe("Nothing due");
     expect(stats[2]?.value).toBe("—");
+  });
+
+  it("counts only captured payments as paid, so what is owed is never added twice", () => {
+    const payments = [
+      { ...pending, id: "pay_captured", amount: "4000.00", status: "captured" as const },
+      { ...pending, id: "pay_pending", amount: "1810.00" },
+    ];
+    const lifetimeSpend = sumCapturedPayments(payments);
+    const stats = buildClientOverviewStats({
+      summaryMetrics: buildClientSummaryMetrics({
+        lifetimeSpend,
+        lotsWon: 2,
+        submissionsCount: 0,
+        memberSinceIso: "2024-06-01T00:00:00.000Z",
+      }),
+      payments,
+    });
+
+    expect(stats[0]).toMatchObject({ label: "Paid to date", hint: "Captured payments" });
+    expect(stats[0]?.value).toContain("4,000.00");
+    expect(stats[1]?.value).toContain("1,810.00");
   });
 });

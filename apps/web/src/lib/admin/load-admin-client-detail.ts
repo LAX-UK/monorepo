@@ -5,13 +5,9 @@ import {
 } from "@/lib/admin/admin-user-metrics";
 import type { AdminUserSummaryMetrics } from "@/lib/admin/admin-user-metrics";
 import {
-  type AdminUserReadinessSnapshot,
   type BuildInput,
   type UserAttentionItem,
-  type UserDetailRailContext,
-  buildAdminUserReadinessSnapshot,
   buildUserAttentionItems,
-  buildUserDetailRailContext,
 } from "@/lib/admin/admin-user-readiness.vm";
 import { loadAdminUserDetail } from "@/lib/admin/load-admin-user-detail";
 import {
@@ -73,9 +69,7 @@ export type AdminClientDetailBundle = {
   lifetimeSpend: number;
   submissionsCount: number;
   amlScreeningBySessionId: Record<string, AdminAmlScreeningRow>;
-  readinessSnapshot: AdminUserReadinessSnapshot;
   attentionItems: UserAttentionItem[];
-  railContext: UserDetailRailContext;
   summaryMetrics: AdminUserSummaryMetrics;
   legalEntitiesForActions: { id: string; displayName: string }[];
 };
@@ -144,8 +138,6 @@ export const loadAdminClientDetail = cache(
       user,
       legalEntities,
       amlScreenings,
-      lotsWon: wonLots.length,
-      lifetimeSpend,
       canViewAml,
     };
 
@@ -171,9 +163,7 @@ export const loadAdminClientDetail = cache(
       lifetimeSpend,
       submissionsCount,
       amlScreeningBySessionId,
-      readinessSnapshot: buildAdminUserReadinessSnapshot(vmInput),
       attentionItems: buildUserAttentionItems(vmInput),
-      railContext: buildUserDetailRailContext(vmInput),
       summaryMetrics: buildClientSummaryMetrics({
         lifetimeSpend,
         lotsWon: wonLots.length,

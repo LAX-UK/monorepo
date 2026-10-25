@@ -8,7 +8,7 @@ import {
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
 import { adminUpdateClientDisplayNameFieldAction } from "@/lib/actions/admin/field-updates";
-import type { UserAttentionItem, UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
+import type { UserAttentionItem } from "@/lib/admin/admin-user-readiness.vm";
 import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
@@ -53,8 +53,6 @@ type Props = {
   access: PersonActionAccess;
   tabs: PeopleDetailTab[];
   attentionItems?: readonly UserAttentionItem[];
-  /** Clients only: the side column with their standing and seller organisations. */
-  railContext?: UserDetailRailContext;
   legalEntitiesForActions?: Pick<LegalEntity, "id" | "displayName">[];
   showContextRail?: boolean;
 };
@@ -79,7 +77,6 @@ export function PeopleDetailShell({
   access,
   tabs,
   attentionItems = [],
-  railContext,
   legalEntitiesForActions = [],
   showContextRail = true,
 }: Props) {
@@ -137,10 +134,7 @@ export function PeopleDetailShell({
 
   const rail =
     !isStaff && showContextRail ? (
-      <UserDetailContextRail
-        legalEntities={legalEntitiesForActions}
-        {...(railContext ? { context: railContext } : {})}
-      />
+      <UserDetailContextRail legalEntities={legalEntitiesForActions} />
     ) : null;
 
   return (
@@ -173,19 +167,7 @@ export function PeopleDetailShell({
         }
         meta={
           <>
-            <MetaItem label="Email">
-              {user.email}
-              {user.emailVerified ? null : (
-                <span className="text-staff-muted"> · Not verified</span>
-              )}
-            </MetaItem>
-            <MetaItem label="Two-step">
-              {user.securityStatusAvailable
-                ? user.twoFactorEnabled
-                  ? "On"
-                  : "Off"
-                : "Unavailable"}
-            </MetaItem>
+            <MetaItem label="Email">{user.email}</MetaItem>
             <MetaItem label="Joined">
               <StaffDate value={user.createdAt} withTime className="text-staff-fg" />
             </MetaItem>

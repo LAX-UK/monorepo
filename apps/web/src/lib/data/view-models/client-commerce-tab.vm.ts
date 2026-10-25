@@ -100,7 +100,7 @@ export function buildClientPaymentStats(payments: readonly AdminPaymentRow[]): S
   return [
     {
       id: "lifetime",
-      label: "Lifetime spend",
+      label: "Paid to date",
       value: lifetime > 0 ? formatMoney(lifetime.toFixed(2)) : "—",
       hint: "Captured payments",
     },

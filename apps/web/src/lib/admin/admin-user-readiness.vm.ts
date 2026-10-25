@@ -4,17 +4,8 @@ import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
 import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
-import { formatMoney } from "@/lib/format-currency";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity } from "@auction/types";
-
-export type ReadinessTone = "ready" | "warning" | "blocked";
-
-export type ReadinessNextAction = {
-  label: string;
-  href: string;
-  tone: ReadinessTone;
-};
 
 export type UserAttentionItem = {
   id: string;
@@ -23,51 +14,14 @@ export type UserAttentionItem = {
   severity: "critical" | "warning" | "info";
 };
 
-export type AdminUserReadinessSnapshot = {
-  identity: {
-    emailVerified: boolean;
-    kycStatus: string;
-    securityStatusAvailable: boolean;
-    twoFactorEnabled: boolean;
-  };
-  compliance: {
-    amlHoldActive: boolean;
-    amlReviewPending: boolean;
-    latestAmlDecision: string | null;
-  };
-  commerce: {
-    legalEntityCount: number;
-    connectGapsCount: number;
-    lotsWon: number;
-    lifetimeSpendLabel: string;
-  };
-  nextAction: ReadinessNextAction;
-};
-
-export type UserDetailRailContext = {
-  kycStatus: string;
-  emailVerified: boolean;
-  amlHoldActive: boolean;
-  amlReviewPending: boolean;
-  connectGapsCount: number;
-  primaryEntity: { id: string; displayName: string } | null;
-  canViewAml: boolean;
-};
-
 export type BuildInput = {
   user: AdminUserDetailPayload;
   legalEntities: LegalEntity[];
   amlScreenings: AdminAmlScreeningRow[];
-  lotsWon: number;
-  lifetimeSpend: number;
   canViewAml: boolean;
 };
 
-type AttentionSignal = UserAttentionItem & {
-  priority: number;
-  nextActionLabel: string;
-  tone: ReadinessTone;
-};
+type AttentionSignal = UserAttentionItem & { priority: number };
 
 function countConnectGaps(entities: LegalEntity[]): number {
   return entities.reduce((acc, entity) => {
@@ -88,10 +42,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "suspended",
       priority: 10,
       message: `Account suspended${user.suspendedReason ? ` · ${user.suspendedReason}` : ""}`,
-      nextActionLabel: "Account suspended. Review before taking action",
       href: "?tab=overview#profile",
       severity: "critical",
-      tone: "blocked",
     });
   }
 
@@ -101,10 +53,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "aml-hold",
       priority: 20,
       message: `AML hold active${reason ? ` · ${reason}` : ""}`,
-      nextActionLabel: "AML hold active. Resolve before enabling activity",
       href: "?tab=overview#profile",
       severity: "critical",
-      tone: "blocked",
     });
   }
 
@@ -113,10 +63,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "deletion-requested",
       priority: 30,
       message: `Deletion requested · ${formatAdminUserDate(user.deletionRequestedAt)}`,
-      nextActionLabel: "Deletion requested. Review the account status",
       href: "?tab=overview#profile",
       severity: "warning",
-      tone: "warning",
     });
   }
 
@@ -125,10 +73,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "aml-review",
       priority: 40,
       message: "Watchlist screening awaiting review",
-      nextActionLabel: "Review AML screening",
       href: "?tab=overview#aml",
       severity: "warning",
-      tone: "warning",
     });
   }
 
@@ -137,20 +83,16 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "kyc-pending",
       priority: 50,
       message: "Identity check in progress or awaiting a decision",
-      nextActionLabel: "Wait for the identity decision",
       href: "?tab=overview#kyc-history",
       severity: "warning",
-      tone: "warning",
     });
   } else if (kycStatus === "rejected" || kycStatus === "expired") {
     signals.push({
       id: "kyc-issue",
       priority: 60,
       message: `Identity check ${kycStatusPhrase(kycStatus)}`,
-      nextActionLabel: `Identity check ${kycStatusPhrase(kycStatus)}. Follow up with the client`,
       href: "?tab=overview#kyc-history",
       severity: "warning",
-      tone: "warning",
     });
   }
 
@@ -160,11 +102,9 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
     signals.push({
       id: "connect-gaps",
       priority: 70,
-      message: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}`,
-      nextActionLabel: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}: ${stage.toLowerCase()}`,
+      message: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}: ${stage.toLowerCase()}`,
       href: "?tab=overview#legal-entities",
       severity: "warning",
-      tone: "warning",
     });
   }
 
@@ -173,10 +113,8 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "email-unverified",
       priority: 80,
       message: "Email address not verified",
-      nextActionLabel: "Email not verified",
       href: "?tab=overview#profile",
       severity: "info",
-      tone: "warning",
     });
   }
 
@@ -190,63 +128,4 @@ export function buildUserAttentionItems(input: BuildInput): UserAttentionItem[] 
     href,
     severity,
   }));
-}
-
-export function buildAdminUserReadinessNextAction(input: BuildInput): ReadinessNextAction {
-  const top = collectAttentionSignals(input)[0];
-  if (!top) {
-    return {
-      label: "Ready to bid and buy",
-      href: "?tab=overview",
-      tone: "ready",
-    };
-  }
-
-  return {
-    label: top.nextActionLabel,
-    href: top.href,
-    tone: top.tone,
-  };
-}
-
-export function buildAdminUserReadinessSnapshot(input: BuildInput): AdminUserReadinessSnapshot {
-  const { user, legalEntities, amlScreenings, lotsWon, lifetimeSpend, canViewAml } = input;
-  const latestAml = amlScreenings[0] ?? null;
-
-  return {
-    identity: {
-      emailVerified: user.emailVerified,
-      kycStatus: user.kycStatus ?? "unknown",
-      securityStatusAvailable: user.securityStatusAvailable,
-      twoFactorEnabled: user.twoFactorEnabled,
-    },
-    compliance: {
-      amlHoldActive: Boolean(user.amlHoldStatus && user.amlHoldStatus !== "none"),
-      amlReviewPending: canViewAml && latestAml?.reviewStatus === "pending",
-      latestAmlDecision: canViewAml ? (latestAml?.decisionOutcome ?? null) : null,
-    },
-    commerce: {
-      legalEntityCount: legalEntities.length,
-      connectGapsCount: countConnectGaps(legalEntities),
-      lotsWon,
-      lifetimeSpendLabel: lifetimeSpend > 0 ? formatMoney(lifetimeSpend.toFixed(2)) : "—",
-    },
-    nextAction: buildAdminUserReadinessNextAction(input),
-  };
-}
-
-export function buildUserDetailRailContext(input: BuildInput): UserDetailRailContext {
-  const { user, legalEntities, amlScreenings, canViewAml } = input;
-  const latestAml = amlScreenings[0] ?? null;
-  const primary = legalEntities[0] ?? null;
-
-  return {
-    kycStatus: user.kycStatus ?? "unknown",
-    emailVerified: user.emailVerified,
-    amlHoldActive: Boolean(user.amlHoldStatus && user.amlHoldStatus !== "none"),
-    amlReviewPending: canViewAml && latestAml?.reviewStatus === "pending",
-    connectGapsCount: countConnectGaps(legalEntities),
-    primaryEntity: primary ? { id: primary.id, displayName: primary.displayName } : null,
-    canViewAml,
-  };
 }

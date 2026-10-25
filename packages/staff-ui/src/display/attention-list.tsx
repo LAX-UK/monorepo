@@ -1,6 +1,7 @@
 import { ChevronRight, CircleCheck } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { formatCount } from "../primitives/tabs.js";
 import type { StaffLinkComponent } from "../shell/link.js";
 import type { StaffStatusTone } from "../tokens.js";
 
@@ -17,8 +18,6 @@ export type AttentionItem = {
   /** `warning` or `danger` for queues past their target; neutral otherwise. */
   tone?: Extract<StaffStatusTone, "neutral" | "warning" | "danger">;
 };
-
-const COUNT = new Intl.NumberFormat("en-GB");
 
 const countTone = {
   neutral: "bg-staff-neutral-bg text-staff-neutral-fg",
@@ -72,7 +71,7 @@ export function AttentionList({
                     countTone[item.tone ?? "neutral"],
                   )}
                 >
-                  {item.count > 999 ? "999+" : COUNT.format(item.count)}
+                  {formatCount(item.count)}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
                   <span className="text-staff-fg">{item.label}</span>

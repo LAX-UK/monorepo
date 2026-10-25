@@ -27,7 +27,7 @@ describe("AttentionList", () => {
     expect(links).toHaveLength(2);
     expect(links[0]).toHaveAttribute("href", "/orders?status=paid&age=48h");
     expect(links[0]).toHaveTextContent("7orders paid over 48 hours ago, not packedoldest 3 days");
-    expect(links[1]).toHaveTextContent("999+");
+    expect(links[1]).toHaveTextContent("1,200");
     expect(within(card).queryByText("KYC reviews waiting")).not.toBeInTheDocument();
   });
 

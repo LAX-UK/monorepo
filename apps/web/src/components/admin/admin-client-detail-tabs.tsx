@@ -8,7 +8,6 @@ import {
 } from "@/components/admin/admin-user-commerce-panel";
 import { AdminUserKycHistoryPanel } from "@/components/admin/admin-user-kyc-history-panel";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
-import { AdminUserReadinessPanel } from "@/components/admin/admin-user-readiness-panel";
 import { AdminUserSofPanel } from "@/components/admin/admin-user-sof-panel";
 import type { PeopleDetailTab } from "@/components/admin/people-detail-shell";
 import type { AdminClientDetailBundle } from "@/lib/admin/load-admin-client-detail";
@@ -28,7 +27,6 @@ function overviewTab(bundle: AdminClientDetailBundle): PeopleDetailTab {
           label="Client summary"
           items={buildClientOverviewStats({ summaryMetrics, payments })}
         />
-        <AdminUserReadinessPanel snapshot={bundle.readinessSnapshot} />
         <AdminUserProfilePanel user={user} />
         {bundle.canViewKyc ? (
           <AdminUserKycHistoryPanel

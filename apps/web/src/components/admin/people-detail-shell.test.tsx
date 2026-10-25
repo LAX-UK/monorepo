@@ -167,7 +167,7 @@ describe("PeopleDetailShell header actions", () => {
 });
 
 describe("PeopleDetailShell header facts", () => {
-  it("says Not verified in words for identity and email, never the stored value", () => {
+  it("says Not verified in words for identity, never the stored value", () => {
     render(
       shell(
         { canModerate: true, canManageRoles: true },
@@ -177,7 +177,8 @@ describe("PeopleDetailShell header facts", () => {
 
     const header = screen.getByRole("heading", { level: 1 }).closest("header") ?? document.body;
     expect(within(header).getByText("Not verified", { selector: "span span" })).toBeInTheDocument();
-    expect(screen.getByText(/· Not verified/)).toBeInTheDocument();
+    // Email verification is said once, in Security and verification, not in the header.
+    expect(screen.queryByText(/· Not verified/)).toBeNull();
     expect(screen.queryByText(/unverified/i)).toBeNull();
   });
 
@@ -186,7 +187,8 @@ describe("PeopleDetailShell header facts", () => {
 
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("Verified")).toBeInTheDocument();
-    expect(screen.getByText("On")).toBeInTheDocument();
+    // Two-step lives in Security and verification only.
+    expect(screen.queryByText("Two-step")).toBeNull();
   });
 
   it("shows a staff member's role instead of an identity badge", () => {

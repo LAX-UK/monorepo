@@ -1,23 +1,13 @@
 "use client";
 
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
-import type { UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
-import { staffIdentityStatus } from "@/lib/admin/staff-kit-status";
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
-import {
-  EmptyState,
-  type KeyValueItem,
-  KeyValueList,
-  Section,
-  StaffButton,
-  StatusBadge,
-} from "@auction/staff-ui";
+import { EmptyState, Section, StaffButton } from "@auction/staff-ui";
 import type { LegalEntity } from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Props = {
-  context?: UserDetailRailContext;
   legalEntities?: Pick<LegalEntity, "id" | "displayName">[];
 };
 
@@ -26,44 +16,11 @@ const IMPERSONATION_FAILURES: Record<string, string> = {
   bad_request: "That seller organisation could not be found.",
 };
 
-function glanceItems(context: UserDetailRailContext): KeyValueItem[] {
-  const identity = staffIdentityStatus(context.kycStatus);
-  return [
-    {
-      label: "Identity",
-      value: <StatusBadge tone={identity.tone}>{identity.label}</StatusBadge>,
-    },
-    { label: "Email", value: context.emailVerified ? "Verified" : "Not verified" },
-    ...(context.canViewAml
-      ? [
-          {
-            label: "AML",
-            value: context.amlHoldActive ? (
-              <StatusBadge tone="danger">On hold</StatusBadge>
-            ) : context.amlReviewPending ? (
-              <StatusBadge tone="warning">Review pending</StatusBadge>
-            ) : (
-              "Clear"
-            ),
-          },
-        ]
-      : []),
-    ...(context.connectGapsCount > 0
-      ? [
-          {
-            label: "Seller setup",
-            value: `${context.connectGapsCount} ${context.connectGapsCount === 1 ? "gap" : "gaps"}`,
-          },
-        ]
-      : []),
-  ];
-}
-
 /**
- * The side column of a client's page: where they stand at a glance, and the seller organisations
- * staff can impersonate to see LAX as that seller does.
+ * The side column of a client's page: the seller organisations staff can impersonate to see LAX
+ * as that seller does.
  */
-export function UserDetailContextRail({ context, legalEntities = [] }: Props) {
+export function UserDetailContextRail({ legalEntities = [] }: Props) {
   const router = useRouter();
   const confirm = useStaffConfirm();
 
@@ -95,11 +52,6 @@ export function UserDetailContextRail({ context, legalEntities = [] }: Props) {
 
   return (
     <>
-      {context ? (
-        <Section title="At a glance">
-          <KeyValueList items={glanceItems(context)} />
-        </Section>
-      ) : null}
       <Section
         title="Seller organisations"
         description="Impersonate one to see LAX as that seller does."

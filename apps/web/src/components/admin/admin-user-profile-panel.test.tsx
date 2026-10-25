@@ -46,13 +46,13 @@ const renderPanel = (value: AdminUserDetailPayload) =>
   );
 
 describe("AdminUserProfilePanel", () => {
-  it("reads identity, email and delivery in words, never stored values", () => {
+  it("reads email and delivery in words, never stored values", () => {
     renderPanel(user);
 
     const security = screen.getByRole("region", { name: "Security and verification" });
-    expect(
-      within(security).getByText("Not verified", { selector: "span span" }),
-    ).toBeInTheDocument();
+    // Email verification lives here; the identity status is a header badge, said once.
+    expect(within(security).getByText("Not verified")).toBeInTheDocument();
+    expect(within(security).queryByText("Identity")).toBeNull();
     expect(within(security).getByText("Bounced")).toBeInTheDocument();
     expect(within(security).getByText("Off")).toBeInTheDocument();
     expect(screen.queryByText(/unverified/i)).toBeNull();

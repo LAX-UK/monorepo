@@ -5,6 +5,7 @@ import * as React from "react";
 import { EmptyValue, isEmptyCellValue } from "../data/cells.js";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
+import { TruncatedText } from "./truncated-text.js";
 
 export type KeyValueItem = {
   label: string;
@@ -51,9 +52,17 @@ export function KeyValueList({
               item.numeric && "tabular-nums",
             )}
           >
-            <span className="min-w-0 break-words">
-              {isEmptyCellValue(item.value) ? <EmptyValue /> : item.value}
-            </span>
+            {item.copyValue && typeof item.value === "string" ? (
+              // A reference or address is one unbroken value: it shortens on one line, with the
+              // full text in a tooltip and on the copy button, rather than breaking mid-word.
+              <TruncatedText mode={item.value.includes("@") ? "middle" : "end"} className="min-w-0">
+                {item.value}
+              </TruncatedText>
+            ) : (
+              <span className="min-w-0 break-words">
+                {isEmptyCellValue(item.value) ? <EmptyValue /> : item.value}
+              </span>
+            )}
             {item.copyValue ? <CopyButton value={item.copyValue} label={item.label} /> : null}
           </dd>
         </div>

@@ -21,7 +21,7 @@ export function buildClientOverviewStats(input: BuildClientOverviewInput): StatI
   return [
     {
       id: "lifetime",
-      label: "Lifetime spend",
+      label: "Paid to date",
       value: summaryMetrics.lifetimeSpend
         ? formatMoney(summaryMetrics.lifetimeSpend.toFixed(2))
         : "—",
