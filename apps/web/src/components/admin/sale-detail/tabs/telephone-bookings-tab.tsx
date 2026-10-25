@@ -1,32 +1,41 @@
 "use client";
 
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
-import { CatalogDetailTabCard } from "@/components/admin/catalog";
-import {
-  DetailBoardKpiStrip,
-  DetailBoardToolbar,
-  DetailEntityTable,
-} from "@/components/admin/catalog/detail-board";
-import { SaleStatusPill } from "@/components/admin/sale-detail/sale-status-pill";
-import { TelephoneBookingActionCard } from "@/components/admin/sale-detail/tabs/telephone-booking-action-card";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
+import { useTelephoneBookingActions } from "@/components/admin/sale-detail/tabs/use-telephone-booking-actions";
 import { downloadSaleTelephoneBookingsCsv } from "@/lib/admin/export-sale-telephone-bookings-csv";
+import { staffTelephoneBookingStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
+import { decimalToMinorUnits } from "@/lib/data/view-models/client-commerce-tab.vm";
 import {
   SALE_TELEPHONE_FILTERS,
   type SaleTelephoneFilter,
-  buildSaleTelephoneKpiTiles,
   filterSaleTelephoneBookings,
   matchesSaleTelephoneSearch,
   telephoneBidderLabel,
 } from "@/lib/data/view-models/sale-telephone-tab.vm";
-import { telephoneBookingDotStatus } from "@/lib/presenters/status/dot-status-presenters";
-import { formatMoney } from "@/lib/ui/format";
+import {
+  CellLink,
+  type DataColumn,
+  DataTableToolbar,
+  EmptyState,
+  ErrorState,
+  Notice,
+  PersonCell,
+  Section,
+  SegmentedControl,
+  StaffButton,
+  StaffDate,
+  type StaffLinkComponent,
+  StaffMoney,
+  StatusBadge,
+  TableSearch,
+  rowActionsColumn,
+} from "@auction/staff-ui";
 import type { Sale } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   saleId: string;
@@ -37,6 +46,7 @@ type Props = {
   actionError: string | null;
 };
 
+/** Telephone lines bidders have asked for in this sale, and what the clerks do with each. */
 export function SaleTelephoneBookingsTab({
   saleId,
   sale,
@@ -47,8 +57,9 @@ export function SaleTelephoneBookingsTab({
 }: Props) {
   const [filter, setFilter] = useState<SaleTelephoneFilter>("all");
   const [search, setSearch] = useState("");
+  const { actionsFor, dialogs } = useTelephoneBookingActions(saleId);
 
-  const filteredRows = useMemo(
+  const filtered = useMemo(
     () =>
       filterSaleTelephoneBookings(rows, filter).filter((row) =>
         matchesSaleTelephoneSearch(row, search),
@@ -56,150 +67,167 @@ export function SaleTelephoneBookingsTab({
     [rows, filter, search],
   );
 
-  const activeRows = filteredRows.filter(
-    (r) => r.status !== "cancelled" && r.status !== "completed",
-  );
-  const archivedRows = filteredRows.filter(
-    (r) => r.status === "cancelled" || r.status === "completed",
+  const columns = useMemo<DataColumn<AdminTelephoneBookingRow>[]>(
+    () => [
+      {
+        id: "bidder",
+        header: "Bidder",
+        mobile: "title",
+        sortable: true,
+        sortValue: (row) => telephoneBidderLabel(row).toLowerCase(),
+        cell: (row) => (
+          <PersonCell
+            name={telephoneBidderLabel(row)}
+            secondary={row.userName && row.userEmail ? row.userEmail : null}
+            href={`/admin/clients/${encodeURIComponent(row.userId)}`}
+            Link={NextLink}
+          />
+        ),
+      },
+      {
+        id: "phone",
+        header: "Phone",
+        width: "176px",
+        mobile: "meta",
+        truncate: false,
+        cell: (row) => (
+          <CellLink href={`tel:${row.phoneE164}`}>{row.phoneDisplay ?? row.phoneE164}</CellLink>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        width: "240px",
+        mobile: "badge",
+        truncate: false,
+        cell: (row) => {
+          const status = staffTelephoneBookingStatus(row.status);
+          return (
+            <span className="flex flex-wrap items-center gap-1.5">
+              <StatusBadge tone={status.tone} live={status.live ?? false}>
+                {status.label}
+              </StatusBadge>
+              {row.limitIncreaseRequestedAt != null && row.status !== "cancelled" ? (
+                <StatusBadge tone="warning">Higher limit asked</StatusBadge>
+              ) : null}
+            </span>
+          );
+        },
+      },
+      {
+        id: "authorised",
+        header: "Authorised max",
+        numeric: true,
+        width: "144px",
+        mobile: "meta",
+        sortable: true,
+        sortValue: (row) => decimalToMinorUnits(row.authorizedMax),
+        cell: (row) => <StaffMoney minor={decimalToMinorUnits(row.authorizedMax)} />,
+      },
+      {
+        id: "requested",
+        header: "Requested",
+        width: "128px",
+        hideBelow: "md",
+        mobile: "hidden",
+        sortable: true,
+        defaultSortDirection: "desc",
+        sortValue: (row) => row.createdAt.getTime(),
+        cell: (row) => <StaffDate value={row.createdAt} />,
+      },
+      rowActionsColumn<AdminTelephoneBookingRow>({
+        actions: actionsFor,
+        label: (row) => `Actions for ${telephoneBidderLabel(row)}`,
+        Link: NextLink,
+      }),
+    ],
+    [actionsFor],
   );
 
   if (!liveish) {
     return (
-      <p className="font-body text-sm text-on-surface-variant">
-        Telephone bookings open when the sale is scheduled or live. Current status:{" "}
-        <SaleStatusPill status={sale.status} />
-      </p>
+      <Section title="Telephone bookings">
+        <EmptyState
+          headingLevel="h3"
+          title="Telephone bookings open with the sale"
+          description="Bidders can ask for a telephone line once the sale is scheduled. Their requests appear here."
+        />
+      </Section>
     );
   }
 
+  const filtering = search.trim() !== "" || filter !== "all";
+
   return (
-    <div className="space-y-6">
-      <DetailBoardKpiStrip
-        ariaLabel="Telephone bookings summary"
-        tiles={buildSaleTelephoneKpiTiles(rows)}
-      />
+    <div className="flex flex-col gap-6">
+      {actionError ? (
+        <Notice tone="danger" alert title="That did not go through">
+          {actionError}
+        </Notice>
+      ) : null}
 
-      <CatalogDetailTabCard
-        title="Telephone bookings"
-        description="Confirm lines, assign clerks, and manage in-progress telephone bidding."
-        countBadge={rows.length}
-        toolbar={
-          <DetailBoardToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search bookings…"
-            filters={SALE_TELEPHONE_FILTERS}
-            activeFilter={filter}
-            onFilterChange={setFilter}
-            filterAriaLabel="Filter telephone bookings"
-            trailing={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={rows.length === 0}
-                onClick={() => downloadSaleTelephoneBookingsCsv(rows, sale.title)}
-              >
-                Export
-              </Button>
-            }
+      {fetchError ? (
+        <Section title="Telephone bookings">
+          <ErrorState
+            headingLevel="h3"
+            title="Telephone bookings could not be loaded"
+            description={fetchError}
           />
-        }
-        footer={
-          filteredRows.length > 0 ? (
-            <span>
-              Showing {filteredRows.length} of {rows.length} booking
-              {rows.length === 1 ? "" : "s"}
-            </span>
-          ) : undefined
-        }
-      >
-        {actionError ? (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Action failed</AlertTitle>
-            <AlertDescription>{actionError}</AlertDescription>
-          </Alert>
-        ) : null}
-        {fetchError ? (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Could not load bookings</AlertTitle>
-            <AlertDescription>{fetchError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {!fetchError && rows.length === 0 ? (
-          <AdminEmptyState
-            title="No telephone bookings"
-            description="Buyer telephone line requests will appear here."
-          />
-        ) : null}
-
-        {activeRows.length > 0 ? (
-          <div className="mb-6 space-y-3">
-            <h3 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Active lines
-            </h3>
-            {activeRows.map((row) => (
-              <TelephoneBookingActionCard key={row.id} saleId={saleId} row={row} />
-            ))}
-          </div>
-        ) : null}
-
-        {archivedRows.length > 0 ? (
-          <DetailEntityTable
-            rows={archivedRows}
-            getRowId={(row) => row.id}
-            emptyTitle="No archived bookings"
-            columns={[
-              {
-                id: "bidder",
-                header: "Bidder",
-                cell: (row) => (
-                  <div className="min-w-0">
-                    <p className="font-headline text-sm font-medium text-on-surface">
-                      {telephoneBidderLabel(row)}
-                    </p>
-                    {row.userEmail ? (
-                      <p className="font-body text-xs text-on-surface-variant">{row.userEmail}</p>
-                    ) : null}
-                  </div>
-                ),
-              },
-              {
-                id: "phone",
-                header: "Phone",
-                cell: (row) => (
-                  <a href={`tel:${row.phoneE164}`} className="text-link hover:underline">
-                    {row.phoneDisplay ?? row.phoneE164}
-                  </a>
-                ),
-              },
-              {
-                id: "status",
-                header: "Status",
-                cell: (row) => {
-                  const presentation = telephoneBookingDotStatus(row.status);
-                  return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
-                },
-              },
-              {
-                id: "authorized",
-                header: "Authorised max",
-                cell: (row) => (
-                  <span className="font-body text-sm tabular-nums text-on-surface-variant">
-                    {row.authorizedMax ? formatMoney(row.authorizedMax) : "—"}
-                  </span>
-                ),
-              },
-              {
-                id: "requested",
-                header: "Requested",
-                cell: (row) => <AdminTableDateTimeCell iso={row.createdAt} mode="timestamp" />,
-              },
-            ]}
-          />
-        ) : null}
-      </CatalogDetailTabCard>
+        </Section>
+      ) : (
+        <RelatedRecordsSection
+          id="telephone-bookings"
+          density="comfortable"
+          title="Telephone bookings"
+          description="Confirm lines, assign clerks and follow telephone bidding."
+          action={
+            <StaffButton
+              size="sm"
+              variant="secondary"
+              {...(rows.length === 0 ? { disabledReason: "There are no bookings to export" } : {})}
+              onClick={() => downloadSaleTelephoneBookingsCsv(rows, sale.title)}
+            >
+              Export CSV
+            </StaffButton>
+          }
+          label="Telephone bookings"
+          columns={columns}
+          data={filtered}
+          getRowId={(row) => row.id}
+          defaultSort={{ columnId: "requested", direction: "desc" }}
+          toolbar={
+            <DataTableToolbar
+              search={
+                <TableSearch
+                  live
+                  label="Search telephone bookings"
+                  placeholder="Name, email or phone"
+                  value={search}
+                  onSearch={setSearch}
+                />
+              }
+              filters={
+                <SegmentedControl<SaleTelephoneFilter>
+                  label="Booking status"
+                  value={filter}
+                  onValueChange={setFilter}
+                  options={SALE_TELEPHONE_FILTERS}
+                />
+              }
+            />
+          }
+          empty={
+            filtering
+              ? { title: "No bookings match", description: "Try a different search or status." }
+              : {
+                  title: "No telephone bookings yet",
+                  description:
+                    "Bidders who ask for a telephone line on this sale appear here to be confirmed.",
+                }
+          }
+        />
+      )}
+      {dialogs}
     </div>
   );
 }

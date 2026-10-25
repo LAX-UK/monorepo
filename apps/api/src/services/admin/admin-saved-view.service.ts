@@ -5,6 +5,7 @@ import type {
 import {
   type CapabilityRequirement,
   LOTS_ACCESS,
+  SUBMISSIONS_ACCESS,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
   normalizeUserStaffRole,
@@ -38,6 +39,7 @@ export type SavedViewError = {
 const LIST_ACCESS: Record<AdminSavedViewListKey, CapabilityRequirement> = {
   "bid-admin.lots": LOTS_ACCESS,
   "bid-admin.clients": USERS_DIRECTORY_ACCESS,
+  "bid-admin.submissions": SUBMISSIONS_ACCESS,
 };
 
 function toDto(view: AdminSavedViewRecord): AdminSavedViewDto {

@@ -12,6 +12,7 @@ import {
 } from "@auction/validators";
 import type { z } from "zod";
 import { z as zod } from "zod";
+import { optionalBuyerPremiumRateSchema } from "./buyer-premium-rate";
 
 const decimalString = zod
   .string()
@@ -91,16 +92,7 @@ function refineLotFieldsByAuctionType(
   }
 }
 
-const buyerPremiumRateString = zod
-  .string()
-  .regex(/^\d(\.\d{1,4})?$/, "Must be a decimal between 0 and 1")
-  .refine((s) => {
-    const n = Number.parseFloat(s);
-    return n >= 0 && n <= 1;
-  }, "Buyer premium rate must be between 0 and 1");
-
 const optionalDecimal = zod.union([decimalString, zod.literal("")]);
-const optionalBuyerPremium = zod.union([buyerPremiumRateString, zod.literal("")]);
 
 /** Aligned with admin create/edit lot pages (datetime-local strings). */
 export const adminLotFormValuesSchema = zod
@@ -129,7 +121,7 @@ export const adminLotFormValuesSchema = zod
     startingPrice: decimalString,
     reservePrice: optionalDecimal,
     buyNowPrice: optionalDecimal,
-    buyerPremiumRate: optionalBuyerPremium,
+    buyerPremiumRate: optionalBuyerPremiumRateSchema,
     minBidIncrement: optionalDecimal,
     autoBidEnabled: zod.boolean().optional(),
     autoBidStepMin: optionalDecimal,

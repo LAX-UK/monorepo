@@ -77,9 +77,9 @@ function buildProfile(auctionType: LotAuctionType): LotCatalogueProfile {
   const baseFields = {
     buyerPremiumRate: {
       visible: true,
-      label: "Buyer premium rate",
-      helpText: "As a decimal: 0.25 is 25%.",
-      placeholder: "0.25",
+      label: "Buyer's premium",
+      helpText: "Charged on the hammer price.",
+      placeholder: "25",
       section: "pricing" as const,
     },
     categoryIds: {

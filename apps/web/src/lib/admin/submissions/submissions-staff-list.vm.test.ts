@@ -11,6 +11,7 @@ import {
   submissionsRangeSummary,
   submissionsSortHref,
   submissionsSortState,
+  submissionsTeamViews,
   submissionsViews,
   toSubmissionsStaffRows,
 } from "./submissions-staff-list.vm";
@@ -139,5 +140,18 @@ describe("submissions staff list view model", () => {
 
   it("summarises the range shown", () => {
     expect(submissionsRangeSummary(50, 25, 75)).toBe("51–75 of 75 submissions");
+  });
+});
+
+describe("submissionsTeamViews", () => {
+  it("offers the desk's shared views as list queries", () => {
+    const views = submissionsTeamViews();
+    expect(views.map((view) => view.label)).toEqual([
+      "Waiting longest",
+      "Assigned to me",
+      "Missing details",
+    ]);
+    expect(views[0]).toMatchObject({ query: "sort=sla", href: "/admin/submissions?sort=sla" });
+    expect(views.every((view) => view.id.startsWith("team-"))).toBe(true);
   });
 });

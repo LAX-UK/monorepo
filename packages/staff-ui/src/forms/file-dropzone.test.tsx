@@ -36,9 +36,12 @@ describe("FileDropzone", () => {
     const zone = container.querySelector("label") as HTMLLabelElement;
     fireEvent.dragOver(zone);
     expect(zone).toHaveAttribute("data-dragging");
+    expect(zone).toHaveTextContent("Drop to upload");
+    expect(zone).not.toHaveTextContent("Drag files here");
     fireEvent.drop(zone, { dataTransfer: { files: [jpeg] } });
     expect(onFiles).toHaveBeenCalledWith([jpeg]);
     expect(zone).not.toHaveAttribute("data-dragging");
+    expect(zone).toHaveTextContent("Upload");
   });
 
   it("ignores files while disabled, including through its Field", () => {

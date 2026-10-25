@@ -1,6 +1,5 @@
 "use client";
 
-import { CatalogMediaCollectionActions } from "@/components/admin/catalog/media";
 import {
   StaffEntityField,
   StaffRadioField,
@@ -8,14 +7,13 @@ import {
   StaffTextField,
   staffFieldId,
 } from "@/components/admin/forms/staff-form-fields";
-import { ImageGalleryManager } from "@/components/forms/image-gallery-manager";
+import { StaffImageCollection } from "@/components/admin/media/staff-image-collection";
 import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
-import { useMediaCollectionUi } from "@/lib/admin/media/use-media-collection-ui";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { Field, FormSection, TextInput } from "@auction/staff-ui";
 import type { CategoryNode } from "@auction/types";
 import type { RefObject } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { type UseFormReturn, useController } from "react-hook-form";
 import { SALE_FORM_ID } from "../sale-form-id";
 import {
@@ -32,6 +30,7 @@ type Props = {
   heroVideoUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
 };
 
+/** The sale's cover images, in order: the first is the main cover on the sale page. */
 function SaleCoverImagesField({
   value,
   onChange,
@@ -43,52 +42,18 @@ function SaleCoverImagesField({
   disabled: boolean;
   previewUrlByKey: Record<string, string>;
 }) {
-  const [inspectIndex, setInspectIndex] = useState<number | null>(null);
-  const {
-    showAdd,
-    showManage,
-    addButtonRef,
-    manageButtonRef,
-    closeAddPanel,
-    toggleAdd,
-    toggleManage,
-  } = useMediaCollectionUi({
-    collectionLength: value.length,
-    inspectTarget: inspectIndex,
-    setInspectTarget: setInspectIndex,
-  });
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        <CatalogMediaCollectionActions
-          addButtonRef={addButtonRef}
-          manageButtonRef={manageButtonRef}
-          showAdd={showAdd}
-          showManage={showManage}
-          onToggleAdd={toggleAdd}
-          onToggleManage={toggleManage}
-          addLabel="Add cover images"
-          manageLabel="Manage"
-        />
-      </div>
-      <ImageGalleryManager
-        kind="sale_cover"
-        label="Auction cover"
-        value={value}
-        onChange={onChange}
-        maxFiles={20}
-        disabled={disabled}
-        previewUrlByKey={previewUrlByKey}
-        emptyTitle="No cover images yet"
-        emptyDescription="Upload cover images, then drag to reorder. The first image is the primary cover."
-        showAddPanel={showAdd}
-        onCloseAddPanel={closeAddPanel}
-        showManage={showManage}
-        inspectIndex={inspectIndex}
-        onInspectIndex={setInspectIndex}
-      />
-    </div>
+    <StaffImageCollection
+      kind="sale_cover"
+      value={value.map((key) => ({ key }))}
+      onChange={(next) => onChange(next.map((entry) => entry.key))}
+      noun="cover image"
+      primaryLabel="Main"
+      uploadLabel={value.length === 0 ? "Upload cover images" : "Add cover images"}
+      maxFiles={20}
+      disabled={disabled}
+      previewUrlByKey={previewUrlByKey}
+    />
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus } from "lucide-react";
+import { FileUp, ImagePlus } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { useStaffField } from "./field.js";
@@ -17,6 +17,10 @@ export type FileDropzoneProps = {
   /** What is accepted, e.g. "JPEG, PNG or WebP, up to 20 MB". */
   hint?: string;
   id?: string;
+  /** One line, for adding more once some files are in. */
+  compact?: boolean;
+  /** Pictures (default) or any file, for the icon. */
+  kind?: "image" | "file";
   className?: string;
 };
 
@@ -40,6 +44,8 @@ export function FileDropzone({
   label,
   hint,
   id,
+  compact = false,
+  kind = "image",
   className,
 }: FileDropzoneProps) {
   const field = useStaffField();
@@ -48,6 +54,7 @@ export function FileDropzone({
   const hintId = hint ? `${inputId}-hint` : undefined;
   const isDisabled = disabled ?? field?.disabled ?? false;
   const [dragging, setDragging] = React.useState(false);
+  const Icon = kind === "file" ? FileUp : ImagePlus;
   const describedBy = [field?.describedBy, hintId].filter(Boolean).join(" ") || undefined;
 
   const take = (list: FileList | null) => {
@@ -73,11 +80,15 @@ export function FileDropzone({
         take(event.dataTransfer.files);
       }}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-staff-md border border-dashed px-4 py-6 text-center",
+        "flex cursor-pointer rounded-staff-md border border-dashed",
+        compact
+          ? "flex-row flex-wrap items-center gap-x-2 gap-y-0.5 px-3 py-2.5 text-left"
+          : "flex-col items-center justify-center gap-1.5 px-4 py-6 text-center",
         "border-staff-line-strong bg-staff-surface transition-[border-color,background-color] duration-150 ease-out",
         "hover:border-staff-line-hover hover:bg-staff-hover",
         "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-staff-focus",
-        "data-[dragging]:border-staff-fg data-[dragging]:bg-staff-selected",
+        // Held over: the product accent, a solid edge and a tint, so it reads as ready to take the file.
+        "data-[dragging]:border-solid data-[dragging]:border-staff-accent data-[dragging]:bg-staff-accent/[0.07]",
         "data-[disabled]:cursor-not-allowed data-[disabled]:border-staff-line data-[disabled]:bg-staff-sunken data-[disabled]:hover:bg-staff-sunken",
         className,
       )}
@@ -96,9 +107,12 @@ export function FileDropzone({
           event.target.value = "";
         }}
       />
-      <ImagePlus
+      <Icon
         aria-hidden
-        className={cn("size-5", isDisabled ? "text-staff-disabled" : "text-staff-subtle")}
+        className={cn(
+          "size-5",
+          isDisabled ? "text-staff-disabled" : dragging ? "text-staff-accent" : "text-staff-subtle",
+        )}
         strokeWidth={1.75}
       />
       <span
@@ -107,13 +121,18 @@ export function FileDropzone({
           isDisabled ? "text-staff-disabled" : "text-staff-fg",
         )}
       >
-        {label}
+        {dragging ? "Drop to upload" : label}
       </span>
-      <span className="text-staff-xs text-staff-muted">
-        {dragging ? "Drop to upload" : "Drag files here, or click to browse"}
-      </span>
+      {isDisabled || dragging ? null : (
+        <span className="text-staff-xs text-staff-muted">
+          {compact ? "or drag files here" : "Drag files here, or click to browse"}
+        </span>
+      )}
       {hint ? (
-        <span id={hintId} className="text-staff-xs text-staff-subtle">
+        <span
+          id={hintId}
+          className={cn("text-staff-xs text-staff-muted", compact && "basis-full pl-7")}
+        >
           {hint}
         </span>
       ) : null}

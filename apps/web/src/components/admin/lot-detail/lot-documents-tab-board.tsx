@@ -1,12 +1,10 @@
 "use client";
 
-import { DetailBoardKpiStrip, DetailBoardShell } from "@/components/admin/catalog/detail-board";
-import { DocumentAttachmentManager } from "@/components/admin/document-attachment-manager";
+import { StaffDocumentsSection } from "@/components/admin/documents/staff-documents-section";
 import {
   adminAttachLotDocumentResultAction,
   adminRemoveLotDocumentResultAction,
 } from "@/lib/actions/admin-documents";
-import { buildLotDocumentsKpiTiles } from "@/lib/data/view-models/lot-documents-tab.vm";
 import type { EntityDocument } from "@auction/types";
 import { lotDocumentKinds } from "@auction/types";
 import { useMemo } from "react";
@@ -14,35 +12,33 @@ import { useMemo } from "react";
 type Props = {
   lotId: string;
   initialDocuments: EntityDocument[];
+  canManage?: boolean;
 };
 
-export function LotDocumentsTabBoard({ lotId, initialDocuments }: Props) {
-  const kpiTiles = useMemo(() => buildLotDocumentsKpiTiles(initialDocuments), [initialDocuments]);
-
+/** The lot's staff-only files: condition reports, provenance, authentication and valuations. */
+export function LotDocumentsTabBoard({ lotId, initialDocuments, canManage = true }: Props) {
+  const actions = useMemo(
+    () => ({
+      attach: (input: { uploadObjectId: string; kind: string; label: string | null }) =>
+        adminAttachLotDocumentResultAction(lotId, input),
+      remove: (documentId: string) => adminRemoveLotDocumentResultAction(lotId, documentId),
+    }),
+    [lotId],
+  );
   return (
-    <div className="space-y-6">
-      <DetailBoardKpiStrip ariaLabel="Document summary" tiles={kpiTiles} />
-      <DetailBoardShell
-        title="Documents"
-        description="Staff-only attachments such as condition reports and provenance files."
-        count={initialDocuments.length}
-      >
-        <div
-          id="lot-staff-documents"
-          className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6"
-        >
-          <DocumentAttachmentManager
-            entityKind="lot"
-            entityId={lotId}
-            kinds={lotDocumentKinds}
-            initialDocuments={initialDocuments}
-            actions={{
-              attach: (input) => adminAttachLotDocumentResultAction(lotId, input),
-              remove: (documentId) => adminRemoveLotDocumentResultAction(lotId, documentId),
-            }}
-          />
-        </div>
-      </DetailBoardShell>
-    </div>
+    <StaffDocumentsSection
+      id="lot-staff-documents"
+      title="Documents"
+      description="Staff only. Not shown on the public lot page."
+      entityKind="lot"
+      kinds={lotDocumentKinds}
+      documents={initialDocuments}
+      actions={actions}
+      canManage={canManage}
+      empty={{
+        title: "No documents yet",
+        description: "Upload condition reports, provenance or valuation files for this lot.",
+      }}
+    />
   );
 }

@@ -1,7 +1,7 @@
 import { SaleAtgTab } from "@/components/admin/sale-detail/tabs/atg-tab";
 import { renderWithViewer } from "@/test/render-with-viewer";
 import type { AtgLotSyncView, AtgSaleSyncView } from "@auction/types";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const adminAtgSaleActionResultAction = vi.fn();
@@ -20,6 +20,11 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+}));
+
+vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({
+  redirectToHostedReauth: vi.fn(),
+  recentReauthAttempt: () => false,
 }));
 
 const SALE_ID = "11111111-1111-4111-8111-111111111111";
@@ -68,6 +73,17 @@ async function flushEffects() {
   await act(async () => {});
 }
 
+/** Starts an action from the page and confirms it in the dialog that asks first. */
+async function runAction(pageButton: string, confirmButton: string) {
+  fireEvent.click(screen.getByRole("button", { name: pageButton }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: confirmButton }));
+}
+
+function expectBlocked(name: string) {
+  expect(screen.getByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
+}
+
 describe("SaleAtgTab", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -94,35 +110,37 @@ describe("SaleAtgTab", () => {
     expect(screen.queryByRole("button", { name: /push/i })).not.toBeInTheDocument();
   });
 
-  it("queues a push straight away", async () => {
+  it("asks before pushing, then queues it", async () => {
     renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
     fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
+    expect(adminAtgSaleActionResultAction).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Push to ATG" }),
+    );
 
     await waitFor(() =>
       expect(adminAtgSaleActionResultAction).toHaveBeenCalledWith(SALE_ID, "push"),
     );
   });
 
-  it("keeps a refused action inline instead of toasting it", async () => {
+  it("keeps a refused action in the dialog instead of toasting it", async () => {
     adminAtgSaleActionResultAction.mockResolvedValue({
       ok: false,
       error: "This sale is published on lax.bid.",
     });
     renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
+    await runAction("Push to ATG", "Push to ATG");
 
     expect(await screen.findByText("This sale is published on lax.bid.")).toBeInTheDocument();
-    expect(screen.getByText("That ATG action did not go through")).toBeInTheDocument();
+    expect(screen.getByText("That did not go through")).toBeInTheDocument();
   });
 
   it("asks for confirmation before publishing", async () => {
     renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Publish on ATG" }));
-    expect(adminAtgSaleActionResultAction).not.toHaveBeenCalled();
-    fireEvent.click(await screen.findByRole("button", { name: "Publish" }));
+    await runAction("Publish on ATG", "Publish");
 
     await waitFor(() =>
       expect(adminAtgSaleActionResultAction).toHaveBeenCalledWith(SALE_ID, "publish"),
@@ -138,16 +156,16 @@ describe("SaleAtgTab", () => {
         canManage
       />,
     );
-    expect(screen.getByRole("heading", { name: "Published on lax.bid" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Push to ATG" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Publish on ATG" })).toBeDisabled();
+    expect(screen.getByText("Published on lax.bid")).toBeInTheDocument();
+    expectBlocked("Push to ATG");
+    expectBlocked("Publish on ATG");
   });
 
   it("disables close until the sale is on ATG and everything once closed", () => {
     const { unmount } = renderWithViewer(
       <SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />,
     );
-    expect(screen.getByRole("button", { name: "Close on ATG" })).toBeDisabled();
+    expectBlocked("Close on ATG");
     unmount();
 
     renderWithViewer(
@@ -158,9 +176,9 @@ describe("SaleAtgTab", () => {
         canManage
       />,
     );
-    expect(screen.getByRole("button", { name: "Push changes to ATG" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Publish on ATG" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Close on ATG" })).toBeDisabled();
+    expectBlocked("Push changes");
+    expectBlocked("Publish on ATG");
+    expectBlocked("Close on ATG");
   });
 
   it("surfaces the last sync error", () => {
@@ -183,16 +201,16 @@ describe("SaleAtgTab", () => {
 
     renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
+    await runAction("Push to ATG", "Push to ATG");
 
-    expect(await screen.findByText("Syncing with ATG…")).toBeInTheDocument();
+    expect(await screen.findByText("Syncing with ATG")).toBeInTheDocument();
     await flushEffects();
     await act(async () => {
       vi.advanceTimersByTime(3_500);
     });
     await waitFor(() => expect(adminAtgJobStateAction).toHaveBeenCalledWith("job-1"));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
-    await waitFor(() => expect(screen.queryByText("Syncing with ATG…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Syncing with ATG")).not.toBeInTheDocument());
   });
 
   it("stops polling after a minute and says so", async () => {
@@ -201,8 +219,8 @@ describe("SaleAtgTab", () => {
 
     renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Push to ATG" }));
-    await screen.findByText("Syncing with ATG…");
+    await runAction("Push to ATG", "Push to ATG");
+    await screen.findByText("Syncing with ATG");
     await flushEffects();
     await act(async () => {
       vi.advanceTimersByTime(63_000);
@@ -227,13 +245,15 @@ describe("SaleAtgTab", () => {
     );
 
     expect(screen.getByText("Sale cancelled")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Push changes to ATG" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Published" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Close on ATG" })).toBeEnabled();
+    expectBlocked("Push changes");
+    expectBlocked("Publish on ATG");
+    expect(screen.getByRole("button", { name: "Close on ATG" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
     expect(screen.getByText(/Close the ATG auction if it is still open/)).toBeInTheDocument();
   });
 
-  it("shows lot states, paddle column, and edit lot link on errors", () => {
+  it("shows lot states, the paddle column and a row menu for each lot", () => {
     renderWithViewer(
       <SaleAtgTab
         saleId={SALE_ID}
@@ -279,16 +299,15 @@ describe("SaleAtgTab", () => {
     );
 
     expect(screen.getAllByText("Sold").length).toBeGreaterThan(0);
-    expect(screen.getByText("4 bids")).toBeInTheDocument();
-    expect(screen.getByText("Sync error")).toBeInTheDocument();
-    expect(screen.getByText("ATG updateLot failed with HTTP 400")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Edit lot" })).toHaveAttribute(
-      "href",
-      "/admin/lots/l3/edit",
+    expect(screen.getAllByText("4 bids").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sync error").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ATG updateLot failed with HTTP 400").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /^Actions for / }).length).toBeGreaterThanOrEqual(
+      4,
     );
-    expect(screen.getByText("Not pushed")).toBeInTheDocument();
+    expect(screen.getAllByText("Not pushed").length).toBeGreaterThan(0);
     expect(screen.queryByText("7")).not.toBeInTheDocument();
     expect(screen.getByText("1 of 3 lots")).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getAllByText("42").length).toBeGreaterThan(0);
   });
 });

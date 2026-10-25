@@ -4,11 +4,13 @@ import type { AdminSubmissionTableRow } from "@/lib/admin/catalog/submission-tab
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSubmissionsListSummary } from "@/lib/data/http/admin-submissions-summary.server";
-import type {
-  AttentionStripItem,
-  Metric,
-  DataView as StaffDataView,
-  StatusPresentation,
+import {
+  type AttentionStripItem,
+  type Metric,
+  type DataView as StaffDataView,
+  type StatusPresentation,
+  type TeamView,
+  viewQuery,
 } from "@auction/staff-ui";
 import type { ItemSubmissionStatus } from "@auction/types";
 
@@ -129,6 +131,20 @@ export function submissionsViews(
       ...(total !== undefined ? { count: total } : {}),
     };
   });
+}
+
+/** The views every specialist starts with, beside the ones each person saves. */
+export function submissionsTeamViews(): TeamView[] {
+  const view = (id: string, label: string, patch: Record<string, string>) => {
+    const [path, rest = ""] = submissionsListHref({}, patch).split("?");
+    const query = viewQuery(rest);
+    return { id: `team-${id}`, label, href: `${path}?${query}`, query };
+  };
+  return [
+    view("waiting-longest", "Waiting longest", { sort: "sla" }),
+    view("assigned-to-me", "Assigned to me", { assignedTo: "me" }),
+    view("missing-details", "Missing details", { qualityGaps: "1" }),
+  ];
 }
 
 /** Work waiting on the specialists, each linking to the view that holds it. */

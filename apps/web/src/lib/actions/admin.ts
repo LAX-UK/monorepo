@@ -126,14 +126,11 @@ export const adminRevokeInvitationAction = _adminRevokeInvitationAction;
 import { adminResendInvitationAction as _adminResendInvitationAction } from "./admin/admin-invitations";
 export const adminResendInvitationAction = _adminResendInvitationAction;
 
-import { adminApproveSaleRegistrationAction as _adminApproveSaleRegistrationAction } from "./admin/admin-sale-registrations";
-export const adminApproveSaleRegistrationAction = _adminApproveSaleRegistrationAction;
+import { adminDecideSaleRegistrationResultAction as _adminDecideSaleRegistrationResultAction } from "./admin/admin-sale-registrations";
+export const adminDecideSaleRegistrationResultAction = _adminDecideSaleRegistrationResultAction;
 
-import { adminRejectSaleRegistrationAction as _adminRejectSaleRegistrationAction } from "./admin/admin-sale-registrations";
-export const adminRejectSaleRegistrationAction = _adminRejectSaleRegistrationAction;
-
-import { adminUpdateSaleRegistrationBidLimitAction as _adminUpdateSaleRegistrationBidLimitAction } from "./admin/admin-sale-registrations";
-export const adminUpdateSaleRegistrationBidLimitAction = _adminUpdateSaleRegistrationBidLimitAction;
+import { adminTelephoneBookingResultAction as _adminTelephoneBookingResultAction } from "./admin/admin-telephone";
+export const adminTelephoneBookingResultAction = _adminTelephoneBookingResultAction;
 
 import {
   adminDeclineConditionReportResultAction as _adminDeclineConditionReportResultAction,
@@ -194,30 +191,11 @@ export const adminSaleroomDisplayClearOverlayAction = _adminSaleroomDisplayClear
 import { adminSaleroomDisplayRevokeAction as _adminSaleroomDisplayRevokeAction } from "./admin/admin-saleroom";
 export const adminSaleroomDisplayRevokeAction = _adminSaleroomDisplayRevokeAction;
 
-import { adminTelephoneBookingConfirmAction as _adminTelephoneBookingConfirmAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingConfirmAction = _adminTelephoneBookingConfirmAction;
-
-import { adminTelephoneBookingAssignClerkAction as _adminTelephoneBookingAssignClerkAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingAssignClerkAction = _adminTelephoneBookingAssignClerkAction;
-
-import { adminTelephoneBookingApproveLimitIncreaseAction as _adminTelephoneBookingApproveLimitIncreaseAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingApproveLimitIncreaseAction =
-  _adminTelephoneBookingApproveLimitIncreaseAction;
-
 import { adminTelephoneBookingStartLineAction as _adminTelephoneBookingStartLineAction } from "./admin/admin-telephone";
 export const adminTelephoneBookingStartLineAction = _adminTelephoneBookingStartLineAction;
 
 import { adminTelephoneBookingCompleteLineAction as _adminTelephoneBookingCompleteLineAction } from "./admin/admin-telephone";
 export const adminTelephoneBookingCompleteLineAction = _adminTelephoneBookingCompleteLineAction;
-
-import { adminTelephoneBookingCloseAction as _adminTelephoneBookingCloseAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingCloseAction = _adminTelephoneBookingCloseAction;
-
-import { adminTelephoneBookingCancelAction as _adminTelephoneBookingCancelAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingCancelAction = _adminTelephoneBookingCancelAction;
-
-import { adminTelephoneBookingNotesAction as _adminTelephoneBookingNotesAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingNotesAction = _adminTelephoneBookingNotesAction;
 
 import { adminTelephonePlaceBidResultAction as _adminTelephonePlaceBidResultAction } from "./admin/admin-telephone";
 export const adminTelephonePlaceBidResultAction = _adminTelephonePlaceBidResultAction;

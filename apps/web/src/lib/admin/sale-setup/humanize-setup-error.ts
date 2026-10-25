@@ -20,7 +20,7 @@ const MESSAGE_MAP: ReadonlyArray<[pattern: RegExp | string, message: string]> = 
   ],
   ["Lot end must not be after the sale end time", "This lot can’t close after the sale ends."],
   ["Choose at least one category", "Pick at least one category."],
-  [/Must be a decimal between 0 and 1/, "Enter buyer premium as a decimal, e.g. 0.15 for 15%."],
+  [/decimal between 0 and 1/, "Enter the buyer's premium as a percent from 0% to 100%, e.g. 15%."],
   [
     "This seller must complete Stripe Connect onboarding before the lot can be scheduled.",
     "The seller needs to complete payout setup before this sale can go live.",

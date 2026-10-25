@@ -1,4 +1,4 @@
-import { StaffMoneyField, StaffTextField } from "@/components/admin/forms/staff-form-fields";
+import { StaffMoneyField, StaffPercentField } from "@/components/admin/forms/staff-form-fields";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { formatMoney } from "@/lib/ui/format";
 import { FieldRow, FormSection, KeyValueList, ListEditor, Notice } from "@auction/staff-ui";
@@ -38,14 +38,13 @@ export function BuyerPremiumSection({
       title="Buyer's premium"
       description="A flat rate, or bands by hammer price. Fixed once the sale is published."
     >
-      <StaffTextField
+      <StaffPercentField
         {...f}
         name="buyerPremiumRate"
         label="Flat rate"
         optional
-        inputMode="decimal"
-        placeholder="0.25"
-        description="As a decimal: 0.25 is 25%. Used when there are no bands."
+        placeholder="25"
+        description="Charged on the hammer price when there are no bands."
       />
       <ListEditor
         items={fields}
@@ -68,12 +67,11 @@ export function BuyerPremiumSection({
                 label="From hammer"
               />
             )}
-            <StaffTextField
+            <StaffPercentField
               {...f}
               name={`buyerPremiumTiers.${index}.rate`}
               label="Rate"
-              inputMode="decimal"
-              placeholder="0.15"
+              placeholder="15"
             />
           </FieldRow>
         )}

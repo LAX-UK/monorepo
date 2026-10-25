@@ -1,7 +1,6 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  buildSaleLotsKpiTiles,
   filterSaleLotsByLens,
   formatLotCurrentValue,
   formatLotEstimate,
@@ -55,19 +54,6 @@ describe("sale-lots-tab.vm", () => {
   it("resolveSaleLotsBoardMode uses catalog for draft", () => {
     expect(resolveSaleLotsBoardMode("draft")).toBe("catalog");
     expect(resolveSaleLotsBoardMode("active")).toBe("live");
-  });
-
-  it("buildSaleLotsKpiTiles catalog mode counts complete/incomplete", () => {
-    const tiles = buildSaleLotsKpiTiles(lots, saleContext, "catalog");
-    expect(tiles[0]?.label).toBe("Total lots");
-    expect(tiles[1]?.label).toBe("Complete");
-    expect(tiles[2]?.label).toBe("Incomplete");
-  });
-
-  it("buildSaleLotsKpiTiles live mode counts live and withdraw", () => {
-    const tiles = buildSaleLotsKpiTiles(lots, saleContext, "live");
-    expect(tiles[1]?.label).toBe("Live now");
-    expect(tiles[2]?.label).toBe("Withdraw");
   });
 
   it("filterSaleLotsByLens live mode filters sold", () => {

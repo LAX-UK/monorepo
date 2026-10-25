@@ -10,8 +10,10 @@ import {
 } from "@/components/admin/submissions/use-submission-actions";
 import { ExportButton } from "@/components/exports/export-button";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
+import { createSavedViewsPort } from "@/lib/admin/saved-views-port";
 import {
   SUBMISSIONS_DEFAULT_SORT,
+  SUBMISSIONS_LIST_PATH,
   SUBMISSION_FLAG_FILTERS,
   type SubmissionsListSearch,
   type SubmissionsStaffRow,
@@ -20,6 +22,7 @@ import {
   submissionsListHref,
   submissionsSortHref,
   submissionsSortState,
+  submissionsTeamViews,
 } from "@/lib/admin/submissions/submissions-staff-list.vm";
 import {
   type AttentionStripItem,
@@ -35,6 +38,7 @@ import {
   StatusBadge,
   TableSearch,
   staffButtonVariants,
+  useSavedViews,
 } from "@auction/staff-ui";
 import { useCallback, useMemo, useState } from "react";
 
@@ -100,6 +104,10 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
     hrefFor: panelHref,
   });
   const actions = useSubmissionActions({ currentUserId: props.currentUserId });
+  const port = useMemo(() => createSavedViewsPort("bid-admin.submissions"), []);
+  const saved = useSavedViews("bid-admin.submissions", port);
+  const teamViews = useMemo(() => submissionsTeamViews(), []);
+  const currentQuery = submissionsListHref(search, {}).split("?")[1] ?? "";
   const q = typeof search.q === "string" ? search.q : "";
   const categoryId = typeof search.categoryId === "string" ? search.categoryId : "";
   const flags = [
@@ -219,7 +227,17 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
         }
         attention={props.attention}
         metrics={{ label: "Submissions summary", period: "Review desk", items: props.metrics }}
-        views={<DataViews views={props.views} activeId={props.activeQueue} Link={ListLink} />}
+        views={
+          <DataViews
+            views={props.views}
+            activeId={props.activeQueue}
+            Link={ListLink}
+            team={teamViews}
+            saved={saved}
+            savedHref={(view) => `${SUBMISSIONS_LIST_PATH}?${view.query}`}
+            currentQuery={currentQuery}
+          />
+        }
         search={
           <TableSearch
             key={q}

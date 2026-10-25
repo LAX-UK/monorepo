@@ -1,6 +1,6 @@
 "use client";
 
-import { StaffMoneyField, StaffTextField } from "@/components/admin/forms/staff-form-fields";
+import { StaffMoneyField, StaffPercentField } from "@/components/admin/forms/staff-form-fields";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import { FieldRow, FormSection } from "@auction/staff-ui";
@@ -40,12 +40,11 @@ export function CataloguePricingSection({ form, fields }: Props) {
               {...lotFieldProps(fields[key])}
             />
           ) : (
-            <StaffTextField
+            <StaffPercentField
               key={key}
               control={form.control}
               name={key}
               formId={LOT_FORM_ID}
-              inputMode="decimal"
               {...(fields[key].placeholder ? { placeholder: fields[key].placeholder } : {})}
               {...lotFieldProps(fields[key])}
             />

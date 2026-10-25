@@ -1,8 +1,6 @@
 import type { SaleDayMediaRef } from "@auction/types";
 
 export const ACCEPT_ALL = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
-export const ACCEPT_IMAGES = "image/jpeg,image/png,image/webp";
-export const ACCEPT_VIDEOS = "video/mp4,video/webm";
 
 export type DayMediaItem = {
   id: string;
@@ -11,8 +9,6 @@ export type DayMediaItem = {
   previewUrl: string;
   caption: string;
   alt: string;
-  uploading?: boolean;
-  uploadError?: string;
 };
 
 export function refToItem(
@@ -32,7 +28,7 @@ export function refToItem(
 
 export function itemsToDayImages(items: DayMediaItem[]): SaleDayMediaRef[] {
   return items
-    .filter((it) => it.key && !it.uploadError)
+    .filter((it) => it.key)
     .map((it) => {
       if (it.mediaType === "video") {
         const ref: import("@auction/types").SaleDayVideoRef = { mediaType: "video", key: it.key };

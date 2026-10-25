@@ -10,6 +10,7 @@ import {
   EnumSelect,
   Field,
   MoneyInput,
+  PercentInput,
   StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,
@@ -163,6 +164,40 @@ export function StaffMoneyField<T extends FieldValues>(props: Base<T> & { placeh
         name={field.name}
         value={poundsStringToPence(field.value)}
         onValueChange={(pence) => field.onChange(penceToPoundsString(pence))}
+        onBlur={field.onBlur}
+        disabled={props.disabled}
+        placeholder={props.placeholder}
+      />
+    </Field>
+  );
+}
+
+/**
+ * What the form holds while the percent text is not a number: never a valid rate, so the
+ * schema's rule reports it on submit.
+ */
+export const PERCENT_NOT_A_NUMBER = "not-a-number";
+
+/** A rate kept in the form as a decimal string ("0.25"), entered and shown as a percent ("25%"). */
+export function StaffPercentField<T extends FieldValues>(
+  props: Base<T> & { placeholder?: string },
+) {
+  const { field, error } = useBoundField(props);
+  return (
+    <Field
+      id={staffFieldId(props.formId, props.name)}
+      label={props.label}
+      description={props.description}
+      error={error}
+      optional={props.optional ?? false}
+      disabled={props.disabled ?? false}
+      {...(props.className ? { className: props.className } : {})}
+    >
+      <PercentInput
+        ref={field.ref}
+        name={field.name}
+        value={field.value == null ? "" : String(field.value)}
+        onValueChange={(rate) => field.onChange(rate ?? PERCENT_NOT_A_NUMBER)}
         onBlur={field.onBlur}
         disabled={props.disabled}
         placeholder={props.placeholder}

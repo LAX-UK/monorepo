@@ -40,7 +40,12 @@ function LotCatalogPrepCard({
   const router = useRouter();
   const [descPending, startDescTransition] = useTransition();
   const imageAlts = lot.marketingDetails?.imageAlts ?? [];
-  const { save, pending: imagesPending, lastResult: imagesSaveResult } = useLotImagesSave(lot.id);
+  const {
+    save,
+    pending: imagesPending,
+    lastResult: imagesSaveResult,
+    error: imagesError,
+  } = useLotImagesSave(lot.id);
   const [entries, setEntries] = useState<LotImageSaveEntry[]>(
     lot.images.map((key, i) => ({ key, alt: imageAlts[i] ?? "" })),
   );
@@ -95,7 +100,11 @@ function LotCatalogPrepCard({
         compact
         dismissKey={lotDetailReadinessDismissKey(lot.id)}
       />
-      <Field label="Photos" description="Saved with Save photos.">
+      <Field
+        label="Photos"
+        description="Saved with Save photos."
+        {...(imagesError ? { error: imagesError } : {})}
+      >
         <LotCatalogueImagesField
           value={entries}
           onChange={(next) => {

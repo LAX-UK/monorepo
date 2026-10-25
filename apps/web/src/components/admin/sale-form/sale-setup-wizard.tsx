@@ -338,7 +338,8 @@ export function SaleSetupWizard({
         {stepNotice ? <Notice tone="info" title={stepNotice} /> : null}
         {setupReadinessNudge ? (
           <CatalogPublishReadiness
-            title="Your sale draft is saved"
+            title="Before you publish"
+            description="Your sale draft is saved. Finish these to publish it."
             readiness={setupReadinessNudge}
             {...(saleId ? { dismissKey: saleDetailReadinessDismissKey(saleId) } : {})}
           />

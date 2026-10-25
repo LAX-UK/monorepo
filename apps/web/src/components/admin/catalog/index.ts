@@ -78,7 +78,6 @@ export {
 export { CatalogListCapBanner } from "./catalog-list-cap-banner";
 export { CatalogKpiPeriodToggle } from "./catalog-kpi-period-toggle";
 export { CatalogMobileCardShell } from "./catalog-mobile-card-shell";
-export { CatalogReadinessChecklist } from "./catalog-readiness-checklist";
 export {
   validateAllCatalogWizardSteps,
   useCatalogValidationBanner,

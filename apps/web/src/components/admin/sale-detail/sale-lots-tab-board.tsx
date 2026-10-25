@@ -1,52 +1,48 @@
 "use client";
 
-import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
-import {
-  DetailBoardKpiStrip,
-  DetailBoardShell,
-  DetailBoardToolbar,
-  DetailEntityTable,
-} from "@/components/admin/catalog/detail-board";
-import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { useLotActions } from "@/components/admin/lots/use-lot-actions";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { AdminSaleLotQrPrintButton } from "@/components/admin/qr-code/admin-sale-lot-qr-print-button";
-import { SaleLotsTabSection } from "@/components/admin/sale-lots-tab-section";
+import { AttachExistingLotDialog } from "@/components/admin/sale-lots-tab/attach-existing-lot-dialog";
+import { EmergencyAddLotDialog } from "@/components/admin/sale-lots-tab/emergency-add-lot-dialog";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { ExportButton } from "@/components/exports/export-button";
-import { MediaImage } from "@/components/ui/media-image";
+import { adminReturnLotToInventoryResultAction } from "@/lib/actions/admin";
 import {
-  adminCancelLotInSaleResultAction,
   adminDetachLotFromSaleResultAction,
   adminSetLotStatusResultAction,
 } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { saleSetupHref } from "@/lib/admin/sale-setup";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import {
   type SaleLotsFilterContext,
   type SaleLotsLens,
-  buildSaleLotsKpiTiles,
   filterSaleLotsByLens,
-  formatLotEstimateDisplay,
-  formatLotHammerForTable,
   matchesSaleLotSearch,
   resolveSaleLotsBoardMode,
   saleLotsBoardFilters,
 } from "@/lib/data/view-models/sale-lots-tab.vm";
-import type { ActionResult } from "@/lib/forms/form-result";
-import { lotDotStatusPresentation } from "@/lib/presenters/status/lot-dot-status";
-import { notify } from "@/lib/ui/notify";
+import {
+  CellLink,
+  type DataColumn,
+  DataTableToolbar,
+  EmptyValue,
+  PrimaryCell,
+  SegmentedControl,
+  StaffButton,
+  StaffDate,
+  StaffMoney,
+  StatusBadge,
+  TableSearch,
+  formatStaffMoney,
+  rowActionsColumn,
+  staffButtonVariants,
+} from "@auction/staff-ui";
 import type { CategoryNode, Lot, SaleDeliveryMode, SaleStatus } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-
-const LOT_TRANSITION_OPTIONS: Record<Lot["status"], Lot["status"][]> = {
-  draft: ["scheduled", "cancelled"],
-  scheduled: ["cancelled"],
-  active: ["ended", "cancelled"],
-  ended: [],
-  cancelled: [],
-  voided: [],
-};
+import { useMemo, useState } from "react";
 
 type Props = {
   saleId: string;
@@ -60,8 +56,62 @@ type Props = {
   canManageAuction?: boolean;
   categories?: CategoryNode[];
   englishOnlyAuctionsLocked?: boolean;
+  /** Each lot's artist name by artist ID. */
+  artistNameById?: Readonly<Record<string, string>>;
 };
 
+type SaleLotRow = {
+  id: string;
+  lot: Lot;
+  lotNumber: number | null;
+  title: string;
+  thumbnailUrl: string | null;
+  endsAt: Date;
+  /** Major-unit prices converted to pence, null when there is none. */
+  estimate: { low: number; high: number } | null;
+  reserve: number | null;
+  /** The bid to date, or the hammer once sold; null when bidding has not started or never will. */
+  current: number | null;
+  unsold: boolean;
+};
+
+/** "£4,000", as the lists show estimates: whole pounds when there are no pence. */
+function wholePounds(pence: number): string {
+  return formatStaffMoney(pence).replace(/\.00$/, "");
+}
+
+function minor(major: string | null | undefined): number | null {
+  if (major === null || major === undefined || major === "") return null;
+  const value = Number.parseFloat(major);
+  return Number.isNaN(value) ? null : Math.round(value * 100);
+}
+
+function toRow(lot: Lot): SaleLotRow {
+  const estimate = lot.marketingDetails?.estimate;
+  const low = minor(estimate?.low);
+  const high = minor(estimate?.high);
+  const sold = lot.status === "ended" && Boolean(lot.winnerId);
+  const bidding = lot.status === "active" || sold;
+  const current = minor(lot.currentPrice);
+  return {
+    id: lot.id,
+    lot,
+    lotNumber: lot.lotNumber,
+    title: lot.title,
+    thumbnailUrl: lot.images[0] ?? null,
+    endsAt: lot.endTime,
+    estimate: low !== null && high !== null ? { low, high } : null,
+    reserve: minor(lot.reservePrice),
+    current: bidding && current !== null && current > 0 ? current : null,
+    unsold: lot.status === "ended" && !lot.winnerId,
+  };
+}
+
+/**
+ * A sale's lots as one section: the lots with their estimate, reserve, bid and closing time, a
+ * `…` menu on every row, and the ways to add lots (new, from inventory) in the section's header.
+ * Consequential row actions ask first through the kit confirm.
+ */
 export function SaleLotsTabBoard({
   saleId,
   sale,
@@ -69,14 +119,25 @@ export function SaleLotsTabBoard({
   canManageAuction = false,
   categories = [],
   englishOnlyAuctionsLocked = false,
+  artistNameById = {},
 }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const confirm = useStaffConfirm();
   const boardMode = resolveSaleLotsBoardMode(sale.status);
   const filters = saleLotsBoardFilters(boardMode);
   const [lens, setLens] = useState<SaleLotsLens>("all");
   const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const canEditDraft = sale.status === "draft";
+  const canAddLots =
+    sale.status === "draft" || sale.status === "scheduled" || sale.status === "active";
+  const lotActions = useLotActions({
+    canManageCatalog: canManageAuction,
+    canManageAuction,
+    canDecideWithdrawals: false,
+  });
 
   const saleContext = useMemo<SaleLotsFilterContext>(
     () => ({
@@ -87,274 +148,374 @@ export function SaleLotsTabBoard({
     [sale.deliveryMode, sale.startTime, sale.endTime],
   );
 
-  const rowLots = useMemo(
+  const rows = useMemo(
     () =>
-      filterSaleLotsByLens(lots, lens, saleContext, boardMode).filter((lot) =>
-        matchesSaleLotSearch({ title: lot.title, lotNumber: lot.lotNumber }, search),
-      ),
+      filterSaleLotsByLens(lots, lens, saleContext, boardMode)
+        .filter((lot) =>
+          matchesSaleLotSearch({ title: lot.title, lotNumber: lot.lotNumber }, search),
+        )
+        .map(toRow),
     [lots, lens, saleContext, boardMode, search],
   );
 
-  const kpiTiles = buildSaleLotsKpiTiles(lots, saleContext, boardMode);
-  const canEditDraft = sale.status === "draft";
-  const canAddLots =
-    sale.status === "draft" || sale.status === "scheduled" || sale.status === "active";
+  const returnEligible = lots.filter(
+    (lot) =>
+      (lot.status === "ended" || lot.status === "cancelled" || lot.status === "voided") &&
+      !lot.winnerId,
+  );
 
-  const run = (fn: () => Promise<ActionResult<void>>) => {
-    startTransition(() => {
-      void (async () => {
-        const r = await fn();
-        if (r.ok) {
-          notify.success("Done");
-          router.refresh();
-          return;
-        }
-        notify.error(r.error);
-      })();
+  const detach = (lot: Lot) =>
+    confirm.ask({
+      title: `Remove ${lot.title} from this sale?`,
+      description:
+        "The lot returns to inventory as a standalone draft, ready to attach to another sale.",
+      confirmLabel: "Remove from sale",
+      run: () => adminDetachLotFromSaleResultAction(saleId, lot.id),
+      success: `${lot.title} removed from the sale`,
     });
-  };
+
+  const endLot = (lot: Lot) =>
+    confirm.ask({
+      title: `End ${lot.title} now?`,
+      description: "Bidding on this lot stops now. This cannot be undone.",
+      confirmLabel: "End lot",
+      tone: "danger",
+      stepUpAction: "end this lot",
+      run: () => adminSetLotStatusResultAction(saleId, lot.id, "ended"),
+      success: `${lot.title} ended`,
+    });
+
+  const returnAll = () =>
+    confirm.ask({
+      title: `Return ${returnEligible.length} lot${returnEligible.length === 1 ? "" : "s"} to inventory?`,
+      description:
+        "Each lot is reset to a draft and taken out of this cancelled sale, ready to be used again. Lots that sold stay with their buyers.",
+      confirmLabel: "Return lots",
+      tone: "danger",
+      reason: { label: "Reason", description: "Kept in the audit log.", maxLength: 500 },
+      run: async ({ reason }) => {
+        for (const lot of returnEligible) {
+          const result = await adminReturnLotToInventoryResultAction(lot.id, {
+            reason,
+            confirmVoided: lot.status === "voided",
+          });
+          if (!result.ok) {
+            return { ...result, error: `${lot.title}: ${result.error}` };
+          }
+        }
+        return { ok: true as const };
+      },
+      success: "Lots returned to inventory",
+    });
+
+  const artistOf = (row: SaleLotRow) =>
+    row.lot.artistId ? (artistNameById[row.lot.artistId] ?? null) : null;
+
+  const columns: DataColumn<SaleLotRow>[] = [
+    {
+      id: "number",
+      header: "Lot no.",
+      width: "88px",
+      numeric: true,
+      sortable: true,
+      sortValue: (row) => row.lotNumber,
+      mobile: "meta",
+      cell: (row) => (row.lotNumber === null ? <EmptyValue /> : row.lotNumber),
+    },
+    {
+      id: "title",
+      header: "Lot",
+      sortable: true,
+      sortValue: (row) => row.title.toLowerCase(),
+      mobile: "title",
+      cell: (row) => (
+        <PrimaryCell
+          href={`/admin/lots/${row.id}`}
+          Link={Link}
+          thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos yet" }}
+        >
+          {row.title}
+        </PrimaryCell>
+      ),
+    },
+    {
+      id: "artist",
+      header: "Artist",
+      width: "148px",
+      sortable: true,
+      sortValue: (row) => artistOf(row)?.toLowerCase() ?? null,
+      hideBelow: "md",
+      mobile: "meta",
+      cell: (row) => {
+        const name = artistOf(row);
+        return name && row.lot.artistId ? (
+          <CellLink href={`/admin/artists/${row.lot.artistId}`} Link={Link}>
+            {name}
+          </CellLink>
+        ) : (
+          <EmptyValue />
+        );
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      width: "120px",
+      truncate: false,
+      mobile: "badge",
+      cell: (row) => {
+        const status = staffStatus("lot", row.lot.status, {
+          lot: { winnerId: row.lot.winnerId },
+        });
+        return (
+          <StatusBadge tone={status.tone} live={status.live ?? false}>
+            {status.label}
+          </StatusBadge>
+        );
+      },
+    },
+    {
+      id: "estimate",
+      header: "Estimate",
+      width: "136px",
+      numeric: true,
+      hideBelow: "lg",
+      mobile: "hidden",
+      cell: (row) =>
+        row.estimate ? (
+          <span className="tabular-nums">
+            {wholePounds(row.estimate.low)}–{wholePounds(row.estimate.high)}
+          </span>
+        ) : (
+          <EmptyValue />
+        ),
+    },
+    {
+      id: "reserve",
+      header: "Reserve",
+      width: "112px",
+      numeric: true,
+      hideBelow: "xl",
+      mobile: "hidden",
+      cell: (row) => <StaffMoney minor={row.reserve} />,
+    },
+    {
+      id: "current",
+      header: "Current bid",
+      width: "120px",
+      numeric: true,
+      sortable: true,
+      defaultSortDirection: "desc",
+      sortValue: (row) => row.current,
+      mobile: "meta",
+      cell: (row) =>
+        row.unsold ? (
+          <span className="text-staff-muted">Unsold</span>
+        ) : (
+          <StaffMoney minor={row.current} />
+        ),
+    },
+    {
+      id: "closes",
+      header: "Closes",
+      width: "172px",
+      sortable: true,
+      defaultSortDirection: "asc",
+      sortValue: (row) => row.endsAt.getTime(),
+      hideBelow: "md",
+      mobile: "meta",
+      truncate: false,
+      cell: (row) => <StaffDate value={row.endsAt} withTime />,
+    },
+    rowActionsColumn<SaleLotRow>({
+      label: (row) => `Actions for lot ${row.title}`,
+      actions: (row) => {
+        const lot = row.lot;
+        return [
+          { id: "open", label: "Open lot page", href: `/admin/lots/${lot.id}` },
+          ...(canManageAuction
+            ? [{ id: "edit", label: "Edit lot", href: `/admin/lots/${lot.id}/edit` }]
+            : []),
+          ...(canEditDraft && canManageAuction
+            ? [
+                {
+                  id: "detach",
+                  label: "Remove from sale…",
+                  onSelect: () => detach(lot),
+                },
+              ]
+            : []),
+          ...(canManageAuction && lot.status === "active"
+            ? [
+                {
+                  id: "end",
+                  label: "End lot…",
+                  tone: "danger" as const,
+                  onSelect: () => endLot(lot),
+                },
+              ]
+            : []),
+          ...lotActions.actionsFor({
+            id: lot.id,
+            title: lot.title,
+            status: lot.status,
+            inDraftSale: canEditDraft,
+            canDelete: false,
+            hasWinner: Boolean(lot.winnerId),
+            withdrawalRequested: false,
+          }),
+        ];
+      },
+    }),
+  ];
+
+  const addAction = canEditDraft ? (
+    <Link
+      href={saleSetupHref(saleId, "lots")}
+      className={staffButtonVariants({ variant: "primary", size: "sm" })}
+    >
+      <Plus aria-hidden />
+      Add lot
+    </Link>
+  ) : canAddLots ? (
+    <StaffButton
+      variant="secondary"
+      size="sm"
+      icon={<Plus aria-hidden />}
+      onClick={() => setAddOpen(true)}
+    >
+      Add lot
+    </StaffButton>
+  ) : null;
+
+  const empty = canEditDraft
+    ? {
+        title: "No lots in this sale yet",
+        description:
+          "Add new lots in the sale setup, or attach lots that are already in inventory. They appear here with their estimates and bids.",
+        action: addAction,
+      }
+    : canAddLots
+      ? {
+          title: "No lots in this sale yet",
+          description:
+            "Add a lot and it is scheduled as soon as it is saved. Lots appear here with their estimates and bids.",
+          action: addAction,
+        }
+      : {
+          title: "This sale has no lots",
+          description: "No lots were added before the sale closed.",
+        };
+
+  const filtered = rows.length !== lots.length;
 
   return (
-    <div className="space-y-6">
-      <DetailBoardKpiStrip ariaLabel="Lots summary" tiles={kpiTiles} />
-
-      <DetailBoardShell
+    <>
+      <RelatedRecordsSection<SaleLotRow>
+        id="sale-lots"
         title="Lots"
-        count={rowLots.length}
-        actions={
+        label="Lots in this sale"
+        action={
           <>
             {canManageAuction ? (
               <AdminSaleLotQrPrintButton
-                lots={lots.map((l) => ({ id: l.id, title: l.title, lotNumber: l.lotNumber }))}
+                lots={lots.map((lot) => ({
+                  id: lot.id,
+                  title: lot.title,
+                  lotNumber: lot.lotNumber,
+                }))}
               />
             ) : null}
-            <ExportButton entityType="lots" filters={{ saleId }} />
+            <ExportButton
+              entityType="lots"
+              filters={{ saleId }}
+              className={staffButtonVariants({ variant: "secondary", size: "sm" })}
+            />
             {canEditDraft ? (
-              <Link
-                href={saleSetupHref(saleId, "lots")}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-              >
-                Add lots in setup →
-              </Link>
-            ) : canAddLots ? (
-              <a
-                href="#add-lot-to-live-sale"
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-              >
-                Add new lot →
-              </a>
+              <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
+                Attach existing lot
+              </StaffButton>
             ) : null}
+            {sale.status === "cancelled" && returnEligible.length > 0 && canManageAuction ? (
+              <StaffButton variant="secondary" size="sm" onClick={returnAll}>
+                Return lots to inventory
+              </StaffButton>
+            ) : null}
+            {addAction}
           </>
         }
-        toolbar={
-          <DetailBoardToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search lots…"
-            filters={filters}
-            activeFilter={lens}
-            onFilterChange={(id) => setLens(id as SaleLotsLens)}
-            filterAriaLabel="Filter lots"
-          />
+        columns={columns}
+        data={rows}
+        getRowId={(row) => row.id}
+        defaultSort={{ columnId: "number", direction: "asc" }}
+        density="comfortable"
+        empty={
+          search.trim() || lens !== "all"
+            ? {
+                title: "No lots match",
+                description: "Try another filter, or clear the search.",
+              }
+            : empty
         }
-        footer={
-          rowLots.length > 0 ? (
-            <span>
-              Showing {rowLots.length} of {lots.length} lot{lots.length === 1 ? "" : "s"}
-              {selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}
-            </span>
+        toolbar={
+          lots.length > 0 ? (
+            <DataTableToolbar
+              search={
+                <TableSearch
+                  live
+                  label="Search lots"
+                  placeholder="Search by title or lot number"
+                  value={search}
+                  onSearch={setSearch}
+                />
+              }
+              filters={
+                <SegmentedControl<SaleLotsLens>
+                  label="Filter lots"
+                  value={lens}
+                  onValueChange={setLens}
+                  options={filters.map((filter) => ({
+                    value: filter.id as SaleLotsLens,
+                    label: filter.label,
+                  }))}
+                />
+              }
+            />
           ) : undefined
         }
-      >
-        <DetailEntityTable
-          rows={rowLots}
-          getRowId={(lot) => lot.id}
-          emptyTitle="No lots attached yet."
-          selectable
-          selectedIds={selectedIds}
-          onToggleRow={(id, checked) =>
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              if (checked) next.add(id);
-              else next.delete(id);
-              return next;
-            })
-          }
-          onToggleAll={(checked) =>
-            setSelectedIds(checked ? new Set(rowLots.map((lot) => lot.id)) : new Set())
-          }
-          columns={[
-            {
-              id: "lot",
-              header: "Lot",
-              cell: (lot) => (
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="relative size-12 shrink-0 overflow-hidden rounded-md border border-border-hairline bg-surface-container-low">
-                    {lot.images[0] ? (
-                      <MediaImage
-                        src={lot.images[0]}
-                        alt=""
-                        label={lot.title}
-                        imgClassName="object-cover"
-                        sizes="48px"
-                      />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-[10px] text-on-surface-variant">
-                        —
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <Link
-                      href={`/admin/lots/${lot.id}`}
-                      className="font-headline text-sm font-medium text-on-surface hover:text-link"
-                    >
-                      {lot.title}
-                    </Link>
-                    <p className="mt-0.5 font-body text-xs text-on-surface-variant">
-                      Lot #{lot.lotNumber ?? "—"}
-                    </p>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              id: "estimate",
-              header: "Estimate",
-              cell: (lot) => (
-                <AdminTableMoneyCell display={formatLotEstimateDisplay(lot)} emphasis="muted" />
-              ),
-            },
-            {
-              id: "value",
-              header: "Current",
-              cell: (lot) => (
-                <AdminTableMoneyCell display={formatLotHammerForTable(lot)} emphasis="hammer" />
-              ),
-            },
-            {
-              id: "status",
-              header: "Status",
-              cell: (lot) => {
-                const { label, tone } = lotDotStatusPresentation({
-                  status: lot.status,
-                  winnerId: lot.winnerId,
-                  context: "sale-board",
-                });
-                return <DotStatusPill label={label} tone={tone} />;
-              },
-            },
-            {
-              id: "actions",
-              header: "",
-              headerClassName: "sr-only",
-              className: "text-right",
-              cell: (lot) => {
-                const transitions = LOT_TRANSITION_OPTIONS[lot.status];
-                return (
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="h-8 px-2 font-label text-xs"
-                    >
-                      <Link href={`/admin/lots/${lot.id}`}>Open</Link>
-                    </Button>
-                    {canEditDraft ? (
-                      <ConfirmActionButton
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 font-label text-xs"
-                        disabled={pending}
-                        confirmTitle="Detach lot from sale?"
-                        confirmBody="Detach this lot from the sale? It returns to inventory as a standalone draft lot."
-                        confirmLabel="Detach"
-                        tone="warning"
-                        onConfirmed={() =>
-                          run(() => adminDetachLotFromSaleResultAction(saleId, lot.id))
-                        }
-                      >
-                        Detach
-                      </ConfirmActionButton>
-                    ) : null}
-                    {canManageAuction &&
-                    transitions.includes("cancelled") &&
-                    sale.status !== "ended" &&
-                    sale.status !== "cancelled" ? (
-                      <ConfirmActionButton
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 font-label text-xs"
-                        disabled={pending}
-                        confirmTitle="Cancel lot"
-                        confirmBody={`Cancel lot "${lot.title}"?`}
-                        confirmLabel="Cancel lot"
-                        onConfirmed={() =>
-                          run(() => adminCancelLotInSaleResultAction(saleId, lot.id))
-                        }
-                      >
-                        Cancel
-                      </ConfirmActionButton>
-                    ) : null}
-                    {canManageAuction
-                      ? transitions
-                          .filter((t) => t !== "cancelled")
-                          .map((next) => (
-                            <ConfirmActionButton
-                              key={next}
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 font-label text-xs"
-                              disabled={pending}
-                              confirmTitle={`Mark as ${next}`}
-                              confirmBody={`Mark lot "${lot.title}" as ${next}?`}
-                              confirmLabel={`Mark ${next}`}
-                              onConfirmed={() =>
-                                run(() => adminSetLotStatusResultAction(saleId, lot.id, next))
-                              }
-                            >
-                              Mark {next}
-                            </ConfirmActionButton>
-                          ))
-                      : null}
-                  </div>
-                );
-              },
-            },
-          ]}
+        footer={filtered ? `Showing ${rows.length} of ${lots.length} lots` : undefined}
+      />
+      {canEditDraft ? (
+        <AttachExistingLotDialog
+          open={attachOpen}
+          onOpenChange={setAttachOpen}
+          saleId={saleId}
+          saleWindow={{
+            deliveryMode: sale.deliveryMode,
+            startTime: sale.startTime,
+            endTime: sale.endTime,
+          }}
+          englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+          categories={categories}
+          onAttached={() => router.refresh()}
         />
-      </DetailBoardShell>
-
-      <DetailBoardShell
-        title="Lot management"
-        description="Attach, add, and return lots for this sale."
-      >
-        <SaleLotsTabSection
+      ) : null}
+      {canAddLots && !canEditDraft ? (
+        <EmergencyAddLotDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
           saleId={saleId}
           saleStatus={sale.status}
           deliveryMode={sale.deliveryMode}
           saleStartTime={sale.startTime}
           saleEndTime={sale.endTime}
-          canEditDraft={canEditDraft}
-          canAddLots={canAddLots}
           categories={categories}
           englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
-          canManageAuction={canManageAuction}
-          hideTable
-          lots={lots.map((l) => ({
-            id: l.id,
-            title: l.title,
-            lotNumber: l.lotNumber,
-            status: l.status,
-            winnerId: l.winnerId ?? null,
-            imageUrl: l.images[0] ?? null,
-          }))}
+          onAdded={() => router.refresh()}
         />
-      </DetailBoardShell>
-    </div>
+      ) : null}
+      {lotActions.dialogs}
+      {confirm.dialog}
+    </>
   );
 }

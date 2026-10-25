@@ -32,6 +32,7 @@ export default async function AdminSaleLotsPage({ params, searchParams }: Props)
         canManageAuction={canManageAuction}
         categories={page.categories}
         englishOnlyAuctionsLocked={isEnglishOnlyAuctionsLocked()}
+        artistNameById={page.artistNameById}
       />
     </>
   );

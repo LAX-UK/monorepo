@@ -1,4 +1,3 @@
-import { formatMoney } from "@/lib/ui/format";
 import type { Bid } from "@auction/types";
 import { toRequiredIsoString } from "@auction/validators";
 
@@ -31,29 +30,4 @@ export function buildLotBidsTableRows(
       : "—",
     placedAtIso: toRequiredIsoString(bid.createdAt),
   }));
-}
-
-export function buildLotBidsKpiTiles(rows: readonly LotBidTableRow[]): {
-  id: string;
-  label: string;
-  value: string;
-  compareHint?: string;
-}[] {
-  const winning = rows.find((b) => b.isWinning);
-  const autoCount = rows.filter((b) => b.isAutoBid).length;
-  return [
-    { id: "total", label: "Total bids", value: String(rows.length), compareHint: "On this lot" },
-    {
-      id: "winning",
-      label: "Winning bid",
-      value: winning ? formatMoney(winning.amount) : "—",
-      compareHint: winning ? "Current leader" : "No bids yet",
-    },
-    {
-      id: "auto",
-      label: "Auto bids",
-      value: String(autoCount),
-      compareHint: "Proxy ceilings active",
-    },
-  ];
 }
