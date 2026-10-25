@@ -1,4 +1,4 @@
-import type { DetailBoardFilter, DetailBoardKpiTile } from "@/lib/admin/detail-board/types";
+import type { DetailBoardFilter } from "@/lib/admin/detail-board/types";
 import {
   type LotCatalogSaleContext,
   formatLotCurrentValue,
@@ -59,39 +59,6 @@ function isLotWithdrawn(status: LotStatus): boolean {
 
 function isLotSold(lot: { status: LotStatus; winnerId?: string | null }): boolean {
   return lot.status === "ended" && Boolean(lot.winnerId);
-}
-
-export function buildSaleLotsKpiTiles(
-  lots: Parameters<typeof isLotCatalogComplete>[0][],
-  sale: SaleLotsFilterContext,
-  mode: SaleLotsBoardMode,
-): DetailBoardKpiTile[] {
-  if (mode === "live") {
-    const liveNow = lots.filter((l) => isLotLive(l.status)).length;
-    const withdrawn = lots.filter((l) => isLotWithdrawn(l.status)).length;
-    return [
-      { id: "total", label: "Total lots", value: String(lots.length), compareHint: "In this sale" },
-      { id: "live", label: "Live now", value: String(liveNow), compareHint: "Accepting bids" },
-      {
-        id: "withdraw",
-        label: "Withdraw",
-        value: String(withdrawn),
-        compareHint: "Removed from sale",
-      },
-    ];
-  }
-  const complete = lots.filter((lot) => isLotCatalogComplete(lot, sale)).length;
-  const incomplete = lots.length - complete;
-  return [
-    { id: "total", label: "Total lots", value: String(lots.length), compareHint: "In this sale" },
-    { id: "complete", label: "Complete", value: String(complete), compareHint: "Ready to publish" },
-    {
-      id: "incomplete",
-      label: "Incomplete",
-      value: String(incomplete),
-      compareHint: "Needs catalog work",
-    },
-  ];
 }
 
 export function filterSaleLotsByLens<T extends Parameters<typeof isLotCatalogComplete>[0]>(

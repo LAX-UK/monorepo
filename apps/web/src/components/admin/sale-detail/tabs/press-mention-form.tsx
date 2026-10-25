@@ -1,23 +1,24 @@
 "use client";
 
-import type { SalePressMentionType } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { DatePicker } from "@auction/ui/components/date-picker";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
+import type { PressSaveResult } from "@/components/admin/sale-detail/tabs/use-press-mutations";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
-import { Textarea } from "@auction/ui/components/textarea";
+  DateInput,
+  EnumSelect,
+  Field,
+  Notice,
+  StaffButton,
+  StaffDialog,
+  TextArea,
+  TextInput,
+} from "@auction/staff-ui";
+import type { SalePressMentionType } from "@auction/types";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 export type PressFormState = {
   url: string;
   headline: string;
   outletName: string;
+  /** `YYYY-MM-DD`, or empty. */
   publishedAt: string;
   excerpt: string;
   mentionType: SalePressMentionType | "";
@@ -39,133 +40,175 @@ export const MENTION_TYPE_OPTIONS: { value: SalePressMentionType; label: string 
   { value: "roundup", label: "Roundup" },
 ];
 
-const NO_MENTION_TYPE = "__none__";
+const NO_TYPE = "none";
+type MentionChoice = SalePressMentionType | typeof NO_TYPE;
+const MENTION_CHOICES: { value: MentionChoice; label: string }[] = [
+  { value: NO_TYPE, label: "Not specified" },
+  ...MENTION_TYPE_OPTIONS,
+];
+
+const EXCERPT_MAX = 280;
+const FORM_ID = "press-mention";
+
+type Errors = Partial<Record<"url" | "headline" | "outletName" | "excerpt", string>>;
+
+/** What is wrong with the form, field by field; empty when it can be saved. */
+export function validatePressForm(form: PressFormState): Errors {
+  const errors: Errors = {};
+  const url = form.url.trim();
+  if (!url) errors.url = "Enter the article's web address.";
+  else {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        errors.url = "Enter an address that starts with https://.";
+      }
+    } catch {
+      errors.url = "Enter a full web address, such as https://example.com/article.";
+    }
+  }
+  if (!form.outletName.trim()) errors.outletName = "Enter the outlet that published it.";
+  if (!form.headline.trim()) errors.headline = "Enter the article's headline.";
+  if (form.excerpt.length > EXCERPT_MAX) {
+    errors.excerpt = `Keep the excerpt to ${EXCERPT_MAX} characters or fewer.`;
+  }
+  return errors;
+}
 
 type Props = {
-  form: PressFormState;
-  onChange: (next: PressFormState) => void;
-  onAdd: () => void;
-  saving?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "add" | "edit";
+  /** The values to start from: empty for a new link, the link's own when editing. */
+  initial: PressFormState;
+  /** Saves the list; a failure is shown in the dialog and the dialog stays open. */
+  onSubmit: (form: PressFormState) => Promise<PressSaveResult>;
 };
 
-export function PressMentionForm({ form, onChange, onAdd, saving = false }: Props) {
+/**
+ * Adds or edits one press link. Checked on submit and again on every change after that; a failed
+ * save stays here, with what was typed.
+ */
+export function PressMentionDialog({ open, onOpenChange, mode, initial, onSubmit }: Props) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const [form, setForm] = useState<PressFormState>(initial);
+  const [submitted, setSubmitted] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(initial);
+    setSubmitted(false);
+    setFailure(null);
+  }, [open, initial]);
+
+  const errors = submitted ? validatePressForm(form) : {};
+  const patch = (next: Partial<PressFormState>) => setForm((prev) => ({ ...prev, ...next }));
+
+  const submit = () => {
+    setSubmitted(true);
+    setFailure(null);
+    if (Object.keys(validatePressForm(form)).length > 0) return;
+    startTransition(async () => {
+      const result = await onSubmit(form);
+      if (result.ok) onOpenChange(false);
+      else setFailure(result.error);
+    });
+  };
+
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="press-url">Article URL *</Label>
-          <Input
-            id="press-url"
-            type="url"
-            variant="underline"
-            placeholder="https://dailymail.co.uk/article/..."
-            value={form.url}
-            onChange={(e) => onChange({ ...form, url: e.target.value })}
-            disabled={saving}
-            className="mt-1 font-body text-sm"
-          />
-        </div>
-        <div>
-          <Label htmlFor="press-outlet">Outlet name *</Label>
-          <Input
-            id="press-outlet"
-            type="text"
-            variant="underline"
-            placeholder="Daily Mail"
-            maxLength={200}
-            value={form.outletName}
-            onChange={(e) => onChange({ ...form, outletName: e.target.value })}
-            disabled={saving}
-            className="mt-1 font-body text-sm"
-          />
-        </div>
-      </div>
-      <div>
-        <Label htmlFor="press-headline">Headline *</Label>
-        <Input
-          id="press-headline"
-          type="text"
-          variant="underline"
-          placeholder="Article headline as published"
-          maxLength={500}
-          value={form.headline}
-          onChange={(e) => onChange({ ...form, headline: e.target.value })}
-          disabled={saving}
-          className="mt-1 font-body text-sm"
-        />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="press-date">Publication date</Label>
-          <DatePicker
-            id="press-date"
-            value={form.publishedAt}
-            onChange={(value) => onChange({ ...form, publishedAt: value })}
-            disabled={saving}
-            placeholder="Pick a date"
-            className="mt-1"
-          />
-        </div>
-        <div>
-          <Label htmlFor="press-type">Mention type</Label>
-          <Select
-            value={form.mentionType || NO_MENTION_TYPE}
-            onValueChange={(value) =>
-              onChange({
-                ...form,
-                mentionType: value === NO_MENTION_TYPE ? "" : (value as SalePressMentionType),
-              })
-            }
-            disabled={saving}
+    <StaffDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!busy) onOpenChange(next);
+      }}
+      size="md"
+      title={mode === "add" ? "Add a press link" : "Edit press link"}
+      description="The article's details as published. The preview image is read from the article."
+      initialFocusRef={cancelRef}
+      footer={
+        <>
+          <StaffButton
+            ref={cancelRef}
+            variant="secondary"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
           >
-            <SelectTrigger
-              id="press-type"
-              variant="underline"
-              className="mt-1 w-full font-body text-sm"
-            >
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_MENTION_TYPE}>— select type —</SelectItem>
-              {MENTION_TYPE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            Cancel
+          </StaffButton>
+          <StaffButton type="submit" form={FORM_ID} variant="primary" loading={busy}>
+            {mode === "add" ? "Add link" : "Save changes"}
+          </StaffButton>
+        </>
+      }
+    >
+      <form
+        id={FORM_ID}
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        {failure ? (
+          <Notice tone="danger" alert title="That did not go through">
+            {failure}
+          </Notice>
+        ) : null}
+        <Field label="Article address" error={errors.url} disabled={busy}>
+          <TextInput
+            type="url"
+            inputMode="url"
+            placeholder="https://"
+            value={form.url}
+            onChange={(event) => patch({ url: event.target.value })}
+          />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Outlet" error={errors.outletName} disabled={busy}>
+            <TextInput
+              value={form.outletName}
+              maxLength={200}
+              onChange={(event) => patch({ outletName: event.target.value })}
+            />
+          </Field>
+          <Field label="Published on" optional disabled={busy}>
+            <DateInput
+              value={form.publishedAt || null}
+              onValueChange={(day) => patch({ publishedAt: day ?? "" })}
+            />
+          </Field>
         </div>
-      </div>
-      <div>
-        <Label htmlFor="press-excerpt">
-          Excerpt / pull quote
-          <span className="ml-1 font-body font-normal normal-case text-on-surface-variant/50">
-            ({(form.excerpt ?? "").length}/280)
-          </span>
-        </Label>
-        <Textarea
-          id="press-excerpt"
-          variant="underline"
-          placeholder="Short quote or summary from the article (max 280 chars)"
-          maxLength={280}
-          rows={2}
-          value={form.excerpt ?? ""}
-          onChange={(e) => onChange({ ...form, excerpt: e.target.value })}
-          disabled={saving}
-          className="mt-1 font-body text-sm"
-        />
-      </div>
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onAdd}
-          disabled={saving || !form.url.trim() || !form.headline.trim() || !form.outletName.trim()}
+        <Field label="Headline" error={errors.headline} disabled={busy}>
+          <TextInput
+            value={form.headline}
+            maxLength={500}
+            onChange={(event) => patch({ headline: event.target.value })}
+          />
+        </Field>
+        <Field label="Mention type" optional disabled={busy}>
+          <EnumSelect<MentionChoice>
+            value={form.mentionType || NO_TYPE}
+            options={MENTION_CHOICES}
+            onValueChange={(value) => patch({ mentionType: value === NO_TYPE ? "" : value })}
+          />
+        </Field>
+        <Field
+          label="Excerpt"
+          optional
+          description={`A short quote or summary from the article. ${form.excerpt.length} of ${EXCERPT_MAX} characters.`}
+          error={errors.excerpt}
+          disabled={busy}
         >
-          Add link
-        </Button>
-      </div>
-    </div>
+          <TextArea
+            rows={3}
+            value={form.excerpt}
+            onChange={(event) => patch({ excerpt: event.target.value })}
+          />
+        </Field>
+      </form>
+    </StaffDialog>
   );
 }

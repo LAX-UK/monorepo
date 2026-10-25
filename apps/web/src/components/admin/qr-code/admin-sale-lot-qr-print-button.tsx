@@ -2,7 +2,7 @@
 
 import { adminEnsureLotQrCodesForPrintResultAction } from "@/lib/actions/admin-qr-codes";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton } from "@auction/staff-ui";
 import { Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
@@ -71,17 +71,17 @@ export function AdminSaleLotQrPrintButton({ lots }: Props) {
   };
 
   return (
-    <Button
+    <StaffButton
       type="button"
-      variant="outline"
+      variant="secondary"
       size="sm"
+      icon={<Printer aria-hidden />}
       onClick={() => void print()}
       disabled={lots.length === 0 || preparing}
       aria-busy={preparing || undefined}
     >
-      <Printer className="size-4" aria-hidden />
-      {preparing ? "Preparing labels..." : "Print lot QR labels"}
-    </Button>
+      {preparing ? "Preparing labels…" : "Print QR labels"}
+    </StaffButton>
   );
 }
 
