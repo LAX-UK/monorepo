@@ -1,27 +1,22 @@
 import "server-only";
 
 import { categoriesListController } from "@/lib/admin/admin-list-controllers";
-import { getAdminCategoriesListSummary, getAdminCategoryList } from "@/lib/data/http/admin.server";
+import { getAdminCategoriesListSummary } from "@/lib/data/http/admin.server";
 import type { AdminCategoriesListSummary, AdminCategory } from "@auction/types";
 
-const EMPTY_SUMMARY: AdminCategoriesListSummary = {
-  totalCount: 0,
-  activeCount: 0,
-  archivedCount: 0,
-  usageTotals: { lots: 0, sales: 0, submissions: 0 },
-  mostUsedCategory: null,
-};
-
+/**
+ * The categories list: one page of rows with the total behind it, and the taxonomy summary
+ * (null when it could not load, so the page leaves the counts out instead of showing zeros).
+ */
 export async function loadAdminCategoriesListPage(
   query: ReturnType<typeof categoriesListController.parseQuery>,
 ): Promise<{
   rows: AdminCategory[];
   total: number;
-  summary: AdminCategoriesListSummary;
-  categoryTree: AdminCategory[];
+  summary: AdminCategoriesListSummary | null;
   listError: string | null;
 }> {
-  const [listResult, summary, categoryTree] = await Promise.all([
+  const [listResult, summary] = await Promise.all([
     categoriesListController.fetch(query).then(
       (result) => ({ ...result, error: null as string | null }),
       (error) => ({
@@ -30,15 +25,13 @@ export async function loadAdminCategoriesListPage(
         error: error instanceof Error ? error.message : "Could not load categories.",
       }),
     ),
-    getAdminCategoriesListSummary(Boolean(query.includeArchived)).catch(() => EMPTY_SUMMARY),
-    getAdminCategoryList({ includeArchived: true }).catch(() => []),
+    getAdminCategoriesListSummary(Boolean(query.includeArchived)).catch(() => null),
   ]);
 
   return {
     rows: listResult.rows,
     total: listResult.total ?? listResult.rows.length,
     summary,
-    categoryTree,
     listError: listResult.error,
   };
 }

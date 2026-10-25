@@ -1,5 +1,6 @@
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
+import { parseStaffPageSize } from "@auction/staff-ui";
 
 export type VenuesListQuery = AdminListQueryBase & {
   includeArchived?: boolean | undefined;
@@ -15,7 +16,12 @@ export const venuesListController: IAdminListController<
     const base = parseListSearchParams(sp);
     const includeArchived = firstString(sp.includeArchived) === "true";
     const legalEntityId = firstString(sp.legalEntityId)?.trim() || undefined;
-    return { ...base, includeArchived, legalEntityId, limit: Math.min(100, base.limit) };
+    return {
+      ...base,
+      includeArchived,
+      legalEntityId,
+      limit: parseStaffPageSize(firstString(sp.limit)),
+    };
   },
   async fetch(q) {
     const { getWriteContainer } = await import("@/lib/data/write-container.server");

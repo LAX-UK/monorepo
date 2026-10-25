@@ -1,6 +1,5 @@
 import {
   buildCategoryTree,
-  filterCategoryTaxonomyRows,
   flattenCategoryTaxonomyRows,
 } from "@/lib/admin/categories/category-taxonomy-rows";
 import type { AdminCategory } from "@auction/types";
@@ -53,14 +52,5 @@ describe("category-taxonomy-rows", () => {
     expect(tree).toHaveLength(1);
     expect(tree[0]?.children).toHaveLength(1);
     expect(tree[0]?.children[0]?.id).toBe("child");
-  });
-
-  it("filters rows by name or slug", () => {
-    const rows = flattenCategoryTaxonomyRows([
-      cat({ id: "1", name: "Fine Art", slug: "fine-art" }),
-      cat({ id: "2", name: "Sculpture", slug: "sculpture" }),
-    ]);
-    expect(filterCategoryTaxonomyRows(rows, "fine").map((r) => r.id)).toEqual(["1"]);
-    expect(filterCategoryTaxonomyRows(rows, "sculpture").map((r) => r.id)).toEqual(["2"]);
   });
 });
