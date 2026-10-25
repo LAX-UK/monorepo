@@ -19,6 +19,8 @@ export type StaffConfirmRequest = {
   description: ReactNode;
   /** The verb again: "Withdraw lot". */
   confirmLabel: string;
+  /** The way out, when "Cancel" would read as the action itself: "Keep sale". */
+  cancelLabel?: string;
   tone?: "default" | "danger";
   /** An audited reason, sent with the action. */
   reason?: ConfirmReason;
@@ -95,6 +97,7 @@ export function useStaffConfirm() {
         title={request?.title ?? ""}
         description={request?.description ?? ""}
         confirmLabel={request?.confirmLabel ?? "Confirm"}
+        {...(request?.cancelLabel ? { cancelLabel: request.cancelLabel } : {})}
         tone={request?.tone ?? "default"}
         loading={busy}
         onConfirm={confirm}

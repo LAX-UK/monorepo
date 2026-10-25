@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadAdminSalesListPage } from "./load-sales-list-page";
 
-const { fetchSales, getSummary, getSalesTrend, getHammerTrend } = vi.hoisted(() => ({
+const { fetchSales, getSummary } = vi.hoisted(() => ({
   fetchSales: vi.fn(),
   getSummary: vi.fn(),
-  getSalesTrend: vi.fn(),
-  getHammerTrend: vi.fn(),
 }));
 
 vi.mock("@/lib/admin/admin-list-controllers", () => ({
@@ -36,17 +34,10 @@ vi.mock("@/lib/data/http/admin-sales-summary.server", () => ({
   getAdminSalesListSummary: getSummary,
 }));
 
-vi.mock("@/lib/data/http/admin-kpi-trends.server", () => ({
-  getAdminSalesKpiTrend: getSalesTrend,
-  getAdminLotsHammerKpiTrend: getHammerTrend,
-}));
-
 describe("loadAdminSalesListPage", () => {
   beforeEach(() => {
     fetchSales.mockReset();
     getSummary.mockReset();
-    getSalesTrend.mockReset();
-    getHammerTrend.mockReset();
     getSummary.mockResolvedValue({
       activeCount: 0,
       upcomingCount: 0,
@@ -56,8 +47,6 @@ describe("loadAdminSalesListPage", () => {
       totalHammerValue: "0",
       lensCounts: { all: 0, upcoming: 0, live: 0, closed: 0, settled: 0, setup: 0 },
     });
-    getSalesTrend.mockResolvedValue({ currentTotal: 0, priorTotal: 0, dailyCounts: [] });
-    getHammerTrend.mockResolvedValue({ currentTotal: 0, priorTotal: 0, dailyCounts: [] });
   });
 
   it("contains list failures and returns a composition-ready empty model", async () => {
@@ -68,6 +57,5 @@ describe("loadAdminSalesListPage", () => {
     expect(result.err).toBe("Sales unavailable");
     expect(result.boardRows).toEqual([]);
     expect(result.boardPagination).toBeNull();
-    expect(result.periodDays).toBe(30);
   });
 });

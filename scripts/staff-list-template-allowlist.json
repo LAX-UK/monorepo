@@ -26,7 +26,6 @@
     { "page": "bid-admin:(platform)/event-rsvps/page.tsx" },
     { "page": "bid-admin:(platform)/invitations/page.tsx" },
     { "page": "bid-admin:(platform)/lot-fulfilment/page.tsx" },
-    { "page": "bid-admin:(platform)/sales/page.tsx" },
     { "page": "bid-admin:(platform)/staff/page.tsx" },
     { "page": "bid-admin:(platform)/submissions/page.tsx" },
     { "page": "bid-admin:(platform)/venues/page.tsx" },

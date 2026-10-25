@@ -1,6 +1,5 @@
 import "server-only";
 
-import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { salesListController } from "@/lib/admin/admin-list-controllers";
 import { applySalesLensBadges } from "@/lib/admin/apply-sales-lens-badges";
 import {
@@ -9,10 +8,6 @@ import {
 } from "@/lib/admin/build-sales-list-page-model";
 import { buildSalesActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { resolveSalesListPaginationTotal } from "@/lib/admin/resolve-catalog-list-pagination-total";
-import {
-  getAdminLotsHammerKpiTrend,
-  getAdminSalesKpiTrend,
-} from "@/lib/data/http/admin-kpi-trends.server";
 import {
   EMPTY_ADMIN_SALES_LIST_SUMMARY,
   getAdminSalesListSummary,
@@ -23,7 +18,6 @@ type SaleListRow = Awaited<ReturnType<typeof salesListController.fetch>>["rows"]
 
 /** Testable data/composition boundary for the sales list route. */
 export async function loadAdminSalesListPage(sp: SalesListSearchParams) {
-  const periodDays = parseAdminKpiPeriod(sp.period);
   const model = buildSalesListPageModel(sp);
   const {
     query,
@@ -35,18 +29,8 @@ export async function loadAdminSalesListPage(sp: SalesListSearchParams) {
     activeFilterCount,
   } = model;
 
-  const [salesSummary, salesTrend, salesHammerTrend, salesResult] = await Promise.all([
+  const [salesSummary, salesResult] = await Promise.all([
     getAdminSalesListSummary().catch(() => EMPTY_ADMIN_SALES_LIST_SUMMARY),
-    getAdminSalesKpiTrend(periodDays).catch(() => ({
-      currentTotal: 0,
-      priorTotal: 0,
-      dailyCounts: [] as number[],
-    })),
-    getAdminLotsHammerKpiTrend(periodDays).catch(() => ({
-      currentTotal: 0,
-      priorTotal: 0,
-      dailyCounts: [] as number[],
-    })),
     salesListController.fetch(query).then(
       (result) => ({ err: null as string | null, ...result }),
       (error) => ({
@@ -87,11 +71,8 @@ export async function loadAdminSalesListPage(sp: SalesListSearchParams) {
       : null;
 
   return {
-    periodDays,
     model,
     salesSummary,
-    salesTrend,
-    salesHammerTrend,
     err: salesResult.err,
     boardRows,
     lensesItems: applySalesLensBadges(lenses, salesSummary.lensCounts),

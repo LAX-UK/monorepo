@@ -17,6 +17,7 @@ export type AdminSaleBoardRow = {
   endTimeLabel: string;
   sparklineValues: number[];
   canDelete: boolean;
+  createdAtIso: string;
 };
 
 export type SaleColumnSortConfig = {

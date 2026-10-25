@@ -2,6 +2,7 @@ import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-param
 import type { IAdminListController } from "@/lib/admin/i-admin-list-controller";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
+import { parseStaffPageSize } from "@auction/staff-ui";
 import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
 import type { SaleLifecycleSlug, SalesListQuery } from "./sales-list-query";
 
@@ -47,7 +48,7 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
       status: needsSetup ? "draft" : status,
       delivery,
       needsSetup: needsSetup || undefined,
-      limit: Math.min(100, base.limit),
+      limit: parseStaffPageSize(firstString(sp.limit)),
     };
   },
   async fetch(q) {
