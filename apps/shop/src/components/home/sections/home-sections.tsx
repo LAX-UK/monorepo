@@ -1,9 +1,12 @@
 import { CatalogueGrid } from "@/components/catalogue-grid";
-import { ArtistCard } from "@/components/home/cards/artist-card";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopSectionHeader } from "@/components/home/shop-section-header";
+import { ShopMediaImage } from "@/components/media/shop-media-image";
 import type { HomeEditionStepVm, HomePageViewModel } from "@/lib/home/home-page.vm";
+import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import {
+  MarketingArtistCard,
+  MarketingArtistGrid,
   MarketingCertificateIcon,
   MarketingCheckIcon,
   MarketingGridIcon,
@@ -52,13 +55,32 @@ export function HomeArtistsSection({ artists }: { artists: HomePageViewModel["ar
         actionLabel="All artists"
         actionHref="/artists"
       />
-      <ul className="shop-catalogue__list shop-home__grid">
+      <MarketingArtistGrid aria-label="Artists with editions">
         {artists.map((card) => (
-          <li key={card.id}>
-            <ArtistCard card={card} />
-          </li>
+          <MarketingArtistCard
+            key={card.id}
+            href={card.href}
+            name={card.name}
+            nameAs="h3"
+            facts={card.discipline}
+            caption={card.editionsLabel}
+            {...(card.image
+              ? {
+                  portrait: (
+                    <ShopMediaImage
+                      src={card.image}
+                      alt=""
+                      label={SHOP_MEDIA_LABELS.artistPortrait}
+                      aspect={[4, 5]}
+                      sizes="(min-width: 96rem) 20vw, (min-width: 64rem) 25vw, (min-width: 48rem) 30vw, 50vw"
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  ),
+                }
+              : {})}
+          />
         ))}
-      </ul>
+      </MarketingArtistGrid>
     </section>
   );
 }
