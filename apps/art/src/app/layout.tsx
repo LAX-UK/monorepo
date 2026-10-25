@@ -77,6 +77,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ArtAnalyticsConsent
               measurementId={measurementId}
               initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
+              cookiePolicyLinked={chrome.linkableNotices.includes("cookies")}
             />
           ) : null}
         </ArtSmoothScroll>

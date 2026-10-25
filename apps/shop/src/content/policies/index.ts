@@ -1,3 +1,4 @@
+import { ART_EXCHANGE_NOTICES } from "@auction/marketing-ui";
 import { DELIVERY_AND_COLLECTION } from "./delivery";
 import { HELP_AND_CONTACT } from "./help";
 import { CANCELLATIONS_AND_RETURNS } from "./returns";
@@ -10,6 +11,8 @@ export const SHOP_POLICY_DOCUMENTS: Readonly<Record<ShopPolicySlug, ShopPolicyDo
   delivery: DELIVERY_AND_COLLECTION,
   returns: CANCELLATIONS_AND_RETURNS,
   help: HELP_AND_CONTACT,
+  privacy: ART_EXCHANGE_NOTICES.privacy,
+  cookies: ART_EXCHANGE_NOTICES.cookies,
 };
 
 export { SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES };

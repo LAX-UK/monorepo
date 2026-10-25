@@ -1,8 +1,4 @@
-import {
-  SHOP_HELP_LINK,
-  SHOP_POLICY_LINKS,
-  buildShopGroupPolicyLinks,
-} from "@/content/footer-nav.config";
+import { SHOP_HELP_LINK, SHOP_POLICY_LINKS, SHOP_PRIVACY_LINKS } from "@/content/footer-nav.config";
 import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { laxAccountUrl } from "@/lib/lax-account-url";
@@ -42,7 +38,7 @@ function accountColumn(state: ShopFooterAccountState): MarketingFooterColumn {
 
 /**
  * Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by
- * the shell). Legal is Shop's own retail policies, then the group privacy and cookie policies.
+ * the shell). Legal is Shop's retail policies, then the privacy notice and cookie policy.
  */
 export function buildShopFooterVm(input: {
   crossProductLinks: readonly LaxProductLinkVm[];
@@ -75,11 +71,7 @@ export function buildShopFooterVm(input: {
       links: input.crossProductLinks.map((link) => ({ label: link.label, href: link.href })),
     });
   }
-  const bidLink = input.crossProductLinks.find((link) => link.id === "bid");
-  const legalLinks = [
-    ...policyLinks(SHOP_POLICY_LINKS),
-    ...(bidLink ? buildShopGroupPolicyLinks(bidLink.href) : []),
-  ];
+  const legalLinks = [...policyLinks(SHOP_POLICY_LINKS), ...policyLinks(SHOP_PRIVACY_LINKS)];
   if (legalLinks.length > 0) {
     columns.push({ id: "legal", title: "Legal", links: legalLinks });
   }

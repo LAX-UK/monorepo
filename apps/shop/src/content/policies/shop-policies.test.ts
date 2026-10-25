@@ -1,6 +1,14 @@
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import {
+  SHOP_IDENTITY_ID_TOKEN_COOKIE,
+  SHOP_IDENTITY_SESSION_COOKIE,
+} from "@/lib/shop-identity.server";
+import { SHOP_SILENT_SSO_COOKIE_PREFIX } from "@/lib/silent-sign-in/config";
+import { SHOP_THEME_COOKIE } from "@/lib/theme/shop-theme";
 import { legalEntityFor } from "@auction/branding";
+import { createSilentSignInCookieSpec } from "@auction/identity-rp";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
+import { SHOP_BASKET_COOKIE, SHOP_COMMERCE_CSRF_COOKIE } from "@auction/shop-portal/bff";
 import { describe, expect, it } from "vitest";
 import { SHOP_POLICY_DOCUMENTS, SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES } from "./index";
 import { parseShopPolicyText, shopPolicyPlaceholders, shopPolicyTexts } from "./shop-policy-text";
@@ -40,7 +48,7 @@ describe("Shop policy documents", () => {
       const ownPath = SHOP_POLICY_PATHS[document.slug];
       for (const text of shopPolicyTexts(document)) {
         for (const part of parseShopPolicyText(text)) {
-          if (part.kind !== "link") continue;
+          if (part.kind !== "link" || part.href.startsWith("https://")) continue;
           const [path = "", hash] = part.href.split("#");
           const target = path === "" ? ownPath : path;
           expect(knownPaths.has(target), `${document.slug}: ${part.href}`).toBe(true);
@@ -97,5 +105,25 @@ describe("Shop policy documents", () => {
         expect(text, `${document.slug}: ${word}`).not.toContain(word);
       }
     }
+  });
+
+  it("lists every cookie Shop sets in the cookie policy", () => {
+    const policy = pageText("cookies");
+    for (const name of [
+      SHOP_IDENTITY_SESSION_COOKIE,
+      SHOP_IDENTITY_ID_TOKEN_COOKIE,
+      SHOP_BASKET_COOKIE,
+      SHOP_COMMERCE_CSRF_COOKIE,
+      SHOP_THEME_COOKIE,
+      ...Object.values(createSilentSignInCookieSpec(SHOP_SILENT_SSO_COOKIE_PREFIX)),
+    ]) {
+      expect(policy, name).toContain(name);
+    }
+  });
+
+  it("names London Art Exchange Ltd as controller in the privacy notice", () => {
+    expect(pageText("privacy")).toContain(
+      `For the personal data described here, ${legalEntityFor("shop").name} is the controller.`,
+    );
   });
 });

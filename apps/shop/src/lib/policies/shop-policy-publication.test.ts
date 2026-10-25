@@ -48,7 +48,14 @@ describe("resolveShopPolicyVisibility", () => {
 });
 
 describe("linkableShopPolicies", () => {
-  const releases = { terms: approved, delivery: draft, returns: draft, help: draft };
+  const releases = {
+    terms: approved,
+    delivery: draft,
+    returns: draft,
+    help: draft,
+    privacy: draft,
+    cookies: draft,
+  };
 
   it("drops drafts on production so footer and checkout never link to a 404", () => {
     expect(linkableShopPolicies(releases, true)).toEqual(["terms"]);
@@ -56,7 +63,14 @@ describe("linkableShopPolicies", () => {
   });
 
   it("links every page off production, drafts included", () => {
-    expect(linkableShopPolicies(releases, false)).toEqual(["terms", "delivery", "returns", "help"]);
+    expect(linkableShopPolicies(releases, false)).toEqual([
+      "terms",
+      "delivery",
+      "returns",
+      "help",
+      "privacy",
+      "cookies",
+    ]);
     expect(canShowCheckoutTerms(linkableShopPolicies(releases, false))).toBe(true);
   });
 

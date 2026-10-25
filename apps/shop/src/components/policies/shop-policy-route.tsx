@@ -1,5 +1,5 @@
 import { ShopPolicyPage } from "@/components/policies/shop-policy-page";
-import { SHOP_HELP_LINK, SHOP_POLICY_LINKS } from "@/content/footer-nav.config";
+import { SHOP_HELP_LINK, SHOP_POLICY_LINKS, SHOP_PRIVACY_LINKS } from "@/content/footer-nav.config";
 import {
   SHOP_POLICY_DOCUMENTS,
   SHOP_POLICY_PATHS,
@@ -31,7 +31,7 @@ export function ShopPolicyRoute({ slug }: { slug: ShopPolicySlug }) {
   if (visibility === "hidden") notFound();
   // Like the footer, the policy list leaves out drafts that 404 on production.
   const linkable = loadLinkableShopPolicies();
-  const hubLinks = [...SHOP_POLICY_LINKS, SHOP_HELP_LINK]
+  const hubLinks = [...SHOP_POLICY_LINKS, SHOP_HELP_LINK, ...SHOP_PRIVACY_LINKS]
     .filter((link) => link.slug === slug || linkable.includes(link.slug))
     .map((link) => ({ href: link.href, label: link.label, current: link.slug === slug }));
   return (

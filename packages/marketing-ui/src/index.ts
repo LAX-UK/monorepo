@@ -422,3 +422,28 @@ export {
 export { LegalEntityDetails, type LegalEntityDetailsProps } from "./legal/legal-entity-details.js";
 export { LegalHub, type LegalHubLink, type LegalHubProps } from "./legal/legal-hub.js";
 export { LegalToc, type LegalTocItem, type LegalTocProps } from "./legal/legal-toc.js";
+export {
+  type LegalPolicyBlock,
+  type LegalPolicyDocument,
+  type LegalPolicyRelease,
+  type LegalPolicySection,
+  type LegalPolicyStatus,
+  type LegalPolicyText,
+  type LegalPolicyTextPart,
+  type LegalPolicyVisibility,
+  isProductionDeployEnv,
+  legalPolicyPlaceholders,
+  legalPolicyTexts,
+  parseLegalPolicyText,
+  resolveLegalPolicyVisibility,
+} from "./legal/policy/policy-document.js";
+export {
+  LegalPolicyPage,
+  type LegalPolicyPageProps,
+  formatLegalPolicyDate,
+} from "./legal/policy/legal-policy-page.js";
+export {
+  ART_EXCHANGE_NOTICES,
+  ART_EXCHANGE_NOTICE_RELEASES,
+  type ArtExchangeNoticeSlug,
+} from "./legal/notices/art-exchange-notices.js";

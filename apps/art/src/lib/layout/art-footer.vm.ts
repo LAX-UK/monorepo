@@ -1,7 +1,8 @@
 import { ART_COOKIE_SETTINGS_HASH } from "@/lib/analytics/art-consent";
 import type { ArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
-import { ART_LEGAL_LINKS } from "@/lib/layout/art-legal-links";
+import { visibleArtLegalLinks } from "@/lib/layout/art-legal-links";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { ArtExchangeNoticeSlug } from "@auction/marketing-ui";
 import type { MarketingFooterColumn } from "@auction/marketing-ui";
 
 export type ArtFooterVm = {
@@ -19,6 +20,8 @@ export function buildArtFooterVm(input: {
   accountState: ArtFooterAccountState;
   /** Shows the link that reopens the analytics consent banner. */
   cookieSettings: boolean;
+  /** Privacy and cookie notices that can be linked; drafts hidden on production are left out. */
+  linkableNotices: readonly ArtExchangeNoticeSlug[];
 }): ArtFooterVm {
   const aboutLinks = [
     { label: "Visit", href: "/visit" },
@@ -66,9 +69,9 @@ export function buildArtFooterVm(input: {
     columns.push({ id: "lax-products", title: "LAX products", links: laxProductLinks });
   }
 
-  const legalLinks: Array<{ label: string; href: string }> = ART_LEGAL_LINKS.map(
-    ({ label, href }) => ({ label, href }),
-  );
+  const legalLinks: Array<{ label: string; href: string }> = visibleArtLegalLinks(
+    input.linkableNotices,
+  ).map(({ label, href }) => ({ label, href }));
   if (input.cookieSettings) {
     legalLinks.push({ label: "Cookie preferences", href: ART_COOKIE_SETTINGS_HASH });
   }

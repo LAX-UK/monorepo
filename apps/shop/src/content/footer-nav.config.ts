@@ -15,18 +15,8 @@ export const SHOP_HELP_LINK: ShopPolicyLink = {
   href: SHOP_POLICY_PATHS.help,
 };
 
-/**
- * Privacy and cookies still link to the notices published on LAX Bid, which name Bid's operator.
- * LAX Shop (operated by London Art Exchange Ltd) needs its own before launch.
- */
-const groupPolicyRoutes = [
-  { label: "Privacy notice", pathname: "/privacy" },
-  { label: "Cookie policy", pathname: "/cookies" },
-] as const;
-
-export function buildShopGroupPolicyLinks(bidBaseUrl: string) {
-  return groupPolicyRoutes.map(({ label, pathname }) => ({
-    label,
-    href: new URL(pathname, bidBaseUrl).toString(),
-  }));
-}
+/** London Art Exchange Ltd's privacy notice and cookie policy, which cover LAX Shop and lax.art. */
+export const SHOP_PRIVACY_LINKS: readonly ShopPolicyLink[] = [
+  { slug: "privacy", label: "Privacy notice", href: SHOP_POLICY_PATHS.privacy },
+  { slug: "cookies", label: "Cookie policy", href: SHOP_POLICY_PATHS.cookies },
+];

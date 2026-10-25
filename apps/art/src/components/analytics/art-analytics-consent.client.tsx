@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from "react";
 type ArtAnalyticsConsentProps = {
   measurementId: string;
   initialChoice: ArtConsentChoice | null;
+  /** False while the cookie policy is a draft hidden on production. */
+  cookiePolicyLinked: boolean;
 };
 
 function clearAnalyticsCookies() {
@@ -27,7 +29,11 @@ function clearAnalyticsCookies() {
 }
 
 /** Cookie banner plus GA4, which loads only after the visitor accepts analytics cookies. */
-export function ArtAnalyticsConsent({ measurementId, initialChoice }: ArtAnalyticsConsentProps) {
+export function ArtAnalyticsConsent({
+  measurementId,
+  initialChoice,
+  cookiePolicyLinked,
+}: ArtAnalyticsConsentProps) {
   const [choice, setChoice] = useState(initialChoice);
   const [open, setOpen] = useState(initialChoice === null);
 
@@ -77,10 +83,18 @@ export function ArtAnalyticsConsent({ measurementId, initialChoice }: ArtAnalyti
           <div className="flex w-full max-w-3xl flex-col gap-4 rounded-lg border border-outline-variant/60 bg-surface p-5 shadow-lg sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm leading-relaxed text-on-surface-variant">
               We use essential cookies to run this site. With your permission we also use Google
-              Analytics to understand how it is used.{" "}
-              <Link href="/legal/cookies" className="art-focus-ring rounded-sm text-link underline">
-                Cookie policy
-              </Link>
+              Analytics to understand how it is used.
+              {cookiePolicyLinked ? (
+                <>
+                  {" "}
+                  <Link
+                    href="/legal/cookies"
+                    className="art-focus-ring rounded-sm text-link underline"
+                  >
+                    Cookie policy
+                  </Link>
+                </>
+              ) : null}
             </p>
             <div className="flex shrink-0 gap-2">
               <Button

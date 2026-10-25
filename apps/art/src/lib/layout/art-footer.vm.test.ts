@@ -6,6 +6,7 @@ function legalLinks(cookieSettings: boolean) {
     crossProductLinks: [],
     accountState: { kind: "guest" },
     cookieSettings,
+    linkableNotices: ["privacy", "cookies"],
   });
   return vm.columns.find((column) => column.id === "legal")?.links ?? [];
 }
@@ -32,6 +33,7 @@ describe("buildArtFooterVm", () => {
       ],
       accountState: { kind: "guest" },
       cookieSettings: false,
+      linkableNotices: ["privacy", "cookies"],
     });
     expect(vm.columns.map((column) => column.id)).toEqual([
       "about",
@@ -51,6 +53,7 @@ describe("buildArtFooterVm", () => {
       crossProductLinks: [],
       accountState: { kind: "authenticated" },
       cookieSettings: false,
+      linkableNotices: ["privacy", "cookies"],
     });
     const linksOf = (id: string) => vm.columns.find((column) => column.id === id)?.links ?? [];
     expect(vm.columns.map((column) => column.title)).toEqual([
@@ -78,5 +81,18 @@ describe("buildArtFooterVm", () => {
       "/legal/accessibility",
       "/legal/modern-slavery",
     ]);
+  });
+
+  it("leaves out the privacy and cookie notices while they are hidden drafts", () => {
+    const vm = buildArtFooterVm({
+      crossProductLinks: [],
+      accountState: { kind: "guest" },
+      cookieSettings: false,
+      linkableNotices: [],
+    });
+    const legal = vm.columns.find((column) => column.id === "legal")?.links ?? [];
+    expect(legal.map((link) => link.href)).not.toContain("/legal/privacy");
+    expect(legal.map((link) => link.href)).not.toContain("/legal/cookies");
+    expect(legal.map((link) => link.href)).toContain("/legal/terms");
   });
 });

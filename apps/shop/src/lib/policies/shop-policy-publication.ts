@@ -4,8 +4,9 @@ import {
   isProductionDeployEnv,
 } from "@/content/policies/shop-policy-status";
 import { SHOP_PRODUCTION_HOSTS } from "@/lib/seo/shop-indexing";
+import { type LegalPolicyVisibility, resolveLegalPolicyVisibility } from "@auction/marketing-ui";
 
-export type ShopPolicyVisibility = "published" | "draft-preview" | "hidden";
+export type ShopPolicyVisibility = LegalPolicyVisibility;
 
 /**
  * Production is the launch host or an image built for prod. Either one is enough, so a draft
@@ -25,8 +26,7 @@ export function resolveShopPolicyVisibility(
   release: ShopPolicyRelease,
   production: boolean,
 ): ShopPolicyVisibility {
-  if (release.status === "approved") return "published";
-  return production ? "hidden" : "draft-preview";
+  return resolveLegalPolicyVisibility(release, production);
 }
 
 /**

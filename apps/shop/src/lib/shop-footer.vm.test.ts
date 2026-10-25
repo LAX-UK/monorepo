@@ -10,7 +10,7 @@ const bid: LaxProductLinkVm = {
   external: true,
 };
 
-const ALL_POLICIES = ["terms", "delivery", "returns", "help"] as const;
+const ALL_POLICIES = ["terms", "delivery", "returns", "help", "privacy", "cookies"] as const;
 
 describe("buildShopFooterVm", () => {
   it("leaves out policy pages that cannot be linked, such as drafts on production", () => {
@@ -21,11 +21,11 @@ describe("buildShopFooterVm", () => {
     });
     const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
     expect(hrefs).toContain("/terms");
-    for (const hidden of ["/delivery", "/returns", "/help"]) expect(hrefs).not.toContain(hidden);
+    for (const hidden of ["/delivery", "/returns", "/help", "/privacy", "/cookies"]) {
+      expect(hrefs).not.toContain(hidden);
+    }
     expect(vm.columns.find((column) => column.id === "legal")?.links.map((l) => l.label)).toEqual([
       "Terms of sale",
-      "Privacy notice",
-      "Cookie policy",
     ]);
   });
 
@@ -38,7 +38,7 @@ describe("buildShopFooterVm", () => {
     expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account"]);
   });
 
-  it("orders shop, account, products, then Shop policies and the group privacy documents", () => {
+  it("orders shop, account, products, then Shop policies and its own privacy documents", () => {
     const vm = buildShopFooterVm({
       crossProductLinks: [bid],
       accountState: { kind: "guest" },
@@ -59,12 +59,13 @@ describe("buildShopFooterVm", () => {
       { label: "Terms of sale", href: "/terms" },
       { label: "Delivery and collection", href: "/delivery" },
       { label: "Cancellations and returns", href: "/returns" },
-      { label: "Privacy notice", href: "https://bid.example/privacy" },
-      { label: "Cookie policy", href: "https://bid.example/cookies" },
+      { label: "Privacy notice", href: "/privacy" },
+      { label: "Cookie policy", href: "/cookies" },
     ]);
     const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
-    expect(hrefs).not.toContain("https://bid.example/terms");
-    expect(hrefs).not.toContain("https://bid.example/shipping");
+    expect(hrefs.filter((href) => href.startsWith("https://bid.example/"))).toEqual([
+      "https://bid.example/",
+    ]);
   });
 
   it("keeps Shop policies without cross-product links, and drops the products column", () => {
@@ -78,6 +79,8 @@ describe("buildShopFooterVm", () => {
       "/terms",
       "/delivery",
       "/returns",
+      "/privacy",
+      "/cookies",
     ]);
     expect(vm.columns[1]?.links).toEqual([{ label: "Account status", href: "/account/disabled" }]);
   });

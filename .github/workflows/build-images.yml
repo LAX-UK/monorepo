@@ -176,6 +176,7 @@ jobs:
             ${{ matrix.component == 'shop' && format('SENTRY_PROJECT=lax-{0}-shop', env.ENVIRONMENT) || '' }}
             ${{ matrix.component == 'shop' && format('SENTRY_RELEASE={0}', env.SHA) || '' }}
             ${{ matrix.component == 'shop' && format('SHOP_DEPLOY_ENV={0}', env.ENVIRONMENT) || '' }}
+            ${{ matrix.component == 'art' && format('ART_DEPLOY_ENV={0}', env.ENVIRONMENT) || '' }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
