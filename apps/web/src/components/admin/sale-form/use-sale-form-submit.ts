@@ -1,8 +1,6 @@
 "use client";
 
-import { validateAllCatalogWizardSteps } from "@/components/admin/catalog/use-catalog-form-submit";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
-import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { saleFormStepLabel, saleFormValidationBanner } from "@/lib/admin/sale-form-step-copy";
 import {
   findPersistBlockingLotWindowConflicts,
@@ -25,7 +23,7 @@ import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
 import type { RefObject } from "react";
-import type { FieldValues, UseFormReturn } from "react-hook-form";
+import type { UseFormReturn } from "react-hook-form";
 import type { z as zod } from "zod";
 import type { StreamUrlVerificationGate } from "./stream-url-verify-control";
 
@@ -63,19 +61,6 @@ type SubmitArgs = {
   heroVideoUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
 };
 
-export async function validateAllSaleWizardSteps(
-  form: UseFormReturn<AdminSaleFormValues>,
-  formSchema: Parameters<typeof validateAllCatalogWizardSteps>[1],
-  wizardGoTo: (index: number) => void,
-): Promise<boolean> {
-  return validateAllCatalogWizardSteps(
-    form as unknown as UseFormReturn<FieldValues>,
-    formSchema,
-    SALE_STEP_FIELDS,
-    wizardGoTo,
-  );
-}
-
 export function reportSaleFormZodFailure(
   form: UseFormReturn<AdminSaleFormValues>,
   issues: { path: (string | number)[]; message: string }[],
@@ -93,7 +78,6 @@ export function reportSaleFormZodFailure(
   } else {
     args.onValidationBanner?.(null);
   }
-  notifyAdminFormValidationFailure({ issues });
   if (stepIndex >= 0) {
     args.wizardGoTo(stepIndex);
   }
@@ -116,7 +100,6 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
     args.form.setError("streamUrl", { type: "manual", message: streamBlockMsg });
     args.onValidationBanner?.(streamBlockMsg, 1);
     args.wizardGoTo(1);
-    notifyAdminFormValidationFailure({});
     return;
   }
   if (values.heroPresentation === "video") {
@@ -125,7 +108,6 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
       args.form.setError("heroVideoUrl", { type: "manual", message: heroBlockMsg });
       args.onValidationBanner?.(heroBlockMsg, 0);
       args.wizardGoTo(0);
-      notifyAdminFormValidationFailure({});
       return;
     }
   }
@@ -147,8 +129,10 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
     args.router.push(`/admin/sales/${args.saleId}`);
     return;
   }
-  notify.error(
-    humanizeSetupError({
+  // A failed save stays on the form, with the API's field errors on their fields.
+  args.form.setError("root", {
+    type: "server",
+    message: humanizeSetupError({
       message: actionFailureNotifyMessage(r.error, {
         status: r.status,
         errorCode: r.errorCode,
@@ -156,11 +140,12 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
       }),
       errorCode: r.errorCode,
     }),
-  );
+  });
   if (r.fieldErrors) {
     applyActionFieldErrors(args.form, r.fieldErrors, {
       stepFields: SALE_STEP_FIELDS,
       goTo: args.wizardGoTo,
+      focusField: false,
     });
   }
 }

@@ -1,10 +1,9 @@
-import { CatalogBreadcrumbs } from "@/components/admin/catalog";
-import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminSaleCreatePage } from "@/lib/admin/sales/load-sale-create-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { FormPage } from "@auction/staff-ui";
 
 export default async function AdminNewSalePage({
   searchParams,
@@ -16,27 +15,18 @@ export default async function AdminNewSalePage({
   const page = await loadAdminSaleCreatePage(sp);
 
   return (
-    <CatalogFormShell
-      layout="wizard"
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[
-            { label: "Admin", href: "/admin" },
-            { label: "Sales", href: "/admin/sales" },
-          ]}
+        <StaffBreadcrumbs
+          items={[{ label: "Sales", href: "/admin/sales" }, { label: "New sale" }]}
         />
       }
       title="New sale"
       description={
         page.cloneFailed
-          ? "Could not load the sale to clone — starting with a blank form."
-          : "Set up your sale step by step."
+          ? "The sale to copy did not load, so this starts from a blank form."
+          : "Set the sale up step by step. Each step is saved as you continue."
       }
-      wizardMobile={{
-        formId: CATALOG_FORM_IDS.saleSetup,
-        submitLabel: "Save & continue",
-        cancelHref: "/admin/sales",
-      }}
     >
       <SaleSetupWizard
         saleId={null}
@@ -54,6 +44,6 @@ export default async function AdminNewSalePage({
         canManageSale
         canEditCatalog
       />
-    </CatalogFormShell>
+    </FormPage>
   );
 }

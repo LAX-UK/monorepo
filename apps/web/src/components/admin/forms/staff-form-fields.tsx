@@ -11,6 +11,8 @@ import {
   Field,
   MoneyInput,
   StaffCheckbox,
+  StaffRadio,
+  StaffRadioGroup,
   TextArea,
   TextInput,
   isoToLondonWallTime,
@@ -60,6 +62,8 @@ export function StaffTextField<T extends FieldValues>(
     inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
     /** Store the typed text as a whole number, or null when empty. */
     integer?: boolean;
+    /** Tidies the text when the field loses focus, e.g. a postcode to "SW1Y 6QU". */
+    tidyOnBlur?: (text: string) => string;
   },
 ) {
   const { field, error } = useBoundField(props);
@@ -79,7 +83,11 @@ export function StaffTextField<T extends FieldValues>(
         ref={field.ref}
         name={field.name}
         value={value}
-        onBlur={field.onBlur}
+        onBlur={(event) => {
+          const text = event.target.value.trim();
+          if (props.tidyOnBlur && text) field.onChange(props.tidyOnBlur(text));
+          field.onBlur();
+        }}
         disabled={props.disabled}
         placeholder={props.placeholder}
         inputMode={props.integer ? "numeric" : props.inputMode}
@@ -269,6 +277,61 @@ export function StaffEntityField<T extends FieldValues>(
           props.onChanged?.(option);
         }}
       />
+    </Field>
+  );
+}
+
+/** Two to five mutually exclusive choices, all visible, each with its own line of help. */
+export function StaffRadioField<T extends FieldValues, V extends string>(
+  props: Base<T> & {
+    options: ReadonlyArray<{ value: V; label: string; description?: string; disabled?: boolean }>;
+    /** Runs after the value changes. */
+    onChanged?: (next: V) => void;
+  },
+) {
+  const { field, error } = useBoundField(props);
+  const id = staffFieldId(props.formId, props.name);
+  return (
+    <Field
+      id={id}
+      label={props.label}
+      description={props.description}
+      error={error}
+      optional={props.optional ?? false}
+      disabled={props.disabled ?? false}
+      {...(props.className ? { className: props.className } : {})}
+    >
+      <StaffRadioGroup
+        id={id}
+        value={(field.value as string) ?? ""}
+        disabled={props.disabled ?? false}
+        aria-label={typeof props.label === "string" ? props.label : undefined}
+        aria-invalid={error ? true : undefined}
+        onValueChange={(next) => {
+          field.onChange(next);
+          props.onChanged?.(next as V);
+        }}
+      >
+        {props.options.map((option) => {
+          const optionId = `${id}-${option.value}`;
+          return (
+            <ChoiceRow
+              key={option.value}
+              htmlFor={optionId}
+              label={option.label}
+              disabled={(props.disabled ?? false) || (option.disabled ?? false)}
+              {...(option.description ? { description: option.description } : {})}
+              control={
+                <StaffRadio
+                  id={optionId}
+                  value={option.value}
+                  disabled={(props.disabled ?? false) || (option.disabled ?? false)}
+                />
+              }
+            />
+          );
+        })}
+      </StaffRadioGroup>
     </Field>
   );
 }

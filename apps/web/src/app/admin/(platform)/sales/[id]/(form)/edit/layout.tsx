@@ -1,10 +1,10 @@
 import { AdminSaleForm } from "@/components/admin/admin-sale-form";
-import { CatalogBreadcrumbs } from "@/components/admin/catalog";
-import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { loadAdminSaleEditPage } from "@/lib/admin/sales/load-sale-edit-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { FormPage } from "@auction/staff-ui";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -19,12 +19,10 @@ export default async function AdminEditSaleLayout({ params, children }: Props) {
 
   return (
     <>
-      <CatalogFormShell
-        layout="wizard"
+      <FormPage
         breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[
-              { label: "Admin", href: "/admin" },
+          <StaffBreadcrumbs
+            items={[
               { label: "Sales", href: "/admin/sales" },
               { label: page.sale.title, href: `/admin/sales/${id}` },
               { label: "Edit" },
@@ -32,12 +30,11 @@ export default async function AdminEditSaleLayout({ params, children }: Props) {
           />
         }
         title="Edit sale"
-        wizardMobile={{
-          formId: CATALOG_FORM_IDS.sale,
-          submitLabel: "Save",
-          cancelHref: `/admin/sales/${id}`,
-          alwaysShowSubmit: true,
-        }}
+        description={
+          page.sale.status === "draft"
+            ? "Changes apply when you save."
+            : "The sale is published, so its schedule, format and buyer's premium are fixed."
+        }
       >
         <AdminSaleForm
           saleId={id}
@@ -50,7 +47,7 @@ export default async function AdminEditSaleLayout({ params, children }: Props) {
           htmlFormId={CATALOG_FORM_IDS.sale}
           lots={page.lots}
         />
-      </CatalogFormShell>
+      </FormPage>
       {children}
     </>
   );

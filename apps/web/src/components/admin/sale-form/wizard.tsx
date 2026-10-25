@@ -1,30 +1,16 @@
 "use client";
 
-import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
-import { WizardStepIntro } from "@/components/admin/admin-form-wizard/wizard-step-intro";
-import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
-import { FormRootErrorAlert } from "@/components/admin/form-root-error-alert";
+import { staffFormSummaryErrors } from "@/components/admin/forms/staff-form-fields";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
-import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
-import {
-  saleFormStepIntro,
-  saleFormStepLabel,
-  saleFormValidationBanner,
-} from "@/lib/admin/sale-form-step-copy";
 import { saleSetupHref } from "@/lib/admin/sale-setup";
-import { buildSaleEditStepperSteps } from "@/lib/data/view-models/sale-setup-stepper.vm";
 import {
   type AdminSaleFormValues,
   adminSaleDraftScheduleSchema,
   adminSaleFormValuesSchema,
 } from "@/lib/forms/schemas/admin-sale-form";
-import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
+import { FormActions, FormErrorSummary, Notice, StaffButton } from "@auction/staff-ui";
 import type { CategoryNode, EntityDocument, Lot, Venue } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { Form } from "@auction/ui/components/form";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import {
   buildGoogleMapsSearchUrl,
   formatPostalAddress,
@@ -34,21 +20,15 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
+import { SALE_FORM_ID } from "./sale-form-id";
 import { SaleDocumentsStep } from "./steps/documents-step";
-import { SaleFormReviewStep } from "./steps/form-review-step";
 import { SaleIdentityStep } from "./steps/identity-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
 import type { StreamUrlVerificationGate } from "./stream-url-verify-control";
-import {
-  SALE_STEP_FIELDS,
-  submitSaleForm,
-  validateAllSaleWizardSteps,
-} from "./use-sale-form-submit";
+import { SALE_STEP_FIELDS, submitSaleForm } from "./use-sale-form-submit";
 import { useSaleTierBandPreview } from "./use-sale-tier-preview";
-
-const SALE_WIZARD_FIELD_STEPS = 3;
 
 type Props = {
   saleId: string;
@@ -62,11 +42,13 @@ type Props = {
   initialSaleDocuments?: EntityDocument[];
   /** Resolved cover URLs keyed by storage key (edit mode). */
   previewUrlByKey?: Record<string, string>;
-  /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
+  /** DOM id on the root `<form>` for external submit triggers. */
   htmlFormId?: string;
   lots?: Lot[];
   venues?: Venue[];
 };
+
+const SUMMARY_ORDER = SALE_STEP_FIELDS.flat().map(String);
 
 /** Edit-only sale form — new sales use {@link SaleSetupWizard} at `/admin/sales/new`. */
 export function AdminSaleForm({
@@ -91,38 +73,28 @@ export function AdminSaleForm({
   );
   const [pending, startTransition] = useTransition();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-  const [validationBanner, setValidationBanner] = useState<string | null>(null);
-  const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
-  const wizardGoToRef = useRef<(index: number) => void>(() => {});
 
   const form = useForm<AdminSaleFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
-    mode: "onTouched",
+    // Errors appear on save, then clear as each field is fixed.
+    mode: "onSubmit",
     reValidateMode: "onChange",
+    shouldFocusError: false,
   });
-
-  const getValuesRef = useRef(form.getValues);
-  getValuesRef.current = form.getValues;
-
-  const validateAllWizardSteps = useCallback(async () => {
-    return validateAllSaleWizardSteps(form, formSchema, wizardGoToRef.current);
-  }, [form, formSchema]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "buyerPremiumTiers",
   });
-
   const tierBandPreview = useSaleTierBandPreview(form);
-
   const deliveryMode = form.watch("deliveryMode");
   const isSaleroom = isSaleroomDeliveryMode(
     (deliveryMode ?? "online") as "online" | "onsite" | "hybrid",
   );
-
   const watchedLocation = {
     locationName: form.watch("locationName"),
     locationAddressLine1: form.watch("locationAddressLine1"),
@@ -138,199 +110,113 @@ export function AdminSaleForm({
   const customMapUrl = form.watch("locationMapUrl");
   const postcodeRaw = watchedLocation.locationPostcode ?? "";
   const postcodeIsValid = postcodeRaw.trim() === "" || isUkPostcode(postcodeRaw);
+  const failed = () => setFailedAttempts((count) => count + 1);
 
   return (
     <>
       <FormDirtyGuard isDirty={form.formState.isDirty} />
-      <Form {...form}>
-        <form
-          id={htmlFormId}
-          className="space-y-8"
-          onSubmit={form.handleSubmit(
-            async (values) => {
-              setValidationBanner(null);
-              setValidationStepIndex(null);
-              if (!(await validateAllWizardSteps())) {
-                notifyAdminFormValidationFailure({});
-                return;
-              }
-              startTransition(async () => {
-                await submitSaleForm(values, {
-                  saleId,
-                  isDraft,
-                  lots,
-                  form,
-                  formSchema,
-                  wizardGoTo: (i) => wizardGoToRef.current(i),
-                  onSaveNotice: setSaveNotice,
-                  onValidationBanner: (message, stepIndex) => {
-                    setValidationBanner(message);
-                    setValidationStepIndex(stepIndex ?? null);
-                  },
-                  router,
-                  streamUrlGateRef,
-                  heroVideoUrlGateRef,
-                });
-              });
-            },
-            async () => {
-              setValidationBanner(null);
-              setValidationStepIndex(null);
-              const parsed = await formSchema.safeParseAsync(form.getValues());
-              if (!parsed.success) {
-                const stepIndex = parsed.error.issues[0]?.path[0]
-                  ? SALE_STEP_FIELDS.findIndex((fields) =>
-                      fields.some((f) => String(f) === String(parsed.error.issues[0]?.path[0])),
-                    )
-                  : -1;
-                if (stepIndex >= 0) {
-                  setValidationBanner(
-                    saleFormValidationBanner(
-                      parsed.error.issues.length,
-                      saleFormStepLabel(stepIndex),
-                    ),
-                  );
-                  setValidationStepIndex(stepIndex);
-                  wizardGoToRef.current(stepIndex);
-                }
-                notifyAdminFormValidationFailure({ issues: parsed.error.issues });
-                return;
-              }
-              notifyAdminFormValidationFailure({});
-            },
-          )}
-        >
-          {saveNotice ? (
-            <Alert className="border-warning/40 bg-warning/5">
-              <AlertDescription className="space-y-2 font-body text-sm text-on-surface-variant">
-                <p>{saveNotice}</p>
-                <Link
-                  href={saleSetupHref(saleId, "lots")}
-                  className="font-medium text-link underline underline-offset-2"
-                >
-                  Open sale setup — Lots step
-                </Link>
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {validationBanner ? (
-            <WizardValidationBanner
-              message={validationBanner}
-              {...(validationStepIndex != null
-                ? {
-                    stepLabel: saleFormStepLabel(validationStepIndex),
-                    onJumpToStep: () => wizardGoToRef.current(validationStepIndex),
-                  }
-                : {})}
-            />
-          ) : null}
-
-          <AdminFormWizard
-            steps={buildSaleEditStepperSteps()}
-            layout="sidebar"
-            isDirty={form.formState.isDirty}
-            pending={pending}
-            hideStickyOnMobile={Boolean(htmlFormId)}
-            showSubmitOnAllSteps
-            draft={{
-              entityKind: "sale",
-              entityId: saleId,
-              getValues: () => getValuesRef.current() as Record<string, unknown>,
-            }}
-            onStepControl={({ goTo }) => {
-              wizardGoToRef.current = goTo;
-            }}
-            onBeforeNext={async (stepIndex) => {
-              if (stepIndex >= SALE_WIZARD_FIELD_STEPS) return true;
-              const fields = SALE_STEP_FIELDS[stepIndex];
-              if (!fields?.length) return true;
-              return validateWizardStep(form, formSchema, fields);
-            }}
-            leadingSlot={
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                className="min-h-11 w-full sm:w-auto"
-                onClick={() => guardedPush(`/admin/sales/${saleId}`)}
-              >
-                Cancel
-              </Button>
-            }
-            submitSlot={
-              <LoadingButton
-                type="submit"
-                loading={pending}
-                loadingLabel="Saving…"
-                className="min-h-11 w-full sm:min-w-40 sm:w-auto"
-              >
-                Save
-              </LoadingButton>
+      <form
+        id={htmlFormId ?? SALE_FORM_ID}
+        noValidate
+        aria-label="Sale"
+        className="flex flex-col gap-6"
+        onSubmit={form.handleSubmit((values) => {
+          startTransition(async () => {
+            await submitSaleForm(values, {
+              saleId,
+              isDraft,
+              lots,
+              form,
+              formSchema,
+              // One page: every field is already on screen.
+              wizardGoTo: () => {},
+              onSaveNotice: setSaveNotice,
+              onValidationBanner: (message) => {
+                if (message) failed();
+              },
+              router,
+              streamUrlGateRef,
+              heroVideoUrlGateRef,
+            });
+            if (form.formState.errors.root) failed();
+          });
+        }, failed)}
+      >
+        <FormErrorSummary
+          errors={staffFormSummaryErrors(form.formState.errors, SALE_FORM_ID, SUMMARY_ORDER)}
+          focusKey={failedAttempts}
+        />
+        {form.formState.errors.root?.message ? (
+          <Notice tone="danger" alert title="The sale was not saved">
+            {form.formState.errors.root.message}
+          </Notice>
+        ) : null}
+        {saveNotice ? (
+          <Notice
+            tone="warning"
+            alert
+            title="Some lots close outside the new schedule"
+            actions={
+              <StaffButton asChild size="sm" variant="secondary">
+                <Link href={saleSetupHref(saleId, "lots")}>Adjust lots</Link>
+              </StaffButton>
             }
           >
-            {(stepIndex) => {
-              const stepIds = ["identity", "schedule", "documents", "review"] as const;
-              const stepId = stepIds[stepIndex] ?? "identity";
-              return (
-                <div className="space-y-6">
-                  <div className="lg:hidden">
-                    <WizardStepIntro copy={saleFormStepIntro(stepId, "edit")} />
-                  </div>
-                  {stepIndex === 0 ? (
-                    <SaleIdentityStep
-                      form={form}
-                      categories={categories}
-                      pending={pending}
-                      previewUrlByKey={previewUrlByKey}
-                      initialHeroVideoUrl={defaultValues.heroVideoUrl}
-                      heroVideoUrlGateRef={heroVideoUrlGateRef}
-                    />
-                  ) : null}
-                  {stepIndex === 1 ? (
-                    <SaleScheduleStep
-                      form={form}
-                      isDraft={isDraft}
-                      isSaleroom={isSaleroom}
-                      pending={pending}
-                      fields={fields}
-                      append={append}
-                      remove={remove}
-                      tierBandPreview={tierBandPreview}
-                      formattedPreviewAddress={formattedPreviewAddress}
-                      previewMapUrl={previewMapUrl}
-                      customMapUrl={customMapUrl}
-                      postcodeIsValid={postcodeIsValid}
-                      lots={lots}
-                      venues={venues}
-                      lotsSetupHref={saleSetupHref(saleId, "lots")}
-                      streamUrlEditable={streamUrlEditable}
-                      initialStreamUrl={defaultValues.streamUrl}
-                      streamUrlGateRef={streamUrlGateRef}
-                    />
-                  ) : null}
-                  {stepIndex === 2 ? (
-                    <SaleDocumentsStep
-                      form={form}
-                      saleId={saleId}
-                      initialSaleDocuments={initialSaleDocuments}
-                      termsReadOnly={!isDraft}
-                    />
-                  ) : null}
-                  {stepIndex === 3 ? (
-                    <SaleFormReviewStep
-                      form={form}
-                      onEditStep={(index) => wizardGoToRef.current(index)}
-                    />
-                  ) : null}
-                </div>
-              );
-            }}
-          </AdminFormWizard>
-
-          <FormRootErrorAlert message={form.formState.errors.root?.message ?? null} />
-        </form>
-      </Form>
+            {saveNotice}
+          </Notice>
+        ) : null}
+        <SaleIdentityStep
+          form={form}
+          categories={categories}
+          pending={pending}
+          previewUrlByKey={previewUrlByKey}
+          initialHeroVideoUrl={defaultValues.heroVideoUrl}
+          heroVideoUrlGateRef={heroVideoUrlGateRef}
+        />
+        <SaleScheduleStep
+          form={form}
+          isDraft={isDraft}
+          isSaleroom={isSaleroom}
+          pending={pending}
+          fields={fields}
+          append={append}
+          remove={remove}
+          tierBandPreview={tierBandPreview}
+          formattedPreviewAddress={formattedPreviewAddress}
+          previewMapUrl={previewMapUrl}
+          customMapUrl={customMapUrl}
+          postcodeIsValid={postcodeIsValid}
+          lots={lots}
+          venues={venues}
+          lotsSetupHref={saleSetupHref(saleId, "lots")}
+          streamUrlEditable={streamUrlEditable}
+          initialStreamUrl={defaultValues.streamUrl}
+          streamUrlGateRef={streamUrlGateRef}
+        />
+        <SaleDocumentsStep
+          form={form}
+          saleId={saleId}
+          initialSaleDocuments={initialSaleDocuments}
+          termsReadOnly={!isDraft}
+        />
+        <FormActions
+          sticky
+          start={
+            <StaffButton
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => guardedPush(`/admin/sales/${saleId}`)}
+            >
+              Cancel
+            </StaffButton>
+          }
+        >
+          <StaffButton type="submit" variant="primary" loading={pending}>
+            Save changes
+          </StaffButton>
+        </FormActions>
+      </form>
     </>
   );
 }

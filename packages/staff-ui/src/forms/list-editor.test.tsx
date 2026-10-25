@@ -41,4 +41,21 @@ describe("ListEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add provenance line" }));
     expect(onAdd).toHaveBeenCalled();
   });
+
+  it("has no move buttons when the order is fixed", () => {
+    render(
+      <ListEditor
+        items={rows}
+        getKey={(item) => item.id}
+        renderItem={(item) => <span>{item.period}</span>}
+        itemLabel={(index) => `band ${index + 1}`}
+        addLabel="Add band"
+        emptyText="No bands."
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Move band/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove band 1" })).toBeInTheDocument();
+  });
 });

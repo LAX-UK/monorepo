@@ -1,9 +1,7 @@
 "use client";
 
 import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
 import { LotCatalogueImagesField } from "@/components/admin/lot-catalogue-images-field";
-import { LabelCaps } from "@/components/ui/typography";
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
 import { lotDetailReadinessDismissKey } from "@/lib/admin/compute-lot-detail-readiness";
@@ -13,13 +11,10 @@ import {
 } from "@/lib/admin/connect-readiness-shared";
 import { type LotImageSaveEntry, useLotImagesSave } from "@/lib/admin/lots/use-lot-images-save";
 import { countLotsCatalogReady, saleSetupHref } from "@/lib/admin/sale-setup";
-import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale-setup-action-failure.client";
 import { notify } from "@/lib/ui/notify";
+import { Field, FormActions, FormSection, Notice, StaffButton, TextArea } from "@auction/staff-ui";
 import type { Lot, Sale } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { LoadingButton } from "@auction/ui/components/loading-button";
-import { Textarea } from "@auction/ui/components/textarea";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -51,6 +46,7 @@ function LotCatalogPrepCard({
   );
   const [description, setDescription] = useState(lot.description ?? "");
   const [descDirty, setDescDirty] = useState(false);
+  const [descError, setDescError] = useState<string | null>(null);
   const [imagesDirty, setImagesDirty] = useState(false);
 
   useEffect(() => {
@@ -79,7 +75,7 @@ function LotCatalogPrepCard({
         description: description.trim() || undefined,
       });
       if (!r.ok) {
-        notifySaleSetupActionFailure(r);
+        setDescError(r.error);
         return;
       }
       notify.success("Description saved");
@@ -89,11 +85,9 @@ function LotCatalogPrepCard({
   }
 
   return (
-    <CatalogFormSection
+    <FormSection
       title={lot.title.trim() || "Untitled lot"}
-      description="Add photos and catalog text for this lot."
-      collapsible
-      defaultOpen
+      description="Photos and a catalogue description are needed before the lot can go live."
     >
       <CatalogPublishReadiness
         title="Lot readiness"
@@ -101,46 +95,43 @@ function LotCatalogPrepCard({
         compact
         dismissKey={lotDetailReadinessDismissKey(lot.id)}
       />
-
-      <div className="space-y-3">
-        <LabelCaps>Photos — needed before going live</LabelCaps>
-        <div className="rounded-lg border border-border-hairline bg-surface-container-lowest/40 p-4">
-          <LotCatalogueImagesField
-            value={entries}
-            onChange={(next) => {
-              setEntries(next);
-              setImagesDirty(true);
-            }}
-            disabled={readOnly || imagesPending}
-          />
-        </div>
-        {!readOnly && imagesDirty ? (
-          <Button type="button" size="sm" disabled={imagesPending} onClick={saveImages}>
-            {imagesPending ? "Saving…" : "Save photos"}
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="space-y-3">
-        <LabelCaps>Catalog description — needed before going live</LabelCaps>
-        <Textarea
-          value={description}
-          onChange={(e) => {
-            setDescription(e.target.value);
-            setDescDirty(true);
+      <Field label="Photos" description="Saved with Save photos.">
+        <LotCatalogueImagesField
+          value={entries}
+          onChange={(next) => {
+            setEntries(next);
+            setImagesDirty(true);
           }}
-          rows={4}
-          variant="underline"
-          disabled={readOnly}
-          className="font-body text-sm"
+          disabled={readOnly || imagesPending}
         />
-        {!readOnly && descDirty ? (
-          <LoadingButton type="button" size="sm" loading={descPending} onClick={saveDescription}>
+      </Field>
+      {!readOnly && imagesDirty ? (
+        <FormActions>
+          <StaffButton type="button" size="sm" loading={imagesPending} onClick={saveImages}>
+            Save photos
+          </StaffButton>
+        </FormActions>
+      ) : null}
+      <Field label="Catalogue description" error={descError}>
+        <TextArea
+          value={description}
+          rows={4}
+          disabled={readOnly}
+          onChange={(event) => {
+            setDescription(event.target.value);
+            setDescDirty(true);
+            setDescError(null);
+          }}
+        />
+      </Field>
+      {!readOnly && descDirty ? (
+        <FormActions>
+          <StaffButton type="button" size="sm" loading={descPending} onClick={saveDescription}>
             Save description
-          </LoadingButton>
-        ) : null}
-      </div>
-    </CatalogFormSection>
+          </StaffButton>
+        </FormActions>
+      ) : null}
+    </FormSection>
   );
 }
 
@@ -155,24 +146,28 @@ export function SaleSetupCatalogPrepStep({
 
   if (lots.length === 0) {
     return (
-      <Alert>
-        <AlertDescription>
-          Add lots in the previous step first.{" "}
-          <a href={saleSetupHref(saleId, "lots")} className="text-link hover:underline">
-            Go to lots
-          </a>
-        </AlertDescription>
-      </Alert>
+      <Notice
+        tone="info"
+        title="No lots yet"
+        actions={
+          <StaffButton asChild size="sm" variant="secondary">
+            <Link href={saleSetupHref(saleId, "lots")}>Go to lots</Link>
+          </StaffButton>
+        }
+      >
+        Add the sale's lots in the previous step first.
+      </Notice>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <p className="font-body text-sm text-on-surface-variant">
-        <span className="font-medium tabular-nums text-on-surface">{ready}</span> of{" "}
-        <span className="font-medium tabular-nums text-on-surface">{total}</span> lots ready to go
-        live
-      </p>
+    <>
+      <Notice
+        tone={ready === total ? "info" : "warning"}
+        title={`${ready} of ${total} lots are ready to go live`}
+      >
+        Each lot below needs photos and a catalogue description.
+      </Notice>
       {lots.map((lot) => (
         <LotCatalogPrepCard
           key={lot.id}
@@ -182,6 +177,6 @@ export function SaleSetupCatalogPrepStep({
           connectRequired={lotConnectRequired(connectRequiredByLotId, lot.id)}
         />
       ))}
-    </div>
+    </>
   );
 }

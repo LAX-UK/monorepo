@@ -29,7 +29,8 @@ export function ListEditor<T>({
   itemLabel: (index: number) => string;
   onAdd: () => void;
   onRemove: (index: number) => void;
-  onMove: (from: number, to: number) => void;
+  /** Leave out when the order is fixed (e.g. bands sorted by threshold): no move buttons. */
+  onMove?: (from: number, to: number) => void;
   addLabel: string;
   emptyText: string;
   max?: number;
@@ -51,24 +52,28 @@ export function ListEditor<T>({
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-3">{renderItem(item, index)}</div>
                 <div className="flex shrink-0 gap-1 sm:pt-6">
-                  <StaffButton
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label={`Move ${label} up`}
-                    disabled={disabled || index === 0}
-                    icon={<ArrowUp aria-hidden />}
-                    onClick={() => onMove(index, index - 1)}
-                  />
-                  <StaffButton
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label={`Move ${label} down`}
-                    disabled={disabled || index === items.length - 1}
-                    icon={<ArrowDown aria-hidden />}
-                    onClick={() => onMove(index, index + 1)}
-                  />
+                  {onMove ? (
+                    <>
+                      <StaffButton
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Move ${label} up`}
+                        disabled={disabled || index === 0}
+                        icon={<ArrowUp aria-hidden />}
+                        onClick={() => onMove(index, index - 1)}
+                      />
+                      <StaffButton
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Move ${label} down`}
+                        disabled={disabled || index === items.length - 1}
+                        icon={<ArrowDown aria-hidden />}
+                        onClick={() => onMove(index, index + 1)}
+                      />
+                    </>
+                  ) : null}
                   <StaffButton
                     type="button"
                     size="icon-sm"

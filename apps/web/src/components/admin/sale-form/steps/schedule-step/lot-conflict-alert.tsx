@@ -7,9 +7,7 @@ import {
   scheduleLotConflictBanner,
   scheduleLotConflictInheritedTimingBanner,
 } from "@/lib/admin/sale-setup/field-copy";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { formatAuctionDatetimeDisplay } from "@auction/validators";
+import { Notice, StaffButton, formatStaffDateTime } from "@auction/staff-ui";
 
 type Props = {
   lotConflicts: readonly LotWindowConflict[];
@@ -23,29 +21,23 @@ export function LotConflictAlert({ lotConflicts, pendingWindow, lotsSetupHref }:
   const inheritsLotTiming = saleInheritsLotTiming(pendingWindow);
 
   return (
-    <Alert
-      className={
+    <Notice
+      tone={inheritsLotTiming ? "info" : "warning"}
+      title={
         inheritsLotTiming
-          ? "border-outline-variant/40 bg-surface-container-low/40"
-          : "border-warning/40 bg-warning/5"
+          ? scheduleLotConflictInheritedTimingBanner(lotConflicts.length)
+          : scheduleLotConflictBanner(lotConflicts.length)
+      }
+      actions={
+        !inheritsLotTiming && lotsSetupHref ? (
+          <StaffButton asChild size="sm" variant="secondary">
+            <a href={lotsSetupHref}>Adjust lot schedules</a>
+          </StaffButton>
+        ) : null
       }
     >
-      <AlertDescription className="space-y-2 text-pretty font-body text-sm text-on-surface-variant">
-        <p className="font-medium text-on-surface">
-          {inheritsLotTiming
-            ? scheduleLotConflictInheritedTimingBanner(lotConflicts.length)
-            : scheduleLotConflictBanner(lotConflicts.length)}
-        </p>
-        <p>
-          Pending sale window: {formatAuctionDatetimeDisplay(pendingWindow.startTime)} –{" "}
-          {formatAuctionDatetimeDisplay(pendingWindow.endTime)} (London time).
-        </p>
-        {!inheritsLotTiming && lotsSetupHref ? (
-          <Button type="button" size="sm" variant="outline" asChild>
-            <a href={lotsSetupHref}>Adjust lot schedules</a>
-          </Button>
-        ) : null}
-      </AlertDescription>
-    </Alert>
+      New sale window: {formatStaffDateTime(pendingWindow.startTime, { zoneLabel: true })} to{" "}
+      {formatStaffDateTime(pendingWindow.endTime, { zoneLabel: true })}.
+    </Notice>
   );
 }

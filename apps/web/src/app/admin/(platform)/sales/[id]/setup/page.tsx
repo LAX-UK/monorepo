@@ -1,11 +1,10 @@
 import { AtgEditAlert } from "@/components/admin/atg/atg-edit-alert";
-import { CatalogBreadcrumbs } from "@/components/admin/catalog";
-import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminSaleSetupPage } from "@/lib/admin/sales/load-sale-setup-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { FormPage } from "@auction/staff-ui";
 import type { UserRole } from "@auction/types";
 import { redirect } from "next/navigation";
 
@@ -31,12 +30,10 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
   }
 
   return (
-    <CatalogFormShell
-      layout="wizard"
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[
-            { label: "Admin", href: "/admin" },
+        <StaffBreadcrumbs
+          items={[
             { label: "Sales", href: "/admin/sales" },
             { label: page.sale.title, href: `/admin/sales/${id}` },
             { label: "Setup" },
@@ -44,14 +41,9 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         />
       }
       title="Set up sale"
-      description="Complete each step to publish your sale."
-      wizardMobile={{
-        formId: CATALOG_FORM_IDS.saleSetup,
-        submitLabel: "Save & continue",
-        cancelHref: `/admin/sales/${id}`,
-      }}
+      description="Each step is saved as you continue. Publish from the last step."
+      notice={page.sellingPlatform === "atg" ? <AtgEditAlert saleId={id} /> : null}
     >
-      {page.sellingPlatform === "atg" ? <AtgEditAlert saleId={id} /> : null}
       <SaleSetupWizard
         saleId={id}
         initialStep={page.initialStep}
@@ -68,6 +60,6 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         pendingRegistrationCount={page.pendingRegistrationCount}
         connectRequiredByLotId={page.connectRequiredByLotId}
       />
-    </CatalogFormShell>
+    </FormPage>
   );
 }

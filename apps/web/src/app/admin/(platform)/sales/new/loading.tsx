@@ -1,5 +1,5 @@
-import { AdminCatalogFormSkeleton } from "@/components/admin/admin-catalog-form-skeleton";
+import { FormPageSkeleton } from "@auction/staff-ui";
 
-export default function AdminNewSaleLoading() {
-  return <AdminCatalogFormSkeleton />;
+export default function Loading() {
+  return <FormPageSkeleton title="New sale" />;
 }

@@ -2,7 +2,6 @@
 
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { adminAddLotToSaleResultAction } from "@/lib/actions/admin-sales";
-import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { adminDetachLotFromSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { findLotsOutsideSaleWindow } from "@/lib/admin/sale-lot-window-sync";
 import {
@@ -11,6 +10,7 @@ import {
   lotSavedMessage,
   safeParseSaleSetupLotRowForApi,
 } from "@/lib/admin/sale-setup";
+import { formatSaleSetupActionError } from "@/lib/admin/sale-setup/format-sale-setup-action-error";
 import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale-setup-action-failure.client";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { notify } from "@/lib/ui/notify";
@@ -43,6 +43,8 @@ export function useSaleLotRowForm({
 }: UseSaleLotRowFormInput) {
   const [pending, startTransition] = useTransition();
   const [detachConfirmOpen, setDetachConfirmOpen] = useState(false);
+  /** Each failed save, so the row's error summary takes focus only then. */
+  const [failedSaves, setFailedSaves] = useState(0);
   const form = useForm<SaleSetupLotRowFormValues>({ defaultValues: row });
   const { isDirty } = useFormState({ control: form.control });
   const isSaved = Boolean(row.lotId);
@@ -81,13 +83,14 @@ export function useSaleLotRowForm({
       const values = form.getValues();
       const parsed = safeParseSaleSetupLotRowForApi(values, ctx);
       if (!parsed.success) {
-        applyZodIssuesToForm(form, parsed.error.issues);
-        notifyAdminFormValidationFailure({ issues: parsed.error.issues });
+        applyZodIssuesToForm(form, parsed.error.issues, { focusField: false });
+        setFailedSaves((count) => count + 1);
         return;
       }
       const r = await adminAddLotToSaleResultAction(saleId, parsed.data);
       if (!r.ok) {
-        notifySaleSetupActionFailure(r);
+        form.setError("root", { type: "server", message: formatSaleSetupActionError(r) });
+        setFailedSaves((count) => count + 1);
         return;
       }
       if (!r.data?.id) return;
@@ -129,8 +132,8 @@ export function useSaleLotRowForm({
       const values = form.getValues();
       const parsed = safeParseSaleSetupLotRowForApi(values, ctx);
       if (!parsed.success) {
-        applyZodIssuesToForm(form, parsed.error.issues);
-        notifyAdminFormValidationFailure({ issues: parsed.error.issues });
+        applyZodIssuesToForm(form, parsed.error.issues, { focusField: false });
+        setFailedSaves((count) => count + 1);
         return;
       }
       const r = await adminUpdateLotResultAction(row.lotId as string, {
@@ -138,7 +141,8 @@ export function useSaleLotRowForm({
         endTime: parsed.data.endTime,
       });
       if (!r.ok) {
-        notifySaleSetupActionFailure(r);
+        form.setError("root", { type: "server", message: formatSaleSetupActionError(r) });
+        setFailedSaves((count) => count + 1);
         return;
       }
       notify.success("Lot schedule updated");
@@ -161,5 +165,6 @@ export function useSaleLotRowForm({
     save,
     scheduleOutOfSync,
     updateSchedule,
+    failedSaves,
   };
 }

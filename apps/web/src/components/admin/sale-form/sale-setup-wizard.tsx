@@ -2,12 +2,9 @@
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
-import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
 import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
-import { FormRootErrorAlert } from "@/components/admin/form-root-error-alert";
-import { SALE_PUBLISH_PHRASE } from "@/components/admin/sale-actions/use-sale-lifecycle-actions";
-import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
+import { staffFormSummaryErrors } from "@/components/admin/forms/staff-form-fields";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { saleDetailReadinessDismissKey } from "@/lib/admin/compute-sale-detail-readiness";
@@ -29,17 +26,14 @@ import {
 } from "@/lib/forms/schemas/admin-sale-form";
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
-import { notify } from "@/lib/ui/notify";
+import { ConfirmActionDialog, FormErrorSummary, Notice, StaffButton } from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode, EntityDocument, Lot, Sale, Venue } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { Form } from "@auction/ui/components/form";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
+import { SALE_FORM_ID } from "./sale-form-id";
 import { SaleLotRowsEditor } from "./sale-lot-rows-editor";
 import { SaleSetupStepIntro } from "./sale-setup-step-intro";
 import { SaleSetupCatalogPrepStep } from "./steps/catalog-prep-step";
@@ -47,15 +41,12 @@ import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleIdentityStep } from "./steps/identity-step";
 import { SaleSetupReviewStep } from "./steps/review-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
-import {
-  SALE_SETUP_STEP_FIELD_GROUPS,
-  saleSetupStepLabel,
-  saleSetupWizardValidationMessage,
-  useSaleSetupSteps,
-} from "./use-sale-setup-steps";
+import { SALE_SETUP_STEP_FIELD_GROUPS } from "./use-sale-setup-steps";
 import { useSaleSetupSubmit } from "./use-sale-setup-submit";
 import { useSaleSetupWizardView } from "./use-sale-setup-wizard-view";
 import { useSaleTierBandPreview } from "./use-sale-tier-preview";
+
+const SUMMARY_ORDER = SALE_SETUP_STEP_FIELD_GROUPS.flat().map(String);
 
 function WizardStepSync({
   stepIndex,
@@ -114,8 +105,6 @@ export function SaleSetupWizard({
   const [lotsUnsaved, setLotsUnsaved] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [stepNotice, setStepNotice] = useState<string | null>(null);
-  const [validationBanner, setValidationBanner] = useState<string | null>(null);
-  const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
   const [showFirstSaveNudge, setShowFirstSaveNudge] = useState(false);
   const [wizardStepIndex, setWizardStepIndex] = useState(() =>
     Math.max(
@@ -130,7 +119,14 @@ export function SaleSetupWizard({
   const form = useForm<AdminSaleFormValues>({
     resolver: zodResolver(adminSaleDraftScheduleSchema()),
     defaultValues,
+    // Each step is checked on Continue, then its fields again as they change.
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    shouldFocusError: false,
   });
+  /** Each failed Continue, so the error summary takes focus only then. */
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [blockNotice, setBlockNotice] = useState<string | null>(null);
 
   const getValuesRef = useRef(form.getValues);
   getValuesRef.current = form.getValues;
@@ -150,7 +146,6 @@ export function SaleSetupWizard({
     setStepNotice,
     setShowFirstSaveNudge,
   });
-  const { jumpToStepIndex } = useSaleSetupSteps(wizardGoToRef);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -216,10 +211,6 @@ export function SaleSetupWizard({
     }
   }, [initialStep]);
 
-  const handleValidationBannerJump = useCallback(() => {
-    if (validationStepIndex != null) jumpToStepIndex(validationStepIndex);
-  }, [jumpToStepIndex, validationStepIndex]);
-
   const handlePublish = async () => {
     if (!saleId) return;
     await runPublish(saleId);
@@ -233,15 +224,15 @@ export function SaleSetupWizard({
         const fields = SALE_SETUP_STEP_FIELD_GROUPS[stepIndex];
         if (
           fields?.length &&
-          !(await validateWizardStep(form, adminSaleDraftScheduleSchema(), fields))
+          !(await validateWizardStep(form, adminSaleDraftScheduleSchema(), fields, {
+            focus: false,
+          }))
         ) {
-          setValidationStepIndex(stepIndex);
-          setValidationBanner(saleSetupWizardValidationMessage(stepIndex));
+          setFailedAttempts((count) => count + 1);
           return false;
         }
-        setValidationBanner(null);
-        setValidationStepIndex(null);
       }
+      setBlockNotice(null);
 
       const catalogPrepShowReadinessNotice = Boolean(
         activeSale &&
@@ -272,7 +263,7 @@ export function SaleSetupWizard({
         case "readonly-skip":
           return stepIndex >= result.allowWhenStepIndexGte;
         case "block":
-          if (result.notifyMessage) notify.error(result.notifyMessage);
+          if (result.notifyMessage) setBlockNotice(result.notifyMessage);
           return false;
         case "persist": {
           let ok = false;
@@ -318,208 +309,193 @@ export function SaleSetupWizard({
   return (
     <>
       <FormDirtyGuard isDirty={form.formState.isDirty} />
-      <Form {...form}>
-        <form
-          id={CATALOG_FORM_IDS.saleSetup}
-          className="space-y-8"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          {readOnlySaleSteps && canEditCatalog ? (
-            <Alert>
-              <AlertDescription>{catalogueStaffReadOnlyMessage()}</AlertDescription>
-            </Alert>
-          ) : null}
+      <form
+        id={CATALOG_FORM_IDS.saleSetup}
+        noValidate
+        aria-label="Sale setup"
+        className="flex flex-col gap-6"
+        onSubmit={(e) => e.preventDefault()}
+      >
+        <FormErrorSummary
+          errors={staffFormSummaryErrors(form.formState.errors, SALE_FORM_ID, SUMMARY_ORDER)}
+          focusKey={failedAttempts}
+        />
+        {form.formState.errors.root?.message ? (
+          <Notice tone="danger" alert title="The sale was not saved">
+            {form.formState.errors.root.message}
+          </Notice>
+        ) : null}
+        {blockNotice ? (
+          <Notice tone="warning" alert title="This step cannot be finished yet">
+            {blockNotice}
+          </Notice>
+        ) : null}
+        {readOnlySaleSteps && canEditCatalog ? (
+          <Notice tone="info" title="You can edit the lots and catalogue only">
+            {catalogueStaffReadOnlyMessage()}
+          </Notice>
+        ) : null}
+        {stepNotice ? <Notice tone="info" title={stepNotice} /> : null}
+        {setupReadinessNudge ? (
+          <CatalogPublishReadiness
+            title="Your sale draft is saved"
+            readiness={setupReadinessNudge}
+            {...(saleId ? { dismissKey: saleDetailReadinessDismissKey(saleId) } : {})}
+          />
+        ) : null}
 
-          {stepNotice ? (
-            <Alert className="border-secondary/30 bg-secondary/5">
-              <AlertDescription className="text-on-surface">{stepNotice}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {validationBanner ? (
-            <WizardValidationBanner
-              message={validationBanner}
-              {...(validationStepIndex != null
-                ? {
-                    stepLabel: saleSetupStepLabel(validationStepIndex),
-                    onJumpToStep: handleValidationBannerJump,
-                  }
-                : {})}
-            />
-          ) : null}
-
-          {setupReadinessNudge ? (
-            <CatalogPublishReadiness
-              title="Your sale draft is saved"
-              readiness={setupReadinessNudge}
-              {...(saleId ? { dismissKey: saleDetailReadinessDismissKey(saleId) } : {})}
-            />
-          ) : null}
-
-          <AdminFormWizard
-            steps={buildSaleSetupStepperSteps()}
-            layout="sidebar"
-            isDirty={form.formState.isDirty}
-            pending={pending}
-            stickyActions={false}
-            hideStickyOnMobile
-            mobilePrimaryAction={mobilePrimaryAction}
-            mobileCancelAction={mobileCancelAction}
-            onStepControl={({ goTo }) => {
-              wizardGoToRef.current = goTo;
-            }}
-            onStepBack={(toIndex) => {
-              if (saleId) router.replace(saleSetupHref(saleId, saleSetupStepId(toIndex)));
-            }}
-            onBeforeNext={executeStepTransition}
-            leadingSlot={
-              <Button
+        <AdminFormWizard
+          steps={buildSaleSetupStepperSteps()}
+          layout="sidebar"
+          isDirty={form.formState.isDirty}
+          pending={pending}
+          stickyActions={false}
+          hideStickyOnMobile
+          mobilePrimaryAction={mobilePrimaryAction}
+          mobileCancelAction={mobileCancelAction}
+          onStepControl={({ goTo }) => {
+            wizardGoToRef.current = goTo;
+          }}
+          onStepBack={(toIndex) => {
+            if (saleId) router.replace(saleSetupHref(saleId, saleSetupStepId(toIndex)));
+          }}
+          onBeforeNext={executeStepTransition}
+          leadingSlot={
+            <StaffButton type="button" variant="ghost" disabled={pending} onClick={handleSaveDraft}>
+              {isReviewStep && saleId
+                ? "Save as draft"
+                : saleId
+                  ? WIZARD_COPY.finishLater
+                  : "Cancel"}
+            </StaffButton>
+          }
+          submitSlot={
+            canManageSale ? (
+              <StaffButton
                 type="button"
-                variant="outline"
-                disabled={pending}
-                className="min-h-11 w-full sm:w-auto"
-                onClick={handleSaveDraft}
+                variant="primary"
+                loading={pending}
+                data-wizard-submit="true"
+                {...(readyToPublish ? {} : { disabledReason: reviewPublishBlockedHint() })}
+                onClick={() => setPublishOpen(true)}
               >
-                {isReviewStep && saleId
-                  ? "Save as draft"
-                  : saleId
-                    ? WIZARD_COPY.finishLater
-                    : "Cancel"}
-              </Button>
-            }
-            submitSlot={
-              canManageSale ? (
-                <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-                  {!readyToPublish ? (
-                    <p className="font-body text-xs text-on-surface-variant sm:text-right">
-                      {reviewPublishBlockedHint()}
-                    </p>
-                  ) : null}
-                  <LoadingButton
-                    type="button"
-                    loading={pending}
-                    disabled={!readyToPublish}
-                    data-wizard-submit="true"
-                    className="min-h-11 w-full sm:min-w-40 sm:w-auto"
-                    onClick={() => setPublishOpen(true)}
-                  >
-                    Publish sale
-                  </LoadingButton>
-                  <TypedConfirmationDialog
-                    open={publishOpen}
-                    onOpenChange={setPublishOpen}
-                    title="Publish this sale?"
-                    description="All lots will go live together according to the sale schedule. Confirm only when the catalog is complete."
-                    actionLabel="Publish sale"
-                    confirmationPhrase={SALE_PUBLISH_PHRASE}
-                    severity="warning"
-                    onConfirm={handlePublish}
-                  />
+                Publish sale
+              </StaffButton>
+            ) : (
+              <StaffButton asChild variant="secondary">
+                <Link href={saleId ? `/admin/sales/${saleId}` : "/admin/sales"}>Back to sale</Link>
+              </StaffButton>
+            )
+          }
+          {...wizardCreateDraftExtras}
+        >
+          {(stepIndex) => {
+            const stepId = saleSetupStepId(stepIndex);
+            return (
+              <div className="flex flex-col gap-6">
+                <WizardStepSync stepIndex={stepIndex} onStepIndex={setWizardStepIndex} />
+                <div className="lg:hidden">
+                  <SaleSetupStepIntro stepId={stepId} stepIndex={stepIndex} />
                 </div>
-              ) : (
-                <Button type="button" variant="outline" asChild className="min-h-11">
-                  <Link href={saleId ? `/admin/sales/${saleId}` : "/admin/sales"}>
-                    Back to sale
-                  </Link>
-                </Button>
-              )
-            }
-            {...wizardCreateDraftExtras}
-          >
-            {(stepIndex) => {
-              const stepId = saleSetupStepId(stepIndex);
-              return (
-                <div className="space-y-8">
-                  <WizardStepSync stepIndex={stepIndex} onStepIndex={setWizardStepIndex} />
-                  <div className="lg:hidden">
-                    <SaleSetupStepIntro stepId={stepId} stepIndex={stepIndex} />
-                  </div>
-                  {stepIndex === 0 ? (
-                    <fieldset disabled={readOnlySaleSteps}>
-                      <SaleIdentityStep
-                        form={form}
-                        categories={categories}
-                        pending={pending}
-                        previewUrlByKey={previewUrlByKey}
-                      />
-                    </fieldset>
-                  ) : null}
-                  {stepIndex === 1 ? (
-                    <fieldset disabled={readOnlySaleSteps}>
-                      <SaleScheduleStep
-                        form={form}
-                        isDraft
-                        isSaleroom={isSaleroom}
-                        pending={pending}
-                        fields={fields}
-                        append={append}
-                        remove={remove}
-                        tierBandPreview={tierBandPreview}
-                        formattedPreviewAddress={formattedPreviewAddress}
-                        previewMapUrl={previewMapUrl}
-                        customMapUrl={customMapUrl}
-                        postcodeIsValid={postcodeIsValid}
-                        lots={lots}
-                        venues={venues}
-                        {...(saleId ? { lotsSetupHref: saleSetupHref(saleId, "lots") } : {})}
-                      />
-                    </fieldset>
-                  ) : null}
-                  {stepIndex === 2 && saleId ? (
-                    <fieldset disabled={readOnlySaleSteps}>
-                      <SaleDocumentsStep
-                        form={form}
-                        saleId={saleId}
-                        initialSaleDocuments={initialSaleDocuments}
-                      />
-                    </fieldset>
-                  ) : null}
-                  {stepIndex === 3 && saleId && activeSale && pendingSaleWindow ? (
-                    <SaleLotRowsEditor
-                      saleId={saleId}
-                      sale={{
-                        deliveryMode: pendingSaleWindow.deliveryMode,
-                        startTime: pendingSaleWindow.startTime,
-                        endTime: pendingSaleWindow.endTime,
-                      }}
-                      lots={lots}
+                {stepIndex === 0 ? (
+                  <fieldset disabled={readOnlySaleSteps}>
+                    <SaleIdentityStep
+                      form={form}
                       categories={categories}
-                      artists={artists}
-                      englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
-                      readOnly={readOnlyLots}
-                      onLotsChange={() => router.refresh()}
-                      onUnsavedChange={setLotsUnsaved}
+                      pending={pending}
+                      previewUrlByKey={previewUrlByKey}
                     />
-                  ) : null}
-                  {stepIndex === 4 && saleId && activeSale ? (
-                    <SaleSetupCatalogPrepStep
-                      saleId={saleId}
-                      sale={activeSale}
+                  </fieldset>
+                ) : null}
+                {stepIndex === 1 ? (
+                  <fieldset disabled={readOnlySaleSteps}>
+                    <SaleScheduleStep
+                      form={form}
+                      isDraft
+                      isSaleroom={isSaleroom}
+                      pending={pending}
+                      fields={fields}
+                      append={append}
+                      remove={remove}
+                      tierBandPreview={tierBandPreview}
+                      formattedPreviewAddress={formattedPreviewAddress}
+                      previewMapUrl={previewMapUrl}
+                      customMapUrl={customMapUrl}
+                      postcodeIsValid={postcodeIsValid}
                       lots={lots}
-                      readOnly={readOnlyCatalog}
-                      {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+                      venues={venues}
+                      {...(saleId ? { lotsSetupHref: saleSetupHref(saleId, "lots") } : {})}
                     />
-                  ) : null}
-                  {stepIndex === 5 && saleId && activeSale ? (
-                    <SaleSetupReviewStep
+                  </fieldset>
+                ) : null}
+                {stepIndex === 2 && saleId ? (
+                  <fieldset disabled={readOnlySaleSteps}>
+                    <SaleDocumentsStep
+                      form={form}
                       saleId={saleId}
-                      sale={activeSale}
-                      lots={lots}
-                      pendingRegistrationCount={pendingRegistrationCount}
-                      canPublish={canManageSale}
-                      documentCount={initialSaleDocuments.length}
-                      onEditSummary={() => wizardGoToRef.current(0)}
-                      {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+                      initialSaleDocuments={initialSaleDocuments}
                     />
-                  ) : null}
-                </div>
-              );
-            }}
-          </AdminFormWizard>
-
-          <FormRootErrorAlert message={form.formState.errors.root?.message ?? null} />
-        </form>
-      </Form>
+                  </fieldset>
+                ) : null}
+                {stepIndex === 3 && saleId && activeSale && pendingSaleWindow ? (
+                  <SaleLotRowsEditor
+                    saleId={saleId}
+                    sale={{
+                      deliveryMode: pendingSaleWindow.deliveryMode,
+                      startTime: pendingSaleWindow.startTime,
+                      endTime: pendingSaleWindow.endTime,
+                    }}
+                    lots={lots}
+                    categories={categories}
+                    artists={artists}
+                    englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+                    readOnly={readOnlyLots}
+                    onLotsChange={() => router.refresh()}
+                    onUnsavedChange={setLotsUnsaved}
+                  />
+                ) : null}
+                {stepIndex === 4 && saleId && activeSale ? (
+                  <SaleSetupCatalogPrepStep
+                    saleId={saleId}
+                    sale={activeSale}
+                    lots={lots}
+                    readOnly={readOnlyCatalog}
+                    {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+                  />
+                ) : null}
+                {stepIndex === 5 && saleId && activeSale ? (
+                  <SaleSetupReviewStep
+                    saleId={saleId}
+                    sale={activeSale}
+                    lots={lots}
+                    pendingRegistrationCount={pendingRegistrationCount}
+                    canPublish={canManageSale}
+                    documentCount={initialSaleDocuments.length}
+                    onEditSummary={() => wizardGoToRef.current(0)}
+                    {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+                  />
+                ) : null}
+              </div>
+            );
+          }}
+        </AdminFormWizard>
+      </form>
+      <ConfirmActionDialog
+        open={publishOpen}
+        onOpenChange={(open) => {
+          if (!pending) setPublishOpen(open);
+        }}
+        title={`Publish ${form.getValues("title")?.trim() || "this sale"}?`}
+        description="The sale and all its lots go on the site together, on the sale's schedule. Registrations open as set in the sale."
+        confirmLabel="Publish sale"
+        loading={pending}
+        onConfirm={() => {
+          startTransition(async () => {
+            await handlePublish();
+            setPublishOpen(false);
+          });
+        }}
+      />
     </>
   );
 }

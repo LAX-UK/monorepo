@@ -217,8 +217,7 @@ export function SaleDetailShell({
   const primary = publish ? (
     <StaffButton
       variant="primary"
-      disabled={Boolean(publish.disabledReason)}
-      title={publish.disabledReason ?? undefined}
+      {...(publish.disabledReason ? { disabledReason: publish.disabledReason } : {})}
       onClick={() => publish.onSelect?.()}
     >
       Publish sale

@@ -117,7 +117,7 @@ export function AdminLotMarketingForm({
           return;
         }
         if (result.fieldErrors) {
-          applyActionFieldErrors(form, result.fieldErrors);
+          applyActionFieldErrors(form, result.fieldErrors, { focusField: false });
         }
         setFailure(result.error);
         setFailedAttempts((count) => count + 1);

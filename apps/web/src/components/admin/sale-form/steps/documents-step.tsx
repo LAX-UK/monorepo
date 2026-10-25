@@ -1,20 +1,12 @@
 "use client";
 
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
+import { StaffTextAreaField } from "@/components/admin/forms/staff-form-fields";
 import { SaleDocumentsSection } from "@/components/admin/sale-form/sale-documents-section";
-import { LabelCaps } from "@/components/ui/typography";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import { Field, FormSection } from "@auction/staff-ui";
 import type { EntityDocument } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Textarea } from "@auction/ui/components/textarea";
 import type { UseFormReturn } from "react-hook-form";
+import { SALE_FORM_ID } from "../sale-form-id";
 
 type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
@@ -30,52 +22,27 @@ export function SaleDocumentsStep({
   termsReadOnly = false,
 }: Props) {
   return (
-    <CatalogFormSection title="Documents & terms" collapsible={false}>
-      <div className="space-y-2">
-        <p className="font-body text-sm text-on-surface-variant">
-          Manage internal staff files and bidder-facing sale documents separately.
-        </p>
+    <FormSection
+      title="Documents and terms"
+      description="Files for staff and for bidders, and the sale's terms of sale."
+    >
+      <Field label="Documents" optional description="Saved as soon as they are added.">
         <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
-      </div>
-
-      {termsReadOnly ? (
-        <Alert>
-          <AlertTitle>Terms are locked after publish</AlertTitle>
-          <AlertDescription>
-            Terms of sale cannot be changed after a sale is published. PDF attachments can still be
-            managed from this section.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <FormField
+      </Field>
+      <StaffTextAreaField
         control={form.control}
+        formId={SALE_FORM_ID}
         name="terms"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Terms of sale</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <Textarea
-                id="terms"
-                rows={4}
-                variant="underline"
-                className="font-body text-sm"
-                readOnly={termsReadOnly}
-                aria-readonly={termsReadOnly}
-                {...field}
-              />
-            </FormControl>
-            <p className="font-body text-xs text-on-surface-variant">
-              {termsReadOnly
-                ? "Existing terms remain visible to bidders on the public sale page."
-                : "Shown to bidders on the public sale page when filled in."}
-            </p>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Terms of sale"
+        optional
+        rows={4}
+        disabled={termsReadOnly}
+        description={
+          termsReadOnly
+            ? "Fixed once the sale is published. Bidders still see them on the sale page."
+            : "Shown to bidders on the sale page."
+        }
       />
-    </CatalogFormSection>
+    </FormSection>
   );
 }

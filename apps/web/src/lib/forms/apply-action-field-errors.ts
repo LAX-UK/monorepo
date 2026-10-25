@@ -93,7 +93,7 @@ export function applyZodIssuesToForm<TFieldValues extends FieldValues>(
 export function applyActionFieldErrors<TFieldValues extends FieldValues>(
   form: UseFormReturn<TFieldValues>,
   fieldErrors: FieldErrorMap,
-  options?: StepNavigationOptions<TFieldValues>,
+  options?: StepNavigationOptions<TFieldValues> & { focusField?: boolean },
 ): void {
   let firstPath: FieldPath<TFieldValues> | null = null;
 
@@ -111,7 +111,7 @@ export function applyActionFieldErrors<TFieldValues extends FieldValues>(
   if (!firstPath) return;
 
   navigateToOwningSurface(firstPath, options);
-  focusFieldAfterNavigation(form, firstPath);
+  if (options?.focusField !== false) focusFieldAfterNavigation(form, firstPath);
 }
 
 export function findOwningStepIndex<TFieldValues extends FieldValues>(

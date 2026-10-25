@@ -1,10 +1,10 @@
 "use client";
 
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
 import {
   findLotsOutsideSaleWindow,
   parseSaleWindowFromForm,
 } from "@/lib/admin/sale-lot-window-sync";
+import { FormSection } from "@auction/staff-ui";
 import { useMemo, useRef } from "react";
 import { BuyerPremiumSection } from "./schedule-step/buyer-premium-section";
 import { DeliveryModeField } from "./schedule-step/delivery-mode-field";
@@ -59,10 +59,9 @@ export function SaleScheduleStep({
 
       <ReadOnlyNotice isDraft={isDraft} />
 
-      <CatalogFormSection
-        title="Delivery & venue"
-        description="Online, hybrid, or onsite delivery; stream link and venue when applicable."
-        collapsible={false}
+      <FormSection
+        title="Format and venue"
+        description="How the sale runs and, for a saleroom, where it is and its live stream."
       >
         <DeliveryModeField form={form} isDraft={isDraft} deliveryMode={deliveryMode} />
 
@@ -87,7 +86,7 @@ export function SaleScheduleStep({
             />
           </>
         ) : null}
-      </CatalogFormSection>
+      </FormSection>
 
       <ScheduleTimesSection form={form} isDraft={isDraft} isSaleroom={isSaleroom} />
 
