@@ -79,13 +79,24 @@ describe("catalogue card view models", () => {
       buildCatalogueArtistCards([
         {
           slug: "artist",
-          name: "Artist",
+          name: "Juno Ray Frost",
           discipline: null,
           portraitUrl: null,
           artworkCount: 2,
         },
       ])[0],
-    ).toMatchObject({ href: "/artists/artist", discipline: "Artist" });
+    ).toMatchObject({
+      href: "/artists/artist",
+      discipline: null,
+      initials: "JF",
+      editionsLabel: "2 editions",
+      imageAlt: "Portrait of Juno Ray Frost",
+    });
+    expect(
+      buildCatalogueArtistCards([
+        { slug: "one", name: "Mononym", discipline: "Painter", portraitUrl: null, artworkCount: 1 },
+      ])[0],
+    ).toMatchObject({ initials: "M", editionsLabel: "1 edition" });
     expect(
       buildCatalogueCategoryCards([
         {

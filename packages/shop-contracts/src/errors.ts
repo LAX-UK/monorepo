@@ -4,6 +4,8 @@ export const SHOP_API_ERROR_CODES = {
   CONFLICT: "shop.conflict",
   INTERNAL: "shop.internal",
   OUT_OF_STOCK: "shop.out_of_stock",
+  /** More of one edition than an order may hold; the limit is a rule, not a stock level. */
+  QUANTITY_LIMIT: "shop.quantity_limit",
   BASKET_CONFLICT: "shop.basket_conflict",
   PRICE_CHANGED: "shop.price_changed",
   PAYMENT_FAILED: "shop.payment_failed",

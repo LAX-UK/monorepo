@@ -20,6 +20,7 @@ export function createMinimalShopApiTestDeps(
       NODE_ENV: "test",
       PORT: 3011,
       DATABASE_URL_SHOP: "postgresql://shop:shop@localhost:5432/auction",
+      SHOP_EDITION_ORDER_LIMIT: 2,
       LOG_LEVEL: "error",
       SHOP_API_PUBLIC_BASE_URL: "http://localhost:3011",
       SHOP_STOREFRONT_URL: "http://localhost:3020",
@@ -68,6 +69,7 @@ export function createMinimalShopApiTestDeps(
     },
     commerce: {
       merchandiseEnabled: false,
+      editionOrderLimit: 2,
       getBasket: async () => null,
       upsertBasketLine: async () => {
         throw new Error("not implemented");

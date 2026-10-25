@@ -19,6 +19,10 @@ export type BasketLineRecord = {
   quantity: number;
   sellableCount: number;
   imageUrl: string | null;
+  artistName: string | null;
+  artistSlug: string | null;
+  /** Editions in the run, for an artwork line; null for merchandise. */
+  editionSize: number | null;
 };
 
 export type BasketRecord = {

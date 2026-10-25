@@ -26,7 +26,11 @@ import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
 export function createDrizzleBasketRepository(
   db: Database,
-  options: { merchandiseEnabled: boolean },
+  options: {
+    merchandiseEnabled: boolean;
+    /** Copies of one edition an order may hold; null or absent leaves only the stock. */
+    editionOrderLimit?: number | null;
+  },
 ): BasketRepository {
   return {
     async getBasket(owner) {
@@ -44,7 +48,10 @@ export function createDrizzleBasketRepository(
         throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid quantity", 400);
       }
       if ("artworkSlug" in input) {
-        return upsertArtworkLine(db, input);
+        return upsertArtworkLine(db, {
+          ...input,
+          editionOrderLimit: options.editionOrderLimit ?? null,
+        });
       }
       if (!options.merchandiseEnabled) {
         throw new ShopApiError(
@@ -150,7 +157,12 @@ export function createDrizzleBasketRepository(
 
 async function upsertArtworkLine(
   db: Database,
-  input: { owner: UpsertBasketLineInput["owner"]; artworkSlug: string; quantity: number },
+  input: {
+    owner: UpsertBasketLineInput["owner"];
+    artworkSlug: string;
+    quantity: number;
+    editionOrderLimit: number | null;
+  },
 ) {
   const [artwork] = await db
     .select({
@@ -166,6 +178,13 @@ async function upsertArtworkLine(
   }
   if (artwork.printPricePence === null) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Artwork has no listed price", 400);
+  }
+  if (input.editionOrderLimit != null && input.quantity > input.editionOrderLimit) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.QUANTITY_LIMIT,
+      `Limit ${input.editionOrderLimit} per order`,
+      409,
+    );
   }
   const unitPricePence = artwork.printPricePence;
   return db.transaction(async (tx) => {

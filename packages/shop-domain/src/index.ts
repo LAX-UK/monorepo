@@ -60,8 +60,10 @@ export {
 } from "./artwork-catalogue.js";
 export {
   assertQuantityWithinSellable,
+  basketLineMaxQuantity,
   computeMerchandiseSubtotal,
   computeOrderTotal,
+  SHOP_BASKET_LINE_QUANTITY_MAX,
   type BasketLineInput,
 } from "./basket-totals.js";
 export {

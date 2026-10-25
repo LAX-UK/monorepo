@@ -93,17 +93,16 @@ describe("Shop commerce architecture SSOT", () => {
     const shopHomeCss = readFileSync(join(root, "apps/shop/src/app/home.css"), "utf8");
     assert.doesNotMatch(shopHomeCss, /shop-home__card-interactive/);
 
-    assert.ok(
-      readFileSync(
-        join(root, "apps/shop/src/components/home/cards/print-card.tsx"),
-        "utf8",
-      ).includes("@auction/marketing-ui"),
+    assert.match(
+      readFileSync(join(root, "apps/shop/src/components/home/sections/home-sections.tsx"), "utf8"),
+      /MarketingArtistCard/,
+      "Shop home artists must use the shared LAX artist card",
     );
   });
 
   it("keeps MVP navigation honest and artwork routes resilient", () => {
     const navigationSources = [
-      "apps/shop/src/content/home-marketing.ts",
+      "apps/shop/src/lib/home/home-page.vm.ts",
       "apps/shop/src/content/footer-nav.config.ts",
       "apps/shop/src/components/header/header-nav.config.ts",
     ];

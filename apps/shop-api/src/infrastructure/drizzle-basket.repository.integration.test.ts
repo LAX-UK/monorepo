@@ -48,6 +48,27 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     expect(basket.lines).toHaveLength(1);
     expect(basket.lines[0]?.quantity).toBe(2);
     expect(basket.lines[0]?.artworkSlug).toBe(imported.slug);
+    expect(basket.lines[0]?.artistSlug).toEqual(expect.any(String));
+    expect(basket.lines[0]?.artistName).toEqual(expect.any(String));
+    expect(basket.lines[0]?.editionSize).toEqual(expect.any(Number));
+  });
+
+  it("refuses more of one edition than an order may hold, whatever the stock", async () => {
+    const db = createShopDb(shopPool);
+    const imported = await importTestArtwork(db, "basket-limit");
+    await grantLaxSaleAuthority(db, imported.artworkId, 4);
+    const repo = createDrizzleBasketRepository(db, {
+      merchandiseEnabled: true,
+      editionOrderLimit: 2,
+    });
+    const owner = {
+      kind: "anonymous" as const,
+      tokenHash: hashBasketToken(`guest-basket-limit-${integrationSuffix("limit")}`),
+    };
+
+    await expect(
+      repo.addOrUpdateLine({ owner, artworkSlug: imported.slug, quantity: 3 }),
+    ).rejects.toMatchObject({ code: SHOP_API_ERROR_CODES.QUANTITY_LIMIT });
   });
 
   it("merges anonymous artwork lines into a subject basket, keeping the larger quantity", async () => {

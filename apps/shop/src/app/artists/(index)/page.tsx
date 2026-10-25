@@ -18,7 +18,7 @@ type ArtistsIndexPageProps = {
   searchParams: Promise<ArtistsSearchParams>;
 };
 
-const DESCRIPTION = "Discover artists represented in the LAX Shop catalogue.";
+const DESCRIPTION = "Artists with limited editions and prints in LAX Shop.";
 
 export async function generateMetadata({ searchParams }: ArtistsIndexPageProps): Promise<Metadata> {
   const query = parseMarketingArtistDirectoryQuery(await searchParams);

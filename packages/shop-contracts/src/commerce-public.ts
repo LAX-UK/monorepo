@@ -39,6 +39,18 @@ export const BasketLineSchema = Type.Object(
     priceChanged: Type.Boolean(),
     outOfStock: Type.Boolean(),
     imageUrl: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    // The fields below are optional so a storefront parses responses from an older shop-api.
+    artistName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    artistSlug: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** The size of the edition run ("Limited edition of 24"); null for merchandise. */
+    editionSize: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    /** Copies of this item one order may hold ("Limit 2 per order"); null when only stock limits it. */
+    orderLimit: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    /**
+     * The most this line can hold now: the per-order limit, lowered to what can be sold. It is a
+     * cap for the stepper, not a stock figure, and is never shown as a number of copies left.
+     */
+    maxQuantity: Type.Optional(Type.Integer({ minimum: 1 })),
   },
   { additionalProperties: false },
 );

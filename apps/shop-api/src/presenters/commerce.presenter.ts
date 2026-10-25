@@ -1,12 +1,15 @@
 import type { BasketView, CheckoutSession, OrderSummary } from "@auction/shop-contracts";
-import { computeMerchandiseSubtotal, pence } from "@auction/shop-domain";
+import { basketLineMaxQuantity, computeMerchandiseSubtotal, pence } from "@auction/shop-domain";
 import type {
   BasketRecord,
   CheckoutOrderResult,
   OrderRecord,
 } from "../application/ports/commerce.ports.js";
 
-export function presentBasket(record: BasketRecord): BasketView {
+export function presentBasket(
+  record: BasketRecord,
+  options: { editionOrderLimit: number | null },
+): BasketView {
   const merchandiseSubtotalPence = computeMerchandiseSubtotal(
     record.lines.map((line) => ({
       unitPricePence: pence(line.unitPricePence),
@@ -31,6 +34,14 @@ export function presentBasket(record: BasketRecord): BasketView {
       priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
       outOfStock: line.quantity > line.sellableCount,
       imageUrl: line.imageUrl,
+      artistName: line.artistName,
+      artistSlug: line.artistSlug,
+      editionSize: line.editionSize,
+      orderLimit: line.artworkId ? options.editionOrderLimit : null,
+      maxQuantity: basketLineMaxQuantity({
+        orderLimit: line.artworkId ? options.editionOrderLimit : null,
+        sellableCount: line.sellableCount,
+      }),
     })),
   };
 }

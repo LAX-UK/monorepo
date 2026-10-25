@@ -43,9 +43,9 @@ export function ShopHeaderClient({
   const [megaMenuResetNonce, setMegaMenuResetNonce] = useState(0);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  const transparentHome = pathname === "/";
+  // Every Shop page, the home page included, opens on the page surface, so the header is solid.
   const { isTransparent, atTop, headerTone, headerRef, attachHeader } = useHeaderChrome({
-    transparent: transparentHome,
+    transparent: false,
     overlayOpen: megaOpen || menuOpen,
   });
 
@@ -66,7 +66,7 @@ export function ShopHeaderClient({
       <header
         ref={attachHeader}
         data-testid="shop-header"
-        data-chrome-variant={transparentHome ? "transparentUntilScroll" : "solid"}
+        data-chrome-variant="solid"
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
         className={headerChromeClassName(isTransparent, megaOpen)}

@@ -1,8 +1,10 @@
 import type { Database } from "@auction/db";
 import {
+  shopArtist,
   shopArtwork,
   shopBasket,
   shopBasketLine,
+  shopParty,
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
@@ -11,7 +13,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import type { BasketOwner, BasketRecord } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
-import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
+import { editionCountsByArtworkId } from "./public-artwork-rows.js";
 import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
 export const BASKET_TTL_MS = 14 * 24 * 60 * 60 * 1000;
@@ -102,6 +104,8 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
       artworkSlug: shopArtwork.slug,
       artworkTitle: shopArtwork.title,
       primaryImageUrl: shopArtwork.primaryImageUrl,
+      artistName: shopParty.displayName,
+      artistSlug: shopArtist.slug,
       productSlug: shopProduct.slug,
       productTitle: shopProduct.title,
       variantSku: shopProductVariant.sku,
@@ -112,6 +116,8 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
     })
     .from(shopBasketLine)
     .leftJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
+    .leftJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+    .leftJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
     .leftJoin(shopProductVariant, eq(shopBasketLine.productVariantId, shopProductVariant.id))
     .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
     .where(eq(shopBasketLine.basketId, basketId))
@@ -121,13 +127,14 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
   const variantIds = lines
     .map((line) => line.productVariantId)
     .filter((id): id is string => id !== null);
-  const [sellableByArtwork, sellableByVariant] = await Promise.all([
-    sellableCountsByArtworkIds(db, artworkIds),
+  const [editionCounts, sellableByVariant] = await Promise.all([
+    editionCountsByArtworkId(db, artworkIds),
     sellableCountsByVariantIds(db, variantIds),
   ]);
 
   const enriched = lines.map((line) => {
     if (line.artworkId) {
+      const counts = editionCounts.get(line.artworkId);
       return {
         lineId: line.lineId,
         artworkId: line.artworkId,
@@ -140,8 +147,11 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
         unitPricePence: line.unitPricePence,
         livePricePence: line.liveArtworkPricePence,
         quantity: line.quantity,
-        sellableCount: sellableByArtwork.get(line.artworkId) ?? 0,
+        sellableCount: counts?.available ?? 0,
         imageUrl: line.primaryImageUrl,
+        artistName: line.artistName,
+        artistSlug: line.artistSlug,
+        editionSize: counts && counts.total > 0 ? counts.total : null,
       };
     }
     const variantId = line.productVariantId;
@@ -162,6 +172,9 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
       quantity: line.quantity,
       sellableCount: sellableByVariant.get(variantId) ?? 0,
       imageUrl: null,
+      artistName: null,
+      artistSlug: null,
+      editionSize: null,
     };
   });
 
