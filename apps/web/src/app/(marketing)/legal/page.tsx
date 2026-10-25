@@ -31,7 +31,7 @@ export default function LegalHubPage() {
         })}
       </script>
       <LegalPage title="Legal" lastUpdated="21 April 2026" kicker={null} dividerUnderDate embedded>
-        <p>Key policies for collectors using {SITE_SEO_NAME}.</p>
+        <p>Key policies for collectors using LAX.BID by London Art Exchange.</p>
         <LegalUL>
           {policyIndex.map((item) => (
             <li key={item.href}>

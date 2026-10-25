@@ -6,6 +6,11 @@ export const SITE_NAME = "LAX.BID";
 export const SITE_SHORT_NAME = "LAX.BID";
 /** The company behind LAX Bid, as named in Bid's copy and descriptions. */
 export const SITE_COMPANY_NAME = LEGAL_ENTITIES["london-auction-xchange"].tradingName;
+/**
+ * The house name in LAX Bid's existing page copy (About, contact and shipping addresses, social
+ * labels), kept as the business team wrote it. Descriptions and legal lines use the company above.
+ */
+export const SITE_HOUSE_NAME = "London Art Exchange";
 export const SITE_SEO_NAME = `${SITE_NAME} by ${SITE_COMPANY_NAME}`;
 export const SITE_ALTERNATE_NAMES = ["LAX", SITE_COMPANY_NAME, SITE_SEO_NAME] as const;
 export const SITE_TAGLINE = `The dedicated auction platform of ${SITE_COMPANY_NAME} for fine art, rare collectibles, and culturally significant assets.`;
@@ -26,7 +31,7 @@ export const SITE_BUSINESS_ADDRESS = {
   addressCountry: "GB",
 } as const;
 export const SITE_BUSINESS_ADDRESS_LINES = [
-  SITE_COMPANY_NAME,
+  SITE_HOUSE_NAME,
   "156 New Cavendish Street",
   "Marylebone",
   "London W1W 6YW",

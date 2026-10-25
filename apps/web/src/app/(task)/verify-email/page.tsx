@@ -153,7 +153,7 @@ export default async function VerifyEmailPage({
       >
         <div className="flex flex-col gap-6">
           <p className="rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container">
-            Email verified — your LAX Account is secured.
+            Email verified — your London Art Exchange account is secured.
           </p>
           <VerifyEmailSuccessRedirect href={destination.href} />
           <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
