@@ -6,6 +6,7 @@ import {
   Bell,
   BellRing,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -17,21 +18,28 @@ import {
   ImageIcon,
   Info,
   LayoutGrid,
+  LoaderCircle,
   type LucideProps,
   Mail,
   MapPin,
+  Maximize2,
   Menu,
   Moon,
   Pause,
   Phone,
   Play,
+  Ruler,
   Search,
   SearchX,
   Share2,
   ShoppingBag,
   Sun,
+  Truck,
+  Undo2,
   User,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 type MarketingIconProps = Omit<LucideProps, "aria-hidden">;
@@ -164,4 +172,46 @@ export function MarketingMailIcon({ className, ...props }: MarketingIconProps) {
 
 export function MarketingArrowUpRightIcon({ className, ...props }: MarketingIconProps) {
   return <ArrowUpRight className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingCheckIcon({ className, ...props }: MarketingIconProps) {
+  return <Check className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+/** Spinning loader for a pending action; stops spinning under reduced motion. */
+export function MarketingSpinnerIcon({ className, ...props }: MarketingIconProps) {
+  return (
+    <LoaderCircle
+      className={cn("size-5 shrink-0 animate-spin motion-reduce:animate-none", className)}
+      aria-hidden
+      {...props}
+    />
+  );
+}
+
+export function MarketingTruckIcon({ className, ...props }: MarketingIconProps) {
+  return <Truck className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+/** Returns and cancellation. */
+export function MarketingReturnIcon({ className, ...props }: MarketingIconProps) {
+  return <Undo2 className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+/** Open an image full screen. */
+export function MarketingExpandIcon({ className, ...props }: MarketingIconProps) {
+  return <Maximize2 className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingZoomInIcon({ className, ...props }: MarketingIconProps) {
+  return <ZoomIn className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingZoomOutIcon({ className, ...props }: MarketingIconProps) {
+  return <ZoomOut className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+/** Size and scale. */
+export function MarketingRulerIcon({ className, ...props }: MarketingIconProps) {
+  return <Ruler className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }

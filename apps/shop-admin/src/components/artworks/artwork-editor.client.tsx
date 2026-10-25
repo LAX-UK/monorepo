@@ -8,6 +8,7 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   type ArtworkFormField,
@@ -588,6 +589,51 @@ export function ArtworkEditor({
                 boxClassName="sm:max-w-60"
               />
             </Field>
+          ) : null}
+
+          {values.editionRun === "editions" ? (
+            readOnly ? (
+              <KeyValueList
+                items={[
+                  {
+                    label: "Original on lax.art",
+                    value: values.sourceOriginalTitle ?? "None linked",
+                  },
+                ]}
+              />
+            ) : (
+              <Field
+                label="Original on lax.art"
+                optional
+                description="The original this edition was made from. Once both are live, the edition's page links to the original and the original's page lists this edition."
+                id="artwork-source-original"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-full sm:max-w-80">
+                    <OriginalArtworkPicker
+                      value={values.sourceOriginalId}
+                      selectedTitle={values.sourceOriginalTitle}
+                      onChange={(original) =>
+                        update({
+                          sourceOriginalId: original?.id ?? null,
+                          sourceOriginalTitle: original?.label ?? null,
+                        })
+                      }
+                    />
+                  </div>
+                  {values.sourceOriginalId ? (
+                    <StaffButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => update({ sourceOriginalId: null, sourceOriginalTitle: null })}
+                    >
+                      Remove link
+                    </StaffButton>
+                  ) : null}
+                </div>
+              </Field>
+            )
           ) : null}
 
           {readOnly ? (

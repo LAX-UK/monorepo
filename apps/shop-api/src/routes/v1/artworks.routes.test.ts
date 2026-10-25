@@ -317,4 +317,47 @@ describe("artworks routes", () => {
     expect(invalid.statusCode).toBe(400);
     await app.close();
   });
+
+  it("lists the Shop editions made from an original", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(deps.catalogue.listPublicArtworks);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/artworks?salesChannel=shop&sourceOriginal=harbour-original&limit=4",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(listPublicArtworks).toHaveBeenLastCalledWith({
+      limit: 4,
+      filter: {
+        sourceOriginalSlug: "harbour-original",
+        salesChannel: "shop",
+        artworkType: "edition",
+      },
+    });
+    await app.close();
+  });
+
+  it("returns the edition's specs and its linked original", async () => {
+    const deps = createCatalogueDeps();
+    deps.catalogue.getPublicArtwork = async () =>
+      mockArtworkDetail({
+        printPaper: "Somerset Satin 410gsm",
+        printSize: "60 × 50 cm",
+        sourceOriginalSlug: "harbour-original",
+      });
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const response = await app.inject({ method: "GET", url: "/v1/artworks/demo" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      printPaper: "Somerset Satin 410gsm",
+      printSize: "60 × 50 cm",
+      sourceOriginalSlug: "harbour-original",
+    });
+    await app.close();
+  });
 });

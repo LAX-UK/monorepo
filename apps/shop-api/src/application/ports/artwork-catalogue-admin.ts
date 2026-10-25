@@ -52,6 +52,8 @@ export type ArtworkEditableFields = {
   saleState: AdminArtworkSaleState;
   salesChannel: AdminArtworkChannel;
   images: ReadonlyArray<{ mediaKey: string; alt: string | null }>;
+  /** The original an edition was made from; null clears it, undefined leaves it unchanged. */
+  sourceOriginalArtworkId?: string | null | undefined;
   seoTitle: string | null;
   seoDescription: string | null;
 };

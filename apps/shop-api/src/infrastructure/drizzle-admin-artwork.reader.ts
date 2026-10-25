@@ -165,7 +165,8 @@ export function createDrizzleAdminArtworkReader(
         .where(eq(shopArtwork.id, artworkId))
         .limit(1);
       if (!row) return null;
-      const [images, editions] = await Promise.all([
+      const sourceOriginalId = row.artwork.sourceOriginalArtworkId;
+      const [images, editions, sourceOriginal] = await Promise.all([
         db
           .select({ mediaKey: shopArtworkImage.mediaKey, alt: shopArtworkImage.alt })
           .from(shopArtworkImage)
@@ -175,6 +176,18 @@ export function createDrizzleAdminArtworkReader(
           .select({ listingStatus: shopEdition.listingStatus, allocation: shopEdition.allocation })
           .from(shopEdition)
           .where(eq(shopEdition.artworkId, artworkId)),
+        sourceOriginalId
+          ? db
+              .select({
+                artworkId: shopArtwork.id,
+                slug: shopArtwork.slug,
+                title: shopArtwork.title,
+              })
+              .from(shopArtwork)
+              .where(eq(shopArtwork.id, sourceOriginalId))
+              .limit(1)
+              .then((rows) => rows[0] ?? null)
+          : null,
       ]);
       return toAdminArtworkDetail({
         artwork: row.artwork,
@@ -186,6 +199,7 @@ export function createDrizzleAdminArtworkReader(
         },
         images: images.map((image) => ({ ...image, url: resolveMediaUrl(image.mediaKey) })),
         editions,
+        sourceOriginal,
         resolveMediaUrl,
       });
     },
@@ -199,6 +213,7 @@ export function toAdminArtworkDetail(input: {
   artist: AdminArtworkDetail["artist"];
   images: AdminArtworkDetail["images"];
   editions: Parameters<typeof summariseEditionRun>[0];
+  sourceOriginal?: AdminArtworkDetail["sourceOriginal"];
   resolveMediaUrl: ResolveMediaUrl;
 }): AdminArtworkDetail {
   const { artwork, images } = input;
@@ -222,6 +237,7 @@ export function toAdminArtworkDetail(input: {
     seoDescription: artwork.seoDescription,
     images,
     importedImageUrl,
+    sourceOriginal: input.sourceOriginal ?? null,
     editions: {
       size: run.size,
       committed: run.committed,

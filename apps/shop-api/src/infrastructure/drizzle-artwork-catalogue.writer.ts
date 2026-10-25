@@ -19,6 +19,7 @@ import {
   artworkPublishBlockers,
   assertEditionPrice,
   assertLivePriceKept,
+  assertSourceOriginal,
 } from "@auction/shop-domain";
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
@@ -97,6 +98,30 @@ async function assertUploadedImages(
   }
 }
 
+/**
+ * Checks the original an edition is linked to. Throws 400 for an id that is not an artwork, and a
+ * domain error (409) when the link breaks a catalogue rule.
+ */
+async function assertLinkableOriginal(
+  tx: ShopTransactionEffects,
+  artwork: { artworkId: string | null; eligibleForEditionAllocation: boolean },
+  sourceOriginalArtworkId: string | null,
+): Promise<void> {
+  if (sourceOriginalArtworkId === null) return;
+  const [source] = await shopPhaseDbSession(tx)
+    .select({
+      artworkId: shopArtwork.id,
+      eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
+    })
+    .from(shopArtwork)
+    .where(eq(shopArtwork.id, sourceOriginalArtworkId))
+    .limit(1);
+  if (!source) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Choose an existing original", 400);
+  }
+  assertSourceOriginal({ ...artwork, source });
+}
+
 async function imageKeysOf(tx: ShopTransactionEffects, artworkId: string): Promise<string[]> {
   const rows = await shopPhaseDbSession(tx)
     .select({ mediaKey: shopArtworkImage.mediaKey })
@@ -163,6 +188,7 @@ function auditFields(artwork: Pick<ArtworkRow, keyof AuditedArtwork>, imageKeys:
     printPricePence: artwork.printPricePence,
     saleState: artwork.saleState,
     salesChannel: artwork.salesChannel,
+    sourceOriginalArtworkId: artwork.sourceOriginalArtworkId,
     seoTitle: artwork.seoTitle,
     seoDescription: artwork.seoDescription,
     images: imageKeys,
@@ -192,10 +218,15 @@ function onStorefront(artwork: Pick<ArtworkRow, "publishedAt" | "archivedAt">): 
 
 /**
  * Whether lax.art shows something different after this change: the artwork is (or was) on the
- * lax.art channel and was or is now visible there. Draft-only edits change nothing it serves.
+ * lax.art channel, or is an edition linked to an original there (lax.art lists it on the
+ * original's page), and was or is now visible. Draft-only edits change nothing it serves.
  */
 function changesArtStorefront(before: ArtworkRow, after: ArtworkRow): boolean {
-  const onArt = before.salesChannel === "art" || after.salesChannel === "art";
+  const onArt =
+    before.salesChannel === "art" ||
+    after.salesChannel === "art" ||
+    before.sourceOriginalArtworkId !== null ||
+    after.sourceOriginalArtworkId !== null;
   return onArt && (onStorefront(before) || onStorefront(after));
 }
 
@@ -299,6 +330,12 @@ export function createDrizzleArtworkCatalogueWriter(
               tx,
               input.images.map((image) => image.mediaKey),
             );
+            const sourceOriginalArtworkId = input.sourceOriginalArtworkId ?? null;
+            await assertLinkableOriginal(
+              tx,
+              { artworkId: null, eligibleForEditionAllocation: input.eligibleForEditionAllocation },
+              sourceOriginalArtworkId,
+            );
             const session = shopPhaseDbSession(tx);
             const importKey = `staff:${randomUUID()}`;
             const [artwork] = await withCatalogueSlugConflict(() =>
@@ -316,6 +353,7 @@ export function createDrizzleArtworkCatalogueWriter(
                   printPricePence: input.printPricePence,
                   saleState: input.saleState,
                   salesChannel: input.salesChannel,
+                  sourceOriginalArtworkId,
                   seoTitle: input.seoTitle,
                   seoDescription: input.seoDescription,
                   primaryImageUrl: resolveMediaUrl(input.images[0]?.mediaKey),
@@ -416,6 +454,20 @@ export function createDrizzleArtworkCatalogueWriter(
                 throw new ShopDomainError("The artist is archived; restore the artist first");
               }
             }
+            const sourceOriginalArtworkId =
+              input.sourceOriginalArtworkId === undefined
+                ? before.sourceOriginalArtworkId
+                : input.sourceOriginalArtworkId;
+            if (sourceOriginalArtworkId !== before.sourceOriginalArtworkId) {
+              await assertLinkableOriginal(
+                tx,
+                {
+                  artworkId: before.id,
+                  eligibleForEditionAllocation: before.eligibleForEditionAllocation,
+                },
+                sourceOriginalArtworkId,
+              );
+            }
             const beforeKeys = await imageKeysOf(tx, input.artworkId);
             const nextKeys = input.images.map((image) => image.mediaKey);
             await assertUploadedImages(
@@ -441,6 +493,7 @@ export function createDrizzleArtworkCatalogueWriter(
                 printPricePence: input.printPricePence,
                 saleState: input.saleState,
                 salesChannel: input.salesChannel,
+                sourceOriginalArtworkId,
                 seoTitle: input.seoTitle,
                 seoDescription: input.seoDescription,
                 primaryImageUrl,

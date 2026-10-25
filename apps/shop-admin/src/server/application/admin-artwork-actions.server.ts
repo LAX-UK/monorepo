@@ -6,6 +6,7 @@ import type {
   AdminArtworkBulkVisibilityResponse,
   AdminArtworkCreateBody,
   AdminArtworkDetail,
+  AdminArtworkList,
   AdminArtworkUpdateBody,
   AdminArtworkVersionResponse,
   AdminArtworkVisibilityAction,
@@ -150,6 +151,31 @@ export async function searchArtistOptions(query: string): Promise<ArtistOption[]
     label: artist.displayName,
     ...(artist.discipline ? { description: artist.discipline } : {}),
   }));
+}
+
+export type OriginalArtworkOption = { id: string; label: string; description?: string };
+
+/**
+ * Originals matching `query` for the source-original picker: works on lax.art with no edition
+ * run, by title or artist, newest first. Drafts are offered so an edition and its original can be
+ * prepared together; lax.art only links once both are live.
+ */
+export async function searchOriginalArtworkOptions(
+  query: string,
+): Promise<OriginalArtworkOption[]> {
+  const params = new URLSearchParams({ limit: "40", salesChannel: "art" });
+  const q = query.trim().slice(0, 100);
+  if (q) params.set("q", q);
+  const result = await fetchAdminJson<AdminArtworkList>(`artworks?${params.toString()}`);
+  if (result.status !== "ok") return [];
+  return result.data.items
+    .filter((artwork) => artwork.editionSize === 0 && artwork.state !== "archived")
+    .slice(0, 20)
+    .map((artwork) => ({
+      id: artwork.artworkId,
+      label: artwork.title,
+      description: artwork.artistName,
+    }));
 }
 
 export async function createArtist(input: {

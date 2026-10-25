@@ -40,6 +40,10 @@ export type ArtworkCatalogueRow = {
   printPricePence: number | null;
   totalEditionCount: number;
   availableEditionCount: number;
+  /** Detail reads only; list rows leave them unset. */
+  printPaper?: string | null;
+  printSize?: string | null;
+  sourceOriginalSlug?: string | null;
 };
 
 export function parseDbNumeric(value: string | null | undefined): number | null {
@@ -100,6 +104,9 @@ export function toPublicArtworkDetail(row: ArtworkCatalogueRow): ArtworkDetailRe
     widthCm: row.widthCm,
     depthCm: row.depthCm,
     hasCertificate: row.hasCertificate,
+    printPaper: row.printPaper?.trim() || null,
+    printSize: row.printSize?.trim() || null,
+    sourceOriginalSlug: row.sourceOriginalSlug ?? null,
     provenance: row.provenance,
     exhibitionHistory: row.exhibitionHistory,
     seoTitle: row.seoTitle,

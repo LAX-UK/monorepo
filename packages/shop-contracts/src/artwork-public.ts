@@ -118,6 +118,15 @@ export const PublicArtworkDetailSchema = Type.Object(
     objectType: Type.Optional(Type.Union([PublicArtworkObjectTypeSchema, Type.Null()])),
     rarity: Type.Optional(Type.Union([PublicArtworkRaritySchema, Type.Null()])),
     hasCertificate: Type.Optional(Type.Boolean()),
+    /** Paper the edition is printed on, as catalogued (e.g. "Somerset Satin 410gsm"). */
+    printPaper: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** Sheet size of the print, as catalogued, when it differs from the image size. */
+    printSize: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /**
+     * For an edition: the slug of the original it was made from, while that original is on
+     * lax.art. Null or absent when there is none to link to.
+     */
+    sourceOriginalSlug: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     provenance: Type.Optional(Type.Union([Type.String(), Type.Null()])),
     exhibitionHistory: Type.Optional(Type.Union([Type.String(), Type.Null()])),
     salesChannel: PublicArtworkSalesChannelSchema,

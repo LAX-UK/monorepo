@@ -26,6 +26,8 @@ export type NormalizedArtworkCatalogueFilters = {
   /** Any of these artists (OR). */
   artistSlugs?: string[];
   relatedToSlug?: string;
+  /** Editions made from this original (by the original's slug). */
+  sourceOriginalSlug?: string;
   salesChannel?: "shop" | "art";
   saleState?: ArtworkSaleStateFilter;
   q?: string;
@@ -46,6 +48,7 @@ export type RawArtworkCatalogueFilters = {
   categorySlug?: string;
   artistSlugs?: readonly string[];
   relatedToSlug?: string;
+  sourceOriginalSlug?: string;
   salesChannel?: "shop" | "art";
   saleState?: ArtworkSaleStateFilter;
   q?: string;
@@ -115,6 +118,9 @@ export function normalizeArtworkCatalogueFilters(
     ...(raw.categorySlug ? { categorySlug: raw.categorySlug } : {}),
     ...(artistSlugs.length > 0 ? { artistSlugs } : {}),
     ...(raw.relatedToSlug ? { relatedToSlug: raw.relatedToSlug } : {}),
+    ...(raw.sourceOriginalSlug?.trim()
+      ? { sourceOriginalSlug: raw.sourceOriginalSlug.trim() }
+      : {}),
     ...(salesChannel ? { salesChannel } : {}),
     ...(raw.saleState ? { saleState: raw.saleState } : {}),
     ...(raw.q?.trim() ? { q: raw.q.trim() } : {}),

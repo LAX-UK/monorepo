@@ -3,6 +3,7 @@ import { ShopDomainError } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { normalizeArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { StaleVersionError } from "../errors/stale-version-error.js";
 import { integrationSuffix, requireDefined } from "../test-support/shop-fixtures.js";
@@ -345,5 +346,115 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
         idempotencyKey: key(),
       }),
     ).rejects.toThrow("Originals are sold by enquiry");
+  });
+
+  it("links an edition to its original, and each storefront sees the link only while it is live", async () => {
+    const { writer, storefront } = setup();
+    const edition = await newArtwork("linked-edition");
+    const suffix = integrationSuffix("linked-original");
+    const original = await writer.createArtwork({
+      slug: `it-original-${suffix}`,
+      title: "Linked original",
+      artistId: edition.artistId,
+      yearCreated: 2023,
+      medium: "Oil on linen",
+      dimensions: null,
+      description: null,
+      eligibleForEditionAllocation: false,
+      saleState: "price_on_application",
+      salesChannel: "art",
+      images: [{ mediaKey: await uploadedImage(), alt: null }],
+      seoTitle: null,
+      seoDescription: null,
+      printPricePence: null,
+      canSetPrice: true,
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+
+    // Only an original can be the source, and only an edition can have one.
+    await expect(
+      writer.updateArtwork({
+        ...editable(await detailOf(original.artworkId)),
+        sourceOriginalArtworkId: edition.artworkId,
+      }),
+    ).rejects.toThrow(ShopDomainError);
+    await expect(
+      writer.updateArtwork({
+        ...editable(await detailOf(edition.artworkId)),
+        sourceOriginalArtworkId: "00000000-0000-4000-8000-000000000000",
+      }),
+    ).rejects.toThrow(ShopApiError);
+
+    await writer.updateArtwork({
+      ...editable(await detailOf(edition.artworkId)),
+      printPricePence: 12_000,
+      images: [{ mediaKey: await uploadedImage(), alt: null }],
+      sourceOriginalArtworkId: original.artworkId,
+    });
+    expect((await detailOf(edition.artworkId)).sourceOriginal).toEqual({
+      artworkId: original.artworkId,
+      slug: original.slug,
+      title: "Linked original",
+    });
+
+    // A save that does not send the field keeps the link.
+    await writer.updateArtwork({ ...editable(await detailOf(edition.artworkId)) });
+    expect((await detailOf(edition.artworkId)).sourceOriginal?.artworkId).toBe(original.artworkId);
+
+    const published = await writer.setVisibility({
+      artworkId: edition.artworkId,
+      action: "publish",
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    // lax.art lists the edition on the original's page, so it is asked to refresh.
+    expect(published.refreshesArt).toBe(true);
+
+    // The original is still a draft: Shop does not link to a page lax.art does not show.
+    const beforeOriginalLive = requireDefined(
+      await storefront.getPublicArtworkBySlug(edition.slug),
+      "edition",
+    );
+    expect(beforeOriginalLive.sourceOriginalSlug).toBeNull();
+
+    await writer.setVisibility({
+      artworkId: original.artworkId,
+      action: "publish",
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    const linked = requireDefined(await storefront.getPublicArtworkBySlug(edition.slug), "edition");
+    expect(linked.sourceOriginalSlug).toBe(original.slug);
+
+    const editionsOfOriginal = await storefront.listPublicArtworks({
+      limit: 4,
+      filter: normalizeArtworkCatalogueFilters({
+        sourceOriginalSlug: original.slug,
+        salesChannel: "shop",
+        artworkType: "edition",
+      }),
+    });
+    expect(editionsOfOriginal.items.map((item) => item.slug)).toEqual([edition.slug]);
+
+    // Clearing the link removes it from both pages.
+    await writer.updateArtwork({
+      ...editable(await detailOf(edition.artworkId)),
+      sourceOriginalArtworkId: null,
+    });
+    const unlinked = requireDefined(
+      await storefront.getPublicArtworkBySlug(edition.slug),
+      "edition",
+    );
+    expect(unlinked.sourceOriginalSlug).toBeNull();
+    const none = await storefront.listPublicArtworks({
+      limit: 4,
+      filter: normalizeArtworkCatalogueFilters({
+        sourceOriginalSlug: original.slug,
+        salesChannel: "shop",
+        artworkType: "edition",
+      }),
+    });
+    expect(none.items).toEqual([]);
   });
 });

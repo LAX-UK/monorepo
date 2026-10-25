@@ -3,6 +3,7 @@ import { ArtArtworkBreadcrumb } from "@/components/artwork/art-artwork-breadcrum
 import { ArtArtworkDetailSections } from "@/components/artwork/art-artwork-detail-sections";
 import { ArtArtworkGallery } from "@/components/artwork/art-artwork-gallery.client";
 import { ArtArtworkMobileGallery } from "@/components/artwork/art-artwork-mobile-gallery.client";
+import { ArtShopEditions } from "@/components/artwork/art-shop-editions";
 import { ArtSpecList } from "@/components/artwork/art-spec-list";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
@@ -161,6 +162,8 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
                 <MarketingShareButton url={shareUrl} title={vm.title} className="min-h-11 w-full" />
               </div>
             </div>
+
+            <ArtShopEditions editions={vm.shopEditions} />
           </section>
 
           <div className="flex min-w-0 flex-col gap-12 lg:col-start-1 lg:row-start-2 lg:max-w-[37.5rem]">

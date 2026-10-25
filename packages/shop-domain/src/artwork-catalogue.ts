@@ -52,6 +52,28 @@ export function assertEditionPrice(input: {
   }
 }
 
+/**
+ * An edition may name the original it was made from; the link drives "See the original" on Shop
+ * and "Editions available" on lax.art. Only an edition can have a source, the source must be an
+ * original (no edition run), and a work cannot be its own source.
+ */
+export function assertSourceOriginal(input: {
+  artworkId: string | null;
+  eligibleForEditionAllocation: boolean;
+  source: { artworkId: string; eligibleForEditionAllocation: boolean } | null;
+}): void {
+  if (!input.source) return;
+  if (!input.eligibleForEditionAllocation) {
+    throw new ShopDomainError("Only an edition can link to the original it was made from");
+  }
+  if (input.source.artworkId === input.artworkId) {
+    throw new ShopDomainError("An artwork cannot be its own original");
+  }
+  if (input.source.eligibleForEditionAllocation) {
+    throw new ShopDomainError("Choose an original artwork, not another edition");
+  }
+}
+
 export const ARTWORK_PUBLISH_BLOCKERS = [
   "archived",
   "artist_archived",

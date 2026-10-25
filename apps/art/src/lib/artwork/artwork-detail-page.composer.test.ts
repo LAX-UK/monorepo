@@ -240,6 +240,85 @@ describe("composeArtworkDetailPage", () => {
   });
 });
 
+describe("Editions available in LAX Shop", () => {
+  const SHOP_LINK = {
+    id: "shop" as const,
+    label: "LAX Shop",
+    href: "https://shop.thelax.art/",
+    current: false,
+    external: true,
+  };
+  const edition = artworkSummary({
+    slug: "warm-basket-print",
+    title: "Warm Basket (print)",
+    salesChannel: "shop",
+    eligibleForEditionAllocation: true,
+    saleState: "for_sale",
+    printPricePence: 12_000,
+    availability: { totalEditions: 24, state: "available" },
+  });
+
+  it("lists an original's Shop editions with their Shop links, size and availability", async () => {
+    const services = fakeArtServices();
+    services.ecosystem.crossProductLinks.mockReturnValue([SHOP_LINK]);
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.listShopEditionsOfOriginal.mockResolvedValue({ items: [edition] });
+
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+
+    expect(services.catalogue.listShopEditionsOfOriginal).toHaveBeenCalledWith("warm-basket", 4);
+    expect(result.kind === "ok" && result.vm.shopEditions).toEqual([
+      {
+        slug: "warm-basket-print",
+        title: "Warm Basket (print)",
+        href: "https://shop.thelax.art/artworks/warm-basket-print",
+        imageUrl: "/warm-basket.webp",
+        editionLine: "Limited edition of 24 · Available",
+        priceLabel: "£120.00",
+      },
+    ]);
+  });
+
+  it("leaves the section out without a Shop URL, for an edition, or when the read fails", async () => {
+    const noShop = fakeArtServices();
+    noShop.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    noShop.catalogue.listShopEditionsOfOriginal.mockResolvedValue({ items: [edition] });
+    const withoutShop = await composeArtworkDetailPage(noShop, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+    expect(withoutShop.kind === "ok" && withoutShop.vm.shopEditions).toEqual([]);
+
+    const failing = fakeArtServices();
+    failing.ecosystem.crossProductLinks.mockReturnValue([SHOP_LINK]);
+    failing.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    failing.catalogue.listShopEditionsOfOriginal.mockRejectedValue(new Error("down"));
+    const failed = await composeArtworkDetailPage(failing, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+    expect(failed.kind === "ok" && failed.vm.shopEditions).toEqual([]);
+
+    const ofEdition = fakeArtServices();
+    ofEdition.ecosystem.crossProductLinks.mockReturnValue([SHOP_LINK]);
+    ofEdition.catalogue.getArtwork.mockResolvedValue(
+      artworkDetail({ eligibleForEditionAllocation: true }),
+    );
+    await composeArtworkDetailPage(ofEdition, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+    expect(ofEdition.catalogue.listShopEditionsOfOriginal).not.toHaveBeenCalled();
+  });
+});
+
 describe("composeArtworkDetailMetadata", () => {
   it("builds canonical metadata", async () => {
     const services = fakeArtServices();

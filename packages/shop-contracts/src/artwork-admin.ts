@@ -96,6 +96,13 @@ const EditableArtworkFields = {
   salesChannel: AdminArtworkChannelSchema,
   /** In display order; the first is the primary image. */
   images: Type.Array(AdminArtworkImageInputSchema, { maxItems: ARTWORK_IMAGES_MAX }),
+  /**
+   * For an edition: the original artwork it was made from. Null clears the link; omitted leaves
+   * it as it is, so an older client never clears it by accident.
+   */
+  sourceOriginalArtworkId: Type.Optional(
+    Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
+  ),
   seoTitle: SeoTitleSchema,
   seoDescription: SeoDescriptionSchema,
 };
@@ -281,6 +288,17 @@ export const AdminArtworkDetailSchema = Type.Object({
   ),
   /** An image URL from an earlier import, shown until images are uploaded here. */
   importedImageUrl: Type.Union([Type.String(), Type.Null()]),
+  /** The original an edition was made from; absent from an older shop-api. */
+  sourceOriginal: Type.Optional(
+    Type.Union([
+      Type.Object({
+        artworkId: Type.String({ format: "uuid" }),
+        slug: Type.String(),
+        title: Type.String(),
+      }),
+      Type.Null(),
+    ]),
+  ),
   editions: Type.Object({
     size: Type.Integer({ minimum: 0 }),
     committed: Type.Integer({ minimum: 0 }),

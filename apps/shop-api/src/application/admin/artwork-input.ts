@@ -32,6 +32,9 @@ export function cleanArtworkFields(body: EditableBody): ArtworkEditableFields {
       mediaKey: image.mediaKey.trim(),
       alt: optional(image.alt),
     })),
+    ...(body.sourceOriginalArtworkId !== undefined
+      ? { sourceOriginalArtworkId: body.sourceOriginalArtworkId }
+      : {}),
     seoTitle: optional(body.seoTitle),
     seoDescription: optional(body.seoDescription),
   };

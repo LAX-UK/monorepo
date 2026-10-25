@@ -21,6 +21,11 @@ describe("ArtworkNotifyMeButton", () => {
     expect(screen.getByText(/We will notify you when this work is available online/i)).toBeTruthy();
   });
 
+  it("leaves focus where it is when the page loads already subscribed", () => {
+    render(<ArtworkNotifyMeButton slug="reed-study" initialSubscribed />);
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("shows success state after registration", async () => {
     registerMock.mockResolvedValueOnce({ ok: true, status: "registered" });
     render(<ArtworkNotifyMeButton slug="reed-study" initialSubscribed={false} />);

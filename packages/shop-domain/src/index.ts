@@ -1,6 +1,8 @@
 export {
   formatArtworkDimensionsCm,
+  formatArtworkSize,
   type ArtworkDimensionsCm,
+  type ArtworkSize,
 } from "./artwork-dimensions.js";
 export {
   ARTIST_ALLOCATION_COUNT,
@@ -47,6 +49,7 @@ export {
   assertEditionPrice,
   assertEditionRunUnchanged,
   assertLivePriceKept,
+  assertSourceOriginal,
   isArtworkSoldOut,
   summariseEditionRun,
   type ArtworkCatalogueState,

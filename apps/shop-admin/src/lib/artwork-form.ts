@@ -46,6 +46,9 @@ export type ArtworkFormValues = {
   priceText: string;
   saleState: AdminArtworkSaleState;
   salesChannel: AdminArtworkChannel;
+  /** For an edition: the original on lax.art it was made from, and its title for the picker. */
+  sourceOriginalId: string | null;
+  sourceOriginalTitle: string | null;
   images: ArtworkFormImage[];
   seoTitle: string;
   seoDescription: string;
@@ -104,6 +107,8 @@ export function emptyArtworkForm(): ArtworkFormValues {
     priceText: "",
     saleState: "for_sale",
     salesChannel: "shop",
+    sourceOriginalId: null,
+    sourceOriginalTitle: null,
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -125,6 +130,8 @@ export function artworkFormValues(detail: AdminArtworkDetail): ArtworkFormValues
     priceText: penceToText(detail.printPricePence),
     saleState: detail.saleState,
     salesChannel: detail.salesChannel,
+    sourceOriginalId: detail.sourceOriginal?.artworkId ?? null,
+    sourceOriginalTitle: detail.sourceOriginal?.title ?? null,
     images: detail.images.map((image) => ({
       mediaKey: image.mediaKey,
       url: image.url,
@@ -288,6 +295,8 @@ function editablePayload(
     ...(pricePence === null ? {} : { printPricePence: pricePence }),
     saleState: values.saleState,
     salesChannel: values.salesChannel,
+    // Only an edition links to an original; an original always sends no link.
+    sourceOriginalArtworkId: values.editionRun === "editions" ? values.sourceOriginalId : null,
     images: values.images.map((image) => ({ mediaKey: image.mediaKey, alt: text(image.alt) })),
     seoTitle: text(values.seoTitle),
     seoDescription: text(values.seoDescription),
@@ -327,6 +336,7 @@ function comparable(values: ArtworkFormValues) {
     price: parseArtworkPrice(values.priceText),
     saleState: values.saleState,
     salesChannel: values.salesChannel,
+    sourceOriginalId: values.sourceOriginalId,
     images: values.images.map((image) => [image.mediaKey, image.alt.trim()]),
     seoTitle: values.seoTitle.trim(),
     seoDescription: values.seoDescription.trim(),
