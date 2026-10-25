@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildArtistsActiveFilterChips,
-  buildConditionReportsActiveFilterChips,
   buildFulfilmentActiveFilterChips,
   buildLotsActiveFilterChips,
   buildSalesActiveFilterChips,
@@ -75,17 +74,6 @@ describe("buildSalesActiveFilterChips", () => {
       { status: "draft", setupLens: true, activeLensId: "setup" },
     );
     expect(chips.some((c) => c.id === "lens")).toBe(true);
-  });
-});
-
-describe("buildConditionReportsActiveFilterChips", () => {
-  it("shows lens chip when not on open queue", () => {
-    const chips = buildConditionReportsActiveFilterChips(
-      { lens: "pending" },
-      { activeLens: "pending" },
-    );
-    expect(chips).toHaveLength(1);
-    expect(chips[0]?.clearHref).not.toContain("lens=");
   });
 });
 

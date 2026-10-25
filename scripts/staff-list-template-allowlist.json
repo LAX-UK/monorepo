@@ -21,7 +21,6 @@
   "pending": [
     { "page": "bid-admin:(platform)/artists/page.tsx" },
     { "page": "bid-admin:(platform)/clients/page.tsx" },
-    { "page": "bid-admin:(platform)/condition-reports/page.tsx" },
     { "page": "bid-admin:(platform)/event-rsvps/page.tsx" },
     { "page": "bid-admin:(platform)/invitations/page.tsx" },
     { "page": "bid-admin:(platform)/lot-fulfilment/page.tsx" },

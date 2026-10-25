@@ -135,14 +135,15 @@ export const adminRejectSaleRegistrationAction = _adminRejectSaleRegistrationAct
 import { adminUpdateSaleRegistrationBidLimitAction as _adminUpdateSaleRegistrationBidLimitAction } from "./admin/admin-sale-registrations";
 export const adminUpdateSaleRegistrationBidLimitAction = _adminUpdateSaleRegistrationBidLimitAction;
 
-import { adminMarkConditionReportInProgressAction as _adminMarkConditionReportInProgressAction } from "./admin/admin-condition-reports";
-export const adminMarkConditionReportInProgressAction = _adminMarkConditionReportInProgressAction;
-
-import { adminFulfillConditionReportAction as _adminFulfillConditionReportAction } from "./admin/admin-condition-reports";
-export const adminFulfillConditionReportAction = _adminFulfillConditionReportAction;
-
-import { adminDeclineConditionReportAction as _adminDeclineConditionReportAction } from "./admin/admin-condition-reports";
-export const adminDeclineConditionReportAction = _adminDeclineConditionReportAction;
+import {
+  adminDeclineConditionReportResultAction as _adminDeclineConditionReportResultAction,
+  adminFulfilConditionReportResultAction as _adminFulfilConditionReportResultAction,
+  adminMarkConditionReportInProgressResultAction as _adminMarkConditionReportInProgressResultAction,
+} from "./admin/admin-condition-reports";
+export const adminMarkConditionReportInProgressResultAction =
+  _adminMarkConditionReportInProgressResultAction;
+export const adminFulfilConditionReportResultAction = _adminFulfilConditionReportResultAction;
+export const adminDeclineConditionReportResultAction = _adminDeclineConditionReportResultAction;
 
 import { adminLotFulfilmentReleaseAction as _adminLotFulfilmentReleaseAction } from "./admin/admin-lot-fulfilment";
 export const adminLotFulfilmentReleaseAction = _adminLotFulfilmentReleaseAction;

@@ -1,5 +1,4 @@
 export { buildArtistsActiveFilterChips } from "@/lib/admin/filter-chips/artists";
-export { buildConditionReportsActiveFilterChips } from "@/lib/admin/filter-chips/condition-reports";
 export {
   FULFILMENT_STATUS_LABELS,
   buildFulfilmentActiveFilterChips,
