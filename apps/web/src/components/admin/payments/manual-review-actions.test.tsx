@@ -1,6 +1,5 @@
 import type { ManualReviewStaffRow } from "@/lib/admin/finance/payments-staff-list.vm";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useManualReviewActions } from "./manual-review-actions";
 
@@ -9,13 +8,6 @@ const refundAction = vi.fn();
 const releaseAction = vi.fn();
 const notifySuccess = vi.fn();
 
-vi.mock("@auction/ui/components/dialog", () => ({
-  Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
-    open ? <dialog open>{children}</dialog> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
-}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/actions/admin/admin-manual-review", () => ({
   refundManualReviewPaymentResultAction: (...args: unknown[]) => refundAction(...args),
