@@ -16,8 +16,8 @@ export const SHOP_HELP_LINK: ShopPolicyLink = {
 };
 
 /**
- * Privacy and cookies are group policies for London Auction Xchange LTD, hosted on LAX Bid
- * (lax.art's legal pages are still placeholders).
+ * Privacy and cookies still link to the notices published on LAX Bid, which name Bid's operator.
+ * LAX Shop (operated by London Art Exchange Ltd) needs its own before launch.
  */
 const groupPolicyRoutes = [
   { label: "Privacy notice", pathname: "/privacy" },

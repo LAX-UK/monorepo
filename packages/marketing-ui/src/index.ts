@@ -406,3 +406,18 @@ export {
   type MarketingLinkListItem,
   type MarketingLinkListProps,
 } from "./marketing-link-list.js";
+export {
+  LegalDocument,
+  type LegalDocumentProps,
+  LegalHeading,
+  type LegalHeadingProps,
+  type LegalLastUpdated,
+  LegalNotice,
+  type LegalNoticeProps,
+  LegalPlaceholder,
+  LegalSection,
+  type LegalSectionProps,
+} from "./legal/legal-document.js";
+export { LegalEntityDetails, type LegalEntityDetailsProps } from "./legal/legal-entity-details.js";
+export { LegalHub, type LegalHubLink, type LegalHubProps } from "./legal/legal-hub.js";
+export { LegalToc, type LegalTocItem, type LegalTocProps } from "./legal/legal-toc.js";

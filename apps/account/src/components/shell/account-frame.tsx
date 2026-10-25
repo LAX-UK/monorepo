@@ -1,6 +1,7 @@
 import { Button } from "@/components/account-button";
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { AccountNavItemVm, ProductBarItemVm } from "@/server/domain/account-nav.vm";
+import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
 import { LaxLockup } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
@@ -99,7 +100,7 @@ export function AccountFrame({
   );
 }
 
-/** Privacy and help only: Bid publishes the policies that cover the LAX account. */
+/** Who provides LAX Account, then privacy and help (Bid publishes the policies that cover it). */
 export function AccountFooter({
   support,
   bare = false,
@@ -112,7 +113,9 @@ export function AccountFooter({
     <footer
       className={`${bare ? "" : CONTAINER} flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 pb-8 text-xs text-on-surface-variant`}
     >
-      <span>© LAX</span>
+      <p className="m-0">
+        © {siteCopyrightYear()} LAX. {legalOperatorSentence("account")}
+      </p>
       {support ? (
         <nav aria-label="Legal and help" className="flex flex-wrap gap-x-6 gap-y-2">
           <a

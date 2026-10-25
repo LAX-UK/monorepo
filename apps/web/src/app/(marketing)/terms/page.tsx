@@ -4,13 +4,15 @@ import {
   SITE_BUYERS_PREMIUM_ABOVE_THRESHOLD,
   SITE_BUYERS_PREMIUM_STANDARD,
   SITE_BUYERS_PREMIUM_THRESHOLD,
-  SITE_LEGAL_NAME,
   SITE_NAME,
   SITE_UK_VAT_RATE,
+  legalEntityFor,
 } from "@/lib/brand";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+
+const OPERATOR = legalEntityFor("bid");
 
 export const metadata: Metadata = metadataForStatic({
   title: "Conditions of Business",
@@ -517,9 +519,10 @@ export default function TermsPage() {
           {SITE_NAME}.
         </p>
         <p>
-          {SITE_NAME} is operated by {SITE_LEGAL_NAME}, a company registered in England and Wales
+          {SITE_NAME} is operated by {OPERATOR.name}, a company registered in{" "}
+          {OPERATOR.registeredIn}, whose registered office is at {OPERATOR.registeredAddress.inline}{" "}
           (the “Company”, “we”, “us” or “our”). References to “{SITE_NAME}” in these Conditions mean{" "}
-          {SITE_LEGAL_NAME}. We are registered with HMRC as an art market participant for
+          {OPERATOR.name}. We are registered with HMRC as an art market participant for
           anti-money-laundering purposes.
         </p>
         <p>

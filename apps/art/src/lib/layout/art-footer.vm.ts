@@ -1,5 +1,6 @@
 import { ART_COOKIE_SETTINGS_HASH } from "@/lib/analytics/art-consent";
 import type { ArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
+import { ART_LEGAL_LINKS } from "@/lib/layout/art-legal-links";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingFooterColumn } from "@auction/marketing-ui";
 
@@ -65,15 +66,9 @@ export function buildArtFooterVm(input: {
     columns.push({ id: "lax-products", title: "LAX products", links: laxProductLinks });
   }
 
-  const legalLinks = [
-    { label: "Privacy policy", href: "/legal/privacy" },
-    { label: "Cookie policy", href: "/legal/cookies" },
-    { label: "Returns policy", href: "/legal/returns" },
-    { label: "Shipping & delivery", href: "/legal/shipping" },
-    { label: "Terms & conditions", href: "/legal/terms" },
-    { label: "Accessibility", href: "/legal/accessibility" },
-    { label: "Modern slavery statement", href: "/legal/modern-slavery" },
-  ];
+  const legalLinks: Array<{ label: string; href: string }> = ART_LEGAL_LINKS.map(
+    ({ label, href }) => ({ label, href }),
+  );
   if (input.cookieSettings) {
     legalLinks.push({ label: "Cookie preferences", href: ART_COOKIE_SETTINGS_HASH });
   }

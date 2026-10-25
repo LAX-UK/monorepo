@@ -1,5 +1,5 @@
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
-import { SITE_LEGAL_NAME } from "@auction/branding";
+import { legalEntityFor } from "@auction/branding";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { SHOP_POLICY_DOCUMENTS, SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES } from "./index";
@@ -54,11 +54,12 @@ describe("Shop policy documents", () => {
 
   it("names the seller and marks every unconfirmed company detail", () => {
     const terms = pageText("terms");
-    expect(terms).toContain(SITE_LEGAL_NAME);
+    expect(terms).toContain("London Art Exchange Ltd");
+    expect(terms).toContain(legalEntityFor("shop").registeredAddress.inline);
+    expect(terms).not.toContain("London Auction Xchange");
     for (const detail of [
-      "company number",
-      "registered office address",
-      "VAT registration number",
+      "London Art Exchange Ltd company number",
+      "London Art Exchange Ltd VAT registration number",
       "Shop customer service email address",
     ]) {
       expect(shopPolicyPlaceholders(SHOP_POLICY_DOCUMENTS.terms)).toContain(detail);

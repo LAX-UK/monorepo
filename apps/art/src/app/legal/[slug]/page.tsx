@@ -1,7 +1,5 @@
-import {
-  ArtEditorialPageView,
-  editorialPageMetadata,
-} from "@/components/editorial/art-editorial-page-view";
+import { editorialPageMetadata } from "@/components/editorial/art-editorial-page-view";
+import { ArtLegalPageView } from "@/components/legal/art-legal-page-view";
 import { loadEditorialPage } from "@/lib/editorial/editorial-page.loader.server";
 import type { Metadata } from "next";
 
@@ -19,5 +17,5 @@ export async function generateMetadata({ params }: LegalPageProps): Promise<Meta
 
 export default async function LegalPage({ params }: LegalPageProps) {
   const result = await loadEditorialPage((await params).slug);
-  return <ArtEditorialPageView result={result} routeFor={legalRoute} notFoundWhenDisabled />;
+  return <ArtLegalPageView result={result} routeFor={legalRoute} />;
 }

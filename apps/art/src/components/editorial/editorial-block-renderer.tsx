@@ -4,6 +4,8 @@ import { ArtEditorialLink } from "@/components/editorial/art-editorial-link";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { EditorialBodyVm, EditorialRailVm } from "@/lib/editorial/editorial-body.composer";
 import {
+  LegalHeading,
+  type LegalTocItem,
   MarketingInfoStrip,
   MarketingPullQuote,
   MarketingReveal,
@@ -23,7 +25,7 @@ import {
   AccordionTrigger,
 } from "@auction/ui/components/accordion";
 import { Button } from "@auction/ui/components/button";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 type BlockOf<T extends EditorialBlock["type"]> = Extract<EditorialBlock, { type: T }>;
 
@@ -281,5 +283,63 @@ export function EditorialBlockRenderer({
         ) : null;
       })}
     </div>
+  );
+}
+
+/** Stable anchor id for a level-2 heading on a legal page. */
+function legalHeadingId(text: string, index: number): string {
+  const slug = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return slug ? `section-${slug}` : `section-${index}`;
+}
+
+/** "On this page" entries for a legal body: its level-2 headings. */
+export function editorialLegalToc(body: EditorialBodyVm): LegalTocItem[] {
+  return body.blocks.flatMap((block, index) =>
+    block.type === "heading" && block.level === 2
+      ? [{ id: legalHeadingId(block.text, index), label: block.text }]
+      : [],
+  );
+}
+
+/**
+ * A CMS body inside the shared `LegalDocument`: plain paragraphs and headings so the legal layout
+ * sets the type, level-2 headings with anchors, and no reveal motion. Other blocks render as usual.
+ */
+export function EditorialLegalBody({ body }: { body: EditorialBodyVm }) {
+  return (
+    <>
+      {body.blocks.map((block, index) => {
+        const key = `${block.type}-${index}`;
+        if (block.type === "heading") {
+          if (block.level === 2) {
+            return (
+              <LegalHeading key={key} id={legalHeadingId(block.text, index)}>
+                {block.text}
+              </LegalHeading>
+            );
+          }
+          return block.level === 3 ? (
+            <h3 key={key}>{block.text}</h3>
+          ) : (
+            <h4 key={key}>{block.text}</h4>
+          );
+        }
+        if (block.type === "richText") {
+          return (
+            <p key={key}>
+              <InlineSpans spans={block.spans} />
+            </p>
+          );
+        }
+        return (
+          <Fragment key={key}>
+            {renderBlock(block, { idPrefix: "legal", index, rail: body.rails[index] })}
+          </Fragment>
+        );
+      })}
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
 import type { ArtFooterVm } from "@/lib/layout/art-footer.vm";
-import { FOCUS_RING, siteCopyrightLine } from "@auction/branding";
+import { FOCUS_RING, productCopyrightLine } from "@auction/branding";
 import {
   LaxLogo,
   MarketingFooter,
@@ -54,7 +54,7 @@ export function ArtFooter({ vm }: ArtFooterProps) {
     <MarketingFooter
       className="pb-[var(--art-bottom-nav-height)] md:pb-0"
       logo={
-        <Link href="/" className={cn("inline-flex", FOCUS_RING)} aria-label="LAX Art home">
+        <Link href="/" className={cn("inline-flex", FOCUS_RING)} aria-label="lax.art home">
           <LaxLogo className="art-footer__logo" />
         </Link>
       }
@@ -67,7 +67,7 @@ export function ArtFooter({ vm }: ArtFooterProps) {
           <MarketingFooterSocials />
         </div>
       }
-      copyright={siteCopyrightLine()}
+      copyright={productCopyrightLine("art")}
       renderLink={renderLink}
     />
   );

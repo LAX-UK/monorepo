@@ -1,12 +1,19 @@
-import { ShopPageHeader } from "@/components/shop-page-header";
 import type { ShopPolicyBlock, ShopPolicyDocument, ShopPolicySection } from "@/content/policies";
 import type { ShopPolicyRelease } from "@/content/policies/shop-policy-status";
 import { parseShopPolicyText } from "@/content/policies/shop-policy-text";
-import { MarketingDetailShell } from "@auction/marketing-ui";
+import {
+  LegalDocument,
+  LegalHub,
+  type LegalHubLink,
+  LegalNotice,
+  LegalPlaceholder,
+  LegalSection,
+  MarketingDetailShell,
+} from "@auction/marketing-ui";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
-/** Long pages get a table of contents; short ones are read top to bottom. */
+/** Long pages get "On this page"; short ones are read top to bottom. */
 const TOC_MIN_SECTIONS = 4;
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
@@ -31,18 +38,14 @@ function PolicyText({ text }: { text: string }) {
           case "strong":
             return <strong key={key}>{part.value}</strong>;
           case "placeholder":
-            return (
-              <mark key={key} className="shop-policy__placeholder">
-                [TO CONFIRM: {part.value}]
-              </mark>
-            );
+            return <LegalPlaceholder key={key}>[TO CONFIRM: {part.value}]</LegalPlaceholder>;
           case "link":
             return part.href.startsWith("#") ? (
-              <a key={key} href={part.href} className="shop-policy__link shop-focus-ring">
+              <a key={key} href={part.href} className="lax-legal__link">
                 {part.label}
               </a>
             ) : (
-              <Link key={key} href={part.href} className="shop-policy__link shop-focus-ring">
+              <Link key={key} href={part.href} className="lax-legal__link">
                 {part.label}
               </Link>
             );
@@ -61,23 +64,19 @@ function PolicyBlock({ block }: { block: ShopPolicyBlock }): ReactNode {
         </p>
       );
     case "subheading":
-      return <h3 className="shop-policy__subheading">{block.text}</h3>;
+      return <h3>{block.text}</h3>;
     case "list": {
       const items = block.items.map((item) => (
         <li key={item}>
           <PolicyText text={item} />
         </li>
       ));
-      return block.ordered ? (
-        <ol className="shop-policy__list shop-policy__list--ordered">{items}</ol>
-      ) : (
-        <ul className="shop-policy__list">{items}</ul>
-      );
+      return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>;
     }
     case "table":
       return (
-        <div className="shop-policy__table-wrap">
-          <table className="shop-policy__table">
+        <div className="lax-legal__table-wrap">
+          <table className="lax-legal__table">
             <caption className="sr-only">{block.caption}</caption>
             <thead>
               <tr>
@@ -113,8 +112,8 @@ function PolicyBlock({ block }: { block: ShopPolicyBlock }): ReactNode {
       );
     case "panel":
       return (
-        <section className="shop-policy__panel" aria-label={block.title}>
-          <p className="shop-policy__panel-title">{block.title}</p>
+        <section className="lax-legal__panel" aria-label={block.title}>
+          <p className="lax-legal__panel-title">{block.title}</p>
           {block.blocks.map((inner, index) => (
             <PolicyBlock key={`${inner.type}-${index}`} block={inner} />
           ))}
@@ -124,23 +123,12 @@ function PolicyBlock({ block }: { block: ShopPolicyBlock }): ReactNode {
 }
 
 function PolicySection({ section }: { section: ShopPolicySection }) {
-  const headingId = `${section.id}-heading`;
   return (
-    <section id={section.id} className="shop-policy__section" aria-labelledby={headingId}>
-      <h2 id={headingId} className="shop-policy__heading">
-        {section.heading}
-        <a
-          href={`#${section.id}`}
-          className="shop-policy__anchor shop-focus-ring"
-          aria-label={`Link to “${section.heading}”`}
-        >
-          #
-        </a>
-      </h2>
+    <LegalSection id={section.id} heading={section.heading}>
       {section.blocks.map((block, index) => (
         <PolicyBlock key={`${block.type}-${index}`} block={block} />
       ))}
-    </section>
+    </LegalSection>
   );
 }
 
@@ -149,63 +137,40 @@ export type ShopPolicyPageProps = {
   release: ShopPolicyRelease;
   /** True off production while the page awaits legal approval. */
   draft: boolean;
+  /** Shop's policy pages that may be linked on this deployment, for the policy list. */
+  hubLinks: readonly LegalHubLink[];
 };
 
-export function ShopPolicyPage({ document, release, draft }: ShopPolicyPageProps) {
-  const showToc = document.sections.length >= TOC_MIN_SECTIONS;
+export function ShopPolicyPage({ document, release, draft, hubLinks }: ShopPolicyPageProps) {
+  const toc =
+    document.sections.length >= TOC_MIN_SECTIONS
+      ? document.sections.map((section) => ({ id: section.id, label: section.heading }))
+      : undefined;
   return (
-    <MarketingDetailShell shellClassName="shop-page shop-page--policy">
-      <article className="shop-policy" data-policy={document.slug}>
-        <ShopPageHeader
+    <MarketingDetailShell wrapChildren={false} data-policy={document.slug}>
+      <LegalHub label="Shop policies" links={hubLinks}>
+        <LegalDocument
           title={document.title}
-          breadcrumbs={[{ label: "Shop", href: "/" }, { label: document.title }]}
-        />
-        {draft ? (
-          <div className="shop-policy__draft" role="note" aria-label="Draft notice">
-            <p className="shop-policy__draft-title">Draft for legal review — not yet approved</p>
-            <p>
-              Highlighted <mark className="shop-policy__placeholder">[TO CONFIRM]</mark> items still
-              need to be filled in. This page is not shown on the live site until it is approved.
-            </p>
-          </div>
-        ) : null}
-        <p className="shop-policy__meta">
-          Last updated{" "}
-          <time dateTime={release.lastUpdated}>{formatPolicyDate(release.lastUpdated)}</time>
-          <span aria-hidden="true"> · </span>
-          Version {release.version}
-        </p>
-        <div
-          className={
-            showToc ? "shop-policy__layout shop-policy__layout--toc" : "shop-policy__layout"
+          lastUpdated={{ label: formatPolicyDate(release.lastUpdated), iso: release.lastUpdated }}
+          version={release.version}
+          notice={
+            draft ? (
+              <LegalNotice title="Draft for legal review — not yet approved">
+                <p>
+                  Highlighted <LegalPlaceholder>[TO CONFIRM]</LegalPlaceholder> items still need to
+                  be filled in. This page is not shown on the live site until it is approved.
+                </p>
+              </LegalNotice>
+            ) : null
           }
+          lead={<PolicyText text={document.summary} />}
+          {...(toc ? { toc } : {})}
         >
-          {showToc ? (
-            <nav className="shop-policy__toc" aria-labelledby="shop-policy-toc-heading">
-              <h2 id="shop-policy-toc-heading" className="shop-policy__toc-heading">
-                On this page
-              </h2>
-              <ol>
-                {document.sections.map((section) => (
-                  <li key={section.id}>
-                    <a href={`#${section.id}`} className="shop-policy__toc-link shop-focus-ring">
-                      {section.heading}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          ) : null}
-          <div className="shop-policy__body">
-            <p className="shop-policy__lead">
-              <PolicyText text={document.summary} />
-            </p>
-            {document.sections.map((section) => (
-              <PolicySection key={section.id} section={section} />
-            ))}
-          </div>
-        </div>
-      </article>
+          {document.sections.map((section) => (
+            <PolicySection key={section.id} section={section} />
+          ))}
+        </LegalDocument>
+      </LegalHub>
     </MarketingDetailShell>
   );
 }

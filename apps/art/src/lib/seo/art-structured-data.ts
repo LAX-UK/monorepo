@@ -3,10 +3,11 @@ import type { ArtEditorialStoryDetail } from "@/lib/editorial/art-editorial.type
 import { helpArticleHref, helpCategoryHref } from "@/lib/help/help.vm";
 import {
   type JsonLd,
+  LAX_PRODUCT_NAMES,
   LAX_SOCIAL_LINKS,
-  SITE_BUSINESS_ADDRESS,
   SITE_COMPANY_NAME,
   breadcrumbJsonLd,
+  legalEntityFor,
   localBusinessJsonLd,
   organizationJsonLd,
   personJsonLd,
@@ -19,7 +20,7 @@ import {
   editorialBlocksPlainText,
 } from "@auction/shop-contracts";
 
-export const ART_SITE_NAME = "LAX Art";
+export const ART_SITE_NAME = LAX_PRODUCT_NAMES.art;
 const ART_SITE_DESCRIPTION =
   "London Art Exchange gallery: original paintings, prints and sculpture from emerging and established artists.";
 const SCHEMA = "https://schema.org";
@@ -53,13 +54,15 @@ function breadcrumbs(siteUrl: URL, items: { name: string; path: string }[]): Jso
 export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
   const url = siteUrl.origin;
   const logo = absolute(siteUrl, "/brand/lax-logo.svg");
+  const operator = legalEntityFor("art");
   const shared = {
     name: ART_SITE_NAME,
+    legalName: operator.name,
     alternateName: [SITE_COMPANY_NAME],
     url,
     description: ART_SITE_DESCRIPTION,
     logo,
-    address: SITE_BUSINESS_ADDRESS,
+    address: operator.registeredAddress.postal,
     sameAs: Object.values(LAX_SOCIAL_LINKS),
   };
   return [

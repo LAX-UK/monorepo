@@ -1,137 +1,67 @@
-import { PolicyMobileToc } from "@/components/marketing/policy-mobile-toc";
 import { SITE_NAME } from "@/lib/brand";
-import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
-import { DisplayHeading, cn } from "@auction/ui";
+import { LegalDocument, LegalHeading, type LegalHeadingProps } from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
 import type { TocNavItem } from "@auction/ui";
-import { TocNav } from "@auction/ui";
 import type { HTMLAttributes, ReactNode } from "react";
 
 type Props = {
   title: string;
-  /** Visible breadcrumb trail rendered above the kicker/title. */
+  /** Visible breadcrumb trail rendered above the eyebrow and title. */
   breadcrumb?: ReactNode;
-  /** Eyebrow rendered above the title. Pass a string for the historical
-   * styled <p>; pass any ReactNode to fully customise the slot; pass
-   * `null` to omit it (mockup-minimal pages).
-   */
+  /** Line above the title. Defaults to the site name; `null` omits it. */
   kicker?: ReactNode | null;
-  /** Optional table of contents (anchor ids must exist in `children`) */
+  /** "On this page" entries; every id must exist in `children`. */
   toc?: readonly TocNavItem[];
-  /** ISO date string or display text */
+  /** Display date, for example "17 June 2026". */
   lastUpdated?: string;
-  /** When true, draw a soft divider beneath the lastUpdated line. */
+  /** Kept for existing callers: the shared header always rules off the title block. */
   dividerUnderDate?: boolean;
+  /** Inside `PolicyHubLayout`, which supplies `<main>` and the page gutters. */
   embedded?: boolean;
   children: ReactNode;
 };
 
-function renderKicker(kicker: Props["kicker"]): ReactNode {
-  if (kicker === null) return null;
-  if (kicker === undefined) {
-    return (
-      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        {SITE_NAME}
-      </p>
-    );
-  }
-  if (typeof kicker === "string") {
-    return (
-      <p className="mb-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        {kicker}
-      </p>
-    );
-  }
-  return kicker;
-}
-
+/** Bid's policy and information pages, on the reading layout shared by every LAX product. */
 export function LegalPage({
   title,
   breadcrumb,
   kicker,
   toc,
   lastUpdated,
-  dividerUnderDate,
   embedded,
   children,
 }: Props) {
-  const content = (
-    <>
-      {breadcrumb ? <div className="mb-4">{breadcrumb}</div> : null}
-      {renderKicker(kicker)}
-      <DisplayHeading as="h1" size="lg" className="mb-6 tracking-tight">
-        {title}
-      </DisplayHeading>
-      {lastUpdated ? (
-        <p
-          className={cn(
-            "mb-8 font-footer-links text-xs text-on-surface-variant",
-            dividerUnderDate && "border-b border-divider-soft pb-6",
-          )}
-        >
-          Last updated: {lastUpdated}
-        </p>
-      ) : null}
-      {toc && toc.length > 0 ? (
-        <>
-          <PolicyMobileToc items={toc} />
-          <div className="mb-10 hidden lg:float-right lg:mb-4 lg:ml-8 lg:block lg:w-56 lg:pl-2">
-            <TocNav items={toc} sticky={false} />
-          </div>
-        </>
-      ) : null}
-      <div className="clear-both space-y-6 font-body text-sm leading-relaxed text-on-surface-variant md:text-base">
-        {children}
-      </div>
-    </>
+  const document = (
+    <LegalDocument
+      title={title}
+      breadcrumb={breadcrumb}
+      eyebrow={kicker === undefined ? SITE_NAME : kicker}
+      {...(lastUpdated ? { lastUpdated: { label: lastUpdated } } : {})}
+      {...(toc ? { toc: toc.map((item) => ({ id: item.id, label: item.label })) } : {})}
+    >
+      {children}
+    </LegalDocument>
   );
 
-  if (embedded) {
-    return (
-      <section className={cn("legal-print max-w-3xl py-12", MARKETING_CATALOG_GUTTER)}>
-        {content}
-      </section>
-    );
-  }
+  if (embedded) return document;
 
   return (
-    <main
-      id="main-content"
-      className={cn(
-        "legal-print mx-auto max-w-3xl pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] lg:pt-32",
-        MARKETING_CATALOG_GUTTER,
-      )}
-    >
-      {content}
+    <main id="main-content" className="lax-legal-hub pt-[calc(var(--header-height)+1.5rem)]">
+      {document}
     </main>
   );
 }
 
-/** Mockup-aligned heading for legal/marketing copy. Smaller than the historical
- * `font-headline text-2xl` h2 so dense legal pages match the LAX HTML mocks.
- */
-export function LegalH2({ className, children, id, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
-  return (
-    <h2
-      id={id}
-      className={cn(
-        "mt-10 mb-3 font-headline font-medium text-on-surface text-[length:var(--text-legal-h2)] leading-snug tracking-tight",
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </h2>
-  );
+/** Section heading for policy copy; with an `id` it carries a "#" link to itself. */
+export function LegalH2({ className, ...rest }: LegalHeadingProps) {
+  return <LegalHeading className={className} {...rest} />;
 }
 
-/** Mockup-aligned unordered list for legal/marketing copy. */
+/** Bulleted list for policy copy, also used outside `LegalPage` (sell journey, FAQ). */
 export function LegalUL({ className, children, ...rest }: HTMLAttributes<HTMLUListElement>) {
   return (
     <ul
-      className={cn(
-        "list-disc space-y-2 pl-5 text-on-surface-variant marker:text-on-surface-variant",
-        className,
-      )}
+      className={cn("list-disc space-y-2 pl-5 marker:text-on-surface-variant", className)}
       {...rest}
     >
       {children}
