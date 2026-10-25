@@ -25,6 +25,8 @@ export type MarketingListToolbarProps = {
   activeFiltersRow?: ReactNode;
   /** Override sticky `top` offset (e.g. sale page stacks below anchor tabs). */
   stickyTopClassName?: string;
+  /** False when the toolbar sits inside a column that already has page gutters. */
+  gutter?: boolean;
   className?: string;
 };
 
@@ -40,6 +42,7 @@ export function MarketingListToolbar({
   secondaryRow,
   activeFiltersRow,
   stickyTopClassName = "top-[var(--header-height,4rem)]",
+  gutter = true,
   className,
 }: MarketingListToolbarProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -80,7 +83,7 @@ export function MarketingListToolbar({
         <div
           className={cn(
             "mx-auto max-w-[var(--container-max,1440px)] py-1.5 md:py-2",
-            MARKETING_CATALOG_GUTTER,
+            gutter && MARKETING_CATALOG_GUTTER,
           )}
         >
           <MarketingToolbarRow

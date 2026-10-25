@@ -1,90 +1,61 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
-import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
+import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { ShareButton } from "@/components/marketing/share-button";
-import { ArtistHero } from "@/components/sections/artists/artist-hero";
 import { ArtistRelatedDirectorySection } from "@/components/sections/artists/artist-related-directory-section";
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
 import { ArtistWorksEmptyState } from "@/components/sections/artists/artist-works-empty-state";
 import { ArtistWorksGrid } from "@/components/sections/artists/artist-works-grid";
+import { artistKindMeta } from "@/lib/artists/kind-presenter";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { ArtistDetailPageData } from "@/lib/marketing/load-artist-detail-page";
-import { Badge, Button } from "@auction/ui";
+import {
+  MarketingArtistFacts,
+  MarketingArtistHero,
+  MarketingReadMore,
+  marketingArtistFacts,
+} from "@auction/marketing-ui";
+import { Badge, Button, cn } from "@auction/ui";
 import Link from "next/link";
 
 type ArtistDetailViewProps = ArtistDetailPageData;
 
-export function ArtistDetailView({ vm, jsonLdText, noIndex }: ArtistDetailViewProps) {
-  const scenarioStrip = (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <ArtistScenarioBadges
-          kind={vm.registry.kind ?? null}
-          featured={vm.isFeatured}
-          verified={vm.registry.verified ?? false}
-          deathYear={vm.registry.deathYear ?? null}
-        />
-        {vm.aliasesList.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-              Also known as
-            </span>
-            {vm.aliasesList.map((a) => (
-              <Badge key={a} variant="outline" className="text-xs">
-                {a}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      {vm.categoryChips.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-            Departments
-          </span>
-          {vm.categoryChips.map((c) => (
-            <Link
-              key={c.id}
-              href={`/artists?category=${encodeURIComponent(c.slug)}`}
-              aria-label={`Browse ${vm.kindConfig.pluralLabel.toLowerCase()} in ${c.name}`}
-              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:bg-surface-container-high hover:text-link"
-            >
-              {c.name}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-      {vm.pivotChips.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-            Browse similar
-          </span>
-          {vm.pivotChips.map((c) => (
-            <Link
-              key={c.href}
-              href={c.href}
-              aria-label={c.aria}
-              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:bg-surface-container-high hover:text-link"
-            >
-              {c.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
+const PIVOT_CHIP = cn(
+  "inline-flex min-h-9 items-center rounded-full px-3 font-body text-sm text-on-surface-variant ring-1 ring-inset ring-outline-variant transition-colors hover:bg-surface-container-low hover:text-on-surface motion-reduce:transition-none",
+  FOCUS_RING,
+);
+
+/** Kinds that read as organisations rather than people get a badge naming the kind. */
+const KIND_BADGE_KINDS = new Set(["brand", "marque", "maker", "studio", "manufacturer", "mint"]);
+
+export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
+  const kind = vm.registry.kind ?? null;
+  const facts = marketingArtistFacts({
+    nationality: vm.registry.nationality,
+    birthYear: vm.registry.birthYear,
+    deathYear: vm.registry.deathYear,
+  });
+  const relatedLinks = [
+    ...vm.categoryChips.map((c) => ({
+      key: `category-${c.id}`,
+      href: `/artists?category=${encodeURIComponent(c.slug)}`,
+      label: c.name,
+    })),
+    ...vm.pivotChips.map((c) => ({ key: c.href, href: c.href, label: c.label })),
+  ];
+  const lotCount = vm.artistLots.length;
+  /** Same image order as the directory card, so the profile matches the card it came from. */
+  const portraitSrc = vm.artistPortraitUrl ?? (vm.registry.heroImageUrl?.trim() || null);
 
   return (
     <MarketingDetailShell
       jsonLd={
-        <>
-          <script type="application/ld+json" suppressHydrationWarning>
-            {jsonLdText}
-          </script>
-          {noIndex ? <meta name="robots" content="noindex,follow" /> : null}
-        </>
+        <script type="application/ld+json" suppressHydrationWarning>
+          {jsonLdText}
+        </script>
       }
       wayfinding={
         <MarketingDetailWayfinding
@@ -104,59 +75,100 @@ export function ArtistDetailView({ vm, jsonLdText, noIndex }: ArtistDetailViewPr
         />
       }
     >
-      <ArtistHero
-        vm={{
-          id: vm.id,
-          name: vm.artistName,
-          tagline: vm.artistTagline,
-          bio: vm.artistBio,
-          portraitUrl: vm.artistPortraitUrl,
-          featured: vm.isFeatured,
-        }}
-        actions={
-          <div className="flex flex-col gap-4">
-            {scenarioStrip}
-            <div className="flex flex-wrap items-center gap-3">
-              <ArtistWatchToggle
-                artistId={vm.id}
-                initialWatching={vm.watching}
-                isAuthenticated={vm.isAuthed}
-                loginNextPath={vm.profilePath}
-              />
-              <ShareButton url={vm.profileUrl} title={vm.artistName} />
-              {vm.registry.websiteUrl ? (
-                <a
-                  href={vm.registry.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-                >
-                  Official website
-                </a>
+      <MarketingArtistHero
+        className="mb-16 md:mb-20"
+        name={vm.artistName}
+        {...(vm.isFeatured ? { eyebrow: "Featured artist" } : {})}
+        facts={
+          <>
+            <MarketingArtistFacts facts={facts} />
+            {vm.aliasesList.length > 0 ? (
+              <p className="font-body text-sm leading-5 text-on-surface-variant">
+                Also known as {vm.aliasesList.join(", ")}
+              </p>
+            ) : null}
+          </>
+        }
+        badges={
+          vm.registry.verified || (kind && KIND_BADGE_KINDS.has(kind)) ? (
+            <>
+              {vm.registry.verified ? <Badge variant="secondary">Verified</Badge> : null}
+              {kind && KIND_BADGE_KINDS.has(kind) ? (
+                <Badge variant="outline">{artistKindMeta(kind).badge}</Badge>
               ) : null}
-            </div>
-          </div>
+            </>
+          ) : null
+        }
+        summary={
+          vm.artistBio ? (
+            <MarketingReadMore lines={5}>
+              <p className="whitespace-pre-line">{vm.artistBio}</p>
+            </MarketingReadMore>
+          ) : null
+        }
+        actions={
+          <>
+            <ArtistWatchToggle
+              artistId={vm.id}
+              initialWatching={vm.watching}
+              isAuthenticated={vm.isAuthed}
+              loginNextPath={vm.profilePath}
+            />
+            <ShareButton url={vm.profileUrl} title={vm.artistName} />
+            {vm.registry.websiteUrl ? (
+              <a
+                href={vm.registry.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "inline-flex min-h-11 items-center rounded-sm font-body text-sm font-medium text-link underline-offset-4 hover:underline",
+                  FOCUS_RING,
+                )}
+              >
+                Official website<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            ) : null}
+          </>
+        }
+        portrait={
+          portraitSrc ? (
+            <ArtistPortraitFrame
+              src={portraitSrc}
+              alt={`Portrait of ${vm.artistName}`}
+              label="Artist portrait"
+              sizes="(max-width: 768px) 18rem, 40vw"
+            />
+          ) : null
         }
       />
+
       {vm.attributeRows.length > 0 ? (
-        <section className="mb-20">
-          <h2 className="mb-6 font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        <section className="mb-16" aria-labelledby="artist-details-heading">
+          <h2
+            id="artist-details-heading"
+            className="mb-6 font-headline text-xl font-medium text-on-surface"
+          >
             {vm.kindConfig.label} details
           </h2>
-          <dl className="grid grid-cols-1 gap-y-5 border-y border-outline-variant/40 py-8 sm:grid-cols-2 md:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-y-5 border-y border-border-hairline py-8 sm:grid-cols-2 md:grid-cols-3">
             {vm.attributeRows.map((row) => (
-              <div key={row.label} className="flex flex-col gap-1 px-0 md:pr-5">
-                <dt className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                  {row.label}
-                </dt>
+              <div key={row.label} className="flex flex-col gap-1 md:pr-5">
+                <dt className="font-body text-sm text-on-surface-variant">{row.label}</dt>
                 <dd className="font-headline text-lg text-on-surface">{row.value}</dd>
               </div>
             ))}
           </dl>
         </section>
       ) : null}
-      <section id="works">
-        {vm.artistLots.length === 0 ? (
+
+      <section id="works" aria-labelledby="artist-works-heading" className="scroll-mt-24">
+        <h2
+          id="artist-works-heading"
+          className="mb-4 font-headline text-[length:clamp(1.5rem,2.8vw,2rem)] font-medium leading-tight text-on-surface"
+        >
+          At auction
+        </h2>
+        {lotCount === 0 ? (
           <ArtistWorksEmptyState />
         ) : (
           <>
@@ -169,6 +181,22 @@ export function ArtistDetailView({ vm, jsonLdText, noIndex }: ArtistDetailViewPr
           </>
         )}
       </section>
+
+      {relatedLinks.length > 0 ? (
+        <nav aria-label="Browse similar artists" className="mt-12 flex flex-col gap-3">
+          <p className="font-body text-sm font-medium text-on-surface">Browse similar</p>
+          <ul className="flex flex-wrap gap-2">
+            {relatedLinks.map((link) => (
+              <li key={link.key}>
+                <Link href={link.href} className={PIVOT_CHIP}>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
+
       <ArtistRelatedDirectorySection
         rows={vm.relatedRows}
         watchSet={new Set(vm.watchedArtistIds)}

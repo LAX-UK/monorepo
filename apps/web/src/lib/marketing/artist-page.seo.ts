@@ -9,11 +9,19 @@ import {
 import { artistPath, lotPath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, ArtistProfile as RegistryArtist } from "@auction/types";
+import { appendMarketingParamsToPath } from "@auction/validators";
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 
-export function ensureCanonicalArtistSlug(slug: string, artist: { id: string; name: string }) {
-  if (slug !== slugify(artist.name)) permanentRedirect(artistPath(artist));
+/** Redirects to the canonical slug, keeping marketing parameters such as `utm_*`. */
+export function ensureCanonicalArtistSlug(
+  slug: string,
+  artist: { id: string; name: string },
+  searchParams: Record<string, string | string[] | undefined> = {},
+) {
+  if (slug !== slugify(artist.name)) {
+    permanentRedirect(appendMarketingParamsToPath(artistPath(artist), searchParams));
+  }
 }
 
 /** `noindex` for any registry artist that shouldn't be ranked: merged, archived, rejected. */
@@ -24,10 +32,14 @@ export function shouldNoIndexArtist(registry: RegistryArtist | null): boolean {
   return false;
 }
 
-export async function loadArtistDetailMetadata(id: string, slug: string): Promise<Metadata> {
+export async function loadArtistDetailMetadata(
+  id: string,
+  slug: string,
+  searchParams: Record<string, string | string[] | undefined> = {},
+): Promise<Metadata> {
   const registry = await fetchRegistryArtistById(id);
   if (!registry) return metadataForNotFound("Artist not found");
-  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName });
+  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName }, searchParams);
   const base = metadataForSeller({ id: registry.id, name: registry.displayName });
   if (shouldNoIndexArtist(registry)) {
     return { ...base, robots: { index: false, follow: true } };

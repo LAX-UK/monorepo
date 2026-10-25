@@ -56,18 +56,18 @@ const baseArtist: PublicArtistDirectoryRow = {
 };
 
 describe("ArtistDirectoryCard", () => {
-  it("renders MediaPlaceholder when portraitUrl is null", () => {
+  it("shows initials on the mat when there is no portrait", () => {
     render(
       <ul>
         <ArtistDirectoryCard artist={baseArtist} watching={false} isAuthenticated={false} />
       </ul>,
     );
 
-    expect(screen.getByLabelText("Artist portrait placeholder")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Jane Doe" })).toBeInTheDocument();
+    expect(screen.getByText("JD")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Jane Doe" })).toBeInTheDocument();
   });
 
-  it("compact density hides bio and view profile link", () => {
+  it("shows the facts line and the lot count", () => {
     render(
       <ul>
         <ArtistDirectoryCard
@@ -79,15 +79,13 @@ describe("ArtistDirectoryCard", () => {
       </ul>,
     );
 
+    expect(screen.getByRole("heading", { level: 3, name: "Jane Doe" })).toBeInTheDocument();
+    expect(screen.getByText("British · b. 1980")).toBeInTheDocument();
+    expect(screen.getByText("3 lots")).toBeInTheDocument();
     expect(screen.queryByText("Painter")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: /View profile for Jane Doe/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Browse 3 lots by Jane Doe/i })).toBeInTheDocument();
-    expect(screen.getByText("b. 1980 · British")).toBeInTheDocument();
   });
 
-  it("hides the lots link when lotCount is zero", () => {
+  it("leaves out the lot count when there are no lots", () => {
     render(
       <ul>
         <ArtistDirectoryCard
@@ -98,9 +96,10 @@ describe("ArtistDirectoryCard", () => {
       </ul>,
     );
 
-    expect(
-      screen.queryByRole("link", { name: /Browse.*lots by Jane Doe/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /View profile for Jane Doe/i })).toBeInTheDocument();
+    expect(screen.queryByText(/lots?$/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Jane Doe" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/artist/jane-doe/artist-1"),
+    );
   });
 });

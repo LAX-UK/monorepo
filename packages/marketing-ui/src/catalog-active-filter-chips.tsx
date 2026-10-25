@@ -32,12 +32,12 @@ export function CatalogActiveFilterChips({
   if (chips.length === 0) return null;
 
   const chipClassName = cn(
-    "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-wider text-on-surface hover:border-link/50 disabled:opacity-60",
+    "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 font-body text-sm font-medium text-on-surface hover:border-link/50 disabled:opacity-60",
     FOCUS_RING,
   );
 
   const clearClassName = cn(
-    "min-h-11 px-2 font-label text-xs font-semibold uppercase tracking-wider text-link underline-offset-4 hover:underline disabled:opacity-60",
+    "min-h-11 px-2 font-body text-sm font-medium text-link underline-offset-4 hover:underline disabled:opacity-60",
     FOCUS_RING,
   );
 

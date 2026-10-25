@@ -51,7 +51,7 @@ export function ArtistWatchToggle({
       <a
         href={buildHostedLoginStartHref({ next: loginNextPath })}
         className={cn(
-          "inline-flex min-h-11 items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container",
+          "inline-flex min-h-11 items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-body text-sm font-medium text-on-surface transition-colors hover:bg-surface-container",
           FOCUS_RING,
         )}
       >
@@ -69,7 +69,7 @@ export function ArtistWatchToggle({
       aria-pressed={watching}
       onClick={() => void toggle()}
       className={cn(
-        "h-auto min-h-11 gap-2 rounded-md px-4 py-2 font-label text-xs font-bold",
+        "h-auto min-h-11 gap-2 rounded-md px-4 py-2 font-body text-sm font-medium",
         FOCUS_RING,
         watching
           ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"

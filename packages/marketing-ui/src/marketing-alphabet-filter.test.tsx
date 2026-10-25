@@ -22,6 +22,32 @@ describe("MarketingAlphabetFilter", () => {
     expect(screen.getByRole("link", { name: "All" })).toHaveAttribute("aria-current", "page");
     expect(marketingAlphabetHref("/artists", null)).toBe("/artists");
   });
+
+  it("uses a custom href builder, leaves empty letters unlinked and adds the other buckets", () => {
+    render(
+      <MarketingAlphabetFilter
+        basePath="/artists"
+        active="b"
+        hrefFor={(letter) =>
+          letter ? `/artists/letter/${letter === "#" ? "0" : letter}` : "/artists"
+        }
+        counts={[
+          { letter: "a", count: 3 },
+          { letter: "b", count: 1 },
+          { letter: "#", count: 2 },
+        ]}
+        includeOtherBuckets
+      />,
+    );
+    expect(screen.getByRole("link", { name: "A" })).toHaveAttribute("href", "/artists/letter/a");
+    expect(screen.queryByRole("link", { name: "C" })).toBeNull();
+    expect(screen.getByLabelText("C, no names")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("link", { name: "Names starting with a number" })).toHaveAttribute(
+      "href",
+      "/artists/letter/0",
+    );
+    expect(screen.getByLabelText("Other names, no names")).toBeInTheDocument();
+  });
 });
 
 describe("MarketingVideoPoster", () => {

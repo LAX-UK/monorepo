@@ -19,7 +19,7 @@ export function OwnerBadge({ owned, className = "" }: Props) {
     <span
       className={cn(
         overlayPillClasses(opaqueTone),
-        "inline-flex shrink-0 rounded-md px-2 py-1 font-label text-[0.6rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary shadow-sm ring-1 ring-primary/25",
+        "inline-flex shrink-0 rounded-md px-2 py-1 font-body text-xs font-semibold text-primary shadow-sm ring-1 ring-primary/25",
         className,
       )}
       {...overlayToneProps(opaqueTone)}
