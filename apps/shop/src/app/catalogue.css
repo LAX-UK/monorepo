@@ -244,130 +244,55 @@
   margin-bottom: 1.5rem;
 }
 
-/* One grid rhythm for editions everywhere: 2 columns on phones, 3 from 1024px, 4 from 1280px. */
 .shop-catalogue__list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--shop-space-8) var(--shop-space-4);
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .shop-catalogue__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 64rem) {
   .shop-catalogue__list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: var(--shop-space-6);
   }
-}
-
-@media (min-width: 80rem) {
-  .shop-catalogue__list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.shop-catalogue__list > li {
-  min-width: 0;
 }
 
 .shop-catalogue__card {
-  position: relative;
-  height: 100%;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-card);
   padding: 0;
-  background: transparent;
-  box-shadow: none;
+  background: var(--color-surface);
 }
 
-/* A consistent 4:5 mat; the work sits inside it whole, whatever its proportions. */
 .shop-catalogue__media {
   aspect-ratio: 4 / 5;
-  border-radius: 0;
-  background: var(--color-surface-container-low);
-}
-
-.shop-catalogue__frame {
-  position: absolute;
-  inset: 8%;
-}
-
-.shop-catalogue__frame img {
-  object-fit: contain;
-}
-
-/* Title and artist sit together at the top; edition and price are pinned to the bottom of the
-   card, so they line up across a row whatever the title length. */
-.shop-catalogue__list > li,
-.shop-catalogue__list > li > *,
-.shop-catalogue__list > li .reveal__inner {
-  height: 100%;
-}
-
-.shop-catalogue__card {
-  display: flex;
-  flex-direction: column;
+  background: var(--color-surface-container);
 }
 
 .shop-catalogue__body {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--shop-space-1);
-  padding: var(--shop-space-3) 0 0;
+  padding: var(--shop-card-pad-y) var(--shop-card-pad-x);
 }
 
 .shop-catalogue__title {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: var(--color-on-surface);
   font-family: var(--font-body);
-  font-size: var(--shop-text-md);
+  font-size: var(--shop-text-lg);
   font-weight: 500;
-  line-height: 1.5rem;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  margin: 0 0 var(--shop-space-1);
+  width: 100%;
 }
 
-.shop-catalogue__card .shop-catalogue__artist-link {
-  align-self: flex-start;
-  max-width: 100%;
-  overflow: hidden;
-  font-size: var(--shop-text-sm);
-  /* 24px tall, so the link meets the minimum target size between two text lines. */
-  line-height: 1.5rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shop-catalogue__edition,
-.shop-catalogue__price {
-  margin: 0;
-  overflow: hidden;
-  font-size: var(--shop-text-sm);
-  line-height: 1.25rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shop-catalogue__edition {
-  margin-top: auto;
-  padding-top: var(--shop-space-2);
-  color: var(--color-on-surface-variant);
-}
-
-.shop-catalogue__price {
-  margin-top: var(--shop-space-1);
-  color: var(--color-on-surface);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.shop-catalogue__price[data-state="sold_out"] {
-  color: var(--color-on-surface-variant);
-  font-weight: 500;
+.shop-catalogue__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0 0.5rem;
 }
 
 .shop-catalogue__card a {
@@ -375,41 +300,27 @@
   text-decoration: none;
 }
 
-.shop-catalogue__card .shop-catalogue__artist-link {
-  color: var(--color-on-surface-variant);
-}
-
-.shop-catalogue__card:hover .shop-catalogue__title,
-.shop-catalogue__card:focus-within .shop-catalogue__title {
+.shop-catalogue__card:hover a,
+.shop-catalogue__card:focus-within a {
   /* Link and text colours are the same neutral, so hover needs a non-colour cue. */
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 
-.shop-catalogue__title-link::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-.shop-catalogue__title-link:focus-visible {
-  outline: none;
-}
-
-.shop-catalogue__card:has(.shop-catalogue__title-link:focus-visible) {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 4px;
-}
-
-.shop-catalogue__card .shop-catalogue__artist-link {
-  position: relative;
-  z-index: 1;
-}
-
-.shop-catalogue__card .shop-catalogue__artist-link:hover {
+.shop-catalogue__artist {
   color: var(--color-on-surface);
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+  margin: 0 0 0.5rem;
+}
+
+.shop-catalogue__dimensions {
+  color: var(--color-on-surface);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem;
+}
+
+.shop-catalogue__meta {
+  font-size: 0.875rem;
+  margin: 0;
 }
 
 .shop-catalogue__next {

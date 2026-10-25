@@ -4,7 +4,6 @@ import { buildCatalogueArtworkCards } from "@/lib/catalogue/catalogue-artwork-ca
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 
 type CatalogueGridProps = {
@@ -63,9 +62,6 @@ export function CatalogueGrid({
               className="absolute inset-0 size-full"
             />
           }
-          {...(card.status
-            ? { mediaStatus: <DotStatusPill label={card.status.label} tone={card.status.tone} /> }
-            : {})}
           {...(hideArtist
             ? {}
             : {
@@ -78,8 +74,21 @@ export function CatalogueGrid({
                   </Link>
                 ),
               })}
-          {...(card.dimensions ? { details: <p>{card.dimensions}</p> } : {})}
-          footer={<p>{card.metaLine}</p>}
+          {...(card.editionLine ? { footerNote: <p>{card.editionLine}</p> } : {})}
+          {...(card.priceLine
+            ? {
+                // The card's one status: the price, or "Sold out" in its place.
+                footer: (
+                  <p
+                    className={
+                      card.soldOut ? "font-normal text-on-surface-variant" : "tabular-nums"
+                    }
+                  >
+                    {card.priceLine}
+                  </p>
+                ),
+              }
+            : {})}
         />
       ))}
     </MarketingWorkGrid>

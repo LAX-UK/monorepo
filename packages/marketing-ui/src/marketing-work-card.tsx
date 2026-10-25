@@ -25,6 +25,11 @@ export type MarketingWorkCardProps = {
   subtitle?: ReactNode;
   /** Supporting lines: year and medium, size, estimate. */
   details?: ReactNode;
+  /**
+   * Quiet line pinned to the bottom above `footer`, e.g. the edition size. Pinned rather than
+   * under the subtitle, so it lines up across a row however long the titles are.
+   */
+  footerNote?: ReactNode;
   /** Price or result, pinned to the bottom of the card. */
   footer?: ReactNode;
   className?: string;
@@ -42,6 +47,7 @@ export function MarketingWorkCard({
   action,
   subtitle,
   details,
+  footerNote,
   footer,
   className,
   "data-testid": testId = "marketing-work-card",
@@ -77,7 +83,7 @@ export function MarketingWorkCard({
           {action ? <div className="-mr-2 -mt-2 shrink-0">{action}</div> : null}
         </div>
         {subtitle ? (
-          <div className="mt-1 min-w-0 font-body text-sm leading-5 text-on-surface-variant">
+          <div className="mt-0.5 min-w-0 font-body text-sm leading-6 text-on-surface-variant [&_a]:inline-flex [&_a]:min-h-6 [&_a]:items-center">
             {subtitle}
           </div>
         ) : null}
@@ -86,9 +92,18 @@ export function MarketingWorkCard({
             {details}
           </div>
         ) : null}
-        {footer ? (
-          <div className="mt-auto flex min-w-0 flex-col items-start gap-1 pt-3 font-body text-sm font-medium leading-5 text-on-surface">
-            {footer}
+        {footerNote || footer ? (
+          <div className="mt-auto flex min-w-0 flex-col items-start gap-1 pt-3 font-body text-sm leading-5">
+            {footerNote ? (
+              <div className="min-w-0 text-on-surface-variant" data-slot="footer-note">
+                {footerNote}
+              </div>
+            ) : null}
+            {footer ? (
+              <div className="min-w-0 font-medium text-on-surface" data-slot="footer">
+                {footer}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -124,7 +139,11 @@ export function MarketingWorkGrid({
           key={isValidElement(child) && child.key != null ? child.key : index}
           className="min-w-0"
         >
-          <MarketingCardReveal index={index}>{child}</MarketingCardReveal>
+          {/* Full height through the reveal wrapper, so each card's footer sits on the row's
+              bottom edge and prices line up. */}
+          <MarketingCardReveal index={index} className="h-full" innerClassName="h-full">
+            {child}
+          </MarketingCardReveal>
         </li>
       ))}
     </ul>
