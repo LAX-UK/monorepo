@@ -23,8 +23,10 @@ export async function proxyEnquiry(
   options: {
     path: string;
     body: EnquiryBody;
-    /** False for requests that only an account can make, such as availability alerts. */
+    /** False for requests that only an account can make. */
     allowGuest: boolean;
+    /** What a guest must give: an enquiry needs a name and email, an edition alert an email. */
+    guestContact?: "name_and_email" | "email";
   },
 ) {
   try {
@@ -55,7 +57,8 @@ export async function proxyEnquiry(
   if (!options.allowGuest) {
     return c.json({ error: "sign_in_required" }, 401);
   }
-  if (!options.body.name || !options.body.email) {
+  const needsName = (options.guestContact ?? "name_and_email") === "name_and_email";
+  if (!options.body.email || (needsName && !options.body.name)) {
     return c.json({ error: "validation_failed" }, 400);
   }
   const guest = await resolveGuestCommerceContext(c, deps);

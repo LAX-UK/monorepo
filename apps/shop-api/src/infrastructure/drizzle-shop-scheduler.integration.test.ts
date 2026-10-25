@@ -190,11 +190,19 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
       .from(shopArtworkInterest)
       .where(eq(shopArtworkInterest.id, interestRow.id));
     expect(after?.notifiedAt).not.toBeNull();
+    // The address written to is recorded, so the email's unsubscribe link covers it.
+    expect(after?.contactEmail).toBe(`notify-${suffix}@example.com`);
+    expect(after?.unsubscribeTokenHash).toMatch(/^[0-9a-f]{64}$/);
 
     const outbox = await db
       .select()
       .from(emailOutbox)
       .where(eq(emailOutbox.idempotencyKey, `edition-available:${interestRow.id}`));
     expect(outbox).toHaveLength(1);
+    const vars = outbox[0]?.vars as Record<string, string>;
+    expect(vars.artistName).toBe("Notify Artist");
+    expect(vars.unsubscribeUrl).toMatch(
+      /^http:\/\/localhost:3020\/alerts\/unsubscribe\?token=[A-Za-z0-9_-]{43}$/,
+    );
   });
 });

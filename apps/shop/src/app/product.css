@@ -245,6 +245,117 @@
   border-radius: var(--radius-card);
 }
 
+/* Edition alert on a sold-out edition: email field and button, or the account shortcut. */
+.shop-alert {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+}
+
+.shop-alert__status:empty {
+  display: none;
+}
+
+.shop-alert__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+}
+
+.shop-alert__label {
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+}
+
+.shop-alert__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+}
+
+@media (min-width: 30rem) {
+  .shop-alert__row {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+.shop-alert__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Matches the field beside it, so the pair reads as one control. */
+.shop-alert__submit.shop-button {
+  min-height: var(--shop-control-height);
+  flex: 0 0 auto;
+}
+
+.shop-alert__error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+}
+
+.shop-alert__note {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-alert__email {
+  color: var(--color-on-surface);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.shop-alert__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3) var(--shop-space-4);
+}
+
+.shop-alert__done {
+  display: flex;
+  gap: var(--shop-space-3);
+  align-items: flex-start;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-alert__done p {
+  margin: 0;
+}
+
+.shop-alert__done-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+  color: var(--color-success);
+}
+
+.shop-alert__done-title {
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+}
+
+/* Honeypot: out of sight and out of the tab order, but still in the form for bots. */
+.shop-alert__trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Phone buy bar: appears once the main button scrolls away; the page reserves its height so it
    never covers the footer or a focused control. */
 .shop-buy-bar.shop-buy-bar {

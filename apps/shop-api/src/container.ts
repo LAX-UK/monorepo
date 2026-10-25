@@ -5,7 +5,11 @@ import type { AdminRoutesDeps } from "./admin-route-deps.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
-import { createEnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
+import {
+  createEditionAlertRateLimiter,
+  createEnquiryRateLimiter,
+} from "./application/enquiry-rate-limit.js";
+import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
 import { createGetPublicArtworkHandler } from "./application/handlers/get-public-artwork.handler.js";
@@ -53,6 +57,7 @@ import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-a
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
 import { createDrizzleDeletionEligibilityRepository } from "./infrastructure/drizzle-deletion-eligibility.repository.js";
+import { createDrizzleEditionAlertStore } from "./infrastructure/drizzle-edition-alert.store.js";
 import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-editorial-links.repository.js";
 import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
@@ -213,11 +218,18 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const rateLimitRedis = env.REDIS_URL
     ? new Redis(env.REDIS_URL, { enableOfflineQueue: false, maxRetriesPerRequest: 1 })
     : null;
-  const enquiryRateLimiter = createEnquiryRateLimiter(
-    rateLimitRedis
-      ? createRedisFixedWindowCounter(rateLimitRedis)
-      : createInMemoryFixedWindowCounter(),
-  );
+  const rateLimitCounter = rateLimitRedis
+    ? createRedisFixedWindowCounter(rateLimitRedis)
+    : createInMemoryFixedWindowCounter();
+  const enquiryRateLimiter = createEnquiryRateLimiter(rateLimitCounter);
+  const editionAlertRateLimiter = createEditionAlertRateLimiter(rateLimitCounter);
+  const editionAlerts = createEditionAlertHandlers({
+    artworks: artworkInterestWriter,
+    alerts: createDrizzleEditionAlertStore(db, {
+      resolveMediaUrl,
+      domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+    }),
+  });
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
   const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
   const staffReader = createDrizzleShopStaffMemberReader(db);
@@ -506,6 +518,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         registerArtworkInterest: createRegisterArtworkInterestHandler(artworkInterestWriter),
         getArtworkInterest: createGetArtworkInterestHandler(artworkInterestWriter),
         enquiryRateLimiter,
+        editionAlerts,
+        editionAlertRateLimiter,
       },
       editorial,
     },

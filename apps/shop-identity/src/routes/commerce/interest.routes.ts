@@ -22,11 +22,40 @@ export function registerCommerceInterestRoutes(app: Hono, deps: CommerceRoutesDe
     if (!parsed.success) {
       return c.json({ error: "validation_failed" }, 400);
     }
+    const isAlert = (parsed.data.intent ?? "notify_me") === "notify_me";
     return proxyEnquiry(c, deps, {
       path: `/v1/artworks/${encodeURIComponent(slug)}/interest`,
       body: parsed.data,
-      // Availability alerts are delivered to the account; only enquiries work for guests.
-      allowGuest: parsed.data.intent === "enquiry",
+      allowGuest: true,
+      // An alert only needs somewhere to write; an enquiry also needs a name to reply to.
+      guestContact: isAlert ? "email" : "name_and_email",
     });
   });
+
+  // Edition alerts in the shopper's account.
+  app.get("/commerce/me/alerts", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/alerts",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.delete("/commerce/me/alerts/:alertId", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "DELETE",
+      path: `/v1/me/alerts/${encodeURIComponent(c.req.param("alertId"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
+
+  app.delete("/commerce/me/alerts/artworks/:slug", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "DELETE",
+      path: `/v1/me/alerts/artworks/${encodeURIComponent(c.req.param("slug"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
 }

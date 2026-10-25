@@ -36,6 +36,7 @@ import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.rout
 import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
 import { registerBasketRoutes } from "./routes/v1/basket.routes.js";
 import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
+import { registerEditionAlertRoutes } from "./routes/v1/edition-alerts.routes.js";
 import { registerEditorialRoutes } from "./routes/v1/editorial.routes.js";
 import { registerHelpRoutes } from "./routes/v1/help.routes.js";
 import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
@@ -131,6 +132,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   }
   void registerArtworkRoutes(app, options.deps.catalogue);
   void registerArtworkInterestRoutes(app, options.deps.interest);
+  void registerEditionAlertRoutes(app, options.deps.interest);
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerCategoryRoutes(app, options.deps.catalogue);

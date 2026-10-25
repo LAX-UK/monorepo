@@ -40,6 +40,13 @@ type ShopTemplateVars = {
   "shop-edition-available-notify": {
     artworkTitle: string;
     artworkUrl: string;
+    /** Absent on alerts queued before the artist was named in the email. */
+    artistName?: string;
+    /**
+     * Stops every waiting alert for the address without signing in. Absent on alerts queued
+     * before guest alerts existed.
+     */
+    unsubscribeUrl?: string;
   };
   "shop-zoho-dead-letter-notice": {
     eventId: string;

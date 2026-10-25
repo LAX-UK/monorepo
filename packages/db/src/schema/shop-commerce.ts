@@ -1323,6 +1323,13 @@ export const shopArtworkInterest = pgTable(
     contactEmail: text("contact_email"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     notifiedAt: timestamp("notified_at", { mode: "date", withTimezone: true }),
+    /** Edition alerts only: set when the person stops the alert before it is sent. */
+    cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
+    /**
+     * Edition alerts only: SHA-256 of the unsubscribe token carried by the alert email. The token
+     * itself is never stored; it is minted when the email is queued.
+     */
+    unsubscribeTokenHash: text("unsubscribe_token_hash"),
     /** Triage state; only rows with intent `enquiry` appear in the staff inbox. */
     status: shopEnquiryStatusEnum("status").default("new").notNull(),
     /** Identity subject of the staff member handling it. */
@@ -1335,12 +1342,32 @@ export const shopArtworkInterest = pgTable(
     index("shop_artwork_interest_inbox_idx")
       .on(table.status, table.createdAt.desc(), table.id.desc())
       .where(sql`${table.intent} = 'enquiry'`),
-    uniqueIndex("shop_artwork_interest_artwork_subject_intent_uid").on(
-      table.artworkId,
-      table.identitySubjectId,
-      table.intent,
-    ),
+    uniqueIndex("shop_artwork_interest_enquiry_subject_uid")
+      .on(table.artworkId, table.identitySubjectId)
+      .where(sql`${table.intent} = 'enquiry'`),
+    // One waiting alert per artwork for an account and for an email address. A sent or stopped
+    // alert no longer counts, so the person can ask again when the edition sells out again.
+    uniqueIndex("shop_artwork_interest_alert_subject_uid")
+      .on(table.artworkId, table.identitySubjectId)
+      .where(
+        sql`${table.intent} = 'notify_me' AND ${table.notifiedAt} IS NULL AND ${table.cancelledAt} IS NULL`,
+      ),
+    uniqueIndex("shop_artwork_interest_alert_email_uid")
+      .on(table.artworkId, sql`lower(${table.contactEmail})`)
+      .where(
+        sql`${table.intent} = 'notify_me' AND ${table.notifiedAt} IS NULL AND ${table.cancelledAt} IS NULL`,
+      ),
+    index("shop_artwork_interest_alert_email_idx")
+      .on(sql`lower(${table.contactEmail})`)
+      .where(sql`${table.intent} = 'notify_me'`),
+    uniqueIndex("shop_artwork_interest_unsubscribe_token_uid")
+      .on(table.unsubscribeTokenHash)
+      .where(sql`${table.unsubscribeTokenHash} IS NOT NULL`),
     index("shop_artwork_interest_subject_idx").on(table.identitySubjectId),
+    check(
+      "shop_artwork_interest_alert_columns_ck",
+      sql`${table.intent} = 'notify_me' OR (${table.cancelledAt} IS NULL AND ${table.unsubscribeTokenHash} IS NULL)`,
+    ),
     check(
       "shop_artwork_interest_subject_or_contact_ck",
       sql`${table.identitySubjectId} IS NOT NULL OR ${table.contactEmail} IS NOT NULL`,

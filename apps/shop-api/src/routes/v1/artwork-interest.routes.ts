@@ -14,6 +14,7 @@ import type { EnquirySender } from "../../application/enquiry-sender.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import type { InterestRoutesDeps } from "../../interest-route-deps.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
+import { registerEditionAlertFromRequest } from "./edition-alerts.routes.js";
 import { type EnquiryContactBody, admitEnquiry } from "./enquiry-admission.js";
 
 type ArtworkInterestIntent = Static<typeof ArtworkInterestIntentSchema>;
@@ -95,37 +96,33 @@ export async function registerArtworkInterestRoutes(
         contactPhone?: string;
       };
       const intent = normalizeArtworkInterestIntent(body.intent);
-      let sender: EnquirySender;
-      if (intent === "enquiry") {
-        const admission = await admitEnquiry(request, reply, deps.enquiryRateLimiter, body);
-        if (admission.kind === "honeypot") return { status: "registered" as const };
-        sender = admission.sender;
-      } else {
-        // Availability alerts are delivered to the account, so they still need sign-in.
-        requireShopScope(request, "shop.write");
-        sender = {
-          kind: "account",
-          identitySubjectId: requireShopSubject(request),
-          contactName: null,
-          contactEmail: null,
-        };
+      if (intent === "notify_me") {
+        const status = await registerEditionAlertFromRequest(request, reply, deps, {
+          artworkSlug: slug,
+          email: body.email,
+          website: body.website,
+        });
+        return { status };
       }
+      const admission = await admitEnquiry(request, reply, deps.enquiryRateLimiter, body);
+      if (admission.kind === "honeypot") return { status: "registered" as const };
+      const sender: EnquirySender = admission.sender;
       const status = await deps.registerArtworkInterest({
         artworkSlug: slug,
         sender,
         intent,
-        ...(intent === "enquiry" && body.message ? { message: body.message } : {}),
-        ...(intent === "enquiry" && body.contactPhone ? { contactPhone: body.contactPhone } : {}),
+        ...(body.message ? { message: body.message } : {}),
+        ...(body.contactPhone ? { contactPhone: body.contactPhone } : {}),
       });
       if (status === "artwork_not_found") {
         throw notFound("Artwork");
       }
       if (status === "not_subscribable") {
-        const message =
-          intent === "enquiry"
-            ? "This artwork is not accepting enquiries"
-            : "This artwork is not accepting availability notifications";
-        throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, message, 409);
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.CONFLICT,
+          "This artwork is not accepting enquiries",
+          409,
+        );
       }
       return { status };
     },

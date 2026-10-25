@@ -27,6 +27,27 @@ export {
   type RegisterArtworkInterestResponse,
 } from "./artwork-interest-public.js";
 export {
+  EDITION_ALERT_TOKEN_PATTERN,
+  EditionAlertCancelResponseSchema,
+  EditionAlertIdParamsSchema,
+  EditionAlertListSchema,
+  EditionAlertSchema,
+  EditionAlertUnsubscribeBodySchema,
+  EditionAlertUnsubscribePreviewSchema,
+  EditionAlertUnsubscribeQuerySchema,
+  EditionAlertUnsubscribeResponseSchema,
+  isEditionAlertToken,
+  parseEditionAlertCancelResponse,
+  parseEditionAlertList,
+  parseEditionAlertUnsubscribePreview,
+  parseEditionAlertUnsubscribeResponse,
+  type EditionAlert,
+  type EditionAlertCancelResponse,
+  type EditionAlertList,
+  type EditionAlertUnsubscribePreview,
+  type EditionAlertUnsubscribeResponse,
+} from "./edition-alerts-public.js";
+export {
   ENQUIRY_CONTACT_EMAIL_MAX_LENGTH,
   ENQUIRY_CONTACT_NAME_MAX_LENGTH,
 } from "./enquiry-contact.js";

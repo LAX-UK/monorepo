@@ -23,12 +23,21 @@ const WHY: Readonly<Record<LaxBrandProduct, string>> = {
 
 type LegalFooterProps = {
   unsubscribeUrl?: string | null;
+  /** Replaces the product's standard line on why the person gets this email. */
+  reason?: string;
+  /** Replaces "Unsubscribe from this notification type" for mail with its own opt-out. */
+  unsubscribeLabel?: string;
   /** Defaults to the product the email is rendered for (see `emailProductFor`). */
   product?: LaxBrandProduct;
 };
 
 /** Names the company behind the product, its registered office and the copyright holder. */
-export function LegalFooter({ unsubscribeUrl, product }: LegalFooterProps) {
+export function LegalFooter({
+  unsubscribeUrl,
+  reason,
+  unsubscribeLabel,
+  product,
+}: LegalFooterProps) {
   const renderedFor = useContext(EmailProductContext);
   const resolved = product ?? renderedFor;
   // Both companies share one registered office, so the first entity's address serves Account too.
@@ -42,8 +51,14 @@ export function LegalFooter({ unsubscribeUrl, product }: LegalFooterProps) {
 
   return (
     <Section style={wrap}>
-      <Text style={muted}>{WHY[resolved]}</Text>
-      {unsubscribeUrl ? (
+      <Text style={muted}>{reason ?? WHY[resolved]}</Text>
+      {unsubscribeUrl && unsubscribeLabel ? (
+        <Text style={muted}>
+          <Link href={unsubscribeUrl} style={link}>
+            {unsubscribeLabel}
+          </Link>
+        </Text>
+      ) : unsubscribeUrl ? (
         <Text style={muted}>
           Prefer not to receive this type of notification?{" "}
           <Link href={unsubscribeUrl} style={link}>

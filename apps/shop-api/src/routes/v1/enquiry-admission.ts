@@ -44,7 +44,7 @@ function resolveSender(request: FastifyRequest, body: EnquiryContactBody): Enqui
  * requests carry a user token and are limited per account instead: their `request.ip` is the
  * BFF's own address, which would put every signed-in visitor in one bucket.
  */
-function clientIp(request: FastifyRequest): string | null {
+export function admissionClientIp(request: FastifyRequest): string | null {
   if (request.shopAuth?.kind === "user") return null;
   if (request.shopAuth?.kind === "bff") {
     const raw = request.headers[ENQUIRY_CLIENT_IP_HEADER];
@@ -74,7 +74,7 @@ export async function admitEnquiry(
   let decision: Awaited<ReturnType<EnquiryRateLimiter["consume"]>>;
   try {
     decision = await rateLimiter.consume({
-      clientIp: clientIp(request),
+      clientIp: admissionClientIp(request),
       senderKey: enquirySenderRateKey(sender),
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopArtwork, shopArtworkInterest } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { enquirySenderColumns } from "../application/enquiry-sender.js";
 import type {
   ArtworkInterestContext,
@@ -78,6 +78,10 @@ export function createDrizzleArtworkInterestRepository(
             eq(shopArtworkInterest.artworkId, input.artworkId),
             eq(shopArtworkInterest.identitySubjectId, input.identitySubjectId),
             eq(shopArtworkInterest.intent, input.intent),
+            // A sent or stopped alert is over; only a waiting one counts as subscribed.
+            ...(input.intent === "notify_me"
+              ? [isNull(shopArtworkInterest.notifiedAt), isNull(shopArtworkInterest.cancelledAt)]
+              : []),
           ),
         )
         .limit(1);

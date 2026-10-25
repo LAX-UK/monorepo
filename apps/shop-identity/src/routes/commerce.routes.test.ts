@@ -706,7 +706,31 @@ describe("commerce enquiry routes", () => {
     );
   });
 
-  it("keeps availability alerts behind sign-in for guests", async () => {
+  it("sends a guest edition alert with only an email address", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ status: "registered" }));
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request(
+      "/commerce/artworks/reed-study/interest",
+      {
+        method: "POST",
+        headers: await csrfHeaders(app, { "x-forwarded-for": "203.0.113.9" }),
+        body: JSON.stringify({ intent: "notify_me", email: "grace@example.com" }),
+      },
+      loopbackPeer,
+    );
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/artworks/reed-study/interest",
+        idToken: null,
+        clientIp: "203.0.113.9",
+        body: { intent: "notify_me", email: "grace@example.com" },
+      }),
+    );
+  });
+
+  it("needs an email address for a guest edition alert", async () => {
     const shopApiFetch = vi.fn();
     const app = createGuestCommerceApp(shopApiFetch);
     const response = await app.request("/commerce/artworks/reed-study/interest", {
@@ -714,8 +738,21 @@ describe("commerce enquiry routes", () => {
       headers: await csrfHeaders(app),
       body: JSON.stringify({ intent: "notify_me" }),
     });
-    expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ error: "sign_in_required" });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "validation_failed" });
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps a signed-in shopper's alerts behind sign-in", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const list = await app.request("/commerce/me/alerts");
+    expect(list.status).toBe(401);
+    const stop = await app.request("/commerce/me/alerts/artworks/reed-study", {
+      method: "DELETE",
+      headers: await csrfHeaders(app),
+    });
+    expect(stop.status).toBe(401);
     expect(shopApiFetch).not.toHaveBeenCalled();
   });
 

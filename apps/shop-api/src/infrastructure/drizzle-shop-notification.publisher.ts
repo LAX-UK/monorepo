@@ -195,16 +195,15 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
     },
 
     async queueEditionAvailable(tx, input) {
-      const db = asDb(tx);
-      const to = await resolveShopUserEmail(db, input.identitySubjectId);
-      if (!to) return;
-      await insertShopEmailOutbox(db, {
+      await insertShopEmailOutbox(asDb(tx), {
         idempotencyKey: input.idempotencyKey,
-        to,
+        to: input.to,
         template: "shop-edition-available-notify",
         vars: {
           artworkTitle: input.artworkTitle,
+          artistName: input.artistName,
           artworkUrl: input.artworkUrl,
+          unsubscribeUrl: input.unsubscribeUrl,
         },
       });
     },

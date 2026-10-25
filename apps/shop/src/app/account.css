@@ -573,3 +573,129 @@ a.shop-order-detail__line-title:hover {
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
+
+/* Unsubscribe page for edition alert emails: one short message and one decision. */
+.shop-unsubscribe {
+  display: flex;
+  max-width: 35rem;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-unsubscribe__form,
+.shop-unsubscribe__done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+  padding: var(--shop-space-6);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.shop-unsubscribe__done {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.shop-unsubscribe__done-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  color: var(--color-success);
+}
+
+.shop-unsubscribe__lead {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.shop-unsubscribe__body {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  line-height: 1.5;
+}
+
+.shop-unsubscribe__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shop-space-3);
+}
+
+.shop-unsubscribe__form .shop-unsubscribe__actions {
+  margin-top: var(--shop-space-2);
+}
+
+/* Edition alerts in Your orders. */
+.shop-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+  margin-top: var(--shop-space-12);
+  scroll-margin-top: calc(var(--header-height, 4rem) + var(--shop-space-6));
+}
+
+.shop-alerts__heading {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.shop-alerts__intro {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-alerts__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.shop-alerts__row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
+  gap: var(--shop-space-4);
+  align-items: center;
+  padding: var(--shop-space-4) 0;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.shop-alerts__thumb {
+  position: relative;
+  width: 4rem;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--color-surface-container-low);
+}
+
+.shop-alerts__thumb img {
+  object-fit: contain;
+}
+
+.shop-alerts__title {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 500;
+}
+
+.shop-alerts__meta {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-alerts__stopped {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
