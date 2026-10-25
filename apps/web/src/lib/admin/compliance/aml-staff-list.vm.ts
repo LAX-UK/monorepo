@@ -1,4 +1,5 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { amlCheckTypeLabel } from "@/lib/admin/admin-user-presenters";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminAmlListSummary } from "@/lib/data/http/compliance-aml.shared";
 import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
@@ -22,7 +23,7 @@ export type AmlRecommendation = "clear" | "block";
 /** One watchlist hit as the record panel shows it. */
 export type AmlHitView = {
   name: string;
-  /** "Match types: name, alias", "Countries: GB" and "Date of birth: …"; empty ones left out. */
+  /** "Matched on: name, alias", "Countries: GB" and "Date of birth: …"; empty ones left out. */
   facts: string[];
   listings: Array<{
     category: string;
@@ -74,9 +75,30 @@ export function amlTriageLabel(recommendation: AmlRecommendation | null): string
   return "Awaiting triage";
 }
 
+/** The provider's match codes as words: "matching_name" reads "Name". */
+const AML_MATCH_TYPE_LABEL: Record<string, string> = {
+  matching_name: "Name",
+  name_exact: "Exact name",
+  name_fuzzy: "Similar name",
+  alias: "Alias",
+  year_of_birth: "Year of birth",
+  date_of_birth: "Date of birth",
+  country: "Country",
+};
+
+export function amlMatchTypeLabel(code: string): string {
+  const known = AML_MATCH_TYPE_LABEL[code];
+  if (known) return known;
+  const words = code.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 function toHitView(hit: AdminAmlScreeningRow["hits"][number]): AmlHitView {
+  const matchTypes = hit.matchTypes.map(amlMatchTypeLabel);
   const facts = [
-    hit.matchTypes.length > 0 ? `Match types: ${hit.matchTypes.join(", ")}` : null,
+    matchTypes.length > 0
+      ? `Matched on: ${matchTypes.map((label) => label.toLowerCase()).join(", ")}`
+      : null,
     hit.countries.length > 0 ? `Countries: ${hit.countries.join(", ")}` : null,
     hit.dateOfBirth ? `Date of birth: ${hit.dateOfBirth}` : null,
   ].filter((fact): fact is string => fact !== null);
@@ -108,7 +130,7 @@ export function toAmlStaffRow(
     categories: row.categories.length > 0 ? formatAmlCategoriesLabel(row.categories) : null,
     totalHits: row.totalHits,
     screenedAt: row.screenedAt,
-    checkType: row.checkType,
+    checkType: amlCheckTypeLabel(row.checkType),
     providerSessionId: row.providerSessionId,
     triage: {
       label: amlTriageLabel(recommendation),

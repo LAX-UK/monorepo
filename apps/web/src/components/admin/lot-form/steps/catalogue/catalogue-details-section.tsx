@@ -1,22 +1,19 @@
 "use client";
 
-import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { CategoryPicker } from "@/components/forms/category-picker";
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
-import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
-import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
-import type { ArtistProfile, CategoryNode } from "@auction/types";
 import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import type { UseFormReturn } from "react-hook-form";
-import { CatalogueFieldHelp } from "./catalogue-field-help";
+  StaffEntityField,
+  StaffEntityMultiField,
+  StaffTextField,
+} from "@/components/admin/forms/staff-form-fields";
+import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
+import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
+import { artistOption, searchArtistOptions } from "@/lib/admin/pickers/staff-entity-search";
+import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { FieldRow, FormSection } from "@auction/staff-ui";
+import type { ArtistProfile, CategoryNode } from "@auction/types";
+import { useMemo } from "react";
+import { type UseFormReturn, useWatch } from "react-hook-form";
+import { LOT_FORM_ID, lotFieldProps } from "../../lot-field-spec";
 
 type Props = {
   form: UseFormReturn<AdminLotFormValues>;
@@ -37,120 +34,75 @@ export function CatalogueDetailsSection({
   fields,
 }: Props) {
   const showArtist = showArtistField && fields.artistId.visible;
-  const showCategories = fields.categoryIds.visible;
-  const showMedium = fields.medium.visible;
-  const showDimensions = fields.dimensions.visible;
+  const artistId = useWatch({ control: form.control, name: "artistId" });
+  const categoryOptions = useMemo(() => categoryPickerOptions(categories), [categories]);
+  const selectedArtist = useMemo(() => {
+    const found = artistId ? artists.find((artist) => artist.id === artistId) : null;
+    return found ? artistOption(found) : null;
+  }, [artistId, artists]);
 
-  if (!showArtist && !showCategories && !showMedium && !showDimensions) return null;
+  if (
+    !showArtist &&
+    !fields.categoryIds.visible &&
+    !fields.medium.visible &&
+    !fields.dimensions.visible
+  ) {
+    return null;
+  }
 
   return (
-    <CatalogFormSection
+    <FormSection
       title="Catalogue details"
-      description="Categories, attribution, and physical details."
-      collapsible={false}
+      description="Who made it, where it is listed, and what it is made of."
     >
       {showArtist ? (
-        <FormField
+        <StaffEntityField
           control={form.control}
           name="artistId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <LabelCaps>{fields.artistId.label}</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <ArtistPicker
-                  value={field.value ?? null}
-                  onChange={(id: string | null) => field.onChange(id)}
-                  selected={chipFromArtists(artists, field.value ?? null)}
-                  helpText="Catalogue identity for this lot. Required before publish — sellers do not pick this themselves."
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          formId={LOT_FORM_ID}
+          {...lotFieldProps(fields.artistId)}
+          description="Who the lot is catalogued under. Needed before the lot is published."
+          search={searchArtistOptions}
+          selected={selectedArtist}
+          placeholder="Choose an artist"
+          searchPlaceholder="Type at least two letters"
+          emptyText="No artists match. Add the artist from Artists first."
         />
       ) : null}
-
-      {showCategories ? (
-        <FormField
+      {fields.categoryIds.visible ? (
+        <StaffEntityMultiField
           control={form.control}
           name="categoryIds"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <LabelCaps>{fields.categoryIds.label}</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <CategoryPicker
-                  categories={categories}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Select categories"
-                  multiple={true}
-                />
-              </FormControl>
-              <CatalogueFieldHelp text={fields.categoryIds.helpText} />
-              <FormMessage />
-            </FormItem>
-          )}
+          formId={LOT_FORM_ID}
+          {...lotFieldProps(fields.categoryIds)}
+          options={categoryOptions}
+          placeholder="Add a category"
+          searchPlaceholder="Search categories"
+          emptyText="No categories match."
         />
       ) : null}
-
-      {showMedium || showDimensions ? (
-        <div className="grid gap-6 sm:grid-cols-2">
-          {showMedium ? (
-            <FormField
+      {fields.medium.visible || fields.dimensions.visible ? (
+        <FieldRow>
+          {fields.medium.visible ? (
+            <StaffTextField
               control={form.control}
               name="medium"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <LabelCaps>{fields.medium.label}</LabelCaps>
-                  </FormLabel>
-                  <FormControl>
-                    <UnderlineInput {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              formId={LOT_FORM_ID}
+              {...lotFieldProps(fields.medium)}
+              placeholder="e.g. Oil on canvas"
             />
           ) : null}
-          {showDimensions ? (
-            <FormField
+          {fields.dimensions.visible ? (
+            <StaffTextField
               control={form.control}
               name="dimensions"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <LabelCaps>{fields.dimensions.label}</LabelCaps>
-                  </FormLabel>
-                  <FormControl>
-                    <UnderlineInput {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              formId={LOT_FORM_ID}
+              {...lotFieldProps(fields.dimensions)}
+              placeholder="e.g. 60 × 80 cm"
             />
           ) : null}
-        </div>
+        </FieldRow>
       ) : null}
-    </CatalogFormSection>
+    </FormSection>
   );
-}
-
-function chipFromArtists(
-  artists: ArtistProfile[],
-  artistId: string | null,
-): ArtistChipModel | null {
-  if (!artistId) return null;
-  const found = artists.find((a) => a.id === artistId);
-  if (!found) return null;
-  return {
-    id: found.id,
-    displayName: found.displayName,
-    slug: found.slug,
-    kind: found.kind ?? "artist",
-    status: found.status ?? "approved",
-  };
 }

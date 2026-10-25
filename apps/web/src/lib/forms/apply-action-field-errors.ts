@@ -17,6 +17,11 @@ export type ZodIssueNavigationOptions<TFieldValues extends FieldValues> =
     tabFields?: Readonly<Record<string, readonly string[]>>;
     /** Tab `goTo` from `onTabControl({ goTo })`. */
     goToTab?: (tabValue: string) => void;
+    /**
+     * Move focus to the first invalid field (default). Forms with the kit error summary pass
+     * false: the summary takes focus and links to each field.
+     */
+    focusField?: boolean;
   };
 
 function zodIssuePathForForm(path: readonly (string | number)[]): string {
@@ -74,7 +79,7 @@ export function applyZodIssuesToForm<TFieldValues extends FieldValues>(
   if (!firstPath) return null;
 
   navigateToOwningSurface(firstPath, options);
-  focusFieldAfterNavigation(form, firstPath);
+  if (options?.focusField !== false) focusFieldAfterNavigation(form, firstPath);
   return firstPath;
 }
 
@@ -88,7 +93,7 @@ export function applyZodIssuesToForm<TFieldValues extends FieldValues>(
 export function applyActionFieldErrors<TFieldValues extends FieldValues>(
   form: UseFormReturn<TFieldValues>,
   fieldErrors: FieldErrorMap,
-  options?: StepNavigationOptions<TFieldValues>,
+  options?: StepNavigationOptions<TFieldValues> & { focusField?: boolean },
 ): void {
   let firstPath: FieldPath<TFieldValues> | null = null;
 
@@ -106,7 +111,7 @@ export function applyActionFieldErrors<TFieldValues extends FieldValues>(
   if (!firstPath) return;
 
   navigateToOwningSurface(firstPath, options);
-  focusFieldAfterNavigation(form, firstPath);
+  if (options?.focusField !== false) focusFieldAfterNavigation(form, firstPath);
 }
 
 export function findOwningStepIndex<TFieldValues extends FieldValues>(

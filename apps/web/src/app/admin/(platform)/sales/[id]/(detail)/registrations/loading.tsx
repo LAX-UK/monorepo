@@ -1,5 +1,5 @@
-import { TableSkeleton } from "@auction/ui";
+import { DetailPageSkeleton } from "@auction/staff-ui";
 
-export default function RegistrationsLoading() {
-  return <TableSkeleton rows={6} columns={4} />;
+export default function Loading() {
+  return <DetailPageSkeleton withRail={false} />;
 }

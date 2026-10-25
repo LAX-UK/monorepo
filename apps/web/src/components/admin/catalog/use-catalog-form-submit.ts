@@ -13,10 +13,11 @@ export async function validateAllCatalogWizardSteps<T extends FieldValues>(
   formSchema: zod.ZodType<T>,
   stepFields: readonly (readonly Path<T>[])[],
   wizardGoTo: (index: number) => void,
+  options: { focus?: boolean } = {},
 ): Promise<boolean> {
   for (let i = 0; i < stepFields.length; i++) {
     const fields = stepFields[i];
-    if (fields?.length && !(await validateWizardStep(form, formSchema, [...fields]))) {
+    if (fields?.length && !(await validateWizardStep(form, formSchema, [...fields], options))) {
       wizardGoTo(i);
       return false;
     }

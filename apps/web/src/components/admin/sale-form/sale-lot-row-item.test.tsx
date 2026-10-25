@@ -101,9 +101,9 @@ describe("SaleLotRowItem", () => {
     });
     render(<SaleLotRowItem {...baseProps(row)} />);
 
-    expect(screen.getByText("Attached")).toBeInTheDocument();
+    expect(screen.getByText("In the sale")).toBeInTheDocument();
     expect(screen.getByText("Attached inventory lot")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Detach lot from sale" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Take lot 1 out of the sale" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save lot" })).not.toBeInTheDocument();
   });
 
@@ -112,17 +112,16 @@ describe("SaleLotRowItem", () => {
     render(<SaleLotRowItem {...baseProps(row)} />);
 
     expect(screen.getByTestId("attach-existing-lot-review")).toBeInTheDocument();
-    expect(screen.getByText("Attach existing lot 1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove row" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove lot 1" })).toBeInTheDocument();
   });
 
   it("renders editable form with save and reset for unsaved new lots", () => {
     const row = validDraftRow();
     render(<SaleLotRowItem {...baseProps(row)} />);
 
-    expect(screen.getByText("Unsaved")).toBeInTheDocument();
+    expect(screen.getByText("Not saved")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save lot" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reset row" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update lot schedule" })).not.toBeInTheDocument();
   });
 
@@ -154,7 +153,7 @@ describe("SaleLotRowItem", () => {
     });
   });
 
-  it("save validation failure surfaces field errors and notifies", async () => {
+  it("save validation failure lists the field errors on the row, not in a toast", async () => {
     const row = validDraftRow({ title: "" });
     render(<SaleLotRowItem {...baseProps(row)} />);
 
@@ -162,8 +161,8 @@ describe("SaleLotRowItem", () => {
 
     await waitFor(() => {
       expect(adminAddLotToSaleResultAction).not.toHaveBeenCalled();
-      expect(notify.error).toHaveBeenCalled();
-      expect(screen.getByText("Enter a lot title")).toBeInTheDocument();
+      expect(notify.error).not.toHaveBeenCalled();
+      expect(screen.getByRole("link", { name: "Enter a lot title" })).toBeInTheDocument();
     });
   });
 
@@ -178,8 +177,8 @@ describe("SaleLotRowItem", () => {
     });
 
     render(<SaleLotRowItem {...baseProps(row, { onRemove, onDetached })} />);
-    fireEvent.click(screen.getByRole("button", { name: "Detach lot from sale" }));
-    fireEvent.click(screen.getByRole("button", { name: "Detach" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take lot 1 out of the sale" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take out of sale" }));
 
     await waitFor(() => {
       expect(adminDetachLotFromSaleResultAction).toHaveBeenCalledWith(SALE_ID, LOT_ID);
@@ -231,6 +230,8 @@ describe("SaleLotRowItem", () => {
     });
     render(<SaleLotRowItem {...baseProps(row, { readOnly: true })} />);
 
-    expect(screen.queryByRole("button", { name: "Detach lot from sale" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Take lot 1 out of the sale" }),
+    ).not.toBeInTheDocument();
   });
 });

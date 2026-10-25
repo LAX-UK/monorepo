@@ -49,6 +49,8 @@ export function toAdminLotTableRow(
     endTimeLabel: formatDateTime(a.endTime),
     hammerDisplay: formatLotHammerForTable(a),
     canDelete: deleteEligibility?.canDelete === true,
+    hasWinner: a.hasWinner === true,
+    createdAtIso: toRequiredIsoString(a.createdAt),
   };
 }
 

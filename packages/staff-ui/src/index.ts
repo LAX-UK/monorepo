@@ -50,6 +50,7 @@ export {
 export type { StatusPresentation } from "./display/status-badge.js";
 export { KeyValueList } from "./display/key-value-list.js";
 export { Notice } from "./display/notice.js";
+export { RecordImage } from "./display/record-image.js";
 export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";
@@ -60,6 +61,8 @@ export {
   TruncatedText,
 } from "./display/truncated-text.js";
 export { AttentionList } from "./display/attention-list.js";
+export { IssueList } from "./display/issue-list.js";
+export type { IssueItem } from "./display/issue-list.js";
 export type { AttentionItem } from "./display/attention-list.js";
 export type { TimelineEvent } from "./display/timeline.js";
 export {
@@ -112,6 +115,8 @@ export { EnumSelect } from "./forms/enum-select.js";
 export type { EnumOption, EnumSelectProps } from "./forms/enum-select.js";
 export { EntityPicker } from "./forms/entity-picker.js";
 export type { EntityOption, EntityPickerProps } from "./forms/entity-picker.js";
+export { EntityMultiPicker } from "./forms/entity-multi-picker.js";
+export type { EntityMultiPickerProps } from "./forms/entity-multi-picker.js";
 export {
   DangerZone,
   DangerZoneAction,
@@ -121,6 +126,9 @@ export {
   FormSection,
 } from "./forms/form-section.js";
 export type { FormErrorSummaryProps } from "./forms/form-section.js";
+export { ReviewSection, StepHeader, StepIndicator } from "./forms/wizard.js";
+export { ListEditor } from "./forms/list-editor.js";
+export type { WizardStep } from "./forms/wizard.js";
 
 // Data
 export { DataTable } from "./data/data-table.js";
@@ -149,6 +157,7 @@ export { FilterSheet } from "./data/filter-sheet.js";
 export type {
   FilterChecklistSection,
   FilterDateRangeSection,
+  FilterEntitySection,
   FilterRadioSection,
   FilterSheetSection,
   FilterSheetValues,
@@ -165,6 +174,7 @@ export {
 export type { DisplayPageSize } from "./data/display-menu.js";
 export {
   CellLink,
+  CellThumbnail,
   EmptyValue,
   PrimaryCell,
   StaffDate,
@@ -176,8 +186,15 @@ export {
 // Page templates
 export { ListPage } from "./templates/list-page.js";
 export type { ListPageAccess, ListPageProps, ListPageTable } from "./templates/list-page.js";
-export { DetailPage } from "./templates/detail-page.js";
+export {
+  DetailColumns,
+  DetailError,
+  DetailPage,
+  DetailPageSkeleton,
+} from "./templates/detail-page.js";
 export type { DetailPageProps } from "./templates/detail-page.js";
+export { FormPage, FormPageSkeleton } from "./templates/form-page.js";
+export type { FormPageProps } from "./templates/form-page.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
 export { SavedViewsError, sameViewQuery, useSavedViews, viewQuery } from "./data/saved-views.js";
 export type {

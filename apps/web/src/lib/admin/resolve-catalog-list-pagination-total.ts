@@ -9,7 +9,7 @@ export function resolveLotsListPaginationTotal(input: {
   lensCounts: AdminLotsLensCounts;
   hasFiltersBeyondLens: boolean;
 }): number | undefined {
-  if (input.hasFiltersBeyondLens) return undefined;
+  if (input.hasFiltersBeyondLens || input.activeLens === "withdrawals") return undefined;
   return input.lensCounts[input.activeLens];
 }
 

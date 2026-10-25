@@ -764,17 +764,22 @@ export function DataTable<T>({
                               </div>
                               {metaColumns.length > 0 ? (
                                 <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-staff-xs text-staff-muted">
-                                  {metaColumns.map((column) => (
-                                    <span
-                                      key={column.id}
-                                      className={cn(
-                                        "min-w-0 truncate",
-                                        column.numeric && "tabular-nums text-staff-fg",
-                                      )}
-                                    >
-                                      {column.cell(row)}
-                                    </span>
-                                  ))}
+                                  {metaColumns.map((column) => {
+                                    const value = column.cell(row);
+                                    // An empty fact takes no space, so the others stay aligned.
+                                    if (isEmptyCellValue(value)) return null;
+                                    return (
+                                      <span
+                                        key={column.id}
+                                        className={cn(
+                                          "min-w-0 truncate",
+                                          column.numeric && "tabular-nums text-staff-fg",
+                                        )}
+                                      >
+                                        {value}
+                                      </span>
+                                    );
+                                  })}
                                 </div>
                               ) : null}
                             </div>

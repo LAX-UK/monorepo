@@ -14,10 +14,6 @@ vi.mock("@/lib/ui/notify", () => ({
   notify: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/lib/admin/admin-form-validation-notify", () => ({
-  notifyAdminFormValidationFailure: vi.fn(),
-}));
-
 function formStub() {
   return {
     clearErrors: vi.fn(),

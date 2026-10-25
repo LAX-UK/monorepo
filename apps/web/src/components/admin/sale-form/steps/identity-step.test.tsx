@@ -57,13 +57,13 @@ describe("SaleIdentityStep", () => {
   it("toggles the conditional homepage hero video URL field", () => {
     render(<SaleIdentityHarness />);
 
-    expect(screen.queryByPlaceholderText(/youtube\.com\/watch/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /Video link/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("Video"));
-    expect(screen.getByPlaceholderText(/youtube\.com\/watch/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /Video/ }));
+    expect(screen.getByRole("textbox", { name: /Video link/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("Cover images"));
-    expect(screen.queryByPlaceholderText(/youtube\.com\/watch/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /Cover images/ }));
+    expect(screen.queryByRole("textbox", { name: /Video link/ })).not.toBeInTheDocument();
   });
 
   it("integrates hero video input with link verification", async () => {
@@ -76,9 +76,9 @@ describe("SaleIdentityStep", () => {
       },
     });
     render(<SaleIdentityHarness />);
-    fireEvent.click(screen.getByLabelText("Video"));
+    fireEvent.click(screen.getByRole("radio", { name: /Video/ }));
 
-    const input = screen.getByPlaceholderText(/youtube\.com\/watch/);
+    const input = screen.getByRole("textbox", { name: /Video link/ });
     fireEvent.change(input, {
       target: { value: "https://www.youtube.com/watch?v=jNQXAC9IVRw" },
     });

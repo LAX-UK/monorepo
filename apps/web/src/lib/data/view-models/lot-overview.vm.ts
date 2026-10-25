@@ -191,10 +191,10 @@ export function buildLotOverviewViewModel(input: {
 
   const attentionFromDelete: DetailAttentionRow[] = deleteBlockers.map((blocker, i) => ({
     id: `delete-blocker-${i}`,
-    title: blocker,
+    title: `Cannot be deleted: ${blocker}`,
     count: 1,
-    category: "Operations",
-    severity: "critical" as const,
+    category: "Delete",
+    severity: "low" as const,
     actionLabel: "Review",
     iconKind: "delete" as const,
   }));

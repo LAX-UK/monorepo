@@ -1,13 +1,11 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminSubmissionsLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Submissions"
-      description="Loading submissions…"
-      kpiTiles={6}
-      tableRows={10}
-      tableColumns={6}
+      description="Review what sellers send in: accept it for cataloguing or reject it with a reason."
+      columns={["Submission", "Status", "Seller", "Waiting", "Details", "Submitted"]}
     />
   );
 }

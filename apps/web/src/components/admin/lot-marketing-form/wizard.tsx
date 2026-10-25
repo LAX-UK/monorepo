@@ -1,13 +1,20 @@
 "use client";
 
-import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import {
+  StaffEnumField,
+  StaffMoneyField,
+  StaffTextAreaField,
+  StaffTextField,
+  staffFieldId,
+  staffFormSummaryErrors,
+} from "@/components/admin/forms/staff-form-fields";
 import {
   type LotEditSectionId,
   useLotEditSectionDirty,
 } from "@/components/admin/lot-form/lot-edit-form-context";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
-import { LabelCaps } from "@/components/ui/typography";
+import { DocumentUploadField } from "@/components/forms/document-upload-field";
 import { adminUpdateLotMarketingDetailsResultAction } from "@/lib/actions/admin";
 import {
   type AdminLotMarketingFormValues,
@@ -16,43 +23,51 @@ import {
   marketingDetailsToFormValues,
 } from "@/lib/admin/admin-lot-marketing-mappers";
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
-import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { notify } from "@/lib/ui/notify";
+import {
+  Field,
+  FieldRow,
+  FormActions,
+  FormErrorSummary,
+  FormSection,
+  ListEditor,
+  Notice,
+  StaffButton,
+} from "@auction/staff-ui";
 import type { ArtistProfile, LotMarketingDetails } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Form } from "@auction/ui/components/form";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { updateLotMarketingDetailsSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useRef, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useState, useTransition } from "react";
+import { useController, useFieldArray, useForm } from "react-hook-form";
 import { ArtistAttributionPanel } from "./artist-attribution-panel";
-import { LotMarketingArtistStoryStep } from "./steps/artist-story-step";
-import { LotMarketingCatalogStep } from "./steps/catalog-step";
 
-const LOT_MARKETING_FORM_STEPS = [
-  { id: "catalog", label: "Catalog copy" },
-  { id: "artist-story", label: "Artist story" },
+export const LOT_MARKETING_FORM_ID = "lot-copy";
+
+const FIELD_ORDER = ["estimate", "conditionReport", "provenance", "exhibitions", "artistNote"];
+
+const CURRENCIES = [
+  { value: "GBP", label: "Pounds sterling (GBP)" },
+  { value: "EUR", label: "Euros (EUR)" },
+  { value: "USD", label: "US dollars (USD)" },
 ] as const;
-
-const LOT_MARKETING_STEP_FIELDS: (keyof AdminLotMarketingFormValues)[][] = [
-  ["estimate", "conditionReport", "provenance", "exhibitions"],
-  ["artistNote"],
-];
 
 type Props = {
   lotId: string;
   marketingDetails: LotMarketingDetails;
   artists: ArtistProfile[];
-  /** FK on the lot row. Marketing form is read-only on this concern: catalog
-   * copy and artist attribution are persisted via separate endpoints. */
+  /** The lot's artist; changed on its own by the attribution section. */
   artistId: string | null;
-  /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
+  /** DOM id on the root `<form>` for external submit triggers. */
   htmlFormId?: string;
   lotEditSection?: LotEditSectionId;
 };
 
+/**
+ * A lot's catalogue copy on one page: who it is attributed to, the pre-sale estimate, its
+ * condition, provenance, exhibitions and the note about the artist. Validates on save, then each
+ * field again as it changes; the error summary lists what to fix and links to each field.
+ */
 export function AdminLotMarketingForm({
   lotId,
   marketingDetails,
@@ -62,116 +77,212 @@ export function AdminLotMarketingForm({
   lotEditSection,
 }: Props) {
   const [pending, startTransition] = useTransition();
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [failure, setFailure] = useState<string | null>(null);
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
   const form = useForm<AdminLotMarketingFormValues>({
     resolver: zodResolver(adminLotMarketingFormValuesSchema),
     defaultValues: marketingDetailsToFormValues(marketingDetails),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    shouldFocusError: false,
   });
   useLotEditSectionDirty(
     "catalog",
     Boolean(lotEditSection === "catalog" && form.formState.isDirty),
   );
-  const wizardGoToRef = useRef<(index: number) => void>(() => {});
+  const provenance = useFieldArray({ control: form.control, name: "provenance" });
+  const exhibitions = useFieldArray({ control: form.control, name: "exhibitions" });
+  const reportPdf = useController({ control: form.control, name: "conditionReport.downloadUrl" });
+  const id = htmlFormId ?? LOT_MARKETING_FORM_ID;
+  const f = { control: form.control, formId: LOT_MARKETING_FORM_ID } as const;
+
+  const save = form.handleSubmit(
+    (values) => {
+      setFailure(null);
+      const patch = formValuesToApiPatch(values);
+      const valid = updateLotMarketingDetailsSchema.safeParse(patch);
+      if (!valid.success) {
+        setFailure(valid.error.issues.map((issue) => issue.message).join(" "));
+        setFailedAttempts((count) => count + 1);
+        return;
+      }
+      startTransition(async () => {
+        const result = await adminUpdateLotMarketingDetailsResultAction(lotId, valid.data);
+        if (result.ok) {
+          form.reset(marketingDetailsToFormValues(valid.data as LotMarketingDetails));
+          notify.success("Catalogue copy saved");
+          router.refresh();
+          return;
+        }
+        if (result.fieldErrors) {
+          applyActionFieldErrors(form, result.fieldErrors, { focusField: false });
+        }
+        setFailure(result.error);
+        setFailedAttempts((count) => count + 1);
+      });
+    },
+    () => setFailedAttempts((count) => count + 1),
+  );
 
   return (
     <>
       {!lotEditSection ? <FormDirtyGuard isDirty={form.formState.isDirty} /> : null}
-      <div className="space-y-8 rounded-sm border border-border-hairline bg-surface-container-lowest/40 p-6">
-        <div>
-          <LabelCaps className="text-secondary">Catalog & marketing</LabelCaps>
-          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Lot story</h2>
-          <p className="mt-1 font-body text-sm text-on-surface-variant">
-            These fields feed the public artwork page (estimate, condition, provenance, exhibitions,
-            about the artist, plus fees and documents where configured). Changes apply immediately
-            for lots that can still be edited in the catalogue.
-          </p>
-        </div>
-        <ArtistAttributionPanel
-          lotId={lotId}
-          artists={artists}
-          artistId={artistId}
-          onSaved={() => router.refresh()}
+      <ArtistAttributionPanel
+        lotId={lotId}
+        artists={artists}
+        artistId={artistId}
+        onSaved={() => router.refresh()}
+      />
+      <form
+        id={id}
+        noValidate
+        aria-label="Catalogue copy"
+        className="flex flex-col gap-6"
+        onSubmit={(event) => void save(event)}
+      >
+        <FormErrorSummary
+          errors={staffFormSummaryErrors(form.formState.errors, LOT_MARKETING_FORM_ID, FIELD_ORDER)}
+          focusKey={failedAttempts}
         />
-        <Form {...form}>
-          <form
-            id={htmlFormId}
-            className="space-y-8"
-            onSubmit={form.handleSubmit((values) => {
-              const patch = formValuesToApiPatch(values);
-              const valid = updateLotMarketingDetailsSchema.safeParse(patch);
-              if (!valid.success) {
-                notify.error(valid.error.issues.map((i) => i.message).join("; "));
-                return;
-              }
-              startTransition(() => {
-                void (async () => {
-                  const r = await adminUpdateLotMarketingDetailsResultAction(lotId, valid.data);
-                  if (r.ok) {
-                    form.reset(marketingDetailsToFormValues(valid.data as LotMarketingDetails));
-                    notify.success("Catalog details saved");
-                    router.refresh();
-                    return;
-                  }
-                  if (r.fieldErrors) {
-                    applyActionFieldErrors(form, r.fieldErrors, {
-                      stepFields: LOT_MARKETING_STEP_FIELDS,
-                      goTo: wizardGoToRef.current,
-                    });
-                  }
-                  notify.error(r.error);
-                })();
-              });
-            })}
+        {failure ? (
+          <Notice tone="danger" alert title="The catalogue copy was not saved">
+            {failure}
+          </Notice>
+        ) : null}
+        <FormSection
+          title="Pre-sale estimate"
+          description="Shown on the lot page once low, high and currency are set. Leave all three empty to hide it."
+        >
+          <FieldRow>
+            <StaffMoneyField {...f} name="estimate.low" label="Low estimate" optional />
+            <StaffMoneyField {...f} name="estimate.high" label="High estimate" optional />
+          </FieldRow>
+          <StaffEnumField {...f} name="estimate.currency" label="Currency" options={CURRENCIES} />
+        </FormSection>
+        <FormSection title="Condition" description="What bidders read about the lot's condition.">
+          <StaffTextAreaField
+            {...f}
+            name="conditionReport.summary"
+            label="Summary"
+            optional
+            rows={3}
+          />
+          <StaffTextAreaField
+            {...f}
+            name="conditionReport.details"
+            label="Details"
+            optional
+            rows={6}
+          />
+          <Field
+            id={staffFieldId(LOT_MARKETING_FORM_ID, "conditionReport.downloadUrl")}
+            label="Condition report file"
+            optional
+            description="A PDF or image. Bidders download it from the lot page."
+            error={reportPdf.fieldState.error?.message}
           >
-            <AdminFormWizard
-              key={lotId}
-              steps={LOT_MARKETING_FORM_STEPS}
-              isDirty={form.formState.isDirty}
-              pending={pending}
-              hideStickyOnMobile={Boolean(htmlFormId)}
-              onStepControl={({ goTo }) => {
-                wizardGoToRef.current = goTo;
-              }}
-              onBeforeNext={async (stepIndex) => {
-                const fields = LOT_MARKETING_STEP_FIELDS[stepIndex];
-                if (!fields?.length) return true;
-                return validateWizardStep(form, adminLotMarketingFormValuesSchema, fields);
-              }}
-              leadingSlot={
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={pending}
-                  className="min-h-11 w-full sm:w-auto"
-                  onClick={() => guardedPush(`/admin/lots/${lotId}`)}
-                >
-                  Back to lot
-                </Button>
-              }
-              submitSlot={
-                <LoadingButton
-                  type="submit"
-                  loading={pending}
-                  loadingLabel="Saving…"
-                  className="min-h-11 w-full sm:min-w-40 sm:w-auto"
-                >
-                  Save catalog copy
-                </LoadingButton>
-              }
+            <DocumentUploadField
+              kind="lot_document"
+              valueMode="publicUrl"
+              inputId={staffFieldId(LOT_MARKETING_FORM_ID, "conditionReport.downloadUrl")}
+              value={reportPdf.field.value?.trim() ? reportPdf.field.value.trim() : null}
+              onChange={(next) => reportPdf.field.onChange(next ?? "")}
+              busy={pending}
+            />
+          </Field>
+        </FormSection>
+        <FormSection title="Provenance" description="Who has owned the work, oldest first.">
+          <ListEditor
+            items={provenance.fields}
+            getKey={(item) => item.id}
+            itemLabel={(index) => `provenance line ${index + 1}`}
+            addLabel="Add provenance line"
+            emptyText="No provenance yet."
+            max={50}
+            disabled={pending}
+            onAdd={() => provenance.append({ period: "", note: "" })}
+            onRemove={(index) => provenance.remove(index)}
+            onMove={(from, to) => provenance.move(from, to)}
+            renderItem={(_item, index) => (
+              <>
+                <StaffTextField
+                  {...f}
+                  name={`provenance.${index}.period`}
+                  label="Period"
+                  placeholder="e.g. 2015 to 2018"
+                />
+                <StaffTextAreaField
+                  {...f}
+                  name={`provenance.${index}.note`}
+                  label="Owner and note"
+                  rows={2}
+                />
+              </>
+            )}
+          />
+        </FormSection>
+        <FormSection title="Exhibited" description="Where the work has been shown.">
+          <ListEditor
+            items={exhibitions.fields}
+            getKey={(item) => item.id}
+            itemLabel={(index) => `exhibition ${index + 1}`}
+            addLabel="Add exhibition"
+            emptyText="No exhibitions yet."
+            max={50}
+            disabled={pending}
+            onAdd={() => exhibitions.append({ year: "", venue: "", note: "" })}
+            onRemove={(index) => exhibitions.remove(index)}
+            onMove={(from, to) => exhibitions.move(from, to)}
+            renderItem={(_item, index) => (
+              <>
+                <FieldRow>
+                  <StaffTextField
+                    {...f}
+                    name={`exhibitions.${index}.year`}
+                    label="Year"
+                    integer={false}
+                    inputMode="numeric"
+                    placeholder="2020"
+                  />
+                  <StaffTextField {...f} name={`exhibitions.${index}.venue`} label="Venue" />
+                </FieldRow>
+                <StaffTextAreaField
+                  {...f}
+                  name={`exhibitions.${index}.note`}
+                  label="Note"
+                  optional
+                  rows={2}
+                />
+              </>
+            )}
+          />
+        </FormSection>
+        <FormSection
+          title="About the artist"
+          description="A note for this lot. It sits beside the artist's public profile."
+        >
+          <StaffTextAreaField {...f} name="artistNote" label="Note" optional rows={5} />
+        </FormSection>
+        <FormActions
+          sticky
+          start={
+            <StaffButton
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => guardedPush(`/admin/lots/${lotId}`)}
             >
-              {(stepIndex) => (
-                <>
-                  {stepIndex === 0 ? (
-                    <LotMarketingCatalogStep form={form} pending={pending} />
-                  ) : null}
-                  {stepIndex === 1 ? <LotMarketingArtistStoryStep form={form} /> : null}
-                </>
-              )}
-            </AdminFormWizard>
-          </form>
-        </Form>
-      </div>
+              Cancel
+            </StaffButton>
+          }
+        >
+          <StaffButton type="submit" variant="primary" loading={pending}>
+            Save catalogue copy
+          </StaffButton>
+        </FormActions>
+      </form>
     </>
   );
 }

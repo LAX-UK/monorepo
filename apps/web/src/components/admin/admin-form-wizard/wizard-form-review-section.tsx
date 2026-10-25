@@ -1,15 +1,13 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
-import type { ReactNode } from "react";
+import { type KeyValueItem, ReviewSection } from "@auction/staff-ui";
+import { Children, type ReactElement, type ReactNode, isValidElement } from "react";
 
-export function WizardReviewRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-      <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">{label}</dt>
-      <dd className="font-body text-sm text-on-surface">{value || "—"}</dd>
-    </div>
-  );
+type RowProps = { label: string; value: string };
+
+/** One answer on a review step; read by {@link WizardFormReviewSection}. */
+export function WizardReviewRow(_props: RowProps): null {
+  return null;
 }
 
 type SectionProps = {
@@ -18,16 +16,10 @@ type SectionProps = {
   children: ReactNode;
 };
 
+/** One step's answers on a review step, on the kit review section, with Change. */
 export function WizardFormReviewSection({ title, onEdit, children }: SectionProps) {
-  return (
-    <section className="space-y-3 rounded-xl border border-border-hairline bg-surface-container-low/30 p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-label text-xs uppercase tracking-wide text-secondary">{title}</h3>
-        <Button type="button" variant="ghost" size="sm" className="min-h-10" onClick={onEdit}>
-          Edit
-        </Button>
-      </div>
-      <dl className="space-y-2">{children}</dl>
-    </section>
-  );
+  const items: KeyValueItem[] = Children.toArray(children)
+    .filter((child): child is ReactElement<RowProps> => isValidElement(child))
+    .map((child) => ({ label: child.props.label, value: child.props.value || null }));
+  return <ReviewSection title={title} items={items} onChange={onEdit} />;
 }

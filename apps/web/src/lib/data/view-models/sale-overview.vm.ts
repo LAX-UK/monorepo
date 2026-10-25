@@ -17,7 +17,7 @@ import { saleDetailTabHref } from "@/lib/admin/sales/sale-detail-routes";
 import type { AdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import type { AdminSaleDetailMetrics } from "@/lib/data/http/admin-sale-detail-metrics.server";
 import type { AdminSaleOverviewKpiTrends } from "@/lib/data/http/admin-sale-overview-kpi-trends.server";
-import { formatKpiMoney } from "@/lib/ui/format";
+import { formatMoney } from "@/lib/ui/format";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 import { saleModeBidChannels } from "@auction/validators";
 
@@ -124,10 +124,10 @@ export function buildSaleOverviewAttentionRows(
 
   const attentionFromBlockers: DetailAttentionRow[] = deleteBlockers.map((blocker, index) => ({
     id: `blocker-${index}`,
-    title: blocker,
+    title: `Cannot be deleted: ${blocker}`,
     count: 1,
     category: "Delete",
-    severity: "high" as const,
+    severity: "low" as const,
     actionLabel: "Review",
     iconKind: "delete" as const,
     href: saleDetailTabHref(saleId, "overview"),
@@ -138,10 +138,13 @@ export function buildSaleOverviewAttentionRows(
       ? [
           {
             id: "pending-regs",
-            title: "Pending bidder approvals",
+            title:
+              pendingRegistrationCount === 1
+                ? "1 bidder waits for approval"
+                : `${pendingRegistrationCount} bidders wait for approval`,
             count: pendingRegistrationCount,
             category: "Bidders",
-            severity: "critical",
+            severity: "high",
             actionLabel: "Review registrations",
             iconKind: "registrations",
             href: saleDetailTabHref(saleId, "registrations"),
@@ -186,7 +189,7 @@ export function buildSaleOverviewViewModel(input: {
   const published = metrics?.publishedLotCount ?? publishedLotCount(lots);
   const lotTotal = metrics?.lotCount ?? lots.length;
 
-  const hammerDisplay = metrics?.totalHammer != null ? formatKpiMoney(metrics.totalHammer) : "—";
+  const hammerDisplay = metrics?.totalHammer != null ? formatMoney(metrics.totalHammer) : "—";
 
   const kpiTiles: DetailBoardKpiTile[] = [
     withTrendOverlay(
@@ -205,7 +208,7 @@ export function buildSaleOverviewViewModel(input: {
       {
         id: "estimate",
         label: "Aggregate estimate",
-        value: metrics?.aggregateEstimate ? formatKpiMoney(metrics.aggregateEstimate) : "—",
+        value: metrics?.aggregateEstimate ? formatMoney(metrics.aggregateEstimate) : "—",
         compareHint: metrics?.aggregateEstimateDeltaHint ?? "Pending metrics",
         trendTone: "muted",
       },
@@ -229,7 +232,7 @@ export function buildSaleOverviewViewModel(input: {
       {
         id: "revenue",
         label: "Expected revenue",
-        value: metrics?.expectedRevenue ? formatKpiMoney(metrics.expectedRevenue) : "—",
+        value: metrics?.expectedRevenue ? formatMoney(metrics.expectedRevenue) : "—",
         compareHint: metrics?.expectedRevenueHint ?? "Incl. buyer's premium",
         trendTone: "success",
       },

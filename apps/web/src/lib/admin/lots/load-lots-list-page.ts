@@ -30,6 +30,7 @@ import {
   getAdminArtistById,
   getAdminArtistList,
   getAdminCategoryById,
+  getAdminLotDetail,
   getAdminSaleById,
   getAdminSalesList,
 } from "@/lib/data/http/admin.server";
@@ -66,7 +67,22 @@ export type AdminLotsListPageViewModel = {
   connectRequiredByLotId: ReturnType<typeof connectRequiredFromLots> | undefined;
   hasAttentionContent: boolean;
   hasFiltersBeyondLens: boolean;
+  /** When each lot with a pending seller withdrawal request asked (ISO), by lot id. */
+  withdrawalRequestedAt: Record<string, string>;
 };
+
+type WithdrawalTasks = Awaited<ReturnType<typeof withdrawalsListController.fetch>>["tasks"];
+
+/** The lots behind pending withdrawal requests, in the order the requests came in. */
+async function lotsForWithdrawalRequests(tasks: WithdrawalTasks): Promise<LotListRow[]> {
+  const ids = [
+    ...new Set(tasks.map((task) => task.targetLotId).filter((id): id is string => Boolean(id))),
+  ];
+  const details = await Promise.all(ids.map((id) => getAdminLotDetail(id).catch(() => null)));
+  return details
+    .filter((detail): detail is NonNullable<typeof detail> => detail !== null)
+    .map((detail) => ({ ...detail.auction, deleteEligibility: detail.deleteEligibility }));
+}
 
 export async function loadAdminLotsListPage(
   sp: LotsListSearchParams,
@@ -79,7 +95,7 @@ export async function loadAdminLotsListPage(
   const {
     query,
     activeLens,
-    attentionLens,
+    withdrawalsLens,
     effectiveSort,
     effectiveStatus,
     q,
@@ -89,43 +105,54 @@ export async function loadAdminLotsListPage(
     lenses,
   } = model;
 
-  const [lotsSummary, lotResult, lotsTrendResult, lotsEndedTrendResult, withdrawalResult] =
-    await Promise.all([
-      getAdminLotsListSummary().catch(() => EMPTY_ADMIN_LOTS_LIST_SUMMARY),
-      lotsListController.fetch(query).then(
-        (r) => ({ err: null as string | null, ...r }),
-        (e) => ({
-          err: e instanceof Error ? e.message : "Could not load lots.",
-          rows: [] as LotListRow[],
+  // Pending withdrawal requests mark their lots on every view; the requests view lists them.
+  const withdrawalResult = await withdrawalsListController.fetch().then(
+    (r) => ({ err: null as string | null, tasks: r.tasks }),
+    (e) => ({
+      err: e instanceof Error ? e.message : "Could not load withdrawal requests.",
+      tasks: [] as WithdrawalTasks,
+    }),
+  );
+
+  const [lotsSummary, lotResult, lotsTrendResult, lotsEndedTrendResult] = await Promise.all([
+    getAdminLotsListSummary().catch(() => EMPTY_ADMIN_LOTS_LIST_SUMMARY),
+    (withdrawalsLens
+      ? lotsForWithdrawalRequests(withdrawalResult.tasks).then((rows) => ({
+          rows,
           hasNextPage: false,
-          offset: query.offset,
+          offset: 0,
           limit: query.limit,
-        }),
-      ),
-      getAdminLotsKpiTrend(periodDays).catch(() => ({
-        currentTotal: 0,
-        priorTotal: 0,
-        dailyCounts: [] as number[],
-      })),
-      getAdminLotsEndedKpiTrend(periodDays).catch(() => ({
-        currentTotal: 0,
-        priorTotal: 0,
-        dailyCounts: [] as number[],
-      })),
-      attentionLens
-        ? withdrawalsListController.fetch().then(
-            (r) => ({ err: null as string | null, tasks: r.tasks }),
-            (e) => ({
-              err: e instanceof Error ? e.message : "Could not load withdrawal requests.",
-              tasks: [] as Awaited<ReturnType<typeof withdrawalsListController.fetch>>["tasks"],
-            }),
-          )
-        : Promise.resolve({ err: null as string | null, tasks: [] }),
-    ]);
+        }))
+      : lotsListController.fetch(query)
+    ).then(
+      (r) => ({ err: null as string | null, ...r }),
+      (e) => ({
+        err: e instanceof Error ? e.message : "Could not load lots.",
+        rows: [] as LotListRow[],
+        hasNextPage: false,
+        offset: query.offset,
+        limit: query.limit,
+      }),
+    ),
+    getAdminLotsKpiTrend(periodDays).catch(() => ({
+      currentTotal: 0,
+      priorTotal: 0,
+      dailyCounts: [] as number[],
+    })),
+    getAdminLotsEndedKpiTrend(periodDays).catch(() => ({
+      currentTotal: 0,
+      priorTotal: 0,
+      dailyCounts: [] as number[],
+    })),
+  ]);
 
   const pageRows = lotResult.rows;
   const lensOwnedSort = activeLens === "ending" && !sp.sort;
-  const lensesItems = applyLotsLensBadges(lenses, lotsSummary.lensCounts);
+  const lensesItems = applyLotsLensBadges(lenses, lotsSummary.lensCounts).map((lens) =>
+    lens.id === "withdrawals" && withdrawalResult.tasks.length > 0
+      ? { ...lens, badge: withdrawalResult.tasks.length }
+      : lens,
+  );
 
   const [artistRef, saleRef, categoryRef, filterOptionsResult] = await Promise.all([
     artistId.trim() ? getAdminArtistById(artistId).catch(() => null) : null,
@@ -227,7 +254,7 @@ export async function loadAdminLotsListPage(
     hasFiltersBeyondLens,
   });
   const hasAttentionContent =
-    attentionLens &&
+    model.attentionLens &&
     !withdrawalResult.err &&
     (withdrawalResult.tasks.length > 0 || lotTableRows.length > 0);
 
@@ -251,5 +278,10 @@ export async function loadAdminLotsListPage(
     connectRequiredByLotId: pageRows.length > 0 ? connectRequiredFromLots(pageRows) : undefined,
     hasAttentionContent: Boolean(hasAttentionContent),
     hasFiltersBeyondLens,
+    withdrawalRequestedAt: Object.fromEntries(
+      withdrawalResult.tasks
+        .filter((task) => task.targetLotId)
+        .map((task) => [task.targetLotId as string, new Date(task.createdAt).toISOString()]),
+    ),
   };
 }

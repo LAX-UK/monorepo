@@ -1,6 +1,7 @@
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
 import { type GetAdminArtistListParams, getAdminArtistList } from "@/lib/data/http/admin.server";
+import { parseStaffPageSize } from "@auction/staff-ui";
 import type { AdminArtistListRow } from "@auction/types";
 
 export type ArtistsListQuery = AdminListQueryBase & {
@@ -49,7 +50,7 @@ export const artistsListController: IAdminListController<AdminArtistListRow, Art
       verified: verified || undefined,
       linked,
       sort,
-      limit: Math.min(200, base.limit),
+      limit: parseStaffPageSize(firstString(sp.limit)),
     };
   },
   async fetch(q) {

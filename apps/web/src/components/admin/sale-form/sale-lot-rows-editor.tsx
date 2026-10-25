@@ -7,10 +7,13 @@ import {
   scheduleLotConflictBanner,
   scheduleLotConflictInheritedTimingBanner,
 } from "@/lib/admin/sale-setup";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { LoadingButton } from "@auction/ui/components/loading-button";
+import {
+  ConfirmActionDialog,
+  EmptyState,
+  FormActions,
+  Notice,
+  StaffButton,
+} from "@auction/staff-ui";
 import { Plus } from "lucide-react";
 import { SaleLotRowItem } from "./sale-lot-row-item";
 import { saleLotRowsCountSaved, saleLotRowsHaveUnsaved } from "./sale-lot-rows-editor-helpers";
@@ -60,28 +63,43 @@ export function SaleLotRowsEditor({
 
   const inheritsLotTiming = saleInheritsLotTiming(sale);
 
-  return (
-    <div className="space-y-6">
-      <Alert>
-        <AlertDescription>{deliveryModeExplanation(sale.deliveryMode)}</AlertDescription>
-      </Alert>
+  const addButtons = (primary: boolean) => (
+    <FormActions className="justify-start">
+      <StaffButton
+        type="button"
+        variant={primary ? "primary" : "secondary"}
+        icon={<Plus aria-hidden />}
+        onClick={addNewLotRow}
+      >
+        Create new lot
+      </StaffButton>
+      <StaffButton
+        type="button"
+        variant="secondary"
+        icon={<Plus aria-hidden />}
+        onClick={addExistingLotRow}
+      >
+        Add existing lot
+      </StaffButton>
+    </FormActions>
+  );
 
+  return (
+    <>
+      <Notice tone="info" title="How lot times work in this sale">
+        {deliveryModeExplanation(sale.deliveryMode)}
+      </Notice>
       {lotWindowConflicts.length > 0 && !readOnly ? (
-        <Alert
-          className={
+        <Notice
+          tone={inheritsLotTiming ? "info" : "warning"}
+          title={
             inheritsLotTiming
-              ? "border-outline-variant/40 bg-surface-container-low/40"
-              : "border-warning/40 bg-warning/5"
+              ? scheduleLotConflictInheritedTimingBanner(lotWindowConflicts.length)
+              : scheduleLotConflictBanner(lotWindowConflicts.length)
           }
-        >
-          <AlertDescription className="space-y-3 font-body text-sm text-on-surface-variant">
-            <p>
-              {inheritsLotTiming
-                ? scheduleLotConflictInheritedTimingBanner(lotWindowConflicts.length)
-                : scheduleLotConflictBanner(lotWindowConflicts.length)}
-            </p>
-            {!inheritsLotTiming ? (
-              <LoadingButton
+          actions={
+            !inheritsLotTiming ? (
+              <StaffButton
                 type="button"
                 size="sm"
                 variant="secondary"
@@ -89,32 +107,15 @@ export function SaleLotRowsEditor({
                 onClick={() => setSyncConfirmOpen(true)}
               >
                 {syncConfirmTitle}
-              </LoadingButton>
-            ) : null}
-          </AlertDescription>
-        </Alert>
+              </StaffButton>
+            ) : null
+          }
+        />
       ) : null}
-
       {showFirstLotChoice ? (
-        <div className="rounded-xl border border-dashed border-border-hairline bg-surface-container-low/40 p-6">
-          <p className="font-headline text-base text-on-surface">{lotsStepFirstLotPrompt()}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button type="button" onClick={addNewLotRow} className="gap-2">
-              <Plus className="size-4" aria-hidden />
-              Create new lot
-            </Button>
-            <Button type="button" variant="outline" onClick={addExistingLotRow} className="gap-2">
-              <Plus className="size-4" aria-hidden />
-              Add existing lot
-            </Button>
-          </div>
-        </div>
+        <EmptyState title={lotsStepFirstLotPrompt()} action={addButtons(true)} />
       ) : null}
-
-      {readOnly && lots.length === 0 ? (
-        <p className="font-body text-sm text-on-surface-variant">No lots yet.</p>
-      ) : null}
-
+      {readOnly && lots.length === 0 ? <EmptyState title="No lots in this sale yet" /> : null}
       {rows.map((row, index) => (
         <SaleLotRowItem
           key={row.clientRowId}
@@ -132,38 +133,23 @@ export function SaleLotRowsEditor({
           onScheduleUpdated={onLotsChange}
         />
       ))}
-
-      {showAddLotActions ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={addNewLotRow} className="gap-2">
-            <Plus className="size-4" aria-hidden />
-            Create new lot
-          </Button>
-          <Button type="button" variant="outline" onClick={addExistingLotRow} className="gap-2">
-            <Plus className="size-4" aria-hidden />
-            Add existing lot
-          </Button>
-        </div>
-      ) : null}
-
+      {showAddLotActions ? addButtons(false) : null}
       {unsavedCount > 0 ? (
-        <Alert variant="destructive">
-          <AlertDescription role="alert">
-            Save {unsavedCount} unsaved lot{unsavedCount === 1 ? "" : "s"} before continuing.
-          </AlertDescription>
-        </Alert>
+        <Notice tone="danger" alert title="Some lots are not saved">
+          Save {unsavedCount} unsaved {unsavedCount === 1 ? "lot" : "lots"} before continuing.
+        </Notice>
       ) : null}
-
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={syncConfirmOpen}
-        onOpenChange={setSyncConfirmOpen}
+        onOpenChange={(open) => {
+          if (!syncPending) setSyncConfirmOpen(open);
+        }}
         title={syncConfirmTitle}
-        body={syncConfirmBody}
+        description={syncConfirmBody}
         confirmLabel="Adjust times"
-        tone="warning"
         loading={syncPending}
         onConfirm={runSyncLotsToWindow}
       />
-    </div>
+    </>
   );
 }

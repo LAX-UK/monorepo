@@ -1,15 +1,18 @@
 "use client";
 
 import { LotQuickView } from "@/components/admin/lots/lot-quick-view";
+import { type LotActionTarget, useLotActions } from "@/components/admin/lots/use-lot-actions";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
+import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
-import type { CatalogSegmentItem } from "@/lib/admin/catalog/types";
 import {
+  LOTS_DEFAULT_SORT,
   LOT_STATUS_FILTERS,
   type LotsListSearch,
   type LotsStaffRow,
+  lotPanelHref,
   lotsListHref,
   lotsSortHref,
   lotsSortState,
@@ -17,342 +20,388 @@ import {
 } from "@/lib/admin/lots/lots-staff-list.vm";
 import { createSavedViewsPort } from "@/lib/admin/saved-views-port";
 import {
-  ActiveFilterChips,
+  type AttentionStripItem,
+  CellLink,
   type DataColumn,
-  DataTable,
-  DataTableToolbar,
   DataViews,
-  DensityToggle,
-  EmptyState,
-  ErrorState,
-  FilterMenu,
-  NoResultsState,
+  type EntityOption,
+  FilterSheet,
+  ListPage,
+  type Metric,
+  PrimaryCell,
   StaffButton,
+  type DataView as StaffDataView,
+  StaffDate,
   StatusBadge,
-  TablePagination,
   TableSearch,
-  formatStaffDateTime,
+  staffButtonVariants,
   useSavedViews,
-  useTableDensity,
 } from "@auction/staff-ui";
-import { ImageOff } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type LotsStaffListProps = {
   rows: LotsStaffRow[];
   search: LotsListSearch;
-  lenses: CatalogSegmentItem[];
+  views: StaffDataView[];
   activeLens: string;
+  attention: AttentionStripItem[];
+  metrics: Metric[];
   filterChips: Array<{ id: string; label: string; clearHref: string }>;
-  sales: Array<{ id: string; title: string }>;
-  artists: Array<{ id: string; displayName: string }>;
+  filterOptions: {
+    sales: EntityOption[];
+    artists: EntityOption[];
+    categories: EntityOption[];
+  };
+  pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   canManageCatalog: boolean;
   canManageAuction: boolean;
+  canDecideWithdrawals: boolean;
   exportFilters: Record<string, unknown>;
   listError: string | null;
   filtered: boolean;
 };
 
-function Thumbnail({ url, title }: { url: string | null; title: string }) {
-  return url ? (
-    <img
-      src={url}
-      alt=""
-      width={32}
-      height={32}
-      loading="lazy"
-      className="size-8 shrink-0 rounded-staff-xs border border-staff-line object-cover"
-      title={title}
-    />
-  ) : (
-    <span
-      aria-hidden
-      className="flex size-8 shrink-0 items-center justify-center rounded-staff-xs border border-dashed border-staff-line-strong text-staff-subtle [&_svg]:size-3.5"
-    >
-      <ImageOff />
-    </span>
-  );
+/** The row as the lot actions see it. */
+export function lotActionTarget(row: LotsStaffRow): LotActionTarget {
+  return {
+    id: row.id,
+    title: row.title,
+    status: row.statusCode,
+    inDraftSale: row.inDraftSale,
+    canDelete: row.canDelete,
+    hasWinner: row.hasWinner,
+    withdrawalRequested: row.withdrawalRequestedAt !== null,
+  };
 }
 
 /**
- * Bid's lots in the staff kit: lenses as views with counts, saved views, search, status, sale and
- * artist filters, server sorting, bulk publish/cancel/delete (for roles that may) and a quick
- * view beside the list. Every filter is a URL.
+ * Bid's lots on the staff list template: lenses (and the seller withdrawal requests) as views
+ * with counts, saved and team views, search, a filter sheet for status, sale, artist and
+ * category, server sorting, bulk publish, withdraw and delete for roles that may, and a record
+ * panel deep-linked with `?lot=`. Every row's `…` menu holds the lot's actions, each confirmed
+ * first.
  */
 export function LotsStaffList(props: LotsStaffListProps) {
   const { rows, search, filtered } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [density, setDensity] = useTableDensity("bid-lots");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openId, setOpenId] = useState<string | null>(null);
+  const panelHref = useCallback((id: string | null) => lotPanelHref(search, id), [search]);
+  const panel = useListPanel({
+    param: "lot",
+    initialId: typeof search.lot === "string" ? search.lot : null,
+    hrefFor: panelHref,
+  });
+  const lotActions = useLotActions({
+    canManageCatalog: props.canManageCatalog,
+    canManageAuction: props.canManageAuction,
+    canDecideWithdrawals: props.canDecideWithdrawals,
+  });
   const port = useMemo(() => createSavedViewsPort("bid-admin.lots"), []);
   const saved = useSavedViews("bid-admin.lots", port, { legacyStorageKey: "staff.views.bid-lots" });
   const teamViews = useMemo(() => lotsTeamViews(), []);
   const currentQuery = lotsListHref(search, {}).split("?")[1] ?? "";
+  const q = typeof search.q === "string" ? search.q : "";
   const status = typeof search.status === "string" ? search.status : "";
   const saleId = typeof search.saleId === "string" ? search.saleId : "";
   const artistId = typeof search.artistId === "string" ? search.artistId : "";
+  const categoryId = typeof search.categoryId === "string" ? search.categoryId : "";
   const operations = useMemo(
     () => (props.canManageCatalog ? getLotBulkOperations(props.canManageAuction) : []),
     [props.canManageCatalog, props.canManageAuction],
   );
 
-  const columns: DataColumn<LotsStaffRow>[] = [
-    {
-      id: "lot",
-      header: "Lot",
-      mobile: "title",
-      cell: (row) => (
-        <span className="flex min-w-0 items-center gap-3">
-          <Thumbnail url={row.thumbnailUrl} title={row.title} />
-          <span className="flex min-w-0 flex-col">
-            <Link
-              href={row.href}
-              className="staff-focus truncate rounded-staff-xs font-medium text-staff-fg hover:underline"
-            >
-              {row.title}
-            </Link>
-            <span className="truncate text-staff-xs text-staff-muted">
-              {[row.lotNumber != null ? `Lot ${row.lotNumber}` : null, row.artist]
-                .filter(Boolean)
-                .join(" · ") || "Unassigned"}
-            </span>
-          </span>
-        </span>
-      ),
-    },
-    {
-      id: "sale",
-      header: "Sale",
-      width: "22%",
-      hideBelow: "lg",
-      mobile: "meta",
-      cell: (row) =>
-        row.saleHref && row.saleTitle ? (
-          <Link
-            href={row.saleHref}
-            className="staff-focus truncate rounded-staff-xs text-staff-muted hover:text-staff-fg hover:underline"
+  const columns = useMemo<DataColumn<LotsStaffRow>[]>(
+    () => [
+      {
+        id: "lot",
+        header: "Lot",
+        mobile: "title",
+        cell: (row) => (
+          <PrimaryCell
+            href={panelHref(row.id)}
+            Link={panel.PanelLink}
+            thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos yet" }}
+            secondary={row.context}
           >
-            {row.saleTitle}
-          </Link>
-        ) : (
-          <span className="text-staff-subtle">No sale</span>
+            {row.title}
+          </PrimaryCell>
         ),
-    },
-    {
-      id: "status",
-      header: "Status",
-      width: "128px",
-      mobile: "badge",
-      cell: (row) => (
-        <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
-          {row.status.label}
-        </StatusBadge>
-      ),
-    },
-    {
-      id: "estimate",
-      header: "Estimate",
-      width: "152px",
-      numeric: true,
-      hideBelow: "xl",
-      cell: (row) => <span className="text-staff-muted">{row.estimate}</span>,
-    },
-    {
-      id: "hammer",
-      header: "Hammer",
-      width: "112px",
-      numeric: true,
-      sortable: true,
-      mobile: "meta",
-      cell: (row) => row.hammer,
-    },
-    {
-      id: "ends",
-      header: "Ends",
-      width: "168px",
-      numeric: true,
-      sortable: true,
-      hideBelow: "md",
-      mobile: "meta",
-      cell: (row) => (
-        <time dateTime={row.endsAt} className="text-staff-muted">
-          {formatStaffDateTime(row.endsAt)}
-        </time>
-      ),
-    },
-  ];
+      },
+      {
+        id: "status",
+        header: "Status",
+        width: "132px",
+        mobile: "badge",
+        truncate: false,
+        cell: (row) => (
+          <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
+            {row.status.label}
+          </StatusBadge>
+        ),
+      },
+      {
+        id: "sale",
+        header: "Sale",
+        width: "17%",
+        hideBelow: "lg",
+        mobile: "meta",
+        cell: (row) =>
+          row.saleHref && row.saleTitle ? (
+            <CellLink href={row.saleHref} Link={Link}>
+              {row.saleTitle}
+            </CellLink>
+          ) : null,
+      },
+      {
+        id: "estimate",
+        header: "Estimate",
+        width: "148px",
+        numeric: true,
+        hideBelow: "xl",
+        mobile: "hidden",
+        cell: (row) => row.estimate,
+      },
+      {
+        id: "hammer",
+        header: "Hammer",
+        width: "112px",
+        numeric: true,
+        sortable: true,
+        defaultSortDirection: "desc",
+        mobile: "meta",
+        cell: (row) => row.hammer,
+      },
+      {
+        id: "ends",
+        header: "Ends",
+        width: "172px",
+        sortable: true,
+        defaultSortDirection: "asc",
+        hideBelow: "md",
+        mobile: "meta",
+        truncate: false,
+        cell: (row) => <StaffDate value={row.endsAt} withTime />,
+      },
+      {
+        id: "added",
+        header: "Added",
+        width: "120px",
+        sortable: true,
+        defaultSortDirection: "desc",
+        hideBelow: "lg",
+        mobile: "hidden",
+        truncate: false,
+        cell: (row) => <StaffDate value={row.addedAt} />,
+      },
+    ],
+    [panelHref, panel.PanelLink],
+  );
 
-  const views = [
-    ...props.lenses.map((lens) => ({
-      id: lens.id,
-      label: lens.label,
-      href: lens.href,
-      ...(lens.badge !== undefined ? { count: lens.badge } : {}),
-    })),
-  ];
-  const pick = (values: string[], current: string) =>
-    values.find((value) => value !== current) ?? "";
+  const activeFilters = props.filterChips.map((chip) => ({
+    id: chip.id,
+    label: chip.label,
+    onRemove: () => navigate(chip.clearHref),
+  }));
+  const clearHref = lotsListHref(search, {
+    q: null,
+    status: null,
+    saleId: null,
+    artistId: null,
+    categoryId: null,
+    sort: null,
+  });
+  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
+  const access = props.canManageCatalog || props.canManageAuction ? "full" : "read-only";
 
   return (
     <>
-      <DataTable
-        label="Lots"
-        columns={columns}
-        data={rows}
-        getRowId={(row) => row.id}
-        density={density}
-        loading={pending}
-        onRowOpen={(row) => setOpenId(row.id)}
-        activeRowId={openId}
-        sort={lotsSortState(typeof search.sort === "string" ? search.sort : undefined)}
-        onSortChange={(sort) => navigate(lotsSortHref(search, sort))}
-        {...(operations.length > 0
-          ? {
-              selectedIds: selected,
-              onSelectedIdsChange: setSelected,
-              bulkNoun: { one: "lot", other: "lots" },
-              bulkActions: (chosen: LotsStaffRow[]) => (
-                <StaffBulkOperations
-                  operations={operations}
-                  selectedIds={chosen.map((row) => row.id)}
-                  onClear={() => setSelected(new Set())}
-                  noun={{ one: "lot", other: "lots" }}
-                />
-              ),
-            }
-          : {})}
-        toolbar={
-          <DataTableToolbar
-            views={
-              <DataViews
-                views={views}
-                activeId={props.activeLens}
-                Link={ListLink}
-                team={teamViews}
-                saved={saved}
-                savedHref={(view) => `/admin/lots?${view.query}`}
-                currentQuery={currentQuery}
-              />
-            }
-            search={
-              <TableSearch
-                key={typeof search.q === "string" ? search.q : ""}
-                label="Search lots"
-                placeholder="Title, lot number or artist"
-                value={typeof search.q === "string" ? search.q : ""}
-                onSearch={(q) => navigate(lotsListHref(search, { q: q || null }))}
-              />
-            }
-            filters={
-              <>
-                <FilterMenu
-                  label="Status"
-                  options={LOT_STATUS_FILTERS}
-                  selected={status ? [status] : []}
-                  onChange={(values) =>
-                    navigate(
-                      lotsListHref(search, { status: pick(values, status) || null, lens: null }),
-                    )
-                  }
-                />
-                <FilterMenu
-                  label="Sale"
-                  options={props.sales.map((sale) => ({ value: sale.id, label: sale.title }))}
-                  selected={saleId ? [saleId] : []}
-                  onChange={(values) =>
-                    navigate(lotsListHref(search, { saleId: pick(values, saleId) || null }))
-                  }
-                />
-                <FilterMenu
-                  label="Artist"
-                  options={props.artists.map((artist) => ({
-                    value: artist.id,
-                    label: artist.displayName,
-                  }))}
-                  selected={artistId ? [artistId] : []}
-                  onChange={(values) =>
-                    navigate(lotsListHref(search, { artistId: pick(values, artistId) || null }))
-                  }
-                />
-              </>
-            }
-            activeFilters={
-              <ActiveFilterChips
-                filters={props.filterChips.map((chip) => ({
-                  id: chip.id,
-                  label: chip.label,
-                  onRemove: () => navigate(chip.clearHref),
-                }))}
-                onClearAll={() => navigate("/admin/lots")}
-              />
-            }
-            end={
-              <>
-                <ExportButton entityType="lots" filters={props.exportFilters} />
-                <DensityToggle value={density} onChange={setDensity} />
-              </>
-            }
-          />
-        }
-        error={
-          props.listError ? (
-            <ErrorState
-              title="Lots did not load"
-              description={props.listError}
-              action={
-                <StaffButton size="sm" onClick={() => navigate(lotsListHref(search, {}))}>
-                  Try again
-                </StaffButton>
-              }
-            />
-          ) : undefined
-        }
-        empty={
-          filtered ? (
-            <NoResultsState
-              title="No lots in this view"
-              description="Try another view, or clear the search and filters."
-              action={
-                <StaffButton size="sm" onClick={() => navigate("/admin/lots")}>
-                  Clear filters
-                </StaffButton>
-              }
-            />
-          ) : (
-            <EmptyState
-              title="No lots yet"
-              description="Create the first draft lot and assign a seller."
-              {...(props.canManageCatalog
-                ? {
-                    action: (
-                      <StaffButton asChild size="sm" variant="primary">
-                        <Link href="/admin/lots/new">New lot</Link>
-                      </StaffButton>
-                    ),
-                  }
-                : {})}
-            />
-          )
-        }
-        footer={
-          props.pagination ? (
-            <TablePagination
-              summary={props.pagination.summary}
-              prevHref={props.pagination.prevHref}
-              nextHref={props.pagination.nextHref}
-              Link={ListLink}
-            />
+      <ListPage<LotsStaffRow>
+        title="Lots"
+        description="Catalogue lots. Publish, schedule and withdraw them, and decide sellers' withdrawal requests."
+        Link={ListLink}
+        listKey="bid-admin.lots"
+        access={access}
+        roleLabel="Catalogue"
+        primaryAction={
+          props.canManageCatalog ? (
+            <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>
+              <Link href="/admin/lots/new">New lot</Link>
+            </StaffButton>
           ) : null
         }
+        exportAction={
+          <ExportButton
+            entityType="lots"
+            filters={props.exportFilters}
+            className={staffButtonVariants({ variant: "secondary", size: "sm" })}
+          />
+        }
+        attention={props.attention}
+        metrics={{ label: "Lots summary", period: "All lots", items: props.metrics }}
+        views={
+          <DataViews
+            views={props.views}
+            activeId={props.activeLens}
+            Link={ListLink}
+            team={teamViews}
+            saved={saved}
+            savedHref={(view) => `/admin/lots?${view.query}`}
+            currentQuery={currentQuery}
+          />
+        }
+        search={
+          <TableSearch
+            key={q}
+            fullWidth
+            label="Search lots"
+            placeholder="Search by title, lot number or artist"
+            value={q}
+            onSearch={(next) => navigate(lotsListHref(search, { q: next || null }))}
+          />
+        }
+        filters={
+          <FilterSheet
+            title="Filter lots"
+            sections={[
+              {
+                kind: "radio",
+                id: "status",
+                label: "Status",
+                anyLabel: "Any status",
+                options: LOT_STATUS_FILTERS,
+                value: status,
+              },
+              {
+                kind: "entity",
+                id: "saleId",
+                label: "Sale",
+                value: saleId,
+                options: props.filterOptions.sales,
+                placeholder: "Any sale",
+                searchPlaceholder: "Search sales",
+                emptyText: "No sales match.",
+              },
+              {
+                kind: "entity",
+                id: "artistId",
+                label: "Artist",
+                value: artistId,
+                options: props.filterOptions.artists,
+                placeholder: "Any artist",
+                searchPlaceholder: "Search artists",
+                emptyText: "No artists match.",
+              },
+              {
+                kind: "entity",
+                id: "categoryId",
+                label: "Category",
+                value: categoryId,
+                options: props.filterOptions.categories,
+                placeholder: "Any category",
+                searchPlaceholder: "Search categories",
+                emptyText: "No categories match.",
+              },
+            ]}
+            onApply={(values) => {
+              const nextStatus = (values.status as string) || null;
+              navigate(
+                lotsListHref(search, {
+                  status: nextStatus,
+                  // A status chosen here replaces the view tab's own status.
+                  ...(nextStatus !== (status || null) ? { lens: null, needsPhotos: null } : {}),
+                  saleId: (values.saleId as string) || null,
+                  artistId: (values.artistId as string) || null,
+                  categoryId: (values.categoryId as string) || null,
+                }),
+              );
+            }}
+          />
+        }
+        activeFilters={activeFilters}
+        onClearFilters={() => navigate(clearHref)}
+        loading={pending}
+        filtered={filtered}
+        error={
+          props.listError
+            ? { description: props.listError, onRetry: () => navigate(lotsListHref(search, {})) }
+            : null
+        }
+        empty={{
+          title: props.activeLens === "withdrawals" ? "No withdrawal requests" : "No lots yet",
+          description:
+            props.activeLens === "withdrawals"
+              ? "When a seller asks to withdraw a lot, the lot appears here for a decision."
+              : "Create the first draft lot, then add its photos and assign a seller.",
+          ...(props.canManageCatalog && props.activeLens !== "withdrawals"
+            ? {
+                action: (
+                  <StaffButton asChild size="sm" variant="primary">
+                    <Link href="/admin/lots/new">New lot</Link>
+                  </StaffButton>
+                ),
+              }
+            : {}),
+        }}
+        noResults={{
+          title: "No lots match",
+          description: "Try another view, or clear the search and filters.",
+        }}
+        table={{
+          columns,
+          data: rows,
+          getRowId: (row) => row.id,
+          // The lot cell has a photo and a second line, which need 44px rows.
+          defaultDensity: "comfortable",
+          defaultHiddenColumns: ["added"],
+          defaultSort: LOTS_DEFAULT_SORT,
+          sort: lotsSortState(typeof search.sort === "string" ? search.sort : undefined),
+          onSortChange: (sort) => navigate(lotsSortHref(search, sort)),
+          onRowOpen: (row) => panel.show(row.id),
+          activeRowId: panel.openId,
+          ...(operations.length > 0
+            ? {
+                selectedIds: selected,
+                onSelectedIdsChange: setSelected,
+                bulkNoun: { one: "lot", other: "lots" },
+                bulkActions: (chosen: LotsStaffRow[]) => (
+                  <StaffBulkOperations
+                    operations={operations}
+                    selectedIds={chosen.map((row) => row.id)}
+                    onClear={() => setSelected(new Set())}
+                    noun={{ one: "lot", other: "lots" }}
+                  />
+                ),
+              }
+            : {}),
+          rowActions: {
+            label: (row) => `Actions for lot ${row.title}`,
+            actions: (row) => [
+              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
+              { id: "page", label: "Open lot page", href: row.href },
+              ...(props.canManageCatalog
+                ? [{ id: "edit", label: "Edit lot", href: row.editHref }]
+                : []),
+              ...(row.saleHref ? [{ id: "sale", label: "Open sale", href: row.saleHref }] : []),
+              ...lotActions.actionsFor(lotActionTarget(row)),
+            ],
+          },
+        }}
+        pageSize={{
+          value: props.pageSize,
+          onChange: (size) => navigate(lotsListHref(search, { limit: size })),
+        }}
+        pagination={props.pagination}
       />
       <LotQuickView
-        row={rows.find((row) => row.id === openId) ?? null}
+        row={openRow}
         canManageCatalog={props.canManageCatalog}
-        onClose={() => setOpenId(null)}
+        onClose={() => panel.show(null)}
+        actions={openRow ? lotActions.actionsFor(lotActionTarget(openRow)) : []}
       />
+      {lotActions.dialogs}
     </>
   );
 }

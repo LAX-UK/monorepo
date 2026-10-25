@@ -1,8 +1,7 @@
 "use client";
 
-import { WizardProgress } from "@auction/ui/components/wizard-progress";
-
 import type { WizardStepSpec } from "@/lib/admin/wizard/types";
+import { StepIndicator } from "@auction/staff-ui";
 
 export type { WizardStepSpec };
 
@@ -10,12 +9,12 @@ type Props = {
   steps: readonly WizardStepSpec[];
   currentIndex: number;
   onStepClick?: (index: number) => void;
-  /** When true, step chips cannot be clicked (e.g. while validating a step jump). */
+  /** When true, steps cannot be clicked (e.g. while validating a step jump). */
   stepNavigationDisabled?: boolean;
   className?: string;
 };
 
-/** Admin wizard step chips — thin wrapper over the shared {@link WizardProgress}. */
+/** The wizard's steps above the form, on the kit step indicator. */
 export function WizardStepIndicator({
   steps,
   currentIndex,
@@ -24,11 +23,11 @@ export function WizardStepIndicator({
   className,
 }: Props) {
   return (
-    <WizardProgress
+    <StepIndicator
       steps={steps}
       currentIndex={currentIndex}
-      variant="chips"
-      stepNavigationDisabled={stepNavigationDisabled}
+      disabled={stepNavigationDisabled}
+      label="Form steps"
       {...(onStepClick ? { onStepClick } : {})}
       {...(className ? { className } : {})}
     />

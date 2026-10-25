@@ -44,14 +44,19 @@ export async function adminUnpublishSaleResultAction(saleId: string): Promise<Ac
   });
 }
 
-export async function adminCancelSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+/** Cancels a sale; the reason, when given, is kept with the sale and in the audit log. */
+export async function adminCancelSaleResultAction(
+  saleId: string,
+  reason?: string,
+): Promise<ActionResult<void>> {
   return instrumentServerAction("adminCancelSaleResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied && !denied.ok) return denied;
     const id = saleId.trim();
     if (!id) return actionFailure("Missing sale");
     const { adminSales } = getWriteContainer();
-    const r = await adminSales.cancel(id, {});
+    const trimmed = reason?.trim();
+    const r = await adminSales.cancel(id, trimmed ? { reason: trimmed.slice(0, 500) } : {});
     if (!r.ok) return actionFailure(r.message, undefined, r.status);
     revalidateAdminSaleDetail(id);
     revalidatePath("/");

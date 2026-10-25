@@ -1,65 +1,57 @@
 "use client";
 
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
+import { StaffMoneyField, StaffTextField } from "@/components/admin/forms/staff-form-fields";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
+import { FieldRow, FormSection } from "@auction/staff-ui";
 import type { UseFormReturn } from "react-hook-form";
-import { CatalogueFieldHelp } from "./catalogue-field-help";
+import { LOT_FORM_ID, LOT_MONEY_FIELDS, lotFieldProps } from "../../lot-field-spec";
+
+type PricingKey = "startingPrice" | "reservePrice" | "buyNowPrice" | "buyerPremiumRate";
 
 type Props = {
   form: UseFormReturn<AdminLotFormValues>;
-  fields: Pick<
-    Record<LotCatalogueFieldKey, FieldSpec>,
-    "startingPrice" | "reservePrice" | "buyNowPrice" | "buyerPremiumRate"
-  >;
+  fields: Pick<Record<LotCatalogueFieldKey, FieldSpec>, PricingKey>;
 };
 
+const ORDER: readonly PricingKey[] = [
+  "startingPrice",
+  "reservePrice",
+  "buyNowPrice",
+  "buyerPremiumRate",
+];
+
 export function CataloguePricingSection({ form, fields }: Props) {
-  const visibleKeys = (
-    ["startingPrice", "reservePrice", "buyNowPrice", "buyerPremiumRate"] as const
-  ).filter((key) => fields[key].visible);
-
-  if (visibleKeys.length === 0) return null;
-
+  const visible = ORDER.filter((key) => fields[key].visible);
+  if (visible.length === 0) return null;
   return (
-    <CatalogFormSection
+    <FormSection
       title="Pricing"
-      description="Opening amounts, reserve, and buyer premium."
-      collapsible={false}
+      description="The opening amount, the reserve and the buyer's premium."
     >
-      <div className="grid gap-6 sm:grid-cols-2">
-        {visibleKeys.map((key) => {
-          const spec = fields[key];
-          return (
-            <FormField
+      <FieldRow>
+        {visible.map((key) =>
+          LOT_MONEY_FIELDS.has(key) ? (
+            <StaffMoneyField
               key={key}
               control={form.control}
               name={key}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <LabelCaps>{spec.label}</LabelCaps>
-                  </FormLabel>
-                  <FormControl>
-                    <UnderlineInput placeholder={spec.placeholder ?? "0.00"} {...field} />
-                  </FormControl>
-                  <CatalogueFieldHelp text={spec.helpText} />
-                  <FormMessage />
-                </FormItem>
-              )}
+              formId={LOT_FORM_ID}
+              {...lotFieldProps(fields[key])}
             />
-          );
-        })}
-      </div>
-    </CatalogFormSection>
+          ) : (
+            <StaffTextField
+              key={key}
+              control={form.control}
+              name={key}
+              formId={LOT_FORM_ID}
+              inputMode="decimal"
+              {...(fields[key].placeholder ? { placeholder: fields[key].placeholder } : {})}
+              {...lotFieldProps(fields[key])}
+            />
+          ),
+        )}
+      </FieldRow>
+    </FormSection>
   );
 }

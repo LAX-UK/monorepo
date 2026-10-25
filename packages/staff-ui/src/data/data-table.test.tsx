@@ -368,3 +368,26 @@ describe("DataTable layout", () => {
     expect(totalCell?.querySelector("[data-staff-truncate]")).not.toBeInTheDocument();
   });
 });
+
+describe("DataTable phone cards", () => {
+  it("leaves out an empty fact, so the others line up", () => {
+    type Lot = { id: string; title: string; sale: string | null; ends: string };
+    const { container } = render(
+      <DataTable<Lot>
+        label="Lots"
+        getRowId={(row) => row.id}
+        data={[{ id: "1", title: "Coastal Path", sale: null, ends: "27 Nov" }]}
+        columns={[
+          { id: "title", header: "Lot", mobile: "title", cell: (row) => row.title },
+          { id: "sale", header: "Sale", mobile: "meta", cell: (row) => row.sale },
+          { id: "ends", header: "Ends", mobile: "meta", cell: (row) => row.ends },
+        ]}
+      />,
+    );
+    const card = [...container.querySelectorAll("li")].find((li) =>
+      li.textContent?.includes("Coastal Path"),
+    );
+    const facts = card?.querySelectorAll("span.truncate.min-w-0") ?? [];
+    expect([...facts].map((fact) => fact.textContent)).toEqual(["27 Nov"]);
+  });
+});

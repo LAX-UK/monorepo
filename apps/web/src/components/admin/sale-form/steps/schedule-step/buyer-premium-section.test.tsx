@@ -1,5 +1,4 @@
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { Form } from "@auction/ui/components/form";
 import { render, screen } from "@testing-library/react";
 import { useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
@@ -9,7 +8,7 @@ import type { TierPreview } from "./types";
 function Harness({ preview }: { preview: TierPreview }) {
   const form = useForm<AdminSaleFormValues>();
   return (
-    <Form {...form}>
+    <>
       <BuyerPremiumSection
         form={form}
         isDraft
@@ -18,7 +17,7 @@ function Harness({ preview }: { preview: TierPreview }) {
         remove={vi.fn()}
         tierBandPreview={preview}
       />
-    </Form>
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { WizardNav } from "@auction/ui/components/wizard-nav";
+import { StaffButton } from "@auction/staff-ui";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -17,7 +18,7 @@ type Props = {
   pending?: boolean;
 };
 
-/** Admin wizard Back/Continue/submit — thin wrapper over the shared {@link WizardNav}. */
+/** Back, Continue (naming the next step) and, on the last step, the submit button. */
 export function WizardActions({
   isFirst,
   isLast,
@@ -30,17 +31,30 @@ export function WizardActions({
   pending = false,
 }: Props) {
   return (
-    <WizardNav
-      isFirst={isFirst}
-      isLast={isLast}
-      onBack={onBack}
-      onNext={onNext}
-      backLabel={backLabel}
-      showSubmitOnAllSteps={showSubmitOnAllSteps}
-      pending={pending}
-      layout="end"
-      {...(submitSlot ? { submitSlot } : {})}
-      {...(nextLabel ? { nextStepLabel: nextLabel } : {})}
-    />
+    <>
+      {isFirst ? null : (
+        <StaffButton
+          type="button"
+          variant="secondary"
+          icon={<ArrowLeft aria-hidden />}
+          disabled={pending}
+          onClick={onBack}
+        >
+          {backLabel}
+        </StaffButton>
+      )}
+      {isLast ? null : (
+        <StaffButton
+          type="button"
+          variant={showSubmitOnAllSteps ? "secondary" : "primary"}
+          disabled={pending}
+          onClick={onNext}
+        >
+          {nextLabel ? `Continue to ${nextLabel.toLowerCase()}` : "Continue"}
+          <ArrowRight aria-hidden className="size-4" />
+        </StaffButton>
+      )}
+      {isLast || showSubmitOnAllSteps ? submitSlot : null}
+    </>
   );
 }

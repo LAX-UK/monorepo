@@ -1,20 +1,16 @@
-import { UnderlineInput } from "@/components/ui/input";
-import { RhfSelect } from "@/components/ui/rhf-select";
-import { LabelCaps } from "@/components/ui/typography";
-import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import type { Venue } from "@auction/types";
 import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Textarea } from "@auction/ui/components/textarea";
+  StaffEntityField,
+  StaffTextAreaField,
+  StaffTextField,
+} from "@/components/admin/forms/staff-form-fields";
+import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import { FieldRow, Notice, StaffButton } from "@auction/staff-ui";
+import type { Venue } from "@auction/types";
 import { normalizeUkPostcode } from "@auction/validators";
+import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 import type { UseFormReturn } from "react-hook-form";
-
-const MANUAL_VENUE_VALUE = "__manual__";
+import { SALE_FORM_ID } from "../../sale-form-id";
 
 type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
@@ -26,6 +22,10 @@ type Props = {
   postcodeIsValid: boolean;
 };
 
+/**
+ * Where the saleroom is: a saved venue fills the address, or the address is typed for a one-off
+ * venue. Shown on the public sale page; the map link is made from the address unless one is given.
+ */
 export function VenueLocationFields({
   form,
   isDraft,
@@ -33,316 +33,120 @@ export function VenueLocationFields({
   formattedPreviewAddress,
   previewMapUrl,
   customMapUrl,
-  postcodeIsValid,
 }: Props) {
+  const f = { control: form.control, formId: SALE_FORM_ID } as const;
+  const set = (name: Parameters<typeof form.setValue>[0], value: string) =>
+    form.setValue(name, value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+
   function applyVenue(venue: Venue) {
-    form.setValue("venueId", venue.id, { shouldDirty: true, shouldValidate: true });
-    form.setValue("locationName", venue.name, { shouldDirty: true, shouldValidate: true });
-    form.setValue("locationAddressLine1", venue.addressLine1, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue("locationAddressLine2", venue.addressLine2 ?? "", {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue("locationCity", venue.city, { shouldDirty: true, shouldValidate: true });
-    form.setValue("locationCounty", venue.county ?? "", {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue("locationPostcode", venue.postcode, { shouldDirty: true, shouldValidate: true });
-    form.setValue("locationCountry", venue.country, { shouldDirty: true, shouldValidate: true });
-    form.setValue("locationMapUrl", venue.mapUrl ?? "", {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    set("locationName", venue.name);
+    set("locationAddressLine1", venue.addressLine1);
+    set("locationAddressLine2", venue.addressLine2 ?? "");
+    set("locationCity", venue.city);
+    set("locationCounty", venue.county ?? "");
+    set("locationPostcode", venue.postcode);
+    set("locationCountry", venue.country);
+    set("locationMapUrl", venue.mapUrl ?? "");
   }
 
+  const mapHref = customMapUrl?.trim() || previewMapUrl;
+
   return (
-    <div className="space-y-6 rounded-lg border border-outline-variant/25 bg-surface-container-lowest/40 p-4">
-      <div>
-        <LabelCaps>Venue location</LabelCaps>
-        <p className="mt-2 font-body text-xs text-on-surface-variant">
-          Shown on the public sale page when published. Structured fields generate a clean formatted
-          address and a Google Maps link. UK postcodes are normalized automatically (e.g. "sw1y6qu"
-          → "SW1Y 6QU").
-        </p>
-      </div>
-
-      <FormField
-        control={form.control}
+    <>
+      <StaffEntityField
+        {...f}
         name="venueId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Saved venue</LabelCaps>
-            </FormLabel>
-            <RhfSelect
-              value={field.value || MANUAL_VENUE_VALUE}
-              onValueChange={(value) => {
-                if (!isDraft) return;
-                if (value === MANUAL_VENUE_VALUE) {
-                  field.onChange("");
-                  return;
-                }
-                const selected = venues.find((venue) => venue.id === value);
-                if (selected) applyVenue(selected);
-              }}
-              onBlur={field.onBlur}
-              disabled={!isDraft || venues.length === 0}
-              placeholder={venues.length === 0 ? "No saved venues yet" : "Select a venue"}
-              options={[
-                { value: MANUAL_VENUE_VALUE, label: "Manual / one-off venue" },
-                ...venues.map((venue) => ({
-                  value: venue.id,
-                  label: `${venue.name} · ${venue.city}`,
-                })),
-              ]}
-              triggerClassName="w-full font-body text-sm"
-            />
-            {venues.length === 0 ? (
-              <p className="mt-2 font-body text-xs text-on-surface-variant">
-                No saved venues.{" "}
-                <a
-                  href="/admin/venues/new"
-                  className="text-link underline-offset-2 hover:underline"
-                >
-                  Create a venue
-                </a>{" "}
-                to reuse address details across onsite sales.
-              </p>
-            ) : (
-              <p className="mt-2 font-body text-xs text-on-surface-variant">
-                Venues listed here belong to the sale operator (LAX). Lot seller organisations are
-                separate — consignor lots can be sold in a LAX-owned gallery without any conflict.
-                Saved venues auto-fill the address fields below; the venue record is snapshotted
-                when you publish.
-              </p>
-            )}
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Saved venue"
+        optional
+        disabled={!isDraft || venues.length === 0}
+        description={
+          venues.length === 0
+            ? "No saved venues yet. Add one under Venues to reuse its address."
+            : "Fills in the address below. Leave empty for a one-off venue."
+        }
+        options={venues.map((venue) => ({
+          id: venue.id,
+          label: venue.name,
+          description: venue.city,
+        }))}
+        placeholder="One-off venue"
+        searchPlaceholder="Search venues"
+        emptyText="No venues match."
+        onChanged={(option) => {
+          const venue = option ? venues.find((item) => item.id === option.id) : null;
+          if (venue) applyVenue(venue);
+        }}
       />
-
-      <FormField
-        control={form.control}
+      <StaffTextField
+        {...f}
         name="locationName"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Venue name</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <UnderlineInput
-                id="locationName"
-                placeholder="Auction House, Gallery, Hotel..."
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Venue name"
+        placeholder="e.g. The Bond Street rooms"
       />
-
-      <FormField
-        control={form.control}
+      <StaffTextField
+        {...f}
         name="locationAddressLine1"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Address line 1</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <UnderlineInput
-                id="locationAddressLine1"
-                placeholder="34 New Bond Street"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Address line 1"
+        placeholder="34 New Bond Street"
       />
-
-      <FormField
-        control={form.control}
-        name="locationAddressLine2"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Address line 2 (optional)</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <UnderlineInput
-                id="locationAddressLine2"
-                placeholder="Apartment, suite, building..."
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="locationCity"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>City / town</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput id="locationCity" placeholder="London" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="locationCounty"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>County (optional)</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput id="locationCounty" placeholder="Greater London" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <FormField
-          control={form.control}
+      <StaffTextField {...f} name="locationAddressLine2" label="Address line 2" optional />
+      <FieldRow>
+        <StaffTextField {...f} name="locationCity" label="Town or city" placeholder="London" />
+        <StaffTextField {...f} name="locationCounty" label="County" optional />
+      </FieldRow>
+      <FieldRow>
+        <StaffTextField
+          {...f}
           name="locationPostcode"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Postcode</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput
-                  id="locationPostcode"
-                  placeholder="SW1Y 6QU"
-                  {...field}
-                  onBlur={(event) => {
-                    const value = event.target.value.trim();
-                    if (value) {
-                      field.onChange(normalizeUkPostcode(value));
-                    }
-                    field.onBlur();
-                  }}
-                />
-              </FormControl>
-              {!postcodeIsValid ? (
-                <p className="mt-1 font-body text-xs text-error">
-                  Enter a valid UK postcode (e.g. SW1Y 6QU).
-                </p>
-              ) : null}
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Postcode"
+          placeholder="SW1Y 6QU"
+          tidyOnBlur={normalizeUkPostcode}
         />
-        <FormField
-          control={form.control}
+        <StaffTextField
+          {...f}
           name="locationCountry"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Country</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput id="locationCountry" placeholder="United Kingdom" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Country"
+          placeholder="United Kingdom"
         />
-      </div>
-
-      <FormField
-        control={form.control}
+      </FieldRow>
+      <StaffTextAreaField
+        {...f}
         name="locationAddress"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Free-form address (optional fallback)</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <Textarea
-                id="locationAddress"
-                rows={2}
-                variant="underline"
-                className="font-body text-sm"
-                placeholder="Used as a display fallback when structured fields above are blank."
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Address as written"
+        optional
+        rows={2}
+        description="Shown only when the fields above are empty."
       />
-
-      <FormField
-        control={form.control}
+      <StaffTextField
+        {...f}
         name="locationMapUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="mb-2 block">
-              <LabelCaps>Custom map URL (optional override)</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <UnderlineInput
-                id="locationMapUrl"
-                placeholder="https://maps.google.com/..."
-                {...field}
-              />
-            </FormControl>
-            <p className="mt-2 font-body text-xs text-on-surface-variant">
-              If left blank, a Google Maps link will be generated from the address fields above (no
-              API key required).
-            </p>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Map link"
+        optional
+        placeholder="https://maps.google.com/…"
+        description="Leave empty to link to Google Maps from the address."
       />
-
-      {formattedPreviewAddress || previewMapUrl ? (
-        <div className="rounded-md border border-dashed border-outline-variant/40 bg-surface-container-lowest p-3">
-          <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Live preview
-          </p>
-          {formattedPreviewAddress ? (
-            <p className="mt-2 font-body text-sm text-on-surface">{formattedPreviewAddress}</p>
-          ) : null}
-          {customMapUrl?.trim() ? (
-            <a
-              href={customMapUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block font-body text-xs text-link underline"
-            >
-              Open custom map URL
-            </a>
-          ) : previewMapUrl ? (
-            <a
-              href={previewMapUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block font-body text-xs text-link underline"
-            >
-              Open in Google Maps
-            </a>
-          ) : null}
-        </div>
+      {formattedPreviewAddress || mapHref ? (
+        <Notice
+          tone="info"
+          title="On the sale page"
+          actions={
+            mapHref ? (
+              <StaffButton
+                asChild
+                size="sm"
+                variant="secondary"
+                icon={<ExternalLink aria-hidden />}
+              >
+                <Link href={mapHref} target="_blank" rel="noopener noreferrer">
+                  Open map
+                </Link>
+              </StaffButton>
+            ) : null
+          }
+        >
+          {formattedPreviewAddress || "The address appears here as you type it."}
+        </Notice>
       ) : null}
-    </div>
+    </>
   );
 }

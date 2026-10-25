@@ -29,6 +29,7 @@ describe("buildLotsListPageModel", () => {
       "draft",
       "ending",
       "attention",
+      "withdrawals",
     ]);
   });
 });

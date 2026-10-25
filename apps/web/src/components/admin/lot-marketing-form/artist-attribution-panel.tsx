@@ -1,15 +1,16 @@
 "use client";
 
-import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
+import { artistOption, searchArtistOptions } from "@/lib/admin/pickers/staff-entity-search";
 import { notify } from "@/lib/ui/notify";
+import { EntityPicker, Field, FormSection, Notice } from "@auction/staff-ui";
 import type { ArtistProfile } from "@auction/types";
 import { useState, useTransition } from "react";
 
-/** Standalone admin control for the canonical-artist FK on a lot. Kept out of
- * the catalog-copy form because it auto-saves on change (single-purpose,
- * high-stakes assignment) and writes through the lot PATCH endpoint, not the
- * marketing-details JSON merge. */
+/**
+ * Who the lot is catalogued under. Saved as soon as it is chosen, through the lot itself rather
+ * than the catalogue copy, so it sits apart from the form's Save.
+ */
 export function ArtistAttributionPanel({
   lotId,
   artists,
@@ -23,53 +24,50 @@ export function ArtistAttributionPanel({
 }) {
   const [pending, startTransition] = useTransition();
   const [value, setValue] = useState<string | null>(artistId);
-
-  function onChange(next: string | null) {
-    setValue(next);
-    startTransition(() => {
-      void (async () => {
-        const r = await adminUpdateLotResultAction(lotId, { artistId: next ?? null });
-        if (r.ok) {
-          notify.success(next ? "Artist attribution updated" : "Artist attribution cleared");
-          onSaved();
-          return;
-        }
-        notify.error(r.error);
-        setValue(artistId);
-      })();
-    });
-  }
+  const [failure, setFailure] = useState<string | null>(null);
+  const known = artists.find((artist) => artist.id === value);
+  const [selected, setSelected] = useState(known ? artistOption(known) : null);
 
   return (
-    <section className="space-y-3 rounded-md border border-outline-variant/30 bg-surface-container-lowest/60 p-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-label text-sm font-semibold text-on-surface">
-          Canonical artist / maker
-        </h3>
-        {pending ? <span className="text-xs text-on-surface-variant">Saving…</span> : null}
-      </div>
-      <ArtistPicker
-        value={value}
-        onChange={onChange}
-        selected={chipFromArtists(artists, value)}
-        helpText="Drives the public artist page, structured data, and 'more by this maker' rails. Sellers cannot set this."
-      />
-    </section>
+    <FormSection
+      title="Attribution"
+      description="Saved as soon as it changes. It drives the public artist page and the other works by this maker."
+    >
+      {failure ? (
+        <Notice tone="danger" alert title="The artist was not changed">
+          {failure}
+        </Notice>
+      ) : null}
+      <Field label="Artist, maker or brand" optional description={pending ? "Saving…" : undefined}>
+        <EntityPicker
+          value={value}
+          selected={selected}
+          search={searchArtistOptions}
+          placeholder="Not attributed"
+          searchPlaceholder="Type at least two letters"
+          emptyText="No artists match. Add the artist from Artists first."
+          disabled={pending}
+          onValueChange={(option) => {
+            const previous = { value, selected };
+            setValue(option?.id ?? null);
+            setSelected(option);
+            setFailure(null);
+            startTransition(async () => {
+              const result = await adminUpdateLotResultAction(lotId, {
+                artistId: option?.id ?? null,
+              });
+              if (result.ok) {
+                notify.success(option ? `Attributed to ${option.label}` : "Attribution removed");
+                onSaved();
+                return;
+              }
+              setValue(previous.value);
+              setSelected(previous.selected);
+              setFailure(result.error);
+            });
+          }}
+        />
+      </Field>
+    </FormSection>
   );
-}
-
-function chipFromArtists(
-  artists: ArtistProfile[],
-  artistId: string | null,
-): ArtistChipModel | null {
-  if (!artistId) return null;
-  const found = artists.find((a) => a.id === artistId);
-  if (!found) return null;
-  return {
-    id: found.id,
-    displayName: found.displayName,
-    slug: found.slug,
-    kind: found.kind ?? "artist",
-    status: found.status ?? "approved",
-  };
 }

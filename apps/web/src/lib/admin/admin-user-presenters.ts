@@ -26,18 +26,31 @@ export function formatUserRole(role: string): string {
   }
 }
 
-export function formatAmlCheckType(checkType: string | null | undefined): string {
-  if (!checkType) return "—";
+/**
+ * The screening's check type as staff read it: the provider sends codes such as `initial_result`,
+ * `updated_result` or `enhanced`, which never appear on screen as they are.
+ */
+export function amlCheckTypeLabel(checkType: string | null | undefined): string | null {
+  if (!checkType) return null;
   switch (checkType) {
     case "initial":
     case "initial_result":
       return "Initial screening";
     case "ongoing":
     case "ongoing_monitoring":
+    case "updated_result":
       return "Ongoing monitoring";
-    default:
-      return checkType.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+    case "enhanced":
+      return "Enhanced check";
+    default: {
+      const words = checkType.replace(/[_-]+/g, " ").trim().toLowerCase();
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
   }
+}
+
+export function formatAmlCheckType(checkType: string | null | undefined): string {
+  return amlCheckTypeLabel(checkType) ?? "—";
 }
 
 /** Lowercase phrase for inline sentences, e.g. "KYC rejected — follow up". */

@@ -40,13 +40,3 @@ export function flattenCategoryTaxonomyRows(categories: AdminCategory[]): Catego
   walk(buildCategoryTree(categories), 0);
   return out;
 }
-
-/** Optional client-side filter for mobile cards (server search remains authoritative). */
-export function filterCategoryTaxonomyRows(
-  rows: CategoryTaxonomyRow[],
-  query: string,
-): CategoryTaxonomyRow[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return rows;
-  return rows.filter((c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q));
-}

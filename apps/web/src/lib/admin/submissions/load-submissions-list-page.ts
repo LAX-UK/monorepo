@@ -7,11 +7,6 @@ import {
   type SubmissionsListSearchParams,
   buildSubmissionsListPageModel,
 } from "@/lib/admin/submissions/build-submissions-list-page-model";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import {
-  type AdminNavCounts,
-  EMPTY_ADMIN_NAV_COUNTS,
-} from "@/lib/data/http/admin-nav-counts.types";
 import {
   type AdminSubmissionsListSummary,
   EMPTY_ADMIN_SUBMISSIONS_LIST_SUMMARY,
@@ -26,15 +21,11 @@ import type { CategoryNode } from "@auction/types";
 export type AdminSubmissionsListPageViewModel = {
   model: ReturnType<typeof buildSubmissionsListPageModel>;
   summary: AdminSubmissionsListSummary;
-  navCounts: AdminNavCounts;
   loadError: string | null;
-  rows: Awaited<ReturnType<typeof submissionsListController.fetch>>["rows"];
   submissionRows: AdminSubmissionTableRow[];
   total: number;
   categories: CategoryNode[];
   activeFilterChips: ReturnType<typeof buildSubmissionsActiveFilterChips>;
-  qualityGapsOnPage: number;
-  awaitingOnPage: number;
 };
 
 export async function loadAdminSubmissionsListPage(input: {
@@ -74,10 +65,9 @@ export async function loadAdminSubmissionsListPage(input: {
     ),
   ];
 
-  const [summary, navCounts, categories, sellerNameEntries, categoryNameEntries, assigneeUsers] =
+  const [summary, categories, sellerNameEntries, categoryNameEntries, assigneeUsers] =
     await Promise.all([
       getAdminSubmissionsListSummary().catch(() => EMPTY_ADMIN_SUBMISSIONS_LIST_SUMMARY),
-      getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
       (async () => {
         try {
           return await (await getServerCategoryReader()).tree();
@@ -111,13 +101,6 @@ export async function loadAdminSubmissionsListPage(input: {
     assigneeNamesById,
   });
 
-  const qualityGapsOnPage = submissionRows.filter(
-    (r) => r.blocksAccept || r.qualityGaps.length > 0,
-  ).length;
-  const awaitingOnPage = submissionRows.filter(
-    (r) => r.status === "under_review" || r.status === "submitted",
-  ).length;
-
   const categoryFilter = query.categoryId
     ? await getAdminCategoryById(query.categoryId).catch(() => null)
     : null;
@@ -135,14 +118,10 @@ export async function loadAdminSubmissionsListPage(input: {
   return {
     model,
     summary,
-    navCounts,
     loadError,
-    rows,
     submissionRows,
     total,
     categories,
     activeFilterChips,
-    qualityGapsOnPage,
-    awaitingOnPage,
   };
 }

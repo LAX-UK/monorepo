@@ -9,6 +9,7 @@ import {
 } from "@auction/ui/components/sheet";
 import { ListFilter, X } from "lucide-react";
 import * as React from "react";
+import { type EntityOption, EntityPicker } from "../forms/entity-picker.js";
 import { Field } from "../forms/field.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
@@ -54,10 +55,30 @@ export type FilterDateRangeSection = {
   presets?: readonly DateRangePreset[];
 };
 
+/**
+ * One record chosen by name, for lists too long for radios (a sale, an artist, a seller): a
+ * searchable picker over `options`, or over the server with `search`.
+ */
+export type FilterEntitySection = {
+  kind: "entity";
+  id: string;
+  label: string;
+  /** The record's id, or "" when nothing is chosen. */
+  value: string;
+  options?: readonly EntityOption[];
+  search?: (query: string) => Promise<readonly EntityOption[]>;
+  /** The chosen record's display when it is not among `options` (a server search). */
+  selected?: EntityOption | null;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+};
+
 export type FilterSheetSection =
   | FilterChecklistSection
   | FilterRadioSection
-  | FilterDateRangeSection;
+  | FilterDateRangeSection
+  | FilterEntitySection;
 
 /** The applied value of each section, by section id. */
 export type FilterSheetValues = Record<string, readonly string[] | string | DayRange>;
@@ -72,6 +93,7 @@ function isActive(section: FilterSheetSection, value: FilterSheetValues[string] 
     case "checklist":
       return (value as readonly string[]).length > 0;
     case "radio":
+    case "entity":
       return value !== "";
     case "date-range": {
       const range = value as DayRange;
@@ -85,6 +107,7 @@ function emptyValue(section: FilterSheetSection): FilterSheetValues[string] {
     case "checklist":
       return [];
     case "radio":
+    case "entity":
       return "";
     case "date-range":
       return { from: "", to: "" };
@@ -310,6 +333,9 @@ function SectionBody({
       </StaffRadioGroup>
     );
   }
+  if (section.kind === "entity") {
+    return <EntitySectionBody section={section} value={value as string} onChange={onChange} />;
+  }
   const range = value as DayRange;
   const presets = section.presets ?? DEFAULT_DATE_PRESETS;
   const setRange = (next: DayRange) =>
@@ -356,6 +382,35 @@ function SectionBody({
         </Field>
       </div>
     </div>
+  );
+}
+
+function EntitySectionBody({
+  section,
+  value,
+  onChange,
+}: {
+  section: FilterEntitySection;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  // A record found by searching is remembered, so the picker keeps showing its name.
+  const [chosen, setChosen] = React.useState<EntityOption | null>(section.selected ?? null);
+  return (
+    <EntityPicker
+      value={value || null}
+      onValueChange={(option) => {
+        setChosen(option);
+        onChange(option?.id ?? "");
+      }}
+      aria-label={section.label}
+      {...(section.options ? { options: section.options } : {})}
+      {...(section.search ? { search: section.search } : {})}
+      selected={chosen}
+      placeholder={section.placeholder ?? "Any"}
+      {...(section.searchPlaceholder ? { searchPlaceholder: section.searchPlaceholder } : {})}
+      {...(section.emptyText ? { emptyText: section.emptyText } : {})}
+    />
   );
 }
 

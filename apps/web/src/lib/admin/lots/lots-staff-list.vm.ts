@@ -2,10 +2,20 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { adminLotEditHref, adminLotHref } from "@/lib/admin/catalog-route-helpers";
 import { adminLotListPath } from "@/lib/admin/catalog-routes";
 import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
-import { toStaffStatus } from "@/lib/admin/staff-kit-status";
+import type { CatalogActiveFilterChip, CatalogSegmentItem } from "@/lib/admin/catalog/types";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
+import type { AdminLotsListSummary } from "@/lib/data/http/admin-lots-summary.server";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
-import { lotStatusLabel, lotStatusToBadgeVariant } from "@/lib/presenters/status-presentation";
-import { type StatusPresentation, type TeamView, viewQuery } from "@auction/staff-ui";
+import {
+  type AttentionStripItem,
+  type Metric,
+  type DataView as StaffDataView,
+  type StatusPresentation,
+  type TeamView,
+  formatStaffMoney,
+  viewQuery,
+} from "@auction/staff-ui";
+import type { LotStatus } from "@auction/types";
 
 export type LotsListSearch = Record<string, string | string[] | undefined>;
 
@@ -18,17 +28,39 @@ export type LotsStaffRow = {
   artist: string | null;
   saleTitle: string | null;
   saleHref: string | null;
+  /** "Lot 12 · Ada Lovelace"; null when the lot has neither yet. */
+  context: string | null;
+  statusCode: LotStatus;
   status: StatusPresentation;
   auctionType: string;
-  estimate: string;
-  hammer: string;
+  /** "£2,000–£3,000"; null when no estimate is set. */
+  estimate: string | null;
+  /** The hammer price; null until the lot has bids. */
+  hammer: string | null;
+  /** "From £500.00" for a lot that has not opened yet. */
+  startingFrom: string | null;
   endsAt: string;
+  addedAt: string;
   href: string;
   editHref: string;
   photos: number;
+  inDraftSale: boolean;
+  canDelete: boolean;
+  hasWinner: boolean;
+  /** When the seller asked to withdraw the lot, if a request is waiting. */
+  withdrawalRequestedAt: string | null;
 };
 
-export function toLotsStaffRows(rows: readonly AdminLotTableRow[]): LotsStaffRow[] {
+/** The table formatters write a dash for "nothing"; the kit draws its own empty value. */
+function present(value: string | undefined): string | null {
+  const text = value?.trim();
+  return text && text !== "—" ? text : null;
+}
+
+export function toLotsStaffRows(
+  rows: readonly AdminLotTableRow[],
+  withdrawalRequestedAt: Readonly<Record<string, string>> = {},
+): LotsStaffRow[] {
   return rows.map((row) => ({
     id: row.id,
     title: row.title,
@@ -37,21 +69,29 @@ export function toLotsStaffRows(rows: readonly AdminLotTableRow[]): LotsStaffRow
     artist: row.artistLabel,
     saleTitle: row.saleTitle,
     saleHref: row.saleId ? `/admin/sales/${row.saleId}` : null,
-    status: toStaffStatus(
-      lotStatusToBadgeVariant(row.status),
-      lotStatusLabel[row.status] ?? row.status,
-    ),
+    context:
+      [row.lotNumber != null ? `Lot ${row.lotNumber}` : null, row.artistLabel]
+        .filter(Boolean)
+        .join(" · ") || null,
+    statusCode: row.status,
+    status: staffStatus("lot", row.status, { lot: { hasWinner: row.hasWinner } }),
     auctionType: lotAuctionTypeLabel(row.auctionType),
-    estimate: row.estimateDisplay.primary,
-    hammer: row.hammerDisplay.primary,
+    estimate: present(row.estimateDisplay.primary),
+    hammer: present(row.hammerDisplay.primary),
+    startingFrom: present(row.hammerDisplay.secondary),
     endsAt: row.endTimeIso,
+    addedAt: row.createdAtIso,
     href: adminLotHref(row.id),
     editHref: adminLotEditHref(row.id),
     photos: row.imageCount,
+    inDraftSale: row.saleStatus === "draft",
+    canDelete: row.canDelete,
+    hasWinner: row.hasWinner,
+    withdrawalRequestedAt: withdrawalRequestedAt[row.id] ?? null,
   }));
 }
 
-/** Status quick filter, as the lots API understands it. */
+/** Status filter, as the lots API understands it. */
 export const LOT_STATUS_FILTERS = [
   { value: "draft", label: "Draft" },
   { value: "scheduled", label: "Scheduled" },
@@ -65,7 +105,26 @@ export function lotsListHref(
   current: LotsListSearch,
   patch: Record<string, string | number | null | undefined>,
 ): string {
-  return buildListHref(adminLotListPath(), current, { offset: 0, ...patch });
+  const base: LotsListSearch = { ...current };
+  for (const key of ["error", "success", "period", "lot"]) delete base[key];
+  return buildListHref(adminLotListPath(), base, { offset: null, ...patch });
+}
+
+/** The list with a lot's panel open (`?lot=`), or closed for null; keeps the page. */
+export function lotPanelHref(current: LotsListSearch, lotId: string | null): string {
+  const base: LotsListSearch = { ...current };
+  for (const key of ["error", "success", "period"]) delete base[key];
+  return buildListHref(adminLotListPath(), base, { lot: lotId });
+}
+
+/** The lenses as view tabs, each with its count. */
+export function lotsViews(lenses: readonly CatalogSegmentItem[]): StaffDataView[] {
+  return lenses.map((lens) => ({
+    id: lens.id,
+    label: lens.label,
+    href: lens.href,
+    ...(lens.badge !== undefined ? { count: lens.badge } : {}),
+  }));
 }
 
 /**
@@ -88,15 +147,85 @@ export function lotsTeamViews(): TeamView[] {
   ];
 }
 
+/** Work waiting on the catalogue desk, each linking to the view that holds it. */
+export function lotsAttention(
+  search: LotsListSearch,
+  counts: { withdrawalsPending: number; draftsMissingPhotos: number },
+): AttentionStripItem[] {
+  const noun = (count: number, one: string, many: string) => (count === 1 ? one : many);
+  return [
+    {
+      id: "withdrawals",
+      count: counts.withdrawalsPending,
+      label: noun(
+        counts.withdrawalsPending,
+        "seller has asked to withdraw a lot",
+        "sellers have asked to withdraw lots",
+      ),
+      href: lotsListHref(search, { lens: "withdrawals", status: null, needsPhotos: null }),
+      actionLabel: "Decide",
+      tone: "warning",
+    },
+    {
+      id: "photos",
+      count: counts.draftsMissingPhotos,
+      label: noun(
+        counts.draftsMissingPhotos,
+        "draft lot has no photos",
+        "draft lots have no photos",
+      ),
+      href: lotsListHref(search, { lens: "attention", status: "draft", needsPhotos: "1" }),
+      actionLabel: "Add photos",
+      tone: "neutral",
+    },
+  ];
+}
+
+/** Headline numbers across every lot, from the lots summary. */
+export function lotsMetrics(summary: AdminLotsListSummary): Metric[] {
+  const count = new Intl.NumberFormat("en-GB");
+  const hammer = Number.parseFloat(summary.totalHammerValue);
+  return [
+    { id: "live", label: "Live", value: count.format(summary.liveCount) },
+    { id: "ending", label: "Ending in 24 hours", value: count.format(summary.endingSoonCount) },
+    { id: "draft", label: "Drafts", value: count.format(summary.draftCount) },
+    {
+      id: "hammer",
+      label: "Hammer total",
+      value: formatStaffMoney(Math.round((Number.isFinite(hammer) ? hammer : 0) * 100)),
+    },
+  ];
+}
+
 /**
- * Column sort to the server's sort keys. The lots API sorts by created, ending, hammer and
- * ended time; columns map onto those, and a third click clears back to the default order.
+ * The filters in force beyond the view tab, as chips. The search shows in its own field and the
+ * sort in the column headers, so neither is repeated as a chip.
+ */
+export function lotsFilterChips(chips: readonly CatalogActiveFilterChip[]) {
+  return chips
+    .filter((chip) => chip.id !== "q" && chip.id !== "sort")
+    .map((chip) => ({ id: chip.id, label: chip.label, clearHref: chip.clearHref }));
+}
+
+/** "1–50 of 312 lots", or "1–50 lots" while the total is not known. */
+export function lotsRangeSummary(offset: number, shown: number, total: number | undefined) {
+  const count = new Intl.NumberFormat("en-GB");
+  const range = `${count.format(offset + 1)}–${count.format(offset + shown)}`;
+  if (total === undefined) return `${range} lots`;
+  return `${range} of ${count.format(total)} ${total === 1 ? "lot" : "lots"}`;
+}
+
+/** The server's default order: newest lots first. */
+export const LOTS_DEFAULT_SORT = { columnId: "added", direction: "desc" as const };
+
+/**
+ * Column sort to the server's sort keys. The lots API sorts by when a lot was added (newest
+ * first, the default), by ending time (soonest first, or most recently ended) and by hammer.
  */
 export function lotsSortHref(
   current: LotsListSearch,
-  sort: { columnId: string; direction: "asc" | "desc" } | null,
+  sort: { columnId: string; direction: "asc" | "desc" },
 ): string {
-  if (!sort) return lotsListHref(current, { sort: null });
   if (sort.columnId === "ends") {
     return lotsListHref(current, { sort: sort.direction === "asc" ? "endingAsc" : "endedDesc" });
   }
@@ -113,6 +242,6 @@ export function lotsSortState(sort: string | undefined) {
     case "hammerDesc":
       return { columnId: "hammer", direction: "desc" as const };
     default:
-      return null;
+      return LOTS_DEFAULT_SORT;
   }
 }

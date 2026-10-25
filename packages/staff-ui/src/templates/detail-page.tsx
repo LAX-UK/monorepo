@@ -121,17 +121,11 @@ export function DetailPage({
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <div className="rounded-staff-md border border-staff-line bg-staff-surface">
-          <ErrorState
-            title={error.title ?? "This record did not load"}
-            description={error.description}
-            action={
-              <StaffButton size="sm" onClick={error.onRetry}>
-                Try again
-              </StaffButton>
-            }
-          />
-        </div>
+        <DetailError
+          title={error.title ?? "This record did not load"}
+          description={error.description}
+          onRetry={error.onRetry}
+        />
       </div>
     );
   }
@@ -140,7 +134,7 @@ export function DetailPage({
     <div className="flex flex-col gap-6" aria-busy={loading || undefined}>
       {header}
       {loading ? (
-        <DetailPageSkeleton withRail={Boolean(rail)} />
+        <DetailPageSkeleton withRail={Boolean(rail)} withSummary />
       ) : (
         <>
           {summary && summary.length > 0 ? (
@@ -153,26 +147,84 @@ export function DetailPage({
           ) : null}
           {notice}
           {tabs}
-          <div
-            className={cn(
-              "grid gap-6",
-              rail && "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start",
-            )}
-          >
-            <div className="flex min-w-0 flex-col gap-6">{children}</div>
-            {rail ? (
-              <aside aria-label="Activity" className="flex min-w-0 flex-col gap-6">
-                {rail}
-              </aside>
-            ) : null}
-          </div>
+          <DetailColumns rail={rail}>{children}</DetailColumns>
         </>
       )}
     </div>
   );
 }
 
-function DetailPageSkeleton({ withRail }: { withRail: boolean }) {
+/**
+ * A failure in place of a record page's body, or of one routed tab, with Try again. The record's
+ * header and tabs stay, so the person keeps their place.
+ */
+export function DetailError({
+  title = "This section did not load",
+  description,
+  onRetry,
+}: {
+  title?: string;
+  description: React.ReactNode;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+      <ErrorState
+        title={title}
+        description={description}
+        action={
+          <StaffButton size="sm" onClick={onRetry}>
+            Try again
+          </StaffButton>
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * A record page's body: the main column of sections beside a rail for activity, the timeline and
+ * related records (2fr / 1fr from 1280px; the rail stacks under the main column below). Used by
+ * `DetailPage`, and directly by a routed tab that has its own rail.
+ */
+export function DetailColumns({
+  rail,
+  railLabel = "Activity",
+  children,
+}: {
+  rail?: React.ReactNode;
+  /** The rail's landmark name. */
+  railLabel?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid gap-6",
+        rail && "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start",
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-6">{children}</div>
+      {rail ? (
+        <aside aria-label={railLabel} className="flex min-w-0 flex-col gap-6">
+          {rail}
+        </aside>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The body of a record page while it loads: the summary card (optional) and the main column of
+ * section cards beside a rail. A routed tab's `loading` file renders it inside the record frame.
+ */
+export function DetailPageSkeleton({
+  withRail = true,
+  withSummary = false,
+}: {
+  withRail?: boolean;
+  withSummary?: boolean;
+}) {
   const card = (rows: number) => (
     <div className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-4">
       <Skeleton className="h-4 w-32" />
@@ -183,13 +235,15 @@ function DetailPageSkeleton({ withRail }: { withRail: boolean }) {
     </div>
   );
   return (
-    <>
-      <div className="grid grid-cols-1 gap-x-8 gap-y-3 rounded-staff-md border border-staff-line bg-staff-surface p-4 lg:grid-cols-2">
-        {Array.from({ length: 4 }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
-          <Skeleton key={index} className="h-3 w-3/4" />
-        ))}
-      </div>
+    <div className="flex flex-col gap-6" aria-busy="true">
+      {withSummary ? (
+        <div className="grid grid-cols-1 gap-x-8 gap-y-3 rounded-staff-md border border-staff-line bg-staff-surface p-4 lg:grid-cols-2">
+          {Array.from({ length: 4 }, (_, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
+            <Skeleton key={index} className="h-3 w-3/4" />
+          ))}
+        </div>
+      ) : null}
       <div
         className={cn(
           "grid gap-6",
@@ -202,6 +256,6 @@ function DetailPageSkeleton({ withRail }: { withRail: boolean }) {
         </div>
         {withRail ? card(5) : null}
       </div>
-    </>
+    </div>
   );
 }

@@ -6,7 +6,6 @@ import {
   adminUpdateLotMarketingDetailsResultAction,
   adminUpdateLotResultAction,
 } from "@/lib/actions/admin";
-import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { lotFormStepLabel, lotFormValidationBanner } from "@/lib/admin/lot-form-field-ownership";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import {
@@ -43,7 +42,9 @@ export async function validateAllLotWizardSteps(
   lotStepFields: (keyof AdminLotFormValues)[][],
   wizardGoTo: (index: number) => void,
 ): Promise<boolean> {
-  return validateAllCatalogWizardSteps(form, formSchema, lotStepFields, wizardGoTo);
+  return validateAllCatalogWizardSteps(form, formSchema, lotStepFields, wizardGoTo, {
+    focus: false,
+  });
 }
 
 export function reportLotFormValidationFailure(
@@ -58,6 +59,7 @@ export function reportLotFormValidationFailure(
     applyZodIssuesToForm(form, issues, {
       stepFields: args.lotStepFields,
       goTo: args.wizardGoTo,
+      focusField: false,
     });
     const stepIndex = issues[0]?.path[0]
       ? args.lotStepFields.findIndex((fields) =>
@@ -76,10 +78,28 @@ export function reportLotFormValidationFailure(
     applyZodIssuesToForm(form, issues, {
       tabFields: args.editTabFields,
       goToTab: args.tabGoTo,
+      focusField: false,
     });
     args.onValidationBanner(null);
   }
-  notifyAdminFormValidationFailure({ issues });
+}
+
+/** A failed save shown on the form, with the API's field errors on their fields. */
+function showSaveFailure(
+  form: UseFormReturn<AdminLotFormValues>,
+  failure: {
+    error: string;
+    fieldErrors?: Record<string, string[] | undefined> | undefined;
+  } & Record<string, unknown>,
+  message: string,
+): void {
+  for (const [name, messages] of Object.entries(failure.fieldErrors ?? {})) {
+    const first = messages?.[0];
+    if (first && name in form.getValues()) {
+      form.setError(name as keyof AdminLotFormValues, { type: "server", message: first });
+    }
+  }
+  form.setError("root", { type: "server", message });
 }
 
 export async function submitLotForm(values: AdminLotFormValues, args: SubmitArgs): Promise<void> {
@@ -139,27 +159,28 @@ export async function submitLotForm(values: AdminLotFormValues, args: SubmitArgs
     }
     const lotId = typeof r.meta?.lotId === "string" ? r.meta.lotId : null;
     const rolledBack = r.meta?.rolledBack === true;
-    notify.error(
-      actionFailureNotifyMessage(r.error, {
-        status: r.status,
-        errorCode: r.errorCode,
-        meta: r.meta,
-      }),
-      rolledBack && lotId
-        ? {
-            description:
-              "Saved as standalone inventory. Open the lot to fix catalogue details and retry.",
-          }
-        : undefined,
-    );
+    const message = actionFailureNotifyMessage(r.error, {
+      status: r.status,
+      errorCode: r.errorCode,
+      meta: r.meta,
+    });
     if (rolledBack && lotId) {
+      notify.warning(message, {
+        description:
+          "Saved as standalone inventory. Open the lot to fix catalogue details and retry.",
+      });
       args.router.push(`/admin/lots/${lotId}`);
+      return;
     }
+    showSaveFailure(args.form, r, message);
     return;
   }
 
   if (!args.lotId) {
-    notify.error("Missing lot");
+    args.form.setError("root", {
+      type: "client",
+      message: "This lot could not be found. Reload the page.",
+    });
     return;
   }
   const api = safeParseUpdateLotFromForm(values);
@@ -185,7 +206,9 @@ export async function submitLotForm(values: AdminLotFormValues, args: SubmitArgs
     args.router.push(`/admin/lots/${args.lotId}`);
     return;
   }
-  notify.error(
+  showSaveFailure(
+    args.form,
+    r,
     actionFailureNotifyMessage(r.error, {
       status: r.status,
       errorCode: r.errorCode,

@@ -1,9 +1,14 @@
 "use client";
 
 import type { SaleSetupLotRowFormValues } from "@/lib/admin/sale-setup";
-import { Button } from "@auction/ui/components/button";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { CheckCircle2, Trash2 } from "lucide-react";
+import {
+  ConfirmActionDialog,
+  KeyValueList,
+  Section,
+  StaffButton,
+  StatusBadge,
+} from "@auction/staff-ui";
+import { Trash2 } from "lucide-react";
 
 type AttachedLotRowProps = {
   row: SaleSetupLotRowFormValues;
@@ -26,40 +31,40 @@ export function AttachedLotRow({
 }: AttachedLotRowProps) {
   return (
     <>
-      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-headline text-base text-on-surface">
-            Lot {rowIndex + 1}
-            <span className="ml-2 inline-flex items-center gap-1 font-body text-xs text-primary">
-              <CheckCircle2 className="size-3.5" aria-hidden />
-              Attached
-            </span>
-          </p>
-          {!readOnly ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onDetachConfirmOpenChange(true)}
-              disabled={pending}
-              aria-label="Detach lot from sale"
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          ) : null}
-        </div>
-        <p className="font-body text-sm text-on-surface">{row.title || "Existing lot"}</p>
-        <p className="mt-1 font-body text-xs text-on-surface-variant">
-          Existing inventory lot attached to this sale.
-        </p>
-      </div>
-      <ConfirmDialog
+      <Section
+        title={`Lot ${rowIndex + 1}`}
+        action={
+          <span className="flex items-center gap-2">
+            <StatusBadge tone="success">In the sale</StatusBadge>
+            {!readOnly ? (
+              <StaffButton
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={`Take lot ${rowIndex + 1} out of the sale`}
+                icon={<Trash2 aria-hidden />}
+                disabled={pending}
+                onClick={() => onDetachConfirmOpenChange(true)}
+              />
+            ) : null}
+          </span>
+        }
+      >
+        <KeyValueList
+          items={[
+            { label: "Lot", value: row.title || "Untitled lot" },
+            { label: "Added from", value: "Inventory" },
+          ]}
+        />
+      </Section>
+      <ConfirmActionDialog
         open={detachConfirmOpen}
-        onOpenChange={onDetachConfirmOpenChange}
-        title="Detach lot from sale?"
-        body="Detach this lot from the sale? It returns to inventory as a standalone draft lot."
-        confirmLabel="Detach"
-        tone="warning"
+        onOpenChange={(open) => {
+          if (!pending) onDetachConfirmOpenChange(open);
+        }}
+        title={`Take ${row.title || "this lot"} out of the sale?`}
+        description="It goes back to inventory as a draft lot, with its details kept."
+        confirmLabel="Take out of sale"
         loading={pending}
         onConfirm={onDetach}
       />

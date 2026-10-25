@@ -1,9 +1,9 @@
 import { AtgEditAlert } from "@/components/admin/atg/atg-edit-alert";
-import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { LotDocumentsTabBoard } from "@/components/admin/lot-detail/lot-documents-tab-board";
 import { AdminLotForm } from "@/components/admin/lot-form";
 import { LotEditFormLayout } from "@/components/admin/lot-form/lot-edit-form-layout";
 import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { loadAdminLotEditPage } from "@/lib/admin/lots/load-lot-edit-page";
 import { redirect } from "next/navigation";
@@ -31,19 +31,19 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
 
   return (
     <Suspense fallback={<LotEditFormLayoutFallback />}>
-      {page.atgSaleId ? <AtgEditAlert saleId={page.atgSaleId} /> : null}
       <LotEditFormLayout
         lotId={id}
         canEditCore={canEditCore}
-        title={isDraft ? "Edit draft" : canEditCore ? "Edit lot" : "Edit catalog copy"}
+        title={isDraft ? "Edit draft" : canEditCore ? "Edit lot" : "Edit catalogue copy"}
         description={
           canEditCore
-            ? "Switch sections to edit auction setup, catalog copy, or staff documents."
-            : "Catalog copy and documents only — core auction fields are locked while live."
+            ? "Each section saves on its own."
+            : "The lot is live, so only its catalogue copy and documents can change."
         }
+        notice={page.atgSaleId ? <AtgEditAlert saleId={page.atgSaleId} /> : null}
         breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[
+          <StaffBreadcrumbs
+            items={[
               { label: "Lots", href: "/admin/lots" },
               { label: auction.title, href: `/admin/lots/${id}` },
               { label: "Edit" },

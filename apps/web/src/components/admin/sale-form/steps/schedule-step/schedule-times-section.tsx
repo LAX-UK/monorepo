@@ -1,9 +1,8 @@
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
-import { LabelCaps } from "@/components/ui/typography";
+import { StaffDateTimeField } from "@/components/admin/forms/staff-form-fields";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
+import { FieldRow, FormSection } from "@auction/staff-ui";
 import type { UseFormReturn } from "react-hook-form";
+import { SALE_FORM_ID } from "../../sale-form-id";
 
 type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
@@ -12,75 +11,27 @@ type Props = {
 };
 
 export function ScheduleTimesSection({ form, isDraft, isSaleroom }: Props) {
+  const f = { control: form.control, formId: SALE_FORM_ID, disabled: !isDraft } as const;
   return (
-    <CatalogFormSection
+    <FormSection
       title="Schedule"
-      description="Sale window and optional preview start."
-      collapsible={false}
+      description={
+        isSaleroom
+          ? "The saleroom's opening and closing times. Every lot in the sale takes these times."
+          : "When the sale opens and closes, and when bidders can first preview it."
+      }
     >
-      <div className="grid gap-6 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="startTime"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <LabelCaps>Start (London)</LabelCaps>
-              </FormLabel>
-              <RhfDateTimePicker
-                value={field.value ?? ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                disabled={!isDraft}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="endTime"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <LabelCaps>End (London)</LabelCaps>
-              </FormLabel>
-              <RhfDateTimePicker
-                value={field.value ?? ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                disabled={!isDraft}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-      {isSaleroom ? (
-        <p className="-mt-4 font-body text-xs text-on-surface-variant">
-          For onsite and hybrid auctions the start/end window controls the entire event. All lots in
-          this auction will share these times automatically.
-        </p>
-      ) : null}
-
-      <FormField
-        control={form.control}
+      <FieldRow>
+        <StaffDateTimeField {...f} name="startTime" label="Opens" />
+        <StaffDateTimeField {...f} name="endTime" label="Closes" />
+      </FieldRow>
+      <StaffDateTimeField
+        {...f}
         name="previewStartTime"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <LabelCaps>Preview start (optional)</LabelCaps>
-            </FormLabel>
-            <RhfDateTimePicker
-              value={field.value ?? ""}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              disabled={!isDraft}
-            />
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Preview opens"
+        optional
+        description="Bidders can browse the lots from this time, before bidding opens."
       />
-    </CatalogFormSection>
+    </FormSection>
   );
 }

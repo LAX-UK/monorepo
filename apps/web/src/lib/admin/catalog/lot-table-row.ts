@@ -20,6 +20,9 @@ export type AdminLotTableRow = {
   endTimeLabel: string;
   hammerDisplay: AdminTableMoneyDisplay;
   canDelete: boolean;
+  /** Ended with a winning bid (list rows carry no buyer, only this flag). */
+  hasWinner: boolean;
+  createdAtIso: string;
 };
 
 export type LotColumnSortConfig = {

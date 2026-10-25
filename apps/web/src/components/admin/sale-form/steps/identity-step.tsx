@@ -1,27 +1,23 @@
 "use client";
 
 import { CatalogMediaCollectionActions } from "@/components/admin/catalog/media";
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { CategoryPicker } from "@/components/forms/category-picker";
+import {
+  StaffEntityField,
+  StaffRadioField,
+  StaffTextAreaField,
+  StaffTextField,
+  staffFieldId,
+} from "@/components/admin/forms/staff-form-fields";
 import { ImageGalleryManager } from "@/components/forms/image-gallery-manager";
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
+import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
 import { useMediaCollectionUi } from "@/lib/admin/media/use-media-collection-ui";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import { Field, FormSection, TextInput } from "@auction/staff-ui";
 import type { CategoryNode } from "@auction/types";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Label } from "@auction/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
-import { Textarea } from "@auction/ui/components/textarea";
 import type { RefObject } from "react";
-import { useRef, useState } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import { useMemo, useRef, useState } from "react";
+import { type UseFormReturn, useController } from "react-hook-form";
+import { SALE_FORM_ID } from "../sale-form-id";
 import {
   type StreamUrlVerificationGate,
   StreamUrlVerifyControl,
@@ -63,7 +59,7 @@ function SaleCoverImagesField({
   });
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <CatalogMediaCollectionActions
           addButtonRef={addButtonRef}
@@ -106,214 +102,110 @@ export function SaleIdentityStep({
 }: Props) {
   const heroPresentation = form.watch("heroPresentation");
   const heroBlurRef = useRef<(() => void) | null>(null);
+  const categoryOptions = useMemo(() => categoryPickerOptions(categories), [categories]);
+  const covers = useController({ control: form.control, name: "coverImages" });
+  const heroVideo = useController({ control: form.control, name: "heroVideoUrl" });
+  const f = { control: form.control, formId: SALE_FORM_ID } as const;
 
   return (
-    <div className="space-y-6">
-      <CatalogFormSection
+    <>
+      <FormSection
         title="Sale details"
-        description="Core identifiers that appear across all public-facing materials and the catalog cover."
-        collapsible={false}
-        anchorId="sale-details"
+        description="The title and description bidders see on the sale page and in every listing."
       >
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Sale title</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput placeholder="Sale title" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <StaffTextField {...f} name="title" label="Title" />
+        <StaffTextAreaField {...f} name="description" label="Description" optional rows={4} />
+      </FormSection>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="description" className="mb-2 block">
-                <LabelCaps>Description</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <Textarea
-                  id="description"
-                  rows={4}
-                  variant="underline"
-                  className="font-body text-sm"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </CatalogFormSection>
-
-      <CatalogFormSection
-        title="Sale media"
-        description="Cover image and promotional visuals. Minimum resolution 2000 × 1500 px for print quality."
-        collapsible={false}
-        anchorId="sale-media"
+      <FormSection
+        title="Cover images"
+        description="At least 2000 × 1500 px. The first image leads the sale page; drag to reorder."
       >
-        <FormField
-          control={form.control}
-          name="coverImages"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Cover images</LabelCaps>
-              </FormLabel>
-              <p className="mb-2 font-body text-xs text-on-surface-variant">
-                Image 1: desktop hero master. Image 2 (optional): mobile portrait crop. Image 3
-                (optional): desktop xl crop for large screens.
-              </p>
-              <FormControl>
-                <SaleCoverImagesField
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={pending}
-                  previewUrlByKey={previewUrlByKey}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </CatalogFormSection>
-
-      <CatalogFormSection
-        title="Homepage hero"
-        description="Choose how this sale appears in the lax.bid homepage hero when featured."
-        collapsible={false}
-        anchorId="sale-homepage-hero"
-      >
-        <FormField
-          control={form.control}
-          name="heroPresentation"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Hero presentation</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <RadioGroup
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  className="grid gap-3 sm:grid-cols-2"
-                  disabled={pending}
-                >
-                  <div className="flex items-start gap-3 rounded-md border border-outline-variant/40 p-3">
-                    <RadioGroupItem
-                      value="cover"
-                      id="hero-presentation-cover"
-                      aria-label="Cover images"
-                      className="mt-1"
-                    />
-                    <Label htmlFor="hero-presentation-cover" className="cursor-pointer space-y-1">
-                      <span className="block font-body text-sm font-medium">Cover images</span>
-                      <span className="block font-body text-xs text-on-surface-variant">
-                        Rotating sale cover slides (default).
-                      </span>
-                    </Label>
-                  </div>
-                  <div className="flex items-start gap-3 rounded-md border border-outline-variant/40 p-3">
-                    <RadioGroupItem
-                      value="video"
-                      id="hero-presentation-video"
-                      aria-label="Video"
-                      className="mt-1"
-                    />
-                    <Label htmlFor="hero-presentation-video" className="cursor-pointer space-y-1">
-                      <span className="block font-body text-sm font-medium">Video</span>
-                      <span className="block font-body text-xs text-on-surface-variant">
-                        Marketing embed on the homepage — not the live saleroom feed.
-                      </span>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {heroPresentation === "video" ? (
-          <FormField
-            control={form.control}
-            name="heroVideoUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="mb-2 block">
-                  <LabelCaps>Homepage hero video URL</LabelCaps>
-                </FormLabel>
-                <FormControl>
-                  <UnderlineInput
-                    id="heroVideoUrl"
-                    placeholder="https://www.youtube.com/watch?v=… or https://vimeo.com/event/…"
-                    disabled={pending}
-                    {...field}
-                    onBlur={() => {
-                      field.onBlur();
-                      heroBlurRef.current?.();
-                    }}
-                  />
-                </FormControl>
-                <p className="mt-2 font-body text-xs text-on-surface-variant">
-                  Shown on the lax.bid homepage when this sale is featured. Allowed: YouTube, Vimeo
-                  (including live event links), Twitch, Cloudflare Stream.
-                </p>
-                {!pending ? (
-                  <StreamUrlVerifyControl
-                    value={field.value}
-                    initialValue={initialHeroVideoUrl}
-                    disabled={pending}
-                    {...(heroVideoUrlGateRef ? { gateRef: heroVideoUrlGateRef } : {})}
-                    blurHandlerRef={heroBlurRef}
-                  />
-                ) : null}
-                <FormMessage />
-              </FormItem>
-            )}
+        <Field
+          id={staffFieldId(SALE_FORM_ID, "coverImages")}
+          label="Images"
+          optional
+          description="Image 1 is the desktop hero. Image 2 is the phone crop and image 3 the wide-screen crop; both are optional."
+          error={covers.fieldState.error?.message}
+        >
+          <SaleCoverImagesField
+            value={covers.field.value}
+            onChange={covers.field.onChange}
+            disabled={pending}
+            previewUrlByKey={previewUrlByKey}
           />
-        ) : null}
-      </CatalogFormSection>
+        </Field>
+      </FormSection>
 
-      <CatalogFormSection
-        title="Discovery & classification"
-        description="Controls how this sale surfaces in collector search, curator filters, and internal reports."
-        collapsible={false}
-        anchorId="sale-discovery"
+      <FormSection
+        title="Homepage hero"
+        description="How the sale appears at the top of the lax.bid homepage when it is featured."
       >
-        <FormField
-          control={form.control}
-          name="categoryId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Theme category</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <CategoryPicker
-                  categories={categories}
-                  value={field.value ? [field.value] : []}
-                  onChange={(next) => field.onChange(next[0] ?? "")}
-                  placeholder="Select a category (optional)"
-                  multiple={false}
-                />
-              </FormControl>
-              <p className="mt-2 font-body text-xs text-on-surface-variant">
-                Optional theme used for public sale discovery and internal filtering.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
+        <StaffRadioField
+          {...f}
+          name="heroPresentation"
+          label="Show"
+          disabled={pending}
+          options={[
+            {
+              value: "cover",
+              label: "Cover images",
+              description: "The sale's cover images in turn.",
+            },
+            {
+              value: "video",
+              label: "Video",
+              description: "A marketing video, not the live saleroom feed.",
+            },
+          ]}
         />
-      </CatalogFormSection>
-    </div>
+        {heroPresentation === "video" ? (
+          <Field
+            id={staffFieldId(SALE_FORM_ID, "heroVideoUrl")}
+            label="Video link"
+            description="YouTube, Vimeo (including live event links), Twitch or Cloudflare Stream."
+            error={heroVideo.fieldState.error?.message}
+          >
+            <TextInput
+              ref={heroVideo.field.ref}
+              name={heroVideo.field.name}
+              value={heroVideo.field.value ?? ""}
+              placeholder="https://vimeo.com/event/…"
+              disabled={pending}
+              onChange={(event) => heroVideo.field.onChange(event.target.value)}
+              onBlur={() => {
+                heroVideo.field.onBlur();
+                heroBlurRef.current?.();
+              }}
+            />
+            {!pending ? (
+              <StreamUrlVerifyControl
+                value={heroVideo.field.value}
+                initialValue={initialHeroVideoUrl}
+                disabled={pending}
+                {...(heroVideoUrlGateRef ? { gateRef: heroVideoUrlGateRef } : {})}
+                blurHandlerRef={heroBlurRef}
+              />
+            ) : null}
+          </Field>
+        ) : null}
+      </FormSection>
+
+      <FormSection
+        title="Discovery"
+        description="Where the sale is listed in collector search and staff filters."
+      >
+        <StaffEntityField
+          {...f}
+          name="categoryId"
+          label="Theme category"
+          optional
+          options={categoryOptions}
+          placeholder="No theme"
+          searchPlaceholder="Search categories"
+          emptyText="No categories match."
+        />
+      </FormSection>
+    </>
   );
 }

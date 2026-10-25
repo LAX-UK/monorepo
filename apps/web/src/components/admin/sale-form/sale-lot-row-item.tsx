@@ -2,8 +2,8 @@
 
 import { AttachExistingLotReview } from "@/components/admin/attach-existing-lot-review";
 import type { SaleSetupLotRowContext, SaleSetupLotRowFormValues } from "@/lib/admin/sale-setup";
+import { FormActions, StaffButton } from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import { Trash2 } from "lucide-react";
 import { AttachedLotRow } from "./lot-row/attached-lot-row";
 import { EditableLotRowForm } from "./lot-row/editable-lot-row-form";
@@ -51,6 +51,7 @@ export function SaleLotRowItem({
     save,
     scheduleOutOfSync,
     updateSchedule,
+    failedSaves,
   } = useSaleLotRowForm({
     row,
     ctx,
@@ -93,20 +94,17 @@ export function SaleLotRowItem({
           onSaved(lotId, { ...row, title }, { title });
         }}
         headerSlot={
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="font-headline text-base text-on-surface">
-              Attach existing lot {rowIndex + 1}
-            </p>
-            <Button
+          <FormActions>
+            <StaffButton
               type="button"
-              variant="ghost"
               size="sm"
+              variant="ghost"
+              icon={<Trash2 aria-hidden />}
               onClick={onRemove}
-              aria-label="Remove row"
             >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          </div>
+              Remove lot {rowIndex + 1}
+            </StaffButton>
+          </FormActions>
         }
       />
     );
@@ -129,6 +127,7 @@ export function SaleLotRowItem({
       pending={pending}
       auctionTypeOptions={auctionTypeOptions}
       scheduleOutOfSync={scheduleOutOfSync}
+      failedSaves={failedSaves}
       onRemove={onRemove}
       onSave={save}
       onUpdateSchedule={updateSchedule}

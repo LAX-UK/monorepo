@@ -1,20 +1,15 @@
 "use client";
 
-import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
+import {
+  StaffCheckboxField,
+  StaffMoneyField,
+  StaffTextField,
+} from "@/components/admin/forms/staff-form-fields";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
+import { FieldRow, FormSection } from "@auction/staff-ui";
 import type { UseFormReturn } from "react-hook-form";
-import { CatalogueFieldHelp } from "./catalogue-field-help";
+import { LOT_FORM_ID, LOT_MONEY_FIELDS, lotFieldProps } from "../../lot-field-spec";
 
 type BiddingFieldKey =
   | "minBidIncrement"
@@ -30,9 +25,8 @@ type Props = {
   fields: Pick<Record<LotCatalogueFieldKey, FieldSpec>, BiddingFieldKey>;
 };
 
-const FIELD_ORDER: BiddingFieldKey[] = [
+const ORDER: readonly Exclude<BiddingFieldKey, "autoBidEnabled">[] = [
   "minBidIncrement",
-  "autoBidEnabled",
   "autoBidStepMin",
   "autoBidStepMax",
   "autoBidStepPresetsCsv",
@@ -41,69 +35,51 @@ const FIELD_ORDER: BiddingFieldKey[] = [
 ];
 
 export function CatalogueBiddingSection({ form, fields }: Props) {
-  const visibleKeys = FIELD_ORDER.filter((key) => fields[key].visible);
-
-  if (visibleKeys.length === 0) return null;
-
+  const visible = ORDER.filter((key) => fields[key].visible);
+  const autoBid = fields.autoBidEnabled.visible;
+  if (visible.length === 0 && !autoBid) return null;
   return (
-    <CatalogFormSection
+    <FormSection
       title="Bidding rules"
-      description="Increment, auto-bid policy, and type-specific bidding behaviour."
-      collapsible={false}
+      description="The bid increment, auto-bidding, and how this lot type's price moves."
     >
-      <div className="grid gap-6 sm:grid-cols-2">
-        {visibleKeys.map((key) => {
-          const spec = fields[key];
-          if (key === "autoBidEnabled") {
-            return (
-              <FormField
+      {autoBid ? (
+        <StaffCheckboxField
+          control={form.control}
+          name="autoBidEnabled"
+          formId={LOT_FORM_ID}
+          defaultChecked
+          label={fields.autoBidEnabled.label}
+          {...(fields.autoBidEnabled.helpText
+            ? { description: fields.autoBidEnabled.helpText }
+            : {})}
+        />
+      ) : null}
+      {visible.length > 0 ? (
+        <FieldRow>
+          {visible.map((key) =>
+            LOT_MONEY_FIELDS.has(key) ? (
+              <StaffMoneyField
                 key={key}
                 control={form.control}
-                name="autoBidEnabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start gap-3 sm:col-span-2">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value ?? true}
-                        onCheckedChange={(checked) => field.onChange(checked === true)}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        <LabelCaps>{spec.label}</LabelCaps>
-                      </FormLabel>
-                      <CatalogueFieldHelp text={spec.helpText} />
-                    </div>
-                  </FormItem>
-                )}
+                name={key}
+                formId={LOT_FORM_ID}
+                {...lotFieldProps(fields[key])}
               />
-            );
-          }
-          return (
-            <FormField
-              key={key}
-              control={form.control}
-              name={key}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <LabelCaps>{spec.label}</LabelCaps>
-                  </FormLabel>
-                  <FormControl>
-                    <UnderlineInput
-                      placeholder={spec.placeholder}
-                      {...field}
-                      value={field.value == null ? "" : String(field.value)}
-                    />
-                  </FormControl>
-                  <CatalogueFieldHelp text={spec.helpText} />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          );
-        })}
-      </div>
-    </CatalogFormSection>
+            ) : (
+              <StaffTextField
+                key={key}
+                control={form.control}
+                name={key}
+                formId={LOT_FORM_ID}
+                inputMode={key === "dutchDecrementIntervalMs" ? "numeric" : "text"}
+                {...(fields[key].placeholder ? { placeholder: fields[key].placeholder } : {})}
+                {...lotFieldProps(fields[key])}
+              />
+            ),
+          )}
+        </FieldRow>
+      ) : null}
+    </FormSection>
   );
 }

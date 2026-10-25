@@ -57,6 +57,15 @@ const triaged: AdminAmlScreeningRow = {
 };
 
 describe("AML staff list view model", () => {
+  it("names the check type in words, never by its code", () => {
+    expect(toAmlStaffRow(screening).checkType).toBe("Onboarding");
+    expect(toAmlStaffRow({ ...screening, checkType: "enhanced" }).checkType).toBe("Enhanced check");
+    expect(toAmlStaffRow({ ...screening, checkType: "initial_result" }).checkType).toBe(
+      "Initial screening",
+    );
+    expect(toAmlStaffRow({ ...screening, checkType: null }).checkType).toBeNull();
+  });
+
   it("names the client from the lookup, else by a short ID", () => {
     expect(toAmlStaffRow(screening).client).toBe("Client user_123");
     expect(toAmlStaffRow(screening, new Map([["user_12345678", "Ada Lovelace"]])).client).toBe(
@@ -77,7 +86,7 @@ describe("AML staff list view model", () => {
 
   it("shows the hits as plain facts and only the watchlists that listed them", () => {
     const [hit] = toAmlStaffRow(screening).hits;
-    expect(hit?.facts).toEqual(["Match types: name_exact", "Countries: GB"]);
+    expect(hit?.facts).toEqual(["Matched on: exact name", "Countries: GB"]);
     expect(hit?.listings).toEqual([
       {
         category: "Sanctions",

@@ -1,7 +1,7 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { adminLotListPath } from "@/lib/admin/catalog-routes";
 
-export type LotLensId = "all" | "live" | "draft" | "ending" | "attention";
+export type LotLensId = "all" | "live" | "draft" | "ending" | "attention" | "withdrawals";
 
 const BASE = adminLotListPath();
 
@@ -37,6 +37,8 @@ export function lotLensHref(
         needsPhotos: "1",
         withdrawal: "",
       });
+    case "withdrawals":
+      return buildListHref(BASE, current, { ...clear, lens: "withdrawals" });
     default:
       return buildListHref(BASE, current, clear);
   }
@@ -44,13 +46,19 @@ export function lotLensHref(
 
 export function lotActiveLensId(sp: Record<string, string | string[] | undefined>): LotLensId {
   const lens = String(Array.isArray(sp.lens) ? sp.lens[0] : (sp.lens ?? ""));
-  if (lens === "live" || lens === "draft" || lens === "ending" || lens === "attention") {
+  if (
+    lens === "live" ||
+    lens === "draft" ||
+    lens === "ending" ||
+    lens === "attention" ||
+    lens === "withdrawals"
+  ) {
     return lens;
   }
   const withdrawal = String(
     Array.isArray(sp.withdrawal) ? sp.withdrawal[0] : (sp.withdrawal ?? ""),
   );
-  if (withdrawal === "pending") return "attention";
+  if (withdrawal === "pending") return "withdrawals";
   if (String(sp.needsPhotos ?? "") === "1") return "attention";
   const status = String(Array.isArray(sp.status) ? sp.status[0] : (sp.status ?? ""));
   if (status === "active") return "live";
@@ -61,7 +69,7 @@ export function lotActiveLensId(sp: Record<string, string | string[] | undefined
 
 export function lotLensItems(
   sp: Record<string, string | string[] | undefined>,
-  badges?: { attention?: number },
+  badges?: { attention?: number; withdrawals?: number },
 ) {
   return [
     { id: "all", label: "All", href: lotLensHref("all", sp) },
@@ -73,6 +81,14 @@ export function lotLensItems(
       label: "Needs attention",
       href: lotLensHref("attention", sp),
       ...(badges?.attention != null && badges.attention > 0 ? { badge: badges.attention } : {}),
+    },
+    {
+      id: "withdrawals",
+      label: "Withdrawal requests",
+      href: lotLensHref("withdrawals", sp),
+      ...(badges?.withdrawals != null && badges.withdrawals > 0
+        ? { badge: badges.withdrawals }
+        : {}),
     },
   ] as const;
 }

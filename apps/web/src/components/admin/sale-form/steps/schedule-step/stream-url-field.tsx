@@ -1,15 +1,9 @@
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
+import { staffFieldId } from "@/components/admin/forms/staff-form-fields";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
+import { Field, TextInput } from "@auction/staff-ui";
 import type { RefObject } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import { type UseFormReturn, useController } from "react-hook-form";
+import { SALE_FORM_ID } from "../../sale-form-id";
 import {
   type StreamUrlVerificationGate,
   StreamUrlVerifyControl,
@@ -30,43 +24,37 @@ export function StreamUrlField({
   streamUrlGateRef,
   streamBlurRef,
 }: Props) {
+  const { field, fieldState } = useController({ control: form.control, name: "streamUrl" });
   return (
-    <FormField
-      control={form.control}
-      name="streamUrl"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel className="mb-2 block">
-            <LabelCaps>Live stream URL (optional)</LabelCaps>
-          </FormLabel>
-          <FormControl>
-            <UnderlineInput
-              id="streamUrl"
-              placeholder="https://www.youtube.com/watch?v=… or https://vimeo.com/event/…"
-              disabled={!streamFieldEnabled}
-              {...field}
-              onBlur={() => {
-                field.onBlur();
-                streamBlurRef.current?.();
-              }}
-            />
-          </FormControl>
-          <p className="mt-2 font-body text-xs text-on-surface-variant">
-            Live venue broadcast shown on lot pages and the sale overview during the auction.
-            Allowed: YouTube, Vimeo (including live event links), Twitch, Cloudflare Stream.
-          </p>
-          {streamFieldEnabled ? (
-            <StreamUrlVerifyControl
-              value={field.value}
-              initialValue={initialStreamUrl}
-              disabled={!streamFieldEnabled}
-              {...(streamUrlGateRef ? { gateRef: streamUrlGateRef } : {})}
-              blurHandlerRef={streamBlurRef}
-            />
-          ) : null}
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+    <Field
+      id={staffFieldId(SALE_FORM_ID, "streamUrl")}
+      label="Live stream link"
+      optional
+      disabled={!streamFieldEnabled}
+      description="The saleroom broadcast on the sale and lot pages during the auction. YouTube, Vimeo (including live event links), Twitch or Cloudflare Stream."
+      error={fieldState.error?.message}
+    >
+      <TextInput
+        ref={field.ref}
+        name={field.name}
+        value={field.value ?? ""}
+        placeholder="https://vimeo.com/event/…"
+        disabled={!streamFieldEnabled}
+        onChange={(event) => field.onChange(event.target.value)}
+        onBlur={() => {
+          field.onBlur();
+          streamBlurRef.current?.();
+        }}
+      />
+      {streamFieldEnabled ? (
+        <StreamUrlVerifyControl
+          value={field.value}
+          initialValue={initialStreamUrl}
+          disabled={!streamFieldEnabled}
+          {...(streamUrlGateRef ? { gateRef: streamUrlGateRef } : {})}
+          blurHandlerRef={streamBlurRef}
+        />
+      ) : null}
+    </Field>
   );
 }

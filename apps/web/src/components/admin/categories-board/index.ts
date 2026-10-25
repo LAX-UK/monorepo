@@ -1,1 +1,0 @@
-export { AdminCategoriesBoard } from "./board";

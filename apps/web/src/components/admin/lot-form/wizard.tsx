@@ -8,18 +8,15 @@ import {
   wizardDraftCookieKey,
 } from "@/components/admin/admin-form-wizard/wizard-draft";
 import { WizardStepIntro } from "@/components/admin/admin-form-wizard/wizard-step-intro";
-import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
-import { FormRootErrorAlert } from "@/components/admin/form-root-error-alert";
+import { staffFormSummaryErrors } from "@/components/admin/forms/staff-form-fields";
 import {
   LotEditDirtyReporter,
   type LotEditSectionId,
 } from "@/components/admin/lot-form/lot-edit-form-context";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
-import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { applyLotTypeFieldReset } from "@/lib/admin/lot-catalogue";
 import { buildLotEditTabFields, buildLotStepFields } from "@/lib/admin/lot-form-field-ownership";
-import { lotFormStepLabel } from "@/lib/admin/lot-form-field-ownership";
 import { lotFormStepIntro } from "@/lib/admin/lot-form-step-copy";
 import { buildLotSetupStepperViewModel } from "@/lib/data/view-models/lot-setup-stepper.vm";
 import {
@@ -28,6 +25,7 @@ import {
   buildAdminLotFormSchema,
 } from "@/lib/forms/schemas/admin-lot-form";
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
+import { FormActions, FormErrorSummary, Notice, StaffButton } from "@auction/staff-ui";
 import {
   type ArtistProfile,
   type CategoryNode,
@@ -35,14 +33,12 @@ import {
   type Sale,
   lotAuctionTypes,
 } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Form } from "@auction/ui/components/form";
-import { LoadingButton } from "@auction/ui/components/loading-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z as zod } from "zod";
+import { LOT_FORM_ID } from "./lot-field-spec";
 import { LotCatalogueStep } from "./steps/catalogue-step";
 import { LotIdentityStep } from "./steps/identity-step";
 import { LotFormReviewStep } from "./steps/review-step";
@@ -107,11 +103,11 @@ export function AdminLotForm({
         : tabValue === "sale"
           ? "lot-edit-sale"
           : "lot-edit-catalogue";
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(sectionId)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
-  const [validationBanner, setValidationBanner] = useState<string | null>(null);
-  const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
   const [formDirty, setFormDirty] = useState(false);
+  /** Each failed submit or Continue, so the error summary takes focus only then. */
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const salesById = useMemo(() => {
     const map = new Map<string, AdminLotFormSaleTiming>();
     for (const s of sales) {
@@ -155,8 +151,11 @@ export function AdminLotForm({
     resolver,
     defaultValues: initialValuesRef.current,
     shouldUnregister: false,
-    mode: "onTouched",
+    // Errors appear on submit (or Continue), then clear as each field is fixed.
+    mode: "onSubmit",
     reValidateMode: "onChange",
+    // The error summary takes focus on a failed submit and links to each field.
+    shouldFocusError: false,
   });
   const auctionType = form.watch("auctionType");
   const wizardSteps = useMemo(() => buildLotSetupStepperViewModel(mode), [mode]);
@@ -169,6 +168,8 @@ export function AdminLotForm({
     [auctionType, showArtistField],
   );
 
+  const summaryOrder = useMemo(() => lotStepFields.flat().map(String), [lotStepFields]);
+
   const reportZodValidationFailure = useCallback(
     (issues: zod.ZodIssue[]) => {
       reportLotFormValidationFailure(form, issues, {
@@ -177,18 +178,12 @@ export function AdminLotForm({
         editTabFields: editTabFields as Record<string, (keyof AdminLotFormValues)[]>,
         wizardGoTo: wizardGoToRef.current,
         tabGoTo: tabGoToRef.current,
-        onValidationBanner: (message, stepIndex) => {
-          setValidationBanner(message);
-          setValidationStepIndex(stepIndex ?? null);
-        },
+        // The error summary lists what to fix; the step with the first error is shown.
+        onValidationBanner: () => {},
       });
     },
     [editTabFields, form, lotStepFields, mode],
   );
-
-  const handleValidationBannerJump = useCallback(() => {
-    if (validationStepIndex != null) wizardGoToRef.current(validationStepIndex);
-  }, [validationStepIndex]);
 
   const handleAuctionTypeChange = useCallback(
     (previous: LotAuctionType, next: LotAuctionType) => {
@@ -221,7 +216,7 @@ export function AdminLotForm({
   return (
     <>
       {!lotEditSection ? <FormDirtyGuard isDirty={formDirty} /> : null}
-      <Form {...form}>
+      <>
         <LotEditDirtyReporter
           control={form.control}
           {...(lotEditSection ? { lotEditSection } : {})}
@@ -229,18 +224,14 @@ export function AdminLotForm({
         />
         <form
           id={htmlFormId}
-          className="space-y-8"
+          noValidate
+          className="flex flex-col gap-6"
           onSubmit={form.handleSubmit(
             async (values) => {
-              setValidationBanner(null);
-              setValidationStepIndex(null);
               if (mode === "create" && !(await validateAllWizardSteps())) {
                 const parsed = await formSchema.safeParseAsync(form.getValues());
-                if (!parsed.success) {
-                  reportZodValidationFailure(parsed.error.issues);
-                } else {
-                  notifyAdminFormValidationFailure({});
-                }
+                if (!parsed.success) reportZodValidationFailure(parsed.error.issues);
+                setFailedAttempts((count) => count + 1);
                 return;
               }
               startTransition(async () => {
@@ -258,18 +249,14 @@ export function AdminLotForm({
                     clearWizardDraft(
                       wizardDraftCookieKey("lot", mode === "create" ? "new" : (lotId ?? "new")),
                     ),
-                  onValidationBanner: (message, stepIndex) => {
-                    setValidationBanner(message);
-                    setValidationStepIndex(stepIndex ?? null);
-                  },
+                  onValidationBanner: () => {},
                   router,
                   emergencyAddSaleStatus,
                 });
               });
             },
             async () => {
-              setValidationBanner(null);
-              setValidationStepIndex(null);
+              setFailedAttempts((count) => count + 1);
               const parsed = await formSchema.safeParseAsync(form.getValues());
               if (!parsed.success) {
                 reportZodValidationFailure(parsed.error.issues);
@@ -278,43 +265,31 @@ export function AdminLotForm({
               if (mode === "create") {
                 await validateAllWizardSteps();
               }
-              notifyAdminFormValidationFailure({});
             },
           )}
         >
-          {validationBanner ? (
-            <WizardValidationBanner
-              message={validationBanner}
-              {...(validationStepIndex != null
-                ? {
-                    stepLabel: lotFormStepLabel(validationStepIndex),
-                    onJumpToStep: handleValidationBannerJump,
-                  }
-                : {})}
-            />
+          <FormErrorSummary
+            errors={staffFormSummaryErrors(form.formState.errors, LOT_FORM_ID, summaryOrder)}
+            focusKey={failedAttempts}
+          />
+          {form.formState.errors.root?.message ? (
+            <Notice tone="danger" alert title="The lot was not saved">
+              {form.formState.errors.root.message}
+            </Notice>
           ) : null}
           {mode === "edit" ? (
-            <div className="space-y-10">
-              <section id="lot-edit-identity" className="scroll-mt-24 space-y-4">
-                <h3 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-                  Identity
-                </h3>
+            <div className="flex flex-col gap-6">
+              <div id="lot-edit-identity" className="scroll-mt-24">
                 <LotIdentityStep
                   form={form}
                   auctionTypeOptions={auctionTypeOptions}
                   englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
                 />
-              </section>
-              <section id="lot-edit-sale" className="scroll-mt-24 space-y-4">
-                <h3 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-                  Sale & seller
-                </h3>
+              </div>
+              <div id="lot-edit-sale" className="scroll-mt-24">
                 <LotSaleSellerStep form={form} sales={sales} />
-              </section>
-              <section id="lot-edit-catalogue" className="scroll-mt-24 space-y-4">
-                <h3 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-                  Catalogue
-                </h3>
+              </div>
+              <div id="lot-edit-catalogue" className="scroll-mt-24">
                 <LotCatalogueStep
                   form={form}
                   categories={categories}
@@ -322,7 +297,7 @@ export function AdminLotForm({
                   sales={sales}
                   showArtistField={showArtistField}
                 />
-              </section>
+              </div>
             </div>
           ) : (
             <AdminFormWizard
@@ -330,7 +305,6 @@ export function AdminLotForm({
               layout="sidebar"
               isDirty={formDirty}
               pending={pending}
-              hideStickyOnMobile={Boolean(htmlFormId)}
               onStepControl={({ goTo }) => {
                 wizardGoToRef.current = goTo;
               }}
@@ -348,35 +322,31 @@ export function AdminLotForm({
                 if (stepIndex >= LOT_WIZARD_FIELD_STEPS) return true;
                 const fields = lotStepFields[stepIndex];
                 if (!fields?.length) return true;
-                return validateWizardStep(form, formSchema, fields);
+                const ok = await validateWizardStep(form, formSchema, fields, { focus: false });
+                if (!ok) setFailedAttempts((count) => count + 1);
+                return ok;
               }}
               leadingSlot={
-                <Button
+                <StaffButton
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   disabled={pending}
-                  className="min-h-11 w-full sm:w-auto"
                   onClick={() => guardedPush("/admin/lots")}
                 >
                   Cancel
-                </Button>
+                </StaffButton>
               }
               submitSlot={
-                <LoadingButton
-                  type="submit"
-                  loading={pending}
-                  loadingLabel="Saving…"
-                  className="min-h-11 w-full sm:min-w-40 sm:w-auto"
-                >
-                  Create draft
-                </LoadingButton>
+                <StaffButton type="submit" variant="primary" loading={pending}>
+                  {emergencyAddSaleStatus ? "Add lot to sale" : "Create draft"}
+                </StaffButton>
               }
             >
               {(stepIndex) => {
                 const stepIds = ["identity", "sale-seller", "catalogue", "review"] as const;
                 const stepId = stepIds[stepIndex] ?? "identity";
                 return (
-                  <div className="space-y-6">
+                  <div className="flex flex-col gap-6">
                     <WizardStepIntro copy={lotFormStepIntro(stepId)} />
                     {stepIndex === 0 ? (
                       <LotIdentityStep
@@ -400,6 +370,8 @@ export function AdminLotForm({
                     {stepIndex === 3 ? (
                       <LotFormReviewStep
                         form={form}
+                        sales={sales}
+                        categories={categories}
                         onEditStep={(index) => wizardGoToRef.current(index)}
                       />
                     ) : null}
@@ -409,33 +381,27 @@ export function AdminLotForm({
             </AdminFormWizard>
           )}
 
-          <div
-            className={
-              mode === "edit" && htmlFormId
-                ? "mt-6 hidden flex-wrap gap-2 lg:flex"
-                : "mt-6 flex flex-wrap gap-2"
-            }
-          >
-            {mode === "edit" ? (
-              <>
-                <Button
+          {mode === "edit" ? (
+            <FormActions
+              sticky
+              start={
+                <StaffButton
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   disabled={pending}
                   onClick={() => guardedPush(lotId ? `/admin/lots/${lotId}` : "/admin/lots")}
                 >
                   Cancel
-                </Button>
-                <LoadingButton type="submit" loading={pending} loadingLabel="Saving…">
-                  Save changes
-                </LoadingButton>
-              </>
-            ) : null}
-          </div>
-
-          <FormRootErrorAlert message={form.formState.errors.root?.message ?? null} />
+                </StaffButton>
+              }
+            >
+              <StaffButton type="submit" variant="primary" loading={pending}>
+                Save changes
+              </StaffButton>
+            </FormActions>
+          ) : null}
         </form>
-      </Form>
+      </>
     </>
   );
 }

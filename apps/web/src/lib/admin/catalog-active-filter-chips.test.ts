@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildArtistsActiveFilterChips,
-  buildConditionReportsActiveFilterChips,
   buildFulfilmentActiveFilterChips,
   buildLotsActiveFilterChips,
   buildSalesActiveFilterChips,
@@ -26,22 +24,6 @@ describe("buildLotsActiveFilterChips", () => {
     expect(chips[0]?.clearHref).not.toContain("q=");
     expect(chips[1]?.label).toContain("Picasso");
     expect(chips[1]?.clearHref).not.toContain("artistId=");
-  });
-});
-
-describe("buildArtistsActiveFilterChips", () => {
-  it("includes featured chip when active", () => {
-    const chips = buildArtistsActiveFilterChips({ featured: "true" }, { featured: true });
-    expect(chips.some((c) => c.id === "featured")).toBe(true);
-  });
-
-  it("includes department and country chips when active", () => {
-    const chips = buildArtistsActiveFilterChips(
-      { categoryId: "cat-1", country: "GB" },
-      { categoryId: "cat-1", categoryName: "Ceramics", country: "GB" },
-    );
-    expect(chips.find((c) => c.id === "categoryId")?.label).toContain("Ceramics");
-    expect(chips.find((c) => c.id === "country")?.label).toContain("GB");
   });
 });
 
@@ -75,17 +57,6 @@ describe("buildSalesActiveFilterChips", () => {
       { status: "draft", setupLens: true, activeLensId: "setup" },
     );
     expect(chips.some((c) => c.id === "lens")).toBe(true);
-  });
-});
-
-describe("buildConditionReportsActiveFilterChips", () => {
-  it("shows lens chip when not on open queue", () => {
-    const chips = buildConditionReportsActiveFilterChips(
-      { lens: "pending" },
-      { activeLens: "pending" },
-    );
-    expect(chips).toHaveLength(1);
-    expect(chips[0]?.clearHref).not.toContain("lens=");
   });
 });
 

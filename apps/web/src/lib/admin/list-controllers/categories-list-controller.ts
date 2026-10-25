@@ -1,6 +1,7 @@
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
 import { getAdminCategoryPage } from "@/lib/data/http/admin.server";
+import { parseStaffPageSize } from "@auction/staff-ui";
 import type { AdminCategory } from "@auction/types";
 
 export type CategoriesListQuery = AdminListQueryBase & {
@@ -12,7 +13,7 @@ export const categoriesListController: IAdminListController<AdminCategory, Categ
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
     const includeArchived = firstString(sp.includeArchived) === "true";
-    return { ...base, includeArchived, limit: Math.min(200, base.limit) };
+    return { ...base, includeArchived, limit: parseStaffPageSize(firstString(sp.limit)) };
   },
   async fetch(q) {
     const result = await getAdminCategoryPage({

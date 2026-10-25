@@ -13,7 +13,9 @@ import {
 import type { z } from "zod";
 import { z as zod } from "zod";
 
-const decimalString = zod.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
+const decimalString = zod
+  .string()
+  .regex(/^\d+(\.\d{1,2})?$/, "Enter an amount in pounds, like 1200.00");
 
 const optionalStr = zod.union([zod.string(), zod.literal("")]);
 
@@ -32,13 +34,13 @@ function refineLotFieldsByAuctionType(
     if (!amount) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: "Decrement amount is required for Dutch lots",
+        message: "Enter the amount the price drops each time",
         path: ["dutchDecrementAmount"],
       });
     } else if (!decimalString.safeParse(amount).success) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: "Must be a valid decimal string",
+        message: "Enter an amount in pounds, like 1200.00",
         path: ["dutchDecrementAmount"],
       });
     }
@@ -46,7 +48,7 @@ function refineLotFieldsByAuctionType(
     if (!intervalRaw) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: "Decrement interval is required for Dutch lots",
+        message: "Enter how often the price drops, in milliseconds",
         path: ["dutchDecrementIntervalMs"],
       });
     } else {
@@ -66,13 +68,13 @@ function refineLotFieldsByAuctionType(
     if (!buyNow) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: "Buy now price is required",
+        message: "Enter the buy now price",
         path: ["buyNowPrice"],
       });
     } else if (!decimalString.safeParse(buyNow).success) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: "Must be a valid decimal string",
+        message: "Enter an amount in pounds, like 1200.00",
         path: ["buyNowPrice"],
       });
     } else {
@@ -103,19 +105,22 @@ const optionalBuyerPremium = zod.union([buyerPremiumRateString, zod.literal("")]
 /** Aligned with admin create/edit lot pages (datetime-local strings). */
 export const adminLotFormValuesSchema = zod
   .object({
-    title: zod.string().min(1).max(500),
+    title: zod
+      .string()
+      .min(1, "Enter a title")
+      .max(500, "Shorten the title to 500 characters or fewer"),
     description: optionalStr,
     medium: optionalStr,
     dimensions: optionalStr,
     /** Legal entity id — replaces legacy user-based sellerId. */
-    sellerLegalEntityId: zod.string().uuid("Choose a seller legal entity"),
+    sellerLegalEntityId: zod.string().uuid("Choose the seller"),
     /** Display label for the picker chip (not sent to API). */
     sellerDisplayName: zod.string().optional(),
     categoryIds: zod
       .array(zod.string().uuid())
       .min(1, "Choose at least one category")
       .max(8, "Choose no more than 8 categories"),
-    saleId: zod.string().uuid("Choose a sale"),
+    saleId: zod.string().uuid("Choose the sale this lot is in"),
     lotNumber: zod
       .union([zod.coerce.number().int().positive(), zod.literal("")])
       .nullable()
@@ -135,8 +140,8 @@ export const adminLotFormValuesSchema = zod
     dutchDecrementIntervalMs: optionalStr,
     images: zod.array(mediaReferenceSchema).max(50),
     imageAlts: zod.array(zod.string().max(500)).max(50),
-    startTime: zod.string().min(1, "Start time required"),
-    endTime: zod.string().min(1, "End time required"),
+    startTime: zod.string().min(1, "Enter when bidding opens"),
+    endTime: zod.string().min(1, "Enter when bidding closes"),
     artistId: zod.string().uuid().nullable().optional(),
   })
   .superRefine((values, ctx) => {
@@ -166,7 +171,7 @@ export const adminLotFormValuesSchema = zod
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: "End must be after start",
+        message: "Bidding must close after it opens",
         path: ["endTime"],
       });
     }

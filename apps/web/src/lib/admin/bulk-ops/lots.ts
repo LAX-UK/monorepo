@@ -14,9 +14,10 @@ export function getLotBulkOperations(canManageAuction: boolean): BulkOperation[]
     ops.push(
       {
         id: "cancel",
-        label: "Cancel",
+        label: "Withdraw",
         destructive: true,
-        confirm: "Cancel the selected lots? This changes their auction status.",
+        confirm:
+          "Live bidding stops and the lots come off the site. They stay in the lists as withdrawn. This cannot be undone.",
         run: (ids) => adminBulkLotsResultAction({ ids, op: "cancel" }),
       },
       {

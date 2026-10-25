@@ -16,7 +16,9 @@ vi.mock("@auction/ui/components/dialog", () =>
 );
 
 const { ListPage } = await import("./list-page.js");
-const { DetailPage } = await import("./detail-page.js");
+const { DetailColumns, DetailError, DetailPage, DetailPageSkeleton } = await import(
+  "./detail-page.js"
+);
 const { PlainLink } = await import("../shell/link.js");
 const { StaffButton } = await import("../primitives/button.js");
 
@@ -327,5 +329,36 @@ describe("DetailPage", () => {
     expect(
       screen.getByRole("heading", { name: "You don’t have access to Payments" }),
     ).toBeInTheDocument();
+  });
+
+  it("lays a routed tab's own main column beside its rail, and drops the rail when empty", () => {
+    const { rerender } = render(
+      <DetailColumns rail={<p>Events</p>} railLabel="Lot activity">
+        <section aria-label="Commercial">Prices</section>
+      </DetailColumns>,
+    );
+    expect(screen.getByRole("complementary", { name: "Lot activity" })).toHaveTextContent("Events");
+    rerender(
+      <DetailColumns>
+        <section aria-label="Commercial">Prices</section>
+      </DetailColumns>,
+    );
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
+
+  it("shows a tab's loading body with or without the summary card", () => {
+    const { container, rerender } = render(<DetailPageSkeleton />);
+    expect(container.firstElementChild).toHaveAttribute("aria-busy", "true");
+    const without = container.querySelectorAll(".rounded-staff-md").length;
+    rerender(<DetailPageSkeleton withSummary />);
+    expect(container.querySelectorAll(".rounded-staff-md").length).toBe(without + 1);
+  });
+
+  it("keeps a tab's failure in place with a retry", () => {
+    const retry = vi.fn();
+    render(<DetailError description="The bids did not load." onRetry={retry} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("This section did not load");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalled();
   });
 });
