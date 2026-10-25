@@ -1,61 +1,13 @@
 import type { AdminProductionTaskHistoryEntry } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCTION_STATUS_LABELS,
   PRODUCTION_TASK_STATUSES,
-  hasActiveProductionFilters,
-  parseProductionQueueQuery,
   productionAssigneeName,
   productionHistorySummary,
-  productionQueueApiQuery,
-  productionQueueHref,
-  productionQueuePageHref,
-  productionStatusTone,
   productionTaskSteps,
   productionTaskTitle,
 } from "./production-queue.vm";
-
-describe("parseProductionQueueQuery", () => {
-  it("reads every filter", () => {
-    expect(
-      parseProductionQueueQuery({ q: " print ", status: "printing", assignee: "me", cursor: "c" }),
-    ).toEqual({ q: "print", status: "printing", assignee: "me", cursor: "c" });
-  });
-
-  it("drops unknown statuses and assignees, which are only ever me or unassigned", () => {
-    expect(
-      parseProductionQueueQuery({ status: "shipped", assignee: "some-subject", q: " " }),
-    ).toEqual({});
-  });
-});
-
-describe("production queue links", () => {
-  it("returns to the first page when a filter changes, and clears with null", () => {
-    expect(productionQueueHref({ status: "queued", cursor: "c" }, { assignee: "me" })).toBe(
-      "/production?status=queued&assignee=me",
-    );
-    expect(productionQueueHref({ status: "queued" }, { status: null })).toBe("/production");
-  });
-
-  it("keeps the filters on the next page link", () => {
-    expect(productionQueuePageHref({ assignee: "unassigned" }, "next")).toBe(
-      "/production?assignee=unassigned&cursor=next",
-    );
-  });
-
-  it("passes the URL state to the API as it stands", () => {
-    expect(productionQueueApiQuery({ status: "printing", assignee: "me", cursor: "c" })).toEqual({
-      status: "printing",
-      assignee: "me",
-      cursor: "c",
-    });
-    expect(productionQueueApiQuery({})).toEqual({});
-  });
-
-  it("counts filters but not paging", () => {
-    expect(hasActiveProductionFilters({ cursor: "c" })).toBe(false);
-    expect(hasActiveProductionFilters({ assignee: "me" })).toBe(true);
-  });
-});
 
 describe("productionTaskSteps", () => {
   it("offers the usual next step first and keeps cancelling apart", () => {
@@ -93,10 +45,11 @@ describe("productionTaskSteps", () => {
 });
 
 describe("display helpers", () => {
-  it("marks a failed check as the one state to notice", () => {
-    expect(productionStatusTone("qc_failed")).toBe("danger");
-    expect(productionStatusTone("completed")).toBe("success");
-    expect(productionStatusTone("cancelled")).toBe("neutral");
+  it("labels every status in words", () => {
+    for (const status of PRODUCTION_TASK_STATUSES) {
+      expect(PRODUCTION_STATUS_LABELS[status]).not.toContain("_");
+    }
+    expect(PRODUCTION_STATUS_LABELS.qc_pending).toBe("Awaiting quality check");
   });
 
   it("titles a task by artwork and edition, falling back to its id", () => {

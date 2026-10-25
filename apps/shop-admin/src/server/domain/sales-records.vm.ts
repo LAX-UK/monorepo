@@ -3,7 +3,8 @@ import type {
   AdminStockHoldList,
   AdminThirdPartySaleList,
 } from "@auction/shop-contracts";
-import { defineStatusMap, formatGbp } from "@auction/staff-ui";
+import { formatStaffMoney } from "@auction/staff-ui";
+import { presentStatus } from "./staff-status";
 
 /*
  * Stock holds, third-party sales, their fees and original sales: how each reads in its list, which
@@ -26,33 +27,10 @@ export type Availability =
 
 // Statuses ---------------------------------------------------------------------------------
 
-export const presentHoldStatus = defineStatusMap({
-  active: { label: "Active", tone: "success" },
-  released: { label: "Released", tone: "neutral" },
-  expired: { label: "Expired", tone: "neutral" },
-  converted: { label: "Sold", tone: "info" },
-});
-
-export const presentThirdPartySaleStatus = defineStatusMap({
-  draft: { label: "Draft", tone: "neutral" },
-  recorded: { label: "Recorded", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "neutral" },
-});
-
-export const presentFeeStatus = defineStatusMap({
-  pending: { label: "Awaiting approval", tone: "warning" },
-  approved: { label: "Approved", tone: "success" },
-  rejected: { label: "Rejected", tone: "danger" },
-});
-
-export const presentOriginalSaleStatus = defineStatusMap({
-  reserved: { label: "Reserved", tone: "info" },
-  deposit_due: { label: "Deposit due", tone: "warning" },
-  invoiced: { label: "Invoiced", tone: "warning" },
-  paid: { label: "Paid", tone: "success" },
-  assigned: { label: "Assigned", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "neutral" },
-});
+export const presentHoldStatus = presentStatus("hold");
+export const presentThirdPartySaleStatus = presentStatus("thirdPartySale");
+export const presentFeeStatus = presentStatus("fee");
+export const presentOriginalSaleStatus = presentStatus("originalSale");
 
 // Actions ----------------------------------------------------------------------------------
 
@@ -104,7 +82,7 @@ export function feeSummary(sale: Pick<ThirdPartySaleRow, "fees">): string | null
   const fees = sale.fees ?? [];
   if (fees.length === 0) return null;
   const total = fees.reduce((sum, fee) => sum + fee.amountPence, 0);
-  return formatGbp(total);
+  return formatStaffMoney(total);
 }
 
 // Form checks ------------------------------------------------------------------------------
@@ -125,7 +103,10 @@ export function checkSaleAmount(pence: number | null, typed: boolean, noun: stri
   }
   if (pence < 1) return { ok: false, message: "Enter an amount of at least £0.01." };
   if (pence > SALE_AMOUNT_MAX_PENCE) {
-    return { ok: false, message: `Enter an amount up to ${formatGbp(SALE_AMOUNT_MAX_PENCE)}.` };
+    return {
+      ok: false,
+      message: `Enter an amount up to ${formatStaffMoney(SALE_AMOUNT_MAX_PENCE)}.`,
+    };
   }
   return { ok: true, pence };
 }
