@@ -33,10 +33,25 @@ type Props = {
   entityType: EntityType;
   entityId: string;
   title: string;
+  /** Controlled from elsewhere (a page's overflow menu): no trigger button is rendered. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
-  const [open, setOpen] = useState(false);
+export function AdminQrCodeButton({
+  entityType,
+  entityId,
+  title,
+  open: controlledOpen,
+  onOpenChange,
+}: Props) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [confirmRegenerateOpen, setConfirmRegenerateOpen] = useState(false);
   const [item, setItem] = useState<QrCodeItem | null>(null);
   const [analytics, setAnalytics] = useState<QrCodeDetailedAnalytics | null>(null);
@@ -182,12 +197,14 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <QrCode className="size-4" aria-hidden />
-          QR code
-        </Button>
-      </DialogTrigger>
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          <Button type="button" variant="outline" size="sm">
+            <QrCode className="size-4" aria-hidden />
+            QR code
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="flex max-h-[min(90vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="shrink-0 space-y-1.5 border-b border-border-hairline px-6 pt-6 pb-4 pr-12 text-left">
           <DialogTitle>Marketing QR code</DialogTitle>

@@ -129,7 +129,7 @@ describe("buildSaleOverviewViewModel", () => {
 
     expect(vm.attentionRows).toHaveLength(1);
     expect(vm.attentionRows[0]?.id).toBe("pending-regs");
-    expect(vm.attentionRows[0]?.title).toContain("Pending bidder");
+    expect(vm.attentionRows[0]?.title).toBe("2 bidders wait for approval");
   });
 
   it("includes readiness and blockers alongside API attention", () => {

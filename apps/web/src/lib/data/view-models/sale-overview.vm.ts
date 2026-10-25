@@ -124,10 +124,10 @@ export function buildSaleOverviewAttentionRows(
 
   const attentionFromBlockers: DetailAttentionRow[] = deleteBlockers.map((blocker, index) => ({
     id: `blocker-${index}`,
-    title: blocker,
+    title: `Cannot be deleted: ${blocker}`,
     count: 1,
     category: "Delete",
-    severity: "high" as const,
+    severity: "low" as const,
     actionLabel: "Review",
     iconKind: "delete" as const,
     href: saleDetailTabHref(saleId, "overview"),
@@ -138,7 +138,10 @@ export function buildSaleOverviewAttentionRows(
       ? [
           {
             id: "pending-regs",
-            title: "Pending bidder approvals",
+            title:
+              pendingRegistrationCount === 1
+                ? "1 bidder waits for approval"
+                : `${pendingRegistrationCount} bidders wait for approval`,
             count: pendingRegistrationCount,
             category: "Bidders",
             severity: "critical",

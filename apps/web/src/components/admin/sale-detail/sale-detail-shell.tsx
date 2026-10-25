@@ -1,45 +1,51 @@
-import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminSaleHeaderActions } from "@/components/admin/admin-sale-header-actions";
-import {
-  CatalogBreadcrumbs,
-  CatalogDetailMobileMeta,
-  CatalogDetailShell,
-  CatalogDetailTabNav,
-} from "@/components/admin/catalog";
-import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
-import { CatalogWhatsNextBanner } from "@/components/admin/catalog/catalog-whats-next-banner";
-import { AdminSaleEditableTitle } from "@/components/admin/editable-titles";
+"use client";
+
 import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
-import { SaleDetailMobileLifecycleTrailing } from "@/components/admin/sale-detail-mobile-lifecycle-trailing";
-import { SaleDetailConnectNotice } from "@/components/admin/sale-detail/sale-detail-connect-notice";
-import { isSaleLiveish, venueOneLiner } from "@/components/admin/sale-detail/sale-detail-helpers";
-import { SaleDetailMetaRow } from "@/components/admin/sale-detail/sale-detail-meta-row";
 import { SaleDetailReadinessProvider } from "@/components/admin/sale-detail/sale-detail-readiness-context";
-import { SaleSetupProgressChip } from "@/components/admin/sale-detail/sale-setup-progress-chip";
-import { SaleDeliveryPill, SaleStatusPill } from "@/components/admin/sale-detail/sale-status-pill";
+import { type SaleActionTarget, useSaleActions } from "@/components/admin/sales/use-sale-actions";
+import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
+import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import {
-  buildSaleDetailNavActions,
-  saleNavItemsToMobileBar,
-} from "@/lib/admin/build-sale-lifecycle-mobile-actions";
+  isPalettePinned,
+  pushPaletteRecent,
+  togglePalettePinned,
+} from "@/components/layout/palette/palette-cookie-client";
+import { adminUpdateSaleTitleFieldAction } from "@/lib/actions/admin/field-updates";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
-import { adminSaleroomHref } from "@/lib/admin/catalog-route-helpers";
+import { adminSaleEditHref, adminSaleroomHref } from "@/lib/admin/catalog-route-helpers";
 import {
   computeSaleDetailReadiness,
   saleDetailCanPublish,
-  saleDetailReadinessDismissKey,
 } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import { buildSaleDetailTabSpecs } from "@/lib/admin/sales/build-sale-detail-tab-specs";
+import { isSaleLiveish, venueOneLiner } from "@/lib/admin/sales/sale-detail-helpers";
+import { firstBlockedSeller, saleDetailNotice } from "@/lib/admin/sales/sale-detail-page.vm";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
 import { salePath } from "@/lib/seo/url";
+import {
+  DetailPage,
+  MetaItem,
+  Notice,
+  type OverflowAction,
+  OverflowMenu,
+  StaffBreadcrumbs,
+  StaffButton,
+  StaffDate,
+  type StaffLinkComponent,
+  StatusBadge,
+} from "@auction/staff-ui";
 import type { AtgOwnershipState } from "@auction/types";
-import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
 import { isSaleroomDeliveryMode } from "@auction/validators";
+import { CalendarDays, ExternalLink, Pencil, Pin, QrCode } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { Suspense } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   saleId: string;
@@ -50,17 +56,23 @@ type Props = {
   documentCount?: number | null;
   canManageSales?: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
-  /** Precomputed in layout — avoids duplicate readiness work in rail and overview. */
+  /** Precomputed in the layout, so the overview and header share one readiness. */
   draftSetupReadiness?: CatalogReadinessResult | null;
-  /** Merged API + local attention count for overview tab badge. */
+  /** Open problems on the overview, for its tab count. */
   overviewAttentionCount?: number;
-  /** From ATG link state when sync is enabled. */
+  /** From the ATG link when sync is on. */
   sellingPlatform?: AtgOwnershipState | null;
   linkedEventSlug?: string | null;
   linkedEventTitle?: string | null;
   children: ReactNode;
 };
 
+/**
+ * A sale's page on the staff record template: where it sits, what it is (title, status, format,
+ * dates, venue, lots), its next step as the one primary action (publish a draft, open the
+ * saleroom of a live sale), the rest in the overflow menu with the lifecycle actions last, each
+ * confirmed through the kit, one notice for what blocks it, and its sections as tabs.
+ */
 export function SaleDetailShell({
   saleId,
   bundle,
@@ -77,35 +89,16 @@ export function SaleDetailShell({
   linkedEventTitle = null,
   children,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname() ?? `/admin/sales/${saleId}`;
+  const searchParams = useSearchParams();
   const { sale, lots } = bundle;
   const liveish = isSaleLiveish(sale);
-  const venueLine = venueOneLiner(sale);
+  const venue = venueOneLiner(sale);
   const publicHref = salePath({ id: sale.id, title: sale.title });
-
-  const canEditDraftSale = sale.status === "draft" && canManageSales;
-  const blockedByAtg = sellingPlatform === "atg";
-  const canPublishOnLax = sale.status === "draft" && canManageSales;
-  const canPublish = canPublishOnLax && !blockedByAtg;
-  const publishBlockedProps = blockedByAtg
-    ? { publishBlockedReason: "This sale is selling on ATG, so it can't be published on lax.bid." }
-    : {};
-  const canUnpublish = sale.status === "scheduled" && canManageSales;
-  const canCancel =
-    canManageSales &&
-    !blockedByAtg &&
-    (sale.status === "draft" || sale.status === "scheduled" || sale.status === "active");
-  const canDelete = canManageSales && !blockedByAtg && bundle.deleteEligibility?.canDelete === true;
-  const deleteBlockers =
-    sale.status === "draft" || sale.status === "scheduled"
-      ? [
-          ...(blockedByAtg ? ["This sale is selling on ATG. Close it on ATG first."] : []),
-          ...(bundle.deleteEligibility?.blockers ?? []),
-        ]
-      : [];
+  const status = staffStatus("sale", sale.status);
+  const sellingOnAtg = sellingPlatform === "atg";
   const isSaleroom = isSaleroomDeliveryMode(sale.deliveryMode);
-  const canMarkOnsiteEnded =
-    canManageSales && isSaleroom && (sale.status === "active" || sale.status === "scheduled");
-
   const pendingRegs =
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
       ? pendingRegistrationCount
@@ -121,10 +114,131 @@ export function SaleDetailShell({
           pendingRegistrationCount: pendingRegs > 0 ? pendingRegs : null,
           ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
         });
+  const deleteBlockers =
+    sale.status === "draft" || sale.status === "scheduled"
+      ? [
+          ...(sellingOnAtg ? ["This sale is selling on ATG. Close it on ATG first."] : []),
+          ...(bundle.deleteEligibility?.blockers ?? []),
+        ]
+      : [];
+  const setupHref =
+    sale.status === "draft"
+      ? saleSetupResumeHref(saleId, {
+          sale,
+          lots,
+          pendingRegistrationCount,
+          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
+        })
+      : null;
+  const seller = firstBlockedSeller(lots, connectRequiredByLotId);
+  const connectRequired = seller.blocked || searchParams.get("error_code") === "connect_required";
 
-  const publishReady = sale.status === "draft" && saleDetailCanPublish(setupReadiness);
+  const onConnectRequired = useCallback(
+    (message: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("error_code", "connect_required");
+      params.set("error", message);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+  const afterDelete = useCallback(() => router.push("/admin/sales"), [router]);
+  const saleActions = useSaleActions({ canManageSales }, { afterDelete, onConnectRequired });
 
-  const tabSpecs = buildSaleDetailTabSpecs({
+  const target: SaleActionTarget = {
+    id: saleId,
+    title: sale.title,
+    status: sale.status,
+    saleroom: isSaleroom,
+    canDelete: bundle.deleteEligibility?.canDelete === true,
+    sellingOnAtg,
+    publishBlockedReason: connectRequired
+      ? "A seller's payout account is not ready"
+      : saleDetailCanPublish(setupReadiness)
+        ? null
+        : "Finish the sale's setup first",
+  };
+  const lifecycle = saleActions.actionsFor(target);
+  const publish = lifecycle.find((action) => action.id === "publish") ?? null;
+
+  const [qrOpen, setQrOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  useEffect(() => setPinned(isPalettePinned("route", pathname)), [pathname]);
+  const togglePin = () => {
+    const entry = { kind: "route" as const, id: pathname, href: pathname, label: sale.title };
+    const next = togglePalettePinned(entry);
+    if (next) pushPaletteRecent(entry);
+    setPinned(next);
+  };
+
+  const overflow: OverflowAction[] = [
+    {
+      id: "view",
+      label: "View on site",
+      icon: ExternalLink,
+      onSelect: () => window.open(publicHref, "_blank", "noopener"),
+    },
+    ...(canManageSales
+      ? [{ id: "qr", label: "Marketing QR code", icon: QrCode, onSelect: () => setQrOpen(true) }]
+      : []),
+    ...(linkedEventSlug
+      ? [
+          {
+            id: "event",
+            label: `Open RSVP event${linkedEventTitle ? `: ${linkedEventTitle}` : ""}`,
+            icon: CalendarDays,
+            href: `/admin/event-rsvps/${encodeURIComponent(linkedEventSlug)}`,
+          },
+        ]
+      : []),
+    {
+      id: "pin",
+      label: pinned ? "Unpin from sidebar" : "Pin to sidebar",
+      icon: Pin,
+      onSelect: togglePin,
+    },
+    ...lifecycle.filter((action) => action.id !== "publish"),
+  ];
+
+  const editLink = canManageSales
+    ? sale.status === "draft"
+      ? setupReadiness && setupReadiness.percent < 100 && setupHref
+        ? { label: "Continue setup", href: setupHref }
+        : { label: "Edit draft", href: adminSaleEditHref(saleId) }
+      : liveish
+        ? { label: "Edit details", href: adminSaleEditHref(saleId) }
+        : null
+    : null;
+  const editButton = editLink ? (
+    <StaffButton asChild variant="secondary" icon={<Pencil aria-hidden />}>
+      <Link href={editLink.href}>{editLink.label}</Link>
+    </StaffButton>
+  ) : null;
+  const primary = publish ? (
+    <StaffButton
+      variant="primary"
+      disabled={Boolean(publish.disabledReason)}
+      title={publish.disabledReason ?? undefined}
+      onClick={() => publish.onSelect?.()}
+    >
+      Publish sale
+    </StaffButton>
+  ) : liveish ? (
+    <StaffButton asChild variant="primary">
+      <Link href={adminSaleroomHref(saleId)}>Open saleroom</Link>
+    </StaffButton>
+  ) : null;
+
+  const notice = saleDetailNotice({
+    status: sale.status,
+    connectRequired,
+    blockedSellerLegalEntityId: seller.sellerLegalEntityId,
+    sellingOnAtg,
+    readiness: setupReadiness,
+    setupHref,
+  });
+
+  const tabs = buildSaleDetailTabSpecs({
     saleId,
     deliveryMode: sale.deliveryMode,
     liveish,
@@ -136,163 +250,79 @@ export function SaleDetailShell({
     documentCount,
     overviewAttentionCount,
     canManageSales,
-  });
-
-  const draftSetupHref =
-    sale.status === "draft"
-      ? saleSetupResumeHref(saleId, {
-          sale,
-          lots,
-          pendingRegistrationCount,
-          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
-        })
-      : undefined;
-
-  const saleNav = buildSaleDetailNavActions({
-    saleId,
-    publicHref,
-    canEdit: canEditDraftSale,
-    liveish,
-    isDraft: sale.status === "draft",
-    canManageSales,
-    ...(sale.status === "draft" && !canEditDraftSale && draftSetupHref ? { draftSetupHref } : {}),
-  });
-  const mobileActions = saleNavItemsToMobileBar(saleNav.barActions);
+  }).map((tab) => ({
+    id: tab.id,
+    label: typeof tab.label === "string" ? tab.label : tab.id,
+    href: tab.href,
+    ...(tab.count !== undefined ? { count: tab.count } : {}),
+  }));
 
   return (
-    <CatalogPostCreateSessionRoot>
-      <CatalogDetailShell
+    <>
+      <DetailPage
         breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[
-              { label: "Admin", href: "/admin" },
-              { label: "Sales", href: "/admin/sales" },
-              { label: sale.title },
-            ]}
+          <StaffBreadcrumbs
+            Link={NextLink}
+            items={[{ label: "Sales", href: "/admin/sales" }, { label: sale.title }]}
           />
         }
-        metaBelowTitle
         title={
-          <AdminSaleEditableTitle saleId={saleId} value={sale.title} editable={canManageSales} />
+          <StaffEditableTitle
+            value={sale.title}
+            label="sale"
+            editable={canManageSales}
+            onSave={adminUpdateSaleTitleFieldAction.bind(null, saleId)}
+          />
+        }
+        status={
+          <>
+            <StatusBadge tone={status.tone} live={status.live ?? false}>
+              {status.label}
+            </StatusBadge>
+            {sellingOnAtg ? <StatusBadge tone="neutral">Selling on ATG</StatusBadge> : null}
+          </>
         }
         meta={
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <SaleStatusPill status={sale.status} />
-              <SaleDeliveryPill deliveryMode={sale.deliveryMode} />
-              {sellingPlatform === "atg" ? (
-                <Badge variant="secondary">Selling on ATG</Badge>
-              ) : sellingPlatform === "lax" ? (
-                <Badge variant="secondary">Selling on lax.bid</Badge>
-              ) : null}
-              {sale.status === "draft" && setupReadiness && draftSetupHref ? (
-                <SaleSetupProgressChip readiness={setupReadiness} setupHref={draftSetupHref} />
-              ) : null}
-            </div>
-            <SaleDetailMetaRow
-              sale={sale}
-              venueLine={venueLine}
-              lotCount={lots.length}
-              registrationCount={registrationCount}
-            />
-          </div>
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminPinPageButton label={sale.title} />
-            {canManageSales ? (
-              <AdminQrCodeButton entityType="sale" entityId={saleId} title={sale.title} />
+          <>
+            <MetaItem label="Format">{deliveryModeShortLabel(sale.deliveryMode)}</MetaItem>
+            {sale.startTime ? (
+              <MetaItem label="Opens">
+                <StaffDate value={sale.startTime} withTime />
+              </MetaItem>
             ) : null}
-            {liveish ? (
-              <Button
-                size="sm"
-                className="bg-secondary text-on-secondary shadow-sm hover:bg-secondary/90"
-                asChild
-              >
-                <Link href={adminSaleroomHref(saleId)}>+ Open sales room</Link>
-              </Button>
+            {sale.endTime ? (
+              <MetaItem label="Closes">
+                <StaffDate value={sale.endTime} withTime />
+              </MetaItem>
             ) : null}
-            <AdminSaleHeaderActions
-              saleId={saleId}
-              saleTitle={sale.title}
-              canEdit={canEditDraftSale}
-              canPublish={canPublish}
-              showPublishMenuItem={canPublishOnLax}
-              publishReady={publishReady}
-              {...publishBlockedProps}
-              canUnpublish={canUnpublish}
-              canCancel={canCancel}
-              canDelete={canDelete}
-              canMarkOnsiteEnded={canMarkOnsiteEnded}
-              showSaleroomLink={liveish}
-              hideSaleroomLink
-            />
-          </div>
+            {venue ? <MetaItem label="Venue">{venue}</MetaItem> : null}
+          </>
         }
-        mobileActions={mobileActions}
-        mobileActionBarTrailing={
-          <SaleDetailMobileLifecycleTrailing
-            saleId={saleId}
-            saleTitle={sale.title}
-            canPublish={canPublish}
-            showPublishMenuItem={canPublishOnLax}
-            publishReady={publishReady}
-            {...publishBlockedProps}
-            canUnpublish={canUnpublish}
-            canCancel={canCancel}
-            canDelete={canDelete}
-            canMarkOnsiteEnded={canMarkOnsiteEnded}
-          />
+        primaryAction={primary}
+        secondaryActions={editButton}
+        overflow={<OverflowMenu label="More sale actions" Link={NextLink} actions={overflow} />}
+        access={canManageSales ? "full" : "read-only"}
+        roleLabel="Catalogue"
+        notice={
+          notice ? (
+            <Notice
+              tone={notice.tone}
+              title={notice.title}
+              alert={notice.tone === "danger"}
+              actions={
+                notice.action ? (
+                  <StaffButton asChild size="sm" variant="secondary">
+                    <Link href={notice.action.href}>{notice.action.label}</Link>
+                  </StaffButton>
+                ) : null
+              }
+            >
+              {notice.body}
+            </Notice>
+          ) : null
         }
-        mobileMeta={
-          <CatalogDetailMobileMeta
-            entityId={saleId}
-            updatedAt={sale.updatedAt}
-            publicHref={publicHref}
-            publicLabel="View on site"
-            status={<SaleStatusPill status={sale.status} />}
-            quickLinks={[
-              ...(liveish ? [{ label: "Open saleroom", href: `/admin/saleroom/${saleId}` }] : []),
-              ...(linkedEventSlug
-                ? [
-                    {
-                      label: linkedEventTitle ?? "Linked RSVP event",
-                      href: `/admin/event-rsvps/${encodeURIComponent(linkedEventSlug)}`,
-                    },
-                  ]
-                : []),
-            ]}
-            primaryAction={
-              saleNav.primaryMetaAction ? (
-                <a
-                  href={saleNav.primaryMetaAction.href}
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-                >
-                  {saleNav.primaryMetaAction.label}
-                </a>
-              ) : undefined
-            }
-          />
-        }
-        stickySubnav={
-          <CatalogDetailTabNav tabs={tabSpecs} entityKind="sale" aria-label="Sale sections" />
-        }
+        tabs={<StaffDetailTabs label="Sale sections" items={tabs} />}
       >
-        <Suspense fallback={null}>
-          <SaleDetailConnectNotice
-            lots={lots}
-            {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
-          />
-        </Suspense>
-        {setupReadiness ? (
-          <Suspense fallback={null}>
-            <CatalogWhatsNextBanner
-              entityLabel="sale"
-              readiness={setupReadiness}
-              dismissKey={saleDetailReadinessDismissKey(saleId)}
-            />
-          </Suspense>
-        ) : null}
         <SaleDetailReadinessProvider
           draftSetupReadiness={setupReadiness}
           deleteBlockers={deleteBlockers}
@@ -300,7 +330,17 @@ export function SaleDetailShell({
         >
           {children}
         </SaleDetailReadinessProvider>
-      </CatalogDetailShell>
-    </CatalogPostCreateSessionRoot>
+      </DetailPage>
+      {canManageSales ? (
+        <AdminQrCodeButton
+          entityType="sale"
+          entityId={saleId}
+          title={sale.title}
+          open={qrOpen}
+          onOpenChange={setQrOpen}
+        />
+      ) : null}
+      {saleActions.dialogs}
+    </>
   );
 }

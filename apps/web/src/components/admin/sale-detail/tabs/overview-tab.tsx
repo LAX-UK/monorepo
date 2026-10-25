@@ -1,29 +1,38 @@
 "use client";
 
 import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
-import { CatalogDetailTabCard } from "@/components/admin/catalog";
-import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
-import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
-import {
-  DetailAttentionTable,
-  DetailBoardKpiStrip,
-  DetailEntityTable,
-  DetailStatValue,
-} from "@/components/admin/catalog/detail-board";
 import { useSaleDetailReadiness } from "@/components/admin/sale-detail/sale-detail-readiness-context";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
+import { toIssueItems } from "@/lib/admin/detail-board/to-issue-items";
 import { useSaleAttentionDismiss } from "@/lib/admin/detail-board/use-sale-attention-dismiss";
-import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import type { AdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import type { AdminSaleDetailMetrics } from "@/lib/data/http/admin-sale-detail-metrics.server";
 import type { AdminSaleOverviewKpiTrends } from "@/lib/data/http/admin-sale-overview-kpi-trends.server";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { buildSaleOverviewViewModel } from "@/lib/data/view-models/sale-overview.vm";
+import {
+  DetailColumns,
+  IssueList,
+  KeyValueList,
+  Section,
+  StaffButton,
+  type StaffLinkComponent,
+  StatGrid,
+} from "@auction/staff-ui";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
+
+const NextLink: StaffLinkComponent = Link;
+
+/** Four numbers per stage: before the sale, what is lined up; once it runs, what it makes. */
+function tilesFor(status: Sale["status"]): readonly string[] {
+  return status === "draft" || status === "scheduled"
+    ? ["lots", "estimate", "registrations", "revenue"]
+    : ["lots", "hammer", "revenue", "bidders"];
+}
 
 type Props = {
   saleId: string;
@@ -39,13 +48,16 @@ type Props = {
   kpiPeriodDays?: AdminKpiPeriodDays;
 };
 
+/**
+ * The sale at a glance: its numbers, what needs doing (open setup checks, bidders waiting,
+ * what stops a delete), and bids by channel; recent activity and the record's dates in the rail.
+ */
 export function SaleOverviewTab({
   saleId,
   sale,
   lots,
   registrationCount,
   pendingRegistrationCount = null,
-  connectRequiredByLotId,
   activityEvents = [],
   metrics = null,
   attention = null,
@@ -56,12 +68,9 @@ export function SaleOverviewTab({
   const readinessContext = useSaleDetailReadiness();
   const readiness: CatalogReadinessResult | null =
     sale.status === "draft" ? (readinessContext?.draftSetupReadiness ?? null) : null;
-
-  const showContinueSetup = sale.status === "draft" && readiness && readiness.percent < 100;
-  const showDeleteBlockers =
-    readinessContext?.canManageSales &&
-    (sale.status === "draft" || sale.status === "scheduled") &&
-    (readinessContext.deleteBlockers?.length ?? 0) > 0;
+  const deleteBlockers = readinessContext?.canManageSales
+    ? (readinessContext.deleteBlockers ?? [])
+    : [];
 
   const vm = buildSaleOverviewViewModel({
     saleId,
@@ -70,148 +79,81 @@ export function SaleOverviewTab({
     registrationCount,
     pendingRegistrationCount,
     readiness,
-    deleteBlockers: readinessContext?.deleteBlockers ?? [],
+    deleteBlockers,
     metrics,
     attention,
     trends: kpiTrends,
     periodDays: kpiPeriodDays,
   });
+  const rows = useMemo(() => filterRows(vm.attentionRows), [filterRows, vm.attentionRows]);
+  const issues = toIssueItems(rows);
 
-  const visibleAttentionRows = useMemo(
-    () => filterRows(vm.attentionRows),
-    [filterRows, vm.attentionRows],
-  );
-
-  const activityPreview = (
-    <div id="activity">
-      <CatalogDetailTabCard
-        title="Recent activity"
-        description="Timeline of changes and key events."
-        countBadge={activityEvents.length}
-        footer={
-          <Link
-            href={`/admin/audit?entity=sale&q=${encodeURIComponent(saleId)}`}
-            className="font-label text-xs text-link hover:underline"
-          >
-            Open in the audit log
-          </Link>
+  const rail = (
+    <>
+      <Section
+        title="Activity"
+        action={
+          <StaffButton asChild size="sm" variant="ghost">
+            <Link href={`/admin/audit?entity=sale&q=${encodeURIComponent(saleId)}`}>
+              Open audit log
+            </Link>
+          </StaffButton>
         }
       >
         <AuditTimeline
           label="Sale activity"
           events={activityEvents}
           limit={5}
-          empty="No sale activity recorded yet. Events appear when the sale is published, cancelled, or ended."
+          empty="No activity yet. Publishing, cancelling and ending the sale appear here."
         />
-      </CatalogDetailTabCard>
-    </div>
+      </Section>
+      <Section title="Record">
+        <KeyValueList items={vm.auditRows.map((row) => ({ label: row.label, value: row.value }))} />
+      </Section>
+    </>
   );
 
   return (
-    <div className="space-y-6">
-      {showDeleteBlockers ? (
-        <CatalogDeleteEligibilityNotice
-          blockers={readinessContext?.deleteBlockers ?? []}
-          entityLabel="sale"
-        />
-      ) : null}
-      {showContinueSetup ? (
-        <Link
-          href={saleSetupResumeHref(saleId, {
-            sale,
-            lots,
-            pendingRegistrationCount,
-            ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
-          })}
-          className="block rounded-shell-card border border-secondary/30 bg-secondary/5 p-5 transition-colors hover:bg-secondary/10"
-        >
-          <h3 className="font-headline text-base text-on-surface">Continue sale setup</h3>
-          <p className="mt-2 font-body text-sm text-on-surface-variant">
-            {readiness?.completeCount ?? 0} of {readiness?.totalCount ?? 0} checks complete — finish
-            setup to publish.
-          </p>
-          <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Continue setup →
-          </span>
-        </Link>
-      ) : null}
-
-      <DetailBoardKpiStrip
-        ariaLabel="Sale overview"
-        tiles={vm.kpiTiles}
-        toolbarEnd={
-          <Suspense fallback={null}>
-            <CatalogKpiPeriodToggle current={kpiPeriodDays} />
-          </Suspense>
-        }
+    <DetailColumns rail={rail} railLabel="Sale activity">
+      <StatGrid
+        label="Sale numbers"
+        items={vm.kpiTiles
+          .filter((tile) => tilesFor(sale.status).includes(tile.id))
+          .map((tile) => ({
+            id: tile.id,
+            label: tile.label,
+            value: tile.value,
+            ...(tile.compareHint || tile.deltaPercent
+              ? {
+                  hint: [tile.deltaPercent, tile.compareHint].filter(Boolean).join(" "),
+                  hintTone:
+                    tile.deltaDirection === "up"
+                      ? ("positive" as const)
+                      : tile.deltaDirection === "down"
+                        ? ("negative" as const)
+                        : ("neutral" as const),
+                }
+              : {}),
+          }))}
       />
-
-      <DetailAttentionTable
-        rows={visibleAttentionRows}
-        {...(visibleAttentionRows.length > 0
-          ? {
-              onDismissAll: () => dismissAll(visibleAttentionRows.map((row) => row.id)),
-            }
-          : {})}
+      <IssueList
+        Link={NextLink}
+        items={issues}
+        onDismissAll={() => dismissAll(rows.map((row) => row.id))}
       />
-
-      {activityPreview}
-
-      <CatalogDetailTabCard
-        title="Bid activity"
-        description="Bids placed across channels for this sale."
-      >
-        <DetailEntityTable
-          rows={vm.bidActivityRows}
-          getRowId={(row) => row.id}
-          emptyTitle="No bid activity yet"
-          columns={[
-            {
-              id: "channel",
-              header: "Channel",
-              cell: (row) => <span className="font-body text-sm text-on-surface">{row.label}</span>,
-            },
-            {
-              id: "count",
-              header: "Bids",
-              headerClassName: "text-right",
-              className: "text-right",
-              cell: (row) => (
-                <span className="font-headline text-sm font-semibold tabular-nums text-on-surface">
-                  {row.value}
-                </span>
-              ),
-            },
-          ]}
-        />
-      </CatalogDetailTabCard>
-
-      <CatalogDetailTabCard
-        title="Audit log"
-        description="Catalogue sync, exports, and status changes."
-      >
-        <DetailEntityTable
-          rows={vm.auditRows}
-          getRowId={(row) => row.id}
-          emptyTitle="No audit events recorded"
-          columns={[
-            {
-              id: "event",
-              header: "Event",
-              cell: (row) => <span className="font-body text-sm text-on-surface">{row.label}</span>,
-            },
-            {
-              id: "when",
-              header: "When",
-              headerClassName: "text-right",
-              className: "text-right",
-              cell: (row) => (
-                <DetailStatValue row={row} className="font-body text-sm text-on-surface-variant" />
-              ),
-            },
-          ]}
-        />
-      </CatalogDetailTabCard>
-    </div>
+      <Section title="Bids by channel">
+        {vm.bidActivityRows.length > 0 ? (
+          <KeyValueList
+            items={vm.bidActivityRows.map((row) => ({
+              label: row.label,
+              value: row.value,
+              numeric: true,
+            }))}
+          />
+        ) : (
+          <KeyValueList items={[{ label: "Bids", value: "None yet" }]} />
+        )}
+      </Section>
+    </DetailColumns>
   );
 }
