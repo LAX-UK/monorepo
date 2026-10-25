@@ -38,6 +38,19 @@ describe("StepIndicator", () => {
   });
 });
 
+describe("StepIndicator, responsive", () => {
+  it("renders one list that is a row on phones and a column with descriptions from lg", () => {
+    const withHelp = [
+      { id: "a", label: "Identity", description: "Title and type" },
+      { id: "b", label: "Review" },
+    ];
+    render(<StepIndicator steps={withHelp} currentIndex={0} orientation="responsive" />);
+    expect(screen.getAllByRole("list")).toHaveLength(1);
+    expect(screen.getByText("Title and type")).toHaveClass("hidden", "lg:block");
+    expect(screen.getByText("Step 1 of 2: Identity")).toBeInTheDocument();
+  });
+});
+
 describe("StepHeader and ReviewSection", () => {
   it("names the step and what comes next", () => {
     render(<StepHeader title="Identity" description="What the lot is." next="Sale and seller" />);

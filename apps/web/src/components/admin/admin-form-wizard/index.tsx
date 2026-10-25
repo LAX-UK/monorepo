@@ -296,18 +296,13 @@ export function AdminFormWizard({
         />
       ) : null}
       {useSidebar ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start">
-          <div className="flex min-w-0 flex-col gap-6">
-            <div className="flex flex-col gap-2 lg:hidden">
-              <WizardStepIndicator {...indicatorProps} />
-              {saveStatus}
-            </div>
-            {stepBody}
-          </div>
-          <aside className="hidden flex-col gap-4 lg:sticky lg:top-24 lg:flex">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start lg:gap-8">
+          {/* One step list: above the form on small screens, beside it from lg. */}
+          <aside className="flex flex-col gap-2 lg:sticky lg:top-24 lg:order-last lg:gap-4">
             <WizardVerticalStepper {...indicatorProps} />
             {saveStatus}
           </aside>
+          <div className="flex min-w-0 flex-col gap-6">{stepBody}</div>
         </div>
       ) : (
         <>

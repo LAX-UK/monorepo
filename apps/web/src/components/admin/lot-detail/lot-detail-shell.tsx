@@ -191,7 +191,7 @@ export function LotDetailShell({
       {...(publish.disabledReason ? { disabledReason: publish.disabledReason } : {})}
       onClick={() => publish.onSelect?.()}
     >
-      Publish lot
+      Publish
     </StaffButton>
   ) : null;
 

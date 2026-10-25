@@ -11,7 +11,7 @@ type Props = {
   className?: string;
 };
 
-/** The wizard's steps beside the form on wide screens, on the kit step indicator. */
+/** The wizard's steps: a row above the form on small screens, a column beside it from lg. */
 export function WizardVerticalStepper({
   steps,
   currentIndex,
@@ -31,7 +31,7 @@ export function WizardVerticalStepper({
             : {}),
       }))}
       currentIndex={currentIndex}
-      orientation="vertical"
+      orientation="responsive"
       disabled={stepNavigationDisabled}
       label="Form steps"
       {...(onStepClick ? { onStepClick } : {})}

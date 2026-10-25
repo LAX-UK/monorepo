@@ -33,11 +33,13 @@ export function StepIndicator({
   onStepClick?: (index: number) => void;
   /** While a step is validating or saving. */
   disabled?: boolean;
-  orientation?: "horizontal" | "vertical";
+  /** "responsive": a row of steps on small screens, a column beside the form from `lg`. */
+  orientation?: "horizontal" | "vertical" | "responsive";
   label?: string;
   className?: string;
 }) {
   const vertical = orientation === "vertical";
+  const responsive = orientation === "responsive";
   return (
     <nav aria-label={label} className={className}>
       <p className="sr-only">
@@ -47,6 +49,7 @@ export function StepIndicator({
         className={cn(
           "flex",
           vertical ? "flex-col gap-1" : "flex-wrap items-center gap-x-1 gap-y-2",
+          responsive && "lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1",
         )}
       >
         {steps.map((step, index) => {
@@ -75,8 +78,12 @@ export function StepIndicator({
               >
                 {step.label}
               </span>
-              {vertical && step.description ? (
-                <span className="text-staff-xs text-staff-muted">{step.description}</span>
+              {(vertical || responsive) && step.description ? (
+                <span
+                  className={cn("text-staff-xs text-staff-muted", responsive && "hidden lg:block")}
+                >
+                  {step.description}
+                </span>
               ) : null}
             </span>
           );
@@ -84,12 +91,17 @@ export function StepIndicator({
           const row = cn(
             "flex min-h-control-sm items-start gap-2 rounded-staff-sm px-2 py-1.5",
             vertical ? "w-full" : "items-center",
+            responsive && "lg:w-full lg:items-start",
           );
           return (
             <li
               key={step.id}
               aria-current={state === "current" ? "step" : undefined}
-              className={cn("flex", vertical ? "flex-col" : "items-center gap-1")}
+              className={cn(
+                "flex",
+                vertical ? "flex-col" : "items-center gap-1",
+                responsive && "lg:flex-col lg:items-stretch lg:gap-0",
+              )}
             >
               {clickable ? (
                 <button
@@ -109,7 +121,10 @@ export function StepIndicator({
                 </span>
               )}
               {!vertical && index < steps.length - 1 ? (
-                <span aria-hidden className="h-px w-4 bg-staff-line-strong" />
+                <span
+                  aria-hidden
+                  className={cn("h-px w-4 bg-staff-line-strong", responsive && "lg:hidden")}
+                />
               ) : null}
             </li>
           );

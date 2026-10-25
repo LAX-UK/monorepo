@@ -7,6 +7,7 @@ import {
   gotoAdminPath,
 } from "./helpers/auth";
 import { expect, test } from "./helpers/auth.fixture";
+import { LOT_PAGE, SALE_PAGE, openRecordPageFromPanel } from "./helpers/staff-records";
 
 async function openCatalogueLotsDraft(page: Page): Promise<void> {
   await ensureCatalogueManagerSession(page);
@@ -28,8 +29,7 @@ test.describe("catalogue manager catalog access @roles", () => {
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No draft lots in seed data");
     }
-    await firstLot.click();
-    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+    await openRecordPageFromPanel(page, firstLot, LOT_PAGE);
     await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
   });
 
@@ -51,8 +51,7 @@ test.describe("catalogue manager catalog access @roles", () => {
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No draft lots in seed data");
     }
-    await firstLot.click();
-    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+    await openRecordPageFromPanel(page, firstLot, LOT_PAGE);
     await expect(page.getByRole("button", { name: /cancel auction/i })).toHaveCount(0);
   });
 
@@ -66,8 +65,7 @@ test.describe("catalogue manager catalog access @roles", () => {
     if (!(await cancelledRow.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No cancelled sales in seed data");
     }
-    await cancelledRow.getByRole("link").first().click();
-    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+    await openRecordPageFromPanel(page, cancelledRow.getByRole("link").first(), SALE_PAGE);
     await page.goto(`${page.url()}/lots`);
     await expect(page.getByText(/return lots to inventory/i)).toHaveCount(0);
   });
@@ -87,10 +85,17 @@ test.describe("catalogue manager catalog access @roles", () => {
     await expect(page.getByRole("button", { name: /^publish$/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^cancel$/i })).toHaveCount(0);
 
-    await page.locator("table tbody tr").first().getByRole("link").first().click();
-    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
-    await expect(page.getByRole("button", { name: /more sale actions/i })).toHaveCount(0);
+    await openRecordPageFromPanel(
+      page,
+      page.locator("table tbody tr").first().getByRole("link").first(),
+      SALE_PAGE,
+    );
     await expect(page.getByRole("link", { name: /edit draft/i })).toHaveCount(0);
+    // The overflow menu keeps the site link and pinning; the lifecycle actions are not offered.
+    await page.getByRole("button", { name: /more sale actions/i }).click();
+    for (const action of [/publish sale/i, /revert to draft/i, /cancel sale/i, /delete sale/i]) {
+      await expect(page.getByRole("menuitem", { name: action })).toHaveCount(0);
+    }
   });
 
   test("shows sale-assigned bulk publish preflight hint", async ({ page }) => {
