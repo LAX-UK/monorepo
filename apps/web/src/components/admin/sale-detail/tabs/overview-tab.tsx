@@ -16,12 +16,15 @@ import { buildSaleOverviewViewModel } from "@/lib/data/view-models/sale-overview
 import {
   DetailColumns,
   IssueList,
+  type KeyValueItem,
   KeyValueList,
   Section,
   StaffButton,
   StaffDate,
   type StaffLinkComponent,
   StatGrid,
+  formatGbp,
+  formatStaffPercent,
 } from "@auction/staff-ui";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
@@ -57,6 +60,22 @@ type Props = {
   kpiTrends?: AdminSaleOverviewKpiTrends | null;
   kpiPeriodDays?: AdminKpiPeriodDays;
 };
+
+/** The flat rate, or one row per band: "From £500,000.00" · "15%". */
+function buyerPremiumItems(sale: Sale): KeyValueItem[] {
+  const tiers = sale.buyerPremiumTiers ?? [];
+  if (tiers.length > 0) {
+    return tiers.map((tier) => ({
+      label: `From ${formatGbp(tier.hammerThresholdMinor)}`,
+      value: formatStaffPercent(tier.rate),
+      numeric: true,
+    }));
+  }
+  const rate = sale.buyerPremiumRate?.trim();
+  return [
+    { label: "Flat rate", value: rate ? formatStaffPercent(rate) : "Not set", numeric: true },
+  ];
+}
 
 /**
  * The sale at a glance: its numbers, what needs doing (open setup checks, bidders waiting,
@@ -152,6 +171,9 @@ export function SaleOverviewTab({
         ) : (
           <KeyValueList items={[{ label: "Bids", value: "None yet" }]} />
         )}
+      </Section>
+      <Section title="Buyer's premium" description="Charged on the hammer price.">
+        <KeyValueList items={buyerPremiumItems(sale)} />
       </Section>
     </DetailColumns>
   );

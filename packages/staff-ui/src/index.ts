@@ -3,6 +3,8 @@ export * from "./tokens.js";
 export { cn, STAFF_LAYER } from "./lib/cn.js";
 export { formatGbp, formatPenceAsPounds, parsePoundsToPence } from "./lib/money.js";
 export type { ParsedPence } from "./lib/money.js";
+export { formatRateAsPercent, formatStaffPercent, parsePercentToRate } from "./lib/percent.js";
+export type { ParsedRate } from "./lib/percent.js";
 export {
   STAFF_TIME_ZONE,
   formatStaffDate,
@@ -112,6 +114,8 @@ export type {
 export { FileDropzone } from "./forms/file-dropzone.js";
 export type { FileDropzoneProps } from "./forms/file-dropzone.js";
 export type { MoneyInputProps } from "./forms/money-input.js";
+export { PercentInput } from "./forms/percent-input.js";
+export type { PercentInputProps } from "./forms/percent-input.js";
 export { EnumSelect } from "./forms/enum-select.js";
 export type { EnumOption, EnumSelectProps } from "./forms/enum-select.js";
 export { EntityPicker } from "./forms/entity-picker.js";

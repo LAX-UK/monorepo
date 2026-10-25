@@ -19,7 +19,8 @@ import type { AdminLotAttention } from "@/lib/data/http/admin-lot-attention.serv
 import type { AdminLotDetailMetrics } from "@/lib/data/http/admin-lot-detail-metrics.server";
 import type { AdminLotOverviewKpiTrends } from "@/lib/data/http/admin-lot-overview-kpi-trends.server";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
-import { formatMoney, formatPercent } from "@/lib/ui/format";
+import { formatMoney } from "@/lib/ui/format";
+import { formatStaffPercent } from "@auction/staff-ui";
 import type { Lot } from "@auction/types";
 
 export type LotOverviewViewModel = {
@@ -74,12 +75,9 @@ export function buildLotOverviewViewModel(input: {
   const metrics = input.metrics ?? null;
   const periodDays = input.periodDays ?? 30;
 
-  const premiumLabel =
-    metrics?.buyerPremiumLabel ??
-    (() => {
-      const premiumPct = Number.parseFloat(auction.buyerPremiumRate);
-      return Number.isNaN(premiumPct) ? auction.buyerPremiumRate : formatPercent(premiumPct * 100);
-    })();
+  const premiumLabel = auction.buyerPremiumRate?.trim()
+    ? formatStaffPercent(auction.buyerPremiumRate)
+    : (metrics?.buyerPremiumLabel ?? null);
 
   const estimateValue = formatLotEstimate(auction);
   const reserveValue = auction.reservePrice
@@ -162,9 +160,9 @@ export function buildLotOverviewViewModel(input: {
     withTrendOverlay(
       {
         id: "buyer-premium",
-        label: "Buyer premium",
+        label: "Buyer's premium",
         value: premiumLabel ?? "—",
-        compareHint: "Buyer premium rate",
+        compareHint: "On the hammer price",
         trendTone: "secondary",
       },
       trends,
@@ -213,7 +211,7 @@ export function buildLotOverviewViewModel(input: {
       value: auction.reservePrice ? formatMoney(auction.reservePrice) : "No reserve",
     },
     { id: "hammer", label: "Current hammer", value: formatMoney(auction.currentPrice) },
-    { id: "premium", label: "Buyer premium", value: premiumLabel },
+    { id: "premium", label: "Buyer's premium", value: premiumLabel ?? "Not set" },
     {
       id: "type",
       label: "Auction type",

@@ -14,16 +14,7 @@ import {
   updateSaleSchema,
 } from "@auction/validators";
 import { z } from "zod";
-
-const buyerPremiumRateString = z
-  .string()
-  .regex(/^\d(\.\d{1,4})?$/, "Must be a decimal between 0 and 1")
-  .refine((s) => {
-    const n = Number.parseFloat(s);
-    return n >= 0 && n <= 1;
-  }, "Buyer premium rate must be between 0 and 1");
-
-const optionalBuyerPremiumRate = z.union([buyerPremiumRateString, z.literal("")]);
+import { optionalBuyerPremiumRateSchema } from "./buyer-premium-rate";
 
 function parseCategoryId(cat: string): string | undefined {
   const t = cat.trim();
@@ -34,7 +25,8 @@ function parseCategoryId(cat: string): string | undefined {
 /** One tier row in the admin sale form (hammer in major currency units, e.g. 500000 for £500k). */
 export const adminSaleTierRowSchema = z.object({
   hammerThresholdMajor: z.string().max(32),
-  rate: z.string().max(16),
+  /** Empty rows are ignored; a filled one is a rate like the flat rate. */
+  rate: optionalBuyerPremiumRateSchema,
 });
 
 export const adminSaleFormValuesSchema = z
@@ -62,7 +54,7 @@ export const adminSaleFormValuesSchema = z
     startTime: z.string().min(1, "Start is required"),
     endTime: z.string().min(1, "End is required"),
     previewStartTime: z.string(),
-    buyerPremiumRate: optionalBuyerPremiumRate,
+    buyerPremiumRate: optionalBuyerPremiumRateSchema,
     /** Band rows; empty = flat rate only (`buyerPremiumRate`). */
     buyerPremiumTiers: z.array(adminSaleTierRowSchema).max(16),
     terms: z.string().max(50_000),
