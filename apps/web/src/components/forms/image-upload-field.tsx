@@ -4,7 +4,7 @@ import {
   CatalogMediaDropzone,
   CatalogMediaUploadQueue,
   CatalogSingleImageField,
-} from "@/components/admin/catalog/media";
+} from "@/components/forms/catalog-media";
 import { MediaImage } from "@/components/ui/media-image";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";

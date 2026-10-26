@@ -1,4 +1,4 @@
-import { CatalogOrderedImageCollection } from "@/components/admin/catalog/media/catalog-ordered-image-collection";
+import { CatalogOrderedImageCollection } from "@/components/forms/catalog-media/catalog-ordered-image-collection";
 import { renderWithViewer } from "@/test/render-with-viewer";
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";

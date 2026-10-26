@@ -1,4 +1,4 @@
-import { DocumentAttachmentManager } from "@/components/admin/document-attachment-manager";
+import { DocumentAttachmentManager } from "@/components/dashboard/document-attachment-manager";
 import { renderWithViewer } from "@/test/render-with-viewer";
 import type { EntityDocument } from "@auction/types";
 import { fireEvent, screen, waitFor } from "@testing-library/react";

@@ -1,6 +1,6 @@
 "use client";
 
-import { CatalogOrderedImageCollection } from "@/components/admin/catalog/media";
+import { CatalogOrderedImageCollection } from "@/components/forms/catalog-media";
 import type { CatalogImageUploadKind } from "@/lib/upload/upload-policies.client";
 
 type Props = {

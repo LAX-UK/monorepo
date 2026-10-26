@@ -1,4 +1,4 @@
-import { CatalogSingleImageField } from "@/components/admin/catalog/media/catalog-single-image-field";
+import { CatalogSingleImageField } from "@/components/forms/catalog-media/catalog-single-image-field";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 

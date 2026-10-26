@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { ConfirmActionButton } from "@/components/dashboard/confirm-action-button";
 import {
   SUBMISSION_FINISH_LATER_LABEL,
   SUBMISSION_LEAVE_WITHOUT_SAVING_HINT,
