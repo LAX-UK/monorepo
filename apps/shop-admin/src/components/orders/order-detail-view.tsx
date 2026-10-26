@@ -55,7 +55,7 @@ export function OrderDetailView({
   detail: AdminOrderDetail;
   permissions: OrderPermissions;
 }) {
-  const number = orderNumber(detail.orderId);
+  const number = orderNumber(detail.orderId, detail.reference);
   const buyer = detail.buyerName ?? detail.buyerEmail ?? "Unknown buyer";
   const refundedPence = detail.refunds
     .filter((refund) => refund.status !== "failed" && refund.status !== "cancelled")

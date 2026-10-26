@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeLineVat, orderVatBreakdown, vatIncludedIn } from "./vat-policy.js";
+import {
+  computeLineVat,
+  deliveryVatPence,
+  orderVatBreakdown,
+  vatIncludedIn,
+} from "./vat-policy.js";
 
 describe("computeLineVat", () => {
   it("takes the VAT out of the VAT-inclusive price", () => {
@@ -36,12 +41,25 @@ describe("vatIncludedIn", () => {
   });
 });
 
+describe("deliveryVatPence", () => {
+  it("charges delivery at the goods' single rate", () => {
+    expect(deliveryVatPence({ lineRatesBp: [2000, 2000], deliveryPence: 1500 })).toBe(250);
+  });
+
+  it("is unknown with mixed or missing rates", () => {
+    expect(deliveryVatPence({ lineRatesBp: [2000, 500], deliveryPence: 1500 })).toBeNull();
+    expect(deliveryVatPence({ lineRatesBp: [null], deliveryPence: 1500 })).toBeNull();
+    expect(deliveryVatPence({ lineRatesBp: [], deliveryPence: 1500 })).toBeNull();
+  });
+});
+
 describe("orderVatBreakdown", () => {
-  it("adds the delivery charge at the goods' rate", () => {
+  it("adds the stored VAT of the lines and the delivery charge", () => {
     expect(
       orderVatBreakdown({
-        lines: [{ grossPence: 12_000, vatRateBp: 2000 }],
-        deliveryPence: 1500,
+        lines: [{ vatPence: 2000, vatRateBp: 2000 }],
+        deliveryVatPence: 250,
+        totalPence: 13_500,
       }),
     ).toEqual({
       rateBp: 2000,
@@ -52,27 +70,36 @@ describe("orderVatBreakdown", () => {
     });
   });
 
-  it("leaves delivery without VAT when the lines were charged at different rates", () => {
+  it("names no single rate when the lines were charged at different rates", () => {
     const breakdown = orderVatBreakdown({
       lines: [
-        { grossPence: 12_000, vatRateBp: 2000 },
-        { grossPence: 10_500, vatRateBp: 500 },
+        { vatPence: 2000, vatRateBp: 2000 },
+        { vatPence: 500, vatRateBp: 500 },
       ],
-      deliveryPence: 1500,
+      deliveryVatPence: 0,
+      totalPence: 22_500,
     });
-    expect(breakdown).toMatchObject({ rateBp: null, goodsVatPence: 2500, deliveryVatPence: 0 });
+    expect(breakdown).toMatchObject({ rateBp: null, goodsVatPence: 2500, vatPence: 2500 });
   });
 
-  it("has no figure when a line was sold without a VAT rate", () => {
+  it("has no figure when a line or the delivery has no stored VAT", () => {
     expect(
       orderVatBreakdown({
         lines: [
-          { grossPence: 12_000, vatRateBp: 2000 },
-          { grossPence: 9500, vatRateBp: null },
+          { vatPence: 2000, vatRateBp: 2000 },
+          { vatPence: null, vatRateBp: null },
         ],
-        deliveryPence: 0,
+        deliveryVatPence: 0,
+        totalPence: 21_500,
       }),
     ).toBeNull();
-    expect(orderVatBreakdown({ lines: [], deliveryPence: 1500 })).toBeNull();
+    expect(
+      orderVatBreakdown({
+        lines: [{ vatPence: 2000, vatRateBp: 2000 }],
+        deliveryVatPence: null,
+        totalPence: 13_500,
+      }),
+    ).toBeNull();
+    expect(orderVatBreakdown({ lines: [], deliveryVatPence: 0, totalPence: 1500 })).toBeNull();
   });
 });

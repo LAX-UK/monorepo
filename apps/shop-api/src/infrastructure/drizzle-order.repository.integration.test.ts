@@ -63,6 +63,8 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle order repository", () => {
     const repo = createDrizzleOrderRepository(db);
     const order = await repo.getOrder(fixture.identitySubjectId, fixture.orderId);
     expect(order?.reference).toMatch(/^LAX-S-\d{5,}$/);
+    // Paying the order issued its invoice number in the same transaction.
+    expect(order?.invoiceNumber).toMatch(/^LAX-INV-\d{6}$/);
     expect(order?.progress).toMatchObject({ status: "in_production" });
     expect(order?.progress?.productionStartedAt?.toISOString()).toBe(productionAt.toISOString());
     expect(order?.lines[0]?.editionNumber).toEqual(expect.any(Number));
@@ -131,6 +133,12 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle order repository", () => {
       resolveMediaUrl: (value) => value ?? null,
     }).listGeneralEnquiriesForSubject(fixture.identitySubjectId);
     expect(listed.map((item) => item.enquiryId)).not.toContain(reportId);
+    // The order page shows it.
+    const reread = await createDrizzleOrderRepository(db).getOrder(
+      fixture.identitySubjectId,
+      fixture.orderId,
+    );
+    expect(reread?.problemReports).toHaveLength(1);
   });
 
   it("names no edition on an order that was never paid", async () => {

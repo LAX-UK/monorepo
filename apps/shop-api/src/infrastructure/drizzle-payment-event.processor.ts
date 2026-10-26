@@ -428,19 +428,18 @@ export async function completeShopCheckoutSession(
           productVariantId: shopOrderLine.productVariantId,
           unitPricePence: shopOrderLine.unitPricePence,
           vatRateBp: shopOrderLine.vatRateBp,
+          vatPence: shopOrderLine.vatPence,
         })
         .from(shopOrderLine)
         .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
         .leftJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
         .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
         .where(eq(shopOrderLine.orderId, order.id));
-      // Worked out from the rate each line was sold at, as on the order page and the invoice.
+      // The VAT stored with the lines and the delivery charge, as on the order page and invoice.
       const vat = orderVatBreakdown({
-        lines: lineDetails.map((line) => ({
-          grossPence: line.unitPricePence,
-          vatRateBp: line.vatRateBp,
-        })),
-        deliveryPence: order.fulfilmentSurchargePence,
+        lines: lineDetails.map((line) => ({ vatPence: line.vatPence, vatRateBp: line.vatRateBp })),
+        deliveryVatPence: order.fulfilmentVatPence,
+        totalPence: order.totalPence,
       });
 
       const receiptLines = lineDetails.map((line) => ({

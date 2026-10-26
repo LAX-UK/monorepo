@@ -656,6 +656,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
         search
           ? or(
               idPrefix(shopDispute.orderId, search.prefix),
+              ilike(shopOrder.reference, search.contains),
               ilike(shopDispute.stripeDisputeId, search.contains),
               ilike(shopUserProfile.name, search.contains),
               ilike(shopUserProfile.email, search.contains),
@@ -666,6 +667,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
         db
           .select({
             dispute: shopDispute,
+            orderReference: shopOrder.reference,
             buyerName: shopUserProfile.name,
             buyerEmail: shopUserProfile.email,
           })
@@ -702,9 +704,10 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
           rows,
           limit,
           ({ dispute }) => ({ createdAt: dispute.openedAt, id: dispute.id }),
-          ({ dispute, buyerName, buyerEmail }) => ({
+          ({ dispute, orderReference, buyerName, buyerEmail }) => ({
             disputeId: dispute.id,
             orderId: dispute.orderId,
+            orderReference,
             stripeDisputeId: dispute.stripeDisputeId,
             status: dispute.status,
             amountPence: dispute.amountPence,

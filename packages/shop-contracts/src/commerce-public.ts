@@ -271,6 +271,17 @@ export const OrderSummarySchema = Type.Object(
     problemReport: Type.Optional(OrderProblemReportWindowSchema),
     /** True once the order is paid: its invoice can be downloaded. */
     invoiceAvailable: Type.Optional(Type.Boolean()),
+    /** "LAX-INV-000124", issued when the order is paid; null before. */
+    invoiceNumber: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** Problems the shopper reported on this order, oldest first. */
+    problemReports: Type.Optional(
+      Type.Array(
+        Type.Object(
+          { reportedAt: Type.String({ format: "date-time" }) },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
   },
   { additionalProperties: false },
 );

@@ -276,6 +276,18 @@ describe("buildShopOrderTimeline", () => {
     ]);
   });
 
+  it("shows a reported problem with its date", () => {
+    const steps = buildShopOrderTimeline(
+      order("paid", { problemReports: [{ reportedAt: "2026-10-26T09:00:00.000Z" }] }),
+    );
+    expect(steps?.at(-1)).toMatchObject({
+      label: "Problem reported",
+      state: "done",
+      dateLabel: "26 Oct 2026, 09:00",
+      detail: "Our team will reply by email.",
+    });
+  });
+
   it("has no timeline for a checkout that was never paid", () => {
     expect(buildShopOrderTimeline(order("expired", { paidAt: null }))).toBeNull();
   });

@@ -133,7 +133,7 @@ export function RefundDialog({
         onOpenChange(next);
       }}
       size="md"
-      title={`Refund order ${orderNumber(detail.orderId)}`}
+      title={`Refund order ${orderNumber(detail.orderId, detail.reference)}`}
       description="The payment provider returns the money to the card the customer paid with. A refund cannot be undone once it has been processed."
       footer={
         <>

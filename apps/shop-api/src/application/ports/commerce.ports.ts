@@ -87,6 +87,8 @@ export type OrderLineRecord = {
   unitPricePence: number;
   /** The rate recorded when the line was sold; null when no VAT policy was configured. */
   vatRateBp: number | null;
+  /** The VAT the line's price includes, as stored when it was sold. */
+  vatPence: number | null;
   /** The artwork's primary image; null for merchandise or a work without one. */
   imageUrl: string | null;
 };
@@ -115,10 +117,14 @@ export type OrderRecord = {
   orderId: string;
   /** "LAX-S-10482". */
   reference: string;
+  /** "LAX-INV-000124", issued when the order was paid; null before. */
+  invoiceNumber: string | null;
   status: ShopOrderStatus;
   fulfilment: ShopFulfilmentOption;
   merchandiseSubtotalPence: number;
   fulfilmentSurchargePence: number;
+  /** VAT included in the delivery charge, as stored; null when no VAT was recorded. */
+  fulfilmentVatPence: number | null;
   totalPence: number;
   /** Sum of refunds Stripe has confirmed for this order. */
   refundedPence: number;
@@ -132,6 +138,8 @@ export type OrderRecord = {
   progress: OrderProgressRecord | null;
   /** Pending and confirmed refunds, oldest first. Failed and withdrawn ones are left out. */
   refunds: OrderRefundRecord[];
+  /** When the shopper reported a problem on this order, oldest first. */
+  problemReports: Date[];
 };
 
 export const DEFAULT_ORDER_LIST_LIMIT = 50;

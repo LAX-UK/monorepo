@@ -339,6 +339,17 @@ export function buildShopOrderTimeline(order: OrderSummary): ShopOrderTimelineSt
     });
   }
 
+  (order.problemReports ?? []).forEach((report, index) => {
+    steps.push({
+      id: `problem-${index}`,
+      label: "Problem reported",
+      state: "done",
+      ...dated(report.reportedAt),
+      detail: "Our team will reply by email.",
+      link: null,
+    });
+  });
+
   refunds.forEach((refund, index) => {
     const amount = formatGbpPence(refund.amountPence);
     const done = refund.status === "succeeded";

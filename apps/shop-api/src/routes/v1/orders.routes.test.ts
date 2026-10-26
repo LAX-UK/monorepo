@@ -226,7 +226,7 @@ describe("orders routes", () => {
     return { app: createShopApiApp({ deps, logger: false }), submit };
   }
 
-  it("downloads the invoice of a paid order as a PDF named after its reference", async () => {
+  it("downloads the invoice of a paid order as a PDF named after its invoice number", async () => {
     const { app } = orderApp(sampleOrderRecord());
     await app.ready();
     const response = await app.inject({
@@ -237,7 +237,7 @@ describe("orders routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-type"]).toBe("application/pdf");
     expect(response.headers["content-disposition"]).toBe(
-      'attachment; filename="LAX-S-10482-invoice.pdf"',
+      'attachment; filename="LAX-INV-000124.pdf"',
     );
     expect(response.rawPayload.subarray(0, 5).toString()).toBe("%PDF-");
     await app.close();

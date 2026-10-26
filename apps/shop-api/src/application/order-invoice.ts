@@ -12,7 +12,10 @@ export type OrderInvoiceModel = {
   /** "VAT invoice" only when the supplier has a VAT number and the order recorded VAT. */
   title: "VAT invoice" | "Invoice";
   fileName: string;
+  /** "LAX-INV-000124": the invoice's own number, from the gap-free invoice sequence. */
   number: string;
+  /** "LAX-S-10486": the order it is for. */
+  orderReference: string;
   issuedOn: string;
   orderedOn: string;
   supplier: string[];
@@ -45,8 +48,9 @@ const FULFILMENT_LINE: Record<OrderRecord["fulfilment"], string> = {
 };
 
 /**
- * The invoice for a paid order. Its number is the order reference, which is issued once and in
- * sequence. The supply date is the payment date, so the invoice is dated then too.
+ * The invoice for a paid order. Its number comes from the invoice sequence, issued without gaps
+ * when the order was paid; the order reference is shown beside it. The supply date is the payment
+ * date, so the invoice is dated then too.
  */
 export function buildOrderInvoiceModel(input: {
   order: OrderRecord;
@@ -55,6 +59,8 @@ export function buildOrderInvoiceModel(input: {
   vatNumber: string | null;
 }): OrderInvoiceModel {
   const { order, supplier } = input;
+  const invoiceNumber = order.invoiceNumber;
+  if (!invoiceNumber) throw new Error(`Order ${order.reference} has no invoice number`);
   const paidAt = order.paidAt ?? order.createdAt;
   const vat = orderRecordVat(order);
   const vatInvoice = Boolean(input.vatNumber) && vat !== null;
@@ -119,8 +125,9 @@ export function buildOrderInvoiceModel(input: {
 
   return {
     title: vatInvoice ? "VAT invoice" : "Invoice",
-    fileName: `${order.reference}-invoice.pdf`,
-    number: order.reference,
+    fileName: `${invoiceNumber}.pdf`,
+    number: invoiceNumber,
+    orderReference: order.reference,
     issuedOn: day(paidAt),
     orderedOn: day(order.createdAt),
     supplier: [
@@ -152,7 +159,10 @@ export async function renderOrderInvoicePdf(
     size: "A4",
     margin: 56,
     compress: options.compress ?? true,
-    info: { Title: `${model.title} ${model.number}`, Author: model.supplier[0] ?? "LAX Shop" },
+    info: {
+      Title: `${model.title} ${model.number} · Order ${model.orderReference}`,
+      Author: model.supplier[0] ?? "LAX Shop",
+    },
   });
   const chunks: Buffer[] = [];
   doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -164,10 +174,19 @@ export async function renderOrderInvoicePdf(
 
   doc.fillColor(INK).font("Helvetica-Bold").fontSize(18).text("LAX Shop", left, 56);
   doc.font("Helvetica-Bold").fontSize(14).text(model.title, left, 58, { width, align: "right" });
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor(MUTED)
+    .text(`Invoice ${model.number} · Order ${model.orderReference}`, left, 80, {
+      width,
+      align: "right",
+    });
 
-  let y = 100;
+  let y = 108;
   const facts: Array<[string, string]> = [
     ["Invoice number", model.number],
+    ["Order", model.orderReference],
     ["Invoice date", model.issuedOn],
     ["Order date", model.orderedOn],
   ];
@@ -200,7 +219,7 @@ export async function renderOrderInvoicePdf(
     return lineY;
   };
 
-  const top = 160;
+  const top = 180;
   const column = (width - 32) / 3;
   const bottoms = [
     block("From", model.supplier, left, top, column),

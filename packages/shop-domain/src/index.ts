@@ -159,6 +159,7 @@ export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reserva
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
 export {
   computeLineVat,
+  deliveryVatPence,
   orderVatBreakdown,
   vatIncludedIn,
   type LineVatResult,

@@ -120,7 +120,9 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
       refundedAt: iso(refund.refundedAt),
     })),
     problemReport: { open: window.open, endsAt: iso(window.endsAt) },
-    invoiceAvailable: record.paidAt !== null,
+    invoiceAvailable: record.paidAt !== null && record.invoiceNumber !== null,
+    invoiceNumber: record.invoiceNumber,
+    problemReports: record.problemReports.map((at) => ({ reportedAt: at.toISOString() })),
     lines: record.lines.map((line) => ({
       orderLineId: line.orderLineId,
       artworkSlug: line.artworkSlug,

@@ -14,6 +14,7 @@ export function sampleOrderLine(overrides: Partial<OrderLineRecord> = {}): Order
     editionSize: 24,
     unitPricePence: 12_000,
     vatRateBp: 2000,
+    vatPence: 2000,
     imageUrl: null,
     ...overrides,
   };
@@ -23,10 +24,12 @@ export function sampleOrderRecord(overrides: Partial<OrderRecord> = {}): OrderRe
   return {
     orderId: "550e8400-e29b-41d4-a716-846655440001",
     reference: "LAX-S-10482",
+    invoiceNumber: "LAX-INV-000124",
     status: "paid",
     fulfilment: "uk_insured_delivery",
     merchandiseSubtotalPence: 12_000,
     fulfilmentSurchargePence: 1500,
+    fulfilmentVatPence: 250,
     totalPence: 13_500,
     refundedPence: 0,
     lines: [sampleOrderLine()],
@@ -43,6 +46,7 @@ export function sampleOrderRecord(overrides: Partial<OrderRecord> = {}): OrderRe
     },
     progress: null,
     refunds: [],
+    problemReports: [],
     ...overrides,
   };
 }

@@ -17,8 +17,9 @@ describe("buildOrderInvoiceModel", () => {
       vatNumber: "GB123456789",
     });
     expect(model.title).toBe("VAT invoice");
-    expect(model.number).toBe("LAX-S-10482");
-    expect(model.fileName).toBe("LAX-S-10482-invoice.pdf");
+    expect(model.number).toBe("LAX-INV-000124");
+    expect(model.orderReference).toBe("LAX-S-10482");
+    expect(model.fileName).toBe("LAX-INV-000124.pdf");
     expect(model.issuedOn).toBe("1 Oct 2026");
     expect(model.supplier).toContain("London Art Exchange Ltd");
     expect(model.supplier).toContain("VAT number GB123456789");
@@ -54,10 +55,10 @@ describe("buildOrderInvoiceModel", () => {
     expect(model.supplier.some((line) => line.startsWith("VAT number"))).toBe(false);
   });
 
-  it("shows no VAT breakdown when the order recorded no rate, and notes refunds", () => {
+  it("shows no VAT breakdown when the order recorded no VAT, and notes refunds", () => {
     const model = buildOrderInvoiceModel({
       order: sampleOrderRecord({
-        lines: [sampleOrderLine({ vatRateBp: null })],
+        lines: [sampleOrderLine({ vatRateBp: null, vatPence: null })],
         refunds: [
           {
             amountPence: 4000,
@@ -77,6 +78,17 @@ describe("buildOrderInvoiceModel", () => {
     expect(model.notes).toContain(
       "£40.00 was refunded on 7 Oct 2026 to the original payment method.",
     );
+  });
+
+  it("refuses an order without an invoice number", () => {
+    expect(() =>
+      buildOrderInvoiceModel({
+        order: sampleOrderRecord({ invoiceNumber: null }),
+        customer,
+        supplier,
+        vatNumber: null,
+      }),
+    ).toThrow(/no invoice number/);
   });
 });
 

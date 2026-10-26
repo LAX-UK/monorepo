@@ -71,7 +71,7 @@ export function DisputesList({
         cell: (row) => (
           <span className="tabular-nums">
             <PrimaryCell href={list.panelHref(row.disputeId)} Link={list.panel.PanelLink}>
-              {orderNumber(row.orderId)}
+              {orderNumber(row.orderId, row.orderReference)}
             </PrimaryCell>
           </span>
         ),
@@ -169,7 +169,8 @@ export function DisputesList({
           onRowOpen: (row) => list.panel.show(row.disputeId),
           activeRowId: list.panel.openId,
           rowActions: {
-            label: (row) => `Actions for the dispute on order ${orderNumber(row.orderId)}`,
+            label: (row) =>
+              `Actions for the dispute on order ${orderNumber(row.orderId, row.orderReference)}`,
             actions: (row) => [
               {
                 id: "open",
@@ -196,7 +197,11 @@ export function DisputesList({
         onOpenChange={(open) => {
           if (!open) list.panel.show(null);
         }}
-        title={opened ? `Dispute on order ${orderNumber(opened.orderId)}` : "Dispute"}
+        title={
+          opened
+            ? `Dispute on order ${orderNumber(opened.orderId, opened.orderReference)}`
+            : "Dispute"
+        }
         status={
           opened ? (
             <MappedStatusBadge status={opened.status} present={presentDisputeStatus} />

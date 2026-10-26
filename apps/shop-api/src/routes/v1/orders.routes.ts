@@ -108,7 +108,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
       const { orderId } = request.params as { orderId: string };
       const order = await deps.getOrder(subject, orderId);
       // An unpaid order has no invoice; it answers as if it did not exist.
-      if (!order?.paidAt) throw notFound("Invoice");
+      if (!order?.paidAt || !order.invoiceNumber) throw notFound("Invoice");
       const model = buildOrderInvoiceModel({
         order,
         customer: await deps.getCustomerProfile(subject),

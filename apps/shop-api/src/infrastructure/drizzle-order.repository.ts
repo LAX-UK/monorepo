@@ -4,6 +4,7 @@ import {
   shopArtwork,
   shopEdition,
   shopFulfilment,
+  shopGeneralEnquiry,
   shopOrder,
   shopOrderLine,
   shopParty,
@@ -81,6 +82,7 @@ export type OrderExtras = {
   lines: LineRow[];
   refunds: Array<OrderRefundRecord & { orderLineId: string | null }>;
   progress: OrderProgressRecord | null;
+  problemReports: Date[];
 };
 
 /**
@@ -108,10 +110,12 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
   return {
     orderId: order.id,
     reference: order.reference,
+    invoiceNumber: order.invoiceNumber,
     status,
     fulfilment: order.fulfilment,
     merchandiseSubtotalPence: order.merchandiseSubtotalPence,
     fulfilmentSurchargePence: order.fulfilmentSurchargePence,
+    fulfilmentVatPence: order.fulfilmentVatPence,
     totalPence: order.totalPence,
     refundedPence: refunds
       .filter((refund) => refund.status === "succeeded")
@@ -127,6 +131,7 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
     deliveryAddress: deliveryAddressFromOrder(order),
     progress: extras.progress,
     refunds,
+    problemReports: extras.problemReports,
   };
 }
 
@@ -154,6 +159,7 @@ async function fetchLinesByOrderIds(
       editionSize,
       unitPricePence: shopOrderLine.unitPricePence,
       vatRateBp: shopOrderLine.vatRateBp,
+      vatPence: shopOrderLine.vatPence,
       imageUrl: shopArtwork.primaryImageUrl,
       releasedAt: shopOrderLine.releasedAt,
       createdAt: shopOrderLine.createdAt,
@@ -252,21 +258,53 @@ async function fetchProgressByOrderIds(
   );
 }
 
+/**
+ * When the buyer reported problems on these orders: their own reports in the enquiry inbox,
+ * named by the order reference.
+ */
+async function fetchProblemReports(
+  db: Database,
+  orders: Array<typeof shopOrder.$inferSelect>,
+): Promise<Map<string, Date[]>> {
+  const subjects = [...new Set(orders.map((order) => order.identitySubjectId))];
+  const references = orders.map((order) => order.reference);
+  if (references.length === 0) return new Map();
+  const rows = await db
+    .select({ reference: shopGeneralEnquiry.contextSlug, createdAt: shopGeneralEnquiry.createdAt })
+    .from(shopGeneralEnquiry)
+    .where(
+      and(
+        eq(shopGeneralEnquiry.topic, "order_problem"),
+        inArray(shopGeneralEnquiry.contextSlug, references),
+        inArray(shopGeneralEnquiry.identitySubjectId, subjects),
+      ),
+    )
+    .orderBy(shopGeneralEnquiry.createdAt);
+  const byReference = new Map<string, Date[]>();
+  for (const row of rows) {
+    if (!row.reference) continue;
+    byReference.set(row.reference, [...(byReference.get(row.reference) ?? []), row.createdAt]);
+  }
+  return byReference;
+}
+
 async function hydrateOrders(
   db: Database,
   orders: Array<typeof shopOrder.$inferSelect>,
 ): Promise<OrderRecord[]> {
   const ids = orders.map((order) => order.id);
-  const [linesByOrder, refundsByOrder, progressByOrder] = await Promise.all([
+  const [linesByOrder, refundsByOrder, progressByOrder, reportsByReference] = await Promise.all([
     fetchLinesByOrderIds(db, ids),
     fetchRefundsByOrderIds(db, ids),
     fetchProgressByOrderIds(db, ids),
+    fetchProblemReports(db, orders),
   ]);
   return orders.map((order) =>
     orderRowToRecord(order, {
       lines: linesByOrder.get(order.id) ?? [],
       refunds: refundsByOrder.get(order.id) ?? [],
       progress: progressByOrder.get(order.id) ?? null,
+      problemReports: reportsByReference.get(order.reference) ?? [],
     }),
   );
 }
