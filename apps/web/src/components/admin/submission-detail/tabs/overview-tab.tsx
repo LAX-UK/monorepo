@@ -184,7 +184,7 @@ export function SubmissionOverviewTab({
       ) : null}
       {categories.length > 0 ? (
         <Section title="Categories">
-          <ul className="flex flex-wrap gap-2">
+          <ul className="flex flex-wrap gap-2 text-staff-sm">
             {categories.map((category) => (
               <li key={category.id}>
                 <TextLink Link={NextLink} href={`/admin/categories/${category.id}`}>

@@ -326,6 +326,8 @@ export function StaffRadioField<T extends FieldValues, V extends string>(
 ) {
   const { field, error } = useBoundField(props);
   const id = staffFieldId(props.formId, props.name);
+  // The label stays at full contrast: a radio group is not a labelable control, so a dimmed label
+  // cannot be tied to the disabled state and fails contrast. Each choice shows it instead.
   return (
     <Field
       id={id}
@@ -333,7 +335,6 @@ export function StaffRadioField<T extends FieldValues, V extends string>(
       description={props.description}
       error={error}
       optional={props.optional ?? false}
-      disabled={props.disabled ?? false}
       {...(props.className ? { className: props.className } : {})}
     >
       <StaffRadioGroup

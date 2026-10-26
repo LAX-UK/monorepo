@@ -99,9 +99,13 @@ export function StaffImageCollection({
     : "JPEG, PNG or WebP";
   const hint =
     remaining === 0
-      ? `${maxFiles} is the most. Remove one to add another.`
+      ? maxFiles === 1
+        ? "Remove the image to upload another."
+        : `${maxFiles} is the most. Remove one to add another.`
       : value.length === 0
-        ? `${formats}, up to ${sizeLimit(kind)} each. Up to ${maxFiles} files.`
+        ? maxFiles === 1
+          ? `${formats}, up to ${sizeLimit(kind)}.`
+          : `${formats}, up to ${sizeLimit(kind)} each. Up to ${maxFiles} files.`
         : `${formats}, up to ${sizeLimit(kind)} each. ${remaining} more can be added.`;
 
   return (
