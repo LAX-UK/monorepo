@@ -38,6 +38,7 @@ export {
   StaffMenuSeparator,
   StaffMenuTrigger,
   StaffTooltip,
+  StaffTooltipProvider,
 } from "./primitives/menu.js";
 export { Count, OverflowTabs, SegmentedControl, TabNav } from "./primitives/tabs.js";
 export type { SegmentOption, TabNavItem } from "./primitives/tabs.js";
@@ -64,6 +65,8 @@ export {
 } from "./display/truncated-text.js";
 export { TextLink, staffTextLinkClass } from "./display/text-link.js";
 export { AttentionList } from "./display/attention-list.js";
+export { LinkList } from "./display/link-list.js";
+export type { LinkListItem } from "./display/link-list.js";
 export { IssueList } from "./display/issue-list.js";
 export { Checklist } from "./display/checklist.js";
 export type { ChecklistItem } from "./display/checklist.js";

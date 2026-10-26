@@ -11,7 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@auction/ui/components/tooltip";
 import type * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { ShortcutKeys } from "./input.js";
@@ -154,6 +159,14 @@ export function StaffMenuSeparator({
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuSeparator>) {
   return <DropdownMenuSeparator className={cn("my-1 bg-staff-line", className)} {...props} />;
+}
+
+/**
+ * The tooltip context `StaffShell` provides. Pages always render inside the shell; tests and
+ * stand-alone previews that render kit parts without it wrap them in this.
+ */
+export function StaffTooltipProvider({ children }: { children: React.ReactNode }) {
+  return <TooltipProvider delayDuration={300}>{children}</TooltipProvider>;
 }
 
 /** A short label on hover or focus, for icon-only buttons. Never holds essential content. */
