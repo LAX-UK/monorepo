@@ -5,7 +5,9 @@ import {
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
 import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
+import { staffRunwayLotStatus } from "@/lib/admin/staff-kit-status";
 import type {
   AdminPaddleRosterEntry,
   AdminTelephoneBookingRow,
@@ -13,20 +15,9 @@ import type {
 import { PLATFORM_DEFAULT_CURRENCY, resolveLotCurrency } from "@/lib/money/currency";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
-import { formatMoney } from "@/lib/ui/format";
 import { deriveReserveStatus } from "@auction/domain";
+import { EnumSelect, Field, Notice, StaffButton, StatusBadge, TextInput } from "@auction/staff-ui";
 import type { Lot } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
 import { useEffect, useRef } from "react";
 
 type Props = {
@@ -40,16 +31,62 @@ type Props = {
   sessionLive?: boolean;
   sessionStatus?: PublicSaleroomSessionStatus["status"];
   betweenLots?: boolean;
-  progressLabel?: string;
 };
 
 const INCREMENT_MULTIPLIERS = [1, 2, 5] as const;
 
-function incrementChipLabel(index: number, amount: number, currency: string): string {
-  const formatted = formatMoney(amount.toFixed(2), currency);
-  if (index === 0) return `Min bid (${formatted})`;
+function incrementChipLabel(index: number, amount: number, currency: string) {
+  const formatted = formatSaleroomMoney(amount, currency);
   const multiplier = INCREMENT_MULTIPLIERS[index] ?? index + 1;
-  return `+${multiplier} inc (${formatted})`;
+  const spoken =
+    index === 0 ? `Minimum bid ${formatted}` : `${multiplier} increments up, ${formatted}`;
+  return { spoken, short: index === 0 ? "Min" : `+${multiplier}`, formatted };
+}
+
+/** The amounts a clerk fills in most: the minimum bid, then two and five increments above. */
+function QuickAmounts({
+  amounts,
+  currency,
+  disabled,
+  onPick,
+  prefix,
+}: {
+  amounts: readonly number[];
+  currency: string;
+  disabled: boolean;
+  onPick: (amount: number) => void;
+  prefix: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-staff-xs text-staff-muted">
+        Quick amounts: minimum bid, then 2 and 5 increments up
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {amounts.map((amount, index) => {
+          const chip = incrementChipLabel(index, amount, currency);
+          return (
+            <StaffButton
+              key={`${prefix}-${amount}`}
+              variant="secondary"
+              size="live"
+              className="tabular-nums"
+              aria-label={chip.spoken}
+              disabled={disabled}
+              onClick={() => onPick(amount)}
+            >
+              <span className="font-normal text-staff-muted">{chip.short}</span>
+              {chip.formatted}
+            </StaffButton>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function currencyMark(currency: string): string {
+  return currency.toUpperCase() === "GBP" ? "£" : currency.toUpperCase();
 }
 
 export function LotOnBlockPanel({
@@ -63,7 +100,6 @@ export function LotOnBlockPanel({
   sessionLive = false,
   sessionStatus,
   betweenLots = false,
-  progressLabel,
 }: Props) {
   const paddleInputRef = useRef<HTMLInputElement>(null);
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
@@ -79,6 +115,7 @@ export function LotOnBlockPanel({
   });
 
   const isPaused = sessionStatus === "paused";
+  const blockStatus = staffRunwayLotStatus("on_block");
   const biddingDisabled = isPaused || bidEntry.pending;
 
   useEffect(() => {
@@ -89,17 +126,15 @@ export function LotOnBlockPanel({
 
   if (betweenLots && sessionLive) {
     return (
-      <ConsolePanel className="space-y-4">
+      <ConsolePanel className="flex flex-col gap-4">
         <PanelHeading>Lot on block</PanelHeading>
-        <p className="font-body text-sm text-secondary">
-          {progressLabel ?? "Between lots — use Advance next in the action bar below."}
+        <p className="text-staff-sm text-staff-muted">
+          Nothing is on the block. Bring the next lot up from the action bar below.
         </p>
         {nextLot ? (
-          <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
-            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Up next
-            </p>
-            <p className="mt-2 font-headline text-lg text-foreground">
+          <div className="rounded-staff-sm border border-staff-line-subtle bg-staff-sunken p-4">
+            <p className="text-staff-xs text-staff-muted">Up next</p>
+            <p className="mt-1 text-staff-lg font-semibold text-staff-fg">
               {formatLotRunListLabel(nextLot)}
             </p>
           </div>
@@ -112,7 +147,7 @@ export function LotOnBlockPanel({
     return (
       <ConsolePanel>
         <PanelHeading>Lot on block</PanelHeading>
-        <p className="mt-2 font-body text-sm text-secondary">
+        <p className="mt-2 text-staff-sm text-staff-muted">
           Advance a lot to the block before placing telephone or paddle bids.
         </p>
       </ConsolePanel>
@@ -126,214 +161,195 @@ export function LotOnBlockPanel({
     }
   };
 
+  const reserveMet =
+    currentLot.reservePrice != null && currentLot.reservePrice !== ""
+      ? deriveReserveStatus(liveBid.currentPrice, currentLot.reservePrice).kind === "met"
+      : null;
+
   return (
-    <ConsolePanel className="space-y-6">
-      <div>
-        <PanelHeading>Lot on block</PanelHeading>
-        <p className="mt-2 font-headline text-2xl tabular-nums text-foreground transition-all duration-200">
-          {formatMoney(liveBid.currentPrice, lotCurrency)}
-        </p>
-        <p className="font-body text-sm text-foreground">{formatLotRunListLabel(currentLot)}</p>
-        <p className="font-body text-xs text-secondary tabular-nums">
-          Min next {formatMoney(bidEntry.incrementOptions[0]?.toFixed(2) ?? "0.00", lotCurrency)}
-          {liveBid.bidCount != null ? (
-            <span className="ml-2">
-              · {liveBid.bidCount} bid{liveBid.bidCount === 1 ? "" : "s"}
-            </span>
+    <ConsolePanel className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <PanelHeading>Lot on block</PanelHeading>
+          {blockStatus ? (
+            // Nothing is happening on the floor while the session is paused, so no pulse.
+            <StatusBadge
+              tone={isPaused ? "warning" : blockStatus.tone}
+              live={!isPaused && (blockStatus.live ?? false)}
+            >
+              {blockStatus.label}
+            </StatusBadge>
           ) : null}
+        </div>
+        <p className="text-staff-sm font-medium text-staff-fg">
+          {formatLotRunListLabel(currentLot)}
+        </p>
+        <p className="font-staff-display text-staff-xl font-semibold text-staff-fg tabular-nums">
+          {formatSaleroomMoney(liveBid.currentPrice, lotCurrency)}
+        </p>
+        <p className="text-staff-sm text-staff-muted tabular-nums">
+          Next bid from {formatSaleroomMoney(bidEntry.incrementOptions[0] ?? 0, lotCurrency)}
+          {liveBid.bidCount != null
+            ? ` · ${liveBid.bidCount} ${liveBid.bidCount === 1 ? "bid" : "bids"}`
+            : null}
         </p>
         {liveBid.leaderLabel ? (
-          <p className="mt-1 font-body text-xs text-on-surface">
+          <p className="text-staff-sm text-staff-fg">
             Leading: <span className="font-medium">{liveBid.leaderLabel}</span>
             {liveBid.leaderAmount ? (
-              <span className="ml-2 tabular-nums text-secondary">
-                at {formatMoney(liveBid.leaderAmount, lotCurrency)}
+              <span className="text-staff-muted tabular-nums">
+                {" "}
+                at {formatSaleroomMoney(liveBid.leaderAmount, lotCurrency)}
               </span>
             ) : null}
           </p>
         ) : null}
-        {currentLot.reservePrice != null && currentLot.reservePrice !== "" ? (
-          <p className="mt-1 font-body text-xs text-secondary tabular-nums">
-            Reserve {formatMoney(currentLot.reservePrice, lotCurrency)} ·{" "}
-            {deriveReserveStatus(liveBid.currentPrice, currentLot.reservePrice).kind === "met"
-              ? "Reserve met"
-              : "Below reserve"}
-          </p>
-        ) : (
-          <p className="mt-1 font-body text-xs text-secondary">No reserve</p>
-        )}
+        <p className="text-staff-sm text-staff-muted tabular-nums">
+          {reserveMet === null
+            ? "No reserve"
+            : `Reserve ${formatSaleroomMoney(currentLot.reservePrice, lotCurrency)} · ${
+                reserveMet ? "met" : "not met"
+              }`}
+        </p>
       </div>
 
-      {isPaused ? (
-        <Alert variant="default" className="py-2">
-          <AlertDescription className="font-body text-sm">
-            Session paused — resume to place bids.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      {isPaused ? <Notice tone="warning" title="Session paused — resume to place bids." /> : null}
 
-      <div className="space-y-3">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Paddle bid
-        </p>
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="space-y-1">
-            <Label htmlFor={`paddle-num-${saleId}`}>Paddle #</Label>
-            <Input
+      <div className="flex flex-col gap-3">
+        <ConsoleGroupTitle>Paddle bid</ConsoleGroupTitle>
+        <div className="flex flex-wrap items-start gap-3">
+          <Field
+            label="Paddle number"
+            id={`paddle-num-${saleId}`}
+            error={bidEntry.paddleRegistrationError}
+            disabled={biddingDisabled}
+            className="w-32"
+          >
+            <TextInput
               ref={paddleInputRef}
-              id={`paddle-num-${saleId}`}
+              size="live"
               value={bidEntry.state.paddleNumber}
               onChange={(e) => bidEntry.setPaddleNumber(e.target.value)}
               onKeyDown={onPaddleKeyDown}
-              placeholder="142"
-              className="h-11 w-28 font-body text-base tabular-nums"
+              placeholder="e.g. 142"
+              className="tabular-nums"
               autoComplete="off"
               inputMode="numeric"
-              disabled={biddingDisabled}
-              aria-invalid={bidEntry.paddleRegistrationError != null}
-              aria-describedby={
-                bidEntry.paddleRegistrationError ? `paddle-num-error-${saleId}` : undefined
-              }
             />
-            {bidEntry.paddleRegistrationError ? (
-              <p
-                id={`paddle-num-error-${saleId}`}
-                className="font-body text-xs text-destructive"
-                role="alert"
-              >
-                {bidEntry.paddleRegistrationError}
-              </p>
-            ) : null}
             {bidEntry.registeredPaddle && !bidEntry.paddleRegistrationError ? (
-              <p className="font-body text-xs text-secondary">
+              <p className="text-staff-xs text-staff-muted">
                 {bidEntry.registeredPaddle.displayName ?? "Checked-in bidder"}
               </p>
             ) : null}
-          </div>
-          <div className="min-w-[140px] flex-1 space-y-1">
-            <Label htmlFor={`paddle-bid-amount-${saleId}`}>Amount</Label>
-            <Input
-              id={`paddle-bid-amount-${saleId}`}
+          </Field>
+          <Field
+            label="Amount"
+            id={`paddle-bid-amount-${saleId}`}
+            disabled={biddingDisabled}
+            className="min-w-40 flex-1"
+          >
+            <TextInput
+              size="live"
               value={bidEntry.state.paddleAmount}
               onChange={(e) => bidEntry.setPaddleAmount(e.target.value)}
               onKeyDown={onPaddleKeyDown}
-              placeholder="Hammer bid"
-              className="h-11 font-body text-base"
+              leading={<span className="text-staff-muted">{currencyMark(lotCurrency)}</span>}
+              className="tabular-nums"
               inputMode="decimal"
-              disabled={biddingDisabled}
+              autoComplete="off"
             />
-          </div>
-          <Button
-            type="button"
+          </Field>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StaffButton
+            variant="primary"
+            size="live"
             disabled={!bidEntry.canPlacePaddleBid || isPaused}
-            className="min-h-11"
+            loading={bidEntry.pending}
             onClick={bidEntry.placePaddleBid}
           >
             {bidEntry.pending ? "Placing…" : "Place paddle bid"}
-          </Button>
+          </StaffButton>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {bidEntry.incrementOptions.map((amount, index) => (
-            <Button
-              key={amount}
-              type="button"
-              size="sm"
-              variant="outline"
-              className="min-h-11 tabular-nums"
-              disabled={biddingDisabled}
-              onClick={() => bidEntry.applyIncrement(amount, "paddle")}
-            >
-              {incrementChipLabel(index, amount, lotCurrency)}
-            </Button>
-          ))}
-        </div>
+        <QuickAmounts
+          amounts={bidEntry.incrementOptions}
+          currency={lotCurrency}
+          disabled={biddingDisabled}
+          onPick={(amount) => bidEntry.applyIncrement(amount, "paddle")}
+          prefix="paddle"
+        />
         {bidEntry.registeredPaddle?.hasActiveSelfServiceSession ? (
-          <Alert variant="default" className="py-2">
-            <AlertDescription className="font-body text-xs">
-              Warning: paddle {bidEntry.registeredPaddle.paddleNumber} (
-              {bidEntry.registeredPaddle.displayName}) has recent self-service activity — confirm
-              the bidder is not also bidding online.
-            </AlertDescription>
-          </Alert>
+          <Notice
+            tone="warning"
+            title={`Paddle ${bidEntry.registeredPaddle.paddleNumber} has recent online activity`}
+          >
+            {bidEntry.registeredPaddle.displayName ?? "This bidder"} used self-service bidding
+            recently. Confirm they are not also bidding online.
+          </Notice>
         ) : null}
         {bidEntry.registeredPaddle?.bidLimit ? (
-          <p className="font-body text-xs text-secondary">
-            Authorised limit: {formatMoney(bidEntry.registeredPaddle.bidLimit, lotCurrency)}
+          <p className="text-staff-sm text-staff-muted tabular-nums">
+            Authorised limit {formatSaleroomMoney(bidEntry.registeredPaddle.bidLimit, lotCurrency)}
           </p>
         ) : null}
       </div>
 
       {bidEntry.inProgressBookings.length === 0 ? (
-        <p className="font-body text-sm text-secondary">
-          No confirmed telephone lines for this lot.
-        </p>
+        <p className="text-staff-sm text-staff-muted">No confirmed telephone lines for this lot.</p>
       ) : (
-        <div className="space-y-3 border-t border-outline-variant/20 pt-4">
-          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Telephone bid
-          </p>
-          <div className="space-y-1">
-            <Label htmlFor={`telephone-booking-${saleId}`}>Telephone line</Label>
-            <Select
-              value={bidEntry.state.bookingId}
+        <div className="flex flex-col gap-3 border-t border-staff-line-subtle pt-4">
+          <ConsoleGroupTitle>Telephone bid</ConsoleGroupTitle>
+          <Field
+            label="Telephone line"
+            id={`telephone-booking-${saleId}`}
+            disabled={biddingDisabled}
+          >
+            <EnumSelect
+              size="live"
+              value={bidEntry.state.bookingId || null}
               onValueChange={bidEntry.setBookingId}
-              disabled={biddingDisabled}
-            >
-              <SelectTrigger
-                id={`telephone-booking-${saleId}`}
-                className="h-11 font-body text-sm"
-                disabled={biddingDisabled}
-              >
-                <SelectValue placeholder="Select booking" />
-              </SelectTrigger>
-              <SelectContent>
-                {bidEntry.inProgressBookings.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.userName ?? b.userEmail ?? b.userId}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[140px] flex-1 space-y-1">
-              <Label htmlFor={`telephone-bid-amount-${saleId}`}>Amount</Label>
-              <Input
-                id={`telephone-bid-amount-${saleId}`}
-                value={bidEntry.state.telephoneAmount}
-                onChange={(e) => bidEntry.setTelephoneAmount(e.target.value)}
-                placeholder="Telephone bid"
-                className="h-11 font-body text-base"
-                inputMode="decimal"
-                disabled={biddingDisabled}
-              />
-            </div>
-            <Button
-              type="button"
+              placeholder="Choose a line"
+              options={bidEntry.inProgressBookings.map((b) => ({
+                value: b.id,
+                label: b.userName ?? b.userEmail ?? "Unnamed bidder",
+              }))}
+            />
+          </Field>
+          <Field label="Amount" id={`telephone-bid-amount-${saleId}`} disabled={biddingDisabled}>
+            <TextInput
+              size="live"
+              value={bidEntry.state.telephoneAmount}
+              onChange={(e) => bidEntry.setTelephoneAmount(e.target.value)}
+              leading={<span className="text-staff-muted">{currencyMark(lotCurrency)}</span>}
+              className="tabular-nums"
+              inputMode="decimal"
+              autoComplete="off"
+            />
+          </Field>
+          <div className="flex flex-wrap items-center gap-2">
+            <StaffButton
+              variant="secondary"
+              size="live"
               disabled={!bidEntry.canPlaceTelephoneBid || isPaused}
-              className="min-h-11"
+              loading={bidEntry.pending}
               onClick={bidEntry.placeTelephoneBid}
             >
               {bidEntry.pending ? "Placing…" : "Place telephone bid"}
-            </Button>
+            </StaffButton>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {bidEntry.incrementOptions.map((amount, index) => (
-              <Button
-                key={`tel-${amount}`}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="min-h-11 tabular-nums"
-                disabled={biddingDisabled}
-                onClick={() => bidEntry.applyIncrement(amount, "telephone")}
-              >
-                {incrementChipLabel(index, amount, lotCurrency)}
-              </Button>
-            ))}
-          </div>
+          <QuickAmounts
+            amounts={bidEntry.incrementOptions}
+            currency={lotCurrency}
+            disabled={biddingDisabled}
+            onPick={(amount) => bidEntry.applyIncrement(amount, "telephone")}
+            prefix="telephone"
+          />
         </div>
       )}
     </ConsolePanel>
   );
+}
+
+function ConsoleGroupTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-staff-sm font-semibold text-staff-fg">{children}</h3>;
 }

@@ -1,10 +1,10 @@
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { SaleroomClerkConsole } from "@/components/admin/saleroom-clerk-console";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { SaleroomSaleSwitcher } from "@/features/saleroom/components/clerk-console/saleroom-sale-switcher";
-import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
 import { loadSaleroomClerkPage } from "@/lib/admin/saleroom/load-saleroom-clerk-page";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
+import { DetailPage, MetaItem } from "@auction/staff-ui";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -30,23 +30,17 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
   const model = await loadSaleroomClerkPage({ saleId });
   if (model.notFound) notFound();
 
-  const sessionStatus = model.saleroom.session?.status ?? "none";
-
   return (
-    <AdminEntityDetailShell
-      backHref="/admin/saleroom"
-      backLabel="Saleroom hub"
-      eyebrow="Saleroom clerk"
+    <DetailPage
+      breadcrumbs={
+        <StaffBreadcrumbs
+          items={[{ label: "Saleroom", href: "/admin/saleroom" }, { label: model.saleTitle }]}
+        />
+      }
       title={model.saleTitle}
-      description="Go live, advance lots, hammer or pass. Viewers receive saleroom events over the socket."
-      meta={
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <SaleDeliveryModeBadge mode={model.deliveryMode} />
-            <AdminStatusBadge domain="saleroomSession" status={sessionStatus} size="sm" />
-          </div>
-          <SaleroomSaleSwitcher currentSaleId={saleId} currentSaleTitle={model.saleTitle} />
-        </div>
+      meta={<MetaItem label="Format">{deliveryModeShortLabel(model.deliveryMode)}</MetaItem>}
+      secondaryActions={
+        <SaleroomSaleSwitcher currentSaleId={saleId} currentSaleTitle={model.saleTitle} />
       }
     >
       <SaleroomClerkConsole
@@ -65,6 +59,6 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         paddleRosterEmpty={model.paddleRoster.length === 0}
         checkedInRefresh={checkedIn === "1"}
       />
-    </AdminEntityDetailShell>
+    </DetailPage>
   );
 }

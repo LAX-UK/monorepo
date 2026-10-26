@@ -1,7 +1,7 @@
 "use client";
 
-import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import type { ClerkLivePhase } from "@/features/saleroom/lib/clerk-live-phase";
 import {
   adminSaleroomCloseAction,
@@ -10,9 +10,7 @@ import {
   adminSaleroomResumeAction,
 } from "@/lib/actions/admin";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
-import { notify } from "@/lib/ui/notify";
-import { cn } from "@auction/ui/lib/utils";
-import { useRouter } from "next/navigation";
+import { StaffButton, cn } from "@auction/staff-ui";
 
 type Props = {
   saleId: string;
@@ -21,34 +19,34 @@ type Props = {
   sticky?: boolean;
 };
 
+/**
+ * Takes the room live, pauses and resumes it, and closes it. Once the sale is running the bar
+ * stays under the top bar while the page scrolls, so Pause is always in reach.
+ */
 export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky = false }: Props) {
-  const router = useRouter();
+  const confirm = useStaffConfirm();
   const canGoLive =
     sessionStatus === "none" || sessionStatus === "ended" || sessionStatus === "pending";
   const canPause = sessionStatus === "live";
   const canResume = sessionStatus === "paused";
   const canClose = sessionStatus === "live" || sessionStatus === "paused";
+  const concluded = livePhase === "concluded";
 
   return (
     <div
       className={cn(
-        "space-y-3",
         sticky &&
-          "sticky top-0 z-20 -mx-4 border-b border-outline-variant/20 bg-surface/95 px-4 py-3 backdrop-blur-sm md:-mx-8 md:px-8",
+          "sticky top-13 z-20 -mx-4 border-b border-staff-line bg-staff-canvas px-4 py-3 md:-mx-8 md:px-8",
       )}
     >
-      <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Session
-      </p>
-      <div className="flex flex-wrap items-center gap-2" aria-label="Saleroom session controls">
+      <section aria-label="Session controls" className="flex flex-wrap items-center gap-2">
         {livePhase === "setup" ? (
-          <div className="flex flex-wrap gap-2">
+          <>
             <SaleroomPendingSubmit
               pendingLabel="Going live…"
-              variant="default"
-              className="min-h-11"
+              variant="primary"
+              size="live"
               disabled={!canGoLive}
-              aria-disabled={!canGoLive}
               onRun={() => adminSaleroomGoLiveAction({ saleId })}
             >
               Go live
@@ -56,24 +54,21 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
             {canResume ? (
               <SaleroomPendingSubmit
                 pendingLabel="Resuming…"
-                variant="default"
-                className="min-h-11"
-                disabled={!canResume}
-                aria-disabled={!canResume}
+                variant="secondary"
+                size="live"
                 onRun={() => adminSaleroomResumeAction({ saleId })}
               >
                 Resume
               </SaleroomPendingSubmit>
             ) : null}
-          </div>
+          </>
         ) : null}
         {livePhase === "paused" ? (
           <SaleroomPendingSubmit
             pendingLabel="Resuming…"
-            variant="default"
-            className="min-h-11"
+            variant="primary"
+            size="live"
             disabled={!canResume}
-            aria-disabled={!canResume}
             onRun={() => adminSaleroomResumeAction({ saleId })}
           >
             Resume
@@ -83,41 +78,40 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
           <SaleroomPendingSubmit
             pendingLabel="Pausing…"
             variant="secondary"
-            className="min-h-11"
+            size="live"
             disabled={!canPause}
-            aria-disabled={!canPause}
             onRun={() => adminSaleroomPauseAction({ saleId })}
           >
             Pause
           </SaleroomPendingSubmit>
         ) : null}
         {livePhase !== "setup" ? (
-          <ConfirmActionButton
-            variant={livePhase === "concluded" ? "default" : "secondary"}
-            confirmTitle="Close saleroom session?"
-            confirmBody={
-              livePhase === "concluded"
-                ? "The sale is finished. Closing ends live updates for bidders and staff."
-                : "Bidders will no longer see live updates until you go live again."
-            }
-            confirmLabel="Close session"
-            tone="warning"
-            className="min-h-11"
+          <StaffButton
+            variant={concluded ? "primary" : "secondary"}
+            size="live"
             disabled={!canClose}
-            aria-disabled={!canClose}
-            onConfirmed={async () => {
-              const r = await adminSaleroomCloseAction({ saleId });
-              if (!r.ok) {
-                notify.error(r.error);
-                throw new Error(r.error);
-              }
-              router.refresh();
-            }}
+            onClick={() =>
+              confirm.ask({
+                title: "Close the saleroom session?",
+                description: concluded
+                  ? "The sale is finished. Closing ends live updates for bidders and staff."
+                  : "Bidders and staff stop receiving live updates until you go live again.",
+                confirmLabel: "Close session",
+                cancelLabel: "Keep session open",
+                tone: concluded ? "default" : "danger",
+                success: "Saleroom session closed",
+                run: async () => {
+                  const result = await adminSaleroomCloseAction({ saleId });
+                  return result.ok ? { ok: true } : { ok: false, error: result.error };
+                },
+              })
+            }
           >
             Close session
-          </ConfirmActionButton>
+          </StaffButton>
         ) : null}
-      </div>
+      </section>
+      {confirm.dialog}
     </div>
   );
 }

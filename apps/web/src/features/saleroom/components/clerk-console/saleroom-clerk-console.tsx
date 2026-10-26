@@ -3,6 +3,7 @@
 import { ClerkConsoleAlertsPanel } from "@/features/saleroom/components/clerk-console/clerk-console-alerts-panel";
 import { ClerkConsoleLayout } from "@/features/saleroom/components/clerk-console/clerk-console-layout";
 import { ClerkLiveActionBar } from "@/features/saleroom/components/clerk-console/clerk-live-action-bar";
+import { ClerkReadOnlyView } from "@/features/saleroom/components/clerk-console/clerk-read-only-view";
 import { ClerkSecondaryToolsRail } from "@/features/saleroom/components/clerk-console/clerk-secondary-tools-rail";
 import { ClerkSessionBar } from "@/features/saleroom/components/clerk-console/clerk-session-bar";
 import { ClerkSessionToolbar } from "@/features/saleroom/components/clerk-console/clerk-session-toolbar";
@@ -140,8 +141,6 @@ function ClerkConsoleInner({
         ),
         sessionBar: (
           <ClerkSessionBar
-            saleTitle={saleTitle}
-            {...(deliveryMode ? { deliveryMode } : {})}
             session={model.session.session}
             currentLot={model.lot.currentLot}
             progress={model.lot.progress}
@@ -183,7 +182,6 @@ function ClerkConsoleInner({
             sessionLive={model.action.sessionLive}
             sessionStatus={model.action.sessionStatus}
             betweenLots={model.lot.progress.betweenLots}
-            progressLabel={model.lot.progress.progressLabel}
           />
         ),
         tools: (
@@ -214,6 +212,13 @@ function ClerkConsoleInner({
                 />
               ),
             }}
+          />
+        ),
+        phoneView: (
+          <ClerkReadOnlyView
+            currentLot={model.lot.currentLot}
+            liveBid={model.lot.liveBid}
+            activityLog={model.session.activityLog}
           />
         ),
         liveDock: (

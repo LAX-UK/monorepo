@@ -2,11 +2,11 @@
 
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
-import { Button, type ButtonProps } from "@auction/ui/components/button";
+import { StaffButton, type StaffButtonProps } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition } from "react";
 
-type BaseProps = Omit<ButtonProps, "type" | "onClick"> & {
+type BaseProps = Omit<StaffButtonProps, "type" | "onClick" | "loading" | "asChild"> & {
   pendingLabel: string;
   refreshOnComplete?: boolean;
 };
@@ -31,9 +31,12 @@ function isFormSubmitProps(props: Props): props is FormSubmitProps {
   return "formId" in props && props.formId != null;
 }
 
-/** Saleroom control button — legacy form submit (`formId`) or ActionResult server action (`onRun`). */
+/**
+ * A saleroom control button: submits a form (`formId`) or runs a server action (`onRun`). It
+ * shows the pending wording and ignores repeat presses while the request is in flight.
+ */
 export function SaleroomPendingSubmit(props: Props) {
-  const { pendingLabel, children, disabled, refreshOnComplete = true, ...rest } = props;
+  const { pendingLabel, children, refreshOnComplete = true, ...rest } = props;
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const wasPendingRef = useRef(false);
@@ -49,10 +52,9 @@ export function SaleroomPendingSubmit(props: Props) {
   if (isFormSubmitProps(props)) {
     const { formId, ...buttonProps } = rest as Omit<FormSubmitProps, keyof BaseProps>;
     return (
-      <Button
-        type="button"
-        disabled={disabled || pending}
+      <StaffButton
         {...buttonProps}
+        loading={pending}
         onClick={() => {
           const form = document.getElementById(formId);
           if (!(form instanceof HTMLFormElement)) return;
@@ -62,7 +64,7 @@ export function SaleroomPendingSubmit(props: Props) {
         }}
       >
         {pending ? pendingLabel : children}
-      </Button>
+      </StaffButton>
     );
   }
 
@@ -72,10 +74,9 @@ export function SaleroomPendingSubmit(props: Props) {
   >;
 
   return (
-    <Button
-      type="button"
-      disabled={disabled || pending}
+    <StaffButton
       {...buttonProps}
+      loading={pending}
       onClick={() => {
         startTransition(() => {
           void (async () => {
@@ -92,6 +93,6 @@ export function SaleroomPendingSubmit(props: Props) {
       }}
     >
       {pending ? pendingLabel : children}
-    </Button>
+    </StaffButton>
   );
 }

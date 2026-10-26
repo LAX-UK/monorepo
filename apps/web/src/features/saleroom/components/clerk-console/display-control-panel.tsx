@@ -12,12 +12,16 @@ import {
   adminSaleroomDisplayApproveAction,
   adminSaleroomDisplayRevokeAction,
 } from "@/lib/actions/admin";
+import {
+  Field,
+  Notice,
+  Skeleton,
+  StaffButton,
+  StatusBadge,
+  TextInput,
+  TextLink,
+} from "@auction/staff-ui";
 import type { SaleroomDisplayOverlay } from "@auction/types";
-import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import { Skeleton } from "@auction/ui/components/skeleton";
 import { Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -60,56 +64,54 @@ export function DisplayControlPanel({
         ? `Announcement${activeOverlay.message ? `: ${activeOverlay.message}` : ""}`
         : null;
 
+  const listed = devices.filter((d) => d.status === "paired" || d.status === "pending");
+
   return (
-    <ConsolePanel variant={panelVariant}>
+    <ConsolePanel variant={panelVariant} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <PanelHeading>Venue display</PanelHeading>
-          <p className="mt-2 font-body text-sm text-secondary">
-            Pair a TV at{" "}
-            <Link href={`/display/${saleId}`} className="font-medium text-link underline">
-              /display/{saleId}
-            </Link>
+          <p className="mt-1 text-staff-sm text-staff-muted">
+            Open the{" "}
+            <TextLink href={`/display/${saleId}`} Link={Link} className="align-baseline leading-5">
+              display page
+            </TextLink>{" "}
+            on the venue screen, then enter the code it shows.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-h-11 shrink-0 font-mono text-xs"
+        <StaffButton
+          variant="secondary"
+          size="live"
+          icon={copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           onClick={() => void copyDisplayUrl()}
         >
-          {copied ? (
-            <>
-              <Check className="mr-1.5 size-3.5" aria-hidden />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="mr-1.5 size-3.5" aria-hidden />
-              Copy URL
-            </>
-          )}
-        </Button>
+          {copied ? "Copied" : "Copy display link"}
+        </StaffButton>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-2">
-        <div className="min-w-[10rem] flex-1 space-y-1">
-          <Label htmlFor={`display-code-${saleId}`}>Display code from TV</Label>
-          <Input
-            id={`display-code-${saleId}`}
+      <div className="flex flex-wrap items-end gap-3">
+        <Field
+          label="Display code from the screen"
+          id={`display-code-${saleId}`}
+          className="min-w-40 flex-1"
+        >
+          <TextInput
+            size="live"
             value={pairingCode}
             onChange={(e) => setPairingCode(e.target.value)}
-            placeholder="ABCD-1234"
-            className="h-11 font-body text-sm uppercase tracking-widest"
+            placeholder="For example ABCD-1234"
+            className="font-mono uppercase tracking-widest placeholder:tracking-normal placeholder:normal-case"
             autoComplete="off"
             spellCheck={false}
           />
-        </div>
+        </Field>
         <SaleroomPendingSubmit
           pendingLabel="Approving…"
-          className="min-h-11"
-          disabled={pairingCode.trim().length < 4}
+          variant="primary"
+          size="live"
+          {...(pairingCode.trim().length < 4
+            ? { disabledReason: "Enter the code shown on the venue screen" }
+            : {})}
           onRun={() =>
             adminSaleroomDisplayApproveAction({
               saleId,
@@ -123,79 +125,74 @@ export function DisplayControlPanel({
       </div>
 
       {activeOverlayLabel ? (
-        <div
-          className="mt-4 rounded-md border border-primary/25 bg-primary/5 px-3 py-2 font-body text-sm text-foreground"
-          aria-live="polite"
-        >
-          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Active overlay
-          </span>
-          <p className="mt-1 font-medium">{activeOverlayLabel}</p>
-        </div>
+        <Notice tone="info" title="On the venue display now">
+          {activeOverlayLabel}
+        </Notice>
       ) : null}
 
-      <div className="mt-4">
-        <DisplayOverlayActions saleId={saleId} initialOverlay={initialOverlay} />
-      </div>
+      <DisplayOverlayActions saleId={saleId} initialOverlay={initialOverlay} />
 
       {isLoading ? (
-        <div className="mt-4 space-y-2" aria-busy="true" aria-label="Loading display devices">
-          <Skeleton className="h-12 w-full rounded-md" />
-          <Skeleton className="h-12 w-full rounded-md" />
-        </div>
+        <output
+          className="flex flex-col gap-2"
+          aria-busy="true"
+          aria-label="Loading display devices"
+        >
+          <Skeleton className="h-12 w-full rounded-staff-sm" />
+          <Skeleton className="h-12 w-full rounded-staff-sm" />
+        </output>
       ) : error ? (
-        <div className="mt-4 rounded-md border border-destructive/25 bg-destructive/5 p-3">
-          <p className="font-body text-sm text-destructive">{error}</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-2 min-h-11"
-            onClick={() => void retry()}
-          >
-            Retry
-          </Button>
-        </div>
-      ) : devices.length > 0 ? (
-        <ul className="mt-4 space-y-2">
-          {devices
-            .filter((d) => d.status === "paired" || d.status === "pending")
-            .map((device) => (
-              <li
-                key={device.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-outline-variant/20 bg-surface-container-low/30 px-3 py-2"
-              >
-                <div className="flex flex-wrap items-center gap-2 font-body text-sm">
-                  <span className="font-mono tracking-widest text-foreground">
-                    {device.userCode}
-                  </span>
-                  <Badge variant="secondary">{device.status}</Badge>
-                  {device.isOnline ? (
-                    <span className="text-xs text-success">online</span>
-                  ) : device.status === "paired" ? (
-                    <span className="text-xs text-secondary">offline</span>
-                  ) : null}
-                </div>
+        <Notice
+          tone="danger"
+          alert
+          title="Could not load the venue displays"
+          actions={
+            <StaffButton variant="secondary" size="sm" onClick={() => void retry()}>
+              Try again
+            </StaffButton>
+          }
+        >
+          {error}
+        </Notice>
+      ) : listed.length > 0 ? (
+        <ul className="flex flex-col gap-2" aria-label="Paired displays">
+          {listed.map((device) => (
+            <li
+              key={device.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-staff-sm border border-staff-line-subtle bg-staff-sunken px-3 py-2"
+            >
+              <div className="flex flex-wrap items-center gap-2 text-staff-sm">
+                <span className="font-mono font-medium tracking-widest text-staff-fg">
+                  {device.userCode}
+                </span>
+                <StatusBadge tone={device.status === "paired" ? "success" : "warning"}>
+                  {device.status === "paired" ? "Paired" : "Waiting for approval"}
+                </StatusBadge>
                 {device.status === "paired" ? (
-                  <SaleroomPendingSubmit
-                    pendingLabel="Revoking…"
-                    variant="ghost"
-                    className="min-h-11 text-error"
-                    onRun={() =>
-                      adminSaleroomDisplayRevokeAction({
-                        saleId,
-                        pairingId: device.id,
-                      })
-                    }
-                  >
-                    Revoke
-                  </SaleroomPendingSubmit>
+                  <StatusBadge tone={device.isOnline ? "success" : "neutral"}>
+                    {device.isOnline ? "Online" : "Offline"}
+                  </StatusBadge>
                 ) : null}
-              </li>
-            ))}
+              </div>
+              {device.status === "paired" ? (
+                <SaleroomPendingSubmit
+                  pendingLabel="Revoking…"
+                  variant="danger-secondary"
+                  onRun={() =>
+                    adminSaleroomDisplayRevokeAction({
+                      saleId,
+                      pairingId: device.id,
+                    })
+                  }
+                >
+                  Revoke display
+                </SaleroomPendingSubmit>
+              ) : null}
+            </li>
+          ))}
         </ul>
       ) : (
-        <p className="mt-4 font-body text-sm text-secondary">No paired displays yet.</p>
+        <p className="text-staff-sm text-staff-muted">No paired displays yet.</p>
       )}
     </ConsolePanel>
   );
