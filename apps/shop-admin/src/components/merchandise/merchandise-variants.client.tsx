@@ -151,7 +151,12 @@ export function MerchandiseVariants({
       width: "104px",
       numeric: true,
       mobile: "meta",
-      cell: (variant) => variant.onHand,
+      cell: (variant) => (
+        <>
+          {variant.onHand}
+          <span className="md:hidden"> on hand</span>
+        </>
+      ),
     },
     {
       id: "reserved",
@@ -159,7 +164,12 @@ export function MerchandiseVariants({
       width: "160px",
       numeric: true,
       mobile: "meta",
-      cell: (variant) => variant.reserved,
+      cell: (variant) => (
+        <>
+          {variant.reserved}
+          <span className="md:hidden"> held</span>
+        </>
+      ),
     },
     rowActionsColumn<MerchandiseVariantDetail>({
       actions: actionsFor,
