@@ -1,11 +1,13 @@
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import {
   type AtgIntegrationStatus,
+  type AtgLotSellingSummary,
   type AtgLotSyncView,
   type AtgOwnershipState,
+  type AtgSaleSellingSummary,
   type AtgSaleSyncView,
   type SaleStatus,
-  resolveSaleSellingPlatform,
+  toAtgSaleSellingSummary,
 } from "@auction/types";
 
 const ATG_BASE = "/admin/integrations/atg";
@@ -38,24 +40,65 @@ export async function getAtgLotSyncView(
   return lot?.atgLotId ? lot : null;
 }
 
+async function getSellingSummaries<T>(
+  kind: "sales" | "lots",
+  ids: readonly string[],
+): Promise<Map<string, T>> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return new Map();
+  const res = await authedServerFetch(
+    `${ATG_BASE}/selling/${kind}?ids=${encodeURIComponent(unique.join(","))}`,
+    { skipActingLegalEntityHeader: true },
+  ).catch(() => null);
+  if (!res?.ok) return new Map();
+  const body = (await res.json().catch(() => null)) as { data?: Record<string, T> } | null;
+  return new Map(Object.entries(body?.data ?? {}));
+}
+
 /**
- * Selling platform for header chips, publish guards and edit alerts. Null when ATG sync is off
- * or the lookup fails. Only draft sales can belong to ATG, so other statuses skip the fetch.
+ * Where each sale sells, in one request per page. Empty when the viewer lacks ATG access or the
+ * lookup fails, so lists and headers show no marker. Works while ATG sync is off.
+ */
+export function getAtgSaleSellingSummaries(
+  saleIds: readonly string[],
+): Promise<Map<string, AtgSaleSellingSummary>> {
+  return getSellingSummaries<AtgSaleSellingSummary>("sales", saleIds);
+}
+
+/** Where each lot sells (with its sale's summary), in one request per page. */
+export function getAtgLotSellingSummaries(
+  lotIds: readonly string[],
+): Promise<Map<string, AtgLotSellingSummary>> {
+  return getSellingSummaries<AtgLotSellingSummary>("lots", lotIds);
+}
+
+/**
+ * Selling summary for a sale header. Only draft sales can be linked to or owned by ATG, so other
+ * statuses resolve locally without a request. Null when the lookup fails.
+ */
+export async function getAtgSaleSellingSummary(sale: {
+  id: string;
+  status: SaleStatus;
+}): Promise<AtgSaleSellingSummary | null> {
+  if (sale.status !== "draft") {
+    return toAtgSaleSellingSummary({
+      saleStatus: sale.status,
+      atgRemoteStatus: null,
+      atgLinked: false,
+      atgSoldLotCount: 0,
+      atgApprovedAt: null,
+    });
+  }
+  return (await getAtgSaleSellingSummaries([sale.id])).get(sale.id) ?? null;
+}
+
+/**
+ * Selling platform for publish guards and edit alerts, from the same inputs as the server guards.
+ * Null when the lookup fails. Links count even while ATG sync is off, as they do on the server.
  */
 export async function getAtgSaleSellingPlatform(sale: {
   id: string;
   status: SaleStatus;
 }): Promise<AtgOwnershipState | null> {
-  const status = await getAtgIntegrationStatus().catch(() => null);
-  if (!status?.enabled) return null;
-  if (sale.status !== "draft") {
-    return resolveSaleSellingPlatform({
-      saleStatus: sale.status,
-      atgRemoteStatus: null,
-      atgLinked: false,
-      atgSoldLotCount: 0,
-    });
-  }
-  const view = await getAtgSaleSyncView(sale.id).catch(() => null);
-  return view?.sellingPlatform ?? null;
+  return (await getAtgSaleSellingSummary(sale))?.sellingPlatform ?? null;
 }

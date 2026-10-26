@@ -10,6 +10,8 @@ export type AdminSaleBoardRow = {
   startTimeLabel: string;
   sparklineValues: number[];
   canDelete: boolean;
+  /** Linked to or selling on ATG (shared ownership rule); drives the compact ATG marker. */
+  onAtg?: boolean;
 };
 
 export type SaleColumnSortConfig = {

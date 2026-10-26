@@ -32,10 +32,16 @@ import {
   getAdminCategoryById,
   getAdminSaleById,
 } from "@/lib/data/http/admin.server";
+import { getAtgLotSellingSummaries } from "@/lib/data/http/atg.server";
 import { toAdminLotTableRows } from "@/lib/data/view-models/admin-lots.vm";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import {
+  type AtgLotSellingSummary,
+  type UserRole,
+  isLotOnAtg,
+  userHasAccessTo,
+} from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
@@ -148,7 +154,16 @@ export default async function AdminLotsPage({
     lensOwnedSort,
   });
 
-  const lotTableRows = toAdminLotTableRows(pageRows);
+  // Only draft lots in a sale can sell on ATG (the LAX lot stays draft); one lookup per page.
+  const atgSelling = canManageAuction
+    ? await getAtgLotSellingSummaries(
+        pageRows.filter((r) => r.status === "draft" && r.saleId).map((r) => r.id),
+      )
+    : new Map<string, AtgLotSellingSummary>();
+  const onAtgLotIds = new Set(
+    [...atgSelling].filter(([, summary]) => isLotOnAtg(summary)).map(([lotId]) => lotId),
+  );
+  const lotTableRows = toAdminLotTableRows(pageRows, onAtgLotIds);
   const hasAttentionContent =
     attentionLens &&
     !withdrawalLoadError &&

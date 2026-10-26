@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AtgListMarker } from "@/components/admin/atg/selling-platform-badge";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
 import { CatalogVirtualizedList } from "@/components/admin/catalog/catalog-virtualized-list";
 import { LotBoardMobileActionMenu } from "@/components/admin/lots-board/mobile-action-menu";
@@ -64,7 +65,12 @@ export function LotsMobileCards({
                 canManageAuction={canManageAuction}
               />
             }
-            status={<AdminStatusBadge domain="lot" status={r.status} />}
+            status={
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                <AdminStatusBadge domain="lot" status={r.status} />
+                {r.onAtg ? <AtgListMarker label="On ATG" /> : null}
+              </span>
+            }
             footer={
               <div className="flex flex-wrap gap-2">
                 {editHref ? (

@@ -85,6 +85,26 @@ that sold on ATG stays as it is and is settled manually
 `apps/api/src/services/sale-channel-guards.ts`. The admin sale page hides Publish, Cancel and
 Delete for ATG-owned sales and explains why.
 
+**Admin "where this sells" badge.** The sale and lot headers show where bidding happens, next to
+the status badge; ATG badges link to the sale's ATG tab and carry a tooltip. Labels come from
+`atgSaleSellingBadge()` / `atgLotSellingBadge()` in `packages/types/src/atg.ts`, which read the
+same ownership inputs as the guards:
+
+| Sale state | Badge |
+| --- | --- |
+| Unlinked draft, or cancelled | none |
+| LAX-owned (`scheduled` / `active` / `ended`) | lax.bid |
+| Linked, not published (approved once `atg_approved_at` is set) | ATG · Draft / ATG · Approved |
+| ATG-owned, published | ATG · Live |
+| ATG-owned, closed with ≥1 sold lot | ATG · Ended |
+| Closed with nothing sold (free again) | ATG · Closed |
+
+A lot pushed to ATG shows "On ATG · <status>" with the GetLots labels, or "On ATG · Sync error";
+a lot in a LAX-owned sale shows "lax.bid". The sales and lots lists add a compact **ATG** marker
+to rows with an ATG badge. Data comes from `GET /admin/integrations/atg/selling/sales?ids=` and
+`/selling/lots?ids=` (`auction.manage`, up to 200 ids, one request per page), which work while
+ATG sync is off, so ownership still shows when links exist.
+
 **Public lax.bid:** ATG-owned sales stay LAX `draft` but appear in the catalogue as read-only.
 Public reads add `sellingPlatform` and `atgAuctionState` (`live` while published, `ended`
 once closed with sales) to the sale, `atgSold` to its lots after it ends, and `atgSaleState` to

@@ -48,7 +48,13 @@ export function lotColumns(
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <LotStatusCell lotId={row.original.id} status={row.original.status} />,
+      cell: ({ row }) => (
+        <LotStatusCell
+          lotId={row.original.id}
+          status={row.original.status}
+          onAtg={row.original.onAtg === true}
+        />
+      ),
     },
     {
       id: "lastActivity",

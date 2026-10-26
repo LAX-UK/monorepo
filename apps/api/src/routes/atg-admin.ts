@@ -12,6 +12,22 @@ const saleActionParamSchema = saleIdParamSchema.extend({
 
 const jobIdParamSchema = z.object({ jobId: z.string().min(1) });
 
+/** Comma-separated ids, one page of a list at most. */
+const MAX_SELLING_IDS = 200;
+const sellingIdsQuerySchema = z.object({
+  ids: z
+    .string()
+    .transform((raw) => [
+      ...new Set(
+        raw
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean),
+      ),
+    ])
+    .pipe(z.array(z.string().uuid()).min(1).max(MAX_SELLING_IDS)),
+});
+
 const saleSettingsBodySchema = z
   .object({
     auctionType: z.enum(ATG_AUCTION_TYPES),
@@ -36,6 +52,16 @@ export function createAdminAtgRoutes(atg: IAtgAdminService) {
       return c.json({ error: "ATG sync is not enabled", code: "atg_disabled" }, 503);
     }
     return c.json({ data: { jobId, state } });
+  });
+
+  r.get("/selling/sales", zValidator("query", sellingIdsQuerySchema), async (c) => {
+    const { ids } = c.req.valid("query");
+    return c.json({ data: await atg.getSaleSellingSummaries(ids) });
+  });
+
+  r.get("/selling/lots", zValidator("query", sellingIdsQuerySchema), async (c) => {
+    const { ids } = c.req.valid("query");
+    return c.json({ data: await atg.getLotSellingSummaries(ids) });
   });
 
   r.get("/sales/:id", zValidator("param", saleIdParamSchema), async (c) => {

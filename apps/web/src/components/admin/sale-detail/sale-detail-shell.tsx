@@ -1,6 +1,7 @@
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
 import { AdminSaleHeaderActions } from "@/components/admin/admin-sale-header-actions";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { SellingPlatformBadge } from "@/components/admin/atg/selling-platform-badge";
 import {
   CatalogBreadcrumbs,
   CatalogDetailMobileMeta,
@@ -33,7 +34,7 @@ import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
-import type { AtgOwnershipState } from "@auction/types";
+import { type AtgSaleSellingSummary, atgSaleSellingBadge } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ReactNode } from "react";
@@ -51,8 +52,8 @@ type Props = {
   connectRequiredByLotId?: ConnectRequiredByLotId;
   /** Precomputed in layout — avoids duplicate readiness work in rail and overview. */
   draftSetupReadiness?: CatalogReadinessResult | null;
-  /** From ATG link state when sync is enabled. */
-  sellingPlatform?: AtgOwnershipState | null;
+  /** Where the sale sells (lax.bid or ATG), from the shared ownership rule. */
+  selling?: AtgSaleSellingSummary | null;
   children: ReactNode;
 };
 
@@ -67,7 +68,7 @@ export function SaleDetailShell({
   canManageSales = false,
   connectRequiredByLotId,
   draftSetupReadiness: draftSetupReadinessProp,
-  sellingPlatform = null,
+  selling = null,
   children,
 }: Props) {
   const { sale, lots } = bundle;
@@ -76,7 +77,8 @@ export function SaleDetailShell({
   const publicHref = salePath({ id: sale.id, title: sale.title });
 
   const canEditDraftSale = sale.status === "draft" && canManageSales;
-  const blockedByAtg = sellingPlatform === "atg";
+  const blockedByAtg = selling?.sellingPlatform === "atg";
+  const sellingBadge = selling ? atgSaleSellingBadge(selling) : null;
   const canPublishOnLax = sale.status === "draft" && canManageSales;
   const canPublish = canPublishOnLax && !blockedByAtg;
   const publishBlockedProps = blockedByAtg
@@ -230,10 +232,11 @@ export function SaleDetailShell({
             <Badge variant="secondary" className="capitalize">
               {sale.deliveryMode}
             </Badge>
-            {sellingPlatform === "atg" ? (
-              <Badge variant="secondary">Selling on ATG</Badge>
-            ) : sellingPlatform === "lax" ? (
-              <Badge variant="secondary">Selling on lax.bid</Badge>
+            {sellingBadge ? (
+              <SellingPlatformBadge
+                badge={sellingBadge}
+                atgHref={canManageSales ? saleDetailTabHref(saleId, "atg") : null}
+              />
             ) : null}
             {sale.status === "draft" && setupReadiness && draftSetupHref ? (
               <SaleSetupProgressChip readiness={setupReadiness} setupHref={draftSetupHref} />
