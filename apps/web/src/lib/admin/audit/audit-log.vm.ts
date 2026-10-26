@@ -1,4 +1,5 @@
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import { isoDate } from "@/lib/admin/iso-date";
 import type { AdminAuditLogRow } from "@/lib/data/http/admin-audit.schema";
 import { formatStaffDateTime } from "@auction/staff-ui";
 import type { StaffStatusTone } from "@auction/staff-ui";
@@ -162,7 +163,7 @@ export function toAuditLogRows(
     const detail = buildAuditEventDetail(row.payload, formatStaffDateTime);
     return {
       id: row.id,
-      at: row.occurredAt.toISOString(),
+      at: isoDate(row.occurredAt),
       actor: actorDisplay(row),
       actorUserId: row.actorUserId,
       action: domainEventLabel(row.eventType),

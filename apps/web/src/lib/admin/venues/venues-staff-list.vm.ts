@@ -1,4 +1,5 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { isoDate } from "@/lib/admin/iso-date";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminVenueListRow } from "@/lib/services/interfaces/admin-venue-service";
 import type { DataView as StaffDataView, StatusPresentation } from "@auction/staff-ui";
@@ -57,8 +58,8 @@ export function toVenuesStaffRows(venues: readonly AdminVenueListRow[]): VenuesS
     phone: venue.contactPhone,
     email: venue.contactEmail,
     website: venue.website,
-    createdAt: venue.createdAt.toISOString(),
-    updatedAt: venue.updatedAt.toISOString(),
+    createdAt: isoDate(venue.createdAt),
+    updatedAt: isoDate(venue.updatedAt),
     href: `${VENUES_LIST_PATH}/${venue.id}`,
     editHref: `${VENUES_LIST_PATH}/${venue.id}/edit`,
   }));

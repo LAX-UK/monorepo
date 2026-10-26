@@ -1,3 +1,4 @@
+import { isoDate } from "@/lib/admin/iso-date";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
 import { formatCsvDocument } from "@auction/exports";
@@ -20,7 +21,7 @@ function toExportRow(row: AdminTelephoneBookingRow): Record<string, string> {
     phone: row.phoneDisplay ?? row.phoneE164,
     status: telephoneBookingStatusLabel(row.status),
     authorizedMax: row.authorizedMax ?? "",
-    requestedAt: row.createdAt.toISOString(),
+    requestedAt: isoDate(row.createdAt),
   };
 }
 
