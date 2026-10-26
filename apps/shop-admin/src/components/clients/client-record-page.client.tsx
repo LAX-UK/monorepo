@@ -114,7 +114,7 @@ export function ClientRecordPage({
           Link={NextLink}
           secondary={row.lineCount === 1 ? "1 item" : `${row.lineCount} items`}
         >
-          {orderNumber(row.orderId)}
+          {orderNumber(row.orderId, row.reference)}
         </PrimaryCell>
       ),
     },

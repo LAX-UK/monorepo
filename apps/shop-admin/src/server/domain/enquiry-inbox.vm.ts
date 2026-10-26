@@ -25,6 +25,7 @@ export const ENQUIRY_TOPIC_LABELS: Record<EnquiryTopic, string> = {
   art_advisory: "Art advisory",
   selling: "Selling",
   exhibition: "Exhibition",
+  order_problem: "Order problem",
   artwork: "Artwork",
 };
 

@@ -25,7 +25,14 @@ export function enquiryContextLinks(
       href: base ? `${base}/artworks/${encodeURIComponent(detail.artwork.slug)}` : null,
     });
   }
-  if (detail.contextSlug) {
+  if (detail.contextSlug && detail.topic === "order_problem") {
+    // A problem reported on a Shop order names the order by its reference; the orders list finds it.
+    links.push({
+      label: "Order",
+      text: detail.contextSlug,
+      href: `/orders?q=${encodeURIComponent(detail.contextSlug)}`,
+    });
+  } else if (detail.contextSlug) {
     links.push({
       label: detail.topic === "exhibition" ? "Exhibition" : "Page",
       text: detail.contextSlug,

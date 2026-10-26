@@ -98,7 +98,7 @@ export function FulfilmentList({
         cell: (row) => (
           <span className="tabular-nums">
             <PrimaryCell href={list.panelHref(row.fulfilmentId)} Link={list.panel.PanelLink}>
-              {orderNumber(row.orderId)}
+              {orderNumber(row.orderId, row.orderReference)}
             </PrimaryCell>
           </span>
         ),
@@ -261,7 +261,7 @@ export function FulfilmentList({
           onRowOpen: (row) => list.panel.show(row.fulfilmentId),
           activeRowId: list.panel.openId,
           rowActions: {
-            label: (row) => `Actions for order ${orderNumber(row.orderId)}`,
+            label: (row) => `Actions for order ${orderNumber(row.orderId, row.orderReference)}`,
             actions: rowActions,
           },
         }}
@@ -279,7 +279,9 @@ export function FulfilmentList({
         }}
         dirty={dirty}
         dirtyLabel="this fulfilment"
-        title={opened ? `Order ${orderNumber(opened.orderId)}` : "Fulfilment"}
+        title={
+          opened ? `Order ${orderNumber(opened.orderId, opened.orderReference)}` : "Fulfilment"
+        }
         status={
           opened ? (
             <MappedStatusBadge status={opened.status} present={presentFulfilmentStatus} />

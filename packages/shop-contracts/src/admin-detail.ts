@@ -18,6 +18,8 @@ export const AdminClientOrderSchema = Type.Object({
   lineCount: Type.Integer({ minimum: 0 }),
   createdAt: Type.String(),
   paidAt: Type.Union([Type.String(), Type.Null()]),
+  /** "LAX-S-10482"; optional for responses from an older shop-api. */
+  reference: Type.Optional(Type.String()),
 });
 
 /** An enquiry the client sent from the Shop or lax.art: about an artwork, or a general one. */

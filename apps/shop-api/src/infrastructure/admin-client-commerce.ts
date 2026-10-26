@@ -80,6 +80,7 @@ export async function readClientCommerce(db: Database, party: Party): Promise<Cl
     email,
     orders: orders.map(({ order, lineCount }) => ({
       orderId: order.id,
+      reference: order.reference,
       status: order.status,
       totalPence: order.totalPence,
       lineCount: Number(lineCount),

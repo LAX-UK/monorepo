@@ -215,9 +215,12 @@ export function createdRangeLabel(query: OrderListQuery): string | null {
     : `Created until ${format(query.to ?? "")}`;
 }
 
-/** What staff quote as the order number: the first eight characters of the order id, as on the order page. */
-export function orderNumber(orderId: string): string {
-  return orderId.slice(0, 8);
+/**
+ * What staff quote for an order: its reference ("LAX-S-10482"), as the shopper sees it. Where a
+ * response carries no reference yet, the first eight characters of the order id.
+ */
+export function orderNumber(orderId: string, reference?: string | null): string {
+  return reference?.trim() || orderId.slice(0, 8);
 }
 
 /** The headline for a buyer: their name, else their email, else the account they bought with. */

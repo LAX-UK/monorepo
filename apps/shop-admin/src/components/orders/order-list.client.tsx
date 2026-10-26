@@ -74,7 +74,7 @@ function ordersCsv(rows: readonly OrderRow[]): string {
   const header = ["Order", "Buyer", "Email", "Status", "Total", "Created"];
   const lines = rows.map((row) =>
     [
-      orderNumber(row.orderId),
+      orderNumber(row.orderId, row.reference),
       orderBuyerName(row),
       row.buyerEmail ?? "",
       ORDER_STATUS_LABELS[row.status as AdminOrderStatus] ?? row.status,
@@ -153,7 +153,7 @@ export function OrderList({
         cell: (row) => (
           <span className="tabular-nums">
             <PrimaryCell href={`/orders/${row.orderId}`} Link={Link}>
-              {orderNumber(row.orderId)}
+              {orderNumber(row.orderId, row.reference)}
             </PrimaryCell>
           </span>
         ),
@@ -370,7 +370,9 @@ export function OrderList({
                 icon={<Copy aria-hidden />}
                 onClick={() => {
                   void navigator.clipboard
-                    ?.writeText(rows.map((row) => orderNumber(row.orderId)).join("\n"))
+                    ?.writeText(
+                      rows.map((row) => orderNumber(row.orderId, row.reference)).join("\n"),
+                    )
                     .then(() => toast.success("Order numbers copied"));
                 }}
               >
@@ -379,7 +381,7 @@ export function OrderList({
             </>
           ),
           rowActions: {
-            label: (row) => `Actions for order ${orderNumber(row.orderId)}`,
+            label: (row) => `Actions for order ${orderNumber(row.orderId, row.reference)}`,
             actions: (row) => [
               { id: "preview", label: "Quick view", onSelect: () => setOpenOrderId(row.orderId) },
               { id: "open", label: "Open order", href: `/orders/${row.orderId}` },
@@ -388,7 +390,7 @@ export function OrderList({
                 label: "Copy order number",
                 onSelect: () => {
                   void navigator.clipboard
-                    ?.writeText(orderNumber(row.orderId))
+                    ?.writeText(orderNumber(row.orderId, row.reference))
                     .then(() => toast.success("Order number copied"));
                 },
               },

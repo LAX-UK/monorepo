@@ -86,7 +86,7 @@ export function ProductionQueue({
           <PrimaryCell
             href={list.panelHref(row.taskId)}
             Link={list.panel.PanelLink}
-            secondary={`Order ${orderNumber(row.orderId)}`}
+            secondary={`Order ${orderNumber(row.orderId, row.orderReference)}`}
           >
             {productionTaskTitle(row)}
           </PrimaryCell>
@@ -248,7 +248,7 @@ export function ProductionQueue({
         meta={
           opened
             ? [
-                { label: "Order", value: orderNumber(opened.orderId) },
+                { label: "Order", value: orderNumber(opened.orderId, opened.orderReference) },
                 {
                   label: "Created",
                   value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
