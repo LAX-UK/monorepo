@@ -86,7 +86,7 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         if: matrix.layer == 'ephemeral'
         with:
-          version: 1.155.0
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Resolve monorepo app image tag for Terraform drift check
         if: matrix.layer == 'ephemeral'

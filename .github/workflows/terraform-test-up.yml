@@ -185,7 +185,7 @@ jobs:
             .infra-config/terraform/ephemeral/prod/main.tf
       - uses: digitalocean/action-doctl@v2
         with:
-          version: 1.155.0
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Resolve monorepo app image tag for Terraform
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
