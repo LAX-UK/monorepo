@@ -278,7 +278,11 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
         ) : null}
 
         <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <Detail label="ATG auction ID" value={view.atgAuctionId ?? "—"} mono />
+          <Detail
+            label="ATG auction ID"
+            value={view.atgAuctionId ?? "—"}
+            mono={view.atgAuctionId != null}
+          />
           <Detail label="Lots on ATG" value={`${linkedLots} of ${view.lots.length}`} />
           <Detail label="Last pushed" value={formatDateTime(view.lastSyncedAt)} />
           <Detail label="Published" value={formatDateTime(view.publishedAt)} />
@@ -292,76 +296,88 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
           ) : null}
         </dl>
 
-        {view.lastError && !syncing ? (
+        {(view.lastError || lotsWithErrors > 0) && !syncing ? (
           <Alert variant="destructive">
             <AlertTitle>Last sync reported a problem</AlertTitle>
-            <AlertDescription className="whitespace-pre-line">{view.lastError}</AlertDescription>
+            {lotsWithErrors > 0 ? (
+              // Each lot's own error is on its row below; say it once here.
+              <AlertDescription>
+                {lotsWithErrors === 1 ? "1 lot needs" : `${lotsWithErrors} lots need`} fixing before
+                this sale can be published on ATG. The error is shown on{" "}
+                {lotsWithErrors === 1 ? "its row" : "each row"} in the lots below.
+              </AlertDescription>
+            ) : (
+              <AlertDescription className="whitespace-pre-line">{view.lastError}</AlertDescription>
+            )}
           </Alert>
         ) : null}
 
-        {lotsWithErrors > 0 && !syncing ? (
-          <p className="text-sm text-error">
-            {lotsWithErrors === 1 ? "1 lot needs" : `${lotsWithErrors} lots need`} fixing before
-            this sale can be published on ATG.
-          </p>
-        ) : null}
+        <div className="border-t border-border-hairline pt-6">
+          <AtgSettingsSection
+            key={`${view.settings.auctionType}:${view.settings.distribution}`}
+            saleId={saleId}
+            view={view}
+            canManage={canManage}
+            busy={busy}
+            lockedReason={settingsLockedReason}
+            onSaved={(pushJobId) => {
+              if (pushJobId) {
+                setWaiting({
+                  jobId: pushJobId,
+                  until: Date.now() + ATG_JOB_TIMEOUT_MS,
+                  slow: false,
+                });
+              }
+            }}
+          />
+        </div>
 
-        <AtgSettingsSection
-          key={`${view.settings.auctionType}:${view.settings.distribution}`}
-          saleId={saleId}
-          view={view}
-          canManage={canManage}
-          busy={busy}
-          lockedReason={settingsLockedReason}
-          onSaved={(pushJobId) => {
-            if (pushJobId) {
-              setWaiting({ jobId: pushJobId, until: Date.now() + ATG_JOB_TIMEOUT_MS, slow: false });
-            }
-          }}
-        />
+        {readiness.length > 0 || canManage ? (
+          <div className="space-y-4 border-t border-border-hairline pt-6">
+            {readiness.length > 0 ? (
+              <Alert variant="warning">
+                <AlertTitle>Not ready to publish on ATG</AlertTitle>
+                <AlertDescription>
+                  <ul className="mt-1 list-disc space-y-1 pl-5">
+                    {readiness.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
-        {readiness.length > 0 ? (
-          <Alert variant="warning">
-            <AlertTitle>Not ready to publish on ATG</AlertTitle>
-            <AlertDescription>
-              <ul className="mt-1 list-disc space-y-1 pl-5">
-                {readiness.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        {canManage ? (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                disabled={busy || atgActionsBlocked || (closed && !view.saleCancelled)}
-                onClick={() => run("push")}
-              >
-                {view.linked ? "Push changes to ATG" : "Push to ATG"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy || atgActionsBlocked || published}
-                onClick={() => setConfirm("publish")}
-              >
-                {published ? "Published" : "Publish on ATG"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy || closed || !view.linked}
-                onClick={() => setConfirm("close")}
-              >
-                Close on ATG
-              </Button>
-              <SyncProgress waiting={waiting} />
-            </div>
-            <p className="text-sm text-on-surface-variant">{actionHint(view)}</p>
+            {canManage ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    disabled={busy || atgActionsBlocked || (closed && !view.saleCancelled)}
+                    onClick={() => run("push")}
+                  >
+                    {view.linked ? "Push changes to ATG" : "Push to ATG"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy || atgActionsBlocked || published}
+                    onClick={() => setConfirm("publish")}
+                  >
+                    {published ? "Published" : "Publish on ATG"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || closed || !view.linked}
+                    onClick={() => setConfirm("close")}
+                  >
+                    Close on ATG
+                  </Button>
+                  <SyncProgress waiting={waiting} />
+                </div>
+                <p className="text-sm text-on-surface-variant">{actionHint(view)}</p>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -371,31 +387,49 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
             description="Cancelled and deleted lots are not sent to ATG."
           />
         ) : (
-          <Table>
+          // Below sm the table keeps title and ATG state only, so it fits without sideways
+          // scrolling; the lot number and price move under the title.
+          <Table className="[&>table]:min-w-0 sm:[&>table]:min-w-lg">
             <TableHead>
               <TableRow>
-                <TableHeaderCell>Lot</TableHeaderCell>
+                <TableHeaderCell className="hidden sm:table-cell">Lot</TableHeaderCell>
                 <TableHeaderCell>Title</TableHeaderCell>
                 <TableHeaderCell>ATG</TableHeaderCell>
-                <TableHeaderCell>Images</TableHeaderCell>
-                <TableHeaderCell>Current / hammer</TableHeaderCell>
-                {showResultColumn ? <TableHeaderCell>Result</TableHeaderCell> : null}
-                {showResults ? <TableHeaderCell>Paddle</TableHeaderCell> : null}
+                <TableHeaderCell className="hidden sm:table-cell">Images</TableHeaderCell>
+                <TableHeaderCell className="hidden sm:table-cell">Current / hammer</TableHeaderCell>
+                {showResultColumn ? (
+                  <TableHeaderCell className="hidden sm:table-cell">Result</TableHeaderCell>
+                ) : null}
+                {showResults ? (
+                  <TableHeaderCell className="hidden sm:table-cell">Paddle</TableHeaderCell>
+                ) : null}
               </TableRow>
             </TableHead>
             <TableBody>
               {view.lots.map((lot) => {
                 const state = atgLotState(lot);
                 const resultRow = lot.atgLotId ? resultMap.get(lot.atgLotId) : undefined;
+                const price =
+                  lot.hammerPrice != null
+                    ? { label: "Hammer", value: formatMoney(lot.hammerPrice) }
+                    : lot.currentMaxBid != null
+                      ? { label: "Bid", value: formatMoney(lot.currentMaxBid) }
+                      : null;
                 return (
                   <TableRow key={lot.lotId}>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {lot.lotNumber ?? (
                         <span className="text-xs text-on-surface-variant">No lot number</span>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-xs">
-                      <span className="block truncate">{lot.title}</span>
+                    <TableCell className="w-full max-w-0 sm:w-auto sm:max-w-xs">
+                      <span className="block whitespace-normal break-words sm:truncate sm:whitespace-nowrap">
+                        {lot.title}
+                      </span>
+                      <span className="block text-xs text-on-surface-variant sm:hidden">
+                        {lot.lotNumber != null ? `Lot ${lot.lotNumber}` : "No lot number"}
+                        {price ? ` · ${price.label} ${price.value}` : null}
+                      </span>
                       {lot.lastError ? (
                         <span className="block whitespace-normal break-words text-xs text-error">
                           {lot.lastError}
@@ -404,25 +438,29 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
                       {lot.lastError && canManage ? (
                         <Link
                           href={adminLotEditHref(lot.lotId)}
-                          className="text-xs font-medium text-link underline-offset-4 hover:underline"
+                          className="text-xs font-medium text-primary underline underline-offset-4"
                         >
                           Edit lot
                         </Link>
                       ) : null}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <StatusBadge variant={state.variant}>{state.label}</StatusBadge>
                     </TableCell>
-                    <TableCell>{lot.atgLotId ? lot.imageCount : "—"}</TableCell>
-                    <TableCell>
-                      {lot.hammerPrice != null
-                        ? formatMoney(lot.hammerPrice)
-                        : lot.currentMaxBid != null
-                          ? formatMoney(lot.currentMaxBid)
-                          : "—"}
+                    <TableCell className="hidden sm:table-cell">
+                      {lot.atgLotId ? lot.imageCount : "—"}
                     </TableCell>
-                    {showResultColumn ? <TableCell>{lotResultText(lot) ?? "—"}</TableCell> : null}
-                    {showResults ? <TableCell>{resultRow?.paddleNumber ?? "—"}</TableCell> : null}
+                    <TableCell className="hidden sm:table-cell">{price?.value ?? "—"}</TableCell>
+                    {showResultColumn ? (
+                      <TableCell className="hidden sm:table-cell">
+                        {lotResultText(lot) ?? "—"}
+                      </TableCell>
+                    ) : null}
+                    {showResults ? (
+                      <TableCell className="hidden sm:table-cell">
+                        {resultRow?.paddleNumber ?? "—"}
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })}
@@ -472,7 +510,7 @@ function Detail({ label, value, mono = false }: { label: string; value: string; 
       <dt className="font-label text-xs uppercase tracking-wide text-on-surface-variant">
         {label}
       </dt>
-      <dd className={mono ? "break-all font-mono text-xs text-on-surface" : "text-on-surface"}>
+      <dd className={mono ? "break-all font-mono text-sm text-on-surface" : "text-on-surface"}>
         {value}
       </dd>
     </div>

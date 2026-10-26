@@ -124,7 +124,8 @@ describe("SaleAtgTab", () => {
     );
     expect(screen.getByText("Not ready to publish on ATG")).toBeInTheDocument();
     expect(screen.getByText("“Garden study” needs a lot number.")).toBeInTheDocument();
-    expect(screen.getByText("No lot number")).toBeInTheDocument();
+    // Shown in the Lot column on wide screens and under the title on narrow ones.
+    expect(screen.getAllByText("No lot number").length).toBeGreaterThan(0);
   });
 
   it("leaves lot sync errors out of the readiness notice", () => {
