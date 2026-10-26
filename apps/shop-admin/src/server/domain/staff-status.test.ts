@@ -1,4 +1,5 @@
 import {
+  ADMIN_ARTWORK_STATES,
   ADMIN_DISPUTE_STATUSES,
   ADMIN_FULFILMENT_STATUSES,
   ADMIN_ORIGINAL_SALE_STATUSES,
@@ -6,6 +7,7 @@ import {
   ADMIN_SALE_AUTHORITY_REQUEST_STATUSES,
   ADMIN_STOCK_HOLD_STATUSES,
   ADMIN_THIRD_PARTY_SALE_STATUSES,
+  ENQUIRY_STATUSES,
   PRODUCTION_TASK_STATUSES,
 } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
@@ -20,6 +22,13 @@ const DOMAINS: [LaxStatusDomain, readonly string[]][] = [
   ["saleRequest", ADMIN_SALE_AUTHORITY_REQUEST_STATUSES],
   ["dispute", ADMIN_DISPUTE_STATUSES],
   ["production", PRODUCTION_TASK_STATUSES],
+  ["artwork", ADMIN_ARTWORK_STATES],
+  ["artist", ["active", "archived"]],
+  ["edition", ["not_authorised", "authorised", "reserved", "held", "sold", "withdrawn"]],
+  ["merchandise", ["active", "archived"]],
+  ["editorial", ["draft", "published"]],
+  ["help", ["draft", "published"]],
+  ["enquiry", ENQUIRY_STATUSES],
 ];
 
 describe("staffStatus", () => {

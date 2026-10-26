@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { artistListApiQuery, artistListHref, parseArtistListQuery } from "./artist-list.vm";
 import {
   artworkPermissions,
   artworkVisibilityActions,
@@ -68,25 +67,5 @@ describe("artwork editor view-model", () => {
     });
     expect(artworkPermissions(["catalogue.write"])).toEqual({ write: true, setPrice: false });
     expect(artworkPermissions(["order.read"])).toEqual({ write: false, setPrice: false });
-  });
-});
-
-describe("artist list URL state", () => {
-  it("defaults to active artists and keeps other views in the URL", () => {
-    expect(parseArtistListQuery({})).toEqual({});
-    expect(artistListApiQuery({})).toEqual({ status: "active" });
-    expect(artistListApiQuery({ view: "archived", q: "ada" })).toEqual({
-      status: "archived",
-      q: "ada",
-    });
-    expect(artistListApiQuery({ view: "all" })).toEqual({});
-  });
-
-  it("drops an unknown view and returns to page one on change", () => {
-    expect(parseArtistListQuery({ view: "deleted", q: " ada " })).toEqual({ q: "ada" });
-    expect(artistListHref({ q: "ada", cursor: "c" }, { view: "archived" })).toBe(
-      "/artists?q=ada&view=archived",
-    );
-    expect(artistListHref({ view: "archived" }, { view: "active" })).toBe("/artists");
   });
 });

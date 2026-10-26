@@ -1,59 +1,42 @@
 import { ARTWORK_LIST_SEARCH_MAX_LENGTH } from "@auction/shop-contracts";
-import { defineStatusMap } from "@auction/staff-ui";
-import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
+import { defineWorkList } from "./work-list.vm";
 
 export const ARTIST_LIST_PATH = "/artists";
 
-/** Active is the default view: archived artists are kept for history, not day-to-day work. */
-export const ARTIST_VIEWS = ["active", "archived", "all"] as const;
-export type ArtistView = (typeof ARTIST_VIEWS)[number];
-
-export const ARTIST_VIEW_LABELS: Record<ArtistView, string> = {
-  active: "Active",
-  archived: "Archived",
-  all: "All",
-};
-
-export type ArtistListQuery = { q?: string; view?: Exclude<ArtistView, "active">; cursor?: string };
-
-export const presentArtistStatus = defineStatusMap<"active" | "archived">({
-  active: { label: "Active", tone: "success" },
-  archived: { label: "Archived", tone: "neutral" },
+/**
+ * The artist list's URL rules. Active is the default view, because archived artists are kept for
+ * history rather than day-to-day work. The server orders by when the artist was added, newest
+ * first, with the artist id breaking ties; oldest first is the other direction.
+ */
+export const artistList = defineWorkList({
+  path: ARTIST_LIST_PATH,
+  views: [
+    { id: "active", label: "Active", api: { status: "active" }, statuses: ["active"] },
+    { id: "archived", label: "Archived", api: { status: "archived" }, statuses: ["archived"] },
+    { id: "all", label: "All", api: {} },
+  ],
+  defaultView: "active",
+  filters: {},
+  sorts: { created: { asc: "created_asc", desc: "created_desc" } },
+  defaultSort: "created_desc",
+  panelParam: "artist",
+  searchMaxLength: ARTWORK_LIST_SEARCH_MAX_LENGTH,
 });
 
-export function parseArtistListQuery(params: RawSearchParams): ArtistListQuery {
-  const q = singleParam(params.q)?.slice(0, ARTWORK_LIST_SEARCH_MAX_LENGTH);
-  const view = oneOf(singleParam(params.view), ["archived", "all"] as const);
-  const cursor = singleParam(params.cursor);
-  return {
-    ...(q ? { q } : {}),
-    ...(view ? { view } : {}),
-    ...(cursor ? { cursor } : {}),
-  };
+export type ArtistListState = ReturnType<typeof artistList.parse>;
+
+/** The artist's record page. */
+export function artistHref(artistId: string): string {
+  return `${ARTIST_LIST_PATH}/${artistId}`;
 }
 
-export function artistListView(query: ArtistListQuery): ArtistView {
-  return query.view ?? "active";
+/** The artwork list narrowed to one artist. */
+export function artistArtworksHref(artistId: string): string {
+  return `/artworks?artist=${artistId}`;
 }
 
-export function artistListHref(
-  query: ArtistListQuery,
-  change: { q?: string | null; view?: ArtistView | null } = {},
-): string {
-  const view =
-    change.view === undefined ? query.view : change.view === "active" ? undefined : change.view;
-  const q = change.q === undefined ? query.q : (change.q ?? undefined);
-  return listHref(ARTIST_LIST_PATH, { q, view: view ?? undefined });
-}
-
-export function artistListPageHref(query: ArtistListQuery, cursor: string): string {
-  return listHref(ARTIST_LIST_PATH, { ...query, cursor });
-}
-
-export function artistListApiQuery(query: ArtistListQuery): Record<string, string> {
-  const view = artistListView(query);
-  return {
-    ...(query.q ? { q: query.q } : {}),
-    ...(view === "all" ? {} : { status: view }),
-  };
+/** "3 artworks", "No artworks". */
+export function artworkCountLabel(count: number): string {
+  if (count === 0) return "No artworks";
+  return `${count} ${count === 1 ? "artwork" : "artworks"}`;
 }

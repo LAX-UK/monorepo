@@ -150,7 +150,7 @@ describe("artwork list", () => {
   it("shows staff the edition counts and the edition price", () => {
     renderList();
     expect(screen.getAllByText("£450.00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/24 sold/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("2 of 24").length).toBeGreaterThan(0);
   });
 
   it("offers no selection to staff who cannot change the catalogue", () => {
@@ -158,14 +158,18 @@ describe("artwork list", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
-  it("publishes the selected drafts and reports the result", async () => {
+  it("confirms before publishing the selected drafts, then reports the result", async () => {
     bulkArtworkVisibility.mockResolvedValue({
       ok: true,
       data: { results: [{ artworkId: page.items[0]?.artworkId, outcome: "changed" }] },
     });
     renderList();
     fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row 1" })[0] as HTMLElement);
-    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    fireEvent.click(screen.getByRole("button", { name: "Publish…" }));
+    expect(bulkArtworkVisibility).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("goes on LAX Shop now");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish artwork" }));
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Published 1 artwork"));
     expect(bulkArtworkVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ action: "publish", artworkIds: [page.items[0]?.artworkId] }),
@@ -182,10 +186,10 @@ describe("artwork list", () => {
     });
     renderList();
     fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row 2" })[0] as HTMLElement);
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive…" }));
     expect(bulkArtworkVisibility).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Archive" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Archive artwork" }));
     await waitFor(() =>
       expect(toastWarning).toHaveBeenCalledWith(
         "No artworks were archived. 1 could not be changed.",
@@ -196,7 +200,7 @@ describe("artwork list", () => {
 
   it("explains an empty filtered list and offers to clear it", () => {
     renderList({ page: { ...page, items: [] }, query: { q: "nothing" } });
-    expect(screen.getByText("No artworks match these filters")).toBeInTheDocument();
+    expect(screen.getByText("No artworks match")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(push).toHaveBeenCalledWith("/artworks", { scroll: false });
   });

@@ -1,13 +1,16 @@
 "use client";
 
-import { ArtistPicker } from "@/components/artworks/artist-picker.client";
 import { ArtworkQuickView } from "@/components/artworks/artwork-quick-view.client";
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
 import { useListNavigation } from "@/components/use-list-navigation.client";
+import { useListPanel } from "@/components/use-list-panel.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
-import { bulkArtworkVisibility } from "@/server/application/admin-artwork-actions.server";
 import {
-  ARTWORK_LIST_PATH,
+  bulkArtworkVisibility,
+  searchArtistOptions,
+} from "@/server/application/admin-artwork-actions.server";
+import {
+  ARTWORK_DEFAULT_SORT,
   ARTWORK_STATE_LABELS,
   ARTWORK_VIEW_ORDER,
   type ArtworkListQuery,
@@ -16,47 +19,62 @@ import {
   VISIBILITY_ACTION_LABELS,
   artworkListHref,
   artworkListPageHref,
+  artworkPageSize,
+  artworkPanelHref,
   artworkPriceLabel,
+  artworkSortParam,
+  artworkSortState,
   bulkVisibilityActions,
   editionSizeLabel,
   hasActiveArtworkFilters,
-  presentArtworkState,
   summariseBulkVisibility,
+  visibilityConfirmCopy,
 } from "@/server/domain/artwork-list.vm";
+import { presentStatus } from "@/server/domain/staff-status";
+import { pageSummary } from "@/server/domain/work-list.vm";
 import {
   ADMIN_ARTWORK_CHANNELS,
   ADMIN_ARTWORK_SALE_STATES,
+  type AdminArtworkChannel,
   type AdminArtworkList,
   type AdminArtworkListItem,
+  type AdminArtworkSaleState,
   type AdminArtworkVisibilityAction,
 } from "@auction/shop-contracts";
 import {
-  ActiveFilterChips,
+  type ActiveFilter,
   ConfirmActionDialog,
   type DataColumn,
-  DataTable,
-  DataTableToolbar,
   DataViews,
-  DensityToggle,
-  EmptyState,
+  FilterSheet,
+  ListPage,
   MappedStatusBadge,
-  NoResultsState,
+  type OverflowAction,
+  OverflowMenu,
+  PrimaryCell,
   StaffButton,
-  StaffMenu,
-  StaffMenuCheckboxItem,
-  StaffMenuContent,
-  StaffMenuLabel,
-  StaffMenuTrigger,
-  TablePagination,
+  StaffDate,
+  type StaffLinkComponent,
   TableSearch,
-  formatStaffDateTime,
   toast,
-  useTableDensity,
 } from "@auction/staff-ui";
-import { Archive, ArchiveRestore, Eye, EyeOff, Plus, Store, Tag } from "@auction/staff-ui/icons";
+import {
+  Archive,
+  ArchiveRestore,
+  Eye,
+  EyeOff,
+  FileInput,
+  PanelRight,
+  PenLine,
+  Plus,
+} from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+const NextLink: StaffLinkComponent = Link;
+
+const presentArtworkStatus = presentStatus("artwork");
 
 const ACTION_ICON: Record<AdminArtworkVisibilityAction, typeof Eye> = {
   publish: Eye,
@@ -70,60 +88,82 @@ export type ArtworkListPermissions = {
   write: boolean;
 };
 
+type PendingChange = {
+  action: AdminArtworkVisibilityAction;
+  rows: Pick<AdminArtworkListItem, "artworkId" | "title" | "salesChannel">[];
+};
+
 /**
- * The artwork list: views by state with counts, search by title or artist, filters for artist,
- * sale state and channel, a quick view on Enter or click, and bulk publish, unpublish and archive
- * for roles that may change the catalogue. Every filter lives in the URL.
+ * The artwork list on the staff list template: views by state with counts, search by title or
+ * artist, a filter sheet for artist, sale state and channel, last changed first on the server,
+ * and a record panel linked from the URL (`?artwork=`). Publishing, unpublishing, archiving and
+ * restoring, one row or a selection, ask first and say what the storefront shows afterwards.
  */
 export function ArtworkList({
   query,
   page,
   selectedArtistName,
   permissions,
+  loadFailed = false,
 }: {
   query: ArtworkListQuery;
   page: AdminArtworkList;
-  /** The filtered artist's name, for the picker and its chip. */
+  /** The filtered artist's name, for the filter sheet and its chip. */
   selectedArtistName: string | null;
   permissions: ArtworkListPermissions;
+  loadFailed?: boolean;
 }) {
   const router = useRouter();
   const { pending, navigate, Link: ListLink } = useListNavigation();
-  const [density, setDensity] = useTableDensity("artworks");
+  const hrefFor = useCallback((id: string | null) => artworkPanelHref(query, id), [query]);
+  const panel = useListPanel({ param: "artwork", initialId: query.artwork, hrefFor });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [confirmArchive, setConfirmArchive] = useState<AdminArtworkListItem[] | null>(null);
-  const [running, setRunning] = useState<AdminArtworkVisibilityAction | null>(null);
+  const [change, setChange] = useState<PendingChange | null>(null);
+  const [running, setRunning] = useState(false);
   const filtered = hasActiveArtworkFilters(query);
-  const total = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
+  const counts = page.counts;
+  const total = counts ? Object.values(counts).reduce((sum, count) => sum + count, 0) : undefined;
 
-  const views = [
-    { id: "all", label: "All", href: artworkListHref(query, { state: null }), count: total },
-    ...ARTWORK_VIEW_ORDER.map((state) => ({
-      id: state,
-      label: ARTWORK_STATE_LABELS[state],
-      href: artworkListHref(query, { state }),
-      count: page.counts[state],
-    })),
-  ];
+  const views = (
+    <DataViews
+      activeId={query.state ?? "all"}
+      Link={ListLink}
+      views={[
+        {
+          id: "all",
+          label: "All",
+          href: artworkListHref(query, { state: null }),
+          ...(total !== undefined ? { count: total } : {}),
+        },
+        ...ARTWORK_VIEW_ORDER.map((state) => ({
+          id: state,
+          label: ARTWORK_STATE_LABELS[state],
+          href: artworkListHref(query, { state }),
+          ...(counts ? { count: counts[state] } : {}),
+        })),
+      ]}
+    />
+  );
 
   const titleOf = (artworkId: string) =>
-    page.items.find((item) => item.artworkId === artworkId)?.title ?? "An artwork";
+    change?.rows.find((row) => row.artworkId === artworkId)?.title ??
+    page.items.find((item) => item.artworkId === artworkId)?.title ??
+    "An artwork";
 
-  async function runBulk(action: AdminArtworkVisibilityAction, rows: AdminArtworkListItem[]) {
-    setRunning(action);
+  async function apply(pendingChange: PendingChange) {
+    setRunning(true);
     const result = await bulkArtworkVisibility({
-      action,
-      artworkIds: rows.map((row) => row.artworkId),
+      action: pendingChange.action,
+      artworkIds: pendingChange.rows.map((row) => row.artworkId),
       idempotencyKey: crypto.randomUUID(),
     }).catch(() => ({ ok: false, kind: "failed", message: "Action failed. Try again." }) as const);
-    setRunning(null);
-    setConfirmArchive(null);
+    setRunning(false);
+    setChange(null);
     if (!result.ok) {
       toast.error(adminMutationErrorMessage(result));
       return;
     }
-    const summary = summariseBulkVisibility(action, result.data, titleOf);
+    const summary = summariseBulkVisibility(pendingChange.action, result.data, titleOf);
     if (summary.tone === "success") toast.success(summary.message);
     else toast.warning(summary.message, { description: summary.refusals.join(" ") });
     setSelected(new Set());
@@ -143,86 +183,79 @@ export function ArtworkList({
         id: "title",
         header: "Title",
         mobile: "title",
-        sortable: true,
-        sortValue: (row) => row.title.toLowerCase(),
         cell: (row) => (
-          <Link
-            href={`/artworks/${row.artworkId}`}
-            className="staff-focus block min-w-0 truncate rounded-staff-xs font-medium text-staff-fg hover:underline"
+          <PrimaryCell
+            href={artworkPanelHref(query, row.artworkId)}
+            Link={panel.PanelLink}
+            secondary={row.artistName}
           >
             {row.title}
-          </Link>
+          </PrimaryCell>
         ),
-      },
-      {
-        id: "artist",
-        header: "Artist",
-        mobile: "meta",
-        sortable: true,
-        sortValue: (row) => row.artistName.toLowerCase(),
-        cell: (row) => <span className="block truncate">{row.artistName}</span>,
       },
       {
         id: "edition",
-        header: "Edition",
-        width: "112px",
+        header: "Editions sold",
+        width: "128px",
         numeric: true,
         hideBelow: "lg",
-        mobile: "hidden",
+        mobile: "meta",
         cell: (row) =>
-          row.editionSize > 0 ? (
-            <span className="tabular-nums">
-              {row.soldEditionCount}
-              <span className="text-staff-muted"> / {editionSizeLabel(row)} sold</span>
-            </span>
-          ) : (
-            <span className="text-staff-muted">{editionSizeLabel(row)}</span>
-          ),
+          row.editionSize > 0
+            ? `${row.soldEditionCount} of ${editionSizeLabel(row)}`
+            : editionSizeLabel(row),
       },
       {
         id: "price",
-        header: "Price",
-        width: "128px",
+        header: "Edition price",
+        width: "136px",
         numeric: true,
-        sortable: true,
-        sortValue: (row) => row.printPricePence,
-        defaultSortDirection: "desc",
         mobile: "meta",
-        cell: (row) =>
-          row.printPricePence === null ? (
-            <span className="text-staff-muted">{artworkPriceLabel(row)}</span>
-          ) : (
-            artworkPriceLabel(row)
-          ),
+        cell: (row) => artworkPriceLabel(row),
+      },
+      {
+        id: "channel",
+        header: "Sold on",
+        width: "112px",
+        hideBelow: "xl",
+        mobile: "hidden",
+        cell: (row) => CHANNEL_LABELS[row.salesChannel],
       },
       {
         id: "state",
-        header: "State",
-        width: "112px",
+        header: "Status",
+        width: "120px",
         mobile: "badge",
-        cell: (row) => <MappedStatusBadge status={row.state} present={presentArtworkState} />,
+        truncate: false,
+        cell: (row) => <MappedStatusBadge status={row.state} present={presentArtworkStatus} />,
       },
       {
         id: "updated",
-        header: "Updated",
-        width: "168px",
-        numeric: true,
+        header: "Last changed",
+        width: "184px",
         sortable: true,
-        sortValue: (row) => row.updatedAt,
         defaultSortDirection: "desc",
-        hideBelow: "xl",
+        hideBelow: "lg",
         mobile: "hidden",
-        cell: (row) => (
-          <time dateTime={row.updatedAt} className="text-staff-muted">
-            {formatStaffDateTime(row.updatedAt)}
-          </time>
-        ),
+        truncate: false,
+        cell: (row) => <StaffDate value={row.updatedAt} withTime />,
       },
     ],
-    [],
+    [query, panel.PanelLink],
   );
 
-  const activeFilters = [
+  const visibilityActions = (row: AdminArtworkListItem): OverflowAction[] =>
+    permissions.write
+      ? bulkVisibilityActions([row]).map((action) => ({
+          id: action,
+          label: `${VISIBILITY_ACTION_LABELS[action].verb}…`,
+          icon: ACTION_ICON[action],
+          ...(action === "archive" ? { tone: "danger" as const } : {}),
+          onSelect: () => setChange({ action, rows: [row] }),
+        }))
+      : [];
+
+  const chips: ActiveFilter[] = [
     ...(query.q
       ? [
           {
@@ -245,7 +278,7 @@ export function ArtworkList({
       ? [
           {
             id: "sale",
-            label: SALE_STATE_LABELS[query.sale],
+            label: `Sale: ${SALE_STATE_LABELS[query.sale]}`,
             onRemove: () => navigate(artworkListHref(query, { sale: null })),
           },
         ]
@@ -254,211 +287,245 @@ export function ArtworkList({
       ? [
           {
             id: "channel",
-            label: CHANNEL_LABELS[query.channel],
+            label: `Sold on: ${CHANNEL_LABELS[query.channel]}`,
             onRemove: () => navigate(artworkListHref(query, { channel: null })),
           },
         ]
       : []),
   ];
 
-  const viewLabel = query.state ? ARTWORK_STATE_LABELS[query.state].toLowerCase() : null;
+  const newArtwork = permissions.write ? (
+    <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
+      <Link href="/artworks/new">New artwork</Link>
+    </StaffButton>
+  ) : undefined;
+
+  const confirm = change ? visibilityConfirmCopy(change.action, change.rows) : null;
 
   return (
     <>
-      <DataTable
-        label="Artworks"
-        columns={columns}
-        data={page.items}
-        getRowId={(row) => row.artworkId}
-        defaultSort={{ columnId: "updated", direction: "desc" }}
-        density={density}
-        loading={pending}
-        onRowOpen={(row) => setOpenId(row.artworkId)}
-        activeRowId={openId}
-        {...(permissions.write
-          ? {
-              selectedIds: selected,
-              onSelectedIdsChange: setSelected,
-              bulkNoun: { one: "artwork", other: "artworks" },
-              bulkActions: (rows: AdminArtworkListItem[]) =>
-                bulkVisibilityActions(rows).map((action) => {
-                  const Icon = ACTION_ICON[action];
-                  return (
-                    <StaffButton
-                      key={action}
-                      size="sm"
-                      variant="ghost"
-                      icon={<Icon aria-hidden />}
-                      loading={running === action}
-                      disabled={running !== null}
-                      onClick={() =>
-                        action === "archive" ? setConfirmArchive(rows) : void runBulk(action, rows)
-                      }
-                    >
-                      {VISIBILITY_ACTION_LABELS[action].verb}
-                    </StaffButton>
-                  );
-                }),
-            }
-          : {})}
-        toolbar={
-          <DataTableToolbar
-            views={<DataViews views={views} activeId={query.state ?? "all"} Link={ListLink} />}
-            search={
-              <TableSearch
-                key={query.q ?? ""}
-                label="Search artworks"
-                placeholder="Title or artist"
-                value={query.q ?? ""}
-                onSearch={(q) => navigate(artworkListHref(query, { q: q || null }))}
-              />
-            }
-            filters={
-              <>
-                <ArtistPicker
-                  compact
-                  aria-label="Filter by artist"
-                  placeholder="Artist"
-                  value={query.artist ?? null}
-                  selectedName={selectedArtistName}
-                  onChange={(artist) =>
-                    navigate(artworkListHref(query, { artist: artist?.id ?? null }))
-                  }
-                />
-                <SingleChoiceMenu
-                  label="Sale"
-                  icon={<Tag aria-hidden />}
-                  options={ADMIN_ARTWORK_SALE_STATES}
-                  labelOf={(value) => SALE_STATE_LABELS[value]}
-                  value={query.sale}
-                  onChange={(sale) => navigate(artworkListHref(query, { sale }))}
-                />
-                <SingleChoiceMenu
-                  label="Channel"
-                  icon={<Store aria-hidden />}
-                  options={ADMIN_ARTWORK_CHANNELS}
-                  labelOf={(value) => CHANNEL_LABELS[value]}
-                  value={query.channel}
-                  onChange={(channel) => navigate(artworkListHref(query, { channel }))}
-                />
-              </>
-            }
-            activeFilters={
-              <ActiveFilterChips
-                filters={activeFilters}
-                onClearAll={() =>
-                  navigate(artworkListHref({ ...(query.state ? { state: query.state } : {}) }))
-                }
-              />
-            }
-            end={<DensityToggle value={density} onChange={setDensity} />}
+      <ListPage<AdminArtworkListItem>
+        title="Artworks"
+        description="Every artwork on LAX Shop and lax.art, drafts and archived works included. Open one to edit its details, price, images and visibility."
+        primaryAction={newArtwork}
+        overflow={
+          permissions.write ? (
+            <OverflowMenu
+              Link={NextLink}
+              label="More artwork actions"
+              actions={[
+                {
+                  id: "import",
+                  label: "Import by catalogue key",
+                  icon: FileInput,
+                  href: "/artworks/import",
+                },
+              ]}
+            />
+          ) : undefined
+        }
+        Link={ListLink}
+        listKey="lax-admin.artworks"
+        views={views}
+        search={
+          <TableSearch
+            key={query.q ?? ""}
+            fullWidth
+            label="Search artworks"
+            placeholder="Search by title or artist"
+            value={query.q ?? ""}
+            onSearch={(q) => navigate(artworkListHref(query, { q: q.slice(0, 100) || null }))}
           />
         }
-        empty={
-          filtered ? (
-            <NoResultsState
-              title="No artworks match these filters"
-              description="Try another search, artist or channel, or clear the filters."
-              action={
-                <StaffButton size="sm" onClick={() => navigate(ARTWORK_LIST_PATH)}>
-                  Clear filters
-                </StaffButton>
-              }
-            />
-          ) : viewLabel ? (
-            <EmptyState
-              illustration="easel"
-              title={`No ${viewLabel} artworks`}
-              description="Artworks move here as they are published, sell out or are archived."
-            />
-          ) : (
-            <EmptyState
-              illustration="easel"
-              title="No artworks yet"
-              description="Add the first artwork; it starts as a draft until you publish it."
-              action={
-                permissions.write ? (
-                  <StaffButton asChild size="sm" variant="primary" icon={<Plus aria-hidden />}>
-                    <Link href="/artworks/new">New artwork</Link>
-                  </StaffButton>
-                ) : undefined
-              }
-            />
-          )
+        filters={
+          <FilterSheet
+            title="Filter artworks"
+            sections={[
+              {
+                kind: "entity",
+                id: "artist",
+                label: "Artist",
+                value: query.artist ?? "",
+                search: searchArtistOptions,
+                selected:
+                  query.artist && selectedArtistName
+                    ? { id: query.artist, label: selectedArtistName }
+                    : null,
+                placeholder: "Any artist",
+                searchPlaceholder: "Search by name",
+                emptyText: "No artists match.",
+              },
+              {
+                kind: "radio",
+                id: "sale",
+                label: "Sale",
+                anyLabel: "Any sale state",
+                options: ADMIN_ARTWORK_SALE_STATES.map((value) => ({
+                  value,
+                  label: SALE_STATE_LABELS[value],
+                })),
+                value: query.sale ?? "",
+              },
+              {
+                kind: "radio",
+                id: "channel",
+                label: "Sold on",
+                anyLabel: "Either storefront",
+                options: ADMIN_ARTWORK_CHANNELS.map((value) => ({
+                  value,
+                  label: CHANNEL_LABELS[value],
+                })),
+                value: query.channel ?? "",
+              },
+            ]}
+            onApply={(values) =>
+              navigate(
+                artworkListHref(query, {
+                  artist: (values.artist as string) || null,
+                  sale: ((values.sale as string) || null) as AdminArtworkSaleState | null,
+                  channel: ((values.channel as string) || null) as AdminArtworkChannel | null,
+                }),
+              )
+            }
+          />
         }
-        footer={
-          page.items.length > 0 ? (
-            <TablePagination
-              summary={`${page.items.length} ${page.items.length === 1 ? "artwork" : "artworks"} on this page`}
-              prevHref={query.cursor ? artworkListHref(query) : null}
-              prevLabel="First page"
-              nextHref={page.nextCursor ? artworkListPageHref(query, page.nextCursor) : null}
-              Link={ListLink}
-            />
-          ) : null
+        activeFilters={chips}
+        onClearFilters={() =>
+          navigate(artworkListHref({ ...(query.state ? { state: query.state } : {}) }))
+        }
+        loading={pending}
+        filtered={filtered}
+        error={
+          loadFailed
+            ? {
+                title: "Artworks did not load",
+                description: "Something went wrong on our side. Try again in a moment.",
+                onRetry: () => navigate(artworkListHref(query)),
+              }
+            : null
+        }
+        empty={
+          query.state
+            ? {
+                illustration: "easel",
+                title: `No ${ARTWORK_STATE_LABELS[query.state].toLowerCase()} artworks`,
+                description: "Artworks move here as they are published, sell out or are archived.",
+              }
+            : {
+                illustration: "easel",
+                title: "No artworks yet",
+                description: "Add the first artwork; it starts as a draft until you publish it.",
+                action: newArtwork,
+              }
+        }
+        noResults={{
+          title: "No artworks match",
+          description: "Try another search, artist or storefront, or clear the filters.",
+        }}
+        table={{
+          columns,
+          data: page.items,
+          getRowId: (row) => row.artworkId,
+          defaultDensity: "comfortable",
+          defaultSort: ARTWORK_DEFAULT_SORT,
+          sort: artworkSortState(query),
+          onSortChange: (sort) =>
+            navigate(artworkListHref(query, { sort: artworkSortParam(sort) })),
+          onRowOpen: (row) => panel.show(row.artworkId),
+          activeRowId: panel.openId,
+          rowActions: {
+            label: (row) => `Actions for ${row.title}`,
+            actions: (row) => [
+              {
+                id: "open",
+                label: "Open details",
+                icon: PanelRight,
+                onSelect: () => panel.show(row.artworkId),
+              },
+              {
+                id: "edit",
+                label: permissions.write ? "Edit artwork" : "Open artwork",
+                icon: PenLine,
+                onSelect: () => router.push(`/artworks/${row.artworkId}`),
+              },
+              ...visibilityActions(row),
+            ],
+          },
+          ...(permissions.write
+            ? {
+                selectedIds: selected,
+                onSelectedIdsChange: setSelected,
+                bulkNoun: { one: "artwork", other: "artworks" },
+                bulkActions: (rows: AdminArtworkListItem[]) =>
+                  bulkVisibilityActions(rows).map((action) => {
+                    const Icon = ACTION_ICON[action];
+                    return (
+                      <StaffButton
+                        key={action}
+                        size="sm"
+                        variant="ghost"
+                        icon={<Icon aria-hidden />}
+                        disabled={running}
+                        onClick={() => setChange({ action, rows })}
+                      >
+                        {VISIBILITY_ACTION_LABELS[action].verb}…
+                      </StaffButton>
+                    );
+                  }),
+              }
+            : {}),
+        }}
+        pageSize={{
+          value: artworkPageSize(query),
+          onChange: (size) =>
+            navigate(artworkListHref(query, { limit: size === 50 ? null : String(size) })),
+        }}
+        pagination={
+          page.items.length > 0
+            ? {
+                summary: pageSummary(page.items.length, { one: "artwork", other: "artworks" }),
+                prevHref: query.cursor ? artworkListHref(query) : null,
+                prevLabel: "First page",
+                nextHref: page.nextCursor ? artworkListPageHref(query, page.nextCursor) : null,
+              }
+            : null
         }
       />
       <ArtworkQuickView
-        artworkId={openId}
+        artworkId={panel.openId}
+        reloadKey={(() => {
+          const row = page.items.find((item) => item.artworkId === panel.openId);
+          return row ? `${row.state}:${row.updatedAt}` : "";
+        })()}
         canWrite={permissions.write}
-        onClose={() => setOpenId(null)}
+        onClose={() => panel.show(null)}
+        onVisibility={(action, detail) =>
+          setChange({
+            action,
+            rows: [
+              {
+                artworkId: detail.artworkId,
+                title: detail.title,
+                salesChannel: detail.salesChannel,
+              },
+            ],
+          })
+        }
       />
       <ConfirmActionDialog
-        open={confirmArchive !== null}
+        open={change !== null}
         onOpenChange={(open) => {
-          if (!open) setConfirmArchive(null);
+          if (!open && !running) setChange(null);
         }}
-        title={`Archive ${confirmArchive?.length ?? 0} ${confirmArchive?.length === 1 ? "artwork" : "artworks"}?`}
-        description="Archived artworks leave the storefront and the default views. Editions, orders and sales stay on record, and you can restore an artwork later as a draft."
-        confirmLabel="Archive"
-        tone="danger"
-        loading={running === "archive"}
-        onConfirm={() => confirmArchive && void runBulk("archive", confirmArchive)}
+        title={confirm?.title ?? ""}
+        description={confirm?.description ?? ""}
+        confirmLabel={confirm?.confirmLabel ?? ""}
+        tone={confirm?.tone ?? "default"}
+        loading={running}
+        onConfirm={() => {
+          if (change) void apply(change);
+        }}
       />
     </>
-  );
-}
-
-/** A single-choice filter as a menu of checked items, like the orders date filter. */
-function SingleChoiceMenu<T extends string>({
-  label,
-  icon,
-  options,
-  labelOf,
-  value,
-  onChange,
-}: {
-  label: string;
-  icon: ReactNode;
-  options: readonly T[];
-  labelOf: (value: T) => string;
-  value: T | undefined;
-  onChange: (value: T | null) => void;
-}) {
-  return (
-    <StaffMenu>
-      <StaffMenuTrigger asChild>
-        <StaffButton
-          size="sm"
-          variant="secondary"
-          icon={icon}
-          className={value ? "border-staff-line-hover" : undefined}
-        >
-          {value ? labelOf(value) : label}
-        </StaffButton>
-      </StaffMenuTrigger>
-      <StaffMenuContent align="start" className="w-56">
-        <StaffMenuLabel>{label}</StaffMenuLabel>
-        {options.map((option) => (
-          <StaffMenuCheckboxItem
-            key={option}
-            checked={value === option}
-            onCheckedChange={(checked) => onChange(checked ? option : null)}
-          >
-            {labelOf(option)}
-          </StaffMenuCheckboxItem>
-        ))}
-      </StaffMenuContent>
-    </StaffMenu>
   );
 }

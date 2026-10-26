@@ -22,7 +22,14 @@ export type LaxStatusDomain =
   | "originalSale"
   | "production"
   | "dispute"
-  | "saleRequest";
+  | "saleRequest"
+  | "artwork"
+  | "artist"
+  | "edition"
+  | "merchandise"
+  | "editorial"
+  | "help"
+  | "enquiry";
 
 const ORDER = Object.fromEntries(
   Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => [
@@ -100,6 +107,41 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     approved: { label: "Approved", tone: "success" },
     rejected: { label: "Declined", tone: "neutral" },
     cancelled: { label: "Withdrawn", tone: "neutral" },
+  },
+  artwork: {
+    live: { label: "Live", tone: "success" },
+    draft: { label: "Draft", tone: "info" },
+    sold_out: { label: "Sold out", tone: "warning" },
+    archived: { label: "Archived", tone: "neutral" },
+  },
+  artist: {
+    active: { label: "Active", tone: "success" },
+    archived: { label: "Archived", tone: "neutral" },
+  },
+  edition: {
+    not_authorised: { label: "Not for sale", tone: "neutral" },
+    authorised: { label: "For sale", tone: "success" },
+    reserved: { label: "Reserved", tone: "info" },
+    held: { label: "On hold", tone: "warning" },
+    sold: { label: "Sold", tone: "neutral" },
+    withdrawn: { label: "Withdrawn", tone: "neutral" },
+  },
+  merchandise: {
+    active: { label: "On sale", tone: "success" },
+    archived: { label: "Archived", tone: "neutral" },
+  },
+  editorial: {
+    draft: { label: "Draft", tone: "info" },
+    published: { label: "Published", tone: "success" },
+  },
+  help: {
+    draft: { label: "Draft", tone: "info" },
+    published: { label: "Published", tone: "success" },
+  },
+  enquiry: {
+    new: { label: "New", tone: "warning" },
+    in_progress: { label: "In progress", tone: "info" },
+    closed: { label: "Closed", tone: "neutral" },
   },
 };
 

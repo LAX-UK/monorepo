@@ -2,17 +2,11 @@
 
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
-import {
-  getArtworkDetail,
-  setArtworkVisibility,
-} from "@/server/application/admin-artwork-actions.server";
+import { getArtworkDetail } from "@/server/application/admin-artwork-actions.server";
 import { editionRunFacts, publishBlockerMessages } from "@/server/domain/artwork-editor.vm";
-import {
-  CHANNEL_LABELS,
-  SALE_STATE_LABELS,
-  presentArtworkState,
-} from "@/server/domain/artwork-list.vm";
-import type { AdminArtworkDetail } from "@auction/shop-contracts";
+import { CHANNEL_LABELS, SALE_STATE_LABELS } from "@/server/domain/artwork-list.vm";
+import { presentStatus } from "@/server/domain/staff-status";
+import type { AdminArtworkDetail, AdminArtworkVisibilityAction } from "@auction/shop-contracts";
 import {
   DetailPanel,
   ErrorState,
@@ -25,12 +19,12 @@ import {
   StatGrid,
   formatGbp,
   formatStaffDateTime,
-  toast,
 } from "@auction/staff-ui";
 import { Eye, EyeOff, PenLine } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+
+const presentArtworkState = presentStatus("artwork");
 
 type LoadState =
   | { status: "loading" }
@@ -60,16 +54,20 @@ function QuickViewSkeleton() {
  */
 export function ArtworkQuickView({
   artworkId,
+  reloadKey = "",
   canWrite,
   onClose,
+  onVisibility,
 }: {
   artworkId: string | null;
+  /** Changes when the list's row for this artwork changes, so the panel reloads with it. */
+  reloadKey?: string;
   canWrite: boolean;
   onClose: () => void;
+  /** Asks to publish or unpublish; the list confirms it first. */
+  onVisibility: (action: AdminArtworkVisibilityAction, detail: AdminArtworkDetail) => void;
 }) {
-  const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: "loading" });
-  const [changing, setChanging] = useState(false);
 
   const load = useCallback((id: string) => {
     setState({ status: "loading" });
@@ -84,32 +82,14 @@ export function ArtworkQuickView({
       .catch(() => setState({ status: "failed", message: "Check your connection and try again." }));
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new reloadKey means the row changed
   useEffect(() => {
     if (artworkId) load(artworkId);
-  }, [artworkId, load]);
+  }, [artworkId, load, reloadKey]);
 
   const detail = state.status === "ok" ? state.detail : null;
   const live = detail?.state === "live" || detail?.state === "sold_out";
   const canPublish = detail?.state === "draft" && detail.publishBlockers.length === 0;
-
-  async function toggle() {
-    if (!detail) return;
-    setChanging(true);
-    const action = live ? "unpublish" : "publish";
-    const result = await setArtworkVisibility({
-      artworkId: detail.artworkId,
-      action,
-      idempotencyKey: crypto.randomUUID(),
-    });
-    setChanging(false);
-    if (!result.ok) {
-      toast.error(adminMutationErrorMessage(result));
-      return;
-    }
-    toast.success(live ? `Unpublished “${detail.title}”` : `Published “${detail.title}”`);
-    load(detail.artworkId);
-    router.refresh();
-  }
 
   return (
     <DetailPanel
@@ -129,10 +109,9 @@ export function ArtworkQuickView({
               <StaffButton
                 variant="secondary"
                 icon={live ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
-                loading={changing}
-                onClick={() => void toggle()}
+                onClick={() => onVisibility(live ? "unpublish" : "publish", detail)}
               >
-                {live ? "Unpublish" : "Publish"}
+                {live ? "Unpublish…" : "Publish…"}
               </StaffButton>
             ) : null}
             <StaffButton asChild variant="primary" icon={<PenLine aria-hidden />}>
@@ -170,7 +149,6 @@ export function ArtworkQuickView({
           <PanelSection title="Details">
             <KeyValueList
               items={[
-                { label: "Artist", value: detail.artist.displayName },
                 { label: "Year", value: detail.yearCreated ?? "—" },
                 { label: "Medium", value: detail.medium ?? "—" },
                 {
@@ -184,8 +162,12 @@ export function ArtworkQuickView({
                   numeric: true,
                 },
                 { label: "Sale", value: SALE_STATE_LABELS[detail.saleState] },
-                { label: "Channel", value: CHANNEL_LABELS[detail.salesChannel] },
-                { label: "Updated", value: formatStaffDateTime(detail.updatedAt) },
+                { label: "Sold on", value: CHANNEL_LABELS[detail.salesChannel] },
+                {
+                  label: "Last changed",
+                  value: formatStaffDateTime(detail.updatedAt, { zoneLabel: true }),
+                },
+                { label: "Artwork ID", value: detail.artworkId, copyValue: detail.artworkId },
               ]}
             />
           </PanelSection>
