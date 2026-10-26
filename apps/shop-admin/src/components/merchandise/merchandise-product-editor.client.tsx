@@ -196,7 +196,11 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
   }
 
   async function save(expectedVersion: string | null = version) {
-    if (!productId || !expectedVersion) return;
+    if (!productId || !expectedVersion || busy !== null) return;
+    if (!dirty && !conflictVersion) {
+      toast.info("Nothing has changed.");
+      return;
+    }
     const found = validateProductFields(form);
     if (!found.ok) {
       setFailedSubmits((count) => count + 1);
@@ -488,7 +492,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
             variant="primary"
             icon={<Save aria-hidden />}
             loading={busy === "save"}
-            disabled={disabled || (productId !== null && !dirty)}
+            disabled={busy !== null && busy !== "save"}
           >
             {productId ? "Save changes" : "Create product"}
           </StaffButton>

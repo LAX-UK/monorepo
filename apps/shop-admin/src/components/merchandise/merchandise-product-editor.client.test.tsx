@@ -34,7 +34,12 @@ vi.mock("next/link", () => ({
   ),
 }));
 vi.mock("sonner", () => ({
-  toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }),
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+  }),
   Toaster: () => null,
 }));
 
@@ -92,6 +97,14 @@ describe("merchandise product editor", () => {
         }),
       );
       expect(await screen.findByText(/^Saved /)).toBeInTheDocument();
+    });
+
+    it("keeps Save available with nothing changed and says so without saving", () => {
+      render(<MerchandiseProductEditor detail={detail} />);
+      const save = screen.getByRole("button", { name: "Save changes" });
+      expect(save).toBeEnabled();
+      fireEvent.click(save);
+      expect(saveMerchandiseProduct).not.toHaveBeenCalled();
     });
 
     it("lists field problems and sends nothing", async () => {
