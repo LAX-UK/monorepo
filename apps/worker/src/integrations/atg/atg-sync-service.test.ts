@@ -411,8 +411,93 @@ describe("AtgSyncService", () => {
 
       expect(err).toBeInstanceOf(AtgSyncPreconditionError);
       expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
-        'ATG did not confirm the new auction (ATG createAuction failed with HTTP 503: busy). Check the ATG admin for "Autumn Contemporary" before pushing again, to avoid a duplicate.',
+        'ATG did not confirm the new auction (ATG createAuction failed with HTTP 503: busy). ATG has no auction for this sale from the last day. Check the ATG admin for "Autumn Contemporary" before pushing again, to avoid a duplicate.',
       );
+    });
+
+    describe("a create whose reply was lost", () => {
+      const lost = (id = "sale-1") => ({
+        atgAuctionId: "atg-found",
+        clientsAuctionId: id,
+        isApproved: false,
+        isPublished: false,
+        statusCode: 0,
+      });
+
+      it("adopts the auction ATG made and carries on with its lots", async () => {
+        gateway.failNext("createAuction", transient("createAuction"));
+        gateway.clientAuctions = [{ ...lost("other-sale"), atgAuctionId: "atg-other" }, lost()];
+
+        const summary = await service.pushSale("sale-1");
+
+        expect(summary).toMatchObject({ created: 2, failed: 0 });
+        expect(gateway.calls.find((c) => c.op === "findAuctionsByClientId")?.arg).toEqual({
+          clientId: "client-1",
+          fromDate: new Date(NOW.getTime() - 24 * 60 * 60 * 1000),
+        });
+        expect(store.auctionLinks.get("sale-1")).toMatchObject({
+          atgAuctionId: "atg-found",
+          atgAuctionReference: "sale-1",
+          remoteStatus: "created",
+          lastError: null,
+        });
+        expect(gateway.calls.find((c) => c.op === "createLot")?.arg).toMatchObject({
+          AuctionId: "atg-found",
+        });
+      });
+
+      it("says so when the lookup itself fails", async () => {
+        gateway.failNext("createAuction", transient("createAuction"));
+        gateway.failNext("findAuctionsByClientId", transient("findAuctionsByClientId"));
+
+        await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+        expect(store.auctionLinks.get("sale-1")?.lastError).toContain(
+          "Looking for it on ATG also failed (ATG findAuctionsByClientId failed with HTTP 503: busy)",
+        );
+      });
+
+      it("keeps the plain error and skips the lookup without a client id", async () => {
+        build({ clientId: null });
+        gateway.failNext("createAuction", transient("createAuction"));
+
+        await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+        expect(gateway.ops()).not.toContain("findAuctionsByClientId");
+        expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
+          'ATG did not confirm the new auction (ATG createAuction failed with HTTP 503: busy). Check the ATG admin for "Autumn Contemporary" before pushing again, to avoid a duplicate.',
+        );
+      });
+
+      it("adopts the earlier auction on a later push instead of creating a duplicate", async () => {
+        gateway.failNext("createAuction", transient("createAuction"));
+        gateway.failNext("findAuctionsByClientId", transient("findAuctionsByClientId"));
+        await service.pushSale("sale-1").catch(() => undefined);
+        gateway.clientAuctions = [lost()];
+        gateway.calls.length = 0;
+
+        await service.pushSale("sale-1");
+
+        expect(gateway.ops()).not.toContain("createAuction");
+        expect(gateway.calls.find((c) => c.op === "findAuctionsByClientId")?.arg).toEqual({
+          clientId: "client-1",
+          fromDate: new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000),
+        });
+        expect(gateway.ops()).toContain("updateAuction");
+        expect(store.auctionLinks.get("sale-1")).toMatchObject({
+          atgAuctionId: "atg-found",
+          lastError: null,
+        });
+      });
+
+      it("stops a later push when the earlier attempt can't be checked", async () => {
+        gateway.failNext("createAuction", transient("createAuction"));
+        gateway.failNext("findAuctionsByClientId", transient("findAuctionsByClientId"));
+        await service.pushSale("sale-1").catch(() => undefined);
+        gateway.failNext("findAuctionsByClientId", transient("findAuctionsByClientId"));
+        gateway.calls.length = 0;
+
+        await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+        expect(gateway.ops()).not.toContain("createAuction");
+      });
     });
 
     it("refuses cancelled sales and stops the tick from re-pushing them", async () => {
@@ -572,7 +657,84 @@ describe("AtgSyncService", () => {
       gateway.calls.length = 0;
 
       expect(await service.tick()).toEqual({ pushed: 0, polled: 0, failed: 0 });
-      expect(gateway.ops()).toEqual([]);
+      expect(gateway.ops()).toEqual(["getAuction"]);
+    });
+
+    describe("approval on ATG", () => {
+      const remote = (patch: { isApproved?: boolean; isPublished?: boolean }) => ({
+        atgAuctionId: "atg-auction-1",
+        clientsAuctionId: "sale-1",
+        isApproved: false,
+        isPublished: false,
+        statusCode: 0,
+        ...patch,
+      });
+
+      it("records when ATG staff approved a pushed auction, once", async () => {
+        await service.pushSale("sale-1");
+        gateway.remoteAuctions.set("atg-auction-1", remote({ isApproved: true }));
+
+        await service.tick();
+        expect(store.auctionLinks.get("sale-1")).toMatchObject({
+          approvedAt: NOW,
+          remoteStatus: "created",
+        });
+
+        const later = new Date(NOW.getTime() + 60_000);
+        service = new AtgSyncService({
+          gateway,
+          store,
+          imageInspector: images,
+          config: testAtgConfig,
+          now: () => later,
+        });
+        await service.tick();
+        expect(store.auctionLinks.get("sale-1")?.approvedAt).toEqual(NOW);
+      });
+
+      it("leaves an unapproved auction untouched", async () => {
+        await service.pushSale("sale-1");
+        gateway.remoteAuctions.set("atg-auction-1", remote({}));
+
+        await service.tick();
+
+        expect(store.auctionLinks.get("sale-1")).toMatchObject({
+          approvedAt: null,
+          remoteStatus: "created",
+        });
+      });
+
+      it("marks the auction published when staff published it in Toolbox", async () => {
+        await service.pushSale("sale-1");
+        gateway.remoteAuctions.set(
+          "atg-auction-1",
+          remote({ isApproved: true, isPublished: true }),
+        );
+
+        await service.tick();
+
+        expect(store.auctionLinks.get("sale-1")).toMatchObject({
+          remoteStatus: "published",
+          publishedAt: NOW,
+          approvedAt: NOW,
+        });
+      });
+
+      it("does not ask ATG about auctions that are already published", async () => {
+        await service.publishSale("sale-1");
+        gateway.calls.length = 0;
+
+        await service.tick();
+
+        expect(gateway.ops()).not.toContain("getAuction");
+      });
+
+      it("reports a failed lookup for that sale and carries on", async () => {
+        await service.pushSale("sale-1");
+        gateway.failNext("getAuction", transient("getAuction"));
+
+        expect(await service.tick()).toMatchObject({ failed: 1 });
+      });
     });
 
     it("re-pushes a sale whose last sync failed even without catalogue changes", async () => {

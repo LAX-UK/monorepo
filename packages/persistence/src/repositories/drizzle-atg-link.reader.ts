@@ -58,6 +58,7 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
       linked: Boolean(link?.atgAuctionId),
       atgAuctionId: link?.atgAuctionId ?? null,
       remoteStatus: (link?.remoteStatus as AtgRemoteStatus | undefined) ?? null,
+      approvedAt: iso(link?.atgApprovedAt ?? null),
       publishedAt: iso(link?.publishedAt ?? null),
       closedAt: iso(link?.closedAt ?? null),
       lastSyncedAt: iso(link?.lastSyncedAt ?? null),

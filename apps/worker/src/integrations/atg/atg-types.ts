@@ -73,6 +73,7 @@ export type AtgAuctionLink = {
   remoteStatus: AtgRemoteStatus;
   payloadHash: string | null;
   lastSyncedAt: Date | null;
+  approvedAt: Date | null;
   closedAt: Date | null;
   lastError: string | null;
 };

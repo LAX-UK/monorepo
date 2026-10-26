@@ -201,6 +201,8 @@ export type AtgSaleSyncView = {
   linked: boolean;
   atgAuctionId: string | null;
   remoteStatus: AtgRemoteStatus | null;
+  /** When ATG staff approved the auction in Toolbox, as seen by the worker; null until then. */
+  approvedAt: string | null;
   publishedAt: string | null;
   closedAt: string | null;
   lastSyncedAt: string | null;

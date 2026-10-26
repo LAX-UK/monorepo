@@ -366,6 +366,13 @@ export function createWorkerContainer(): WorkerContainer {
         log.warn({ err, saleId }, "ATG tick failed for sale");
         captureBackgroundError("atg-sync-tick", err, { extra: { saleId } });
       },
+      onConfigCheck: ({ problems, unavailable }) => {
+        for (const problem of problems) {
+          log.error({ problem }, "ATG configuration does not match ATG");
+          captureBackgroundError("atg-config-check", new Error(problem));
+        }
+        for (const note of unavailable) log.warn({ note }, "ATG configuration check skipped");
+      },
     }),
   );
 

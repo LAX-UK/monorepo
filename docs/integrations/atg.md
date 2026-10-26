@@ -28,7 +28,9 @@ flowchart LR
 | Port | `apps/worker/src/integrations/atg/atg-gateway.ts` (`AtgGateway`, `AtgGatewayError`) |
 | HTTP adapter | `gap-http-adapter.ts` (timeouts, retryable classification, ServiceStack errors) |
 | Mapping | `atg-mappers.ts` (pure; sale → auction, lot → lot, image URLs, payload hash) |
-| Orchestration | `atg-sync-service.ts` (push, publish, close, poll, tick) |
+| Orchestration | `atg-sync-service.ts` (push, publish, close, poll, tick, approval check, lost-create reconciliation) |
+| Lot sync | `atg-lot-syncer.ts` (create, update, adopt, delete lots; bid-lock and image checks) |
+| Startup check | `atg-config-check.ts` (increment set and default category against ATG) |
 | Persistence port / adapter | `atg-sync-store.ts` / `drizzle-atg-sync-store.ts` |
 | Composition | `apps/worker/src/container/create-atg-sync-runtime.ts` (`loadAtgRuntimeConfig` → service) and `workers/register-atg-sync-worker.ts` (queue, consumer, tick) |
 | Jobs | `packages/queues` `ATG_SYNC_QUEUE_NAME`, `ATG_SYNC_JOB_NAMES`, `atgSyncJobId`; the queue is registered only while the flag is on |
@@ -45,7 +47,7 @@ flowchart LR
 | `atg.publish-sale` | Admin "Publish on ATG" | Push first; if any lot failed, stop without publishing and list the lots. Otherwise `PublishAuction`. ATG staff approve every auction in Toolbox first; LAX never calls `ApproveAuction`. A rejected publish is recorded as "awaiting ATG approval". Idempotent. |
 | `atg.close-sale` | Admin "Close on ATG" | `CloseAuction`, then one results poll. |
 | `atg.delete-lot` | API only (`DELETE /admin/integrations/atg/lots/:id`) | `DeleteLot` for one linked lot (404 from ATG counts as done). |
-| `atg.tick` | Repeatable, every `ATG_POLL_INTERVAL_MS` | Re-push linked, non-closed sales with catalogue changes; poll lots and results for published sales and sales closed in the last 7 days. |
+| `atg.tick` | Repeatable, every `ATG_POLL_INTERVAL_MS` | Re-push linked, non-closed sales with catalogue changes; for pushed, unpublished auctions read `GetAuctionById` to record ATG's approval (`atg_approved_at`) and to notice an auction published directly in Toolbox; poll lots and results for published sales and sales closed in the last 7 days. |
 
 Job IDs are `<job name>__<target id>` (BullMQ rejects `:` in custom IDs), so repeated clicks
 de-duplicate while a job is waiting. Jobs are removed on completion and on final failure so the
@@ -102,6 +104,12 @@ helpers: `packages/persistence/src/repositories/atg-public-catalog.sql.ts`; visi
 **Worker:** run a **single** `atg-sync` consumer at **concurrency 1** (BullMQ job de-duplication
 relies on stable job ids). Tick failures for one sale are logged and sent to Sentry
 (`atg-sync-tick`) without stopping the tick for other sales.
+
+**Startup check.** When sync is enabled the worker compares `ATG_INCREMENT_SET_ID` with the
+client's increment sets (`GetIncrementDetails`, needs `ATG_CLIENT_ID`) and `ATG_DEFAULT_CATEGORY`
+with `GetSupportedCategories`. It runs once, in the background, and never blocks the worker. A
+value ATG does not know is logged as an error and sent to Sentry (`atg-config-check`); a check
+that cannot run (network failure, no client id) is logged as a warning only.
 
 **Images:** `AddUrlImageToLot` returns a `LotImageId`, but GAP has **no** endpoint to list a
 lot's images, and the worker does not store the returned ids. It tracks sent `ImageName` values
@@ -205,8 +213,11 @@ by hand ([ATG manual settlement](../runbooks/atg-manual-settlement.md)).
   rejects the update and the error shows on the lot. `DeleteLot` has no ATG restriction, but
   LAX still refuses to move or remove a lot with bids (`lot_on_atg`).
 - **Approval is ATG's.** ATG staff approve every auction in Toolbox. Until they do,
-  `PublishAuction` is rejected; the ATG tab shows "awaiting ATG approval" for a pushed,
-  unpublished auction, and a rejected publish's error says to ask ATG.
+  `PublishAuction` is rejected. The tick reads `IsApproved` and `IsPublished` from
+  `GetAuctionById` for pushed, unpublished auctions: the ATG tab shows "Awaiting ATG approval"
+  until `atg_approved_at` is set, then "Approved by ATG — ready to publish". An auction
+  published directly in Toolbox is recorded as published on the next tick. A rejected publish's
+  error still says to ask ATG.
 - **Partial pushes.** Lot failures do not stop the push; the auction link's `last_error` lists
   up to five (`Lot N: message`). If any failure was retryable the job retries; otherwise the
   error stays visible on the ATG tab until the lot is fixed.
@@ -217,9 +228,14 @@ by hand ([ATG manual settlement](../runbooks/atg-manual-settlement.md)).
   (API 409 `sale_cancelled`); staff can still close its ATG auction.
 - **Publishing is all-or-nothing.** If any lot fails during the publish job's push, the auction
   is not published and `last_error` starts with "Not published: fix these lots first."
-- **Lost create responses.** GAP has no lookup by our sale ID, so a timeout or 5xx on
-  `CreateAuction` is not retried automatically: ATG may have created the auction. The ATG tab
-  asks staff to check the ATG admin before pushing again. For lots, a retry first reads
+- **Lost create responses.** A timeout or 5xx on `CreateAuction` is never blindly retried: ATG
+  may have created the auction. When `ATG_CLIENT_ID` is set, the worker reconciles on its own: it
+  lists the client's auctions from one day earlier (`GetAuctionsByClientId`), finds the one whose
+  `ClientsAuctionId` is the sale id, links it and carries on. If none matches, or the lookup
+  fails, or no client id is set, the push stops and the ATG tab asks staff to check the ATG
+  admin before pushing again. The next push for that sale searches the last 30 days the same way
+  before creating, adopts a match, and stops (without creating) if the search fails. For lots, a
+  retry first reads
   `GetLots` and adopts an unlinked ATG lot with the same lot number instead of creating a
   duplicate.
 - **Lots moved between sales.** When a lot moves from one ATG-linked sale to another, the push
@@ -242,7 +258,7 @@ by hand ([ATG manual settlement](../runbooks/atg-manual-settlement.md)).
 | `ATG_SYNC_ENABLED` | api, worker | `false` | Must match in both. Off: no queue, no worker, routes return 503. |
 | `ATG_API_BASE_URL` | worker | `https://api.globalauctionplatform.com` | |
 | `ATG_API_USERNAME` / `ATG_API_PASSWORD` | worker | — | Secret. Required when enabled. |
-| `ATG_CLIENT_ID` | worker | — | UUID; optional. |
+| `ATG_CLIENT_ID` | worker | — | UUID; optional. Enables automatic reconciliation of lost auction creates and the increment set startup check. |
 | `ATG_PLATFORM_CODE` | worker | — | Required when enabled. Production White Label value: `SR`. |
 | `ATG_INCREMENT_SET_ID` | worker | — | UUID. Required when enabled. |
 | `ATG_DEFAULT_CATEGORY` | worker | — | Required when enabled. |
@@ -306,9 +322,11 @@ GitHub secrets `ATG_API_USERNAME` / `ATG_API_PASSWORD` and repository variables
    stay in the database; nothing is deleted on ATG. Published auctions keep running on ATG; take
    one down by making it private in Toolbox or with ATG Seller Support.
 
-**Lost auction creates.** ATG has no lookup by our sale ID and recommends checking Toolbox. If the
-ATG tab says a create may have reached ATG, find the auction in Toolbox by title and date
-before pushing again; if it exists, ask engineering to link it rather than creating a duplicate.
+**Lost auction creates.** With `ATG_CLIENT_ID` set the worker finds the auction itself (by
+`ClientsAuctionId`, searching the last day) and links it, so a repeated push needs no action. If
+the ATG tab still says a create may have reached ATG (no client id, no match, or the lookup
+failed), find the auction in Toolbox by title and date before pushing again; if it exists, ask
+engineering to link it rather than creating a duplicate.
 
 **White Label hostname.** See "White Label hostname (`auctions.lax.bid`)" below.
 
@@ -498,7 +516,7 @@ after Step 7, so keep it that way until SSO (Step 9) exists.
 | Premium | Single rate only in Toolbox | Banded or per-lot rates fail the push |
 | Artist | Anywhere in the title or description | `ATG_ARTIST_PLACEMENT` |
 | IDs | Custom auction and lot IDs are not supported; ATG returns its own IDs | Links store ATG's IDs; `ClientsAuctionId` is still sent but nothing relies on it |
-| Lost creates | Check Toolbox | Runbook "Lost auction creates" |
+| Lost creates | Check Toolbox | Automatic lookup by `ClientsAuctionId` when `ATG_CLIENT_ID` is set; otherwise runbook "Lost auction creates" |
 | Technical contact | ATG Seller Support (seller.support@auctiontechnologygroup.com, +44 20 3725 5556) | |
 | Certificate | Attached; `auctions.lax.bid` is live | Proxy restored |
 
@@ -520,8 +538,9 @@ authentication, claims, redirect URIs, logout).
 3. **Lot status.** ATG documented GetLots `Status`: `0` WaitingToBeOffered, `1` Offered,
    `2` NotSold, `4` Sold. `CreateLot` and `UpdateLot` have no `Status` field in the Swagger, so
    we send none; the lot starts at `0` on ATG's side. Code `3` is undocumented.
-4. **Approval state.** Can the API tell whether an auction is awaiting approval, approved or
-   rejected (so the ATG tab can show it instead of inferring it from a rejected publish)?
+4. **Approval state.** `GetAuctionById` returns `IsApproved`, `IsPublished` and
+   `AuctionStatusCode`, which the tick uses. Is there a rejected state, and what do the status
+   codes mean (so the ATG tab can show more than approved or not)?
 5. **Update semantics.** Does PATCH `UpdateLot` change only the fields sent, or replace the lot?
    Is PUT `UpdateAuction` a full replace?
 6. **Distribution after publish.** May a published auction move between private and public, and

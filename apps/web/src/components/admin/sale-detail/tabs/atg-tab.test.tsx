@@ -61,6 +61,7 @@ function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
     linked: false,
     atgAuctionId: null,
     remoteStatus: null,
+    approvedAt: null,
     publishedAt: null,
     closedAt: null,
     lastSyncedAt: null,
@@ -364,6 +365,77 @@ describe("SaleAtgTab", () => {
     expect(screen.getAllByText("Not sold").length).toBeGreaterThan(0);
     expect(screen.queryByText("Unsold")).not.toBeInTheDocument();
     expect(screen.getAllByText("42").length).toBeGreaterThan(0);
+  });
+
+  it("hides the Result column when the status badge already says it for every lot", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({
+          linked: true,
+          atgAuctionId: "a",
+          remoteStatus: "published",
+          sellingPlatform: "atg",
+          lots: [lot({ lotId: "l1", atgLotId: "x1", remoteStatus: "4", sold: true })],
+        })}
+        canManage
+      />,
+    );
+
+    expect(screen.queryByRole("columnheader", { name: "Result" })).not.toBeInTheDocument();
+  });
+
+  it("shows the Result column when a lot has a result the badge can't give", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({
+          linked: true,
+          atgAuctionId: "a",
+          remoteStatus: "published",
+          sellingPlatform: "atg",
+          lots: [lot({ lotId: "l5", atgLotId: "x5", sold: false })],
+        })}
+        canManage
+      />,
+    );
+
+    expect(screen.getByRole("columnheader", { name: "Result" })).toBeInTheDocument();
+  });
+
+  it("says a pushed, unpublished auction is waiting for ATG approval", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({ linked: true, atgAuctionId: "a", remoteStatus: "created" })}
+        canManage
+      />,
+    );
+
+    expect(screen.getByText("Awaiting ATG approval")).toBeInTheDocument();
+    expect(screen.queryByText("Approved by ATG — ready to publish")).not.toBeInTheDocument();
+  });
+
+  it("says when ATG has approved the auction and it is ready to publish", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({
+          linked: true,
+          atgAuctionId: "a",
+          remoteStatus: "created",
+          approvedAt: "2026-10-13T12:00:00.000Z",
+        })}
+        canManage
+      />,
+    );
+
+    expect(screen.getByText("Approved by ATG — ready to publish")).toBeInTheDocument();
+    expect(screen.queryByText("Awaiting ATG approval")).not.toBeInTheDocument();
   });
 
   describe("ATG settings", () => {

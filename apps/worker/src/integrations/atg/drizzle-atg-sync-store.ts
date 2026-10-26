@@ -31,6 +31,7 @@ function toAuctionLink(row: typeof atgAuctionLink.$inferSelect): AtgAuctionLink 
     remoteStatus: row.remoteStatus as AtgRemoteStatus,
     payloadHash: row.payloadHash,
     lastSyncedAt: row.lastSyncedAt,
+    approvedAt: row.atgApprovedAt,
     closedAt: row.closedAt,
     lastError: row.lastError,
   };
@@ -150,12 +151,14 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
   }
 
   async saveAuctionLink(saleId: string, patch: AtgAuctionLinkPatch): Promise<void> {
+    const { approvedAt, ...rest } = patch;
+    const columns = { ...rest, ...(approvedAt ? { atgApprovedAt: approvedAt } : {}) };
     await this.db
       .insert(atgAuctionLink)
-      .values({ saleId, ...patch })
+      .values({ saleId, ...columns })
       .onConflictDoUpdate({
         target: atgAuctionLink.saleId,
-        set: { ...patch, updatedAt: new Date() },
+        set: { ...columns, updatedAt: new Date() },
       });
   }
 

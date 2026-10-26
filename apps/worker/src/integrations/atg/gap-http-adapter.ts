@@ -1,17 +1,22 @@
 import {
   type AtgGateway,
   AtgGatewayError,
+  type AtgIncrementSet,
+  type AtgRemoteAuction,
   type AtgRemoteLot,
   type AtgSaleResult,
 } from "./atg-gateway.js";
 import { parseGapDate } from "./gap-date.js";
 import type {
   GapAddUrlImageToLotRequest,
+  GapAuctionResponse,
   GapCreateAuctionRequest,
   GapCreateLotRequest,
   GapErrorBody,
+  GapIncrementDetailsResponse,
   GapLotResponse,
   GapSaleResultResponse,
+  GapSupportedCategoryResponse,
   GapUpdateAuctionRequest,
   GapUpdateLotRequest,
 } from "./gap-types.js";
@@ -145,6 +150,53 @@ export class GapHttpAdapter implements AtgGateway {
     }));
   }
 
+  async getAuction(auctionId: string): Promise<AtgRemoteAuction | null> {
+    try {
+      const row = await this.call<GapAuctionResponse>(
+        "getAuction",
+        "GET",
+        `/Auction/GetAuctionById/${encodeURIComponent(auctionId)}`,
+      );
+      return row ? toRemoteAuction(row, auctionId) : null;
+    } catch (err) {
+      if (err instanceof AtgGatewayError && err.status === 404) return null;
+      throw err;
+    }
+  }
+
+  async findAuctionsByClientId(clientId: string, fromDate: Date): Promise<AtgRemoteAuction[]> {
+    // The Swagger documents a single object; the route name and ServiceStack return a list.
+    const body = await this.call<GapAuctionResponse | GapAuctionResponse[]>(
+      "findAuctionsByClientId",
+      "GET",
+      `/Auction/GetAuctionsByClientId/${encodeURIComponent(clientId)}?fromDate=${encodeURIComponent(fromDate.toISOString())}`,
+    );
+    const rows = Array.isArray(body) ? body : body ? [body] : [];
+    return rows.flatMap((row) => (row.AuctionId ? [toRemoteAuction(row, row.AuctionId)] : []));
+  }
+
+  async getIncrementSets(clientId: string): Promise<AtgIncrementSet[]> {
+    const rows = await this.call<GapIncrementDetailsResponse[]>(
+      "getIncrementSets",
+      "GET",
+      `/Clients/GetIncrementDetails/${encodeURIComponent(clientId)}`,
+    );
+    return (rows ?? []).flatMap((row) =>
+      row.IncrementSetId
+        ? [{ incrementSetId: row.IncrementSetId, name: row.IncrementSetName ?? null }]
+        : [],
+    );
+  }
+
+  async getSupportedCategories(platformCode: string): Promise<string[]> {
+    const rows = await this.call<GapSupportedCategoryResponse[]>(
+      "getSupportedCategories",
+      "GET",
+      `/Auction/GetSupportedCategories/${encodeURIComponent(platformCode)}`,
+    );
+    return (rows ?? []).flatMap((row) => (row.CategoryName ? [row.CategoryName] : []));
+  }
+
   private async call<T = unknown>(
     operation: string,
     method: HttpMethod,
@@ -194,6 +246,16 @@ export class GapHttpAdapter implements AtgGateway {
       );
     }
   }
+}
+
+function toRemoteAuction(row: GapAuctionResponse, fallbackId: string): AtgRemoteAuction {
+  return {
+    atgAuctionId: row.AuctionId ?? fallbackId,
+    clientsAuctionId: row.ClientsAuctionId ?? null,
+    isApproved: row.IsApproved === true,
+    isPublished: row.IsPublished === true,
+    statusCode: row.AuctionStatusCode ?? null,
+  };
 }
 
 function requireId(value: string | undefined, operation: string, field: string): string {

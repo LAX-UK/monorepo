@@ -95,6 +95,9 @@ function actionHint(view: AtgSaleSyncView): string {
   if (view.remoteStatus === "published") {
     return "Live on ATG. Catalogue changes in LAX re-sync automatically within a few minutes. Once a lot has bids, ATG won't accept changes to its description, reserve, estimates or opening price.";
   }
+  if (view.approvedAt) {
+    return "On ATG as a draft, approved by ATG staff. Publish when you are ready. Changes in LAX re-sync automatically.";
+  }
   return "On ATG as a draft, awaiting ATG approval. Ask ATG staff to approve it in Toolbox, then publish. Changes in LAX re-sync automatically.";
 }
 
@@ -111,6 +114,13 @@ function resultsByAtgLotId(results: AtgSaleResultRow[]): Map<string, AtgSaleResu
     if (row.atgLotId) map.set(row.atgLotId, row);
   }
   return map;
+}
+
+/** Sold or not sold, only when the status badge has no documented ATG status to say it already. */
+function lotResultText(lot: AtgLotSyncView): string | null {
+  if (lot.lastError || atgLotStatusLabel(lot.remoteStatus)) return null;
+  if (lot.sold === true) return "Sold";
+  return lot.sold === false && lot.atgLotId ? "Not sold" : null;
 }
 
 function lotPriceMinor(lot: AtgLotSyncView): number | null {
@@ -171,6 +181,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
   const linkedLots = view.lots.filter((lot) => lot.atgLotId).length;
   const failedLotCount = view.lots.filter((lot) => lot.lastError).length;
   const showResults = view.linked && (published || closed);
+  const showResultColumn = showResults && view.lots.some((lot) => lotResultText(lot) !== null);
   const results = showResults ? resultsSummary(view) : null;
 
   const blockedReason = laxOwned
@@ -265,7 +276,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
         sortValue: lotPriceMinor,
         cell: (lot) => <StaffMoney minor={lotPriceMinor(lot)} />,
       },
-      ...(showResults
+      ...(showResultColumn
         ? [
             {
               id: "result",
@@ -273,16 +284,12 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
               width: "112px",
               mobile: "meta",
               truncate: false,
-              // Only when the status badge has no documented ATG status to say it already.
-              cell: (lot: AtgLotSyncView) =>
-                lot.lastError || atgLotStatusLabel(lot.remoteStatus)
-                  ? null
-                  : lot.sold === true
-                    ? "Sold"
-                    : lot.sold === false && lot.atgLotId
-                      ? "Not sold"
-                      : null,
+              cell: lotResultText,
             } satisfies DataColumn<AtgLotSyncView>,
+          ]
+        : []),
+      ...(showResults
+        ? [
             {
               id: "paddle",
               header: "Paddle",
@@ -306,7 +313,7 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
         Link: NextLink,
       }),
     ],
-    [canManage, resultMap, showResults, view.lots],
+    [canManage, resultMap, showResultColumn, showResults, view.lots],
   );
 
   const settings = (
@@ -347,6 +354,13 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
       value: (
         <span className="flex flex-wrap items-center gap-1.5">
           <StatusBadge tone={auctionStatus.tone}>{auctionStatus.label}</StatusBadge>
+          {view.remoteStatus === "created" ? (
+            view.approvedAt ? (
+              <StatusBadge tone="success">Approved by ATG — ready to publish</StatusBadge>
+            ) : (
+              <StatusBadge tone="warning">Awaiting ATG approval</StatusBadge>
+            )
+          ) : null}
           {view.sellingPlatform === "atg" ? (
             <StatusBadge tone="info">Selling on ATG</StatusBadge>
           ) : null}

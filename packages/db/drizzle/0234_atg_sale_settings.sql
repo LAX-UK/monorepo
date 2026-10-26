@@ -6,6 +6,8 @@ ALTER TABLE "atg_auction_link" ADD COLUMN IF NOT EXISTS "settings_updated_at" ti
 --> statement-breakpoint
 ALTER TABLE "atg_auction_link" ADD COLUMN IF NOT EXISTS "settings_updated_by" text;
 --> statement-breakpoint
+ALTER TABLE "atg_auction_link" ADD COLUMN IF NOT EXISTS "atg_approved_at" timestamp with time zone;
+--> statement-breakpoint
 ALTER TABLE "atg_lot_link" ADD COLUMN IF NOT EXISTS "locked_fields_hash" text;
 --> statement-breakpoint
 DO $$ BEGIN

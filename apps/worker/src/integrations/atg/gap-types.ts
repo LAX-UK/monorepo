@@ -101,6 +101,26 @@ export type GapSaleResultResponse = {
   EndTimeUtc?: string | null;
 };
 
+/** `GET /Auction/GetAuctionById/{id}` and `GetAuctionsByClientId/{id}` item (fields LAX reads). */
+export type GapAuctionResponse = {
+  AuctionId?: string | null;
+  ClientsAuctionId?: string | null;
+  IsApproved?: boolean | null;
+  IsPublished?: boolean | null;
+  AuctionStatusCode?: number | null;
+};
+
+/** `GET /Clients/GetIncrementDetails/{clientId}` item (fields LAX reads). */
+export type GapIncrementDetailsResponse = {
+  IncrementSetId?: string | null;
+  IncrementSetName?: string | null;
+};
+
+/** `GET /Auction/GetSupportedCategories/{platformCode}` item. */
+export type GapSupportedCategoryResponse = {
+  CategoryName?: string | null;
+};
+
 /** ServiceStack error envelope returned by GAP on failures. */
 export type GapErrorBody = {
   ResponseStatus?: { ErrorCode?: string; Message?: string } | null;

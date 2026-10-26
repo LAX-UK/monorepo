@@ -31,6 +31,19 @@ export type AtgSaleResult = {
   endTimeUtc: string | null;
 };
 
+/** Auction state as ATG reports it. */
+export type AtgRemoteAuction = {
+  atgAuctionId: string;
+  /** The `ClientsAuctionId` LAX sent on create (the LAX sale id). */
+  clientsAuctionId: string | null;
+  isApproved: boolean;
+  isPublished: boolean;
+  statusCode: number | null;
+};
+
+/** An increment set available to the ATG client. */
+export type AtgIncrementSet = { incrementSetId: string; name: string | null };
+
 /**
  * Failure from the ATG API. `retryable` is true for network errors, timeouts, 408/429 and
  * 5xx; false for validation/auth errors that will fail again unchanged.
@@ -61,4 +74,11 @@ export interface AtgGateway {
   addLotImageUrl(request: GapAddUrlImageToLotRequest): Promise<void>;
   getLots(auctionId: string): Promise<AtgRemoteLot[]>;
   getSaleResults(auctionId: string): Promise<AtgSaleResult[]>;
+  /** Null when ATG does not know the auction. */
+  getAuction(auctionId: string): Promise<AtgRemoteAuction | null>;
+  /** Auctions of the client starting from `fromDate`; used to find a create whose reply was lost. */
+  findAuctionsByClientId(clientId: string, fromDate: Date): Promise<AtgRemoteAuction[]>;
+  getIncrementSets(clientId: string): Promise<AtgIncrementSet[]>;
+  /** Category names accepted for the platform. */
+  getSupportedCategories(platformCode: string): Promise<string[]>;
 }

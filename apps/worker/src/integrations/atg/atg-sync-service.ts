@@ -1,41 +1,28 @@
-import { canPushOrPublishSaleOnAtg, resolveSaleSellingPlatform } from "@auction/types";
-import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
-import { type AtgImageInspector, atgImageProblem } from "./atg-image-inspector.js";
 import {
-  AtgMappingError,
-  bidLockedFieldsHash,
-  gapImageName,
-  mapLotToLotFields,
-  mapSaleToAuctionFields,
-  payloadHash,
-  resolveLotImageUrls,
-} from "./atg-mappers.js";
-import type { AtgSyncStore } from "./atg-sync-store.js";
+  type AtgOwnershipState,
+  canPushOrPublishSaleOnAtg,
+  resolveSaleSellingPlatform,
+} from "@auction/types";
+import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
+import type { AtgImageInspector } from "./atg-image-inspector.js";
+import { AtgLotSyncer, AtgPartialSyncError } from "./atg-lot-syncer.js";
+import { mapSaleToAuctionFields, payloadHash } from "./atg-mappers.js";
+import { errorText, failureSummary, isRetryable } from "./atg-sync-errors.js";
+import type { AtgAuctionLinkPatch, AtgSyncStore } from "./atg-sync-store.js";
 import type {
   AtgAuctionLink,
-  AtgLotLink,
-  AtgLotSnapshot,
   AtgPushSummary,
   AtgSaleSnapshot,
   AtgSyncConfig,
 } from "./atg-types.js";
+
+export { AtgPartialSyncError };
 
 /** A job that cannot succeed by retrying (missing sale, not linked yet, …). */
 export class AtgSyncPreconditionError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "AtgSyncPreconditionError";
-  }
-}
-
-/** Some lots failed with transient errors; the job should be retried. */
-export class AtgPartialSyncError extends Error {
-  constructor(
-    message: string,
-    readonly summary: AtgPushSummary,
-  ) {
-    super(message);
-    this.name = "AtgPartialSyncError";
   }
 }
 
@@ -50,18 +37,15 @@ export type AtgSyncServiceDeps = {
 };
 
 const POLL_CLOSED_FOR_MS = 7 * 24 * 60 * 60 * 1000;
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-function isRetryable(err: unknown): boolean {
-  return err instanceof AtgGatewayError && err.retryable;
-}
+/** How far back a lost create is searched for; a push that timed out is minutes old at most. */
+const RECONCILE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+/** A retry after an earlier failed create also searches this far back before creating again. */
+const RETRY_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
- * A timeout or 5xx on create may still have created the auction; GAP offers no lookup by our
- * sale id, so retrying blindly risks a duplicate. 425/429 are rejected before processing.
+ * A timeout or 5xx on create may still have created the auction, so retrying blindly risks a
+ * duplicate; the caller looks the auction up by our sale id first. 425/429 are rejected before
+ * processing.
  */
 function mayHaveCreated(err: unknown): boolean {
   return (
@@ -71,23 +55,11 @@ function mayHaveCreated(err: unknown): boolean {
   );
 }
 
-const MAX_LISTED_FAILURES = 5;
-
-function failureSummary(failures: string[]): string | null {
-  if (failures.length === 0) return null;
-  const listed = failures.slice(0, MAX_LISTED_FAILURES).join("; ");
-  const more = failures.length - MAX_LISTED_FAILURES;
-  return more > 0 ? `${listed}; +${more} more` : listed;
-}
-
 const SALE_ON_LAX_MESSAGE =
   "This sale is published on lax.bid. Unpublish it there before pushing to ATG.";
 
 export const AWAITING_ATG_APPROVAL_MESSAGE =
   "ATG did not publish the auction. ATG staff must approve it in Toolbox first; once they confirm, publish again.";
-
-const BID_LOCKED_MESSAGE =
-  "The lot has bids on ATG, so its description, reserve, estimates and opening price can't change. Undo the edit in LAX.";
 
 /** ATG staff approve every auction; until then `PublishAuction` is rejected (not retryable). */
 function publishErrorText(err: unknown): string {
@@ -105,7 +77,7 @@ function publishErrorText(err: unknown): string {
 export class AtgSyncService {
   private readonly gateway: AtgGateway;
   private readonly store: AtgSyncStore;
-  private readonly imageInspector: AtgImageInspector;
+  private readonly lotSyncer: AtgLotSyncer;
   private readonly config: AtgSyncConfig;
   private readonly now: () => Date;
   private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
@@ -113,9 +85,15 @@ export class AtgSyncService {
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
     this.store = deps.store;
-    this.imageInspector = deps.imageInspector;
     this.config = deps.config;
     this.now = deps.now ?? (() => new Date());
+    this.lotSyncer = new AtgLotSyncer({
+      gateway: deps.gateway,
+      store: deps.store,
+      imageInspector: deps.imageInspector,
+      config: deps.config,
+      now: this.now,
+    });
     this.onTickError = deps.onTickError;
   }
 
@@ -151,7 +129,7 @@ export class AtgSyncService {
 
     let result: { summary: AtgPushSummary; failures: string[] };
     try {
-      result = await this.syncLots(sale, auction.auctionId, auction.created);
+      result = await this.lotSyncer.syncLots(sale, auction.auctionId, auction.created);
     } catch (err) {
       if (err instanceof AtgGatewayError) {
         await this.store.saveAuctionLink(saleId, { lastError: errorText(err) });
@@ -253,15 +231,7 @@ export class AtgSyncService {
     let failed = 0;
     for (const link of links) {
       try {
-        const ownership = await this.store.loadOwnershipState(link.saleId);
-        const platform = ownership
-          ? resolveSaleSellingPlatform({
-              saleStatus: ownership.saleStatus,
-              atgRemoteStatus: ownership.atgRemoteStatus,
-              atgLinked: ownership.atgLinked,
-              atgSoldLotCount: ownership.atgSoldLotCount,
-            })
-          : "free";
+        const platform = (await this.sellingPlatform(link.saleId)) ?? "free";
         if (
           link.remoteStatus !== "closed" &&
           canPushOrPublishSaleOnAtg(platform) &&
@@ -271,6 +241,9 @@ export class AtgSyncService {
         ) {
           await this.pushSale(link.saleId);
           pushed += 1;
+        }
+        if (link.remoteStatus === "created" && canPushOrPublishSaleOnAtg(platform)) {
+          await this.checkApproval(link);
         }
         if (link.remoteStatus === "published" || link.remoteStatus === "closed") {
           await this.pollSale(link.saleId);
@@ -284,17 +257,43 @@ export class AtgSyncService {
     return { pushed, polled, failed };
   }
 
-  private async assertCanPushToAtg(saleId: string): Promise<void> {
+  /** Who owns the sale's bidding right now; null when the sale no longer exists. */
+  private async sellingPlatform(saleId: string): Promise<AtgOwnershipState | null> {
     const ownership = await this.store.loadOwnershipState(saleId);
-    if (!ownership) {
-      throw new AtgSyncPreconditionError(`Sale ${saleId} not found`);
-    }
-    const platform = resolveSaleSellingPlatform({
+    if (!ownership) return null;
+    return resolveSaleSellingPlatform({
       saleStatus: ownership.saleStatus,
       atgRemoteStatus: ownership.atgRemoteStatus,
       atgLinked: ownership.atgLinked,
       atgSoldLotCount: ownership.atgSoldLotCount,
     });
+  }
+
+  /**
+   * Asks ATG whether staff approved a pushed auction, and whether they already published it in
+   * Toolbox. Only transitions are written, so a quiet tick costs one read.
+   */
+  private async checkApproval(link: AtgAuctionLink): Promise<void> {
+    if (!link.atgAuctionId) return;
+    const remote = await this.gateway.getAuction(link.atgAuctionId);
+    if (!remote) return;
+    const now = this.now();
+    const patch: AtgAuctionLinkPatch = {
+      ...(remote.isApproved && !link.approvedAt ? { approvedAt: now } : {}),
+      ...(remote.isPublished
+        ? { remoteStatus: "published" as const, publishedAt: now, lastError: null }
+        : {}),
+    };
+    if (Object.keys(patch).length > 0) {
+      await this.store.saveAuctionLink(link.saleId, patch);
+    }
+  }
+
+  private async assertCanPushToAtg(saleId: string): Promise<void> {
+    const platform = await this.sellingPlatform(saleId);
+    if (!platform) {
+      throw new AtgSyncPreconditionError(`Sale ${saleId} not found`);
+    }
     if (platform === "lax") {
       throw new AtgSyncPreconditionError(SALE_ON_LAX_MESSAGE);
     }
@@ -308,6 +307,37 @@ export class AtgSyncService {
     return { ...link, atgAuctionId: link.atgAuctionId };
   }
 
+  /**
+   * After a create whose reply was lost, looks for the auction ATG may have made, matched on the
+   * `ClientsAuctionId` we sent (the sale id). Needs `ATG_CLIENT_ID`; `note` explains a miss.
+   */
+  private async findLostCreate(
+    sale: AtgSaleSnapshot,
+    lookbackMs = RECONCILE_LOOKBACK_MS,
+  ): Promise<{ auctionId: string | null; note: string; lookupFailed: boolean }> {
+    const clientId = this.config.clientId;
+    if (!clientId) return { auctionId: null, note: "", lookupFailed: false };
+    try {
+      const fromDate = new Date(this.now().getTime() - lookbackMs);
+      const found = (await this.gateway.findAuctionsByClientId(clientId, fromDate)).find(
+        (auction) => auction.clientsAuctionId === sale.id,
+      );
+      if (found) return { auctionId: found.atgAuctionId, note: "", lookupFailed: false };
+      return {
+        auctionId: null,
+        note: " ATG has no auction for this sale from the last day.",
+        lookupFailed: false,
+      };
+    } catch (lookupError) {
+      if (!(lookupError instanceof AtgGatewayError)) throw lookupError;
+      return {
+        auctionId: null,
+        note: ` Looking for it on ATG also failed (${errorText(lookupError)}).`,
+        lookupFailed: true,
+      };
+    }
+  }
+
   private async upsertAuction(
     sale: AtgSaleSnapshot,
     link: AtgAuctionLink | null,
@@ -315,14 +345,39 @@ export class AtgSyncService {
     const fields = mapSaleToAuctionFields(sale, this.config);
     const hash = payloadHash(fields);
     if (!link?.atgAuctionId) {
+      // An earlier push left an error and no auction id: its create may have reached ATG, so
+      // adopt that auction instead of creating a duplicate. A failed lookup stops the push.
+      if (link?.lastError && this.config.clientId) {
+        const earlier = await this.findLostCreate(sale, RETRY_LOOKBACK_MS);
+        if (earlier.lookupFailed) {
+          throw new AtgSyncPreconditionError(
+            `Couldn't check ATG for an earlier attempt at this auction (${earlier.note.trim()}). Try again shortly.`,
+          );
+        }
+        if (earlier.auctionId) {
+          await this.store.saveAuctionLink(sale.id, {
+            atgAuctionId: earlier.auctionId,
+            atgAuctionReference: sale.id,
+            remoteStatus: "created",
+            // Unknown remote payload: an empty hash forces the full update below.
+            payloadHash: "",
+          });
+          return this.upsertAuction(sale, await this.store.getAuctionLink(sale.id));
+        }
+      }
       let auctionId: string;
       try {
         ({ auctionId } = await this.gateway.createAuction(fields));
       } catch (err) {
         if (!mayHaveCreated(err)) throw err;
-        throw new AtgSyncPreconditionError(
-          `ATG did not confirm the new auction (${errorText(err)}). Check the ATG admin for "${sale.title}" before pushing again, to avoid a duplicate.`,
-        );
+        const adopted = await this.findLostCreate(sale);
+        if (adopted.auctionId) {
+          auctionId = adopted.auctionId;
+        } else {
+          throw new AtgSyncPreconditionError(
+            `ATG did not confirm the new auction (${errorText(err)}).${adopted.note} Check the ATG admin for "${sale.title}" before pushing again, to avoid a duplicate.`,
+          );
+        }
       }
       await this.store.saveAuctionLink(sale.id, {
         atgAuctionId: auctionId,
@@ -337,196 +392,5 @@ export class AtgSyncService {
       await this.store.saveAuctionLink(sale.id, { payloadHash: hash });
     }
     return { auctionId: link.atgAuctionId, created: false };
-  }
-
-  private async syncLots(
-    sale: AtgSaleSnapshot,
-    auctionId: string,
-    auctionJustCreated: boolean,
-  ): Promise<{ summary: AtgPushSummary; failures: string[] }> {
-    const summary: AtgPushSummary = { created: 0, updated: 0, unchanged: 0, deleted: 0, failed: 0 };
-    const failures: string[] = [];
-    const links = new Map((await this.store.listLotLinks(sale.id)).map((l) => [l.lotId, l]));
-    let retryableFailures = 0;
-    const recordFailure = async (label: string, lotId: string, err: unknown) => {
-      summary.failed += 1;
-      if (isRetryable(err)) retryableFailures += 1;
-      failures.push(`${label}: ${errorText(err)}`);
-      await this.store.updateLotLink(lotId, { lastError: errorText(err) });
-    };
-
-    const unlinked = sale.lots.filter((lot) => !links.has(lot.id));
-    const blocked = new Set<string>();
-    // A lot moved here from another ATG-linked sale still has a lot on the old auction.
-    for (const stray of await this.store.findLotLinks(unlinked.map((lot) => lot.id))) {
-      try {
-        await this.gateway.deleteLot(stray.atgLotId);
-        await this.store.deleteLotLink(stray.lotId);
-      } catch (err) {
-        if (!(err instanceof AtgGatewayError)) throw err;
-        blocked.add(stray.lotId);
-        await recordFailure(`Moved lot ${stray.atgLotId}`, stray.lotId, err);
-      }
-    }
-    const adoptable =
-      !auctionJustCreated && unlinked.some((lot) => lot.lotNumber != null)
-        ? await this.unlinkedRemoteLotsByNumber(auctionId, links)
-        : new Map<string, string>();
-
-    for (const [index, lot] of sale.lots.entries()) {
-      const link = links.get(lot.id);
-      links.delete(lot.id);
-      if (blocked.has(lot.id)) continue;
-      let adoptAtgLotId: string | undefined;
-      if (!link && lot.lotNumber != null) {
-        adoptAtgLotId = adoptable.get(String(lot.lotNumber));
-        adoptable.delete(String(lot.lotNumber));
-      }
-      try {
-        const outcome = await this.syncLot(sale, lot, index + 1, auctionId, link, adoptAtgLotId);
-        summary[outcome] += 1;
-      } catch (err) {
-        if (!(err instanceof AtgGatewayError || err instanceof AtgMappingError)) throw err;
-        await recordFailure(`Lot ${lot.lotNumber ?? `"${lot.title}"`}`, lot.id, err);
-      }
-    }
-
-    for (const orphan of links.values()) {
-      try {
-        await this.gateway.deleteLot(orphan.atgLotId);
-        await this.store.deleteLotLink(orphan.lotId);
-        summary.deleted += 1;
-      } catch (err) {
-        if (!(err instanceof AtgGatewayError)) throw err;
-        await recordFailure(`Removed lot ${orphan.atgLotId}`, orphan.lotId, err);
-      }
-    }
-
-    if (retryableFailures > 0) {
-      await this.store.saveAuctionLink(sale.id, { lastError: failureSummary(failures) });
-      throw new AtgPartialSyncError(
-        `${retryableFailures} lot(s) hit transient ATG errors`,
-        summary,
-      );
-    }
-    return { summary, failures };
-  }
-
-  /**
-   * ATG lots on this auction that no LAX lot is linked to, keyed by lot number. They exist when
-   * a create succeeded on ATG but the response was lost; adopting them avoids duplicates.
-   */
-  private async unlinkedRemoteLotsByNumber(
-    auctionId: string,
-    links: Map<string, AtgLotLink>,
-  ): Promise<Map<string, string>> {
-    const linked = new Set([...links.values()].map((l) => l.atgLotId));
-    const byNumber = new Map<string, string>();
-    for (const remote of await this.gateway.getLots(auctionId)) {
-      if (remote.lotNumber && !linked.has(remote.atgLotId) && !byNumber.has(remote.lotNumber)) {
-        byNumber.set(remote.lotNumber, remote.atgLotId);
-      }
-    }
-    return byNumber;
-  }
-
-  private async syncLot(
-    sale: AtgSaleSnapshot,
-    lot: AtgLotSnapshot,
-    sequence: number,
-    auctionId: string,
-    link: AtgLotLink | undefined,
-    adoptAtgLotId: string | undefined,
-  ): Promise<"created" | "updated" | "unchanged"> {
-    const fields = { ...mapLotToLotFields(lot, sale, sequence, this.config), AuctionId: auctionId };
-    const hash = payloadHash(fields);
-    const lockedHash = bidLockedFieldsHash(fields);
-    let outcome: "created" | "updated" | "unchanged" = "unchanged";
-    let current = link;
-
-    await this.assertImagesAccepted(lot, current);
-    // Locked fields are re-sent unchanged rather than omitted: UpdateLot replacement semantics
-    // are unconfirmed, and a rejected request is safer than a silently cleared field.
-    if (
-      current &&
-      current.numberOfBids > 0 &&
-      current.payloadHash !== hash &&
-      current.lockedFieldsHash !== lockedHash
-    ) {
-      throw new AtgMappingError(BID_LOCKED_MESSAGE);
-    }
-
-    if (!current) {
-      let atgLotId: string;
-      if (adoptAtgLotId) {
-        await this.gateway.updateLot({ ...fields, LotId: adoptAtgLotId });
-        atgLotId = adoptAtgLotId;
-      } else {
-        ({ lotId: atgLotId } = await this.gateway.createLot(fields));
-      }
-      await this.store.insertLotLink({
-        lotId: lot.id,
-        saleId: sale.id,
-        atgLotId,
-        payloadHash: hash,
-        lockedFieldsHash: lockedHash,
-      });
-      current = {
-        lotId: lot.id,
-        saleId: sale.id,
-        atgLotId,
-        imageNames: [],
-        payloadHash: hash,
-        lockedFieldsHash: lockedHash,
-        numberOfBids: 0,
-      };
-      outcome = adoptAtgLotId ? "updated" : "created";
-    } else if (current.payloadHash !== hash) {
-      await this.gateway.updateLot({ ...fields, LotId: current.atgLotId });
-      outcome = "updated";
-    }
-
-    await this.sendImages(lot, current);
-    await this.store.updateLotLink(lot.id, {
-      payloadHash: hash,
-      lockedFieldsHash: lockedHash,
-      lastSyncedAt: this.now(),
-      lastError: null,
-    });
-    return outcome;
-  }
-
-  /** Checks images not yet on ATG before any lot write, so failures name the lot and image. */
-  private async assertImagesAccepted(lot: AtgLotSnapshot, link: AtgLotLink | undefined) {
-    const sent = new Set(link?.imageNames ?? []);
-    const problems: string[] = [];
-    for (const [index, url] of resolveLotImageUrls(lot, this.config).entries()) {
-      if (sent.has(gapImageName(index))) continue;
-      const problem = atgImageProblem(await this.imageInspector.inspect(url));
-      if (problem) problems.push(`image ${index + 1} ${problem}`);
-    }
-    if (problems.length > 0) {
-      throw new AtgMappingError(`ATG can't take this lot's images: ${problems.join("; ")}`);
-    }
-  }
-
-  /**
-   * ATG exposes no image IDs to remove, so images are append-only: a position already sent is
-   * never re-sent (replacements/reorders in LAX are not propagated).
-   */
-  private async sendImages(lot: AtgLotSnapshot, link: AtgLotLink): Promise<void> {
-    const sent = [...link.imageNames];
-    try {
-      for (const [index, url] of resolveLotImageUrls(lot, this.config).entries()) {
-        const name = gapImageName(index);
-        if (sent.includes(name)) continue;
-        await this.gateway.addLotImageUrl({ LotId: link.atgLotId, ImageName: name, Url: url });
-        sent.push(name);
-      }
-    } finally {
-      if (sent.length !== link.imageNames.length) {
-        await this.store.updateLotLink(lot.id, { imageNames: sent });
-      }
-    }
   }
 }

@@ -56,6 +56,7 @@ export function registerAtgSyncWorker(
       removeOnFail: 50,
     },
   );
+  void runtime.checkConfig();
   void heartbeat("atg-sync");
   log.info({ pollIntervalMs: runtime.pollIntervalMs }, "atg-sync enabled");
 

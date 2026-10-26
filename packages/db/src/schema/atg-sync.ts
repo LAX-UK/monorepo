@@ -30,6 +30,8 @@ export const atgAuctionLink = pgTable(
     atgAuctionReference: text("atg_auction_reference"),
     /** LAX-side lifecycle: pending | created | approved | published | closed. */
     remoteStatus: text("remote_status").notNull().default("pending"),
+    /** First time ATG reported the auction approved (Toolbox); publishing needs it. */
+    atgApprovedAt: timestamp("atg_approved_at", { mode: "date", withTimezone: true }),
     publishedAt: timestamp("published_at", { mode: "date", withTimezone: true }),
     closedAt: timestamp("closed_at", { mode: "date", withTimezone: true }),
     payloadHash: text("payload_hash"),

@@ -16,6 +16,7 @@ function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
     linked: false,
     atgAuctionId: null,
     remoteStatus: null,
+    approvedAt: null,
     publishedAt: null,
     closedAt: null,
     lastSyncedAt: null,

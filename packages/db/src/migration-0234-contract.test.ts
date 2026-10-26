@@ -16,7 +16,7 @@ const journal = JSON.parse(
 describe("migration 0234 atg sale settings contract", () => {
   it("is additive and idempotent", () => {
     expect(migration).not.toMatch(/\bDROP\b/);
-    expect(migration.match(/ADD COLUMN IF NOT EXISTS/g)).toHaveLength(5);
+    expect(migration.match(/ADD COLUMN IF NOT EXISTS/g)).toHaveLength(6);
     expect(migration.match(/EXCEPTION WHEN duplicate_object THEN NULL/g)).toHaveLength(2);
   });
 

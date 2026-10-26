@@ -26,11 +26,12 @@ describe.skipIf(!url)("migration 0234 atg sale settings roundtrip", () => {
         `select column_name, column_default from information_schema.columns
          where table_schema = 'public'
            and ((table_name = 'atg_auction_link'
-                 and column_name in ('auction_type', 'distribution', 'settings_updated_at', 'settings_updated_by'))
+                 and column_name in ('atg_approved_at', 'auction_type', 'distribution', 'settings_updated_at', 'settings_updated_by'))
              or (table_name = 'atg_lot_link' and column_name = 'locked_fields_hash'))
          order by column_name`,
       );
       expect(columns.rows).toEqual([
+        { column_name: "atg_approved_at", column_default: null },
         { column_name: "auction_type", column_default: "'Timed'::text" },
         { column_name: "distribution", column_default: "'private_test'::text" },
         { column_name: "locked_fields_hash", column_default: null },

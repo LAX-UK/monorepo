@@ -193,6 +193,20 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
     });
   });
 
+  it("stores the approval time and lists pushed, unpublished links for the approval check", async () => {
+    await withSeededSale(async (store) => {
+      const approvedAt = new Date("2026-10-05T09:00:00Z");
+      await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "created" });
+      expect(await store.listActiveAuctionLinks(new Date("2026-09-30T00:00:00Z"))).toEqual([
+        expect.objectContaining({ remoteStatus: "created", approvedAt: null }),
+      ]);
+
+      await store.saveAuctionLink(saleId, { approvedAt });
+
+      expect((await store.getAuctionLink(saleId))?.approvedAt).toEqual(approvedAt);
+    });
+  });
+
   it("lists live and recently closed links only", async () => {
     await withSeededSale(async (store) => {
       await store.saveAuctionLink(saleId, {

@@ -6,6 +6,8 @@ ALTER TABLE "atg_auction_link" DROP CONSTRAINT IF EXISTS "atg_auction_link_distr
 
 ALTER TABLE "atg_auction_link" DROP CONSTRAINT IF EXISTS "atg_auction_link_auction_type_check";
 
+ALTER TABLE "atg_auction_link" DROP COLUMN IF EXISTS "atg_approved_at";
+
 ALTER TABLE "atg_auction_link" DROP COLUMN IF EXISTS "settings_updated_by";
 
 ALTER TABLE "atg_auction_link" DROP COLUMN IF EXISTS "settings_updated_at";

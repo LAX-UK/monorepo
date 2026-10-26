@@ -11,6 +11,7 @@ export type AtgAuctionLinkPatch = Partial<{
   atgAuctionId: string;
   atgAuctionReference: string;
   remoteStatus: AtgRemoteStatus;
+  approvedAt: Date;
   publishedAt: Date;
   closedAt: Date;
   payloadHash: string;

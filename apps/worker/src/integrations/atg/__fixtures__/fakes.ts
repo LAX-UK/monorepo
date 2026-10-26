@@ -1,5 +1,11 @@
 import type { SaleStatus } from "@auction/types";
-import type { AtgGateway, AtgRemoteLot, AtgSaleResult } from "../atg-gateway.js";
+import type {
+  AtgGateway,
+  AtgIncrementSet,
+  AtgRemoteAuction,
+  AtgRemoteLot,
+  AtgSaleResult,
+} from "../atg-gateway.js";
 import type { AtgImageFacts, AtgImageInspector } from "../atg-image-inspector.js";
 import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "../atg-sync-store.js";
 import type {
@@ -34,6 +40,12 @@ export class FakeAtgGateway implements AtgGateway {
   readonly calls: GatewayCall[] = [];
   remoteLots: AtgRemoteLot[] = [];
   saleResults: AtgSaleResult[] = [];
+  /** `getAuction` answers from here by auction id; unknown ids are null. */
+  remoteAuctions = new Map<string, AtgRemoteAuction>();
+  /** What `findAuctionsByClientId` returns. */
+  clientAuctions: AtgRemoteAuction[] = [];
+  incrementSets: AtgIncrementSet[] = [];
+  supportedCategories: string[] = [];
   private seq = 0;
   private readonly failures = new Map<keyof AtgGateway, Array<Error | null>>();
 
@@ -89,6 +101,22 @@ export class FakeAtgGateway implements AtgGateway {
     this.record("getSaleResults", auctionId);
     return this.saleResults;
   }
+  async getAuction(auctionId: string) {
+    this.record("getAuction", auctionId);
+    return this.remoteAuctions.get(auctionId) ?? null;
+  }
+  async findAuctionsByClientId(clientId: string, fromDate: Date) {
+    this.record("findAuctionsByClientId", { clientId, fromDate });
+    return this.clientAuctions;
+  }
+  async getIncrementSets(clientId: string) {
+    this.record("getIncrementSets", clientId);
+    return this.incrementSets;
+  }
+  async getSupportedCategories(platformCode: string) {
+    this.record("getSupportedCategories", platformCode);
+    return this.supportedCategories;
+  }
 }
 
 type StoredAuctionLink = AtgAuctionLink & Omit<AtgAuctionLinkPatch, keyof AtgAuctionLink>;
@@ -127,6 +155,7 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
       remoteStatus: "pending",
       payloadHash: null,
       lastSyncedAt: null,
+      approvedAt: null,
       closedAt: null,
       lastError: null,
     };
