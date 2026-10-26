@@ -122,6 +122,72 @@ describe("admin ATG routes", () => {
     expect(missing.status).toBe(404);
   });
 
+  describe("GET /selling", () => {
+    const summary = {
+      sellingPlatform: "atg",
+      linked: true,
+      remoteStatus: "published",
+      approvedAt: null,
+      soldLotCount: 0,
+    };
+
+    it("returns sale and lot summaries for a batch of ids, de-duplicated", async () => {
+      const getSaleSellingSummaries = vi.fn().mockResolvedValue({ [SALE_ID]: summary });
+      const getLotSellingSummaries = vi
+        .fn()
+        .mockResolvedValue({ [LOT_ID]: { saleId: SALE_ID, sale: summary, lot: null } });
+      const app = buildApp("auction_manager", { getSaleSellingSummaries, getLotSellingSummaries });
+
+      const sales = await app.request(
+        `http://test/admin/integrations/atg/selling/sales?ids=${SALE_ID},${SALE_ID}`,
+      );
+      const lots = await app.request(
+        `http://test/admin/integrations/atg/selling/lots?ids=${LOT_ID}`,
+      );
+
+      expect(sales.status).toBe(200);
+      expect(await sales.json()).toEqual({ data: { [SALE_ID]: summary } });
+      expect(getSaleSellingSummaries).toHaveBeenCalledWith([SALE_ID]);
+      expect(lots.status).toBe(200);
+      expect(await lots.json()).toEqual({
+        data: { [LOT_ID]: { saleId: SALE_ID, sale: summary, lot: null } },
+      });
+      expect(getLotSellingSummaries).toHaveBeenCalledWith([LOT_ID]);
+    });
+
+    it("rejects missing, malformed and oversized id lists", async () => {
+      const getSaleSellingSummaries = vi.fn();
+      const app = buildApp("auction_manager", { getSaleSellingSummaries });
+      const many = Array.from(
+        { length: 201 },
+        (_, i) => `11111111-1111-4111-8111-${String(i).padStart(12, "0")}`,
+      ).join(",");
+
+      for (const qs of ["", "?ids=", "?ids=not-a-uuid", `?ids=${many}`]) {
+        const res = await app.request(`http://test/admin/integrations/atg/selling/sales${qs}`);
+        expect(res.status).toBe(400);
+      }
+      expect(getSaleSellingSummaries).not.toHaveBeenCalled();
+    });
+
+    it("forbids staff without auction.manage", async () => {
+      const getSaleSellingSummaries = vi.fn();
+      const getLotSellingSummaries = vi.fn();
+      const app = buildApp("finance_ops", { getSaleSellingSummaries, getLotSellingSummaries });
+
+      const sales = await app.request(
+        `http://test/admin/integrations/atg/selling/sales?ids=${SALE_ID}`,
+      );
+      const lots = await app.request(
+        `http://test/admin/integrations/atg/selling/lots?ids=${LOT_ID}`,
+      );
+      expect(sales.status).toBe(403);
+      expect(lots.status).toBe(403);
+      expect(getSaleSellingSummaries).not.toHaveBeenCalled();
+      expect(getLotSellingSummaries).not.toHaveBeenCalled();
+    });
+  });
+
   describe("PUT /sales/:id/settings", () => {
     const put = (app: Hono, body: unknown) =>
       app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}/settings`, {

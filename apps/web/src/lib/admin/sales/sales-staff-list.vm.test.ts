@@ -1,5 +1,6 @@
 import type { AdminSaleBoardRow } from "@/lib/admin/catalog/sale-table-row";
 import { EMPTY_ADMIN_SALES_LIST_SUMMARY } from "@/lib/data/http/admin-sales-summary.server";
+import { type AtgSaleSellingSummary, toAtgSaleSellingSummary } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   SALES_DEFAULT_SORT,
@@ -40,6 +41,34 @@ describe("sales staff list view model", () => {
     expect(sale?.editHref).toBe("/admin/sales/sale_1/edit");
     expect(lotCountLabel(0)).toBe("No lots yet");
     expect(lotCountLabel(1204)).toBe("1,204 lots");
+  });
+
+  it("marks draft sales linked to ATG and disables lax.bid actions only when ATG owns them", () => {
+    const summary = (remoteStatus: "created" | "published"): AtgSaleSellingSummary =>
+      toAtgSaleSellingSummary({
+        saleStatus: "draft",
+        atgRemoteStatus: remoteStatus,
+        atgLinked: true,
+        atgSoldLotCount: 0,
+        atgApprovedAt: null,
+      });
+    const drafts = ["s_draft", "s_live", "s_free"].map((saleId) => ({
+      ...row,
+      saleId,
+      status: "draft" as const,
+    }));
+    const [onAtgDraft, live, free] = toSalesStaffRows(
+      drafts,
+      new Map([
+        ["s_draft", summary("created")],
+        ["s_live", summary("published")],
+      ]),
+    );
+    expect(onAtgDraft).toMatchObject({ onAtg: true });
+    expect(onAtgDraft?.sellingOnAtg).toBeUndefined();
+    expect(live).toMatchObject({ onAtg: true, sellingOnAtg: true });
+    expect(free?.onAtg).toBeUndefined();
+    expect(toSalesStaffRows([row])[0]?.onAtg).toBeUndefined();
   });
 
   it("points the setup work at the setup view", () => {

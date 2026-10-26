@@ -1,6 +1,7 @@
 import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
 import { lotLensHref } from "@/lib/admin/catalog/lots-lenses";
 import { EMPTY_ADMIN_LOTS_LIST_SUMMARY } from "@/lib/data/http/admin-lots-summary.server";
+import { type AtgLotSellingSummary, toAtgSaleSellingSummary } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   LOTS_DEFAULT_SORT,
@@ -46,6 +47,31 @@ describe("lots staff list view model", () => {
     expect(lot?.context).toBe("Lot 12 · Ada Lovelace");
     expect(lot?.inDraftSale).toBe(true);
     expect(lot?.withdrawalRequestedAt).toBe("2026-10-21T10:00:00.000Z");
+  });
+
+  it("marks lots listed on ATG, but not lots whose sale sells on lax.bid", () => {
+    const sale = (saleStatus: "draft" | "scheduled", atgLinked: boolean) =>
+      toAtgSaleSellingSummary({
+        saleStatus,
+        atgRemoteStatus: atgLinked ? "published" : null,
+        atgLinked,
+        atgSoldLotCount: 0,
+        atgApprovedAt: null,
+      });
+    const lotOnAtg = { remoteStatus: "1", lastError: null, sold: null, numberOfBids: 0 };
+    const rows = ["lot_atg", "lot_lax", "lot_unpushed"].map((id) => ({ ...row, id }));
+    const [onAtg, lax, unpushed] = toLotsStaffRows(
+      rows,
+      {},
+      new Map<string, AtgLotSellingSummary>([
+        ["lot_atg", { saleId: "sale_1", sale: sale("draft", true), lot: lotOnAtg }],
+        ["lot_lax", { saleId: "sale_1", sale: sale("scheduled", false), lot: lotOnAtg }],
+        ["lot_unpushed", { saleId: "sale_1", sale: sale("draft", true), lot: null }],
+      ]),
+    );
+    expect(onAtg?.onAtg).toBe(true);
+    expect(lax?.onAtg).toBeUndefined();
+    expect(unpushed?.onAtg).toBeUndefined();
   });
 
   it("links the waiting work to the views that hold it, in plain words", () => {

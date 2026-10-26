@@ -1,5 +1,6 @@
 "use client";
 
+import { AtgListMarker } from "@/components/admin/atg/selling-platform-badge";
 import { LotQuickView } from "@/components/admin/lots/lot-quick-view";
 import { type LotActionTarget, useLotActions } from "@/components/admin/lots/use-lot-actions";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
@@ -147,9 +148,12 @@ export function LotsStaffList(props: LotsStaffListProps) {
         mobile: "badge",
         truncate: false,
         cell: (row) => (
-          <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
-            {row.status.label}
-          </StatusBadge>
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
+              {row.status.label}
+            </StatusBadge>
+            {row.onAtg ? <AtgListMarker label="On ATG" /> : null}
+          </span>
         ),
       },
       {

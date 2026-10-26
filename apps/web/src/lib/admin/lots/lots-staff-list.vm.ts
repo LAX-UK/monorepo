@@ -18,7 +18,7 @@ import {
   metricChange,
   viewQuery,
 } from "@auction/staff-ui";
-import type { LotStatus } from "@auction/types";
+import { type AtgLotSellingSummary, type LotStatus, isLotOnAtg } from "@auction/types";
 
 export type LotsListSearch = Record<string, string | string[] | undefined>;
 
@@ -52,6 +52,8 @@ export type LotsStaffRow = {
   hasWinner: boolean;
   /** When the seller asked to withdraw the lot, if a request is waiting. */
   withdrawalRequestedAt: string | null;
+  /** Pushed to ATG in a sale not selling on lax.bid: the row carries the compact ATG marker. */
+  onAtg?: boolean;
 };
 
 /** The table formatters write a dash for "nothing"; the kit draws its own empty value. */
@@ -63,8 +65,11 @@ function present(value: string | undefined): string | null {
 export function toLotsStaffRows(
   rows: readonly AdminLotTableRow[],
   withdrawalRequestedAt: Readonly<Record<string, string>> = {},
+  /** Where each draft lot sells, from one batched lookup for the page. */
+  atgSelling: ReadonlyMap<string, AtgLotSellingSummary> = new Map(),
 ): LotsStaffRow[] {
   return rows.map((row) => ({
+    ...(isLotOnAtg(atgSelling.get(row.id)) ? { onAtg: true } : {}),
     id: row.id,
     title: row.title,
     lotNumber: row.lotNumber,

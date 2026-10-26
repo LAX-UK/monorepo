@@ -2,7 +2,7 @@ import type { StatusBadgeVariant } from "@/lib/presenters/status-presentation";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { LotStatusContext, StatusDomain } from "@/lib/presenters/status/core";
 import { type StatusPresentation, humanizeStatus } from "@auction/staff-ui";
-import { atgLotStatusLabel } from "@auction/types";
+import { type AtgSellingBadge, atgLotStateLabel } from "@auction/types";
 
 /**
  * Bid's status registries (lib/presenters/status) speak in badge variants; the staff kit speaks
@@ -231,8 +231,9 @@ const ATG_DOCUMENTED_LOT_TONE: Record<string, StatusPresentation["tone"]> = {
 };
 
 /**
- * One lot's state on ATG, from the fields the sync records. A documented GetLots code wins;
- * an unknown one falls back to sold or the bid count.
+ * One lot's state on ATG, from the fields the sync records. The label comes from the shared
+ * `atgLotStateLabel` (a documented GetLots code wins, then sold or the bid count), the same one
+ * the lot header's "On ATG" badge uses.
  */
 export function staffAtgLotStatus(lot: {
   atgLotId: string | null;
@@ -243,10 +244,18 @@ export function staffAtgLotStatus(lot: {
 }): StatusPresentation {
   if (lot.lastError) return { label: "Sync error", tone: "danger" };
   if (!lot.atgLotId) return { label: "Not pushed", tone: "neutral" };
-  const documented = atgLotStatusLabel(lot.remoteStatus);
-  if (documented) return { label: documented, tone: ATG_DOCUMENTED_LOT_TONE[documented] ?? "info" };
-  if (lot.sold) return { label: "Sold", tone: "success" };
-  const bids = lot.numberOfBids ?? 0;
-  if (bids > 0) return { label: bids === 1 ? "1 bid" : `${bids} bids`, tone: "info" };
-  return { label: "On ATG", tone: "info" };
+  const label = atgLotStateLabel(lot) ?? "On ATG";
+  return { label, tone: ATG_DOCUMENTED_LOT_TONE[label] ?? "info" };
+}
+
+/**
+ * Where a sale or lot sells, beside its status: lax.bid in the neutral tone, ATG in info, and a
+ * lot whose ATG sync failed in danger. The label comes from the shared ownership helpers.
+ */
+export function staffSellingPlatformStatus(
+  badge: AtgSellingBadge,
+  options: { syncError?: boolean } = {},
+): StatusPresentation {
+  if (badge.platform === "lax") return { label: badge.label, tone: "neutral" };
+  return { label: badge.label, tone: options.syncError ? "danger" : "info" };
 }

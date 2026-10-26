@@ -1,5 +1,6 @@
 "use client";
 
+import { SellingPlatformBadge } from "@/components/admin/atg/selling-platform-badge";
 import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { type LotActionTarget, useLotActions } from "@/components/admin/lots/use-lot-actions";
@@ -10,6 +11,7 @@ import {
   type CatalogReadinessResult,
   lotPublishBlockedReason,
 } from "@/lib/admin/catalog-readiness";
+import { adminSaleDetailTabHref } from "@/lib/admin/catalog-route-helpers";
 import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
@@ -29,6 +31,7 @@ import {
   StatusBadge,
   staffCellLinkClass,
 } from "@auction/staff-ui";
+import { type AtgLotSellingSummary, atgLotSellingBadge } from "@auction/types";
 import { Copy, ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -48,6 +51,8 @@ type Props = {
   /** When the seller asked to withdraw the lot (ISO), while the request waits for a decision. */
   withdrawalRequestedAt?: string | null;
   publishReadiness?: CatalogReadinessResult | null;
+  /** Where the lot sells: its ATG state, or lax.bid with the rest of its sale. */
+  selling?: AtgLotSellingSummary | null;
   children: ReactNode;
 };
 
@@ -68,6 +73,7 @@ export function LotDetailShell({
   canDecideWithdrawals = false,
   withdrawalRequestedAt = null,
   publishReadiness: publishReadinessProp,
+  selling = null,
   children,
 }: Props) {
   const router = useRouter();
@@ -77,6 +83,8 @@ export function LotDetailShell({
   const status = staffStatus("lot", auction.status, { lot: { winnerId: auction.winnerId } });
   const connectBlocked = connectRequired || searchParams.get("error_code") === "connect_required";
   const inDraftSale = context.sale?.status === "draft";
+  const sellingBadge = selling ? atgLotSellingBadge(selling) : null;
+  const atgSaleId = selling?.saleId ?? context.sale?.id ?? null;
 
   const publishReadiness =
     publishReadinessProp !== undefined
@@ -219,9 +227,20 @@ export function LotDetailShell({
           />
         }
         status={
-          <StatusBadge tone={status.tone} live={status.live ?? false}>
-            {status.label}
-          </StatusBadge>
+          <>
+            <StatusBadge tone={status.tone} live={status.live ?? false}>
+              {status.label}
+            </StatusBadge>
+            {sellingBadge ? (
+              <SellingPlatformBadge
+                badge={sellingBadge}
+                syncError={Boolean(selling?.lot?.lastError)}
+                atgHref={
+                  canManageAuction && atgSaleId ? adminSaleDetailTabHref(atgSaleId, "atg") : null
+                }
+              />
+            ) : null}
+          </>
         }
         meta={
           <>

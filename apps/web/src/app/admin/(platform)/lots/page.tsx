@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin/lots/lots-staff-list.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getAtgLotSellingSummaries } from "@/lib/data/http/atg.server";
 import {
   LOTS_ACCESS,
   SALES_ACCESS,
@@ -42,7 +43,13 @@ export default async function AdminLotsPage({
   const vm = await loadAdminLotsListPage(sp);
   const { model, pageRows, hasNextPage, listPaginationTotal, lotFilterOptions } = vm;
   const { query } = model;
-  const rows = toLotsStaffRows(vm.lotTableRows, vm.withdrawalRequestedAt);
+  // Only draft lots in a sale can sell on ATG (the LAX lot stays draft); one lookup for the page.
+  const atgSelling = userHasAccessTo(role, staffRole, SALES_ACCESS)
+    ? await getAtgLotSellingSummaries(
+        vm.lotTableRows.filter((row) => row.status === "draft" && row.saleId).map((row) => row.id),
+      )
+    : undefined;
+  const rows = toLotsStaffRows(vm.lotTableRows, vm.withdrawalRequestedAt, atgSelling);
   const lotTrends = {
     live: vm.liveTrend,
     ended: vm.lotsEndedTrend,

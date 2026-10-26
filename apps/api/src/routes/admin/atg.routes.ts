@@ -13,6 +13,22 @@ const saleActionParamSchema = saleIdParamSchema.extend({
 
 const jobIdParamSchema = z.object({ jobId: z.string().min(1) });
 
+/** Comma-separated ids, one page of a list at most. */
+const MAX_SELLING_IDS = 200;
+const sellingIdsQuerySchema = z.object({
+  ids: z
+    .string()
+    .transform((raw) => [
+      ...new Set(
+        raw
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean),
+      ),
+    ])
+    .pipe(z.array(z.string().uuid()).min(1).max(MAX_SELLING_IDS)),
+});
+
 const saleSettingsBodySchema = z
   .object({
     auctionType: z.enum(ATG_AUCTION_TYPES),
@@ -45,6 +61,19 @@ export function attachAdminAtgRoutes(platform: AdminHono, atg: IAtgAdminService)
       }
       return c.json({ data: { jobId, state } });
     },
+  );
+
+  // Where each sale or lot sells, for headers and list markers. Served while ATG sync is off.
+  platform.get(
+    "/integrations/atg/selling/sales",
+    zValidator("query", sellingIdsQuerySchema),
+    async (c) => c.json({ data: await atg.getSaleSellingSummaries(c.req.valid("query").ids) }),
+  );
+
+  platform.get(
+    "/integrations/atg/selling/lots",
+    zValidator("query", sellingIdsQuerySchema),
+    async (c) => c.json({ data: await atg.getLotSellingSummaries(c.req.valid("query").ids) }),
   );
 
   platform.get("/integrations/atg/sales/:id", zValidator("param", saleIdParamSchema), async (c) => {

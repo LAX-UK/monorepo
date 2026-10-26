@@ -10,6 +10,7 @@ import {
   toSalesStaffRows,
 } from "@/lib/admin/sales/sales-staff-list.vm";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getAtgSaleSellingSummaries } from "@/lib/data/http/atg.server";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -38,10 +39,16 @@ export default async function AdminSalesPage({
   const { model, salesSummary, err, boardRows, lensesItems, listPaginationTotal } = page;
   const { query } = model;
   const hasNextPage = page.boardPagination?.nextHref != null;
+  // Only draft sales can be linked to or owned by ATG; one lookup for the page.
+  const atgSelling = canManageSales
+    ? await getAtgSaleSellingSummaries(
+        boardRows.filter((row) => row.status === "draft").map((row) => row.saleId),
+      )
+    : undefined;
 
   return (
     <SalesStaffList
-      rows={toSalesStaffRows(boardRows)}
+      rows={toSalesStaffRows(boardRows, atgSelling)}
       search={sp}
       views={salesViews(lensesItems)}
       activeLens={model.activeLensId}

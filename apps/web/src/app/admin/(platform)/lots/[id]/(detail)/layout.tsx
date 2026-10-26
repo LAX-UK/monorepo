@@ -4,6 +4,7 @@ import { loadLotConnectRequired } from "@/lib/admin/connect-readiness";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getAtgLotSellingSummaries } from "@/lib/data/http/atg.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 import {
@@ -27,7 +28,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
   const canManageCatalog = userHasAccessTo(role, staffRole, LOTS_ACCESS);
   const canManageAuction = userHasAccessTo(role, staffRole, SALES_ACCESS);
   const canDecideWithdrawals = userHasAccessTo(role, staffRole, WITHDRAWAL_DECISION_ACCESS);
-  const [bundle, bids, documents, connectRequired, withdrawalTasks] = await Promise.all([
+  const [bundle, bids, documents, connectRequired, withdrawalTasks, selling] = await Promise.all([
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),
     getServerLotDocuments(id).catch(() => []),
@@ -38,6 +39,9 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
           () => [],
         )
       : Promise.resolve([]),
+    canManageAuction
+      ? getAtgLotSellingSummaries([id]).then((rows) => rows.get(id) ?? null)
+      : Promise.resolve(null),
   ]);
 
   const publishReadiness = computeLotDetailReadiness({
@@ -60,6 +64,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       withdrawalRequestedAt={withdrawal ? new Date(withdrawal.createdAt).toISOString() : null}
       connectRequired={connectRequired}
       publishReadiness={publishReadiness}
+      selling={selling}
     >
       {children}
     </LotDetailShell>

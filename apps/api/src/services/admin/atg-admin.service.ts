@@ -7,6 +7,8 @@ import {
 } from "@auction/queues";
 import {
   type AtgIntegrationStatus,
+  type AtgLotSellingSummary,
+  type AtgSaleSellingSummary,
   type AtgSaleSyncView,
   type AtgSyncAction,
   type AtgSyncJobState,
@@ -118,6 +120,14 @@ export class AtgAdminService implements IAtgAdminService {
 
   getSale(saleId: string): Promise<AtgSaleSyncView | null> {
     return this.reader.getSaleView(saleId);
+  }
+
+  async getSaleSellingSummaries(saleIds: string[]): Promise<Record<string, AtgSaleSellingSummary>> {
+    return Object.fromEntries(await this.reader.getSaleSellingSummaries(saleIds));
+  }
+
+  async getLotSellingSummaries(lotIds: string[]): Promise<Record<string, AtgLotSellingSummary>> {
+    return Object.fromEntries(await this.reader.getLotSellingSummaries(lotIds));
   }
 
   async enqueueSaleAction(saleId: string, action: AtgSyncAction): Promise<AtgEnqueueResult> {
