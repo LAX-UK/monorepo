@@ -1,6 +1,30 @@
 import type { SaleAttentionResult } from "@auction/domain";
 import { describe, expect, it } from "vitest";
-import { buildSaleBidActivityRows, buildSaleOverviewViewModel } from "./sale-overview.vm";
+import {
+  buildSaleBidActivityRows,
+  buildSaleOverviewViewModel,
+  saleNumberTrends,
+} from "./sale-overview.vm";
+
+describe("saleNumberTrends", () => {
+  const bundle = (dailyCounts: number[]) => ({ currentTotal: 0, priorTotal: 0, dailyCounts });
+
+  it("draws only series that count what the number counts", () => {
+    const trends = saleNumberTrends({
+      lots: bundle([1, 0, 2]),
+      estimate: bundle([5, 5, 5]),
+      hammer: bundle([1, 2, 3]),
+      revenue: bundle([1, 2, 3]),
+      registrations: bundle([0, 3, 1]),
+      bidders: bundle([2]),
+    });
+    expect(trends).toEqual({ lots: [1, 0, 2], registrations: [0, 3, 1] });
+  });
+
+  it("draws nothing when the trends did not load", () => {
+    expect(saleNumberTrends(null)).toEqual({});
+  });
+});
 
 describe("buildSaleOverviewViewModel", () => {
   it("builds KPI tiles from lots, registrations, and metrics", () => {

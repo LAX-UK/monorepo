@@ -7,6 +7,7 @@ import {
   lotsFilterChips,
   lotsListHref,
   lotsMetrics,
+  lotsMetricsPeriod,
   lotsRangeSummary,
   lotsViews,
   toLotsStaffRows,
@@ -53,7 +54,8 @@ export default async function AdminLotsPage({
         withdrawalsPending: Object.keys(vm.withdrawalRequestedAt).length,
         draftsMissingPhotos: vm.lotsSummary.needsAttentionCount,
       })}
-      metrics={lotsMetrics(vm.lotsSummary)}
+      metrics={lotsMetrics(vm.lotsSummary, vm.hammerTrend)}
+      metricsPeriod={lotsMetricsPeriod(vm.hammerTrend)}
       filterChips={lotsFilterChips(vm.activeFilterChips)}
       filterOptions={{
         sales: lotFilterOptions.sales.map((sale) => ({

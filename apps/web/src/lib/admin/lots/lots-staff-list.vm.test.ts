@@ -1,4 +1,5 @@
 import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
+import { lotLensHref } from "@/lib/admin/catalog/lots-lenses";
 import { EMPTY_ADMIN_LOTS_LIST_SUMMARY } from "@/lib/data/http/admin-lots-summary.server";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,6 +8,7 @@ import {
   lotsAttention,
   lotsFilterChips,
   lotsMetrics,
+  lotsMetricsPeriod,
   lotsRangeSummary,
   lotsSortHref,
   lotsSortState,
@@ -59,6 +61,30 @@ describe("lots staff list view model", () => {
   it("formats the hammer total in full", () => {
     const metrics = lotsMetrics({ ...EMPTY_ADMIN_LOTS_LIST_SUMMARY, totalHammerValue: "1604812" });
     expect(metrics.find((metric) => metric.id === "hammer")?.value).toBe("£1,604,812.00");
+  });
+
+  it("links each count to its view, marks waiting work and trends the hammer when loaded", () => {
+    const summary = { ...EMPTY_ADMIN_LOTS_LIST_SUMMARY, liveCount: 4, endingSoonCount: 2 };
+    const hammerTrend = { currentTotal: 130, priorTotal: 100, dailyCounts: [0, 30, 100] };
+    const metrics = lotsMetrics(summary, hammerTrend);
+    const byId = Object.fromEntries(metrics.map((metric) => [metric.id, metric]));
+    // The same links as the view tabs.
+    expect(byId.live).toMatchObject({ tone: "positive", href: lotLensHref("live", {}) });
+    expect(byId.ending).toMatchObject({ tone: "attention", href: lotLensHref("ending", {}) });
+    expect(byId.draft?.href).toBe(lotLensHref("draft", {}));
+    expect(byId.hammer?.trend).toEqual([0, 30, 100]);
+    expect(byId.hammer?.comparison).toEqual({
+      text: "30%",
+      direction: "up",
+      tone: "positive",
+      basis: "vs previous 3 days",
+    });
+    expect(lotsMetricsPeriod(hammerTrend)).toBe("All lots · hammer trend over the last 3 days");
+
+    // Without the trend there is no chart, no change and no trend in the period line.
+    const plain = lotsMetrics(summary, null);
+    expect(plain.find((metric) => metric.id === "hammer")?.trend).toBeUndefined();
+    expect(lotsMetricsPeriod(null)).toBe("All lots");
   });
 
   it("never repeats the search or the sort as a chip", () => {

@@ -305,3 +305,23 @@ export function buildSaleOverviewViewModel(input: {
     auditRows,
   };
 }
+
+/** The sale numbers whose daily series counts the same thing as the number itself. */
+const SALE_NUMBER_TREND_KEYS = ["lots", "registrations", "bidders"] as const;
+
+/**
+ * The daily series to draw beside each sale number: lots added, registrations made and bidders
+ * active each day. Only those three, since the other series (bid volume, estimates added) measure
+ * something other than the number they would sit beside. Empty when the trends did not load.
+ */
+export function saleNumberTrends(
+  trends: AdminSaleOverviewKpiTrends | null | undefined,
+): Partial<Record<string, readonly number[]>> {
+  if (!trends) return {};
+  const out: Partial<Record<string, readonly number[]>> = {};
+  for (const key of SALE_NUMBER_TREND_KEYS) {
+    const series = trends[key]?.dailyCounts ?? [];
+    if (series.length > 1) out[key] = series;
+  }
+  return out;
+}

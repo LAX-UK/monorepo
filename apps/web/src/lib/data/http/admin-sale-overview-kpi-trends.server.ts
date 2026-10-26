@@ -13,32 +13,10 @@ export type AdminSaleOverviewKpiTrends = {
   bidders: AdminKpiTrendBundle;
 };
 
-function emptyBundle(periodDays: AdminKpiPeriodDays): AdminKpiTrendBundle {
-  return {
-    currentTotal: 0,
-    priorTotal: 0,
-    dailyCounts: Array.from({ length: periodDays }, () => 0),
-  };
-}
-
-export const EMPTY_ADMIN_SALE_OVERVIEW_KPI_TRENDS = (
-  periodDays: AdminKpiPeriodDays = 30,
-): AdminSaleOverviewKpiTrends => {
-  const empty = emptyBundle(periodDays);
-  return {
-    lots: empty,
-    estimate: empty,
-    hammer: empty,
-    revenue: empty,
-    registrations: empty,
-    bidders: empty,
-  };
-};
-
 export async function getAdminSaleOverviewKpiTrends(
   saleId: string,
   periodDays: AdminKpiPeriodDays,
-): Promise<AdminSaleOverviewKpiTrends> {
+): Promise<AdminSaleOverviewKpiTrends | null> {
   try {
     const qs = new URLSearchParams({ periodDays: String(periodDays) });
     const res = await authedServerFetch(
@@ -51,6 +29,7 @@ export async function getAdminSaleOverviewKpiTrends(
     return data;
   } catch (err) {
     console.error("[getAdminSaleOverviewKpiTrends] Failed to load sale KPI trends:", err);
-    return EMPTY_ADMIN_SALE_OVERVIEW_KPI_TRENDS(periodDays);
+    // No trend rather than a row of zeros, so the overview never draws a flat line it did not load.
+    return null;
   }
 }

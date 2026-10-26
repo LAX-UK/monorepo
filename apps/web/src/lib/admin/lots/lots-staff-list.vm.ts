@@ -2,8 +2,10 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { adminLotEditHref, adminLotHref } from "@/lib/admin/catalog-route-helpers";
 import { adminLotListPath } from "@/lib/admin/catalog-routes";
 import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
+import { lotLensHref } from "@/lib/admin/catalog/lots-lenses";
 import type { CatalogActiveFilterChip, CatalogSegmentItem } from "@/lib/admin/catalog/types";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
+import type { AdminKpiTrendBundle } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminLotsListSummary } from "@/lib/data/http/admin-lots-summary.server";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
 import {
@@ -13,6 +15,7 @@ import {
   type StatusPresentation,
   type TeamView,
   formatStaffMoney,
+  metricChange,
   viewQuery,
 } from "@auction/staff-ui";
 import type { LotStatus } from "@auction/types";
@@ -181,18 +184,60 @@ export function lotsAttention(
   ];
 }
 
-/** Headline numbers across every lot, from the lots summary. */
-export function lotsMetrics(summary: AdminLotsListSummary): Metric[] {
+/** The period line over the lots summary: counts are now, the hammer trend covers the period. */
+export function lotsMetricsPeriod(hammerTrend: AdminKpiTrendBundle | null): string {
+  const days = hammerTrend?.dailyCounts.length ?? 0;
+  return days > 1 ? `All lots · hammer trend over the last ${days} days` : "All lots";
+}
+
+/**
+ * Headline numbers across every lot, from the lots summary. The counts link to their view; the
+ * hammer total carries the hammer of lots ended each day and the change against the period
+ * before, when that trend loaded.
+ */
+export function lotsMetrics(
+  summary: AdminLotsListSummary,
+  hammerTrend: AdminKpiTrendBundle | null = null,
+): Metric[] {
   const count = new Intl.NumberFormat("en-GB");
   const hammer = Number.parseFloat(summary.totalHammerValue);
+  const days = hammerTrend?.dailyCounts.length ?? 0;
+  const hammerChange =
+    hammerTrend && days > 1
+      ? metricChange({
+          current: hammerTrend.currentTotal,
+          prior: hammerTrend.priorTotal,
+          basis: `vs previous ${days} days`,
+          rise: "good",
+        })
+      : undefined;
   return [
-    { id: "live", label: "Live", value: count.format(summary.liveCount) },
-    { id: "ending", label: "Ending in 24 hours", value: count.format(summary.endingSoonCount) },
-    { id: "draft", label: "Drafts", value: count.format(summary.draftCount) },
+    {
+      id: "live",
+      label: "Live",
+      value: count.format(summary.liveCount),
+      tone: summary.liveCount > 0 ? "positive" : "neutral",
+      href: lotLensHref("live", {}),
+    },
+    {
+      id: "ending",
+      label: "Ending in 24 hours",
+      value: count.format(summary.endingSoonCount),
+      tone: summary.endingSoonCount > 0 ? "attention" : "neutral",
+      href: lotLensHref("ending", {}),
+    },
+    {
+      id: "draft",
+      label: "Drafts",
+      value: count.format(summary.draftCount),
+      href: lotLensHref("draft", {}),
+    },
     {
       id: "hammer",
       label: "Hammer total",
       value: formatStaffMoney(Math.round((Number.isFinite(hammer) ? hammer : 0) * 100)),
+      ...(hammerTrend && days > 1 ? { trend: hammerTrend.dailyCounts } : {}),
+      ...(hammerChange ? { comparison: hammerChange } : {}),
     },
   ];
 }
