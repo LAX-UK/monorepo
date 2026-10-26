@@ -121,6 +121,14 @@ describe("MarketingArtistCard", () => {
     expect(screen.getByText("RH")).toBeInTheDocument();
     expect(screen.getByText("3 editions")).toBeInTheDocument();
   });
+
+  it("sets the initials on the hatched image placeholder when there is no portrait", () => {
+    const { container } = render(
+      <MarketingArtistCard href="/artists/rowan-hale" name="Rowan Hale" />,
+    );
+    expect(container.querySelector("[role='img'] pattern")).not.toBeNull();
+    expect(screen.getByText("RH")).toBeInTheDocument();
+  });
 });
 
 describe("MarketingWorkCard", () => {

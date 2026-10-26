@@ -1,5 +1,6 @@
 import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
+import { MediaPlaceholder } from "@auction/ui/components/media-placeholder";
 import Link from "next/link";
 import { Children, type ReactNode, isValidElement } from "react";
 import { MarketingCardMedia } from "./marketing-card-media.js";
@@ -59,9 +60,12 @@ export function MarketingArtistCard({
       <MarketingCardMedia className="aspect-[4/5] bg-surface-container-low">
         <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0 block">
           {portrait ?? (
-            <span className="flex size-full items-center justify-center font-headline text-4xl font-medium tracking-tight text-on-surface-variant">
-              {marketingArtistInitials(name)}
-            </span>
+            <>
+              <MediaPlaceholder fill />
+              <span className="absolute inset-0 flex items-center justify-center font-headline text-4xl font-medium tracking-tight text-on-surface-variant">
+                {marketingArtistInitials(name)}
+              </span>
+            </>
           )}
         </Link>
         {badges ? (
