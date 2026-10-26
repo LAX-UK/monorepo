@@ -1,12 +1,10 @@
+import { useId } from "react";
 import { cn } from "../../lib/utils.js";
 
 export type MediaPlaceholderProps = {
-  /**
-   * What the image would show, for assistive tech ("Lot artwork", "Auction cover"). One to three
-   * characters are read as initials and set on the mat.
-   */
+  /** Short label, e.g. "Lot artwork", "Auction cover", or initials. */
   label?: string | undefined;
-  /** The work's title. Its initials are set on the mat, and the title itself when there is room. */
+  /** The work's title; read to assistive tech when there is no label. */
   title?: string | undefined;
   tone?: "light" | "dark" | "auto" | undefined;
   /** Intrinsic aspect ratio, matching the mockup helper's [width, height]. */
@@ -18,37 +16,23 @@ export type MediaPlaceholderProps = {
   className?: string | undefined;
 };
 
-/**
- * A paper mat on the product's surface tokens: warm light from the top left and a soft settle at
- * the bottom right give it the tooth of paper. `dark` is the lightbox, always on black.
- */
-const LIGHT_PAPER =
-  "bg-[image:radial-gradient(120%_90%_at_18%_8%,rgb(242_241_223/0.55),transparent_60%),radial-gradient(100%_80%_at_92%_100%,rgb(0_0_0/0.05),transparent_65%)]";
-const DARK_PAPER =
-  "bg-[image:radial-gradient(120%_90%_at_18%_8%,rgb(255_255_255/0.05),transparent_60%),radial-gradient(100%_80%_at_92%_100%,rgb(0_0_0/0.3),transparent_65%)]";
-
-const MAT_CLASS = {
-  light: `bg-surface-container-low text-on-surface-variant ${LIGHT_PAPER}`,
-  dark: `bg-neutral-900 text-neutral-300 ${DARK_PAPER}`,
-  auto: `bg-surface-container-low text-on-surface-variant ${LIGHT_PAPER} dark:bg-[image:radial-gradient(120%_90%_at_18%_8%,rgb(255_255_255/0.05),transparent_60%),radial-gradient(100%_80%_at_92%_100%,rgb(0_0_0/0.3),transparent_65%)]`,
+const SURFACE_CLASS = {
+  light: "bg-surface-container",
+  dark: "bg-surface-container-low",
+  auto: "bg-surface-container dark:bg-surface-container-low",
 } as const;
 
-const SKIP_WORDS = new Set(["a", "an", "the", "of", "and", "lot", "untitled"]);
+const LINE_CLASS = {
+  light: "text-brand-100",
+  dark: "text-brand-400",
+  auto: "text-brand-100 dark:text-brand-400",
+} as const;
 
-/** "The Blue Hour, 2021" → "BH". Words that start with a digit or say nothing are skipped. */
-export function placeholderInitials(text: string | undefined): string | null {
-  const trimmed = text?.trim();
-  if (!trimmed) return null;
-  if (trimmed.length <= 3 && !/\s/.test(trimmed)) return trimmed.toUpperCase();
-  const words = trimmed
-    .split(/[\s,.:;()–—-]+/)
-    .filter((w) => /^\p{L}/u.test(w) && !SKIP_WORDS.has(w.toLowerCase()));
-  if (words.length === 0) return null;
-  return words
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-}
+const LABEL_CLASS = {
+  light: "text-brand-300",
+  dark: "text-brand-400",
+  auto: "text-brand-300 dark:text-brand-400",
+} as const;
 
 export function MediaPlaceholder({
   label,
@@ -60,56 +44,58 @@ export function MediaPlaceholder({
   loading = false,
   className,
 }: MediaPlaceholderProps) {
+  const patternId = useId().replace(/:/g, "");
   const shouldFill = fill ?? !aspect;
   const normalizedLabel = label?.trim();
-  const normalizedTitle = title?.trim();
-  const shortLabel =
-    normalizedLabel && normalizedLabel.length <= 3 ? normalizedLabel.toUpperCase() : null;
-  const initials = shortLabel ?? placeholderInitials(normalizedTitle);
-  const spoken = normalizedLabel || normalizedTitle;
-  const isCircle = shape === "circle";
+  const spoken = normalizedLabel || title?.trim();
 
   return (
     <div
       role="img"
       aria-label={spoken ? `${spoken} placeholder` : "Image placeholder"}
-      data-media-placeholder=""
       className={cn(
-        "@container overflow-hidden",
+        "overflow-hidden",
         shouldFill ? "absolute inset-0 h-full w-full" : "relative w-full",
-        isCircle && "rounded-full",
-        loading && "animate-pulse motion-reduce:animate-none",
-        MAT_CLASS[tone],
+        shape === "circle" && "rounded-full",
+        loading && "animate-pulse",
+        SURFACE_CLASS[tone],
         className,
       )}
       style={aspect ? { aspectRatio: `${aspect[0]} / ${aspect[1]}` } : undefined}
     >
-      {isCircle ? null : (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-[8%] border border-current opacity-25"
-        />
-      )}
-      {initials ? (
-        <span
-          aria-hidden
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-[12%] text-center"
-        >
-          <span
-            className={cn(
-              "font-headline font-medium leading-none tracking-[0.16em]",
-              isCircle
-                ? "text-[clamp(0.75rem,38cqi,1.5rem)]"
-                : "text-[clamp(0.75rem,14cqi,2.25rem)]",
-            )}
+      <svg
+        width="100%"
+        height="100%"
+        className={cn("block h-full w-full", SURFACE_CLASS[tone], LINE_CLASS[tone])}
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <title>
+          {normalizedLabel ? `${normalizedLabel} placeholder pattern` : "Image placeholder pattern"}
+        </title>
+        <defs>
+          <pattern
+            id={patternId}
+            patternUnits="userSpaceOnUse"
+            width="18"
+            height="18"
+            patternTransform="rotate(45)"
+            suppressHydrationWarning
           >
-            {initials}
-          </span>
-          {normalizedTitle && !isCircle && !shortLabel ? (
-            <span className="hidden max-w-full truncate font-[family-name:var(--font-outfit,var(--font-body))] text-xs @[12rem]:block">
-              {normalizedTitle}
-            </span>
-          ) : null}
+            <rect width="18" height="18" fill="transparent" />
+            <rect width="1" height="18" fill="currentColor" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#${patternId})`} suppressHydrationWarning />
+      </svg>
+      {normalizedLabel ? (
+        <span
+          className={cn(
+            "absolute inset-0 flex items-center justify-center px-2 text-center font-mono text-xs tracking-normal",
+            LABEL_CLASS[tone],
+          )}
+        >
+          {normalizedLabel}
         </span>
       ) : null}
     </div>
