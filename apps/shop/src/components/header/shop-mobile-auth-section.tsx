@@ -63,27 +63,28 @@ function MobileGuestAuthSection({
 
   return (
     <div className="flex w-full flex-col items-center gap-3" aria-busy={pending !== null}>
+      {/* Most shoppers already have a LAX Account, so signing in leads. */}
       <Button variant="cta" size="lg" className="w-full" asChild>
         <ShopAuthLink
-          href={registerHref}
+          href={loginHref}
           className={cn("w-full justify-center", pending && "pointer-events-none opacity-60")}
           aria-disabled={pending !== null}
-          onClick={handleClick("register", registerHref)}
+          onClick={handleClick("login", loginHref)}
         >
-          {pending === "register" ? "Opening…" : "Create account"}
+          {pending === "login" ? "Signing in…" : "Sign in"}
         </ShopAuthLink>
       </Button>
       <ShopAuthLink
-        href={loginHref}
+        href={registerHref}
         className={cn(
           "inline-flex min-h-11 w-full items-center justify-center rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
           pending && "pointer-events-none opacity-60",
           FOCUS_RING,
         )}
         aria-disabled={pending !== null}
-        onClick={handleClick("login", loginHref)}
+        onClick={handleClick("register", registerHref)}
       >
-        {pending === "login" ? "Signing in…" : "Sign in"}
+        {pending === "register" ? "Opening…" : "Create account"}
       </ShopAuthLink>
     </div>
   );

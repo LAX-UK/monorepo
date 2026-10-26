@@ -58,10 +58,10 @@ test.describe("Shop viewport audit @a11y", () => {
     await page.goto("/");
     await expect(page.locator("#main-content")).toBeVisible();
 
-    const collect = page.getByRole("button", { name: "Collect" });
-    await collect.click();
-    await expect(collect).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("link", { name: "View all artworks" })).toBeVisible();
+    const editions = page.getByRole("button", { name: "Editions" });
+    await editions.click();
+    await expect(editions).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("link", { name: "View all editions" })).toBeVisible();
     const overflow = await page.evaluate(() => {
       const doc = document.documentElement;
       return doc.scrollWidth > doc.clientWidth + 1;

@@ -1,6 +1,9 @@
 "use client";
 
-import { buildShopMegaMenuSections } from "@/components/header/header-nav.config";
+import {
+  type ShopHeaderNavData,
+  buildShopMegaMenuSections,
+} from "@/components/header/header-nav.config";
 import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-active";
 import { ShopMobileAuthSection } from "@/components/header/shop-mobile-auth-section";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
@@ -18,6 +21,7 @@ type ShopMobileNavDrawerProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
   merchandiseEnabled: boolean;
+  navData?: ShopHeaderNavData | null;
 };
 
 export function ShopMobileNavDrawer({
@@ -27,6 +31,7 @@ export function ShopMobileNavDrawer({
   account,
   productLinks,
   merchandiseEnabled,
+  navData = null,
 }: ShopMobileNavDrawerProps) {
   const close = () => onOpenChange(false);
 
@@ -35,7 +40,7 @@ export function ShopMobileNavDrawer({
       open={open}
       onOpenChange={onOpenChange}
       resetKey={pathname}
-      sections={buildShopMegaMenuSections(merchandiseEnabled)}
+      sections={buildShopMegaMenuSections(merchandiseEnabled, navData)}
       isSectionActive={(section) => shopMegaMenuSectionActive(pathname, section)}
       isLinkCurrent={(href) => pathname === href || pathname.startsWith(`${href}/`)}
       logo={
@@ -45,7 +50,7 @@ export function ShopMobileNavDrawer({
           aria-label="LAX Shop home"
           onClick={close}
         >
-          <LaxLogo className="shop-header__logo" />
+          <LaxLogo kind="shop" className="shop-header__logo" />
         </Link>
       }
       themeSlot={

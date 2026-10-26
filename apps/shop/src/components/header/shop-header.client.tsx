@@ -1,8 +1,10 @@
 "use client";
 
 import { LaxProductSwitcher } from "@/components/ecosystem/lax-product-switcher";
+import type { ShopHeaderNavData } from "@/components/header/header-nav.config";
 import { ShopHeaderAccountUtility } from "@/components/header/shop-header-account-utility";
 import { ShopHeaderBasketLink } from "@/components/header/shop-header-basket-link";
+import { ShopHeaderSearch } from "@/components/header/shop-header-search.client";
 import { ShopMegaMenu } from "@/components/header/shop-mega-menu.client";
 import { ShopMobileNavDrawer } from "@/components/header/shop-mobile-nav-drawer";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
@@ -28,6 +30,7 @@ type ShopHeaderClientProps = {
   productLinks: LaxProductLinkVm[];
   basketCount: number;
   merchandiseEnabled: boolean;
+  navData?: ShopHeaderNavData | null;
 };
 
 export function ShopHeaderClient({
@@ -35,18 +38,20 @@ export function ShopHeaderClient({
   productLinks,
   basketCount,
   merchandiseEnabled,
+  navData = null,
 }: ShopHeaderClientProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [megaMenuResetNonce, setMegaMenuResetNonce] = useState(0);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   // Every Shop page, the home page included, opens on the page surface, so the header is solid.
   const { isTransparent, atTop, headerTone, headerRef, attachHeader } = useHeaderChrome({
     transparent: false,
-    overlayOpen: megaOpen || menuOpen,
+    overlayOpen: megaOpen || menuOpen || searchOpen,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
@@ -84,6 +89,7 @@ export function ShopHeaderClient({
           <ShopMegaMenu
             pathname={pathname}
             merchandiseEnabled={merchandiseEnabled}
+            navData={navData}
             headerTone={headerTone}
             megaMenuResetKey={`${pathname}:${megaMenuResetNonce}`}
             onOpenChange={(open) => {
@@ -97,11 +103,12 @@ export function ShopHeaderClient({
                 className={cn("min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
                 aria-label="LAX Shop home"
               >
-                <LaxLogo className="shop-header__logo" />
+                <LaxLogo kind="shop" className="shop-header__logo" />
               </Link>
             }
             trailing={
               <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+                <ShopHeaderSearch headerTone={headerTone} onOpenChange={setSearchOpen} />
                 <ShopHeaderBasketLink
                   itemCount={basketCount}
                   headerTone={headerTone}
@@ -148,6 +155,7 @@ export function ShopHeaderClient({
             account={account}
             productLinks={productLinks}
             merchandiseEnabled={merchandiseEnabled}
+            navData={navData}
           />
         </div>
       </header>
