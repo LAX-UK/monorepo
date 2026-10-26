@@ -122,7 +122,7 @@ export function createDrizzleHelpRepository(
         .from(category)
         .leftJoin(article, eq(article.categoryId, category.id))
         .groupBy(category.id)
-        .orderBy(asc(category.position), asc(category.title));
+        .orderBy(asc(category.position), asc(category.title), asc(category.id));
       return rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }));
     },
 
@@ -275,7 +275,12 @@ export function createDrizzleHelpRepository(
               : undefined,
           ),
         )
-        .orderBy(asc(category.position), asc(article.position), asc(article.question))
+        .orderBy(
+          asc(category.position),
+          asc(article.position),
+          asc(article.question),
+          asc(article.id),
+        )
         .limit(ADMIN_ARTICLE_LIST_LIMIT);
       return rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }));
     },

@@ -39,7 +39,12 @@ import {
 import type { AdminOrderListFilters, AdminReadPorts } from "../application/ports/admin-readers.js";
 import type { ShopApiEnv } from "../env.js";
 import { notFound } from "../errors/shop-api-error.js";
-import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
+import {
+  keysetAfter,
+  keysetBeforeCreatedAtId,
+  orderByMsTimestampId,
+  orderByMsTimestampIdDesc,
+} from "./admin-created-at-keyset.js";
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
 import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js";
@@ -237,38 +242,50 @@ export function createDrizzleAdminReadRepository(
       async listArtists(input) {
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
+        const direction = input.sort === "created_asc" ? "asc" : "desc";
         const q = input.q?.trim();
         const pattern = q ? containsPattern(q) : null;
-        const rows = await db
-          .select({
-            artist: shopArtist,
-            displayName: shopParty.displayName,
-            artworkCount: sql<number>`(
-              select count(*)::int from ${shopArtwork} where ${shopArtwork.artistId} = ${shopArtist.id}
-            )`,
-          })
-          .from(shopArtist)
-          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-          .where(
-            and(
-              pattern
-                ? or(
-                    sql`${shopParty.displayName} ILIKE ${pattern}`,
-                    sql`${shopArtist.slug} ILIKE ${pattern}`,
-                  )
-                : undefined,
-              input.status === "archived"
-                ? isNotNull(shopArtist.archivedAt)
-                : input.status === "active"
-                  ? isNull(shopArtist.archivedAt)
+        const search = pattern
+          ? or(
+              sql`${shopParty.displayName} ILIKE ${pattern}`,
+              sql`${shopArtist.slug} ILIKE ${pattern}`,
+            )
+          : undefined;
+        const [rows, countRows] = await Promise.all([
+          db
+            .select({
+              artist: shopArtist,
+              displayName: shopParty.displayName,
+              artworkCount: sql<number>`(
+                select count(*)::int from ${shopArtwork} where ${shopArtwork.artistId} = ${shopArtist.id}
+              )`,
+            })
+            .from(shopArtist)
+            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+            .where(
+              and(
+                search,
+                input.status === "archived"
+                  ? isNotNull(shopArtist.archivedAt)
+                  : input.status === "active"
+                    ? isNull(shopArtist.archivedAt)
+                    : undefined,
+                cursor
+                  ? keysetAfter(shopArtist.createdAt, shopArtist.id, cursor, direction)
                   : undefined,
-              cursor
-                ? keysetBeforeCreatedAtId(shopArtist.createdAt, shopArtist.id, cursor)
-                : undefined,
-            ),
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopArtist.createdAt, shopArtist.id))
-          .limit(limit + 1);
+              ),
+            )
+            .orderBy(...orderByMsTimestampId(shopArtist.createdAt, shopArtist.id, direction))
+            .limit(limit + 1),
+          db
+            .select({
+              active: sql<number>`count(*) filter (where ${shopArtist.archivedAt} is null)::int`,
+              archived: sql<number>`count(*) filter (where ${shopArtist.archivedAt} is not null)::int`,
+            })
+            .from(shopArtist)
+            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+            .where(search),
+        ]);
         const hasMore = rows.length > limit;
         const page = hasMore ? rows.slice(0, limit) : rows;
         const last = page.at(-1);
@@ -289,6 +306,10 @@ export function createDrizzleAdminReadRepository(
                   id: last.artist.id,
                 })
               : null,
+          counts: {
+            active: Number(countRows[0]?.active ?? 0),
+            archived: Number(countRows[0]?.archived ?? 0),
+          },
         };
       },
       getClientDetail: detail.getClientDetail,
@@ -373,6 +394,31 @@ export function createDrizzleAdminReadRepository(
         const cursor = decodeCatalogueCursor(input.cursor);
         const search = input.q?.trim();
         const pattern = search ? `%${escapeLikePattern(search)}%` : null;
+        // The search applies to the page and to the view counts alike; the status only to the page.
+        const matchesSearch = pattern
+          ? or(
+              ilike(shopProduct.title, pattern),
+              ilike(shopProduct.slug, pattern),
+              exists(
+                db
+                  .select({ one: sql`1` })
+                  .from(shopProductVariant)
+                  .where(
+                    and(
+                      eq(shopProductVariant.productId, shopProduct.id),
+                      ilike(shopProductVariant.sku, pattern),
+                    ),
+                  ),
+              ),
+            )
+          : undefined;
+        const [countRow] = await db
+          .select({
+            active: sql<number>`(count(*) filter (where ${shopProduct.archivedAt} is null))::int`,
+            archived: sql<number>`(count(*) filter (where ${shopProduct.archivedAt} is not null))::int`,
+          })
+          .from(shopProduct)
+          .where(matchesSearch);
         const products = await db
           .select()
           .from(shopProduct)
@@ -380,23 +426,7 @@ export function createDrizzleAdminReadRepository(
             and(
               input.status === "active" ? isNull(shopProduct.archivedAt) : undefined,
               input.status === "archived" ? isNotNull(shopProduct.archivedAt) : undefined,
-              pattern
-                ? or(
-                    ilike(shopProduct.title, pattern),
-                    ilike(shopProduct.slug, pattern),
-                    exists(
-                      db
-                        .select({ one: sql`1` })
-                        .from(shopProductVariant)
-                        .where(
-                          and(
-                            eq(shopProductVariant.productId, shopProduct.id),
-                            ilike(shopProductVariant.sku, pattern),
-                          ),
-                        ),
-                    ),
-                  )
-                : undefined,
+              matchesSearch,
               cursor
                 ? keysetBeforeCreatedAtId(shopProduct.createdAt, shopProduct.id, cursor)
                 : undefined,
@@ -445,6 +475,7 @@ export function createDrizzleAdminReadRepository(
             hasMore && last
               ? encodeCatalogueCursor({ createdAt: last.createdAt, id: last.id })
               : null,
+          counts: { active: countRow?.active ?? 0, archived: countRow?.archived ?? 0 },
         };
       },
 

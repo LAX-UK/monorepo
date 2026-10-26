@@ -23,8 +23,18 @@ export type EnquiryTopic = (typeof ENQUIRY_TOPICS)[number];
 
 export const ENQUIRY_NOTE_MAX_LENGTH = 5000;
 export const ENQUIRY_SEARCH_MAX_LENGTH = 100;
-export const ENQUIRY_LIST_DEFAULT_LIMIT = 25;
+export const ENQUIRY_LIST_DEFAULT_LIMIT = 50;
 export const ENQUIRY_LIST_MAX_LIMIT = 50;
+
+/**
+ * Waiting enquiries (`new`) always come first. Within each group, newest received first or
+ * oldest received first.
+ */
+export const ENQUIRY_LIST_SORTS = ["received_desc", "received_asc"] as const;
+export const EnquiryListSortSchema = Type.Union(
+  ENQUIRY_LIST_SORTS.map((sort) => Type.Literal(sort)),
+);
+export type EnquiryListSort = (typeof ENQUIRY_LIST_SORTS)[number];
 
 const NullableString = Type.Union([Type.String(), Type.Null()]);
 
@@ -66,6 +76,7 @@ export const AdminEnquiryListQuerySchema = Type.Object({
   status: Type.Optional(EnquiryStatusSchema),
   assignee: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   q: Type.Optional(Type.String({ maxLength: ENQUIRY_SEARCH_MAX_LENGTH })),
+  sort: Type.Optional(EnquiryListSortSchema),
   cursor: Type.Optional(Type.String({ maxLength: 512 })),
   limit: Type.Optional(
     Type.Integer({
@@ -86,6 +97,8 @@ export const AdminEnquiryListItemSchema = Type.Object({
   sender: EnquirySenderSchema,
   artwork: Type.Union([EnquiryArtworkSchema, Type.Null()]),
   excerpt: Type.String(),
+  /** Send back as `expectedVersion` when changing status or assignee. */
+  version: EnquiryVersionSchema,
   createdAt: Type.String({ format: "date-time" }),
 });
 export type AdminEnquiryListItem = Static<typeof AdminEnquiryListItemSchema>;

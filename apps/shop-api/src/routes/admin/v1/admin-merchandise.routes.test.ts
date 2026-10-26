@@ -75,7 +75,7 @@ async function buildApp(role: ShopStaffRole, overrides: Overrides = {}) {
         adminRead: {
           ...base.admin.adminRead,
           catalogue: {
-            listMerchandiseProducts: async () => ({ items: [], nextCursor: null }),
+            listMerchandiseProducts: async () => ({ items: [], nextCursor: null, counts: {} }),
             getMerchandiseProduct: overrides.getProduct ?? (async () => productDetail),
           },
         },

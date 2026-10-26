@@ -14,6 +14,7 @@ export type AdminArtworkListInput = CursorListInput & {
   /** Title or artist name, anywhere in the text. */
   q?: string | undefined;
   state?: AdminArtworkState | undefined;
+  sort?: "updated_desc" | "updated_asc" | undefined;
   artistId?: string | undefined;
   saleState?: AdminArtworkSaleState | undefined;
   salesChannel?: AdminArtworkChannel | undefined;

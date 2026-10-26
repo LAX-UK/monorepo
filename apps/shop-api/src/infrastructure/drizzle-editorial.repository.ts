@@ -307,7 +307,7 @@ export function createDrizzleEditorialRepository(
           name: shopEditorialVenue.name,
         })
         .from(shopEditorialVenue)
-        .orderBy(desc(shopEditorialVenue.updatedAt));
+        .orderBy(desc(shopEditorialVenue.updatedAt), desc(shopEditorialVenue.id));
       return rows.map((row) => ({
         id: row.id,
         slug: row.slug,
@@ -331,7 +331,7 @@ export function createDrizzleEditorialRepository(
           title: shopEditorialExhibition.title,
         })
         .from(shopEditorialExhibition)
-        .orderBy(desc(shopEditorialExhibition.updatedAt));
+        .orderBy(desc(shopEditorialExhibition.updatedAt), desc(shopEditorialExhibition.id));
       return rows.map((row) => ({
         id: row.id,
         slug: row.slug,
@@ -355,7 +355,7 @@ export function createDrizzleEditorialRepository(
           title: shopEditorialStory.title,
         })
         .from(shopEditorialStory)
-        .orderBy(desc(shopEditorialStory.updatedAt));
+        .orderBy(desc(shopEditorialStory.updatedAt), desc(shopEditorialStory.id));
       return rows.map((row) => ({
         id: row.id,
         slug: row.slug,
@@ -376,7 +376,7 @@ export function createDrizzleEditorialRepository(
           title: shopEditorialPage.title,
         })
         .from(shopEditorialPage)
-        .orderBy(desc(shopEditorialPage.updatedAt));
+        .orderBy(desc(shopEditorialPage.updatedAt), desc(shopEditorialPage.id));
       return rows.map((row) => ({
         id: row.id,
         slug: row.slug,

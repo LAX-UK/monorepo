@@ -98,12 +98,13 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle enquiry inbox repository", () =>
     repo: ReturnType<typeof setup>["repo"],
     filters: EnquiryInboxFilters,
     limit: number,
+    sort: "received_desc" | "received_asc" = "received_desc",
   ) {
     const seen: Array<{ kind: string; id: string }> = [];
     let cursor: EnquiryInboxCursor | null = null;
     let pages = 0;
     do {
-      const page = await repo.list({ filters, cursor, limit });
+      const page = await repo.list({ filters, cursor, limit, sort });
       seen.push(...page.items.map((item) => ({ kind: item.kind, id: item.id })));
       cursor = page.nextCursor
         ? decodeEnquiryInboxCursor(encodeEnquiryInboxCursor(page.nextCursor))
@@ -143,6 +144,37 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle enquiry inbox repository", () =>
     for (const limit of [1, 2, 3, 50]) {
       const seen = await everyPage(repo, { q: marker }, limit);
       expect(seen, `limit ${limit}`).toEqual(expected);
+    }
+  });
+
+  it("lists waiting enquiries first, then by received time, and pages through both groups", async () => {
+    const { db, repo, marker } = setup();
+    const { artworkId } = await importTestArtwork(db, "inbox-waiting");
+    const oldWaiting = await general(marker, { createdAt: "2026-02-01T09:00:00Z" });
+    const newWaiting = await artwork(marker, artworkId, { createdAt: "2026-02-05T09:00:00Z" });
+    const midProgress = await general(marker, { createdAt: "2026-02-04T09:00:00Z" });
+    const lateClosed = await general(marker, { createdAt: "2026-02-08T09:00:00Z" });
+    await ownerPool.query("update shop_general_enquiry set status = 'in_progress' where id = $1", [
+      midProgress,
+    ]);
+    await ownerPool.query(
+      "update shop_general_enquiry set status = 'closed', closed_at = now() where id = $1",
+      [lateClosed],
+    );
+
+    const newestFirst = [newWaiting, oldWaiting, lateClosed, midProgress];
+    const oldestFirst = [oldWaiting, newWaiting, midProgress, lateClosed];
+    for (const limit of [1, 2, 50]) {
+      const desc = await everyPage(repo, { q: marker }, limit);
+      expect(
+        desc.map((row) => row.id),
+        `newest first, limit ${limit}`,
+      ).toEqual(newestFirst);
+      const asc = await everyPage(repo, { q: marker }, limit, "received_asc");
+      expect(
+        asc.map((row) => row.id),
+        `oldest first, limit ${limit}`,
+      ).toEqual(oldestFirst);
     }
   });
 

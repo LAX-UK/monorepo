@@ -124,9 +124,18 @@ export const MerchandiseProductListItemSchema = Type.Object({
   totalOnHand: Type.Integer(),
 });
 
-export const MerchandiseProductListSchema = createCursorListResponseSchema(
-  MerchandiseProductListItemSchema,
-);
+export const MerchandiseProductListSchema = Type.Intersect([
+  createCursorListResponseSchema(MerchandiseProductListItemSchema),
+  Type.Object({
+    /** Products per status under the search, for the view tabs; absent from an older API. */
+    counts: Type.Optional(
+      Type.Object({
+        active: Type.Integer({ minimum: 0 }),
+        archived: Type.Integer({ minimum: 0 }),
+      }),
+    ),
+  }),
+]);
 
 /** 409 body: a stale save carries `currentVersion`; a clash on a unique value does not. */
 export const MerchandiseConflictBodySchema = Type.Object({

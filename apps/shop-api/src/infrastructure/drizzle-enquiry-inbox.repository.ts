@@ -5,6 +5,7 @@ import type {
   AdminEnquiryListItem,
   EnquiryAssignee,
   EnquiryKind,
+  EnquiryListSort,
   EnquiryStatus,
   EnquiryTopic,
 } from "@auction/shop-contracts";
@@ -126,8 +127,25 @@ function filterConditions(filters: EnquiryInboxFilters): SQL[] {
   return conditions;
 }
 
-function cursorCondition(cursor: EnquiryInboxCursor): SQL {
-  return sql`(e.created_at, e.kind, e.id) < (${cursor.createdAt}::timestamptz, ${cursor.kind}, ${cursor.id}::uuid)`;
+/**
+ * Rows after the cursor in the list order: waiting (`new`) rows first, then the sort within each
+ * group. After a waiting row come later waiting rows and then every other status; after any
+ * other row, only later rows of the same group.
+ */
+function cursorCondition(cursor: EnquiryInboxCursor, sort: EnquiryListSort): SQL {
+  const after =
+    sort === "received_asc"
+      ? sql`(e.created_at, e.kind, e.id) > (${cursor.createdAt}::timestamptz, ${cursor.kind}, ${cursor.id}::uuid)`
+      : sql`(e.created_at, e.kind, e.id) < (${cursor.createdAt}::timestamptz, ${cursor.kind}, ${cursor.id}::uuid)`;
+  return cursor.waiting
+    ? sql`(e.status <> 'new' OR ${after})`
+    : sql`(e.status <> 'new' AND ${after})`;
+}
+
+function orderClause(sort: EnquiryListSort): SQL {
+  return sort === "received_asc"
+    ? sql`ORDER BY (e.status = 'new') DESC, e.created_at ASC, e.kind ASC, e.id ASC`
+    : sql`ORDER BY (e.status = 'new') DESC, e.created_at DESC, e.kind DESC, e.id DESC`;
 }
 
 function excerpt(message: string): string {
@@ -185,11 +203,11 @@ export function createDrizzleEnquiryInboxRepository(
   }
 
   return {
-    async list({ filters, cursor, limit }) {
+    async list({ filters, cursor, limit, sort = "received_desc" }) {
       const base = filterConditions(filters);
       const pageConditions = [...base];
       if (filters.status) pageConditions.push(sql`e.status = ${filters.status}`);
-      if (cursor) pageConditions.push(cursorCondition(cursor));
+      if (cursor) pageConditions.push(cursorCondition(cursor, sort));
 
       // One extra row tells us whether another page exists without a count query.
       const found = await rows<InboxRow & { message: string }>(
@@ -198,7 +216,7 @@ export function createDrizzleEnquiryInboxRepository(
           SELECT ${ROW_COLUMNS}, left(e.message, 400) AS message
           ${INBOX_SOURCE}
           ${whereClause(pageConditions)}
-          ORDER BY e.created_at DESC, e.kind DESC, e.id DESC
+          ${orderClause(sort)}
           LIMIT ${limit + 1}
         `,
       );
@@ -221,6 +239,7 @@ export function createDrizzleEnquiryInboxRepository(
         sender: toSender(row),
         artwork: toArtwork(row),
         excerpt: excerpt(row.message),
+        version: row.version,
         createdAt: new Date(row.created_at).toISOString(),
       }));
       return {
@@ -228,7 +247,12 @@ export function createDrizzleEnquiryInboxRepository(
         counts,
         nextCursor:
           found.length > limit && last
-            ? { createdAt: last.cursor_at, kind: last.kind, id: last.id }
+            ? {
+                waiting: last.status === "new",
+                createdAt: last.cursor_at,
+                kind: last.kind,
+                id: last.id,
+              }
             : null,
       };
     },

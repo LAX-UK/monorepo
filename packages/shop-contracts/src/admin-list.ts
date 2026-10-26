@@ -208,7 +208,18 @@ export const AdminArtistListItemSchema = Type.Object({
   artworkCount: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 
-export const AdminArtistListSchema = createCursorListResponseSchema(AdminArtistListItemSchema);
+export const AdminArtistListSchema = Type.Intersect([
+  createCursorListResponseSchema(AdminArtistListItemSchema),
+  Type.Object({
+    /** Matches per status under the search, for the view tabs. Optional for an older shop-api. */
+    counts: Type.Optional(
+      Type.Object({
+        active: Type.Integer({ minimum: 0 }),
+        archived: Type.Integer({ minimum: 0 }),
+      }),
+    ),
+  }),
+]);
 export type AdminArtistList = Static<typeof AdminArtistListSchema>;
 export type AdminArtistListItem = Static<typeof AdminArtistListItemSchema>;
 

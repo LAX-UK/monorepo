@@ -166,6 +166,12 @@ export type AdminArtistListInput = CursorListInput & {
   /** Name or slug, anywhere in the text. */
   q?: string | undefined;
   status?: "active" | "archived" | undefined;
+  sort?: "created_desc" | "created_asc" | undefined;
+};
+
+export type AdminArtistListResult = CursorListResult<AdminArtistListItem> & {
+  /** Matches per status under the search, for the view tabs. */
+  counts: { active: number; archived: number };
 };
 
 export type AdminStaffMemberListItem = {
@@ -214,7 +220,7 @@ export type ClientPartyListInput = CursorListInput & {
 
 export interface AdminPartyReader {
   listClientParties(input: ClientPartyListInput): Promise<CursorListResult<AdminPartyListItem>>;
-  listArtists(input: AdminArtistListInput): Promise<CursorListResult<AdminArtistListItem>>;
+  listArtists(input: AdminArtistListInput): Promise<AdminArtistListResult>;
   getClientDetail(partyId: string): Promise<AdminClientDetail>;
   getArtistDetail(artistId: string): Promise<AdminArtistDetail>;
 }
@@ -247,7 +253,7 @@ export type MerchandiseProductListInput = CursorListInput & {
 export interface AdminCatalogueReader {
   listMerchandiseProducts(
     input: MerchandiseProductListInput,
-  ): Promise<CursorListResult<MerchandiseProductListItem>>;
+  ): Promise<WorkListResult<MerchandiseProductListItem>>;
   getMerchandiseProduct(productId: string): Promise<MerchandiseProductDetail | null>;
 }
 

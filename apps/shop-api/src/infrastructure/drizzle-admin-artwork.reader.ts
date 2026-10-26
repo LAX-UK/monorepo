@@ -22,7 +22,7 @@ import type {
   AdminArtworkListInput,
   AdminArtworkReader,
 } from "../application/ports/artwork-catalogue-admin.js";
-import { keysetBeforeCreatedAtId, orderByMsTimestampIdDesc } from "./admin-created-at-keyset.js";
+import { keysetAfter, orderByMsTimestampId } from "./admin-created-at-keyset.js";
 import {
   artworkEditionCountSql,
   artworkSoldEditionCountSql,
@@ -71,6 +71,7 @@ export function createDrizzleAdminArtworkReader(
       const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
       const cursor = decodeCatalogueCursor(input.cursor);
       const filters = listConditions(input);
+      const direction = input.sort === "updated_asc" ? "asc" : "desc";
       const [rows, countRows] = await Promise.all([
         db
           .select({
@@ -98,11 +99,11 @@ export function createDrizzleAdminArtworkReader(
               ...filters,
               input.state ? sql`${artworkStateSql} = ${input.state}` : undefined,
               cursor
-                ? keysetBeforeCreatedAtId(shopArtwork.updatedAt, shopArtwork.id, cursor)
+                ? keysetAfter(shopArtwork.updatedAt, shopArtwork.id, cursor, direction)
                 : undefined,
             ),
           )
-          .orderBy(...orderByMsTimestampIdDesc(shopArtwork.updatedAt, shopArtwork.id))
+          .orderBy(...orderByMsTimestampId(shopArtwork.updatedAt, shopArtwork.id, direction))
           .limit(limit + 1),
         db
           .select({ state: artworkStateSql, total: count() })
