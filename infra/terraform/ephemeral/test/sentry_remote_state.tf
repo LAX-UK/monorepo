@@ -73,6 +73,8 @@ locals {
         { key = "SENTRY_MONITOR_SLUGS", value = local.sentry_cron_slugs, type = "GENERAL", scope = "RUN_TIME" },
       ] : [],
     )
+    # The shared test Sentry state also holds main-only apps (Shop, lax.art, ...); skip them.
+    if contains(keys(local.sentry_dsn_env_keys), app)
   }
 
   sentry_env_for = {
