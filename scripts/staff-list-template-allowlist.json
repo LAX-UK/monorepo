@@ -19,15 +19,8 @@
     { "page": "lax-admin:settings/page.tsx", "reason": "Settings" }
   ],
   "pending": [
-    { "page": "lax-admin:artists/page.tsx" },
-    { "page": "lax-admin:artworks/page.tsx" },
     { "page": "lax-admin:audit/page.tsx" },
     { "page": "lax-admin:clients/page.tsx" },
-    { "page": "lax-admin:editorial/[kind]/page.tsx" },
-    { "page": "lax-admin:enquiries/page.tsx" },
-    { "page": "lax-admin:help/categories/page.tsx" },
-    { "page": "lax-admin:help/page.tsx" },
-    { "page": "lax-admin:merchandise/page.tsx" },
     { "page": "lax-admin:staff/page.tsx" }
   ]
 }

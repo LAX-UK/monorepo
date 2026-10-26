@@ -51,7 +51,7 @@ describe("buildOverviewTiles", () => {
       "/payouts?view=due",
       "/holds?view=active",
       "/requests",
-      "/enquiries?status=new",
+      "/enquiries?view=new",
     ]);
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enquiryContextLinks, enquiryDetailTitle } from "./enquiry-detail.vm";
+import { enquiryContextLinks } from "./enquiry-detail.vm";
 
 const artwork = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -55,19 +55,5 @@ describe("enquiryContextLinks", () => {
       "https://lax.art",
     );
     expect(link?.href).toBe("https://lax.art/artworks/a%20b%2Fc");
-  });
-});
-
-describe("enquiryDetailTitle", () => {
-  it("leads with the artwork for artwork enquiries", () => {
-    expect(enquiryDetailTitle({ artwork, sender: { name: "Ada", email: null } }, "Artwork")).toBe(
-      "Blue Field – Ada",
-    );
-  });
-
-  it("leads with the topic otherwise", () => {
-    expect(
-      enquiryDetailTitle({ artwork: null, sender: { name: null, email: "a@b.co" } }, "Selling"),
-    ).toBe("Selling enquiry – a@b.co");
   });
 });

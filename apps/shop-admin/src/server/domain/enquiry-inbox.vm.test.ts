@@ -1,98 +1,91 @@
 import { describe, expect, it } from "vitest";
 import {
-  enquiryInboxApiQuery,
-  enquiryInboxHref,
-  enquiryInboxPageHref,
+  enquiriesList,
+  enquiryPath,
+  enquiryRef,
   enquirySenderName,
   enquirySenderSecondary,
   enquiryStaffName,
-  enquiryStatusTone,
-  hasActiveEnquiryFilters,
-  parseEnquiryInboxQuery,
+  parseEnquiryRef,
 } from "./enquiry-inbox.vm";
 
-describe("parseEnquiryInboxQuery", () => {
-  it("reads every filter from the URL", () => {
-    expect(
-      parseEnquiryInboxQuery({
-        q: " ada ",
-        kind: "artwork",
-        topic: "selling",
-        status: "in_progress",
-        assignee: "me",
-        cursor: "abc",
-      }),
-    ).toEqual({
+const ID = "0b8f6c1e-5d7a-4a43-9b52-0d3a1f4c9e11";
+
+describe("enquiriesList", () => {
+  it("opens on every enquiry, newest first, with waiting enquiries leading on the server", () => {
+    const state = enquiriesList.parse({});
+    expect(state.view).toBe("all");
+    expect(enquiriesList.apiQuery(state)).toEqual({});
+    expect(enquiriesList.sortState(state)).toEqual({ columnId: "received", direction: "desc" });
+  });
+
+  it("reads the view, filters, search, sort and panel from the URL", () => {
+    const state = enquiriesList.parse({
+      view: "new",
+      kind: "artwork",
+      topic: "selling",
+      assignee: "me",
+      q: " ada ".trim(),
+      sort: "received_asc",
+      enquiry: `artwork:${ID}`,
+    });
+    expect(state).toMatchObject({
+      view: "new",
+      q: "ada",
+      sort: "received_asc",
+      filters: { kind: "artwork", topic: "selling", assignee: "me" },
+      open: `artwork:${ID}`,
+    });
+    expect(enquiriesList.apiQuery(state)).toEqual({
+      status: "new",
       q: "ada",
       kind: "artwork",
       topic: "selling",
-      status: "in_progress",
       assignee: "me",
-      cursor: "abc",
+      sort: "received_asc",
     });
   });
 
-  it("drops values it does not recognise, so a hand-edited link still opens the inbox", () => {
-    expect(
-      parseEnquiryInboxQuery({
-        kind: "order",
-        topic: "complaint",
-        status: "archived",
-        assignee: "someone-else",
-        q: "   ",
-      }),
-    ).toEqual({});
+  it("drops values it does not recognise, so a hand-edited link still opens the list", () => {
+    const state = enquiriesList.parse({
+      view: "archived",
+      kind: "order",
+      topic: "complaint",
+      assignee: "someone-else",
+    });
+    expect(state).toEqual({ view: "all", filters: {} });
   });
 
-  it("takes the first value of a repeated parameter", () => {
-    expect(parseEnquiryInboxQuery({ status: ["closed", "new"] })).toEqual({ status: "closed" });
-  });
-});
-
-describe("enquiryInboxHref", () => {
-  const query = parseEnquiryInboxQuery({ status: "new", q: "ada", cursor: "page-2" });
-
-  it("returns to the first page when a filter changes", () => {
-    expect(enquiryInboxHref(query, { status: "closed" })).toBe("/enquiries?q=ada&status=closed");
-  });
-
-  it("clears a filter with null", () => {
-    expect(enquiryInboxHref(query, { status: null, q: null })).toBe("/enquiries");
+  it("counts Waiting, In progress and Closed from the per-status counts", () => {
+    const state = enquiriesList.parse({});
+    const views = enquiriesList.views(state, { new: 3, in_progress: 2, closed: 5 });
+    expect(views.map((view) => [view.label, view.count])).toEqual([
+      ["All", 10],
+      ["Waiting", 3],
+      ["In progress", 2],
+      ["Closed", 5],
+    ]);
   });
 
-  it("keeps the other filters", () => {
-    expect(enquiryInboxHref({ kind: "general" }, { assignee: "unassigned" })).toBe(
-      "/enquiries?kind=general&assignee=unassigned",
-    );
-  });
-
-  it("builds a next-page link that keeps the filters", () => {
-    expect(enquiryInboxPageHref({ status: "new" }, "c1")).toBe("/enquiries?status=new&cursor=c1");
+  it("changing a filter returns to the first page and closes the panel", () => {
+    const state = enquiriesList.parse({ view: "new", cursor: "c1", enquiry: `general:${ID}` });
+    expect(enquiriesList.href(state, { kind: "general" })).toBe("/enquiries?view=new&kind=general");
   });
 });
 
-describe("enquiryInboxApiQuery", () => {
-  it("passes the filters and cursor to the API under the same names", () => {
-    expect(
-      enquiryInboxApiQuery({ q: "ada", status: "new", assignee: "unassigned", cursor: "c" }),
-    ).toEqual({ q: "ada", status: "new", assignee: "unassigned", cursor: "c" });
-  });
-});
-
-describe("hasActiveEnquiryFilters", () => {
-  it("is false for an unfiltered list, even on a later page", () => {
-    expect(hasActiveEnquiryFilters({})).toBe(false);
-    expect(hasActiveEnquiryFilters({ cursor: "c" })).toBe(false);
+describe("enquiry references", () => {
+  it("round-trips the panel id and the page path", () => {
+    expect(parseEnquiryRef(enquiryRef({ kind: "general", id: ID }))).toEqual({
+      kind: "general",
+      id: ID,
+    });
+    expect(enquiryPath({ kind: "artwork", id: ID })).toBe(`/enquiries/artwork/${ID}`);
   });
 
-  it.each([
-    { q: "a" },
-    { kind: "general" },
-    { topic: "selling" },
-    { status: "new" },
-    { assignee: "me" },
-  ])("is true for %o", (query) => {
-    expect(hasActiveEnquiryFilters(query as never)).toBe(true);
+  it("refuses anything that is not a kind and an id", () => {
+    expect(parseEnquiryRef(null)).toBeNull();
+    expect(parseEnquiryRef("order:123")).toBeNull();
+    expect(parseEnquiryRef("general")).toBeNull();
   });
 });
 
@@ -117,13 +110,5 @@ describe("sender and assignee labels", () => {
       "Account manager (0027)",
     );
     expect(enquiryStaffName({ ...base, label: " ", role: null })).toBe("Staff member (0027)");
-  });
-});
-
-describe("enquiryStatusTone", () => {
-  it("flags new enquiries and quietens closed ones", () => {
-    expect(enquiryStatusTone("new")).toBe("warning");
-    expect(enquiryStatusTone("in_progress")).toBe("info");
-    expect(enquiryStatusTone("closed")).toBe("neutral");
   });
 });
