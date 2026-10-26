@@ -172,9 +172,21 @@ export function AuditLogList({
   const chips = [
     ...list.searchChip,
     ...filterChip(auditList, state, list.navigate, "actor", (id) => `By ${actorLabel(id)}`),
-    ...filterChip(auditList, state, list.navigate, "targetType", auditRecordLabel),
+    ...filterChip(
+      auditList,
+      state,
+      list.navigate,
+      "targetType",
+      (type) => `Record: ${auditRecordLabel(type)}`,
+    ),
     ...filterChip(auditList, state, list.navigate, "targetId", () => "One record"),
-    ...filterChip(auditList, state, list.navigate, "action", auditActionLabel),
+    ...filterChip(
+      auditList,
+      state,
+      list.navigate,
+      "action",
+      (action) => `Action: ${auditActionLabel(action)}`,
+    ),
     ...dayRange,
   ];
 
@@ -338,16 +350,6 @@ function AuditEventPanel({ row, onClose }: { row: AuditRow | null; onClose: () =
       size="lg"
       title={row ? auditActionLabel(row.action) : "Event"}
       description={row ? formatStaffDateTime(row.createdAt, { zoneLabel: true }) : undefined}
-      summary={
-        row && who
-          ? [
-              { label: "Who", value: who.email ? `${who.name} (${who.email})` : who.name },
-              { label: "Record", value: auditRecordLabel(row.targetType) },
-              { label: "Record ID", value: row.targetId, copyValue: row.targetId },
-              { label: "Event ID", value: row.auditId, copyValue: row.auditId },
-            ]
-          : []
-      }
       footer={
         row && href ? (
           <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>
@@ -358,6 +360,19 @@ function AuditEventPanel({ row, onClose }: { row: AuditRow | null; onClose: () =
     >
       {row ? (
         <div className="flex flex-col gap-6">
+          <PanelSection title="Event">
+            <KeyValueList
+              items={[
+                {
+                  label: "Who",
+                  value: who?.email ? `${who.name} (${who.email})` : (who?.name ?? ""),
+                },
+                { label: "Record", value: auditRecordLabel(row.targetType) },
+                { label: "Record ID", value: row.targetId, copyValue: row.targetId },
+                { label: "Event ID", value: row.auditId, copyValue: row.auditId },
+              ]}
+            />
+          </PanelSection>
           <PanelSection title="What changed">
             {detail.changes.length > 0 ? (
               <KeyValueList

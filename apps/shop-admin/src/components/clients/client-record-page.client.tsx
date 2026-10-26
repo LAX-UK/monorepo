@@ -53,8 +53,6 @@ const presentRequest = presentStatus("saleRequest");
 const presentEnquiry = presentStatus("enquiry");
 const presentPayout = presentStatus("payout");
 
-const editions = (count: number) => (count === 1 ? "1 edition" : `${count} editions`);
-
 function copy(value: string, noun: string) {
   void navigator.clipboard
     ?.writeText(value)
@@ -196,7 +194,7 @@ export function ClientRecordPage({
       width: "144px",
       numeric: true,
       mobile: "meta",
-      cell: (row) => editions(row.authorisedCount),
+      cell: (row) => `${row.authorisedCount} listed`,
     },
     {
       id: "committed",
@@ -204,7 +202,7 @@ export function ClientRecordPage({
       width: "152px",
       numeric: true,
       mobile: "meta",
-      cell: (row) => editions(row.committedCount),
+      cell: (row) => `${row.committedCount} reserved or sold`,
     },
     {
       id: "granted",

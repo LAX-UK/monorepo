@@ -101,7 +101,7 @@ describe("the audit log", () => {
     renderLog({ actor: "subject-sam", action: "mark_payout_paid", from: "2026-10-01" });
     expect(screen.getByRole("button", { name: "Remove filter: By Sam Lee" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Remove filter: Payout marked paid" }),
+      screen.getByRole("button", { name: "Remove filter: Action: Payout marked paid" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Remove filter: From 1 Oct 2026" }),

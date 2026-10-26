@@ -31,6 +31,7 @@ function ChangeRoleDialog({ member, onClose }: { member: StaffMemberRow; onClose
   const current = isGrantableRole(member.role) ? member.role : null;
   const [role, setRole] = useState<GrantableStaffRole | null>(current);
   const unchanged = role === current;
+  const [sameRoleTried, setSameRoleTried] = useState(false);
 
   return (
     <>
@@ -41,12 +42,13 @@ function ChangeRoleDialog({ member, onClose }: { member: StaffMemberRow; onClose
         }}
         title={`Change ${name}’s role?`}
         description="What they can see and do changes the next time they load a page. The change is kept in the audit log."
-        confirmLabel={
-          role && !unchanged ? `Make them ${staffRoleLabel(role)}` : "Choose a different role"
-        }
+        confirmLabel={role && !unchanged ? `Make them ${staffRoleLabel(role)}` : "Change role"}
         loading={action.pending}
         onConfirm={async () => {
-          if (!role || unchanged) return;
+          if (!role || unchanged) {
+            setSameRoleTried(true);
+            return;
+          }
           const ok = await action.run(
             () =>
               grantStaffRole({
@@ -60,7 +62,15 @@ function ChangeRoleDialog({ member, onClose }: { member: StaffMemberRow; onClose
           if (ok) onClose();
         }}
       >
-        <StaffRolePicker value={role} onChange={setRole} current={current} />
+        <StaffRolePicker
+          value={role}
+          onChange={(next) => {
+            setRole(next);
+            setSameRoleTried(false);
+          }}
+          current={current}
+          error={sameRoleTried && unchanged ? "Choose a role other than their current one." : null}
+        />
         {action.error}
       </ConfirmActionDialog>
       {action.stepUpDialog}
