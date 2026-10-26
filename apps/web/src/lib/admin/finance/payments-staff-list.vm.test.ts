@@ -6,6 +6,7 @@ import {
   paymentsFilterChips,
   paymentsListHref,
   paymentsMetrics,
+  paymentsMetricsPeriod,
   paymentsRangeSummary,
   paymentsViews,
 } from "./payments-staff-list.vm";
@@ -53,6 +54,51 @@ describe("payments staff list view model", () => {
     expect(paymentsAttention({}, counts, "manual-review").map((item) => item.id)).toEqual([
       "disputes",
     ]);
+  });
+
+  it("gives every total its daily trend and change, and links captured and refunded", () => {
+    const trend = (dailyPence: number[], priorPence: number) => ({
+      dailyPence,
+      currentPence: dailyPence.reduce((a, b) => a + b, 0),
+      priorPence,
+    });
+    const summary = {
+      totalVolume: 900,
+      pending: 50,
+      captured: 800,
+      refunded: 50,
+      trends: {
+        periodDays: 30,
+        volume: trend([0, 5000, 7000], 15000),
+        captured: trend([0, 4000, 6000], 5000),
+        refunded: trend([0, 1000, 0], 500),
+        awaiting: trend([0, 0, 1000], 1000),
+      },
+    };
+    const metrics = paymentsMetrics(summary, { q: "harbour" });
+    const byId = Object.fromEntries(metrics.map((metric) => [metric.id, metric]));
+    expect(byId.volume?.trend).toEqual([0, 5000, 7000]);
+    expect(byId.volume?.comparison).toEqual({
+      text: "20%",
+      direction: "down",
+      tone: "negative",
+      basis: "vs previous 30 days",
+    });
+    expect(byId.captured?.comparison).toMatchObject({ direction: "up", tone: "positive" });
+    // More refunded is bad news.
+    expect(byId.refunded?.comparison).toMatchObject({ direction: "up", tone: "negative" });
+    expect(byId.awaiting?.comparison).toMatchObject({ direction: "flat", tone: "neutral" });
+    expect(byId.awaiting?.trendLabel).toBe(
+      "Still awaiting capture, by the day each payment was created, last 30 days",
+    );
+    expect(byId.awaiting).toMatchObject({ tone: "attention" });
+    expect(byId.awaiting?.href).toBeUndefined();
+    expect(byId.captured?.href).toBe("/admin/payments?q=harbour&status=captured");
+    expect(byId.refunded?.href).toBe("/admin/payments?q=harbour&status=refunded");
+    expect(paymentsMetricsPeriod(summary, true)).toBe(
+      "Payments matching this view and filters · daily trends over the last 30 days",
+    );
+    expect(paymentsMetricsPeriod({ ...summary, trends: undefined }, false)).toBe("All payments");
   });
 
   it("summarises the matching payments in four full amounts", () => {

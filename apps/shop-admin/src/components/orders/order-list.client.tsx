@@ -16,6 +16,8 @@ import {
   orderBuyerSecondary,
   orderListHref,
   orderListPageHref,
+  orderMetrics,
+  orderMetricsPeriod,
   orderNumber,
   orderTeamViews,
 } from "@/server/domain/order-list.vm";
@@ -23,6 +25,7 @@ import {
   ADMIN_ORDER_SEARCH_MAX_LENGTH,
   type AdminOrderList,
   type AdminOrderStatus,
+  type AdminOrderSummary,
 } from "@auction/shop-contracts";
 import {
   type DataColumn,
@@ -43,9 +46,15 @@ import {
   toast,
   useSavedViews,
 } from "@auction/staff-ui";
-import { Copy, Download } from "@auction/staff-ui/icons";
+import { Banknote, Copy, Download, Receipt, ShoppingBag } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
+
+const ORDER_METRIC_ICONS: Record<string, ReactNode> = {
+  paid: <Banknote />,
+  orders: <ShoppingBag />,
+  average: <Receipt />,
+};
 
 type OrderRow = AdminOrderList["items"][number];
 
@@ -96,10 +105,13 @@ function download(filename: string, text: string) {
 export function OrderList({
   query,
   page,
+  summary = null,
   now,
 }: {
   query: OrderListQuery;
   page: AdminOrderList;
+  /** Paid totals and orders placed over the last 30 days; null when they could not be loaded. */
+  summary?: AdminOrderSummary | null;
   /** The server's clock, so presets match on the server and in the browser. */
   now: string;
 }) {
@@ -227,6 +239,18 @@ export function OrderList({
       <ListPage<OrderRow>
         title="Orders"
         description="Every Shop and lax.art order, newest first. Open one to refund, update fulfilment or send it to production."
+        {...(summary
+          ? {
+              metrics: {
+                label: "Orders summary",
+                period: orderMetricsPeriod(summary),
+                items: orderMetrics(summary).map((metric) => ({
+                  ...metric,
+                  icon: ORDER_METRIC_ICONS[metric.id],
+                })),
+              },
+            }
+          : {})}
         Link={ListLink}
         listKey="orders"
         exportAction={

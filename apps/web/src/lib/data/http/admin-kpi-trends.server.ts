@@ -52,6 +52,13 @@ export async function getAdminLotsKpiTrend(
   return fetchAdminKpiTrend("/admin/kpi/lots-trend", periodDays, "getAdminLotsKpiTrend");
 }
 
+/** Lots open for bidding on each day of the period. */
+export async function getAdminLotsLiveKpiTrend(
+  periodDays: AdminKpiPeriodDays,
+): Promise<AdminKpiTrendBundle> {
+  return fetchAdminKpiTrend("/admin/kpi/lots-live-trend", periodDays, "getAdminLotsLiveKpiTrend");
+}
+
 export async function getAdminLotsHammerKpiTrend(
   periodDays: AdminKpiPeriodDays,
 ): Promise<AdminKpiTrendBundle> {

@@ -25,6 +25,7 @@ import {
   type AdminOrderListQuery,
   AdminOrderListQuerySchema,
   AdminOrderListSchema,
+  AdminOrderSummarySchema,
   type AdminOriginalSaleListQuery,
   AdminOriginalSaleListQuerySchema,
   AdminOriginalSaleListSchema,
@@ -54,6 +55,7 @@ import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { parseOrderListQuery } from "../../../application/admin-order-list-query.js";
+import { buildOrderSummary, orderSummarySince } from "../../../application/admin-order-summary.js";
 import { ShopApiError } from "../../../errors/shop-api-error.js";
 import {
   requireAnyShopStaffCapability,
@@ -127,6 +129,22 @@ export async function registerAdminReadRoutes(
       return deps.adminRead.orders.listOrders(
         parseOrderListQuery(request.query as AdminOrderListQuery),
       );
+    },
+  );
+
+  app.get(
+    "/orders/summary",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        response: { 200: AdminOrderSummarySchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "order.read");
+      const now = new Date();
+      const totals = await deps.adminRead.orders.readOrderDailyTotals(orderSummarySince(now));
+      return buildOrderSummary(totals, now);
     },
   );
 

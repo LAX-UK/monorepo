@@ -12,7 +12,10 @@ import type { AdminSaleAttention } from "@/lib/data/http/admin-sale-attention.se
 import type { AdminSaleDetailMetrics } from "@/lib/data/http/admin-sale-detail-metrics.server";
 import type { AdminSaleOverviewKpiTrends } from "@/lib/data/http/admin-sale-overview-kpi-trends.server";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
-import { buildSaleOverviewViewModel } from "@/lib/data/view-models/sale-overview.vm";
+import {
+  buildSaleOverviewViewModel,
+  saleNumberTrends,
+} from "@/lib/data/view-models/sale-overview.vm";
 import {
   DetailColumns,
   IssueList,
@@ -26,11 +29,21 @@ import {
   formatGbp,
   formatStaffPercent,
 } from "@auction/staff-ui";
+import { Banknote, Gavel, Layers, Scale, UserCheck, Users } from "@auction/staff-ui/icons";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 const NextLink: StaffLinkComponent = Link;
+
+const SALE_NUMBER_ICONS: Record<string, ReactNode> = {
+  lots: <Layers />,
+  estimate: <Scale />,
+  hammer: <Gavel />,
+  revenue: <Banknote />,
+  registrations: <UserCheck />,
+  bidders: <Users />,
+};
 
 /** A fact for a key-value list; a date reads in London time with its zone. */
 function statItem(row: DetailStatRow) {
@@ -115,6 +128,19 @@ export function SaleOverviewTab({
     periodDays: kpiPeriodDays,
   });
   const rows = useMemo(() => filterRows(vm.attentionRows), [filterRows, vm.attentionRows]);
+  const trends = saleNumberTrends(kpiTrends);
+  const numbers = vm.kpiTiles
+    .filter((tile) => tilesFor(sale.status).includes(tile.id))
+    .map((tile) => {
+      const trend = trends[tile.id];
+      return {
+        id: tile.id,
+        label: tile.label,
+        value: tile.value === "—" ? null : tile.value,
+        icon: SALE_NUMBER_ICONS[tile.id],
+        ...(trend ? { trend } : {}),
+      };
+    });
   const issues = toIssueItems(rows);
 
   const rail = (
@@ -146,13 +172,10 @@ export function SaleOverviewTab({
     <DetailColumns rail={rail} railLabel="Sale activity">
       <StatGrid
         label="Sale numbers"
-        items={vm.kpiTiles
-          .filter((tile) => tilesFor(sale.status).includes(tile.id))
-          .map((tile) => ({
-            id: tile.id,
-            label: tile.label,
-            value: tile.value,
-          }))}
+        {...(numbers.some((item) => item.trend)
+          ? { period: `Daily activity over the last ${kpiPeriodDays} days` }
+          : {})}
+        items={numbers}
       />
       <IssueList
         Link={NextLink}

@@ -1388,15 +1388,19 @@ badge text.**
 - **Rule:**
   - Use at most 4 tiles. Each has a label, a value in tabular figures, and a comparison with its
     period ("vs last 7 days").
-  - No sparklines without axes. No charts on operational pages.
+  - A tile may carry a compact sparkline of real recent data (one value a day), with its window
+    stated in the strip's period line. No other charts on operational pages.
   - Tiles link to the list behind the number.
   - Finance pages may show more tiles. Fulfilment does not need any.
 - **Why:** tiles without a decision attached are decoration and slow the page.
 - **Check:** for each tile, ask "who changes what when this moves?" If there is no answer,
   remove it.
-- **Kit:** `MET`. `MetricStrip`: at most four metrics in one bordered row, the period stated, a
-  comparison only when given, with a ▲/▼ glyph and a spoken direction so tone is never the only
-  cue, and metrics that link to the list behind them. `StatGrid` remains for record pages.
+- **Kit:** `MET`. `MetricStrip`: at most four metrics in one bordered row, the period stated
+  above it. Each cell has a label with an optional 14px icon, the value, and only when the data
+  exists a change chip (arrow, percentage and a spoken sentence, so colour is never the only cue)
+  and a sparkline, coloured by the metric's tone (neutral, positive, attention, critical). A
+  metric with `href` makes the whole cell the link to the list behind it. `StatGrid` uses the same
+  cell on record pages.
 - **Sources:** [polaris-details] [wcag-use-of-color]
 
 **DSH-3. Counts in the nav, on Overview and on view tabs agree, and each is labelled as yours or

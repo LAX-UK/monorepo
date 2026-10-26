@@ -81,7 +81,15 @@ export {
   ViewOnlyBadge,
 } from "./display/states.js";
 export { METRIC_STRIP_MAX, MetricStrip } from "./display/metric-strip.js";
-export type { Metric, MetricComparison } from "./display/metric-strip.js";
+export { MetricCell, MetricDelta } from "./display/metric-cell.js";
+export { metricChange } from "./display/metric-change.js";
+export type {
+  Metric,
+  MetricCellItem,
+  MetricComparison,
+  MetricTone,
+} from "./display/metric-cell.js";
+export { Sparkline, SparklineSkeleton } from "./display/sparkline.js";
 export { AttentionStrip } from "./display/attention-strip.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 

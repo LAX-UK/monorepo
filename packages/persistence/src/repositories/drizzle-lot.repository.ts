@@ -16,6 +16,7 @@ import {
   countActiveBiddersForSale,
   countLotsCreatedAtByDay,
   countLotsEndedAtByDay,
+  countLotsLiveByDay,
   countMatchingLots,
   countSaleBidActivityByChannel,
   sumEndedLotHammer,
@@ -435,6 +436,10 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async countEndedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
     return countLotsEndedAtByDay(this.db, rangeStart);
+  }
+
+  async countLiveByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return countLotsLiveByDay(this.db, rangeStart);
   }
 
   async sumEndedHammerByDay(rangeStart: Date): Promise<Map<string, number>> {

@@ -68,6 +68,25 @@ export const AdminOrderListSchema = Type.Object({
 });
 export type AdminOrderList = Static<typeof AdminOrderListSchema>;
 
+/** A daily series over the summary window, oldest day first, with the window's total and the total of the same number of days before it. */
+const AdminDailySeriesSchema = Type.Object({
+  daily: Type.Array(Type.Integer({ minimum: 0 })),
+  current: Type.Integer({ minimum: 0 }),
+  prior: Type.Integer({ minimum: 0 }),
+});
+
+/** The orders list's headline numbers: what was paid and how many orders came in, per UK day. */
+export const AdminOrderSummarySchema = Type.Object({
+  periodDays: Type.Integer({ minimum: 1 }),
+  /** Order totals by the day they were paid, in pence. */
+  paidPence: AdminDailySeriesSchema,
+  /** Orders by the day they were placed. */
+  orders: AdminDailySeriesSchema,
+  /** Orders by the day they were paid, for the average order value. */
+  paidOrders: AdminDailySeriesSchema,
+});
+export type AdminOrderSummary = Static<typeof AdminOrderSummarySchema>;
+
 export const AdminFulfilmentListItemSchema = Type.Object({
   fulfilmentId: Type.String({ format: "uuid" }),
   orderId: Type.String({ format: "uuid" }),

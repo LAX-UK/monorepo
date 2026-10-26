@@ -68,6 +68,15 @@ export type AdminPaymentTableRowDto = PaymentRecord & {
   sellerId: string;
 };
 
+/** One day's payment amounts in pence, by the status the payments are in now. */
+export type AdminPaymentsDailyAmounts = {
+  volume: number;
+  captured: number;
+  refunded: number;
+  /** Pending or authorised: money not yet taken. */
+  awaiting: number;
+};
+
 export type AdminPaymentsSummaryStats = {
   totalVolume: string;
   captured: string;
@@ -140,6 +149,15 @@ export interface IPaymentAnalyticsRepository {
   summarizeForAdminTable(
     filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
   ): Promise<AdminPaymentsSummaryStats>;
+  /**
+   * For the payments the admin table filter matches, created on or after `rangeStart`: the amount
+   * created each UTC day, in pence, in total and split by where those payments are now (captured,
+   * refunded, awaiting capture). Days without payments are absent.
+   */
+  sumAdminTableAmountsByDay(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+    rangeStart: Date,
+  ): Promise<Map<string, AdminPaymentsDailyAmounts>>;
 }
 
 /** Full payment persistence port — composite of segregated slices (ISP). Name kept for backward compatibility. */

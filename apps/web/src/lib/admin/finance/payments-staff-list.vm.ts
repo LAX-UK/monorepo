@@ -2,6 +2,10 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin-ops-dashboard.types";
+import type {
+  AdminPaymentsSummary,
+  AdminPaymentsTrend,
+} from "@/lib/data/http/admin-payments.types";
 import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import { lotFulfilmentStatusLabel, paymentStatusLabel } from "@/lib/presenters/status-presentation";
 import {
@@ -10,6 +14,7 @@ import {
   type DataView as StaffDataView,
   type StatusPresentation,
   formatStaffMoney,
+  metricChange,
   parsePoundsToPence,
 } from "@auction/staff-ui";
 import type { PaymentStatus } from "@auction/types";
@@ -237,19 +242,73 @@ export function paymentsAttention(
   ];
 }
 
-/** The summary over the payments that match the current view and search, in full pounds. */
-export function paymentsMetrics(summary: {
-  totalVolume: number;
-  pending: number;
-  captured: number;
-  refunded: number;
-}): Metric[] {
+/** The period line over the payments summary: what the totals cover, and the trends' window. */
+export function paymentsMetricsPeriod(summary: AdminPaymentsSummary, filtered: boolean): string {
+  const scope = filtered ? "Payments matching this view and filters" : "All payments";
+  const days = summary.trends?.periodDays;
+  return days ? `${scope} · daily trends over the last ${days} days` : scope;
+}
+
+/**
+ * The summary over the payments that match the current view and search, in full pounds. Each
+ * total carries the daily amount of the payments created that day that are in it now, and the
+ * change against the window before; captured and refunded link to their status view.
+ */
+export function paymentsMetrics(
+  summary: AdminPaymentsSummary,
+  search: PaymentsListSearch = {},
+): Metric[] {
   const money = (pounds: number) => formatStaffMoney(Math.round(pounds * 100));
+  const trends = summary.trends;
+  const days = trends?.periodDays ?? 0;
+  const withTrend = (
+    trend: AdminPaymentsTrend | undefined,
+    rise: "good" | "bad" | "neutral",
+    what: string,
+  ): Pick<Metric, "trend" | "trendLabel" | "comparison"> => {
+    if (!trend) return {};
+    const change = metricChange({
+      current: trend.currentPence,
+      prior: trend.priorPence,
+      basis: `vs previous ${days} days`,
+      rise,
+    });
+    return {
+      trend: trend.dailyPence,
+      trendLabel: `${what}, by the day each payment was created, last ${days} days`,
+      ...(change ? { comparison: change } : {}),
+    };
+  };
   return [
-    { id: "volume", label: "Volume", value: money(summary.totalVolume) },
-    { id: "awaiting", label: "Awaiting capture", value: money(summary.pending) },
-    { id: "captured", label: "Captured", value: money(summary.captured) },
-    { id: "refunded", label: "Refunded", value: money(summary.refunded) },
+    {
+      id: "volume",
+      label: "Volume",
+      value: money(summary.totalVolume),
+      ...withTrend(trends?.volume, "good", "Payment volume"),
+    },
+    {
+      id: "awaiting",
+      label: "Awaiting capture",
+      value: money(summary.pending),
+      // Held money waits on someone to capture it. It spans two status views, so it links to neither.
+      tone: summary.pending > 0 ? "attention" : "neutral",
+      ...withTrend(trends?.awaiting, "neutral", "Still awaiting capture"),
+    },
+    {
+      id: "captured",
+      label: "Captured",
+      value: money(summary.captured),
+      tone: "positive",
+      href: paymentsListHref(search, { status: "captured" }),
+      ...withTrend(trends?.captured, "good", "Captured"),
+    },
+    {
+      id: "refunded",
+      label: "Refunded",
+      value: money(summary.refunded),
+      href: paymentsListHref(search, { status: "refunded" }),
+      ...withTrend(trends?.refunded, "bad", "Refunded"),
+    },
   ];
 }
 

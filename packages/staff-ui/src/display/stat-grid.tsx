@@ -1,58 +1,44 @@
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import type { StaffLinkComponent } from "../shell/link.js";
+import { MetricCell, type MetricCellItem } from "./metric-cell.js";
 
-export type StatItem = {
-  id: string;
-  label: string;
-  value: React.ReactNode;
-  /** A short comparison or context line: "+12% vs last 30 days", "3 need photos". */
-  hint?: React.ReactNode;
-  hintTone?: "neutral" | "positive" | "negative";
-};
+/** A record's headline number: the metric cell, with an optional context line under the value. */
+export type StatItem = MetricCellItem;
 
 /**
- * Headline numbers for a record or list, in one hairline card divided into cells. Numbers use
- * tabular figures and the md title size; no charts, so the page stays calm.
+ * Headline numbers for a record, in one hairline card divided into cells. Each cell is the same
+ * metric cell as a list's metric strip (label, value in tabular figures, and the change and trend
+ * when given), plus an optional hint line, so numbers read the same on lists and records.
  */
 export function StatGrid({
   items,
   label,
+  period,
+  Link,
   className,
 }: {
   items: readonly StatItem[];
   label: string;
+  /** What any trends cover, as a caption above the card: "Daily activity, last 30 days". */
+  period?: React.ReactNode;
+  /** Needed when items carry an `href`. */
+  Link?: StaffLinkComponent;
   className?: string;
 }) {
-  return (
-    <section
-      aria-label={label}
-      className={cn(
-        "grid grid-cols-2 overflow-hidden rounded-staff-md border border-staff-line bg-staff-line gap-px md:grid-cols-4",
-        className,
-      )}
-    >
+  const grid = (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-staff-md border border-staff-line bg-staff-line-subtle md:grid-cols-4">
       {items.map((item) => (
-        <div key={item.id} className="flex flex-col gap-1 bg-staff-surface px-4 py-3">
-          <span className="text-staff-xs text-staff-muted">{item.label}</span>
-          <span className="text-staff-lg font-semibold text-staff-fg tabular-nums">
-            {item.value}
-          </span>
-          {item.hint ? (
-            <span
-              className={cn(
-                "text-staff-xs",
-                item.hintTone === "positive"
-                  ? "text-staff-success-fg"
-                  : item.hintTone === "negative"
-                    ? "text-staff-danger-fg"
-                    : "text-staff-subtle",
-              )}
-            >
-              {item.hint}
-            </span>
-          ) : null}
-        </div>
+        <MetricCell key={item.id} item={item} Link={Link} className="bg-staff-surface" />
       ))}
+    </div>
+  );
+  return (
+    <section aria-label={label} className={cn(period ? "flex flex-col gap-2" : null, className)}>
+      {period ? (
+        <p className="flex min-h-5 items-center px-0.5 text-staff-xs text-staff-muted">{period}</p>
+      ) : null}
+      {grid}
     </section>
   );
 }

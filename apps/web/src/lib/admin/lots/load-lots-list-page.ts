@@ -14,7 +14,9 @@ import { resolveLotsListPaginationTotal } from "@/lib/admin/resolve-catalog-list
 import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import {
   getAdminLotsEndedKpiTrend,
+  getAdminLotsHammerKpiTrend,
   getAdminLotsKpiTrend,
+  getAdminLotsLiveKpiTrend,
 } from "@/lib/data/http/admin-kpi-trends.server";
 import {
   type AdminLotsListSummary,
@@ -49,6 +51,10 @@ export type AdminLotsListPageViewModel = {
   lotsSummary: AdminLotsListSummary;
   lotsTrend: Awaited<ReturnType<typeof getAdminLotsKpiTrend>>;
   lotsEndedTrend: Awaited<ReturnType<typeof getAdminLotsEndedKpiTrend>>;
+  /** Hammer of lots ended each day over the period, with the period before; null if unavailable. */
+  hammerTrend: Awaited<ReturnType<typeof getAdminLotsHammerKpiTrend>> | null;
+  /** Lots open for bidding each day over the period; null if unavailable. */
+  liveTrend: Awaited<ReturnType<typeof getAdminLotsLiveKpiTrend>> | null;
   navCounts: AdminNavCounts;
   listError: string | null;
   pageRows: LotListRow[];
@@ -114,7 +120,14 @@ export async function loadAdminLotsListPage(
     }),
   );
 
-  const [lotsSummary, lotResult, lotsTrendResult, lotsEndedTrendResult] = await Promise.all([
+  const [
+    lotsSummary,
+    lotResult,
+    lotsTrendResult,
+    lotsEndedTrendResult,
+    hammerTrendResult,
+    liveTrendResult,
+  ] = await Promise.all([
     getAdminLotsListSummary().catch(() => EMPTY_ADMIN_LOTS_LIST_SUMMARY),
     (withdrawalsLens
       ? lotsForWithdrawalRequests(withdrawalResult.tasks).then((rows) => ({
@@ -144,6 +157,9 @@ export async function loadAdminLotsListPage(
       priorTotal: 0,
       dailyCounts: [] as number[],
     })),
+    // The hammer total's trend; null when it cannot be loaded, so the cell shows no chart.
+    getAdminLotsHammerKpiTrend(periodDays).catch(() => null),
+    getAdminLotsLiveKpiTrend(periodDays).catch(() => null),
   ]);
 
   const pageRows = lotResult.rows;
@@ -264,6 +280,8 @@ export async function loadAdminLotsListPage(
     lotsSummary,
     lotsTrend: lotsTrendResult,
     lotsEndedTrend: lotsEndedTrendResult,
+    hammerTrend: hammerTrendResult,
+    liveTrend: liveTrendResult,
     navCounts: navCountsResult,
     listError: lotResult.err,
     pageRows,

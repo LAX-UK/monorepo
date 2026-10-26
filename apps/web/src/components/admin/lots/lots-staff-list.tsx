@@ -37,9 +37,17 @@ import {
   staffButtonVariants,
   useSavedViews,
 } from "@auction/staff-ui";
+import { Clock, FilePen, Gavel, Radio } from "@auction/staff-ui/icons";
 import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
+
+const LOT_METRIC_ICONS: Record<string, ReactNode> = {
+  live: <Radio />,
+  ending: <Clock />,
+  draft: <FilePen />,
+  hammer: <Gavel />,
+};
 
 export type LotsStaffListProps = {
   rows: LotsStaffRow[];
@@ -48,6 +56,8 @@ export type LotsStaffListProps = {
   activeLens: string;
   attention: AttentionStripItem[];
   metrics: Metric[];
+  /** What the metrics cover: "All lots · hammer trend over the last 30 days". */
+  metricsPeriod: string;
   filterChips: Array<{ id: string; label: string; clearHref: string }>;
   filterOptions: {
     sales: EntityOption[];
@@ -240,7 +250,11 @@ export function LotsStaffList(props: LotsStaffListProps) {
           />
         }
         attention={props.attention}
-        metrics={{ label: "Lots summary", period: "All lots", items: props.metrics }}
+        metrics={{
+          label: "Lots summary",
+          period: props.metricsPeriod,
+          items: props.metrics.map((metric) => ({ ...metric, icon: LOT_METRIC_ICONS[metric.id] })),
+        }}
         views={
           <DataViews
             views={props.views}

@@ -7,6 +7,7 @@ import {
   lotsFilterChips,
   lotsListHref,
   lotsMetrics,
+  lotsMetricsPeriod,
   lotsRangeSummary,
   lotsViews,
   toLotsStaffRows,
@@ -42,6 +43,12 @@ export default async function AdminLotsPage({
   const { model, pageRows, hasNextPage, listPaginationTotal, lotFilterOptions } = vm;
   const { query } = model;
   const rows = toLotsStaffRows(vm.lotTableRows, vm.withdrawalRequestedAt);
+  const lotTrends = {
+    live: vm.liveTrend,
+    ended: vm.lotsEndedTrend,
+    added: vm.lotsTrend,
+    hammer: vm.hammerTrend,
+  };
 
   return (
     <LotsStaffList
@@ -53,7 +60,8 @@ export default async function AdminLotsPage({
         withdrawalsPending: Object.keys(vm.withdrawalRequestedAt).length,
         draftsMissingPhotos: vm.lotsSummary.needsAttentionCount,
       })}
-      metrics={lotsMetrics(vm.lotsSummary)}
+      metrics={lotsMetrics(vm.lotsSummary, lotTrends)}
+      metricsPeriod={lotsMetricsPeriod(lotTrends)}
       filterChips={lotsFilterChips(vm.activeFilterChips)}
       filterOptions={{
         sales: lotFilterOptions.sales.map((sale) => ({

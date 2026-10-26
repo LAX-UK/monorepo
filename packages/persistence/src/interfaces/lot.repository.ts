@@ -88,6 +88,8 @@ export interface ILotAnalyticsRepository {
   /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted lots). */
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
   countEndedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  /** Lots open for bidding on each UTC day from rangeStart to today; every day present. */
+  countLiveByDay(rangeStart: Date): Promise<Map<string, number>>;
   /** Sum hammer (current price) for ended lots per UTC day (by endTime). */
   sumEndedHammerByDay(rangeStart: Date): Promise<Map<string, number>>;
   /** Lot counts per sale id for list endpoints. */

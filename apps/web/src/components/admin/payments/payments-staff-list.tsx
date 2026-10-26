@@ -14,8 +14,10 @@ import {
   paymentsFilterChips,
   paymentsListHref,
   paymentsMetrics,
+  paymentsMetricsPeriod,
   paymentsViews,
 } from "@/lib/admin/finance/payments-staff-list.vm";
+import type { AdminPaymentsSummary } from "@/lib/data/http/admin-payments.types";
 import {
   CellLink,
   type DataColumn,
@@ -28,14 +30,22 @@ import {
   TableSearch,
   staffButtonVariants,
 } from "@auction/staff-ui";
+import { Banknote, CircleCheck, Hourglass, Undo2 } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
+
+const PAYMENT_METRIC_ICONS: Record<string, ReactNode> = {
+  volume: <Banknote />,
+  awaiting: <Hourglass />,
+  captured: <CircleCheck />,
+  refunded: <Undo2 />,
+};
 
 export type PaymentsStaffListProps = {
   search: PaymentsListSearch;
   view: PaymentsViewId;
   rows: PaymentsStaffRow[];
-  summary: { totalVolume: number; pending: number; captured: number; refunded: number };
+  summary: AdminPaymentsSummary;
   attentionCounts: { manualReviewCount: number; disputesOpen: number };
   canWritePayments: boolean;
   exportFilters: Record<string, unknown>;
@@ -176,8 +186,11 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         attention={paymentsAttention(search, props.attentionCounts, props.view)}
         metrics={{
           label: "Payments summary",
-          period: filtered ? "Payments matching this view and filters" : "All payments",
-          items: paymentsMetrics(props.summary),
+          period: paymentsMetricsPeriod(props.summary, filtered),
+          items: paymentsMetrics(props.summary, search).map((metric) => ({
+            ...metric,
+            icon: PAYMENT_METRIC_ICONS[metric.id],
+          })),
         }}
         views={
           <DataViews

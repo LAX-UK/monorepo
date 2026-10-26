@@ -461,6 +461,7 @@ export type {
 
 export type {
   AdminPaymentTableRowDto,
+  AdminPaymentsDailyAmounts,
   AdminPaymentsSummaryStats,
   CreatePaymentRow,
   IPaymentAnalyticsRepository,

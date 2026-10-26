@@ -1,31 +1,12 @@
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 import type { StaffLinkComponent } from "../shell/link.js";
-import { Skeleton } from "./states.js";
+import { type Metric, MetricCell, MetricCellSkeleton } from "./metric-cell.js";
+
+export type { Metric, MetricComparison, MetricTone } from "./metric-cell.js";
 
 /** The most metrics a strip shows; more than this is a report, not a summary. */
 export const METRIC_STRIP_MAX = 4;
-
-export type MetricComparison = {
-  /** "12% vs previous 30 days". Shown only when the comparison means something. */
-  text: string;
-  direction: "up" | "down" | "flat";
-  /** Whether the change is good news; colour backs up the arrow, never replaces it. */
-  tone?: "positive" | "negative" | "neutral";
-};
-
-export type Metric = {
-  id: string;
-  label: string;
-  /** Already formatted, in full: "£1,250.00", never "£1.2k". */
-  value: React.ReactNode;
-  comparison?: MetricComparison;
-  /** The list filtered to the records behind the number. */
-  href?: string;
-};
-
-const ARROW = { up: "▲", down: "▼", flat: "–" } as const;
-const ARROW_LABEL = { up: "Up", down: "Down", flat: "No change" } as const;
 
 const mdColumns: Record<number, string> = {
   1: "md:grid-cols-1",
@@ -34,16 +15,20 @@ const mdColumns: Record<number, string> = {
   4: "md:grid-cols-4",
 };
 
-const toneClass = {
-  positive: "text-staff-success-fg",
-  negative: "text-staff-danger-fg",
-  neutral: "text-staff-muted",
-} as const;
+/** Hairlines between cells: two across on phones, one row from 768px. */
+export function metricCellDividers(index: number) {
+  return cn(
+    index % 2 === 1 && "border-l border-staff-line-subtle",
+    index >= 2 && "border-t border-staff-line-subtle md:border-t-0",
+    index >= 1 && "md:border-l",
+  );
+}
 
 /**
- * A list's summary: up to four numbers in one bordered row, each with a label, a value at 20px in
- * tabular figures and, only when it means something, a comparison with an arrow. The period the
- * numbers cover is always stated. No sparklines, no separate floating cards.
+ * A list's summary: up to four numbers in one bordered row. Each cell has a label (with an
+ * optional icon), the value in tabular figures and, when the data exists, the change as a chip
+ * and the recent trend as a small line, coloured by the metric's tone. The period the numbers
+ * cover is stated in a caption above the row.
  */
 export function MetricStrip({
   items,
@@ -80,75 +65,44 @@ export function MetricStrip({
     <section
       aria-label={label}
       aria-busy={loading || undefined}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("flex flex-col gap-2", className)}
     >
-      <div className="flex min-h-9 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-1.5">
+      <div className="flex min-h-5 items-center justify-between gap-3 px-0.5">
         <p className="text-staff-xs text-staff-muted">{period}</p>
-        {action ? <div className="flex shrink-0 items-center">{action}</div> : null}
+        {action ? <div className="-my-1.5 flex shrink-0 items-center">{action}</div> : null}
       </div>
-      <dl className={cn("grid", count === 1 ? "grid-cols-1" : "grid-cols-2", mdColumns[count])}>
-        {(loading
-          ? Array.from({ length: count }, (_, index) => ({ id: `loading-${index}` }) as Metric)
-          : shown
-        ).map((item, index) => (
-          <div
-            key={item.id}
-            className={cn(
-              "flex min-w-0 flex-col gap-0.5 px-4 py-3",
-              // Hairlines between cells: left on every cell but the first of a row.
-              index % 2 === 1 && "border-l border-staff-line-subtle",
-              index >= 2 && "border-t border-staff-line-subtle md:border-t-0",
-              index >= 1 && "md:border-l",
-            )}
-          >
-            {loading ? (
-              <>
-                <Skeleton className="my-0.5 h-3 w-20" />
-                <Skeleton className="my-1 h-5 w-28" />
-              </>
-            ) : (
-              <MetricCell item={item} Link={Link} />
-            )}
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
-function MetricCell({ item, Link }: { item: Metric; Link: StaffLinkComponent | undefined }) {
-  const value = (
-    <span className="text-staff-xl font-semibold text-staff-fg tabular-nums">{item.value}</span>
-  );
-  return (
-    <>
-      <dt className="truncate text-staff-xs text-staff-muted">{item.label}</dt>
-      <dd className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-        {item.href && Link ? (
-          <Link
-            href={item.href}
-            className="staff-focus rounded-staff-xs decoration-staff-line-strong underline-offset-4 hover:underline"
-          >
-            {value}
-          </Link>
-        ) : (
-          value
+      <div
+        className={cn(
+          "grid overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface",
+          count === 1 ? "grid-cols-1" : "grid-cols-2",
+          mdColumns[count],
         )}
-        {item.comparison ? (
-          <span
-            className={cn(
-              "inline-flex items-baseline gap-1 text-staff-xs",
-              toneClass[item.comparison.tone ?? "neutral"],
-            )}
-          >
-            <span aria-hidden className="text-staff-2xs leading-none">
-              {ARROW[item.comparison.direction]}
-            </span>
-            <span className="sr-only">{ARROW_LABEL[item.comparison.direction]}: </span>
-            {item.comparison.text}
-          </span>
-        ) : null}
-      </dd>
-    </>
+      >
+        {loading
+          ? Array.from({ length: count }, (_, index) => `placeholder-${index}`).map((id, index) => (
+              <div
+                key={id}
+                className={cn(
+                  metricCellDividers(index),
+                  count > 1 && count % 2 === 1 && index === count - 1 && "col-span-2 md:col-span-1",
+                )}
+              >
+                <MetricCellSkeleton />
+              </div>
+            ))
+          : shown.map((item, index) => (
+              <MetricCell
+                key={item.id}
+                item={item}
+                Link={Link}
+                className={cn(
+                  metricCellDividers(index),
+                  // An odd last cell on phones takes the whole row rather than leaving a hole.
+                  count > 1 && count % 2 === 1 && index === count - 1 && "col-span-2 md:col-span-1",
+                )}
+              />
+            ))}
+      </div>
+    </section>
   );
 }

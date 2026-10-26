@@ -1,4 +1,5 @@
 import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
+import { lotLensHref } from "@/lib/admin/catalog/lots-lenses";
 import { EMPTY_ADMIN_LOTS_LIST_SUMMARY } from "@/lib/data/http/admin-lots-summary.server";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,6 +8,7 @@ import {
   lotsAttention,
   lotsFilterChips,
   lotsMetrics,
+  lotsMetricsPeriod,
   lotsRangeSummary,
   lotsSortHref,
   lotsSortState,
@@ -59,6 +61,45 @@ describe("lots staff list view model", () => {
   it("formats the hammer total in full", () => {
     const metrics = lotsMetrics({ ...EMPTY_ADMIN_LOTS_LIST_SUMMARY, totalHammerValue: "1604812" });
     expect(metrics.find((metric) => metric.id === "hammer")?.value).toBe("£1,604,812.00");
+  });
+
+  it("links each count to its view, marks waiting work and trends every number when loaded", () => {
+    const summary = { ...EMPTY_ADMIN_LOTS_LIST_SUMMARY, liveCount: 4, endingSoonCount: 2 };
+    const bundle = (dailyCounts: number[], priorTotal: number) => ({
+      currentTotal: dailyCounts.reduce((a, b) => a + b, 0),
+      priorTotal,
+      dailyCounts,
+    });
+    const trends = {
+      live: bundle([3, 4, 4], 10),
+      ended: bundle([1, 0, 2], 3),
+      added: bundle([2, 2, 1], 10),
+      hammer: bundle([0, 30, 100], 100),
+    };
+    const metrics = lotsMetrics(summary, trends);
+    const byId = Object.fromEntries(metrics.map((metric) => [metric.id, metric]));
+    // The same links as the view tabs.
+    expect(byId.live).toMatchObject({ tone: "positive", href: lotLensHref("live", {}) });
+    expect(byId.ending).toMatchObject({ tone: "attention", href: lotLensHref("ending", {}) });
+    expect(byId.draft?.href).toBe(lotLensHref("draft", {}));
+    expect(byId.live?.trend).toEqual([3, 4, 4]);
+    expect(byId.live?.trendLabel).toBe("Lots open for bidding each day, last 3 days");
+    expect(byId.ending?.trend).toEqual([1, 0, 2]);
+    expect(byId.ending?.comparison).toMatchObject({ direction: "flat", tone: "neutral" });
+    expect(byId.draft?.comparison).toMatchObject({ direction: "down", tone: "negative" });
+    expect(byId.hammer?.trend).toEqual([0, 30, 100]);
+    expect(byId.hammer?.comparison).toEqual({
+      text: "30%",
+      direction: "up",
+      tone: "positive",
+      basis: "hammer of lots ended each day, vs previous 3 days",
+    });
+    expect(lotsMetricsPeriod(trends)).toBe("All lots · daily trends over the last 3 days");
+
+    // Without trends there is no chart, no change and no window in the period line.
+    const plain = lotsMetrics(summary, { hammer: null });
+    expect(plain.every((metric) => metric.trend === undefined)).toBe(true);
+    expect(lotsMetricsPeriod({})).toBe("All lots");
   });
 
   it("never repeats the search or the sort as a chip", () => {
