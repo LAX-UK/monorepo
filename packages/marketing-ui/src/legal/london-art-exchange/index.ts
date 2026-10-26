@@ -65,25 +65,25 @@ function policy(
 }
 
 export const LAX_ART_POLICIES: Readonly<Record<LaxArtPolicySlug, LaxArtPolicy>> = {
-  terms: policy(TERMS_POLICY, "Terms of Sale", "/terms-of-sale"),
-  returns: policy(RETURNS_POLICY, "Returns & Cancellation", "/returns-cancellation"),
-  shipping: policy(SHIPPING_POLICY, "Shipping & Delivery", "/shipping-delivery"),
-  privacy: policy(PRIVACY_POLICY, "Privacy Notice", "/privacy-notice"),
-  cookies: policy(COOKIES_POLICY, "Cookie Preferences", "/cookie-notice"),
-  complaints: policy(COMPLAINTS_POLICY, "Complaints & ADR", "/complaints-adr"),
+  terms: policy(TERMS_POLICY, "Terms of sale", "/terms-of-sale"),
+  returns: policy(RETURNS_POLICY, "Returns and cancellation", "/returns-cancellation"),
+  shipping: policy(SHIPPING_POLICY, "Shipping and delivery", "/shipping-delivery"),
+  privacy: policy(PRIVACY_POLICY, "Privacy notice", "/privacy-notice"),
+  cookies: policy(COOKIES_POLICY, "Cookie notice", "/cookie-notice"),
+  complaints: policy(COMPLAINTS_POLICY, "Complaints and ADR", "/complaints-adr"),
   accessibility: policy(ACCESSIBILITY_POLICY, "Accessibility", "/accessibility"),
   "aml-identity-checks": policy(
     AML_IDENTITY_CHECKS_POLICY,
-    "AML & Identity",
+    "AML and identity checks",
     "/aml-identity-checks",
   ),
-  reviews: policy(REVIEWS_POLICY, "Reviews Policy", "/reviews-policy"),
-  "ethical-sourcing": policy(ETHICAL_SOURCING_POLICY, "Ethical Sourcing", "/ethical-sourcing"),
+  reviews: policy(REVIEWS_POLICY, "Reviews policy", "/reviews-policy"),
+  "ethical-sourcing": policy(ETHICAL_SOURCING_POLICY, "Ethical sourcing", "/ethical-sourcing"),
 };
 
 /** The legal index: its introduction and its groups, in the order the business team set. */
 export const LAX_ART_LEGAL_INDEX = {
-  title: "Legal & Policies",
+  title: "Legal and policies",
   intro:
     "The terms, notices and statements that apply when you buy from London Art Exchange. Each is published in full and maintained separately. Previous versions are archived and available on request.",
   groups: [

@@ -6,7 +6,7 @@ const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and seed the Shop
 
 test.describe("Shop catalogue routes @a11y", () => {
   for (const route of [
-    { path: "/artworks", heading: "Artworks" },
+    { path: "/artworks", heading: "Editions" },
     { path: "/artists", heading: "Artists" },
     { path: "/categories", heading: "Categories" },
     { path: "/artists/emmett-king", heading: "Emmett King" },

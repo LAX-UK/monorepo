@@ -25,8 +25,9 @@ import {
 import { MarketingCatalogView } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
-const CATALOGUE_TITLE = "Artworks";
-const CATALOGUE_DESCRIPTION = "Limited-edition prints by LAX artists, delivered across the UK.";
+const CATALOGUE_TITLE = "Editions";
+const CATALOGUE_DESCRIPTION =
+  "Limited-edition prints by LAX artists, with insured UK delivery or collection in London.";
 
 type ArtworksIndexPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

@@ -55,7 +55,7 @@ export function buildShopFooterVm(input: {
       id: "shop",
       title: "Shop",
       links: [
-        { label: "Artworks", href: "/artworks" },
+        { label: "Editions", href: "/artworks" },
         { label: "Artists", href: "/artists" },
         { label: "Categories", href: "/categories" },
         { label: "Basket", href: "/basket" },
