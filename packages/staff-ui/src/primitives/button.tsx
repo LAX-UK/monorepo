@@ -64,6 +64,8 @@ export const staffButtonVariants = cva(
       size: {
         sm: "h-control-sm px-3",
         md: "h-control-md px-3.5",
+        /** 44px at every pointer, for the actions a clerk takes under time pressure. */
+        live: "h-11 px-4",
         "icon-xs": "size-control-xs rounded-staff-xs",
         "icon-sm": "size-control-sm",
         "icon-md": "size-control-md",

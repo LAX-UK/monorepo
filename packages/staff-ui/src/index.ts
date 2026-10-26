@@ -93,6 +93,7 @@ export type {
   MetricTone,
 } from "./display/metric-cell.js";
 export { Sparkline, SparklineSkeleton } from "./display/sparkline.js";
+export { ProgressBar } from "./display/progress-bar.js";
 export { AttentionStrip } from "./display/attention-strip.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 

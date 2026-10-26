@@ -22,6 +22,8 @@ export const staffFieldBox = [
 const fieldSize = {
   sm: "h-control-sm text-staff-sm",
   md: "h-control-md text-staff-md",
+  /** 44px at every pointer, for fields a clerk fills under time pressure. */
+  live: "h-11 text-staff-md",
 } as const;
 
 const bareInput =

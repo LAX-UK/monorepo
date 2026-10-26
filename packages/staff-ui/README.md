@@ -139,7 +139,7 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
   ```
 - **Overview**: `AttentionList` (queues that need someone, linking to the filtered list).
 - **Record pages**: `Section`, `KeyValueList`, `Timeline`, `RelativeTime`, `TruncatedText`,
-  `StatGrid`, `StatusBadge` with
+  `StatGrid`, `ProgressBar`, `StatusBadge` with
   `defineStatusMap` (one map per domain status), `Notice` (info, warning or danger line above
   the work it concerns), `DangerZone` and `DangerZoneAction`.
 - **Panels**: `DetailPanel` (side sheet; asks before closing over unsaved changes), `StaffDialog`,
