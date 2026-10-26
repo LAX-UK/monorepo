@@ -1,14 +1,11 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminConditionReportsLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Condition report requests"
-      description="Loading condition report requests…"
-      kpiTiles={3}
-      tableRows={10}
-      tableColumns={5}
-      showFilterBar
+      columns={["Lot", "Requested by", "Status", "Requested"]}
+      metrics={3}
     />
   );
 }

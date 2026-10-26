@@ -4,7 +4,6 @@ import { SofCaseAuditTrail } from "@/components/admin/compliance-sof-board/sof-c
 import { SofCaseTimeline } from "@/components/admin/compliance-sof-board/sof-case-timeline";
 import { SofEvidenceReviewer } from "@/components/admin/compliance-sof-board/sof-evidence-reviewer";
 import { SofSettlementBreakdown } from "@/components/admin/compliance-sof-board/sof-settlement-breakdown";
-import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {
   SOF_STALE_RELOAD_MESSAGE,
   isSofStaleConflictMessage,
@@ -12,10 +11,18 @@ import {
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { buildSofTimeline } from "@/lib/data/view-models/admin-sof-timeline.vm";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import {
+  KeyValueList,
+  Notice,
+  Section,
+  StaffButton,
+  type StaffLinkComponent,
+  TextLink,
+} from "@auction/staff-ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   row: AdminSofTableRow;
@@ -28,6 +35,7 @@ type Props = {
   error?: string | null;
 };
 
+/** The case's workflow, evidence, settlement exposure, why it exists and its review history. */
 export function SofCaseDetailClient({
   row,
   detail,
@@ -41,92 +49,92 @@ export function SofCaseDetailClient({
   const router = useRouter();
   const steps = buildSofTimeline({ row, detail, canTriage, canDecide, currentUserId });
   const staleConflict = Boolean(error && isSofStaleConflictMessage(error));
+  const blocked = detail.blockedPayments.length;
 
   return (
-    <div className="min-w-0 space-y-6">
-      {success ? (
-        <Alert>
-          <AlertTitle>Done</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      ) : null}
+    <>
+      {success ? <Notice tone="success" title={success} /> : null}
       {staleConflict ? (
-        <Alert>
-          <AlertTitle>Case changed</AlertTitle>
-          <AlertDescription className="flex flex-wrap items-center gap-3">
-            <span>{SOF_STALE_RELOAD_MESSAGE}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => router.refresh()}>
+        <Notice
+          tone="warning"
+          title="Case changed"
+          actions={
+            <StaffButton size="sm" variant="secondary" onClick={() => router.refresh()}>
               Reload case
-            </Button>
-          </AlertDescription>
-        </Alert>
+            </StaffButton>
+          }
+        >
+          {SOF_STALE_RELOAD_MESSAGE}
+        </Notice>
       ) : error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Attention</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <Notice tone="danger" alert title="That did not go through">
+          {error}
+        </Notice>
       ) : null}
-
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button type="button" size="sm" variant="ghost" onClick={() => router.refresh()}>
-          Refresh
-        </Button>
-      </div>
 
       <SofCaseTimeline steps={steps} />
 
       <SofEvidenceReviewer caseId={row.id} row={row} detail={detail} readOnly={readOnly} />
 
-      <CollapsibleSection title="Settlement exposure" defaultOpen>
-        <div className="p-4">
+      <Section title="Settlement exposure">
+        <div className="flex flex-col gap-3">
           <SofSettlementBreakdown detail={detail} />
-          {detail.blockedPayments.length > 0 ? (
-            <p className="mt-3 font-body text-sm">
-              <Link
+          {blocked > 0 ? (
+            <p className="text-staff-sm">
+              <TextLink
+                Link={NextLink}
                 href="/admin/payments?manualReview=1&manualReviewReason=source_of_funds_required"
-                className="text-link underline"
               >
-                {detail.blockedPayments.length} payment
-                {detail.blockedPayments.length === 1 ? "" : "s"} in manual review
-              </Link>
+                {blocked} payment{blocked === 1 ? "" : "s"} in manual review
+              </TextLink>
             </p>
           ) : null}
         </div>
-      </CollapsibleSection>
+      </Section>
 
-      <CollapsibleSection title="Why this case exists">
-        <dl className="grid gap-3 p-4 text-sm">
-          <div>
-            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Trigger</dt>
-            <dd>{row.triggerLabel}</dd>
-            {row.triggerExplanation ? (
-              <dd className="mt-1 text-on-surface-variant">{row.triggerExplanation}</dd>
-            ) : null}
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Threshold</dt>
-            <dd>{row.thresholdLabel}</dd>
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-              Exposure at case open
-            </dt>
-            <dd>{row.exposureLabel}</dd>
-          </div>
-          <Alert>
-            <AlertTitle>Buyer-scoped gate</AlertTitle>
-            <AlertDescription>
-              This case blocks the buyer&apos;s entire settlement profile until MLRO approves.
-            </AlertDescription>
-          </Alert>
-        </dl>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Review history">
-        <div className="p-4">
-          <SofCaseAuditTrail row={row} detail={detail} />
+      <Section title="Why this case exists">
+        <div className="flex flex-col gap-4">
+          <KeyValueList
+            items={[
+              {
+                label: "Trigger",
+                value: (
+                  <span className="flex flex-col">
+                    {row.triggerLabel}
+                    {row.triggerExplanation ? (
+                      <span className="text-staff-muted">{row.triggerExplanation}</span>
+                    ) : null}
+                  </span>
+                ),
+              },
+              { label: "Threshold", value: row.thresholdLabel },
+              { label: "Exposure at open", value: row.exposureLabel },
+            ]}
+          />
+          <Notice tone="info" title="Buyer-scoped gate">
+            This case blocks the buyer&apos;s entire settlement profile until the MLRO approves.
+          </Notice>
         </div>
-      </CollapsibleSection>
-    </div>
+      </Section>
+
+      <SofHistory row={row} detail={detail} />
+    </>
+  );
+}
+
+function SofHistory({
+  row,
+  detail,
+}: {
+  row: AdminSofTableRow;
+  detail: AdminSourceOfFundsDetail;
+}) {
+  if (!row.triageRecommendation && !row.reviewedAt && !row.triageNotes && !row.reviewNotes) {
+    return null;
+  }
+  return (
+    <Section title="Review history">
+      <SofCaseAuditTrail row={row} detail={detail} />
+    </Section>
   );
 }

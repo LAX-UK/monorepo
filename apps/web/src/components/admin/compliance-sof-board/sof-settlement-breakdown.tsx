@@ -2,7 +2,10 @@
 
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import { formatExposurePence } from "@/lib/data/view-models/admin-sof-table.vm";
+import { type StaffLinkComponent, TextLink } from "@auction/staff-ui";
 import Link from "next/link";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   detail: AdminSourceOfFundsDetail;
@@ -10,9 +13,13 @@ type Props = {
 
 function paymentStatusLabel(status: string | undefined): string {
   if (!status) return "—";
-  return status.replaceAll("_", " ");
+  const text = status.replaceAll("_", " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+const HEAD = "px-3 py-2 text-left text-staff-xs font-medium text-staff-muted";
+
+/** The payments and won lots this case holds up, and the exposure they add up to. */
 export function SofSettlementBreakdown({ detail }: Props) {
   const {
     settlementItems,
@@ -24,7 +31,7 @@ export function SofSettlementBreakdown({ detail }: Props) {
 
   if (settlementItems.length === 0) {
     return (
-      <p className="font-body text-sm text-on-surface-variant">
+      <p className="text-staff-sm text-staff-muted">
         No active payments or won lots awaiting checkout. The case may have been opened from a risk
         indicator or manual compliance flag.
       </p>
@@ -32,21 +39,22 @@ export function SofSettlementBreakdown({ detail }: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-outline-variant/40">
-        <table className="w-full min-w-[32rem] text-left text-sm">
+    <div className="flex flex-col gap-3">
+      <div className="overflow-x-auto rounded-staff-md border border-staff-line">
+        <table className="w-full min-w-[32rem] text-left text-staff-sm">
+          <caption className="sr-only">Payments and won lots held by this case</caption>
           <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-container-low">
-              <th className="px-3 py-2 font-label text-[10px] uppercase text-on-surface-variant">
+            <tr className="border-b border-staff-line bg-staff-sunken">
+              <th scope="col" className={HEAD}>
                 Sale
               </th>
-              <th className="px-3 py-2 font-label text-[10px] uppercase text-on-surface-variant">
+              <th scope="col" className={HEAD}>
                 Lot
               </th>
-              <th className="px-3 py-2 font-label text-[10px] uppercase text-on-surface-variant">
+              <th scope="col" className={`${HEAD} text-right`}>
                 Amount
               </th>
-              <th className="px-3 py-2 font-label text-[10px] uppercase text-on-surface-variant">
+              <th scope="col" className={HEAD}>
                 Status
               </th>
             </tr>
@@ -62,33 +70,33 @@ export function SofSettlementBreakdown({ detail }: Props) {
               return (
                 <tr
                   key={`${item.kind}-${item.lotId}-${item.paymentId ?? "none"}`}
-                  className="border-b border-outline-variant/20 last:border-0"
+                  className="border-b border-staff-line-subtle last:border-0"
                 >
                   <td className="px-3 py-2">
                     {item.saleId ? (
-                      <Link href={`/admin/sales/${item.saleId}`} className="text-link underline">
+                      <TextLink Link={NextLink} href={`/admin/sales/${item.saleId}`}>
                         {item.saleTitle || "Sale"}
-                      </Link>
+                      </TextLink>
                     ) : (
                       <span>{item.saleTitle || "—"}</span>
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    <Link href={`/admin/lots/${item.lotId}`} className="text-link underline">
+                    <TextLink Link={NextLink} href={`/admin/lots/${item.lotId}`}>
                       {lotRef}
-                    </Link>
+                    </TextLink>
                   </td>
-                  <td className="px-3 py-2 tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">
                     {formatExposurePence(item.amountPence, currency)}
                   </td>
-                  <td className="px-3 py-2 text-on-surface-variant">{status}</td>
+                  <td className="px-3 py-2 text-staff-muted">{status}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p className="font-body text-xs text-on-surface-variant">
+      <p className="text-staff-xs text-staff-muted">
         Exposure at case open: {formatExposurePence(exposureAtOpenPence, currency)}. Current active
         payment total: {formatExposurePence(currentActiveExposurePence, currency)}. Totals may
         differ if settlements changed after the case opened. Won-but-unpaid lots are shown for

@@ -1,13 +1,10 @@
 "use client";
 
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { StaffRouteError } from "@/components/admin/staff/staff-route-error";
 import { adminRouteErrorMessage } from "@/lib/admin/admin-route-error-message";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
 import { useEffect } from "react";
 
-/** Error recovery inside legal entity detail shell. */
+/** Error recovery for a legal entity's page, in the staff page frame. */
 export function LegalEntityDetailErrorShell({
   error,
   reset,
@@ -20,23 +17,14 @@ export function LegalEntityDetailErrorShell({
   }, [error]);
 
   return (
-    <AdminEntityDetailShell
-      backHref="/admin/legal-entities"
-      backLabel="Legal entities"
+    <StaffRouteError
       title="Legal entity"
-      description="Could not load this entity."
-    >
-      <AdminListAlert title="Could not load legal entity">
-        {adminRouteErrorMessage(error)}
-      </AdminListAlert>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="default" onClick={reset}>
-          Try again
-        </Button>
-        <Button variant="secondary" asChild>
-          <Link href="/admin/legal-entities">Back to legal entities</Link>
-        </Button>
-      </div>
-    </AdminEntityDetailShell>
+      breadcrumbs={[{ label: "Legal entities", href: "/admin/legal-entities" }, { label: "Error" }]}
+      heading="Could not load this legal entity"
+      message={adminRouteErrorMessage(error)}
+      onRetry={reset}
+      backHref="/admin/legal-entities"
+      backLabel="Back to legal entities"
+    />
   );
 }

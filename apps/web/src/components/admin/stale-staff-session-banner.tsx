@@ -2,7 +2,7 @@
 
 import { useLogout } from "@/lib/auth/use-logout";
 import { useStaleStaffSession } from "@/lib/auth/use-stale-staff-session";
-import { Button } from "@auction/ui/components/button";
+import { Notice, StaffButton } from "@auction/staff-ui";
 import { usePathname } from "next/navigation";
 
 export function StaleStaffSessionBanner() {
@@ -14,25 +14,18 @@ export function StaleStaffSessionBanner() {
   if (!stale) return null;
 
   return (
-    <div
-      role="alert"
-      className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 font-body text-sm text-on-surface"
+    <Notice
+      tone="warning"
+      alert
+      title="Staff permissions may be out of date"
+      actions={
+        <StaffButton size="sm" variant="secondary" loading={pending} onClick={() => void logout()}>
+          Sign out and back in
+        </StaffButton>
+      }
     >
-      <p className="font-medium text-warning-on-surface">Staff permissions may be out of date</p>
-      <p className="mt-1 text-on-surface-variant">
-        Your session does not include a staff role. Sign out and sign back in after your account was
-        granted catalogue access.
-      </p>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        disabled={pending}
-        onClick={() => void logout()}
-      >
-        Sign out and back in
-      </Button>
-    </div>
+      Your session does not include a staff role. Sign out and sign back in after your account was
+      granted catalogue access.
+    </Notice>
   );
 }

@@ -1,13 +1,11 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminSalesLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Sales"
-      description="Loading sales…"
-      kpiTiles={6}
-      tableRows={10}
-      tableColumns={5}
+      columns={["Sale", "Status", "Format", "Lots", "Opens"]}
+      metrics={4}
     />
   );
 }

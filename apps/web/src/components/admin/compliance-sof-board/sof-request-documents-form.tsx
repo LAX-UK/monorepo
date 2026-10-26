@@ -2,25 +2,32 @@
 
 import { requestSofDocumentsAction } from "@/lib/actions/compliance";
 import { SOF_EVIDENCE_CHECKLIST } from "@/lib/admin/sof-evidence-checklist";
-import { Button } from "@auction/ui/components/button";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import { Input } from "@auction/ui/components/input";
-import { Textarea } from "@auction/ui/components/textarea";
+import { notify } from "@/lib/ui/notify";
+import {
+  ChoiceRow,
+  Field,
+  Notice,
+  StaffButton,
+  StaffCheckbox,
+  TextArea,
+  TextInput,
+} from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 type Props = {
   caseId: string;
   disabled?: boolean;
 };
 
+/** Ask the buyer for evidence: the usual documents, any custom ones, and a note. */
 export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
   const router = useRouter();
+  const groupId = useId();
   const [selected, setSelected] = useState<string[]>([...SOF_EVIDENCE_CHECKLIST.slice(0, 2)]);
   const [customType, setCustomType] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function toggle(type: string) {
@@ -35,8 +42,11 @@ export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
   }
 
   function submit() {
+    if (selected.length === 0) {
+      setError("Choose at least one document to ask for.");
+      return;
+    }
     setError(null);
-    setSuccess(null);
     const fd = new FormData();
     fd.set("caseId", caseId);
     fd.set("documentTypes", JSON.stringify(selected));
@@ -47,99 +57,102 @@ export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
         setError(result.error);
         return;
       }
-      setSuccess("Document request sent — awaiting buyer upload.");
+      notify.success("Document request sent — awaiting buyer upload");
       router.refresh();
     });
   }
 
   const customOnly = selected.filter((t) => !SOF_EVIDENCE_CHECKLIST.includes(t as never));
+  const busy = disabled || pending;
 
   return (
-    <div className="space-y-3 rounded-lg border border-border-hairline p-4">
-      <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-        Request documents from buyer
-      </p>
-      <ul className="space-y-2">
-        {SOF_EVIDENCE_CHECKLIST.map((type) => (
-          <li key={type}>
-            <div className="flex items-start gap-2 font-body text-sm">
-              <Checkbox
-                className="mt-1"
-                checked={selected.includes(type)}
-                disabled={disabled || pending}
-                aria-label={type}
-                onCheckedChange={() => toggle(type)}
-              />
-              <span>{type}</span>
-            </div>
-          </li>
+    <div className="flex flex-col gap-4">
+      <fieldset className="flex flex-col gap-0.5">
+        <legend className="mb-1 text-staff-sm font-medium text-staff-fg">
+          Documents to request from the buyer
+        </legend>
+        {SOF_EVIDENCE_CHECKLIST.map((type, index) => {
+          const id = `${groupId}-${index}`;
+          return (
+            <ChoiceRow
+              key={type}
+              htmlFor={id}
+              label={type}
+              disabled={busy}
+              control={
+                <StaffCheckbox
+                  id={id}
+                  checked={selected.includes(type)}
+                  disabled={busy}
+                  onCheckedChange={() => toggle(type)}
+                />
+              }
+            />
+          );
+        })}
+        {customOnly.map((type) => (
+          <div
+            key={type}
+            className="flex min-h-control-sm items-center justify-between gap-2 py-1.5 text-staff-sm text-staff-fg"
+          >
+            <span className="font-medium">{type}</span>
+            <StaffButton
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => toggle(type)}
+              aria-label={`Remove ${type}`}
+            >
+              Remove
+            </StaffButton>
+          </div>
         ))}
-      </ul>
+      </fieldset>
 
-      {customOnly.length > 0 ? (
-        <ul className="space-y-1 border-t border-border-hairline pt-2">
-          {customOnly.map((type) => (
-            <li key={type} className="flex items-center justify-between gap-2 font-body text-sm">
-              <span>{type}</span>
-              <Button
-                type="button"
-                variant="link"
-                size="link"
-                className="h-auto p-0 text-xs text-link underline"
-                disabled={disabled || pending}
-                onClick={() => toggle(type)}
-              >
-                Remove
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <Field label="Another document" optional description="Add a type that is not listed above.">
+        <div className="flex gap-2">
+          <TextInput
+            value={customType}
+            disabled={busy}
+            maxLength={500}
+            onChange={(e) => setCustomType(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomType();
+              }
+            }}
+          />
+          <StaffButton
+            variant="secondary"
+            disabled={busy || !customType.trim()}
+            onClick={addCustomType}
+          >
+            Add
+          </StaffButton>
+        </div>
+      </Field>
 
-      <div className="flex flex-wrap gap-2">
-        <Input
-          className="min-w-0 flex-1 font-body text-sm"
-          placeholder="Add custom document type"
-          value={customType}
-          disabled={disabled || pending}
-          maxLength={500}
-          onChange={(e) => setCustomType(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addCustomType();
-            }
-          }}
+      <Field label="Note to the buyer" optional>
+        <TextArea
+          rows={3}
+          value={note}
+          disabled={busy}
+          maxLength={2000}
+          onChange={(e) => setNote(e.target.value)}
         />
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={disabled || pending || !customType.trim()}
-          onClick={addCustomType}
-        >
-          Add
-        </Button>
-      </div>
+      </Field>
 
-      <Textarea
-        className="font-body text-sm"
-        rows={3}
-        placeholder="Optional note to the buyer"
-        value={note}
-        disabled={disabled || pending}
-        onChange={(e) => setNote(e.target.value)}
-      />
-      <Button
-        type="button"
-        size="sm"
-        disabled={disabled || pending || selected.length === 0}
-        onClick={submit}
-      >
-        Send document request
-      </Button>
-      {success ? <p className="font-body text-xs text-success">{success}</p> : null}
-      {error ? <p className="font-body text-xs text-error">{error}</p> : null}
+      {error ? (
+        <Notice tone="danger" alert title="The request was not sent">
+          {error}
+        </Notice>
+      ) : null}
+      <div>
+        <StaffButton variant="primary" loading={pending} disabled={disabled} onClick={submit}>
+          Send document request
+        </StaffButton>
+      </div>
     </div>
   );
 }

@@ -1,18 +1,16 @@
 "use client";
 
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { StaffRouteError } from "@/components/admin/staff/staff-route-error";
 import { adminRouteErrorMessage } from "@/lib/admin/admin-route-error-message";
 import {
   type SofListStatus,
   buildSofListHref,
   parseSofDetailListStatus,
 } from "@/lib/admin/sof-list-query";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
+/** Error recovery for a Source of Funds case, in the staff page frame. */
 export function SofCaseDetailErrorShell({
   error,
   reset,
@@ -31,24 +29,14 @@ export function SofCaseDetailErrorShell({
   }, [error]);
 
   return (
-    <AdminEntityDetailShell
-      backHref={backHref}
-      backLabel="Source of Funds"
-      eyebrow="Compliance review"
+    <StaffRouteError
       title="Source of Funds case"
-      description="Could not load this case."
-    >
-      <AdminListAlert title="Could not load Source of Funds case">
-        {adminRouteErrorMessage(error)}
-      </AdminListAlert>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="default" onClick={reset}>
-          Try again
-        </Button>
-        <Button variant="secondary" asChild>
-          <Link href={backHref}>Back to Source of Funds</Link>
-        </Button>
-      </div>
-    </AdminEntityDetailShell>
+      breadcrumbs={[{ label: "Source of Funds", href: backHref }, { label: "Error" }]}
+      heading="Could not load this case"
+      message={adminRouteErrorMessage(error)}
+      onRetry={reset}
+      backHref={backHref}
+      backLabel="Back to Source of Funds"
+    />
   );
 }

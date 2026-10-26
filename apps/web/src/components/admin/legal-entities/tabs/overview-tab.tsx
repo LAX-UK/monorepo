@@ -1,24 +1,27 @@
+"use client";
+
 import { AdminStaffLabeledField } from "@/components/admin/admin-staff-labeled-field";
-import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
-import {
-  CatalogDetailTabCard,
-  CatalogDetailTabPanel,
-  DetailAttentionTable,
-  DetailBoardKpiStrip,
-  DetailEntityTable,
-} from "@/components/admin/catalog";
-import {
-  DetailActivityPreviewSection,
-  DetailStatValue,
-} from "@/components/admin/catalog/detail-board";
+import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { LegalEntityHealthPanel } from "@/components/admin/legal-entities/legal-entity-health-panel";
+import { ExportButton } from "@/components/exports/export-button";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
 import type { AdminLegalEntityDetailBundle } from "@/lib/admin/load-admin-legal-entity-detail";
 import { presentStripeConnectAccount } from "@/lib/admin/stripe-connect-staff-presenter";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { buildLegalEntityOverviewViewModel } from "@/lib/data/view-models/legal-entity-overview.vm";
-import { formatDateTime } from "@/lib/ui/format";
+import {
+  DetailColumns,
+  KeyValueList,
+  Section,
+  StaffButton,
+  StaffDate,
+  type StaffLinkComponent,
+  StatGrid,
+  TextLink,
+} from "@auction/staff-ui";
 import Link from "next/link";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   entity: AdminLegalEntityDetailBundle["entity"];
@@ -29,6 +32,11 @@ type Props = {
   canViewActivity?: boolean;
 };
 
+/**
+ * The organisation at a glance: Stripe Connect, what Stripe still needs and documents waiting for
+ * review; what blocks it from selling or being paid (once); its business facts; recent activity and the
+ * record's dates in the rail.
+ */
 export function LegalEntityOverviewTab({
   entity,
   creator,
@@ -39,121 +47,93 @@ export function LegalEntityOverviewTab({
 }: Props) {
   const vm = buildLegalEntityOverviewViewModel({ entity, health, pendingDocCount });
   const stripeAccount = presentStripeConnectAccount(entity.stripeConnectAccountId);
+  const tile = (id: string) => vm.kpiTiles.find((item) => item.id === id);
+  const stats = ["stripe", "requirements", "documents"].flatMap((id) => {
+    const item = tile(id);
+    return item ? [{ id: item.id, label: item.label, value: item.value }] : [];
+  });
 
-  const businessRows = [
-    { id: "legal-name", label: "Legal name", value: entity.legalName ?? "—" },
-    {
-      id: "kind",
-      label: "Kind",
-      value: formatLegalEntityKindSubkind(entity.kind, entity.subkind),
-    },
-    {
-      id: "created",
-      label: "Created",
-      value: formatDateTime(entity.createdAt),
-    },
-    {
-      id: "updated",
-      label: "Updated",
-      value: formatDateTime(entity.updatedAt),
-    },
-    {
-      id: "stripe",
-      label: "Stripe Connect",
-      value: stripeAccount?.primary ?? "—",
-    },
-    {
-      id: "payouts",
-      label: "Payouts",
-      value: entity.stripeConnectPayoutsEnabled ? "Enabled" : "Not enabled",
-    },
-  ];
+  const rail = (
+    <>
+      {canViewActivity ? (
+        <Section
+          title="Activity"
+          action={
+            <>
+              <ExportButton
+                entityType="domain-events"
+                filters={{ aggregateType: "legal_entity", aggregateId: entity.id }}
+              />
+              <StaffButton asChild size="sm" variant="ghost">
+                <Link href={`/admin/legal-entities/${entity.id}/activity`}>View all</Link>
+              </StaffButton>
+            </>
+          }
+        >
+          <AuditTimeline
+            label="Legal entity activity"
+            events={activityEvents}
+            limit={5}
+            empty="No activity recorded for this organisation yet."
+          />
+        </Section>
+      ) : null}
+      <Section title="Record">
+        <KeyValueList
+          items={[
+            { label: "Legal entity ID", value: entity.id, copyValue: entity.id },
+            { label: "Created", value: <StaffDate value={entity.createdAt} withTime /> },
+            { label: "Updated", value: <StaffDate value={entity.updatedAt} withTime /> },
+          ]}
+        />
+      </Section>
+    </>
+  );
 
   return (
-    <CatalogDetailTabPanel framed={false}>
-      <div className="space-y-6">
-        <DetailBoardKpiStrip
-          ariaLabel="Legal entity summary"
-          tiles={vm.kpiTiles}
-          className="mb-0"
-        />
-
-        {vm.blockerRows.length > 0 ? <DetailAttentionTable rows={vm.blockerRows} /> : null}
-
-        <LegalEntityHealthPanel health={health} />
-
-        <CatalogDetailTabCard title="Business summary" description="Core business information.">
-          <DetailEntityTable
-            rows={businessRows}
-            getRowId={(row) => row.id}
-            emptyTitle="No business details"
-            columns={[
-              {
-                id: "field",
-                header: "Field",
-                cell: (row) => <span className="text-on-surface-variant">{row.label}</span>,
-              },
-              {
-                id: "value",
-                header: "Value",
-                cell: (row) => <DetailStatValue row={row} />,
-              },
-            ]}
-          />
-          <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-            <div className="space-y-1">
-              <dt className="text-on-surface-variant">Created by</dt>
-              <dd className="text-on-surface">
-                {creator ? (
-                  <Link
-                    href={`/admin/clients/${creator.id}`}
-                    className="text-link underline-offset-2 hover:underline"
-                  >
+    <DetailColumns rail={rail} railLabel="Legal entity activity">
+      <StatGrid label="Legal entity summary" className="grid-cols-3 md:grid-cols-3" items={stats} />
+      <LegalEntityHealthPanel health={health} />
+      <Section title="Business summary" description="Core business information.">
+        <KeyValueList
+          items={[
+            { label: "Legal name", value: entity.legalName ?? null },
+            { label: "Kind", value: formatLegalEntityKindSubkind(entity.kind, entity.subkind) },
+            {
+              label: "Created by",
+              value: creator ? (
+                <span className="flex flex-col">
+                  <TextLink Link={NextLink} href={`/admin/clients/${creator.id}`}>
                     {creator.name}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-                {creator?.email ? (
-                  <span className="mt-0.5 block text-xs text-on-surface-variant">
-                    {creator.email}
-                  </span>
-                ) : null}
-              </dd>
-            </div>
-            {stripeAccount ? (
-              <div className="space-y-1">
-                <dt className="text-on-surface-variant">Stripe account</dt>
-                <dd className="text-on-surface">
-                  <AdminStaffLabeledField
-                    primary={stripeAccount.primary}
-                    secondary={
-                      entity.stripeConnectPayoutsEnabled
-                        ? "Payouts enabled"
-                        : "Payout setup in progress"
-                    }
-                  />
-                </dd>
-              </div>
-            ) : null}
-          </div>
-        </CatalogDetailTabCard>
-
-        {canViewActivity ? (
-          <DetailActivityPreviewSection
-            title="Recent activity"
-            description="Lifecycle, Stripe Connect, and membership events."
-            events={activityEvents}
-            exportFilters={{ aggregateType: "legal_entity", aggregateId: entity.id }}
-            emptyMessage="No activity recorded for this organisation yet."
-            viewAllHref={`/admin/legal-entities/${entity.id}/activity`}
-          />
-        ) : null}
-
-        <AdminTechnicalIdDisclosure
-          items={[{ label: "Legal entity ID", value: entity.id, copyLabel: "Legal entity ID" }]}
+                  </TextLink>
+                  {creator.email ? (
+                    <span className="text-staff-xs text-staff-muted">{creator.email}</span>
+                  ) : null}
+                </span>
+              ) : null,
+            },
+            {
+              label: "Stripe account",
+              value: stripeAccount ? (
+                <AdminStaffLabeledField
+                  primary={stripeAccount.primary}
+                  secondary={
+                    entity.stripeConnectPayoutsEnabled
+                      ? "Payouts enabled"
+                      : "Payout setup in progress"
+                  }
+                />
+              ) : null,
+            },
+            { label: "Managed by LAX", value: entity.isLaxManaged ? "Yes" : "No" },
+            {
+              label: "Platform fee",
+              value: entity.platformFeeBps != null ? `${entity.platformFeeBps} bps` : null,
+              numeric: true,
+            },
+          ]}
         />
-      </div>
-    </CatalogDetailTabPanel>
+      </Section>
+    </DetailColumns>
   );
 }

@@ -1,8 +1,6 @@
 "use client";
 
-import { AdminListShell } from "@/components/admin/admin-list-shell";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
+import { StaffRouteError } from "@/components/admin/staff/staff-route-error";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -14,7 +12,7 @@ type Props = {
   children?: ReactNode;
 };
 
-/** Error recovery inside PeopleListShell for people-module list routes. */
+/** Error recovery for a people-module list route, in the staff page frame. */
 export function PeopleListErrorShell({
   title,
   backHref,
@@ -24,28 +22,15 @@ export function PeopleListErrorShell({
   children,
 }: Props) {
   return (
-    <AdminListShell
+    <StaffRouteError
       title={title}
-      description="Error"
-      view={
-        <div className="flex flex-col items-start gap-4 rounded-lg border border-border-hairline bg-surface-container-low/30 p-6">
-          <h2 className="font-headline text-lg text-on-surface">
-            Could not load {title.toLowerCase()}
-          </h2>
-          <p className="font-body text-sm text-on-surface-variant">{message}</p>
-          <div className="flex flex-wrap gap-2">
-            {reset ? (
-              <Button type="button" variant="default" onClick={reset}>
-                Try again
-              </Button>
-            ) : null}
-            <Button variant="secondary" asChild>
-              <Link href={backHref}>{backLabel}</Link>
-            </Button>
-          </div>
-          {children}
-        </div>
-      }
-    />
+      breadcrumbs={[{ label: title }, { label: "Error" }]}
+      message={message}
+      onRetry={reset}
+      backHref={backHref}
+      backLabel={backLabel}
+    >
+      {children}
+    </StaffRouteError>
   );
 }

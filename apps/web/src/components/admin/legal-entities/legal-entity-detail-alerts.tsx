@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { Notice } from "@auction/staff-ui";
 import { useSearchParams } from "next/navigation";
 
 function decodeParam(value: string | null): string | null {
@@ -12,6 +12,7 @@ function decodeParam(value: string | null): string | null {
   }
 }
 
+/** What an action that redirected back here reports, from the page's `?success=` and `?error=`. */
 export function LegalEntityDetailAlerts() {
   const searchParams = useSearchParams();
   const success = decodeParam(searchParams.get("success"));
@@ -21,12 +22,12 @@ export function LegalEntityDetailAlerts() {
 
   return (
     <>
-      {success ? (
-        <AdminListAlert title="Done" variant="default">
-          {success}
-        </AdminListAlert>
+      {success ? <Notice tone="success" title={success} /> : null}
+      {error ? (
+        <Notice tone="danger" alert title="That change was not applied">
+          {error}
+        </Notice>
       ) : null}
-      {error ? <AdminListAlert title="Could not apply change">{error}</AdminListAlert> : null}
     </>
   );
 }

@@ -7,31 +7,8 @@ export { CatalogDetailShell } from "./catalog-detail-shell";
 export { CatalogDetailMobileMeta } from "./catalog-detail-mobile-meta";
 export { CatalogListMobileSummary } from "./catalog-list-mobile-summary";
 export { CatalogDetailActionError } from "./catalog-detail-action-error";
-export {
-  CatalogDetailTabNav,
-  type CatalogDetailTabBadge,
-  type CatalogDetailTabEntityKind,
-  type CatalogDetailTabSpec,
-} from "./catalog-detail-tab-nav";
-export { CatalogListPageSkeleton, CatalogListErrorShell } from "./catalog-list-states";
+export { CatalogListErrorShell } from "./catalog-list-states";
 export { createCatalogListRouteError } from "./create-catalog-list-route-error";
-export { CatalogDetailTabPanel } from "./catalog-detail-tab-panel";
-export { CatalogDetailTabCard } from "./catalog-detail-tab-card";
-export {
-  DetailAttentionTable,
-  DetailBoardKpiStrip,
-  DetailBoardShell,
-  DetailBoardToolbar,
-  DetailEntityTable,
-} from "./detail-board";
-export type {
-  DetailAttentionTableProps,
-  DetailBoardKpiStripProps,
-  DetailBoardShellProps,
-  DetailBoardToolbarProps,
-  DetailEntityColumn,
-  DetailEntityTableProps,
-} from "./detail-board";
 export { CatalogPublishReadiness } from "./catalog-publish-readiness";
 export { CatalogKpiPeriodToggle } from "./catalog-kpi-period-toggle";
 export {
@@ -40,4 +17,3 @@ export {
   notifyCatalogActionFailure,
   runCatalogFormTransition,
 } from "./use-catalog-form-submit";
-export { CatalogDomainEventsTimeline } from "./catalog-domain-events-timeline";

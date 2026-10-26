@@ -1,5 +1,5 @@
 import { StatusChip, type StatusChipProps } from "@/components/ui/status-chip";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import { StatusBadge } from "@auction/staff-ui";
 
 export type AdminStatusBadgeProps = StatusChipProps & {
   /** @deprecated Tag-Review chips use a single size; ignored. */
@@ -12,14 +12,6 @@ export function AdminStatusBadge({ size: _size, ...props }: AdminStatusBadgeProp
 }
 
 /** Tab/queue count chip (not a domain status). */
-export function AdminQueueCountBadge({
-  count,
-  className,
-}: {
-  count: number;
-  className?: string;
-}) {
-  return (
-    <DotStatusPill label={String(count)} tone="warning" {...(className ? { className } : {})} />
-  );
+export function AdminQueueCountBadge({ count }: { count: number; className?: string }) {
+  return <StatusBadge tone="warning">{count}</StatusBadge>;
 }
