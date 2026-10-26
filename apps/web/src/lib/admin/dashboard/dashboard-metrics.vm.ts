@@ -68,6 +68,10 @@ export function dashboardMetrics({
         return {
           id: tile.id,
           label: "Live lots",
+          ...(trends.liveLots
+            ? periodTrend(trends.liveLots, "Lots open for bidding each day", periodDays, "good")
+            : {}),
+          // The number is the lots live now; the trend is how many were open each day.
           value: COUNT.format(metrics.liveLots),
           tone: metrics.liveLots > 0 ? "positive" : "neutral",
           ...href,

@@ -51,6 +51,22 @@ describe("dashboardMetrics", () => {
     });
   });
 
+  it("gives live lots the lots open each day, keeping the number as now", () => {
+    const [live] = dashboardMetrics({
+      periodDays: 30,
+      tiles: tiles(["live-lots"]),
+      metrics,
+      trends: { ...trends, liveLots: series([9, 11, 12]) },
+      bidsPerMinute: 7,
+    });
+    expect(live).toMatchObject({
+      label: "Live lots",
+      value: "12",
+      trend: [9, 11, 12],
+      trendLabel: "Lots open for bidding each day, last 3 days",
+    });
+  });
+
   it("tones waiting work as attention and money in full", () => {
     const result = dashboardMetrics({
       periodDays: 30,

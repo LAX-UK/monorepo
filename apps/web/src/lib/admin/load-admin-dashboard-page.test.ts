@@ -151,6 +151,7 @@ describe("loadAdminDashboardPage", () => {
     expect(getHomeTrends).toHaveBeenCalledWith(7, {
       includeSubmissions: true,
       includePayments: false,
+      includeLiveLots: true,
     });
   });
 
