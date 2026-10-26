@@ -19,7 +19,7 @@ export type LockupCopy = {
 export const LOCKUP_COPIES: readonly LockupCopy[] = [
   { path: "packages/branding/public/lax-logo.svg", kind: "exchange", variant: "light" },
   { path: "apps/art/public/brand/lax-logo.svg", kind: "exchange", variant: "light" },
-  { path: "apps/shop/public/shop/lax-shop-logo.svg", kind: "exchange", variant: "light" },
+  { path: "apps/shop/public/shop/lax-shop-logo.svg", kind: "shop-exchange", variant: "light" },
   { path: "apps/web/public/logo.svg", kind: "bid", variant: "light" },
   { path: "apps/web/public/logo-light.svg", kind: "bid", variant: "dark" },
 ];

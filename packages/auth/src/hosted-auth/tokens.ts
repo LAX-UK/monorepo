@@ -17,6 +17,9 @@ export const HOSTED_AUTH_TOKENS = {
    */
   productBid: "#091f5b",
   productBidOnDark: "#a5b7e9",
+  /** LAX Shop's aubergine and its dark-surface value (PRODUCT_ACCENTS.shop), for Shop's name only. */
+  productShop: "#5a2a5c",
+  productShopOnDark: "#d6a8d4",
   white: "#ffffff",
   lightCream: "#f2f1df",
   ink: "#191919",
