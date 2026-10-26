@@ -38,6 +38,18 @@ type Props = {
  * the profile and its classification; the portrait, recent activity and the record's dates in
  * the rail.
  */
+const COUNTRY_NAMES = new Intl.DisplayNames(["en-GB"], { type: "region" });
+
+/** "GB" as "United Kingdom"; an unknown code stays as typed. */
+function countryName(code: string): string {
+  const upper = code.trim().toUpperCase();
+  try {
+    return COUNTRY_NAMES.of(upper) ?? upper;
+  } catch {
+    return upper;
+  }
+}
+
 export function ArtistOverviewTab({
   artistId,
   artist,
@@ -103,9 +115,9 @@ export function ArtistOverviewTab({
   ];
 
   const classificationRows: KeyValueItem[] = [
-    { label: "Kind", value: kindConfig.label },
+    // Kind is in the page header; the country reads as its name, not its code.
     ...(artist.countryCode?.trim()
-      ? [{ label: "Country", value: artist.countryCode.trim().toUpperCase() }]
+      ? [{ label: "Country", value: countryName(artist.countryCode) }]
       : []),
     {
       label: "Departments",
