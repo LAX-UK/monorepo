@@ -64,7 +64,7 @@ const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentatio
     none: { label: "Not live", tone: "neutral" },
     idle: { label: "Not live", tone: "neutral" },
     pending: { label: "Not live", tone: "neutral" },
-    live: { label: "Live", tone: "danger", live: true },
+    live: { label: "Live", tone: "live", live: true },
     paused: { label: "Paused", tone: "warning" },
     ended: { label: "Closed", tone: "neutral" },
     closed: { label: "Closed", tone: "neutral" },
@@ -194,7 +194,7 @@ export function staffSaleroomRoomStatus(
 export function staffRunwayLotStatus(outcome: string): StatusPresentation | null {
   switch (outcome) {
     case "on_block":
-      return { label: "On the block", tone: "danger", live: true };
+      return { label: "On the block", tone: "live", live: true };
     case "sold":
       return { label: "Sold", tone: "success" };
     case "no_sale":

@@ -12,7 +12,7 @@ describe("saleroom statuses", () => {
   it("reads a room's session in words", () => {
     expect(staffStatus("saleroomSession", "live")).toEqual({
       label: "Live",
-      tone: "danger",
+      tone: "live",
       live: true,
     });
     expect(staffStatus("saleroomSession", "paused")).toEqual({ label: "Paused", tone: "warning" });
