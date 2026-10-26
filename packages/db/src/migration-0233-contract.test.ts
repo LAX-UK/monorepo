@@ -38,6 +38,15 @@ describe("migration 0233 order references and fulfilment progress", () => {
     expect(forward).toContain(`ADD VALUE IF NOT EXISTS 'order_problem'`);
   });
 
+  it("takes invoice numbers from a locked counter in the paying transaction, never from a sequence", async () => {
+    const forward = await readFile(resolve(drizzle, FORWARD), "utf8");
+    expect(forward).toContain(`CREATE TABLE IF NOT EXISTS "shop_invoice_counter"`);
+    expect(forward).toContain(`BEFORE INSERT OR UPDATE OF "paid_at" ON "shop_order"`);
+    expect(forward).toContain(`row_number() OVER (ORDER BY "paid_at", "id")`);
+    expect(forward).toContain(`CREATE UNIQUE INDEX IF NOT EXISTS "shop_order_invoice_number_uid"`);
+    expect(forward).not.toMatch(/nextval\('shop_invoice/);
+  });
+
   it("rolls back the columns, index and sequence", async () => {
     const rollback = await readFile(resolve(drizzle, "0233_rollback.sql"), "utf8");
     expect(rollback).toContain(`ALTER TABLE "shop_order" DROP COLUMN IF EXISTS "reference";`);
