@@ -2,188 +2,36 @@
   "$comment": "Read by scripts/check-staff-legacy-shell.mjs. Bid admin files that still import @auction/ui/components, each with why. Delete an entry when its file moves to @auction/staff-ui or is removed; the check fails on entries that are no longer true.",
   "pending": [
     {
-      "file": "app/admin/(finance)/integrations/xero/page.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "app/admin/(finance)/payouts/settlement/page.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "app/admin/(platform)/(dashboard)/loading.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "app/admin/(platform)/(dashboard)/page.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "app/admin/(platform)/impersonation/loading.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "app/admin/(platform)/saleroom/loading.tsx",
-      "reason": "The saleroom moves to the kit in the saleroom PR (#661)"
-    },
-    {
-      "file": "app/admin/(platform)/settings/security/page.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/admin-anomaly-banner.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/admin-client-artist-profiles-panel.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/admin-error-page.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
       "file": "components/admin/admin-hub-quick-links.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
-    },
-    {
-      "file": "components/admin/admin-impersonate-form.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/admin-list-alert.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
-    },
-    {
-      "file": "components/admin/admin-user-kyc-history-panel.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/admin-user-profile-panel.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/bulk-actions-toolbar.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/catalog/catalog-detail-mobile-meta.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/catalog/catalog-info-aside-copy-id.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/catalog/catalog-mobile-action-bar.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/catalog/catalog-page-header.tsx",
-      "reason": "Unused once #660 and #661 merge; delete it then"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     },
     {
       "file": "components/admin/create-admin-detail-route-error.tsx",
-      "reason": "The saleroom moves to the kit in the saleroom PR (#661)"
-    },
-    {
-      "file": "components/admin/finance/create-finance-list-route-error.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/finance/create-finance-panel-route-error.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/finance/finance-list-states.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/lot-detail/lot-detail-shell.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/paddle-check-in-controls.tsx",
-      "reason": "The saleroom moves to the kit in the saleroom PR (#661)"
-    },
-    {
-      "file": "components/admin/payout-settlement-workspace.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/pending-form-submit.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/people-detail-shell.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/people/staff-lax-access-panel.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/personal-dashboard/customize-sheet.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/dashboard-kpi-summary.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/operational-context-section.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/personal-dashboard.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/personal-dashboard/personal-dashboard.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/recent-activity-widget.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/work-inbox/work-inbox-cards.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/work-inbox/work-inbox-filters-sheet.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/work-inbox/work-inbox-row-actions.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/work-inbox/work-inbox-table.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/personal-dashboard/work-inbox/work-inbox-widget.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
-    },
-    {
-      "file": "components/admin/saleroom-hub-board/saleroom-hub-live-grid.tsx",
-      "reason": "The saleroom moves to the kit in the saleroom PR (#661)"
-    },
-    {
-      "file": "components/admin/saleroom-pending-form.tsx",
-      "reason": "The saleroom moves to the kit in the saleroom PR (#661)"
-    },
-    {
-      "file": "components/admin/staff/staff-editable-title.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/submission-detail/submission-detail-shell.test.tsx",
-      "reason": "Test renders tooltips with the old provider; #660 adds StaffTooltipProvider"
-    },
-    {
-      "file": "components/admin/xero-integration-panel.tsx",
-      "reason": "Overview, finance and settings move to the kit in the Overview PR (#660)"
+      "reason": "No longer used; removed in the follow-up cleanup PR"
     }
   ]
 }

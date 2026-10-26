@@ -1,6 +1,6 @@
 import { renderWithViewer } from "@/test/render-with-viewer";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import type { ItemSubmission } from "@auction/types";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
 import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubmissionDetailShell } from "./submission-detail-shell";
@@ -47,7 +47,7 @@ function submission(overrides: Partial<ItemSubmission> = {}): ItemSubmission {
 
 function renderShell(value: ItemSubmission, assignee: string | null = null) {
   return renderWithViewer(
-    <TooltipProvider>
+    <StaffTooltipProvider>
       <SubmissionDetailShell
         submissionId={value.id}
         submission={value}
@@ -60,7 +60,7 @@ function renderShell(value: ItemSubmission, assignee: string | null = null) {
       >
         <p>Tab body</p>
       </SubmissionDetailShell>
-    </TooltipProvider>,
+    </StaffTooltipProvider>,
   );
 }
 
