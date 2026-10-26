@@ -4,10 +4,8 @@ import {
   type StreamUrlVerifyPayload,
   verifyStreamUrlAction,
 } from "@/lib/actions/stream-url-verify";
-import { cn } from "@auction/ui";
-import { LoadingButton } from "@auction/ui/components/loading-button";
+import { Notice, StaffButton } from "@auction/staff-ui";
 import { parseStreamEmbedUrl } from "@auction/validators";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 export type StreamUrlVerificationGate = {
@@ -149,74 +147,52 @@ export function StreamUrlVerifyControl({
   const showFeedback = isResultState(state) && state.result.status !== "empty";
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-3 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <LoadingButton
-          type="button"
-          variant="outline"
+        <StaffButton
           size="sm"
+          variant="secondary"
           loading={pending || state.kind === "checking"}
-          loadingLabel="Checking…"
           disabled={disabled || !value.trim()}
           onClick={() => runVerify(value)}
-          className="min-h-9"
         >
           Verify link
-        </LoadingButton>
+        </StaffButton>
         {value.trim() && initialValue.trim() && value.trim() === initialValue.trim() ? (
-          <span className="font-body text-xs text-on-surface-variant">Current saved link</span>
+          <span className="text-staff-xs text-staff-muted">Current saved link</span>
         ) : null}
       </div>
 
       {error ? (
-        <p className="flex items-start gap-2 font-body text-sm text-destructive" role="alert">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <Notice tone="danger" alert title="This link cannot be used">
           {error}
-        </p>
+        </Notice>
       ) : null}
 
       {showFeedback && !error && result ? (
-        <div
-          className={cn(
-            "flex items-start gap-2 rounded-md border px-3 py-2 font-body text-sm",
-            result.status === "unverified"
-              ? "border-warning/40 bg-warning/5 text-on-surface-variant"
-              : "border-outline-variant/30 bg-surface-container-lowest/50 text-on-surface-variant",
-          )}
-        >
-          {result.status === "verified" ? (
-            <>
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-on-surface">
-                  {result.title ? `"${result.title}"` : "Stream link verified"}
-                </p>
-                {result.thumbnailUrl ? (
-                  <img
-                    src={result.thumbnailUrl}
-                    alt=""
-                    className="mt-2 h-12 w-20 rounded object-cover"
-                  />
-                ) : null}
-              </div>
-            </>
-          ) : null}
-          {result.status === "unverified" ? (
-            <>
-              <Info className="mt-0.5 size-4 shrink-0 text-warning-on-surface" aria-hidden />
-              <p>
-                Could not confirm embeddability (provider may be temporarily unavailable). You can
-                still save if the URL looks correct.
-              </p>
-            </>
-          ) : null}
-          {result.status === "live_check_unavailable" ? (
-            <>
-              <Info className="mt-0.5 size-4 shrink-0 text-warning-on-surface" aria-hidden />
-              <p>Format accepted. Live embed check is not available for this provider.</p>
-            </>
-          ) : null}
-        </div>
+        result.status === "verified" ? (
+          <Notice
+            tone="success"
+            title={result.title ? `"${result.title}"` : "Stream link verified"}
+          >
+            {result.thumbnailUrl ? (
+              <img
+                src={result.thumbnailUrl}
+                alt=""
+                className="mt-1 h-12 w-20 rounded-staff-xs object-cover"
+              />
+            ) : null}
+          </Notice>
+        ) : result.status === "unverified" ? (
+          <Notice tone="warning" title="Could not confirm the link can be embedded">
+            The provider may be temporarily unavailable. You can still save if the URL looks
+            correct.
+          </Notice>
+        ) : result.status === "live_check_unavailable" ? (
+          <Notice tone="info" title="Format accepted">
+            Live embed check is not available for this provider.
+          </Notice>
+        ) : null
       ) : null}
     </div>
   );
