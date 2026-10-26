@@ -1,5 +1,5 @@
-import { AdminSubmissionDetailSkeleton } from "@/components/admin/admin-submission-detail-skeleton";
+import { DetailPageSkeleton } from "@auction/staff-ui";
 
-export default function AdminSubmissionDetailLoading() {
-  return <AdminSubmissionDetailSkeleton />;
+export default function Loading() {
+  return <DetailPageSkeleton />;
 }

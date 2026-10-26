@@ -1,4 +1,4 @@
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { SubmissionOverviewTab } from "@/components/admin/submission-detail/tabs/overview-tab";
 import { loadAdminSubmissionOverviewPage } from "@/lib/admin/submissions/load-submission-overview-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -19,14 +19,11 @@ export default async function AdminSubmissionOverviewPage({ params, searchParams
 
   return (
     <>
-      <CatalogDetailActionError error={sp.error} title="Could not update submission" />
+      <StaffActionError error={sp.error} title="The submission was not updated" />
       <SubmissionOverviewTab
         submissionId={id}
         submission={model.submission}
         documentCount={model.documentCount}
-        submitterDisplayName={model.submitterDisplayName}
-        currentUserId={user.id}
-        assigneeDisplayName={model.assigneeDisplayName}
         avgQueueAgeDays={model.avgQueueAgeDays}
         categories={model.categories}
         activityEvents={model.activityEvents}

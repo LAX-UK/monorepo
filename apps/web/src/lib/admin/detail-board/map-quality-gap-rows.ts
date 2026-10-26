@@ -1,5 +1,4 @@
 import type { DetailQualityGapRow } from "@/lib/admin/detail-board/types";
-import type { DetailStatRow } from "@/lib/admin/detail-board/types";
 import type { SubmissionQualityCheck } from "@auction/domain";
 
 const GAP_MESSAGES: Partial<Record<string, string>> = {
@@ -29,17 +28,4 @@ export function mapSubmissionQualityChecksToGapRows(
   checks: readonly SubmissionQualityCheck[],
 ): DetailQualityGapRow[] {
   return checks.filter((c) => !c.ok).map(mapSubmissionQualityCheckToGapRow);
-}
-
-export function detailStatRowFromQualityCheck(
-  check: SubmissionQualityCheck,
-  value: string,
-): DetailStatRow {
-  return {
-    id: check.id,
-    label: check.label,
-    value,
-    verified: check.ok,
-    ...(!check.ok && GAP_MESSAGES[check.id] ? { gapMessage: GAP_MESSAGES[check.id] } : {}),
-  };
 }

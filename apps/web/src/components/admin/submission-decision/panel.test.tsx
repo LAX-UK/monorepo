@@ -6,16 +6,19 @@ import {
   adminRejectSubmissionResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { trackStaffAccept, trackStaffConvert } from "@/lib/analytics/sell-funnel";
 import { actionSuccess } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { renderWithViewer } from "@/test/render-with-viewer";
 import type { ItemSubmissionStatus } from "@auction/types";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SUBMISSION_APPROVE_FORM_ID, SUBMISSION_REJECT_FORM_ID } from "./form-ids";
 import { AdminSubmissionDecisionPanel } from "./panel";
+
+const NOTES_ID = `${SUBMISSION_APPROVE_FORM_ID}-reviewNotes`;
+const REASON_ID = `${SUBMISSION_REJECT_FORM_ID}-rejectionReason`;
 
 vi.mock("@/lib/actions/admin-submissions", () => ({
   adminStartSubmissionReviewResultAction: vi.fn(),
@@ -110,7 +113,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       expect(
         screen.queryByRole("button", { name: "Accept for cataloguing" }),
       ).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Reject submission" })).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Convert to draft lot" }),
       ).not.toBeInTheDocument();
@@ -119,9 +122,9 @@ describe("AdminSubmissionDecisionPanel", () => {
     it("under_review shows accept and reject forms with checklist and shortcut hint", () => {
       renderPanel("under_review");
       expect(screen.getByRole("button", { name: "Accept for cataloguing" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
-      expect(document.getElementById(CATALOG_FORM_IDS.submissionApprove)).toBeInTheDocument();
-      expect(document.getElementById(CATALOG_FORM_IDS.submissionReject)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Reject submission" })).toBeInTheDocument();
+      expect(document.getElementById(SUBMISSION_APPROVE_FORM_ID)).toBeInTheDocument();
+      expect(document.getElementById(SUBMISSION_REJECT_FORM_ID)).toBeInTheDocument();
       expect(screen.getByText(/Shortcuts when not typing in a field/)).toBeInTheDocument();
     });
 
@@ -131,6 +134,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       expect(screen.getByRole("button", { name: "Use submitter as artist" })).toBeInTheDocument();
       expect(screen.getByText(/Shortcuts when not typing in a field/)).toBeInTheDocument();
       expect(screen.getByText("Catalogue artist")).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: /Catalogue artist/ })).toBeInTheDocument();
     });
 
     it("converted shows Open draft lot link when convertedLotId is set", () => {
@@ -205,7 +209,7 @@ describe("AdminSubmissionDecisionPanel", () => {
     it("happy path includes trimmed review notes", async () => {
       vi.mocked(adminAcceptSubmissionResultAction).mockResolvedValue(actionSuccess());
       renderPanel("under_review");
-      fireEvent.change(document.getElementById("reviewNotesApprove") as HTMLTextAreaElement, {
+      fireEvent.change(document.getElementById(NOTES_ID) as HTMLTextAreaElement, {
         target: { value: "  Looks good  " },
       });
       fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
@@ -226,60 +230,71 @@ describe("AdminSubmissionDecisionPanel", () => {
       renderPanel("under_review");
       fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
 
-      await waitFor(() => {
-        expect(notify.error).toHaveBeenCalledWith("Validation failed");
-        expect(screen.getByText("Too long")).toBeInTheDocument();
-      });
+      expect(await screen.findByText("Too long")).toBeInTheDocument();
+      expect(notify.error).not.toHaveBeenCalled();
     });
   });
 
   describe("reject", () => {
-    it("happy path notifies and refreshes", async () => {
+    function openRejectConfirm(reason: string) {
+      fireEvent.change(document.getElementById(REASON_ID) as HTMLTextAreaElement, {
+        target: { value: reason },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Reject submission" }));
+      return screen.findByRole("dialog", { name: "Reject Blue vase?" });
+    }
+
+    it("asks before rejecting, then notifies and refreshes", async () => {
       vi.mocked(adminRejectSubmissionResultAction).mockResolvedValue(actionSuccess());
       renderPanel("under_review");
-      fireEvent.change(document.getElementById("rejectionReason") as HTMLTextAreaElement, {
-        target: { value: "Not suitable" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+      const dialog = await openRejectConfirm("Not suitable");
+      expect(adminRejectSubmissionResultAction).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Reject submission" }));
 
       await waitFor(() => {
         expect(adminRejectSubmissionResultAction).toHaveBeenCalledWith(SUBMISSION_ID, {
           rejectionReason: "Not suitable",
           reviewNotes: "",
         });
-        expect(notify.success).toHaveBeenCalledWith("Submission rejected");
+        expect(notify.success).toHaveBeenCalledWith(
+          "Submission rejected. The seller has been told.",
+        );
         expect(mockRefresh).toHaveBeenCalled();
       });
     });
 
-    it("blocks empty rejection reason before action call", async () => {
-      renderPanel("under_review");
-      const rejectForm = document.getElementById(CATALOG_FORM_IDS.submissionReject);
-      expect(rejectForm).toBeTruthy();
-      fireEvent.submit(rejectForm as HTMLFormElement);
-
-      await waitFor(() => {
-        expect(adminRejectSubmissionResultAction).not.toHaveBeenCalled();
-      });
-      expect(await screen.findByText("Rejection reason is required")).toBeInTheDocument();
-    });
-
-    it("applies field errors on failure", async () => {
+    it("keeps the refusal in the question, with the reason still typed", async () => {
       vi.mocked(adminRejectSubmissionResultAction).mockResolvedValue({
         ok: false,
         error: "Reject failed",
-        fieldErrors: { rejectionReason: ["Be more specific"] },
       });
       renderPanel("under_review");
-      fireEvent.change(document.getElementById("rejectionReason") as HTMLTextAreaElement, {
-        target: { value: "Weak" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+      const dialog = await openRejectConfirm("Weak");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Reject submission" }));
 
-      await waitFor(() => {
-        expect(notify.error).toHaveBeenCalledWith("Reject failed");
-        expect(screen.getByText("Be more specific")).toBeInTheDocument();
+      expect(await within(dialog).findByText("Reject failed")).toBeInTheDocument();
+      expect((document.getElementById(REASON_ID) as HTMLTextAreaElement).value).toBe("Weak");
+    });
+
+    it("shows the missing reason on its field and does not ask", async () => {
+      renderPanel("under_review");
+      fireEvent.click(screen.getByRole("button", { name: "Reject submission" }));
+
+      expect(await screen.findByText("Rejection reason is required")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(adminRejectSubmissionResultAction).not.toHaveBeenCalled();
+    });
+
+    it("clears the error as soon as a reason is typed", async () => {
+      renderPanel("under_review");
+      fireEvent.click(screen.getByRole("button", { name: "Reject submission" }));
+      await screen.findByText("Rejection reason is required");
+      fireEvent.change(document.getElementById(REASON_ID) as HTMLTextAreaElement, {
+        target: { value: "Needs a signature photo" },
       });
+      await waitFor(() =>
+        expect(screen.queryByText("Rejection reason is required")).not.toBeInTheDocument(),
+      );
     });
   });
 
@@ -323,10 +338,8 @@ describe("AdminSubmissionDecisionPanel", () => {
       renderPanel("approved");
       fireEvent.click(screen.getByRole("button", { name: "Convert to draft lot" }));
 
-      await waitFor(() => {
-        expect(notify.error).toHaveBeenCalledWith("Convert failed");
-        expect(screen.getByText("Choose an artist")).toBeInTheDocument();
-      });
+      expect(await screen.findByText("Choose an artist")).toBeInTheDocument();
+      expect(notify.error).not.toHaveBeenCalled();
     });
   });
 
@@ -336,6 +349,44 @@ describe("AdminSubmissionDecisionPanel", () => {
       fireEvent.click(screen.getByRole("button", { name: "Use submitter as artist" }));
       expect(screen.getByRole("dialog", { name: "Create artist" })).toBeInTheDocument();
       expect(screen.getByDisplayValue("Jane Maker")).toBeInTheDocument();
+    });
+  });
+
+  describe("unsaved notes", () => {
+    it("asks before an in-app link throws away typed notes", async () => {
+      renderPanel("under_review");
+      const link = document.createElement("a");
+      link.href = "/admin/lots";
+      link.textContent = "Lots";
+      link.addEventListener("click", (event) => event.preventDefault());
+      document.body.append(link);
+
+      fireEvent.click(link);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      fireEvent.change(document.getElementById(NOTES_ID) as HTMLTextAreaElement, {
+        target: { value: "Check the signature" },
+      });
+      fireEvent.click(link);
+      expect(
+        await screen.findByRole("dialog", { name: "Discard changes to Blue vase?" }),
+      ).toBeInTheDocument();
+      link.remove();
+    });
+
+    it("keeps a refused accept on the form, with the notes still typed", async () => {
+      vi.mocked(adminAcceptSubmissionResultAction).mockResolvedValue({
+        ok: false,
+        error: "Required details are missing",
+      });
+      renderPanel("under_review");
+      fireEvent.change(document.getElementById(NOTES_ID) as HTMLTextAreaElement, {
+        target: { value: "Looks fine" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
+
+      expect(await screen.findByText("Required details are missing")).toBeInTheDocument();
+      expect((document.getElementById(NOTES_ID) as HTMLTextAreaElement).value).toBe("Looks fine");
     });
   });
 
@@ -353,7 +404,7 @@ describe("AdminSubmissionDecisionPanel", () => {
     it("Cmd+Enter submits accept even from a textarea", async () => {
       vi.mocked(adminAcceptSubmissionResultAction).mockResolvedValue(actionSuccess());
       renderPanel("under_review");
-      const notes = document.getElementById("reviewNotesApprove") as HTMLTextAreaElement;
+      const notes = document.getElementById(NOTES_ID) as HTMLTextAreaElement;
       notes.focus();
       fireEvent.keyDown(window, { key: "Enter", metaKey: true });
 
@@ -365,7 +416,7 @@ describe("AdminSubmissionDecisionPanel", () => {
     it("R focuses rejection reason", () => {
       renderPanel("under_review");
       fireEvent.keyDown(window, { key: "r" });
-      expect(document.activeElement).toBe(document.getElementById("rejectionReason"));
+      expect(document.activeElement).toBe(document.getElementById(REASON_ID));
     });
 
     it("does not fire shortcuts for submitted status", async () => {

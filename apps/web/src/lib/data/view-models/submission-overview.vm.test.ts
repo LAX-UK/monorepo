@@ -23,32 +23,46 @@ describe("buildSubmissionOverviewViewModel", () => {
     updatedAt: new Date("2026-01-02T10:00:00Z"),
   };
 
-  it("builds KPI tiles and quality gaps for submission missing images", () => {
+  it("lists what is missing and what is waiting on staff, most serious first", () => {
     const vm = buildSubmissionOverviewViewModel({
       submissionId: "sub-1",
       submission: baseSubmission,
       documentCount: 0,
-      submitterDisplayName: "Jane Seller",
-      currentUserId: "staff-1",
       avgQueueAgeDays: 2,
       categories: [{ id: "cat-1", name: "Ceramics" }],
     });
 
-    expect(vm.kpiTiles.map((t) => t.id)).toEqual(["assignee", "queue-age", "documents"]);
-    expect(vm.kpiTiles.find((t) => t.id === "documents")?.value).toBe("0");
-    expect(vm.kpiTiles.find((t) => t.id === "queue-age")?.compareHint).toBe("Above avg");
-    expect(vm.qualityGapRows.some((r) => r.id === "images")).toBe(true);
-    expect(vm.attentionRows.some((r) => r.id === "missing-images")).toBe(true);
-    expect(vm.attentionRows.some((r) => r.id === "missing-asking")).toBe(true);
-    expect(vm.attentionRows.some((r) => r.id === "missing-documents")).toBe(true);
-    expect(vm.attentionRows.some((r) => r.id === "awaiting-review")).toBe(true);
-    expect(vm.nextAction?.actionLabel).toBe("Open decision");
-    expect(vm.artworkDetailRows.find((r) => r.id === "title")?.verified).toBe(true);
-    expect(vm.artworkDetailRows.find((r) => r.id === "category")?.value).toBe("Ceramics");
-    expect(vm.internalRows.some((r) => r.id === "updated")).toBe(true);
+    expect(vm.stats.map((stat) => stat.id)).toEqual(["queue-age", "documents"]);
+    expect(vm.stats.find((stat) => stat.id === "documents")?.value).toBe("0");
+    expect(vm.stats.find((stat) => stat.id === "queue-age")?.hint).toBe("Above avg");
+    const ids = vm.issues.map((issue) => issue.id);
+    expect(ids).toContain("images");
+    expect(ids).toContain("missing-asking");
+    expect(ids).toContain("missing-documents");
+    expect(ids).toContain("awaiting-review");
+    expect(vm.issues.find((issue) => issue.id === "images")?.tone).toBe("danger");
+    expect(vm.issues.find((issue) => issue.id === "awaiting-review")?.action?.label).toBe(
+      "Open decision",
+    );
   });
 
-  it("returns null next action for converted submissions", () => {
+  it("names the categories and marks absent details as missing", () => {
+    const vm = buildSubmissionOverviewViewModel({
+      submissionId: "sub-1",
+      submission: { ...baseSubmission, medium: "" },
+      documentCount: 1,
+      categories: [{ id: "cat-1", name: "Ceramics" }],
+    });
+
+    expect(vm.artworkRows.find((row) => row.id === "category")?.value).toBe("Ceramics");
+    expect(vm.artworkRows.find((row) => row.id === "medium")).toMatchObject({
+      value: "",
+      missing: true,
+    });
+    expect(vm.dimensionRows.find((row) => row.id === "dimensions")?.value).toBe("30cm");
+  });
+
+  it("has nothing waiting on staff once converted", () => {
     const vm = buildSubmissionOverviewViewModel({
       submissionId: "sub-1",
       submission: {
@@ -59,83 +73,18 @@ describe("buildSubmissionOverviewViewModel", () => {
         askingPrice: "1000",
       },
       documentCount: 2,
-      submitterDisplayName: "Jane Seller",
-      currentUserId: "staff-1",
     });
 
-    expect(vm.nextAction).toBeNull();
-    expect(vm.internalRows.find((r) => r.id === "lot")?.value).toBe("lot-99");
-    expect(vm.attentionRows.some((r) => r.id === "awaiting-review")).toBe(false);
+    expect(vm.issues.some((issue) => issue.id === "awaiting-review")).toBe(false);
+    expect(vm.issues.some((issue) => issue.id === "missing-asking")).toBe(false);
   });
 
-  it("handles missing dates safely in internal rows", () => {
+  it("flags a rejection with no reason on record", () => {
     const vm = buildSubmissionOverviewViewModel({
       submissionId: "sub-1",
-      submission: {
-        ...baseSubmission,
-        createdAt: undefined as never,
-        updatedAt: undefined as never,
-        reviewedAt: null,
-      },
+      submission: { ...baseSubmission, status: "rejected" },
       documentCount: 1,
-      submitterDisplayName: null,
-      currentUserId: "staff-1",
     });
-
-    const created = vm.internalRows.find((r) => r.id === "created");
-    const updated = vm.internalRows.find((r) => r.id === "updated");
-    expect(created?.dateIso).toBeUndefined();
-    expect(updated?.dateIso).toBeUndefined();
-  });
-
-  it("includes assignee KPI with take ownership hint when unassigned and actionable", () => {
-    const vm = buildSubmissionOverviewViewModel({
-      submissionId: "sub-1",
-      submission: baseSubmission,
-      documentCount: 0,
-      submitterDisplayName: "Jane Seller",
-      currentUserId: "staff-1",
-    });
-
-    const assignee = vm.kpiTiles.find((t) => t.id === "assignee");
-    expect(assignee?.label).toBe("Assigned to");
-    expect(assignee?.value).toBe("Unassigned");
-    expect(assignee?.compareHint).toBe("Take ownership");
-  });
-
-  it("includes assignee KPI with staff name when assigned to another reviewer", () => {
-    const vm = buildSubmissionOverviewViewModel({
-      submissionId: "sub-1",
-      submission: {
-        ...baseSubmission,
-        assignedToUserId: "staff-2",
-      },
-      documentCount: 0,
-      submitterDisplayName: "Jane Seller",
-      currentUserId: "staff-1",
-      assigneeDisplayName: "Alex Reviewer",
-    });
-
-    const assignee = vm.kpiTiles.find((t) => t.id === "assignee");
-    expect(assignee?.value).toBe("Alex Reviewer");
-    expect(assignee?.compareHint).toBe("Alex Reviewer");
-  });
-
-  it("labels current user assignee as You in KPI tile", () => {
-    const vm = buildSubmissionOverviewViewModel({
-      submissionId: "sub-1",
-      submission: {
-        ...baseSubmission,
-        assignedToUserId: "staff-1",
-      },
-      documentCount: 0,
-      submitterDisplayName: "Jane Seller",
-      currentUserId: "staff-1",
-      assigneeDisplayName: "Me Staff",
-    });
-
-    const assignee = vm.kpiTiles.find((t) => t.id === "assignee");
-    expect(assignee?.value).toBe("You");
-    expect(assignee?.compareHint).toBe("Assigned to you");
+    expect(vm.issues.some((issue) => issue.id === "missing-rejection-reason")).toBe(true);
   });
 });

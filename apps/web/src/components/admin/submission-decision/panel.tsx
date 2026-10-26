@@ -3,10 +3,18 @@
 import { resolveSubmissionDecisionView } from "@/lib/admin/submissions/resolve-submission-decision-view";
 import { Can } from "@/lib/auth/capabilities";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  Kbd,
+  Notice,
+  Section,
+  StaffButton,
+  UnsavedChangesDialog,
+  useUnsavedChanges,
+} from "@auction/staff-ui";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
-import { useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useRef, useState } from "react";
 import { SubmissionApproveForm } from "./submission-approve-form";
 import { SubmissionConvertForm } from "./submission-convert-form";
 import { SubmissionQualityChecklist } from "./submission-quality-checklist";
@@ -27,15 +35,17 @@ type Props = {
     | "categoryIds"
     | "convertedLotId"
   >;
-  /** Display name to seed the inline-create dialog when the admin clicks
-   * "Use submitter as artist". Typically the submitter's legal entity name. */
+  /** Display name to seed the "Use submitter as artist" dialog; typically the seller's name. */
   submitterDisplayName?: string;
-  /** User id behind the submitter's legal entity (createdByUserId). When
-   * present, inline-creating an artist links the new profile to this user
-   * via {@link CreateArtistDialog.ownerUserId}. */
+  /** The account behind the seller. When present, an artist created here is linked to it. */
   submitterUserId?: string;
 };
 
+/**
+ * The decision for a submission, by its status: start the review, accept it for cataloguing or
+ * reject it (with a reason the seller reads), create the draft lot once accepted, or open the lot
+ * once converted. What is typed is kept safe: leaving with notes unsent asks first.
+ */
 export function AdminSubmissionDecisionPanel({
   submissionId,
   status,
@@ -43,13 +53,29 @@ export function AdminSubmissionDecisionPanel({
   submitterDisplayName,
   submitterUserId,
 }: Props) {
+  const router = useRouter();
   const view = resolveSubmissionDecisionView(status);
   const approveFormEl = useRef<HTMLFormElement | null>(null);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
+  const [dirty, setDirty] = useState({ approve: false, reject: false });
 
-  const { pending, startReview, accept, reject, convert } = useSubmissionDecisionActions({
+  const { pending, startReview, accept, reject, convert, dialog } = useSubmissionDecisionActions({
     submissionId,
+    title: submission.title,
   });
+
+  const guard = useUnsavedChanges(dirty.approve || dirty.reject, {
+    label: submission.title,
+    navigate: (href) => router.push(href),
+  });
+  const onApproveDirty = useCallback(
+    (next: boolean) => setDirty((c) => ({ ...c, approve: next })),
+    [],
+  );
+  const onRejectDirty = useCallback(
+    (next: boolean) => setDirty((c) => ({ ...c, reject: next })),
+    [],
+  );
 
   useSubmissionDecisionShortcuts({
     active: view.shortcutsActive,
@@ -61,21 +87,30 @@ export function AdminSubmissionDecisionPanel({
     switch (view.mode) {
       case "start-review":
         return (
-          <Button
-            type="button"
-            className="min-h-11 w-full sm:w-auto"
-            disabled={pending}
-            onClick={startReview}
+          <Section
+            title="Start the review"
+            description="Starting puts it under review with you. Then you can accept it or reject it."
           >
-            Start review
-          </Button>
+            <StaffButton variant="primary" loading={pending} onClick={startReview}>
+              Start review
+            </StaffButton>
+          </Section>
         );
       case "review":
         return (
-          <div className="space-y-8">
-            <SubmissionApproveForm pending={pending} formRef={approveFormEl} onSubmit={accept} />
-            <SubmissionRejectForm pending={pending} onSubmit={reject} />
-          </div>
+          <>
+            <SubmissionApproveForm
+              pending={pending}
+              formRef={approveFormEl}
+              onSubmit={accept}
+              onDirtyChange={onApproveDirty}
+            />
+            <SubmissionRejectForm
+              pending={pending}
+              onSubmit={reject}
+              onDirtyChange={onRejectDirty}
+            />
+          </>
         );
       case "convert":
         return (
@@ -85,18 +120,19 @@ export function AdminSubmissionDecisionPanel({
             submitterDisplayName={submitterDisplayName}
             submitterUserId={submitterUserId}
             onSubmit={convert}
+            onDirtyChange={onApproveDirty}
           />
         );
       case "converted":
         return submission.convertedLotId ? (
-          <Button className="min-h-11 w-full sm:w-auto" asChild>
-            <Link href={`/admin/lots/${submission.convertedLotId}`}>Open draft lot</Link>
-          </Button>
+          <Section title="Converted" description="This submission became a draft lot.">
+            <StaffButton asChild variant="primary">
+              <Link href={`/admin/lots/${submission.convertedLotId}`}>Open draft lot</Link>
+            </StaffButton>
+          </Section>
         ) : null;
       case "terminal":
-        return (
-          <p className="text-sm text-on-surface-variant">No further actions for this status.</p>
-        );
+        return <Notice tone="info" title="No further actions for this status." />;
       case "idle":
         return null;
       default: {
@@ -109,22 +145,20 @@ export function AdminSubmissionDecisionPanel({
   return (
     <Can
       requirement={SUBMISSIONS_ACCESS}
-      fallback={
-        <p className="font-body text-sm text-on-surface-variant">
-          You do not have permission to review submissions.
-        </p>
-      }
+      fallback={<Notice tone="info" title="You do not have permission to review submissions." />}
     >
-      <div ref={panelRootRef} className="space-y-6">
+      <div ref={panelRootRef} className="flex flex-col gap-6">
         {view.showChecklist ? <SubmissionQualityChecklist submission={submission} /> : null}
-        <p className="font-body text-xs text-on-surface-variant">
-          Shortcuts when not typing in a field: <span className="font-mono">A</span>{" "}
-          {view.shortcutVerb}, <span className="font-mono">R</span> focus rejection,{" "}
-          <span className="font-mono">⌘ Enter</span> submit.
-        </p>
-
+        {view.shortcutsActive ? (
+          <p className="text-staff-sm text-staff-muted">
+            Shortcuts when not typing in a field: <Kbd>A</Kbd> {view.shortcutVerb}, <Kbd>R</Kbd>{" "}
+            focus rejection, <Kbd>⌘ Enter</Kbd> submit.
+          </p>
+        ) : null}
         {renderMode()}
       </div>
+      {dialog}
+      <UnsavedChangesDialog guard={guard} />
     </Can>
   );
 }

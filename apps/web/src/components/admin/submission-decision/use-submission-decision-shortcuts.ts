@@ -1,5 +1,7 @@
 "use client";
 
+import { staffFieldId } from "@/components/admin/forms/staff-form-fields";
+import { SUBMISSION_REJECT_FORM_ID } from "@/components/admin/submission-decision/form-ids";
 import { type RefObject, useCallback, useEffect } from "react";
 
 type UseSubmissionDecisionShortcutsInput = {
@@ -8,6 +10,10 @@ type UseSubmissionDecisionShortcutsInput = {
   approveFormRef: RefObject<HTMLFormElement | null>;
 };
 
+/**
+ * The decision tab's keys: A accepts (or creates the lot), R moves to the rejection reason, and
+ * ⌘ Enter submits from anywhere, even inside a field. Letters never fire while typing.
+ */
 export function useSubmissionDecisionShortcuts({
   active,
   panelRootRef,
@@ -41,7 +47,9 @@ export function useSubmissionDecisionShortcuts({
       }
       if (e.key === "r" || e.key === "R") {
         e.preventDefault();
-        document.getElementById("rejectionReason")?.focus();
+        document
+          .getElementById(staffFieldId(SUBMISSION_REJECT_FORM_ID, "rejectionReason"))
+          ?.focus();
       }
     };
     window.addEventListener("keydown", onKey);

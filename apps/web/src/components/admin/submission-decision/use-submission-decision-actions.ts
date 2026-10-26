@@ -1,5 +1,6 @@
 "use client";
 
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   adminAcceptSubmissionResultAction,
   adminConvertSubmissionResultAction,
@@ -12,7 +13,7 @@ import { notify } from "@/lib/ui/notify";
 import { type ApproveSubmissionBody, rejectSubmissionBodySchema } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import type { FieldValues, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 export const approveFormSchema = z.object({
@@ -27,11 +28,35 @@ export type RejectFormValues = z.infer<typeof rejectFormSchema>;
 
 type UseSubmissionDecisionActionsInput = {
   submissionId: string;
+  /** The submission's title, for the questions the page asks. */
+  title: string;
 };
 
-export function useSubmissionDecisionActions({ submissionId }: UseSubmissionDecisionActionsInput) {
+/** Puts a refusal where the person is looking: on its field when it names one, else on the form. */
+function showFailure<T extends FieldValues>(
+  form: UseFormReturn<T>,
+  failure: { error: string; fieldErrors?: Record<string, string[] | undefined> | undefined },
+) {
+  if (failure.fieldErrors && Object.keys(failure.fieldErrors).length > 0) {
+    applyActionFieldErrors(form, failure.fieldErrors, { focusField: false });
+    return;
+  }
+  form.setError("root.server", { type: "server", message: failure.error });
+}
+
+/**
+ * The decision tab's actions: start the review, accept for cataloguing, reject (asked about
+ * first, since the seller is told) and create the draft lot. A refusal stays on the form it came
+ * from, with what was typed kept.
+ */
+export function useSubmissionDecisionActions({
+  submissionId,
+  title,
+}: UseSubmissionDecisionActionsInput) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const confirm = useStaffConfirm();
+  const { ask } = confirm;
 
   const startReview = useCallback(() => {
     startTransition(() => {
@@ -49,6 +74,7 @@ export function useSubmissionDecisionActions({ submissionId }: UseSubmissionDeci
 
   const accept = useCallback(
     (values: ApproveFormValues, form: UseFormReturn<ApproveFormValues>) => {
+      form.clearErrors("root.server");
       startTransition(() => {
         void (async () => {
           const body: ApproveSubmissionBody = {};
@@ -61,10 +87,7 @@ export function useSubmissionDecisionActions({ submissionId }: UseSubmissionDeci
             router.refresh();
             return;
           }
-          if (r.fieldErrors) {
-            applyActionFieldErrors(form, r.fieldErrors);
-          }
-          notify.error(r.error);
+          showFailure(form, r);
         })();
       });
     },
@@ -72,27 +95,23 @@ export function useSubmissionDecisionActions({ submissionId }: UseSubmissionDeci
   );
 
   const reject = useCallback(
-    (values: RejectFormValues, form: UseFormReturn<RejectFormValues>) => {
-      startTransition(() => {
-        void (async () => {
-          const r = await adminRejectSubmissionResultAction(submissionId, values);
-          if (r.ok) {
-            notify.success("Submission rejected");
-            router.refresh();
-            return;
-          }
-          if (r.fieldErrors) {
-            applyActionFieldErrors(form, r.fieldErrors);
-          }
-          notify.error(r.error);
-        })();
-      });
-    },
-    [router, submissionId],
+    (values: RejectFormValues) =>
+      ask({
+        title: `Reject ${title}?`,
+        description:
+          "The seller is emailed your reason as written. A rejected submission cannot be reopened.",
+        confirmLabel: "Reject submission",
+        cancelLabel: "Keep reviewing",
+        tone: "danger",
+        run: () => adminRejectSubmissionResultAction(submissionId, values),
+        success: "Submission rejected. The seller has been told.",
+      }),
+    [ask, submissionId, title],
   );
 
   const convert = useCallback(
     (values: ApproveFormValues, form: UseFormReturn<ApproveFormValues>) => {
+      form.clearErrors("root.server");
       startTransition(() => {
         void (async () => {
           const body: ApproveSubmissionBody = {};
@@ -113,10 +132,7 @@ export function useSubmissionDecisionActions({ submissionId }: UseSubmissionDeci
             router.refresh();
             return;
           }
-          if (r.fieldErrors) {
-            applyActionFieldErrors(form, r.fieldErrors);
-          }
-          notify.error(r.error);
+          showFailure(form, r);
         })();
       });
     },
@@ -129,5 +145,6 @@ export function useSubmissionDecisionActions({ submissionId }: UseSubmissionDeci
     accept,
     reject,
     convert,
+    dialog: confirm.dialog,
   };
 }

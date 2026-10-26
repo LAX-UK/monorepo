@@ -1,66 +1,71 @@
 "use client";
 
-import { LabelCaps } from "@/components/ui/typography";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { Button } from "@auction/ui/components/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Textarea } from "@auction/ui/components/textarea";
+import { StaffTextAreaField } from "@/components/admin/forms/staff-form-fields";
+import { STAFF_PARSE_PARAMS } from "@/lib/forms/staff-error-map";
+import { FormActions, Notice, Section, StaffButton } from "@auction/staff-ui";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { RefObject } from "react";
+import { type RefObject, useEffect } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
+import { SUBMISSION_APPROVE_FORM_ID } from "./form-ids";
 import { type ApproveFormValues, approveFormSchema } from "./use-submission-decision-actions";
 
 type Props = {
   pending: boolean;
   formRef: RefObject<HTMLFormElement | null>;
   onSubmit: (values: ApproveFormValues, form: UseFormReturn<ApproveFormValues>) => void;
+  /** Reports whether anything is typed, so the page can ask before it is lost. */
+  onDirtyChange: (dirty: boolean) => void;
 };
 
-export function SubmissionApproveForm({ pending, formRef, onSubmit }: Props) {
-  const form = useForm({
-    resolver: zodResolver(approveFormSchema),
+/** Accepting a submission for cataloguing, with optional notes that stay with staff. */
+export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChange }: Props) {
+  const form = useForm<ApproveFormValues>({
+    resolver: zodResolver(approveFormSchema, STAFF_PARSE_PARAMS),
     defaultValues: { reviewNotes: "", artistId: null },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
+  const dirty = form.formState.isDirty;
+  useEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty, onDirtyChange]);
+  const failure = form.formState.errors.root?.server?.message;
 
   return (
-    <Form {...form}>
+    <Section
+      title="Accept for cataloguing"
+      description="The seller is told it was accepted. You create the draft lot next."
+    >
       <form
-        id={CATALOG_FORM_IDS.submissionApprove}
+        id={SUBMISSION_APPROVE_FORM_ID}
         ref={formRef}
-        className="space-y-4"
+        noValidate
+        aria-label="Accept for cataloguing"
+        className="flex flex-col gap-4"
         onSubmit={form.handleSubmit((values) => onSubmit(values, form))}
       >
-        <FormField
+        {failure ? (
+          <Notice tone="danger" alert title="It was not accepted">
+            {failure}
+          </Notice>
+        ) : null}
+        <StaffTextAreaField
           control={form.control}
+          formId={SUBMISSION_APPROVE_FORM_ID}
           name="reviewNotes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Internal review notes (optional)</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <Textarea
-                  id="reviewNotesApprove"
-                  rows={3}
-                  className="font-body text-sm"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Internal review notes"
+          description="Only staff see these."
+          optional
+          rows={3}
+          disabled={pending}
         />
-        <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={pending}>
-          Accept for cataloguing
-        </Button>
+        <FormActions>
+          <StaffButton type="submit" variant="primary" loading={pending}>
+            Accept for cataloguing
+          </StaffButton>
+        </FormActions>
       </form>
-    </Form>
+    </Section>
   );
 }
