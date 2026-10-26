@@ -89,6 +89,8 @@ export type HelpArticleListRow = {
   status: HelpAdminArticleRow["status"];
   /** ISO time of the last change. */
   updatedAt: string;
+  /** Who made it, by name; null when the API does not know them. */
+  updatedByName: string | null;
 };
 
 export function toHelpArticleListRow(row: HelpAdminArticleRow): HelpArticleListRow {
@@ -100,6 +102,7 @@ export function toHelpArticleListRow(row: HelpAdminArticleRow): HelpArticleListR
     categoryTitle: row.categoryTitle,
     status: row.status,
     updatedAt: row.updatedAt,
+    updatedByName: row.updatedByName?.trim() || null,
   };
 }
 

@@ -107,7 +107,26 @@ describe("row mapping", () => {
       categoryTitle: "Buying",
       categoryId: CATEGORY,
       updatedAt: "2026-07-01T12:00:00.000Z",
+      updatedByName: null,
     });
+  });
+
+  it("names who last changed a question, never by their identity subject", () => {
+    const row: HelpAdminArticleRow = {
+      id: "a",
+      slug: "how-do-i-pay",
+      question: "How do I pay?",
+      categoryId: CATEGORY,
+      categoryTitle: "Buying",
+      position: 0,
+      status: "published",
+      updatedAt: "2026-07-01T12:00:00.000Z",
+      updatedBy: "staff-subject-1",
+      updatedByName: " Eleanor Pereira ",
+    };
+    expect(toHelpArticleListRow(row).updatedByName).toBe("Eleanor Pereira");
+    expect(toHelpArticleListRow({ ...row, updatedByName: null }).updatedByName).toBeNull();
+    expect(JSON.stringify(toHelpArticleListRow(row))).not.toContain("staff-subject-1");
   });
 
   it("describes a category's questions, with the published count once it has any", () => {

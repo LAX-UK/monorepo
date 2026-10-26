@@ -326,6 +326,7 @@ export function HelpArticlesList({
         summary={
           opened
             ? knownFacts([
+                { label: "Last changed by", value: opened.updatedByName },
                 {
                   label:
                     opened.status === "published" ? "Public address" : "Address once published",

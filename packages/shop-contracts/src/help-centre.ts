@@ -98,6 +98,8 @@ export const HelpAdminArticleRowSchema = Type.Object({
   status: HelpStatusSchema,
   updatedAt: Type.String({ format: "date-time" }),
   updatedBy: Type.Union([Type.String(), Type.Null()]),
+  /** The name (or email) of the staff member who last changed it; optional for an older API. */
+  updatedByName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export const HelpAdminArticleDetailSchema = Type.Composite([

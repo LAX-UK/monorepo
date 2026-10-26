@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopHelpArticle, shopHelpCategory } from "@auction/db/schema";
+import { shopHelpArticle, shopHelpCategory, shopUserProfile } from "@auction/db/schema";
 import {
   HELP_ARTICLE_LIST_LIMIT,
   editorialBlocksPlainText,
@@ -22,6 +22,14 @@ const ADMIN_ARTICLE_LIST_LIMIT = 500;
 
 const category = shopHelpCategory;
 const article = shopHelpArticle;
+
+/** Who last changed an article, by the name or email on their profile; null when unknown. */
+const updatedByNameSql = sql<string | null>`(
+  select coalesce(nullif(trim(${shopUserProfile.name}), ''), nullif(trim(${shopUserProfile.email}), ''))
+  from ${shopUserProfile}
+  where ${shopUserProfile.identitySubjectId} = ${article.updatedBy}
+  limit 1
+)`;
 
 function sameIds(existing: readonly string[], requested: readonly string[]): boolean {
   return (
@@ -263,6 +271,7 @@ export function createDrizzleHelpRepository(
           status: article.status,
           updatedAt: article.updatedAt,
           updatedBy: article.updatedBy,
+          updatedByName: updatedByNameSql,
         })
         .from(article)
         .innerJoin(category, eq(category.id, article.categoryId))
@@ -297,6 +306,7 @@ export function createDrizzleHelpRepository(
           status: article.status,
           updatedAt: article.updatedAt,
           updatedBy: article.updatedBy,
+          updatedByName: updatedByNameSql,
           answerBlocks: article.answerBlocks,
           seoTitle: article.seoTitle,
           seoDescription: article.seoDescription,
