@@ -1,5 +1,6 @@
 "use client";
 
+import { checkResolver } from "@/components/sales/sales-form";
 import { StaffFormDialog } from "@/components/staff-form-dialog";
 import { useAdminAction } from "@/components/use-admin-action.client";
 import { issueOriginalSaleInvoice } from "@/server/application/admin-sales-actions.server";
@@ -9,7 +10,9 @@ import {
   checkInvoiceDetails,
 } from "@/server/domain/sales-records.vm";
 import { Field, KeyValueList, TextInput, formatStaffMoney } from "@auction/staff-ui";
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+
+type InvoiceValues = { buyerEmail: string; buyerName: string };
 
 /**
  * Issue the Stripe invoice for a reserved original. The buyer's name and email come from their
@@ -26,16 +29,17 @@ export function IssueInvoiceDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const mutation = useAdminAction();
-  const [buyerEmail, setBuyerEmail] = useState(sale.buyerEmail ?? "");
-  const [buyerName, setBuyerName] = useState(sale.buyerName ?? "");
-  const [submits, setSubmits] = useState(0);
-
-  const checked = checkInvoiceDetails({ buyerEmail, buyerName });
-  const errors = submits > 0 && !checked.ok ? checked.errors : {};
+  const form = useForm<InvoiceValues>({
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    defaultValues: { buyerEmail: sale.buyerEmail ?? "", buyerName: sale.buyerName ?? "" },
+    resolver: checkResolver(checkInvoiceDetails),
+  });
+  const { errors } = form.formState;
   const amount = formatStaffMoney(sale.salePricePence);
 
-  const submit = async () => {
-    setSubmits((count) => count + 1);
+  const submit = form.handleSubmit(async (values) => {
+    const checked = checkInvoiceDetails(values);
     if (!checked.ok) return;
     const body = checked.body;
     const ok = await mutation.run(
@@ -48,7 +52,7 @@ export function IssueInvoiceDialog({
       `Invoice for ${sale.artworkTitle} sent to ${body.buyerEmail}`,
     );
     if (ok) onOpenChange(false);
-  };
+  });
 
   return (
     <>
@@ -69,20 +73,11 @@ export function IssueInvoiceDialog({
           ]}
         />
         {mutation.error}
-        <Field label="Send the invoice to" error={errors.buyerEmail}>
-          <TextInput
-            type="email"
-            autoComplete="off"
-            value={buyerEmail}
-            onChange={(event) => setBuyerEmail(event.target.value)}
-          />
+        <Field label="Send the invoice to" error={errors.buyerEmail?.message}>
+          <TextInput type="email" autoComplete="off" {...form.register("buyerEmail")} />
         </Field>
-        <Field label="Name on the invoice" optional error={errors.buyerName}>
-          <TextInput
-            value={buyerName}
-            maxLength={INVOICE_BUYER_NAME_MAX_LENGTH}
-            onChange={(event) => setBuyerName(event.target.value)}
-          />
+        <Field label="Name on the invoice" optional error={errors.buyerName?.message}>
+          <TextInput maxLength={INVOICE_BUYER_NAME_MAX_LENGTH} {...form.register("buyerName")} />
         </Field>
       </StaffFormDialog>
       {mutation.stepUpDialog}

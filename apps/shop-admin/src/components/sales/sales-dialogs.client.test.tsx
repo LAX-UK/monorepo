@@ -107,24 +107,42 @@ describe("reserving an original", () => {
     expect(within(dialog).queryByLabelText(/id$/i)).not.toBeInTheDocument();
   });
 
-  it("names every missing field and sends nothing", () => {
+  it("names every missing field, lists them in a summary and sends nothing", async () => {
     const dialog = renderDialog();
     fireEvent.click(within(dialog).getByRole("button", { name: "Reserve original" }));
 
-    expect(within(dialog).getByText("Choose the artwork being sold.")).toBeInTheDocument();
-    expect(within(dialog).getByText("Choose the buyer.")).toBeInTheDocument();
-    expect(within(dialog).getByText("Enter the sale price in pounds.")).toBeInTheDocument();
+    const summary = await within(dialog).findByRole("alert");
+    expect(summary).toHaveTextContent("There is a problem");
+    expect(within(summary).getByText("Choose the artwork being sold.")).toBeInTheDocument();
+    expect(within(summary).getByText("Choose the buyer.")).toBeInTheDocument();
+    expect(within(summary).getByText("Enter the sale price in pounds.")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Choose the buyer.")).toHaveLength(2);
     expect(createOriginalSale).not.toHaveBeenCalled();
   });
 
-  it("explains text that is not an amount", () => {
+  it("shows no error before a submit and clears each one as soon as it is fixed", async () => {
+    const dialog = renderDialog();
+    fireEvent.input(within(dialog).getByLabelText("Sale price"), { target: { value: "1" } });
+    expect(within(dialog).queryByText("Choose the buyer.")).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reserve original" }));
+    await within(dialog).findByRole("alert");
+    expect(within(dialog).getAllByText("Choose the buyer.")).toHaveLength(2);
+
+    await choose(within(dialog).getByRole("combobox", { name: "Buyer" }), /Ada Lovelace/);
+    await waitFor(() => expect(within(dialog).queryByText("Choose the buyer.")).toBeNull());
+    expect(within(dialog).getAllByText("Choose the artwork being sold.")).toHaveLength(2);
+  });
+
+  it("explains text that is not an amount", async () => {
     const dialog = renderDialog();
     fireEvent.input(within(dialog).getByLabelText("Sale price"), { target: { value: "1,20" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Reserve original" }));
     // "1,20" is not read as £120.00: thousands commas only come in groups of three.
     expect(
-      within(dialog).getByText("Enter an amount in pounds, like 1200 or 1200.50."),
-    ).toBeInTheDocument();
+      (await within(dialog).findAllByText("Enter an amount in pounds, like 1200 or 1200.50."))
+        .length,
+    ).toBeGreaterThan(0);
   });
 
   it("sends the chosen records and the price as whole pence", async () => {
@@ -186,8 +204,9 @@ describe("recording a third-party sale", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Record sale" }));
 
     expect(
-      within(dialog).getByText("The buyer and the seller must be different people."),
-    ).toBeInTheDocument();
+      (await within(dialog).findAllByText("The buyer and the seller must be different people."))
+        .length,
+    ).toBeGreaterThan(0);
     expect(recordThirdPartySale).not.toHaveBeenCalled();
   });
 });
@@ -203,7 +222,9 @@ describe("holding an edition", () => {
     await choose(within(dialog).getByRole("combobox", { name: "Client" }), /Grace Hopper/);
     fireEvent.click(within(dialog).getByRole("button", { name: "Create hold" }));
 
-    expect(within(dialog).getByText("Enter when the hold ends.")).toBeInTheDocument();
+    expect(
+      (await within(dialog).findAllByText("Enter when the hold ends.")).length,
+    ).toBeGreaterThan(0);
     expect(createStockHold).not.toHaveBeenCalled();
   });
 });
@@ -236,10 +257,12 @@ describe("issuing an invoice", () => {
     });
   });
 
-  it("asks for a usable email", () => {
+  it("asks for a usable email", async () => {
     render(<IssueInvoiceDialog sale={{ ...sale, buyerEmail: null }} open onOpenChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Issue £2,500.00 invoice" }));
-    expect(screen.getByText("Enter the email address the invoice is sent to.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Enter the email address the invoice is sent to."),
+    ).toBeInTheDocument();
     expect(issueOriginalSaleInvoice).not.toHaveBeenCalled();
   });
 });

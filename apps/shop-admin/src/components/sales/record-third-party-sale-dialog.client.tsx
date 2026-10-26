@@ -1,13 +1,22 @@
 "use client";
 
 import { EditionPicker, PartyPicker } from "@/components/pickers/record-pickers.client";
+import { checkResolver, summaryOf } from "@/components/sales/sales-form";
 import { StaffFormDialog } from "@/components/staff-form-dialog";
 import { useAdminAction } from "@/components/use-admin-action.client";
 import { recordThirdPartySale } from "@/server/application/admin-sales-actions.server";
 import type { LookupOption } from "@/server/domain/lookup-options.vm";
 import { checkThirdPartySale } from "@/server/domain/sales-records.vm";
-import { Field, MoneyInput, formatStaffMoney } from "@auction/staff-ui";
-import { useState } from "react";
+import { Field, FormErrorSummary, MoneyInput, formatStaffMoney } from "@auction/staff-ui";
+import { useId, useRef } from "react";
+import { Controller, useForm } from "react-hook-form";
+
+type ThirdPartySaleValues = {
+  edition: LookupOption | null;
+  seller: LookupOption | null;
+  buyer: LookupOption | null;
+  grossPence: number | null;
+};
 
 /**
  * Record a sale made outside the shop: the edition, who sold it, who bought it and what the buyer
@@ -21,26 +30,35 @@ export function RecordThirdPartySaleDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const mutation = useAdminAction();
-  const [edition, setEdition] = useState<LookupOption | null>(null);
-  const [seller, setSeller] = useState<LookupOption | null>(null);
-  const [buyer, setBuyer] = useState<LookupOption | null>(null);
-  const [grossPence, setGrossPence] = useState<number | null>(null);
-  const [grossTyped, setGrossTyped] = useState(false);
-  const [submits, setSubmits] = useState(0);
+  /** Whether the amount box has text, so "not an amount" reads differently from "left empty". */
+  const grossTyped = useRef(false);
+  const base = useId();
+  const ids = {
+    edition: `${base}-edition`,
+    seller: `${base}-seller`,
+    buyer: `${base}-buyer`,
+    gross: `${base}-gross`,
+  };
+  const check = (values: ThirdPartySaleValues) =>
+    checkThirdPartySale({ ...values, grossTyped: grossTyped.current });
+  const form = useForm<ThirdPartySaleValues>({
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    defaultValues: { edition: null, seller: null, buyer: null, grossPence: null },
+    resolver: checkResolver(check, { gross: "grossPence" }),
+  });
+  const { errors, submitCount } = form.formState;
 
-  const checked = checkThirdPartySale({ edition, seller, buyer, grossPence, grossTyped });
-  const errors = submits > 0 && !checked.ok ? checked.errors : {};
-
-  const submit = async () => {
-    setSubmits((count) => count + 1);
+  const submit = form.handleSubmit(async (values) => {
+    const checked = check(values);
     if (!checked.ok) return;
     const body = checked.body;
     const ok = await mutation.run(
       () => recordThirdPartySale({ ...body, idempotencyKey: mutation.idempotencyKey }),
-      `Sale of ${edition?.label ?? "the edition"} recorded for ${formatStaffMoney(body.grossPence)}`,
+      `Sale of ${values.edition?.label ?? "the edition"} recorded for ${formatStaffMoney(body.grossPence)}`,
     );
     if (ok) onOpenChange(false);
-  };
+  });
 
   return (
     <>
@@ -53,27 +71,67 @@ export function RecordThirdPartySaleDialog({
         pending={mutation.pending}
         onSubmit={() => void submit()}
       >
+        <FormErrorSummary
+          focusKey={submitCount}
+          errors={summaryOf(errors, [
+            { field: "edition", id: ids.edition },
+            { field: "seller", id: ids.seller },
+            { field: "buyer", id: ids.buyer },
+            { field: "grossPence", id: ids.gross },
+          ])}
+        />
         {mutation.error}
-        <Field label="Edition" error={errors.edition}>
-          <EditionPicker value={edition} onChange={setEdition} />
+        <Field label="Edition" id={ids.edition} error={errors.edition?.message}>
+          <Controller
+            control={form.control}
+            name="edition"
+            render={({ field }) => <EditionPicker value={field.value} onChange={field.onChange} />}
+          />
         </Field>
-        <Field label="Seller" error={errors.seller}>
-          <PartyPicker value={seller} onChange={setSeller} />
+        <Field label="Seller" id={ids.seller} error={errors.seller?.message}>
+          <Controller
+            control={form.control}
+            name="seller"
+            render={({ field }) => (
+              <PartyPicker
+                value={field.value}
+                onChange={(option) => {
+                  field.onChange(option);
+                  // The buyer and seller must differ, so a change here can clear or raise the
+                  // buyer's error.
+                  if (submitCount > 0) void form.trigger("buyer");
+                }}
+              />
+            )}
+          />
         </Field>
-        <Field label="Buyer" error={errors.buyer}>
-          <PartyPicker value={buyer} onChange={setBuyer} />
+        <Field label="Buyer" id={ids.buyer} error={errors.buyer?.message}>
+          <Controller
+            control={form.control}
+            name="buyer"
+            render={({ field }) => <PartyPicker value={field.value} onChange={field.onChange} />}
+          />
         </Field>
         <Field
           label="Amount the buyer paid"
           description="In pounds, before any fees."
-          error={errors.gross}
+          id={ids.gross}
+          error={errors.grossPence?.message}
         >
-          <MoneyInput
-            value={grossPence}
-            onValueChange={setGrossPence}
-            onInput={(event) => setGrossTyped(Boolean(event.currentTarget.value.trim()))}
-            placeholder="0.00"
-            boxClassName="max-w-48"
+          <Controller
+            control={form.control}
+            name="grossPence"
+            render={({ field }) => (
+              <MoneyInput
+                value={field.value}
+                onValueChange={field.onChange}
+                onInput={(event) => {
+                  grossTyped.current = Boolean(event.currentTarget.value.trim());
+                }}
+                placeholder="0.00"
+                boxClassName="max-w-48"
+              />
+            )}
           />
         </Field>
       </StaffFormDialog>
