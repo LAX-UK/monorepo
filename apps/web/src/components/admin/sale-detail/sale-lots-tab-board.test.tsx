@@ -114,7 +114,7 @@ describe("SaleLotsTabBoard", () => {
     expect(second.getByText("Draft")).toBeInTheDocument();
   });
 
-  it("names each lot's artist with a link to the artist", () => {
+  it("names each lot's artist under its title, with the artist in the row menu", () => {
     render(
       <SaleLotsTabBoard
         saleId="sale-1"
@@ -123,8 +123,8 @@ describe("SaleLotsTabBoard", () => {
         artistNameById={{ "artist-1": "Mary Fedden" }}
       />,
     );
-    // The table and the phone layout both carry the link.
-    expect(screen.getAllByRole("link", { name: "Mary Fedden" })[0]).toHaveAttribute(
+    expect(screen.getAllByText("Mary Fedden").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Open artist Mary Fedden")[0]?.closest("a")).toHaveAttribute(
       "href",
       "/admin/artists/artist-1",
     );

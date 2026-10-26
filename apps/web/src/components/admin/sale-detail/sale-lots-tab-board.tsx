@@ -23,7 +23,6 @@ import {
   saleLotsBoardFilters,
 } from "@/lib/data/view-models/sale-lots-tab.vm";
 import {
-  CellLink,
   type DataColumn,
   DataTableToolbar,
   EmptyValue,
@@ -233,13 +232,7 @@ export function SaleLotsTabBoard({
           href={`/admin/lots/${row.id}`}
           Link={Link}
           thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos yet" }}
-          secondary={
-            row.lot.artistId && artistOf(row) ? (
-              <CellLink href={`/admin/artists/${row.lot.artistId}`} Link={Link}>
-                {artistOf(row)}
-              </CellLink>
-            ) : undefined
-          }
+          secondary={artistOf(row) ?? undefined}
         >
           {row.title}
         </PrimaryCell>
@@ -321,6 +314,15 @@ export function SaleLotsTabBoard({
         const lot = row.lot;
         return [
           { id: "open", label: "Open lot page", href: `/admin/lots/${lot.id}` },
+          ...(lot.artistId && artistNameById[lot.artistId]
+            ? [
+                {
+                  id: "artist",
+                  label: `Open artist ${artistNameById[lot.artistId]}`,
+                  href: `/admin/artists/${lot.artistId}`,
+                },
+              ]
+            : []),
           ...(canManageAuction
             ? [{ id: "edit", label: "Edit lot", href: `/admin/lots/${lot.id}/edit` }]
             : []),
