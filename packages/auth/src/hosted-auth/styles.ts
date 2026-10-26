@@ -35,7 +35,7 @@ ${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
   --color-success: ${t.successOnLight};
   --color-ring: ${t.accent};
   --color-product-bid: ${t.productBid};
-  --color-product-shop: ${t.ink};
+  --color-product-shop: ${t.productShop};
   --color-product-art: ${t.ink};
   --color-scrim-auth: rgba(0, 0, 0, 0.07);
   --auth-column: 528px;
@@ -63,7 +63,7 @@ ${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
     --color-success: #56d364;
     --color-ring: ${t.accentOnDark};
     --color-product-bid: ${t.productBidOnDark};
-    --color-product-shop: ${t.lightCream};
+    --color-product-shop: ${t.productShopOnDark};
     --color-product-art: ${t.lightCream};
     --color-scrim-auth: rgba(255, 255, 255, 0.06);
   }

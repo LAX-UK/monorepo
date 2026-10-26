@@ -35,11 +35,12 @@
   /* Links stay neutral and underlined (they share the text colour), so colour is never the only cue. */
   --color-link: var(--brand-obsidian);
   --color-ring: var(--color-product-accent);
-  /* Product names (the ProductName component): each product in its own lockup's accent, Shop and
-     Art in ink until they choose one. Bid's navy is allowed here and nowhere else in Account, so
+  /* Product names (the ProductName component): each product in its own lockup's accent, lax.art
+     in ink until it chooses one. Bid's navy is allowed here and nowhere else in Account, so
      naming Bid is the only place it shows; Account's own controls never use it. */
   --color-product-bid: var(--brand-midnight);
-  --color-product-shop: var(--color-on-surface);
+  /* Shop's aubergine (PRODUCT_ACCENTS.shop): 10.9:1 on white. */
+  --color-product-shop: #5a2a5c;
   --color-product-art: var(--color-on-surface);
   --color-product-account: var(--color-product-accent);
   /* Edge of a text field or select: 3.45:1 on white and 3.11:1 on the low surface, so the field
@@ -88,6 +89,8 @@ html.dark {
   --color-link: var(--brand-light-cream);
   --color-ring: var(--color-product-accent);
   --color-product-bid: var(--brand-midnight-on-dark);
+  /* Light aubergine (PRODUCT_ACCENTS_ON_DARK.shop): 9.2:1 on #121414, 5.7:1 on #383a39. */
+  --color-product-shop: #d6a8d4;
   /* 3.60:1 on the dark surface. */
   --color-control-border: #73736f;
   --color-surface-container: #333534;
