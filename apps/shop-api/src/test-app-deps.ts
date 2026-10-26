@@ -207,7 +207,7 @@ export function createMinimalShopApiTestDeps(
           listOriginalSales: async () => ({ items: [], nextCursor: null, counts: {} }),
         },
         parties: {
-          listClientParties: async () => ({ items: [], nextCursor: null }),
+          listClientParties: async () => ({ items: [], nextCursor: null, counts: {} }),
           listArtists: async () => ({
             items: [],
             nextCursor: null,
@@ -230,7 +230,7 @@ export function createMinimalShopApiTestDeps(
             status: "pending",
           }),
         },
-        staff: { listStaffMembers: async () => ({ items: [], nextCursor: null }) },
+        staff: { listStaffMembers: async () => ({ items: [], nextCursor: null, counts: {} }) },
         catalogue: {
           listMerchandiseProducts: async () => ({ items: [], nextCursor: null, counts: {} }),
           getMerchandiseProduct: async () => null,
@@ -245,6 +245,7 @@ export function createMinimalShopApiTestDeps(
         },
         compliance: {
           listAuditEntries: async () => ({ items: [], nextCursor: null }),
+          readAuditFacets: async () => ({ actions: [], targetTypes: [], actors: [] }),
           listDisputes: async () => ({ items: [], nextCursor: null, counts: {} }),
           readEffectiveSettings: async () => ({
             cancellationDaysAfterPossession: null,

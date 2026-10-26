@@ -6,6 +6,28 @@ export const AdminClientPartySchema = Type.Object({
   kind: Type.String(),
   identitySubjectId: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
+  /** From the client's LAX profile; optional for responses from an older shop-api. */
+  email: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+});
+
+/** A Shop order the client placed, newest first. */
+export const AdminClientOrderSchema = Type.Object({
+  orderId: Type.String({ format: "uuid" }),
+  status: Type.String(),
+  totalPence: Type.Integer(),
+  lineCount: Type.Integer({ minimum: 0 }),
+  createdAt: Type.String(),
+  paidAt: Type.Union([Type.String(), Type.Null()]),
+});
+
+/** An enquiry the client sent from the Shop or lax.art: about an artwork, or a general one. */
+export const AdminClientEnquirySchema = Type.Object({
+  enquiryId: Type.String({ format: "uuid" }),
+  kind: Type.Union([Type.Literal("artwork"), Type.Literal("general")]),
+  /** The artwork's title for an artwork enquiry; the topic code for a general one. */
+  subject: Type.String(),
+  status: Type.String(),
+  createdAt: Type.String(),
 });
 
 export const AdminClientEditionSchema = Type.Object({
@@ -52,6 +74,13 @@ export const AdminClientDetailSchema = Type.Object({
   saleAuthority: Type.Array(AdminClientSaleAuthoritySchema),
   requests: Type.Array(AdminClientSaleAuthorityRequestSchema),
   payouts: Type.Array(AdminClientPayoutSchema),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  orders: Type.Optional(Type.Array(AdminClientOrderSchema)),
+  /** Orders placed in all, beyond the newest ones listed. */
+  orderCount: Type.Optional(Type.Integer({ minimum: 0 })),
+  enquiries: Type.Optional(Type.Array(AdminClientEnquirySchema)),
+  /** Every captured Shop payment less what has been refunded; pending payments never count. */
+  paidToDatePence: Type.Optional(Type.Integer()),
 });
 
 export const AdminArtistSummarySchema = Type.Object({

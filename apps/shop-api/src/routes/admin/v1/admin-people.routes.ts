@@ -1,4 +1,7 @@
 import {
+  ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH,
+  type AdminStaffRevokeBody,
+  AdminStaffRevokeBodySchema,
   SALE_AUTHORITY_NOTE_MAX_LENGTH,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
@@ -164,7 +167,14 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
       schema: {
         tags: ["shop-admin"],
         params: Type.Object({ identitySubjectId: Type.String({ minLength: 1 }) }),
-        response: { 204: Type.Null(), 403: ShopApiErrorBodySchema },
+        // Removing someone's access is audited with why it was removed.
+        body: AdminStaffRevokeBodySchema,
+        response: {
+          204: Type.Null(),
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
       },
     },
     async (request, reply) => {
@@ -173,8 +183,17 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
       const subject = requireShopAdminSubject(request);
       const idempotencyKey = requireIdempotencyKey(request);
       const { identitySubjectId } = request.params as { identitySubjectId: string };
+      const reason = (request.body as AdminStaffRevokeBody).reason.trim();
+      if (reason.length < ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.VALIDATION,
+          "Say why their access is being removed",
+          400,
+        );
+      }
       await deps.revokeStaffRole({
         subject: identitySubjectId,
+        reason,
         operatorSubjectId: subject,
         idempotencyKey,
       });

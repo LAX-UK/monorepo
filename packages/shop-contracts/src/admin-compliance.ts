@@ -9,12 +9,20 @@ export const AdminAuditEntrySchema = Type.Object({
   targetType: Type.String(),
   targetId: Type.String(),
   createdAt: Type.String(),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  /** From the actor's LAX profile; null for the platform itself or someone without a profile. */
+  actorName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  actorEmail: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  /** The recorded state before and after the change, when the event keeps one. */
+  before: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Unknown()), Type.Null()])),
+  after: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Unknown()), Type.Null()])),
 });
 
 export const AdminAuditListSchema = Type.Object({
   items: Type.Array(AdminAuditEntrySchema),
   nextCursor: Type.Union([Type.String(), Type.Null()]),
 });
+export type AdminAuditList = Static<typeof AdminAuditListSchema>;
 
 export const AdminDisputeListItemSchema = Type.Object({
   disputeId: Type.String({ format: "uuid" }),

@@ -2,7 +2,10 @@ import type {
   AdminArtistDetail,
   AdminArtworkLookupItem,
   AdminAuditEntry,
+  AdminAuditFacets,
+  AdminAuditListQuery,
   AdminClientDetail,
+  AdminClientListQuery,
   AdminDisputeListItem,
   AdminDisputeListQuery,
   AdminEditionLookupItem,
@@ -14,6 +17,7 @@ import type {
   AdminPartyLookupItem,
   AdminPayoutListQuery,
   AdminSaleAuthorityRequestListQuery,
+  AdminStaffListQuery,
   AdminStockHoldListQuery,
   AdminThirdPartySaleListQuery,
   MerchandiseProductDetail,
@@ -149,6 +153,9 @@ export type AdminPartyListItem = {
   kind: string;
   identitySubjectId: string | null;
   createdAt: string;
+  email: string | null;
+  editionCount: number;
+  paidOrderCount: number;
 };
 
 export type AdminArtistListItem = {
@@ -214,13 +221,14 @@ export interface AdminSalesReader {
   ): Promise<WorkListResult<AdminOriginalSaleListItem>>;
 }
 
-export type ClientPartyListInput = CursorListInput & {
+export type ClientPartyListInput = AdminClientListQuery & {
   /** When set, only clients assigned to this broker subject are returned. */
   brokerSubjectId?: string;
 };
 
 export interface AdminPartyReader {
-  listClientParties(input: ClientPartyListInput): Promise<CursorListResult<AdminPartyListItem>>;
+  /** Counts are per kind, under the search but not the kind. */
+  listClientParties(input: ClientPartyListInput): Promise<WorkListResult<AdminPartyListItem>>;
   listArtists(input: AdminArtistListInput): Promise<AdminArtistListResult>;
   getClientDetail(partyId: string): Promise<AdminClientDetail>;
   getArtistDetail(artistId: string): Promise<AdminArtistDetail>;
@@ -242,7 +250,8 @@ export interface AdminSaleAuthorityRequestReader {
 }
 
 export interface AdminStaffReader {
-  listStaffMembers(input: CursorListInput): Promise<CursorListResult<AdminStaffMemberListItem>>;
+  /** Counts are per status (active, disabled), under the search and role but not the status. */
+  listStaffMembers(input: AdminStaffListQuery): Promise<WorkListResult<AdminStaffMemberListItem>>;
 }
 
 export type MerchandiseProductListInput = CursorListInput & {
@@ -264,7 +273,9 @@ export interface AdminOverviewReader {
 }
 
 export interface AdminComplianceReader {
-  listAuditEntries(input: CursorListInput): Promise<CursorListResult<AdminAuditEntry>>;
+  listAuditEntries(input: AdminAuditListQuery): Promise<CursorListResult<AdminAuditEntry>>;
+  /** The event codes, record kinds and people in the log, for its filters. */
+  readAuditFacets(): Promise<AdminAuditFacets>;
   listDisputes(input: AdminDisputeListQuery): Promise<WorkListResult<AdminDisputeListItem>>;
   readEffectiveSettings(): Promise<AdminEffectiveSettings>;
 }

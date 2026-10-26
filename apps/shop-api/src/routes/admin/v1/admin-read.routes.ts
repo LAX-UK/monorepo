@@ -4,8 +4,13 @@ import {
   AdminArtistListQuerySchema,
   AdminArtistListSchema,
   AdminArtworkLookupSchema,
+  AdminAuditFacetsSchema,
+  type AdminAuditListQuery,
+  AdminAuditListQuerySchema,
   AdminAuditListSchema,
   AdminClientDetailSchema,
+  type AdminClientListQuery,
+  AdminClientListQuerySchema,
   type AdminDisputeListQuery,
   AdminDisputeListQuerySchema,
   AdminDisputeListSchema,
@@ -32,6 +37,8 @@ import {
   type AdminSaleAuthorityRequestListQuery,
   AdminSaleAuthorityRequestListQuerySchema,
   AdminSaleAuthorityRequestListSchema,
+  type AdminStaffListQuery,
+  AdminStaffListQuerySchema,
   AdminStaffMemberListSchema,
   type AdminStockHoldListQuery,
   AdminStockHoldListQuerySchema,
@@ -39,7 +46,6 @@ import {
   type AdminThirdPartySaleListQuery,
   AdminThirdPartySaleListQuerySchema,
   AdminThirdPartySaleListSchema,
-  CursorListQuerySchema,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
@@ -256,7 +262,7 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
+        querystring: AdminClientListQuerySchema,
         response: { 200: AdminPartyListSchema, 403: ShopApiErrorBodySchema },
       },
     },
@@ -266,7 +272,7 @@ export async function registerAdminReadRoutes(
       if (scope === "none") {
         throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
       }
-      const query = request.query as { cursor?: string; limit?: number };
+      const query = request.query as AdminClientListQuery;
       return deps.adminRead.parties.listClientParties({
         ...query,
         ...(scope === "assigned" ? { brokerSubjectId: requireShopAdminSubject(request) } : {}),
@@ -402,14 +408,13 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
+        querystring: AdminStaffListQuerySchema,
         response: { 200: AdminStaffMemberListSchema, 403: ShopApiErrorBodySchema },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "settings.write");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.staff.listStaffMembers(query);
+      return deps.adminRead.staff.listStaffMembers(request.query as AdminStaffListQuery);
     },
   );
 
@@ -418,14 +423,27 @@ export async function registerAdminReadRoutes(
     {
       schema: {
         tags: ["shop-admin"],
-        querystring: CursorListQuerySchema,
+        querystring: AdminAuditListQuerySchema,
         response: { 200: AdminAuditListSchema, 403: ShopApiErrorBodySchema },
       },
     },
     async (request) => {
       requireShopStaffCapability(request, "audit.read");
-      const query = request.query as { cursor?: string; limit?: number };
-      return deps.adminRead.compliance.listAuditEntries(query);
+      return deps.adminRead.compliance.listAuditEntries(request.query as AdminAuditListQuery);
+    },
+  );
+
+  app.get(
+    "/audit/facets",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        response: { 200: AdminAuditFacetsSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "audit.read");
+      return deps.adminRead.compliance.readAuditFacets();
     },
   );
 

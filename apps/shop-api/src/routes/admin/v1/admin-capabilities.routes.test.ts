@@ -250,9 +250,10 @@ describe("staff role changes require recent authentication", () => {
     const response = await app.inject({
       ...request,
       headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
-      ...(request.method === "POST"
-        ? { payload: { email: "new@example.com", role: "broker" } }
-        : {}),
+      payload:
+        request.method === "POST"
+          ? { email: "new@example.com", role: "broker" }
+          : { reason: "Left the team" },
     });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.STEP_UP_REQUIRED });
@@ -268,9 +269,10 @@ describe("staff role changes require recent authentication", () => {
     const response = await app.inject({
       ...request,
       headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
-      ...(request.method === "POST"
-        ? { payload: { email: "new@example.com", role: "broker" } }
-        : {}),
+      payload:
+        request.method === "POST"
+          ? { email: "new@example.com", role: "broker" }
+          : { reason: "Left the team" },
     });
     expect(response.statusCode).toBeLessThan(300);
     await app.close();
@@ -282,9 +284,25 @@ describe("staff role changes require recent authentication", () => {
     const response = await app.inject({
       ...revoke,
       headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
+      payload: { reason: "Left the team" },
     });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.FORBIDDEN });
+    await app.close();
+  });
+
+  it.each([
+    ["no reason", {}],
+    ["a blank reason", { reason: "       " }],
+  ])("refuses to revoke access with %s", async (_name, payload) => {
+    const app = buildApp("shop_admin", { authAgeSeconds: 30 });
+    await app.ready();
+    const response = await app.inject({
+      ...revoke,
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
+      payload,
+    });
+    expect(response.statusCode).toBe(400);
     await app.close();
   });
 });
