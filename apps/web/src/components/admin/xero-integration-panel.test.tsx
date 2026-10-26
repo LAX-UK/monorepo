@@ -1,14 +1,8 @@
 import type { AdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { XeroIntegrationPanel, xeroHealth } from "./xero-integration-panel";
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => "/admin/integrations/xero",
-  useSearchParams: () => new URLSearchParams(),
-}));
 
 const connected: AdminXeroIntegrationStatus = {
   connected: true,
