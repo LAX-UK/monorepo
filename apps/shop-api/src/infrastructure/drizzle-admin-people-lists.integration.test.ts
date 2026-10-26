@@ -75,7 +75,21 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle admin people lists", () => {
     const byEmail = await repo.parties.listClientParties({ q: `${marker}.1@` });
     expect(byEmail.items.map((item) => item.email)).toEqual([`${marker}.1@example.com`]);
 
-    for (const sort of ["joined_desc", "joined_asc"] as const) {
+    const byName = await pageThrough((cursor) =>
+      repo.parties.listClientParties({
+        q: marker,
+        sort: "name_desc",
+        limit: 1,
+        ...(cursor ? { cursor } : {}),
+      }),
+    );
+    expect(byName.map((item) => item.displayName)).toEqual([
+      `${marker} client 2`,
+      `${marker} client 1`,
+      `${marker} client 0`,
+    ]);
+
+    for (const sort of ["joined_desc", "joined_asc", "name_asc"] as const) {
       const seen = await pageThrough((cursor) =>
         repo.parties.listClientParties({
           q: marker,
@@ -110,6 +124,11 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle admin people lists", () => {
     const finance = await repo.staff.listStaffMembers({ q: marker, role: "finance" });
     expect(finance.items.map((item) => item.identitySubjectId)).toEqual([subjects[2]]);
     expect(finance.counts).toEqual({ active: 1 });
+
+    const aToZ = await pageThrough((cursor) =>
+      repo.staff.listStaffMembers({ q: marker, limit: 1, ...(cursor ? { cursor } : {}) }),
+    );
+    expect(aToZ.map((item) => item.identitySubjectId)).toEqual(subjects);
 
     const seen = await pageThrough((cursor) =>
       repo.staff.listStaffMembers({

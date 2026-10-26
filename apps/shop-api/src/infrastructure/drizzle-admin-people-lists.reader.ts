@@ -30,7 +30,13 @@ import {
   sql,
 } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { decodeCatalogueCursor } from "../application/catalogue-cursor.js";
+import {
+  decodeCatalogueCursor,
+  decodeNameCursor,
+  encodeCatalogueCursor,
+  encodeNameCursor,
+  truncateCatalogueCursorDate,
+} from "../application/catalogue-cursor.js";
 import type {
   AdminPartyListItem,
   AdminStaffMemberListItem,
@@ -74,14 +80,71 @@ function toLondonDay(column: AnyPgColumn, day: string): SQL {
   return sql`${column} < ((${day}::date + 1))::timestamp AT TIME ZONE 'Europe/London'`;
 }
 
+/**
+ * How a people list is ordered and paged: by a name (A to Z or Z to A) with a name cursor, or by
+ * a timestamp with the catalogue cursor. The id breaks ties either way, so paging never skips or
+ * repeats a row.
+ */
+function peopleSort(input: {
+  sort: string;
+  cursor: string | undefined;
+  name: AnyPgColumn | SQL;
+  at: AnyPgColumn;
+  id: AnyPgColumn;
+}) {
+  const { key, direction } = parseSort<string>(input.sort, input.sort as `${string}_asc`);
+  const byName = key === "name";
+  if (byName) {
+    const cursor = decodeNameCursor(input.cursor);
+    const op = direction === "asc" ? sql`>` : sql`<`;
+    return {
+      byName,
+      after: cursor
+        ? sql`(${input.name}, ${input.id}) ${op} (${cursor.name}, ${cursor.id})`
+        : undefined,
+      orderBy:
+        direction === "asc" ? [asc(input.name), asc(input.id)] : [desc(input.name), desc(input.id)],
+      next: (row: { name: string; at: Date; id: string }) =>
+        encodeNameCursor({ name: row.name, id: row.id }),
+    };
+  }
+  const cursor = decodeCatalogueCursor(input.cursor);
+  return {
+    byName,
+    after: cursor ? keysetAfter(input.at, input.id, cursor, direction) : undefined,
+    orderBy: [...orderByMsTimestampId(input.at, input.id, direction)],
+    next: (row: { name: string; at: Date; id: string }) =>
+      encodeCatalogueCursor({ createdAt: truncateCatalogueCursorDate(row.at), id: row.id }),
+  };
+}
+
+/** The page and its cursor under the list's sort. */
+function pageBy<T, R>(
+  rows: readonly T[],
+  limit: number,
+  keyOf: (row: T) => { name: string; at: Date; id: string },
+  next: (key: { name: string; at: Date; id: string }) => string,
+  mapRow: (row: T) => R,
+): { items: R[]; nextCursor: string | null } {
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const last = page.at(-1);
+  return { items: page.map(mapRow), nextCursor: hasMore && last ? next(keyOf(last)) : null };
+}
+
 export function createDrizzleAdminPeopleListsReader(db: Database) {
   return {
     async listClientParties(
       input: ClientPartyListInput,
     ): Promise<WorkListResult<AdminPartyListItem>> {
       const limit = resolveWorkListLimit(input.limit);
-      const cursor = decodeCatalogueCursor(input.cursor);
-      const { direction } = parseSort<"joined">(input.sort, "joined_desc");
+      const order = peopleSort({
+        sort: input.sort ?? "joined_desc",
+        cursor: input.cursor,
+        name: shopParty.displayName,
+        at: shopParty.createdAt,
+        id: shopParty.id,
+      });
       const search = searchPatterns(input.q);
       const brokerSubjectId = input.brokerSubjectId?.trim();
       // Who the list may show at all, then what the search narrows it to; the kind is a view.
@@ -124,15 +187,9 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
             eq(shopUserProfile.identitySubjectId, shopParty.identitySubjectId),
           )
           .where(
-            and(
-              ...filters,
-              input.kind ? eq(shopParty.kind, input.kind) : undefined,
-              cursor
-                ? keysetAfter(shopParty.createdAt, shopParty.id, cursor, direction)
-                : undefined,
-            ),
+            and(...filters, input.kind ? eq(shopParty.kind, input.kind) : undefined, order.after),
           )
-          .orderBy(...orderByMsTimestampId(shopParty.createdAt, shopParty.id, direction))
+          .orderBy(...order.orderBy)
           .limit(limit + 1),
         db
           .select({ status: shopParty.kind, total: count() })
@@ -145,10 +202,11 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
           .groupBy(shopParty.kind),
       ]);
       return {
-        ...pageOf(
+        ...pageBy(
           rows,
           limit,
-          ({ party }) => ({ createdAt: party.createdAt, id: party.id }),
+          ({ party }) => ({ name: party.displayName, at: party.createdAt, id: party.id }),
+          order.next,
           ({ party, email, editionCount, paidOrderCount }) => ({
             partyId: party.id,
             displayName: party.displayName,
@@ -168,8 +226,15 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
       input: AdminStaffListQuery,
     ): Promise<WorkListResult<AdminStaffMemberListItem>> {
       const limit = resolveWorkListLimit(input.limit);
-      const cursor = decodeCatalogueCursor(input.cursor);
-      const { direction } = parseSort<"added">(input.sort, "added_desc");
+      // Staff are named by their profile name, else their email, as in LAX Admin.
+      const staffName = sql<string>`coalesce(nullif(trim(${shopUserProfile.name}), ''), ${shopUserProfile.email}, '')`;
+      const order = peopleSort({
+        sort: input.sort ?? "name_asc",
+        cursor: input.cursor,
+        name: staffName,
+        at: shopStaffMember.createdAt,
+        id: shopStaffMember.id,
+      });
       const search = searchPatterns(input.q);
       // "Last active" is their latest admin action, the only activity recorded for staff.
       const lastActive = db
@@ -202,6 +267,7 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
             displayName: shopUserProfile.name,
             email: shopUserProfile.email,
             lastActiveAt: lastActive.lastActiveAt,
+            sortName: staffName,
           })
           .from(shopStaffMember)
           .leftJoin(
@@ -214,14 +280,10 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
               ...filters,
               input.status === "active" ? isNull(shopStaffMember.disabledAt) : undefined,
               input.status === "disabled" ? isNotNull(shopStaffMember.disabledAt) : undefined,
-              cursor
-                ? keysetAfter(shopStaffMember.createdAt, shopStaffMember.id, cursor, direction)
-                : undefined,
+              order.after,
             ),
           )
-          .orderBy(
-            ...orderByMsTimestampId(shopStaffMember.createdAt, shopStaffMember.id, direction),
-          )
+          .orderBy(...order.orderBy)
           .limit(limit + 1),
         db
           .select({ status: statusOf, total: count() })
@@ -234,10 +296,11 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
           .groupBy(statusOf),
       ]);
       return {
-        ...pageOf(
+        ...pageBy(
           rows,
           limit,
-          ({ member }) => ({ createdAt: member.createdAt, id: member.id }),
+          ({ member, sortName }) => ({ name: sortName, at: member.createdAt, id: member.id }),
+          order.next,
           (row) => ({
             staffMemberId: row.member.id,
             identitySubjectId: row.member.identitySubjectId,

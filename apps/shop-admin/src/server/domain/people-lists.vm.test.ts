@@ -43,6 +43,19 @@ describe("the staff list", () => {
   });
 });
 
+describe("sorting people", () => {
+  it("lists staff A to Z by default and clients newest first, with A to Z on offer", () => {
+    expect(staffList.defaultSortState()).toEqual({ columnId: "name", direction: "asc" });
+    expect(staffList.apiQuery(staffList.parse({}))).toEqual({});
+    expect(staffList.apiQuery(staffList.parse({ sort: "added_desc" }))).toEqual({
+      sort: "added_desc",
+    });
+    const clients = clientsList.parse({ sort: "name_asc" });
+    expect(clientsList.sortState(clients)).toEqual({ columnId: "name", direction: "asc" });
+    expect(clientsList.apiQuery(clients)).toEqual({ sort: "name_asc" });
+  });
+});
+
 describe("the audit log", () => {
   it("holds person, action, record and dates in the URL, newest first by default", () => {
     const state = auditList.parse({

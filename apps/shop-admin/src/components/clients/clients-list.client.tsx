@@ -27,7 +27,7 @@ const count = (value: number | undefined) => (value === undefined ? null : value
 
 /**
  * Collectors and galleries on the staff list template: views by kind with counts, search by
- * name or email, newest first on the server (switchable), 50 a page, a record panel linked from
+ * name or email, newest first on the server (or A to Z), 50 a page, a record panel linked from
  * the URL (`?client=`) and a "…" menu on every row. Bid activity stays in Bid admin, linked
  * rather than copied.
  */
@@ -60,6 +60,8 @@ export function ClientsList({
         id: "name",
         header: "Client",
         mobile: "title",
+        sortable: true,
+        defaultSortDirection: "asc",
         cell: (row) => (
           <PersonCell
             name={row.displayName}

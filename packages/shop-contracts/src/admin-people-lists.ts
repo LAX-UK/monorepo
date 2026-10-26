@@ -26,7 +26,7 @@ export const ADMIN_CLIENT_KINDS = ["person", "gallery"] as const;
 export type AdminClientKind = (typeof ADMIN_CLIENT_KINDS)[number];
 
 /** The first is the default. */
-export const ADMIN_CLIENT_SORTS = ["joined_desc", "joined_asc"] as const;
+export const ADMIN_CLIENT_SORTS = ["joined_desc", "joined_asc", "name_asc", "name_desc"] as const;
 export type AdminClientSort = (typeof ADMIN_CLIENT_SORTS)[number];
 
 /** `q` matches the client's name and the email on their LAX profile. */
@@ -55,7 +55,7 @@ export const ADMIN_STAFF_ROLES = [
 ] as const;
 
 /** The first is the default. */
-export const ADMIN_STAFF_SORTS = ["added_desc", "added_asc"] as const;
+export const ADMIN_STAFF_SORTS = ["name_asc", "name_desc", "added_desc", "added_asc"] as const;
 export type AdminStaffSort = (typeof ADMIN_STAFF_SORTS)[number];
 
 const STAFF_ROLE_PATTERN = `(${ADMIN_STAFF_ROLES.join("|")})`;

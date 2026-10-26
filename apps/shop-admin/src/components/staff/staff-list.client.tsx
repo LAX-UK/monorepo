@@ -72,7 +72,7 @@ const VIEW_EMPTY: Record<string, { title: string; description: string }> = {
 
 /**
  * Who can sign in to LAX Admin, on the staff list template: views by access with counts, search
- * by name or email, a role filter (and team views by role), newest first on the server, 50 a
+ * by name or email, a role filter (and team views by role), A to Z on the server, 50 a
  * page, and a record panel linked from the URL (`?staff=`). Every row's "…" menu changes the
  * role, removes access with a reason or gives it back, each confirmed first.
  */
@@ -109,6 +109,8 @@ export function StaffList({
         id: "name",
         header: "Staff member",
         mobile: "title",
+        sortable: true,
+        defaultSortDirection: "asc",
         cell: (row) => (
           <PersonCell
             name={staffMemberName(row)}

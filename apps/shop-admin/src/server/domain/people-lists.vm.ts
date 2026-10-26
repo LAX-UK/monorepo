@@ -20,7 +20,10 @@ export const clientsList = defineWorkList({
   ],
   defaultView: "all",
   filters: {},
-  sorts: { joined: { asc: "joined_asc", desc: "joined_desc" } },
+  sorts: {
+    joined: { asc: "joined_asc", desc: "joined_desc" },
+    name: { asc: "name_asc", desc: "name_desc" },
+  },
   defaultSort: "joined_desc",
   panelParam: "client",
   searchMaxLength: ADMIN_WORK_LIST_SEARCH_MAX_LENGTH,
@@ -40,8 +43,11 @@ export const staffList = defineWorkList({
   ],
   defaultView: "all",
   filters: { role: { anyOf: GRANTABLE_STAFF_ROLES } },
-  sorts: { added: { asc: "added_asc", desc: "added_desc" } },
-  defaultSort: "added_desc",
+  sorts: {
+    name: { asc: "name_asc", desc: "name_desc" },
+    added: { asc: "added_asc", desc: "added_desc" },
+  },
+  defaultSort: "name_asc",
   panelParam: "staff",
   searchMaxLength: ADMIN_WORK_LIST_SEARCH_MAX_LENGTH,
 });

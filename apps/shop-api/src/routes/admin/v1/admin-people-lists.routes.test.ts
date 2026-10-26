@@ -66,7 +66,7 @@ const LISTS = [
     role: "shop_admin",
     url: "/admin/v1/staff?status=disabled&role=finance,broker&q=sam&sort=added_asc",
     expected: { status: "disabled", role: "finance,broker", q: "sam", sort: "added_asc" },
-    bad: ["status=suspended", "role=owner", "role=finance,,broker", "sort=name_asc"],
+    bad: ["status=suspended", "role=owner", "role=finance,,broker", "sort=joined_asc"],
     wire: (deps: Deps) => {
       const spy = vi.fn(async () => ({ items: [], nextCursor: null, counts: { active: 2 } }));
       deps.admin.adminRead.staff.listStaffMembers = spy;
@@ -106,6 +106,29 @@ describe.each(LISTS)("the $name list", (list) => {
     const { response, spy } = await call(list.role, `${path}?${query}`, list.wire);
     expect(response.statusCode).toBe(400);
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+describe("the name sorts", () => {
+  it.each([
+    ["clients", "/admin/v1/clients?sort=name_asc", "name_asc"],
+    ["clients", "/admin/v1/clients?sort=name_desc", "name_desc"],
+    ["staff", "/admin/v1/staff?sort=name_asc", "name_asc"],
+    ["staff", "/admin/v1/staff?sort=name_desc", "name_desc"],
+  ] as const)("the %s list takes %s", async (name, url, sort) => {
+    const { response, spy } = await call("shop_admin", url, (deps) => {
+      const fn = vi.fn(async () => ({ items: [], nextCursor: null, counts: {} }));
+      if (name === "clients") deps.admin.adminRead.parties.listClientParties = fn;
+      else deps.admin.adminRead.staff.listStaffMembers = fn;
+      return fn;
+    });
+    expect(response.statusCode).toBe(200);
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ sort }));
+  });
+
+  it("refuses a name sort the audit log does not have", async () => {
+    const { response } = await call("finance", "/admin/v1/audit?sort=name_asc", () => undefined);
+    expect(response.statusCode).toBe(400);
   });
 });
 
