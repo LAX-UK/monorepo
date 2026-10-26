@@ -1,10 +1,9 @@
 "use client";
 
-import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
-import type { ButtonProps } from "@auction/ui/components/button";
-import { useRef } from "react";
+import { ConfirmActionDialog, StaffButton, type StaffButtonProps } from "@auction/staff-ui";
+import { useState } from "react";
 
-type Props = Omit<ButtonProps, "onClick" | "type"> & {
+type Props = Omit<StaffButtonProps, "onClick" | "type"> & {
   formId: string;
   confirmTitle: string;
   confirmBody: string;
@@ -12,36 +11,36 @@ type Props = Omit<ButtonProps, "onClick" | "type"> & {
   tone?: "danger" | "warning" | "info";
 };
 
-/** Opens confirm dialog, then submits the target form by id. */
+/** Asks first, then submits the target form by id. */
 export function ConfirmFormSubmit({
   formId,
   confirmTitle,
   confirmBody,
-  confirmLabel,
-  tone,
+  confirmLabel = "Confirm",
+  tone = "danger",
   children,
   ...buttonProps
 }: Props) {
-  const submitted = useRef(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <ConfirmActionButton
-      {...buttonProps}
-      confirmTitle={confirmTitle}
-      confirmBody={confirmBody}
-      {...(confirmLabel ? { confirmLabel } : {})}
-      {...(tone ? { tone } : {})}
-      onConfirmed={() => {
-        if (submitted.current) return;
-        submitted.current = true;
-        const form = document.getElementById(formId);
-        if (form instanceof HTMLFormElement) {
-          form.requestSubmit();
-        }
-        submitted.current = false;
-      }}
-    >
-      {children}
-    </ConfirmActionButton>
+    <>
+      <StaffButton {...buttonProps} onClick={() => setOpen(true)}>
+        {children}
+      </StaffButton>
+      <ConfirmActionDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={confirmTitle}
+        description={confirmBody}
+        confirmLabel={confirmLabel}
+        tone={tone === "danger" ? "danger" : "default"}
+        onConfirm={() => {
+          setOpen(false);
+          const form = document.getElementById(formId);
+          if (form instanceof HTMLFormElement) form.requestSubmit();
+        }}
+      />
+    </>
   );
 }

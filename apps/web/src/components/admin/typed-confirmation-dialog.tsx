@@ -1,18 +1,7 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@auction/ui/components/dialog";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import { Textarea } from "@auction/ui/components/textarea";
-import { useEffect, useId, useState } from "react";
+import { ConfirmActionDialog, Notice } from "@auction/staff-ui";
+import { useEffect, useState } from "react";
 
 export type TypedConfirmationSeverity = "warning" | "danger";
 
@@ -31,13 +20,14 @@ export type TypedConfirmationDialogProps = {
   severity?: TypedConfirmationSeverity;
   /**
    * Asks for a written reason as well as the phrase. It is passed to `onConfirm`, and confirming
-   * stays disabled until it has at least `minLength` characters.
+   * is refused until it has at least `minLength` characters.
    */
   reason?: { label: string; minLength: number; maxLength?: number };
+  /** A rejection keeps the dialog open and shows its message. */
   onConfirm: (reason: string) => void | Promise<void>;
 };
 
-/** shadcn-compatible destructive confirmation: submit disabled until exact phrase match. */
+/** A confirmation where the person types an exact phrase before the action is allowed. */
 export function TypedConfirmationDialog({
   open,
   onOpenChange,
@@ -51,99 +41,73 @@ export function TypedConfirmationDialog({
   reason,
   onConfirm,
 }: TypedConfirmationDialogProps) {
-  const inputId = useId();
-  const reasonId = useId();
-  const [value, setValue] = useState("");
-  const [reasonText, setReasonText] = useState("");
   const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) {
-      setValue("");
-      setReasonText("");
-    }
+    if (!open) setFailure(null);
   }, [open]);
 
-  const reasonOk = !reason || reasonText.trim().length >= reason.minLength;
-  const matches = value === confirmationPhrase && reasonOk;
-  const confirmVariant = severity === "warning" ? "secondary" : "destructive";
-
-  async function handleConfirm() {
-    if (!matches || pending) return;
+  async function handleConfirm({ reason: reasonText }: { reason: string }) {
+    if (pending) return;
     setPending(true);
+    setFailure(null);
     try {
-      await onConfirm(reasonText.trim());
+      await onConfirm(reasonText);
       onOpenChange(false);
-    } catch {
-      // Caller surfaces errors (e.g. toast); keep dialog open for retry.
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : "That did not go through.");
     } finally {
       setPending(false);
     }
   }
 
+  const hasBody = (changeSummary && changeSummary.length > 0) || relatedEntities || failure;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
-        {changeSummary && changeSummary.length > 0 ? (
-          <ul className="list-disc space-y-1 pl-5 font-body text-sm text-on-surface-variant">
-            {changeSummary.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        ) : null}
-        {relatedEntities ? (
-          <p className="rounded-md border border-warning/30 bg-warning-container/40 px-3 py-2 font-body text-sm text-on-surface">
-            This will affect {relatedEntities.count} {relatedEntities.label}
-            {relatedEntities.count === 1 ? "" : "s"}.
-          </p>
-        ) : null}
-        {reason ? (
-          <div className="space-y-2">
-            <Label htmlFor={reasonId}>{reason.label}</Label>
-            <Textarea
-              id={reasonId}
-              value={reasonText}
-              onChange={(e) => setReasonText(e.target.value)}
-              maxLength={reason.maxLength ?? 500}
-              rows={3}
-              aria-describedby={`${reasonId}-hint`}
-            />
-            <p id={`${reasonId}-hint`} className="font-body text-xs text-on-surface-variant">
-              At least {reason.minLength} characters. It is kept in the audit log.
-            </p>
-          </div>
-        ) : null}
-        <div className="space-y-2">
-          <Label htmlFor={inputId}>
-            Type <span className="font-mono text-on-surface">{confirmationPhrase}</span> to confirm
-          </Label>
-          <Input
-            id={inputId}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            aria-invalid={value.length > 0 && value !== confirmationPhrase}
-          />
+    <ConfirmActionDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description ?? ""}
+      confirmLabel={actionLabel}
+      tone={severity === "danger" ? "danger" : "default"}
+      loading={pending}
+      typedConfirmation={confirmationPhrase}
+      {...(reason
+        ? {
+            reason: {
+              label: reason.label,
+              minLength: reason.minLength,
+              ...(reason.maxLength ? { maxLength: reason.maxLength } : {}),
+              description: `At least ${reason.minLength} characters. It is kept in the audit log.`,
+            },
+          }
+        : {})}
+      onConfirm={handleConfirm}
+    >
+      {hasBody ? (
+        <div className="flex flex-col gap-3">
+          {changeSummary && changeSummary.length > 0 ? (
+            <ul className="list-disc space-y-1 pl-5 text-staff-sm text-staff-muted">
+              {changeSummary.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
+          {relatedEntities ? (
+            <Notice tone="warning" title="Other records are affected">
+              This will affect {relatedEntities.count} {relatedEntities.label}
+              {relatedEntities.count === 1 ? "" : "s"}.
+            </Notice>
+          ) : null}
+          {failure ? (
+            <Notice tone="danger" alert title="That did not go through">
+              {failure}
+            </Notice>
+          ) : null}
         </div>
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant={confirmVariant}
-            disabled={!matches || pending}
-            onClick={() => void handleConfirm()}
-          >
-            {actionLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      ) : null}
+    </ConfirmActionDialog>
   );
 }
