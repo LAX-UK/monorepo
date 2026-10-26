@@ -1,13 +1,12 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminCategoriesLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Categories"
-      description="Loading categories…"
-      kpiTiles={3}
-      tableRows={8}
-      tableColumns={7}
+      description="The taxonomy behind sales, lots and submissions. Archive a category in use instead of deleting it."
+      columns={["Category", "Status", "Lots", "Sales", "Submissions", "Updated"]}
+      metrics={3}
     />
   );
 }
