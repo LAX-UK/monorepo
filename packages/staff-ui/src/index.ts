@@ -196,6 +196,9 @@ export {
   staffCellLinkClass,
 } from "./data/cells.js";
 
+export { RelatedRecordsSection } from "./data/related-records-section.js";
+export type { RelatedRecordsSectionProps } from "./data/related-records-section.js";
+
 // Page templates
 export { ListPage } from "./templates/list-page.js";
 export type { ListPageAccess, ListPageProps, ListPageTable } from "./templates/list-page.js";

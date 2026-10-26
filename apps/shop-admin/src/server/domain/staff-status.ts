@@ -29,7 +29,9 @@ export type LaxStatusDomain =
   | "merchandise"
   | "editorial"
   | "help"
-  | "enquiry";
+  | "enquiry"
+  | "staffAccess"
+  | "custody";
 
 const ORDER = Object.fromEntries(
   Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => [
@@ -137,6 +139,21 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
   help: {
     draft: { label: "Draft", tone: "info" },
     published: { label: "Published", tone: "success" },
+  },
+  staffAccess: {
+    active: { label: "Active", tone: "success" },
+    disabled: { label: "Access removed", tone: "neutral" },
+  },
+  custody: {
+    unprinted: { label: "Not printed yet", tone: "neutral" },
+    in_production: { label: "In production", tone: "info" },
+    qc_failed: { label: "Failed quality check", tone: "danger" },
+    stored: { label: "In LAX storage", tone: "neutral" },
+    in_transit: { label: "In transit", tone: "info" },
+    delivered: { label: "Delivered", tone: "success" },
+    collected: { label: "Collected", tone: "success" },
+    with_owner: { label: "With the owner", tone: "success" },
+    returned: { label: "Returned", tone: "neutral" },
   },
   enquiry: {
     new: { label: "New", tone: "warning" },

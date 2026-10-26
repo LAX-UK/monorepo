@@ -1,9 +1,7 @@
 import type { Database } from "@auction/db";
 import {
-  shopAdminAudit,
   shopArtist,
   shopArtwork,
-  shopClientAssignment,
   shopFulfilment,
   shopOrder,
   shopParty,
@@ -11,7 +9,6 @@ import {
   shopProduct,
   shopProductVariant,
   shopSaleAuthorityRequest,
-  shopStaffMember,
   shopStockHold,
   shopUserProfile,
 } from "@auction/db/schema";
@@ -30,7 +27,6 @@ import {
   isNotNull,
   isNull,
   lt,
-  max,
   or,
   sql,
 } from "drizzle-orm";
@@ -53,6 +49,7 @@ import {
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
 import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js";
+import { createDrizzleAdminPeopleListsReader } from "./drizzle-admin-people-lists.reader.js";
 import { createDrizzleAdminWorkListsReader } from "./drizzle-admin-work-lists.reader.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { escapeLikePattern } from "./escape-like-pattern.js";
@@ -139,6 +136,7 @@ export function createDrizzleAdminReadRepository(
 ): AdminReadPorts {
   const detail = createDrizzleAdminDetailReaders(db);
   const workLists = createDrizzleAdminWorkListsReader(db);
+  const peopleLists = createDrizzleAdminPeopleListsReader(db);
   return {
     artworks: createDrizzleAdminArtworkReader(db, options),
     orders: {
@@ -210,40 +208,7 @@ export function createDrizzleAdminReadRepository(
       listOriginalSales: workLists.listOriginalSales,
     },
     parties: {
-      async listClientParties(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const brokerSubjectId = input.brokerSubjectId?.trim();
-        const rows = await db
-          .select()
-          .from(shopParty)
-          .where(
-            and(
-              inArray(shopParty.kind, ["person", "gallery"]),
-              brokerSubjectId
-                ? inArray(
-                    shopParty.id,
-                    db
-                      .select({ id: shopClientAssignment.clientPartyId })
-                      .from(shopClientAssignment)
-                      .where(eq(shopClientAssignment.brokerSubjectId, brokerSubjectId)),
-                  )
-                : undefined,
-              cursor
-                ? keysetBeforeCreatedAtId(shopParty.createdAt, shopParty.id, cursor)
-                : undefined,
-            ),
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopParty.createdAt, shopParty.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(rows, limit, (row) => ({
-          partyId: row.id,
-          displayName: row.displayName,
-          kind: row.kind,
-          identitySubjectId: row.identitySubjectId,
-          createdAt: row.createdAt.toISOString(),
-        }));
-      },
+      listClientParties: peopleLists.listClientParties,
       async listArtists(input) {
         const limit = resolveLimit(input.limit);
         const sort = input.sort ?? "name_asc";
@@ -362,59 +327,7 @@ export function createDrizzleAdminReadRepository(
         };
       },
     },
-    staff: {
-      async listStaffMembers(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        // Name and email come from the person's shop profile; "last active" is their latest
-        // admin action, the only activity this service records for staff.
-        const lastActiveAt = db
-          .select({
-            actorSubjectId: shopAdminAudit.actorSubjectId,
-            lastActiveAt: max(shopAdminAudit.createdAt).as("last_active_at"),
-          })
-          .from(shopAdminAudit)
-          .groupBy(shopAdminAudit.actorSubjectId)
-          .as("staff_last_active");
-        const rows = await db
-          .select({
-            member: shopStaffMember,
-            displayName: shopUserProfile.name,
-            email: shopUserProfile.email,
-            lastActiveAt: lastActiveAt.lastActiveAt,
-          })
-          .from(shopStaffMember)
-          .leftJoin(
-            shopUserProfile,
-            eq(shopUserProfile.identitySubjectId, shopStaffMember.identitySubjectId),
-          )
-          .leftJoin(
-            lastActiveAt,
-            eq(lastActiveAt.actorSubjectId, shopStaffMember.identitySubjectId),
-          )
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopStaffMember.createdAt, shopStaffMember.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopStaffMember.createdAt, shopStaffMember.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(
-          rows.map((row) => ({ ...row, id: row.member.id, createdAt: row.member.createdAt })),
-          limit,
-          (row) => ({
-            staffMemberId: row.member.id,
-            identitySubjectId: row.member.identitySubjectId,
-            displayName: row.displayName?.trim() || null,
-            email: row.email?.trim() || null,
-            lastActiveAt: row.lastActiveAt ? new Date(row.lastActiveAt).toISOString() : null,
-            role: row.member.role,
-            disabledAt: row.member.disabledAt?.toISOString() ?? null,
-            createdAt: row.member.createdAt.toISOString(),
-          }),
-        );
-      },
-    },
+    staff: { listStaffMembers: peopleLists.listStaffMembers },
     catalogue: {
       async listMerchandiseProducts(input) {
         const limit = resolveLimit(input.limit);
@@ -585,29 +498,8 @@ export function createDrizzleAdminReadRepository(
     },
     lookups: createDrizzleAdminLookupReader(db),
     compliance: {
-      async listAuditEntries(input) {
-        const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const rows = await db
-          .select()
-          .from(shopAdminAudit)
-          .where(
-            cursor
-              ? keysetBeforeCreatedAtId(shopAdminAudit.createdAt, shopAdminAudit.id, cursor)
-              : undefined,
-          )
-          .orderBy(...orderByMsTimestampIdDesc(shopAdminAudit.createdAt, shopAdminAudit.id))
-          .limit(limit + 1);
-        return paginateByCreatedAtId(rows, limit, (row) => ({
-          auditId: row.id,
-          actorSubjectId: row.actorSubjectId,
-          capability: row.capability,
-          action: row.action,
-          targetType: row.targetType,
-          targetId: row.targetId,
-          createdAt: row.createdAt.toISOString(),
-        }));
-      },
+      listAuditEntries: peopleLists.listAuditEntries,
+      readAuditFacets: peopleLists.readAuditFacets,
       listDisputes: workLists.listDisputes,
       async readEffectiveSettings() {
         const cancellation = env ? loadShopCancellationPolicy(env as ShopApiEnv) : null;

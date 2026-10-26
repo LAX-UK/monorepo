@@ -251,11 +251,13 @@ describe.skipIf(!hasShopIntegrationDb)("shop audit remediation integration", () 
       const results = await Promise.allSettled([
         revokeStaff({
           subject: adminA,
+          reason: "Leaving the team",
           operatorSubjectId: operator,
           idempotencyKey: `revoke-a-${suffix}`,
         }),
         revokeStaff({
           subject: adminB,
+          reason: "Leaving the team",
           operatorSubjectId: operator,
           idempotencyKey: `revoke-b-${suffix}`,
         }),

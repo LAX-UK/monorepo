@@ -106,6 +106,8 @@ export async function revokeShopStaffRoleInTx(
   input: {
     subject: string;
     operatorSubjectId: string;
+    /** Why the access is removed, kept in the audit log; staff tools always give one. */
+    reason?: string;
   },
 ): Promise<void> {
   const existing = await tx
@@ -151,6 +153,7 @@ export async function revokeShopStaffRoleInTx(
       identitySubjectId: input.subject,
       role: existing[0].role,
       disabledAt: disabledAt.toISOString(),
+      ...(input.reason ? { reason: input.reason } : {}),
     },
   });
 }

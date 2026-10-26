@@ -13,6 +13,8 @@ export type GrantStaffRoleCommand = {
 
 export type RevokeStaffRoleCommand = {
   subject: string;
+  /** Why the access is removed; kept in the audit log. */
+  reason: string;
   operatorSubjectId: string;
   idempotencyKey: string;
 };
@@ -59,6 +61,7 @@ export function createRevokeStaffRoleHandler(deps: {
         run: () =>
           revokeShopStaffRoleInTx(shopPhaseDbSession(tx), {
             subject: command.subject,
+            reason: command.reason,
             operatorSubjectId: command.operatorSubjectId,
           }),
       }),

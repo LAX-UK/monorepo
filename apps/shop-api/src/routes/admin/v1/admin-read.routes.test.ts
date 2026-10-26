@@ -189,7 +189,7 @@ describe("GET /admin/v1/clients follows the client list scope the nav uses", () 
 
   async function listClients(role: ShopStaffRole) {
     const deps = mockAdminAuth(`${role}-subject`, role);
-    const listClientParties = vi.fn(async () => ({ items: [], nextCursor: null }));
+    const listClientParties = vi.fn(async () => ({ items: [], nextCursor: null, counts: {} }));
     deps.admin.adminRead.parties.listClientParties = listClientParties;
     const app = createShopApiApp({ deps, logger: false });
     await app.ready();

@@ -167,8 +167,19 @@ describe("granting sale authority", () => {
     });
     fireEvent.click(within(dialog()).getByRole("button", { name: "Authorise 1 edition" }));
 
-    expect(
-      await within(dialog()).findByRole("link", { name: "Sign in again" }),
-    ).toBeInTheDocument();
+    const stepUp = await screen.findByRole("dialog", { name: "Confirm it’s you" });
+    expect(stepUp).toHaveTextContent("To grant sale authority, sign in again.");
+    expect(within(stepUp).getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
+  });
+
+  it("says in plain words what the grant will allow before it is sent", async () => {
+    renderDialog();
+    fireEvent.click(await pickArtwork(/Vessel Study/));
+    fireEvent.click(
+      within(screen.getByRole("listbox")).getByRole("option", { name: /^3 editions/ }),
+    );
+    expect(within(dialog()).getByRole("status")).toHaveTextContent(
+      "Ada Lovelace may list up to 3 editions of Vessel Study for sale through LAX.",
+    );
   });
 });

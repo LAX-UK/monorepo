@@ -25,6 +25,7 @@ import type {
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { notFound } from "../errors/shop-api-error.js";
+import { readClientCommerce } from "./admin-client-commerce.js";
 import { artworkStateSql } from "./artwork-visibility-sql.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
 
@@ -156,6 +157,8 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         .orderBy(desc(shopPayoutLedger.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
 
+      const commerce = await readClientCommerce(db, party);
+
       return {
         party: {
           partyId: party.id,
@@ -163,7 +166,12 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           kind: party.kind,
           identitySubjectId: party.identitySubjectId,
           createdAt: party.createdAt.toISOString(),
+          email: commerce.email,
         },
+        orders: commerce.orders,
+        orderCount: commerce.orderCount,
+        enquiries: commerce.enquiries,
+        paidToDatePence: commerce.paidToDatePence,
         editions: editions.map((row) => ({
           editionId: row.editionId,
           artworkId: row.artworkId,

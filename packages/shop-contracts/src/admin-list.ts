@@ -193,9 +193,17 @@ export const AdminPartyListItemSchema = Type.Object({
   kind: Type.String(),
   identitySubjectId: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
+  /* The rest is optional so the admin parses responses from an older shop-api. */
+  /** From the client's LAX profile; null for a client without one. */
+  email: Type.Optional(NullableString),
+  /** Editions they own now. */
+  editionCount: Type.Optional(Type.Integer({ minimum: 0 })),
+  /** Shop orders they have paid for. */
+  paidOrderCount: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 
-export const AdminPartyListSchema = createCursorListResponseSchema(AdminPartyListItemSchema);
+/** Counts are per client kind, under the search but not the kind. */
+export const AdminPartyListSchema = workListSchema(AdminPartyListItemSchema);
 
 export const AdminArtistListItemSchema = Type.Object({
   artistId: Type.String({ format: "uuid" }),
@@ -236,9 +244,8 @@ export const AdminStaffMemberListItemSchema = Type.Object({
   createdAt: Type.String(),
 });
 
-export const AdminStaffMemberListSchema = createCursorListResponseSchema(
-  AdminStaffMemberListItemSchema,
-);
+/** Counts are per status (active, disabled), under the search and role but not the status. */
+export const AdminStaffMemberListSchema = workListSchema(AdminStaffMemberListItemSchema);
 export type AdminStaffMemberList = Static<typeof AdminStaffMemberListSchema>;
 
 /** Each figure is present only when the caller's role may open the list it counts. */

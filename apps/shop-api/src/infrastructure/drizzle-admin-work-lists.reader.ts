@@ -61,12 +61,12 @@ import { containsPattern } from "./drizzle-editorial-search.reader.js";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-function resolveLimit(limit: number | undefined): number {
+export function resolveWorkListLimit(limit: number | undefined): number {
   return Math.min(Math.max(limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
 }
 
 /** "created_desc" → the column key and direction; anything unknown reads as `fallback`. */
-function parseSort<K extends string>(
+export function parseSort<K extends string>(
   sort: string | undefined,
   fallback: `${K}_${KeysetDirection}`,
 ): { key: K; direction: KeysetDirection } {
@@ -79,7 +79,7 @@ function parseSort<K extends string>(
 }
 
 /** A search term: `contains` matches anywhere, `prefix` the start (for ids staff quote). */
-function searchPatterns(q: string | undefined): { contains: string; prefix: string } | null {
+export function searchPatterns(q: string | undefined): { contains: string; prefix: string } | null {
   const trimmed = q?.trim().replace(/^#/, "");
   if (!trimmed) return null;
   const contains = containsPattern(trimmed);
@@ -94,12 +94,14 @@ function idPrefix(column: AnyPgColumn, pattern: string): SQL {
   return sql`${column}::text ILIKE ${pattern}`;
 }
 
-function countsOf(rows: readonly { status: string; total: number }[]): Record<string, number> {
+export function countsOf(
+  rows: readonly { status: string; total: number }[],
+): Record<string, number> {
   return Object.fromEntries(rows.map((row) => [row.status, Number(row.total)]));
 }
 
 /** The first `limit` rows and the cursor for the rest (the sort column and the id). */
-function pageOf<T, R>(
+export function pageOf<T, R>(
   rows: readonly T[],
   limit: number,
   keyOf: (row: T) => CatalogueCursor,
@@ -132,7 +134,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listFulfilment(
       input: AdminFulfilmentListQuery,
     ): Promise<WorkListResult<AdminFulfilmentListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { direction } = parseSort<"updated">(input.sort, "updated_desc");
       const search = searchPatterns(input.q);
@@ -216,7 +218,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     },
 
     async listPayouts(input: AdminPayoutListQuery): Promise<WorkListResult<AdminPayoutListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { key, direction } = parseSort<"due" | "created">(input.sort, "due_asc");
       const sortColumn =
@@ -283,7 +285,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listStockHolds(
       input: StockHoldListInput,
     ): Promise<WorkListResult<AdminStockHoldListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { key, direction } = parseSort<"created" | "expires">(input.sort, "created_desc");
       const sortColumn = key === "expires" ? shopStockHold.expiresAt : shopStockHold.createdAt;
@@ -373,7 +375,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listThirdPartySales(
       input: AdminThirdPartySaleListQuery,
     ): Promise<WorkListResult<AdminThirdPartySaleListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { direction } = parseSort<"created">(input.sort, "created_desc");
       const search = searchPatterns(input.q);
@@ -488,7 +490,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listOriginalSales(
       input: AdminOriginalSaleListQuery,
     ): Promise<WorkListResult<AdminOriginalSaleListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { direction } = parseSort<"created">(input.sort, "created_desc");
       const search = searchPatterns(input.q);
@@ -565,7 +567,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listRequests(
       input: AdminSaleAuthorityRequestListQuery,
     ): Promise<WorkListResult<AdminSaleAuthorityRequestListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { direction } = parseSort<"created">(input.sort, "created_desc");
       const search = searchPatterns(input.q);
@@ -643,7 +645,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
     async listDisputes(
       input: AdminDisputeListQuery,
     ): Promise<WorkListResult<AdminDisputeListItem>> {
-      const limit = resolveLimit(input.limit);
+      const limit = resolveWorkListLimit(input.limit);
       const cursor = decodeCatalogueCursor(input.cursor);
       const { direction } = parseSort<"opened">(input.sort, "opened_desc");
       const search = searchPatterns(input.q);

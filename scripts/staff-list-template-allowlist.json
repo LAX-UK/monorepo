@@ -18,9 +18,5 @@
     { "page": "lax-admin:editorial/home/page.tsx", "reason": "Home placements editor" },
     { "page": "lax-admin:settings/page.tsx", "reason": "Settings" }
   ],
-  "pending": [
-    { "page": "lax-admin:audit/page.tsx" },
-    { "page": "lax-admin:clients/page.tsx" },
-    { "page": "lax-admin:staff/page.tsx" }
-  ]
+  "pending": []
 }
