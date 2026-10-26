@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("Artworks catalogue filters @a11y", () => {
   test("exposes sticky toolbar, sort, and desktop filter rail", async ({ page }, testInfo) => {
     await page.goto("/artworks");
-    await expect(page.getByRole("heading", { name: "Artworks", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Editions", level: 1 })).toBeVisible();
     await expect(page.getByLabel("Sort artworks")).toBeVisible();
     if (testInfo.project.name === "chromium-desktop") {
       await expect(page.getByRole("complementary", { name: "Filters" })).toBeVisible();

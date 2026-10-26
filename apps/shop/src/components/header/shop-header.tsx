@@ -1,15 +1,17 @@
 import { ShopHeaderClient } from "@/components/header/shop-header.client";
 import { loadShopProductDirectoryLinks } from "@/lib/ecosystem/product-directory.server";
 import { loadShopAccountChromeState } from "@/lib/ecosystem/shop-account-chrome.server";
+import { loadShopHeaderNav } from "@/lib/ecosystem/shop-header-nav.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
 import { isShopMerchandiseEnabled } from "@/lib/shop-runtime-flags";
 
 /** Server composition root — session + product directory VMs, client island for mobile nav. */
 export async function ShopHeader() {
-  const [account, productLinks, basket] = await Promise.all([
+  const [account, productLinks, basket, navData] = await Promise.all([
     loadShopAccountChromeState(),
     Promise.resolve(loadShopProductDirectoryLinks()),
     fetchShopBasket(),
+    loadShopHeaderNav(),
   ]);
   const basketCount =
     basket.status === "ok"
@@ -22,6 +24,7 @@ export async function ShopHeader() {
       productLinks={productLinks}
       basketCount={basketCount}
       merchandiseEnabled={isShopMerchandiseEnabled()}
+      navData={navData}
     />
   );
 }

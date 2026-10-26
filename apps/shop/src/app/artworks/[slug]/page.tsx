@@ -120,7 +120,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
           suppressTitle: true,
           breadcrumbs: [
             { label: "Shop", href: "/" },
-            { label: "Artworks", href: "/artworks" },
+            { label: "Editions", href: "/artworks" },
             { label: vm.title },
           ],
         }}

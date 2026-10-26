@@ -12,17 +12,17 @@ describe("buildShopLegalMenu", () => {
     });
     expect(menu.map((link) => [link.label, link.href])).toEqual([
       ["Help and contact", "/help"],
-      ["Legal & Policies", "https://art.example/legal"],
-      ["Terms of Sale", "/terms"],
-      ["Returns & Cancellation", "/returns"],
-      ["Shipping & Delivery", "/delivery"],
-      ["Privacy Notice", "/privacy"],
-      ["Cookie Preferences", "/cookies"],
-      ["Complaints & ADR", "https://art.example/legal/complaints"],
+      ["Legal and policies", "https://art.example/legal"],
+      ["Terms of sale", "/terms"],
+      ["Returns and cancellation", "/returns"],
+      ["Shipping and delivery", "/delivery"],
+      ["Privacy notice", "/privacy"],
+      ["Cookie notice", "/cookies"],
+      ["Complaints and ADR", "https://art.example/legal/complaints"],
       ["Accessibility", "https://art.example/legal/accessibility"],
-      ["AML & Identity", "https://art.example/legal/aml-identity-checks"],
-      ["Reviews Policy", "https://art.example/legal/reviews"],
-      ["Ethical Sourcing", "https://art.example/legal/ethical-sourcing"],
+      ["AML and identity checks", "https://art.example/legal/aml-identity-checks"],
+      ["Reviews policy", "https://art.example/legal/reviews"],
+      ["Ethical sourcing", "https://art.example/legal/ethical-sourcing"],
     ]);
     expect(menu.filter((link) => link.current).map((link) => link.href)).toEqual(["/delivery"]);
   });

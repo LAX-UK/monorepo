@@ -60,10 +60,10 @@ describe("Shop policy pages", () => {
       "156 New Cavendish St, London W1W 6YW",
       "[Your orders](/account/orders)",
       "[LAX Account](https://account.example/account)",
-      "[Shipping & Delivery](/delivery)",
-      "[Returns & Cancellation](/returns)",
-      "[Terms of Sale](/terms)",
-      "[Complaints & ADR](https://art.example/legal/complaints)",
+      "[Shipping and delivery](/delivery)",
+      "[Returns and cancellation](/returns)",
+      "[Terms of sale](/terms)",
+      "[Complaints and ADR](https://art.example/legal/complaints)",
     ]) {
       expect(text).toContain(detail);
     }

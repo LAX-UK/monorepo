@@ -87,7 +87,7 @@ export function artworkProductJsonLd(artwork: PublicArtworkDetail, siteUrl: URL)
     }),
     breadcrumbJsonLd(siteUrl.origin, [
       { name: "Shop", path: "/" },
-      { name: "Artworks", path: "/artworks" },
+      { name: "Editions", path: "/artworks" },
       { name: artwork.title, path },
     ]),
   ];

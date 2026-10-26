@@ -15,4 +15,9 @@ describe("LaxLogo", () => {
     expect(container.firstElementChild?.className).toContain("lax-logo");
     expect(container.firstElementChild?.className).toContain("art-header__logo");
   });
+
+  it("draws a product's own lockup when asked", () => {
+    render(<LaxLogo kind="shop" />);
+    expect(screen.getByRole("img", { name: "LAX Shop" })).toBeTruthy();
+  });
 });

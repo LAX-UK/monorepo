@@ -27,6 +27,8 @@ export type MarketingStatusStateProps = {
   motifSlot?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
+  /** A control between the description and the actions, such as a search field (not on banners). */
+  control?: ReactNode;
   actions?: ReactNode;
   titleAs?: "h1" | "h2" | "h3" | "p";
   announcement?: MarketingStatusStateAnnouncement;
@@ -84,6 +86,7 @@ export function MarketingStatusState({
   motifSlot,
   title,
   description,
+  control,
   actions,
   titleAs = "h2",
   announcement = "none",
@@ -140,6 +143,7 @@ export function MarketingStatusState({
       {description ? (
         <div className="marketing-status-state__description">{description}</div>
       ) : null}
+      {control ? <div className="marketing-status-state__control">{control}</div> : null}
       {actions ? <div className="marketing-status-state__actions">{actions}</div> : null}
     </div>
   );

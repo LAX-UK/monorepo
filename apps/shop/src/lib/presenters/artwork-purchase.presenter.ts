@@ -9,6 +9,8 @@ export type ArtworkPurchaseVm = {
   vatNote: string;
   /** "Limited edition of 24", never a remaining count. */
   editionSize: string;
+  /** "Edition of 24", for the phone buy bar where space is short. */
+  editionShort: string;
   availability: "available" | "sold_out";
   availabilityLabel: string;
   deliveryLine: string;
@@ -45,6 +47,10 @@ export function presentArtworkPurchase(artwork: PublicArtworkDetail): ArtworkPur
     priceLabel: formatGbpPence(artwork.printPricePence),
     vatNote: "Includes VAT",
     editionSize: editionSizeLabel(artwork),
+    editionShort:
+      artwork.availability.totalEditions > 0
+        ? `Edition of ${artwork.availability.totalEditions}`
+        : "Limited edition",
     availability: soldOut ? "sold_out" : "available",
     availabilityLabel: soldOut ? "Sold out" : "Available",
     deliveryLine: shopDeliveryLine(),

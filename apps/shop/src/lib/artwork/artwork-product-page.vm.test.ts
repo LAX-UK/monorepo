@@ -94,6 +94,7 @@ describe("product page view model", () => {
       priceLabel: "£120.00",
       vatNote: "Includes VAT",
       editionSize: "Limited edition of 24",
+      editionShort: "Edition of 24",
       availabilityLabel: "Available",
     });
     expect(vm.included[0]).toBe("Certificate of authenticity");

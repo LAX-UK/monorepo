@@ -12,6 +12,40 @@
   width: clamp(8rem, 20vw, 12rem);
 }
 
+/* Search form on the not-found page: a labelled field and a secondary button on one row. */
+.shop-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+  width: 100%;
+}
+
+.shop-search-form__label {
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+}
+
+.shop-search-form__row {
+  display: flex;
+  gap: var(--shop-space-2);
+}
+
+.shop-search-form__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.shop-search-form__submit {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--shop-control-height);
+  cursor: pointer;
+}
+
 /* Route loading skeletons */
 .shop-skeleton {
   display: flex;
@@ -22,7 +56,7 @@
 
 .shop-skeleton__bar {
   display: block;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-control);
   background: var(--color-surface-container-high);
   animation: shop-skeleton-pulse 1.4s ease-in-out infinite;
 }

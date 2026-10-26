@@ -42,4 +42,25 @@ describe("MarketingStatusState", () => {
     );
     expect(container.querySelector('svg[data-illustration="askew"]')).not.toBeNull();
   });
+
+  it("places extra content, such as a search field, between the description and the actions", () => {
+    const { container } = render(
+      <MarketingStatusState
+        layout="page"
+        title="We can’t find that page"
+        description="Search, or start from one of these."
+        control={<input aria-label="Search editions and artists" />}
+        actions={<a href="/artworks">Browse editions</a>}
+      />,
+    );
+    const order = [...container.querySelectorAll(".marketing-status-state > *")].map(
+      (node) => node.className,
+    );
+    expect(order.slice(-3)).toEqual([
+      "marketing-status-state__description",
+      "marketing-status-state__control",
+      "marketing-status-state__actions",
+    ]);
+    expect(screen.getByRole("textbox", { name: "Search editions and artists" })).toBeVisible();
+  });
 });

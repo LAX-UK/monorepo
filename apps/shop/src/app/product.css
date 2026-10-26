@@ -7,7 +7,7 @@
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.25em;
-  border-radius: 2px;
+  border-radius: var(--radius-control);
 }
 
 .shop-inline-link:hover {
@@ -377,7 +377,18 @@
   font-variant-numeric: tabular-nums;
 }
 
+.shop-buy-bar__amount,
+.shop-buy-bar__edition {
+  white-space: nowrap;
+}
+
 .shop-buy-bar__vat {
+  font-size: var(--shop-text-xs);
+  font-weight: 400;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-buy-bar__edition {
   font-size: var(--shop-text-xs);
   color: var(--color-on-surface-variant);
 }
@@ -927,7 +938,7 @@
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.25em;
-  border-radius: 2px;
+  border-radius: var(--radius-control);
 }
 
 .shop-product__outbound:hover {

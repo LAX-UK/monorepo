@@ -33,7 +33,7 @@ describe("buildShopFooterVm", () => {
       expect(hrefs).not.toContain(hidden);
     }
     expect(vm.columns.find((column) => column.id === "legal")?.links.map((l) => l.label)).toEqual([
-      "Terms of Sale",
+      "Terms of sale",
     ]);
   });
 
@@ -64,12 +64,12 @@ describe("buildShopFooterVm", () => {
     ]);
     expect(vm.columns[0]?.links.at(-1)).toEqual({ label: "Help and contact", href: "/help" });
     expect(vm.columns[3]?.links).toEqual([
-      { label: "Terms of Sale", href: "/terms" },
-      { label: "Returns & Cancellation", href: "/returns" },
-      { label: "Shipping & Delivery", href: "/delivery" },
-      { label: "Privacy Notice", href: "/privacy" },
-      { label: "Cookie Preferences", href: "/cookies" },
-      { label: "Legal & Policies", href: "https://art.example/legal" },
+      { label: "Terms of sale", href: "/terms" },
+      { label: "Returns and cancellation", href: "/returns" },
+      { label: "Shipping and delivery", href: "/delivery" },
+      { label: "Privacy notice", href: "/privacy" },
+      { label: "Cookie notice", href: "/cookies" },
+      { label: "Legal and policies", href: "https://art.example/legal" },
     ]);
     const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
     expect(hrefs.filter((href) => href.startsWith("https://bid.example/"))).toEqual([

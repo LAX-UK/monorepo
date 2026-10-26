@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ShopHeaderNavData,
   type ShopMegaMenuSection,
   buildShopMegaMenuSections,
 } from "@/components/header/header-nav.config";
@@ -13,6 +14,7 @@ const MEGAMENU_PANEL_ID = "shop-header-megamenu";
 type ShopMegaMenuProps = {
   pathname: string;
   merchandiseEnabled?: boolean;
+  navData?: ShopHeaderNavData | null;
   headerTone?: MarketingHeaderTone;
   megaMenuResetKey?: string;
   onOpenChange?: (open: boolean) => void;
@@ -24,6 +26,7 @@ type ShopMegaMenuProps = {
 export function ShopMegaMenu({
   pathname,
   merchandiseEnabled = false,
+  navData = null,
   headerTone = "on-light",
   megaMenuResetKey,
   onOpenChange,
@@ -31,7 +34,7 @@ export function ShopMegaMenu({
   leading,
   trailing,
 }: ShopMegaMenuProps) {
-  const sections: ShopMegaMenuSection[] = buildShopMegaMenuSections(merchandiseEnabled);
+  const sections: ShopMegaMenuSection[] = buildShopMegaMenuSections(merchandiseEnabled, navData);
   return (
     <MarketingHeaderMegaNav
       sections={sections}
