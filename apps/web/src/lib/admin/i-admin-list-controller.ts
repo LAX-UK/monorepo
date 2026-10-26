@@ -1,3 +1,4 @@
+import type { AdminPaymentsSummary } from "@/lib/data/http/admin-payments.types";
 import type { AdminDisputeCaseSummary } from "@auction/types";
 
 /**
@@ -23,14 +24,7 @@ export type AdminListResult<TRow> = {
   /** Populated by finance dispute list (full-queue KPI strip). */
   summary?: AdminDisputeCaseSummary | undefined;
   /** Populated by admin payments list (SQL aggregates for the active filter). */
-  paymentsSummary?:
-    | {
-        totalVolume: number;
-        captured: number;
-        pending: number;
-        refunded: number;
-      }
-    | undefined;
+  paymentsSummary?: AdminPaymentsSummary | undefined;
 };
 
 export interface IAdminListController<

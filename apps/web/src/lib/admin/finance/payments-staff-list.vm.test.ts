@@ -6,6 +6,7 @@ import {
   paymentsFilterChips,
   paymentsListHref,
   paymentsMetrics,
+  paymentsMetricsPeriod,
   paymentsRangeSummary,
   paymentsViews,
 } from "./payments-staff-list.vm";
@@ -53,6 +54,40 @@ describe("payments staff list view model", () => {
     expect(paymentsAttention({}, counts, "manual-review").map((item) => item.id)).toEqual([
       "disputes",
     ]);
+  });
+
+  it("gives volume its daily trend and change, and links captured and refunded", () => {
+    const summary = {
+      totalVolume: 900,
+      pending: 50,
+      captured: 800,
+      refunded: 50,
+      volumeTrend: {
+        periodDays: 30,
+        dailyPence: [0, 5000, 7000],
+        currentPence: 12000,
+        priorPence: 15000,
+      },
+    };
+    const metrics = paymentsMetrics(summary, { q: "harbour" });
+    const byId = Object.fromEntries(metrics.map((metric) => [metric.id, metric]));
+    expect(byId.volume?.trend).toEqual([0, 5000, 7000]);
+    expect(byId.volume?.comparison).toEqual({
+      text: "20%",
+      direction: "down",
+      tone: "negative",
+      basis: "vs previous 30 days",
+    });
+    expect(byId.awaiting).toMatchObject({ tone: "attention" });
+    expect(byId.awaiting?.href).toBeUndefined();
+    expect(byId.captured?.href).toBe("/admin/payments?q=harbour&status=captured");
+    expect(byId.refunded?.href).toBe("/admin/payments?q=harbour&status=refunded");
+    expect(paymentsMetricsPeriod(summary, true)).toBe(
+      "Payments matching this view and filters · volume trend over the last 30 days",
+    );
+    expect(paymentsMetricsPeriod({ ...summary, volumeTrend: undefined }, false)).toBe(
+      "All payments",
+    );
   });
 
   it("summarises the matching payments in four full amounts", () => {

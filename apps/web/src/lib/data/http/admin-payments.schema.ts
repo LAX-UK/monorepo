@@ -2,6 +2,7 @@ import { parseAdminPaymentRow, parseAdminPayoutRow } from "@/lib/data/http/admin
 import type {
   AdminPaymentRow,
   AdminPaymentsListPageResult,
+  AdminPaymentsVolumeTrend,
   AdminPayoutRow,
   AdminXeroIntegrationStatus,
 } from "@/lib/data/http/admin-payments.types";
@@ -52,6 +53,19 @@ export const adminPayoutRowsSchema = z.array(
 function parseMoneyStat(value: unknown): number {
   const n = Number.parseFloat(String(value ?? "0"));
   return Number.isFinite(n) ? n : 0;
+}
+
+const volumeTrendSchema = z.object({
+  periodDays: z.number().int().positive(),
+  dailyPence: z.array(z.number().finite()),
+  currentPence: z.number().finite(),
+  priorPence: z.number().finite(),
+});
+
+/** The summary's daily volume, when the API sent a well-formed one; anything else is dropped. */
+function parseVolumeTrend(raw: unknown): { volumeTrend?: AdminPaymentsVolumeTrend } {
+  const parsed = volumeTrendSchema.safeParse(raw);
+  return parsed.success ? { volumeTrend: parsed.data } : {};
 }
 
 const xeroConnectionHealthValues = ["healthy", "degraded", "disconnected"] as const;
@@ -122,6 +136,7 @@ export function parseAdminPaymentsListPageBody(
       captured: parseMoneyStat(summaryRaw.captured),
       pending: parseMoneyStat(summaryRaw.pending),
       refunded: parseMoneyStat(summaryRaw.refunded),
+      ...parseVolumeTrend(summaryRaw.volumeTrend),
     },
   };
 }

@@ -426,6 +426,27 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row?.n ?? 0;
   }
 
+  async sumAdminTableVolumeByDay(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+    rangeStart: Date,
+  ): Promise<Map<string, number>> {
+    const where = and(gte(payment.createdAt, rangeStart), adminTableWhere(filter));
+    const day = sql`date_trunc('day', ${payment.createdAt} AT TIME ZONE 'UTC')`;
+    const rows = await this.db
+      .select({
+        dayKey: sql<string>`to_char(${day}, 'YYYY-MM-DD')`,
+        pence: sql<string>`coalesce(sum(round(${payment.amount}::numeric * 100)), 0)::text`,
+      })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
+      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId))
+      .where(where)
+      .groupBy(day);
+    return new Map(rows.map((row) => [row.dayKey, Number(row.pence)]));
+  }
+
   async summarizeForAdminTable(
     filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
   ): Promise<AdminPaymentsSummaryStats> {

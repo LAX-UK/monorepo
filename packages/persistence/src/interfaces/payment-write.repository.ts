@@ -140,6 +140,14 @@ export interface IPaymentAnalyticsRepository {
   summarizeForAdminTable(
     filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
   ): Promise<AdminPaymentsSummaryStats>;
+  /**
+   * Payment volume per UTC day, in pence, for the payments the admin table filter matches,
+   * created on or after `rangeStart`. Days without payments are absent.
+   */
+  sumAdminTableVolumeByDay(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+    rangeStart: Date,
+  ): Promise<Map<string, number>>;
 }
 
 /** Full payment persistence port — composite of segregated slices (ISP). Name kept for backward compatibility. */
