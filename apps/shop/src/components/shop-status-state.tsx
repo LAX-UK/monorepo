@@ -19,6 +19,8 @@ type ShopStatusStateProps = {
   icon?: ShopStatusStateIcon;
   title: string;
   description: string;
+  /** A control under the description, such as a search field. */
+  control?: ReactNode;
   actions?: ReactNode;
   titleAs?: "h1" | "h2" | "p";
   /** Page-level commerce/account empties; inline for catalogue grids and home rails. */
@@ -72,6 +74,7 @@ export function ShopStatusState({
   icon,
   title,
   description,
+  control,
   actions,
   titleAs = "p",
   layout: layoutProp,
@@ -89,6 +92,7 @@ export function ShopStatusState({
       motif={resolveMotif(variant, icon)}
       title={title}
       description={description}
+      control={control}
       actions={actions}
       titleAs={headingLevel}
       announcement={announcement}
