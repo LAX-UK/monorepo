@@ -18,7 +18,7 @@ import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import { deriveReserveStatus } from "@auction/domain";
 import { EnumSelect, Field, Notice, StaffButton, StatusBadge, TextInput } from "@auction/staff-ui";
 import type { Lot } from "@auction/types";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 type Props = {
   saleId: string;
@@ -31,6 +31,8 @@ type Props = {
   sessionLive?: boolean;
   sessionStatus?: PublicSaleroomSessionStatus["status"];
   betweenLots?: boolean;
+  /** The lot actions (advance, hammer, pass), docked under the bid form. */
+  renderDock?: (state: { hammerPrimary: boolean }) => ReactNode;
 };
 
 const INCREMENT_MULTIPLIERS = [1, 2, 5] as const;
@@ -100,6 +102,7 @@ export function LotOnBlockPanel({
   sessionLive = false,
   sessionStatus,
   betweenLots = false,
+  renderDock,
 }: Props) {
   const paddleInputRef = useRef<HTMLInputElement>(null);
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
@@ -129,7 +132,7 @@ export function LotOnBlockPanel({
       <ConsolePanel className="flex flex-col gap-4">
         <PanelHeading>Lot on block</PanelHeading>
         <p className="text-staff-sm text-staff-muted">
-          Nothing is on the block. Bring the next lot up from the action bar below.
+          Nothing is on the block. Bring the next lot up below.
         </p>
         {nextLot ? (
           <div className="rounded-staff-sm border border-staff-line-subtle bg-staff-sunken p-4">
@@ -139,6 +142,7 @@ export function LotOnBlockPanel({
             </p>
           </div>
         ) : null}
+        {renderDock?.({ hammerPrimary: false })}
       </ConsolePanel>
     );
   }
@@ -165,6 +169,14 @@ export function LotOnBlockPanel({
     currentLot.reservePrice != null && currentLot.reservePrice !== ""
       ? deriveReserveStatus(liveBid.currentPrice, currentLot.reservePrice).kind === "met"
       : null;
+
+  // One primary action at a time: Place paddle bid while a bid is being entered, Hammer once
+  // the form is empty and the reserve is met (no reserve counts as met once there is a bid).
+  const enteringPaddleBid =
+    bidEntry.state.paddleNumber.trim() !== "" || bidEntry.state.paddleAmount.trim() !== "";
+  const enteringAnyBid = enteringPaddleBid || bidEntry.state.telephoneAmount.trim() !== "";
+  const reserveSatisfied = reserveMet ?? (liveBid.bidCount ?? 0) > 0;
+  const hammerPrimary = !enteringAnyBid && reserveSatisfied;
 
   return (
     <ConsolePanel className="flex flex-col gap-6">
@@ -262,7 +274,7 @@ export function LotOnBlockPanel({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StaffButton
-            variant="primary"
+            variant={enteringPaddleBid ? "primary" : "secondary"}
             size="live"
             disabled={!bidEntry.canPlacePaddleBid || isPaused}
             loading={bidEntry.pending}
@@ -293,6 +305,8 @@ export function LotOnBlockPanel({
           </p>
         ) : null}
       </div>
+
+      {renderDock?.({ hammerPrimary })}
 
       {bidEntry.inProgressBookings.length === 0 ? (
         <p className="text-staff-sm text-staff-muted">No confirmed telephone lines for this lot.</p>

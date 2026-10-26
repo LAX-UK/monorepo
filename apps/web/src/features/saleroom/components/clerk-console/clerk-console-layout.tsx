@@ -37,8 +37,6 @@ export function ClerkConsoleLayout({ slots }: Props) {
         </div>
 
         {slots.tools}
-
-        {slots.liveDock}
       </div>
     </div>
   );

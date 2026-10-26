@@ -10,19 +10,28 @@ type Props = {
   canHammer: boolean;
   className?: string;
   compact?: boolean;
+  /** Hammer is secondary unless the caller says it is the one primary action. */
+  hammerVariant?: "primary" | "secondary";
 };
 
 /** Ends the lot on the block: hammer it as sold, or pass it with no sale. */
-export function LotOutcomeControls({ saleId, canHammer, className, compact = false }: Props) {
+export function LotOutcomeControls({
+  saleId,
+  canHammer,
+  className,
+  compact = false,
+  hammerVariant = "primary",
+}: Props) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {!compact ? <ConsoleSectionLabel>Lot outcome</ConsoleSectionLabel> : null}
       <div className="flex flex-wrap gap-2">
         <SaleroomPendingSubmit
           pendingLabel="Recording…"
-          variant="primary"
+          variant={hammerVariant}
           size="live"
           disabled={!canHammer}
+          successMessage="Lot hammered"
           onRun={() => adminSaleroomHammerAction({ saleId })}
         >
           Hammer (sold)
@@ -32,6 +41,7 @@ export function LotOutcomeControls({ saleId, canHammer, className, compact = fal
           variant="secondary"
           size="live"
           disabled={!canHammer}
+          successMessage="Lot passed with no sale"
           onRun={() => adminSaleroomNoSaleAction({ saleId })}
         >
           Pass (no sale)

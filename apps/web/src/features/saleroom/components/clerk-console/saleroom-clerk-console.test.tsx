@@ -44,7 +44,6 @@ vi.mock("@/features/saleroom/components/clerk-console/clerk-console-layout", () 
       {slots.runway}
       {slots.onBlock}
       {slots.tools}
-      {slots.liveDock}
     </div>
   ),
 }));
@@ -77,9 +76,6 @@ vi.mock("@/features/saleroom/components/clerk-console/telephone-lines-panel", ()
 }));
 vi.mock("@/features/saleroom/components/clerk-console/saleroom-activity-log", () => ({
   SaleroomActivityLog: () => <div data-testid="activity-log" />,
-}));
-vi.mock("@/features/saleroom/components/clerk-console/clerk-live-action-bar", () => ({
-  ClerkLiveActionBar: () => <div data-testid="live-action-bar" />,
 }));
 vi.mock("@/features/saleroom/hooks/use-clerk-paddle-roster", () => ({
   useClerkPaddleRoster: () => ({ roster: [], refreshRoster: vi.fn().mockResolvedValue(undefined) }),
@@ -169,7 +165,6 @@ describe("SaleroomClerkConsole phase layout", () => {
 
     expect(screen.getByTestId("lot-on-block-panel")).toBeInTheDocument();
     expect(screen.getByTestId("lot-runway-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("live-action-bar")).toBeInTheDocument();
   });
 
   it("shows session toolbar when session is paused", () => {

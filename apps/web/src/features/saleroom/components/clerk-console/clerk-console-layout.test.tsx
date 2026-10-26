@@ -10,7 +10,6 @@ const slots = {
   runway: <div data-testid="runway" />,
   onBlock: <div data-testid="on-block" />,
   tools: <div data-testid="tools" />,
-  liveDock: <div data-testid="dock" />,
   phoneView: <div data-testid="phone-view" />,
 };
 
@@ -31,7 +30,7 @@ describe("ClerkConsoleLayout", () => {
   it("keeps the controls out of the narrow-screen view and the session bar in both", () => {
     renderLayout();
 
-    for (const id of ["session-toolbar", "on-block", "runway", "tools", "dock"]) {
+    for (const id of ["session-toolbar", "on-block", "runway", "tools"]) {
       expect(screen.getByTestId(id).closest(".hidden.lg\\:flex")).not.toBeNull();
     }
     expect(screen.getByTestId("session-bar").closest(".hidden")).toBeNull();

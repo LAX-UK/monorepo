@@ -15,47 +15,52 @@ type Props = {
   policy: ClerkActionPolicy;
 };
 
+type DockProps = Props & {
+  /** True when the form is empty and the reserve is met: Hammer is then the one primary action. */
+  hammerPrimary?: boolean;
+};
+
 /**
- * The actions a clerk takes every lot, pinned to the bottom of the screen while the room is
- * running: bring the next lot up, then hammer or pass it. Hammer is the one primary action when
- * a lot is on the block; between lots it is Advance.
+ * The actions a clerk takes every lot, docked under the bid form in the Lot on block panel so
+ * nothing sits beneath them: bring the next lot up, then hammer or pass it. Between lots the
+ * one primary action is Advance; on the block it is Hammer only when it is the natural next
+ * step (see `hammerPrimary`), so it never competes with Place paddle bid.
  */
-export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot, policy }: Props) {
+export function ClerkLiveActionBar({
+  saleId,
+  canHammer,
+  sessionLive,
+  nextLot,
+  policy,
+  hammerPrimary = false,
+}: DockProps) {
   if (!sessionLive || (!policy.advanceInDock && !policy.hammerInDock)) return null;
   const hammerShown = policy.hammerInDock && canHammer;
 
   return (
-    // `data-staff-bulk-bar` keeps the page's scroll clearance above the bar, so a focused
-    // control is never hidden behind it.
-    <div
-      data-staff-bulk-bar=""
-      className="pointer-events-none sticky bottom-4 z-20 flex justify-center"
+    <section
+      aria-label="Lot actions"
+      className="flex flex-wrap items-center gap-2 border-t border-staff-line-subtle pt-4"
     >
-      <section
-        aria-label="Lot actions"
-        className="pointer-events-auto flex max-w-full flex-col gap-2 rounded-staff-md border border-staff-line bg-staff-raised p-2 shadow-staff-md lg:flex-row lg:items-center"
-      >
-        {policy.advanceInDock && nextLot ? (
-          <SaleroomPendingSubmit
-            pendingLabel="Advancing…"
-            variant={hammerShown ? "secondary" : "primary"}
-            size="live"
-            className="w-full lg:w-auto"
-            disabled={!sessionLive}
-            onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
-          >
-            Advance next ({formatLotRunListLabel(nextLot)})
-          </SaleroomPendingSubmit>
-        ) : null}
-        {hammerShown ? (
-          <LotOutcomeControls
-            saleId={saleId}
-            canHammer={canHammer}
-            compact
-            className="lg:shrink-0"
-          />
-        ) : null}
-      </section>
-    </div>
+      {policy.advanceInDock && nextLot ? (
+        <SaleroomPendingSubmit
+          pendingLabel="Advancing…"
+          variant={hammerShown ? "secondary" : "primary"}
+          size="live"
+          disabled={!sessionLive}
+          onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
+        >
+          Advance next ({formatLotRunListLabel(nextLot)})
+        </SaleroomPendingSubmit>
+      ) : null}
+      {hammerShown ? (
+        <LotOutcomeControls
+          saleId={saleId}
+          canHammer={canHammer}
+          compact
+          hammerVariant={hammerPrimary ? "primary" : "secondary"}
+        />
+      ) : null}
+    </section>
   );
 }

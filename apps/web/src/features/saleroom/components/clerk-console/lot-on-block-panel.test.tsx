@@ -4,16 +4,14 @@ import type { Lot } from "@auction/types";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const { placePaddleBid } = vi.hoisted(() => ({ placePaddleBid: vi.fn() }));
+const { placePaddleBid, entry } = vi.hoisted(() => ({
+  placePaddleBid: vi.fn(),
+  entry: { paddleNumber: "", paddleAmount: "", telephoneAmount: "" },
+}));
 
 vi.mock("@/features/saleroom/hooks/use-clerk-bid-entry", () => ({
   useClerkBidEntry: () => ({
-    state: {
-      paddleNumber: "",
-      paddleAmount: "",
-      telephoneAmount: "",
-      bookingId: "",
-    },
+    state: { ...entry, bookingId: "" },
     pending: false,
     incrementOptions: [110, 120, 150],
     inProgressBookings: [
@@ -133,5 +131,69 @@ describe("LotOnBlockPanel", () => {
 
     expect(screen.getAllByRole("button", { name: "Minimum bid £110.00" })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: "2 increments up, £120.00" })).toHaveLength(2);
+  });
+
+  describe("lot actions dock", () => {
+    const renderDock = ({ hammerPrimary }: { hammerPrimary: boolean }) => (
+      <section aria-label="Lot actions" data-hammer-primary={String(hammerPrimary)} />
+    );
+    const reserveLots = [{ ...lots[0], reservePrice: "100" } as Lot];
+
+    function renderPanel(overrides: Partial<Parameters<typeof LotOnBlockPanel>[0]> = {}) {
+      render(
+        <LotOnBlockPanel
+          saleId="sale-1"
+          currentLotId="lot-1"
+          lots={reserveLots}
+          telephoneBookings={[]}
+          liveBid={liveBid}
+          sessionLive
+          sessionStatus="live"
+          renderDock={renderDock}
+          {...overrides}
+        />,
+      );
+    }
+    const dock = () => screen.getByRole("region", { name: "Lot actions" });
+
+    it("docks the lot actions inside the panel, after the bid form", () => {
+      entry.paddleNumber = "";
+      entry.paddleAmount = "";
+      renderPanel();
+      const place = screen.getByRole("button", { name: "Place paddle bid" });
+      expect(place.compareDocumentPosition(dock()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("makes Hammer the primary action when the form is empty and the reserve is met", () => {
+      entry.paddleNumber = "";
+      entry.paddleAmount = "";
+      renderPanel();
+      expect(dock()).toHaveAttribute("data-hammer-primary", "true");
+    });
+
+    it("keeps Hammer secondary while the reserve is not met", () => {
+      entry.paddleNumber = "";
+      entry.paddleAmount = "";
+      renderPanel({ lots: [{ ...lots[0], reservePrice: "500" } as Lot] });
+      expect(dock()).toHaveAttribute("data-hammer-primary", "false");
+    });
+
+    it("makes Place paddle bid the only primary action while a bid is being entered", () => {
+      entry.paddleNumber = "142";
+      entry.paddleAmount = "";
+      renderPanel();
+      expect(dock()).toHaveAttribute("data-hammer-primary", "false");
+      expect(screen.getByRole("button", { name: "Place paddle bid" })).toHaveClass("bg-staff-ink");
+      entry.paddleNumber = "";
+    });
+
+    it("keeps Place paddle bid secondary when nothing is entered", () => {
+      entry.paddleNumber = "";
+      entry.paddleAmount = "";
+      renderPanel();
+      expect(screen.getByRole("button", { name: "Place paddle bid" })).not.toHaveClass(
+        "bg-staff-ink",
+      );
+    });
   });
 });

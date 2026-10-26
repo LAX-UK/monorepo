@@ -182,6 +182,16 @@ function ClerkConsoleInner({
             sessionLive={model.action.sessionLive}
             sessionStatus={model.action.sessionStatus}
             betweenLots={model.lot.progress.betweenLots}
+            renderDock={({ hammerPrimary }) => (
+              <ClerkLiveActionBar
+                saleId={saleId}
+                canHammer={model.action.canHammer}
+                sessionLive={model.action.sessionLive}
+                nextLot={model.lot.nextLot}
+                policy={model.action.policy}
+                hammerPrimary={hammerPrimary}
+              />
+            )}
           />
         ),
         tools: (
@@ -219,15 +229,6 @@ function ClerkConsoleInner({
             currentLot={model.lot.currentLot}
             liveBid={model.lot.liveBid}
             activityLog={model.session.activityLog}
-          />
-        ),
-        liveDock: (
-          <ClerkLiveActionBar
-            saleId={saleId}
-            canHammer={model.action.canHammer}
-            sessionLive={model.action.sessionLive}
-            nextLot={model.lot.nextLot}
-            policy={model.action.policy}
           />
         ),
       }}
