@@ -10,13 +10,13 @@ import {
   type OverflowAction,
   OverflowMenu,
   PageHeader,
+  RelativeTime,
   Section,
   StaffButton,
   StatusBadge,
   type StatusPresentation,
   TextLink,
   formatStaffDateTime,
-  formatStaffRelative,
 } from "@auction/staff-ui";
 import { Unplug } from "lucide-react";
 import { type ReactNode, useRef, useState, useTransition } from "react";
@@ -76,7 +76,7 @@ export function XeroIntegrationPanel({
       ? [
           {
             label: "Access renews",
-            value: `${formatStaffRelative(status.expiresAt)}, automatically`,
+            value: <RelativeTime value={status.expiresAt} />,
           },
           { label: "Last renewed", value: when(status.updatedAt) },
         ]

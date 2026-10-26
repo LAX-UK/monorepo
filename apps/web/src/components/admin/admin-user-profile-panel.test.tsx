@@ -1,5 +1,5 @@
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AdminUserProfilePanel } from "./admin-user-profile-panel";
@@ -40,9 +40,9 @@ const user: AdminUserDetailPayload = {
 
 const renderPanel = (value: AdminUserDetailPayload) =>
   render(
-    <TooltipProvider>
+    <StaffTooltipProvider>
       <AdminUserProfilePanel user={value} />
-    </TooltipProvider>,
+    </StaffTooltipProvider>,
   );
 
 describe("AdminUserProfilePanel", () => {

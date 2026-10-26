@@ -225,8 +225,9 @@ export function workItemEntityId(item: AdminWorkItem): string {
   return id ?? item.id;
 }
 
-/** "3 items · 1 urgent". */
+/** "3 items · 1 urgent", or "Nothing waiting". */
 export function workInboxSummary(items: readonly AdminWorkItem[]): string {
+  if (items.length === 0) return "Nothing waiting";
   const urgent = items.filter((item) => item.severity === "critical").length;
   const count = `${items.length} ${items.length === 1 ? "item" : "items"}`;
   return urgent > 0 ? `${count} · ${urgent} urgent` : count;

@@ -91,7 +91,7 @@ export function AdminImpersonateForm({
         </Notice>
       ) : null}
       <FormSection
-        title="Legal entity"
+        title="Who to support"
         description="You see Bid as its members do, and can act for it."
       >
         <Field

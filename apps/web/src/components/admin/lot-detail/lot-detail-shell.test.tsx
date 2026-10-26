@@ -1,6 +1,6 @@
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { render as baseRender, fireEvent, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,7 +69,7 @@ function bundle(saleStatus: "draft" | "scheduled" = "scheduled"): AdminLotDetail
   } as unknown as AdminLotDetailBundle;
 }
 
-const render = (ui: ReactElement) => baseRender(<TooltipProvider>{ui}</TooltipProvider>);
+const render = (ui: ReactElement) => baseRender(<StaffTooltipProvider>{ui}</StaffTooltipProvider>);
 
 describe("LotDetailShell", () => {
   beforeEach(() => publishAction.mockReset());

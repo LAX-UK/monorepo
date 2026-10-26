@@ -23,6 +23,7 @@ import type { AdminWorkItem, AdminWorkItemDomain } from "@/lib/data/http/admin-w
 import {
   type DataColumn,
   DataTable,
+  DataTableToolbar,
   DataViews,
   DetailPanel,
   EmptyState,
@@ -142,7 +143,7 @@ export function WorkInbox({
       {
         id: "due",
         header: "Due",
-        width: "136px",
+        width: "192px",
         numeric: true,
         mobile: "meta",
         sortable: true,
@@ -219,7 +220,6 @@ export function WorkInbox({
       id="work-inbox"
       title="Your work"
       description={workInboxSummary(rows)}
-      action={assignmentControl}
       bodyClassName="p-0"
     >
       <DataTable
@@ -231,7 +231,16 @@ export function WorkInbox({
         defaultSort={{ columnId: "due", direction: "asc" }}
         onRowOpen={(item) => panel.show(item.id)}
         activeRowId={panel.openId}
-        toolbar={<DataViews views={views} activeId={area} Link={NoScrollLink} />}
+        {...(counts.total > 0 || filtered
+          ? {
+              toolbar: (
+                <DataTableToolbar
+                  views={<DataViews views={views} activeId={area} Link={NoScrollLink} />}
+                  filters={assignmentControl}
+                />
+              ),
+            }
+          : {})}
         stickyToolbar={false}
         selectedIds={selected}
         onSelectedIdsChange={setSelected}
@@ -290,6 +299,23 @@ export function WorkInbox({
             { label: "Area", value: WORK_AREA_LABELS[open.domain] },
             ...(owner ? [{ label: "Owner", value: owner }] : []),
             { label: "Due", value: <StaffDate value={open.dueAt ?? open.createdAt} withTime /> },
+          ]}
+          summary={[
+            {
+              label: "Waiting since",
+              value: <StaffDate value={open.createdAt} withTime />,
+            },
+            {
+              label: "Last change",
+              value: <StaffDate value={open.sourceUpdatedAt} withTime />,
+            },
+            {
+              label: "What to do",
+              value:
+                open.actions.length > 0
+                  ? open.actions.map((action) => WORK_ACTION_LABELS[action]).join(", ")
+                  : "Open the record to deal with it",
+            },
           ]}
           headerActions={
             <StaffButton asChild size="sm" variant="ghost" icon={<ExternalLink aria-hidden />}>

@@ -1,5 +1,5 @@
 import type { AdminKycSessionRow } from "@/lib/data/http/admin.server";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AdminUserKycHistoryPanel } from "./admin-user-kyc-history-panel";
@@ -39,9 +39,9 @@ function session(overrides: Partial<AdminKycSessionRow> = {}): AdminKycSessionRo
 
 function panel(sessions: AdminKycSessionRow[], currentKycSessionId: string | null = null) {
   render(
-    <TooltipProvider>
+    <StaffTooltipProvider>
       <AdminUserKycHistoryPanel sessions={sessions} currentKycSessionId={currentKycSessionId} />
-    </TooltipProvider>,
+    </StaffTooltipProvider>,
   );
 }
 

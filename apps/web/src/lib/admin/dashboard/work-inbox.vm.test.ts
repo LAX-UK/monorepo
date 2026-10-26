@@ -95,5 +95,6 @@ describe("work inbox view model", () => {
     expect(workItemEntityId(item())).toBe("sub-1");
     expect(workInboxSummary([item(), item({ severity: "critical" })])).toBe("2 items · 1 urgent");
     expect(workInboxSummary([item()])).toBe("1 item");
+    expect(workInboxSummary([])).toBe("Nothing waiting");
   });
 });

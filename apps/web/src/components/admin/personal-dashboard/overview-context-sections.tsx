@@ -7,7 +7,6 @@ import type { AdminSaleReadinessRow } from "@/lib/data/http/admin-sale-readiness
 import { getSocket } from "@/lib/socket";
 import {
   type DataColumn,
-  KeyValueList,
   MappedStatusBadge,
   Notice,
   PrimaryCell,
@@ -16,7 +15,7 @@ import {
   StaffButton,
   type StaffLinkComponent,
   StatusBadge,
-  TextLink,
+  rowActionsColumn,
 } from "@auction/staff-ui";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -95,9 +94,9 @@ export function RecentActivitySection({
       // The API sends the most recent first; the table keeps that order.
       defaultSort={{ columnId: "lot", direction: "desc" }}
       action={
-        <TextLink href="/admin/lots" Link={NextLink}>
-          All lots
-        </TextLink>
+        <StaffButton asChild size="sm" variant="ghost">
+          <Link href="/admin/lots">All lots</Link>
+        </StaffButton>
       }
       empty={{
         title: "No recent lot activity",
@@ -197,53 +196,52 @@ export function SalesSection({
         mobile: "meta",
         cell: (row) => (row.blockers.length > 0 ? blockersText(row) : null),
       },
-      {
-        id: "console",
-        header: "Console",
-        headerHidden: true,
-        width: "136px",
-        truncate: false,
-        mobile: "actions",
-        cell: (row) =>
-          row.consoleHref ? (
-            <StaffButton asChild size="sm">
-              <Link href={row.consoleHref}>Open console</Link>
-            </StaffButton>
-          ) : null,
-      },
+      rowActionsColumn<AdminSaleReadinessRow>({
+        label: (row) => `Actions for ${row.title}`,
+        Link: NextLink,
+        actions: (row) => [
+          { id: "sale", label: "Open sale", href: row.href },
+          ...(row.consoleHref
+            ? [{ id: "console", label: "Open saleroom console", href: row.consoleHref }]
+            : []),
+          ...row.blockers.map((blocker) => ({
+            id: `blocker-${blocker.id}`,
+            label: `Fix: ${blocker.label}`,
+            href: blocker.href,
+          })),
+        ],
+      }),
     ],
     [],
   );
 
-  const pulse = showPulse ? (
-    <KeyValueList
-      columns={2}
-      items={[
-        {
-          label: "Bids per minute",
-          value:
-            bids.sinceOpened > 0
-              ? `${COUNT.format(bids.perMinute)} (${COUNT.format(bids.sinceOpened)} more since you opened this page)`
-              : COUNT.format(bids.perMinute),
-          numeric: true,
-        },
-        {
-          label: "Live saleroom sessions",
-          value: COUNT.format(data.activeSaleroomSessions),
-          numeric: true,
-        },
-      ]}
-    />
-  ) : null;
+  const sessions = data.activeSaleroomSessions;
+  const pulse = showPulse
+    ? [
+        `${COUNT.format(bids.perMinute)} ${bids.perMinute === 1 ? "bid" : "bids"} a minute`,
+        ...(bids.sinceOpened > 0
+          ? [`${COUNT.format(bids.sinceOpened)} since you opened this page`]
+          : []),
+        `${COUNT.format(sessions)} live ${sessions === 1 ? "session" : "sessions"}`,
+      ].join(" · ")
+    : null;
+  const saleroomLink = (
+    <StaffButton asChild size="sm" variant="ghost">
+      <Link href="/admin/saleroom">Saleroom</Link>
+    </StaffButton>
+  );
 
   if (!showSales) {
-    return pulse ? <Section title="Saleroom pulse">{pulse}</Section> : null;
+    return pulse ? (
+      <Section title="Saleroom" description={pulse} action={saleroomLink}>
+        <p>{sessions > 0 ? "A sale is live in the saleroom." : "No sale is live right now."}</p>
+      </Section>
+    ) : null;
   }
 
   if (saleReadiness.status === "unavailable") {
     return (
-      <Section title="Upcoming sales">
-        {pulse}
+      <Section title="Upcoming sales" {...(pulse ? { description: pulse } : {})}>
         <Notice tone="warning" title="Upcoming sales could not load">
           {saleReadiness.message}
         </Notice>
@@ -252,32 +250,25 @@ export function SalesSection({
   }
 
   return (
-    <>
-      {pulse ? <Section title="Saleroom pulse">{pulse}</Section> : null}
-      <RelatedRecordsSection
-        id="upcoming-sales"
-        title="Upcoming sales"
-        description="Sales about to open and what still blocks them"
-        label="Upcoming sales"
-        columns={columns}
-        data={data.rows}
-        getRowId={(row) => row.saleId}
-        // The API sends the soonest first; the table keeps that order.
-        defaultSort={{ columnId: "sale", direction: "asc" }}
-        action={
-          <TextLink href="/admin/saleroom" Link={NextLink}>
-            Saleroom
-          </TextLink>
-        }
-        empty={{
-          title: "No sales coming up",
-          description:
-            saleReadiness.status === "empty" && saleReadiness.message
-              ? saleReadiness.message
-              : "Scheduled sales appear here in the days before they open.",
-        }}
-        density="comfortable"
-      />
-    </>
+    <RelatedRecordsSection
+      id="upcoming-sales"
+      title="Upcoming sales"
+      description={pulse ?? "Sales about to open and what still blocks them"}
+      label="Upcoming sales"
+      columns={columns}
+      data={data.rows}
+      getRowId={(row) => row.saleId}
+      // The API sends the soonest first; the table keeps that order.
+      defaultSort={{ columnId: "sale", direction: "asc" }}
+      action={saleroomLink}
+      empty={{
+        title: "No sales coming up",
+        description:
+          saleReadiness.status === "empty" && saleReadiness.message
+            ? saleReadiness.message
+            : "Scheduled sales appear here in the days before they open.",
+      }}
+      density="comfortable"
+    />
   );
 }

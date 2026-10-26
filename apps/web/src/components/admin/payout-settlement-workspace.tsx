@@ -76,7 +76,7 @@ export function PayoutSettlementWorkspace({
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title="Legal entity" description="The seller to pay now.">
+      <Section title="Seller" description="The legal entity to pay now.">
         <Field label="Legal entity" id="settlement-legal-entity">
           <EntityPicker
             id="settlement-legal-entity"
