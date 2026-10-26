@@ -1,6 +1,5 @@
 "use client";
 
-import { useArtistDetail } from "@/components/admin/artist-detail/artist-detail-context";
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
 import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { buildArtistProfileReadiness } from "@/lib/admin/catalog-readiness";
@@ -18,7 +17,6 @@ import {
   StaffDate,
   type StaffLinkComponent,
   StatGrid,
-  StatusBadge,
   TextLink,
 } from "@auction/staff-ui";
 import { type ArtistProfile, getCreatorKindConfig } from "@auction/types";
@@ -35,14 +33,10 @@ type Props = {
   activityEvents?: readonly AdminDomainEventRow[];
 };
 
-function yesNo(value: boolean, yes: string, no: string) {
-  return <StatusBadge tone={value ? "success" : "neutral"}>{value ? yes : no}</StatusBadge>;
-}
-
 /**
- * The artist at a glance: lot, duplicate and department counts, what is missing from the profile
- * (and what stops a delete), the profile and its classification; the portrait, recent activity
- * and the record's dates in the rail.
+ * The artist at a glance: lot, duplicate and department counts, what is missing from the profile,
+ * the profile and its classification; the portrait, recent activity and the record's dates in
+ * the rail.
  */
 export function ArtistOverviewTab({
   artistId,
@@ -51,7 +45,6 @@ export function ArtistOverviewTab({
   duplicateCount,
   activityEvents = [],
 }: Props) {
-  const { deleteBlockers } = useArtistDetail();
   const portraitSrc = resolveMediaSrc(artist.portraitUrl);
   const kindConfig = getCreatorKindConfig(artist.kind);
   const categories = artist.categories ?? [];
@@ -89,11 +82,8 @@ export function ArtistOverviewTab({
         action: { label: "Review", href: artistDetailTabHref(artistId, "duplicates") },
       });
     }
-    for (const [index, blocker] of deleteBlockers.entries()) {
-      rows.push({ id: `blocker-${index}`, label: blocker, tone: "neutral", tag: "Delete" });
-    }
     return rows;
-  }, [artist, artistId, deleteBlockers, duplicateCount, merged]);
+  }, [artist, artistId, duplicateCount, merged]);
 
   const profileRows: KeyValueItem[] = [
     { label: "Short bio", value: artist.shortBio?.trim() || null },
@@ -108,8 +98,8 @@ export function ArtistOverviewTab({
         </TextLink>
       ) : null,
     },
-    { label: "Featured", value: yesNo(artist.featured, "Featured", "Not featured") },
-    { label: "Verified", value: yesNo(artist.verified, "Verified", "Not verified") },
+    { label: "Featured", value: artist.featured ? "Yes" : "No" },
+    { label: "Verified", value: artist.verified ? "Yes" : "No" },
   ];
 
   const classificationRows: KeyValueItem[] = [
@@ -119,16 +109,7 @@ export function ArtistOverviewTab({
       : []),
     {
       label: "Departments",
-      value:
-        categories.length > 0 ? (
-          <span className="flex flex-wrap gap-1.5">
-            {categories.map((category) => (
-              <StatusBadge key={category.id} tone="neutral">
-                {category.name}
-              </StatusBadge>
-            ))}
-          </span>
-        ) : null,
+      value: categories.length > 0 ? categories.map((category) => category.name).join(", ") : null,
     },
     ...kindConfig.attributes
       .map((field) => ({

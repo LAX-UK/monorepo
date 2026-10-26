@@ -1,6 +1,5 @@
 "use client";
 
-import { ArtistDetailProvider } from "@/components/admin/artist-detail/artist-detail-context";
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
 import { useArtistActions } from "@/components/admin/artist-detail/use-artist-actions";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
@@ -188,11 +187,7 @@ export function ArtistDetailShell({
         }
         tabs={<StaffDetailTabs label="Artist sections" items={tabs} />}
       >
-        <ArtistDetailProvider
-          deleteBlockers={canManageDelete && !merged ? (deleteEligibility?.blockers ?? []) : []}
-        >
-          {children}
-        </ArtistDetailProvider>
+        {children}
       </DetailPage>
       {actions.dialogs}
     </>

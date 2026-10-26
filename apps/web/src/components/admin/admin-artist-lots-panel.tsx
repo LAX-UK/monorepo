@@ -108,7 +108,7 @@ export function AdminArtistLotsPanel({ artistId, lots, title = "Lots", descripti
         ? {
             footer: (
               <>
-                Showing the {lots.length} most recent lots.{" "}
+                Showing {lots.length} {lots.length === 1 ? "lot" : "lots"}.{" "}
                 <Link
                   href={`/admin/lots?artistId=${encodeURIComponent(artistId)}`}
                   className="font-medium text-staff-fg underline underline-offset-2"

@@ -62,6 +62,23 @@ describe("buildSubmissionOverviewViewModel", () => {
     expect(vm.dimensionRows.find((row) => row.id === "dimensions")?.value).toBe("30cm");
   });
 
+  it("reads provenance as a line per entry, never as raw objects", () => {
+    const vm = buildSubmissionOverviewViewModel({
+      submissionId: "sub-1",
+      submission: {
+        ...baseSubmission,
+        provenance: [
+          { period: "1962", note: "Private collection, London" },
+          { note: "Sold at auction, 1988" },
+        ],
+      },
+      documentCount: 1,
+    });
+    expect(vm.artworkRows.find((row) => row.id === "provenance")?.value).toBe(
+      "1962: Private collection, London\nSold at auction, 1988",
+    );
+  });
+
   it("has nothing waiting on staff once converted", () => {
     const vm = buildSubmissionOverviewViewModel({
       submissionId: "sub-1",

@@ -29,6 +29,14 @@ function hasAskingPrice(submission: ItemSubmission): boolean {
   return Boolean(value && value !== "—");
 }
 
+/** "1962: Private collection, London" per entry, one entry to a line. */
+function provenanceText(submission: ItemSubmission): string {
+  return (submission.provenance ?? [])
+    .map((entry) => [entry.period?.trim(), entry.note.trim()].filter(Boolean).join(": "))
+    .filter(Boolean)
+    .join("\n");
+}
+
 function categoryNames(
   submission: ItemSubmission,
   categories: readonly { id: string; name: string }[],
@@ -138,7 +146,7 @@ export function buildSubmissionOverviewViewModel(input: {
         ...row("category", "Category", categoryNames(s, categories)),
         missing: failed.has("category"),
       },
-      row("provenance", "Provenance", s.provenance?.join(" · ")),
+      row("provenance", "Provenance", provenanceText(s)),
       row("edition", "Edition", s.edition),
       row("year", "Year of work", s.yearOfWork),
       row("signed", "Signed", s.isSigned ? "Yes" : "No"),
