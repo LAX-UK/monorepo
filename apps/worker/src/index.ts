@@ -55,7 +55,9 @@ import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
+import { checkAtgConfig } from "./integrations/atg/atg-config-check.js";
 import { loadAtgRuntimeConfig } from "./integrations/atg/atg-config.js";
+import { HttpAtgImageInspector } from "./integrations/atg/atg-image-inspector.js";
 import { isPermanentAtgJobError, processAtgSyncJob } from "./integrations/atg/atg-sync-job.js";
 import { AtgSyncService } from "./integrations/atg/atg-sync-service.js";
 import { DrizzleAtgSyncStore } from "./integrations/atg/drizzle-atg-sync-store.js";
@@ -653,9 +655,11 @@ let atgSyncQueue: Queue | undefined;
 let atgSyncWorker: Worker | undefined;
 const atgRuntime = loadAtgRuntimeConfig(env);
 if (atgRuntime) {
+  const atgGateway = new GapHttpAdapter(atgRuntime.adapter);
   const atgSyncService = new AtgSyncService({
-    gateway: new GapHttpAdapter(atgRuntime.adapter),
+    gateway: atgGateway,
     store: new DrizzleAtgSyncStore(db),
+    imageInspector: new HttpAtgImageInspector(),
     config: atgRuntime.sync,
     onTickError: (saleId, err) => {
       log.warn({ err, saleId }, "ATG tick failed for sale");
@@ -693,10 +697,15 @@ if (atgRuntime) {
       removeOnFail: 50,
     },
   );
-  log.info(
-    { pollIntervalMs: atgRuntime.pollIntervalMs, listingPrivate: atgRuntime.sync.listingPrivate },
-    "atg-sync enabled",
-  );
+  log.info({ pollIntervalMs: atgRuntime.pollIntervalMs }, "atg-sync enabled");
+  // One-off startup comparison with ATG; reports a wrong increment set or category, never blocks.
+  void checkAtgConfig(atgGateway, atgRuntime.sync).then(({ problems, unavailable }) => {
+    for (const problem of problems) {
+      log.error({ problem }, "ATG configuration does not match ATG");
+      captureBackgroundError("atg-config-check", new Error(problem));
+    }
+    for (const note of unavailable) log.warn({ note }, "ATG configuration check skipped");
+  });
 }
 
 type LegalEntityArchiveJobData = { legalEntityId: string };

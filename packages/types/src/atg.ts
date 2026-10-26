@@ -5,6 +5,104 @@ export type AtgRemoteStatus = "pending" | "created" | "approved" | "published" |
 
 export type AtgSyncAction = "push" | "publish" | "close";
 
+/** ATG allows only these auction types for LAX. */
+export const ATG_AUCTION_TYPES = ["Timed", "Live"] as const;
+export type AtgAuctionType = (typeof ATG_AUCTION_TYPES)[number];
+
+/**
+ * Where ATG lists the auction. `private_test` sends `Private: true` (hidden from public
+ * listings); `public_marketplace` lists it on both the White Label and The Saleroom. ATG has not
+ * confirmed a public White-Label-only mode, so none is offered.
+ */
+export const ATG_DISTRIBUTIONS = ["private_test", "public_marketplace"] as const;
+export type AtgDistribution = (typeof ATG_DISTRIBUTIONS)[number];
+
+export type AtgSaleSettings = {
+  auctionType: AtgAuctionType;
+  distribution: AtgDistribution;
+};
+
+export const DEFAULT_ATG_SALE_SETTINGS: AtgSaleSettings = {
+  auctionType: "Timed",
+  distribution: "private_test",
+};
+
+/** The auction type is fixed once ATG has created the auction. */
+export function canChangeAtgAuctionType(state: { linked: boolean }): boolean {
+  return !state.linked;
+}
+
+/**
+ * GetLots `Status` integers ATG documented (Oct 2026). `3` is not in the table.
+ * GetSaleResults uses the string names.
+ */
+export const ATG_LOT_STATUSES = {
+  0: "WaitingToBeOffered",
+  1: "Offered",
+  2: "NotSold",
+  4: "Sold",
+} as const;
+
+const ATG_LOT_STATUS_LABEL: Record<keyof typeof ATG_LOT_STATUSES, string> = {
+  0: "Not yet offered",
+  1: "Offered",
+  2: "Not sold",
+  4: "Sold",
+};
+
+/** Staff label for a documented lot status, or null when the code is missing or unknown. */
+export function atgLotStatusLabel(status: string | number | null | undefined): string | null {
+  if (status == null || status === "") return null;
+  const code = typeof status === "number" ? status : Number(status);
+  if (!Number.isInteger(code)) return null;
+  return ATG_LOT_STATUS_LABEL[code as keyof typeof ATG_LOT_STATUSES] ?? null;
+}
+
+/** Distribution can change until the auction is published (post-publish semantics unconfirmed). */
+export function canChangeAtgDistribution(state: { remoteStatus: AtgRemoteStatus | null }): boolean {
+  return state.remoteStatus !== "published" && state.remoteStatus !== "closed";
+}
+
+/** Names lots in a blocker: up to three titles, then a count of the rest. */
+function lotTitles(titles: string[]): string {
+  const shown = titles.slice(0, 3).map((title) => `“${title}”`);
+  const rest = titles.length - shown.length;
+  if (rest > 0) return `${shown.join(", ")} and ${rest} more`;
+  if (shown.length === 1) return shown[0] ?? "";
+  return `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+}
+
+/**
+ * Why this sale is not ready to publish on ATG, from the admin view (push adds more). Lot sync
+ * errors are left out: the tab reports them once, above everything else.
+ */
+export function atgReadinessBlockers(view: {
+  sellingPlatform: AtgOwnershipState;
+  saleCancelled: boolean;
+  lastError: string | null;
+  lots: Array<{ lotNumber: number | null; title: string }>;
+}): string[] {
+  const blockers: string[] = [];
+  if (view.sellingPlatform === "lax") {
+    blockers.push("This sale is published on lax.bid. Unpublish it there first.");
+  }
+  if (view.saleCancelled) {
+    blockers.push("This sale is cancelled in LAX.");
+  }
+  const unnumbered = view.lots.filter((lot) => lot.lotNumber == null).map((lot) => lot.title);
+  if (unnumbered.length > 0) {
+    blockers.push(
+      unnumbered.length === 1
+        ? `${lotTitles(unnumbered)} needs a lot number.`
+        : `${lotTitles(unnumbered)} need lot numbers.`,
+    );
+  }
+  if (view.lastError?.includes("did not confirm the new auction")) {
+    blockers.push("The last create may have reached ATG. Check Toolbox before pushing again.");
+  }
+  return blockers;
+}
+
 /** Which platform may take bids for this sale (computed; not stored). */
 export type AtgSellingPlatform = "free" | "lax" | "atg";
 
@@ -86,7 +184,7 @@ export type AtgLotSyncView = {
   imageCount: number;
   lastSyncedAt: string | null;
   lastError: string | null;
-  /** Raw GAP lot status code; GAP does not document its values, so do not display it. */
+  /** GetLots `Status` stored as a decimal string (`0`, `1`, `2`, `4`, or an unknown code). */
   remoteStatus: string | null;
   sold: boolean | null;
   hammerPrice: string | null;
@@ -104,11 +202,15 @@ export type AtgSaleSyncView = {
   linked: boolean;
   atgAuctionId: string | null;
   remoteStatus: AtgRemoteStatus | null;
+  /** When ATG staff approved the auction in Toolbox, as seen by the worker; null until then. */
+  approvedAt: string | null;
   publishedAt: string | null;
   closedAt: string | null;
   lastSyncedAt: string | null;
   lastPolledAt: string | null;
   lastError: string | null;
+  settings: AtgSaleSettings;
+  settingsUpdatedAt: string | null;
   results: AtgSaleResultRow[];
   lots: AtgLotSyncView[];
 };

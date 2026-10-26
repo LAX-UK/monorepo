@@ -11,6 +11,7 @@ export type AtgAuctionLinkPatch = Partial<{
   atgAuctionId: string;
   atgAuctionReference: string;
   remoteStatus: AtgRemoteStatus;
+  approvedAt: Date;
   publishedAt: Date;
   closedAt: Date;
   payloadHash: string;
@@ -23,6 +24,7 @@ export type AtgAuctionLinkPatch = Partial<{
 export type AtgLotLinkPatch = Partial<{
   imageNames: string[];
   payloadHash: string;
+  lockedFieldsHash: string;
   lastSyncedAt: Date;
   lastError: string | null;
 }>;
@@ -39,7 +41,10 @@ export interface AtgSyncStore {
   /** Links for the given LAX lots, whichever sale they were pushed under. */
   findLotLinks(lotIds: string[]): Promise<AtgLotLink[]>;
   insertLotLink(
-    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & { payloadHash: string },
+    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & {
+      payloadHash: string;
+      lockedFieldsHash: string;
+    },
   ): Promise<void>;
   updateLotLink(lotId: string, patch: AtgLotLinkPatch): Promise<void>;
   deleteLotLink(lotId: string): Promise<void>;

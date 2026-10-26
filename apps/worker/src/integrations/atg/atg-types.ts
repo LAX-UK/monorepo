@@ -1,5 +1,4 @@
-import type { BuyerPremiumTier, SaleStatus } from "@auction/types";
-import type { GapAuctionTypeAndListing } from "./gap-types.js";
+import type { AtgSaleSettings, BuyerPremiumTier, SaleStatus } from "@auction/types";
 
 /** Business settings for the mapping; transport settings live with the adapter. */
 export type AtgSyncConfig = {
@@ -7,12 +6,7 @@ export type AtgSyncConfig = {
   clientId: string | null;
   incrementSetId: string;
   defaultCategory: string;
-  auctionType: GapAuctionTypeAndListing;
-  /** Sent as `AuctionListings[].Private`; true keeps auctions off public listings. */
-  listingPrivate: boolean;
   artistPlacement: "title_prefix" | "description";
-  /** Call `ApproveAuction` before `PublishAuction` (depends on ATG's approval model). */
-  approveBeforePublish: boolean;
   currency: string;
   countryCode: string;
   /** IANA zone of sale times; mapped to a Windows ID for GAP. */
@@ -58,6 +52,8 @@ export type AtgSaleSnapshot = {
   /** Cancelled in LAX: no further pushes; the auction can only be closed on ATG. */
   cancelled: boolean;
   updatedAt: Date;
+  /** Staff-chosen ATG settings, or the defaults when the sale has no link row yet. */
+  atgSettings: AtgSaleSettings;
   /** Non-deleted, non-cancelled lots currently in the sale, ordered by lot number. */
   lots: AtgLotSnapshot[];
 };
@@ -77,6 +73,7 @@ export type AtgAuctionLink = {
   remoteStatus: AtgRemoteStatus;
   payloadHash: string | null;
   lastSyncedAt: Date | null;
+  approvedAt: Date | null;
   closedAt: Date | null;
   lastError: string | null;
 };
@@ -87,6 +84,9 @@ export type AtgLotLink = {
   atgLotId: string;
   imageNames: string[];
   payloadHash: string | null;
+  lockedFieldsHash: string | null;
+  /** Bids ATG reported at the last poll; 0 before the first poll. */
+  numberOfBids: number;
 };
 
 export type AtgPushSummary = {
