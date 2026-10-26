@@ -1,9 +1,12 @@
 import { loadShopEnv } from "@/env";
 import {
+  type LaxLockup,
   SHOP_ACCENT_CANDIDATES,
   SHOP_LOCKUP_VARIANTS,
   type ShopAccentCandidate,
   type ShopLockupVariant,
+  laxLockup,
+  laxLockupColors,
   shopLockupCandidate,
 } from "@auction/branding";
 import Link from "next/link";
@@ -23,15 +26,16 @@ export function findPreviewPairing(variantId: string, accentId: string) {
 
 const MIST = "#b9bac0";
 
-/** The candidate lockup, painted with the panel's ink and the candidate accent. */
-export function CandidateLockup({
-  variant,
+/** Any LAX lockup: ink follows the text colour, the descriptor takes `descriptorFill`. */
+export function LockupSvg({
+  lockup,
+  descriptorFill = "var(--idp-accent)",
   className,
 }: {
-  variant: ShopLockupVariant;
+  lockup: LaxLockup;
+  descriptorFill?: string;
   className?: string;
 }) {
-  const lockup = shopLockupCandidate(variant);
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -43,16 +47,42 @@ export function CandidateLockup({
     >
       <title>{lockup.label}</title>
       {lockup.ink.map((path) => (
-        <path key={path.d} d={path.d} />
+        <path key={path.d} d={path.d} transform={path.transform} />
       ))}
       {lockup.mist.map((path) => (
-        <path key={path.d} d={path.d} fill={MIST} />
+        <path key={path.d} d={path.d} transform={path.transform} fill={MIST} />
       ))}
       {lockup.descriptorPaths.map((path) => (
-        <path key={path.d} d={path.d} style={{ fill: "var(--idp-accent)" }} />
+        <path
+          key={`${path.transform ?? ""}${path.d}`}
+          d={path.d}
+          transform={path.transform}
+          style={{ fill: descriptorFill }}
+        />
       ))}
     </svg>
   );
+}
+
+/** The candidate lockup, painted with the panel's ink and the candidate accent. */
+export function CandidateLockup({
+  variant,
+  className,
+}: {
+  variant: ShopLockupVariant;
+  className?: string;
+}) {
+  return <LockupSvg lockup={shopLockupCandidate(variant)} {...(className ? { className } : {})} />;
+}
+
+/** Em size of "Marylebone" and of the tag in lockup units (26 and ~24.6 raster px / 0.386). */
+const MARYLEBONE_EM = 26 / 0.386;
+const TAG_EM = 46.93 / 0.7;
+
+/** Rendered font size, in px, of the smallest line of a lockup drawn `cssHeight` px tall. */
+export function smallestLinePx(lockup: LaxLockup, cssHeight: number): number {
+  const height = Number(lockup.viewBox.split(" ")[3]);
+  return (Math.min(MARYLEBONE_EM, TAG_EM) * cssHeight) / height;
 }
 
 type Scheme = "light" | "dark";
@@ -154,7 +184,103 @@ function Panel({
           <MenuGlyph />
         </span>
       </div>
+
+      {variant === "tagBelow" ? (
+        <>
+          <p className="idp-scheme">
+            Smallest line at 40px tall (header and phone):{" "}
+            {smallestLinePx(shopLockupCandidate(variant), 40).toFixed(1)}px; at 60px (footer):{" "}
+            {smallestLinePx(shopLockupCandidate(variant), 60).toFixed(1)}px. Below 9px on the header
+            and phone, so phones use the compact lockup:
+          </p>
+          <div className="idp-phone" aria-label="Phone header, compact lockup">
+            <LockupSvg lockup={laxLockup("shop")} className="idp-lockup idp-lockup--phone" />
+            <span className="idp-phone__icons">
+              <SearchGlyph />
+              <BagGlyph />
+              <MenuGlyph />
+            </span>
+          </div>
+          <div className="idp-header" aria-label="Header with the lockup at 50px">
+            <LockupSvg
+              lockup={shopLockupCandidate(variant)}
+              className="idp-lockup idp-lockup--readable"
+            />
+            <span className="idp-scheme">
+              At 50px tall every line is at least{" "}
+              {smallestLinePx(shopLockupCandidate(variant), 50).toFixed(1)}px.
+            </span>
+          </div>
+        </>
+      ) : null}
     </section>
+  );
+}
+
+/** One family lockup in its own colours for a scheme (Bid's navy, Account's teal). */
+function FamilyLockup({
+  kind,
+  scheme,
+  height,
+}: {
+  kind: "bid" | "account" | "bid-compact" | "account-compact";
+  scheme: Scheme;
+  height: string;
+}) {
+  const colors = laxLockupColors(kind, scheme);
+  return (
+    <LockupSvg
+      lockup={laxLockup(kind)}
+      descriptorFill={colors.descriptor}
+      className={`idp-lockup idp-lockup--${height}`}
+    />
+  );
+}
+
+const AUBERGINE = SHOP_ACCENT_CANDIDATES.find((accent) => accent.id === "aubergine");
+
+/** Bid, Account and Shop (d) side by side at one height, light and dark, plus phone forms. */
+export function FamilyComparison() {
+  if (!AUBERGINE) return null;
+  return (
+    <main id="main-content" className="idp">
+      <p className="idp-back">
+        <Link href="/preview/identity">All pairings</Link>
+      </p>
+      <h1 className="idp-title">The LAX family at one height</h1>
+      <p className="idp-lede">
+        (d) .SHOP on its own line, in Aubergine, beside Bid and Account. Each row draws every lockup
+        at the same height, as the header (40px) and footer (60px) do. The last row is the compact
+        form for phones: the mark and the tag.
+      </p>
+      <div className="idp-panels">
+        {(["light", "dark"] as const).map((scheme) => (
+          <section
+            key={scheme}
+            className={`idp-panel idp-panel--${scheme}`}
+            style={panelStyle(AUBERGINE, scheme)}
+            aria-label={`${scheme === "light" ? "Light" : "Dark"} surfaces`}
+          >
+            {(["header", "footer"] as const).map((size) => (
+              <div key={size} className="idp-family">
+                <p className="idp-scheme">
+                  {scheme === "light" ? "Light" : "Dark"} · {size === "header" ? "40px" : "60px"}
+                </p>
+                <FamilyLockup kind="bid" scheme={scheme} height={size} />
+                <FamilyLockup kind="account" scheme={scheme} height={size} />
+                <CandidateLockup variant="tagBelow" className={`idp-lockup idp-lockup--${size}`} />
+              </div>
+            ))}
+            <div className="idp-family">
+              <p className="idp-scheme">Phone, compact · 40px</p>
+              <FamilyLockup kind="bid-compact" scheme={scheme} height="header" />
+              <FamilyLockup kind="account-compact" scheme={scheme} height="header" />
+              <LockupSvg lockup={laxLockup("shop")} className="idp-lockup idp-lockup--header" />
+            </div>
+          </section>
+        ))}
+      </div>
+    </main>
   );
 }
 
@@ -191,6 +317,9 @@ export function PairingGrid() {
       <p className="idp-lede">
         The London Art Exchange wordmark stays as it is; each variant adds “Shop” in the accent.
         Primary buttons stay ink. Open a pairing for header, footer, phone and accent uses.
+      </p>
+      <p className="idp-back">
+        <Link href="/preview/identity/family">(d) beside Bid and Account at one height</Link>
       </p>
       <ul className="idp-accents">
         {SHOP_ACCENT_CANDIDATES.map((accent) => (

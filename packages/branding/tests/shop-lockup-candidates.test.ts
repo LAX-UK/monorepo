@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_ACCENTS, PRODUCT_ACCENTS_ON_DARK } from "../src/brand-identity.js";
-import { laxLockup } from "../src/lockup/lockup.js";
+import { laxDescriptor, laxLockup } from "../src/lockup/lockup.js";
 import {
   SHOP_ACCENT_CANDIDATES,
   SHOP_LOCKUP_VARIANTS,
+  SHOP_TAG_BELOW,
   shopLockupCandidate,
 } from "../src/lockup/shop-lockup-candidates.js";
 import { SHOP_TAG_PATHS } from "../src/lockup/shop-tag-paths.js";
@@ -36,12 +37,29 @@ describe("Shop lockup candidates", () => {
       const lockup = shopLockupCandidate(variant.id);
       expect(lockup.ink).toEqual(exchange.ink);
       expect(lockup.mist).toEqual(exchange.mist);
-      expect(lockup.descriptorPaths).toEqual([{ d: SHOP_TAG_PATHS[variant.id].d }]);
+      if (variant.id !== "tagBelow") {
+        expect(lockup.descriptorPaths).toEqual([{ d: SHOP_TAG_PATHS[variant.id].d }]);
+      }
     }
+  });
+
+  it("sets the own-line tag with the family's own outlines, moved and scaled as one", () => {
+    const family = laxDescriptor("SHOP").paths;
+    const lockup = shopLockupCandidate("tagBelow");
+    expect(lockup.descriptorPaths.map((path) => path.d)).toEqual(family.map((path) => path.d));
+    const prefix = `translate(${Math.round(SHOP_TAG_BELOW.dx * 1000) / 1000} ${
+      Math.round(SHOP_TAG_BELOW.dy * 1000) / 1000
+    }) scale(${Math.round(SHOP_TAG_BELOW.scale * 1000) / 1000})`;
+    for (const path of lockup.descriptorPaths)
+      expect(path.transform?.startsWith(prefix)).toBe(true);
+    // Four lines: the frame grows below Marylebone (bottom 293.2) by the tag's line.
+    const [, top, , height] = lockup.viewBox.split(" ").map(Number);
+    expect((top ?? 0) + (height ?? 0)).toBeGreaterThan(365);
   });
 
   it("frames each tag inside the view box", () => {
     for (const variant of SHOP_LOCKUP_VARIANTS) {
+      if (variant.id === "tagBelow") continue;
       const lockup = shopLockupCandidate(variant.id);
       const [, top, width, height] = lockup.viewBox.split(" ").map(Number);
       const { bounds } = SHOP_TAG_PATHS[variant.id];

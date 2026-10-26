@@ -143,6 +143,14 @@ function setDescriptor(word: string): { paths: LockupPath[]; right: number } {
   return { paths, right };
 }
 
+/**
+ * The family descriptor (dot plus capitals) for `word`, at its standard size and position: the
+ * baseline at the foot of the mark and the dot at the start of the text column.
+ */
+export function laxDescriptor(word: string): { paths: LockupPath[]; right: number } {
+  return setDescriptor(word);
+}
+
 const format = (value: number): string => String(Math.round(value * 100) / 100);
 
 function frame(width: number, y: number, height: number) {

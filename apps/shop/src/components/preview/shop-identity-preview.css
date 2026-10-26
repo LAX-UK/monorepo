@@ -134,8 +134,30 @@
   height: 3.75rem;
 }
 
+/* The live Shop header draws its lockup 2.5rem tall on phones too. */
 .idp-lockup--phone {
-  height: 2.25rem;
+  height: 2.5rem;
+}
+
+.idp-lockup--readable {
+  height: 3.125rem;
+}
+
+.idp-family {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-8, 2rem);
+  padding-bottom: var(--shop-space-4, 1rem);
+  border-bottom: 1px solid var(--idp-border);
+}
+
+.idp-family .idp-scheme {
+  flex-basis: 100%;
+}
+
+.idp-family .idp-lockup {
+  max-width: 100%;
 }
 
 .idp-header {
