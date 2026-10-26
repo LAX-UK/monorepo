@@ -8,6 +8,7 @@ const getHelpArticleDetail = vi.fn();
 const setHelpArticlePublication = vi.fn();
 const issueHelpPreviewToken = vi.fn();
 const replace = vi.fn();
+const push = vi.fn();
 
 vi.mock("@/server/application/admin-help-actions.server", () => ({
   saveHelpArticle,
@@ -15,20 +16,9 @@ vi.mock("@/server/application/admin-help-actions.server", () => ({
   setHelpArticlePublication,
   issueHelpPreviewToken,
 }));
-// The shared editor imports the editorial actions for its other entities.
-vi.mock("@/server/application/admin-editorial-actions.server", () => ({
-  saveEditorialEntity: vi.fn(),
-  getEditorialEntityDetail: vi.fn(),
-  setEditorialPublication: vi.fn(),
-  issueEditorialPreviewToken: vi.fn(),
-}));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace, refresh: vi.fn() }),
+  useRouter: () => ({ push, replace, refresh: vi.fn() }),
   usePathname: () => "/help/h-1",
-}));
-vi.mock("@auction/ui", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@auction/ui")>()),
-  toast: { success: vi.fn() },
 }));
 
 const { HelpArticleEditor } = await import("./help-article-editor.client");
@@ -71,6 +61,12 @@ function editQuestion(value: string) {
   fireEvent.change(screen.getByLabelText(/Question/), { target: { value } });
 }
 
+/** The form's own primary button, not the header copy of it. */
+function formButton(name: string) {
+  const form = screen.getByRole("form");
+  return within(form).getByRole("button", { name });
+}
+
 describe("help article editor", () => {
   beforeEach(() => {
     for (const action of [
@@ -79,6 +75,7 @@ describe("help article editor", () => {
       setHelpArticlePublication,
       issueHelpPreviewToken,
       replace,
+      push,
     ]) {
       action.mockReset();
     }
@@ -88,7 +85,7 @@ describe("help article editor", () => {
   it("saves the answer as body blocks against the version it opened", async () => {
     renderEditor();
     editQuestion("How do I pay for an artwork?");
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(formButton("Save changes"));
     await waitFor(() => expect(saveHelpArticle).toHaveBeenCalledTimes(1));
     expect(saveHelpArticle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -102,34 +99,57 @@ describe("help article editor", () => {
         }),
       }),
     );
-    expect(await screen.findByText("Saved 11:45")).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole("form")).findByRole("button", { name: "Saved" }),
+    ).toBeDisabled();
   });
 
   it("lists the problems and sends nothing when the question is blank", async () => {
     renderEditor();
     editQuestion("");
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Enter the question.");
+    fireEvent.click(formButton("Save changes"));
+    const summary = await screen.findByRole("alert");
+    expect(summary).toHaveTextContent("Enter the question.");
     expect(saveHelpArticle).not.toHaveBeenCalled();
+  });
+
+  it("clears a problem as soon as the field is fixed", async () => {
+    renderEditor();
+    editQuestion("");
+    fireEvent.click(formButton("Save changes"));
+    await screen.findByRole("alert");
+    editQuestion("How do I pay?!");
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
 
   it("starts a new question in the category the list was filtered to and opens it once created", async () => {
     saveHelpArticle.mockResolvedValue({ ok: true, data: { id: "new-id", version: null } });
     renderEditor(null);
     editQuestion("Do you deliver abroad?");
-    fireEvent.change(screen.getByLabelText("Slug"), { target: { value: "deliver-abroad" } });
-    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+    fireEvent.click(formButton("Create draft"));
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/help/new-id"));
     expect(saveHelpArticle).toHaveBeenCalledWith(
       expect.objectContaining({
         id: null,
         expectedVersion: null,
-        payload: expect.objectContaining({ categoryId: CATEGORIES[1]?.value }),
+        payload: expect.objectContaining({
+          categoryId: CATEGORIES[1]?.value,
+          slug: "do-you-deliver-abroad",
+        }),
       }),
     );
   });
 
-  it("offers reload or overwrite when someone else saved first", async () => {
+  it("stays on the form with the refusal when a save fails", async () => {
+    saveHelpArticle.mockResolvedValue({ ok: false, kind: "failed", message: "" });
+    renderEditor();
+    editQuestion("My wording");
+    fireEvent.click(formButton("Save changes"));
+    expect(await screen.findByText(/Could not save the question/)).toBeInTheDocument();
+    expect(formButton("Save changes")).toBeEnabled();
+  });
+
+  it("offers loading theirs or saving over it when someone else saved first", async () => {
     saveHelpArticle.mockResolvedValue({
       ok: false,
       kind: "conflict",
@@ -138,22 +158,28 @@ describe("help article editor", () => {
     });
     renderEditor();
     editQuestion("My wording");
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(formButton("Save changes"));
     expect(
-      await screen.findByText("Someone else saved this question at 11:30"),
+      await screen.findByText("Someone else saved this question after you opened it"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Keep my changes" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load their version" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save mine over it" }));
+    await waitFor(() =>
+      expect(saveHelpArticle).toHaveBeenLastCalledWith(
+        expect.objectContaining({ expectedVersion: THEIRS }),
+      ),
+    );
   });
 
-  it("asks before publishing and names the question", async () => {
+  it("asks before publishing, names the question and says what changes on lax.art", async () => {
     setHelpArticlePublication.mockResolvedValue({ ok: true, data: { version: NEW_VERSION } });
     renderEditor();
     fireEvent.click(screen.getByRole("button", { name: "Publish" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/Publish “How do I pay\?”/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/appear in the Help centre on lax\.art/)).toBeInTheDocument();
     expect(setHelpArticlePublication).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish question" }));
     await waitFor(() =>
       expect(setHelpArticlePublication).toHaveBeenCalledWith(
         expect.objectContaining({ id: detail.id, published: true }),
@@ -161,18 +187,10 @@ describe("help article editor", () => {
     );
   });
 
-  it("creates a preview link for a saved question", async () => {
-    issueHelpPreviewToken.mockResolvedValue({
-      ok: true,
-      data: { token: "abc.def", expiresAt: "2026-03-01T10:15:00.000Z" },
-    });
+  it("asks before leaving with unsaved edits", async () => {
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Create preview link" }));
-    await waitFor(() =>
-      expect(issueHelpPreviewToken).toHaveBeenCalledWith(
-        expect.objectContaining({ id: detail.id }),
-      ),
-    );
-    expect(await screen.findByRole("region", { name: "Draft preview link" })).toBeInTheDocument();
+    editQuestion("Something else");
+    fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent(/Discard changes/i);
   });
 });

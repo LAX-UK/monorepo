@@ -1,6 +1,6 @@
 import type { AdminOverviewKpis } from "@auction/shop-contracts";
 import type { AdminNavGroup } from "./admin-nav.vm";
-import { enquiryInboxHref } from "./enquiry-inbox.vm";
+import { enquiriesList } from "./enquiry-inbox.vm";
 
 export type OverviewTile = {
   key: string;
@@ -50,7 +50,7 @@ export function buildOverviewTiles(input: {
     {
       key: "enquiries",
       label: "New enquiries",
-      href: enquiryInboxHref({}, { status: "new" }),
+      href: enquiriesList.href(enquiriesList.parse({}), { view: "new" }),
       value: input.newEnquiryCount ?? undefined,
     },
   ];

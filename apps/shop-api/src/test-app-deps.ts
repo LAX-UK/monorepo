@@ -208,7 +208,11 @@ export function createMinimalShopApiTestDeps(
         },
         parties: {
           listClientParties: async () => ({ items: [], nextCursor: null }),
-          listArtists: async () => ({ items: [], nextCursor: null }),
+          listArtists: async () => ({
+            items: [],
+            nextCursor: null,
+            counts: { active: 0, archived: 0 },
+          }),
           getClientDetail: async () => {
             throw new Error("not implemented in test deps");
           },
@@ -228,7 +232,7 @@ export function createMinimalShopApiTestDeps(
         },
         staff: { listStaffMembers: async () => ({ items: [], nextCursor: null }) },
         catalogue: {
-          listMerchandiseProducts: async () => ({ items: [], nextCursor: null }),
+          listMerchandiseProducts: async () => ({ items: [], nextCursor: null, counts: {} }),
           getMerchandiseProduct: async () => null,
         },
         overview: {

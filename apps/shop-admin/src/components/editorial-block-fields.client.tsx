@@ -1,8 +1,7 @@
 "use client";
 
+import { EditorialImageField } from "@/components/editorial/editorial-image-field.client";
 import { RailRelationFields } from "@/components/editorial/rail-relation-fields.client";
-import { SelectField, TextAreaField, TextField } from "@/components/forms/fields";
-import { MediaUploadField } from "@/components/media-upload-field";
 import {
   type EditorialBlockOf,
   readSimpleText,
@@ -11,8 +10,8 @@ import {
 } from "@/lib/editorial-blocks";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import type { EditorialBlock } from "@auction/shop-contracts";
-import { Button } from "@auction/ui";
-import { useState } from "react";
+import { EnumSelect, Field, FieldRow, ListEditor, TextArea, TextInput } from "@auction/staff-ui";
+import { useId, useState } from "react";
 
 type FieldsProps<B extends EditorialBlock> = {
   block: B;
@@ -22,108 +21,123 @@ type FieldsProps<B extends EditorialBlock> = {
 
 const HREF_HINT = "https://…, mailto:… or a site path such as /visit";
 
+/** Stable keys for a block's inner list, so editing a row never remounts the ones around it. */
 function useListKeys(length: number) {
   const [keys, setKeys] = useState(() => Array.from({ length }, () => crypto.randomUUID()));
   return {
     keyAt: (index: number) => keys[index] ?? `pending-${index}`,
     add: () => setKeys((current) => [...current, crypto.randomUUID()]),
     remove: (index: number) => setKeys((current) => removeItem(current, index)),
-    move: (index: number, direction: -1 | 1) =>
-      setKeys((current) => moveItem(current, index, direction)),
+    move: (from: number, to: number) =>
+      setKeys((current) => moveItem(current, from, to > from ? 1 : -1)),
   };
 }
 
-function ItemControls({
+function BlockText({
   label,
-  index,
-  count,
+  description,
+  optional,
   disabled,
-  onMove,
-  onRemove,
+  value,
+  onChange,
+  maxLength,
+  type = "text",
 }: {
   label: string;
-  index: number;
-  count: number;
+  description?: string;
+  optional?: boolean;
   disabled: boolean;
-  onMove: (direction: -1 | 1) => void;
-  onRemove: () => void;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength?: number;
+  type?: "text" | "url";
 }) {
   return (
-    <div className="flex flex-wrap gap-1">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled || index === 0}
-        aria-label={`Move ${label} up`}
-        onClick={() => onMove(-1)}
-      >
-        Up
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled || index === count - 1}
-        aria-label={`Move ${label} down`}
-        onClick={() => onMove(1)}
-      >
-        Down
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled || count <= 1}
-        aria-label={`Remove ${label}`}
-        onClick={onRemove}
-      >
-        Remove
-      </Button>
-    </div>
+    <Field
+      label={label}
+      disabled={disabled}
+      {...(description ? { description } : {})}
+      {...(optional ? { optional } : {})}
+    >
+      <TextInput
+        type={type}
+        value={value}
+        maxLength={maxLength}
+        autoComplete="off"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Field>
+  );
+}
+
+function BlockTextArea({
+  label,
+  optional,
+  disabled,
+  value,
+  onChange,
+  maxLength,
+  rows = 4,
+}: {
+  label: string;
+  optional?: boolean;
+  disabled: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength?: number;
+  rows?: number;
+}) {
+  return (
+    <Field label={label} disabled={disabled} {...(optional ? { optional } : {})}>
+      <TextArea
+        rows={rows}
+        value={value}
+        maxLength={maxLength}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Field>
   );
 }
 
 function HeadingFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"heading">>) {
   return (
-    <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
-      <SelectField
-        label="Level"
-        value={String(block.level) as "2" | "3" | "4"}
-        options={[
-          { value: "2", label: "H2" },
-          { value: "3", label: "H3" },
-          { value: "4", label: "H4" },
-        ]}
-        disabled={disabled}
-        onChange={(level) => onChange({ ...block, level: Number(level) as 2 | 3 | 4 })}
-      />
-      <TextField
+    <FieldRow>
+      <Field label="Level" disabled={disabled}>
+        <EnumSelect
+          value={String(block.level) as "2" | "3" | "4"}
+          onValueChange={(level) => onChange({ ...block, level: Number(level) as 2 | 3 | 4 })}
+          options={[
+            { value: "2", label: "Heading 2" },
+            { value: "3", label: "Heading 3" },
+            { value: "4", label: "Heading 4" },
+          ]}
+        />
+      </Field>
+      <BlockText
         label="Heading text"
         value={block.text}
         maxLength={500}
-        required
         disabled={disabled}
         onChange={(text) => onChange({ ...block, text })}
       />
-    </div>
+    </FieldRow>
   );
 }
 
 function RichTextFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"richText">>) {
   const simple = readSimpleText(block.spans) ?? { text: "", href: "" };
   return (
-    <div className="space-y-3">
-      <TextAreaField
+    <div className="flex flex-col gap-4">
+      <BlockTextArea
         label="Paragraph text"
-        rows={4}
         value={simple.text}
         disabled={disabled}
         onChange={(text) => onChange({ ...block, spans: simpleSpans(text, simple.href) })}
       />
-      <TextField
-        label="Link (optional)"
-        hint={`Turns the whole paragraph into a link. ${HREF_HINT}`}
+      <BlockText
+        label="Link"
+        optional
+        description={`Turns the whole paragraph into a link. ${HREF_HINT}`}
         value={simple.href}
         maxLength={2048}
         disabled={disabled}
@@ -135,16 +149,17 @@ function RichTextFields({ block, onChange, disabled }: FieldsProps<EditorialBloc
 
 function QuoteFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"quote">>) {
   return (
-    <div className="space-y-3">
-      <TextAreaField
+    <div className="flex flex-col gap-4">
+      <BlockTextArea
         label="Quote"
         value={block.text}
         maxLength={2000}
         disabled={disabled}
         onChange={(text) => onChange({ ...block, text })}
       />
-      <TextField
-        label="Attribution (optional)"
+      <BlockText
+        label="Attribution"
+        optional
         value={block.attribution ?? ""}
         maxLength={200}
         disabled={disabled}
@@ -155,26 +170,30 @@ function QuoteFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf
 }
 
 function ImageFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"image">>) {
+  const id = useId();
   return (
-    <div className="space-y-3">
-      <MediaUploadField
-        kind="editorial_inline"
+    <div className="flex flex-col gap-4">
+      <EditorialImageField
+        name={`${id}-image`}
         label="Image"
+        optional={false}
+        kind="editorial_inline"
         value={block.mediaKey || null}
         alt={block.alt ?? ""}
         disabled={disabled}
         onChange={(key) => onChange({ ...block, mediaKey: key ?? "" })}
       />
-      <TextField
+      <BlockText
         label="Alt text"
-        hint="Describe the image for screen readers."
+        description="Describe the image for people using screen readers."
         value={block.alt ?? ""}
         maxLength={500}
         disabled={disabled}
         onChange={(value) => onChange(withOptionalText(block, "alt", value))}
       />
-      <TextField
-        label="Caption (optional)"
+      <BlockText
+        label="Caption"
+        optional
         value={block.caption ?? ""}
         maxLength={1000}
         disabled={disabled}
@@ -185,21 +204,22 @@ function ImageFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf
 }
 
 function VideoFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"video">>) {
+  const id = useId();
   return (
-    <div className="space-y-3">
-      <TextField
+    <div className="flex flex-col gap-4">
+      <BlockText
         label="Video URL"
         type="url"
-        hint="Must start with https://"
+        description="It must start with https://"
         value={block.url}
         maxLength={2048}
-        required
         disabled={disabled}
         onChange={(url) => onChange({ ...block, url })}
       />
-      <MediaUploadField
+      <EditorialImageField
+        name={`${id}-poster`}
+        label="Poster image"
         kind="editorial_inline"
-        label="Poster image (optional)"
         value={block.posterMediaKey ?? null}
         disabled={disabled}
         onChange={(key) => onChange(withOptionalText(block, "posterMediaKey", key ?? ""))}
@@ -212,27 +232,40 @@ function FaqGroupFields({ block, onChange, disabled }: FieldsProps<EditorialBloc
   const keys = useListKeys(block.items.length);
   const setItems = (items: EditorialBlockOf<"faqGroup">["items"]) => onChange({ ...block, items });
   return (
-    <div className="space-y-3">
-      {block.items.map((item, index) => {
+    <ListEditor
+      items={block.items}
+      getKey={(_, index) => keys.keyAt(index)}
+      itemLabel={(index) => `question ${index + 1}`}
+      addLabel="Add question"
+      emptyText="No questions yet."
+      disabled={disabled}
+      onAdd={() => {
+        keys.add();
+        setItems([...block.items, { question: "", answer: [{ text: "" }] }]);
+      }}
+      onRemove={(index) => {
+        keys.remove(index);
+        setItems(removeItem(block.items, index));
+      }}
+      onMove={(from, to) => {
+        keys.move(from, to);
+        setItems(moveItem(block.items, from, to > from ? 1 : -1));
+      }}
+      renderItem={(item, index) => {
         const answer = readSimpleText(item.answer) ?? { text: "", href: "" };
-        const label = `question ${index + 1}`;
         return (
-          <fieldset key={keys.keyAt(index)} className="space-y-2 rounded border p-3">
-            <legend className="px-1 text-xs font-medium text-on-surface-variant">
-              Question {index + 1}
-            </legend>
-            <TextField
-              label="Question"
+          <>
+            <BlockText
+              label={`Question ${index + 1}`}
               value={item.question}
               maxLength={500}
-              required
               disabled={disabled}
               onChange={(question) =>
                 setItems(replaceItem(block.items, index, { ...item, question }))
               }
             />
-            <TextAreaField
-              label="Answer"
+            <BlockTextArea
+              label={`Answer ${index + 1}`}
               value={answer.text}
               disabled={disabled}
               onChange={(text) =>
@@ -244,9 +277,10 @@ function FaqGroupFields({ block, onChange, disabled }: FieldsProps<EditorialBloc
                 )
               }
             />
-            <TextField
-              label="Answer link (optional)"
-              hint={HREF_HINT}
+            <BlockText
+              label={`Answer ${index + 1} link`}
+              optional
+              description={HREF_HINT}
               value={answer.href}
               maxLength={2048}
               disabled={disabled}
@@ -259,154 +293,118 @@ function FaqGroupFields({ block, onChange, disabled }: FieldsProps<EditorialBloc
                 )
               }
             />
-            <ItemControls
-              label={label}
-              index={index}
-              count={block.items.length}
-              disabled={disabled}
-              onMove={(direction) => {
-                keys.move(index, direction);
-                setItems(moveItem(block.items, index, direction));
-              }}
-              onRemove={() => {
-                keys.remove(index);
-                setItems(removeItem(block.items, index));
-              }}
-            />
-          </fieldset>
+          </>
         );
-      })}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={() => {
-          keys.add();
-          setItems([...block.items, { question: "", answer: [{ text: "" }] }]);
-        }}
-      >
-        Add question
-      </Button>
-    </div>
+      }}
+    />
   );
 }
 
 function CardGridFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"cardGrid">>) {
   const keys = useListKeys(block.items.length);
+  const id = useId();
   const setItems = (items: EditorialBlockOf<"cardGrid">["items"]) => onChange({ ...block, items });
   return (
-    <div className="space-y-3">
-      {block.items.map((item, index) => {
-        const label = `card ${index + 1}`;
+    <ListEditor
+      items={block.items}
+      getKey={(_, index) => keys.keyAt(index)}
+      itemLabel={(index) => `card ${index + 1}`}
+      addLabel="Add card"
+      emptyText="No cards yet."
+      max={12}
+      disabled={disabled}
+      onAdd={() => {
+        keys.add();
+        setItems([...block.items, { title: "" }]);
+      }}
+      onRemove={(index) => {
+        keys.remove(index);
+        setItems(removeItem(block.items, index));
+      }}
+      onMove={(from, to) => {
+        keys.move(from, to);
+        setItems(moveItem(block.items, from, to > from ? 1 : -1));
+      }}
+      renderItem={(item, index) => {
         const update = (next: typeof item) => setItems(replaceItem(block.items, index, next));
         return (
-          <fieldset key={keys.keyAt(index)} className="space-y-2 rounded border p-3">
-            <legend className="px-1 text-xs font-medium text-on-surface-variant">
-              Card {index + 1}
-            </legend>
-            <TextField
-              label="Card title"
+          <>
+            <BlockText
+              label={`Card ${index + 1} title`}
               value={item.title}
               maxLength={200}
-              required
               disabled={disabled}
               onChange={(title) => update({ ...item, title })}
             />
-            <TextAreaField
-              label="Card text (optional)"
+            <BlockTextArea
+              label={`Card ${index + 1} text`}
+              optional
+              rows={3}
               value={item.body ?? ""}
               maxLength={1000}
               disabled={disabled}
               onChange={(value) => update(withOptionalText(item, "body", value))}
             />
-            <TextField
-              label="Card link (optional)"
-              hint={HREF_HINT}
+            <BlockText
+              label={`Card ${index + 1} link`}
+              optional
+              description={HREF_HINT}
               value={item.linkUrl ?? ""}
               maxLength={2048}
               disabled={disabled}
               onChange={(value) => update(withOptionalText(item, "linkUrl", value))}
             />
-            <MediaUploadField
+            <EditorialImageField
+              name={`${id}-card-${keys.keyAt(index)}`}
+              label={`Card ${index + 1} image`}
               kind="editorial_inline"
-              label="Card image (optional)"
               value={item.mediaKey ?? null}
               disabled={disabled}
               onChange={(key) => update(withOptionalText(item, "mediaKey", key ?? ""))}
             />
-            <ItemControls
-              label={label}
-              index={index}
-              count={block.items.length}
-              disabled={disabled}
-              onMove={(direction) => {
-                keys.move(index, direction);
-                setItems(moveItem(block.items, index, direction));
-              }}
-              onRemove={() => {
-                keys.remove(index);
-                setItems(removeItem(block.items, index));
-              }}
-            />
-          </fieldset>
+          </>
         );
-      })}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled || block.items.length >= 12}
-        onClick={() => {
-          keys.add();
-          setItems([...block.items, { title: "" }]);
-        }}
-      >
-        Add card
-      </Button>
-    </div>
+      }}
+    />
   );
 }
 
 function CtaFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"cta">>) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <TextField
-        label="Title"
-        value={block.title}
-        maxLength={200}
-        required
-        disabled={disabled}
-        onChange={(title) => onChange({ ...block, title })}
-      />
-      <TextField
-        label="Button label"
-        value={block.buttonLabel}
-        maxLength={80}
-        required
-        disabled={disabled}
-        onChange={(buttonLabel) => onChange({ ...block, buttonLabel })}
-      />
-      <div className="sm:col-span-2">
-        <TextAreaField
-          label="Body (optional)"
-          value={block.body ?? ""}
-          maxLength={1000}
+    <div className="flex flex-col gap-4">
+      <FieldRow>
+        <BlockText
+          label="Title"
+          value={block.title}
+          maxLength={200}
           disabled={disabled}
-          onChange={(value) => onChange(withOptionalText(block, "body", value))}
+          onChange={(title) => onChange({ ...block, title })}
         />
-      </div>
-      <div className="sm:col-span-2">
-        <TextField
-          label="Button link"
-          hint={HREF_HINT}
-          value={block.href}
-          maxLength={2048}
-          required
+        <BlockText
+          label="Button label"
+          value={block.buttonLabel}
+          maxLength={80}
           disabled={disabled}
-          onChange={(href) => onChange({ ...block, href })}
+          onChange={(buttonLabel) => onChange({ ...block, buttonLabel })}
         />
-      </div>
+      </FieldRow>
+      <BlockTextArea
+        label="Body"
+        optional
+        rows={3}
+        value={block.body ?? ""}
+        maxLength={1000}
+        disabled={disabled}
+        onChange={(value) => onChange(withOptionalText(block, "body", value))}
+      />
+      <BlockText
+        label="Button link"
+        description={HREF_HINT}
+        value={block.href}
+        maxLength={2048}
+        disabled={disabled}
+        onChange={(href) => onChange({ ...block, href })}
+      />
     </div>
   );
 }
@@ -417,23 +415,26 @@ function InfoStripFields({
   disabled,
 }: FieldsProps<EditorialBlockOf<"infoStrip">>) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <TextField
+    <div className="grid gap-4 sm:grid-cols-3">
+      <BlockText
         label="Date label"
+        optional
         value={block.dateLabel ?? ""}
         maxLength={120}
         disabled={disabled}
         onChange={(value) => onChange(withOptionalText(block, "dateLabel", value))}
       />
-      <TextField
+      <BlockText
         label="Venue label"
+        optional
         value={block.venueLabel ?? ""}
         maxLength={200}
         disabled={disabled}
         onChange={(value) => onChange(withOptionalText(block, "venueLabel", value))}
       />
-      <TextField
+      <BlockText
         label="Hours label"
+        optional
         value={block.hoursLabel ?? ""}
         maxLength={200}
         disabled={disabled}

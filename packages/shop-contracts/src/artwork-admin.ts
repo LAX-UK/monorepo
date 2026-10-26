@@ -194,6 +194,10 @@ export type AdminArtworkBulkVisibilityResponse = Static<
   typeof AdminArtworkBulkVisibilityResponseSchema
 >;
 
+/** Artwork list sorts; the first is the default. */
+export const ADMIN_ARTWORK_SORTS = ["updated_desc", "updated_asc"] as const;
+export type AdminArtworkSort = (typeof ADMIN_ARTWORK_SORTS)[number];
+
 export const AdminArtworkListQuerySchema = Type.Object({
   cursor: Type.Optional(Type.String({ maxLength: 512 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
@@ -203,6 +207,8 @@ export const AdminArtworkListQuerySchema = Type.Object({
   artistId: Type.Optional(Type.String({ format: "uuid" })),
   saleState: Type.Optional(AdminArtworkSaleStateSchema),
   salesChannel: Type.Optional(AdminArtworkChannelSchema),
+  /** Last changed first by default; the artwork id breaks ties. */
+  sort: Type.Optional(Type.Union(ADMIN_ARTWORK_SORTS.map((sort) => Type.Literal(sort)))),
 });
 export type AdminArtworkListQuery = Static<typeof AdminArtworkListQuerySchema>;
 
@@ -329,12 +335,18 @@ export const AdminArtistStatusSchema = Type.Union([
 ]);
 export type AdminArtistStatus = Static<typeof AdminArtistStatusSchema>;
 
+/** Artist list sorts; the first is the default. */
+export const ADMIN_ARTIST_SORTS = ["name_asc", "name_desc", "created_desc", "created_asc"] as const;
+export type AdminArtistSort = (typeof ADMIN_ARTIST_SORTS)[number];
+
 export const AdminArtistListQuerySchema = Type.Object({
   cursor: Type.Optional(Type.String({ maxLength: 512 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
   /** Name or slug. */
   q: Type.Optional(Type.String({ maxLength: ARTWORK_LIST_SEARCH_MAX_LENGTH })),
   status: Type.Optional(AdminArtistStatusSchema),
+  /** A to Z by name by default; the artist id breaks ties. */
+  sort: Type.Optional(Type.Union(ADMIN_ARTIST_SORTS.map((sort) => Type.Literal(sort)))),
 });
 export type AdminArtistListQuery = Static<typeof AdminArtistListQuerySchema>;
 

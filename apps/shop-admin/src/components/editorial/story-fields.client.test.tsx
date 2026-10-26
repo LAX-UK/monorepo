@@ -16,18 +16,21 @@ function renderFields(overrides: Partial<StoryForm>) {
 }
 
 const KIND_ONLY_LABELS = {
-  series: "Series (optional)",
-  episodeNumber: "Episode number (optional)",
+  series: "Series",
+  episodeNumber: "Episode number",
   audioUrl: "Audio URL",
-  duration: "Duration (optional)",
-  readMinutes: "Reading time in minutes (optional)",
+  duration: "Duration",
+  readMinutes: "Reading time in minutes",
   publicationName: "Publication",
   externalUrl: "Link to the piece",
 } as const;
 
+/** A field's label, which may carry an "Optional" tag after its name. */
+const labelled = (label: string) => new RegExp(`^${label}`);
+
 function shown(): string[] {
   return Object.entries(KIND_ONLY_LABELS)
-    .filter(([, label]) => screen.queryByLabelText(label) !== null)
+    .filter(([, label]) => screen.queryByLabelText(labelled(label)) !== null)
     .map(([field]) => field);
 }
 
@@ -60,14 +63,8 @@ describe("story fields by kind", () => {
 
   it("always shows the fields every kind shares", () => {
     renderFields({ kind: "press" });
-    for (const label of [
-      "Slug",
-      "Title",
-      "Category",
-      "Author or host (optional)",
-      "Video URL (optional)",
-    ]) {
-      expect(screen.getByLabelText(label)).toBeInTheDocument();
+    for (const label of ["Slug", "Title", "Category", "Author or host", "Video URL"]) {
+      expect(screen.getByLabelText(labelled(label))).toBeInTheDocument();
     }
   });
 
@@ -80,7 +77,7 @@ describe("story fields by kind", () => {
         onChange={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText("Audio URL")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(labelled("Audio URL"))).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("Audio URL must start with https://.")).toBeInTheDocument();
   });
 });

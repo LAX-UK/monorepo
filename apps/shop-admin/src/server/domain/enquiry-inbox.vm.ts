@@ -1,28 +1,18 @@
 import {
   ENQUIRY_KINDS,
+  ENQUIRY_SEARCH_MAX_LENGTH,
   ENQUIRY_STATUSES,
   ENQUIRY_TOPICS,
   type EnquiryKind,
-  type EnquiryStatus,
   type EnquiryTopic,
 } from "@auction/shop-contracts";
+import { type RawSearchParams, singleParam } from "./list-url-state";
 import { staffRoleLabel } from "./staff-role-label.vm";
+import { type WorkListState, defineWorkList } from "./work-list.vm";
 
 export const ENQUIRY_LIST_PATH = "/enquiries";
 
 export { ENQUIRY_KINDS, ENQUIRY_STATUSES, ENQUIRY_TOPICS };
-
-export type EnquiryAssigneeFilter = "me" | "unassigned";
-
-/** The inbox's filter state, as it appears in the page URL. Every field is optional. */
-export type EnquiryInboxQuery = {
-  q?: string;
-  kind?: EnquiryKind;
-  topic?: EnquiryTopic;
-  status?: EnquiryStatus;
-  assignee?: EnquiryAssigneeFilter;
-  cursor?: string;
-};
 
 export const ENQUIRY_KIND_LABELS: Record<EnquiryKind, string> = {
   general: "General",
@@ -38,101 +28,73 @@ export const ENQUIRY_TOPIC_LABELS: Record<EnquiryTopic, string> = {
   artwork: "Artwork",
 };
 
-export const ENQUIRY_STATUS_LABELS: Record<EnquiryStatus, string> = {
-  new: "New",
-  in_progress: "In progress",
-  closed: "Closed",
-};
-
-export const ENQUIRY_ASSIGNEE_LABELS: Record<EnquiryAssigneeFilter, string> = {
+export const ENQUIRY_ASSIGNEE_LABELS = {
   me: "Me",
   unassigned: "Unassigned",
-};
+} as const;
 
-type RawSearchParams = Record<string, string | string[] | undefined>;
+/*
+ * The enquiries list: a view per status (and all of them), search, kind, topic and assignee
+ * filters, and the sort. The server always puts waiting enquiries first, then orders by the time
+ * received. The panel names an enquiry as `kind:id` because ids are only unique per kind.
+ */
+export const enquiriesList = defineWorkList({
+  path: ENQUIRY_LIST_PATH,
+  views: [
+    { id: "all", label: "All", api: {} },
+    { id: "new", label: "Waiting", api: { status: "new" }, statuses: ["new"] },
+    {
+      id: "in_progress",
+      label: "In progress",
+      api: { status: "in_progress" },
+      statuses: ["in_progress"],
+    },
+    { id: "closed", label: "Closed", api: { status: "closed" }, statuses: ["closed"] },
+  ],
+  defaultView: "all",
+  filters: {
+    kind: ENQUIRY_KINDS,
+    topic: ENQUIRY_TOPICS,
+    assignee: ["me", "unassigned"],
+  },
+  sorts: { received: { asc: "received_asc", desc: "received_desc" } },
+  defaultSort: "received_desc",
+  panelParam: "enquiry",
+  searchMaxLength: ENQUIRY_SEARCH_MAX_LENGTH,
+});
 
-function single(value: string | string[] | undefined): string | undefined {
-  const first = Array.isArray(value) ? value[0] : value;
-  const trimmed = first?.trim();
-  return trimmed ? trimmed : undefined;
-}
+export type EnquiriesListState = WorkListState<"kind" | "topic" | "assignee">;
 
-function oneOf<T extends string>(value: string | undefined, allowed: readonly T[]): T | undefined {
-  return allowed.find((candidate) => candidate === value);
-}
-
-/** Reads the URL, dropping anything unrecognised so a hand-edited link still opens the inbox. */
-export function parseEnquiryInboxQuery(params: RawSearchParams): EnquiryInboxQuery {
-  const q = single(params.q);
-  const kind = oneOf(single(params.kind), ENQUIRY_KINDS);
-  const topic = oneOf(single(params.topic), ENQUIRY_TOPICS);
-  const status = oneOf(single(params.status), ENQUIRY_STATUSES);
-  const assignee = oneOf(single(params.assignee), ["me", "unassigned"] as const);
-  const cursor = single(params.cursor);
-  return {
-    ...(q ? { q } : {}),
-    ...(kind ? { kind } : {}),
-    ...(topic ? { topic } : {}),
-    ...(status ? { status } : {}),
-    ...(assignee ? { assignee } : {}),
-    ...(cursor ? { cursor } : {}),
-  };
-}
-
-/** True when any filter narrows the list; paging does not count. */
-export function hasActiveEnquiryFilters(query: EnquiryInboxQuery): boolean {
-  return Boolean(query.q || query.kind || query.topic || query.status || query.assignee);
-}
-
-function toSearchParams(query: EnquiryInboxQuery): URLSearchParams {
-  const params = new URLSearchParams();
-  for (const key of ["q", "kind", "topic", "status", "assignee", "cursor"] as const) {
-    const value = query[key];
-    if (value) params.set(key, value);
-  }
-  return params;
-}
+/** Longest staff identity subject the assignee filter accepts, as the API does. */
+const ASSIGNEE_SUBJECT_MAX_LENGTH = 200;
 
 /**
- * The inbox URL for `query` with `change` applied. Changing a filter returns to the first page,
- * because a cursor only means something under the filters it was issued for.
- * A `null` clears a field.
+ * The inbox's URL state. The assignee filter takes "me", "unassigned" or a colleague's staff
+ * identity subject, so it is read here rather than from a fixed list of values.
  */
-export function enquiryInboxHref(
-  query: EnquiryInboxQuery,
-  change: { [K in keyof EnquiryInboxQuery]?: EnquiryInboxQuery[K] | null } = {},
-): string {
-  const next: Record<string, string | undefined> = { ...query, cursor: undefined };
-  for (const [key, value] of Object.entries(change)) {
-    next[key] = value ?? undefined;
-  }
-  const params = toSearchParams(next as EnquiryInboxQuery);
-  const search = params.toString();
-  return search ? `${ENQUIRY_LIST_PATH}?${search}` : ENQUIRY_LIST_PATH;
+export function parseEnquiriesState(params: RawSearchParams): EnquiriesListState {
+  const state = enquiriesList.parse(params);
+  const raw = singleParam(params.assignee);
+  if (!raw || state.filters.assignee || raw.length > ASSIGNEE_SUBJECT_MAX_LENGTH) return state;
+  return { ...state, filters: { ...state.filters, assignee: raw } };
 }
 
-/** The same URL but one page further on. */
-export function enquiryInboxPageHref(query: EnquiryInboxQuery, cursor: string): string {
-  const params = toSearchParams({ ...query, cursor });
-  return `${ENQUIRY_LIST_PATH}?${params.toString()}`;
+/** The panel id for an enquiry: `kind:id`. */
+export function enquiryRef(item: { kind: EnquiryKind; id: string }): string {
+  return `${item.kind}:${item.id}`;
 }
 
-/** The query string the inbox API expects for this URL state. */
-export function enquiryInboxApiQuery(query: EnquiryInboxQuery): Record<string, string> {
-  return Object.fromEntries(toSearchParams(query));
+export function parseEnquiryRef(
+  value: string | null | undefined,
+): { kind: EnquiryKind; id: string } | null {
+  const [kind, id] = (value ?? "").split(":");
+  const known = ENQUIRY_KINDS.find((candidate) => candidate === kind);
+  return known && id ? { kind: known, id } : null;
 }
 
-export type EnquiryBadgeTone = "warning" | "info" | "neutral";
-
-export function enquiryStatusTone(status: EnquiryStatus): EnquiryBadgeTone {
-  switch (status) {
-    case "new":
-      return "warning";
-    case "in_progress":
-      return "info";
-    case "closed":
-      return "neutral";
-  }
+/** The conversation page for an enquiry. */
+export function enquiryPath(item: { kind: EnquiryKind; id: string }): string {
+  return `${ENQUIRY_LIST_PATH}/${item.kind}/${item.id}`;
 }
 
 /** The headline for a sender: their name, else their email, so a row never reads as blank. */

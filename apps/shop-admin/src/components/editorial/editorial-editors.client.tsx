@@ -10,9 +10,10 @@ import { PageFields } from "@/components/editorial/page-fields.client";
 import { StoryFields } from "@/components/editorial/story-fields.client";
 import { useEditorialLinks } from "@/components/editorial/use-editorial-links.client";
 import { VenueFields } from "@/components/editorial/venue-fields.client";
-import { EDITORIAL_ENTITIES } from "@/lib/editorial-entities";
+import { EDITORIAL_ENTITIES, editorialListHref } from "@/lib/editorial-entities";
 import {
   type EditorialAdminRow,
+  type EditorialEntityKind,
   type ExhibitionDetail,
   type ExhibitionForm,
   type PageDetail,
@@ -35,44 +36,59 @@ import {
   venueFormFromDetail,
 } from "@/lib/editorial-entity-forms";
 import type { LinksPayload } from "@/server/domain/editorial-links.vm";
+import { editorialPublicAddress } from "@/server/domain/editorial-publication.vm";
 
 type EditorProps<D> = { detail: D | null; artPublicUrl: string | null };
+
+/** The page chrome and public address every editorial editor shares. */
+function chrome(kind: EditorialEntityKind, artPublicUrl: string | null) {
+  const entity = EDITORIAL_ENTITIES[kind];
+  return {
+    entity,
+    api: editorialEntityApi(kind),
+    page: {
+      list: { label: entity.title, href: editorialListHref(kind) },
+      newTitle: entity.newLabel,
+    },
+    publicAddress: (form: { slug: string }) =>
+      editorialPublicAddress(kind, form.slug.trim(), artPublicUrl),
+  };
+}
 /** `links` is what the links GET returned for a saved item; null for a new one. */
 type LinkedEditorProps<D> = EditorProps<D> & { links?: LinksPayload | null };
 
-const PAGE_CONFIG: EditorialEditorConfig<PageForm, PageDetail> = {
-  entity: EDITORIAL_ENTITIES.pages,
-  api: editorialEntityApi("pages"),
+const pageConfig = (artPublicUrl: string | null): EditorialEditorConfig<PageForm, PageDetail> => ({
+  ...chrome("pages", artPublicUrl),
   empty: emptyPageForm,
   fromDetail: pageFormFromDetail,
   buildPayload: buildPagePayload,
   nameOf: (form) => form.title,
   renderFields: (props) => <PageFields {...props} />,
-};
+});
 
-const VENUE_CONFIG: EditorialEditorConfig<VenueForm, VenueDetail> = {
-  entity: EDITORIAL_ENTITIES.venues,
-  api: editorialEntityApi("venues"),
+const venueConfig = (
+  artPublicUrl: string | null,
+): EditorialEditorConfig<VenueForm, VenueDetail> => ({
+  ...chrome("venues", artPublicUrl),
   empty: emptyVenueForm,
   fromDetail: venueFormFromDetail,
   buildPayload: buildVenuePayload,
   nameOf: (form) => form.name,
   renderFields: (props) => <VenueFields {...props} />,
-};
+});
 
 export function PageEditor(props: EditorProps<PageDetail>) {
-  return <EditorialEditor config={PAGE_CONFIG} {...props} />;
+  return <EditorialEditor config={pageConfig(props.artPublicUrl)} {...props} />;
 }
 
 export function VenueEditor(props: EditorProps<VenueDetail>) {
-  return <EditorialEditor config={VENUE_CONFIG} {...props} />;
+  return <EditorialEditor config={venueConfig(props.artPublicUrl)} {...props} />;
 }
 
 export function StoryEditor({ links, ...props }: LinkedEditorProps<StoryDetail>) {
   const linkState = useEditorialLinks("stories", props.detail?.id ?? null, links ?? null);
   const config: EditorialEditorConfig<StoryForm, StoryDetail> = {
-    entity: EDITORIAL_ENTITIES.stories,
-    api: editorialEntityApi("stories"),
+    ...chrome("stories", props.artPublicUrl),
     empty: emptyStoryForm,
     fromDetail: storyFormFromDetail,
     buildPayload: buildStoryPayload,
@@ -91,8 +107,7 @@ export function ExhibitionEditor({
 }: LinkedEditorProps<ExhibitionDetail> & { venues: readonly EditorialAdminRow[] }) {
   const linkState = useEditorialLinks("exhibitions", props.detail?.id ?? null, links ?? null);
   const config: EditorialEditorConfig<ExhibitionForm, ExhibitionDetail> = {
-    entity: EDITORIAL_ENTITIES.exhibitions,
-    api: editorialEntityApi("exhibitions"),
+    ...chrome("exhibitions", props.artPublicUrl),
     empty: emptyExhibitionForm,
     fromDetail: exhibitionFormFromDetail,
     buildPayload: buildExhibitionPayload,

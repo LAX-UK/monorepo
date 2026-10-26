@@ -1,5 +1,4 @@
 import type { AdminEnquiryDetail } from "@auction/shop-contracts";
-import { enquirySenderName } from "./enquiry-inbox.vm";
 
 export type EnquiryContextLink = { label: string; href: string | null; text: string };
 
@@ -37,18 +36,4 @@ export function enquiryContextLinks(
     });
   }
   return links;
-}
-
-/** The page heading: what was asked about, then who asked. */
-export function enquiryDetailTitle(
-  detail: {
-    artwork: { title: string } | null;
-    sender: { name: string | null; email: string | null };
-  },
-  topicLabel: string,
-): string {
-  const sender = enquirySenderName(detail.sender);
-  return detail.artwork
-    ? `${detail.artwork.title} – ${sender}`
-    : `${topicLabel} enquiry – ${sender}`;
 }

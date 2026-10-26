@@ -1,7 +1,6 @@
 "use client";
 
-import { SelectField } from "@/components/forms/fields";
-import { useFieldControlId } from "@/components/forms/form-field";
+import { editorialFieldId } from "@/components/editorial/editorial-field-parts.client";
 import {
   type DayHours,
   type DayState,
@@ -10,7 +9,8 @@ import {
   emptyOpeningHoursForm,
   weekToRows,
 } from "@/lib/editorial-opening-hours";
-import { Button, Label, TimePicker } from "@auction/ui";
+import { EnumSelect, Notice, StaffButton, TextArea, TextInput } from "@auction/staff-ui";
+import { CircleAlert } from "@auction/staff-ui/icons";
 import { useId } from "react";
 
 const STATE_OPTIONS: Array<{ value: DayState; label: string }> = [
@@ -31,55 +31,45 @@ function DayRow({
   onChange: (next: DayHours) => void;
 }) {
   return (
-    <li className="grid grid-cols-[3rem_1fr] items-end gap-3 sm:grid-cols-[3rem_10rem_1fr]">
-      <span className="pb-2 text-sm font-medium">{name}</span>
-      <SelectField
-        label={`${name} status`}
+    <li className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:grid-cols-[3rem_10rem_minmax(0,1fr)]">
+      <span className="text-staff-sm font-medium text-staff-fg">{name}</span>
+      <EnumSelect
+        aria-label={`${name} status`}
         value={day.state}
-        options={STATE_OPTIONS}
         disabled={disabled}
-        onChange={(state) => onChange({ ...day, state })}
+        options={STATE_OPTIONS}
+        onValueChange={(state) => onChange({ ...day, state })}
       />
       {day.state === "open" ? (
-        <div className="col-span-2 flex items-end gap-2 sm:col-span-1">
-          <TimeInput
-            label={`${name} opens`}
+        <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
+          <TextInput
+            inputMode="numeric"
+            placeholder="10:00"
+            maxLength={5}
+            autoComplete="off"
+            aria-label={`${name} opens`}
             value={day.opens}
             disabled={disabled}
-            onChange={(opens) => onChange({ ...day, opens })}
+            boxClassName="sm:max-w-36"
+            onChange={(event) => onChange({ ...day, opens: event.target.value })}
           />
-          <span className="pb-2 text-sm text-on-surface-variant" aria-hidden>
+          <span className="text-staff-sm text-staff-muted" aria-hidden>
             to
           </span>
-          <TimeInput
-            label={`${name} closes`}
+          <TextInput
+            inputMode="numeric"
+            placeholder="18:00"
+            maxLength={5}
+            autoComplete="off"
+            aria-label={`${name} closes`}
             value={day.closes}
             disabled={disabled}
-            onChange={(closes) => onChange({ ...day, closes })}
+            boxClassName="sm:max-w-36"
+            onChange={(event) => onChange({ ...day, closes: event.target.value })}
           />
         </div>
       ) : null}
     </li>
-  );
-}
-
-function TimeInput({
-  label,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  disabled: boolean;
-  onChange: (value: string) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <TimePicker id={id} value={value} disabled={disabled} onChange={onChange} />
-    </div>
   );
 }
 
@@ -100,30 +90,37 @@ export function OpeningHoursEditor({
   onChange: (next: OpeningHoursForm) => void;
 }) {
   const headingId = useId();
-  const controlId = useFieldControlId("openingHours");
   const errorId = `${headingId}-error`;
+  const controlId = editorialFieldId("openingHours");
 
   if (value.mode === "unrecognised") {
     return (
-      <div className="space-y-3 rounded-md border border-border-hairline p-4 sm:col-span-2">
-        <p id={headingId} className="text-sm font-medium">
-          Opening hours
-        </p>
-        <p className="text-sm text-on-surface-variant">
-          The stored hours are in a format the weekly editor cannot show, so they are kept as they
-          are. Replace them to edit day by day.
-        </p>
-        <pre className="overflow-x-auto rounded bg-surface-container-low p-3 text-xs">
-          {JSON.stringify(value.stored, null, 2)}
-        </pre>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => onChange(emptyOpeningHoursForm())}
+      <div id={controlId} tabIndex={-1} className="flex flex-col gap-3">
+        <Notice
+          tone="warning"
+          title="These hours cannot be edited day by day"
+          actions={
+            <StaffButton
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => onChange(emptyOpeningHoursForm())}
+            >
+              Replace with weekly hours
+            </StaffButton>
+          }
         >
-          Replace with weekly hours
-        </Button>
+          The stored hours are in a format the weekly editor cannot show, so they are kept as they
+          are until you replace them.
+        </Notice>
+        <TextArea
+          readOnly
+          rows={6}
+          aria-label="Stored opening hours"
+          className="font-mono text-staff-xs"
+          value={JSON.stringify(value.stored, null, 2)}
+        />
       </div>
     );
   }
@@ -133,14 +130,11 @@ export function OpeningHoursEditor({
     <fieldset
       id={controlId}
       tabIndex={-1}
-      className="space-y-3 sm:col-span-2"
+      className="staff-focus flex min-w-0 flex-col gap-3"
       aria-describedby={error ? errorId : undefined}
-      aria-labelledby={headingId}
     >
-      <legend id={headingId} className="text-sm font-medium">
-        Opening hours
-      </legend>
-      <ul className="space-y-2">
+      <legend className="sr-only">Opening hours by day</legend>
+      <ul className="flex flex-col gap-2">
         {WEEKDAYS.map((name, index) => {
           const day = value.days[index];
           if (!day) return null;
@@ -161,11 +155,15 @@ export function OpeningHoursEditor({
         })}
       </ul>
       {error ? (
-        <p id={errorId} className="text-xs font-medium text-error">
+        <p
+          id={errorId}
+          className="flex items-start gap-1.5 text-staff-xs font-medium text-staff-danger"
+        >
+          <CircleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
           {error}
         </p>
       ) : null}
-      <p className="text-xs text-on-surface-variant">
+      <p className="text-staff-sm text-staff-muted">
         {rows.length === 0
           ? "No opening hours are shown on lax.art."
           : `Shown on lax.art as: ${rows.map((row) => `${row.label} ${row.hours}`).join("; ")}`}

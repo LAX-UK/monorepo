@@ -5,6 +5,7 @@ import type {
   AdminEnquirySummary,
   EnquiryAssignee,
   EnquiryKind,
+  EnquiryListSort,
   EnquiryStatus,
   EnquiryTopic,
 } from "@auction/shop-contracts";
@@ -24,6 +25,8 @@ export type ListEnquiriesInput = {
   filters: EnquiryInboxFilters;
   cursor: EnquiryInboxCursor | null;
   limit: number;
+  /** Waiting enquiries first either way; newest received first by default. */
+  sort?: EnquiryListSort;
 };
 
 export type EnquiryInboxPage = {

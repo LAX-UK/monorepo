@@ -162,7 +162,28 @@ describe("enquiry inbox list", () => {
       },
       cursor: null,
       limit: 10,
+      sort: "received_desc",
     });
+    await app.close();
+  });
+
+  it("lists newest first by default and oldest first on request", async () => {
+    const list = vi.fn(createStubEnquiryInboxRepository().list);
+    const app = await buildApp("broker", { list });
+    await app.inject({ method: "GET", url: "/admin/v1/enquiries", headers: auth });
+    await app.inject({
+      method: "GET",
+      url: "/admin/v1/enquiries?sort=received_asc",
+      headers: auth,
+    });
+    const rejected = await app.inject({
+      method: "GET",
+      url: "/admin/v1/enquiries?sort=sender",
+      headers: auth,
+    });
+    expect(list.mock.calls[0]?.[0]).toMatchObject({ sort: "received_desc", limit: 50 });
+    expect(list.mock.calls[1]?.[0]).toMatchObject({ sort: "received_asc" });
+    expect(rejected.statusCode).toBe(400);
     await app.close();
   });
 
@@ -188,7 +209,12 @@ describe("enquiry inbox list", () => {
   });
 
   it("encodes the next cursor from the repository position", async () => {
-    const position = { createdAt: VERSION, kind: "artwork" as const, id: ENQUIRY_ID };
+    const position = {
+      waiting: true,
+      createdAt: VERSION,
+      kind: "artwork" as const,
+      id: ENQUIRY_ID,
+    };
     const app = await buildApp("operations", {
       list: async () => ({
         items: [],

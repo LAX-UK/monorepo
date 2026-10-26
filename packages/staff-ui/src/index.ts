@@ -62,6 +62,7 @@ export {
   STAFF_TRUNCATION_TOOLTIP_DELAY_MS,
   TruncatedText,
 } from "./display/truncated-text.js";
+export { TextLink, staffTextLinkClass } from "./display/text-link.js";
 export { AttentionList } from "./display/attention-list.js";
 export { IssueList } from "./display/issue-list.js";
 export { Checklist } from "./display/checklist.js";

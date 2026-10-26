@@ -3,13 +3,17 @@ import {
   artworkListApiQuery,
   artworkListHref,
   artworkListPageHref,
+  artworkPanelHref,
   artworkPriceLabel,
+  artworkSortParam,
+  artworkSortState,
   bulkVisibilityActions,
   editionSizeLabel,
   hasActiveArtworkFilters,
   parseArtworkListQuery,
   presentArtworkState,
   summariseBulkVisibility,
+  visibilityConfirmCopy,
 } from "./artwork-list.vm";
 
 const ARTIST = "22222222-2222-4222-8222-222222222222";
@@ -54,6 +58,26 @@ describe("artwork list URL state", () => {
     );
     expect(artworkListHref({ q: "dusk", state: "live" }, { q: null })).toBe("/artworks?state=live");
     expect(artworkListPageHref({ state: "live" }, "c2")).toBe("/artworks?state=live&cursor=c2");
+  });
+
+  it("keeps the sort, page size and open artwork in the URL", () => {
+    const query = parseArtworkListQuery({
+      sort: "updated_asc",
+      limit: "100",
+      artwork: ARTIST,
+      cursor: "c2",
+    });
+    expect(query).toEqual({ sort: "updated_asc", limit: "100", artwork: ARTIST, cursor: "c2" });
+    expect(artworkSortState(query)).toEqual({ columnId: "updated", direction: "asc" });
+    expect(artworkSortState({})).toEqual({ columnId: "updated", direction: "desc" });
+    expect(artworkSortParam({ columnId: "updated", direction: "desc" })).toBeNull();
+    expect(artworkPanelHref({ state: "live" }, ARTIST)).toBe(
+      `/artworks?state=live&artwork=${ARTIST}`,
+    );
+    expect(artworkListHref(query, { q: "dusk" })).toBe(
+      "/artworks?sort=updated_asc&limit=100&q=dusk",
+    );
+    expect(parseArtworkListQuery({ sort: "price_desc", limit: "7", artwork: "x" })).toEqual({});
   });
 
   it("counts search and filters, not the view, as filtering", () => {
@@ -152,5 +176,26 @@ describe("bulk visibility", () => {
       tone: "warning",
       refusals: ["Dusk: Add an image before publishing", "Dawn: it no longer exists"],
     });
+  });
+});
+
+describe("visibilityConfirmCopy", () => {
+  it("names the artwork, the storefront and the action for one row", () => {
+    const copy = visibilityConfirmCopy("unpublish", [{ title: "Dusk", salesChannel: "art" }]);
+    expect(copy.title).toBe("Unpublish “Dusk”?");
+    expect(copy.description).toContain("leaves lax.art");
+    expect(copy.confirmLabel).toBe("Unpublish artwork");
+    expect(copy.tone).toBe("default");
+  });
+
+  it("counts a selection and names both storefronts when they differ", () => {
+    const copy = visibilityConfirmCopy("archive", [
+      { title: "Dusk", salesChannel: "art" },
+      { title: "Dawn", salesChannel: "shop" },
+    ]);
+    expect(copy.title).toBe("Archive 2 artworks?");
+    expect(copy.description).toContain("LAX Shop and lax.art");
+    expect(copy.confirmLabel).toBe("Archive 2 artworks");
+    expect(copy.tone).toBe("danger");
   });
 });

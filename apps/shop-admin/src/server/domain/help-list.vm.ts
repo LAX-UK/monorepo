@@ -1,67 +1,96 @@
 import { isUuid } from "@/lib/editorial-entity-forms";
-import { formatLondonDateTime } from "@/lib/editorial-time";
 import type { HelpAdminArticleRow, HelpAdminCategoryRow } from "@auction/shop-contracts";
+import { type RawSearchParams, singleParam } from "./list-url-state";
+import { type WorkListState, type WorkListView, defineWorkList } from "./work-list.vm";
 
-export type HelpStatusFilter = "all" | "published" | "draft";
+/*
+ * The Help centre lists: questions and categories. Both are ordered by their manual position,
+ * which is what lax.art shows, so neither has a sortable column; `position` is the one sort
+ * key and is never sent to the API.
+ */
 
-/** List state that lives in the URL, so a filtered view can be shared and survives a refresh. */
-export type HelpArticleListSearch = {
-  q: string;
-  status: HelpStatusFilter;
-  /** A category id, or null for every category. */
-  categoryId: string | null;
-};
+export const HELP_SEARCH_MAX_LENGTH = 120;
 
-type SearchParams = {
-  q?: string | string[];
-  status?: string | string[];
-  category?: string | string[];
-};
+const HELP_VIEWS: readonly WorkListView[] = [
+  { id: "all", label: "All", api: {} },
+  { id: "published", label: "Published", api: { status: "published" }, statuses: ["published"] },
+  { id: "draft", label: "Drafts", api: { status: "draft" }, statuses: ["draft"] },
+];
 
-function first(value: string | string[] | undefined): string {
-  return (Array.isArray(value) ? value[0] : value) ?? "";
+const BY_POSITION = { position: { asc: "position", desc: "position" } };
+
+/** Questions: `category` is a category id and is validated by `parseHelpArticlesState`. */
+export const helpArticlesList = defineWorkList<"category">({
+  path: "/help",
+  views: HELP_VIEWS,
+  defaultView: "all",
+  filters: { category: [] },
+  sorts: BY_POSITION,
+  defaultSort: "position",
+  panelParam: "article",
+  searchMaxLength: HELP_SEARCH_MAX_LENGTH,
+});
+
+export const helpCategoriesList = defineWorkList({
+  path: "/help/categories",
+  views: HELP_VIEWS,
+  defaultView: "all",
+  filters: {},
+  sorts: BY_POSITION,
+  defaultSort: "position",
+  panelParam: "category",
+  searchMaxLength: HELP_SEARCH_MAX_LENGTH,
+});
+
+export type HelpArticlesState = WorkListState<"category">;
+
+/** The URL state of the questions list; a category in the URL must be an id, never free text. */
+export function parseHelpArticlesState(params: RawSearchParams): HelpArticlesState {
+  const state = helpArticlesList.parse(params);
+  const category = singleParam(params.category);
+  return category && isUuid(category)
+    ? { ...state, filters: { ...state.filters, category } }
+    : state;
 }
 
-export function parseHelpArticleListSearch(params: SearchParams): HelpArticleListSearch {
-  const status = first(params.status);
-  const category = first(params.category);
-  return {
-    q: first(params.q).replace(/\s+/g, " ").trim().slice(0, 120),
-    status: status === "published" || status === "draft" ? status : "all",
-    categoryId: isUuid(category) ? category : null,
-  };
+export function parseHelpCategoriesState(params: RawSearchParams): WorkListState {
+  return helpCategoriesList.parse(params);
 }
 
-export function isFilteredHelpArticleList(search: HelpArticleListSearch): boolean {
-  return Boolean(search.q) || search.status !== "all" || search.categoryId !== null;
-}
-
-/** The query string for the admin API; the filters are applied there, not on the page. */
-export function helpArticlesApiPath(search: HelpArticleListSearch): string {
+/** The query for the admin API. Status is applied on the page so every view can be counted. */
+export function helpArticlesApiPath(state: HelpArticlesState): string {
   const params = new URLSearchParams();
-  if (search.q) params.set("q", search.q);
-  if (search.status !== "all") params.set("status", search.status);
-  if (search.categoryId) params.set("categoryId", search.categoryId);
+  if (state.q) params.set("q", state.q);
+  if (state.filters.category) params.set("categoryId", state.filters.category);
   const query = params.toString();
   return `help/articles${query ? `?${query}` : ""}`;
 }
 
-export function helpArticleListUrl(search: HelpArticleListSearch): string {
-  const params = new URLSearchParams();
-  if (search.q) params.set("q", search.q);
-  if (search.status !== "all") params.set("status", search.status);
-  if (search.categoryId) params.set("category", search.categoryId);
-  const query = params.toString();
-  return `/help${query ? `?${query}` : ""}`;
+/** Rows per status, for the view tabs. */
+export function statusCounts(rows: readonly { status: string }[]): Record<string, number> {
+  const counts: Record<string, number> = { published: 0, draft: 0 };
+  for (const row of rows) counts[row.status] = (counts[row.status] ?? 0) + 1;
+  return counts;
+}
+
+/** The rows a view shows. */
+export function inView<T extends { status: string }>(rows: readonly T[], view: string): T[] {
+  return view === "published" || view === "draft"
+    ? rows.filter((row) => row.status === view)
+    : [...rows];
 }
 
 export type HelpArticleListRow = {
   id: string;
   question: string;
   slug: string;
+  categoryId: string;
   categoryTitle: string;
   status: HelpAdminArticleRow["status"];
-  updated: string;
+  /** ISO time of the last change. */
+  updatedAt: string;
+  /** Who made it, by name; null when the API does not know them. */
+  updatedByName: string | null;
 };
 
 export function toHelpArticleListRow(row: HelpAdminArticleRow): HelpArticleListRow {
@@ -69,9 +98,11 @@ export function toHelpArticleListRow(row: HelpAdminArticleRow): HelpArticleListR
     id: row.id,
     question: row.question,
     slug: row.slug,
+    categoryId: row.categoryId,
     categoryTitle: row.categoryTitle,
     status: row.status,
-    updated: formatLondonDateTime(row.updatedAt),
+    updatedAt: row.updatedAt,
+    updatedByName: row.updatedByName?.trim() || null,
   };
 }
 

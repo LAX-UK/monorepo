@@ -1,6 +1,6 @@
 import { EditorialListPage } from "@/components/editorial/editorial-list-page";
 import { EDITORIAL_ENTITIES, parseEditorialEntityKind } from "@/lib/editorial-entities";
-import { parseEditorialListSearch } from "@/server/domain/editorial-list.vm";
+import { parseEditorialList } from "@/server/domain/editorial-list.vm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -16,13 +16,9 @@ export default async function EditorialEntityListPage({
   searchParams,
 }: {
   params: Params;
-  searchParams: Promise<{
-    q?: string | string[];
-    status?: string | string[];
-    page?: string | string[];
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const kind = parseEditorialEntityKind((await params).kind);
   if (!kind) notFound();
-  return <EditorialListPage kind={kind} search={parseEditorialListSearch(await searchParams)} />;
+  return <EditorialListPage kind={kind} state={parseEditorialList(kind, await searchParams)} />;
 }

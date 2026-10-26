@@ -282,7 +282,7 @@ describe("admin artwork catalogue routes", () => {
       const app = await buildApp("catalogue_editor", { reader: { listArtworks } });
       const response = await app.inject({
         method: "GET",
-        url: `/admin/v1/artworks?q=harbour&state=draft&artistId=${ARTIST}&saleState=for_sale&salesChannel=art`,
+        url: `/admin/v1/artworks?q=harbour&state=draft&artistId=${ARTIST}&saleState=for_sale&salesChannel=art&sort=updated_asc`,
         headers,
       });
       expect(response.statusCode).toBe(200);
@@ -293,6 +293,7 @@ describe("admin artwork catalogue routes", () => {
         artistId: ARTIST,
         saleState: "for_sale",
         salesChannel: "art",
+        sort: "updated_asc",
       });
       await app.close();
     });
@@ -590,6 +591,36 @@ describe("admin artwork catalogue routes", () => {
       });
       expect(response.statusCode).toBe(200);
       expect(listArtists).toHaveBeenCalledWith({ q: "ada", status: "active" });
+      await app.close();
+    });
+
+    it("sorts artists by name or date added on request and rejects unknown sorts", async () => {
+      const listArtists = vi.fn(async () => ({
+        items: [],
+        nextCursor: null,
+        counts: { active: 0, archived: 0 },
+      }));
+      const app = await buildApp("catalogue_editor", { listArtists });
+      const sorted = await app.inject({
+        method: "GET",
+        url: "/admin/v1/artists?sort=created_asc",
+        headers,
+      });
+      expect(sorted.statusCode).toBe(200);
+      expect(listArtists).toHaveBeenCalledWith({ sort: "created_asc" });
+      const byName = await app.inject({
+        method: "GET",
+        url: "/admin/v1/artists?sort=name_desc",
+        headers,
+      });
+      expect(byName.statusCode).toBe(200);
+      expect(listArtists).toHaveBeenLastCalledWith({ sort: "name_desc" });
+      const unknown = await app.inject({
+        method: "GET",
+        url: "/admin/v1/artists?sort=price_asc",
+        headers,
+      });
+      expect(unknown.statusCode).toBe(400);
       await app.close();
     });
   });

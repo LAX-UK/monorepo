@@ -1,4 +1,3 @@
-import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import {
   ExhibitionEditor,
@@ -6,7 +5,7 @@ import {
   StoryEditor,
   VenueEditor,
 } from "@/components/editorial/editorial-editors.client";
-import { EDITORIAL_ENTITIES, editorialListHref } from "@/lib/editorial-entities";
+import { EDITORIAL_ENTITIES } from "@/lib/editorial-entities";
 import type {
   EditorialAdminRow,
   EditorialEntityKind,
@@ -18,7 +17,6 @@ import type {
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
 import type { LinksPayload } from "@/server/domain/editorial-links.vm";
-import { PageHeader } from "@auction/ui";
 import { notFound, redirect } from "next/navigation";
 
 type EditorialDetail = ExhibitionDetail | PageDetail | StoryDetail | VenueDetail;
@@ -62,48 +60,32 @@ export async function EditorialEditorPage({
   const venues = venuesResult?.status === "ok" ? venuesResult.data.items : [];
   const links = linksResult?.status === "ok" ? linksResult.data : null;
   const artPublicUrl = getShopAdminContainer().config.artPublicUrl ?? null;
-  const title = detail?.label ?? entity.newLabel;
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        breadcrumbs={
-          <AdminBreadcrumbs
-            list={{ label: entity.title, href: editorialListHref(kind) }}
-            current={title}
-          />
-        }
-        title={title}
-        description={detail ? `/${detail.slug}` : "Saved as a draft until you publish it."}
-      />
-      {kind === "exhibitions" ? (
-        <ExhibitionEditor
-          key={id ?? "new"}
-          detail={detail as ExhibitionDetail | null}
-          venues={venues}
-          links={links}
-          artPublicUrl={artPublicUrl}
-        />
-      ) : kind === "stories" ? (
-        <StoryEditor
-          key={id ?? "new"}
-          detail={detail as StoryDetail | null}
-          links={links}
-          artPublicUrl={artPublicUrl}
-        />
-      ) : kind === "venues" ? (
-        <VenueEditor
-          key={id ?? "new"}
-          detail={detail as VenueDetail | null}
-          artPublicUrl={artPublicUrl}
-        />
-      ) : (
-        <PageEditor
-          key={id ?? "new"}
-          detail={detail as PageDetail | null}
-          artPublicUrl={artPublicUrl}
-        />
-      )}
-    </div>
+  return kind === "exhibitions" ? (
+    <ExhibitionEditor
+      key={id ?? "new"}
+      detail={detail as ExhibitionDetail | null}
+      venues={venues}
+      links={links}
+      artPublicUrl={artPublicUrl}
+    />
+  ) : kind === "stories" ? (
+    <StoryEditor
+      key={id ?? "new"}
+      detail={detail as StoryDetail | null}
+      links={links}
+      artPublicUrl={artPublicUrl}
+    />
+  ) : kind === "venues" ? (
+    <VenueEditor
+      key={id ?? "new"}
+      detail={detail as VenueDetail | null}
+      artPublicUrl={artPublicUrl}
+    />
+  ) : (
+    <PageEditor
+      key={id ?? "new"}
+      detail={detail as PageDetail | null}
+      artPublicUrl={artPublicUrl}
+    />
   );
 }

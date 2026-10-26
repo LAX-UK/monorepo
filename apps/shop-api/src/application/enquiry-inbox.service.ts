@@ -61,6 +61,7 @@ export function createEnquiryInboxService(deps: {
         },
         cursor: decodeEnquiryInboxCursor(query.cursor),
         limit: query.limit ?? ENQUIRY_LIST_DEFAULT_LIMIT,
+        sort: query.sort ?? "received_desc",
       });
       return {
         items: page.items,

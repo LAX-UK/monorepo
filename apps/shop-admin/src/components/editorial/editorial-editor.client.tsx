@@ -1,11 +1,13 @@
 "use client";
 
+import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { EditorialBlockEditor } from "@/components/editorial-block-editor.client";
 import { EditorialConflictBanner } from "@/components/editorial/editorial-conflict-banner.client";
 import type { EditorialEditorApi } from "@/components/editorial/editorial-editor-api";
 import {
   type EntityFieldsProps,
   FieldSection,
+  editorialFieldId,
 } from "@/components/editorial/editorial-field-parts.client";
 import {
   EditorialLinkLists,
@@ -15,31 +17,39 @@ import {
   type EditorialPreview,
   EditorialPreviewPanel,
 } from "@/components/editorial/editorial-preview-panel.client";
-import { EditorialStatusBadge } from "@/components/editorial/editorial-status-badge";
 import type { LinksController } from "@/components/editorial/use-editorial-links.client";
-import { FormErrorSummary } from "@/components/forms/form-error-summary";
 import { FormScopeProvider } from "@/components/forms/form-field";
 import { type EditorialBlockItem, fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
 import type { EditorialPublicationStatus, PayloadResult } from "@/lib/editorial-entity-forms";
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
 import { buildEditorialPreviewUrl } from "@/lib/editorial-preview";
 import { formatLondonTime } from "@/lib/editorial-time";
-import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-validation";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
+import { publicationDialogCopy } from "@/server/domain/editorial-publication.vm";
+import { presentStatus } from "@/server/domain/staff-status";
 import type { EditorialBlock } from "@auction/shop-contracts";
-import { UnsavedChangesDialog, useUnsavedChanges } from "@auction/staff-ui";
 import {
-  Alert,
-  AlertDescription,
-  Button,
-  ConfirmDialog,
-  LoadingButton,
-  StatusBadge,
-  StickySaveBar,
+  ConfirmActionDialog,
+  FormActions,
+  FormErrorSummary,
+  MappedStatusBadge,
+  MetaItem,
+  Notice,
+  OverflowMenu,
+  PageHeader,
+  StaffButton,
+  UnsavedChangesDialog,
+  formatStaffDateTime,
   toast,
-} from "@auction/ui";
+  useUnsavedChanges,
+} from "@auction/staff-ui";
+import { Eye, EyeOff, Link as LinkIcon, Save } from "@auction/staff-ui/icons";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useId, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
+
+const presentEditorialStatus = presentStatus("editorial");
 
 /** What every editorial entity detail carries, whatever its kind. */
 export type EditorialDetailBase = {
@@ -57,11 +67,18 @@ export type EditorialEditorConfig<F, D extends EditorialDetailBase> = {
   api: EditorialEditorApi;
   /** Heading and help text of the block editor; defaults suit a page. */
   body?: { title: string; description: string };
+  /**
+   * The page around the editor: a trail back to the list, and the heading of a new item. Without
+   * it the page shows no trail and calls a new item "New <singular>".
+   */
+  page?: { list: { label: string; href: string }; newTitle: string };
   empty: () => F;
   fromDetail: (detail: D) => F;
   buildPayload: (form: F, blocks: EditorialBlock[]) => PayloadResult<unknown>;
   /** Names the item in confirmations, e.g. its title. */
   nameOf: (form: F) => string;
+  /** Where the item lives on lax.art ("lax.art/exhibitions/summer-show"), when it has an address. */
+  publicAddress?: (form: F) => string | null;
   /** Lets a form record that it now matches what is stored (for example the saved story kind). */
   afterSave?: (form: F) => F;
   renderFields: (props: EntityFieldsProps<F>) => ReactNode;
@@ -83,10 +100,6 @@ const DEFAULT_BODY = {
 const SLUG_IN_USE = "That slug is already in use. Choose a different slug.";
 const newKey = () => crypto.randomUUID();
 
-function capitalise(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 function failureFrom(
   result: Exclude<AdminMutationResult<unknown>, { ok: true }>,
   action: string,
@@ -98,9 +111,10 @@ function failureFrom(
 }
 
 /**
- * One editor for every editorial entity: fields for the kind, the block body, an explicit Save in
- * a sticky bar, publish and preview for saved items, and protection against losing edits either
- * by leaving the page or by saving over someone else's newer save.
+ * One editor for every editorial entity: a record page with fields for the kind, the block body
+ * and the linked records, one Save, publish and preview for saved items, and protection against
+ * losing edits either by leaving the page or by saving over someone else's newer save. Problems
+ * are found on submit and re-checked as the person fixes them; a failed save stays on the form.
  */
 export function EditorialEditor<F, D extends EditorialDetailBase>({
   config,
@@ -122,7 +136,6 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const id = detail?.id ?? null;
   const router = useRouter();
   const pathname = usePathname();
-  const scope = useId();
 
   const [form, setForm] = useState<F>(() => (detail ? config.fromDetail(detail) : config.empty()));
   const [items, setItems] = useState<EditorialBlockItem[]>(() =>
@@ -131,20 +144,38 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const [blockSession, setBlockSession] = useState(0);
   const [version, setVersion] = useState<string | null>(detail?.updatedAt ?? null);
   const [savedAt, setSavedAt] = useState<string | null>(detail?.updatedAt ?? null);
+  const [savedName, setSavedName] = useState<string | null>(
+    detail ? config.nameOf(config.fromDetail(detail)) : null,
+  );
   const [status, setStatus] = useState<EditorialPublicationStatus>(detail?.status ?? "draft");
   const [dirty, setDirty] = useState(false);
   const linksDirty = links?.dirty ?? false;
-  const [errors, setErrors] = useState<FieldErrors>({});
+  /** Failed submits so far; problems show live, and re-check as they are fixed, once there is one. */
+  const [failedSubmits, setFailedSubmits] = useState(0);
+  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<Failure | null>(null);
   const [conflictVersion, setConflictVersion] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [preview, setPreview] = useState<EditorialPreview | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
+  const name = config.nameOf(form);
   const leaveGuard = useUnsavedChanges(dirty || linksDirty, {
     navigate: (href) => router.push(href),
+    ...(savedName ? { label: `“${savedName}”` } : {}),
   });
   const releaseGuard = leaveGuard.release;
+
+  const clientErrors: FieldErrors = (() => {
+    if (failedSubmits === 0) return {};
+    const built = config.buildPayload(form, fromBlockItems(items));
+    return built.ok ? {} : built.errors;
+  })();
+  const errors: FieldErrors = { ...serverErrors, ...clientErrors };
+  const summary = Object.entries(errors).map(([field, message]) => ({
+    fieldId: editorialFieldId(field),
+    message,
+  }));
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -189,11 +220,11 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     if (savingFields) {
       const built = config.buildPayload(form, fromBlockItems(items));
       if (!built.ok) {
-        setErrors(built.errors);
+        setFailedSubmits((count) => count + 1);
         setFailure(null);
         return;
       }
-      setErrors({});
+      setServerErrors({});
       setFailure(null);
       setBusy("save");
       const signature = JSON.stringify([id, expectedVersion, built.payload]);
@@ -210,30 +241,34 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
         if (result.kind === "conflict" && result.currentVersion) {
           setConflictVersion(result.currentVersion);
         } else if (result.kind === "conflict") {
-          setErrors({ slug: SLUG_IN_USE });
+          setServerErrors({ slug: SLUG_IN_USE });
+          setFailedSubmits((count) => count + 1);
         } else {
           setFailure(failureFrom(result, `save the ${entity.singular}`));
         }
+        toast.error(`The ${entity.singular} was not saved`);
         return;
       }
       attempt.current = null;
       setDirty(false);
+      setFailedSubmits(0);
       setConflictVersion(null);
       if (config.afterSave) setForm(config.afterSave(form));
       if (id === null) {
-        toast.success(`${capitalise(entity.singular)} created as a draft.`);
+        toast.success(`Created “${config.nameOf(form)}” as a draft`);
         await releaseGuard();
         router.replace(api.detailHref(result.data.id));
         return;
       }
       setVersion(result.data.version);
       setSavedAt(result.data.version);
+      setSavedName(config.nameOf(form));
     } else {
       setFailure(null);
     }
     if (!(await saveLinks(savingFields))) return;
     if (!savingFields) setSavedAt(new Date().toISOString());
-    toast.success(`${capitalise(entity.singular)} saved.`);
+    toast.success("Changes saved");
   }
 
   async function changePublication() {
@@ -259,8 +294,11 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     attempt.current = null;
     setStatus(publish ? "published" : "draft");
     setVersion(result.data.version);
+    setSavedAt(result.data.version);
     toast.success(
-      `${capitalise(entity.singular)} ${publish ? "published on lax.art" : "unpublished"}.`,
+      publish
+        ? `Published “${name}” on lax.art`
+        : `Unpublished “${name}”. It no longer shows on lax.art`,
     );
   }
 
@@ -293,70 +331,103 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
       return;
     }
     const fresh = result.data as D;
-    setForm(config.fromDetail(fresh));
+    const freshForm = config.fromDetail(fresh);
+    setForm(freshForm);
+    setSavedName(config.nameOf(freshForm));
     setItems(toBlockItems(fresh.body as EditorialBlock[], newKey));
     setBlockSession((session) => session + 1);
     setVersion(fresh.updatedAt);
     setSavedAt(fresh.updatedAt);
     setStatus(fresh.status);
     setDirty(false);
-    setErrors({});
+    setFailedSubmits(0);
+    setServerErrors({});
     setFailure(null);
     setConflictVersion(null);
   }
 
   const disabled = busy !== null;
   const body = config.body ?? DEFAULT_BODY;
-  const name = config.nameOf(form);
   const publishing = status !== "published";
+  const unsaved = dirty || linksDirty;
+  const address = config.publicAddress?.(form) ?? null;
   const editField = (next: F) => {
     setForm(next);
     setDirty(true);
+    if (Object.keys(serverErrors).length > 0) setServerErrors({});
   };
+  const title = id
+    ? (savedName ?? name)
+    : name.trim() || (config.page?.newTitle ?? `New ${entity.singular}`);
+  const submitLabel = id === null ? "Create draft" : unsaved ? "Save changes" : "Saved";
+  const publishCopy = publicationDialogCopy({
+    publish: publishing,
+    noun: entity.singular,
+    name: savedName ?? name,
+    address,
+  });
 
   return (
-    <FormScopeProvider value={scope}>
-      <form
-        noValidate
-        className="space-y-8"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {id ? (
-            <EditorialStatusBadge status={status} />
-          ) : (
-            <StatusBadge variant="info">New draft</StatusBadge>
-          )}
-          {id ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
+    <FormScopeProvider value="editorial-field">
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          {...(config.page
+            ? {
+                breadcrumbs: <AdminBreadcrumbs list={config.page.list} current={title} />,
+              }
+            : {})}
+          title={title}
+          status={<MappedStatusBadge status={status} present={presentEditorialStatus} />}
+          meta={
+            id ? (
+              <>
+                {savedAt ? (
+                  <MetaItem label="Updated">
+                    {formatStaffDateTime(savedAt, { zoneLabel: true })}
+                  </MetaItem>
+                ) : null}
+                {status === "published" && address ? (
+                  <MetaItem label="Public address">{address}</MetaItem>
+                ) : null}
+              </>
+            ) : undefined
+          }
+          secondaryActions={
+            id ? (
+              <StaffButton
                 type="button"
-                variant="outline"
-                disabled={disabled || dirty || linksDirty}
-                onClick={() => void createPreview()}
-              >
-                Create preview link
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={disabled || dirty || linksDirty}
+                variant="secondary"
+                icon={publishing ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+                disabled={disabled || unsaved}
                 onClick={() => setDialog("publish")}
               >
                 {publishing ? "Publish" : "Unpublish"}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-        {id && (dirty || linksDirty) ? (
-          <p className="-mt-4 text-sm text-on-surface-variant">
+              </StaffButton>
+            ) : undefined
+          }
+          overflow={
+            id ? (
+              <OverflowMenu
+                actions={[
+                  {
+                    id: "preview",
+                    label: "Create preview link",
+                    icon: LinkIcon,
+                    disabled: disabled || unsaved,
+                    ...(unsaved ? { disabledReason: "Save your changes first" } : {}),
+                    onSelect: () => void createPreview(),
+                  },
+                ]}
+              />
+            ) : undefined
+          }
+        />
+
+        {id && unsaved ? (
+          <p className="sr-only" aria-live="polite">
             Save your changes before publishing or creating a preview link.
           </p>
         ) : null}
-
         {preview ? (
           <EditorialPreviewPanel preview={preview} onClose={() => setPreview(null)} />
         ) : null}
@@ -370,29 +441,38 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           />
         ) : null}
         {failure ? (
-          <Alert variant="destructive">
-            <AlertDescription>
-              {failure.text}
-              {failure.stepUp ? (
-                <>
-                  {" "}
-                  <a
-                    href={`/api/auth/login?returnTo=${encodeURIComponent(pathname)}`}
-                    className="underline"
-                  >
-                    Sign in again
-                  </a>
-                </>
-              ) : null}
-            </AlertDescription>
-          </Alert>
+          <Notice
+            tone="danger"
+            alert
+            title={failure.text}
+            {...(failure.stepUp
+              ? {
+                  actions: (
+                    <StaffButton asChild size="sm" variant="secondary">
+                      <a href={`/api/auth/login?returnTo=${encodeURIComponent(pathname)}`}>
+                        Sign in again
+                      </a>
+                    </StaffButton>
+                  ),
+                }
+              : {})}
+          />
         ) : null}
-        {hasFieldErrors(errors) ? <FormErrorSummary scope={scope} errors={errors} /> : null}
 
-        {config.renderFields({ form, onChange: editField, disabled, errors })}
+        <form
+          noValidate
+          aria-label={id ? `Edit ${title}` : (config.page?.newTitle ?? `New ${entity.singular}`)}
+          className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+        >
+          <FormErrorSummary errors={summary} focusKey={failedSubmits} />
 
-        <FieldSection title={body.title} description={body.description}>
-          <div className="sm:col-span-2">
+          {config.renderFields({ form, onChange: editField, disabled, errors })}
+
+          <FieldSection title={body.title} description={body.description}>
             <EditorialBlockEditor
               key={blockSession}
               items={items}
@@ -403,73 +483,75 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
                 setDirty(true);
               }}
             />
-          </div>
-        </FieldSection>
+          </FieldSection>
 
-        {links ? (
-          <EditorialLinkLists controller={links} onFailure={(next) => setFailure(next)} />
-        ) : id === null && config.linksBeforeFirstSave ? (
-          <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
-        ) : null}
+          {links ? (
+            <EditorialLinkLists controller={links} onFailure={(next) => setFailure(next)} />
+          ) : id === null && config.linksBeforeFirstSave ? (
+            <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
+          ) : null}
 
-        <StickySaveBar>
-          <div className="flex flex-wrap items-center gap-3">
-            <LoadingButton
+          <FormActions
+            sticky
+            start={
+              <>
+                <StaffButton asChild variant="secondary">
+                  <Link href={config.page?.list.href ?? pathname}>Cancel</Link>
+                </StaffButton>
+                <output aria-live="polite" className="text-staff-sm text-staff-muted">
+                  {unsaved ? "Unsaved changes" : ""}
+                </output>
+              </>
+            }
+          >
+            <StaffButton
               type="submit"
+              variant="primary"
+              icon={<Save aria-hidden />}
               loading={busy === "save"}
-              loadingLabel="Saving…"
-              disabled={disabled}
+              disabled={disabled || (id !== null && !unsaved)}
             >
-              {id ? "Save changes" : "Create draft"}
-            </LoadingButton>
-            <output aria-live="polite" className="text-sm text-on-surface-variant">
-              {dirty || linksDirty
-                ? "Unsaved changes"
-                : savedAt
-                  ? `Saved ${formatLondonTime(savedAt)}`
-                  : "Not saved yet"}
-            </output>
-          </div>
-        </StickySaveBar>
-      </form>
+              {submitLabel}
+            </StaffButton>
+          </FormActions>
+        </form>
+      </div>
 
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={dialog === "publish"}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
-        title={`${publishing ? "Publish" : "Unpublish"} “${name}”`}
-        body={
-          publishing
-            ? `This ${entity.singular} goes live on lax.art straight away.`
-            : `This ${entity.singular} is removed from lax.art straight away. You can publish it again later.`
-        }
-        confirmLabel={publishing ? "Publish" : "Unpublish"}
-        tone="warning"
+        title={publishCopy.title}
+        description={publishCopy.description}
+        confirmLabel={publishCopy.confirmLabel}
+        tone={publishing ? "default" : "danger"}
         loading={busy === "publish"}
         onConfirm={changePublication}
       />
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={dialog === "reload"}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
         title={`Discard your changes to “${name}”?`}
-        body={`Reloading shows the version saved at ${conflictVersion ? formatLondonTime(conflictVersion) : "the last save"}. Your unsaved changes to this ${entity.singular} are lost and cannot be recovered.`}
+        description={`Reloading shows the version saved at ${conflictVersion ? formatLondonTime(conflictVersion) : "the last save"}. Your unsaved changes to this ${entity.singular} are lost and cannot be recovered.`}
         confirmLabel="Discard my changes and reload"
         cancelLabel="Keep editing"
+        tone="danger"
         loading={busy === "reload"}
         onConfirm={reloadFromStore}
       />
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={dialog === "overwrite"}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
         title={`Save over the other changes to “${name}”?`}
-        body={`Saving now replaces what was saved at ${conflictVersion ? formatLondonTime(conflictVersion) : "the last save"} with your version of this ${entity.singular}. Their changes cannot be recovered afterwards.`}
+        description={`Saving now replaces what was saved at ${conflictVersion ? formatLondonTime(conflictVersion) : "the last save"} with your version of this ${entity.singular}. Their changes cannot be recovered afterwards.`}
         confirmLabel="Save my version"
         cancelLabel="Go back"
+        tone="danger"
         loading={busy === "save"}
         onConfirm={async () => {
           const current = conflictVersion;

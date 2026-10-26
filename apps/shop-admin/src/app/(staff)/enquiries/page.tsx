@@ -1,35 +1,52 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { EnquiryInbox } from "@/components/enquiries/enquiry-inbox.client";
+import { EnquiriesList } from "@/components/enquiries/enquiries-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
-import { enquiryInboxApiQuery, parseEnquiryInboxQuery } from "@/server/domain/enquiry-inbox.vm";
-import type { AdminEnquiryListResponse } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/ui";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
+import { enquiriesList, parseEnquiriesState } from "@/server/domain/enquiry-inbox.vm";
+import type {
+  AdminEnquiryAssigneesResponse,
+  AdminEnquiryListResponse,
+} from "@auction/shop-contracts";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Enquiries" };
+
+const EMPTY: AdminEnquiryListResponse = {
+  items: [],
+  nextCursor: null,
+  counts: { new: 0, in_progress: 0, closed: 0 },
+};
 
 export default async function EnquiriesPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const query = parseEnquiryInboxQuery(await searchParams);
-  const result = await fetchAdminJson<AdminEnquiryListResponse>(
-    adminListPath("enquiries", { query: enquiryInboxApiQuery(query) }),
-  );
-  if (result.status === "unauthorized") redirect("/login");
-  if (result.status !== "ok") {
+  const state = parseEnquiriesState(await searchParams);
+  const [result, session, assignees] = await Promise.all([
+    fetchAdminJson<AdminEnquiryListResponse>(
+      adminListPath("enquiries", {
+        cursor: state.cursor,
+        query: enquiriesList.apiQuery(state),
+      }),
+    ),
+    loadAdminSession(),
+    fetchAdminJson<AdminEnquiryAssigneesResponse>("enquiries/assignees"),
+  ]);
+  if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
+  if (result.status === "forbidden" || result.status === "not_found") {
     return <AdminFailedPage title="Enquiries" status={result.status} />;
   }
+  if (session.status !== "ok") return <AdminFailedPage title="Enquiries" status="failed" />;
 
   return (
-    <div>
-      <PageHeader
-        title="Enquiries"
-        description="Messages from lax.art and questions about artworks. Pick one up, keep notes, and close it when it is dealt with."
-      />
-      <EnquiryInbox query={query} page={result.data} />
-    </div>
+    <EnquiriesList
+      state={state}
+      page={result.status === "ok" ? result.data : EMPTY}
+      loadFailed={result.status === "failed"}
+      currentSubject={session.data.subject}
+      assignees={assignees.status === "ok" ? assignees.data.items : []}
+      canWrite={session.data.capabilities.includes("enquiry.write")}
+    />
   );
 }
