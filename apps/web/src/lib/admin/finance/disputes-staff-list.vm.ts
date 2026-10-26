@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import { isoDate, isoDateOrNull } from "@/lib/admin/iso-date";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
 import {
@@ -57,8 +58,8 @@ export function toDisputesStaffRows(rows: readonly AdminDisputeTableRow[]): Disp
     buyer: row.buyerId ? row.buyerLabel?.trim() || "Buyer" : null,
     sellerId: row.sellerLegalEntityId,
     seller: row.sellerDisplayName?.trim() || `Seller ${row.sellerLegalEntityId.slice(0, 8)}`,
-    openedAt: row.openedAt.toISOString(),
-    closedAt: row.closedAt ? row.closedAt.toISOString() : null,
+    openedAt: isoDate(row.openedAt),
+    closedAt: isoDateOrNull(row.closedAt),
     timeline: [...(row.timelineEvents ?? [])]
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
       .map((event) => ({

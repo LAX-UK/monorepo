@@ -7,6 +7,7 @@ import {
   invitationResendDisabledReason,
   invitationRevokeDisabledReason,
 } from "@/lib/admin/invite-lifecycle";
+import { isoDate, isoDateOrNull } from "@/lib/admin/iso-date";
 import { INVITATIONS_LIST_PATH } from "@/lib/admin/people/build-invitations-list-page-model";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.shared";
 import type { StatusPresentation } from "@auction/staff-ui";
@@ -66,9 +67,9 @@ export function toInvitationStaffRows(
     grants: row.grants,
     status: invitationStatus(row),
     invitedBy: row.invitedByName,
-    sentAt: row.createdAt.toISOString(),
-    openedAt: row.openedAt ? row.openedAt.toISOString() : null,
-    expiresAt: row.expiresAt.toISOString(),
+    sentAt: isoDate(row.createdAt),
+    openedAt: isoDateOrNull(row.openedAt),
+    expiresAt: isoDate(row.expiresAt),
     delivery: row.inviteEmailLastStatus ? (DELIVERY[row.inviteEmailLastStatus] ?? null) : null,
     resendBlocked: invitationCanResend(row) ? null : invitationResendDisabledReason(row),
     revokeBlocked: invitationCanRevoke(row) ? null : invitationRevokeDisabledReason(row),

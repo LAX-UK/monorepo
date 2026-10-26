@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { flattenCategoryTaxonomyRows } from "@/lib/admin/categories/category-taxonomy-rows";
+import { isoDate } from "@/lib/admin/iso-date";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { Metric, DataView as StaffDataView, StatusPresentation } from "@auction/staff-ui";
 import type { AdminCategoriesListSummary, AdminCategory } from "@auction/types";
@@ -61,8 +62,8 @@ export function toCategoriesStaffRows(categories: readonly AdminCategory[]): Cat
     assignments: category.usage.total,
     sortOrder: category.sortOrder,
     hasHeroImage: Boolean(category.heroImageKey),
-    updatedAt: category.updatedAt.toISOString(),
-    createdAt: category.createdAt.toISOString(),
+    updatedAt: isoDate(category.updatedAt),
+    createdAt: isoDate(category.createdAt),
     href: `${CATEGORIES_LIST_PATH}/${category.id}`,
     editHref: `${CATEGORIES_LIST_PATH}/${category.id}/edit`,
     canDelete: category.usage.total === 0,

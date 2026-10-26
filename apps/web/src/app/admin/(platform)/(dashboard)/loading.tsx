@@ -1,3 +1,5 @@
+"use client";
+
 import { DataTable, MetricStrip, PageHeader, Section, Skeleton } from "@auction/staff-ui";
 
 const COLUMNS = ["Item", "Priority", "Area", "Owner", "Due"].map((header) => ({

@@ -1,4 +1,5 @@
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import { isoDate } from "@/lib/admin/iso-date";
 import type { AdminAuditActor, AdminDomainEventRow } from "@/lib/data/http/admin-audit.schema";
 import { type TimelineEvent, formatStaffDateTime } from "@auction/staff-ui";
 import { buildAuditEventDetail, summariseAuditEvent } from "./audit-event-detail";
@@ -25,7 +26,7 @@ export function toTimelineEvents(rows: readonly TimelineSource[]): TimelineEvent
       return {
         id: row.id,
         title: domainEventLabel(row.eventType),
-        at: row.occurredAt.toISOString(),
+        at: isoDate(row.occurredAt),
         actor: actorLabel(row),
         tone: auditActionTone(row.eventType),
         ...(summary ? { detail: summary } : {}),

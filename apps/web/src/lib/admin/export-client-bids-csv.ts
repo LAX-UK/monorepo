@@ -1,3 +1,4 @@
+import { isoDate } from "@/lib/admin/iso-date";
 import type { AdminUserBidRow } from "@/lib/data/http/admin.server";
 import {
   clientBidChannelLabel,
@@ -22,7 +23,7 @@ function toExportRow(bid: AdminUserBidRow): Record<string, string> {
     amount: bid.amount,
     status: status.label,
     channel: clientBidChannelLabel(bid.placedVia),
-    placedAt: bid.createdAt.toISOString(),
+    placedAt: isoDate(bid.createdAt),
   };
 }
 

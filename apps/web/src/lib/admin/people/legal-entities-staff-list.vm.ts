@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
+import { isoDate } from "@/lib/admin/iso-date";
 import type { LegalEntityHealthVM } from "@/lib/admin/legal-entity-health";
 import {
   formatLegalEntityKindSubkind,
@@ -101,9 +102,7 @@ export function toLegalEntityPreview(bundle: {
       kind: entity.kind,
       subkind: entity.subkind,
       updatedAt:
-        entity.updatedAt instanceof Date
-          ? entity.updatedAt.toISOString()
-          : String(entity.updatedAt),
+        entity.updatedAt instanceof Date ? isoDate(entity.updatedAt) : String(entity.updatedAt),
       stripeDueCount: due,
     }),
     stripeConnect: entity.stripeConnectAccountId
