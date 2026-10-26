@@ -103,7 +103,7 @@ export function ShopHeaderClient({
                 className={cn("min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
                 aria-label="LAX Shop home"
               >
-                <LaxLogo kind="shop" className="shop-header__logo" />
+                <LaxLogo className="shop-header__logo" />
               </Link>
             }
             trailing={

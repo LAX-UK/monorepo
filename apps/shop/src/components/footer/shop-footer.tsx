@@ -59,7 +59,7 @@ export function ShopFooter({
       headingId="shop-footer-heading"
       logo={
         <Link href="/" className={cn("inline-flex", FOCUS_RING)} aria-label="LAX Shop home">
-          <LaxLogo kind="shop" className="shop-footer__logo" />
+          <LaxLogo className="shop-footer__logo" />
         </Link>
       }
       columns={vm.columns}

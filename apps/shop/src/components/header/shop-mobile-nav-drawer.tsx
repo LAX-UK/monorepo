@@ -50,7 +50,7 @@ export function ShopMobileNavDrawer({
           aria-label="LAX Shop home"
           onClick={close}
         >
-          <LaxLogo kind="shop" className="shop-header__logo" />
+          <LaxLogo className="shop-header__logo" />
         </Link>
       }
       themeSlot={
