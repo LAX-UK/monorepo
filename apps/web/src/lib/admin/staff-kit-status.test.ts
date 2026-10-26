@@ -6,6 +6,7 @@ import {
   staffIdentityStatus,
   staffRunwayLotStatus,
   staffSaleroomRoomStatus,
+  staffSellingPlatformStatus,
   staffStatus,
 } from "./staff-kit-status";
 
@@ -185,5 +186,17 @@ describe("ATG lot status", () => {
     expect(staffAtgLotStatus({ ...linked, atgLotId: null, remoteStatus: "1" }).label).toBe(
       "Not pushed",
     );
+  });
+});
+
+describe("selling platform status", () => {
+  it("shows lax.bid as neutral, ATG as info and a failed ATG sync as danger", () => {
+    const lax = { platform: "lax" as const, label: "lax.bid", description: "d" };
+    const atg = { platform: "atg" as const, label: "ATG · Live", description: "d" };
+    expect(staffSellingPlatformStatus(lax)).toEqual({ label: "lax.bid", tone: "neutral" });
+    expect(staffSellingPlatformStatus(atg)).toEqual({ label: "ATG · Live", tone: "info" });
+    expect(
+      staffSellingPlatformStatus({ ...atg, label: "On ATG · Sync error" }, { syncError: true }),
+    ).toEqual({ label: "On ATG · Sync error", tone: "danger" });
   });
 });

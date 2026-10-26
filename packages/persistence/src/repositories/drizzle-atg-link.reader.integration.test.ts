@@ -112,7 +112,24 @@ describe.skipIf(!HAS_DB)("DrizzleAtgLinkReader (integration)", () => {
           }),
           expect.objectContaining({ lotId: unlinkedLotId, atgLotId: null, imageCount: 0 }),
         ]);
+        expect((await reader.getSaleSellingSummaries([saleId])).get(saleId)).toEqual({
+          sellingPlatform: "atg",
+          linked: true,
+          remoteStatus: "published",
+          approvedAt: t.toISOString(),
+          soldLotCount: 1,
+        });
+        const lotSummaries = await reader.getLotSellingSummaries([linkedLotId, unlinkedLotId]);
+        expect(lotSummaries.get(linkedLotId)).toMatchObject({
+          saleId,
+          sale: { sellingPlatform: "atg", linked: true },
+          lot: { sold: true, lastError: null },
+        });
+        expect(lotSummaries.get(unlinkedLotId)).toMatchObject({ saleId, lot: null });
         await tx.update(sale).set({ status: "cancelled" }).where(eq(sale.id, saleId));
+        expect((await reader.getSaleSellingSummaries([saleId])).get(saleId)?.sellingPlatform).toBe(
+          "cancelled",
+        );
         expect((await reader.getSaleView(saleId))?.saleCancelled).toBe(true);
         expect(await reader.findAtgLotId(linkedLotId)).toBe("atg-l1");
         expect(await reader.findAtgLotId(unlinkedLotId)).toBeNull();

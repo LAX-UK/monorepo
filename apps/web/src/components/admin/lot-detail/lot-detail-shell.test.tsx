@@ -2,7 +2,8 @@ import { BidStaffAccessProvider } from "@/components/admin/access/bid-staff-acce
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import { StaffTooltipProvider } from "@auction/staff-ui";
-import { render as baseRender, fireEvent, screen } from "@testing-library/react";
+import { type AtgLotSellingSummary, toAtgSaleSellingSummary } from "@auction/types";
+import { render as baseRender, fireEvent, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LotDetailShell } from "./lot-detail-shell";
@@ -131,5 +132,81 @@ describe("LotDetailShell", () => {
     expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^publish$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /edit/i })).toBeNull();
+  });
+});
+
+describe("LotDetailShell selling badge", () => {
+  const atgSale = toAtgSaleSellingSummary({
+    saleStatus: "draft",
+    atgRemoteStatus: "published",
+    atgLinked: true,
+    atgSoldLotCount: 0,
+    atgApprovedAt: null,
+  });
+  const laxSale = toAtgSaleSellingSummary({
+    saleStatus: "scheduled",
+    atgRemoteStatus: null,
+    atgLinked: false,
+    atgSoldLotCount: 0,
+    atgApprovedAt: null,
+  });
+  const pushed = { remoteStatus: null, lastError: null, sold: null, numberOfBids: null };
+
+  function renderWith(selling: AtgLotSellingSummary | null, canManageAuction = true) {
+    return render(
+      <LotDetailShell
+        lotId="lot_1"
+        bundle={bundle()}
+        canManageCatalog
+        canManageAuction={canManageAuction}
+        publishReadiness={ready}
+        selling={selling}
+      >
+        <p>Overview</p>
+      </LotDetailShell>,
+    );
+  }
+  const badge = () => document.querySelector("[data-selling-platform]");
+
+  it.each([
+    ["0", "On ATG · Not yet offered"],
+    ["1", "On ATG · Offered"],
+    ["2", "On ATG · Not sold"],
+    ["4", "On ATG · Sold"],
+    [null, "On ATG"],
+  ])("labels a lot with ATG status %s as %s, linked to the sale's ATG tab", (code, label) => {
+    renderWith({ saleId: "sale_1", sale: atgSale, lot: { ...pushed, remoteStatus: code } });
+    expect(badge()).toHaveTextContent(label);
+    expect(within(badge() as HTMLElement).getByRole("link")).toHaveAttribute(
+      "href",
+      "/admin/sales/sale_1/atg",
+    );
+  });
+
+  it("shows a failed sync in the danger tone", () => {
+    renderWith({
+      saleId: "sale_1",
+      sale: atgSale,
+      lot: { ...pushed, remoteStatus: "1", lastError: "ATG 500" },
+    });
+    expect(badge()).toHaveTextContent("On ATG · Sync error");
+    expect(badge()?.querySelector(".bg-staff-danger-bg")).not.toBeNull();
+  });
+
+  it("shows lax.bid for a lot in a sale selling on lax.bid, without a link", () => {
+    renderWith({ saleId: "sale_1", sale: laxSale, lot: pushed });
+    expect(badge()).toHaveTextContent("lax.bid");
+    expect(within(badge() as HTMLElement).queryByRole("link")).toBeNull();
+  });
+
+  it("shows nothing for a lot never sent to ATG, or without a summary", () => {
+    renderWith({ saleId: "sale_1", sale: atgSale, lot: null });
+    expect(badge()).toBeNull();
+  });
+
+  it("does not link to the ATG tab for staff who cannot open it", () => {
+    renderWith({ saleId: "sale_1", sale: atgSale, lot: pushed }, false);
+    expect(badge()).toHaveTextContent("On ATG");
+    expect(within(badge() as HTMLElement).queryByRole("link")).toBeNull();
   });
 });

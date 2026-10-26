@@ -87,8 +87,34 @@ that sold on ATG stays as it is and is settled manually
 `apps/api/src/services/sale-channel-guards.ts`, called from the sale publish pipeline
 (`services/sale/sale-publish.pipeline.ts`), sale cancel (`sale-publish.service.ts`), lot detach
 (`sale/sale-lot-membership.ts`), lot cancel and sale move (`lot/lot-lifecycle.ts`,
-`lot/lot-update.ts`) and the soft-delete services. The admin sale page hides Publish, Cancel and
-Delete for ATG-owned sales and explains why.
+`lot/lot-update.ts`) and the soft-delete services. The admin sale page and the sales list keep
+Publish, Cancel and Delete visible but disabled for ATG-owned sales, with the reason, following
+the same summary as the badge below.
+
+**Admin "where this sells" badge.** The sale and lot headers show where bidding happens, as a
+second kit `StatusBadge` in the header's status slot; ATG badges link to the sale's ATG tab, and
+every badge explains itself in a `StaffTooltip` and to screen readers. Labels come from
+`atgSaleSellingBadge()` / `atgLotSellingBadge()` in `packages/types/src/atg.ts`, which read the
+same ownership inputs as the guards; tones come from `staffSellingPlatformStatus()` in
+`apps/web/src/lib/admin/staff-kit-status.ts` (lax.bid neutral, ATG info, a lot sync error danger):
+
+| Sale state | Badge |
+| --- | --- |
+| Unlinked draft, or cancelled | none |
+| LAX-owned (`scheduled` / `active` / `ended`) | lax.bid |
+| Linked, not published (approved once `atg_approved_at` is set) | ATG · Draft / ATG · Approved |
+| ATG-owned, published | ATG · Live |
+| ATG-owned, closed with ≥1 sold lot | ATG · Ended |
+| Closed with nothing sold (free again) | ATG · Closed |
+
+A lot pushed to ATG shows "On ATG · <status>" with the GetLots labels, or "On ATG · Sync error";
+a lot in a LAX-owned sale shows "lax.bid". The sales and lots lists add a compact **ATG** marker
+beside the status of rows with an ATG badge; only draft rows are looked up. Data comes from
+`GET /admin/integrations/atg/selling/sales?ids=` and `/selling/lots?ids=` (`auction.manage`, up
+to 200 ids, one request per page), which work while ATG sync is off, so ownership still shows
+when links exist. The reader is
+`DrizzleAtgLinkReader.getSaleSellingSummaries` / `getLotSellingSummaries` in
+`packages/persistence`; the web reads it through `apps/web/src/lib/data/http/atg.server.ts`.
 
 **Public lax.bid:** ATG-owned sales stay LAX `draft` but appear in the catalogue as read-only.
 Public reads add `sellingPlatform` and `atgAuctionState` (`live` while published, `ended`

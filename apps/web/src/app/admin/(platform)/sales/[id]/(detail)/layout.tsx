@@ -15,7 +15,7 @@ import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import { getAdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import { getAdminTelephoneBookings } from "@/lib/data/http/admin.server";
-import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
+import { getAtgSaleSellingSummary } from "@/lib/data/http/atg.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { buildSaleOverviewAttentionRows } from "@/lib/data/view-models/sale-overview.vm";
 import { SALES_ACCESS, SALE_CATALOG_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -41,7 +41,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     connectRequiredByLotId,
     pendingTelephoneBookings,
     attention,
-    sellingPlatform,
+    selling,
   ] = await Promise.all([
     canManageSales ? loadAdminSaleRegistrationCount(id, bundle.sale) : Promise.resolve(null),
     canManageSales ? loadAdminSalePendingRegistrationCount(id, bundle.sale) : Promise.resolve(null),
@@ -51,7 +51,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       ? getAdminTelephoneBookings(id, "requested").catch(() => [])
       : Promise.resolve([]),
     getAdminSaleAttention(id).catch(() => null),
-    canManageSales ? getAtgSaleSellingPlatform(bundle.sale) : Promise.resolve(null),
+    canManageSales ? getAtgSaleSellingSummary(bundle.sale) : Promise.resolve(null),
   ]);
   const sellersWithoutPayouts =
     bundle.sale.status === "draft"
@@ -100,7 +100,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       connectRequiredByLotId={connectRequiredByLotId}
       draftSetupReadiness={draftSetupReadiness}
       overviewAttentionCount={overviewAttentionCount}
-      sellingPlatform={sellingPlatform}
+      selling={selling}
       linkedEventSlug={linkedEvent?.eventSlug ?? null}
       linkedEventTitle={linkedEvent?.eventTitle ?? null}
     >

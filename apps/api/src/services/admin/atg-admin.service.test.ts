@@ -46,6 +46,8 @@ function setup(opts: {
     getSaleOwnerships: vi.fn(),
     getLotAtgState: vi.fn(),
     getSoldLotIds: vi.fn(),
+    getSaleSellingSummaries: vi.fn(),
+    getLotSellingSummaries: vi.fn(),
   };
   const queue: AtgSyncQueueProducer = {
     add: opts.queueDown
@@ -66,7 +68,7 @@ function setup(opts: {
     audit,
     () => NOW,
   );
-  return { service, queue, writer, audit };
+  return { service, queue, writer, audit, reader };
 }
 
 describe("AtgAdminService", () => {
@@ -168,6 +170,26 @@ describe("AtgAdminService", () => {
         code: "queue_unavailable",
         message: "ATG queue is unavailable. Try again shortly.",
       },
+    });
+  });
+
+  it("returns selling summaries keyed by id, even while ATG sync is off", async () => {
+    const { service, reader } = setup({ enabled: false });
+    const summary = {
+      sellingPlatform: "atg" as const,
+      linked: true,
+      remoteStatus: "published" as const,
+      approvedAt: null,
+      soldLotCount: 0,
+    };
+    vi.mocked(reader.getSaleSellingSummaries).mockResolvedValue(new Map([["s1", summary]]));
+    vi.mocked(reader.getLotSellingSummaries).mockResolvedValue(
+      new Map([["l1", { saleId: "s1", sale: summary, lot: null }]]),
+    );
+
+    expect(await service.getSaleSellingSummaries(["s1"])).toEqual({ s1: summary });
+    expect(await service.getLotSellingSummaries(["l1"])).toEqual({
+      l1: { saleId: "s1", sale: summary, lot: null },
     });
   });
 

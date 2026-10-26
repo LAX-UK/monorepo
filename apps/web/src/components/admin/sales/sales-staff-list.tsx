@@ -1,5 +1,6 @@
 "use client";
 
+import { AtgListMarker } from "@/components/admin/atg/selling-platform-badge";
 import { SaleQuickView } from "@/components/admin/sales/sale-quick-view";
 import { type SaleActionTarget, useSaleActions } from "@/components/admin/sales/use-sale-actions";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
@@ -61,7 +62,7 @@ export function saleActionTarget(row: SalesStaffRow): SaleActionTarget {
     status: row.statusCode,
     saleroom: row.saleroom,
     canDelete: row.canDelete,
-    sellingOnAtg: false,
+    sellingOnAtg: row.sellingOnAtg === true,
   };
 }
 
@@ -113,9 +114,12 @@ export function SalesStaffList(props: SalesStaffListProps) {
         mobile: "badge",
         truncate: false,
         cell: (row) => (
-          <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
-            {row.status.label}
-          </StatusBadge>
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
+              {row.status.label}
+            </StatusBadge>
+            {row.onAtg ? <AtgListMarker label="Linked to ATG" /> : null}
+          </span>
         ),
       },
       {
