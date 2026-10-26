@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { EmptyState } from "./empty-state.js";
 import { LAX_ILLUSTRATION_NAMES, LaxIllustration } from "./lax-illustration.js";
-import { MediaPlaceholder, placeholderInitials } from "./media-placeholder.js";
+import { MediaPlaceholder } from "./media-placeholder.js";
 
 describe("LaxIllustration", () => {
   it.each(LAX_ILLUSTRATION_NAMES)(
@@ -43,15 +43,15 @@ describe("EmptyState", () => {
 });
 
 describe("MediaPlaceholder", () => {
-  it("sets the work's initials on the mat instead of a generic label", () => {
+  it("shows the hatched placeholder with its label", () => {
     render(<MediaPlaceholder label="Lot artwork" title="The Blue Hour, 2021" />);
     const mat = screen.getByRole("img", { name: "Lot artwork placeholder" });
-    expect(mat).toHaveTextContent("BH");
-    expect(mat).not.toHaveTextContent("Lot artwork");
+    expect(mat).toHaveTextContent("Lot artwork");
+    expect(mat.querySelector("pattern")).not.toBeNull();
   });
 
-  it("reads short labels as initials", () => {
-    expect(placeholderInitials("ma")).toBe("MA");
-    expect(placeholderInitials("Untitled 7")).toBeNull();
+  it("falls back to the work's title for assistive tech", () => {
+    render(<MediaPlaceholder title="The Blue Hour" />);
+    expect(screen.getByRole("img", { name: "The Blue Hour placeholder" })).toBeInTheDocument();
   });
 });
