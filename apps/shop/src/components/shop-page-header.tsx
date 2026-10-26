@@ -88,4 +88,12 @@ export const shopPageWayfinding = {
     /** Ends at "Your orders": the h1 names the order, so a third crumb would repeat it. */
     breadcrumbs: [shopRoot, { label: "Your orders", href: "/account/orders" }],
   }),
+  orderProblem: (orderName: string, orderHref: string) => ({
+    title: "Report a problem",
+    breadcrumbs: [
+      shopRoot,
+      { label: "Your orders", href: "/account/orders" },
+      { label: orderName, href: orderHref },
+    ],
+  }),
 } as const;

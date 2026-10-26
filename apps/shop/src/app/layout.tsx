@@ -22,6 +22,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import "./account.css";
+import "./orders.css";
 import "./commerce.css";
 import { montserrat, outfit } from "./fonts";
 import "./base.css";

@@ -99,6 +99,14 @@ function arrivalLine(today: Date, window: WorkingDayWindow, verb: string): strin
   return `${verb} ${first} – ${formatDay(addWorkingDays(today, window.max))}`;
 }
 
+/**
+ * "Arrives Tue 4 Nov – Thu 6 Nov" counted from a moment in London, such as when an order was
+ * paid, so the confirmation repeats the window checkout showed.
+ */
+export function workingDayWindowLine(from: Date, window: WorkingDayWindow, verb: string): string {
+  return arrivalLine(londonToday(from), window, verb);
+}
+
 const priceLabel = (pence: number) => (pence === 0 ? "Free" : formatGbpPence(pence));
 
 /** The delivery choices as checkout lists them, with prices from the surcharges charged. */

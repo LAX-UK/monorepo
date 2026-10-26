@@ -1,0 +1,665 @@
+/* Orders: the order page, its timeline, "Finish paying", "Report a problem" and the
+   confirmation. Panels sit side by side, never inside one another. Spacing, radius and type
+   come from the tokens in base.css; Montserrat for panel titles, Outfit for everything else. */
+
+/* Order page layout: progress and items on the left, summary, delivery and help on the right. */
+.shop-order-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-order-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3);
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-order-page__grid {
+  display: grid;
+  gap: var(--shop-space-6);
+  align-items: start;
+}
+
+.shop-order-page__main,
+.shop-order-page__side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+@media (min-width: 64rem) {
+  .shop-order-page__grid {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+}
+
+.shop-order-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+  padding: var(--shop-space-6);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+@media (max-width: 47.99rem) {
+  .shop-order-panel {
+    padding: var(--shop-space-4);
+  }
+}
+
+.shop-order-panel__title {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-family: var(--font-headline);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.shop-order-panel__text {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  line-height: 1.5;
+}
+
+/* Timeline: a marker per stage on a connecting rule, then the label, date and any detail. */
+.shop-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-timeline__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: var(--shop-space-3);
+  padding-bottom: var(--shop-space-6);
+}
+
+.shop-timeline__step:last-child {
+  padding-bottom: 0;
+}
+
+/* The rule joins each marker to the next; it is solid between reached stages. */
+.shop-timeline__step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 1.75rem;
+  bottom: 0.25rem;
+  left: calc(0.75rem - 1px);
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-hairline);
+}
+
+.shop-timeline__step.is-done:not(:last-child)::before {
+  background: var(--color-on-surface);
+}
+
+.shop-timeline__marker {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-on-surface-variant);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+.shop-timeline__step.is-done .shop-timeline__marker {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.shop-timeline__step.is-next .shop-timeline__marker {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 4px var(--color-surface), inset 0 0 0 12px var(--color-primary);
+}
+
+.shop-timeline__check {
+  width: 1rem;
+  height: 1rem;
+}
+
+.shop-timeline__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+  padding-top: 0.125rem;
+}
+
+.shop-timeline__label {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.shop-timeline__step.is-upcoming .shop-timeline__label {
+  color: var(--color-on-surface-variant);
+  font-weight: 500;
+}
+
+.shop-timeline__date,
+.shop-timeline__detail {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.shop-timeline__link {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 1.5rem;
+  align-items: center;
+  gap: var(--shop-space-1);
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+}
+
+.shop-timeline__link-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Lines and totals, shared by the order page and the confirmation. */
+.shop-order-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-order-lines__line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--shop-space-4);
+  padding: var(--shop-space-3) 0;
+}
+
+.shop-order-lines__line:first-child {
+  padding-top: 0;
+}
+
+.shop-order-lines__line:last-child {
+  padding-bottom: 0;
+}
+
+.shop-order-lines__line + .shop-order-lines__line {
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.shop-order-lines__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+}
+
+.shop-order-lines__title {
+  width: fit-content;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  line-height: 1.375rem;
+  text-decoration: none;
+}
+
+a.shop-order-lines__title:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.shop-order-lines__meta {
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+}
+
+.shop-order-lines__price {
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.375rem;
+  white-space: nowrap;
+}
+
+/* Under the lines in one panel (confirmation), the totals start below a rule. */
+.shop-order-lines + .shop-order-totals {
+  padding-top: var(--shop-space-4);
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.shop-order-totals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+}
+
+.shop-order-totals__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+  margin: 0;
+}
+
+.shop-order-totals__rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--shop-space-4);
+  font-size: var(--shop-text-md);
+}
+
+.shop-order-totals__rows dt {
+  color: var(--color-on-surface-variant);
+}
+
+.shop-order-totals__rows dd {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.shop-order-totals__rows .is-total {
+  padding-top: var(--shop-space-3);
+  border-top: 1px solid var(--color-border-hairline);
+  font-weight: 600;
+}
+
+.shop-order-totals__rows .is-total dt {
+  color: var(--color-on-surface);
+}
+
+.shop-order-totals__vat {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.shop-order-delivery__method {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+}
+
+.shop-order-delivery__address {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  font-style: normal;
+  line-height: 1.5;
+}
+
+/* Help: invoice and "Report a problem". */
+.shop-order-help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+}
+
+.shop-order-help__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+}
+
+.shop-order-help .shop-order-help__action {
+  width: 100%;
+}
+
+.shop-order-help__note {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+/* Finish paying: an unpaid checkout whose editions are still reserved. */
+.shop-finish-paying {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--shop-space-4);
+  padding: var(--shop-space-4) var(--shop-space-6);
+  border: 1px solid var(--color-on-surface);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.shop-finish-paying__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+}
+
+.shop-finish-paying__title {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-family: var(--font-headline);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.shop-finish-paying__item {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-finish-paying__time {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-finish-paying__error {
+  margin: var(--shop-space-1) 0 0;
+  color: var(--color-error);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-finish-paying .shop-finish-paying__action {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+@media (max-width: 47.99rem) {
+  .shop-finish-paying {
+    align-items: start;
+    padding: var(--shop-space-4);
+  }
+}
+
+@media (min-width: 48rem) {
+  .shop-finish-paying {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .shop-finish-paying .shop-finish-paying__action {
+    grid-column: auto;
+    width: auto;
+    min-width: 15rem;
+  }
+}
+
+/* Report a problem. */
+.shop-problem-page {
+  width: 100%;
+  max-width: 35rem;
+}
+
+.shop-problem-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-problem-form__intro {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  line-height: 1.5;
+}
+
+.shop-problem-form__reasons legend {
+  margin-bottom: var(--shop-space-3);
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+}
+
+.shop-problem-form__reasons .radio-card__label {
+  font-size: var(--shop-text-md);
+}
+
+.shop-problem-form__reasons .radio-card__description {
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+}
+
+.shop-problem-form__reasons .shop-radio-card {
+  min-height: 3rem;
+  align-items: center;
+  padding: var(--shop-space-3) var(--shop-space-4);
+}
+
+.shop-problem-form__reasons .shop-radio-card:has(.radio-card__description) {
+  align-items: flex-start;
+}
+
+/* The group's error reads at the same size as the field errors below it. */
+.shop-problem-form__reasons [role="alert"] {
+  margin-top: var(--shop-space-2);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+}
+
+.shop-problem-form__details {
+  min-height: 9rem;
+  resize: vertical;
+}
+
+.shop-problem-form__error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-problem-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-6);
+}
+
+@media (max-width: 47.99rem) {
+  .shop-problem-form__actions .shop-button {
+    width: 100%;
+  }
+}
+
+.shop-problem-done {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--shop-space-3);
+  padding: var(--shop-space-6);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.shop-problem-done:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.shop-problem-done__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  color: var(--color-success);
+}
+
+.shop-problem-done__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+}
+
+.shop-problem-done__title {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-family: var(--font-headline);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.shop-problem-done__text {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  line-height: 1.5;
+}
+
+/* Confirmation of a paid order. */
+.shop-confirmed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-8);
+}
+
+.shop-confirmed__proof {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+}
+
+.shop-confirmed__label {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-confirmed__reference {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  user-select: all;
+}
+
+.shop-confirmed__text {
+  margin: var(--shop-space-2) 0 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.shop-confirmed__next {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+}
+
+.shop-confirmed__heading {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-family: var(--font-headline);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.shop-confirmed__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: confirmed-step;
+}
+
+.shop-confirmed__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+  padding-left: var(--shop-space-12);
+  counter-increment: confirmed-step;
+}
+
+.shop-confirmed__step::before {
+  content: counter(confirmed-step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-on-surface-variant);
+  border-radius: var(--radius-pill);
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-confirmed__step-title {
+  margin: 0;
+  padding-top: 0.3125rem;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  line-height: 1.375rem;
+}
+
+.shop-confirmed__step-text {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+  line-height: 1.5;
+}
+
+.shop-confirmed__delivery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+  padding-top: var(--shop-space-4);
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.shop-confirmed__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3) var(--shop-space-4);
+}
+
+.shop-confirmed__invoice {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+}
+
+@media (max-width: 47.99rem) {
+  .shop-confirmed__actions .shop-button {
+    width: 100%;
+  }
+}

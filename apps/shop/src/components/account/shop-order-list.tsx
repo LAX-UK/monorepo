@@ -22,9 +22,12 @@ export function ShopOrderList({ rows }: { rows: readonly ShopOrderRowVm[] }) {
             <td className="shop-orders-table__order">
               <div className="shop-orders-table__item">
                 <ShopOrderThumbnail src={row.thumbnailUrl} size={48} />
-                <Link href={row.href} className="shop-orders-table__link">
-                  {row.title}
-                </Link>
+                <div className="shop-orders-table__names">
+                  <Link href={row.href} className="shop-orders-table__link">
+                    {row.title}
+                  </Link>
+                  <span className="shop-orders-table__reference">{row.reference}</span>
+                </div>
               </div>
             </td>
             <td className="shop-orders-table__placed">

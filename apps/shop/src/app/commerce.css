@@ -77,22 +77,6 @@
   max-width: none;
 }
 
-.shop-order-card__lines {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.shop-order-card {
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-  padding: 1rem 1.25rem;
-}
-
 .shop-notice {
   border: 1px solid var(--color-border-hairline);
   border-radius: var(--radius-card);
@@ -647,92 +631,6 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   background: transparent;
   color: var(--color-on-surface);
   border: 1px solid var(--color-border-hairline);
-}
-
-.shop-order-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.shop-order-card__title {
-  margin: 0;
-  font-size: 1.25rem;
-}
-
-.shop-order-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  margin: 0;
-  color: var(--color-on-surface-muted, var(--color-on-surface));
-  font-size: 0.9375rem;
-}
-
-.shop-order-card__status-hint {
-  margin: 0;
-  color: var(--color-on-surface-variant);
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-.shop-order-card__facts,
-.shop-order-card__totals {
-  display: grid;
-  gap: 0.75rem;
-  margin: 0;
-}
-
-.shop-order-card__facts div,
-.shop-order-card__totals div {
-  display: grid;
-  grid-template-columns: minmax(7rem, 9rem) 1fr;
-  gap: 0.5rem;
-}
-
-.shop-order-card__facts dt,
-.shop-order-card__totals dt {
-  margin: 0;
-  font-weight: 600;
-}
-
-.shop-order-card__facts dd,
-.shop-order-card__totals dd {
-  margin: 0;
-}
-
-.shop-order-card__line {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-  padding: 0.75rem 0;
-  border-top: 1px solid var(--color-border-hairline);
-}
-
-.shop-order-card__line-title {
-  font-weight: 600;
-  text-decoration: none;
-  color: inherit;
-}
-
-.shop-order-card__line-meta {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--color-on-surface-muted, var(--color-on-surface));
-}
-
-.shop-order-card__line-price {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.shop-order-card__total {
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--color-border-hairline);
-  font-weight: 700;
 }
 
 .shop-catalogue-toolbar {

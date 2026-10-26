@@ -34,17 +34,29 @@ export function ShopAccountLoading({ variant }: { variant: "list" | "detail" }) 
               ))}
             </ul>
           ) : (
-            <div className="shop-order-detail">
-              <div className="shop-order-detail__items">
-                <div className="shop-account-skeleton__row">
-                  <Bar className="shop-account-skeleton__thumb" />
-                  <Bar className="shop-account-skeleton__text" />
+            <div className="shop-order-page__grid">
+              <div className="shop-order-page__main">
+                <div className="shop-order-panel">
+                  {ROWS.map((key) => (
+                    <div key={key} className="shop-account-skeleton__row">
+                      <Bar className="shop-account-skeleton__dot" />
+                      <Bar className="shop-account-skeleton__text" />
+                    </div>
+                  ))}
+                </div>
+                <div className="shop-order-panel">
+                  <div className="shop-account-skeleton__row">
+                    <Bar className="shop-account-skeleton__thumb" />
+                    <Bar className="shop-account-skeleton__text" />
+                  </div>
                 </div>
               </div>
-              <div className="shop-order-detail__summary">
-                <Bar className="shop-account-skeleton__pill" />
-                <Bar className="shop-account-skeleton__text" />
-                <Bar className="shop-account-skeleton__text" />
+              <div className="shop-order-page__side">
+                <div className="shop-order-panel">
+                  <Bar className="shop-account-skeleton__pill" />
+                  <Bar className="shop-account-skeleton__text" />
+                  <Bar className="shop-account-skeleton__text" />
+                </div>
               </div>
             </div>
           )}
