@@ -3,12 +3,8 @@
  * used by the LAX integration. Field names match the wire format exactly.
  */
 
-export type GapAuctionTypeAndListing =
-  | "CatalogueLive"
-  | "Live"
-  | "Timed"
-  | "CatalogueTimed"
-  | "Tender";
+/** GAP also defines catalogue and tender types; ATG allows LAX only these two. */
+export type GapAuctionTypeAndListing = "Live" | "Timed";
 
 export type GapAuctionListing = {
   PlatformCode: string;
@@ -67,7 +63,6 @@ export type GapLotFields = {
   Reserve?: number;
   OpeningPrice?: number;
   BuyItNowPrice?: number;
-  BuyersPremiumPercent?: number;
   EndTimeUtc?: string;
 };
 

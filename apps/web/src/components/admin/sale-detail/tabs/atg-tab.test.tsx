@@ -6,16 +6,53 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const adminAtgSaleActionResultAction = vi.fn();
 const adminAtgJobStateAction = vi.fn();
+const adminAtgSaleSettingsAction = vi.fn();
 
 vi.mock("@/lib/actions/admin-atg", () => ({
   adminAtgSaleActionResultAction: (...args: unknown[]) => adminAtgSaleActionResultAction(...args),
   adminAtgJobStateAction: (...args: unknown[]) => adminAtgJobStateAction(...args),
+  adminAtgSaleSettingsAction: (...args: unknown[]) => adminAtgSaleSettingsAction(...args),
 }));
+
+/** Radix selects take seconds to open under jsdom, so the field is a native select here. */
+vi.mock("@auction/staff-ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@auction/staff-ui")>();
+  return {
+    ...actual,
+    EnumSelect: ({
+      value,
+      onValueChange,
+      options,
+      disabled,
+    }: {
+      value: string | null;
+      onValueChange: (value: string) => void;
+      options: { value: string; label: string }[];
+      disabled?: boolean;
+    }) => {
+      const field = actual.useStaffField();
+      return (
+        <select
+          id={field?.controlId}
+          value={value ?? ""}
+          disabled={disabled ?? field?.disabled ?? false}
+          onChange={(event) => onValueChange(event.target.value)}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      );
+    },
+  };
+});
 
 const refresh = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh }),
+  useRouter: () => ({ refresh, push: vi.fn() }),
 }));
 
 vi.mock("@/lib/ui/notify", () => ({
@@ -63,6 +100,8 @@ function view(overrides: Partial<AtgSaleSyncView> = {}): AtgSaleSyncView {
     lastSyncedAt: null,
     lastPolledAt: null,
     lastError: null,
+    settings: { auctionType: "Timed", distribution: "private_test" },
+    settingsUpdatedAt: null,
     results: [],
     lots: [lot()],
     ...overrides,
@@ -80,6 +119,10 @@ async function runAction(pageButton: string, confirmButton: string) {
   fireEvent.click(within(dialog).getByRole("button", { name: confirmButton }));
 }
 
+function choose(label: string, value: string) {
+  fireEvent.change(screen.getByRole("combobox", { name: label }), { target: { value } });
+}
+
 function expectBlocked(name: string) {
   expect(screen.getByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
 }
@@ -93,11 +136,16 @@ describe("SaleAtgTab", () => {
     refresh.mockReset();
     adminAtgSaleActionResultAction.mockReset();
     adminAtgJobStateAction.mockReset();
+    adminAtgSaleSettingsAction.mockReset();
+    adminAtgSaleSettingsAction.mockResolvedValue({
+      ok: true,
+      data: { settings: { auctionType: "Live", distribution: "private_test" }, pushJobId: null },
+    });
     adminAtgSaleActionResultAction.mockResolvedValue({ ok: true, data: { jobId: "job-1" } });
     adminAtgJobStateAction.mockResolvedValue({ ok: true, data: { state: "active" } });
   });
 
-  it("explains when sync is turned off and offers no actions", () => {
+  it("explains when sync is turned off, hides push, and still lets settings be edited", () => {
     renderWithViewer(
       <SaleAtgTab
         saleId={SALE_ID}
@@ -108,6 +156,21 @@ describe("SaleAtgTab", () => {
     );
     expect(screen.getByText("ATG sync is turned off")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /push/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Auction type" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
+  });
+
+  it("lists readiness blockers from the sale view", () => {
+    renderWithViewer(
+      <SaleAtgTab
+        saleId={SALE_ID}
+        status={ENABLED}
+        view={view({ lots: [lot({ lotNumber: null })] })}
+        canManage
+      />,
+    );
+    expect(screen.getByText("Not ready to publish on ATG")).toBeInTheDocument();
+    expect(screen.getByText("1 lot needs a lot number.")).toBeInTheDocument();
   });
 
   it("asks before pushing, then queues it", async () => {
@@ -279,14 +342,14 @@ describe("SaleAtgTab", () => {
             lot({
               lotId: "l1",
               atgLotId: "x1",
-              remoteStatus: "7",
+              remoteStatus: "4",
               sold: true,
               hammerPrice: "1500.00",
             }),
             lot({
               lotId: "l2",
               atgLotId: "x2",
-              remoteStatus: "3",
+              remoteStatus: "7",
               numberOfBids: 4,
               currentMaxBid: "200.00",
             }),
@@ -309,5 +372,93 @@ describe("SaleAtgTab", () => {
     expect(screen.queryByText("7")).not.toBeInTheDocument();
     expect(screen.getByText("1 of 3 lots")).toBeInTheDocument();
     expect(screen.getAllByText("42").length).toBeGreaterThan(0);
+  });
+
+  describe("ATG settings", () => {
+    it("saves a changed auction type without asking", async () => {
+      renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
+
+      expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
+      choose("Auction type", "Live");
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() =>
+        expect(adminAtgSaleSettingsAction).toHaveBeenCalledWith(
+          SALE_ID,
+          { auctionType: "Live", distribution: "private_test" },
+          false,
+        ),
+      );
+    });
+
+    it("asks for confirmation before listing a sale publicly", async () => {
+      renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
+
+      choose("Distribution", "public_marketplace");
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(adminAtgSaleSettingsAction).not.toHaveBeenCalled();
+      fireEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", { name: "List publicly" }),
+      );
+
+      await waitFor(() =>
+        expect(adminAtgSaleSettingsAction).toHaveBeenCalledWith(
+          SALE_ID,
+          { auctionType: "Timed", distribution: "public_marketplace" },
+          true,
+        ),
+      );
+    });
+
+    it("keeps a refused save visible instead of toasting it", async () => {
+      adminAtgSaleSettingsAction.mockResolvedValue({
+        ok: false,
+        error: "Those ATG settings can no longer change. Reload the page.",
+      });
+      renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
+
+      choose("Auction type", "Live");
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(
+        await screen.findByText("Those ATG settings can no longer change. Reload the page."),
+      ).toBeInTheDocument();
+    });
+
+    it("locks the type once ATG has the auction and everything once published", () => {
+      const { unmount } = renderWithViewer(
+        <SaleAtgTab
+          saleId={SALE_ID}
+          status={ENABLED}
+          view={view({ linked: true, atgAuctionId: "a", remoteStatus: "created" })}
+          canManage
+        />,
+      );
+      expect(screen.getByRole("combobox", { name: "Auction type" })).toBeDisabled();
+      expect(screen.getByRole("combobox", { name: "Distribution" })).toBeEnabled();
+      expect(screen.getByText(/awaiting ATG approval/)).toBeInTheDocument();
+      unmount();
+
+      renderWithViewer(
+        <SaleAtgTab
+          saleId={SALE_ID}
+          status={ENABLED}
+          view={view({ linked: true, atgAuctionId: "a", remoteStatus: "published" })}
+          canManage
+        />,
+      );
+      expect(screen.getByRole("combobox", { name: "Distribution" })).toBeDisabled();
+      expect(
+        screen.getByText("Fixed: the auction is already published on ATG."),
+      ).toBeInTheDocument();
+    });
+
+    it("is read-only without manage rights", () => {
+      renderWithViewer(
+        <SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage={false} />,
+      );
+      expect(screen.getByRole("combobox", { name: "Auction type" })).toBeDisabled();
+      expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
+    });
   });
 });

@@ -41,13 +41,14 @@ function percent(rate: string): number | undefined {
   return Number.isFinite(n) ? Math.round(n * 10_000) / 100 : undefined;
 }
 
-function isTimed(config: AtgSyncConfig): boolean {
-  return config.auctionType === "Timed" || config.auctionType === "CatalogueTimed";
+function isTimed(sale: Pick<AtgSaleSnapshot, "atgSettings">): boolean {
+  return sale.atgSettings.auctionType === "Timed";
 }
 
+/** ATG takes one flat buyer's premium per auction. */
 export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
   if (sale.buyerPremiumTiers && sale.buyerPremiumTiers.length > 0) {
-    throw new AtgMappingError("Banded buyer's premium isn't supported on ATG yet.");
+    throw new AtgMappingError("ATG needs a single flat buyer's premium; remove the bands.");
   }
 }
 
@@ -61,9 +62,9 @@ export function mapSaleToAuctionFields(
     AuctionListings: [
       {
         PlatformCode: config.platformCode,
-        AuctionTypeAndListing: config.auctionType,
+        AuctionTypeAndListing: sale.atgSettings.auctionType,
         CategoryName: config.defaultCategory,
-        Private: config.listingPrivate,
+        Private: sale.atgSettings.distribution !== "public_marketplace",
       },
     ],
     TimezoneId: toWindowsTimezoneId(config.timezone),
@@ -76,7 +77,7 @@ export function mapSaleToAuctionFields(
   if (config.clientId) fields.ClientId = config.clientId;
   const premium = percent(sale.buyerPremiumRate);
   if (premium !== undefined) fields.BuyersPremium = premium;
-  if (isTimed(config)) {
+  if (isTimed(sale)) {
     fields.TimedStart = toGapDate(sale.startTime);
     fields.TimedFirstLotEnds = toGapDate(sale.endTime);
   }
@@ -137,10 +138,15 @@ function lotLongDescription(lot: AtgLotSnapshot, config: AtgSyncConfig): string 
 /** `AuctionId` is filled in by the sync service once the auction exists. */
 export function mapLotToLotFields(
   lot: AtgLotSnapshot,
-  sale: Pick<AtgSaleSnapshot, "buyerPremiumRate">,
+  sale: Pick<AtgSaleSnapshot, "buyerPremiumRate" | "atgSettings">,
   sequence: number,
   config: AtgSyncConfig,
 ): Omit<GapLotFields, "AuctionId"> {
+  if (percent(lot.buyerPremiumRate) !== percent(sale.buyerPremiumRate)) {
+    throw new AtgMappingError(
+      "ATG takes one buyer's premium per auction; set this lot's rate to the sale's rate",
+    );
+  }
   if (lot.lotNumber == null) {
     throw new AtgMappingError("Lot number is required before the lot can be sent to ATG");
   }
@@ -167,12 +173,22 @@ export function mapLotToLotFields(
   if (reserve !== undefined) fields.Reserve = reserve;
   const buyNow = money(lot.buyNowPrice);
   if (buyNow !== undefined) fields.BuyItNowPrice = buyNow;
-  if (lot.buyerPremiumRate !== sale.buyerPremiumRate) {
-    const premium = percent(lot.buyerPremiumRate);
-    if (premium !== undefined) fields.BuyersPremiumPercent = premium;
-  }
-  if (isTimed(config)) fields.EndTimeUtc = toGapDate(lot.endTime);
+  if (isTimed(sale)) fields.EndTimeUtc = toGapDate(lot.endTime);
   return fields;
+}
+
+/** Lot fields ATG refuses to change once the lot has a bid. */
+const BID_LOCKED_LOT_FIELDS = [
+  "LongDescription",
+  "Reserve",
+  "LowEstimate",
+  "HighEstimate",
+  "OpeningPrice",
+] as const satisfies readonly (keyof GapLotFields)[];
+
+/** Hash of the bid-locked fields only, to tell locked edits from safe ones after bidding. */
+export function bidLockedFieldsHash(fields: Partial<GapLotFields>): string {
+  return payloadHash(Object.fromEntries(BID_LOCKED_LOT_FIELDS.map((key) => [key, fields[key]])));
 }
 
 /** Stored values are either absolute URLs or storage keys under the public media origin. */

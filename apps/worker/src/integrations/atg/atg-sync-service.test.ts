@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { testAtgConfig, testLot, testSale } from "./__fixtures__/atg-snapshots.js";
-import { FakeAtgGateway, InMemoryAtgSyncStore } from "./__fixtures__/fakes.js";
+import {
+  FakeAtgGateway,
+  FakeAtgImageInspector,
+  InMemoryAtgSyncStore,
+} from "./__fixtures__/fakes.js";
 import { AtgGatewayError, type AtgRemoteLot } from "./atg-gateway.js";
 import {
+  AWAITING_ATG_APPROVAL_MESSAGE,
   AtgPartialSyncError,
   AtgSyncPreconditionError,
   AtgSyncService,
@@ -36,12 +41,14 @@ function remoteLot(atgLotId: string): AtgRemoteLot {
 describe("AtgSyncService", () => {
   let gateway: FakeAtgGateway;
   let store: InMemoryAtgSyncStore;
+  let images: FakeAtgImageInspector;
   let service: AtgSyncService;
 
   function build(config: Partial<AtgSyncConfig> = {}) {
     service = new AtgSyncService({
       gateway,
       store,
+      imageInspector: images,
       config: { ...testAtgConfig, ...config },
       now: () => NOW,
     });
@@ -50,6 +57,7 @@ describe("AtgSyncService", () => {
   beforeEach(() => {
     gateway = new FakeAtgGateway();
     store = new InMemoryAtgSyncStore();
+    images = new FakeAtgImageInspector();
     store.sales.set(
       "sale-1",
       testSale({
@@ -74,7 +82,10 @@ describe("AtgSyncService", () => {
         "addLotImageUrl",
         "createLot",
       ]);
-      expect(gateway.calls[1]?.arg).toMatchObject({ AuctionId: "atg-auction-1", LotNumber: "1" });
+      expect(gateway.calls[1]?.arg).toMatchObject({
+        AuctionId: "atg-auction-1",
+        LotNumber: "1",
+      });
       expect(gateway.calls[3]?.arg).toEqual({
         LotId: "atg-lot-1",
         ImageName: "1-1",
@@ -124,6 +135,7 @@ describe("AtgSyncService", () => {
         Title: "Renamed sale",
       });
       expect(gateway.calls[1]?.arg).toMatchObject({ LotId: "atg-lot-1", Title: "New title" });
+      expect(gateway.calls[1]?.arg).not.toHaveProperty("Status");
     });
 
     it("never re-sends images once ATG has some, but sends them when a lot had none", async () => {
@@ -238,6 +250,7 @@ describe("AtgSyncService", () => {
         saleId: "sale-old",
         atgLotId: "atg-old",
         payloadHash: "x",
+        lockedFieldsHash: "x",
       });
 
       const summary = await service.pushSale("sale-1");
@@ -256,6 +269,7 @@ describe("AtgSyncService", () => {
         saleId: "sale-old",
         atgLotId: "atg-old",
         payloadHash: "x",
+        lockedFieldsHash: "x",
       });
       gateway.failNext("deleteLot", rejected("deleteLot"));
 
@@ -312,6 +326,74 @@ describe("AtgSyncService", () => {
       ]);
     });
 
+    it("refuses a lot with an image ATG can't take before writing anything for it", async () => {
+      images.facts.set("https://media.example/b.jpg", {
+        contentType: "image/png",
+        bytes: 1_000,
+        error: null,
+      });
+
+      const summary = await service.pushSale("sale-1");
+
+      expect(summary).toMatchObject({ created: 1, failed: 1 });
+      expect(gateway.ops().filter((op) => op === "createLot")).toHaveLength(1);
+      expect(store.lotLinks.has("lot-1")).toBe(false);
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
+        "Lot 1: ATG can't take this lot's images: image 2 must be a JPG (is image/png)",
+      );
+    });
+
+    it("checks only images that are not on ATG yet", async () => {
+      await service.pushSale("sale-1");
+      images.inspected.length = 0;
+
+      await service.pushSale("sale-1");
+
+      expect(images.inspected).toEqual([]);
+    });
+
+    describe("after bidding starts", () => {
+      async function editLot1(edit: Partial<ReturnType<typeof testLot>>) {
+        const sale = store.sales.get("sale-1");
+        const lot = sale?.lots[0];
+        if (!sale || !lot) throw new Error("fixture missing");
+        store.sales.set("sale-1", { ...sale, lots: [{ ...lot, ...edit }, ...sale.lots.slice(1)] });
+      }
+
+      beforeEach(async () => {
+        await service.publishSale("sale-1");
+        await store.applyRemoteLots(
+          "sale-1",
+          [{ ...remoteLot("atg-lot-1"), numberOfBids: 2 }],
+          NOW,
+        );
+        gateway.calls.length = 0;
+      });
+
+      it("refuses edits to fields ATG locks, without calling ATG", async () => {
+        await editLot1({ reservePrice: "900.00" });
+
+        const summary = await service.pushSale("sale-1");
+
+        expect(summary).toMatchObject({ failed: 1, unchanged: 1 });
+        expect(gateway.ops()).not.toContain("updateLot");
+        expect(store.lotLinks.get("lot-1")?.lastError).toMatch(/has bids on ATG/);
+      });
+
+      it("still sends edits ATG allows, re-sending locked fields unchanged", async () => {
+        await editLot1({ endTime: new Date("2026-11-01T19:00:00Z") });
+
+        const summary = await service.pushSale("sale-1");
+
+        expect(summary).toMatchObject({ updated: 1, failed: 0 });
+        expect(gateway.calls.find((c) => c.op === "updateLot")?.arg).toMatchObject({
+          LotId: "atg-lot-1",
+          Reserve: 800,
+          EndTimeUtc: "2026-11-01T19:00:00.000Z",
+        });
+      });
+    });
+
     it("stores the error and rethrows when the auction itself cannot be created", async () => {
       gateway.failNext("createAuction", rejected("createAuction"));
 
@@ -356,21 +438,38 @@ describe("AtgSyncService", () => {
   });
 
   describe("publish and close", () => {
-    it("publishes once, approving first only when configured", async () => {
-      build({ approveBeforePublish: true });
-
+    it("publishes once and never approves on ATG's behalf", async () => {
       await service.publishSale("sale-1");
       await service.publishSale("sale-1");
 
       expect(gateway.ops().filter((op) => op.endsWith("Auction"))).toEqual([
         "createAuction",
-        "approveAuction",
         "publishAuction",
       ]);
       expect(store.auctionLinks.get("sale-1")).toMatchObject({
         remoteStatus: "published",
         publishedAt: NOW,
       });
+    });
+
+    it("explains that ATG staff must approve when ATG rejects the publish", async () => {
+      gateway.failNext("publishAuction", rejected("publishAuction"));
+
+      await expect(service.publishSale("sale-1")).rejects.toMatchObject({ retryable: false });
+
+      expect(store.auctionLinks.get("sale-1")).toMatchObject({
+        remoteStatus: "created",
+        lastError: `${AWAITING_ATG_APPROVAL_MESSAGE} (ATG publishAuction failed with HTTP 400: invalid)`,
+      });
+    });
+
+    it("keeps transient publish failures as plain errors so the job retries", async () => {
+      gateway.failNext("publishAuction", transient("publishAuction"));
+
+      await expect(service.publishSale("sale-1")).rejects.toMatchObject({ retryable: true });
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
+        "ATG publishAuction failed with HTTP 503: busy",
+      );
     });
 
     it("does not publish while any lot failed to sync", async () => {
@@ -502,6 +601,7 @@ describe("AtgSyncService", () => {
       service = new AtgSyncService({
         gateway,
         store,
+        imageInspector: images,
         config: testAtgConfig,
         now: () => NOW,
         onTickError: (saleId, err) => errors.push([saleId, err]),
@@ -544,7 +644,7 @@ describe("AtgSyncService", () => {
       });
 
       await expect(service.pushSale("sale-1")).rejects.toThrow(
-        "Banded buyer's premium isn't supported on ATG yet.",
+        "ATG needs a single flat buyer's premium; remove the bands.",
       );
       expect(gateway.ops()).toEqual([]);
     });

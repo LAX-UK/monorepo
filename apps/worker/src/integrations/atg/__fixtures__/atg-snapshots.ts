@@ -5,10 +5,7 @@ export const testAtgConfig: AtgSyncConfig = {
   clientId: "client-1",
   incrementSetId: "inc-1",
   defaultCategory: "Fine Art",
-  auctionType: "Timed",
-  listingPrivate: true,
   artistPlacement: "description",
-  approveBeforePublish: false,
   currency: "GBP",
   countryCode: "UK",
   timezone: "Europe/London",
@@ -55,6 +52,7 @@ export function testSale(overrides: Partial<AtgSaleSnapshot> = {}): AtgSaleSnaps
     locationCountry: "United Kingdom",
     cancelled: false,
     updatedAt: new Date("2026-10-01T00:00:00Z"),
+    atgSettings: { auctionType: "Timed", distribution: "private_test" },
     lots: [testLot()],
     ...overrides,
   };

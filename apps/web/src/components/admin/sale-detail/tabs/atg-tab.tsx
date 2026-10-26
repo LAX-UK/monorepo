@@ -1,5 +1,6 @@
 "use client";
 
+import { AtgSettingsSection } from "@/components/admin/atg/atg-settings-section";
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { adminAtgJobStateAction, adminAtgSaleActionResultAction } from "@/lib/actions/admin-atg";
@@ -21,12 +22,13 @@ import {
   StatusBadge,
   rowActionsColumn,
 } from "@auction/staff-ui";
-import type {
-  AtgIntegrationStatus,
-  AtgLotSyncView,
-  AtgSaleResultRow,
-  AtgSaleSyncView,
-  AtgSyncAction,
+import {
+  type AtgIntegrationStatus,
+  type AtgLotSyncView,
+  type AtgSaleResultRow,
+  type AtgSaleSyncView,
+  type AtgSyncAction,
+  atgReadinessBlockers,
 } from "@auction/types";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -58,7 +60,7 @@ const CONFIRM_COPY: Record<
   },
   publish: {
     title: "Publish on ATG?",
-    body: "Pushes the latest catalogue, then publishes the auction on the ATG White Label so bidders can see it. If any lot fails to sync, nothing is published and the failing lots are listed here. ATG has no unpublish: only closing ends the auction, and closing is permanent.",
+    body: "Pushes the latest catalogue, then publishes the auction on ATG. ATG staff must have approved it in Toolbox first, or ATG refuses. If any lot fails to sync, nothing is published and the failing lots are listed here. ATG has no unpublish: only closing ends the auction, and closing is permanent.",
     label: "Publish",
     tone: "default",
     success: "Publishing on ATG",
@@ -90,9 +92,9 @@ function actionHint(view: AtgSaleSyncView): string {
     return "Pushing creates the auction on ATG as a draft. Bidders only see it after you publish.";
   }
   if (view.remoteStatus === "published") {
-    return "Live on ATG. Catalogue changes in LAX re-sync automatically within a few minutes.";
+    return "Live on ATG. Catalogue changes in LAX re-sync automatically within a few minutes. Once a lot has bids, ATG won't accept changes to its description, reserve, estimates or opening price.";
   }
-  return "On ATG as a draft. Publish when the catalogue is ready. Changes in LAX re-sync automatically.";
+  return "On ATG as a draft, awaiting ATG approval. Ask ATG staff to approve it in Toolbox, then publish. Changes in LAX re-sync automatically.";
 }
 
 function resultsSummary(view: AtgSaleSyncView): { sold: number; total: number; hammer: number } {
@@ -163,6 +165,8 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
   const closed = view.remoteStatus === "closed";
   const published = view.remoteStatus === "published";
   const syncing = waiting != null && !waiting.slow;
+  const settingsDisabled = syncing || laxOwned || view.saleCancelled || closed;
+  const readiness = atgReadinessBlockers(view);
   const busy = confirm.busy || syncing;
   const linkedLots = view.lots.filter((lot) => lot.atgLotId).length;
   const failedLotCount = view.lots.filter((lot) => lot.lastError).length;
@@ -298,15 +302,34 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
     [canManage, resultMap, showResults, view.lots],
   );
 
+  const settings = (
+    <AtgSettingsSection
+      key={`${view.settings.auctionType}:${view.settings.distribution}`}
+      saleId={saleId}
+      view={view}
+      canManage={canManage}
+      disabled={settingsDisabled}
+      readiness={readiness}
+      onSaved={(pushJobId) => {
+        if (pushJobId) {
+          setWaiting({ jobId: pushJobId, until: Date.now() + ATG_JOB_TIMEOUT_MS, slow: false });
+        }
+      }}
+    />
+  );
+
   if (!status.enabled) {
     return (
-      <Section title="ATG White Label">
-        <EmptyState
-          headingLevel="h3"
-          title="ATG sync is turned off"
-          description="Set ATG_SYNC_ENABLED on the API and worker to push this sale to the ATG White Label."
-        />
-      </Section>
+      <div className="flex flex-col gap-6">
+        <Section title="ATG White Label">
+          <EmptyState
+            headingLevel="h3"
+            title="ATG sync is turned off"
+            description="Set ATG_SYNC_ENABLED on the API and worker to push this sale. Auction type and distribution can still be saved so the sale is ready when sync is enabled."
+          />
+        </Section>
+        {settings}
+      </div>
     );
   }
 
@@ -449,6 +472,8 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
           </div>
         ) : null}
       </Section>
+
+      {settings}
 
       <RelatedRecordsSection
         id="atg-lots"

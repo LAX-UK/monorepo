@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   staffArrivalStatus,
+  staffAtgLotStatus,
   staffIdentitySessionStatus,
   staffIdentityStatus,
   staffRunwayLotStatus,
@@ -141,5 +142,47 @@ describe("staffStatus", () => {
 
   it("keeps the registry tones for the other families", () => {
     expect(staffStatus("payout", "failed").tone).toBe("danger");
+  });
+});
+
+describe("ATG lot status", () => {
+  const linked = {
+    atgLotId: "lot-1",
+    lastError: null,
+    sold: null as boolean | null,
+    numberOfBids: 0,
+    remoteStatus: null as string | null,
+  };
+
+  it("uses documented GetLots codes before bid counts", () => {
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "0", numberOfBids: 2 }).label).toBe(
+      "Waiting",
+    );
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "1" }).label).toBe("Offered");
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "2", numberOfBids: 3 }).label).toBe(
+      "Not sold",
+    );
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "4", sold: false })).toEqual({
+      label: "Sold",
+      tone: "success",
+    });
+  });
+
+  it("falls back when the code is unknown, and never shows the raw digit", () => {
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "3", numberOfBids: 4 }).label).toBe(
+      "4 bids",
+    );
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "7", sold: true }).label).toBe("Sold");
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "7" }).label).not.toBe("7");
+    expect(staffAtgLotStatus(linked).label).toBe("On ATG");
+  });
+
+  it("keeps sync errors and unpushed lots ahead of status", () => {
+    expect(staffAtgLotStatus({ ...linked, lastError: "nope", remoteStatus: "4" }).label).toBe(
+      "Sync error",
+    );
+    expect(staffAtgLotStatus({ ...linked, atgLotId: null, remoteStatus: "1" }).label).toBe(
+      "Not pushed",
+    );
   });
 });

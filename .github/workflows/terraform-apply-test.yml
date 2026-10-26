@@ -156,6 +156,15 @@ jobs:
       TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'true' }}
       TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'true' }}
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
+      # --- ATG White Label (docs/integrations/atg.md). Values come from the GitHub `test` environment. ---
+      TF_VAR_atg_sync_enabled: ${{ vars.ATG_SYNC_ENABLED || 'false' }}
+      TF_VAR_atg_api_username: ${{ secrets.ATG_API_USERNAME }}
+      TF_VAR_atg_api_password: ${{ secrets.ATG_API_PASSWORD }}
+      TF_VAR_atg_client_id: ${{ vars.ATG_CLIENT_ID }}
+      TF_VAR_atg_platform_code: ${{ vars.ATG_PLATFORM_CODE }}
+      TF_VAR_atg_increment_set_id: ${{ vars.ATG_INCREMENT_SET_ID }}
+      TF_VAR_atg_default_category: ${{ vars.ATG_DEFAULT_CATEGORY }}
+      TF_VAR_atg_white_label_base_url: ${{ vars.ATG_WHITE_LABEL_BASE_URL }}
       # --- Prebuilt-image deploys (DOCR). Set APP_DEPLOY_SOURCE_TEST repo variable to "image". ---
       # (The DOCR registry itself is account-level and created only by the prod
       # persistent apply; test reuses the same registry with lax-test-* repos.)

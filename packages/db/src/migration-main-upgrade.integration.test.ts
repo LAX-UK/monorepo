@@ -21,7 +21,7 @@ const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
 const DECLINE_REASON_0232_FOLDER_MILLIS = 1795420800000;
-const FINAL_FOLDER_MILLIS = 1795507200000;
+const FINAL_FOLDER_MILLIS = 1795593600000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -1190,6 +1190,8 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
     it("adopts a production ledger that already holds the release row", async () => {
       await withTemporaryDatabase(async (pool) => {
         await runMigrationsPerTransactionThrough(pool, 1788000007000);
+        // Production applied the release migration, so it has its tables as well as the row.
+        await executeMigrationSql(pool, "0131a_atg_sync_links.sql");
         await pool.query(
           'INSERT INTO drizzle.__drizzle_migrations ("hash", "created_at") VALUES ($1, $2)',
           [await expectedHash(), ATG_SYNC_LINKS_FOLDER_MILLIS],

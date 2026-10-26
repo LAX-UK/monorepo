@@ -49,6 +49,8 @@ The shape of every secret in this list:
 | `EMAIL_UNSUBSCRIBE_SECRET` | DO App Platform env on `apps/api`; 1Password | `apps/api`; ops team | Only on suspected leak — rotation invalidates List-Unsubscribe links in already-delivered mail |
 | `EMAIL_FROM` / `EMAIL_REPLY_TO` | DO App Platform env on `apps/auth`, `apps/api`, `apps/worker` | All three apps; ops team | Not a secret; change with Postmark sender domain updates |
 | `ZOHO_CAMPAIGNS_API_KEY` / `ZOHO_CAMPAIGNS_LIST_KEY` | DO App Platform env on `apps/worker`; Zoho Campaigns; 1Password | `apps/worker`; ops team | Annual; rotate the API key only — list key changes with the marketing list |
+| `ATG_API_USERNAME` / `ATG_API_PASSWORD` | GitHub production secrets → Terraform `atg_api_*` → DO App Platform env on `apps/worker`; GAP Toolbox (Settings → Users, a dedicated API-only user); 1Password | `apps/worker`; ops team | Annual, on staff change or suspected leak: reset the password in Toolbox, update the GitHub secret, apply the ephemeral layer. Never send it by email or chat. |
+| ATG SSO shared secret (Step 9, not built) | Not deployed. When SSO starts: 1Password and the deploy secret store only | Nobody yet | The value ATG sent by email is treated as exposed and must be rotated by ATG before use ([ATG integration](../integrations/atg.md#what-atg-confirmed-oct-2026)) |
 
 When you add a secret to the codebase, add a row to this table in the same PR. When you rotate a secret, update the rotation date in 1Password (this file does not track exact dates — that's the 1Password entry's job).
 

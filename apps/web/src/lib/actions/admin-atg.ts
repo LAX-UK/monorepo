@@ -6,7 +6,13 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import type { AtgSyncAction, AtgSyncJobState } from "@auction/types";
+import {
+  ATG_AUCTION_TYPES,
+  ATG_DISTRIBUTIONS,
+  type AtgSaleSettings,
+  type AtgSyncAction,
+  type AtgSyncJobState,
+} from "@auction/types";
 import { z } from "zod";
 
 const saleActionSchema = z.object({
@@ -47,6 +53,48 @@ export async function adminAtgSaleActionResultAction(
     }
     if (!body.data) return actionFailure("invalid_response");
     return actionSuccess(body.data);
+  });
+}
+
+const saleSettingsSchema = z.object({
+  saleId: z.string().uuid(),
+  auctionType: z.enum(ATG_AUCTION_TYPES),
+  distribution: z.enum(ATG_DISTRIBUTIONS),
+  confirmPublic: z.boolean(),
+});
+
+/** Save the sale's ATG auction type and distribution; a linked sale is re-pushed. */
+export async function adminAtgSaleSettingsAction(
+  saleId: string,
+  settings: AtgSaleSettings,
+  confirmPublic: boolean,
+): Promise<ActionResult<{ settings: AtgSaleSettings; pushJobId: string | null }>> {
+  return instrumentServerAction("adminAtgSaleSettingsAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+
+    const parsed = saleSettingsSchema.safeParse({ saleId, ...settings, confirmPublic });
+    if (!parsed.success) return actionFailure("Invalid ATG settings");
+    const { saleId: id, ...body } = parsed.data;
+
+    const res = await authedServerFetch(`/admin/integrations/atg/sales/${id}/settings`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      skipActingLegalEntityHeader: true,
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: { settings: AtgSaleSettings; pushJobId: string | null };
+      error?: unknown;
+      code?: string;
+    };
+    if (!res.ok) {
+      const code = typeof json.code === "string" ? json.code : undefined;
+      const raw = typeof json.error === "string" ? json.error : "atg_action_failed";
+      return actionFailure(humanizeAtgAdminError(code, raw), undefined, res.status, code);
+    }
+    if (!json.data) return actionFailure("invalid_response");
+    return actionSuccess(json.data);
   });
 }
 

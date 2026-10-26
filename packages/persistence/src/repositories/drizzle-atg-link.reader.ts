@@ -2,11 +2,14 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { atgAuctionLink, atgLotLink, lot, sale } from "@auction/db/schema";
 import {
+  type AtgAuctionType,
+  type AtgDistribution,
   type AtgLotChannelState,
   type AtgRemoteStatus,
   type AtgSaleOwnershipSnapshot,
   type AtgSaleResultRow,
   type AtgSaleSyncView,
+  DEFAULT_ATG_SALE_SETTINGS,
   type SaleStatus,
   resolveSaleSellingPlatform,
 } from "@auction/types";
@@ -60,6 +63,15 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
       lastSyncedAt: iso(link?.lastSyncedAt ?? null),
       lastPolledAt: iso(link?.lastPolledAt ?? null),
       lastError: link?.lastError ?? null,
+      settings: {
+        auctionType:
+          (link?.auctionType as AtgAuctionType | undefined) ??
+          DEFAULT_ATG_SALE_SETTINGS.auctionType,
+        distribution:
+          (link?.distribution as AtgDistribution | undefined) ??
+          DEFAULT_ATG_SALE_SETTINGS.distribution,
+      },
+      settingsUpdatedAt: iso(link?.settingsUpdatedAt ?? null),
       results: (link?.resultsSnapshot as AtgSaleResultRow[] | null | undefined) ?? [],
       lots: lotRows.map((r) => ({
         lotId: r.lotId,

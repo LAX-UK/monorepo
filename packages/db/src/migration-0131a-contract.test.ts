@@ -14,6 +14,10 @@ const TAG = "0131a_atg_sync_links";
 const migrationBytes = readFileSync(join(__dirname, `../drizzle/${TAG}.sql`));
 const migration = migrationBytes.toString("utf8");
 const rollback = readFileSync(join(__dirname, "../drizzle/0131a_rollback.sql"), "utf8");
+const settingsMigration = readFileSync(
+  join(__dirname, "../drizzle/0234_atg_sale_settings.sql"),
+  "utf8",
+);
 
 function columnNames(table: typeof atgAuctionLink | typeof atgLotLink): string[] {
   return Object.values(getTableColumns(table)).map((c) => c.name);
@@ -37,13 +41,19 @@ describe("migration 0131a atg sync links contract", () => {
   it.each([
     ["atg_auction_link", atgAuctionLink],
     ["atg_lot_link", atgLotLink],
-  ] as const)("creates every %s column declared in the Drizzle schema", (tableName, table) => {
-    const block = migration.split(`CREATE TABLE IF NOT EXISTS "${tableName}"`)[1]?.split(");")[0];
-    expect(block).toBeDefined();
-    for (const column of columnNames(table)) {
-      expect(block, `${tableName}.${column}`).toContain(`"${column}"`);
-    }
-  });
+  ] as const)(
+    "creates or adds (0234) every %s column declared in the Drizzle schema",
+    (tableName, table) => {
+      const block = migration.split(`CREATE TABLE IF NOT EXISTS "${tableName}"`)[1]?.split(");")[0];
+      expect(block).toBeDefined();
+      for (const column of columnNames(table)) {
+        const added = settingsMigration.includes(
+          `ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "${column}"`,
+        );
+        expect(added || block?.includes(`"${column}"`), `${tableName}.${column}`).toBe(true);
+      }
+    },
+  );
 
   it("cascades link rows with their sale and lot", () => {
     expect(migration).toContain('REFERENCES "public"."sale"("id") ON DELETE cascade');

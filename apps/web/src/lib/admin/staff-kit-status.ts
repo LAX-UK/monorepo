@@ -2,6 +2,7 @@ import type { StatusBadgeVariant } from "@/lib/presenters/status-presentation";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { LotStatusContext, StatusDomain } from "@/lib/presenters/status/core";
 import { type StatusPresentation, humanizeStatus } from "@auction/staff-ui";
+import { atgLotStatusLabel } from "@auction/types";
 
 /**
  * Bid's status registries (lib/presenters/status) speak in badge variants; the staff kit speaks
@@ -222,15 +223,28 @@ export function staffAtgAuctionStatus(status: string | null | undefined): Status
   return ATG_AUCTION_STATUS[status] ?? { label: humanizeStatus(status), tone: "neutral" };
 }
 
-/** One lot's state on ATG, from the fields the sync records. */
+const ATG_DOCUMENTED_LOT_TONE: Record<string, StatusPresentation["tone"]> = {
+  Waiting: "neutral",
+  Offered: "info",
+  "Not sold": "neutral",
+  Sold: "success",
+};
+
+/**
+ * One lot's state on ATG, from the fields the sync records. A documented GetLots code wins;
+ * an unknown one falls back to sold or the bid count.
+ */
 export function staffAtgLotStatus(lot: {
   atgLotId: string | null;
   lastError: string | null;
   sold: boolean | null;
   numberOfBids: number | null;
+  remoteStatus: string | null;
 }): StatusPresentation {
   if (lot.lastError) return { label: "Sync error", tone: "danger" };
   if (!lot.atgLotId) return { label: "Not pushed", tone: "neutral" };
+  const documented = atgLotStatusLabel(lot.remoteStatus);
+  if (documented) return { label: documented, tone: ATG_DOCUMENTED_LOT_TONE[documented] ?? "info" };
   if (lot.sold) return { label: "Sold", tone: "success" };
   const bids = lot.numberOfBids ?? 0;
   if (bids > 0) return { label: bids === 1 ? "1 bid" : `${bids} bids`, tone: "info" };

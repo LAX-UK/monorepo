@@ -248,8 +248,10 @@ export function createContainer(env: Env): Container {
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
+    repos.atgSaleSettingsWriter,
     infra.atgSyncQueue,
     env.ATG_WHITE_LABEL_BASE_URL ?? null,
+    createAppLogger(env),
   );
 
   return {
