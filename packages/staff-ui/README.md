@@ -91,7 +91,8 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
   - `ListPage`, in one fixed order: the page header (title, one line of purpose, actions with
     Export among the secondary ones); an `AttentionStrip` (one line per issue, linking to the
     filtered view, never dismissable); a `MetricStrip` (at most four numbers in one bordered row,
-    with their period); then one table surface: view tabs (overflowing into "More"), search ·
+    with their period; each cell can carry an icon, a tone, a change chip and a sparkline of real
+    daily data, and links to the list behind the number when given `href`); then one table surface: view tabs (overflowing into "More"), search ·
     `FilterSheet` · period · `DisplayMenu` (columns, rows, rows per page, reset), the applied
     filters as chips, the table with a `…` menu on every row (`table.rowActions`), and
     pagination. Only the search gets a row of its own: without it, Filter, period and Display join
