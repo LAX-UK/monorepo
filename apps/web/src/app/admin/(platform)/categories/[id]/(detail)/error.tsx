@@ -1,10 +1,5 @@
 "use client";
 
-import { createCatalogDetailRouteError } from "@/components/admin/catalog/create-catalog-detail-route-error";
+import { createStaffTabError } from "@/components/admin/staff/create-staff-tab-error";
 
-export default createCatalogDetailRouteError({
-  title: "Category",
-  listLabel: "Categories",
-  listHref: "/admin/categories",
-  breadcrumbs: [{ label: "Categories", href: "/admin/categories" }],
-});
+export default createStaffTabError({ title: "This category section did not load" });

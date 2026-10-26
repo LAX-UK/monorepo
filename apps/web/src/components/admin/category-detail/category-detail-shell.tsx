@@ -1,26 +1,30 @@
-import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import {
-  CatalogBreadcrumbs,
-  CatalogDetailMobileMeta,
-  CatalogDetailShell,
-  CatalogDetailStickyMiniBar,
-  CatalogDetailTabNav,
-  type CatalogMobileAction,
-  CatalogPostCreateSessionRoot,
-  CatalogWhatsNextBanner,
-} from "@/components/admin/catalog";
-import { CategoryDestructivePanel } from "@/components/admin/category-detail/category-destructive-panel";
+"use client";
+
 import {
   categoryDetailTabHref,
   categoryEditHref,
 } from "@/components/admin/category-detail/category-detail-types";
-import { buildCategoryTaxonomyReadiness } from "@/lib/admin/catalog-readiness";
+import { useCategoryActions } from "@/components/admin/category-detail/use-category-actions";
+import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
+import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
+import {
+  DetailPage,
+  MetaItem,
+  type OverflowAction,
+  OverflowMenu,
+  StaffBreadcrumbs,
+  StaffButton,
+  type StaffLinkComponent,
+  StatusBadge,
+  staffCellLinkClass,
+} from "@auction/staff-ui";
 import type { AdminCategory } from "@auction/types";
-import { Button } from "@auction/ui";
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   categoryId: string;
@@ -33,6 +37,11 @@ type Props = {
   parentName?: string | null;
 };
 
+/**
+ * A category's page on the staff record template: the name, whether it is in use or
+ * archived, where it sits in the tree, Edit as the one primary action, archive and delete in the
+ * overflow menu, and its sections as tabs.
+ */
 export function CategoryDetailShell({
   categoryId,
   category,
@@ -43,140 +52,79 @@ export function CategoryDetailShell({
   saleCount = null,
   parentName = null,
 }: Props) {
-  const archivedStatusBadge = (
-    <AdminStatusBadge domain="category" status={category.archived ? "archived" : "active"} />
-  );
+  const status = staffStatus("category", category.archived ? "archived" : "active");
+  const pin = usePinPageAction(category.name);
+  const actions = useCategoryActions(category);
+  const nested = descendantCount ?? directChildCount ?? 0;
+  const lots = lotCount ?? category.usage.lots;
+  const sales = saleCount ?? category.usage.sales;
 
-  const mobileActions: CatalogMobileAction[] = [
-    {
-      id: "edit-category",
-      label: "Edit",
-      href: categoryEditHref(categoryId),
-      variant: "primary",
-    },
-  ];
+  const overflow: OverflowAction[] = [pin, ...actions.items];
 
-  const resolvedDirectChildren = directChildCount ?? 0;
-  const resolvedDescendants = descendantCount ?? resolvedDirectChildren;
-  const resolvedLots = lotCount ?? category.usage.lots;
-  const resolvedSales = saleCount ?? category.usage.sales;
-
-  const tabSpecs = [
+  const tabs = [
     { id: "overview", label: "Overview", href: categoryDetailTabHref(categoryId, "overview") },
     {
       id: "children",
-      label: `Subcategories${resolvedDescendants > 0 ? ` (${resolvedDescendants})` : ""}`,
+      label: "Subcategories",
       href: categoryDetailTabHref(categoryId, "children"),
+      count: nested,
     },
-    {
-      id: "lots",
-      label: `Lots${resolvedLots > 0 ? ` (${resolvedLots})` : ""}`,
-      href: categoryDetailTabHref(categoryId, "lots"),
-    },
-    {
-      id: "sales",
-      label: `Sales${resolvedSales > 0 ? ` (${resolvedSales})` : ""}`,
-      href: categoryDetailTabHref(categoryId, "sales"),
-    },
-    {
-      id: "activity",
-      label: "Activity",
-      href: categoryDetailTabHref(categoryId, "activity"),
-    },
+    { id: "lots", label: "Lots", href: categoryDetailTabHref(categoryId, "lots"), count: lots },
+    { id: "sales", label: "Sales", href: categoryDetailTabHref(categoryId, "sales"), count: sales },
+    { id: "activity", label: "Activity", href: categoryDetailTabHref(categoryId, "activity") },
   ];
 
-  const taxonomyReadiness = buildCategoryTaxonomyReadiness(
-    categoryId,
-    category,
-    resolvedDirectChildren,
-  );
-
   return (
-    <CatalogPostCreateSessionRoot>
-      <CatalogDetailShell
+    <>
+      <DetailPage
         breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[
+          <StaffBreadcrumbs
+            Link={NextLink}
+            items={[
               { label: "Categories", href: "/admin/categories" },
+              ...(category.parentId && parentName
+                ? [{ label: parentName, href: `/admin/categories/${category.parentId}` }]
+                : []),
               { label: category.name },
             ]}
           />
         }
-        eyebrow="Category"
         title={category.name}
-        description={category.description ?? undefined}
+        status={
+          <StatusBadge tone={status.tone} live={status.live ?? false}>
+            {status.label}
+          </StatusBadge>
+        }
         meta={
-          <div className="flex flex-wrap items-center gap-2">
-            {archivedStatusBadge}
-            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              /{category.slug}
-            </span>
-          </div>
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminPinPageButton label={category.name} />
-            <Button variant="outline" size="sm" asChild>
-              <Link href={categoryEditHref(categoryId)}>Edit</Link>
-            </Button>
-          </div>
-        }
-        mobileActions={mobileActions}
-        mobileMeta={
-          <CatalogDetailMobileMeta
-            entityId={categoryId}
-            updatedAt={category.updatedAt}
-            status={archivedStatusBadge}
-            quickLinks={[
-              ...(category.parentId
-                ? [
-                    {
-                      label: parentName ? `Parent: ${parentName}` : "Parent",
-                      href: `/admin/categories/${category.parentId}`,
-                    },
-                  ]
-                : []),
-            ]}
-            primaryAction={
-              <Link
-                href={categoryEditHref(categoryId)}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-              >
-                Edit category →
-              </Link>
-            }
-          />
-        }
-        stickySubnav={
           <>
-            <CatalogDetailTabNav
-              tabs={tabSpecs}
-              entityKind="category"
-              aria-label="Category sections"
-            />
-            <CatalogDetailStickyMiniBar
-              items={[
-                {
-                  id: "lots",
-                  label: "Lots",
-                  value: String(resolvedLots),
-                },
-                { id: "status", label: "Status", value: archivedStatusBadge },
-              ]}
-            />
+            <MetaItem label="Web address">
+              <span className="font-mono">/{category.slug}</span>
+            </MetaItem>
+            <MetaItem label="Parent">
+              {category.parentId && parentName ? (
+                <Link
+                  href={`/admin/categories/${category.parentId}`}
+                  className={staffCellLinkClass}
+                >
+                  {parentName}
+                </Link>
+              ) : (
+                "Top level"
+              )}
+            </MetaItem>
           </>
         }
+        primaryAction={
+          <StaffButton asChild variant="primary" icon={<Pencil aria-hidden />}>
+            <Link href={categoryEditHref(categoryId)}>Edit category</Link>
+          </StaffButton>
+        }
+        overflow={<OverflowMenu label="More category actions" Link={NextLink} actions={overflow} />}
+        tabs={<StaffDetailTabs label="Category sections" items={tabs} />}
       >
-        <Suspense fallback={null}>
-          <CatalogWhatsNextBanner
-            entityLabel="category"
-            readiness={taxonomyReadiness}
-            dismissKey={`category:${categoryId}`}
-          />
-        </Suspense>
         {children}
-        <CategoryDestructivePanel category={category} />
-      </CatalogDetailShell>
-    </CatalogPostCreateSessionRoot>
+      </DetailPage>
+      {actions.dialogs}
+    </>
   );
 }

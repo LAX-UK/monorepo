@@ -1,5 +1,5 @@
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
 import { CategoryOverviewTab } from "@/components/admin/category-detail/tabs/overview-tab";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { loadAdminCategoryOverviewPage } from "@/lib/admin/categories/load-category-overview-page";
 
 type Props = {
@@ -14,7 +14,7 @@ export default async function AdminCategoryOverviewPage({ params, searchParams }
 
   return (
     <>
-      <CatalogDetailActionError error={sp.error} title="Could not save category" />
+      <StaffActionError error={sp.error} title="The category was not saved" />
       <CategoryOverviewTab
         categoryId={id}
         category={page.category}
