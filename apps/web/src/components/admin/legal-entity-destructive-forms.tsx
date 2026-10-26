@@ -1,146 +1,172 @@
 "use client";
 
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   legalEntityArchiveAction,
   legalEntityRejectAction,
 } from "@/lib/admin/legal-entity-lifecycle.actions";
-import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
-import { Label } from "@auction/ui/components/label";
-import { Textarea } from "@auction/ui/components/textarea";
-import { useState, useTransition } from "react";
-import { TypedConfirmationDialog } from "./typed-confirmation-dialog";
+import { Field, StaffButton, TextArea } from "@auction/staff-ui";
+import { useId, useState } from "react";
 
-function archivePhrase(displayName: string): string {
-  return `ARCHIVE ${displayName}`;
-}
+const REASON_MIN = 3;
 
-type RejectProps = {
-  legalEntityId: string;
-};
-
-export function LegalEntityRejectForm({ legalEntityId }: RejectProps) {
-  const [reason, setReason] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  function submit() {
-    startTransition(async () => {
-      const fd = new FormData();
-      fd.set("legalEntityId", legalEntityId);
-      fd.set("reason", reason);
-      fd.set("confirmationPhrase", "REJECT");
-      try {
-        await legalEntityRejectAction(fd);
-        notify.success("Entity rejected");
-      } catch (e) {
-        notify.error(e instanceof Error ? e.message : "Rejection failed");
-      }
-    });
+/** The lifecycle actions redirect back to the page with their result, so a return means done. */
+async function run(action: (fd: FormData) => Promise<void>, fields: Record<string, string>) {
+  const fd = new FormData();
+  for (const [key, value] of Object.entries(fields)) fd.set(key, value);
+  try {
+    await action(fd);
+    return { ok: true as const };
+  } catch (e) {
+    // A redirect is how these actions finish; Next handles it, so only real errors land here.
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
+    if (typeof e === "object" && e !== null && "digest" in e) throw e;
+    return {
+      ok: false as const,
+      error: e instanceof Error ? e.message : "That did not go through.",
+    };
   }
-
-  return (
-    <>
-      <div className="mt-4 space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor={`reject-reason-${legalEntityId}`}>Reason</Label>
-          <Textarea
-            id={`reject-reason-${legalEntityId}`}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            required
-            minLength={3}
-            maxLength={4000}
-            rows={4}
-            placeholder="Explain why this entity is rejected."
-          />
-        </div>
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          disabled={pending || reason.trim().length < 3}
-          onClick={() => setDialogOpen(true)}
-        >
-          Reject entity…
-        </Button>
-      </div>
-      <TypedConfirmationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title="Confirm rejection"
-        description="This sets the entity to rejected. Type REJECT exactly (case-sensitive)."
-        actionLabel="Reject entity"
-        confirmationPhrase="REJECT"
-        severity="danger"
-        onConfirm={() => submit()}
-      />
-    </>
-  );
 }
 
-type ArchiveProps = {
+type FormProps = {
   legalEntityId: string;
   displayName: string;
 };
 
-export function LegalEntityArchiveForm({ legalEntityId, displayName }: ArchiveProps) {
-  const [reason, setReason] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const phrase = archivePhrase(displayName);
+function ReasonField({
+  id,
+  reason,
+  onChange,
+  error,
+  description,
+}: {
+  id: string;
+  reason: string;
+  onChange: (value: string) => void;
+  error: string | null;
+  description: string;
+}) {
+  return (
+    <Field id={id} label="Reason" description={description} error={error}>
+      <TextArea
+        value={reason}
+        maxLength={4000}
+        rows={3}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Field>
+  );
+}
 
-  function submit() {
-    startTransition(async () => {
-      const fd = new FormData();
-      fd.set("legalEntityId", legalEntityId);
-      fd.set("reason", reason);
-      fd.set("confirmationPhrase", phrase);
-      try {
-        await legalEntityArchiveAction(fd);
-        notify.success("Entity archived");
-      } catch (e) {
-        notify.error(e instanceof Error ? e.message : "Archive failed");
-      }
+/**
+ * Rejecting an organisation. The reason is kept in the audit log; the question names the entity
+ * and what rejecting does before anything is sent.
+ */
+export function LegalEntityRejectForm({ legalEntityId, displayName }: FormProps) {
+  const confirm = useStaffConfirm();
+  const id = useId();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const ask = () => {
+    if (reason.trim().length < REASON_MIN) {
+      setError(`Enter a reason of at least ${REASON_MIN} characters.`);
+      document.getElementById(id)?.focus();
+      return;
+    }
+    setError(null);
+    confirm.ask({
+      title: `Reject ${displayName}?`,
+      description:
+        "The organisation is marked as rejected and cannot sell. The reason is kept in the audit log.",
+      confirmLabel: "Reject organisation",
+      cancelLabel: "Keep as it is",
+      tone: "danger",
+      run: () =>
+        run(legalEntityRejectAction, {
+          legalEntityId,
+          reason: reason.trim(),
+          confirmationPhrase: "REJECT",
+        }),
+      success: `${displayName} rejected`,
     });
-  }
+  };
 
   return (
-    <>
-      <div className="mt-4 space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor={`archive-reason-${legalEntityId}`}>Reason</Label>
-          <Textarea
-            id={`archive-reason-${legalEntityId}`}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            required
-            minLength={3}
-            maxLength={4000}
-            rows={4}
-            placeholder="Audit reason for archive."
-          />
-        </div>
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          disabled={pending || reason.trim().length < 3}
-          onClick={() => setDialogOpen(true)}
-        >
-          Archive entity…
-        </Button>
-      </div>
-      <TypedConfirmationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title="Confirm archive"
-        description="Permanent terminal state. Type the phrase exactly (case-sensitive), including spaces."
-        actionLabel="Archive entity"
-        confirmationPhrase={phrase}
-        severity="danger"
-        onConfirm={() => submit()}
+    <div className="flex flex-col gap-3">
+      <ReasonField
+        id={id}
+        reason={reason}
+        onChange={(value) => {
+          setReason(value);
+          if (error && value.trim().length >= REASON_MIN) setError(null);
+        }}
+        error={error}
+        description="Why this organisation is rejected. Kept in the audit log."
       />
-    </>
+      <div>
+        <StaffButton variant="danger-secondary" onClick={ask}>
+          Reject organisation
+        </StaffButton>
+      </div>
+      {confirm.dialog}
+    </div>
+  );
+}
+
+/**
+ * Archiving an organisation, a permanent end state, so the person types its name to confirm and
+ * gives a reason for the audit log.
+ */
+export function LegalEntityArchiveForm({ legalEntityId, displayName }: FormProps) {
+  const confirm = useStaffConfirm();
+  const id = useId();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const ask = () => {
+    if (reason.trim().length < REASON_MIN) {
+      setError(`Enter a reason of at least ${REASON_MIN} characters.`);
+      document.getElementById(id)?.focus();
+      return;
+    }
+    setError(null);
+    confirm.ask({
+      title: `Archive ${displayName}?`,
+      description:
+        "Archiving is permanent: the organisation cannot be reopened. Type its name to confirm.",
+      confirmLabel: "Archive organisation",
+      cancelLabel: "Keep organisation",
+      tone: "danger",
+      typedConfirmation: displayName,
+      run: () =>
+        run(legalEntityArchiveAction, {
+          legalEntityId,
+          reason: reason.trim(),
+          confirmationPhrase: `ARCHIVE ${displayName}`,
+        }),
+      success: `${displayName} archived`,
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ReasonField
+        id={id}
+        reason={reason}
+        onChange={(value) => {
+          setReason(value);
+          if (error && value.trim().length >= REASON_MIN) setError(null);
+        }}
+        error={error}
+        description="Why this organisation is archived. Kept in the audit log."
+      />
+      <div>
+        <StaffButton variant="danger-secondary" onClick={ask}>
+          Archive organisation
+        </StaffButton>
+      </div>
+      {confirm.dialog}
+    </div>
   );
 }

@@ -1,13 +1,12 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminArtistsLoading() {
   return (
-    <CatalogListPageSkeleton
+    <ListPageSkeleton
       title="Artists"
-      description="Loading artists…"
-      kpiTiles={6}
-      tableRows={10}
-      tableColumns={8}
+      description="Canonical artist profiles, their owner accounts and the attribution lots point to."
+      columns={["Artist", "Status", "Owner account", "Lots", "Updated"]}
+      metrics={4}
     />
   );
 }

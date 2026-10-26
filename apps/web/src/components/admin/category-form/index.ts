@@ -1,1 +1,1 @@
-export { AdminCategoryForm } from "./wizard";
+export { AdminCategoryForm } from "./category-form";

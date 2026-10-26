@@ -1,14 +1,14 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@auction/ui/components/dropdown-menu";
+  StaffButton,
+  StaffMenu,
+  StaffMenuCheckboxItem,
+  StaffMenuContent,
+  StaffMenuLabel,
+  StaffMenuSeparator,
+  StaffMenuTrigger,
+} from "@auction/staff-ui";
 import type { VisibilityState } from "@tanstack/react-table";
 import { Columns3 } from "lucide-react";
 
@@ -24,6 +24,7 @@ type Props = {
   onColumnVisibilityChange: (next: VisibilityState) => void;
 };
 
+/** Choose which table columns are shown. */
 export function AdminTableColumnPicker({
   columns,
   columnVisibility,
@@ -33,42 +34,32 @@ export function AdminTableColumnPicker({
   if (hideable.length === 0) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
+    <StaffMenu>
+      <StaffMenuTrigger asChild>
+        <StaffButton
           size="sm"
-          className="min-h-9 gap-1.5 font-label text-xs"
+          variant="secondary"
+          icon={<Columns3 aria-hidden />}
           aria-label="Choose visible columns"
         >
-          <Columns3 className="size-4" aria-hidden />
           Columns
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-          Visible columns
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {hideable.map((col) => {
-          const checked = columnVisibility[col.id] !== false;
-          return (
-            <DropdownMenuCheckboxItem
-              key={col.id}
-              checked={checked}
-              onCheckedChange={(visible) => {
-                onColumnVisibilityChange({
-                  ...columnVisibility,
-                  [col.id]: visible,
-                });
-              }}
-            >
-              {col.label}
-            </DropdownMenuCheckboxItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </StaffButton>
+      </StaffMenuTrigger>
+      <StaffMenuContent align="end" className="w-56">
+        <StaffMenuLabel>Show columns</StaffMenuLabel>
+        <StaffMenuSeparator />
+        {hideable.map((col) => (
+          <StaffMenuCheckboxItem
+            key={col.id}
+            checked={columnVisibility[col.id] !== false}
+            onCheckedChange={(visible) =>
+              onColumnVisibilityChange({ ...columnVisibility, [col.id]: visible })
+            }
+          >
+            {col.label}
+          </StaffMenuCheckboxItem>
+        ))}
+      </StaffMenuContent>
+    </StaffMenu>
   );
 }

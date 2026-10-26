@@ -17,7 +17,7 @@ describe("TypedConfirmationDialog", () => {
       />,
     );
 
-    expect(screen.getByText("Delete thing")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Delete thing" })).toBeInTheDocument();
     expect(screen.getByText(/DELETE abc/)).toBeInTheDocument();
 
     const confirm = screen.getByRole("button", { name: "Delete" });

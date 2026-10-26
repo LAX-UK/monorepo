@@ -6,7 +6,7 @@ import {
   resolveSofNextAction,
   summarizeEvidenceSufficiency,
 } from "@/lib/data/view-models/admin-sof-timeline.vm";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Notice } from "@auction/staff-ui";
 
 type Props = {
   row: AdminSofTableRow;
@@ -16,6 +16,7 @@ type Props = {
   currentUserId: string;
 };
 
+/** What happens next on this case, and whose turn it is. */
 export function SofNextActionCallout({ row, detail, canTriage, canDecide, currentUserId }: Props) {
   const docs = detail?.submittedDocuments ?? [];
   const sufficiency = summarizeEvidenceSufficiency(docs);
@@ -26,9 +27,8 @@ export function SofNextActionCallout({ row, detail, canTriage, canDecide, curren
   );
 
   return (
-    <Alert variant={action.variant === "destructive" ? "destructive" : "default"}>
-      <AlertTitle>{action.title}</AlertTitle>
-      <AlertDescription>{action.body}</AlertDescription>
-    </Alert>
+    <Notice tone={action.variant === "destructive" ? "danger" : "info"} title={action.title}>
+      {action.body}
+    </Notice>
   );
 }

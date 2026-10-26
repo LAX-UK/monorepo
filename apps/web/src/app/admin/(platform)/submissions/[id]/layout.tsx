@@ -1,4 +1,5 @@
 import { SubmissionDetailShell } from "@/components/admin/submission-detail/submission-detail-shell";
+import { loadSubmissionAssigneeContext } from "@/lib/admin/submissions/load-submission-assignee";
 import { loadAdminSubmissionDetailContext } from "@/lib/admin/submissions/load-submission-detail-context";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -17,6 +18,7 @@ export default async function AdminSubmissionDetailLayout({ params, children }: 
   if (!context) notFound();
 
   const { submission, submitterLegalEntityId, submitterDisplayName, documentCount } = context;
+  const assignee = await loadSubmissionAssigneeContext(submission.assignedToUserId, user.id);
 
   return (
     <SubmissionDetailShell
@@ -26,6 +28,7 @@ export default async function AdminSubmissionDetailLayout({ params, children }: 
       documentCount={documentCount}
       submitterLegalEntityId={submitterLegalEntityId}
       submitterDisplayName={submitterDisplayName}
+      assigneeDisplayName={assignee.assigneeDisplayName}
       currentUserId={user.id}
     >
       {children}

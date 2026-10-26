@@ -1,25 +1,34 @@
 "use client";
 
-import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import {
-  CatalogBreadcrumbs,
-  CatalogDetailMobileMeta,
-  CatalogDetailShell,
-  CatalogDetailTabNav,
-  type CatalogMobileAction,
-} from "@/components/admin/catalog";
-import { SubmissionAssignControl } from "@/components/admin/submission-actions/submission-assign-control";
-import { SubmissionDetailMetaRow } from "@/components/admin/submission-detail/submission-detail-meta-row";
-import { SubmissionDetailMobileTrailing } from "@/components/admin/submission-detail/submission-detail-mobile-trailing";
+import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
+import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { submissionDetailTabHref } from "@/components/admin/submission-detail/submission-detail-types";
+import { SubmissionReassignDialog } from "@/components/admin/submissions/submission-reassign-dialog";
+import { useSubmissionActions } from "@/components/admin/submissions/use-submission-actions";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { buildSubmissionHeaderBadges } from "@/lib/admin/submissions/submission-header-badges";
+import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
+import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { evaluateSubmissionQuality } from "@auction/domain";
+import {
+  DetailPage,
+  MetaItem,
+  type OverflowAction,
+  OverflowMenu,
+  StaffBreadcrumbs,
+  StaffButton,
+  StaffDate,
+  type StaffLinkComponent,
+  StatusBadge,
+  staffCellLinkClass,
+} from "@auction/staff-ui";
 import type { ItemSubmission } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import { UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   submissionId: string;
@@ -28,10 +37,17 @@ type Props = {
   documentCount: number;
   submitterLegalEntityId: string | null;
   submitterDisplayName: string | null;
+  assigneeDisplayName: string | null;
   currentUserId: string;
   children: ReactNode;
 };
 
+/**
+ * A submission's page on the staff record template: its title and status (with the one flag that
+ * most needs attention), who sent it, when and who has it, the next step as the one primary action
+ * (start the review, open the decision, create the lot), the rest of the review actions in the
+ * overflow menu with reject last, and its sections as tabs.
+ */
 export function SubmissionDetailShell({
   submissionId,
   submission,
@@ -39,142 +55,185 @@ export function SubmissionDetailShell({
   documentCount,
   submitterLegalEntityId,
   submitterDisplayName,
+  assigneeDisplayName,
   currentUserId,
   children,
 }: Props) {
-  const pathname = usePathname();
-  const status = submission.status;
-  const statusBadge = <AdminStatusBadge domain="submission" status={status} />;
-  const headerBadges = useMemo(() => buildSubmissionHeaderBadges(submission), [submission]);
-  const isDecisionTab = pathname.endsWith("/decision");
+  const pathname = usePathname() ?? "";
+  const { can } = useViewerCapabilities();
+  const canReview = can(SUBMISSIONS_ACCESS);
+  const status = staffStatus("submission", submission.status);
+  const flag = useMemo(() => buildSubmissionHeaderBadges(submission)[0] ?? null, [submission]);
   const decisionHref = submissionDetailTabHref(submissionId, "decision");
-  const showDecisionCta =
-    status === "submitted" || status === "under_review" || status === "approved";
+  const onDecision = pathname.endsWith("/decision");
+  const assignedToMe = submission.assignedToUserId === currentUserId;
+  const assigned = Boolean(submission.assignedToUserId?.trim());
+  const assignable = submission.status === "submitted" || submission.status === "under_review";
+  const pin = usePinPageAction(title);
+  const [reassignOpen, setReassignOpen] = useState(false);
 
-  const mobileActions = useMemo((): CatalogMobileAction[] => {
-    return [
-      {
-        id: "back-queue",
-        label: "Submissions",
-        variant: "secondary",
-        href: "/admin/submissions",
-      },
-    ];
-  }, []);
+  const actions = useSubmissionActions({ currentUserId });
+  const required = evaluateSubmissionQuality(submission).checks.some(
+    (check) => check.severity === "required" && !check.ok,
+  );
+  const stateActions = actions.actionsFor({
+    id: submissionId,
+    title,
+    status: submission.status,
+    blocksAccept: required,
+    assignedToMe,
+    decisionHref,
+  });
+  const startReview = stateActions.find((action) => action.id === "start-review");
+  const assignMe = stateActions.find((action) => action.id === "assign-me");
 
-  const tabSpecs = [
+  const primary =
+    submission.status === "submitted" && canReview && startReview && !onDecision ? (
+      <StaffButton variant="primary" onClick={() => startReview.onSelect?.()}>
+        Start review
+      </StaffButton>
+    ) : (submission.status === "under_review" || submission.status === "approved") &&
+      canReview &&
+      !onDecision ? (
+      <StaffButton asChild variant="primary">
+        <Link href={decisionHref}>
+          {submission.status === "approved" ? "Create lot" : "Open decision"}
+        </Link>
+      </StaffButton>
+    ) : submission.status === "converted" && submission.convertedLotId ? (
+      <StaffButton asChild variant="primary">
+        <Link href={`/admin/lots/${submission.convertedLotId}`}>Open draft lot</Link>
+      </StaffButton>
+    ) : null;
+
+  const secondary =
+    canReview && assignMe ? (
+      <StaffButton
+        variant="secondary"
+        icon={<UserPlus aria-hidden />}
+        onClick={() => assignMe.onSelect?.()}
+      >
+        Assign to me
+      </StaffButton>
+    ) : null;
+
+  // Start review, assign and create lot are header buttons; the decision tab's own forms accept
+  // and reject, so the menu does not offer them a second way there.
+  const shownAsButtons = new Set(["start-review", "assign-me", "convert"]);
+  const overflow: OverflowAction[] = [
+    ...(canReview
+      ? stateActions.filter((action) => {
+          if (shownAsButtons.has(action.id)) return false;
+          return !(onDecision && (action.id === "accept" || action.id === "reject"));
+        })
+      : []),
+    ...(canReview && assignable
+      ? [
+          {
+            id: "reassign",
+            label: assigned ? "Reassign…" : "Assign to someone…",
+            icon: UserPlus,
+            onSelect: () => setReassignOpen(true),
+          },
+        ]
+      : []),
+    pin,
+  ];
+  // Destructive actions go last, after the page's own entries.
+  overflow.sort((a, b) => Number(a.tone === "danger") - Number(b.tone === "danger"));
+
+  const tabs = [
     { id: "overview", label: "Overview", href: submissionDetailTabHref(submissionId, "overview") },
     {
       id: "documents",
-      label: `Documents${documentCount > 0 ? ` (${documentCount})` : ""}`,
+      label: "Documents",
       href: submissionDetailTabHref(submissionId, "documents"),
+      count: documentCount,
     },
-    {
-      id: "decision",
-      label: "Decision",
-      href: submissionDetailTabHref(submissionId, "decision"),
-      ...(status === "submitted" || status === "under_review" ? { badge: "pending" as const } : {}),
-    },
+    { id: "decision", label: "Decision", href: decisionHref },
   ];
 
   return (
-    <CatalogDetailShell
-      metaBelowTitle
-      breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[{ label: "Submissions", href: "/admin/submissions" }, { label: title }]}
-        />
-      }
-      eyebrow="Submission"
-      title={title}
-      meta={
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {statusBadge}
-            {headerBadges.map((badge) => (
-              <DotStatusPill key={badge.id} label={badge.label} tone={badge.tone} />
-            ))}
-          </div>
-          <SubmissionDetailMetaRow
-            submitterLegalEntityId={submitterLegalEntityId}
-            submitterDisplayName={submitterDisplayName}
-            convertedLotId={submission.convertedLotId}
-            createdAt={submission.createdAt}
-            updatedAt={submission.updatedAt}
+    <>
+      <DetailPage
+        breadcrumbs={
+          <StaffBreadcrumbs
+            Link={NextLink}
+            items={[{ label: "Submissions", href: "/admin/submissions" }, { label: title }]}
           />
-        </div>
-      }
-      actions={
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-          <SubmissionAssignControl
-            submissionId={submissionId}
-            status={status}
-            assignedToUserId={submission.assignedToUserId}
-            currentUserId={currentUserId}
-          />
-          {showDecisionCta ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="hidden min-h-9 lg:inline-flex"
-              asChild
-            >
-              <Link href={decisionHref}>
-                {status === "approved" ? "Convert to lot" : "Open decision"}
-              </Link>
-            </Button>
-          ) : null}
-          <AdminPinPageButton label={title} />
-        </div>
-      }
-      mobileActions={mobileActions}
-      mobileActionBarTrailing={
-        <SubmissionDetailMobileTrailing
-          submissionId={submissionId}
-          status={status}
-          showDecisionActions={isDecisionTab}
-        />
-      }
-      mobileMeta={
-        <CatalogDetailMobileMeta
-          entityId={submissionId}
-          updatedAt={submission.updatedAt}
-          status={statusBadge}
-          quickLinks={[
-            ...(submitterLegalEntityId
-              ? [
-                  {
-                    label: submitterDisplayName ?? "Seller",
-                    href: `/admin/legal-entities/${submitterLegalEntityId}`,
-                  },
-                ]
-              : []),
-            ...(submission.convertedLotId
-              ? [{ label: "Lot", href: `/admin/lots/${submission.convertedLotId}` }]
-              : []),
-          ]}
-          primaryAction={
-            showDecisionCta ? (
-              <a
-                href={decisionHref}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-              >
-                {status === "approved" ? "Convert to lot →" : "Open decision →"}
-              </a>
-            ) : undefined
-          }
-        />
-      }
-      stickySubnav={
-        <CatalogDetailTabNav
-          tabs={tabSpecs}
-          entityKind="submission"
-          aria-label="Submission sections"
-        />
-      }
-    >
-      {children}
-    </CatalogDetailShell>
+        }
+        title={title}
+        status={
+          <>
+            <StatusBadge tone={status.tone} live={status.live ?? false}>
+              {status.label}
+            </StatusBadge>
+            {flag ? (
+              <StatusBadge tone={flag.tone === "critical" ? "danger" : "warning"}>
+                {flag.label}
+              </StatusBadge>
+            ) : null}
+          </>
+        }
+        meta={
+          <>
+            <MetaItem label="Seller">
+              {submitterLegalEntityId ? (
+                <Link
+                  href={`/admin/legal-entities/${submitterLegalEntityId}`}
+                  className={staffCellLinkClass}
+                >
+                  {submitterDisplayName ?? "Seller"}
+                </Link>
+              ) : (
+                (submitterDisplayName ?? "Not known")
+              )}
+            </MetaItem>
+            <MetaItem label="Submitted">
+              <StaffDate value={submission.createdAt} withTime />
+            </MetaItem>
+            {assignable || assigned ? (
+              <MetaItem label="Assigned to">
+                {assignedToMe
+                  ? "You"
+                  : assigned
+                    ? (assigneeDisplayName ?? "A reviewer")
+                    : "No one yet"}
+              </MetaItem>
+            ) : null}
+            {submission.convertedLotId ? (
+              <MetaItem label="Lot">
+                <Link
+                  href={`/admin/lots/${submission.convertedLotId}`}
+                  className={staffCellLinkClass}
+                >
+                  Open draft lot
+                </Link>
+              </MetaItem>
+            ) : null}
+          </>
+        }
+        primaryAction={primary}
+        secondaryActions={secondary}
+        overflow={
+          overflow.length > 0 ? (
+            <OverflowMenu label="More submission actions" Link={NextLink} actions={overflow} />
+          ) : null
+        }
+        access={canReview ? "full" : "read-only"}
+        roleLabel="Catalogue"
+        tabs={<StaffDetailTabs label="Submission sections" items={tabs} />}
+      >
+        {children}
+      </DetailPage>
+      <SubmissionReassignDialog
+        open={reassignOpen}
+        onOpenChange={setReassignOpen}
+        submissionId={submissionId}
+        title={title}
+        assignedToUserId={submission.assignedToUserId}
+      />
+      {actions.dialogs}
+    </>
   );
 }

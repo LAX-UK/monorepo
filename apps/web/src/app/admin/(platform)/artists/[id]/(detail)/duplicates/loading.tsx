@@ -1,5 +1,5 @@
-import { CatalogDetailTabContentSkeleton } from "@/components/admin/catalog";
+import { DetailPageSkeleton } from "@auction/staff-ui";
 
 export default function Loading() {
-  return <CatalogDetailTabContentSkeleton />;
+  return <DetailPageSkeleton withRail={false} />;
 }

@@ -1,152 +1,169 @@
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { CatalogDetailTabPanel, DetailBoardKpiStrip } from "@/components/admin/catalog";
-import { CatalogDetailSection } from "@/components/admin/catalog/catalog-detail-section";
-import { buildVenueOverviewViewModel } from "@/lib/data/view-models/venue-overview.vm";
+"use client";
+
 import type { VenueDetail } from "@/lib/services/interfaces/admin-venue-service";
+import {
+  DetailColumns,
+  type KeyValueItem,
+  KeyValueList,
+  Section,
+  StaffDate,
+  type StaffLinkComponent,
+  TextLink,
+} from "@auction/staff-ui";
 import Link from "next/link";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   venueId: string;
   detail: VenueDetail;
 };
 
-export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
-  const vm = buildVenueOverviewViewModel(detail);
-  const { venue } = detail;
-  const { salesUsingCount, legalEntityDisplayName } = vm;
+/** Rows with a value only: a missing fact is simply not listed. */
+function present(items: Array<KeyValueItem | null>): KeyValueItem[] {
+  return items.filter((item): item is KeyValueItem => item !== null);
+}
+
+function note(label: string, value: string | null): KeyValueItem | null {
+  return value?.trim()
+    ? { label, value: <span className="whitespace-pre-line">{value}</span> }
+    : null;
+}
+
+/**
+ * The venue at a glance: where it is, how to reach it, how many sales use it and what visitors
+ * need to know; the record's web address and dates in the rail.
+ */
+export function VenueOverviewTab({ venueId, detail }: Props) {
+  const { venue, salesUsingCount } = detail;
+  const address = [
+    venue.addressLine1,
+    venue.addressLine2,
+    [venue.city, venue.county].filter(Boolean).join(", "),
+    venue.postcode,
+    venue.country,
+  ].filter((line): line is string => Boolean(line?.trim()));
+
+  const contact = present([
+    venue.contactPhone ? { label: "Phone", value: venue.contactPhone } : null,
+    venue.contactEmail
+      ? {
+          label: "Email",
+          value: <TextLink href={`mailto:${venue.contactEmail}`}>{venue.contactEmail}</TextLink>,
+        }
+      : null,
+    venue.website
+      ? {
+          label: "Website",
+          value: (
+            <TextLink href={venue.website} external>
+              {venue.website}
+            </TextLink>
+          ),
+        }
+      : null,
+  ]);
+
+  const location = present([
+    venue.mapUrl
+      ? {
+          label: "Map",
+          value: (
+            <TextLink href={venue.mapUrl} external>
+              View on map
+            </TextLink>
+          ),
+        }
+      : null,
+    venue.latitude != null && venue.longitude != null
+      ? {
+          label: "Coordinates",
+          value: `${venue.latitude}, ${venue.longitude}`,
+          numeric: true,
+        }
+      : null,
+    venue.capacity != null
+      ? { label: "Capacity", value: String(venue.capacity), numeric: true }
+      : null,
+  ]);
+
+  const visitors = present([
+    note("Access", venue.accessNotes),
+    note("Parking", venue.parkingNotes),
+    note("Directions", venue.directionsNotes),
+  ]);
+
+  const rail = (
+    <Section title="Record">
+      <KeyValueList
+        items={[
+          { label: "Venue ID", value: venue.id, copyValue: venue.id },
+          ...(venue.slug
+            ? [{ label: "Web address", value: <span className="font-mono">/{venue.slug}</span> }]
+            : []),
+          { label: "Created", value: <StaffDate value={venue.createdAt} withTime /> },
+          { label: "Updated", value: <StaffDate value={venue.updatedAt} withTime /> },
+        ]}
+      />
+    </Section>
+  );
 
   return (
-    <CatalogDetailTabPanel title="Overview" framed={false}>
-      <DetailBoardKpiStrip ariaLabel="Venue usage" tiles={vm.kpiTiles} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CatalogDetailSection title="Address">
-          <div className="space-y-0.5 font-body text-sm text-on-surface">
-            <p>{venue.addressLine1}</p>
-            {venue.addressLine2 ? <p>{venue.addressLine2}</p> : null}
-            <p>
-              {venue.city}
-              {venue.county ? `, ${venue.county}` : ""}
-            </p>
-            <p>{venue.postcode}</p>
-            <p>{venue.country}</p>
-          </div>
-        </CatalogDetailSection>
-
-        <CatalogDetailSection title="Status">
-          <div className="space-y-2">
-            <AdminStatusBadge domain="venue" status={venue.status} />
-            {salesUsingCount > 0 ? (
-              <p className="font-body text-sm text-on-surface-variant">
-                Used by {salesUsingCount} sale{salesUsingCount !== 1 ? "s" : ""}.{" "}
-                <Link href="/admin/sales" className="text-link underline-offset-2 hover:underline">
-                  View sales
-                </Link>
-              </p>
-            ) : (
-              <p className="font-body text-sm text-on-surface-variant">
-                No sales reference this venue.
-              </p>
-            )}
-          </div>
-        </CatalogDetailSection>
-
-        <CatalogDetailSection title="Organisation">
-          <div className="space-y-1 font-body text-sm">
-            {legalEntityDisplayName ? (
-              <Link
-                href={`/admin/legal-entities/${venue.legalEntityId}`}
-                className="font-medium text-link hover:underline"
-              >
-                {legalEntityDisplayName}
-              </Link>
-            ) : (
-              <span className="font-mono text-xs text-on-surface-variant">
-                {venue.legalEntityId}
-              </span>
-            )}
-            <p className="font-body text-xs text-on-surface-variant">
-              Venues can only be used by sales operated by the same legal entity.
-            </p>
-          </div>
-        </CatalogDetailSection>
-
-        {venue.contactPhone || venue.contactEmail || venue.website ? (
-          <CatalogDetailSection title="Contact">
-            <div className="space-y-1 font-body text-sm text-on-surface">
-              {venue.contactPhone ? <p>{venue.contactPhone}</p> : null}
-              {venue.contactEmail ? (
-                <p>
-                  <a href={`mailto:${venue.contactEmail}`} className="text-link hover:underline">
-                    {venue.contactEmail}
-                  </a>
-                </p>
-              ) : null}
-              {venue.website ? (
-                <p>
-                  <a
-                    href={venue.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-link hover:underline"
-                  >
-                    {venue.website}
-                  </a>
-                </p>
-              ) : null}
-            </div>
-          </CatalogDetailSection>
-        ) : null}
-
-        {venue.mapUrl || venue.latitude != null || venue.capacity != null ? (
-          <CatalogDetailSection title="Details">
-            <div className="space-y-1 font-body text-sm text-on-surface">
-              {venue.capacity != null ? <p>Capacity: {venue.capacity}</p> : null}
-              {venue.latitude != null && venue.longitude != null ? (
-                <p className="font-mono text-xs text-on-surface-variant">
-                  {venue.latitude}, {venue.longitude}
-                </p>
-              ) : null}
-              {venue.mapUrl ? (
-                <p>
-                  <a
-                    href={venue.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-link hover:underline"
-                  >
-                    View on map
-                  </a>
-                </p>
-              ) : null}
-            </div>
-          </CatalogDetailSection>
-        ) : null}
-
-        {venue.accessNotes || venue.parkingNotes || venue.directionsNotes ? (
-          <CatalogDetailSection title="Visitor notes" className="sm:col-span-2">
-            <div className="space-y-3 font-body text-sm text-on-surface">
-              {venue.accessNotes ? (
-                <div>
-                  <p className="font-medium text-on-surface">Access</p>
-                  <p className="text-on-surface-variant">{venue.accessNotes}</p>
-                </div>
-              ) : null}
-              {venue.parkingNotes ? (
-                <div>
-                  <p className="font-medium text-on-surface">Parking</p>
-                  <p className="text-on-surface-variant">{venue.parkingNotes}</p>
-                </div>
-              ) : null}
-              {venue.directionsNotes ? (
-                <div>
-                  <p className="font-medium text-on-surface">Directions</p>
-                  <p className="text-on-surface-variant">{venue.directionsNotes}</p>
-                </div>
-              ) : null}
-            </div>
-          </CatalogDetailSection>
-        ) : null}
-      </div>
-    </CatalogDetailTabPanel>
+    <DetailColumns rail={rail} railLabel="Venue record">
+      <Section title="Address">
+        <KeyValueList
+          items={[
+            {
+              label: "Address",
+              value: (
+                <span className="flex flex-col">
+                  {address.map((line) => (
+                    <span key={line}>{line}</span>
+                  ))}
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Section>
+      <Section
+        title="Usage"
+        description="Venues can only be used by sales run by the same organisation."
+      >
+        <KeyValueList
+          items={[
+            {
+              label: "Sales",
+              value:
+                salesUsingCount > 0 ? (
+                  <span className="flex flex-wrap items-center gap-x-2">
+                    {salesUsingCount} {salesUsingCount === 1 ? "sale uses" : "sales use"} this venue
+                    <TextLink Link={NextLink} href={`/admin/venues/${venueId}/sales`}>
+                      View
+                    </TextLink>
+                  </span>
+                ) : (
+                  "No sales use this venue yet"
+                ),
+            },
+          ]}
+        />
+      </Section>
+      {contact.length > 0 ? (
+        <Section title="Contact">
+          <KeyValueList items={contact} />
+        </Section>
+      ) : null}
+      {location.length > 0 ? (
+        <Section title="Location">
+          <KeyValueList items={location} />
+        </Section>
+      ) : null}
+      {visitors.length > 0 ? (
+        <Section title="Visitor information">
+          <KeyValueList items={visitors} />
+        </Section>
+      ) : null}
+    </DetailColumns>
   );
 }

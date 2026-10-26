@@ -1,25 +1,32 @@
-import { CatalogDetailTabPanel } from "@/components/admin/catalog";
-import { CatalogDomainEventsTimeline } from "@/components/admin/catalog/catalog-domain-events-timeline";
+import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { categoryDetailTabHref } from "@/components/admin/category-detail/category-detail-types";
-import type { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
+import { ExportButton } from "@/components/exports/export-button";
+import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
+import { Section } from "@auction/staff-ui";
 
 type Props = {
   categoryId: string;
-  events: Awaited<ReturnType<typeof getAdminDomainEventsForAggregate>>;
+  events: readonly AdminDomainEventRow[];
 };
 
 export function CategoryActivityTab({ categoryId, events }: Props) {
   return (
-    <CatalogDetailTabPanel
+    <Section
       title="Activity"
-      description="Timeline of changes and key events for this category."
+      description={`${events.length} ${events.length === 1 ? "event" : "events"} on this category, newest first.`}
+      action={
+        <ExportButton
+          entityType="domain-events"
+          filters={{ aggregateType: "category", aggregateId: categoryId }}
+        />
+      }
     >
-      <CatalogDomainEventsTimeline
+      <AuditTimeline
+        label="Category activity"
         events={events}
-        exportFilters={{ aggregateType: "category", aggregateId: categoryId }}
-        showTechnicalDetails={false}
+        empty="No activity recorded for this category yet."
       />
-    </CatalogDetailTabPanel>
+    </Section>
   );
 }
 

@@ -12,15 +12,21 @@ import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm
 import { summarizeEvidenceSufficiency } from "@/lib/data/view-models/admin-sof-timeline.vm";
 import { formatDateTime } from "@/lib/ui/format";
 import { isImageFileName } from "@/lib/upload-limits";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { Textarea } from "@auction/ui/components/textarea";
-import { cn } from "@auction/ui/lib/utils";
+import {
+  ChoiceRow,
+  ConfirmActionDialog,
+  Field,
+  Notice,
+  Section,
+  StaffButton,
+  StaffCheckbox,
+  StatusBadge,
+  TextArea,
+  cn,
+} from "@auction/staff-ui";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
 
 import {
   type SofEvidenceCheckState,
@@ -28,6 +34,13 @@ import {
   isSofEvidenceReviewDirty,
   sofEvidenceChecksFromDoc,
 } from "@/lib/admin/compliance/sof-evidence-reviewer.vm";
+
+const CHECKS = [
+  ["matchesDeclaredSource", "Matches declared source"],
+  ["coversExposure", "Covers exposure period and amount"],
+  ["recentEnough", "Document recent enough"],
+  ["legibleComplete", "Legible and complete"],
+] as const;
 
 type Doc = AdminSourceOfFundsDetail["submittedDocuments"][number];
 
@@ -40,6 +53,7 @@ type Props = {
 
 export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: Props) {
   const router = useRouter();
+  const checkId = useId();
   const docs = detail.submittedDocuments;
   const [selectedId, setSelectedId] = useState<string | null>(docs[0]?.id ?? null);
   const selected = docs.find((d) => d.id === selectedId) ?? null;
@@ -137,66 +151,65 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
 
   if (docs.length === 0) {
     return (
-      <section className="space-y-3">
-        <h2 className="font-headline text-sm font-semibold text-on-surface">Evidence</h2>
-        <p className="font-body text-sm text-on-surface-variant">
-          {detail.documentRequest.requestedAt
-            ? "Awaiting buyer upload — request sent"
-            : "None submitted — use Request documents in the action panel"}
-        </p>
-        <ul className="list-inside list-disc font-body text-sm text-on-surface-variant">
-          {SOF_EVIDENCE_CHECKLIST.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
+      <Section title="Evidence">
+        <div className="flex flex-col gap-3">
+          <p className="text-staff-sm text-staff-muted">
+            {detail.documentRequest.requestedAt
+              ? "Awaiting buyer upload — request sent."
+              : "None submitted. Use Request documents to ask the buyer."}
+          </p>
+          <ul className="list-inside list-disc text-staff-sm text-staff-muted">
+            {SOF_EVIDENCE_CHECKLIST.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </Section>
     );
   }
 
-  return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-headline text-sm font-semibold text-on-surface">Evidence review</h2>
-        <p className="text-xs text-on-surface-variant">{sufficiency.summary}</p>
-      </div>
+  const canReview = !readOnly && row.status === "pending";
 
+  return (
+    <Section title="Evidence review" description={sufficiency.summary}>
       <div className="grid gap-4 lg:grid-cols-[minmax(12rem,16rem)_1fr]">
-        <ul className="space-y-1 rounded-lg border border-outline-variant/40 p-2">
+        <ul aria-label="Submitted documents" className="flex flex-col gap-1">
           {docs.map((doc) => {
             const reviewed = doc.staffReview != null;
+            const current = selectedId === doc.id;
             return (
               <li key={doc.id}>
-                <Button
-                  type="button"
+                <StaffButton
                   variant="ghost"
+                  aria-current={current ? "true" : undefined}
                   className={cn(
-                    "h-auto w-full justify-start rounded-md px-2 py-2 text-left text-sm whitespace-normal",
-                    selectedId === doc.id
-                      ? "bg-primary/10 text-on-surface hover:bg-primary/10"
-                      : "hover:bg-surface-container-low",
+                    "h-auto w-full flex-col items-start justify-start gap-0.5 whitespace-normal rounded-staff-md border px-3 py-2 text-left text-staff-sm",
+                    current
+                      ? "border-staff-ink bg-staff-hover"
+                      : "border-staff-line hover:bg-staff-hover",
                   )}
                   onClick={() => selectDoc(doc)}
                 >
-                  <span className="block font-medium">{doc.requestedType}</span>
-                  <span className="block truncate text-xs text-on-surface-variant">
+                  <span className="font-medium text-staff-fg">{doc.requestedType}</span>
+                  <span className="truncate text-staff-xs text-staff-muted">
                     {doc.fileName ?? doc.label ?? "Document"}
                   </span>
-                  <span className="text-[10px] text-on-surface-variant">
+                  <span className="text-staff-xs text-staff-muted">
                     {formatDateTime(doc.uploadedAt)}
                     {reviewed ? " · Reviewed" : ""}
                   </span>
-                </Button>
+                </StaffButton>
               </li>
             );
           })}
         </ul>
 
         {selected ? (
-          <div className="space-y-4">
-            <div className="min-h-[16rem] rounded-lg border border-outline-variant/40 bg-surface-container-low/30 p-2">
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="min-h-[16rem] rounded-staff-md border border-staff-line bg-staff-sunken p-2">
               {previewFailed ? (
-                <p className="p-4 text-sm text-on-surface-variant">
-                  Couldn&apos;t load preview. Open in a new tab or download the file.
+                <p className="p-4 text-staff-sm text-staff-muted">
+                  Could not load the preview. Open the file in a new tab or download it.
                 </p>
               ) : showImage && previewUrl ? (
                 <div className="relative mx-auto aspect-[4/3] max-h-[28rem] w-full">
@@ -214,20 +227,20 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
                 <iframe
                   src={previewUrl}
                   title={fileName || selected.requestedType}
-                  className="h-[28rem] w-full rounded border-0"
+                  className="h-[28rem] w-full rounded-staff-xs border-0"
                   referrerPolicy="no-referrer"
                   onError={() => setPreviewFailed(true)}
                 />
               ) : (
-                <p className="p-4 text-sm text-on-surface-variant">
-                  Preview not available for this file type. Use download or open in new tab.
+                <p className="p-4 text-staff-sm text-staff-muted">
+                  No preview for this file type. Download it or open it in a new tab.
                 </p>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2">
               {previewUrl ? (
-                <Button type="button" size="sm" variant="outline" asChild>
+                <StaffButton asChild size="sm" variant="secondary">
                   <a
                     href={previewUrl}
                     target="_blank"
@@ -236,123 +249,110 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
                   >
                     Open in new tab
                   </a>
-                </Button>
+                </StaffButton>
               ) : null}
-              <Button
-                type="button"
+              <StaffButton
                 size="sm"
-                variant="outline"
-                disabled={downloadPending}
+                variant="secondary"
+                loading={downloadPending}
                 onClick={downloadSelected}
               >
-                {downloadPending ? "Preparing…" : "Download"}
-              </Button>
+                Download
+              </StaffButton>
             </div>
 
-            {!readOnly && row.status === "pending" ? (
-              <div className="space-y-3 rounded-lg border border-outline-variant/40 p-4">
+            {canReview ? (
+              <div className="flex flex-col gap-3 rounded-staff-md border border-staff-line p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-label text-[10px] uppercase text-on-surface-variant">
+                  <h3 className="text-staff-sm font-semibold text-staff-fg">
                     Verification checklist
-                  </p>
-                  {dirty ? (
-                    <span className="text-[10px] font-medium uppercase text-warning-on-surface">
-                      Unsaved
-                    </span>
-                  ) : null}
+                  </h3>
+                  {dirty ? <StatusBadge tone="warning">Unsaved changes</StatusBadge> : null}
                 </div>
                 {row.declaredSource ? (
-                  <p className="text-xs text-on-surface-variant">
+                  <p className="text-staff-xs text-staff-muted">
                     Declared source: {row.declaredSource}
                   </p>
                 ) : null}
-                <ul className="space-y-2">
-                  {(
-                    [
-                      ["matchesDeclaredSource", "Matches declared source"],
-                      ["coversExposure", "Covers exposure period/amount"],
-                      ["recentEnough", "Document recent enough"],
-                      ["legibleComplete", "Legible and complete"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <li key={key}>
-                      <div className="flex items-start gap-2 text-sm">
-                        <Checkbox
-                          className="mt-0.5"
+                <div className="flex flex-col">
+                  {CHECKS.map(([key, label]) => (
+                    <ChoiceRow
+                      key={key}
+                      htmlFor={`${checkId}-${key}`}
+                      label={label}
+                      disabled={pending}
+                      control={
+                        <StaffCheckbox
+                          id={`${checkId}-${key}`}
                           checked={checks[key]}
                           disabled={pending}
-                          aria-label={label}
                           onCheckedChange={(v) =>
                             setChecks((prev) => ({ ...prev, [key]: v === true }))
                           }
                         />
-                        <span>{label}</span>
-                      </div>
-                    </li>
+                      }
+                    />
                   ))}
-                </ul>
-                <Textarea
-                  rows={3}
-                  className="text-sm"
-                  placeholder="Reviewer notes (optional)"
-                  value={note}
-                  disabled={pending}
-                  maxLength={2000}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-                <Button type="button" size="sm" disabled={pending} onClick={saveReview}>
-                  {pending ? "Saving…" : "Save review"}
-                </Button>
+                </div>
+                <Field label="Reviewer notes" optional>
+                  <TextArea
+                    rows={3}
+                    value={note}
+                    disabled={pending}
+                    maxLength={2000}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </Field>
                 {staleConflict ? (
-                  <Alert>
-                    <AlertTitle>Case changed</AlertTitle>
-                    <AlertDescription className="space-y-2">
-                      <p>{SOF_STALE_RELOAD_MESSAGE}</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.refresh()}
-                      >
+                  <Notice
+                    tone="warning"
+                    title="Case changed"
+                    actions={
+                      <StaffButton size="sm" variant="secondary" onClick={() => router.refresh()}>
                         Reload case
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
+                      </StaffButton>
+                    }
+                  >
+                    {SOF_STALE_RELOAD_MESSAGE}
+                  </Notice>
                 ) : error ? (
-                  <p className="text-xs text-error" role="alert">
+                  <Notice tone="danger" alert title="The review was not saved">
                     {error}
-                  </p>
+                  </Notice>
                 ) : null}
+                <div>
+                  <StaffButton variant="primary" loading={pending} onClick={saveReview}>
+                    Save review
+                  </StaffButton>
+                </div>
               </div>
             ) : selected.staffReview ? (
-              <Alert>
-                <AlertTitle>Staff review recorded</AlertTitle>
-                <AlertDescription className="space-y-1 text-sm">
-                  <p>
-                    By {selected.staffReview.reviewedBy.label ?? selected.staffReview.reviewedBy.id}{" "}
-                    · {formatDateTime(selected.staffReview.reviewedAt)}
-                  </p>
-                  {selected.staffReview.note ? (
-                    <p className="whitespace-pre-wrap">{selected.staffReview.note}</p>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
+              <Notice tone="info" title="Staff review recorded">
+                By {selected.staffReview.reviewedBy.label ?? "a staff member"} ·{" "}
+                {formatDateTime(selected.staffReview.reviewedAt)}
+                {selected.staffReview.note ? (
+                  <span className="mt-1 block whitespace-pre-wrap">
+                    {selected.staffReview.note}
+                  </span>
+                ) : null}
+              </Notice>
             ) : null}
           </div>
         ) : null}
       </div>
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={discardConfirmOpen}
         onOpenChange={(open) => {
           setDiscardConfirmOpen(open);
           if (!open) setPendingDoc(null);
         }}
-        title="Discard unsaved changes?"
-        body="Discard unsaved review changes for this document?"
-        confirmLabel="Discard"
+        title="Discard unsaved review changes?"
+        description="Your checklist and notes for this document have not been saved."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
         tone="danger"
         onConfirm={confirmDiscardAndSelect}
       />
-    </section>
+    </Section>
   );
 }

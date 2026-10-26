@@ -1,22 +1,31 @@
-import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import {
-  CatalogBreadcrumbs,
-  CatalogDetailMobileMeta,
-  CatalogDetailShell,
-  CatalogDetailStickyMiniBar,
-  CatalogDetailTabNav,
-  type CatalogMobileAction,
-  CatalogPostCreateSessionRoot,
-} from "@/components/admin/catalog";
+"use client";
+
+import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
+import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import {
   venueDetailTabHref,
   venueEditHref,
 } from "@/components/admin/venue-detail/venue-detail-types";
+import { useVenueActions } from "@/components/admin/venues/use-venue-actions";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { VenueDetail } from "@/lib/services/interfaces/admin-venue-service";
-import { Button } from "@auction/ui";
+import {
+  DetailPage,
+  MetaItem,
+  Notice,
+  type OverflowAction,
+  OverflowMenu,
+  StaffBreadcrumbs,
+  StaffButton,
+  type StaffLinkComponent,
+  StatusBadge,
+  staffCellLinkClass,
+} from "@auction/staff-ui";
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   venueId: string;
@@ -24,99 +33,85 @@ type Props = {
   children: ReactNode;
 };
 
+/**
+ * A venue's page on the staff record template: its name and whether it is active, who runs it and
+ * where it is, Edit as the one primary action (an archived venue cannot be edited), archive in
+ * the overflow menu, and its sections as tabs.
+ */
 export function VenueDetailShell({ venueId, detail, children }: Props) {
   const { venue, salesUsingCount, legalEntityDisplayName = null } = detail;
-
-  const statusBadge = <AdminStatusBadge domain="venue" status={venue.status} />;
-
-  const mobileActions: CatalogMobileAction[] = [
-    {
-      id: "edit-venue",
-      label: "Edit",
-      href: venueEditHref(venueId),
-      variant: "primary",
-    },
+  const archived = venue.status === "archived";
+  const status = staffStatus("venue", venue.status);
+  const pin = usePinPageAction(venue.name);
+  const venueActions = useVenueActions();
+  const overflow: OverflowAction[] = [
+    pin,
+    ...venueActions.actionsFor({ id: venueId, name: venue.name, archived }),
   ];
 
-  const tabSpecs = [
+  const tabs = [
     { id: "overview", label: "Overview", href: venueDetailTabHref(venueId, "overview") },
     {
       id: "sales",
-      label: salesUsingCount > 0 ? `Sales (${salesUsingCount})` : "Sales",
+      label: "Sales",
       href: venueDetailTabHref(venueId, "sales"),
+      count: salesUsingCount,
     },
     { id: "activity", label: "Activity", href: venueDetailTabHref(venueId, "activity") },
   ];
 
   return (
-    <CatalogPostCreateSessionRoot>
-      <CatalogDetailShell
+    <>
+      <DetailPage
         breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[{ label: "Venues", href: "/admin/venues" }, { label: venue.name }]}
+          <StaffBreadcrumbs
+            Link={NextLink}
+            items={[{ label: "Venues", href: "/admin/venues" }, { label: venue.name }]}
           />
         }
-        eyebrow="Venue"
         title={venue.name}
-        description={[venue.addressLine1, venue.city, venue.postcode].filter(Boolean).join(", ")}
+        status={
+          <StatusBadge tone={status.tone} live={status.live ?? false}>
+            {status.label}
+          </StatusBadge>
+        }
         meta={
-          <div className="flex flex-wrap items-center gap-2">
-            {statusBadge}
-            {legalEntityDisplayName ? (
-              <Link
-                href={`/admin/legal-entities/${venue.legalEntityId}`}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:underline"
-              >
-                {legalEntityDisplayName}
-              </Link>
-            ) : null}
-            {venue.slug ? (
-              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                /{venue.slug}
-              </span>
-            ) : null}
-          </div>
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminPinPageButton label={venue.name} />
-            {venue.status !== "archived" ? (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={venueEditHref(venueId)}>Edit</Link>
-              </Button>
-            ) : null}
-          </div>
-        }
-        mobileActions={mobileActions}
-        mobileMeta={
-          <CatalogDetailMobileMeta
-            entityId={venueId}
-            updatedAt={venue.updatedAt}
-            status={statusBadge}
-            quickLinks={[]}
-            primaryAction={
-              venue.status !== "archived" ? (
-                <Link
-                  href={venueEditHref(venueId)}
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-                >
-                  Edit venue →
-                </Link>
-              ) : null
-            }
-          />
-        }
-        stickySubnav={
           <>
-            <CatalogDetailTabNav tabs={tabSpecs} entityKind="venue" aria-label="Venue sections" />
-            <CatalogDetailStickyMiniBar
-              items={[{ id: "sales", label: "Sales using", value: String(salesUsingCount) }]}
-            />
+            <MetaItem label="Organisation">
+              {legalEntityDisplayName ? (
+                <Link
+                  href={`/admin/legal-entities/${venue.legalEntityId}`}
+                  className={staffCellLinkClass}
+                >
+                  {legalEntityDisplayName}
+                </Link>
+              ) : (
+                "Not known"
+              )}
+            </MetaItem>
+            <MetaItem label="City">{venue.city}</MetaItem>
           </>
         }
+        primaryAction={
+          archived ? null : (
+            <StaffButton asChild variant="primary" icon={<Pencil aria-hidden />}>
+              <Link href={venueEditHref(venueId)}>Edit venue</Link>
+            </StaffButton>
+          )
+        }
+        overflow={<OverflowMenu label="More venue actions" Link={NextLink} actions={overflow} />}
+        notice={
+          archived ? (
+            <Notice tone="info" title="This venue is archived">
+              It cannot be edited or chosen for new sales. Sales already held there keep it.
+            </Notice>
+          ) : null
+        }
+        tabs={<StaffDetailTabs label="Venue sections" items={tabs} />}
       >
         {children}
-      </CatalogDetailShell>
-    </CatalogPostCreateSessionRoot>
+      </DetailPage>
+      {venueActions.dialogs}
+    </>
   );
 }

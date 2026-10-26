@@ -1,5 +1,5 @@
 import { ArtistReviewTab } from "@/components/admin/artist-detail/tabs/review-tab";
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { loadAdminArtistReviewPage } from "@/lib/admin/artists/load-artist-review-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { ARTIST_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -22,8 +22,12 @@ export default async function AdminArtistReviewPage({ params, searchParams }: Pr
 
   return (
     <>
-      <CatalogDetailActionError error={sp.error} title="Could not review artist" />
-      <ArtistReviewTab artistId={model.artistId} currentStatus={model.artist.status} />
+      <StaffActionError error={sp.error} title="The review was not saved" />
+      <ArtistReviewTab
+        artistId={model.artistId}
+        displayName={model.artist.displayName}
+        currentStatus={model.artist.status}
+      />
     </>
   );
 }

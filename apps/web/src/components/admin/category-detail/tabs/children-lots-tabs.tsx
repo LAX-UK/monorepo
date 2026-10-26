@@ -1,104 +1,149 @@
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { DetailBoardShell, DetailEntityTable } from "@/components/admin/catalog/detail-board";
+"use client";
+
 import {
   categoryByIdMap,
   categoryDepthOf,
   categoryDescendantsOf,
 } from "@/components/admin/category-detail/category-detail-helpers";
 import { categoryEditHref } from "@/components/admin/category-detail/category-detail-types";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
+import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import {
+  type DataColumn,
+  PrimaryCell,
+  StaffButton,
+  type StaffLinkComponent,
+  StatusBadge,
+  rowActionsColumn,
+} from "@auction/staff-ui";
 import type { AdminCategory, Lot } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type ChildrenProps = {
   categoryId: string;
   allCategories: AdminCategory[];
 };
 
+type ChildRow = {
+  category: AdminCategory;
+  /** Position in the branch, depth first, so the default order is the tree's own. */
+  order: number;
+  /** Where it sits under this category: "Prints › Etchings". */
+  path: string | null;
+};
+
+const CHILD_COLUMNS: DataColumn<ChildRow>[] = [
+  {
+    id: "name",
+    header: "Category",
+    sortable: true,
+    sortValue: (row) => row.order,
+    mobile: "title",
+    cell: (row) => (
+      <PrimaryCell
+        href={`/admin/categories/${row.category.id}`}
+        Link={NextLink}
+        secondary={row.path ? `Under ${row.path}` : undefined}
+      >
+        {row.category.name}
+      </PrimaryCell>
+    ),
+  },
+  {
+    id: "lots",
+    header: "Lots",
+    numeric: true,
+    width: "96px",
+    sortable: true,
+    sortValue: (row) => row.category.usage.lots,
+    hideBelow: "md",
+    cell: (row) => row.category.usage.lots,
+  },
+  {
+    id: "sales",
+    header: "Sales",
+    numeric: true,
+    width: "96px",
+    sortable: true,
+    sortValue: (row) => row.category.usage.sales,
+    hideBelow: "md",
+    cell: (row) => row.category.usage.sales,
+  },
+  {
+    id: "submissions",
+    header: "Submissions",
+    numeric: true,
+    width: "128px",
+    sortable: true,
+    sortValue: (row) => row.category.usage.submissions,
+    hideBelow: "lg",
+    cell: (row) => row.category.usage.submissions,
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "120px",
+    mobile: "badge",
+    cell: (row) => {
+      const status = staffStatus("category", row.category.archived ? "archived" : "active");
+      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+    },
+  },
+  rowActionsColumn<ChildRow>({
+    label: (row) => `Actions for ${row.category.name}`,
+    Link: NextLink,
+    actions: (row) => [
+      { id: "edit", label: "Edit category", icon: Pencil, href: categoryEditHref(row.category.id) },
+    ],
+  }),
+];
+
 export function CategoryChildrenTab({ categoryId, allCategories }: ChildrenProps) {
-  const map = categoryByIdMap(allCategories);
-  const children = categoryDescendantsOf(categoryId, allCategories);
-  const rootDepth = categoryDepthOf(categoryId, map);
-  const directChildCount = allCategories.filter((c) => c.parentId === categoryId).length;
+  const rows = useMemo<ChildRow[]>(() => {
+    const map = categoryByIdMap(allCategories);
+    const rootDepth = categoryDepthOf(categoryId, map);
+    return categoryDescendantsOf(categoryId, allCategories).map((category, order) => {
+      const depth = categoryDepthOf(category.id, map) - rootDepth;
+      const names: string[] = [];
+      let parent = category.parentId ? map.get(category.parentId) : undefined;
+      for (let step = 1; step < depth && parent; step++) {
+        names.unshift(parent.name);
+        parent = parent.parentId ? map.get(parent.parentId) : undefined;
+      }
+      return { category, order, path: names.length > 0 ? names.join(" › ") : null };
+    });
+  }, [allCategories, categoryId]);
+  const direct = allCategories.filter((c) => c.parentId === categoryId).length;
 
   return (
-    <DetailBoardShell
+    <RelatedRecordsSection<ChildRow>
       title="Subcategories"
       description={
-        directChildCount > 0
-          ? `${directChildCount} direct · ${children.length} nested total in this branch.`
-          : "All nested categories under this branch."
+        direct > 0
+          ? `${direct} direct, ${rows.length} in all in this branch.`
+          : "Categories nested under this one."
       }
-      count={children.length}
-    >
-      <DetailEntityTable
-        rows={children}
-        getRowId={(category) => category.id}
-        emptyTitle="No subcategories yet"
-        emptyDescription="Create a child category from the list page or edit this category to assign a parent elsewhere."
-        footer={
-          children.length > 0 ? (
-            <Button variant="secondary" size="sm" asChild>
-              <Link href="/admin/categories/new">New category</Link>
-            </Button>
-          ) : undefined
-        }
-        columns={[
-          {
-            id: "name",
-            header: "Category",
-            cell: (category) => {
-              const rel = categoryDepthOf(category.id, map) - rootDepth;
-              return (
-                <div
-                  style={{
-                    marginLeft: rel > 1 ? `${Math.min((rel - 1) * 1.25, 4)}rem` : undefined,
-                  }}
-                >
-                  <Link
-                    href={`/admin/categories/${category.id}`}
-                    className="font-headline text-base text-on-surface hover:text-link"
-                  >
-                    {category.name}
-                  </Link>
-                </div>
-              );
-            },
-          },
-          {
-            id: "usage",
-            header: "Usage",
-            cell: (category) => (
-              <span className="text-xs text-on-surface-variant">
-                {category.usage.lots} lots · {category.usage.sales} sales ·{" "}
-                {category.usage.submissions} submissions
-              </span>
-            ),
-          },
-          {
-            id: "status",
-            header: "Status",
-            cell: (category) => (
-              <AdminStatusBadge
-                domain="category"
-                status={category.archived ? "archived" : "active"}
-              />
-            ),
-          },
-          {
-            id: "actions",
-            header: "",
-            headerClassName: "sr-only",
-            className: "text-right",
-            cell: (category) => (
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={categoryEditHref(category.id)}>Edit</Link>
-              </Button>
-            ),
-          },
-        ]}
-      />
-    </DetailBoardShell>
+      label="Subcategories"
+      action={
+        <StaffButton asChild size="sm" variant="secondary">
+          <Link href="/admin/categories/new">New category</Link>
+        </StaffButton>
+      }
+      columns={CHILD_COLUMNS}
+      data={rows}
+      getRowId={(row) => row.category.id}
+      defaultSort={{ columnId: "name", direction: "asc" }}
+      empty={{
+        title: "No subcategories yet",
+        description:
+          "Create a category and choose this one as its parent, or edit an existing category to move it here.",
+      }}
+    />
   );
 }
 
@@ -108,139 +153,131 @@ type LotsProps = {
   totalCount?: number;
 };
 
-export function CategoryLotsTab({ categoryId, lots, totalCount }: LotsProps) {
-  const showingCap = totalCount != null && totalCount > lots.length;
+const LOT_COLUMNS: DataColumn<Lot>[] = [
+  {
+    id: "title",
+    header: "Lot",
+    sortable: true,
+    sortValue: (lot) => lot.title.toLowerCase(),
+    mobile: "title",
+    cell: (lot) => (
+      <PrimaryCell href={`/admin/lots/${lot.id}`} Link={NextLink}>
+        {lot.title}
+      </PrimaryCell>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "140px",
+    mobile: "badge",
+    cell: (lot) => {
+      const status = staffStatus("lot", lot.status, { lot: { winnerId: lot.winnerId } });
+      return (
+        <StatusBadge tone={status.tone} live={status.live ?? false}>
+          {status.label}
+        </StatusBadge>
+      );
+    },
+  },
+  rowActionsColumn<Lot>({
+    label: (lot) => `Actions for ${lot.title}`,
+    Link: NextLink,
+    actions: (lot) => [
+      { id: "open", label: "Open lot", icon: ExternalLink, href: `/admin/lots/${lot.id}` },
+    ],
+  }),
+];
 
+export function CategoryLotsTab({ categoryId, lots, totalCount }: LotsProps) {
+  const total = totalCount ?? lots.length;
+  const listHref = `/admin/lots?categoryId=${categoryId}`;
   return (
-    <DetailBoardShell
+    <RelatedRecordsSection<Lot>
       title="Lots"
-      description="Catalog lots tagged with this category."
-      count={totalCount ?? lots.length}
-    >
-      <DetailEntityTable
-        rows={lots}
-        getRowId={(lot) => lot.id}
-        emptyTitle="No lots tagged with this category"
-        emptyDescription="Lots appear here once they are assigned this category on the lot edit form."
-        footer={
-          showingCap ? (
-            <span>
-              Showing {lots.length} of {totalCount} lots.{" "}
-              <Link
-                href={`/admin/lots?categoryId=${categoryId}`}
-                className="font-medium text-link hover:underline"
-              >
-                View all lots →
-              </Link>
-            </span>
-          ) : lots.length > 0 ? (
-            <Link
-              href={`/admin/lots?categoryId=${categoryId}`}
-              className="font-medium text-link hover:underline"
-            >
-              Open filtered lots list →
-            </Link>
-          ) : undefined
-        }
-        columns={[
-          {
-            id: "title",
-            header: "Lot",
-            cell: (lot) => (
-              <Link
-                href={`/admin/lots/${lot.id}`}
-                className="font-medium text-on-surface hover:text-link"
-              >
-                {lot.title}
-              </Link>
-            ),
-          },
-          {
-            id: "status",
-            header: "Status",
-            cell: (lot) => <AdminStatusBadge domain="lot" status={lot.status} />,
-          },
-          {
-            id: "actions",
-            header: "",
-            headerClassName: "sr-only",
-            className: "text-right",
-            cell: (lot) => (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/admin/lots/${lot.id}`}>Open</Link>
-              </Button>
-            ),
-          },
-        ]}
-      />
-    </DetailBoardShell>
+      description="Lots tagged with this category."
+      label="Lots in this category"
+      action={
+        lots.length > 0 ? (
+          <StaffButton asChild size="sm" variant="ghost">
+            <Link href={listHref}>View all lots</Link>
+          </StaffButton>
+        ) : null
+      }
+      columns={LOT_COLUMNS}
+      data={lots}
+      getRowId={(lot) => lot.id}
+      defaultSort={{ columnId: "title", direction: "asc" }}
+      empty={{
+        title: "No lots tagged with this category",
+        description: "Lots appear here once they are given this category on the lot's edit page.",
+      }}
+      {...(total > lots.length ? { footer: `Showing ${lots.length} of ${total} lots.` } : {})}
+    />
   );
 }
 
 type SalesProps = {
-  sales: import("@/lib/data/http/admin.server").AdminSaleListRow[];
+  sales: AdminSaleListRow[];
   totalCount?: number;
 };
 
-export function CategorySalesTab({ sales, totalCount }: SalesProps) {
-  const showingCap = totalCount != null && totalCount > sales.length;
+const SALE_COLUMNS: DataColumn<AdminSaleListRow>[] = [
+  {
+    id: "title",
+    header: "Sale",
+    sortable: true,
+    sortValue: ({ sale }) => sale.title.toLowerCase(),
+    mobile: "title",
+    cell: ({ sale, lots }) => (
+      <PrimaryCell
+        href={`/admin/sales/${sale.id}`}
+        Link={NextLink}
+        secondary={`${lots.length} ${lots.length === 1 ? "lot" : "lots"}`}
+      >
+        {sale.title}
+      </PrimaryCell>
+    ),
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "140px",
+    mobile: "badge",
+    cell: ({ sale }) => {
+      const status = staffStatus("sale", sale.status);
+      return (
+        <StatusBadge tone={status.tone} live={status.live ?? false}>
+          {status.label}
+        </StatusBadge>
+      );
+    },
+  },
+  rowActionsColumn<AdminSaleListRow>({
+    label: ({ sale }) => `Actions for ${sale.title}`,
+    Link: NextLink,
+    actions: ({ sale }) => [
+      { id: "open", label: "Open sale", icon: ExternalLink, href: `/admin/sales/${sale.id}` },
+    ],
+  }),
+];
 
+export function CategorySalesTab({ sales, totalCount }: SalesProps) {
+  const total = totalCount ?? sales.length;
   return (
-    <DetailBoardShell
+    <RelatedRecordsSection<AdminSaleListRow>
       title="Sales"
-      description="Sales linked to this category."
-      count={totalCount ?? sales.length}
-    >
-      <DetailEntityTable
-        rows={sales}
-        getRowId={({ sale }) => sale.id}
-        emptyTitle="No sales linked to this category"
-        emptyDescription="Sales appear here once lots in those sales use this category."
-        footer={
-          showingCap ? (
-            <span>
-              Showing {sales.length} of {totalCount} sales on this tab.
-            </span>
-          ) : undefined
-        }
-        columns={[
-          {
-            id: "title",
-            header: "Sale",
-            cell: ({ sale }) => (
-              <Link
-                href={`/admin/sales/${sale.id}`}
-                className="font-medium text-on-surface hover:text-link"
-              >
-                {sale.title}
-              </Link>
-            ),
-          },
-          {
-            id: "status",
-            header: "Status",
-            cell: ({ sale, lots }) => (
-              <div className="flex flex-wrap items-center gap-2">
-                <AdminStatusBadge domain="sale" status={sale.status} />
-                <span className="text-xs text-on-surface-variant">
-                  {lots.length} {lots.length === 1 ? "lot" : "lots"}
-                </span>
-              </div>
-            ),
-          },
-          {
-            id: "actions",
-            header: "",
-            headerClassName: "sr-only",
-            className: "text-right",
-            cell: ({ sale }) => (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/admin/sales/${sale.id}`}>Open</Link>
-              </Button>
-            ),
-          },
-        ]}
-      />
-    </DetailBoardShell>
+      description="Sales with lots in this category."
+      label="Sales in this category"
+      columns={SALE_COLUMNS}
+      data={sales}
+      getRowId={({ sale }) => sale.id}
+      defaultSort={{ columnId: "title", direction: "asc" }}
+      empty={{
+        title: "No sales linked to this category",
+        description: "Sales appear here once lots in them use this category.",
+      }}
+      {...(total > sales.length ? { footer: `Showing ${sales.length} of ${total} sales.` } : {})}
+    />
   );
 }

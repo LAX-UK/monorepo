@@ -1,49 +1,39 @@
 "use client";
 
-import { CategoryPicker } from "@/components/forms/category-picker";
-import { LabelCaps } from "@/components/ui/typography";
+import { StaffEntityMultiField } from "@/components/admin/forms/staff-form-fields";
+import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
+import { FormSection } from "@auction/staff-ui";
 import type { CategoryNode } from "@auction/types";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
+import { useMemo } from "react";
+import { ARTIST_FORM_ID } from "../admin-artist-form.constants";
 import type { ArtistFormSectionProps } from "../types";
 
-/** Department (category) multiselect — shares the lot category taxonomy so a
- * creator can be filed under the same collecting domains as their lots. */
+/** The departments a creator is filed under: the same taxonomy as their lots. */
 export function CategoriesSection({
   control,
   categories,
-  disabled: _disabled = false,
+  disabled = false,
 }: ArtistFormSectionProps & { categories: CategoryNode[] }) {
+  const options = useMemo(() => categoryPickerOptions(categories), [categories]);
   return (
-    <FormField
-      control={control}
-      name="categoryIds"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            <LabelCaps>Departments</LabelCaps>
-          </FormLabel>
-          <FormControl>
-            <CategoryPicker
-              categories={categories}
-              value={field.value ?? []}
-              onChange={(next) => field.onChange(next)}
-              placeholder="Select collecting departments"
-              multiple
-            />
-          </FormControl>
-          <p className="text-xs text-on-surface-variant">
-            Used for directory landing pages and faceted browsing. The first selection is treated as
-            the primary department.
-          </p>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+    <FormSection
+      title="Departments"
+      description="The collecting categories this creator belongs to."
+    >
+      <StaffEntityMultiField
+        control={control}
+        formId={ARTIST_FORM_ID}
+        name="categoryIds"
+        label="Departments"
+        optional
+        description="Used for directory pages and filters. The first one chosen is the main department."
+        options={options}
+        max={20}
+        placeholder="Choose departments"
+        searchPlaceholder="Search departments"
+        emptyText="No departments match."
+        disabled={disabled}
+      />
+    </FormSection>
   );
 }

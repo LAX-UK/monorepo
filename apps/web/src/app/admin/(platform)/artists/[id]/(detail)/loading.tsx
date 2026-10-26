@@ -1,5 +1,5 @@
-import { AdminArtistDetailSkeleton } from "@/components/admin/admin-artist-detail-skeleton";
+import { DetailPageSkeleton } from "@auction/staff-ui";
 
-export default function AdminArtistDetailLoading() {
-  return <AdminArtistDetailSkeleton />;
+export default function Loading() {
+  return <DetailPageSkeleton />;
 }

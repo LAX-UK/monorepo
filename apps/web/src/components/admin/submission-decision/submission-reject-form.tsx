@@ -1,89 +1,76 @@
 "use client";
 
-import { LabelCaps } from "@/components/ui/typography";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { Button } from "@auction/ui/components/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Textarea } from "@auction/ui/components/textarea";
+import { StaffTextAreaField } from "@/components/admin/forms/staff-form-fields";
+import { STAFF_PARSE_PARAMS } from "@/lib/forms/staff-error-map";
+import { FormActions, Section, StaffButton } from "@auction/staff-ui";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type UseFormReturn, useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { SUBMISSION_REJECT_FORM_ID } from "./form-ids";
 import { type RejectFormValues, rejectFormSchema } from "./use-submission-decision-actions";
 
 type Props = {
   pending: boolean;
-  onSubmit: (values: RejectFormValues, form: UseFormReturn<RejectFormValues>) => void;
+  /** Asks the person to confirm, then rejects. */
+  onSubmit: (values: RejectFormValues) => void;
+  /** Reports whether anything is typed, so the page can ask before it is lost. */
+  onDirtyChange: (dirty: boolean) => void;
 };
 
-export function SubmissionRejectForm({ pending, onSubmit }: Props) {
-  const form = useForm({
-    resolver: zodResolver(rejectFormSchema),
+/**
+ * Rejecting a submission: the reason goes to the seller as written, so it is required and shows
+ * its error beside the field. The rejection itself is confirmed before it is sent.
+ */
+export function SubmissionRejectForm({ pending, onSubmit, onDirtyChange }: Props) {
+  const form = useForm<RejectFormValues>({
+    resolver: zodResolver(rejectFormSchema, STAFF_PARSE_PARAMS),
     defaultValues: { rejectionReason: "", reviewNotes: "" },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
+  const dirty = form.formState.isDirty;
+  useEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty, onDirtyChange]);
 
   return (
-    <Form {...form}>
+    <Section
+      title="Reject"
+      description="The seller is emailed your reason. A rejected submission cannot be reopened."
+    >
       <form
-        id={CATALOG_FORM_IDS.submissionReject}
-        className="space-y-4 border-t border-border-hairline pt-8"
-        onSubmit={form.handleSubmit((values) => onSubmit(values, form))}
+        id={SUBMISSION_REJECT_FORM_ID}
+        noValidate
+        aria-label="Reject submission"
+        className="flex flex-col gap-4"
+        onSubmit={form.handleSubmit((values) => onSubmit(values))}
       >
-        <FormField
+        <StaffTextAreaField
           control={form.control}
+          formId={SUBMISSION_REJECT_FORM_ID}
           name="rejectionReason"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block" htmlFor="rejectionReason">
-                <LabelCaps>Rejection reason (required)</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <Textarea
-                  id="rejectionReason"
-                  rows={3}
-                  className="font-body text-sm"
-                  required
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="reviewNotes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="mb-2 block">
-                <LabelCaps>Additional notes (optional)</LabelCaps>
-              </FormLabel>
-              <FormControl>
-                <Textarea
-                  id="reviewNotesReject"
-                  rows={2}
-                  className="font-body text-sm"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button
-          type="submit"
-          variant="destructive"
-          className="min-h-11 w-full sm:w-auto"
+          label="Reason for the seller"
+          description="Sent as written. Say what they would need to change."
+          rows={3}
           disabled={pending}
-        >
-          Reject
-        </Button>
+        />
+        <StaffTextAreaField
+          control={form.control}
+          formId={SUBMISSION_REJECT_FORM_ID}
+          name="reviewNotes"
+          label="Internal notes"
+          description="Only staff see these."
+          optional
+          rows={2}
+          disabled={pending}
+        />
+        <FormActions>
+          <StaffButton type="submit" variant="danger-secondary" loading={pending}>
+            Reject submission
+          </StaffButton>
+        </FormActions>
       </form>
-    </Form>
+    </Section>
   );
 }

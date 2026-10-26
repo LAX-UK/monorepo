@@ -2,12 +2,14 @@
 
 import { adminLoadQrCodeAnalyticsResultAction } from "@/lib/actions/admin-qr-codes";
 import { customDateRangeToAnalyticsQuery } from "@/lib/admin/qr-analytics-range";
-import type { DateRangeValue } from "@auction/ui/components/date-range-picker";
 import { DEFAULT_AUCTION_ZONE, toDateFormString } from "@auction/ui/lib/datetime";
 import type { QrCodeAnalyticsRange, QrCodeDetailedAnalytics } from "@auction/validators";
 import { TZDate } from "@date-fns/tz";
 import { addDays } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+/** A custom range as whole days in auction time (`YYYY-MM-DD`). */
+export type DateRangeValue = { from: string; to: string };
 
 export type QrAnalyticsRangeSelection =
   | { kind: "preset"; value: QrCodeAnalyticsRange }

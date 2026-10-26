@@ -1,7 +1,7 @@
 "use client";
 
-import { DocumentAttachmentManager } from "@/components/admin/document-attachment-manager";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DocumentAttachmentManager } from "@/components/dashboard/document-attachment-manager";
 import {
   sellerAttachSubmissionDocumentResultAction,
   sellerRemoveSubmissionDocumentResultAction,

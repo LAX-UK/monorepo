@@ -6,11 +6,15 @@ import {
 } from "@/components/admin/qr-code/use-qr-analytics";
 import { ChartRenderer } from "@/components/charts/chart-renderer";
 import { formatDateTime } from "@/lib/ui/format";
-import { SegmentToggle } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { DateRangePicker } from "@auction/ui/components/date-range-picker";
-import { EmptyState } from "@auction/ui/components/empty-state";
-import { Skeleton } from "@auction/ui/components/skeleton";
+import {
+  DateRangeFilter,
+  EmptyState,
+  Notice,
+  SegmentedControl,
+  Skeleton,
+  StaffButton,
+  StatGrid,
+} from "@auction/staff-ui";
 import { AUCTION_ZONE_LABEL } from "@auction/ui/lib/datetime";
 import type {
   QrCodeAnalyticsBreakdownRow,
@@ -24,6 +28,7 @@ type Props = {
   initialAnalytics: QrCodeDetailedAnalytics | null;
 };
 
+/** Scans of one QR code over a range: totals, a trend, and where scans came from. */
 export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
   const {
     selection,
@@ -38,20 +43,23 @@ export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
   } = useQrAnalytics(qrCodeId, initialAnalytics);
 
   return (
-    <div className="space-y-4 rounded-lg bg-surface-container-high p-3 text-sm">
-      <div className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-medium text-on-surface">Scan analytics</p>
-          <p className="text-xs text-on-surface-variant">{rangeLabel}</p>
+    <section
+      aria-label="Scan analytics"
+      className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-sunken p-3 text-staff-sm"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="font-medium text-staff-fg">Scan analytics</h3>
+          <p className="text-staff-xs text-staff-muted">{rangeLabel}</p>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="-mx-1 overflow-x-auto px-1 pb-1">
-            <SegmentToggle
-              aria-label="QR analytics range"
+            <SegmentedControl
+              label="QR analytics range"
               value={selection.kind === "preset" ? selection.value : "custom"}
               options={[
                 ...QR_ANALYTICS_PRESET_OPTIONS.map((option) => ({
-                  value: option.value,
+                  value: option.value as string,
                   label: option.label,
                 })),
                 { value: "custom", label: "Custom" },
@@ -66,9 +74,9 @@ export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
             />
           </div>
           {selection.kind === "custom" ? (
-            <div className="flex flex-col gap-1">
-              <DateRangePicker value={selection.value} onChange={updateCustomRange} />
-              <p className="font-body text-xs text-on-surface-variant">{AUCTION_ZONE_LABEL}</p>
+            <div className="flex items-center gap-2">
+              <DateRangeFilter label="Dates" value={selection.value} onChange={updateCustomRange} />
+              <p className="text-staff-xs text-staff-muted">{AUCTION_ZONE_LABEL}</p>
             </div>
           ) : null}
         </div>
@@ -76,25 +84,25 @@ export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
 
       {loading && !analytics ? <QrAnalyticsSkeleton /> : null}
       {!loading && error ? (
-        <div className="rounded-md border border-error/30 bg-error-container/20 p-3 text-sm">
-          <p className="text-on-surface-variant">{error}</p>
-          <Button
-            type="button"
-            variant="link"
-            size="link"
-            className="mt-2 h-auto p-0"
-            onClick={retry}
-          >
-            Try again
-          </Button>
-        </div>
+        <Notice
+          tone="danger"
+          alert
+          title="Could not load analytics"
+          actions={
+            <StaffButton size="sm" variant="secondary" onClick={retry}>
+              Try again
+            </StaffButton>
+          }
+        >
+          {error}
+        </Notice>
       ) : null}
       {analytics && !error ? (
         <div className={loading ? "pointer-events-none opacity-60" : undefined}>
           <QrAnalyticsContent analytics={analytics} loading={loading} />
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -111,30 +119,35 @@ function QrAnalyticsContent({
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {loading ? (
-        <p className="text-xs text-on-surface-variant" aria-live="polite">
+        <p className="text-staff-xs text-staff-muted" aria-live="polite">
           Updating analytics…
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <QrStatCard label="Scans" value={String(analytics.totalScans)} />
-        {analytics.uniqueIps != null ? (
-          <QrStatCard label="Unique IPs" value={String(analytics.uniqueIps)} />
-        ) : null}
-        <QrStatCard
-          label="Top device"
-          value={formatStatValue(analytics.byDevice[0]?.key ?? "None yet")}
-        />
-        <QrStatCard
-          label="Top country"
-          value={formatStatValue(analytics.byCountry[0]?.key ?? "None yet")}
-        />
-      </div>
+      <StatGrid
+        label="Scan totals"
+        className="grid-cols-2 md:grid-cols-3"
+        items={[
+          { id: "scans", label: "Scans", value: String(analytics.totalScans) },
+          ...(analytics.uniqueIps != null
+            ? [{ id: "ips", label: "Unique IPs", value: String(analytics.uniqueIps) }]
+            : []),
+          {
+            id: "device",
+            label: "Top device",
+            value: formatStatValue(analytics.byDevice[0]?.key ?? "None yet"),
+          },
+          {
+            id: "country",
+            label: "Top country",
+            value: formatStatValue(analytics.byCountry[0]?.key ?? "None yet"),
+          },
+        ]}
+      />
 
       {analytics.totalScans === 0 ? (
         <EmptyState
-          variant="plain"
           size="compact"
           headingLevel="h3"
           illustration="search"
@@ -174,7 +187,7 @@ function QrAnalyticsContent({
                 />
               </>
             ) : (
-              <p className="text-xs text-on-surface-variant sm:col-span-2">
+              <p className="text-staff-xs text-staff-muted sm:col-span-2">
                 Browser, OS, referrer, and recent scan details are available in the 24h view.
               </p>
             )}
@@ -196,10 +209,10 @@ function QrTrendChart({
   granularity: "hour" | "day";
 }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
+    <div className="flex flex-col gap-2">
+      <h4 className="text-staff-xs font-medium text-staff-muted">
         {granularity === "hour" ? "Hourly scans" : "Daily scans"}
-      </p>
+      </h4>
       <div className="overflow-x-auto">
         <div className={data.length > 12 ? "min-w-[480px]" : undefined}>
           <ChartRenderer kind="bar" data={data} height={140} />
@@ -220,22 +233,22 @@ function QrBreakdownList({
 }) {
   if (rows.length === 0) return null;
   return (
-    <div className="space-y-2 rounded-md border border-border-hairline bg-surface-container-lowest p-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">{title}</p>
-      <ul className="space-y-1.5">
+    <div className="flex flex-col gap-2 rounded-staff-md border border-staff-line bg-staff-surface p-3">
+      <h4 className="text-staff-xs font-medium text-staff-muted">{title}</h4>
+      <ul className="flex flex-col gap-2">
         {rows.map((row) => {
           const pct = total > 0 ? Math.round((row.scans / total) * 100) : 0;
           return (
-            <li key={`${title}-${row.key}`} className="space-y-1">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="truncate text-on-surface">{formatStatValue(row.key)}</span>
-                <span className="shrink-0 text-on-surface-variant">
+            <li key={`${title}-${row.key}`} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2 text-staff-xs">
+                <span className="truncate text-staff-fg">{formatStatValue(row.key)}</span>
+                <span className="shrink-0 tabular-nums text-staff-muted">
                   {row.scans} ({pct}%)
                 </span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-high">
+              <div className="h-1.5 overflow-hidden rounded-full bg-staff-sunken">
                 <div
-                  className="h-full rounded-full bg-primary"
+                  className="h-full rounded-full bg-staff-ink"
                   style={{ width: `${Math.max(pct, row.scans > 0 ? 4 : 0)}%` }}
                 />
               </div>
@@ -249,15 +262,13 @@ function QrBreakdownList({
 
 function QrRecentScans({ rows }: { rows: QrCodeRecentScan[] }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
-        Recent scans
-      </p>
-      <ul className="max-h-48 divide-y divide-border-hairline overflow-y-auto rounded-md border border-border-hairline bg-surface-container-lowest overscroll-contain">
+    <div className="flex flex-col gap-2">
+      <h4 className="text-staff-xs font-medium text-staff-muted">Recent scans</h4>
+      <ul className="max-h-48 divide-y divide-staff-line-subtle overflow-y-auto overscroll-contain rounded-staff-md border border-staff-line bg-staff-surface">
         {rows.map((row, index) => (
-          <li key={`${row.scannedAt}-${index}`} className="space-y-0.5 px-2 py-2 text-xs">
-            <p className="font-medium text-on-surface">{formatDateTime(row.scannedAt)}</p>
-            <p className="text-on-surface-variant">
+          <li key={`${row.scannedAt}-${index}`} className="px-3 py-2 text-staff-xs">
+            <p className="font-medium text-staff-fg">{formatDateTime(row.scannedAt)}</p>
+            <p className="text-staff-muted">
               {formatStatValue(row.deviceType)} · {formatStatValue(row.browser)} ·{" "}
               {formatStatValue(row.os)} · {formatStatValue(row.country)}
               {row.referrerHost ? ` · ${row.referrerHost}` : ""}
@@ -269,27 +280,14 @@ function QrRecentScans({ rows }: { rows: QrCodeRecentScan[] }) {
   );
 }
 
-function QrStatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border-hairline bg-surface-container-lowest p-2">
-      <p className="text-[11px] uppercase tracking-wide text-on-surface-variant">{label}</p>
-      <p className="mt-1 truncate font-medium text-on-surface">{value}</p>
-    </div>
-  );
-}
-
 function QrAnalyticsSkeleton() {
   return (
-    <div className="space-y-3" aria-busy="true">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <Skeleton className="h-16 rounded-md" />
-        <Skeleton className="h-16 rounded-md" />
-        <Skeleton className="h-16 rounded-md" />
-      </div>
-      <Skeleton className="h-36 rounded-md" />
+    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading analytics">
+      <Skeleton className="h-16 w-full rounded-staff-md" />
+      <Skeleton className="h-36 w-full rounded-staff-md" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Skeleton className="h-28 rounded-md" />
-        <Skeleton className="h-28 rounded-md" />
+        <Skeleton className="h-28 rounded-staff-md" />
+        <Skeleton className="h-28 rounded-staff-md" />
       </div>
     </div>
   );

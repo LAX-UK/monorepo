@@ -1,93 +1,83 @@
 import { AdminStaffLabeledField } from "@/components/admin/admin-staff-labeled-field";
 import { AdminStripeConnectActions } from "@/components/admin/admin-stripe-connect-actions";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
-import { DetailBoardShell } from "@/components/admin/catalog/detail-board";
 import {
   collectStripeTechnicalIds,
   presentStripeConnectAccount,
   presentStripeDisabledReason,
   presentStripeRequirementsForEntity,
 } from "@/lib/admin/stripe-connect-staff-presenter";
+import { KeyValueList, Section } from "@auction/staff-ui";
 import type { LegalEntity } from "@auction/types";
 
 type Props = {
   entity: LegalEntity;
 };
 
+/** Stripe Connect status for the organisation, what is still due, and the support tools. */
 export function LegalEntityStripeTab({ entity }: Props) {
   const stripeAccount = presentStripeConnectAccount(entity.stripeConnectAccountId);
-  const disabledReasonRef = presentStripeDisabledReason(entity.stripeConnectDisabledReason);
-  const stripeRequirementItems = presentStripeRequirementsForEntity(entity);
-  const stripeTechnicalIds = collectStripeTechnicalIds(entity);
+  const disabledReason = presentStripeDisabledReason(entity.stripeConnectDisabledReason);
+  const requirements = presentStripeRequirementsForEntity(entity);
+  const technicalIds = collectStripeTechnicalIds(entity);
 
   return (
-    <div className="space-y-6">
-      <DetailBoardShell
+    <>
+      <Section
         title="Stripe Connect"
-        description="Account status, capability flags, and outstanding requirements."
+        description="Account status, capability flags and outstanding requirements."
       >
-        <dl className="grid gap-4 text-sm sm:grid-cols-2">
-          <div className="space-y-1">
-            <dt className="text-on-surface-variant">Connect account</dt>
-            <dd className="text-on-surface">
-              {stripeAccount ? (
+        <KeyValueList
+          items={[
+            {
+              label: "Connect account",
+              value: stripeAccount ? (
                 <AdminStaffLabeledField
                   primary={stripeAccount.primary}
                   {...(stripeAccount.secondary ? { secondary: stripeAccount.secondary } : {})}
                 />
-              ) : (
-                "—"
-              )}
-            </dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="text-on-surface-variant">Charges enabled</dt>
-            <dd className="text-on-surface">{entity.stripeConnectChargesEnabled ? "Yes" : "No"}</dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="text-on-surface-variant">Payouts enabled</dt>
-            <dd className="text-on-surface">{entity.stripeConnectPayoutsEnabled ? "Yes" : "No"}</dd>
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <dt className="text-on-surface-variant">Disabled reason</dt>
-            <dd className="text-on-surface">
-              {disabledReasonRef ? (
+              ) : null,
+            },
+            { label: "Charges enabled", value: entity.stripeConnectChargesEnabled ? "Yes" : "No" },
+            { label: "Payouts enabled", value: entity.stripeConnectPayoutsEnabled ? "Yes" : "No" },
+            {
+              label: "Disabled reason",
+              value: disabledReason ? (
                 <AdminStaffLabeledField
-                  primary={disabledReasonRef.primary}
-                  {...(disabledReasonRef.secondary
-                    ? { secondary: disabledReasonRef.secondary }
-                    : {})}
+                  primary={disabledReason.primary}
+                  {...(disabledReason.secondary ? { secondary: disabledReason.secondary } : {})}
                 />
               ) : (
                 "None"
-              )}
-            </dd>
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <dt className="text-on-surface-variant">Currently due requirements</dt>
-            <dd className="text-on-surface">
-              {stripeRequirementItems.length > 0 ? (
-                <ul className="mt-2 space-y-2">
-                  {stripeRequirementItems.map((label) => (
-                    <li key={label.technicalValue ?? label.primary}>
-                      <AdminStaffLabeledField
-                        primary={label.primary}
-                        {...(label.secondary ? { secondary: label.secondary } : {})}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                "None outstanding"
-              )}
-            </dd>
-          </div>
-        </dl>
-        <div className="mt-6 space-y-4 border-t border-shell-stroke pt-6">
+              ),
+            },
+            {
+              label: "Currently due",
+              value:
+                requirements.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {requirements.map((label) => (
+                      <li key={label.technicalValue ?? label.primary}>
+                        <AdminStaffLabeledField
+                          primary={label.primary}
+                          {...(label.secondary ? { secondary: label.secondary } : {})}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  "None outstanding"
+                ),
+            },
+          ]}
+        />
+      </Section>
+      <Section title="Support tools">
+        <div className="flex flex-col gap-4">
           <AdminStripeConnectActions entity={entity} />
-          <AdminTechnicalIdDisclosure items={stripeTechnicalIds} />
+          <AdminTechnicalIdDisclosure items={technicalIds} />
         </div>
-      </DetailBoardShell>
-    </div>
+      </Section>
+    </>
   );
 }

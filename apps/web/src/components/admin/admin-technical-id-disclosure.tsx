@@ -2,7 +2,7 @@
 
 import { AdminCopyField } from "@/components/admin/admin-copy-field";
 import type { AdminTechnicalIdItem } from "@/lib/admin/admin-technical-id.types";
-import { Button } from "@auction/ui/components/button";
+import { StaffButton } from "@auction/staff-ui";
 import { useId, useState } from "react";
 
 export type { AdminTechnicalIdItem };
@@ -30,28 +30,24 @@ export function AdminTechnicalIdDisclosure({ items, triggerLabel = "Show referen
   if (visible.length === 0) return null;
 
   return (
-    <div className="space-y-2 border-t border-border-hairline pt-4">
-      <Button
-        type="button"
+    <div className="flex flex-col gap-2 border-t border-staff-line-subtle pt-4">
+      <StaffButton
         variant="ghost"
         size="sm"
-        className="h-8 px-2 font-body text-xs text-on-surface-variant"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
       >
         {open ? "Hide reference IDs" : triggerLabel}
-      </Button>
+      </StaffButton>
       {open ? (
         <dl
           id={panelId}
-          className="space-y-3 rounded-md border border-border-hairline bg-surface-container-low/40 p-3"
+          className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-sunken p-3"
         >
           {visible.map((item) => (
             <div key={item.label}>
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                {item.label}
-              </dt>
+              <dt className="text-staff-xs text-staff-muted">{item.label}</dt>
               <dd className="mt-1">
                 <AdminCopyField value={item.value ?? ""} label={item.copyLabel ?? item.label} />
               </dd>

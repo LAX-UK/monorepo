@@ -1,5 +1,5 @@
 import { ArtistOverviewTab } from "@/components/admin/artist-detail/tabs/overview-tab";
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { loadAdminArtistDetailContext } from "@/lib/admin/artists/load-artist-detail-context";
 import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
 import { notFound } from "next/navigation";
@@ -23,7 +23,7 @@ export default async function AdminArtistOverviewPage({ params, searchParams }: 
 
   return (
     <>
-      <CatalogDetailActionError error={sp.error} title="Could not update artist" />
+      <StaffActionError error={sp.error} title="The artist was not updated" />
       <ArtistOverviewTab
         artistId={id}
         artist={artist}

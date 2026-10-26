@@ -1,12 +1,5 @@
 import "server-only";
 
-import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
-import { buildCategorySummaryItems } from "@/lib/admin/build-category-summary-items";
-import { buildCategoryTaxonomyReadiness } from "@/lib/admin/catalog-readiness";
-import {
-  type CategoryOverviewViewModel,
-  buildCategoryOverviewViewModel,
-} from "@/lib/admin/categories/build-category-overview-vm";
 import {
   categoryDescendantsOf,
   categoryDirectChildrenOf,
@@ -30,13 +23,11 @@ export type CategoryOverviewPageModel = {
   previewSales: AdminSaleListRow[];
   previewSubmissions: ItemSubmission[];
   activityEvents: AdminDomainEventRow[];
-  overview: CategoryOverviewViewModel;
 };
 
 /** Data/composition boundary for `/admin/categories/[id]` overview tab. */
 export async function loadAdminCategoryOverviewPage(
   categoryId: string,
-  periodDays: AdminKpiPeriodDays = 30,
 ): Promise<CategoryOverviewPageModel> {
   const [category, allCategories, previewLots, previewSales, previewSubmissions, activityEvents] =
     await Promise.all([
@@ -52,34 +43,14 @@ export async function loadAdminCategoryOverviewPage(
       }).catch(() => []),
     ]);
 
-  const directChildCount = categoryDirectChildrenOf(categoryId, allCategories).length;
-  const descendantCount = categoryDescendantsOf(categoryId, allCategories).length;
-  const summaryItems = buildCategorySummaryItems(
-    categoryId,
-    category,
-    directChildCount,
-    descendantCount,
-  );
-  const readiness = buildCategoryTaxonomyReadiness(categoryId, category, directChildCount);
-  const overview = buildCategoryOverviewViewModel(
-    categoryId,
-    category,
-    directChildCount,
-    descendantCount,
-    summaryItems,
-    readiness,
-    periodDays,
-  );
-
   return {
     category,
     allCategories,
-    directChildCount,
-    descendantCount,
+    directChildCount: categoryDirectChildrenOf(categoryId, allCategories).length,
+    descendantCount: categoryDescendantsOf(categoryId, allCategories).length,
     previewLots,
     previewSales,
     previewSubmissions: previewSubmissions.rows,
     activityEvents,
-    overview,
   };
 }

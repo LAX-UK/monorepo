@@ -1,5 +1,4 @@
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
-import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import type { Lot } from "@auction/types";
 
 type Props = {
@@ -7,13 +6,14 @@ type Props = {
   lots: Lot[];
 };
 
+/** The lots attributed to this artist. Attribution is changed from each lot's edit page. */
 export function ArtistLotsTab({ artistId, lots }: Props) {
   return (
-    <CatalogDetailTabPanel
-      title="Lots"
-      description="Read-only FK attribution. Reassign from each lot's edit screen."
-    >
-      <AdminArtistLotsPanel artistId={artistId} lots={lots} />
-    </CatalogDetailTabPanel>
+    <AdminArtistLotsPanel
+      artistId={artistId}
+      lots={lots}
+      title="Lots by this artist"
+      description="Change a lot's artist from the lot's own edit page."
+    />
   );
 }

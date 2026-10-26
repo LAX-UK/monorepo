@@ -1,54 +1,27 @@
-import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
-import { applyFlatKpiTrendOverlay } from "@/lib/admin/apply-flat-kpi-trend-overlay";
-import {
-  detailStatRowFromQualityCheck,
-  mapSubmissionQualityChecksToGapRows,
-} from "@/lib/admin/detail-board/map-quality-gap-rows";
-import type {
-  DetailAttentionRow,
-  DetailBoardKpiTile,
-  DetailQualityGapRow,
-  DetailStatRow,
-} from "@/lib/admin/detail-board/types";
-import {
-  adminDateStatExtras,
-  formatAdminTableDateTime,
-} from "@/lib/admin/format-admin-table-datetime";
-import { buildSubmissionAssigneePresentation } from "@/lib/admin/submissions/submission-assignee-presentation";
+import { mapSubmissionQualityChecksToGapRows } from "@/lib/admin/detail-board/map-quality-gap-rows";
 import { submissionDetailTabHref } from "@/lib/admin/submissions/submission-detail-routes";
 import {
   formatQueueAgeCompareHint,
   submissionQueueAgeDays,
 } from "@/lib/admin/submissions/submission-queue-age";
-import { type SubmissionQualityCheck, evaluateSubmissionQuality } from "@auction/domain";
+import { evaluateSubmissionQuality } from "@auction/domain";
+import type { IssueItem, StatItem } from "@auction/staff-ui";
 import type { ItemSubmission } from "@auction/types";
 
-function qualityCheckById(
-  checkById: Map<string, SubmissionQualityCheck>,
-  id: string,
-): SubmissionQualityCheck {
-  const check = checkById.get(id);
-  if (!check) {
-    throw new Error(`Missing submission quality check: ${id}`);
-  }
-  return check;
-}
-
-export type SubmissionOverviewNextAction = {
-  title: string;
-  message: string;
-  href: string;
-  actionLabel: string;
+/** One fact about the work, as the seller gave it. `missing` marks a detail staff expect. */
+export type SubmissionDetailRow = {
+  id: string;
+  label: string;
+  value: string;
+  missing: boolean;
 };
 
 export type SubmissionOverviewViewModel = {
-  kpiTiles: DetailBoardKpiTile[];
-  qualityGapRows: DetailQualityGapRow[];
-  attentionRows: DetailAttentionRow[];
-  artworkDetailRows: DetailStatRow[];
-  dimensionRows: DetailStatRow[];
-  internalRows: DetailStatRow[];
-  nextAction: SubmissionOverviewNextAction | null;
+  stats: StatItem[];
+  /** What is wrong or missing, most serious first: quality gaps, then what is waiting on staff. */
+  issues: IssueItem[];
+  artworkRows: SubmissionDetailRow[];
+  dimensionRows: SubmissionDetailRow[];
 };
 
 function hasAskingPrice(submission: ItemSubmission): boolean {
@@ -56,43 +29,15 @@ function hasAskingPrice(submission: ItemSubmission): boolean {
   return Boolean(value && value !== "—");
 }
 
-function buildNextAction(
-  submissionId: string,
-  status: ItemSubmission["status"],
-): SubmissionOverviewNextAction | null {
-  const decisionHref = submissionDetailTabHref(submissionId, "decision");
-
-  if (status === "submitted") {
-    return {
-      title: "Awaiting staff review",
-      message: "This submission is awaiting review. Open the decision tab to start review.",
-      href: decisionHref,
-      actionLabel: "Open decision",
-    };
-  }
-
-  if (status === "under_review") {
-    return {
-      title: "Review in progress",
-      message: "Complete approve, reject, or convert actions on the decision tab.",
-      href: decisionHref,
-      actionLabel: "Open decision",
-    };
-  }
-
-  if (status === "approved") {
-    return {
-      title: "Ready to convert",
-      message: "Approve catalogue details and convert this submission into a lot.",
-      href: decisionHref,
-      actionLabel: "Convert to lot",
-    };
-  }
-
-  return null;
+/** "1962: Private collection, London" per entry, one entry to a line. */
+function provenanceText(submission: ItemSubmission): string {
+  return (submission.provenance ?? [])
+    .map((entry) => [entry.period?.trim(), entry.note.trim()].filter(Boolean).join(": "))
+    .filter(Boolean)
+    .join("\n");
 }
 
-function categoryLabel(
+function categoryNames(
   submission: ItemSubmission,
   categories: readonly { id: string; name: string }[],
 ): string {
@@ -102,263 +47,114 @@ function categoryLabel(
       : submission.categoryId
         ? [submission.categoryId]
         : [];
-  if (ids.length === 0) return "—";
-  const byId = new Map(categories.map((c) => [c.id, c.name]));
-  return ids.map((id) => byId.get(id) ?? id).join(", ");
-}
-
-function withFlatKpiOverlay(
-  tile: DetailBoardKpiTile,
-  snapshot: number,
-  periodDays: AdminKpiPeriodDays,
-): DetailBoardKpiTile {
-  const overlay = applyFlatKpiTrendOverlay(snapshot, periodDays);
-  return {
-    ...tile,
-    ...overlay,
-    ...(tile.compareHint ? { compareHint: tile.compareHint } : {}),
-  };
+  const byId = new Map(categories.map((category) => [category.id, category.name]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((name): name is string => Boolean(name))
+    .join(", ");
 }
 
 export function buildSubmissionOverviewViewModel(input: {
   submissionId: string;
   submission: ItemSubmission;
   documentCount: number;
-  submitterDisplayName: string | null;
-  currentUserId: string;
-  assigneeDisplayName?: string | null;
   avgQueueAgeDays?: number | null;
   categories?: readonly { id: string; name: string }[];
 }): SubmissionOverviewViewModel {
-  const {
-    submissionId,
-    submission,
-    documentCount,
-    submitterDisplayName,
-    currentUserId,
-    avgQueueAgeDays = null,
-    categories = [],
-  } = input;
-  const s = submission;
+  const { submissionId, submission: s, documentCount, avgQueueAgeDays = null } = input;
+  const categories = input.categories ?? [];
   const quality = evaluateSubmissionQuality(s);
-  const qualityGapRows = mapSubmissionQualityChecksToGapRows(quality.checks);
-
-  const assignee = buildSubmissionAssigneePresentation({
-    assignedToUserId: s.assignedToUserId,
-    currentUserId,
-    ...(input.assigneeDisplayName != null
-      ? { assigneeDisplayName: input.assigneeDisplayName }
-      : {}),
-  });
   const queueAgeDays = submissionQueueAgeDays(s.createdAt);
-  const documentsHint = documentCount === 0 ? "No uploads" : "View documents";
+  const queueHint = formatQueueAgeCompareHint(queueAgeDays, avgQueueAgeDays);
+  const decisionHref = submissionDetailTabHref(submissionId, "decision");
 
-  const assigneeCompareHint = assignee.isUnassigned
-    ? s.status === "submitted" || s.status === "under_review"
-      ? "Take ownership"
-      : undefined
-    : assignee.isCurrentUser
-      ? "Assigned to you"
-      : (input.assigneeDisplayName ?? undefined);
-
-  const queueAgeCompareHint = formatQueueAgeCompareHint(queueAgeDays, avgQueueAgeDays);
-  const periodDays: AdminKpiPeriodDays = 30;
-
-  const kpiTiles: DetailBoardKpiTile[] = [
-    withFlatKpiOverlay(
-      {
-        id: "assignee",
-        label: "Assigned to",
-        value: assignee.label,
-        ...(assigneeCompareHint ? { compareHint: assigneeCompareHint } : {}),
-        trendTone: assignee.isUnassigned ? "secondary" : "info",
-      },
-      assignee.isUnassigned ? 0 : 1,
-      periodDays,
-    ),
-    withFlatKpiOverlay(
-      {
-        id: "queue-age",
-        label: "Time in review",
-        value: queueAgeDays === 1 ? "1 day" : `${queueAgeDays} days`,
-        ...(queueAgeCompareHint ? { compareHint: queueAgeCompareHint } : {}),
-        trendTone:
-          avgQueueAgeDays != null && queueAgeDays > avgQueueAgeDays ? "accent-gold" : "muted",
-      },
-      queueAgeDays,
-      periodDays,
-    ),
-    withFlatKpiOverlay(
-      {
-        id: "documents",
-        label: "Documents",
-        value: String(documentCount),
-        compareHint: documentsHint,
-        trendTone: documentCount === 0 ? "secondary" : "info",
-      },
-      documentCount,
-      periodDays,
-    ),
+  const stats: StatItem[] = [
+    {
+      id: "queue-age",
+      label: "Time since submitted",
+      value: queueAgeDays === 1 ? "1 day" : `${queueAgeDays} days`,
+      ...(queueHint ? { hint: queueHint } : {}),
+      ...(queueHint === "Above avg" ? { hintTone: "negative" as const } : {}),
+    },
+    {
+      id: "documents",
+      label: "Documents",
+      value: String(documentCount),
+      hint: documentCount === 0 ? "No uploads" : "Attached",
+    },
   ];
 
-  const attentionRows: DetailAttentionRow[] = [];
-
-  if (s.images.length === 0) {
-    attentionRows.push({
-      id: "missing-images",
-      title: "No catalogue images",
-      count: 1,
-      category: "Catalogue",
-      severity: "high",
-      actionLabel: "Review submission",
-      href: submissionDetailTabHref(submissionId, "decision"),
-      iconKind: "catalog",
-    });
-  }
+  const issues: IssueItem[] = mapSubmissionQualityChecksToGapRows(quality.checks).map((gap) => ({
+    id: gap.id,
+    label: gap.message,
+    tone: gap.severity === "required" ? ("danger" as const) : ("warning" as const),
+    tag: "Catalogue",
+  }));
 
   if (!hasAskingPrice(s)) {
-    attentionRows.push({
+    issues.push({
       id: "missing-asking",
-      title: "No asking price",
-      count: 1,
-      category: "Commercial",
-      severity: "medium",
-      actionLabel: "Review submission",
-      href: submissionDetailTabHref(submissionId, "decision"),
-      iconKind: "finance",
+      label: "No asking price",
+      tone: "warning",
+      tag: "Commercial",
     });
   }
-
   if (documentCount === 0) {
-    attentionRows.push({
+    issues.push({
       id: "missing-documents",
-      title: "No supporting documents",
-      count: 1,
-      category: "Documents",
-      severity: "medium",
-      actionLabel: "View documents",
-      href: submissionDetailTabHref(submissionId, "documents"),
-      iconKind: "general",
+      label: "No supporting documents",
+      tone: "warning",
+      tag: "Documents",
+      action: { label: "View documents", href: submissionDetailTabHref(submissionId, "documents") },
     });
   }
-
   if (s.status === "submitted" || s.status === "under_review") {
-    attentionRows.push({
+    issues.push({
       id: "awaiting-review",
-      title: "Awaiting staff action",
-      count: 1,
-      category: "Review",
-      severity: s.status === "submitted" ? "critical" : "high",
-      actionLabel: "Open decision",
-      href: submissionDetailTabHref(submissionId, "decision"),
-      iconKind: "setup",
+      label: s.status === "submitted" ? "Waiting for a reviewer to start" : "Review in progress",
+      tone: s.status === "submitted" ? "danger" : "warning",
+      tag: "Review",
+      action: { label: "Open decision", href: decisionHref },
     });
   }
-
   if (s.status === "rejected" && !s.rejectionReason?.trim()) {
-    attentionRows.push({
+    issues.push({
       id: "missing-rejection-reason",
-      title: "Rejection reason missing",
-      count: 1,
-      category: "Review",
-      severity: "medium",
-      actionLabel: "Open decision",
-      href: submissionDetailTabHref(submissionId, "decision"),
-      iconKind: "general",
+      label: "The rejection has no reason on record",
+      tone: "warning",
+      tag: "Review",
     });
   }
 
-  const checkById = new Map(quality.checks.map((c) => [c.id, c]));
-
-  const artworkDetailRows: DetailStatRow[] = [
-    detailStatRowFromQualityCheck(qualityCheckById(checkById, "title"), s.title?.trim() || "—"),
-    detailStatRowFromQualityCheck(
-      qualityCheckById(checkById, "description"),
-      s.description?.trim() || "—",
-    ),
-    detailStatRowFromQualityCheck(qualityCheckById(checkById, "medium"), s.medium?.trim() || "—"),
-    detailStatRowFromQualityCheck(
-      qualityCheckById(checkById, "category"),
-      categoryLabel(s, categories),
-    ),
-    detailStatRowFromQualityCheck(
-      qualityCheckById(checkById, "provenance"),
-      s.provenance?.length ? s.provenance.join(" · ") : "—",
-    ),
-  ];
-
-  const dimensionRows: DetailStatRow[] = [
-    detailStatRowFromQualityCheck(
-      qualityCheckById(checkById, "dimensions"),
-      s.dimensions?.trim() || "—",
-    ),
-    detailStatRowFromQualityCheck(
-      qualityCheckById(checkById, "signature"),
-      s.signatureNote?.trim() || "—",
-    ),
-  ];
-
-  const internalRows: DetailStatRow[] = [
-    { id: "id", label: "Submission ID", value: s.id },
-    {
-      id: "asking",
-      label: "Asking / reserve",
-      value: `${s.askingPrice ?? "—"} · ${s.reservePrice ?? "—"}`,
-    },
-    {
-      id: "lot",
-      label: "Converted lot ID",
-      value: s.convertedLotId ?? "—",
-    },
-    ...(submitterDisplayName || s.legalEntityId || s.sellerId
-      ? [
-          {
-            id: "seller",
-            label: "Legal entity / seller",
-            value: [
-              submitterDisplayName,
-              s.legalEntityId ? `Legal entity: ${s.legalEntityId}` : null,
-              s.sellerId ? `Seller (legacy): ${s.sellerId}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · "),
-          },
-        ]
-      : []),
-    {
-      id: "created",
-      label: "Created",
-      value: formatAdminTableDateTime(s.createdAt, "timestamp").primary,
-      ...adminDateStatExtras(s.createdAt, "timestamp"),
-    },
-    {
-      id: "updated",
-      label: "Last updated",
-      value: formatAdminTableDateTime(s.updatedAt, "timestamp").primary,
-      ...adminDateStatExtras(s.updatedAt, "timestamp"),
-    },
-    {
-      id: "reviewed",
-      label: "Reviewed",
-      value: s.reviewedAt
-        ? `${formatAdminTableDateTime(s.reviewedAt, "timestamp").primary}${s.reviewedBy ? ` by ${s.reviewedBy.slice(0, 8)}…` : ""}`
-        : "—",
-      ...adminDateStatExtras(s.reviewedAt, "timestamp"),
-    },
-    {
-      id: "notes",
-      label: "Staff review notes on record",
-      value: s.reviewNotes ?? "—",
-    },
-  ];
+  const row = (
+    id: string,
+    label: string,
+    value: string | null | undefined,
+  ): SubmissionDetailRow => {
+    const text = value?.trim() ?? "";
+    return { id, label, value: text, missing: text === "" };
+  };
+  const failed = new Set(quality.checks.filter((check) => !check.ok).map((check) => check.id));
 
   return {
-    kpiTiles,
-    qualityGapRows,
-    attentionRows,
-    artworkDetailRows,
-    dimensionRows,
-    internalRows,
-    nextAction: buildNextAction(submissionId, s.status),
+    stats,
+    issues,
+    artworkRows: [
+      row("description", "Description", s.description),
+      row("medium", "Medium", s.medium),
+      {
+        ...row("category", "Category", categoryNames(s, categories)),
+        missing: failed.has("category"),
+      },
+      row("provenance", "Provenance", provenanceText(s)),
+      row("edition", "Edition", s.edition),
+      row("year", "Year of work", s.yearOfWork),
+      row("signed", "Signed", s.isSigned ? "Yes" : "No"),
+      row("condition", "Condition (seller's view)", s.conditionSelfReport),
+    ],
+    dimensionRows: [
+      row("dimensions", "Dimensions", s.dimensions),
+      row("signature", "Signature", s.signatureNote),
+    ],
   };
 }

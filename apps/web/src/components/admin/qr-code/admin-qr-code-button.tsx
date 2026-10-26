@@ -7,16 +7,7 @@ import {
 } from "@/lib/actions/admin-qr-codes";
 import type { AdminQrCodeItem as QrCodeItem } from "@/lib/services/interfaces/admin-qr-codes-service";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@auction/ui/components/dialog";
-import { Skeleton } from "@auction/ui/components/skeleton";
+import { ConfirmActionDialog, Notice, Skeleton, StaffButton, StaffDialog } from "@auction/staff-ui";
 import type { QrCodeDetailedAnalytics } from "@auction/validators";
 import { Download, Printer, QrCode, RotateCcw } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -24,7 +15,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 
 const QRCodeSVG = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG), {
   ssr: false,
-  loading: () => <div className="size-56 animate-pulse rounded-lg bg-surface-container-high" />,
+  loading: () => <Skeleton className="size-56 rounded-staff-md" />,
 });
 
 type EntityType = "sale" | "lot";
@@ -196,168 +187,145 @@ export function AdminQrCodeButton({
   const actionsDisabled = loading || renderingPng || printing || regenerating;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
       {controlled ? null : (
-        <DialogTrigger asChild>
-          <Button type="button" variant="outline" size="sm">
-            <QrCode className="size-4" aria-hidden />
-            QR code
-          </Button>
-        </DialogTrigger>
+        <StaffButton
+          size="sm"
+          variant="secondary"
+          icon={<QrCode aria-hidden />}
+          onClick={() => setOpen(true)}
+        >
+          QR code
+        </StaffButton>
       )}
-      <DialogContent className="flex max-h-[min(90vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="shrink-0 space-y-1.5 border-b border-border-hairline px-6 pt-6 pb-4 pr-12 text-left">
-          <DialogTitle>Marketing QR code</DialogTitle>
-          <DialogDescription>
-            Dynamic QR link for printed gallery and campaign material.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
-          {loading && !item ? <QrCodeDialogSkeleton /> : null}
-          {!loading && loadError && !item ? (
-            <div className="rounded-lg border border-error/30 bg-error-container/20 p-4 text-sm">
-              <p className="font-medium text-on-surface">Could not load QR code</p>
-              <p className="mt-1 text-on-surface-variant">{loadError}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => void load()}
-              >
+      <StaffDialog
+        open={open}
+        onOpenChange={setOpen}
+        size="md"
+        title="Marketing QR code"
+        description="Dynamic QR link for printed gallery and campaign material."
+        footer={
+          <StaffButton variant="secondary" onClick={() => setOpen(false)}>
+            Close
+          </StaffButton>
+        }
+      >
+        {loading && !item ? <QrCodeDialogSkeleton /> : null}
+        {!loading && loadError && !item ? (
+          <Notice
+            tone="danger"
+            alert
+            title="Could not load QR code"
+            actions={
+              <StaffButton size="sm" variant="secondary" onClick={() => void load()}>
                 Try again
-              </Button>
+              </StaffButton>
+            }
+          >
+            {loadError}
+          </Notice>
+        ) : null}
+        {item ? (
+          <div className="flex flex-col gap-5">
+            <div className="flex justify-center rounded-staff-md border border-staff-line bg-white p-5">
+              <QRCodeSVG id={qrId} value={item.shortUrl} size={224} level="M" includeMargin />
             </div>
-          ) : null}
-          {item ? (
-            <div className="space-y-5">
-              <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5 dark:bg-surface-container-highest">
-                <QRCodeSVG id={qrId} value={item.shortUrl} size={224} level="M" includeMargin />
-              </div>
-              <div className="space-y-1 text-sm">
-                <p className="font-medium text-on-surface">Short URL</p>
-                <p className="break-all text-on-surface-variant">{item.shortUrl}</p>
-                <p className="break-all text-xs text-on-surface-variant">
-                  Destination: {item.destinationUrl}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void copy()}
-                  disabled={actionsDisabled}
-                >
-                  Copy link
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadSvg}
-                  disabled={actionsDisabled}
-                >
-                  <Download className="size-4" aria-hidden />
-                  SVG
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void downloadPng()}
-                  disabled={actionsDisabled}
-                  aria-busy={renderingPng || undefined}
-                >
-                  <Download className="size-4" aria-hidden />
-                  {renderingPng ? "Rendering..." : "PNG"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={print}
-                  disabled={actionsDisabled}
-                  aria-busy={printing || undefined}
-                >
-                  <Printer className="size-4" aria-hidden />
-                  {printing ? "Opening print..." : "Print"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmRegenerateOpen(true)}
-                  disabled={actionsDisabled}
-                >
-                  <RotateCcw className="size-4" aria-hidden />
-                  {regenerating ? "Regenerating..." : "Regenerate"}
-                </Button>
-              </div>
-              <QrAnalyticsPanel
-                key={analyticsSession}
-                qrCodeId={item.id}
-                initialAnalytics={analytics}
-              />
+            <div className="flex flex-col gap-1 text-staff-sm">
+              <p className="font-medium text-staff-fg">Short URL</p>
+              <p className="break-all text-staff-muted">{item.shortUrl}</p>
+              <p className="break-all text-staff-xs text-staff-muted">
+                Destination: {item.destinationUrl}
+              </p>
             </div>
-          ) : null}
-        </div>
-      </DialogContent>
-      <Dialog open={confirmRegenerateOpen} onOpenChange={setConfirmRegenerateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Regenerate QR code?</DialogTitle>
-            <DialogDescription>
-              This creates a new QR link and disables the current one. Existing printed QR codes for
-              this {entityType} will return inactive, while analytics history stays preserved.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmRegenerateOpen(false)}
-              disabled={regenerating}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => void regenerate()}
-              disabled={regenerating}
-              aria-busy={regenerating || undefined}
-            >
-              {regenerating ? "Regenerating..." : "Regenerate QR code"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <StaffButton
+                size="sm"
+                variant="primary"
+                onClick={() => void copy()}
+                disabled={actionsDisabled}
+              >
+                Copy link
+              </StaffButton>
+              <StaffButton
+                size="sm"
+                variant="secondary"
+                icon={<Download aria-hidden />}
+                onClick={downloadSvg}
+                disabled={actionsDisabled}
+              >
+                SVG
+              </StaffButton>
+              <StaffButton
+                size="sm"
+                variant="secondary"
+                icon={<Download aria-hidden />}
+                loading={renderingPng}
+                onClick={() => void downloadPng()}
+                disabled={actionsDisabled}
+              >
+                PNG
+              </StaffButton>
+              <StaffButton
+                size="sm"
+                variant="secondary"
+                icon={<Printer aria-hidden />}
+                loading={printing}
+                onClick={print}
+                disabled={actionsDisabled}
+              >
+                Print
+              </StaffButton>
+              <StaffButton
+                size="sm"
+                variant="secondary"
+                icon={<RotateCcw aria-hidden />}
+                loading={regenerating}
+                onClick={() => setConfirmRegenerateOpen(true)}
+                disabled={actionsDisabled}
+              >
+                Regenerate
+              </StaffButton>
+            </div>
+            <QrAnalyticsPanel
+              key={analyticsSession}
+              qrCodeId={item.id}
+              initialAnalytics={analytics}
+            />
           </div>
-        </DialogContent>
-      </Dialog>
-    </Dialog>
+        ) : null}
+      </StaffDialog>
+      <ConfirmActionDialog
+        open={confirmRegenerateOpen}
+        onOpenChange={setConfirmRegenerateOpen}
+        title="Regenerate QR code?"
+        description={`This creates a new QR link and disables the current one. Existing printed QR codes for this ${entityType} will return inactive, while analytics history stays preserved.`}
+        confirmLabel="Regenerate QR code"
+        cancelLabel="Keep current code"
+        tone="danger"
+        loading={regenerating}
+        onConfirm={() => void regenerate()}
+      />
+    </>
   );
 }
 
 function QrCodeDialogSkeleton() {
   return (
-    <div className="space-y-5" aria-busy="true" aria-label="Loading QR code details">
-      <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5 dark:bg-surface-container-highest">
-        <Skeleton className="size-56 rounded-lg" />
+    <div className="flex flex-col gap-5" aria-busy="true" aria-label="Loading QR code details">
+      <div className="flex justify-center rounded-staff-md border border-staff-line bg-white p-5">
+        <Skeleton className="size-56 rounded-staff-md" />
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-3 w-4/5" />
       </div>
       <div className="flex flex-wrap gap-2">
-        <Skeleton className="h-9 w-24" />
-        <Skeleton className="h-9 w-16" />
-        <Skeleton className="h-9 w-16" />
-        <Skeleton className="h-9 w-20" />
-        <Skeleton className="h-9 w-28" />
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <Skeleton className="h-20 rounded-lg" />
-        <Skeleton className="h-20 rounded-lg" />
-        <Skeleton className="h-20 rounded-lg" />
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-8 w-16" />
+        <Skeleton className="h-8 w-16" />
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="h-8 w-28" />
       </div>
     </div>
   );

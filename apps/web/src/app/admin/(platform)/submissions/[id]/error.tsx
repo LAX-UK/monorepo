@@ -1,10 +1,5 @@
 "use client";
 
-import { createCatalogDetailRouteError } from "@/components/admin/catalog/create-catalog-detail-route-error";
+import { createStaffTabError } from "@/components/admin/staff/create-staff-tab-error";
 
-export default createCatalogDetailRouteError({
-  title: "Submission",
-  listLabel: "Submissions",
-  listHref: "/admin/submissions",
-  breadcrumbs: [{ label: "Submissions", href: "/admin/submissions" }],
-});
+export default createStaffTabError({ title: "This submission section did not load" });

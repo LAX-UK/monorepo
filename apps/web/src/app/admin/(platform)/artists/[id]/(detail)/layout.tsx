@@ -1,9 +1,6 @@
 import { ArtistDetailShell } from "@/components/admin/artist-detail/artist-detail-shell";
 import { loadAdminArtistDetailContext } from "@/lib/admin/artists/load-artist-detail-context";
-import {
-  getAdminArtistDeleteEligibility,
-  getAdminDomainEventsForAggregate,
-} from "@/lib/data/http/admin.server";
+import { getAdminArtistDeleteEligibility } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   ARTIST_DELETE_ACCESS,
@@ -22,12 +19,7 @@ type Props = {
 
 export default async function AdminArtistDetailLayout({ params, children }: Props) {
   const { id } = await params;
-  const [detail, activityEvents] = await Promise.all([
-    loadAdminArtistDetailContext(id),
-    getAdminDomainEventsForAggregate({ aggregateType: "artist", aggregateId: id, limit: 5 }).catch(
-      () => [],
-    ),
-  ]);
+  const detail = await loadAdminArtistDetailContext(id);
   if (!detail) notFound();
   const { artist, lotCount, duplicates } = detail;
 
@@ -54,7 +46,6 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
       lotCount={lotCount}
       duplicateCount={duplicates.length}
       publicHref={publicHref}
-      activityEvents={activityEvents}
       deleteEligibility={deleteEligibility}
       canManageDelete={canManageDelete}
       canEdit={canEdit}

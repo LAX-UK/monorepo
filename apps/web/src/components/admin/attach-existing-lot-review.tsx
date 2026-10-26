@@ -1,9 +1,10 @@
 "use client";
 
 import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
-import { LotAuctionTypeChip } from "@/components/admin/lot-auction-type-chip";
-import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
-import { LabelCaps } from "@/components/ui/typography";
+import {
+  LotWindowFields,
+  isoToFormString,
+} from "@/components/admin/sale-lots-tab/lot-window-fields";
 import { adminGetLotAttachPreviewAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import {
@@ -20,22 +21,27 @@ import {
   attachLotReviewPrompt,
   attachLotScheduleConflictBanner,
   emptySaleSetupLotRow,
-  fieldTierSuffix,
   syncLotsToSaleWindowLabel,
 } from "@/lib/admin/sale-setup";
 import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale-setup-action-failure.client";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
+import { resolveLotAuctionTypePresentation } from "@/lib/presenters/lot-auction-type-presentation";
 import { notify } from "@/lib/ui/notify";
+import {
+  KeyValueList,
+  Notice,
+  StaffButton,
+  type StaffLinkComponent,
+  TextLink,
+} from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { Form, FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
-import { LoadingButton } from "@auction/ui/components/loading-button";
-import { toDatetimeFormString } from "@auction/ui/lib/datetime";
+import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { formatAuctionDatetimeDisplay, saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+
+const NextLink: StaffLinkComponent = Link;
 
 type SaleWindow = Pick<Sale, "deliveryMode" | "startTime" | "endTime">;
 
@@ -233,8 +239,19 @@ export function AttachExistingLotReview({
     !scheduleViolation &&
     validateAttachReviewSchedule(values, ctx).ok;
 
+  const startError = form.formState.errors.startTime?.message;
+  const endError = form.formState.errors.endTime?.message;
+  const toIso = (value: string | undefined) => {
+    if (!value?.trim()) return null;
+    const instant = instantFromDatetimeFormString(value);
+    return instant ? instant.toISOString() : null;
+  };
+  const category = resolveCategoryLabels(values.categoryIds, categories);
+  const artist = previewLot ? artistLabel(previewLot.artistId, artists) : null;
+  const windowText = `${formatAuctionDatetimeDisplay(saleWindow.startTime)} – ${formatAuctionDatetimeDisplay(saleWindow.endTime)}`;
+
   return (
-    <div className={className ?? "space-y-4"}>
+    <div className={className ?? "flex flex-col gap-4"}>
       {headerSlot}
 
       {!previewLot && !loadingPreview ? (
@@ -251,163 +268,106 @@ export function AttachExistingLotReview({
       ) : null}
 
       {loadingPreview ? (
-        <p className="font-body text-sm text-on-surface-variant">Loading lot details…</p>
+        <output className="block text-staff-sm text-staff-muted">Loading lot details…</output>
       ) : null}
 
       {previewError ? (
-        <p className="font-body text-sm text-error" role="alert">
+        <Notice tone="danger" alert title="Could not load that lot">
           {previewError}
-        </p>
+        </Notice>
       ) : null}
 
       {previewLot ? (
-        <Form {...form}>
-          <div className="space-y-4 rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-headline text-base text-on-surface">{attachLotReviewPrompt()}</p>
-                <p className="mt-1 font-body text-sm text-on-surface-variant">
-                  <Link
-                    href={`/admin/lots/${previewLot.id}/edit`}
-                    className="text-link hover:underline"
-                  >
-                    Edit full lot details
-                  </Link>
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={disabled || pending}
-                onClick={clearSelection}
-              >
-                {attachLotChangeLotLabel()}
-              </Button>
-            </div>
-
-            <dl className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                  Title
-                </dt>
-                <dd className="font-body text-sm text-on-surface">{previewLot.title}</dd>
-              </div>
-              <div>
-                <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                  Auction type
-                </dt>
-                <dd className="font-body text-sm text-on-surface">
-                  <LotAuctionTypeChip auctionType={previewLot.auctionType} />
-                </dd>
-              </div>
-              <div>
-                <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                  Starting price
-                </dt>
-                <dd className="font-body text-sm text-on-surface">{previewLot.startingPrice}</dd>
-              </div>
-              <div>
-                <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                  Categories
-                </dt>
-                <dd className="font-body text-sm text-on-surface">
-                  {resolveCategoryLabels(values.categoryIds, categories)}
-                </dd>
-              </div>
-              {artistLabel(previewLot.artistId, artists) ? (
-                <div>
-                  <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                    Artist
-                  </dt>
-                  <dd className="font-body text-sm text-on-surface">
-                    {artistLabel(previewLot.artistId, artists)}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-
-            {inheritsTiming ? (
-              <p className="font-body text-xs text-on-surface-variant">
-                Lot times match the sale schedule automatically for onsite sales (
-                {formatAuctionDatetimeDisplay(saleWindow.startTime)} –{" "}
-                {formatAuctionDatetimeDisplay(saleWindow.endTime)}).
+        <div className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-staff-md font-semibold text-staff-fg">{attachLotReviewPrompt()}</p>
+              <p className="mt-1 text-staff-sm">
+                <TextLink Link={NextLink} href={`/admin/lots/${previewLot.id}/edit`}>
+                  Edit full lot details
+                </TextLink>
               </p>
-            ) : (
-              <div className="space-y-4">
-                {scheduleViolation ? (
-                  <Alert className="border-warning/40 bg-warning/5">
-                    <AlertDescription className="space-y-3 font-body text-sm text-on-surface-variant">
-                      <p>{attachLotScheduleConflictBanner()}</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={syncScheduleToWindow}
-                      >
-                        {syncLotsToSaleWindowLabel(1)}
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
+            </div>
+            <StaffButton
+              size="sm"
+              variant="ghost"
+              disabled={disabled || pending}
+              onClick={clearSelection}
+            >
+              {attachLotChangeLotLabel()}
+            </StaffButton>
+          </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="startTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          <LabelCaps>Lot opens{fieldTierSuffix("required")}</LabelCaps>
-                        </FormLabel>
-                        <RhfDateTimePicker
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          disabled={disabled || pending}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="endTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          <LabelCaps>Lot closes{fieldTierSuffix("required")}</LabelCaps>
-                        </FormLabel>
-                        <RhfDateTimePicker
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          disabled={disabled || pending}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <p className="font-body text-xs text-on-surface-variant">
-                  Sale runs {formatAuctionDatetimeDisplay(saleWindow.startTime)} –{" "}
-                  {formatAuctionDatetimeDisplay(saleWindow.endTime)} (London time). Lot times must
-                  fall within this window.
-                </p>
-              </div>
-            )}
+          <KeyValueList
+            columns={2}
+            items={[
+              { label: "Title", value: previewLot.title },
+              {
+                label: "Auction type",
+                value: resolveLotAuctionTypePresentation(previewLot.auctionType).label,
+              },
+              { label: "Starting price", value: previewLot.startingPrice, numeric: true },
+              { label: "Categories", value: category },
+              ...(artist ? [{ label: "Artist", value: artist }] : []),
+            ]}
+          />
 
-            <LoadingButton
-              type="button"
+          {inheritsTiming ? (
+            <p className="text-staff-sm text-staff-muted">
+              Lot times match the sale schedule automatically for onsite sales ({windowText}).
+            </p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {scheduleViolation ? (
+                <Notice
+                  tone="warning"
+                  title="This lot's times fall outside the sale"
+                  actions={
+                    <StaffButton size="sm" variant="secondary" onClick={syncScheduleToWindow}>
+                      {syncLotsToSaleWindowLabel(1)}
+                    </StaffButton>
+                  }
+                >
+                  {attachLotScheduleConflictBanner()}
+                </Notice>
+              ) : null}
+              <LotWindowFields
+                start={toIso(lotStartValue)}
+                end={toIso(lotEndValue)}
+                onStartChange={(iso) =>
+                  form.setValue("startTime", isoToFormString(iso), {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+                onEndChange={(iso) =>
+                  form.setValue("endTime", isoToFormString(iso), {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+                startError={startError}
+                endError={endError}
+                disabled={disabled || pending}
+                idPrefix="attach-review"
+              />
+              <p className="text-staff-xs text-staff-muted">
+                Sale runs {windowText} (London time). Lot times must fall within this window.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <StaffButton
+              variant="primary"
               loading={pending}
               disabled={disabled || !canAttach}
               onClick={attach}
-              className="w-full sm:w-auto"
             >
               Attach to sale
-            </LoadingButton>
+            </StaffButton>
           </div>
-        </Form>
+        </div>
       ) : null}
     </div>
   );

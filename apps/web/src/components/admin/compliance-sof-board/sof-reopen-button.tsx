@@ -1,46 +1,31 @@
 "use client";
 
-import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { sofReopenAction } from "@/lib/actions/compliance";
-import { notify } from "@/lib/ui/notify";
-import type { ButtonProps } from "@auction/ui/components/button";
-import { useRouter } from "next/navigation";
+import { StaffButton } from "@auction/staff-ui";
 
-type Props = Omit<ButtonProps, "onClick" | "type"> & {
-  caseId: string;
-  confirmTitle?: string;
-  confirmBody?: string;
-  confirmLabel?: string;
-};
-
-export function SofReopenButton({
-  caseId,
-  confirmTitle = "Reopen rejected case?",
-  confirmBody = "Maker-checker fields will be cleared and the case returns to pending review.",
-  confirmLabel = "Reopen for review",
-  children,
-  ...buttonProps
-}: Props) {
-  const router = useRouter();
+/** Reopen a rejected case for review, after confirming; maker-checker fields are cleared. */
+export function SofReopenButton({ caseId }: { caseId: string }) {
+  const confirm = useStaffConfirm();
 
   return (
-    <ConfirmActionButton
-      {...buttonProps}
-      confirmTitle={confirmTitle}
-      confirmBody={confirmBody}
-      confirmLabel={confirmLabel}
-      tone="warning"
-      onConfirmed={async () => {
-        const r = await sofReopenAction({ caseId });
-        if (!r.ok) {
-          notify.error(r.error);
-          throw new Error(r.error);
+    <>
+      <StaffButton
+        variant="secondary"
+        onClick={() =>
+          confirm.ask({
+            title: "Reopen this rejected case?",
+            description: "Maker-checker fields are cleared and the case returns to pending review.",
+            confirmLabel: "Reopen for review",
+            cancelLabel: "Keep rejected",
+            run: () => sofReopenAction({ caseId }),
+            success: "Rejected case reopened for review",
+          })
         }
-        notify.success("Rejected case reopened for review");
-        router.refresh();
-      }}
-    >
-      {children}
-    </ConfirmActionButton>
+      >
+        Reopen for review
+      </StaffButton>
+      {confirm.dialog}
+    </>
   );
 }

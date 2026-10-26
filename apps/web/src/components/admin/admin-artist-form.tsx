@@ -1,145 +1,124 @@
 "use client";
 
-import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
-import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
-import { AdminArtistWizardSteps } from "@/components/admin/artist-form/admin-artist-wizard-steps";
-import {
-  ARTIST_SETUP_STEPS,
-  artistSetupStepLabel,
-} from "@/components/admin/artist-form/artist-setup-steps";
-import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-badge";
-import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
+import { ARTIST_FORM_ID } from "@/components/admin/artist-form/admin-artist-form.constants";
+import { ArtistPreview } from "@/components/admin/artist-form/artist-preview";
+import { AttributesSection } from "@/components/admin/artist-form/sections/attributes-section";
+import { BiographySection } from "@/components/admin/artist-form/sections/biography-section";
+import { CategoriesSection } from "@/components/admin/artist-form/sections/categories-section";
+import { FlagsSection } from "@/components/admin/artist-form/sections/flags-section";
+import { IdentitySection } from "@/components/admin/artist-form/sections/identity-section";
+import { KindSection } from "@/components/admin/artist-form/sections/kind-section";
+import { LifespanSection } from "@/components/admin/artist-form/sections/lifespan-section";
+import { MediaSection } from "@/components/admin/artist-form/sections/media-section";
+import { UserLinkSection } from "@/components/admin/artist-form/sections/user-link-section";
+import type { ArtistFormValues } from "@/components/admin/artist-form/types";
 import { useAdminArtistForm } from "@/components/admin/artist-form/use-admin-artist-form";
-import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
-import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
+import { artistKindMeta } from "@/lib/artists/kind-presenter";
+import {
+  FormActions,
+  FormErrorSummary,
+  Notice,
+  StaffButton,
+  UnsavedChangesDialog,
+} from "@auction/staff-ui";
 import type { CategoryNode } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Form } from "@auction/ui/components/form";
-import { LoadingButton } from "@auction/ui/components/loading-button";
+import Link from "next/link";
 
 type Props = {
   mode: "create" | "edit";
   artistId?: string;
+  /** The profile's name, for "Discard changes to …?". */
+  displayName?: string;
   slug?: string;
   defaultValues: ArtistFormValues;
   categories?: CategoryNode[];
-  initialScenario?: ArtistScenario | null;
   readOnly?: boolean;
-  /** Cancel button navigates here (defaults to `/admin/artists`). */
+  /** Cancel goes here (defaults to the artists list). */
   cancelHref?: string;
-  /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
-  htmlFormId?: string;
-  /** Full-page create/edit uses a right sidebar stepper; other flows keep horizontal chips. */
-  wizardLayout?: "default" | "sidebar";
 };
 
+/**
+ * Creating or editing an artist profile as one page of sections: kind, identity, dates, biography,
+ * images, departments, linked account and status. Validates on submit and again as each field
+ * changes, lists what to fix at the top, asks before unsaved changes are lost, and keeps a new
+ * profile's unfinished form as a draft on this device.
+ */
 export function AdminArtistForm({
   mode,
   artistId,
+  displayName,
   slug,
   defaultValues,
   categories = [],
-  initialScenario: _initialScenario = null,
   readOnly = false,
   cancelHref = "/admin/artists",
-  htmlFormId,
-  wizardLayout = "default",
 }: Props) {
-  const { guardedPush } = useGuardedNavigation();
   const {
     form,
+    guard,
     submit,
-    isSubmitting,
-    validationBanner,
-    validationStepIndex,
-    wizardGoToRef,
-    activeScenario,
-    watchedDisplay,
+    saving,
+    summary,
+    submitCount,
+    formError,
+    draft,
+    scenario,
     watchedKind,
+    watchedDisplay,
     watchedShortBio,
     watchedPortrait,
-    clearBanner,
-    handleBeforeNext,
-    draftExtras,
-  } = useAdminArtistForm({ mode, artistId, defaultValues, readOnly });
-
-  const submitSlot = (
-    <LoadingButton
-      type="submit"
-      loading={isSubmitting}
-      loadingLabel="Saving…"
-      disabled={readOnly}
-      data-wizard-submit="true"
-      className="min-h-11 w-full sm:w-auto"
-    >
-      {mode === "create" ? "Create artist" : "Save artist"}
-    </LoadingButton>
-  );
+  } = useAdminArtistForm({ mode, artistId, displayName, defaultValues, readOnly });
+  const { control } = form;
+  const base = { control, disabled: readOnly } as const;
 
   return (
     <>
-      <FormDirtyGuard isDirty={form.formState.isDirty} />
-      <Form {...form}>
-        <form id={htmlFormId} className="space-y-8" onSubmit={submit}>
-          {mode === "edit" ? <ArtistScenarioBadge scenario={activeScenario} /> : null}
+      <form
+        id={ARTIST_FORM_ID}
+        noValidate
+        aria-label={mode === "create" ? "New artist" : "Edit artist"}
+        className="flex flex-col gap-6"
+        onSubmit={submit}
+      >
+        {draft.banner}
+        <FormErrorSummary errors={summary} focusKey={submitCount} />
+        {formError ? (
+          <Notice tone="danger" alert title="The artist was not saved">
+            {formError}
+          </Notice>
+        ) : null}
 
-          {validationBanner ? (
-            <WizardValidationBanner
-              message={validationBanner}
-              {...(validationStepIndex != null
-                ? {
-                    stepLabel: artistSetupStepLabel(validationStepIndex),
-                    onJumpToStep: () => wizardGoToRef.current(validationStepIndex),
-                  }
-                : {})}
-            />
-          ) : null}
+        <KindSection {...base} kind={watchedKind} />
+        <IdentitySection {...base} mode={mode} {...(slug ? { slug } : {})} />
+        <LifespanSection {...base} kind={watchedKind} />
+        <BiographySection {...base} />
+        <MediaSection {...base} />
+        <CategoriesSection {...base} categories={categories} />
+        <AttributesSection {...base} kind={watchedKind} />
+        <UserLinkSection {...base} scenario={scenario} />
+        <FlagsSection {...base} />
+        <ArtistPreview
+          scenario={scenario}
+          data={{
+            displayName: String(watchedDisplay),
+            kindLabel: artistKindMeta(watchedKind).label,
+            shortBio: String(watchedShortBio ?? ""),
+            portraitUrl: String(watchedPortrait ?? ""),
+          }}
+        />
 
-          <AdminFormWizard
-            steps={ARTIST_SETUP_STEPS}
-            isDirty={form.formState.isDirty}
-            pending={isSubmitting}
-            layout={wizardLayout}
-            hideStickyOnMobile={wizardLayout === "sidebar" && Boolean(htmlFormId)}
-            showSubmitOnAllSteps={wizardLayout === "sidebar" && mode === "edit"}
-            onStepControl={({ goTo }) => {
-              wizardGoToRef.current = goTo;
-            }}
-            onBeforeNext={handleBeforeNext}
-            onStepBack={clearBanner}
-            submitSlot={submitSlot}
-            leadingSlot={
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isSubmitting}
-                className="min-h-11 w-full sm:w-auto"
-                onClick={() => guardedPush(cancelHref)}
-              >
-                Cancel
-              </Button>
-            }
-            {...draftExtras}
-          >
-            {(stepIndex) => (
-              <AdminArtistWizardSteps
-                stepIndex={stepIndex}
-                control={form.control}
-                mode={mode}
-                {...(slug ? { slug } : {})}
-                categories={categories}
-                activeScenario={activeScenario}
-                watchedKind={watchedKind}
-                watchedDisplay={watchedDisplay}
-                watchedShortBio={watchedShortBio}
-                watchedPortrait={watchedPortrait}
-                isSubmitting={isSubmitting}
-                readOnly={readOnly}
-              />
-            )}
-          </AdminFormWizard>
-        </form>
-      </Form>
+        <FormActions sticky start={draft.status}>
+          <StaffButton asChild variant="secondary">
+            <Link href={cancelHref}>{readOnly ? "Back to profile" : "Cancel"}</Link>
+          </StaffButton>
+          {readOnly ? null : (
+            <StaffButton type="submit" variant="primary" loading={saving}>
+              {mode === "create" ? "Create artist" : "Save changes"}
+            </StaffButton>
+          )}
+        </FormActions>
+      </form>
+      <UnsavedChangesDialog guard={guard} />
     </>
   );
 }

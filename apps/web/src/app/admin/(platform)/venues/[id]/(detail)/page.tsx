@@ -1,4 +1,4 @@
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { VenueOverviewTab } from "@/components/admin/venue-detail/tabs/overview-tab";
 import { loadAdminVenueDetail } from "@/lib/admin/load-venue-detail";
 
@@ -14,7 +14,7 @@ export default async function AdminVenueOverviewPage({ params, searchParams }: P
 
   return (
     <>
-      <CatalogDetailActionError error={sp.error} title="Could not save venue" />
+      <StaffActionError error={sp.error} title="The venue was not saved" />
       <VenueOverviewTab venueId={id} detail={detail} />
     </>
   );

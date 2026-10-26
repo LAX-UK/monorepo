@@ -1,5 +1,5 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { ListPageSkeleton } from "@auction/staff-ui";
 
 export default function AdminLoading() {
-  return <AdminListPageSkeleton title="Loading admin…" kpiTiles={0} showFilterBar={false} />;
+  return <ListPageSkeleton title="Loading…" columns={["Name", "Status", "Updated"]} />;
 }

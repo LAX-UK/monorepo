@@ -1,7 +1,7 @@
 import { AdminDetailSkeleton } from "@/components/admin/admin-detail-skeleton";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { Skeleton } from "@auction/staff-ui";
 import { TableSkeleton } from "@auction/ui";
-import { Skeleton } from "@auction/ui/components/skeleton";
 
 const KPI_TILE_KEYS = ["kpi-0", "kpi-1", "kpi-2", "kpi-3", "kpi-4", "kpi-5"] as const;
 const KANBAN_COLUMN_KEYS = ["col-0", "col-1", "col-2", "col-3", "col-4", "col-5"] as const;

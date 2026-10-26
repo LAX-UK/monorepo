@@ -1,8 +1,8 @@
-import { CatalogBreadcrumbs, CatalogFormShell } from "@/components/admin/catalog";
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
 import { CategoryEditForm } from "@/components/admin/category-detail/category-edit-form";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminCategoryEditPage } from "@/lib/admin/categories/load-category-edit-page";
+import { FormPage } from "@auction/staff-ui";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,32 +15,25 @@ export default async function AdminCategoryEditPage({ params, searchParams }: Pr
   const page = await loadAdminCategoryEditPage(id);
 
   return (
-    <CatalogFormShell
-      layout="wizard"
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[
+        <StaffBreadcrumbs
+          items={[
             { label: "Categories", href: "/admin/categories" },
             { label: page.category.name, href: page.overviewHref },
             { label: "Edit" },
           ]}
         />
       }
-      title="Edit category"
-      description="Update taxonomy placement, presentation, and archive state. Delete unused categories from the detail page when no lots, sales, or submissions reference them."
-      wizardMobile={{
-        formId: CATALOG_FORM_IDS.category,
-        submitLabel: "Save category",
-        cancelHref: page.overviewHref,
-        alwaysShowSubmit: true,
-      }}
+      title={`Edit ${page.category.name}`}
+      description="Change where the category sits in the tree, its picture and copy, or archive it. A category nothing uses can be deleted from its page."
+      notice={<StaffActionError error={sp.error} title="The category was not saved" />}
     >
-      <CatalogDetailActionError error={sp.error} title="Could not save category" />
       <CategoryEditForm
         category={page.category}
         allCategories={page.allCategories}
         cancelHref={page.overviewHref}
       />
-    </CatalogFormShell>
+    </FormPage>
   );
 }

@@ -1,28 +1,31 @@
-import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { ArtistDestructivePanel } from "@/components/admin/artist-detail/artist-destructive-panel";
+"use client";
+
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
-import {
-  CatalogBreadcrumbs,
-  CatalogDetailMobileMeta,
-  CatalogDetailShell,
-  CatalogDetailStickyMiniBar,
-  CatalogDetailTabNav,
-  type CatalogMobileAction,
-  CatalogPostCreateSessionRoot,
-  CatalogWhatsNextBanner,
-} from "@/components/admin/catalog";
-import { AdminArtistEditableTitle } from "@/components/admin/editable-titles";
-import { buildArtistProfileReadiness } from "@/lib/admin/catalog-readiness";
+import { useArtistActions } from "@/components/admin/artist-detail/use-artist-actions";
+import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
+import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
+import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
+import { adminUpdateArtistNameFieldAction } from "@/lib/actions/admin/field-updates";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
-import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
+import {
+  DetailPage,
+  MetaItem,
+  Notice,
+  type OverflowAction,
+  OverflowMenu,
+  StaffBreadcrumbs,
+  StaffButton,
+  type StaffLinkComponent,
+  StatusBadge,
+} from "@auction/staff-ui";
 import type { ArtistDeleteEligibility, ArtistProfile, ArtistStatus } from "@auction/types";
-import { Badge } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
+
+const NextLink: StaffLinkComponent = Link;
 
 type Props = {
   artistId: string;
@@ -30,7 +33,6 @@ type Props = {
   lotCount: number;
   duplicateCount: number;
   publicHref: string;
-  activityEvents?: readonly AdminDomainEventRow[];
   deleteEligibility?: ArtistDeleteEligibility | null;
   canManageDelete?: boolean;
   canEdit?: boolean;
@@ -38,6 +40,12 @@ type Props = {
   children: ReactNode;
 };
 
+/**
+ * An artist's page on the staff record template: the name (renamable), registry status, the
+ * facts that identify the profile, the next step as the one primary action (review a pending
+ * profile, otherwise edit), the rest in the overflow menu with archive and delete last, a notice
+ * for a merged profile, and its sections as tabs.
+ */
 export function ArtistDetailShell({
   artistId,
   artist,
@@ -50,140 +58,138 @@ export function ArtistDetailShell({
   canReview = false,
   children,
 }: Props) {
-  const lifeRaw = formatArtistLifespan({
+  const registryStatus: ArtistStatus = artist.status ?? "pending";
+  const status = staffStatus("artist", registryStatus);
+  const merged = registryStatus === "merged_into" && Boolean(artist.mergedIntoArtistId);
+  const lifespan = formatArtistLifespan({
     birthYear: artist.birthYear,
     deathYear: artist.deathYear,
   });
-  const life = lifeRaw === "—" ? null : lifeRaw;
-  const registryStatus: ArtistStatus = artist.status ?? "pending";
+  const organisationYears = [artist.foundedYear?.trim(), artist.dissolvedYear?.trim()]
+    .filter(Boolean)
+    .join(" – ");
+  const years = lifespan !== "—" ? lifespan : organisationYears;
+  const pin = usePinPageAction(artist.displayName);
+  const actions = useArtistActions({
+    artistId,
+    displayName: artist.displayName,
+    archived: artist.archived,
+    deleteEligibility,
+    canManageDelete,
+    merged,
+  });
 
-  const artistMobileActions: CatalogMobileAction[] = [
-    ...(canEdit
-      ? [
-          {
-            id: "edit-artist",
-            label: "Edit",
-            href: `/admin/artists/${artist.id}/edit`,
-            variant: "primary" as const,
-          },
-        ]
-      : []),
+  const reviewing = registryStatus === "pending" && canReview;
+  const editButton = canEdit ? (
+    <StaffButton
+      asChild
+      variant={reviewing ? "secondary" : "primary"}
+      icon={<Pencil aria-hidden />}
+    >
+      <Link href={`/admin/artists/${artistId}/edit`}>Edit artist</Link>
+    </StaffButton>
+  ) : null;
+  const reviewButton = reviewing ? (
+    <StaffButton asChild variant="primary">
+      <Link href={artistDetailTabHref(artistId, "review")}>Review profile</Link>
+    </StaffButton>
+  ) : null;
+
+  const overflow: OverflowAction[] = [
     {
-      id: "public-profile",
-      label: "Public profile",
-      href: publicHref,
+      id: "view",
+      label: "View on site",
+      icon: ExternalLink,
+      onSelect: () => window.open(publicHref, "_blank", "noopener"),
     },
+    pin,
+    ...actions.items,
   ];
 
-  const statusBadge = <AdminStatusBadge domain="artist" status={registryStatus} />;
-
-  const tabSpecs = [
+  const tabs = [
     { id: "overview", label: "Overview", href: artistDetailTabHref(artistId, "overview") },
     {
       id: "lots",
-      label: `Lots${lotCount > 0 ? ` (${lotCount})` : ""}`,
+      label: "Lots",
       href: artistDetailTabHref(artistId, "lots"),
+      count: lotCount,
     },
     {
       id: "duplicates",
-      label: `Duplicates${duplicateCount > 0 ? ` (${duplicateCount})` : ""}`,
+      label: "Duplicates",
       href: artistDetailTabHref(artistId, "duplicates"),
-      ...(duplicateCount > 0 ? { badge: "warning" as const } : {}),
+      count: duplicateCount,
     },
-    ...(registryStatus === "pending" && canReview
-      ? [
-          {
-            id: "review",
-            label: "Review",
-            href: artistDetailTabHref(artistId, "review"),
-            badge: "pending" as const,
-          },
-        ]
+    ...(reviewing
+      ? [{ id: "review", label: "Review", href: artistDetailTabHref(artistId, "review") }]
       : []),
   ];
 
-  const profileReadiness = buildArtistProfileReadiness(artistId, artist);
-
   return (
-    <CatalogPostCreateSessionRoot>
-      <CatalogDetailShell
+    <>
+      <DetailPage
         breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[{ label: "Artists", href: "/admin/artists" }, { label: artist.displayName }]}
+          <StaffBreadcrumbs
+            Link={NextLink}
+            items={[{ label: "Artists", href: "/admin/artists" }, { label: artist.displayName }]}
           />
         }
-        eyebrow="Artist"
-        title={<AdminArtistEditableTitle artistId={artist.id} value={artist.displayName} />}
-        description={life ? `${life} · Registry overview` : "Registry overview"}
-        meta={
-          <div className="flex flex-wrap items-center gap-2">
-            {artist.kind ? (
-              <Badge variant="secondary">{artistKindMeta(artist.kind).badge}</Badge>
-            ) : null}
-            {statusBadge}
-          </div>
-        }
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <AdminPinPageButton label={artist.displayName} />
-            {canEdit ? (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/admin/artists/${artist.id}/edit`}>Edit</Link>
-              </Button>
-            ) : null}
-            <Button variant="outline" size="sm" asChild>
-              <Link href={publicHref} target="_blank" rel="noopener noreferrer">
-                Public profile
-              </Link>
-            </Button>
-          </div>
-        }
-        mobileActions={artistMobileActions}
-        mobileMeta={
-          <CatalogDetailMobileMeta
-            entityId={artistId}
-            updatedAt={artist.updatedAt}
-            publicHref={publicHref}
-            publicLabel="Public profile"
-            status={statusBadge}
-            primaryAction={
-              registryStatus === "pending" && canReview ? (
-                <Link
-                  href={artistDetailTabHref(artistId, "review")}
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-                >
-                  Review profile →
-                </Link>
-              ) : undefined
-            }
+        title={
+          <StaffEditableTitle
+            value={artist.displayName}
+            label="artist"
+            editable={canEdit && !merged}
+            onSave={adminUpdateArtistNameFieldAction.bind(null, artistId)}
           />
         }
-        stickySubnav={
+        status={
           <>
-            <CatalogDetailTabNav tabs={tabSpecs} entityKind="artist" aria-label="Artist sections" />
-            <CatalogDetailStickyMiniBar
-              items={[
-                { id: "lots", label: "Lots", value: String(lotCount) },
-                { id: "status", label: "Status", value: statusBadge },
-              ]}
-            />
+            <StatusBadge tone={status.tone} live={status.live ?? false}>
+              {status.label}
+            </StatusBadge>
+            {artist.archived ? <StatusBadge tone="neutral">Archived</StatusBadge> : null}
           </>
         }
+        meta={
+          <>
+            {artist.kind ? (
+              <MetaItem label="Kind">{artistKindMeta(artist.kind).badge}</MetaItem>
+            ) : null}
+            {years ? (
+              <MetaItem label={lifespan !== "—" ? "Lived" : "Active"}>{years}</MetaItem>
+            ) : null}
+            {artist.nationality?.trim() ? (
+              <MetaItem label="Nationality">{artist.nationality.trim()}</MetaItem>
+            ) : null}
+          </>
+        }
+        primaryAction={reviewButton ?? editButton}
+        secondaryActions={reviewButton ? editButton : null}
+        overflow={<OverflowMenu label="More artist actions" Link={NextLink} actions={overflow} />}
+        access={canEdit || canReview ? "full" : "read-only"}
+        roleLabel="Catalogue"
+        notice={
+          merged ? (
+            <Notice
+              tone="info"
+              title="This profile was merged into another artist"
+              actions={
+                <StaffButton asChild size="sm" variant="secondary">
+                  <Link href={`/admin/artists/${artist.mergedIntoArtistId}`}>
+                    Open surviving profile
+                  </Link>
+                </StaffButton>
+              }
+            >
+              Catalogue work now happens on the surviving profile.
+            </Notice>
+          ) : null
+        }
+        tabs={<StaffDetailTabs label="Artist sections" items={tabs} />}
       >
-        <Suspense fallback={null}>
-          <CatalogWhatsNextBanner
-            entityLabel="artist profile"
-            readiness={profileReadiness}
-            dismissKey={`artist:${artistId}`}
-          />
-        </Suspense>
         {children}
-        <ArtistDestructivePanel
-          artist={artist}
-          deleteEligibility={deleteEligibility}
-          canManageDelete={canManageDelete}
-        />
-      </CatalogDetailShell>
-    </CatalogPostCreateSessionRoot>
+      </DetailPage>
+      {actions.dialogs}
+    </>
   );
 }

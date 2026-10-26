@@ -1,4 +1,4 @@
-import { Skeleton } from "@auction/ui/components/skeleton";
+import { Skeleton } from "@auction/staff-ui";
 
 /** Loading placeholder aligned with admin detail chrome (header + tabs). */
 export function AdminDetailSkeleton() {

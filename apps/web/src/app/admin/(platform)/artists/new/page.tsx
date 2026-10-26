@@ -1,7 +1,7 @@
 import { ArtistCreateForm } from "@/components/admin/artist-detail/artist-create-form";
-import { CatalogBreadcrumbs, CatalogFormShell } from "@/components/admin/catalog";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminArtistCreatePage } from "@/lib/admin/artists/load-artist-create-page";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { FormPage } from "@auction/staff-ui";
 
 type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
 
@@ -14,20 +14,14 @@ export default async function NewAdminArtistPage({
   const page = await loadAdminArtistCreatePage(sp);
 
   return (
-    <CatalogFormShell
-      layout="wizard"
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[{ label: "Artists", href: "/admin/artists" }, { label: "New" }]}
+        <StaffBreadcrumbs
+          items={[{ label: "Artists", href: "/admin/artists" }, { label: "New artist" }]}
         />
       }
       title="New artist"
-      description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
-      wizardMobile={{
-        formId: CATALOG_FORM_IDS.artist,
-        submitLabel: "Create artist",
-        cancelHref: "/admin/artists",
-      }}
+      description="Create a catalogue profile for a creator, brand or maker. Link a platform account only when the seller is also the maker."
     >
       <ArtistCreateForm
         categories={page.categories}
@@ -35,6 +29,6 @@ export default async function NewAdminArtistPage({
         displayName={page.displayName}
         initialScenario={page.initialScenario}
       />
-    </CatalogFormShell>
+    </FormPage>
   );
 }

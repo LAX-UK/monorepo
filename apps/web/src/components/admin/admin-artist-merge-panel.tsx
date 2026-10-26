@@ -1,113 +1,114 @@
 "use client";
 
-import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
-import { ArtistSearch, type ArtistSearchHit } from "@/components/artists/artist-search";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { adminMergeArtistResultAction } from "@/lib/actions/admin";
-import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
-import { Textarea } from "@auction/ui/components/textarea";
+import { searchArtistOptions } from "@/lib/admin/pickers/staff-entity-search";
+import { type EntityOption, EntityPicker, Field, Section, StaffButton } from "@auction/staff-ui";
+import { GitMerge } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useCallback, useId, useState } from "react";
 
 type Props = {
   fromArtistId: string;
   fromDisplayName: string;
+  /** Renders inside another card (a duplicate cluster) instead of as its own section. */
+  bare?: boolean;
 };
 
-export function AdminArtistMergePanel({ fromArtistId, fromDisplayName }: Props) {
+/**
+ * Merges this profile into the one to keep: moves its aliases and lots across and removes it
+ * from the registry. The surviving profile is chosen by name; the merge itself is confirmed with
+ * a reason for the audit log.
+ */
+export function AdminArtistMergePanel({ fromArtistId, fromDisplayName, bare = false }: Props) {
   const router = useRouter();
-  const [target, setTarget] = useState<ArtistSearchHit | null>(null);
-  const [reason, setReason] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const confirm = useStaffConfirm();
+  const [target, setTarget] = useState<EntityOption | null>(null);
+  const pickerId = useId();
 
-  const phrase = target ? `MERGE INTO ${target.displayName}` : "";
-  const reasonOk = reason.trim().length >= 10;
-  const canProceed =
-    target !== null && target.id !== fromArtistId && reasonOk && target.status !== "merged_into";
+  const search = useCallback(
+    async (query: string) =>
+      (await searchArtistOptions(query)).filter((option) => option.id !== fromArtistId),
+    [fromArtistId],
+  );
 
-  return (
-    <section className="space-y-4 rounded-md border border-outline-variant/40 p-4">
-      <div>
-        <h2 className="font-heading text-lg">Merge duplicate artist</h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Moves aliases and lots from <strong>{fromDisplayName}</strong> into the surviving profile.
-          This cannot be undone from the UI.
-        </p>
-      </div>
+  const merge = () => {
+    if (!target) return;
+    const keep = target;
+    confirm.ask({
+      title: `Merge ${fromDisplayName} into ${keep.label}?`,
+      description: `Every alias and lot of ${fromDisplayName} moves to ${keep.label}, and ${fromDisplayName} is removed from the registry. This cannot be undone.`,
+      confirmLabel: "Merge artists",
+      cancelLabel: "Keep both",
+      tone: "danger",
+      reason: {
+        label: "Reason for merging",
+        description: "At least 10 characters. Kept in the audit log.",
+        minLength: 10,
+        maxLength: 1000,
+      },
+      run: ({ reason }) =>
+        adminMergeArtistResultAction(fromArtistId, {
+          intoArtistId: keep.id,
+          reason,
+          confirmationPhrase: `MERGE INTO ${keep.label}`,
+        }),
+      success: "Artists merged",
+      onSuccess: () => {
+        router.push(`/admin/artists/${keep.id}/edit`);
+        router.refresh();
+      },
+    });
+  };
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium">Surviving artist (canonical)</p>
-        <ArtistSearch
-          placeholder="Search for the artist profile to keep…"
-          onSelect={(hit) => setTarget(hit)}
-          disabled={pending}
-        />
-        {target ? (
-          <p className="text-sm text-on-surface-variant">
-            Selected: <span className="font-medium text-on-surface">{target.displayName}</span> (
-            {target.id})
-            {target.id === fromArtistId ? (
-              <span className="ml-2 text-destructive">
-                Choose a different artist than this one.
-              </span>
-            ) : null}
-            {target.status === "merged_into" ? (
-              <span className="ml-2 text-destructive">
-                This profile is already merged; pick the canonical artist instead.
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-      </div>
-
-      {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps Textarea component */}
-      <label className="block space-y-1 text-sm">
-        <span>Reason (min 10 characters)</span>
-        <Textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Why these profiles should be merged…"
-          rows={3}
-          disabled={pending}
-        />
-      </label>
-
-      <Button
-        type="button"
-        variant="destructive"
-        disabled={!canProceed || pending}
-        onClick={() => setDialogOpen(true)}
+  const body = (
+    <div className="flex flex-col gap-4">
+      <Field
+        id={pickerId}
+        label="Profile to keep"
+        description="Search by name. The profile you choose keeps its details; this one's aliases and lots move to it."
       >
-        Merge into selected artist…
-      </Button>
+        <EntityPicker
+          id={pickerId}
+          value={target?.id ?? null}
+          selected={target}
+          search={search}
+          placeholder="Choose the profile to keep"
+          searchPlaceholder="Type at least two letters"
+          emptyText="No other artists match."
+          onValueChange={(option) => setTarget(option)}
+        />
+      </Field>
+      <div>
+        <StaffButton
+          variant="danger-secondary"
+          icon={<GitMerge aria-hidden />}
+          {...(target ? {} : { disabledReason: "Choose the profile to keep first" })}
+          onClick={merge}
+        >
+          {target ? `Merge into ${target.label}` : "Merge into another profile"}
+        </StaffButton>
+      </div>
+      {confirm.dialog}
+    </div>
+  );
 
-      <TypedConfirmationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title="Confirm artist merge"
-        description={`Every reference to ${fromDisplayName} will point to the surviving artist.`}
-        actionLabel="Merge artists"
-        confirmationPhrase={phrase}
-        severity="danger"
-        onConfirm={() => {
-          if (!target) return;
-          startTransition(async () => {
-            const result = await adminMergeArtistResultAction(fromArtistId, {
-              intoArtistId: target.id,
-              reason: reason.trim(),
-              confirmationPhrase: phrase,
-            });
-            if (result.ok && result.data?.remainingId) {
-              notify.success("Artists merged");
-              router.push(`/admin/artists/${result.data.remainingId}/edit`);
-              router.refresh();
-              return;
-            }
-            if (!result.ok) notify.error(result.error);
-          });
-        }}
-      />
-    </section>
+  if (bare) {
+    return (
+      <div className="flex flex-col gap-3 border-t border-staff-line-subtle p-4">
+        <h3 className="font-staff text-staff-md font-semibold text-staff-fg">
+          Merge {fromDisplayName}
+        </h3>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <Section
+      title="Merge into another profile"
+      description={`Use when ${fromDisplayName} is a duplicate of a profile that should stay.`}
+    >
+      {body}
+    </Section>
   );
 }

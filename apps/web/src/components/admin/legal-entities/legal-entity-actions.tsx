@@ -14,6 +14,12 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+/** The legal entity impersonation is started for: a list row or a record page. */
+export type ImpersonationTarget = Pick<
+  LegalEntitiesStaffRow,
+  "id" | "name" | "kind" | "statusPresentation"
+>;
+
 /** What went wrong starting impersonation, in plain words. */
 function impersonationFailure(result: { error: string; message?: string | undefined }): string {
   switch (result.error) {
@@ -34,12 +40,12 @@ function impersonationFailure(result: { error: string; message?: string | undefi
  */
 export function useLegalEntityActions() {
   const router = useRouter();
-  const [pending, setPendingState] = useState<LegalEntitiesStaffRow | null>(null);
+  const [pending, setPendingState] = useState<ImpersonationTarget | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
   const stepUp = useStaffStepUp({ onReauthenticate: redirectToHostedReauth });
 
-  const impersonate = useCallback((entity: LegalEntitiesStaffRow) => {
+  const impersonate = useCallback((entity: ImpersonationTarget) => {
     setFailure(null);
     setPendingState(entity);
   }, []);
@@ -49,7 +55,7 @@ export function useLegalEntityActions() {
   }, []);
 
   const actionsFor = useCallback(
-    (entity: LegalEntitiesStaffRow): OverflowAction[] => [
+    (entity: ImpersonationTarget): OverflowAction[] => [
       {
         id: "impersonate",
         label: `Impersonate ${entity.name}`,
@@ -59,7 +65,7 @@ export function useLegalEntityActions() {
     [impersonate],
   );
 
-  const start = (entity: LegalEntitiesStaffRow) => {
+  const start = (entity: ImpersonationTarget) => {
     setFailure(null);
     startTransition(async () => {
       const result = await startAdminImpersonationAfterLookup(entity.id);

@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   amlDecideAction,
   amlTriageAction,
@@ -8,95 +8,11 @@ import {
   sofTriageAction,
 } from "@/lib/actions/compliance";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
-import { Label } from "@auction/ui/components/label";
-import { Textarea } from "@auction/ui/components/textarea";
+import { Field, Notice, Section, StaffButton, TextArea } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 const NOTES_MAX = 2000;
-
-function TriageSubmitButtons({
-  clearLabel,
-  blockLabel,
-  clearValue,
-  blockValue,
-  pending,
-  onChoose,
-}: {
-  clearLabel: string;
-  blockLabel: string;
-  clearValue: string;
-  blockValue: string;
-  pending: boolean;
-  onChoose: (recommendation: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={pending}
-        onClick={() => onChoose(clearValue)}
-      >
-        {pending ? "Saving…" : clearLabel}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={pending}
-        onClick={() => onChoose(blockValue)}
-      >
-        {pending ? "Saving…" : blockLabel}
-      </Button>
-    </div>
-  );
-}
-
-function DecideSubmitButtons({
-  clearLabel,
-  blockLabel,
-  clearValue,
-  blockValue,
-  blockConfirmTitle,
-  blockConfirmBody,
-  pending,
-  onChoose,
-}: {
-  clearLabel: string;
-  blockLabel: string;
-  clearValue: string;
-  blockValue: string;
-  blockConfirmTitle: string;
-  blockConfirmBody: string;
-  pending: boolean;
-  onChoose: (decision: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        type="button"
-        variant="default"
-        disabled={pending}
-        onClick={() => onChoose(clearValue)}
-      >
-        {pending ? "Saving…" : clearLabel}
-      </Button>
-      <ConfirmActionButton
-        type="button"
-        variant="destructive"
-        disabled={pending}
-        confirmTitle={blockConfirmTitle}
-        confirmBody={blockConfirmBody}
-        confirmLabel={blockLabel}
-        tone="danger"
-        onConfirmed={() => onChoose(blockValue)}
-      >
-        {pending ? "Saving…" : blockLabel}
-      </ConfirmActionButton>
-    </div>
-  );
-}
 
 type TriageFormProps = {
   entityId: string;
@@ -105,6 +21,14 @@ type TriageFormProps = {
   triageDone: boolean;
 };
 
+function Hint({ children }: { children: React.ReactNode }) {
+  return <p className="text-staff-sm text-staff-muted">{children}</p>;
+}
+
+/**
+ * Step 1 of the four-eyes review: the analyst recommends clearing or blocking, with optional
+ * notes. The recommendation is not binding; a different MLRO decides.
+ */
 export function ComplianceTriageForm({
   entityId,
   entityKind,
@@ -114,78 +38,78 @@ export function ComplianceTriageForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
 
   if (!canTriage) {
-    return (
-      <p className="text-sm text-on-surface-variant">
-        You do not have permission to record a first-line triage.
-      </p>
-    );
+    return <Hint>You do not have permission to record a first-line triage.</Hint>;
   }
   if (triageDone) {
-    return (
-      <p className="text-sm text-on-surface-variant">
-        Triage recorded. A different MLRO must make the binding decision (four-eyes).
-      </p>
-    );
+    return <Hint>Triage recorded. A different MLRO must make the binding decision.</Hint>;
   }
 
   const clearLabel = entityKind === "aml" ? "Recommend clear" : "Recommend approve";
   const blockLabel = entityKind === "aml" ? "Recommend block" : "Recommend reject";
   const clearValue = entityKind === "aml" ? "clear" : "approve";
   const blockValue = entityKind === "aml" ? "block" : "reject";
-  const successMessage = "Triage recorded — awaiting MLRO decision";
 
   const submitTriage = (recommendation: string) => {
-    startTransition(() => {
-      void (async () => {
-        const r =
-          entityKind === "aml"
-            ? await amlTriageAction({
-                screeningId: entityId,
-                recommendation: recommendation as "clear" | "block",
-                notes: notes.trim() || undefined,
-              })
-            : await sofTriageAction({
-                caseId: entityId,
-                recommendation: recommendation as "approve" | "reject",
-                notes: notes.trim() || undefined,
-              });
-        if (r.ok) {
-          notify.success(successMessage);
-          router.refresh();
-          return;
-        }
-        notify.error(r.error);
-      })();
+    setFailure(null);
+    startTransition(async () => {
+      const r =
+        entityKind === "aml"
+          ? await amlTriageAction({
+              screeningId: entityId,
+              recommendation: recommendation as "clear" | "block",
+              notes: notes.trim() || undefined,
+            })
+          : await sofTriageAction({
+              caseId: entityId,
+              recommendation: recommendation as "approve" | "reject",
+              notes: notes.trim() || undefined,
+            });
+      if (r.ok) {
+        notify.success("Triage recorded — awaiting MLRO decision");
+        router.refresh();
+        return;
+      }
+      setFailure(r.error);
     });
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-outline-variant/40 p-4">
-      <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Step 1 · Analyst triage (maker)
-      </p>
-      <div className="space-y-2">
-        <Label htmlFor={`${entityKind}-triage-notes`}>Notes (optional)</Label>
-        <Textarea
-          id={`${entityKind}-triage-notes`}
-          rows={3}
-          maxLength={NOTES_MAX}
-          className="resize-y"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
+    <Section
+      title="Triage recommendation"
+      description="Step 1 of 2, by the analyst. The MLRO makes the binding decision."
+    >
+      <div className="flex flex-col gap-4">
+        <Field label="Notes" optional description="Shown to the MLRO with your recommendation.">
+          <TextArea
+            rows={3}
+            maxLength={NOTES_MAX}
+            value={notes}
+            disabled={pending}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </Field>
+        {failure ? (
+          <Notice tone="danger" alert title="The triage was not recorded">
+            {failure}
+          </Notice>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <StaffButton variant="primary" loading={pending} onClick={() => submitTriage(clearValue)}>
+            {clearLabel}
+          </StaffButton>
+          <StaffButton
+            variant="secondary"
+            disabled={pending}
+            onClick={() => submitTriage(blockValue)}
+          >
+            {blockLabel}
+          </StaffButton>
+        </div>
       </div>
-      <TriageSubmitButtons
-        clearLabel={clearLabel}
-        blockLabel={blockLabel}
-        clearValue={clearValue}
-        blockValue={blockValue}
-        pending={pending}
-        onChoose={submitTriage}
-      />
-    </div>
+    </Section>
   );
 }
 
@@ -198,6 +122,11 @@ type DecideFormProps = {
   currentUserId: string;
 };
 
+/**
+ * Step 2: the MLRO's binding decision, by someone other than the analyst who triaged. Approving
+ * goes straight through; rejecting or blocking is asked about first because the buyer stays
+ * blocked until the case is reopened.
+ */
 export function ComplianceDecideForm({
   entityId,
   entityKind,
@@ -207,109 +136,110 @@ export function ComplianceDecideForm({
   currentUserId,
 }: DecideFormProps) {
   const router = useRouter();
+  const confirm = useStaffConfirm();
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
 
   if (!canDecide) {
-    return (
-      <p className="text-sm text-on-surface-variant">
-        Binding MLRO decisions require the <code className="text-xs">compliance.mlro</code>{" "}
-        capability.
-      </p>
-    );
+    return <Hint>Binding decisions need the MLRO role.</Hint>;
   }
   if (!triageDone) {
-    return (
-      <p className="text-sm text-on-surface-variant">
-        A first-line triage must be recorded before the MLRO can decide.
-      </p>
-    );
+    return <Hint>A first-line triage must be recorded before the MLRO can decide.</Hint>;
   }
 
   const sameUserAsTriager =
     triagedByUserId != null && triagedByUserId.length > 0 && triagedByUserId === currentUserId;
   if (sameUserAsTriager) {
     return (
-      <p className="rounded-lg border border-warning/40 bg-warning-container/20 p-4 text-sm text-on-surface-variant">
-        You recorded the triage recommendation for this case. A different MLRO must make the binding
+      <Notice tone="warning" title="A different MLRO must decide">
+        You recorded the triage recommendation for this case, so someone else makes the binding
         decision (four-eyes).
-      </p>
+      </Notice>
     );
   }
 
-  const clearLabel = entityKind === "aml" ? "Clear (lift hold)" : "Approve";
-  const blockLabel = entityKind === "aml" ? "Block (terminal)" : "Reject";
-  const clearValue = entityKind === "aml" ? "clear" : "approve";
-  const blockValue = entityKind === "aml" ? "block" : "reject";
+  const aml = entityKind === "aml";
+  const clearLabel = aml ? "Clear and lift hold" : "Approve";
+  const blockLabel = aml ? "Block" : "Reject";
+  const clearValue = aml ? "clear" : "approve";
+  const blockValue = aml ? "block" : "reject";
 
-  const submitDecision = (decision: string) => {
-    startTransition(() => {
-      void (async () => {
-        const r =
-          entityKind === "aml"
-            ? await amlDecideAction({
-                screeningId: entityId,
-                decision: decision as "clear" | "block",
-                notes: notes.trim() || undefined,
-              })
-            : await sofDecideAction({
-                caseId: entityId,
-                decision: decision as "approve" | "reject",
-                notes: notes.trim() || undefined,
-              });
-        if (r.ok) {
-          const successMessage =
-            entityKind === "aml"
-              ? decision === "clear"
-                ? "Screening cleared — hold lifted"
-                : "Screening blocked"
-              : decision === "approve"
-                ? "Source of Funds approved"
-                : "Source of Funds rejected";
-          notify.success(successMessage);
-          router.refresh();
-          return;
-        }
-        notify.error(r.error);
-      })();
+  const decide = async (decision: string) => {
+    const r = aml
+      ? await amlDecideAction({
+          screeningId: entityId,
+          decision: decision as "clear" | "block",
+          notes: notes.trim() || undefined,
+        })
+      : await sofDecideAction({
+          caseId: entityId,
+          decision: decision as "approve" | "reject",
+          notes: notes.trim() || undefined,
+        });
+    return r;
+  };
+
+  const approve = () => {
+    setFailure(null);
+    startTransition(async () => {
+      const r = await decide(clearValue);
+      if (r.ok) {
+        notify.success(aml ? "Screening cleared — hold lifted" : "Source of Funds approved");
+        router.refresh();
+        return;
+      }
+      setFailure(r.error);
     });
   };
 
+  const reject = () =>
+    confirm.ask({
+      title: aml ? "Block this screening?" : "Reject this Source of Funds case?",
+      description: aml
+        ? "Blocking is terminal. Settlement holds stay in place and the buyer cannot proceed until compliance reverses the decision."
+        : "Rejecting keeps settlement blocked for this buyer. They must supply new evidence and the case must be reopened before payment can proceed.",
+      confirmLabel: aml ? "Block screening" : "Reject case",
+      cancelLabel: aml ? "Keep screening open" : "Keep case open",
+      tone: "danger",
+      run: () => decide(blockValue),
+      success: aml ? "Screening blocked" : "Source of Funds rejected",
+    });
+
   return (
-    <div className="space-y-3 rounded-lg border border-primary/30 bg-primary-container/10 p-4">
-      <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Step 2 · MLRO decision (checker)
-      </p>
-      <div className="space-y-2">
-        <Label htmlFor={`${entityKind}-decide-notes`}>Decision notes (optional)</Label>
-        <Textarea
-          id={`${entityKind}-decide-notes`}
-          rows={3}
-          maxLength={NOTES_MAX}
-          className="resize-y"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
+    <Section
+      title="MLRO decision"
+      description="Step 2 of 2. You must be a different person from the analyst who triaged."
+    >
+      <div className="flex flex-col gap-4">
+        <Field
+          label="Decision notes"
+          optional
+          description="Kept with the decision in the audit log."
+        >
+          <TextArea
+            rows={3}
+            maxLength={NOTES_MAX}
+            value={notes}
+            disabled={pending}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </Field>
+        {failure ? (
+          <Notice tone="danger" alert title="The decision was not recorded">
+            {failure}
+          </Notice>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <StaffButton variant="primary" loading={pending} onClick={approve}>
+            {clearLabel}
+          </StaffButton>
+          <StaffButton variant="danger-secondary" disabled={pending} onClick={reject}>
+            {blockLabel}…
+          </StaffButton>
+        </div>
       </div>
-      <DecideSubmitButtons
-        clearLabel={clearLabel}
-        blockLabel={blockLabel}
-        clearValue={clearValue}
-        blockValue={blockValue}
-        blockConfirmTitle={
-          entityKind === "aml" ? "Block this screening?" : "Reject this Source of Funds case?"
-        }
-        blockConfirmBody={
-          entityKind === "aml"
-            ? "Blocking is terminal. Settlement holds stay in place and the buyer cannot proceed until compliance reverses the decision."
-            : "Rejecting keeps settlement blocked for this buyer. They must supply new evidence and the case must be reopened before payment can proceed."
-        }
-        pending={pending}
-        onChoose={submitDecision}
-      />
-      <p className="text-xs text-on-surface-variant">
-        You must be a different user from the analyst who triaged (four-eyes).
-      </p>
-    </div>
+      {confirm.dialog}
+    </Section>
   );
 }

@@ -5,7 +5,8 @@ import {
   searchAdminLegalEntitiesBrowseAction,
 } from "@/lib/actions/admin-legal-entities-browse";
 import type { AdminLegalEntityPickerRow } from "@/lib/data/http/admin.server";
-import { AsyncCombobox } from "@auction/ui/components/async-combobox";
+import { type EntityOption, EntityPicker } from "@auction/staff-ui";
+import { useCallback, useEffect, useState } from "react";
 
 export type AdminLegalEntityPickerProps = {
   value: string | null;
@@ -40,49 +41,76 @@ async function defaultResolveHit(id: string): Promise<AdminLegalEntityPickerRow 
   return result.data ?? null;
 }
 
-/** Admin-only: search legal entities by display name; optional empty query returns first page alphabetically. */
+function statusText(status: string): string {
+  const text = status.replaceAll("_", " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function toOption(row: AdminLegalEntityPickerRow): EntityOption {
+  return { id: row.id, label: row.displayName, description: statusText(row.status) };
+}
+
+/** Admin-only: search organisations by name; an empty query lists the first page alphabetically. */
 export function AdminLegalEntityPicker({
   value,
   displayLabel,
   onChange,
   disabled = false,
-  searchPlaceholder = "Search by organisation or entity name…",
+  searchPlaceholder = "Search by organisation name",
   id,
   "aria-invalid": ariaInvalid,
-  "aria-describedby": ariaDescribedBy,
+  "aria-describedby": _describedBy,
   onBlur,
   searchHits = defaultSearchHits,
   resolveHit = defaultResolveHit,
 }: AdminLegalEntityPickerProps) {
+  const [rows, setRows] = useState<Record<string, AdminLegalEntityPickerRow>>({});
+  const [selected, setSelected] = useState<EntityOption | null>(
+    value && displayLabel?.trim() ? { id: value, label: displayLabel.trim() } : null,
+  );
+
+  // A value arrives without a name (e.g. from a link): look the organisation up.
+  useEffect(() => {
+    if (!value) {
+      setSelected(null);
+      return;
+    }
+    if (selected?.id === value) return;
+    let cancelled = false;
+    void resolveHit(value).then((row) => {
+      if (cancelled || !row) return;
+      setRows((prev) => ({ ...prev, [row.id]: row }));
+      setSelected(toOption(row));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value, selected?.id, resolveHit]);
+
+  const search = useCallback(
+    async (query: string) => {
+      const hits = await searchHits(query);
+      setRows((prev) => ({ ...prev, ...Object.fromEntries(hits.map((r) => [r.id, r])) }));
+      return hits.map(toOption);
+    },
+    [searchHits],
+  );
+
   return (
-    <AsyncCombobox<AdminLegalEntityPickerRow>
+    <EntityPicker
       value={value}
-      onChange={(id, hit) => onChange(id, hit)}
+      selected={selected}
+      search={search}
       disabled={disabled}
-      minQueryLen={0}
-      {...(id ? { id } : {})}
-      {...(ariaInvalid !== undefined ? { "aria-invalid": ariaInvalid } : {})}
-      {...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {})}
-      {...(onBlur ? { onBlur } : {})}
+      invalid={ariaInvalid === true}
       placeholder={searchPlaceholder}
       searchPlaceholder={searchPlaceholder}
-      searchHits={searchHits}
-      resolveHit={resolveHit}
-      renderHit={(row) => (
-        <>
-          <span className="font-medium text-on-surface">{row.displayName}</span>
-          <span className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant/80">
-            {row.status.replaceAll("_", " ")}
-          </span>
-        </>
-      )}
-      renderSelected={(row) => (
-        <p className="truncate font-medium text-on-surface">{row.displayName}</p>
-      )}
-      renderSelectedFallback={(id) => {
-        const trimmedLabel = displayLabel?.trim();
-        const title = trimmedLabel || id;
-        return <p className="truncate font-medium text-on-surface">{title}</p>;
+      emptyText="No organisations match."
+      {...(id ? { id } : {})}
+      onValueChange={(option) => {
+        setSelected(option);
+        onChange(option?.id ?? null, option ? rows[option.id] : undefined);
+        onBlur?.();
       }}
     />
   );

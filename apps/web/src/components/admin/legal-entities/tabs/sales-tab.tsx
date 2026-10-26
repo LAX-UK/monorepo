@@ -1,4 +1,4 @@
-import { CatalogDetailTabPanel } from "@/components/admin/catalog";
+import { EmptyState, Section, StaffButton } from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -6,23 +6,24 @@ type Props = {
   displayName: string;
 };
 
-export function LegalEntitySalesTab({ entityId, displayName }: Props) {
+/** Sales linked to this organisation (none are linked yet). */
+export function LegalEntitySalesTab({ displayName }: Props) {
   return (
-    <CatalogDetailTabPanel
+    <Section
       title="Sales"
       description={`Consignment and catalogue sales linked to ${displayName}.`}
     >
-      <p className="font-body text-sm text-on-surface-variant">
-        No sales are linked to this entity in the current seed data. When sales are associated with
-        this legal entity, they will appear here.
-      </p>
-      <Link
-        href="/admin/sales"
-        className="inline-flex font-body text-sm text-link underline-offset-2 hover:underline"
-      >
-        Browse all sales
-      </Link>
-      <p className="sr-only">Entity id {entityId}</p>
-    </CatalogDetailTabPanel>
+      <EmptyState
+        size="compact"
+        headingLevel="h3"
+        title="No sales are linked to this organisation yet"
+        description="When sales are associated with it, they will appear here."
+        action={
+          <StaffButton asChild size="sm" variant="secondary">
+            <Link href="/admin/sales">Browse all sales</Link>
+          </StaffButton>
+        }
+      />
+    </Section>
   );
 }

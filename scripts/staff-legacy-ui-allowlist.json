@@ -1,0 +1,37 @@
+{
+  "$comment": "Read by scripts/check-staff-legacy-shell.mjs. Bid admin files that still import @auction/ui/components, each with why. Delete an entry when its file moves to @auction/staff-ui or is removed; the check fails on entries that are no longer true.",
+  "pending": [
+    {
+      "file": "components/admin/admin-hub-quick-links.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/admin-list-alert.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/bulk-actions-toolbar.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/catalog/catalog-detail-mobile-meta.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/catalog/catalog-info-aside-copy-id.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/catalog/catalog-mobile-action-bar.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/catalog/catalog-page-header.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    },
+    {
+      "file": "components/admin/create-admin-detail-route-error.tsx",
+      "reason": "No longer used; removed in the follow-up cleanup PR"
+    }
+  ]
+}

@@ -3,12 +3,20 @@
  * Staff legacy shell guardrails:
  * - Rejects deprecated AdminListKpiStrip / AdminListFilterSheet imports
  * - Rejects inline list-board card surfaces outside CatalogBoardCard
+ * - Rejects `@auction/ui/components/*` imports in Bid admin (app/admin and components/admin):
+ *   admin screens are built on `@auction/staff-ui`. Files still moving over are listed in
+ *   `staff-legacy-ui-allowlist.json` with the reason; an allowlisted file that no longer imports
+ *   the old components (or no longer exists) fails too, so the list only shrinks.
  */
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const WEB_SRC = path.join(ROOT, "apps/web/src");
+const ADMIN_DIRS = ["app/admin", "components/admin"];
+const LEGACY_UI_IMPORT = /["']@auction\/ui\/components\/[^"']+["']/;
+const ALLOWLIST_PATH = path.join(import.meta.dirname, "staff-legacy-ui-allowlist.json");
 
 const DEPRECATED_PATTERNS = [
   { pattern: /AdminListKpiStrip/, message: "deprecated AdminListKpiStrip — use AdminTrendKpiBand" },
@@ -39,6 +47,17 @@ async function walk(dir, out = []) {
 const files = await walk(WEB_SRC);
 const violations = [];
 
+const allowlist = JSON.parse(await readFile(ALLOWLIST_PATH, "utf8"));
+const pending = new Map((allowlist.pending ?? []).map((entry) => [entry.file, entry.reason]));
+for (const [file, reason] of pending) {
+  if (!reason || !String(reason).trim()) {
+    violations.push(`${file}: allowlisted in staff-legacy-ui-allowlist.json without a reason`);
+  }
+  if (!existsSync(path.join(WEB_SRC, file))) {
+    violations.push(`${file}: no longer exists — remove it from staff-legacy-ui-allowlist.json`);
+  }
+}
+
 for (const file of files) {
   const rel = path.relative(WEB_SRC, file);
   const text = await readFile(file, "utf8");
@@ -46,6 +65,19 @@ for (const file of files) {
   for (const { pattern, message } of DEPRECATED_PATTERNS) {
     if (pattern.test(text)) {
       violations.push(`${rel}: ${message}`);
+    }
+  }
+
+  if (ADMIN_DIRS.some((dir) => rel.startsWith(`${dir}/`))) {
+    const legacy = LEGACY_UI_IMPORT.test(text);
+    if (legacy && !pending.has(rel)) {
+      violations.push(
+        `${rel}: imports @auction/ui/components — build admin screens with @auction/staff-ui`,
+      );
+    } else if (!legacy && pending.has(rel)) {
+      violations.push(
+        `${rel}: no longer imports @auction/ui/components — remove it from staff-legacy-ui-allowlist.json`,
+      );
     }
   }
 
@@ -65,4 +97,8 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("staff legacy shell guardrails: ok");
+console.log(
+  pending.size > 0
+    ? `staff legacy shell guardrails: ok (${pending.size} admin files still on @auction/ui/components, see staff-legacy-ui-allowlist.json)`
+    : "staff legacy shell guardrails: ok",
+);

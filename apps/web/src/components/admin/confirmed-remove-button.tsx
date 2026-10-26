@@ -1,13 +1,11 @@
 "use client";
 
-import { cn } from "@auction/ui";
 /**
  * Admin delete UX tiers:
  * - Tier A (this component): immediate server persist — confirm before remove.
  * - Tier B: form staging — instant local remove inside multi-field forms; no dialog until Save.
  */
-import { Button, type ButtonProps } from "@auction/ui/components/button";
-import { ConfirmDialog, type ConfirmDialogTone } from "@auction/ui/components/confirm-dialog";
+import { ConfirmActionDialog, StaffButton, type StaffButtonProps } from "@auction/staff-ui";
 import { Trash2Icon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
@@ -17,26 +15,18 @@ type ConfirmedRemoveButtonProps = {
   confirmTitle: string;
   confirmBody: ReactNode;
   confirmLabel?: string;
-  tone?: ConfirmDialogTone;
+  tone?: "danger" | "warning" | "info";
   disabled?: boolean;
   /** External busy state (e.g. parent upload/save in flight). */
   loading?: boolean;
   onConfirmed: () => void | Promise<void>;
   className?: string;
-} & (
-  | {
-      children: ReactNode;
-      variant?: ButtonProps["variant"];
-      size?: ButtonProps["size"];
-    }
-  | {
-      children?: undefined;
-      variant?: undefined;
-      size?: undefined;
-    }
-);
+  /** A text button; without children the control is a trash icon button. */
+  children?: ReactNode;
+  variant?: StaffButtonProps["variant"];
+};
 
-/** Trash or text remove control that opens `ConfirmDialog` before running `onConfirmed`. */
+/** Trash or text remove control that asks before running `onConfirmed`. */
 export function ConfirmedRemoveButton({
   ariaLabel,
   confirmTitle,
@@ -49,7 +39,6 @@ export function ConfirmedRemoveButton({
   className,
   children,
   variant,
-  size,
 }: ConfirmedRemoveButtonProps) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -58,40 +47,35 @@ export function ConfirmedRemoveButton({
   return (
     <>
       {children ? (
-        <Button
-          type="button"
+        <StaffButton
           variant={variant ?? "ghost"}
-          size={size ?? "sm"}
+          size="sm"
           disabled={isDisabled}
           aria-label={ariaLabel}
-          className={className}
+          {...(className ? { className } : {})}
           onClick={() => setOpen(true)}
         >
           {children}
-        </Button>
+        </StaffButton>
       ) : (
-        <Button
-          type="button"
+        <StaffButton
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           disabled={isDisabled}
           aria-label={ariaLabel}
+          {...(className ? { className } : {})}
           onClick={() => setOpen(true)}
-          className={cn(
-            "shrink-0 self-start text-on-surface-variant/60 hover:text-error",
-            className,
-          )}
         >
-          <Trash2Icon className="size-4" aria-hidden />
-        </Button>
+          <Trash2Icon aria-hidden />
+        </StaffButton>
       )}
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={open}
         onOpenChange={setOpen}
         title={confirmTitle}
-        body={confirmBody}
+        description={confirmBody}
         confirmLabel={confirmLabel}
-        tone={tone}
+        tone={tone === "danger" ? "danger" : "default"}
         loading={pending}
         onConfirm={() => {
           startTransition(async () => {

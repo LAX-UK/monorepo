@@ -1,14 +1,7 @@
 "use client";
 
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
-import {
-  DetailBoardKpiStrip,
-  DetailBoardShell,
-  DetailBoardToolbar,
-  DetailEntityTable,
-} from "@/components/admin/catalog/detail-board";
-import { documentReviewStatusBadgeVariant } from "@/components/organisations/labels";
+import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
+import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { reviewLegalEntityDocumentAction } from "@/lib/admin/legal-entity-lifecycle.actions";
 import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
 import {
@@ -20,11 +13,21 @@ import {
   legalEntityDocumentLabel,
   matchesLegalEntityDocumentSearch,
 } from "@/lib/data/view-models/legal-entity-documents-tab.vm";
-import { presentationToDotStatus } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import { notify } from "@/lib/ui/notify";
+import {
+  type DataColumn,
+  Notice,
+  PrimaryCell,
+  SegmentedControl,
+  StaffDate,
+  StatGrid,
+  StatusBadge,
+  TableSearch,
+  rowActionsColumn,
+} from "@auction/staff-ui";
+import { Check, Download, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 
 type Props = {
   legalEntityId: string;
@@ -33,15 +36,31 @@ type Props = {
   success?: string | null;
 };
 
+const REVIEW_STATUS = {
+  pending: { label: "Pending review", tone: "warning" },
+  approved: { label: "Approved", tone: "success" },
+  rejected: { label: "Rejected", tone: "danger" },
+} as const;
+
+/** The organisation's onboarding and compliance files, and approving or rejecting each. */
 export function LegalEntityDocumentsTab({ legalEntityId, documents, error, success }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [localError, setLocalError] = useState<string | null>(null);
+  const confirm = useStaffConfirm();
   const [filter, setFilter] = useState<LegalEntityDocumentsFilter>("all");
   const [search, setSearch] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
 
-  const kpiTiles = useMemo(() => buildLegalEntityDocumentsKpiTiles(documents), [documents]);
-  const filteredDocuments = useMemo(
+  const stats = useMemo(
+    () =>
+      buildLegalEntityDocumentsKpiTiles(documents).map((tile) => ({
+        id: tile.id,
+        label: tile.label,
+        value: tile.value,
+        ...(tile.compareHint ? { hint: tile.compareHint } : {}),
+      })),
+    [documents],
+  );
+  const rows = useMemo(
     () =>
       filterLegalEntityDocuments(documents, filter).filter((doc) =>
         matchesLegalEntityDocumentSearch(doc, search),
@@ -49,129 +68,142 @@ export function LegalEntityDocumentsTab({ legalEntityId, documents, error, succe
     [documents, filter, search],
   );
 
-  function review(documentId: string, reviewStatus: "approved" | "rejected") {
-    setLocalError(null);
-    startTransition(async () => {
-      const result = await reviewLegalEntityDocumentAction({
-        legalEntityId,
-        documentId,
-        reviewStatus,
-      });
-      if (!result.ok) {
-        setLocalError(result.error);
-        return;
-      }
-      router.refresh();
+  const approve = async (doc: AdminLegalEntityDocument) => {
+    setFailure(null);
+    const result = await reviewLegalEntityDocumentAction({
+      legalEntityId,
+      documentId: doc.id,
+      reviewStatus: "approved",
     });
-  }
+    if (!result.ok) {
+      setFailure(result.error);
+      return;
+    }
+    notify.success(`${legalEntityDocumentLabel(doc)} approved`);
+    router.refresh();
+  };
+
+  const reject = (doc: AdminLegalEntityDocument) =>
+    confirm.ask({
+      title: `Reject ${legalEntityDocumentLabel(doc)}?`,
+      description:
+        "The document is marked as rejected and the organisation will need to upload it again.",
+      confirmLabel: "Reject document",
+      cancelLabel: "Keep document",
+      tone: "danger",
+      run: () =>
+        reviewLegalEntityDocumentAction({
+          legalEntityId,
+          documentId: doc.id,
+          reviewStatus: "rejected",
+        }),
+      success: `${legalEntityDocumentLabel(doc)} rejected`,
+    });
+
+  const columns: DataColumn<AdminLegalEntityDocument>[] = [
+    {
+      id: "document",
+      header: "Document",
+      mobile: "title",
+      cell: (doc) => (
+        <PrimaryCell
+          secondary={`${doc.contentType ?? "Unknown type"} · ${formatLegalEntityDocumentSize(doc.byteSize)}`}
+        >
+          {legalEntityDocumentLabel(doc)}
+        </PrimaryCell>
+      ),
+    },
+    {
+      id: "status",
+      header: "Review status",
+      width: "160px",
+      mobile: "badge",
+      cell: (doc) => {
+        const status = REVIEW_STATUS[doc.reviewStatus as keyof typeof REVIEW_STATUS] ?? {
+          label: doc.reviewStatus,
+          tone: "neutral" as const,
+        };
+        return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+      },
+    },
+    {
+      id: "uploaded",
+      header: "Uploaded",
+      width: "160px",
+      mobile: "meta",
+      cell: (doc) => <StaffDate value={doc.uploadedAt} withTime />,
+    },
+    rowActionsColumn<AdminLegalEntityDocument>({
+      label: (doc) => `Actions for ${legalEntityDocumentLabel(doc)}`,
+      actions: (doc) => [
+        {
+          id: "download",
+          label: "Download",
+          icon: Download,
+          onSelect: () => window.open(doc.downloadUrl, "_blank", "noopener"),
+        },
+        ...(doc.reviewStatus === "pending"
+          ? [
+              {
+                id: "approve",
+                label: "Approve",
+                icon: Check,
+                onSelect: () => void approve(doc),
+              },
+              {
+                id: "reject",
+                label: "Reject…",
+                icon: X,
+                tone: "danger" as const,
+                onSelect: () => reject(doc),
+              },
+            ]
+          : []),
+      ],
+    }),
+  ];
 
   return (
-    <div className="space-y-6">
-      {success ? (
-        <AdminListAlert title="Done" variant="default">
-          {success}
-        </AdminListAlert>
+    <>
+      {success ? <Notice tone="success" title={success} /> : null}
+      {error || failure ? (
+        <Notice tone="danger" alert title="The document was not updated">
+          {error ?? failure}
+        </Notice>
       ) : null}
-      {error || localError ? (
-        <AdminListAlert title="Could not update document">{error ?? localError}</AdminListAlert>
-      ) : null}
-
-      <DetailBoardKpiStrip ariaLabel="Documents summary" tiles={kpiTiles} />
-      <DetailBoardShell
+      <StatGrid label="Documents summary" className="grid-cols-3 md:grid-cols-3" items={stats} />
+      <RelatedRecordsSection<AdminLegalEntityDocument>
         title="Documents"
         description="Uploaded onboarding and compliance files for this organisation."
-        count={filteredDocuments.length}
+        label="Legal entity documents"
+        columns={columns}
+        data={rows}
+        getRowId={(doc) => doc.id}
+        defaultSort={{ columnId: "uploaded", direction: "desc" }}
         toolbar={
-          <DetailBoardToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search documents…"
-            filters={LEGAL_ENTITY_DOCUMENTS_FILTERS}
-            activeFilter={filter}
-            onFilterChange={setFilter}
-            filterAriaLabel="Filter documents by review status"
-          />
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-staff-line px-4 py-2.5">
+            <SegmentedControl
+              label="Filter documents by review status"
+              value={filter}
+              onValueChange={setFilter}
+              options={LEGAL_ENTITY_DOCUMENTS_FILTERS.map((f) => ({ value: f.id, label: f.label }))}
+            />
+            <TableSearch
+              value={search}
+              onSearch={setSearch}
+              placeholder="Search documents"
+              label="Search documents"
+              live
+            />
+          </div>
         }
-      >
-        <DetailEntityTable
-          rows={filteredDocuments}
-          getRowId={(doc) => doc.id}
-          ariaLabel="Legal entity documents"
-          emptyTitle="No documents uploaded yet"
-          columns={[
-            {
-              id: "document",
-              header: "Document",
-              cell: (doc) => (
-                <div className="min-w-0">
-                  <p className="font-headline text-sm font-medium text-on-surface">
-                    {legalEntityDocumentLabel(doc)}
-                  </p>
-                  <p className="mt-0.5 font-body text-xs text-on-surface-variant">
-                    {doc.contentType ?? "Unknown type"} ·{" "}
-                    {formatLegalEntityDocumentSize(doc.byteSize)}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              id: "status",
-              header: "Review status",
-              cell: (doc) => (
-                <DotStatusPill
-                  {...presentationToDotStatus({
-                    label: doc.reviewStatus,
-                    variant: documentReviewStatusBadgeVariant(
-                      doc.reviewStatus as "pending" | "approved" | "rejected",
-                    ),
-                  })}
-                />
-              ),
-            },
-            {
-              id: "uploaded",
-              header: "Uploaded",
-              cell: (doc) => (
-                <AdminTableDateTimeCell iso={doc.uploadedAt.toISOString()} mode="timestamp" />
-              ),
-            },
-            {
-              id: "actions",
-              header: "Actions",
-              cell: (doc) => (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild variant="secondary" size="sm">
-                    <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
-                      Download
-                    </a>
-                  </Button>
-                  {doc.reviewStatus === "pending" ? (
-                    <>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => review(doc.id, "approved")}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => review(doc.id, "rejected")}
-                      >
-                        Reject
-                      </Button>
-                    </>
-                  ) : null}
-                </div>
-              ),
-            },
-          ]}
-        />
-      </DetailBoardShell>
-    </div>
+        empty={{
+          title: "No documents uploaded yet",
+          description:
+            "Onboarding and compliance files appear here once the organisation uploads them.",
+        }}
+      />
+      {confirm.dialog}
+    </>
   );
 }

@@ -8,7 +8,6 @@ export type SubmissionDecisionPageModel = LoadedSubmissionReview;
 /** Data/composition boundary for `/admin/submissions/[id]/decision`. */
 export async function loadAdminSubmissionDecisionPage(
   submissionId: string,
-  currentUserId: string,
 ): Promise<SubmissionDecisionPageModel | null> {
-  return loadSubmissionReview(submissionId, currentUserId);
+  return loadSubmissionReview(submissionId);
 }

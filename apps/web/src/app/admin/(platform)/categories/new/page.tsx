@@ -1,46 +1,28 @@
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { CatalogBreadcrumbs, CatalogFormShell } from "@/components/admin/catalog";
 import { CategoryCreateForm } from "@/components/admin/category-detail/category-create-form";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminCategoryCreatePage } from "@/lib/admin/categories/load-category-create-page";
+import { FormPage, Notice } from "@auction/staff-ui";
 
 export default async function AdminCategoryNewPage() {
   const page = await loadAdminCategoryCreatePage();
 
   return (
-    <CatalogFormShell
-      layout="wizard"
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[{ label: "Categories", href: "/admin/categories" }, { label: "New" }]}
+        <StaffBreadcrumbs
+          items={[{ label: "Categories", href: "/admin/categories" }, { label: "New category" }]}
         />
       }
       title="New category"
-      description="Create taxonomy used by sales, lots, and submissions. Archive categories that remain in use instead of deleting them."
-      {...(page.setupError
-        ? {
-            mobileActions: [
-              {
-                id: "back" as const,
-                label: "Back to categories",
-                variant: "secondary" as const,
-                href: "/admin/categories",
-              },
-            ],
-          }
-        : {
-            wizardMobile: {
-              formId: CATALOG_FORM_IDS.category,
-              submitLabel: "Create category",
-              cancelHref: "/admin/categories",
-            },
-          })}
+      description="Add a category that sales, lots and submissions can use. Archive a category that is still in use rather than deleting it."
     >
       {page.setupError ? (
-        <AdminListAlert title="Cannot create category">{page.setupError}</AdminListAlert>
+        <Notice tone="danger" alert title="The category cannot be created yet">
+          {page.setupError}
+        </Notice>
       ) : (
         <CategoryCreateForm allCategories={page.allCategories} />
       )}
-    </CatalogFormShell>
+    </FormPage>
   );
 }

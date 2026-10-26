@@ -5,9 +5,8 @@ import {
   searchAdminLotsBrowseAction,
 } from "@/lib/actions/admin-lots-browse";
 import type { AdminLotPickerRow } from "@/lib/data/http/admin.server";
-import { AsyncCombobox } from "@auction/ui/components/async-combobox";
-import { Button } from "@auction/ui/components/button";
-import { useCallback, useState } from "react";
+import { type EntityOption, EntityPicker, SegmentedControl } from "@auction/staff-ui";
+import { useCallback, useEffect, useState } from "react";
 
 export type AdminLotPickerProps = {
   value: string | null;
@@ -23,6 +22,18 @@ export type AdminLotPickerProps = {
   onBlur?: () => void;
 };
 
+type LotState = "available" | "returned" | "all";
+
+function toOption(row: AdminLotPickerRow): EntityOption {
+  const kind = row.lifecycle.kind === "returned" ? "Returned to inventory" : "New draft";
+  return {
+    id: row.id,
+    label: row.title,
+    description: row.lifecycle.lastSaleName ? `${kind} · ${row.lifecycle.lastSaleName}` : kind,
+  };
+}
+
+/** Choose a lot for a sale by its title, filtered to new drafts, returned lots or both. */
 export function AdminLotPicker({
   value,
   displayLabel,
@@ -30,15 +41,36 @@ export function AdminLotPicker({
   disabled = false,
   excludeSaleId,
   sellerLegalEntityId,
-  searchPlaceholder = "Search draft lots by title…",
+  searchPlaceholder = "Search draft lots by title",
   id,
   "aria-invalid": ariaInvalid,
-  "aria-describedby": ariaDescribedBy,
   onBlur,
 }: AdminLotPickerProps) {
-  const [state, setState] = useState<"available" | "returned" | "all">("all");
+  const [state, setState] = useState<LotState>("all");
+  const [rows, setRows] = useState<Record<string, AdminLotPickerRow>>({});
+  const [selected, setSelected] = useState<EntityOption | null>(
+    value && displayLabel?.trim() ? { id: value, label: displayLabel.trim() } : null,
+  );
 
-  const searchHits = useCallback(
+  useEffect(() => {
+    if (!value) {
+      setSelected(null);
+      return;
+    }
+    if (selected?.id === value) return;
+    let cancelled = false;
+    void resolveAdminLotForPickerAction(value).then((result) => {
+      if (cancelled || !result.ok || !result.data) return;
+      const row = result.data;
+      setRows((prev) => ({ ...prev, [row.id]: row }));
+      setSelected(toOption(row));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value, selected?.id]);
+
+  const search = useCallback(
     async (q: string) => {
       const result = await searchAdminLotsBrowseAction({
         ...(q.trim() ? { q: q.trim() } : {}),
@@ -49,69 +81,41 @@ export function AdminLotPicker({
         offset: 0,
       });
       if (!result.ok) throw new Error(result.error || "Search failed");
-      return result.data?.rows ?? [];
+      const hits = result.data?.rows ?? [];
+      setRows((prev) => ({ ...prev, ...Object.fromEntries(hits.map((r) => [r.id, r])) }));
+      return hits.map(toOption);
     },
     [excludeSaleId, sellerLegalEntityId, state],
   );
 
-  const resolveHit = useCallback(async (lotId: string) => {
-    const result = await resolveAdminLotForPickerAction(lotId);
-    if (!result.ok) return null;
-    return result.data ?? null;
-  }, []);
-
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {(["available", "returned", "all"] as const).map((pill) => (
-          <Button
-            key={pill}
-            type="button"
-            size="sm"
-            variant={state === pill ? "default" : "outline"}
-            disabled={disabled}
-            onClick={() => setState(pill)}
-            className="rounded-full px-3 py-1 font-label text-[10px] uppercase tracking-wide"
-          >
-            {pill === "available" ? "New drafts" : pill === "returned" ? "Returned" : "All"}
-          </Button>
-        ))}
-      </div>
-      <AsyncCombobox<AdminLotPickerRow>
+    <div className="flex flex-col gap-2">
+      <SegmentedControl
+        label="Which lots to list"
+        value={state}
+        onValueChange={setState}
+        options={[
+          { value: "available", label: "New drafts" },
+          { value: "returned", label: "Returned" },
+          { value: "all", label: "All" },
+        ]}
+      />
+      <EntityPicker
         key={state}
         value={value}
-        onChange={(id, hit) => onChange(id, hit)}
+        selected={selected}
+        search={search}
         disabled={disabled}
-        {...(id ? { id } : {})}
-        {...(ariaInvalid !== undefined ? { "aria-invalid": ariaInvalid } : {})}
-        {...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {})}
-        {...(onBlur ? { onBlur } : {})}
-        minQueryLen={0}
+        invalid={ariaInvalid === true}
         placeholder={searchPlaceholder}
         searchPlaceholder={searchPlaceholder}
-        searchHits={searchHits}
-        resolveHit={resolveHit}
-        renderHit={(row) => (
-          <>
-            <span className="font-medium text-on-surface">{row.title}</span>
-            <span className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant/80">
-              {row.lifecycle.kind === "returned" ? "Returned to inventory" : "New draft"}
-              {row.lifecycle.lastSaleName ? ` · ${row.lifecycle.lastSaleName}` : ""}
-            </span>
-          </>
-        )}
-        renderSelected={(row) => (
-          <>
-            <p className="truncate font-medium text-on-surface">{row.title}</p>
-            <p className="font-mono text-[11px] text-on-surface-variant">{row.id}</p>
-          </>
-        )}
-        renderSelectedFallback={(id) => (
-          <>
-            <p className="truncate font-medium text-on-surface">{displayLabel ?? id}</p>
-            <p className="font-mono text-[11px] text-on-surface-variant">{id}</p>
-          </>
-        )}
+        emptyText="No lots match."
+        {...(id ? { id } : {})}
+        onValueChange={(option) => {
+          setSelected(option);
+          onChange(option?.id ?? null, option ? rows[option.id] : undefined);
+          onBlur?.();
+        }}
       />
     </div>
   );

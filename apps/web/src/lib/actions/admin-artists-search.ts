@@ -2,7 +2,7 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
-import type { ArtistSearchHit } from "@/components/artists/artist-search";
+import type { ArtistSearchHit } from "@/lib/admin/pickers/artist-search-hit";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getAdminArtistList, searchAdminArtistsRegistry } from "@/lib/data/http/admin.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
