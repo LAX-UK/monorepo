@@ -109,6 +109,7 @@ jobs:
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
+          version: 1.155.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
       - name: Log in to DOCR
@@ -226,6 +227,7 @@ jobs:
           ref: ${{ inputs.git_sha || github.sha }}
       - uses: digitalocean/action-doctl@v2
         with:
+          version: 1.155.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - run: doctl registry login --expiry-seconds 1200
       - name: Write release manifest
@@ -274,6 +276,7 @@ jobs:
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
+          version: 1.155.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
       - name: Log in to DOCR
