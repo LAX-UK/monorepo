@@ -18,6 +18,8 @@ export {
 // Primitives
 export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
+export { HoldButton, STAFF_HOLD_MS } from "./primitives/hold-button.js";
+export type { HoldButtonProps } from "./primitives/hold-button.js";
 export { Kbd, ShortcutKeys, TextArea, TextInput, staffFieldBox } from "./primitives/input.js";
 export type { TextAreaProps, TextInputProps } from "./primitives/input.js";
 export {
