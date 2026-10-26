@@ -1,36 +1,40 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { AdminListCursorNav } from "@/components/admin-list-cursor-nav";
-import { AuditStaffListTable } from "@/components/admin-staff-list-tables.client";
+import { AuditLogList } from "@/components/audit/audit-log-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
-import type { AdminAuditEntry } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/ui";
+import { auditList } from "@/server/domain/people-lists.vm";
+import type { AdminAuditFacets, AdminAuditList } from "@auction/shop-contracts";
 import { redirect } from "next/navigation";
 
-type AuditList = { items: AdminAuditEntry[]; nextCursor: string | null };
-
 export const metadata = { title: "Audit log" };
+
+const EMPTY: AdminAuditList = { items: [], nextCursor: null };
+const NO_FACETS: AdminAuditFacets = { actions: [], targetTypes: [], actors: [] };
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cursor?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { cursor } = await searchParams;
-  const result = await fetchAdminJson<AuditList>(adminListPath("audit", { cursor }));
+  const state = auditList.parse(await searchParams);
+  const [result, facets] = await Promise.all([
+    fetchAdminJson<AdminAuditList>(
+      adminListPath("audit", { cursor: state.cursor, query: auditList.apiQuery(state) }),
+    ),
+    fetchAdminJson<AdminAuditFacets>("audit/facets"),
+  ]);
   if (result.status === "unauthorized") redirect("/login");
-  if (result.status !== "ok") {
+  if (result.status === "forbidden" || result.status === "not_found") {
     return <AdminFailedPage title="Audit log" status={result.status} />;
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Audit log"
-        description="A record of changes made by staff, newest first."
-      />
-      <AuditStaffListTable items={result.data.items} />
-      <AdminListCursorNav pathname="/audit" cursor={cursor} nextCursor={result.data.nextCursor} />
-    </div>
+    <AuditLogList
+      state={state}
+      page={result.status === "ok" ? result.data : EMPTY}
+      // The filters still work by URL when their options did not load.
+      facets={facets.status === "ok" ? facets.data : NO_FACETS}
+      loadFailed={result.status === "failed"}
+    />
   );
 }

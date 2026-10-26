@@ -1,5 +1,11 @@
 import { STAFF_DEFAULT_PAGE_SIZE, parseStaffPageSize } from "@auction/staff-ui";
-import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
+import {
+  type RawSearchParams,
+  calendarDayParam,
+  listHref,
+  oneOf,
+  singleParam,
+} from "./list-url-state";
 
 /*
  * The URL state of a sales or operations work list: the view, a search, the list's own
@@ -34,13 +40,40 @@ export type WorkListState<F extends string = string> = {
   open?: string;
 };
 
+/**
+ * What a filter accepts: one of a fixed set of values; `{ anyOf }` for several of them, kept in
+ * the URL comma-separated in the set's order; `"day"` for a calendar day (`YYYY-MM-DD`); or
+ * `{ text }` for a free value such as a person's id, up to that many characters.
+ */
+export type WorkListFilterRule =
+  | readonly string[]
+  | { anyOf: readonly string[] }
+  | "day"
+  | { text: number };
+
+/** A filter's value from the URL under its rule, or undefined when it breaks the rule. */
+export function parseFilterValue(
+  rule: WorkListFilterRule,
+  raw: string | undefined,
+): string | undefined {
+  if (!raw) return undefined;
+  if (rule === "day") return calendarDayParam(raw);
+  if ("text" in rule) return raw.slice(0, rule.text);
+  if ("anyOf" in rule) {
+    const chosen = new Set(raw.split(","));
+    const kept = rule.anyOf.filter((value) => chosen.has(value));
+    return kept.length > 0 ? kept.join(",") : undefined;
+  }
+  return oneOf(raw, rule);
+}
+
 export type WorkListConfig<F extends string> = {
   path: string;
   views: readonly WorkListView[];
   /** The view a bare URL shows. */
   defaultView: string;
   /** Each filter and the values it accepts. */
-  filters: Record<F, readonly string[]>;
+  filters: Record<F, WorkListFilterRule>;
   /** Each sortable column and its API keys; `defaultSort` is the key a bare URL sorts by. */
   sorts: Record<string, { asc: string; desc: string }>;
   defaultSort: string;
@@ -79,7 +112,7 @@ export function defineWorkList<F extends string>(config: WorkListConfig<F>) {
     const open = singleParam(params[config.panelParam]);
     const filters: Partial<Record<F, string>> = {};
     for (const id of filterIds) {
-      const value = oneOf(singleParam(params[id]), config.filters[id]);
+      const value = parseFilterValue(config.filters[id], singleParam(params[id]));
       if (value) filters[id] = value;
     }
     return {

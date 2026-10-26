@@ -1,6 +1,6 @@
 import type { AdminStaffMemberList } from "@auction/shop-contracts";
 import type { ShopStaffRole } from "@auction/shop-domain";
-import type { EnumOption, StatusPresentation, TeamView } from "@auction/staff-ui";
+import type { EnumOption } from "@auction/staff-ui";
 import { staffRoleLabel } from "./staff-role-label.vm";
 
 export type StaffMemberRow = AdminStaffMemberList["items"][number];
@@ -15,109 +15,37 @@ export const GRANTABLE_STAFF_ROLES = [
   "shop_admin",
 ] as const satisfies readonly ShopStaffRole[];
 
-const ROLE_DESCRIPTIONS: Record<(typeof GRANTABLE_STAFF_ROLES)[number], string> = {
-  operations: "Orders, production, fulfilment and enquiries",
-  catalogue_editor: "Artworks, artists and editorial pages",
-  account_manager: "Their clients, sales and sale limits",
-  broker: "Third-party sales and stock holds",
-  finance: "Orders, refunds, payouts, edition prices and the audit log",
-  shop_admin: "Everything, including staff and settings",
+export type GrantableStaffRole = (typeof GRANTABLE_STAFF_ROLES)[number];
+
+/** What each role lets someone see and do in LAX Admin, in plain words. */
+const ROLE_ALLOWS: Record<GrantableStaffRole, string> = {
+  operations: "Orders, production, fulfilment and enquiries.",
+  catalogue_editor: "Artworks, artists, merchandise and the editorial pages.",
+  account_manager: "Their own clients, with those clients' sales and sale limits.",
+  broker: "Third-party sales and stock holds for the clients assigned to them.",
+  finance: "Orders, refunds, payouts, edition prices and the audit log.",
+  shop_admin: "Everything, including staff, settings and the audit log.",
 };
 
-export const STAFF_ROLE_OPTIONS: EnumOption<(typeof GRANTABLE_STAFF_ROLES)[number]>[] =
-  GRANTABLE_STAFF_ROLES.map((role) => ({
-    value: role,
-    label: staffRoleLabel(role),
-    description: ROLE_DESCRIPTIONS[role],
-  }));
+export const STAFF_ROLE_OPTIONS: EnumOption<GrantableStaffRole>[] = GRANTABLE_STAFF_ROLES.map(
+  (role) => ({ value: role, label: staffRoleLabel(role), description: ROLE_ALLOWS[role] }),
+);
 
-export function isGrantableRole(role: string): role is (typeof GRANTABLE_STAFF_ROLES)[number] {
+export function isGrantableRole(role: string): role is GrantableStaffRole {
   return (GRANTABLE_STAFF_ROLES as readonly string[]).includes(role);
 }
 
-/** The name staff recognise: the profile name, else the email, else a short account reference. */
-export function staffMemberName(
-  row: Pick<StaffMemberRow, "displayName" | "email" | "identitySubjectId">,
-) {
-  return row.displayName ?? row.email ?? `Account ${row.identitySubjectId.slice(0, 8)}`;
+/** What a role allows, for the grant confirm and the record panel. */
+export function staffRoleAllows(role: string): string | null {
+  return isGrantableRole(role) ? ROLE_ALLOWS[role] : null;
 }
 
-export function staffMemberStatus(row: Pick<StaffMemberRow, "disabledAt">): StatusPresentation {
-  return row.disabledAt
-    ? { label: "Disabled", tone: "neutral" }
-    : { label: "Active", tone: "success" };
+/** The name staff recognise: the profile name, else the email. */
+export function staffMemberName(row: Pick<StaffMemberRow, "displayName" | "email">): string {
+  return row.displayName ?? row.email ?? "Name not set yet";
 }
 
-const RELATIVE = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
-
-/** "Today", "Yesterday", "3 days ago", "2 months ago"; "No activity yet" when never seen. */
-export function lastActiveLabel(iso: string | null, now: Date): string {
-  if (!iso) return "No activity yet";
-  const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return "No activity yet";
-  const days = Math.floor((now.getTime() - then.getTime()) / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days < 30) return capitalise(RELATIVE.format(-days, "day"));
-  if (days < 365) return capitalise(RELATIVE.format(-Math.floor(days / 30), "month"));
-  return capitalise(RELATIVE.format(-Math.floor(days / 365), "year"));
-}
-
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/** Search by name or email, and narrow by role; both optional. */
-export function filterStaff(
-  rows: readonly StaffMemberRow[],
-  filter: { q: string; roles: readonly string[] },
-): StaffMemberRow[] {
-  const q = filter.q.trim().toLowerCase();
-  return rows.filter((row) => {
-    if (filter.roles.length > 0 && !filter.roles.includes(row.role)) return false;
-    if (!q) return true;
-    return [row.displayName, row.email].some((value) => value?.toLowerCase().includes(q));
-  });
-}
-
-export const STAFF_LIST_PATH = "/staff";
-
-/** The staff list URL for a search and role filter, as it appears in the address bar. */
-export function staffListHref(filter: { q: string; roles: readonly string[] }): string {
-  const params = new URLSearchParams();
-  const q = filter.q.trim();
-  if (q) params.set("q", q);
-  for (const role of filter.roles) params.append("role", role);
-  const query = params.toString();
-  return query ? `${STAFF_LIST_PATH}?${query}` : STAFF_LIST_PATH;
-}
-
-/** Reads the list's filter from the URL, dropping roles that do not exist. */
-export function parseStaffListParams(params: URLSearchParams): { q: string; roles: string[] } {
-  return {
-    q: params.get("q")?.trim() ?? "",
-    roles: params.getAll("role").filter((role) => GRANTABLE_STAFF_ROLES.some((r) => r === role)),
-  };
-}
-
-const TEAM_VIEW_ROLES: ReadonlyArray<{
-  id: string;
-  label: string;
-  roles: readonly (typeof GRANTABLE_STAFF_ROLES)[number][];
-}> = [
-  { id: "admins", label: "Administrators", roles: ["shop_admin"] },
-  { id: "sales", label: "Sales team", roles: ["account_manager", "broker"] },
-  {
-    id: "operations",
-    label: "Operations and catalogue",
-    roles: ["operations", "catalogue_editor"],
-  },
-  { id: "finance", label: "Finance", roles: ["finance"] },
-];
-
-/** Views of the staff list everyone sees: a team at a time. Fixed here, never edited. */
-export function staffTeamViews(): TeamView[] {
-  return TEAM_VIEW_ROLES.map(({ id, label, roles }) => {
-    const href = staffListHref({ q: "", roles });
-    return { id: `team-${id}`, label, href, query: href.split("?")[1] ?? "" };
-  });
+/** A rough email check before asking the API, which has the final word. */
+export function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

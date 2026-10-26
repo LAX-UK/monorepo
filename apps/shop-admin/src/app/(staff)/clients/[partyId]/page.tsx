@@ -1,12 +1,8 @@
-import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { AdminRecordTable } from "@/components/admin-staff-data-table";
-import { ClientHeaderActions } from "@/components/clients/client-header-actions.client";
-import { formatAdminDetailDateTime, formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
+import { ClientRecordPage } from "@/components/clients/client-record-page.client";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
-import { ownedArtworkOptions, partyKindLabel } from "@/server/domain/lookup-options.vm";
+import { getShopAdminContainer } from "@/server/container";
 import type { AdminClientDetail } from "@auction/shop-contracts";
-import { PageHeader } from "@auction/staff-ui";
 import { notFound, redirect } from "next/navigation";
 
 export const metadata = { title: "Client" };
@@ -18,7 +14,7 @@ export default async function ClientDetailPage({
 }) {
   const { partyId } = await params;
   const [result, session] = await Promise.all([
-    fetchAdminJson<AdminClientDetail>(`clients/${partyId}`),
+    fetchAdminJson<AdminClientDetail>(`clients/${encodeURIComponent(partyId)}`),
     loadAdminSession(),
   ]);
   if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
@@ -26,119 +22,13 @@ export default async function ClientDetailPage({
   if (result.status !== "ok") {
     return <AdminFailedPage title="Client" status={result.status} />;
   }
-  const data = result.data;
   const capabilities = session.status === "ok" ? session.data.capabilities : [];
-  const canGrant = capabilities.includes("sale_authority.write");
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        breadcrumbs={
-          <AdminBreadcrumbs
-            list={{ label: "Clients", href: "/clients" }}
-            current={data.party.displayName}
-          />
-        }
-        title={data.party.displayName}
-        description={partyKindLabel(data.party.kind)}
-        primaryAction={
-          canGrant ? (
-            <ClientHeaderActions
-              client={{
-                id: data.party.partyId,
-                label: data.party.displayName,
-                description: partyKindLabel(data.party.kind),
-              }}
-              ownedArtworks={ownedArtworkOptions(data.editions)}
-            />
-          ) : undefined
-        }
-      />
-
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Editions owned</h2>
-        <AdminRecordTable
-          ariaLabel="Editions owned"
-          columns={["Artwork", "Edition", "Listing", "Custody"]}
-          empty={{
-            title: "No editions owned",
-            description: "Editions this client buys or is given will be listed here.",
-          }}
-          rows={data.editions.map((row) => ({
-            id: row.editionId,
-            cells: [
-              row.artworkTitle,
-              String(row.editionNumber),
-              row.listingStatus,
-              row.custodyStatus,
-            ],
-          }))}
-        />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Sale limits</h2>
-        <AdminRecordTable
-          ariaLabel="Sale limits"
-          columns={["Artwork", "Authorised", "Committed", "Last grant"]}
-          empty={{
-            title: "No sale limits",
-            description: "Use Grant sale authority above to let this client sell editions.",
-          }}
-          rows={data.saleAuthority.map((row) => ({
-            id: row.artworkId,
-            cells: [
-              row.artworkTitle,
-              String(row.authorisedCount),
-              String(row.committedCount),
-              row.lastGrantAt ? formatAdminDetailDateTime(row.lastGrantAt) : "—",
-            ],
-          }))}
-        />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Limit requests</h2>
-        <AdminRecordTable
-          ariaLabel="Limit requests"
-          columns={["Artwork", "Requested", "Status", "Created"]}
-          empty={{
-            title: "No limit requests",
-            description: "Requests from this client for a higher sale limit will be listed here.",
-          }}
-          rows={data.requests.map((row) => ({
-            id: row.requestId,
-            cells: [
-              row.artworkTitle,
-              String(row.requestedCount),
-              row.status,
-              formatAdminDetailDateTime(row.createdAt),
-            ],
-          }))}
-        />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-medium">Payouts</h2>
-        <AdminRecordTable
-          ariaLabel="Payouts"
-          columns={["Source", "Gross", "Net", "Status", "Due"]}
-          empty={{
-            title: "No payouts",
-            description: "Money owed to this client after a sale will be listed here.",
-          }}
-          rows={data.payouts.map((row) => ({
-            id: row.payoutId,
-            cells: [
-              row.source,
-              formatAdminDetailGbpPence(row.grossPence),
-              formatAdminDetailGbpPence(row.netPence),
-              row.status,
-              row.payoutDueAt ? formatAdminDetailDateTime(row.payoutDueAt) : "—",
-            ],
-          }))}
-        />
-      </section>
-    </div>
+    <ClientRecordPage
+      detail={result.data}
+      canGrant={capabilities.includes("sale_authority.write")}
+      bidPublicUrl={getShopAdminContainer().config.bidPublicUrl || undefined}
+    />
   );
 }

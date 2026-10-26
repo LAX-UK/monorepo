@@ -109,3 +109,15 @@ export function checkApproveRequest(input: {
 export function requestedEditionsLabel(count: number): string {
   return `Asked for ${count === 1 ? "1 edition" : `${count} editions`}`;
 }
+
+/**
+ * What a grant will allow, in plain words, before it is sent: "Ada Lovelace may list up to
+ * 3 editions of Blue Interior for sale through LAX."
+ */
+export function grantAllowsSentence(input: { owner: string; artwork: string; count: number }) {
+  if (input.count === 0) {
+    return `${input.owner} will no longer be able to sell editions of ${input.artwork} through LAX.`;
+  }
+  const editions = input.count === 1 ? "1 edition" : `${input.count} editions`;
+  return `${input.owner} may list up to ${editions} of ${input.artwork} for sale through LAX.`;
+}
